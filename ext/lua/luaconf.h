@@ -756,7 +756,7 @@ union luai_Cast { double l_d; long l_l; };
 ** without modifying the main part of the file.
 */
 
-#if defined(UNICODE)
+#if defined(UNICODE) && defined(loadlib_c)
 
 #define GetModuleFileName	GetModuleFileNameA
 #define FormatMessage		FormatMessageA

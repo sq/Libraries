@@ -29,10 +29,10 @@ int main (int argc, const char * argv[]) {
     if (buffer.tellg())
       cout << "> ";
     else
-      cout << "  ";
+      cout << ". ";
 
     cin.getline(linebuf, 1024);
-    
+       
     bool erase = true;
     
     try {
@@ -44,6 +44,7 @@ int main (int argc, const char * argv[]) {
       if (strstr(msg, search) == msg + strlen(msg) - strlen(search)) {
         // Syntax error near '<eof>', most likely an incomplete fragment.
         erase = false;
+        buffer << " \n";
       } else {
         cout << "! " << ex.what() << "\n";        
       }
