@@ -1,7 +1,7 @@
 #ifdef _DEBUG
-  #pragma comment(lib, "lua-d.msvc8.lib")
+  #pragma comment(lib, "lua-d.lib")
 #else
-  #pragma comment(lib, "lua.msvc8.lib")
+  #pragma comment(lib, "lua.lib")
 #endif
 
 extern "C" {

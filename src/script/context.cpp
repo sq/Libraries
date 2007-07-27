@@ -63,7 +63,7 @@ Object LuaContext::createTable() {
 }
     
 Context::Context() {
-  luaopen_base(getContext());
+  luaL_openlibs(getContext());
 
   getContext().emptyStack();
 }
@@ -99,25 +99,24 @@ void Context::executeScript(const char * source) {
 }
 
 shared_ptr<CompiledScript> Context::compileScript(const char * source) {
-  int result = luaL_loadstring(getContext(), source);
-  handleError(result);
-  return shared_ptr<CompiledScript>(new CompiledScript(shared_from_this()));
+  handleError(
+    luaL_loadstring(getContext(), source)
+  );
+  return shared_ptr<CompiledScript>(
+    new CompiledScript(shared_from_this())
+  );
 }
 
 CompiledScript::CompiledScript(shared_ptr<Context> parent) :
   m_parent(parent),
   m_id(0)
 {
-  LuaContext & context = m_parent->getContext();
-
-  m_id = luaL_ref(context, LUA_REGISTRYINDEX);
+  m_id = luaL_ref(m_parent->getContext(), LUA_REGISTRYINDEX);
 }
 
 CompiledScript::~CompiledScript() {
-  LuaContext & context = m_parent->getContext();
-
   if (m_id) {
-    luaL_unref(context, LUA_REGISTRYINDEX, m_id);
+    luaL_unref(m_parent->getContext(), LUA_REGISTRYINDEX, m_id);
     m_id = 0;
   }
 }
@@ -126,8 +125,9 @@ void CompiledScript::execute() const {
   LuaContext & context = m_parent->getContext();
   
   lua_rawgeti(context, LUA_REGISTRYINDEX, m_id);  
-  int result = lua_pcall(context, 0, 0, 0);
-  context.handleError(result);
+  context.handleError(
+    lua_pcall(context, 0, 0, 0)
+  );
 }
 
 }

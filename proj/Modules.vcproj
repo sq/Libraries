@@ -18,7 +18,7 @@
 		<Configuration
 			Name="Debug|Win32"
 			OutputDirectory="..\lib"
-			IntermediateDirectory="..\tmp"
+			IntermediateDirectory="..\tmp\Modules"
 			ConfigurationType="4"
 			CharacterSet="1"
 			>
@@ -81,7 +81,7 @@
 		<Configuration
 			Name="Release|Win32"
 			OutputDirectory="..\lib"
-			IntermediateDirectory="..\tmp"
+			IntermediateDirectory="..\tmp\Modules"
 			ConfigurationType="4"
 			CharacterSet="1"
 			WholeProgramOptimization="1"

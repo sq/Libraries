@@ -42,7 +42,7 @@ int main (int argc, const char * argv[]) {
       const char * msg = ex.what();
       const char search[] = "near '<eof>'";
       if (strstr(msg, search) == msg + strlen(msg) - strlen(search)) {
-        // Syntax error at <eof>, most likely an incomplete fragment.
+        // Syntax error near '<eof>', most likely an incomplete fragment.
         erase = false;
       } else {
         cout << "! " << ex.what() << "\n";        

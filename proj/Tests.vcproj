@@ -18,7 +18,7 @@
 		<Configuration
 			Name="Debug|Win32"
 			OutputDirectory="..\bin"
-			IntermediateDirectory="..\tmp"
+			IntermediateDirectory="..\tmp\Tests"
 			ConfigurationType="1"
 			CharacterSet="1"
 			BuildLogFile=""
@@ -64,7 +64,7 @@
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)\tests.exe"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="..\ext\lib"
+				AdditionalLibraryDirectories="..\ext\lib;..\lib"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -97,7 +97,7 @@
 		<Configuration
 			Name="Release|Win32"
 			OutputDirectory="..\bin"
-			IntermediateDirectory="..\tmp"
+			IntermediateDirectory="..\tmp\Tests"
 			ConfigurationType="1"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -142,7 +142,7 @@
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)\tests.exe"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="..\ext\lib"
+				AdditionalLibraryDirectories="..\ext\lib;..\lib"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				OptimizeReferences="2"
@@ -346,11 +346,11 @@
 					>
 				</File>
 				<File
-					RelativePath="..\ext\unittest++\Win32\TimeHelpers.h"
+					RelativePath="..\ext\unittest++\TimeHelpers.h"
 					>
 				</File>
 				<File
-					RelativePath="..\ext\unittest++\TimeHelpers.h"
+					RelativePath="..\ext\unittest++\Win32\TimeHelpers.h"
 					>
 				</File>
 				<File
