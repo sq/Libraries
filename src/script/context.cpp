@@ -64,6 +64,8 @@ Object LuaContext::createTable() {
     
 Context::Context() {
   luaL_openlibs(getContext());
+  
+  luabind::open(getContext());
 
   getContext().emptyStack();
 }
@@ -91,16 +93,16 @@ void Context::registerFunction(const char * name, lua_CFunction function) {
 
 void Context::executeScript(const char * source) {
   handleError(
-    luaL_loadstring(getContext(), source)
+    luaL_loadbuffer(getContext(), source, strlen(source), source)
   );
   handleError(
     lua_pcall(getContext(), 0, LUA_MULTRET, 0)
   );
 }
 
-shared_ptr<CompiledScript> Context::compileScript(const char * source) {
+shared_ptr<CompiledScript> Context::compileScript(const char * source, const char * name) {
   handleError(
-    luaL_loadstring(getContext(), source)
+    luaL_loadbuffer(getContext(), source, strlen(source), name ? name : source)
   );
   return shared_ptr<CompiledScript>(
     new CompiledScript(shared_from_this())

@@ -1,5 +1,5 @@
 #include "libs.hpp"
-
+        
 namespace script {
 
   class LuaContext;
@@ -23,6 +23,48 @@ namespace script {
 
 namespace script {
 
+  template <class name> struct classRegistrar {
+    static luabind::scope doRegisterClass();
+  };
+  
+  #define _CLASS(name) \
+    namespace script { \
+      template <> struct classRegistrar<name> { \
+        static luabind::scope doRegisterClass() { \
+          using namespace luabind; \
+          typedef name thistype; \
+          class_<name> _class(#name);
+
+  #define _CLASS_BASE(name, wrapper) \
+    namespace script { \
+      template <> struct classRegistrar<name> { \
+        static luabind::scope doRegisterClass() { \
+          using namespace luabind; \
+          typedef name thistype; \
+          typedef wrapper thiswrapper; \
+          class_<name, wrapper> _class(#name);
+        
+  #define _DEF(x) \
+      _class.def(x);
+        
+  #define _METHOD(name) \
+      _class.def(#name, &thistype::name);
+        
+  #define _DERIVED_METHOD(name) \
+      _class.def(#name, &thistype::name, &thiswrapper::default_ ## name);
+
+  #define _FIELD_R(name) \
+      _class.def_readonly(#name, &thistype::name);
+
+  #define _FIELD_RW(name) \
+      _class.def_readwrite(#name, &thistype::name);
+      
+  #define _END_CLASS \
+          return _class; \
+        } \
+      }; \
+    }
+  
   class SyntaxError : public std::exception {
   public:
     SyntaxError(const char * what) :
@@ -67,9 +109,16 @@ namespace script {
     
     void registerFunction(const char * name, lua_CFunction function);
     
+    template <class T>
+    void registerClass(const char * moduleName = 0) {
+      luabind::module(getContext(), moduleName) [
+        ::classRegistrar<T>::doRegisterClass()
+      ];
+    }
+    
     void executeScript(const char * source);
     
-    shared_ptr<CompiledScript> compileScript(const char * source);
+    shared_ptr<CompiledScript> compileScript(const char * source, const char * name = 0);
     
   };
   

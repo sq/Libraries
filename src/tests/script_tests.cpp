@@ -174,3 +174,195 @@ SUITE(CompiledScriptTests) {
     CHECK_EQUAL(2, (int)lua_tointeger(context, -1));
   }
 }
+
+static int times_constructed = 0;
+static int times_destructed = 0;
+static int times_method_invoked = 0;
+
+class testclass {
+public:
+  int x;
+
+  testclass() :
+    x(0)
+  {
+    times_constructed += 1;
+  }
+  
+  ~testclass() {
+    times_destructed += 1;
+  }
+  
+  void test_method() {
+    times_method_invoked += 1;
+  }
+};
+
+_CLASS(testclass)
+      _DEF(constructor<>())
+      _METHOD(test_method)
+      _FIELD_RW(x)
+_END_CLASS
+
+class baseclass {
+public:
+  int x;
+
+  baseclass() :
+    x(0)
+  {
+    times_constructed += 1;
+  }
+  
+  ~baseclass() {
+    times_destructed += 1;
+  }
+  
+  virtual void test_method() {
+    times_method_invoked += 1;
+  }
+};
+
+class baseclass_wrapper : public baseclass, public luabind::wrap_base {
+public:
+    baseclass_wrapper()
+        : baseclass() 
+    {}
+
+    virtual void test_method() { 
+        call<void>("test_method");
+    }
+
+    static void default_test_method(baseclass * obj) {
+        return obj->baseclass::test_method();
+    }  
+};
+
+_CLASS_BASE(baseclass, baseclass_wrapper)
+      _DEF(constructor<>())
+      _DERIVED_METHOD(test_method)
+      _FIELD_RW(x)
+_END_CLASS
+
+SUITE(ClassTests) {
+  TEST(CanRegisterClass) {
+    shared_ptr<Context> sc = Context::create();
+    
+    sc->registerClass<testclass>();
+  }
+  
+  TEST(CanInstantiateClass) {
+    shared_ptr<Context> sc = Context::create();
+    
+    times_constructed = times_destructed = times_method_invoked = 0;
+    
+    sc->registerClass<testclass>();
+    
+    CHECK_EQUAL(0, times_constructed);
+    CHECK_EQUAL(0, times_destructed);
+
+    sc->executeScript("a = testclass()");
+    
+    CHECK_EQUAL(1, times_constructed);
+    CHECK_EQUAL(0, times_destructed);
+
+    sc->executeScript("a = nil; collectgarbage()");
+    
+    CHECK_EQUAL(1, times_constructed);
+    CHECK_EQUAL(1, times_destructed);
+  }
+  
+  TEST(CanInvokeMethod) {
+    shared_ptr<Context> sc = Context::create();
+    
+    times_constructed = times_destructed = times_method_invoked = 0;
+
+    sc->registerClass<testclass>();
+    
+    CHECK_EQUAL(0, times_method_invoked);
+
+    sc->executeScript("a = testclass(); a:test_method()");
+    
+    CHECK_EQUAL(1, times_method_invoked);
+  }
+  
+  TEST(CanGetInstanceFromScriptVariable) {
+    shared_ptr<Context> sc = Context::create();
+    
+    sc->registerClass<testclass>();
+    
+    sc->executeScript("a = testclass()");
+    
+    Object a = sc->getGlobals()["a"];
+    testclass * pa = castObject<testclass *>(a);
+    
+    CHECK(pa);
+  }
+  
+  TEST(CanManipulateInstanceFields) {
+    shared_ptr<Context> sc = Context::create();
+    
+    sc->registerClass<testclass>();
+    
+    sc->executeScript("a = testclass()");
+    
+    Object a = sc->getGlobals()["a"];
+    testclass * pa = castObject<testclass *>(a);
+    
+    CHECK_EQUAL(0, pa->x);
+    
+    sc->executeScript("a.x = 1");
+    
+    CHECK_EQUAL(1, pa->x);
+  }
+  
+  TEST(CanDeriveFromNativeClass) {
+    shared_ptr<Context> sc = Context::create();
+    
+    sc->registerClass<baseclass>();
+    
+    times_constructed = 0;
+
+    sc->executeScript(
+      "class 'derived' (baseclass) \n"
+      "function derived:__init() super() end \n"
+      "a = derived()"
+    );
+    
+    CHECK_EQUAL(1, times_constructed);
+  }
+  
+  TEST(CanInvokeDerivedMethod) {
+    shared_ptr<Context> sc = Context::create();
+    
+    sc->registerClass<baseclass>();
+    
+    times_constructed = times_method_invoked = 0;
+
+    sc->executeScript(
+      "class 'derived' (baseclass) \n"
+      "function derived:__init() super() end \n"
+      "function derived:test_method() \n"
+      "  baseclass.test_method(self) \n"
+      "  self.x = 1 \n"
+      "end \n"
+      "a = derived()"
+    );
+    
+    CHECK_EQUAL(1, times_constructed);
+    CHECK_EQUAL(0, times_method_invoked);
+    
+    Object a = sc->getGlobals()["a"];
+    baseclass * pa = castObject<baseclass *>(a);
+    
+    CHECK(pa);
+    CHECK_EQUAL(0, pa->x);
+    
+    pa->test_method();
+    
+    CHECK_EQUAL(1, pa->x);
+
+    CHECK_EQUAL(1, times_constructed);
+    CHECK_EQUAL(1, times_method_invoked);
+  }
+}
