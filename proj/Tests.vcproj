@@ -196,6 +196,10 @@
 				RelativePath="..\src\tests\tests.cpp"
 				>
 			</File>
+			<File
+				RelativePath="..\src\tests\wm_tests.cpp"
+				>
+			</File>
 			<Filter
 				Name="UnitTest++"
 				>
@@ -346,11 +350,11 @@
 					>
 				</File>
 				<File
-					RelativePath="..\ext\unittest++\TimeHelpers.h"
+					RelativePath="..\ext\unittest++\Win32\TimeHelpers.h"
 					>
 				</File>
 				<File
-					RelativePath="..\ext\unittest++\Win32\TimeHelpers.h"
+					RelativePath="..\ext\unittest++\TimeHelpers.h"
 					>
 				</File>
 				<File

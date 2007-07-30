@@ -3,13 +3,48 @@
 
 namespace script {
 
+lua_State * g_activeContext = 0;
+
+std::list<TailCall *> g_tailCalls;
+
+lua_State * getActiveContext() {
+  return g_activeContext;
+}
+
+void tailCall(TailCall * call) {
+  g_tailCalls.push_back(call);
+}
+
+static void LuaContextHook(lua_State * L, lua_Debug * ar) {
+  g_activeContext = L;
+  
+  switch (ar->event) {
+    case LUA_HOOKCALL:
+    break;
+    case LUA_HOOKRET:
+      while (g_tailCalls.size()) {
+        TailCall * call = g_tailCalls.back();
+        g_tailCalls.pop_back();
+        call->invoke(L);
+        delete call;
+      }
+    break;
+  }
+}
+
 LuaContext::LuaContext() :
   m_state(0)
 {
   m_state = lua_open();
+  
+  lua_sethook(m_state, LuaContextHook, LUA_MASKCALL | LUA_MASKRET, 0);
 }
 
 LuaContext::~LuaContext() {
+  lua_sethook(m_state, 0, 0, 0);
+  if (g_activeContext == m_state)
+    g_activeContext = 0;
+
   lua_close(m_state);
   m_state = 0;
 }
@@ -28,6 +63,8 @@ void LuaContext::handleError(int resultCode) const {
     switch (resultCode) {
       case LUA_ERRSYNTAX:
         throw SyntaxError(msg);
+      case LUA_ERRRUN:
+        throw RuntimeError(msg);
       default:
         throw std::exception(msg);
     }
@@ -46,7 +83,7 @@ int LuaContext::getStackIndex(int i) const {
     return i + 1;
 }
 
-Object LuaContext::getStackValue(int i) {
+Object LuaContext::getStackValue(int i) const {
   return Object(luabind::from_stack(m_state, i + 1)); 
 }
 
@@ -54,7 +91,7 @@ void LuaContext::emptyStack() {
   lua_settop(m_state, 0);
 }
 
-Object LuaContext::getGlobals() {
+Object LuaContext::getGlobals() const {
   return luabind::globals(m_state);
 }
     
@@ -71,12 +108,6 @@ Context::Context() {
 }
 
 Context::~Context() {
-}
-
-shared_ptr<Context> Context::create() {
-  shared_ptr<Context> result(new Context());
-  
-  return result;
 }
 
 const LuaContext & Context::getContext() const {

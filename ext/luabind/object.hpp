@@ -226,9 +226,13 @@ LUABIND_BINARY_OP_DEF(<, lua_lessthan)
       value_wrapper_traits<ValueWrapper>::unwrap(interpreter
         , static_cast<ValueWrapper const&>(v));
 		char const* p = lua_tostring(interpreter, -1);
-		int len = lua_strlen(interpreter, -1);
-		std::copy(p, p + len, std::ostream_iterator<char>(os));
-		return os;
+		if (p) {
+  		int len = lua_strlen(interpreter, -1);
+	  	std::copy(p, p + len, std::ostream_iterator<char>(os));
+		  return os;
+		} else {
+		  return os;
+		}
 	}
 
 #undef LUABIND_BINARY_OP_DEF
@@ -273,7 +277,7 @@ LUABIND_BINARY_OP_DEF(<, lua_lessthan)
   class object_interface
   {
   public:
-      ~object_interface() {}
+      ~object_interface() { }
 
       call_proxy<Derived, boost::tuples::tuple<> > operator()();
 

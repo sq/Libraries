@@ -7,22 +7,22 @@ using namespace script;
 
 SUITE(ScriptContextTests) {
   TEST(CanConstruct) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
   }
   
   TEST(CanConstructTwo) {
-    shared_ptr<Context> a = Context::create();
-    shared_ptr<Context> b = Context::create();
+    shared_ptr<Context> a(new Context());
+    shared_ptr<Context> b(new Context());
   }
   
   TEST(HasState) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     CHECK(sc->getContext().getState());
   }
   
   TEST(DifferentContextsHaveDifferentStates) {
-    shared_ptr<Context> a = Context::create();
-    shared_ptr<Context> b = Context::create();
+    shared_ptr<Context> a(new Context());
+    shared_ptr<Context> b(new Context());
     CHECK(a->getContext().getState() != b->getContext().getState());
   }
   
@@ -40,12 +40,12 @@ SUITE(ScriptContextTests) {
   }
   
   TEST(CanRegisterFunctions) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     sc->registerFunction("test_function", test_function);
   }
   
   TEST(CanRunBasicScripts) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     sc->registerFunction("test_function", test_function);
     
     sc->executeScript(
@@ -60,12 +60,12 @@ SUITE(ScriptContextTests) {
   }
   
   TEST(ExecuteScriptThrowsOnError) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     CHECK_THROW_STRING(sc->executeScript("test"), "[string \"test\"]:1: '=' expected near '<eof>'");
   }
   
   TEST(ExecuteScriptOperatesInSharedNamespace) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     
     sc->executeScript("a=1");
     sc->executeScript("b=a+1");
@@ -79,8 +79,22 @@ SUITE(ScriptContextTests) {
     CHECK_EQUAL(2, (int)lua_tointeger(context, -1));
   }
   
+  TEST(GetActiveContext) {
+    shared_ptr<Context> a(new Context());
+    shared_ptr<Context> b(new Context());
+    
+    a->executeScript("a = 1");
+
+    CHECK_EQUAL(a->getContext().getState(), getActiveContext());
+
+    b->executeScript("b = 1");
+
+    CHECK_EQUAL(b->getContext().getState(), getActiveContext());
+
+  }
+    
   TEST(StackManipulation) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     LuaContext & context = sc->getContext();    
 
     CHECK_EQUAL(0, sc->getStackSize());
@@ -100,7 +114,7 @@ SUITE(ScriptContextTests) {
   }
   
   TEST(GetStackValue) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     LuaContext & context = sc->getContext();    
 
     lua_pushinteger(context, 1);
@@ -117,7 +131,7 @@ SUITE(ScriptContextTests) {
   }
   
   TEST(GetGlobals) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
 
     sc->executeScript("a=1; b=\"test\"");
     
@@ -132,7 +146,7 @@ SUITE(ScriptContextTests) {
   }
   
   TEST(ScriptGeneratedExceptionsAreHandledByExecuteScript) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
 
     CHECK_THROW_STRING(sc->executeScript("error(\"wtf\")"), "[string \"error(\"wtf\")\"]:1: wtf");
   }
@@ -140,12 +154,12 @@ SUITE(ScriptContextTests) {
 
 SUITE(CompiledScriptTests) {
   TEST(CanLoadFromString) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     shared_ptr<CompiledScript> s = sc->compileScript("a=1");
   }
   
   TEST(CanExecute) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     shared_ptr<CompiledScript> s = sc->compileScript("a=1");
 
     LuaContext & context = sc->getContext();
@@ -158,7 +172,7 @@ SUITE(CompiledScriptTests) {
   }
   
   TEST(CanExecuteTwice) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     shared_ptr<CompiledScript> s = sc->compileScript("if (a) then a=a+1 else a=1 end");
 
     LuaContext & context = sc->getContext();
@@ -199,9 +213,9 @@ public:
 };
 
 _CLASS(testclass)
-      _DEF(constructor<>())
-      _METHOD(test_method)
-      _FIELD_RW(x)
+  .def(constructor<>())
+  _METHOD(test_method)
+  _FIELD_RW(x)
 _END_CLASS
 
 class baseclass {
@@ -237,22 +251,38 @@ public:
         return obj->baseclass::test_method();
     }  
 };
+    
+_CLASS_WRAP(baseclass, baseclass_wrapper)
+  .def(constructor<>())
+  _DERIVED_METHOD(test_method)
+  _FIELD_RW(x)
+_END_CLASS
 
-_CLASS_BASE(baseclass, baseclass_wrapper)
-      _DEF(constructor<>())
-      _DERIVED_METHOD(test_method)
-      _FIELD_RW(x)
+class outvalue {
+public:
+  outvalue() {
+  }
+
+  void getTwoValues(int &a, int &b) {
+    a = 1;
+    b = 2;
+  }
+};
+
+_CLASS(outvalue)
+  .def(constructor<>())
+  .def("getTwoValues", &outvalue::getTwoValues, pure_out_value(_2) + pure_out_value(_3))
 _END_CLASS
 
 SUITE(ClassTests) {
   TEST(CanRegisterClass) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     
     sc->registerClass<testclass>();
   }
   
   TEST(CanInstantiateClass) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     
     times_constructed = times_destructed = times_method_invoked = 0;
     
@@ -273,7 +303,7 @@ SUITE(ClassTests) {
   }
   
   TEST(CanInvokeMethod) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     
     times_constructed = times_destructed = times_method_invoked = 0;
 
@@ -287,7 +317,7 @@ SUITE(ClassTests) {
   }
   
   TEST(CanGetInstanceFromScriptVariable) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     
     sc->registerClass<testclass>();
     
@@ -300,7 +330,7 @@ SUITE(ClassTests) {
   }
   
   TEST(CanManipulateInstanceFields) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     
     sc->registerClass<testclass>();
     
@@ -317,7 +347,7 @@ SUITE(ClassTests) {
   }
   
   TEST(CanDeriveFromNativeClass) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     
     sc->registerClass<baseclass>();
     
@@ -332,8 +362,32 @@ SUITE(ClassTests) {
     CHECK_EQUAL(1, times_constructed);
   }
   
+  TEST(DerivedClassesAreNotGCed) {
+    shared_ptr<Context> sc(new Context());
+    
+    sc->registerClass<baseclass>();
+    
+    times_constructed = times_destructed = 0;
+
+    sc->executeScript(
+      "class 'derived' (baseclass) \n"
+      "function derived:__init() super() end \n"
+      "a = derived()"
+    );
+    
+    CHECK_EQUAL(1, times_constructed);
+    
+    sc->executeScript(
+      "a = nil \n"
+      "collectgarbage() \n"
+      "collectgarbage()"
+    );
+
+    CHECK_EQUAL(0, times_destructed);
+  }
+  
   TEST(CanInvokeDerivedMethod) {
-    shared_ptr<Context> sc = Context::create();
+    shared_ptr<Context> sc(new Context());
     
     sc->registerClass<baseclass>();
     
@@ -365,4 +419,61 @@ SUITE(ClassTests) {
     CHECK_EQUAL(1, times_constructed);
     CHECK_EQUAL(1, times_method_invoked);
   }
+  
+  TEST(CanReturnTwoValues) {
+    shared_ptr<Context> sc(new Context());
+    
+    sc->registerClass<outvalue>();
+    
+    sc->executeScript(
+      "a = outvalue() \n"
+      "x, y = a:getTwoValues()"
+    );
+  }
+}
+
+static int last_tail_call = 0;
+
+struct myTailCall : public TailCall {
+  int m_a;
+
+  myTailCall(int a) : 
+    m_a(a) {
+  }
+  
+  void invoke (lua_State * L) {
+    last_tail_call = m_a;
+  }
+};
+
+class tailcall {
+public:
+  tailcall() {
+  }
+
+  void doTailCall(int a) {
+    script::tailCall(new myTailCall(a));
+  }
+};
+
+_CLASS(tailcall)
+  .def(constructor<>())
+  .def("doTailCall", &tailcall::doTailCall)
+_END_CLASS
+
+SUITE(TailCall) {
+  TEST(CanPerformTailCall) {
+    shared_ptr<Context> sc(new Context());
+        
+    sc->registerClass<tailcall>();
+
+    last_tail_call = 0;
+    
+    sc->executeScript(
+      "a = tailcall() \n"
+      "a:doTailCall(5)"
+    );
+    
+    CHECK_EQUAL(5, last_tail_call);
+ }
 }

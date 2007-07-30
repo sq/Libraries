@@ -1,5 +1,6 @@
 #include <core\core.hpp>
 #include <script\script.hpp>
+#include <wm\wm.hpp>
 
 #pragma comment(lib, "..\\lib\\modules.lib")
 
@@ -17,9 +18,11 @@ int _quit(lua_State * L) {
 int main (int argc, const char * argv[]) {
   cout << ":: fracture ::\n";
   
-  shared_ptr<Context> sc = Context::create();
+  shared_ptr<Context> sc(new Context());
   
   sc->registerFunction("quit", _quit);
+  
+  wm::registerNamespace(sc);
   
   std::stringstream buffer;
 

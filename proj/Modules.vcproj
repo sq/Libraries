@@ -157,6 +157,14 @@
 					>
 				</File>
 			</Filter>
+			<Filter
+				Name="wm"
+				>
+				<File
+					RelativePath="..\src\wm\window.cpp"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -184,6 +192,30 @@
 				</File>
 				<File
 					RelativePath="..\src\script\script.hpp"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="wm"
+				>
+				<File
+					RelativePath="..\src\wm\libs.hpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\wm\wm.hpp"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="eps"
+				>
+				<File
+					RelativePath="..\src\eps\eps.hpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\eps\libs.hpp"
 					>
 				</File>
 			</Filter>
