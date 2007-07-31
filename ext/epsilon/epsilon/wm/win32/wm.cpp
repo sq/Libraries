@@ -161,6 +161,12 @@ namespace {
         initialized = true;
         return true;
     }
+    
+    void CALLBACK TickCallback(UINT uTimerID, UINT uMsg, DWORD_PTR dwUser, DWORD_PTR dw1, DWORD_PTR dw2) {
+        eps_Window* window = reinterpret_cast<eps_Window*>(dwUser);
+        InterlockedIncrement(&(window->currentTick));
+        SetEvent(window->tickEvent);
+    }
 }
 
 // --- Public interface follows ---
@@ -213,10 +219,40 @@ EPS_EXPORT(eps_Window*) eps_wm_createWindow(eps_uint width, eps_uint height, eps
     }
 }
 
+EPS_EXPORT(void) eps_wm_setTickRate(eps_Window* window, eps_uint tickRate) {
+    if (window->timerHandle) {
+        timeEndPeriod(5);
+        timeKillEvent(window->timerHandle);
+        window->timerHandle = 0;
+    }
+    if (window->tickEvent) {
+        CloseHandle(window->tickEvent);
+        window->tickEvent = 0;
+    }
+    
+    if (tickRate) {
+        timeBeginPeriod(5);
+        window->tickEvent = CreateEvent(0, false, false, 0);
+        window->timerHandle = timeSetEvent(
+          tickRate, 0, TickCallback, reinterpret_cast<DWORD_PTR>(window), TIME_PERIODIC | TIME_CALLBACK_FUNCTION | TIME_KILL_SYNCHRONOUS
+        );
+    }
+}
+
 /** Destroys an existing window.
  * @param window The window to destroy.
  */
 EPS_EXPORT(void) eps_wm_destroyWindow(eps_Window* window) {
+    if (window->timerHandle) {
+        timeEndPeriod(5);
+        timeKillEvent(window->timerHandle);
+        window->timerHandle = 0;
+    }
+    if (window->tickEvent) {
+        CloseHandle(window->tickEvent);
+        window->tickEvent = 0;
+    }
+        
     DestroyWindow(window->handle);
     delete window;
 }
@@ -267,17 +303,34 @@ EPS_EXPORT(eps_bool) eps_wm_getCaption(eps_Window* window, eps_char* buffer, eps
 
 //void eps_wm_setIcon(eps_Window* window, void* icon);
 
-EPS_EXPORT(void) eps_wm_pollMessages(eps_Window* window, eps_bool block) {
+EPS_EXPORT(void) eps_wm_pollMessages(eps_Window* window, eps_uint waitDuration) {
     MSG msg;
-    if (block) {
-        GetMessage(&msg, 0, 0, 0);
+    HWND hwnd = (window) ? window->handle : 0;
+    
+    HANDLE handles[1];
+    eps_uint numHandles = 0;
+    if (window && window->tickEvent) {
+      handles[0] = window->tickEvent;
+      numHandles = 1;
+    }
+    
+    eps_uint result = MsgWaitForMultipleObjects(numHandles, handles, false, waitDuration, QS_ALLEVENTS);
+    
+    if (window && (result == WAIT_OBJECT_0) && (numHandles == 1)) {
+        eps_Event tickEvent;
+        memset(&tickEvent, 0, sizeof(tickEvent));
+        tickEvent.type = EPS_EVENT_TICK;
+        LONG currentTick = window->currentTick;
+        LONG previousTick = InterlockedExchange(&window->previousTick, currentTick);
+        tickEvent.tick.absoluteTick = currentTick;
+        tickEvent.tick.elapsedTicks = currentTick - previousTick;
+        if (tickEvent.tick.elapsedTicks)
+          window->events.push_back(tickEvent);
+    }
+
+    while (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
-    } else {
-        if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE)) {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
     }
 }
 

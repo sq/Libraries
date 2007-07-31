@@ -162,6 +162,9 @@ namespace script {
       r->add_class(LUABIND_TYPEID(H), cr);
     }
     
+    std::string getIncludePath() const;
+    void setIncludePath(std::string & path);
+    
     void executeScript(const char * source);
     
     shared_ptr<CompiledScript> compileScript(const char * source, const char * name = 0);
@@ -183,12 +186,12 @@ namespace script {
   };
   
   struct TailCall {
-    virtual void invoke(lua_State * L) = 0;
+    virtual void invoke(Context * context) = 0;
   };
   
   void tailCall(TailCall * call);
   
-  lua_State * getActiveContext();
+  Context * getActiveContext();
   
   template <class T>
   inline T castObject(Object &obj) {

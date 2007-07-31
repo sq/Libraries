@@ -5,10 +5,15 @@ namespace script {
 
 lua_State * g_activeContext = 0;
 
+std::map<lua_State *, Context *> g_contextMap;
+
 std::list<TailCall *> g_tailCalls;
 
-lua_State * getActiveContext() {
-  return g_activeContext;
+Context * getActiveContext() {
+  if (g_activeContext)
+    return g_contextMap[g_activeContext];
+  else
+    return 0;
 }
 
 void tailCall(TailCall * call) {
@@ -17,6 +22,7 @@ void tailCall(TailCall * call) {
 
 static void LuaContextHook(lua_State * L, lua_Debug * ar) {
   g_activeContext = L;
+  Context * context = g_contextMap[L];
   
   switch (ar->event) {
     case LUA_HOOKCALL:
@@ -25,12 +31,16 @@ static void LuaContextHook(lua_State * L, lua_Debug * ar) {
       while (g_tailCalls.size()) {
         TailCall * call = g_tailCalls.back();
         g_tailCalls.pop_back();
-        call->invoke(L);
+        call->invoke(context);
         delete call;
       }
     break;
   }
 }
+
+static int Context_eval(lua_State * L) {
+  return 0;
+} 
 
 LuaContext::LuaContext() :
   m_state(0)
@@ -100,14 +110,19 @@ Object LuaContext::createTable() {
 }
     
 Context::Context() {
+  g_contextMap[getContext()] = this;
+
   luaL_openlibs(getContext());
   
   luabind::open(getContext());
+  
+  registerFunction("eval", Context_eval);
 
   getContext().emptyStack();
 }
 
 Context::~Context() {
+  g_contextMap.erase(getContext());
 }
 
 const LuaContext & Context::getContext() const {
@@ -138,6 +153,16 @@ shared_ptr<CompiledScript> Context::compileScript(const char * source, const cha
   return shared_ptr<CompiledScript>(
     new CompiledScript(shared_from_this())
   );
+}
+
+std::string Context::getIncludePath() const {
+  std::stringstream buf;
+  buf << (getGlobals()["package"]["path"]);
+  return buf.str();
+}
+
+void Context::setIncludePath(std::string & path) {
+  getGlobals()["package"]["path"] = path;
 }
 
 CompiledScript::CompiledScript(shared_ptr<Context> parent) :

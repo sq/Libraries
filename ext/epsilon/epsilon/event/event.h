@@ -29,6 +29,7 @@ typedef enum _eps_EventType {
 
     EPS_EVENT_WM_MARKER = 0x1000,
     EPS_EVENT_CLOSE,
+    EPS_EVENT_TICK,
 
     EPS_EVENT_MOUSE_MARKER = 0x1100,
     EPS_EVENT_MOUSE_MOTION,
@@ -50,6 +51,12 @@ struct _eps_BaseEvent {
 
 struct _eps_CloseEvent {
     eps_EventType type;     ///< Event type.  Should always be EPS_EVENT_CLOSE
+};
+
+struct _eps_TickEvent {
+    eps_EventType type;     ///< Event type.  Should always be EPS_EVENT_TICK
+    eps_uint absoluteTick;  ///< The total number of ticks that have occurred so far.
+    eps_uint elapsedTicks;  ///< Typically 1. Indicates how many ticks have elapsed since the last TickEvent (if event pumping was delayed)
 };
 
 struct _eps_KeyEvent {
@@ -77,6 +84,7 @@ typedef union _eps_Event {
     struct _eps_CloseEvent close;
     struct _eps_KeyEvent   key;
     struct _eps_MouseEvent mouse;
+    struct _eps_TickEvent  tick;
 } eps_Event;
 
 

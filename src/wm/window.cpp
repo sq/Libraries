@@ -2,58 +2,30 @@
 #include <script\script.hpp>
 #include <wm\wm.hpp>
 
+using namespace script;
+using namespace luabind;
+using namespace wm;
+
 namespace wm {
-
-int g_refCount = 0;
-
-static void initialize() {
-  g_refCount += 1;
-  
-  eps_wm_initialize();
-}
-
-static void uninitialize() {
-  assert(g_refCount);
-  
-  g_refCount -= 1;
-  
-  eps_wm_shutDown();
-}
-
-luabind::object poll(lua_State * L) {
-  luabind::object result;
-  
-  return result;
-}
-
-void registerNamespace(shared_ptr<script::Context> context) {
-  module(context->getContext(), "wm") [
-    def("poll", &poll, raw(_1))
-  ];
-
-  context->registerClass<Window>();
-  context->registerHolder<Window, weak_ptr<Window>>();
-}
 
 Window::Window(unsigned width, unsigned height, unsigned flags) :
   m_handle(0),
   m_width(width),
   m_height(height),
-  m_closed(false)
+  m_closed(false),
+  m_tickRate(0)
 {
   wm::initialize();
 
   eps::ErrorHandler e;
   m_handle = eps_wm_createWindow(width, height, flags);
   
-  lua_State * L = script::getActiveContext();
-  
   struct PostConstructTailCall : public script::TailCall {
     Window * m_this;
     
     PostConstructTailCall(Window * _this) : m_this(_this) {}
-    void invoke(lua_State * L) {
-      m_this->postConstruct(L);
+    void invoke(Context * context) {
+      m_this->postConstruct(context);
     }  
   };
   
@@ -66,31 +38,33 @@ Window::~Window() {
     m_handle = 0;
   }
 
-  lua_State * L = script::getActiveContext();
-  if (L) {
-    object wm = globals(L)["wm"];
+  Context * context = script::getActiveContext();
+  if (context) {
+    Object wm = context->getGlobals()["wm"];
     if (type(wm) != LUA_TTABLE)
       return;
-    object windows = wm["windows"];
+    Object windows = wm["windows"];
     if (type(windows) != LUA_TTABLE)
       return;
-    windows[core::ptrToString(this)] = luabind::object();
+    std::string ptr = core::ptrToString(this);
+    windows[ptr] = Object();
   }
 
   wm::uninitialize();
 }
 
-void Window::postConstruct(lua_State * L) {
-  if (L) {
-    object wm = globals(L)["wm"];
+void Window::postConstruct(Context * context) {
+  if (context) {
+    Object wm = context->getGlobals()["wm"];
     if (type(wm) != LUA_TTABLE)
       return;
-    object windows = wm["windows"];
+    Object windows = wm["windows"];
     if (type(windows) != LUA_TTABLE) {
-      windows = newtable(L);
+      windows = context->createTable();
       wm["windows"] = windows;
     }
-    windows[core::ptrToString(this)] = weak_ptr<Window>(shared_from_this());
+    std::string ptr = core::ptrToString(this);
+    windows[ptr] = weak_ptr<Window>(shared_from_this());
   }
 }
 
@@ -138,6 +112,16 @@ void Window::setVisible(bool visible) {
   eps_wm_setVisible(m_handle, visible);
 }
 
+unsigned Window::getTickRate() const {
+  return m_tickRate;
+}
+
+void Window::setTickRate(unsigned tickRate) {
+  eps::ErrorHandler e;
+  m_tickRate = tickRate;
+  eps_wm_setTickRate(m_handle, tickRate);
+}
+
 void Window::getSize(unsigned & width, unsigned & height) {
   width = m_width;
   height = m_height;
@@ -154,14 +138,19 @@ void Window::setSize(unsigned width, unsigned height) {
   eps_wm_pollMessages(m_handle, false);
 }
 
-void Window::poll() {
+bool Window::poll(bool wait) {
+  if (m_closed)
+    return false;
+
   eps::ErrorHandler e;
-  eps_wm_pollMessages(m_handle, false);
+  eps_wm_pollMessages(m_handle, wait ? getPollingTimeout() : 0);
   
   while (getEventCount()) {
     eps::Event event = getEvent();
     dispatch(event);
   }
+  
+  return (!m_closed);
 }
 
 void Window::close() {
@@ -198,6 +187,9 @@ void Window::dispatch(eps::Event & _event) {
       else
         onKeyUp(event.key.keyCode); 
     break;
+    case EPS_EVENT_TICK:
+      onTick(event.tick.absoluteTick, event.tick.elapsedTicks);
+    break;
   }
 }
 
@@ -220,8 +212,11 @@ void Window::onClose() {
   bool cancel = false;
   
   if (m_onClose) {
-    luabind::object result = m_onClose();
-    cancel = object_cast<bool>(result);
+    Object result = m_onClose();
+    try {
+      cancel = castObject<bool>(result);
+    } catch (...) {
+    }
   }
   
   if (!cancel) {
@@ -229,18 +224,35 @@ void Window::onClose() {
   }
 }
 
+void Window::onTick(unsigned absoluteTick, unsigned elapsedTicks) {
+  if (m_onTick)
+    m_onTick(absoluteTick, elapsedTicks);
+}
+
 void Window::onMouseMove(int x, int y, unsigned buttons) {
+  if (m_onMouseMove)
+    m_onMouseMove(x, y, buttons);
 }
 void Window::onMouseDown(int x, int y, unsigned buttons) {
+  if (m_onMouseDown)
+    m_onMouseDown(x, y, buttons);
 }
 void Window::onMouseUp(int x, int y, unsigned buttons) {
+  if (m_onMouseUp)
+    m_onMouseUp(x, y, buttons);
 }
 void Window::onMouseWheel(int x, int y, unsigned buttons, unsigned wheel) {
+  if (m_onMouseWheel)
+    m_onMouseWheel(x, y, buttons, wheel);
 }
 
 void Window::onKeyDown(unsigned key) {
+  if (m_onKeyDown)
+    m_onKeyDown(key);
 }
 void Window::onKeyUp(unsigned key) {
+  if (m_onKeyUp)
+    m_onKeyUp(key);
 }
 
 }

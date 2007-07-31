@@ -85,7 +85,7 @@ SUITE(EventTests) {
     
     eps_event_sendEvent(w->getHandle(), &e_send);
 
-    w->poll();
+    w->poll(true);
     
     CHECK_EQUAL(true, w->getClosed());
   }
@@ -106,10 +106,9 @@ SUITE(EventTests) {
     eps::Event evt = w->getEvent();
     CHECK_EQUAL(e_send.type, evt.getType());
     
-    _eps_MouseEvent & mouse_evt = evt.as<_eps_MouseEvent>();
-    CHECK_EQUAL(e_send.mouse.x, mouse_evt.x);
-    CHECK_EQUAL(e_send.mouse.y, mouse_evt.y);
-    CHECK_EQUAL(e_send.mouse.buttonState, mouse_evt.buttonState);
+    CHECK_EQUAL(e_send.mouse.x, evt.getRef().mouse.x);
+    CHECK_EQUAL(e_send.mouse.y, evt.getRef().mouse.y);
+    CHECK_EQUAL(e_send.mouse.buttonState, evt.getRef().mouse.buttonState);
   }
 }
 
@@ -120,21 +119,21 @@ SUITE(ScriptTests) {
     
     sc->executeScript("w = Window()");
     
-    object tostring = sc->getGlobals()["tostring"];
-    object windowValue;
+    Object tostring = sc->getGlobals()["tostring"];
+    Object windowValue;
 
     {    
-      object theWindow = sc->getGlobals()["w"];
-      CHECK_EQUAL(LUA_TUSERDATA, type(theWindow));
+      Object theWindow = sc->getGlobals()["w"];
+      CHECK_EQUAL(LUA_TUSERDATA, getObjectType(theWindow));
       windowValue = tostring(theWindow);
     }
 
-    object wm = sc->getGlobals()["wm"];
-    object windows = wm["windows"];
+    Object wm = sc->getGlobals()["wm"];
+    Object windows = wm["windows"];
     int count = 0;
     for (luabind::iterator i(windows), end; i != end; ++i) {
-      object key = i.key();
-      object value = tostring(*i);
+      Object key = i.key();
+      Object value = tostring(*i);
       CHECK_EQUAL(windowValue, value);
       count += 1;
     }

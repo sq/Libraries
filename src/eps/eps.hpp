@@ -71,33 +71,7 @@ namespace eps {
     }
     eps_Event & getRef() {
       return m_event;
-    }
-    
-    template <class T>
-    inline T & as() {
-      throw std::exception("Unknown event type");
-    }
-    
-    template <>
-    inline _eps_BaseEvent & as() {
-      return m_event.base;
-    }
-    
-    template <>
-    inline _eps_CloseEvent & as() {
-      return m_event.close;
-    }
-    
-    template <>
-    inline _eps_KeyEvent & as() {
-      return m_event.key;
-    }
-    
-    template <>
-    inline _eps_MouseEvent & as() {
-      return m_event.mouse;
-    }
-    
+    }    
   };
   
 }

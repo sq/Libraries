@@ -164,6 +164,10 @@
 					RelativePath="..\src\wm\window.cpp"
 					>
 				</File>
+				<File
+					RelativePath="..\src\wm\wm.cpp"
+					>
+				</File>
 			</Filter>
 		</Filter>
 		<Filter

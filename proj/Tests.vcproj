@@ -189,6 +189,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\tests\lua_tests.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\src\tests\script_tests.cpp"
 				>
 			</File>

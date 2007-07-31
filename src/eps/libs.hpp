@@ -3,6 +3,7 @@
 #else
   #pragma comment(lib, "epsilon.lib")
 #endif
+#pragma comment(lib, "winmm.lib")
 
 #include <epsilon\epsilon.h>
 #include <epsilon\epsilon\error\error.h>

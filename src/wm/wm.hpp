@@ -12,13 +12,24 @@ namespace wm {
   class Window : public enable_shared_from_this<Window> {
     eps_Window * m_handle;
     
+    unsigned m_tickRate;
     unsigned m_width, m_height;
     bool m_closed;
     
-    void postConstruct(lua_State * L);
+    void postConstruct(script::Context * context);
     
   public:
-    luabind::object m_onClose;
+    script::Object m_onClose;
+
+    script::Object m_onMouseMove;
+    script::Object m_onMouseDown;
+    script::Object m_onMouseUp;
+    script::Object m_onMouseWheel;
+
+    script::Object m_onKeyDown;
+    script::Object m_onKeyUp;
+
+    script::Object m_onTick;
 
     Window(unsigned width = 0, unsigned height = 0, unsigned flags = 0);
     virtual ~Window();
@@ -37,10 +48,13 @@ namespace wm {
     bool getVisible() const;
     void setVisible(bool visible);
     
+    unsigned getTickRate() const;
+    void setTickRate(unsigned tickRate);
+    
     void getSize(unsigned & width, unsigned & height);
     void setSize(unsigned width, unsigned height);
     
-    void poll();
+    bool poll(bool wait);
     void close();
     
     unsigned getEventCount() const;
@@ -58,35 +72,20 @@ namespace wm {
     void onKeyDown(unsigned key);
     void onKeyUp(unsigned key);
     
+    void onTick(unsigned absoluteTick, unsigned elapsedTicks);
+
   };
   
-  luabind::object poll(lua_State * L);
+  void initialize();
+  void uninitialize();
+  
+  unsigned getPollingTimeout();
+  void setPollingTimeout(unsigned timeout);
+  
+  bool poll(bool wait);
   
   void registerNamespace(shared_ptr<script::Context> context);
   
 }
-
-using namespace wm;
-using namespace luabind;
-
-_CLASS_WRAP(Window, shared_ptr<Window>)
-  .def(constructor<>())
-  .def(constructor<unsigned, unsigned>())
-  .def(constructor<unsigned, unsigned, unsigned>())
-  
-  .def("__tostring", &Window::toString)  
-  .def("poll", &Window::poll)
-  .def("close", &Window::onClose)
-  .def("getSize", &Window::getSize, pure_out_value(_2) + pure_out_value(_3))
-  .def("setSize", &Window::setSize)
-  
-  .def_readwrite("onClose", &Window::m_onClose)
-
-  _PROPERTY_R(width, getWidth)
-  _PROPERTY_R(height, getHeight)
-  _PROPERTY_R(closed, getClosed)
-  _PROPERTY_RW(caption, getCaption, setCaption)
-  _PROPERTY_RW(visible, getVisible, setVisible)
-_END_CLASS  
-  
+ 
 #endif

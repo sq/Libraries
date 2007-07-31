@@ -72,10 +72,11 @@ EPS_EXPORT(eps_bool) eps_wm_getCaption(eps_Window* window, eps_char* buffer, eps
 /** Processes incoming messages pertaining to the window.
  * @note This isn't typically useful for user-code.  Use
  *       the eps_event functions instead.
- * @param block If true, wait until a message arrives.
- * @param window The window to query.
+ * @param waitDuration The maximum number of milliseconds to wait for a message to be recieved. 
+ *        (Pass 0 to return immediately if no messages are in the queue)
+ * @param window The window to query. Pass 0 to process messages for all windows.
  */
-EPS_EXPORT(void) eps_wm_pollMessages(eps_Window* window, eps_bool block);
+EPS_EXPORT(void) eps_wm_pollMessages(eps_Window* window, eps_uint waitDuration);
 
 /** Gets the current mouse state.
  * @note Any of these arguments can be null, in which case the value will not be returned.
@@ -98,5 +99,11 @@ EPS_EXPORT(void) eps_wm_setVisible(eps_Window* window, eps_bool visible);
  * @param window The window.
  */
 EPS_EXPORT(eps_bool) eps_wm_getVisible(eps_Window* window);
+
+/** Starts or stops the periodic 'tick' timer for a window.
+ * @param window The window.
+ * @param tickRate The rate (in milliseconds) to tick at, or 0 to stop the tick timer.
+ */
+EPS_EXPORT(void) eps_wm_setTickRate(eps_Window* window, eps_uint tickRate);
 
 #endif

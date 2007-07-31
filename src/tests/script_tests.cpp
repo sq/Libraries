@@ -3,6 +3,8 @@
 #include <core\core.hpp>
 #include <script\script.hpp>
 
+#include <windows.h>
+
 using namespace script;
 
 SUITE(ScriptContextTests) {
@@ -85,11 +87,11 @@ SUITE(ScriptContextTests) {
     
     a->executeScript("a = 1");
 
-    CHECK_EQUAL(a->getContext().getState(), getActiveContext());
+    CHECK_EQUAL(a.get(), getActiveContext());
 
     b->executeScript("b = 1");
 
-    CHECK_EQUAL(b->getContext().getState(), getActiveContext());
+    CHECK_EQUAL(b.get(), getActiveContext());
 
   }
     
@@ -186,6 +188,26 @@ SUITE(CompiledScriptTests) {
 
     lua_getglobal(context, "a");
     CHECK_EQUAL(2, (int)lua_tointeger(context, -1));
+  }
+  
+  TEST(IncludePath) {
+    shared_ptr<Context> sc(new Context());
+    
+    char buf[512];
+    GetCurrentDirectoryA(sizeof(buf), buf);
+    
+    strcat(buf, "\\..\\src\\tests\\?.lua");
+    
+    sc->setIncludePath(std::string(buf));
+    
+    CHECK_EQUAL(buf, sc->getIncludePath());
+    
+    sc->executeScript("require('test_include_path')");
+    
+    LuaContext & context = sc->getContext();
+
+    lua_getglobal(context, "a");
+    CHECK_EQUAL(1, (int)lua_tointeger(context, -1));    
   }
 }
 
@@ -441,7 +463,7 @@ struct myTailCall : public TailCall {
     m_a(a) {
   }
   
-  void invoke (lua_State * L) {
+  void invoke (Context * context) {
     last_tail_call = m_a;
   }
 };

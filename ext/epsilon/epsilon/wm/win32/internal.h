@@ -17,12 +17,17 @@
 // not do this?
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <mmsystem.h>
 
 struct _eps_Window {
 
     _eps_Window() : 
       handle(0),
-      mouseCaptureCount(0)
+      mouseCaptureCount(0),
+      timerHandle(0),
+      tickEvent(0),
+      previousTick(0),
+      currentTick(0)
     {
     }
 
@@ -34,6 +39,11 @@ struct _eps_Window {
 
     /// Number of mouse captures initiated.
     int mouseCaptureCount;
+    
+    MMRESULT timerHandle;
+    HANDLE tickEvent;
+    volatile LONG previousTick;
+    volatile LONG currentTick;
 
     std::vector<eps_Event> events;
 };
