@@ -1,6 +1,7 @@
 #include <core\core.hpp>
 #include <script\script.hpp>
 #include <wm\wm.hpp>
+#include <gl\gl.hpp>
 
 #pragma comment(lib, "..\\lib\\modules.lib")
 
@@ -23,6 +24,7 @@ int main (int argc, const char * argv[]) {
   sc->registerFunction("quit", _quit);
   
   wm::registerNamespace(sc);
+  gl::registerNamespace(sc);
   
   std::stringstream buffer;
 

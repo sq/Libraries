@@ -169,6 +169,36 @@
 					>
 				</File>
 			</Filter>
+			<Filter
+				Name="gl"
+				>
+				<File
+					RelativePath="..\src\gl\context.cpp"
+					>
+					<FileConfiguration
+						Name="Debug|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							ObjectFile="$(IntDir)\$(InputName)1.obj"
+							XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="Release|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							ObjectFile="$(IntDir)\$(InputName)1.obj"
+							XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath="..\src\gl\gl.cpp"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -178,6 +208,10 @@
 			<Filter
 				Name="core"
 				>
+				<File
+					RelativePath="..\src\core\classes.hpp"
+					>
+				</File>
 				<File
 					RelativePath="..\src\core\core.hpp"
 					>
@@ -220,6 +254,18 @@
 				</File>
 				<File
 					RelativePath="..\src\eps\libs.hpp"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="gl"
+				>
+				<File
+					RelativePath="..\src\gl\gl.hpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\gl\libs.hpp"
 					>
 				</File>
 			</Filter>

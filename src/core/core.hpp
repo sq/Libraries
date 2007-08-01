@@ -1,9 +1,10 @@
-#define _SCL_SECURE_NO_DEPRECATE
-
 #ifndef _FR_CORE
 #define _FR_CORE
 
+#define _SCL_SECURE_NO_DEPRECATE
+
 #include "libs.hpp"
+#include "classes.hpp"
 
 namespace core {
 

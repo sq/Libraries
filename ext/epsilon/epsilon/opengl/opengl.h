@@ -2,17 +2,17 @@
 #ifndef EPS_OPENGL_OPENGL_H
 #define EPS_OPENGL_OPENGL_H
 
-#include "epsilon.h"
-#include "epsilon/wm/wm.h"
+#include "../../epsilon.h"
+#include "../../epsilon/wm/wm.h"
 
 // Platform specific
 
 #if defined(EPS_WIN32)
-#   include "epsilon/opengl/win32/opengl.h"
+#   include "../../epsilon/opengl/win32/opengl.h"
 #elif defined(EPS_X11)
-#   include "epsilon/opengl/x11/opengl.h"
+#   include "../../epsilon/opengl/x11/opengl.h"
 #elif defined(EPS_MACOSX)
-#   include "epsilon/opengl/macosx/opengl.h"
+#   include "../../epsilon/opengl/macosx/opengl.h"
 #else
 #   error Unrecognized platform!
 #endif

@@ -89,17 +89,9 @@ template <class name> struct classRegistrar {
 };
     
 namespace script {
-
-  class LuaContext;
-  class Context;
-  class CompiledScript;
-  struct TailCall;
-  
-  class SyntaxError;
-  class RuntimeError;
   
   typedef luabind::object Object;
-  
+    
   class SyntaxError : public std::exception {
   public:
     SyntaxError(const char * what) :

@@ -189,6 +189,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\tests\gl_tests.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\src\tests\lua_tests.cpp"
 				>
 			</File>
@@ -354,11 +358,11 @@
 					>
 				</File>
 				<File
-					RelativePath="..\ext\unittest++\Win32\TimeHelpers.h"
+					RelativePath="..\ext\unittest++\TimeHelpers.h"
 					>
 				</File>
 				<File
-					RelativePath="..\ext\unittest++\TimeHelpers.h"
+					RelativePath="..\ext\unittest++\Win32\TimeHelpers.h"
 					>
 				</File>
 				<File

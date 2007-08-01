@@ -1,11 +1,9 @@
+#ifndef _FR_EPS
+#define _FR_EPS
+
 #include "libs.hpp"
 
 namespace eps {
-
-  class ErrorHolder;
-  class ErrorHandler;
-  
-  class Event;
   
   class ErrorHolder {
     eps_Error * m_error;
@@ -75,3 +73,5 @@ namespace eps {
   };
   
 }
+
+#endif

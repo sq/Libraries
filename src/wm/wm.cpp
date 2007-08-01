@@ -1,6 +1,7 @@
 #include <core\core.hpp>
 #include <script\script.hpp>
 #include <wm\wm.hpp>
+#include <gl\gl.hpp>
 
 #include <windows.h>
 
@@ -11,7 +12,6 @@ using namespace wm;
 _CLASS_WRAP(Window, shared_ptr<Window>)
   .def(constructor<>())
   .def(constructor<unsigned, unsigned>())
-  .def(constructor<unsigned, unsigned, unsigned>())
   
   .def("__tostring", &Window::toString)  
   .def("poll", &Window::poll)
@@ -31,6 +31,7 @@ _CLASS_WRAP(Window, shared_ptr<Window>)
   _PROPERTY_R(width, getWidth)
   _PROPERTY_R(height, getHeight)
   _PROPERTY_R(closed, getClosed)
+  _PROPERTY_R(glContext, getGLContext)
   _PROPERTY_RW(tickRate, getTickRate, setTickRate)
   _PROPERTY_RW(caption, getCaption, setCaption)
   _PROPERTY_RW(visible, getVisible, setVisible)
@@ -62,7 +63,7 @@ unsigned now() {
   LARGE_INTEGER freq, time;
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&time);
-  long long result = (time.QuadPart * 1000 / freq.QuadPart) % ((unsigned)0xFFFFFFFF);
+  long long result = (time.QuadPart * 100000 / freq.QuadPart) % ((unsigned)0xFFFFFFFF);
   return (unsigned)result;
 }
 
@@ -100,6 +101,7 @@ bool poll(bool wait) {
 
 void registerNamespace(shared_ptr<script::Context> context) {
   module(context->getContext(), "wm") [
+    def("now", &now),
     def("poll", &poll),
     def("getPollingTimeout", &getPollingTimeout),
     def("setPollingTimeout", &setPollingTimeout)

@@ -6,11 +6,10 @@
 #include "..\script\script.hpp"
 
 namespace wm {
-
-  class Window;
   
   class Window : public enable_shared_from_this<Window> {
     eps_Window * m_handle;
+    shared_ptr<gl::GLContext> m_glContext;
     
     unsigned m_tickRate;
     unsigned m_width, m_height;
@@ -31,7 +30,7 @@ namespace wm {
 
     script::Object m_onTick;
 
-    Window(unsigned width = 0, unsigned height = 0, unsigned flags = 0);
+    Window(unsigned width = 0, unsigned height = 0);
     virtual ~Window();
     
     eps_Window * getHandle() const;
@@ -73,6 +72,8 @@ namespace wm {
     void onKeyUp(unsigned key);
     
     void onTick(unsigned absoluteTick, unsigned elapsedTicks);
+    
+    shared_ptr<gl::GLContext> getGLContext() const;
 
   };
   

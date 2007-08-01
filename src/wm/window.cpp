@@ -1,6 +1,7 @@
 #include <core\core.hpp>
 #include <script\script.hpp>
 #include <wm\wm.hpp>
+#include <gl\gl.hpp>
 
 using namespace script;
 using namespace luabind;
@@ -8,7 +9,7 @@ using namespace wm;
 
 namespace wm {
 
-Window::Window(unsigned width, unsigned height, unsigned flags) :
+Window::Window(unsigned width, unsigned height) :
   m_handle(0),
   m_width(width),
   m_height(height),
@@ -18,7 +19,11 @@ Window::Window(unsigned width, unsigned height, unsigned flags) :
   wm::initialize();
 
   eps::ErrorHandler e;
-  m_handle = eps_wm_createWindow(width, height, flags);
+  eps_OpenGLContext * context = eps_opengl_createOpenGLWindow(width, height, 0, EPS_OPENGL_PF_32BPP);
+  e.check();
+  m_handle = eps_opengl_getContextWindow(context);
+  e.check();
+  m_glContext = shared_ptr<gl::GLContext>(new gl::GLContext(this, context));
   
   struct PostConstructTailCall : public script::TailCall {
     Window * m_this;
@@ -88,6 +93,10 @@ std::string Window::getCaption() const {
   char buffer[512];
   eps_wm_getCaption(m_handle, buffer, sizeof(buffer));
   return std::string(buffer);
+}
+
+shared_ptr<gl::GLContext> Window::getGLContext() const {
+  return m_glContext;
 }
 
 unsigned Window::getWidth() const {
