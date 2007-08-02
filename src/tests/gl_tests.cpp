@@ -9,7 +9,7 @@ using namespace gl;
 
 SUITE(ContextTests) {
   TEST(CanGetContext) {
-    shared_ptr<Window> w(new Window());
+    shared_ptr<Window> w(new Window(32, 32));
     shared_ptr<GLContext> gl = w->getGLContext();
     
     CHECK(gl.get());

@@ -124,8 +124,13 @@ namespace script {
     Object getStackValue(int i) const;
     
     void emptyStack();
+    void collectGarbage();
     
     Object getGlobals() const;
+    Object getGlobal(const char * path) const;
+    
+    template <class T>
+    void setGlobal(const char * path, const T & value);
     
     Object createTable();
   };
@@ -164,12 +169,15 @@ namespace script {
   };
   
   class CompiledScript {
+    std::string m_name;
     shared_ptr<Context> m_parent;
     int m_id;
     
   public:
-    CompiledScript(shared_ptr<Context> parent);
+    CompiledScript(shared_ptr<Context> parent, const char * name = 0);
     ~CompiledScript();
+    
+    const std::string & getName() const;
     
     const Context & getParent() const;
     Context & getParent();
@@ -193,6 +201,50 @@ namespace script {
   inline int getObjectType(Object &obj) {
     return luabind::type(obj);
   }
+  
+  inline bool isTable(Object &obj) {
+    return (obj) && (luabind::type(obj) == LUA_TTABLE);
+  }
+  
+  template <class T>
+  inline unsigned unpackTable(Object &src, T * dest, unsigned max) {
+    unsigned count = 0;
+    for (luabind::iterator iter(src), end; iter != end; ++iter) {
+      if (count < max) {
+        Object item = *iter;
+        dest[count] = luabind::object_cast<T>(item);
+      } else
+        return count;
+
+      count++;
+    }
+    
+    return count;
+  }
+
+  template <class T>
+  void LuaContext::setGlobal(const char * path, const T & value) {
+    char parentPath[256];
+    const char * endpos = strrchr(path, '.');
+    Object parent;
+    if (endpos) {
+      memset(parentPath, 0, 256);
+      memcpy(parentPath, path, endpos - path);
+      parent = getGlobal(parentPath);
+    } else {
+      parent = getGlobals();
+    }
+    if (parent && getObjectType(parent) == LUA_TTABLE) {
+      parent[endpos + 1] = value;
+    } else {
+      char buffer[512];
+      strcpy(buffer, parentPath);
+      strcat(buffer, " does not exist");
+      throw std::exception(buffer);
+    }
+  }
+  
+  void registerNamespaces(shared_ptr<Context> context);
 }
 
 #endif

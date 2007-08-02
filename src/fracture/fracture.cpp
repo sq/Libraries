@@ -22,9 +22,7 @@ int main (int argc, const char * argv[]) {
   shared_ptr<Context> sc(new Context());
   
   sc->registerFunction("quit", _quit);
-  
-  wm::registerNamespace(sc);
-  gl::registerNamespace(sc);
+  script::registerNamespaces(sc);
   
   std::stringstream buffer;
 

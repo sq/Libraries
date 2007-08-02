@@ -227,7 +227,7 @@ LUABIND_BINARY_OP_DEF(<, lua_lessthan)
         , static_cast<ValueWrapper const&>(v));
 		char const* p = lua_tostring(interpreter, -1);
 		if (p) {
-  		int len = lua_strlen(interpreter, -1);
+  		size_t len = lua_strlen(interpreter, -1);
 	  	std::copy(p, p + len, std::ostream_iterator<char>(os));
 		  return os;
 		} else {

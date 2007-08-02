@@ -358,11 +358,11 @@
 					>
 				</File>
 				<File
-					RelativePath="..\ext\unittest++\TimeHelpers.h"
+					RelativePath="..\ext\unittest++\Win32\TimeHelpers.h"
 					>
 				</File>
 				<File
-					RelativePath="..\ext\unittest++\Win32\TimeHelpers.h"
+					RelativePath="..\ext\unittest++\TimeHelpers.h"
 					>
 				</File>
 				<File

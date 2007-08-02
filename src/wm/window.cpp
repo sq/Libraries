@@ -39,20 +39,21 @@ Window::Window(unsigned width, unsigned height) :
 
 Window::~Window() {
   if (m_handle) {
-    eps_wm_destroyWindow(m_handle);
+    if (m_glContext) {
+      eps_opengl_destroyOpenGLWindow(m_glContext->getHandle());
+    } else {
+      eps_wm_destroyWindow(m_handle);
+    }
     m_handle = 0;
   }
 
   Context * context = script::getActiveContext();
   if (context) {
-    Object wm = context->getGlobals()["wm"];
-    if (type(wm) != LUA_TTABLE)
-      return;
-    Object windows = wm["windows"];
-    if (type(windows) != LUA_TTABLE)
-      return;
-    std::string ptr = core::ptrToString(this);
-    windows[ptr] = Object();
+    Object windows = context->getGlobal("wm.windows");
+    if (windows && type(windows) == LUA_TTABLE) {
+      std::string ptr = core::ptrToString(this);
+      windows[ptr] = Object();
+    }
   }
 
   wm::uninitialize();
@@ -60,16 +61,16 @@ Window::~Window() {
 
 void Window::postConstruct(Context * context) {
   if (context) {
-    Object wm = context->getGlobals()["wm"];
-    if (type(wm) != LUA_TTABLE)
-      return;
-    Object windows = wm["windows"];
-    if (type(windows) != LUA_TTABLE) {
-      windows = context->createTable();
-      wm["windows"] = windows;
+    Object wm = context->getGlobal("wm");
+    if (wm && type(wm) == LUA_TTABLE) {
+      Object windows = wm["windows"];
+      if (!windows || type(windows) != LUA_TTABLE) {
+        windows = context->createTable();
+        wm["windows"] = windows;
+      }
+      std::string ptr = core::ptrToString(this);
+      windows[ptr] = weak_ptr<Window>(shared_from_this());
     }
-    std::string ptr = core::ptrToString(this);
-    windows[ptr] = weak_ptr<Window>(shared_from_this());
   }
 }
 

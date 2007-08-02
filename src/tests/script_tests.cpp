@@ -147,6 +147,36 @@ SUITE(ScriptContextTests) {
     CHECK_EQUAL("test", castObject<std::string>(b));
   }
   
+  TEST(GetGlobal) {
+    shared_ptr<Context> sc(new Context());
+
+    sc->executeScript("a={}; a.b={}; a.b.c = 1");
+    
+    Object c = sc->getGlobal("a.b.c");
+    
+    CHECK_EQUAL(LUA_TNUMBER, getObjectType(c));
+    CHECK_EQUAL(1, castObject<int>(c));
+  }
+  
+  TEST(SetGlobal) {
+    shared_ptr<Context> sc(new Context());
+
+    sc->executeScript("a={}; a.b={}; a.b.c = 1");
+    
+    sc->setGlobal("a.b.c", 2);
+    sc->setGlobal("a.d", 5);
+    
+    Object c = sc->getGlobal("a.b.c");    
+    
+    CHECK_EQUAL(LUA_TNUMBER, getObjectType(c));
+    CHECK_EQUAL(2, castObject<int>(c));
+    
+    Object d = sc->getGlobal("a.d");
+    
+    CHECK_EQUAL(LUA_TNUMBER, getObjectType(d));
+    CHECK_EQUAL(5, castObject<int>(d));
+  }
+  
   TEST(ScriptGeneratedExceptionsAreHandledByExecuteScript) {
     shared_ptr<Context> sc(new Context());
 
@@ -345,7 +375,7 @@ SUITE(ClassTests) {
     
     sc->executeScript("a = testclass()");
     
-    Object a = sc->getGlobals()["a"];
+    Object a = sc->getGlobal("a");
     testclass * pa = castObject<testclass *>(a);
     
     CHECK(pa);
@@ -358,7 +388,7 @@ SUITE(ClassTests) {
     
     sc->executeScript("a = testclass()");
     
-    Object a = sc->getGlobals()["a"];
+    Object a = sc->getGlobal("a");
     testclass * pa = castObject<testclass *>(a);
     
     CHECK_EQUAL(0, pa->x);

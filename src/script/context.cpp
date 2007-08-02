@@ -1,5 +1,7 @@
 #include <core\core.hpp>
 #include <script\script.hpp>
+#include <wm\wm.hpp>
+#include <gl\gl.hpp>
 
 namespace script {
 
@@ -18,6 +20,11 @@ Context * getActiveContext() {
 
 void tailCall(TailCall * call) {
   g_tailCalls.push_back(call);
+}
+
+void registerNamespaces(shared_ptr<Context> context) {
+  wm::registerNamespace(context);
+  gl::registerNamespace(context);
 }
 
 static void LuaContextHook(lua_State * L, lua_Debug * ar) {
@@ -101,8 +108,41 @@ void LuaContext::emptyStack() {
   lua_settop(m_state, 0);
 }
 
+void LuaContext::collectGarbage() {
+  lua_gc(m_state, LUA_GCCOLLECT, 0);
+}
+
 Object LuaContext::getGlobals() const {
   return luabind::globals(m_state);
+}
+
+Object LuaContext::getGlobal(const char * path) const {
+  Object current = getGlobals();
+  char current_key[256];
+  
+  const char * pos = path;
+  const char * end = path + strlen(path);
+  const char * nextpos = 0;
+  while (pos) {
+    nextpos = strchr(pos, '.');
+    if (nextpos == 0)
+      nextpos = end;
+    memset(current_key, 0, 256);
+    memcpy(current_key, pos, nextpos - pos);
+
+    if ((current) && (getObjectType(current) == LUA_TTABLE)) {
+      current = current[current_key];
+    } else {
+      Object nil;
+      return nil;
+    }
+   
+    if (nextpos >= end)
+      break;
+    pos = nextpos + 1;
+  }
+  
+  return current;
 }
     
 Object LuaContext::createTable() {
@@ -146,30 +186,38 @@ void Context::executeScript(const char * source) {
   );
 }
 
-shared_ptr<CompiledScript> Context::compileScript(const char * source, const char * name) {
+shared_ptr<CompiledScript> Context::compileScript(const char * source, const char * name) {  
+  std::stringstream namebuf;
+  if (name) {
+    namebuf << "=";
+    namebuf << name;
+  }
   handleError(
-    luaL_loadbuffer(getContext(), source, strlen(source), name ? name : source)
+    luaL_loadbuffer(getContext(), source, strlen(source), name ? namebuf.str().c_str() : source)
   );
   return shared_ptr<CompiledScript>(
-    new CompiledScript(shared_from_this())
+    new CompiledScript(shared_from_this(), name)
   );
 }
 
 std::string Context::getIncludePath() const {
   std::stringstream buf;
-  buf << (getGlobals()["package"]["path"]);
+  buf << (getGlobal("package.path"));
   return buf.str();
 }
 
 void Context::setIncludePath(std::string & path) {
-  getGlobals()["package"]["path"] = path;
+  getGlobal("package")["path"] = path;
 }
 
-CompiledScript::CompiledScript(shared_ptr<Context> parent) :
+CompiledScript::CompiledScript(shared_ptr<Context> parent, const char * name) :
   m_parent(parent),
-  m_id(0)
+  m_id(0),
+  m_name()
 {
   m_id = luaL_ref(m_parent->getContext(), LUA_REGISTRYINDEX);
+  if (name)
+    m_name = std::string(name);
 }
 
 CompiledScript::~CompiledScript() {
@@ -186,6 +234,10 @@ void CompiledScript::execute() const {
   context.handleError(
     lua_pcall(context, 0, 0, 0)
   );
+}
+
+const std::string & CompiledScript::getName() const {
+  return m_name;
 }
 
 }

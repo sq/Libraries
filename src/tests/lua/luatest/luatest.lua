@@ -1,43 +1,63 @@
 -- fracture::luatest (c) 2007 Kevin Gadd --
 
 luatest = {}
-tests = {}
 
-function luatest.runtests()
-    local result = 1
-    local numTestsPassed = 0
-    local numTestsFailed = 0
-    
-    for k, v in pairs(tests) do
-        local success = false
-        local estring = ""
-        success, estring = pcall(v)
-        if (not success) then
-            print(estring)
-            result = 0
-            numTestsFailed = numTestsFailed + 1
-        else
-            numTestsPassed = numTestsPassed + 1
+function luatest.tostring(value)
+    local result = tostring(value)
+    if (type(value) == "table") then
+        result = "{"
+        local i = 1
+        for k, v in pairs(value) do
+            if (k == i) then
+                if (i > 1) then
+                    result = result .. ", "
+                end
+                result = result .. luatest.tostring(v)
+            else
+                if (i > 1) then
+                    result = result .. ", "
+                end
+                result = result .. tostring(k) .. ": " .. luatest.tostring(v)
+            end
+            i = i + 1
         end
+        result = result .. "}"
+    elseif (type(value) == "string") then
+        result = "\"" .. value .. "\""
     end
-    
+    return result
+end
+
+function luatest.equality(lhs, rhs)
+    local tlhs = type(lhs)
+    local result = true
+    if (tlhs == type(rhs)) and (tlhs == "table") then
+        for k, v in pairs(lhs) do
+            result = result and luatest.equality(lhs[k], rhs[k])
+        end
+        for k, v in pairs(rhs) do
+            result = result and luatest.equality(lhs[k], rhs[k])
+        end
+    else
+        result = (lhs == rhs)
+    end
     return result
 end
 
 function check(b)
     if (not b) then
-        error("Assertion failed")
+        failure("Assertion failed")
     end
 end
 
 function checkEqual(expected, actual)
-    if not (actual == expected) then
-        error("Assertion failed: Expected '" .. tostring(expected) .. "', got '" .. tostring(actual) .. "'")
+    if not luatest.equality(expected, actual) then
+        failure("Expected " .. luatest.tostring(expected) .. ", got " .. luatest.tostring(actual) .. "")
     end
 end
 
 function checkNotEqual(expected, actual)
-    if (actual == expected) then
-        error("Assertion failed: Expected something other than '" .. tostring(expected) .. "'")
+    if luatest.equality(expected, actual) then
+        failure("Expected something other than " .. luatest.tostring(expected) .. "")
     end
 end

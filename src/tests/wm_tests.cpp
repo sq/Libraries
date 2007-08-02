@@ -119,17 +119,16 @@ SUITE(ScriptTests) {
     
     sc->executeScript("w = Window()");
     
-    Object tostring = sc->getGlobals()["tostring"];
+    Object tostring = sc->getGlobal("tostring");
     Object windowValue;
 
     {    
-      Object theWindow = sc->getGlobals()["w"];
+      Object theWindow = sc->getGlobal("w");
       CHECK_EQUAL(LUA_TUSERDATA, getObjectType(theWindow));
       windowValue = tostring(theWindow);
     }
 
-    Object wm = sc->getGlobals()["wm"];
-    Object windows = wm["windows"];
+    Object windows = sc->getGlobal("wm.windows");
     int count = 0;
     for (luabind::iterator i(windows), end; i != end; ++i) {
       Object key = i.key();

@@ -18,10 +18,15 @@ namespace gl {
     void makeCurrent() const;
     void clear();
     void flip();
+    
+    void getPixel(int x, int y, float & red, float & green, float & blue, float & alpha) const;
+    
     void getClearColor(float & red, float & green, float & blue, float & alpha) const;
     void setClearColor(float red, float green, float blue, float alpha);
     bool getVSync() const;
     void setVSync(bool vsync);
+    
+    void draw(int drawMode, script::Object vertices);
     
     std::string toString() const;
     

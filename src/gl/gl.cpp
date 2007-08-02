@@ -15,6 +15,12 @@ _CLASS_WRAP(GLContext, shared_ptr<GLContext>)
     pure_out_value(_2) + pure_out_value(_3) + pure_out_value(_4) + pure_out_value(_5)
   )
   .def("setClearColor", &GLContext::setClearColor)
+
+  .def("getPixel", &GLContext::getPixel, 
+    pure_out_value(_4) + pure_out_value(_5) + pure_out_value(_6) + pure_out_value(_7)
+  )
+  
+  .def("draw", &GLContext::draw)
   
   _PROPERTY_RW("vsync", getVSync, setVSync)
 _END_CLASS  
@@ -36,14 +42,38 @@ void uninitialize() {
   g_refCount -= 1;
 }
 
-void registerNamespace(shared_ptr<script::Context> context) {
-  /*
-  module(context->getContext(), "gl") [
-  ];
-  */
+void flush() {
+  glFlush();
+}
 
+void registerNamespace(shared_ptr<script::Context> context) {
+  using luabind::module;
+  using luabind::def;
+
+  module(context->getContext(), "gl") [
+    def("flush", flush)
+  ];
+  
   context->registerClass<GLContext>();
   context->registerHolder<GLContext, weak_ptr<GLContext>>();
+  
+  #define _C(name) \
+    context->setGlobal("gl." #name, GL_ ## name)
+  
+  _C(ZERO);
+  _C(ONE);
+  _C(TRUE);
+  _C(FALSE);
+  _C(POINTS);
+  _C(LINES);
+  _C(LINE_STRIP);
+  _C(LINE_LOOP);
+  _C(TRIANGLES);
+  _C(TRIANGLE_STRIP);
+  _C(TRIANGLE_FAN);
+  _C(QUADS);
+  _C(QUAD_STRIP);
+  _C(POLYGON);
 }
 
 }
