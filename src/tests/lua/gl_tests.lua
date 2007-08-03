@@ -2,6 +2,8 @@ function gl_setUp()
     w = Window(64, 64)
     w.caption = "OpenGL Test"
     g = w.glContext
+    white = {1, 1, 1, 1}
+    black = {0, 0, 0, 0}
 end
 
 function gl_tearDown()
@@ -24,7 +26,7 @@ function test_clearColor()
     
     g:setClearColor(0, 0, 0, 0)
     g:clear()
-    checkEqual({0, 0, 0, 0}, getPixel(0, 0))
+    checkEqual(black, getPixel(0, 0))
     
     g:setClearColor(1, 0, 1, 0)
     g:clear()
@@ -39,15 +41,15 @@ function test_drawPoint()
     g:clear()
     g:draw(
         gl.POINTS, 
-        {{{2, 2}, {1}},{{7, 7}, {1}}}
+        {{{2, 2}, white},{{7, 7}, white}}
     )
     
-    checkEqual({1, 1, 1, 1}, getPixel(2, 2))
-    checkEqual({1, 1, 1, 1}, getPixel(7, 7))
+    checkEqual(white, getPixel(2, 2))
+    checkEqual(white, getPixel(7, 7))
 
-    checkEqual({0, 0, 0, 0}, getPixel(0, 0))
-    checkEqual({0, 0, 0, 0}, getPixel(4, 4))
-    checkEqual({0, 0, 0, 0}, getPixel(6, 6))
+    checkEqual(black, getPixel(0, 0))
+    checkEqual(black, getPixel(4, 4))
+    checkEqual(black, getPixel(6, 6))
 
     gl_tearDown()
 end
@@ -58,15 +60,15 @@ function test_drawLine()
     g:clear()
     g:draw(
         gl.LINES, 
-        {{{2, 2}, {1}},{{7, 7}, {1}}}
+        {{{2, 2}, white},{{7, 7}, white}}
     )
     
-    checkEqual({1, 1, 1, 1}, getPixel(2, 2))
-    checkEqual({1, 1, 1, 1}, getPixel(4, 4))
-    checkEqual({1, 1, 1, 1}, getPixel(6, 6))
+    checkEqual(white, getPixel(2, 2))
+    checkEqual(white, getPixel(4, 4))
+    checkEqual(white, getPixel(6, 6))
 
-    checkEqual({0, 0, 0, 0}, getPixel(0, 0))
-    checkEqual({0, 0, 0, 0}, getPixel(7, 7))
+    checkEqual(black, getPixel(0, 0))
+    checkEqual(black, getPixel(7, 7))
 
     gl_tearDown()
 end
@@ -77,19 +79,39 @@ function test_drawTriangle()
     g:clear()
     g:draw(
         gl.TRIANGLES, 
-        {{{16, 9}, {1}}, {{1, 1}, {1}},{{16, 1}, {1}}}
+        {{{16, 9}, white}, {{1, 1}, white},{{16, 1}, white}}
     )
     
-    checkEqual({1, 1, 1, 1}, getPixel(2, 1))
-    checkEqual({1, 1, 1, 1}, getPixel(15, 1))
-    checkEqual({1, 1, 1, 1}, getPixel(15, 8))
+    checkEqual(white, getPixel(2, 1))
+    checkEqual(white, getPixel(15, 1))
+    checkEqual(white, getPixel(15, 8))
 
-    checkEqual({0, 0, 0, 0}, getPixel(0, 0))
-    checkEqual({0, 0, 0, 0}, getPixel(2, 2))
-    checkEqual({0, 0, 0, 0}, getPixel(16, 1))
-    checkEqual({0, 0, 0, 0}, getPixel(15, 9))
+    checkEqual(black, getPixel(0, 0))
+    checkEqual(black, getPixel(2, 2))
+    checkEqual(black, getPixel(16, 1))
+    checkEqual(black, getPixel(15, 9))
+
+    gl_tearDown()
+end
+
+function test_drawQuad()
+    gl_setUp()
     
-    wait()
+    g:clear()
+    g:draw(
+        gl.QUADS, 
+        {{{1, 16}, white}, {{16, 16}, white},{{16, 1}, white}, {{1, 1}, white}}
+    )
+    
+    checkEqual(white, getPixel(1, 1))
+    checkEqual(white, getPixel(15, 15))
+    checkEqual(white, getPixel(15, 1))
+    checkEqual(white, getPixel(1, 15))
+
+    checkEqual(black, getPixel(0, 0))
+    checkEqual(black, getPixel(16, 16))
+    checkEqual(black, getPixel(16, 1))
+    checkEqual(black, getPixel(1, 16))
 
     gl_tearDown()
 end
