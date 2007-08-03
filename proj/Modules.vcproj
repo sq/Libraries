@@ -199,6 +199,14 @@
 					>
 				</File>
 			</Filter>
+			<Filter
+				Name="image"
+				>
+				<File
+					RelativePath="..\src\image\image.cpp"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -268,6 +276,10 @@
 					RelativePath="..\src\gl\libs.hpp"
 					>
 				</File>
+			</Filter>
+			<Filter
+				Name="image"
+				>
 			</Filter>
 		</Filter>
 	</Files>

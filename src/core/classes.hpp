@@ -23,3 +23,7 @@ namespace script {
 namespace wm {
   class Window;
 }
+
+namespace image {
+  class Image;
+}
