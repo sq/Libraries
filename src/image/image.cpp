@@ -8,8 +8,10 @@ _CLASS_WRAP(Image, shared_ptr<Image>)
   .def(constructor<const char *>())
   .def(constructor<int, int>())
 
-  _PROPERTY_R("width", getWidth)
-  _PROPERTY_R("height", getHeight)
+  .def("__tostring", &Image::toString)
+
+  _PROPERTY_R(width, getWidth)
+  _PROPERTY_R(height, getHeight)
 _END_CLASS
 
 namespace image {
@@ -62,6 +64,12 @@ int Image::getHeight() const {
 
 void * Image::getData() const {
   return m_image->getPixels();
+}
+
+std::string Image::toString() const {
+  std::stringstream buf;
+  buf << "<Image:" << core::ptrToString(this) << ">";
+  return buf.str();
 }
 
 }

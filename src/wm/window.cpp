@@ -137,6 +137,12 @@ void Window::getSize(unsigned & width, unsigned & height) {
   height = m_height;
 }
 
+void Window::getMouseState(int & x, int & y, unsigned & buttons) {
+  eps::ErrorHandler e;
+
+  eps_wm_getMouseState(m_handle, &x, &y, &buttons);
+}
+
 void Window::setSize(unsigned width, unsigned height) {
   eps::ErrorHandler e;
 

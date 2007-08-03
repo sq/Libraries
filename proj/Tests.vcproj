@@ -287,6 +287,10 @@
 					RelativePath="..\src\tests\lua\lua_tests.lua"
 					>
 				</File>
+				<File
+					RelativePath="..\src\tests\lua\luatest\luatest.lua"
+					>
+				</File>
 			</Filter>
 		</Filter>
 		<Filter

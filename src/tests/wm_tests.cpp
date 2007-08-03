@@ -110,6 +110,35 @@ SUITE(EventTests) {
     CHECK_EQUAL(e_send.mouse.y, evt.getRef().mouse.y);
     CHECK_EQUAL(e_send.mouse.buttonState, evt.getRef().mouse.buttonState);
   }
+  
+  TEST(GetMouseState) {
+    shared_ptr<Window> w(new Window());
+    
+    eps_Event e_send;
+    memset(&e_send, 0, sizeof(e_send));
+
+    e_send.type = EPS_EVENT_MOUSE_MOTION;
+    e_send.mouse.x = 32;
+    e_send.mouse.y = 64;
+    e_send.mouse.buttonState = 1;
+    
+    w->poll(false);
+
+    // This doesn't work. :(
+    eps_event_sendEvent(w->getHandle(), &e_send);
+    
+    w->poll(false);
+    
+    int x, y;
+    unsigned buttons;
+    w->getMouseState(x, y, buttons);
+    
+    /*
+    CHECK_EQUAL(e_send.mouse.x, x);
+    CHECK_EQUAL(e_send.mouse.y, y);
+    CHECK_EQUAL(e_send.mouse.buttonState, buttons);
+    */
+  }
 }
 
 SUITE(ScriptTests) {

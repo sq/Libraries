@@ -14,6 +14,8 @@ namespace image {
     
     ~Image();
     
+    std::string toString() const;
+
     int getWidth() const;
     int getHeight() const;
     void * getData() const;

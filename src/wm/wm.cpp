@@ -18,6 +18,7 @@ _CLASS_WRAP(Window, shared_ptr<Window>)
   .def("close", &Window::onClose)
   .def("getSize", &Window::getSize, pure_out_value(_2) + pure_out_value(_3))
   .def("setSize", &Window::setSize)
+  .def("getMouseState", &Window::getMouseState, pure_out_value(_2) + pure_out_value(_3) + pure_out_value(_4))
   
   .def_readwrite("onClose", &Window::m_onClose)
   .def_readwrite("onMouseMove", &Window::m_onMouseMove)

@@ -53,6 +53,8 @@ namespace wm {
     void getSize(unsigned & width, unsigned & height);
     void setSize(unsigned width, unsigned height);
     
+    void getMouseState(int & x, int & y, unsigned & buttons);
+    
     bool poll(bool wait);
     void close();
     
