@@ -124,10 +124,10 @@ function test_drawImage()
 	g:clear()
 	g:drawImage(i, 0, 0)
 	
+    checkEqual({213, 152, 219, 255}, getPixel(0, 0))
+    checkEqual({223, 156, 223, 255}, getPixel(1, 1))
+    checkEqual({170, 183, 173, 255}, getPixel(95, 95))
     checkEqual(black, getPixel(96, 96))
-    checkEqual({252, 253, 248, 255}, getPixel(95, 95))
-    checkEqual({53, 60, 114, 255}, getPixel(1, 1))
-    checkEqual({48, 55, 110, 255}, getPixel(0, 0))
 
 	gl_tearDown()
 end
@@ -145,8 +145,8 @@ function test_drawImageAlpha()
     checkEqual(black, getPixel(1, 1))
     checkEqual(black, getPixel(0, 0))
 
-    checkEqual({112, 193, 99, 255}, getPixel(7, 8))
-    checkEqual({191, 227, 184, 255}, getPixel(8, 8))
+    checkEqual({237, 247, 235, 255}, getPixel(7, 8))
+    checkEqual({255, 255, 255, 255}, getPixel(8, 8))
 
 	gl_tearDown()
 end

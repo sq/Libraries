@@ -22,11 +22,29 @@ _CLASS_WRAP(GLContext, shared_ptr<GLContext>)
     pure_out_value(_4) + pure_out_value(_5) + pure_out_value(_6) + pure_out_value(_7)
   )
   
-  .def("draw", &GLContext::draw)
+  .def("draw", (void(GLContext::*)(int, script::Object))&GLContext::draw)
+  .def("draw", (void(GLContext::*)(int, script::Object, script::Object))&GLContext::draw)
   .def("drawImage", &GLContext::drawImage)
   
   _PROPERTY_RW("vsync", getVSync, setVSync)
-_END_CLASS  
+_END_CLASS
+
+_CLASS_WRAP(GLTexture, shared_ptr<GLTexture>)
+  .def(constructor<shared_ptr<GLContext>, shared_ptr<image::Image>>())
+  
+  _PROPERTY_R(width, getWidth)
+  _PROPERTY_R(height, getHeight)
+  _PROPERTY_R(u0, getU0)
+  _PROPERTY_R(v0, getV0)
+  _PROPERTY_R(u1, getU1)
+  _PROPERTY_R(v1, getV1)
+  
+  .def("u", &GLTexture::getU)
+  .def("v", &GLTexture::getV)
+  
+  .def("upload", &GLTexture::upload)
+  .def("__tostring", &GLTexture::toString)
+_END_CLASS
 
 namespace gl {
 
@@ -59,6 +77,8 @@ void registerNamespace(shared_ptr<script::Context> context) {
   
   context->registerClass<GLContext>();
   context->registerHolder<GLContext, weak_ptr<GLContext>>();
+  context->registerClass<GLTexture>();
+  context->registerHolder<GLTexture, weak_ptr<GLTexture>>();
   
   #define _C(name) \
     context->setGlobal("gl." #name, GL_ ## name)

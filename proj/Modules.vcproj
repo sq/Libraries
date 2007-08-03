@@ -198,6 +198,10 @@
 					RelativePath="..\src\gl\gl.cpp"
 					>
 				</File>
+				<File
+					RelativePath="..\src\gl\texture.cpp"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="image"

@@ -7,6 +7,7 @@ namespace eps {
 
 namespace gl {
   class GLContext;
+  class GLTexture;
 }
 
 namespace script {

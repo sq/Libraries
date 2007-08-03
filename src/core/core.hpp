@@ -17,6 +17,14 @@ namespace core {
     buffer << value;
     return buffer.str();
   }
+  
+  inline int powerOfTwo(int value) {
+    float v = log10((float)value) / log10(2.0f);
+    if (floor(v) != ceil(v)) {
+      return 1 << (int)ceil(v);
+    }
+    return value;
+  }
 
 }
 

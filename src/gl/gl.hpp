@@ -6,10 +6,18 @@
 namespace gl {
   
   class GLContext : public enable_shared_from_this<GLContext> {
+    friend class gl::GLTexture;
+  
     wm::Window * m_parent;
     eps_OpenGLContext * m_handle;
     
+    std::vector<weak_ptr<GLTexture>> m_textures;
+    
     void postConstruct(script::Context * context);
+    
+  protected:
+    void addTexture(shared_ptr<GLTexture> texture);
+    void removeTexture(GLTexture * texture);
     
   public:
     GLContext(wm::Window * parent, eps_OpenGLContext * handle);
@@ -27,12 +35,45 @@ namespace gl {
     void setVSync(bool vsync);
     
     void draw(int drawMode, script::Object vertices);
+    void draw(int drawMode, script::Object vertices, script::Object textures);
     void drawImage(shared_ptr<image::Image> image, int x, int y);
     
     std::string toString() const;
     
     eps_OpenGLContext * getHandle() const;
 
+  };
+  
+  class GLTexture : public enable_shared_from_this<GLTexture> {
+    unsigned m_handle;
+    shared_ptr<image::Image> m_image;
+    weak_ptr<GLContext> m_context;
+    float m_u0, m_v0, m_u1, m_v1;
+    int m_width, m_height;
+    
+    void postConstruct(script::Context * context);
+    void doTailCall();
+    
+  public:
+    GLTexture(shared_ptr<GLContext> context, unsigned handle, int width, int height);
+    GLTexture(shared_ptr<GLContext> context, shared_ptr<image::Image> image);
+    virtual ~GLTexture();
+    
+    void upload(image::Image * image);
+    
+    std::string toString() const;
+    
+    unsigned getHandle() const;
+    int getWidth() const;
+    int getHeight() const;
+    float getU0() const;
+    float getV0() const;
+    float getU1() const;
+    float getV1() const;
+    
+    float getU(float x) const;
+    float getV(float y) const;
+    
   };
   
   void initialize();
