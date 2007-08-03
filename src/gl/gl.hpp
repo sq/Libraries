@@ -27,6 +27,7 @@ namespace gl {
     void setVSync(bool vsync);
     
     void draw(int drawMode, script::Object vertices);
+    void drawImage(shared_ptr<image::Image> image, int x, int y);
     
     std::string toString() const;
     

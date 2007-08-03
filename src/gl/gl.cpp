@@ -1,8 +1,10 @@
 #include <core\core.hpp>
 #include <script\script.hpp>
+#include <image\image.hpp>
 #include <gl\gl.hpp>
 
 using namespace gl;
+using namespace image;
 using namespace wm;
 
 _CLASS_WRAP(GLContext, shared_ptr<GLContext>)
@@ -21,6 +23,7 @@ _CLASS_WRAP(GLContext, shared_ptr<GLContext>)
   )
   
   .def("draw", &GLContext::draw)
+  .def("drawImage", &GLContext::drawImage)
   
   _PROPERTY_RW("vsync", getVSync, setVSync)
 _END_CLASS  

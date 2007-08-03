@@ -2,6 +2,7 @@
 #include <script\script.hpp>
 #include <wm\wm.hpp>
 #include <gl\gl.hpp>
+#include <image\image.hpp>
 
 namespace script {
 
@@ -25,6 +26,7 @@ void tailCall(TailCall * call) {
 void registerNamespaces(shared_ptr<Context> context) {
   wm::registerNamespace(context);
   gl::registerNamespace(context);
+  image::registerNamespace(context);
 }
 
 static void LuaContextHook(lua_State * L, lua_Debug * ar) {

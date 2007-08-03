@@ -46,18 +46,18 @@ end
 
 function check(b)
     if (not b) then
-        failure("Assertion failed")
+        failure("Assertion failed", 2)
     end
 end
 
 function checkEqual(expected, actual)
     if not luatest.equality(expected, actual) then
-        failure("Expected " .. luatest.tostring(expected) .. ", got " .. luatest.tostring(actual) .. "")
+        failure("Expected " .. luatest.tostring(expected) .. ", got " .. luatest.tostring(actual) .. "", 2)
     end
 end
 
 function checkNotEqual(expected, actual)
     if luatest.equality(expected, actual) then
-        failure("Expected something other than " .. luatest.tostring(expected) .. "")
+        failure("Expected something other than " .. luatest.tostring(expected) .. "", 2)
     end
 end

@@ -13,14 +13,19 @@ UnitTest::TestDetails * _test_details = 0;
 UnitTest::TestResults * _test_results = 0;
 
 int luatest_failure(lua_State * L) {
-  lua_Debug d;
-  memset(&d, 0, sizeof(d));
-  lua_getstack(L, 1, &d);
-  lua_getinfo(L, "Sl", &d);
-
   int num_args = lua_gettop(L);
   if (num_args < 1)
     return 0;
+
+  int offset = 1;
+  if (num_args >= 2)
+    offset = (int)lua_tointeger(L, 2);
+
+  lua_Debug d;
+  memset(&d, 0, sizeof(d));
+  lua_getstack(L, offset, &d);
+  lua_getinfo(L, "Sl", &d);
+
   const char * what = lua_tostring(L, 1);
   
   char filename[512];

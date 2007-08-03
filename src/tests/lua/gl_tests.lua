@@ -1,8 +1,8 @@
 function gl_setUp()
-    w = Window(64, 64)
+    w = Window(128, 128)
     w.caption = "OpenGL Test"
     g = w.glContext
-    white = {1, 1, 1, 1}
+    white = {255, 255, 255, 255}
     black = {0, 0, 0, 0}
 end
 
@@ -28,9 +28,9 @@ function test_clearColor()
     g:clear()
     checkEqual(black, getPixel(0, 0))
     
-    g:setClearColor(1, 0, 1, 0)
+    g:setClearColor(255, 0, 255, 0)
     g:clear()
-    checkEqual({1, 0, 1, 0}, getPixel(0, 0))
+    checkEqual({255, 0, 255, 0}, getPixel(0, 0))
     
     gl_tearDown()
 end
@@ -115,3 +115,20 @@ function test_drawQuad()
 
     gl_tearDown()
 end
+
+function test_drawImage()
+	gl_setUp()
+	
+	i = Image("..\\res\\tests\\test.jpg")
+	
+	g:clear()
+	g:drawImage(i, 0, 0)
+	
+    checkEqual(black, getPixel(96, 96))
+    checkEqual({252, 253, 248, 255}, getPixel(95, 95))
+    checkEqual({53, 60, 114, 255}, getPixel(1, 1))
+    checkEqual({48, 55, 110, 255}, getPixel(0, 0))
+
+	gl_tearDown()
+end
+

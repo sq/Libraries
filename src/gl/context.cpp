@@ -1,8 +1,10 @@
 #include <core\core.hpp>
 #include <script\script.hpp>
 #include <gl\gl.hpp>
+#include <image\image.hpp>
 
 using namespace gl;
+using namespace image;
 using namespace wm;
 
 namespace gl {
@@ -66,32 +68,31 @@ void GLContext::flip() {
 void GLContext::getClearColor(float & red, float & green, float & blue, float & alpha) const {
   makeCurrent();
   
-  float buf[4];
+  float buf[4] = {0, 0, 0, 0};
   glGetFloatv(GL_COLOR_CLEAR_VALUE, buf);
   
-  red = buf[0];
-  green = buf[1];
-  blue = buf[2];
-  alpha = buf[3];
+  red = floor(buf[0] * 255.0f);
+  green = floor(buf[1] * 255.0f);
+  blue = floor(buf[2] * 255.0f);
+  alpha = floor(buf[3] * 255.0f);
 }
 
 void GLContext::getPixel(int x, int y, float & red, float & green, float & blue, float & alpha) const {
   makeCurrent();
   
-  float buf[4];
-  
+  float buf[4] = {0, 0, 0, 0};
   glReadPixels(x, y, 1, 1, GL_RGBA, GL_FLOAT, &buf);
   
-  red = buf[0];
-  green = buf[1];
-  blue = buf[2];
-  alpha = buf[3];
+  red = floor(buf[0] * 255.0f);
+  green = floor(buf[1] * 255.0f);
+  blue = floor(buf[2] * 255.0f);
+  alpha = floor(buf[3] * 255.0f);
 }
 
 void GLContext::setClearColor(float red, float green, float blue, float alpha) {
   makeCurrent();
   
-  glClearColor(red, green, blue, alpha);
+  glClearColor(red / 255.0f, green / 255.0f, blue / 255.0f, alpha / 255.0f);
 }
 
 void GLContext::draw(int drawMode, script::Object vertices) {
@@ -116,6 +117,9 @@ void GLContext::draw(int drawMode, script::Object vertices) {
     if (isTable(color)) {
       float c[4] = {0, 0, 0, 0};
       unsigned n = unpackTable(color, c, 4);
+      for (int i = 0; i < 4; i++)
+        c[i] = c[i] / 255.0f;
+        
       if (n == 4)
         glColor4fv(c);
       else if (n == 3)
@@ -139,6 +143,12 @@ void GLContext::draw(int drawMode, script::Object vertices) {
   }
   
   glEnd();
+}
+
+void GLContext::drawImage(shared_ptr<image::Image> image, int x, int y) {
+  glPixelZoom(1.0f, -1.0f);
+  glRasterPos2i(x, y + image->getHeight());
+  glDrawPixels(image->getWidth(), image->getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, image->getData());
 }
 
 bool GLContext::getVSync() const {
