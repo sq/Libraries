@@ -24,6 +24,11 @@ GLContext::GLContext(wm::Window * parent, eps_OpenGLContext * handle) :
   glLoadIdentity();
   glViewport(0, 0, parent->getWidth(), parent->getHeight());
   glScissor(0, 0, parent->getWidth(), parent->getHeight());  
+  glEnable(GL_BLEND);
+  if (GLEW_EXT_blend_minmax)
+    glBlendEquationEXT(GL_FUNC_ADD_EXT);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 }
 
 GLContext::~GLContext() {
@@ -149,6 +154,7 @@ void GLContext::drawImage(shared_ptr<image::Image> image, int x, int y) {
   glPixelZoom(1.0f, -1.0f);
   glRasterPos2i(x, y + image->getHeight());
   glDrawPixels(image->getWidth(), image->getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, image->getData());
+  glPixelZoom(1.0f, 1.0f);
 }
 
 bool GLContext::getVSync() const {

@@ -110,6 +110,7 @@ SUITE(Lua) {
     int luaTestFailures = 0;
 
     Object globals = sc->getGlobals();
+    std::vector<std::string> keys;
     for (luabind::iterator iter(globals), end; iter != end; ++iter) {
       std::string key;
       {
@@ -119,23 +120,28 @@ SUITE(Lua) {
       }
       Object item = *iter;
       if ((key.find("test_") == 0) && (getObjectType(item) == LUA_TFUNCTION)) {
-        item.push(sc->getContext());
-        UnitTest::Timer timer;
-        UnitTest::TestDetails details(key.c_str(), "LuaTests", __FILE__, __LINE__);
-        testResults_.OnTestStart(details);
-        _test_details = &details;
-        _test_results = &testResults_;
-        try {
-          timer.Start();
-          sc->handleError(
-            lua_pcall(sc->getContext(), 0, LUA_MULTRET, 0)
-          );
-        } catch (std::exception ex) {
-          testResults_.OnTestFailure(details, ex.what());
-        }
-        testResults_.OnTestFinish(details, timer.GetTimeInMs() / 1000.0f);
-        sc->collectGarbage();
+        keys.push_back(key);
       }
+    }
+    for (int i = 0; i < keys.size(); i++) {
+      std::string key = keys[i];
+      Object item = globals[key];
+      item.push(sc->getContext());
+      UnitTest::Timer timer;
+      UnitTest::TestDetails details(key.c_str(), "LuaTests", __FILE__, __LINE__);
+      testResults_.OnTestStart(details);
+      _test_details = &details;
+      _test_results = &testResults_;
+      try {
+        timer.Start();
+        sc->handleError(
+          lua_pcall(sc->getContext(), 0, LUA_MULTRET, 0)
+        );
+      } catch (std::exception ex) {
+        testResults_.OnTestFailure(details, ex.what());
+      }
+      testResults_.OnTestFinish(details, timer.GetTimeInMs() / 1000.0f);
+      sc->collectGarbage();
     }
  }
 }

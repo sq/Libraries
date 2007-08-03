@@ -132,3 +132,21 @@ function test_drawImage()
 	gl_tearDown()
 end
 
+function test_drawImageAlpha()
+	gl_setUp()
+	
+	i = Image("..\\res\\tests\\test.png")
+	
+	g:clear()
+	g:drawImage(i, 0, 0)
+	
+    checkEqual(black, getPixel(16, 16))
+    checkEqual(black, getPixel(15, 15))
+    checkEqual(black, getPixel(1, 1))
+    checkEqual(black, getPixel(0, 0))
+
+    checkEqual({112, 193, 99, 255}, getPixel(7, 8))
+    checkEqual({191, 227, 184, 255}, getPixel(8, 8))
+
+	gl_tearDown()
+end
