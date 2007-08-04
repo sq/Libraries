@@ -24,6 +24,9 @@ _CLASS_WRAP(GLContext, shared_ptr<GLContext>)
   
   .def("draw", (void(GLContext::*)(int, script::Object))&GLContext::draw)
   .def("draw", (void(GLContext::*)(int, script::Object, script::Object))&GLContext::draw)
+  .def("drawPixel", &GLContext::drawPixel)
+  .def("drawLine", &GLContext::drawLine)
+  .def("drawRect", &GLContext::drawRect)
   .def("drawImage", &GLContext::drawImage)
   
   _PROPERTY_RW("vsync", getVSync, setVSync)

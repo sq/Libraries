@@ -17,17 +17,21 @@ GLContext::GLContext(wm::Window * parent, eps_OpenGLContext * handle) :
 {
   gl::initialize();
   
+  int w = parent->getWidth();
+  int h = parent->getHeight();
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  glOrtho(0, parent->getWidth(), parent->getHeight() - 1, 0, -1, 1);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
-  glViewport(0, 0, parent->getWidth(), parent->getHeight());
-  glScissor(0, 0, parent->getWidth(), parent->getHeight());  
+  glScalef(2.0f / float(w), -2.0f / float(h), 1.0f);
+  glTranslatef(-(float(w) / 2.0f), -(float(h) / 2.0f), 0.0f);
+  glViewport(0, 0, w, h);
+  glScissor(0, 0, w, h);
   glEnable(GL_BLEND);
   if (GLEW_EXT_blend_minmax)
     glBlendEquationEXT(GL_FUNC_ADD_EXT);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 GLContext::~GLContext() {
@@ -121,6 +125,38 @@ void GLContext::removeTexture(GLTexture * texture) {
   }
 }
 
+void GLContext::bindTexture(int stage, GLTexture * texture) {
+  glActiveTextureARB(GL_TEXTURE0_ARB + stage);
+  if (texture) {
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture->getHandle());
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  } else {
+    glDisable(GL_TEXTURE_2D);
+  }
+}
+
+void GLContext::unpackColor(script::Object color) {
+  if (!script::isTable(color))
+    return;
+
+  float c[4] = {0, 0, 0, 0};
+  unsigned n = script::unpackTable(color, c, 4);
+  for (unsigned i = 0; i < n; i++)
+    c[i] = c[i] / 255.0f;
+    
+  if (n == 4)
+    glColor4fv(c);
+  else if (n == 3)
+    glColor3fv(c);
+  else if (n == 2)
+    glColor4f(c[0], c[0], c[0], c[1]);
+  else if (n == 1)
+    glColor3f(c[0], c[0], c[0]);
+}
+
 void GLContext::draw(int drawMode, script::Object vertices, script::Object textures) {
   using namespace script;
   using namespace luabind;
@@ -137,17 +173,12 @@ void GLContext::draw(int drawMode, script::Object vertices, script::Object textu
     lua_pop(sc->getContext(), 1);
     
     for (unsigned i = 1; i <= size; i++) {
-      glActiveTextureARB(GL_TEXTURE0_ARB + (i - 1));
       Object item = textures[i];
       try {
         shared_ptr<GLTexture> texture = castObject<shared_ptr<GLTexture>>(item);
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, texture->getHandle());
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        bindTexture(i - 1, texture.get());
       } catch (...) {
-        glDisable(GL_TEXTURE_2D);
+        bindTexture(i - 1, 0);
       }
     }
   } else {
@@ -170,21 +201,8 @@ void GLContext::draw(int drawMode, script::Object vertices, script::Object textu
     Object coords = vertex[1];
     Object color = vertex[2];
 
-    if ((size > 1) && isTable(color)) {
-      float c[4] = {0, 0, 0, 0};
-      unsigned n = unpackTable(color, c, 4);
-      for (int i = 0; i < 4; i++)
-        c[i] = c[i] / 255.0f;
-        
-      if (n == 4)
-        glColor4fv(c);
-      else if (n == 3)
-        glColor3fv(c);
-      else if (n == 2)
-        glColor4f(c[0], c[0], c[0], c[1]);
-      else if (n == 1)
-        glColor3f(c[0], c[0], c[0]);
-    }
+    if (size > 1)
+      unpackColor(color);
     
     if ((size > 2)) {
       for (unsigned i = 3; i <= size; i++) {
@@ -215,11 +233,67 @@ void GLContext::draw(int drawMode, script::Object vertices, script::Object textu
   glDisable(GL_TEXTURE_2D);
 }
 
-void GLContext::drawImage(shared_ptr<image::Image> image, int x, int y) {
-  glPixelZoom(1.0f, -1.0f);
-  glRasterPos2i(x, y);
-  glDrawPixels(image->getWidth(), image->getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, image->getData());
-  glPixelZoom(1.0f, 1.0f);
+void GLContext::drawPixel(float x, float y, script::Object color) {
+  makeCurrent();
+  glBegin(GL_POINTS);
+  unpackColor(color);
+  glVertex2f(x + 0.375f, y + 0.375f);
+  glEnd();
+}
+
+void GLContext::drawLine(float x1, float y1, float x2, float y2, script::Object color) {
+  makeCurrent();
+  glPushMatrix();
+  glTranslatef(0.375f, 0.375f, 0);  glBegin(GL_LINES);
+  glBegin(GL_LINES);
+  unpackColor(color);
+  glVertex2f(x1, y1);
+  glVertex2f(x2, y2);
+  glEnd();
+  glPopMatrix();
+}
+
+void GLContext::drawRect(float x1, float y1, float x2, float y2, bool filled, script::Object color) {
+  makeCurrent();
+  glPushMatrix();
+  glTranslatef(0.375f, 0.375f, 0);
+  if (filled) {
+    x2 += 1;
+    y2 += 1;
+    glBegin(GL_QUADS);
+  } else {
+    glBegin(GL_LINE_LOOP);
+  }
+  unpackColor(color);
+  glVertex2f(x1, y1);
+  glVertex2f(x2, y1);
+  glVertex2f(x2, y2);
+  glVertex2f(x1, y2);
+  glEnd();
+  glPopMatrix();
+}
+
+void GLContext::drawImage(shared_ptr<image::Image> image, int x, int y) { 
+  int w = image->getWidth();
+  int h = image->getHeight();
+  shared_ptr<GLTexture> texture = image->getTexture(shared_from_this());
+  bindTexture(0, texture.get());
+  
+  glBegin(GL_QUADS);
+  
+  glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+  glTexCoord2f(texture->getU0(), texture->getV0());
+  glVertex2i(x, y);
+  glTexCoord2f(texture->getU1(), texture->getV0());
+  glVertex2i(x + w, y);
+  glTexCoord2f(texture->getU1(), texture->getV1());
+  glVertex2i(x + w, y + h);
+  glTexCoord2f(texture->getU0(), texture->getV1());
+  glVertex2i(x, y + h);
+  
+  glEnd();
+  
+  bindTexture(0, 0);
 }
 
 bool GLContext::getVSync() const {

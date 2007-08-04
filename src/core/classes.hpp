@@ -27,4 +27,5 @@ namespace wm {
 
 namespace image {
   class Image;
+  class ImageList;
 }

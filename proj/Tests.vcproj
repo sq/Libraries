@@ -284,6 +284,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\tests\lua\image_tests.lua"
+					>
+				</File>
+				<File
+					RelativePath="..\src\tests\lua\imagelist_tests.lua"
+					>
+				</File>
+				<File
 					RelativePath="..\src\tests\lua\lua_tests.lua"
 					>
 				</File>
@@ -378,11 +386,11 @@
 					>
 				</File>
 				<File
-					RelativePath="..\ext\unittest++\TimeHelpers.h"
+					RelativePath="..\ext\unittest++\Win32\TimeHelpers.h"
 					>
 				</File>
 				<File
-					RelativePath="..\ext\unittest++\Win32\TimeHelpers.h"
+					RelativePath="..\ext\unittest++\TimeHelpers.h"
 					>
 				</File>
 				<File

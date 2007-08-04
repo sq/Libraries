@@ -156,6 +156,10 @@
 					RelativePath="..\src\script\context.cpp"
 					>
 				</File>
+				<File
+					RelativePath="..\src\script\script.cpp"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="wm"
@@ -208,6 +212,10 @@
 				>
 				<File
 					RelativePath="..\src\image\image.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\image\imagelist.cpp"
 					>
 				</File>
 			</Filter>
@@ -284,6 +292,14 @@
 			<Filter
 				Name="image"
 				>
+				<File
+					RelativePath="..\src\image\image.hpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\image\libs.hpp"
+					>
+				</File>
 			</Filter>
 		</Filter>
 	</Files>

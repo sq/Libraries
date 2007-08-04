@@ -5,8 +5,15 @@
 
 namespace image {
 
-  class Image {
+  class Image : public enable_shared_from_this<Image> {
+    friend class gl::GLTexture;
+  
     corona::Image * m_image;
+    weak_ptr<gl::GLTexture> m_texture;
+    shared_ptr<gl::GLTexture> m_ownedTexture;
+    
+  protected:
+    void setTexture(shared_ptr<gl::GLTexture> texture);
     
   public:
     Image(const char * filename);
@@ -14,11 +21,40 @@ namespace image {
     
     ~Image();
     
-    std::string toString() const;
+    bool save(const char * filename);
+    void getPixel(int x, int y, int & red, int & green, int & blue, int & alpha) const;
+    void setPixel(int x, int y, script::Object color);
+    void setPixel(int x, int y, int red, int green, int blue, int alpha);
+    shared_ptr<gl::GLTexture> getTexture(shared_ptr<gl::GLContext> context);
+    shared_ptr<gl::GLTexture> getTexture();
+    string toString() const;
 
     int getWidth() const;
     int getHeight() const;
     void * getData() const;
+  };
+  
+  class ImageList : public enable_shared_from_this<ImageList> {
+    typedef vector<shared_ptr<Image>> TImages;
+    
+    // void postConstruct(script::Context * context);
+  
+  public:
+    TImages images;
+
+    ImageList();
+    
+    ~ImageList();
+    
+    int add(shared_ptr<Image> value);
+    void remove(int index);
+    TImages::iterator at(int index);
+    shared_ptr<Image> getImage(int index);
+    
+    // script::Object indexHandler(script::Object key);
+    
+    int getCount() const;    
+    string toString() const;    
   };
   
   void registerNamespace(shared_ptr<script::Context> context);

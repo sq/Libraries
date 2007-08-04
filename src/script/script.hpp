@@ -221,7 +221,41 @@ namespace script {
     
     return count;
   }
-
+  
+  template <class T>
+  inline Object getObject(shared_ptr<T> obj) {
+    Context * context = getActiveContext();
+    Object _obj(context->getContext(), obj);
+    return _obj;
+  }
+  
+  template <class T>
+  inline Object getObjectMetatable(shared_ptr<T> obj) {
+    Object result;
+    {
+      Context * context = getActiveContext();
+      Object _obj(context->getContext(), obj);
+      _obj.push(context->getContext());
+      if (lua_getmetatable(context->getContext(), -1)) {
+        result = Object(luabind::from_stack(context->getContext(), -1));
+        lua_pop(context->getContext(), 1);
+      }
+      lua_pop(context->getContext(), 1);    
+    }
+    return result;
+  }
+  
+  template <class T>
+  inline Object getObjectMember(shared_ptr<T> obj, const char * name) {
+    Object result;
+    {
+      Context * context = getActiveContext();
+      Object _obj(context->getContext(), obj);
+      result = _obj[name];
+    }
+    return result;
+  }
+  
   template <class T>
   void LuaContext::setGlobal(const char * path, const T & value) {
     char parentPath[256];

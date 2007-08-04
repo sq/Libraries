@@ -4,4 +4,6 @@
   #pragma comment(lib, "corona.lib")
 #endif
 
+#include "..\script\script.hpp"
+
 #include <corona\corona.h>

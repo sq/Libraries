@@ -17,8 +17,10 @@ GLTexture::GLTexture(shared_ptr<GLContext> context, unsigned handle, int width, 
 {
   int w2 = core::powerOfTwo(width);
   int h2 = core::powerOfTwo(height);
-  m_u1 = width / (float)w2;
-  m_v1 = height / (float)h2;
+  m_u0 = (0.0f) / (float)w2;
+  m_v0 = (0.0f) / (float)h2;
+  m_u1 = (width - 0.5f) / (float)w2;
+  m_v1 = (height - 0.5f) / (float)h2;
   doTailCall();
 }
 
@@ -46,10 +48,11 @@ GLTexture::~GLTexture() {
 }
 
 void GLTexture::postConstruct(script::Context * context) {
-  if (!m_context.expired()) {
-    shared_ptr<GLContext> context = m_context.lock();
-    context->addTexture(shared_from_this());
-  }
+  shared_ptr<GLContext> s_context = m_context.lock();
+  s_context->addTexture(shared_from_this());  
+  
+  if (m_image)
+    m_image->setTexture(shared_from_this());
 }
 
 void GLTexture::doTailCall() {
@@ -116,9 +119,10 @@ void GLTexture::upload(image::Image * image) {
   int th = core::powerOfTwo(h);
   m_width = w;
   m_height = h;
-  m_u0 = m_v0 = 0.0f;
-  m_u1 = w / (float)tw;
-  m_v1 = h / (float)th;
+  m_u0 = (0.0f) / (float)tw;
+  m_v0 = (0.0f) / (float)th;
+  m_u1 = (w) / (float)tw;
+  m_v1 = (h) / (float)th;
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, m_handle);
   glTexImage2D(

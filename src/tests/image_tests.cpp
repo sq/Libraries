@@ -36,3 +36,9 @@ SUITE(ImageTests) {
     }
   }
 }
+
+SUITE(ImageListTests) {
+  TEST(CanCreate) {
+    shared_ptr<ImageList> il(new ImageList());
+  }
+}

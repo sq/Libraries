@@ -309,28 +309,12 @@ EPS_EXPORT(void) eps_wm_pollMessages(eps_Window* window, eps_uint waitDuration) 
     
     HANDLE handles[1];
     eps_uint numHandles = 0;
-    if (window && window->tickEvent) {
-      handles[0] = window->tickEvent;
-      numHandles = 1;
-    }
     
     eps_uint result = MsgWaitForMultipleObjects(numHandles, handles, false, waitDuration, QS_ALLEVENTS);
 
     while (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
-    }
-        
-    if (window && (result == WAIT_OBJECT_0) && (numHandles == 1)) {
-        eps_Event tickEvent;
-        memset(&tickEvent, 0, sizeof(tickEvent));
-        tickEvent.type = EPS_EVENT_TICK;
-        LONG currentTick = window->currentTick;
-        LONG previousTick = InterlockedExchange(&window->previousTick, currentTick);
-        tickEvent.tick.absoluteTick = currentTick;
-        tickEvent.tick.elapsedTicks = currentTick - previousTick;
-        if (tickEvent.tick.elapsedTicks)
-          window->events.push_back(tickEvent);
     }
 }
 

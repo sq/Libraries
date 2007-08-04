@@ -40,19 +40,14 @@ int luatest_failure(lua_State * L) {
 
 SUITE(Lua) {
   TEST(Tests) {
-    shared_ptr<Context> sc(new Context());
-    
-    sc->registerFunction("failure", luatest_failure);
-    
     char buf[512];
     GetCurrentDirectoryA(sizeof(buf), buf);
-    
     strcat(buf, "\\..\\src\\tests\\lua\\?.lua");
-    
+
+    shared_ptr<Context> sc(new Context());    
+    sc->registerFunction("failure", luatest_failure);  
     sc->setIncludePath(std::string(buf));
-
-    script::registerNamespaces(sc);
-
+    script::registerNamespaces(sc);    
     sc->executeScript("require('luatest\\\\luatest')");
     
     WIN32_FIND_DATAA findData;    
@@ -123,7 +118,7 @@ SUITE(Lua) {
         keys.push_back(key);
       }
     }
-    for (int i = 0; i < keys.size(); i++) {
+    for (unsigned i = 0; i < keys.size(); i++) {
       std::string key = keys[i];
       Object item = globals[key];
       item.push(sc->getContext());

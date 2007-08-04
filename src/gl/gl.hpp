@@ -19,6 +19,9 @@ namespace gl {
     void addTexture(shared_ptr<GLTexture> texture);
     void removeTexture(GLTexture * texture);
     
+    void bindTexture(int stage, GLTexture * texture);
+    void unpackColor(script::Object color);
+    
   public:
     GLContext(wm::Window * parent, eps_OpenGLContext * handle);
     virtual ~GLContext();
@@ -36,6 +39,9 @@ namespace gl {
     
     void draw(int drawMode, script::Object vertices);
     void draw(int drawMode, script::Object vertices, script::Object textures);
+    void drawPixel(float x, float y, script::Object color);
+    void drawLine(float x1, float y1, float x2, float y2, script::Object color);
+    void drawRect(float x1, float y1, float x2, float y2, bool filled, script::Object color);
     void drawImage(shared_ptr<image::Image> image, int x, int y);
     
     std::string toString() const;
