@@ -12,23 +12,6 @@ std::map<lua_State *, Context *> g_contextMap;
 
 std::list<TailCall *> g_tailCalls;
 
-Context * getActiveContext() {
-  if (g_activeContext)
-    return g_contextMap[g_activeContext];
-  else
-    return 0;
-}
-
-void tailCall(TailCall * call) {
-  g_tailCalls.push_back(call);
-}
-
-void registerNamespaces(shared_ptr<Context> context) {
-  wm::registerNamespace(context);
-  gl::registerNamespace(context);
-  image::registerNamespace(context);
-}
-
 void LuaContextHook(lua_State * L, lua_Debug * ar) {
   g_activeContext = L;
   Context * context = g_contextMap[L];
@@ -43,8 +26,29 @@ void LuaContextHook(lua_State * L, lua_Debug * ar) {
         call->invoke(context);
         delete call;
       }
+      lua_sethook(g_activeContext, 0, 0, 0);
     break;
   }
+}
+
+Context * getActiveContext() {
+  if (g_activeContext)
+    return g_contextMap[g_activeContext];
+  else
+    return 0;
+}
+
+void tailCall(TailCall * call) {
+  if (g_activeContext) {
+    lua_sethook(g_activeContext, LuaContextHook, LUA_MASKRET, 0);
+    g_tailCalls.push_back(call);
+  }
+}
+
+void registerNamespaces(shared_ptr<Context> context) {
+  wm::registerNamespace(context);
+  gl::registerNamespace(context);
+  image::registerNamespace(context);
 }
 
 }

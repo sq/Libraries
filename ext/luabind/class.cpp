@@ -50,8 +50,8 @@ namespace luabind { namespace detail {
 
         // datamembers, some members may be readonly, and
         // only have a getter function
-        mutable std::map<const char*, detail::class_rep::callback, detail::ltstr> m_getters;
-        mutable std::map<const char*, detail::class_rep::callback, detail::ltstr> m_setters;
+        mutable std::map<std::string, detail::class_rep::callback, detail::ltstr> m_getters;
+        mutable std::map<std::string, detail::class_rep::callback, detail::ltstr> m_setters;
 
         // the operators in lua
         mutable std::vector<detail::class_rep::operator_callback> m_operators[detail::number_of_operators]; 

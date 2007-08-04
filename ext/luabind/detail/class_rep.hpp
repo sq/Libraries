@@ -234,8 +234,8 @@ namespace luabind { namespace detail
 			int pointer_offset;
 		};
 
-		const std::map<const char*, callback, ltstr>& properties() const;
-		typedef std::map<const char*, callback, ltstr> property_map;
+		const std::map<std::string, callback, ltstr>& properties() const;
+		typedef std::map<std::string, callback, ltstr> property_map;
 
 		int holder_alignment() const
 		{
@@ -374,8 +374,8 @@ namespace luabind { namespace detail
 
 		// datamembers, some members may be readonly, and
 		// only have a getter function
-		std::map<const char*, callback, ltstr> m_getters;
-		std::map<const char*, callback, ltstr> m_setters;
+		std::map<std::string, callback, ltstr> m_getters;
+		std::map<std::string, callback, ltstr> m_setters;
 
 		std::vector<operator_callback> m_operators[number_of_operators]; // the operators in lua
 

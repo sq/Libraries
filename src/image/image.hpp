@@ -8,6 +8,7 @@ namespace image {
   class Image : public enable_shared_from_this<Image> {
     friend class gl::GLTexture;
   
+    int m_width, m_height;
     corona::Image * m_image;
     weak_ptr<gl::GLTexture> m_texture;
     shared_ptr<gl::GLTexture> m_ownedTexture;

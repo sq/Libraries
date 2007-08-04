@@ -13,8 +13,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Tests", "Tests.vcproj", "{C
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Modules", "Modules.vcproj", "{81A67114-CD1E-4DD7-A88A-1146765F6EDF}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Lua", "Lua.vcproj", "{14A1C244-94FC-4B48-9188-38466F9E1341}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -33,10 +31,6 @@ Global
 		{81A67114-CD1E-4DD7-A88A-1146765F6EDF}.Debug|Win32.Build.0 = Debug|Win32
 		{81A67114-CD1E-4DD7-A88A-1146765F6EDF}.Release|Win32.ActiveCfg = Release|Win32
 		{81A67114-CD1E-4DD7-A88A-1146765F6EDF}.Release|Win32.Build.0 = Release|Win32
-		{14A1C244-94FC-4B48-9188-38466F9E1341}.Debug|Win32.ActiveCfg = Debug|Win32
-		{14A1C244-94FC-4B48-9188-38466F9E1341}.Debug|Win32.Build.0 = Debug|Win32
-		{14A1C244-94FC-4B48-9188-38466F9E1341}.Release|Win32.ActiveCfg = Release|Win32
-		{14A1C244-94FC-4B48-9188-38466F9E1341}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

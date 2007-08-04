@@ -11,9 +11,9 @@ extern "C" {
 }
 
 #ifdef _DEBUG
-  #pragma comment(lib, "luabind-d.msvc8.lib")
+  #pragma comment(lib, "luabind-d.lib")
 #else
-  #pragma comment(lib, "luabind.msvc8.lib")
+  #pragma comment(lib, "luabind.lib")
 #endif
 
 #pragma warning(disable: 4996)

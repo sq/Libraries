@@ -41,7 +41,7 @@ _END_CLASS
 namespace wm {
 
 int g_refCount = 0;
-unsigned g_pollingTimeout = 2;
+unsigned g_pollingTimeout = 1;
 volatile unsigned g_lastTick = 0;
 
 void initialize() {

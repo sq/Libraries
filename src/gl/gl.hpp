@@ -51,14 +51,18 @@ namespace gl {
   };
   
   class GLTexture : public enable_shared_from_this<GLTexture> {
+    friend class GLContext;
+  
     unsigned m_handle;
     shared_ptr<image::Image> m_image;
     weak_ptr<GLContext> m_context;
-    float m_u0, m_v0, m_u1, m_v1;
     int m_width, m_height;
     
     void postConstruct(script::Context * context);
     void doTailCall();
+    
+  protected:
+    float m_u0, m_v0, m_u1, m_v1;
     
   public:
     GLTexture(shared_ptr<GLContext> context, unsigned handle, int width, int height);

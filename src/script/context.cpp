@@ -14,8 +14,7 @@ LuaContext::LuaContext() :
   m_state(0)
 {
   m_state = lua_open();
-  
-  lua_sethook(m_state, LuaContextHook, LUA_MASKCALL | LUA_MASKRET, 0);
+  g_activeContext = m_state;
 }
 
 LuaContext::~LuaContext() {
@@ -109,6 +108,8 @@ Object LuaContext::getGlobal(const char * path) const {
 Object LuaContext::createTable() {
   return luabind::newtable(m_state);
 }
+
+extern int luaopen_jit(lua_State* L);
     
 Context::Context() {
   g_contextMap[getContext()] = this;

@@ -236,10 +236,13 @@ int luabind::detail::class_rep::gettable(lua_State* L)
 
 	// we have to ignore the first argument since this may point to
 	// a method that is not present in this class (but in a subclass)
-	const char* key = lua_tostring(L, 2);
+	size_t keylen = lua_strlen(L, 2);
+	const char * keystr = lua_tostring(L, 2);
+	std::string key(keystr, keylen);
 
 #ifndef LUABIND_NO_ERROR_CHECKING
 
+  /*
 	if (std::strlen(key) != lua_strlen(L, 2))
 	{
 		{
@@ -250,11 +253,12 @@ int luabind::detail::class_rep::gettable(lua_State* L)
 		}
 		lua_error(L);
 	}
+	*/
 
 #endif
 
 	// special case to see if this is a null-pointer
-	if (key && !std::strcmp(key, "__ok"))
+	if (keystr && !std::strcmp(keystr, "__ok"))
 	{
 		class_rep* crep = obj->crep();
 
@@ -292,7 +296,7 @@ int luabind::detail::class_rep::gettable(lua_State* L)
 	}
 	lua_pop(L, 2);
 
-	std::map<const char*, callback, ltstr>::iterator j = m_getters.find(key);
+	std::map<std::string, callback, ltstr>::iterator j = m_getters.find(key);
 	if (j != m_getters.end())
 	{
 		// the name is a data member
@@ -318,7 +322,7 @@ bool luabind::detail::class_rep::settable(lua_State* L)
 
 	if (std::strlen(key) == lua_strlen(L, 2))
 	{
-		std::map<const char*, callback, ltstr>::iterator j = m_setters.find(key);
+		std::map<std::string, callback, ltstr>::iterator j = m_setters.find(key);
 		if (j != m_setters.end())
 		{
 			// the name is a data member
@@ -873,7 +877,7 @@ void luabind::detail::class_rep::add_base_class(const luabind::detail::class_rep
     }
 
 	// import all getters from the base
-	for (std::map<const char*, callback, ltstr>::const_iterator i = bcrep->m_getters.begin(); 
+	for (std::map<std::string, callback, ltstr>::const_iterator i = bcrep->m_getters.begin(); 
 			i != bcrep->m_getters.end(); ++i)
 	{
 		callback& m = m_getters[i->first];
@@ -887,7 +891,7 @@ void luabind::detail::class_rep::add_base_class(const luabind::detail::class_rep
 	}
 
 	// import all setters from the base
-	for (std::map<const char*, callback, ltstr>::const_iterator i = bcrep->m_setters.begin(); 
+	for (std::map<std::string, callback, ltstr>::const_iterator i = bcrep->m_setters.begin(); 
 			i != bcrep->m_setters.end(); ++i)
 	{
 		callback& m = m_setters[i->first];
@@ -901,7 +905,7 @@ void luabind::detail::class_rep::add_base_class(const luabind::detail::class_rep
 	}
 
 	// import all static constants
-	for (std::map<const char*, int, ltstr>::const_iterator i = bcrep->m_static_constants.begin(); 
+	for (std::map<const char *, int, ltstr>::const_iterator i = bcrep->m_static_constants.begin(); 
 			i != bcrep->m_static_constants.end(); ++i)
 	{
 		int& v = m_static_constants[i->first];
@@ -1320,7 +1324,7 @@ int luabind::detail::class_rep::lua_class_gettable(lua_State* L)
 		return 1;
 	}
 
-	std::map<const char*, class_rep::callback, ltstr>::iterator j = crep->m_getters.find(key);
+	std::map<std::string, class_rep::callback, ltstr>::iterator j = crep->m_getters.find(key);
 	if (j != crep->m_getters.end())
 	{
 		// the name is a data member
@@ -1361,7 +1365,7 @@ int luabind::detail::class_rep::lua_class_settable(lua_State* L)
 	const char* key = lua_tostring(L, 2);
 
 
-	std::map<const char*, class_rep::callback, ltstr>::iterator j = crep->m_setters.find(key);
+	std::map<std::string, class_rep::callback, ltstr>::iterator j = crep->m_setters.find(key);
 
 	// if the strlen(key) is not the true length,
 	// it means that the member-name contains
@@ -1371,7 +1375,7 @@ int luabind::detail::class_rep::lua_class_settable(lua_State* L)
 	if (j == crep->m_setters.end()
 		|| std::strlen(key) != lua_strlen(L, 2))
 	{
-		std::map<const char*, class_rep::callback, ltstr>::iterator k = crep->m_getters.find(key);
+		std::map<std::string, class_rep::callback, ltstr>::iterator k = crep->m_getters.find(key);
 
 #ifndef LUABIND_NO_ERROR_CHECKING
 
@@ -1423,11 +1427,13 @@ int luabind::detail::class_rep::static_class_gettable(lua_State* L)
 
 	const char* key = lua_tostring(L, 2);
 
+  /*
 	if (std::strlen(key) != lua_strlen(L, 2))
 	{
 		lua_pushnil(L);
 		return 1;
 	}
+	*/
 
 	std::map<const char*, int, ltstr>::const_iterator j = crep->m_static_constants.find(key);
 

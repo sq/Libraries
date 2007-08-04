@@ -282,13 +282,13 @@ void GLContext::drawImage(shared_ptr<image::Image> image, int x, int y) {
   glBegin(GL_QUADS);
   
   glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-  glTexCoord2f(texture->getU0(), texture->getV0());
+  glTexCoord2f(texture->m_u0, texture->m_v0);
   glVertex2i(x, y);
-  glTexCoord2f(texture->getU1(), texture->getV0());
+  glTexCoord2f(texture->m_u1, texture->m_v0);
   glVertex2i(x + w, y);
-  glTexCoord2f(texture->getU1(), texture->getV1());
+  glTexCoord2f(texture->m_u1, texture->m_v1);
   glVertex2i(x + w, y + h);
-  glTexCoord2f(texture->getU0(), texture->getV1());
+  glTexCoord2f(texture->m_u0, texture->m_v1);
   glVertex2i(x, y + h);
   
   glEnd();

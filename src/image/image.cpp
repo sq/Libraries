@@ -64,12 +64,16 @@ Image::Image(const char * filename) {
     strcat(buffer, "\".");
     throw std::exception(buffer);
   }
+  m_width = m_image->getWidth();
+  m_height = m_image->getHeight();
 }
 
 Image::Image(int width, int height) {
   m_image = corona::CreateImage(width, height, corona::PF_R8G8B8A8);
   if (!m_image)
     throw std::exception("Unable to create image with specified parameters");
+  m_width = m_image->getWidth();
+  m_height = m_image->getHeight();
 }
 
 Image::~Image() {
@@ -148,11 +152,11 @@ void Image::setTexture(shared_ptr<gl::GLTexture> texture) {
 }
 
 int Image::getWidth() const {
-  return m_image->getWidth();
+  return m_width;
 }
 
 int Image::getHeight() const {
-  return m_image->getHeight();
+  return m_height;
 }
 
 void * Image::getData() const {

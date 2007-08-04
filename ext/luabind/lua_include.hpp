@@ -25,20 +25,18 @@
 
 extern "C"
 {
-	#include "lua/lua.h"
-/*
-    // Cygon fix:
-    // ref.cpp expects these constants from lauxlib.h to be defined.
-    // if, however, lauxlib actually gets included, some functions will
-    // cause strange errors, likely because these function names are
-    // defines for something else in lauxlib.h
-    #ifndef LUA_NOREF
-    #define LUA_NOREF       (-2)
-    #endif
-    #ifndef LUA_REFNIL
-    #define LUA_REFNIL      (-1)
-    #endif
-*/
+  #include <lua\lua.h>
+  // Cygon fix:
+  // ref.cpp expects these constants from lauxlib.h to be defined.
+  // if, however, lauxlib actually gets included, some functions will
+  // cause strange errors, likely because these function names are
+  // defines for something else in lauxlib.h
+  #ifndef LUA_NOREF
+  #define LUA_NOREF       (-2)
+  #endif
+  #ifndef LUA_REFNIL
+  #define LUA_REFNIL      (-1)
+  #endif
 }
 
 #endif
