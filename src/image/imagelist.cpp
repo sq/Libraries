@@ -22,6 +22,23 @@ ImageList::ImageList() {
   */
 }
 
+ImageList::ImageList(script::Object images) {
+  using namespace script;
+  using namespace luabind;
+
+  if (!isTable(images))
+    throw std::exception("images must be a table");
+    
+  for (iterator iter(images), end; iter != end; ++iter) {
+    Object item = *iter;
+    try {
+      shared_ptr<Image> image = castObject<shared_ptr<Image>>(item);
+      add(image);
+    } catch (...) {
+    }
+  }
+}
+
 ImageList::~ImageList() {
 }
 
@@ -51,19 +68,27 @@ void ImageList::postConstruct(script::Context * context) {
 */
 
 int ImageList::add(shared_ptr<Image> value) {
-  int pos = (int)images.size();
-  images.push_back(value);
+  int pos = (int)m_images.size();
+  m_images.push_back(value);
   return pos;
 }
 
+void ImageList::insert(int index, shared_ptr<Image> value) {
+  m_images.insert(at(index), value);
+}
+
 void ImageList::remove(int index) {
-  images.erase(at(index));
+  m_images.erase(at(index));
+}
+
+void ImageList::clear() {
+  m_images.clear();
 }
 
 ImageList::TImages::iterator ImageList::at(int index) {
-  if ((index < 1) || (index > (int)images.size()))
+  if ((index < 1) || (index > (int)m_images.size()))
     throw std::exception("1 >= index < count");
-  return images.begin() + (index - 1);
+  return m_images.begin() + (index - 1);
 }
 
 shared_ptr<Image> ImageList::getImage(int index) {
@@ -72,7 +97,7 @@ shared_ptr<Image> ImageList::getImage(int index) {
 }
 
 int ImageList::getCount() const {
-  return (int)images.size();
+  return (int)m_images.size();
 }
 
 std::string ImageList::toString() const {

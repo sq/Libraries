@@ -25,14 +25,16 @@ _END_CLASS
 
 _CLASS_WRAP(ImageList, shared_ptr<ImageList>)
   .def(constructor<>())
+  .def(constructor<script::Object>())
   
   .def("__tostring", &ImageList::toString)
   .def("add", &ImageList::add)
+  .def("insert", &ImageList::insert)
   .def("remove", &ImageList::remove)
+  .def("clear", &ImageList::clear)
   .def("getImage", &ImageList::getImage)
   .def("__call", &ImageList::getImage)
 
-  .def_readwrite("images", &ImageList::images, return_stl_iterator)
   _PROPERTY_R(count, getCount)
 _END_CLASS
 

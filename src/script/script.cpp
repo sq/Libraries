@@ -26,7 +26,7 @@ void LuaContextHook(lua_State * L, lua_Debug * ar) {
         call->invoke(context);
         delete call;
       }
-      lua_sethook(g_activeContext, 0, 0, 0);
+//      lua_sethook(g_activeContext, 0, 0, 0);
     break;
   }
 }
@@ -40,12 +40,16 @@ Context * getActiveContext() {
 
 void tailCall(TailCall * call) {
   if (g_activeContext) {
-    lua_sethook(g_activeContext, LuaContextHook, LUA_MASKRET, 0);
+//    lua_sethook(g_activeContext, LuaContextHook, LUA_MASKCALL | LUA_MASKRET, 0);
     g_tailCalls.push_back(call);
   }
 }
 
+void registerStringExtensions(shared_ptr<Context> context);
+
 void registerNamespaces(shared_ptr<Context> context) {
+  registerStringExtensions(context);
+
   wm::registerNamespace(context);
   gl::registerNamespace(context);
   image::registerNamespace(context);

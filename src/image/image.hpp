@@ -40,15 +40,18 @@ namespace image {
     
     // void postConstruct(script::Context * context);
   
+    TImages m_images;
+    
   public:
-    TImages images;
-
     ImageList();
+    ImageList(script::Object images);
     
     ~ImageList();
     
     int add(shared_ptr<Image> value);
+    void insert(int position, shared_ptr<Image> value);
     void remove(int index);
+    void clear();
     TImages::iterator at(int index);
     shared_ptr<Image> getImage(int index);
     

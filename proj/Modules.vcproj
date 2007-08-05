@@ -162,6 +162,10 @@
 					RelativePath="..\src\script\script.cpp"
 					>
 				</File>
+				<File
+					RelativePath="..\src\script\string.cpp"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="wm"
@@ -220,6 +224,18 @@
 					RelativePath="..\src\image\imagelist.cpp"
 					>
 				</File>
+			</Filter>
+			<Filter
+				Name="ext"
+				>
+				<Filter
+					Name="base64"
+					>
+					<File
+						RelativePath="..\ext\base64\base64.cpp"
+						>
+					</File>
+				</Filter>
 			</Filter>
 		</Filter>
 		<Filter
@@ -302,6 +318,18 @@
 					RelativePath="..\src\image\libs.hpp"
 					>
 				</File>
+			</Filter>
+			<Filter
+				Name="ext"
+				>
+				<Filter
+					Name="base64"
+					>
+					<File
+						RelativePath="..\ext\base64\base64.h"
+						>
+					</File>
+				</Filter>
 			</Filter>
 		</Filter>
 	</Files>

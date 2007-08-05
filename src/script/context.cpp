@@ -15,6 +15,7 @@ LuaContext::LuaContext() :
 {
   m_state = lua_open();
   g_activeContext = m_state;
+  lua_sethook(m_state, LuaContextHook, LUA_MASKCALL | LUA_MASKRET, 0);
 }
 
 LuaContext::~LuaContext() {
@@ -134,7 +135,9 @@ LuaContext & Context::getContext() {
 }
 
 void Context::registerFunction(const char * name, lua_CFunction function) {
-  lua_register(getContext(), name, function);
+  lua_pushcfunction(getContext(), function);
+  script::Object fn(luabind::from_stack(getContext(), -1));
+  setGlobal(name, fn);
 }
 
 void Context::executeScript(const char * source) {

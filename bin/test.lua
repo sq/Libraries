@@ -1,5 +1,5 @@
 function runTest()
-    frameRate = 100
+    frameRate = 60
     w = Window(320, 240)
     gr = w.glContext
     last_second = 0
@@ -13,8 +13,8 @@ function runTest()
         local g = math.abs(((absolute % (2 * frameRate)) - frameRate) / frameRate) * 255
         gr:setClearColor(g, g, g, 1)
         gr:clear()
-        for y=0,240,2 do
-            for x=0,320,2 do
+        for y=0,240,8 do
+            for x=0,320,8 do
                 gr:drawImage(i, x, y)
             end
         end

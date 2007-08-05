@@ -260,16 +260,19 @@ namespace script {
   void LuaContext::setGlobal(const char * path, const T & value) {
     char parentPath[256];
     const char * endpos = strrchr(path, '.');
+    const char * thename;
     Object parent;
     if (endpos) {
       memset(parentPath, 0, 256);
       memcpy(parentPath, path, endpos - path);
       parent = getGlobal(parentPath);
+      thename = endpos + 1;
     } else {
       parent = getGlobals();
+      thename = path;
     }
     if (parent && getObjectType(parent) == LUA_TTABLE) {
-      parent[endpos + 1] = value;
+      parent[thename] = value;
     } else {
       char buffer[512];
       strcpy(buffer, parentPath);

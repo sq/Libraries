@@ -41,9 +41,30 @@ SUITE(ScriptContextTests) {
     return 1;
   }
   
+  int test_string_method(lua_State *L) {
+    int argc = lua_gettop(L);
+    
+    if (argc == 2) {
+      g_last_test_arg = (int)lua_tointeger(L, 2);
+    }
+    
+    lua_pushinteger(L, 42);
+    return 1;
+  }
+    
   TEST(CanRegisterFunctions) {
     shared_ptr<Context> sc(new Context());
     sc->registerFunction("test_function", test_function);
+  }
+  
+  TEST(CanExtendBuiltInClasses) {
+    shared_ptr<Context> sc(new Context());
+    sc->registerFunction("string.test", test_string_method);
+    
+    sc->executeScript("a = \"test\"");
+    sc->executeScript("a:test(12)");
+
+    CHECK_EQUAL(12, g_last_test_arg);
   }
   
   TEST(CanRunBasicScripts) {
@@ -165,6 +186,7 @@ SUITE(ScriptContextTests) {
     
     sc->setGlobal("a.b.c", 2);
     sc->setGlobal("a.d", 5);
+    sc->setGlobal("b", 7);
     
     Object c = sc->getGlobal("a.b.c");    
     
@@ -175,6 +197,11 @@ SUITE(ScriptContextTests) {
     
     CHECK_EQUAL(LUA_TNUMBER, getObjectType(d));
     CHECK_EQUAL(5, castObject<int>(d));
+    
+    Object b = sc->getGlobal("b");
+    
+    CHECK_EQUAL(LUA_TNUMBER, getObjectType(b));
+    CHECK_EQUAL(7, castObject<int>(b));
   }
   
   TEST(ScriptGeneratedExceptionsAreHandledByExecuteScript) {
