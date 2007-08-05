@@ -35,6 +35,12 @@ ImageList::ImageList(script::Object images) {
       shared_ptr<Image> image = castObject<shared_ptr<Image>>(item);
       add(image);
     } catch (...) {
+      try {
+        std::string filename = castObject<std::string>(item);
+        shared_ptr<Image> image(new Image(filename.c_str()));
+        add(image);
+      } catch (...) {
+      }
     }
   }
 }

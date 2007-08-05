@@ -9,6 +9,7 @@ namespace image {
     friend class gl::GLTexture;
   
     int m_width, m_height;
+    std::string m_filename;
     corona::Image * m_image;
     weak_ptr<gl::GLTexture> m_texture;
     shared_ptr<gl::GLTexture> m_ownedTexture;
@@ -32,6 +33,8 @@ namespace image {
 
     int getWidth() const;
     int getHeight() const;
+    const std::string & getFilename() const;
+    void setFilename(const char * newFilename);
     void * getData() const;
   };
   

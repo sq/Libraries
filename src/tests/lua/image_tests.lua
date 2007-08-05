@@ -3,6 +3,7 @@ function test_image_load()
     
     checkEqual(96, im.width)
     checkEqual(96, im.height)
+    checkEqual("..\\res\\tests\\test.jpg", im.filename)
 end
 
 function test_image_create()
@@ -10,6 +11,14 @@ function test_image_create()
     
     checkEqual(32, im.width)
     checkEqual(32, im.height)
+    checkEqual("", im.filename)
+end
+
+function test_image_setFilename()
+    im = Image(32, 32)
+    
+    im.filename = "test"
+    checkEqual("test", im.filename)
 end
 
 function im_getPixel(x, y)

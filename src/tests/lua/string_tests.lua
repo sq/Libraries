@@ -49,3 +49,9 @@ function test_str_compare()
     checkEqual(1, c:compare(b))
     checkEqual(0, a:compare(a))
 end
+
+function test_str_trim()
+    local s = "  hello, world!  "
+    local r = s:trim()
+    checkEqual("hello, world!", r)
+end

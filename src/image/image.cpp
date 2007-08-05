@@ -21,6 +21,7 @@ _CLASS_WRAP(Image, shared_ptr<Image>)
 
   _PROPERTY_R(width, getWidth)
   _PROPERTY_R(height, getHeight)
+  _PROPERTY_RW(filename, getFilename, setFilename)
 _END_CLASS
 
 _CLASS_WRAP(ImageList, shared_ptr<ImageList>)
@@ -57,7 +58,9 @@ void registerNamespace(shared_ptr<script::Context> context) {
 
 namespace image {
 
-Image::Image(const char * filename) {
+Image::Image(const char * filename) :
+  m_filename(filename)
+{
   m_image = corona::OpenImage(filename, corona::PF_R8G8B8A8);
   if (!m_image) {
     char buffer[512];
@@ -159,6 +162,14 @@ int Image::getWidth() const {
 
 int Image::getHeight() const {
   return m_height;
+}
+
+const std::string & Image::getFilename() const {
+  return m_filename;
+}
+
+void Image::setFilename(const char * newFilename) {
+  m_filename = std::string(newFilename);
 }
 
 void * Image::getData() const {

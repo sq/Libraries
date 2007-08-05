@@ -46,11 +46,20 @@ function test_il_clear()
     checkEqual(0, il.count)
 end
 
-function test_il_constructFromTable()
+function test_il_constructFromImages()
     images = {Image(32, 32), Image(32, 32), Image(32, 32)}
     il = ImageList(images)
     
     checkEqual(tostring(images[1]), tostring(il(1)))
     checkEqual(tostring(images[2]), tostring(il(2)))
     checkEqual(tostring(images[3]), tostring(il(3)))
+end
+
+function test_il_constructFromFilenames()
+    filenames = {"..\\res\\tests\\test.jpg", "..\\res\\tests\\test.png", "..\\res\\tests\\test.gif"}
+    il = ImageList(filenames)
+    
+    checkEqual("..\\res\\tests\\test.jpg", il(1).filename)
+    checkEqual("..\\res\\tests\\test.png", il(2).filename)
+    checkEqual("..\\res\\tests\\test.gif", il(3).filename)
 end

@@ -139,6 +139,22 @@ int string_compare(lua_State * L) {
   return 1;
 }
 
+int string_trim(lua_State * L) {
+  int argc = lua_gettop(L);  
+  
+  if (argc < 1) {
+    lua_pushstring(L, "string:trim expected (self)");
+    lua_error(L);
+    return 0;
+  }
+
+  std::string input(lua_tostring(L, 1));
+  
+  lua_pushstring(L, boost::algorithm::trim_copy(input).c_str());
+  
+  return 1;
+}
+
 void registerStringExtensions(shared_ptr<Context> context) {
   context->registerFunction("string.toBase64", string_toBase64);
   context->registerFunction("string.fromBase64", string_fromBase64);
@@ -146,6 +162,7 @@ void registerStringExtensions(shared_ptr<Context> context) {
   context->registerFunction("string.startsWith", string_startsWith);
   context->registerFunction("string.endsWith", string_endsWith);
   context->registerFunction("string.compare", string_compare);
+  context->registerFunction("string.trim", string_trim);
 }
 
 }
