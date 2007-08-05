@@ -46,9 +46,11 @@ void tailCall(TailCall * call) {
 }
 
 void registerStringExtensions(shared_ptr<Context> context);
+void registerAriesExtensions(shared_ptr<Context> context);
 
 void registerNamespaces(shared_ptr<Context> context) {
   registerStringExtensions(context);
+  registerAriesExtensions(context);
 
   wm::registerNamespace(context);
   gl::registerNamespace(context);

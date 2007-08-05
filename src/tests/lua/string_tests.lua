@@ -10,6 +10,32 @@ function test_str_fromBase64()
     checkEqual("test", s)
 end
 
+function test_aries_save()
+    local t = { a={ "1", "2", "3" }, b="4", c={ ca="1", cb="2" } }
+    local s = aries.save(t, "test")
+    local se = 
+[[(test 
+	(a 
+		'1'
+		'2'
+		'3'
+	)
+	(c 
+		(ca '1')
+		(cb '2')
+	)
+	(b '4')
+)]]
+    checkEqual(se, s)
+end
+
+function test_aries_load()
+    local s = "(test (a '1' '2' '3') (b '4') (c (ca '1') (cb '2') ) )"
+    local t, n = aries.load(s)
+    checkEqual({ a={ "1", "2", "3" }, b="4", c={ ca="1", cb="2" } }, t)
+    checkEqual("test", n)
+end
+
 function test_str_split()
     local s = "one,two,three"
     local r = s:split(",")

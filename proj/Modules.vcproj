@@ -155,6 +155,28 @@
 				Name="script"
 				>
 				<File
+					RelativePath="..\src\script\aries.cpp"
+					>
+					<FileConfiguration
+						Name="Debug|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							ObjectFile="$(IntDir)\$(InputName)1.obj"
+							XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="Release|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							ObjectFile="$(IntDir)\$(InputName)1.obj"
+							XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
 					RelativePath="..\src\script\context.cpp"
 					>
 				</File>
@@ -233,6 +255,14 @@
 					>
 					<File
 						RelativePath="..\ext\base64\base64.cpp"
+						>
+					</File>
+				</Filter>
+				<Filter
+					Name="aries"
+					>
+					<File
+						RelativePath="..\ext\aries\aries.cpp"
 						>
 					</File>
 				</Filter>
@@ -327,6 +357,14 @@
 					>
 					<File
 						RelativePath="..\ext\base64\base64.h"
+						>
+					</File>
+				</Filter>
+				<Filter
+					Name="aries"
+					>
+					<File
+						RelativePath="..\ext\aries\aries.h"
 						>
 					</File>
 				</Filter>
