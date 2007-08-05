@@ -41,6 +41,12 @@ _END_CLASS
 
 namespace image {
 
+shared_ptr<Image> g_noneImage(new Image(0, 0));
+
+shared_ptr<Image> getNone() {
+  return g_noneImage;
+}
+
 void registerNamespace(shared_ptr<script::Context> context) {
   /*
   module(context->getContext(), "image") [
@@ -52,6 +58,10 @@ void registerNamespace(shared_ptr<script::Context> context) {
   
   context->registerClass<ImageList>();
   context->registerHolder<ImageList, weak_ptr<ImageList>>();
+  
+  if (script::getObjectType(context->getGlobal("image")) != LUA_TTABLE)
+    context->setGlobal("image", luabind::newtable(context->getContext()));
+  context->setGlobal("image.none", g_noneImage);
 }
 
 }
@@ -178,7 +188,11 @@ void * Image::getData() const {
 
 std::string Image::toString() const {
   std::stringstream buf;
-  buf << "<Image:" << core::ptrToString(this) << ">";
+  if ((m_width == 0) && (m_height == 0)) {
+    buf << "<Image:none>";
+  } else {
+    buf << "<Image:" << core::ptrToString(this) << ">";
+  }
   return buf.str();
 }
 

@@ -40,8 +40,6 @@ namespace image {
   
   class ImageList : public enable_shared_from_this<ImageList> {
     typedef vector<shared_ptr<Image>> TImages;
-    
-    // void postConstruct(script::Context * context);
   
     TImages m_images;
     
@@ -58,12 +56,11 @@ namespace image {
     TImages::iterator at(int index);
     shared_ptr<Image> getImage(int index);
     
-    // script::Object indexHandler(script::Object key);
-    
     int getCount() const;    
     string toString() const;    
   };
   
+  shared_ptr<Image> getNone();
   void registerNamespace(shared_ptr<script::Context> context);
   
 }

@@ -57,31 +57,39 @@
     };
   
 namespace luabind {
-    template<class T>
-    T* get_pointer(boost::shared_ptr<T>& p) 
-    {
-        return p.get(); 
-    }
+  template<class T>
+  T* get_pointer(boost::shared_ptr<T>& p) 
+  {
+    T* result = p.get();
+    if (result)
+      return result;
+    else
+      throw std::exception("null reference");
+  }
 
-    template<class A>
-    boost::shared_ptr<const A>* 
-    get_const_holder(boost::shared_ptr<A>*)
-    {
-        return 0;
-    }
+  template<class A>
+  boost::shared_ptr<const A>* 
+  get_const_holder(boost::shared_ptr<A>*)
+  {
+    return 0;
+  }
 
-    template<class T>
-    T* get_pointer(boost::weak_ptr<T>& p) 
-    {
-        return p.lock().get(); 
-    }
+  template<class T>
+  T* get_pointer(boost::weak_ptr<T>& p) 
+  {
+    T* result = p.lock().get();
+    if (result)
+      return result;
+    else
+      throw std::exception("null reference");
+  }
 
-    template<class A>
-    boost::weak_ptr<const A>* 
-    get_const_holder(boost::weak_ptr<A>*)
-    {
-        return 0;
-    }
+  template<class A>
+  boost::weak_ptr<const A>* 
+  get_const_holder(boost::weak_ptr<A>*)
+  {
+    return 0;
+  }
 }
   
 template <class name> struct classRegistrar {

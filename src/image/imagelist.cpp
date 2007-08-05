@@ -8,18 +8,6 @@ using namespace image;
 namespace image {
 
 ImageList::ImageList() {
-  /*
-  struct PostConstructTailCall : public script::TailCall {
-    ImageList * m_this;
-    
-    PostConstructTailCall(ImageList * _this) : m_this(_this) {}
-    void invoke(script::Context * context) {
-      m_this->postConstruct(context);
-    }  
-  };
-  
-  script::tailCall(new PostConstructTailCall(this));
-  */
 }
 
 ImageList::ImageList(script::Object images) {
@@ -48,31 +36,6 @@ ImageList::ImageList(script::Object images) {
 ImageList::~ImageList() {
 }
 
-/*
-script::Object ImageList::indexHandler(script::Object key) {
-  if (script::getObjectType(key) == LUA_TNUMBER) {
-    int i = script::castObject<int>(key);
-    script::Object result = script::getObject(getImage(i));
-    return result;
-  } else {
-    shared_ptr<ImageList> _this = shared_from_this();
-    script::Object metatable = script::getObjectMetatable(_this);
-    script::Object defaultHandler = metatable["__luabind_index"];
-    return defaultHandler(_this, key);
-  }
-}
-
-void ImageList::postConstruct(script::Context * context) {
-  script::Object metatable = script::getObjectMetatable(shared_from_this());
-  script::Object alreadyOverloaded = metatable["__luabind_index"];
-  if (script::getObjectType(alreadyOverloaded) == LUA_TFUNCTION)
-    return;
-  script::Object old_handler = metatable["__index"];
-  metatable["__luabind_index"] = old_handler;
-  metatable["__index"] = script::getObjectMember(shared_from_this(), "indexHandler");
-}
-*/
-
 int ImageList::add(shared_ptr<Image> value) {
   int pos = (int)m_images.size();
   m_images.push_back(value);
@@ -80,7 +43,12 @@ int ImageList::add(shared_ptr<Image> value) {
 }
 
 void ImageList::insert(int index, shared_ptr<Image> value) {
-  m_images.insert(at(index), value);
+  if (index > (int)m_images.size()) {
+    m_images.resize(index - 1);
+    m_images.push_back(value);
+  } else {
+    m_images.insert(at(index), value);
+  }
 }
 
 void ImageList::remove(int index) {
@@ -99,7 +67,10 @@ ImageList::TImages::iterator ImageList::at(int index) {
 
 shared_ptr<Image> ImageList::getImage(int index) {
   TImages::iterator iter = at(index);
-  return *iter;
+  if ((*iter).get())
+    return *iter;
+  else
+    return image::getNone();
 }
 
 int ImageList::getCount() const {

@@ -33,6 +33,20 @@ function test_il_insert()
     checkEqual(tostring(im1), tostring(il(2)))
 end
 
+function test_il_insert_append()
+    il = ImageList()
+    im1 = Image(32, 32)
+    im2 = Image(48, 48)
+    
+    il:insert(3, im1)
+    il:insert(6, im2)
+    
+    checkEqual(tostring(image.none), tostring(il(1)))
+    checkEqual(tostring(im1), tostring(il(3)))
+    checkEqual(tostring(image.none), tostring(il(5)))
+    checkEqual(tostring(im2), tostring(il(6)))
+end
+
 function test_il_clear()
     il = ImageList()
     il:add(Image(32, 32))
