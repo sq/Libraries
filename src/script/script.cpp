@@ -51,6 +51,8 @@ void registerAriesExtensions(shared_ptr<Context> context);
 void registerNamespaces(shared_ptr<Context> context) {
   registerStringExtensions(context);
   registerAriesExtensions(context);
+  
+  context->setGlobal("os.exit", Object());
 
   wm::registerNamespace(context);
   gl::registerNamespace(context);
