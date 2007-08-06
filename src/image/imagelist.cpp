@@ -38,14 +38,22 @@ ImageList::~ImageList() {
 }
 
 int ImageList::add(ImageList::TItem value) {
-  script::castObject<TRawItem>(value);
+  try {
+    script::castObject<TRawItem>(value);
+  } catch (luabind::cast_failed ex) {
+    throw std::exception("ImageLists can only contain Images");
+  }
   int pos = (int)m_images.size();
   m_images.push_back(value);
   return pos;
 }
 
 void ImageList::insert(int index, ImageList::TItem value) {
-  script::castObject<TRawItem>(value);
+  try {
+    script::castObject<TRawItem>(value);
+  } catch (luabind::cast_failed ex) {
+    throw std::exception("ImageLists can only contain Images");
+  }
   if (index > (int)m_images.size()) {
     m_images.resize(index - 1);
     m_images.push_back(value);
@@ -71,10 +79,7 @@ ImageList::TImages::iterator ImageList::at(int index) {
 ImageList::TItem ImageList::getImage(int index) {
   TImages::iterator iter = at(index);
   TItem item = *iter;
-  if (item && script::getObjectType(item) == LUA_TUSERDATA)
-    return *iter;
-  else
-    return script::Object();
+  return item;
 }
 
 int ImageList::getCount() const {

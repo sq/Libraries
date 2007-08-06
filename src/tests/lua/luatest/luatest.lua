@@ -61,3 +61,14 @@ function checkNotEqual(expected, actual)
         failure("Expected something other than " .. luatest.tostring(expected) .. "", 2)
     end
 end
+
+function checkError(expected, fn)
+    success, errmsg = pcall(fn)
+    if not success then
+        if not luatest.equality(expected, errmsg) then
+            failure("Expected error " .. luatest.tostring(expected) .. ", got " .. luatest.tostring(errmsg) .. "", 2)
+        end
+    else
+        failure("Expected error " .. luatest.tostring(expected) .. "", 2)
+    end
+end

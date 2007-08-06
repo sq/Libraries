@@ -87,3 +87,12 @@ function test_il_storeAttributes()
     checkEqual(32, il(1).attr)
     checkEqual(24, il(2).attr)
 end
+
+function test_il_typeSafety()
+    il = ImageList()
+    il:add(Image(32, 32))
+    il:add(nil)
+    checkError("ImageLists can only contain Images", function() il:add("test") end)
+    checkError("ImageLists can only contain Images", function() il:add(5) end)
+    checkError("ImageLists can only contain Images", function() il:add({}) end)
+end
