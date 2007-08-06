@@ -13,7 +13,8 @@ eps_OpenGLContext * g_currentContext = 0;
 
 GLContext::GLContext(wm::Window * parent, eps_OpenGLContext * handle) :
   m_parent(parent),
-  m_handle(handle)
+  m_handle(handle),
+  m_state()
 {
   gl::initialize();
   
@@ -127,14 +128,18 @@ void GLContext::removeTexture(GLTexture * texture) {
 
 void GLContext::bindTexture(int stage, GLTexture * texture) {
   glActiveTextureARB(GL_TEXTURE0_ARB + stage);
+  if (m_state.textures[stage] == texture)
+    return;
   if (texture) {
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, texture->getHandle());
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    m_state.textures[stage] = texture;
   } else {
     glDisable(GL_TEXTURE_2D);
+    m_state.textures[stage] = 0;
   }
 }
 

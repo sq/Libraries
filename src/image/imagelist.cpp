@@ -21,12 +21,13 @@ ImageList::ImageList(script::Object images) {
     Object item = *iter;
     try {
       shared_ptr<Image> image = castObject<shared_ptr<Image>>(item);
-      add(image);
+      add(item);
     } catch (...) {
       try {
         std::string filename = castObject<std::string>(item);
         shared_ptr<Image> image(new Image(filename.c_str()));
-        add(image);
+        script::Object new_item(images.interpreter(), image);
+        add(new_item);
       } catch (...) {
       }
     }
@@ -36,13 +37,15 @@ ImageList::ImageList(script::Object images) {
 ImageList::~ImageList() {
 }
 
-int ImageList::add(shared_ptr<Image> value) {
+int ImageList::add(ImageList::TItem value) {
+  script::castObject<TRawItem>(value);
   int pos = (int)m_images.size();
   m_images.push_back(value);
   return pos;
 }
 
-void ImageList::insert(int index, shared_ptr<Image> value) {
+void ImageList::insert(int index, ImageList::TItem value) {
+  script::castObject<TRawItem>(value);
   if (index > (int)m_images.size()) {
     m_images.resize(index - 1);
     m_images.push_back(value);
@@ -65,12 +68,13 @@ ImageList::TImages::iterator ImageList::at(int index) {
   return m_images.begin() + (index - 1);
 }
 
-shared_ptr<Image> ImageList::getImage(int index) {
+ImageList::TItem ImageList::getImage(int index) {
   TImages::iterator iter = at(index);
-  if ((*iter).get())
+  TItem item = *iter;
+  if (item && script::getObjectType(item) == LUA_TUSERDATA)
     return *iter;
   else
-    return image::getNone();
+    return script::Object();
 }
 
 int ImageList::getCount() const {

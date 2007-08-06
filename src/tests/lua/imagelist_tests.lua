@@ -41,9 +41,9 @@ function test_il_insert_append()
     il:insert(3, im1)
     il:insert(6, im2)
     
-    checkEqual(tostring(image.none), tostring(il(1)))
+    checkEqual(nil, il(1))
     checkEqual(tostring(im1), tostring(il(3)))
-    checkEqual(tostring(image.none), tostring(il(5)))
+    checkEqual(nil, il(5))
     checkEqual(tostring(im2), tostring(il(6)))
 end
 
@@ -76,4 +76,14 @@ function test_il_constructFromFilenames()
     checkEqual("..\\res\\tests\\test.jpg", il(1).filename)
     checkEqual("..\\res\\tests\\test.png", il(2).filename)
     checkEqual("..\\res\\tests\\test.gif", il(3).filename)
+end
+
+function test_il_storeAttributes()
+    il = ImageList()
+    il:add(Image(32, 32))
+    il:add(Image(24, 24))
+    il(1).attr = 32
+    il(2).attr = 24
+    checkEqual(32, il(1).attr)
+    checkEqual(24, il(2).attr)
 end

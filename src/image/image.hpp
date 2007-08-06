@@ -39,7 +39,9 @@ namespace image {
   };
   
   class ImageList : public enable_shared_from_this<ImageList> {
-    typedef vector<shared_ptr<Image>> TImages;
+    typedef script::Object TItem;
+    typedef shared_ptr<Image> TRawItem;
+    typedef vector<TItem> TImages;
   
     TImages m_images;
     
@@ -49,12 +51,12 @@ namespace image {
     
     ~ImageList();
     
-    int add(shared_ptr<Image> value);
-    void insert(int position, shared_ptr<Image> value);
+    int add(TItem value);
+    void insert(int position, TItem value);
     void remove(int index);
     void clear();
     TImages::iterator at(int index);
-    shared_ptr<Image> getImage(int index);
+    TItem getImage(int index);
     
     int getCount() const;    
     string toString() const;    

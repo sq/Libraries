@@ -143,7 +143,6 @@ static void pack(Object & from, DataNode * to) {
       } break;
       
       default: {
-        throw std::exception("aries only supports storing strings, tables, booleans, and numbers");
       } break;
     }
     

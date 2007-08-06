@@ -4,12 +4,23 @@
 #include "libs.hpp"
 
 namespace gl {
+
+  struct GLState {
+    GLTexture * textures[8];
+    GLenum drawMode;
+    
+    GLState() {
+      memset(textures, 0, sizeof(textures));
+      drawMode = 0;
+    }
+  };
   
   class GLContext : public enable_shared_from_this<GLContext> {
     friend class gl::GLTexture;
   
     wm::Window * m_parent;
     eps_OpenGLContext * m_handle;
+    GLState m_state;
     
     std::vector<weak_ptr<GLTexture>> m_textures;
     
