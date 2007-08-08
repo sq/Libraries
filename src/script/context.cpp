@@ -17,11 +17,11 @@ LuaContext::LuaContext() :
   luaL_openlibs(m_state);
   luabind::open(m_state);
   g_activeContext = m_state;
-  lua_sethook(m_state, LuaContextHook, LUA_MASKCALL | LUA_MASKRET, 0);
+  lua_sethook(m_state, LuaContextHook, LUA_MASKCALL, 0);
 }
 
 LuaContext::~LuaContext() {
-  lua_sethook(m_state, 0, 0, 0);
+  lua_sethook(m_state, LuaContextHook, 0, 0);
   if (g_activeContext == m_state)
     g_activeContext = 0;
 

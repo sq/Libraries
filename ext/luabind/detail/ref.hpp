@@ -70,7 +70,7 @@ namespace luabind { namespace detail
 			set(r.state());
 		}
 
-		bool is_valid() const
+		inline bool is_valid() const
 		{ return m_ref != LUA_NOREF; }
 
 		void set(lua_State* L_)

@@ -12,8 +12,7 @@ function gl_tearDown()
 end
 
 function gl_getPixel(x, y)
-    local r, g, b, a = g:getPixel(x, y)
-    return {r, g, b, a}
+    return {g:getPixel(x, y)}
 end
 
 function wait()

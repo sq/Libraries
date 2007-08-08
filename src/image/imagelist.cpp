@@ -77,9 +77,9 @@ ImageList::TImages::iterator ImageList::at(int index) {
 }
 
 ImageList::TItem ImageList::getImage(int index) {
-  TImages::iterator iter = at(index);
-  TItem item = *iter;
-  return item;
+  if ((index < 1) || (index > (int)m_images.size()))
+    throw std::exception("1 >= index < count");
+  return m_images[index - 1];
 }
 
 int ImageList::getCount() const {

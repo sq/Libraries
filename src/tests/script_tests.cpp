@@ -556,3 +556,23 @@ SUITE(TailCall) {
     CHECK_EQUAL(5, last_tail_call);
  }
 }
+
+SUITE(CharacterizeLua) {
+  TEST(StringPointerUniqueness) {
+    #pragma warning(disable : 4311)
+    shared_ptr<Context> sc(new Context());
+    
+    sc->executeScript("a = 'test'; b = 'test'; c = 'foo'; d = 'foo'");
+    sc->getGlobal("a").push(sc->getContext());
+    const char * a = lua_tostring(sc->getContext(), -1);
+    sc->getGlobal("b").push(sc->getContext());
+    const char * b = lua_tostring(sc->getContext(), -1);
+    sc->getGlobal("c").push(sc->getContext());
+    const char * c = lua_tostring(sc->getContext(), -1);
+    sc->getGlobal("d").push(sc->getContext());
+    const char * d = lua_tostring(sc->getContext(), -1);
+    
+    CHECK_EQUAL((unsigned)a, (unsigned)b);
+    CHECK_EQUAL((unsigned)c, (unsigned)d);
+  }
+}

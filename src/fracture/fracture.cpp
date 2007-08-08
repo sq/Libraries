@@ -25,6 +25,14 @@ int main (int argc, const char * argv[]) {
   script::registerNamespaces(sc);
   
   std::stringstream buffer;
+  
+  for (int i = 1; i < argc; i++) {
+    try {
+      sc->executeScript(argv[i]);
+    } catch (std::exception ex) {
+      cout << "! " << ex.what() << "\n";
+    }
+  }
 
   char linebuf[1024];
   

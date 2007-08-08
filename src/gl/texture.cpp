@@ -115,6 +115,8 @@ void GLTexture::upload(image::Image * image) {
   context->makeCurrent();
   int w = image->getWidth();
   int h = image->getHeight();
+  if ((w < 1) || (h < 1))
+    return;
   int tw = core::powerOfTwo(w);
   int th = core::powerOfTwo(h);
   m_width = w;

@@ -258,7 +258,7 @@ int luabind::detail::class_rep::gettable(lua_State* L)
 #endif
 
 	// special case to see if this is a null-pointer
-	if (keystr && !std::strcmp(keystr, "__ok"))
+	if (keystr && (keylen == 4) && (std::strcmp(keystr, "__ok") == 0))
 	{
 		class_rep* crep = obj->crep();
 

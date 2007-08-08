@@ -3,6 +3,8 @@
 #include <gl\gl.hpp>
 #include <image\image.hpp>
 
+#include <windows.h>
+
 using namespace image;
 
 _CLASS_WRAP(Image, shared_ptr<Image>)
@@ -47,11 +49,110 @@ shared_ptr<Image> getNone() {
   return g_noneImage;
 }
 
+void getFont(HDC & dc, HFONT & font, const char * fontName, double fontSize) {
+  HDC desktopDc;
+  HWND desktopWindow = GetDesktopWindow();
+  desktopDc = GetDC(desktopWindow);
+  dc = CreateCompatibleDC(desktopDc);
+  ReleaseDC(desktopWindow, desktopDc);
+  int fontHeight = (int)-ceil((fontSize * GetDeviceCaps(dc, LOGPIXELSY)) / 72.0f);
+  font = CreateFontA(fontHeight, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, fontName);
+  SelectObject(dc, font);
+}
+
+script::Object font_getMetrics(const char * fontName, double fontSize) {
+  script::Object result = luabind::newtable(script::getActiveContext()->getContext());
+  HDC dc;
+  HFONT font;
+  getFont(dc, font, fontName, fontSize);
+  TEXTMETRIC textmetrics;
+  memset(&textmetrics, 0, sizeof(textmetrics));
+  GetTextMetrics(dc, &textmetrics);
+  DeleteObject(font);
+  DeleteDC(dc);
+  
+  result["ascent"] = textmetrics.tmAscent;
+  result["averageCharWidth"] = textmetrics.tmAveCharWidth;
+  result["breakChar"] = (int)textmetrics.tmBreakChar;
+  result["charSet"] = (int)textmetrics.tmCharSet;
+  result["defaultChar"] = (int)textmetrics.tmDefaultChar;
+  result["descent"] = textmetrics.tmDescent;
+  result["digitizedAspectX"] = textmetrics.tmDigitizedAspectX;
+  result["digitizedAspectY"] = textmetrics.tmDigitizedAspectY;
+  result["externalLeading"] = textmetrics.tmExternalLeading;
+  result["firstChar"] = (int)textmetrics.tmFirstChar;
+  result["height"] = textmetrics.tmHeight;
+  result["internalLeading"] = textmetrics.tmInternalLeading;
+  result["italic"] = (bool)textmetrics.tmItalic;
+  result["lastChar"] = (int)textmetrics.tmLastChar;
+  result["maxCharWidth"] = textmetrics.tmMaxCharWidth;
+  result["overhang"] = textmetrics.tmOverhang;
+  result["struckOut"] = (bool)textmetrics.tmStruckOut;
+  result["underlined"] = (bool)textmetrics.tmUnderlined;
+  result["weight"] = textmetrics.tmWeight;
+  
+  return result;
+}
+
+script::Object font_getCharacter(const char * character, const char * fontName, double fontSize) {
+  script::Object result;
+  HDC dc;
+  HFONT font;
+  getFont(dc, font, fontName, fontSize);
+  
+  GLYPHMETRICS metrics;
+  MAT2 transform;
+  memset(&metrics, 0, sizeof(metrics));
+  memset(&transform, 0, sizeof(transform));
+  transform.eM11.value = 1;
+  transform.eM22.value = 1;
+  // fetch metrics
+  GetGlyphOutline(dc, character[0], GGO_METRICS, &metrics, sizeof(metrics), 0, &transform);
+  // fetch size of glyph bitmap
+  unsigned size = GetGlyphOutline(dc, character[0], GGO_GRAY8_BITMAP, &metrics, 0, 0, &transform);
+  if (size) {
+    unsigned char * data = new unsigned char[size];
+    memset(data, 0, sizeof(data));
+    GetGlyphOutline(dc, character[0], GGO_GRAY8_BITMAP, &metrics, size, data, &transform);
+    unsigned width = ((metrics.gmBlackBoxX + 3) / 4) * 4;
+    unsigned height = (size / width);
+    shared_ptr<Image> img(new Image(width, height));
+    unsigned char * out = (unsigned char *)img->getData();
+    unsigned char * in = data;
+    for (unsigned y = 0; y < height; y++) {
+      for (unsigned x = 0; x < width; x++) {
+        out[0] = out[1] = out[2] = 255;
+        out[3] = (*in) * 255 / 65;
+        in += 1;
+        out += 4;
+      }
+    }
+    delete[] data;
+    result = script::Object(script::getActiveContext()->getContext(), img);
+  } else {
+    shared_ptr<Image> img(new Image(0, 0));
+    result = script::Object(script::getActiveContext()->getContext(), img);
+  }
+  script::Object _metrics = luabind::newtable(script::getActiveContext()->getContext());
+  _metrics["blackBoxX"] = metrics.gmBlackBoxX;
+  _metrics["blackBoxY"] = metrics.gmBlackBoxY;
+  _metrics["cellIncX"] = metrics.gmCellIncX;
+  _metrics["cellIncY"] = metrics.gmCellIncY;
+  _metrics["glyphOriginX"] = metrics.gmptGlyphOrigin.x;
+  _metrics["glyphOriginY"] = metrics.gmptGlyphOrigin.y;
+  result["character"] = character;
+  result["metrics"] = _metrics;
+  
+  DeleteObject(font);
+  DeleteDC(dc);
+  return result;
+}
+
 void registerNamespace(shared_ptr<script::Context> context) {
-  /*
-  module(context->getContext(), "image") [
+  luabind::module(context->getContext(), "font") [
+    luabind::def("getCharacter", font_getCharacter),
+    luabind::def("getMetrics", font_getMetrics)
   ];
-  */
 
   context->registerClass<Image>();
   context->registerHolder<Image, weak_ptr<Image>>();

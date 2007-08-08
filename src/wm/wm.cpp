@@ -60,14 +60,6 @@ void uninitialize() {
     eps_wm_shutDown();
 }
 
-unsigned now() {
-  LARGE_INTEGER freq, time;
-  QueryPerformanceFrequency(&freq);
-  QueryPerformanceCounter(&time);
-  long long result = (time.QuadPart * 100000 / freq.QuadPart) % ((unsigned)0xFFFFFFFF);
-  return (unsigned)result;
-}
-
 unsigned getPollingTimeout() {
   return g_pollingTimeout;
 }
@@ -102,7 +94,6 @@ bool poll(bool wait) {
 
 void registerNamespace(shared_ptr<script::Context> context) {
   module(context->getContext(), "wm") [
-    def("now", &now),
     def("poll", &poll),
     def("getPollingTimeout", &getPollingTimeout),
     def("setPollingTimeout", &setPollingTimeout)

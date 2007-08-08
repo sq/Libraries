@@ -14,19 +14,18 @@ std::list<TailCall *> g_tailCalls;
 
 void LuaContextHook(lua_State * L, lua_Debug * ar) {
   g_activeContext = L;
-  Context * context = g_contextMap[L];
-  
   switch (ar->event) {
-    case LUA_HOOKCALL:
-    break;
     case LUA_HOOKRET:
-      while (g_tailCalls.size()) {
-        TailCall * call = g_tailCalls.back();
-        g_tailCalls.pop_back();
-        call->invoke(context);
-        delete call;
+      if (g_tailCalls.size()) {
+        Context * context = g_contextMap[g_activeContext];
+        while (g_tailCalls.size()) {
+          TailCall * call = g_tailCalls.back();
+          g_tailCalls.pop_back();
+          call->invoke(context);
+          delete call;
+        }
       }
-//      lua_sethook(g_activeContext, 0, 0, 0);
+      lua_sethook(g_activeContext, LuaContextHook, LUA_MASKCALL, 0);
     break;
   }
 }
@@ -40,7 +39,7 @@ Context * getActiveContext() {
 
 void tailCall(TailCall * call) {
   if (g_activeContext) {
-//    lua_sethook(g_activeContext, LuaContextHook, LUA_MASKCALL | LUA_MASKRET, 0);
+    lua_sethook(g_activeContext, LuaContextHook, LUA_MASKCALL | LUA_MASKRET, 0);
     g_tailCalls.push_back(call);
   }
 }
@@ -48,10 +47,24 @@ void tailCall(TailCall * call) {
 void registerStringExtensions(shared_ptr<Context> context);
 void registerAriesExtensions(shared_ptr<Context> context);
 
+LARGE_INTEGER g_timeStart;
+
+int clock(lua_State * L) {
+  LARGE_INTEGER freq, time;
+  QueryPerformanceFrequency(&freq);
+  QueryPerformanceCounter(&time);
+  time.QuadPart -= g_timeStart.QuadPart;
+  long long result = (time.QuadPart * 100000 / freq.QuadPart) % ((unsigned)0xFFFFFFFF);
+  lua_pushnumber(L, ((double)result / 100000.0));
+  return 1;
+}
+
 void registerNamespaces(shared_ptr<Context> context) {
   registerStringExtensions(context);
   registerAriesExtensions(context);
   
+  QueryPerformanceCounter(&g_timeStart);
+  context->registerFunction("os.clock", clock);
   context->setGlobal("os.exit", Object());
 
   wm::registerNamespace(context);
