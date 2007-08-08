@@ -56,7 +56,7 @@ void getFont(HDC & dc, HFONT & font, const char * fontName, double fontSize) {
   dc = CreateCompatibleDC(desktopDc);
   ReleaseDC(desktopWindow, desktopDc);
   int fontHeight = (int)-ceil((fontSize * GetDeviceCaps(dc, LOGPIXELSY)) / 72.0f);
-  font = CreateFontA(fontHeight, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, fontName);
+  font = CreateFontA(fontHeight, 0, 0, 0, 0, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, fontName);
   SelectObject(dc, font);
 }
 
@@ -94,7 +94,7 @@ script::Object font_getMetrics(const char * fontName, double fontSize) {
   return result;
 }
 
-script::Object font_getCharacter(const char * character, const char * fontName, double fontSize) {
+script::Object font_getCharacter(int character, const char * fontName, double fontSize) {
   script::Object result;
   HDC dc;
   HFONT font;
@@ -107,13 +107,13 @@ script::Object font_getCharacter(const char * character, const char * fontName, 
   transform.eM11.value = 1;
   transform.eM22.value = 1;
   // fetch metrics
-  GetGlyphOutline(dc, character[0], GGO_METRICS, &metrics, sizeof(metrics), 0, &transform);
+  GetGlyphOutline(dc, character, GGO_METRICS, &metrics, sizeof(metrics), 0, &transform);
   // fetch size of glyph bitmap
-  unsigned size = GetGlyphOutline(dc, character[0], GGO_GRAY8_BITMAP, &metrics, 0, 0, &transform);
+  unsigned size = GetGlyphOutline(dc, character, GGO_GRAY8_BITMAP, &metrics, 0, 0, &transform);
   if (size) {
     unsigned char * data = new unsigned char[size];
     memset(data, 0, sizeof(data));
-    GetGlyphOutline(dc, character[0], GGO_GRAY8_BITMAP, &metrics, size, data, &transform);
+    GetGlyphOutline(dc, character, GGO_GRAY8_BITMAP, &metrics, size, data, &transform);
     unsigned width = ((metrics.gmBlackBoxX + 3) / 4) * 4;
     unsigned height = (size / width);
     shared_ptr<Image> img(new Image(width, height));

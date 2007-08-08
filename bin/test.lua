@@ -1,13 +1,12 @@
 function Font(name, size)
-    -- result = ImageList()
     result = {}
     result.metrics = font.getMetrics(name, size)
+    result.metrics.firstChar = math.max(32, result.metrics.firstChar)
     result.metrics.lastChar = math.min(255, result.metrics.lastChar)
     result.characters = {}
     for c = result.metrics.firstChar,result.metrics.lastChar do
-        local ch = font.getCharacter(string.char(c), name, size)
+        local ch = font.getCharacter(c, name, size)
         result.characters[c] = ch
-        -- result:insert(c, ch)
     end
     return result
 end
@@ -16,7 +15,6 @@ function drawString(context, font, text, x, y)
     local init_x = x
     for c = 1,#text do
         local ch = text:byte(c)
-        -- local i = font(ch)
         local i = font.characters[ch]
         if i then
             local cx = x + i.metrics.glyphOriginX
@@ -40,14 +38,14 @@ function runTest()
     fps = 0
     next_fps = 0
     t_lastframe = 0
-    f = Font("Tahoma", 9)
+    f = Font("Consolas", 10)
     w.onClose = function ()
         quit()
     end
     w.onTick = function (absolute, elapsed)
         local t_start = os.clock()
         gr:clear()
-        drawString(gr, f, fps .. " FPS / " .. t_lastframe .. "uS/f", 0, 0)
+        drawString(gr, f, fps .. " FPS / " .. t_lastframe .. "µS/f", 0, 0)
         local mx, my = w:getMouseState()
         drawString(gr, f, "mouse @ " .. mx .. ", " .. my, 0, f.metrics.height)
         drawString(gr, f, [[The quick brown fox
