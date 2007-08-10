@@ -58,3 +58,12 @@ function test_lua_apply()
         )
     )
 end
+
+function test_sleep()
+    local t_start = os.clock()
+    os.sleep(0.1)
+    check(os.clock() > (t_start + 0.1))
+    t_start = os.clock()
+    os.sleep(0.2)
+    check(os.clock() > (t_start + 0.2))
+end

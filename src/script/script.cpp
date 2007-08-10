@@ -50,14 +50,28 @@ void registerAriesExtensions(shared_ptr<Context> context);
 
 LARGE_INTEGER g_timeStart;
 
-int clock(lua_State * L) {
+long long _clock() {
   LARGE_INTEGER freq, time;
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&time);
   time.QuadPart -= g_timeStart.QuadPart;
   long long result = (time.QuadPart * 100000 / freq.QuadPart) % ((unsigned)0xFFFFFFFF);
+  return result;
+}
+
+int clock(lua_State * L) {
+  long long result = _clock();
   lua_pushnumber(L, ((double)result / 100000.0));
   return 1;
+}
+
+int sleep(lua_State * L) {
+  double duration = lua_tonumber(L, 1);
+  long long start = _clock();
+  long long end = start + ((long long)ceil(duration * 100000.0));
+  while (_clock() < end)
+    Sleep(1);
+  return 0;
 }
 
 void registerNamespaces(shared_ptr<Context> context) {
@@ -67,6 +81,7 @@ void registerNamespaces(shared_ptr<Context> context) {
   
   QueryPerformanceCounter(&g_timeStart);
   context->registerFunction("os.clock", clock);
+  context->registerFunction("os.sleep", sleep);
   context->setGlobal("os.exit", Object());
 
   wm::registerNamespace(context);
