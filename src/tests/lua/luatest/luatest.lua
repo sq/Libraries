@@ -30,8 +30,9 @@ end
 
 function luatest.equality(lhs, rhs)
     local tlhs = type(lhs)
+    local trhs = type(rhs)
     local result = true
-    if (tlhs == type(rhs)) and (tlhs == "table") then
+    if (tlhs == trhs) and (tlhs == "table") then
         for k, v in pairs(lhs) do
             result = result and luatest.equality(lhs[k], rhs[k])
         end
@@ -39,7 +40,11 @@ function luatest.equality(lhs, rhs)
             result = result and luatest.equality(lhs[k], rhs[k])
         end
     else
-        result = (lhs == rhs)
+        if (tlhs == "userdata") or (trhs == "userdata") then
+            result = rawequal(lhs, rhs)
+        else
+            result = (lhs == rhs)
+        end
     end
     return result
 end

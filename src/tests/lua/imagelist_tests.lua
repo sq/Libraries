@@ -17,8 +17,8 @@ function test_il_getImage()
     il:add(im1)
     il:add(im2)
     
-    checkEqual(tostring(im1), tostring(il(1)))
-    checkEqual(tostring(im2), tostring(il(2)))
+    checkEqual(im1, il(1))
+    checkEqual(im2, il(2))
 end
 
 function test_il_insert()
@@ -29,8 +29,8 @@ function test_il_insert()
     il:add(im1)
     il:insert(1, im2)
     
-    checkEqual(tostring(im2), tostring(il(1)))
-    checkEqual(tostring(im1), tostring(il(2)))
+    checkEqual(im2, il(1))
+    checkEqual(im1, il(2))
 end
 
 function test_il_insert_append()
@@ -42,9 +42,9 @@ function test_il_insert_append()
     il:insert(6, im2)
     
     checkEqual(nil, il(1))
-    checkEqual(tostring(im1), tostring(il(3)))
+    checkEqual(im1, il(3))
     checkEqual(nil, il(5))
-    checkEqual(tostring(im2), tostring(il(6)))
+    checkEqual(im2, il(6))
 end
 
 function test_il_clear()
@@ -64,9 +64,9 @@ function test_il_constructFromImages()
     images = {Image(32, 32), Image(32, 32), Image(32, 32)}
     il = ImageList(images)
     
-    checkEqual(tostring(images[1]), tostring(il(1)))
-    checkEqual(tostring(images[2]), tostring(il(2)))
-    checkEqual(tostring(images[3]), tostring(il(3)))
+    checkEqual(images[1], il(1))
+    checkEqual(images[2], il(2))
+    checkEqual(images[3], il(3))
 end
 
 function test_il_constructFromFilenames()
