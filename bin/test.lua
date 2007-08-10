@@ -32,13 +32,13 @@ end
 
 function runTest()
     frameRate = 60
-    w = Window(320, 240)
+    w = Window(640, 480)
     gr = w.glContext
     last_second = 0
     fps = 0
     next_fps = 0
     t_lastframe = 0
-    f = Font("Consolas", 10)
+    f = Font("Consolas", 24)
     w.onClose = function ()
         quit()
     end
@@ -60,6 +60,9 @@ multiline text, hurrah!]], 0, f.metrics.height * 2)
         end
         local t_end = os.clock()
         t_lastframe = math.floor((t_end - t_start) * 1000000)
+    end
+    w.onKeyDown = function (key)
+        print(wm.getKeyName(key))
     end
     w.tickRate = 1000 / frameRate
     w.vsync = false

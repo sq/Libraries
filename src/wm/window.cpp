@@ -16,6 +16,8 @@ Window::Window(unsigned width, unsigned height) :
   m_closed(false),
   m_tickRate(0)
 {
+  memset(m_keyState, 0, sizeof(m_keyState));
+
   wm::initialize();
 
   eps::ErrorHandler e;
@@ -143,6 +145,10 @@ void Window::getMouseState(int & x, int & y, unsigned & buttons) {
   eps_wm_getMouseState(m_handle, &x, &y, &buttons);
 }
 
+bool Window::getKeyState(int key) {
+  return m_keyState[key];
+}
+
 void Window::setSize(unsigned width, unsigned height) {
   eps::ErrorHandler e;
 
@@ -263,10 +269,12 @@ void Window::onMouseWheel(int x, int y, unsigned buttons, unsigned wheel) {
 }
 
 void Window::onKeyDown(unsigned key) {
+  m_keyState[key] = true;
   if (m_onKeyDown)
     m_onKeyDown(key);
 }
 void Window::onKeyUp(unsigned key) {
+  m_keyState[key] = false;
   if (m_onKeyUp)
     m_onKeyUp(key);
 }

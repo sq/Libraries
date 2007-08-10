@@ -190,6 +190,10 @@
 					RelativePath="..\src\script\string.cpp"
 					>
 				</File>
+				<File
+					RelativePath="..\src\script\table.cpp"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="wm"

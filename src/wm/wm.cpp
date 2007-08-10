@@ -19,6 +19,7 @@ _CLASS_WRAP(Window, shared_ptr<Window>)
   .def("getSize", &Window::getSize, pure_out_value(_2) + pure_out_value(_3))
   .def("setSize", &Window::setSize)
   .def("getMouseState", &Window::getMouseState, pure_out_value(_2) + pure_out_value(_3) + pure_out_value(_4))
+  .def("getKeyState", &Window::getKeyState)
   
   .def_readwrite("onClose", &Window::m_onClose)
   .def_readwrite("onMouseMove", &Window::m_onMouseMove)
@@ -92,8 +93,20 @@ bool poll(bool wait) {
   return result > 0;
 }
 
+script::Object getKeyName(int keyCode) {
+  char buffer[256];
+  memset(buffer, 0, sizeof(buffer));
+  int scanCode = MapVirtualKey(keyCode, 0) << 16;
+  if (GetKeyNameTextA(scanCode, buffer, sizeof(buffer))) {
+    return script::Object(script::getActiveContext()->getContext(), std::string(buffer));
+  } else {
+    return script::Object();
+  }
+}
+
 void registerNamespace(shared_ptr<script::Context> context) {
   module(context->getContext(), "wm") [
+    def("getKeyName", &getKeyName),
     def("poll", &poll),
     def("getPollingTimeout", &getPollingTimeout),
     def("setPollingTimeout", &setPollingTimeout)

@@ -11,6 +11,7 @@ namespace wm {
     eps_Window * m_handle;
     shared_ptr<gl::GLContext> m_glContext;
     
+    bool m_keyState[256];
     unsigned m_tickRate;
     unsigned m_width, m_height;
     bool m_closed;
@@ -54,6 +55,7 @@ namespace wm {
     void setSize(unsigned width, unsigned height);
     
     void getMouseState(int & x, int & y, unsigned & buttons);
+    bool getKeyState(int key);
     
     bool poll(bool wait);
     void close();
@@ -86,6 +88,8 @@ namespace wm {
   void setPollingTimeout(unsigned timeout);
   
   bool poll(bool wait);
+  
+  script::Object getKeyName(int keyCode);
   
   void registerNamespace(shared_ptr<script::Context> context);
   

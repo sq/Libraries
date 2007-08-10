@@ -26,6 +26,13 @@ int main (int argc, const char * argv[]) {
   
   std::stringstream buffer;
   
+  try {
+    sc->executeScript("require('startup')");
+  } catch (std::exception ex) {
+    if (!(strstr(ex.what(), "module 'startup' not found")))
+      cout << "! " << ex.what() << "\n";
+  }
+  
   for (int i = 1; i < argc; i++) {
     try {
       sc->executeScript(argv[i]);

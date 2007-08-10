@@ -45,6 +45,7 @@ void tailCall(TailCall * call) {
 }
 
 void registerStringExtensions(shared_ptr<Context> context);
+void registerTableExtensions(shared_ptr<Context> context);
 void registerAriesExtensions(shared_ptr<Context> context);
 
 LARGE_INTEGER g_timeStart;
@@ -61,6 +62,7 @@ int clock(lua_State * L) {
 
 void registerNamespaces(shared_ptr<Context> context) {
   registerStringExtensions(context);
+  registerTableExtensions(context);
   registerAriesExtensions(context);
   
   QueryPerformanceCounter(&g_timeStart);
