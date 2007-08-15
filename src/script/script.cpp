@@ -3,6 +3,7 @@
 #include <wm\wm.hpp>
 #include <gl\gl.hpp>
 #include <image\image.hpp>
+#include <float.h>
 
 namespace script {
 

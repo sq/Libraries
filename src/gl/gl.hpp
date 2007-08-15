@@ -53,7 +53,7 @@ namespace gl {
     void drawPixel(float x, float y, script::Object color);
     void drawLine(float x1, float y1, float x2, float y2, script::Object color);
     void drawRect(float x1, float y1, float x2, float y2, bool filled, script::Object color);
-    void drawImage(shared_ptr<image::Image> image, int x, int y);
+    void drawImage(shared_ptr<image::Image> image, float x, float y);
     
     std::string toString() const;
     

@@ -18,13 +18,13 @@ function drawString(context, font, text, x, y)
         local i = font.characters[ch]
         if i then
             local cx = x + i.metrics.glyphOriginX
-            local cy = y + (f.metrics.height - i.metrics.glyphOriginY)
+            local cy = y + (font.metrics.height - i.metrics.glyphOriginY)
             context:drawImage(i, cx, cy)
             x = x + i.metrics.cellIncX
         else
             if ch == 10 then
                 x = init_x
-                y = y + f.metrics.height
+                y = y + font.metrics.height
             end
         end
     end

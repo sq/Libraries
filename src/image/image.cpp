@@ -10,6 +10,7 @@ using namespace image;
 _CLASS_WRAP(Image, shared_ptr<Image>)
   .def(constructor<const char *>())
   .def(constructor<int, int>())
+  .def(constructor<shared_ptr<Image>, script::Object>())
 
   .def("__tostring", &Image::toString)
   .def("getTexture", (shared_ptr<gl::GLTexture>(Image::*)())&Image::getTexture)
@@ -21,6 +22,9 @@ _CLASS_WRAP(Image, shared_ptr<Image>)
   .def("setPixel", (void(Image::*)(int, int, script::Object))&Image::setPixel)
   .def("save", &Image::save)
 
+  _PROPERTY_R(left, getLeft)
+  _PROPERTY_R(top, getTop)
+  _PROPERTY_R(pitch, getPitch)
   _PROPERTY_R(width, getWidth)
   _PROPERTY_R(height, getHeight)
   _PROPERTY_RW(filename, getFilename, setFilename)
@@ -170,7 +174,9 @@ void registerNamespace(shared_ptr<script::Context> context) {
 namespace image {
 
 Image::Image(const char * filename) :
-  m_filename(filename)
+  m_filename(filename),
+  m_left(0),
+  m_top(0)
 {
   m_image = corona::OpenImage(filename, corona::PF_R8G8B8A8);
   if (!m_image) {
@@ -180,16 +186,33 @@ Image::Image(const char * filename) :
     strcat(buffer, "\".");
     throw std::exception(buffer);
   }
-  m_width = m_image->getWidth();
+  m_pitch = m_width = m_image->getWidth();
   m_height = m_image->getHeight();
 }
 
-Image::Image(int width, int height) {
+Image::Image(int width, int height) :
+  m_left(0),
+  m_top(0)
+{
   m_image = corona::CreateImage(width, height, corona::PF_R8G8B8A8);
   if (!m_image)
     throw std::exception("Unable to create image with specified parameters");
-  m_width = m_image->getWidth();
+  m_pitch = m_width = m_image->getWidth();
   m_height = m_image->getHeight();
+}
+
+Image::Image(shared_ptr<Image> parent, script::Object rectangle) :
+  m_image(0)
+{
+  m_parent = parent;
+  int a[4] = {0, 0, 0, 0};
+  if (script::unpackTable(rectangle, a, 4) != 4)
+    throw std::exception("Image() expects a table containing four numbers");
+  m_pitch = m_parent->getPitch();
+  m_left = a[0];
+  m_top = a[1];
+  m_width = a[2];
+  m_height = a[3];
 }
 
 Image::~Image() {
@@ -204,13 +227,10 @@ bool Image::save(const char * filename) {
 }
 
 void Image::getPixel(int x, int y, int & red, int & green, int & blue, int & alpha) const {
-  if ((x < 0) || (y < 0) || (x >= m_image->getWidth()) || (y >= m_image->getHeight()))
+  if ((x < 0) || (y < 0) || (x >= m_width) || (y >= m_height))
     throw std::exception("(0 >= x < width) && (0 >= y < height)");
 
-  void * pixels = m_image->getPixels();
-  unsigned char * pixel = 
-    reinterpret_cast<unsigned char *>(pixels) + 
-    (((y * m_image->getWidth()) + x) * 4);
+  unsigned char * pixel = getPixelAddress(x, y);
   
   red = pixel[0];
   green = pixel[1];
@@ -228,14 +248,26 @@ void Image::setPixel(int x, int y, script::Object color) {
   setPixel(x, y, c[0], c[1], c[2], c[3]);
 }
 
-void Image::setPixel(int x, int y, int red, int green, int blue, int alpha) {
-  if ((x < 0) || (y < 0) || (x >= m_image->getWidth()) || (y >= m_image->getHeight()))
-    throw std::exception("(0 >= x < width) && (0 >= y < height)");
-
-  void * pixels = m_image->getPixels();
+unsigned char * Image::getPixelAddress(int x, int y) const {
+  void * pixels = 0;
+  if (m_image)
+    pixels = m_image->getPixels();
+  else if (m_parent)
+    pixels = m_parent->getData();
+  else
+    throw std::exception("No image");
+    
   unsigned char * pixel = 
     reinterpret_cast<unsigned char *>(pixels) + 
-    (((y * m_image->getWidth()) + x) * 4);
+    ((((y + m_top) * m_pitch) + (x + m_left)) * 4);
+  return pixel;
+}
+
+void Image::setPixel(int x, int y, int red, int green, int blue, int alpha) {
+  if ((x < 0) || (y < 0) || (x >= m_width) || (y >= m_height))
+    throw std::exception("(0 >= x < width) && (0 >= y < height)");
+
+  unsigned char * pixel = getPixelAddress(x, y);
     
   pixel[0] = red & 0xFF;
   pixel[1] = green & 0xFF;
@@ -265,6 +297,18 @@ shared_ptr<gl::GLTexture> Image::getTexture() {
 
 void Image::setTexture(shared_ptr<gl::GLTexture> texture) {
   m_texture = weak_ptr<gl::GLTexture>(texture);
+}
+
+int Image::getLeft() const {
+  return m_left;
+}
+
+int Image::getTop() const {
+  return m_top;
+}
+
+int Image::getPitch() const {
+  return m_pitch;
 }
 
 int Image::getWidth() const {

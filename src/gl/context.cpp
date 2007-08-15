@@ -278,7 +278,7 @@ void GLContext::drawRect(float x1, float y1, float x2, float y2, bool filled, sc
   glPopMatrix();
 }
 
-void GLContext::drawImage(shared_ptr<image::Image> image, int x, int y) { 
+void GLContext::drawImage(shared_ptr<image::Image> image, float x, float y) { 
   int w = image->getWidth();
   int h = image->getHeight();
   shared_ptr<GLTexture> texture = image->getTexture(shared_from_this());
@@ -288,13 +288,13 @@ void GLContext::drawImage(shared_ptr<image::Image> image, int x, int y) {
   
   glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
   glTexCoord2f(texture->m_u0, texture->m_v0);
-  glVertex2i(x, y);
+  glVertex2f(x, y);
   glTexCoord2f(texture->m_u1, texture->m_v0);
-  glVertex2i(x + w, y);
+  glVertex2f(x + w, y);
   glTexCoord2f(texture->m_u1, texture->m_v1);
-  glVertex2i(x + w, y + h);
+  glVertex2f(x + w, y + h);
   glTexCoord2f(texture->m_u0, texture->m_v1);
-  glVertex2i(x, y + h);
+  glVertex2f(x, y + h);
   
   glEnd();
   

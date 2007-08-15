@@ -65,3 +65,22 @@ function test_image_save()
     
     os.remove("test.png")
 end
+
+function test_image_create_subimage()
+    im = Image(16, 16)
+    
+    im:setPixel(0, 0, 255, 0, 0, 255)
+    im:setPixel(4, 4, 255, 255, 255, 255)
+    im:setPixel(8, 8, 255, 0, 255, 255)
+    im:setPixel(12, 12, 0, 255, 255, 255)
+    
+    sim = Image(im, {4, 4, 8, 8})
+    
+    checkEqual(4, sim.left)
+    checkEqual(4, sim.top)
+    checkEqual(8, sim.width)
+    checkEqual(16, sim.pitch)
+    
+    checkEqual({255, 255, 255, 255}, {sim:getPixel(0, 0)})
+    checkEqual({255, 0, 255, 255}, {sim:getPixel(4, 4)})
+end
