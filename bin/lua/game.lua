@@ -4,6 +4,18 @@ require("gameobject")
 
 game = {}
 game.imageCache = {}
+game.splitCache = {}
+
+game.loadImageSplit = function(fn, w, h)
+    if game.splitCache[fn] then
+        return game.splitCache[fn]
+    else
+        local i = game.loadImage(fn)
+        local f = i:split(w, h)
+        game.splitCache[fn] = f
+        return f
+    end
+end
 
 game.loadImage = function(fn)
     if game.imageCache[fn] then
@@ -17,7 +29,7 @@ end
 
 game.initialize = function()
     game.respath = "../res/" .. game.name .. "/"
-    game.font = Font("Tahoma", 14)
+    game.font = Font("Consolas", 10)
     game.window = Window(640, 480)
     game.window.caption = game.name
     game.window.tickRate = 1000 / game.desiredFramerate
@@ -39,7 +51,7 @@ game.window_onTick = function (absolute, elapsed)
     end
     if game.onUpdate then
         local _absolute = absolute - elapsed
-        for i=1,elapsed do
+        for i=1,math.min(elapsed, 4) do
             game.currentTick = _absolute + i
             game.onUpdate()
         end

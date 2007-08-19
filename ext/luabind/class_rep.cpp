@@ -258,6 +258,7 @@ int luabind::detail::class_rep::gettable(lua_State* L)
 #endif
 
 	// special case to see if this is a null-pointer
+	/*
 	if (keystr && (keylen == 4) && (std::strcmp(keystr, "__ok") == 0))
 	{
 		class_rep* crep = obj->crep();
@@ -268,6 +269,7 @@ int luabind::detail::class_rep::gettable(lua_State* L)
 		lua_pushboolean(L, p != 0);
 		return 1;
 	}
+	*/
 
 // First, look in the instance's table
 	detail::lua_reference const& tbl = obj->get_lua_table();

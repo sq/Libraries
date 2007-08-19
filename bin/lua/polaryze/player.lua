@@ -3,14 +3,16 @@ class "Player" (GameObject)
 function Player:__init()
     super(320, 240)
     self.shoot_timer = 0
-    self.image = game.loadImage(game.respath .. "player.png")
-    self.frames = self.image:split(23, 29)
+    self.frames = game.loadImageSplit(game.respath .. "player.png", 23, 29)
+    self.radius = 5
+    self.health = 100
 end
 
 function Player:fire()
     local bullet = Bullet(self.x, self.y - 8, "bullet", -1)
-    game.addObject(bullet)
-    self.shoot_timer = 2
+    bullet.parent = self
+    game.addObject(game.bullets, bullet)
+    self.shoot_timer = 10
 end
 
 function Player:onUpdate()

@@ -127,18 +127,32 @@ void GLTexture::upload(image::Image * image) {
   m_v1 = (h) / (float)th;
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, m_handle);
+
   glTexImage2D(
     GL_TEXTURE_2D, 0, GL_RGBA8, tw, th,
     0, GL_RGBA, GL_UNSIGNED_BYTE, 0
   );
-  if (glGetError())
+  if (GLenum e = glGetError())
     throw std::exception("create failed");
-  glTexSubImage2D(
-    GL_TEXTURE_2D, 0, 0, 0, w, h, 
-    GL_RGBA, GL_UNSIGNED_BYTE, image->getData()
-  );
-  if (glGetError())
-    throw std::exception("upload failed");
+    
+  if (image->getPitch() == image->getWidth()) {
+    glTexSubImage2D(
+      GL_TEXTURE_2D, 0, 0, 0, w, h, 
+      GL_RGBA, GL_UNSIGNED_BYTE, image->getPixelAddress(0, 0)
+    );
+    if (GLenum e = glGetError())
+      throw std::exception("upload failed");
+  } else {
+    for (int y = 0; y < h; y++) {
+      glTexSubImage2D(
+        GL_TEXTURE_2D, 0, 0, y, w, 1, 
+        GL_RGBA, GL_UNSIGNED_BYTE, image->getPixelAddress(0, y)
+      );
+      if (GLenum e = glGetError())
+        throw std::exception("upload failed");
+    }
+  }
+    
   glDisable(GL_TEXTURE_2D);
 }
 

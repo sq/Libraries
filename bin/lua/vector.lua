@@ -4,6 +4,12 @@ vec.between = function(s, e)
     return {e[1] - s[1], e[2] - s[2]}
 end
 
+vec.distance = function(s, e)
+    local xd = e[1] - s[1]
+    local yd = e[2] - s[2]
+    return math.sqrt((xd * xd) + (yd * yd))
+end
+
 vec.length = function(v)
     return math.sqrt((v[1] * v[1]) + (v[2] * v[2]))
 end

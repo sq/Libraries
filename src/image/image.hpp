@@ -24,6 +24,7 @@ namespace image {
   public:
     Image(const char * filename);
     Image(int width, int height);
+    Image(shared_ptr<Image> parent, int left, int top, int width, int height);
     Image(shared_ptr<Image> parent, script::Object rectangle);
     
     ~Image();
@@ -35,6 +36,8 @@ namespace image {
     shared_ptr<gl::GLTexture> getTexture(shared_ptr<gl::GLContext> context);
     shared_ptr<gl::GLTexture> getTexture();
     string toString() const;
+    
+    script::Object split(int w, int h);
 
     int getLeft() const;
     int getTop() const;

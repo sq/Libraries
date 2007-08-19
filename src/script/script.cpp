@@ -26,7 +26,7 @@ void LuaContextHook(lua_State * L, lua_Debug * ar) {
           delete call;
         }
       }
-      lua_sethook(g_activeContext, LuaContextHook, LUA_MASKCALL, 0);
+      lua_sethook(g_activeContext, LuaContextHook, 0, 0);
     break;
   }
 }
@@ -40,7 +40,7 @@ Context * getActiveContext() {
 
 void tailCall(TailCall * call) {
   if (g_activeContext) {
-    lua_sethook(g_activeContext, LuaContextHook, LUA_MASKCALL | LUA_MASKRET, 0);
+    lua_sethook(g_activeContext, LuaContextHook, LUA_MASKRET, 0);
     g_tailCalls.push_back(call);
   }
 }

@@ -10,6 +10,7 @@ using namespace image;
 _CLASS_WRAP(Image, shared_ptr<Image>)
   .def(constructor<const char *>())
   .def(constructor<int, int>())
+  .def(constructor<shared_ptr<Image>, int, int, int, int>())
   .def(constructor<shared_ptr<Image>, script::Object>())
 
   .def("__tostring", &Image::toString)
@@ -21,6 +22,7 @@ _CLASS_WRAP(Image, shared_ptr<Image>)
   .def("setPixel", (void(Image::*)(int, int, int, int, int, int))&Image::setPixel)
   .def("setPixel", (void(Image::*)(int, int, script::Object))&Image::setPixel)
   .def("save", &Image::save)
+  .def("split", &Image::split)
 
   _PROPERTY_R(left, getLeft)
   _PROPERTY_R(top, getTop)
@@ -215,6 +217,17 @@ Image::Image(shared_ptr<Image> parent, script::Object rectangle) :
   m_height = a[3];
 }
 
+Image::Image(shared_ptr<Image> parent, int left, int top, int width, int height) :
+  m_image(0)
+{
+  m_parent = parent;
+  m_pitch = m_parent->getPitch();
+  m_left = left;
+  m_top = top;
+  m_width = width;
+  m_height = height;
+}
+
 Image::~Image() {
   if (m_image) {
     delete m_image;
@@ -224,6 +237,22 @@ Image::~Image() {
 
 bool Image::save(const char * filename) {
   return corona::SaveImage(filename, corona::FF_AUTODETECT, m_image);
+}
+
+script::Object Image::split(int w, int h) {
+  script::Object result = luabind::newtable(script::getActiveContext()->getContext());
+  shared_ptr<Image> _this = shared_from_this();
+  int n = 1;
+  
+  for (int y = 0; y < m_height; y += h) {
+    for (int x = 0; x < m_width; x += w) {
+      shared_ptr<Image> item(new Image(_this, x, y, w, h));
+      result[n] = item;
+      n += 1;
+    }
+  }
+  
+  return result;
 }
 
 void Image::getPixel(int x, int y, int & red, int & green, int & blue, int & alpha) const {

@@ -84,3 +84,12 @@ function test_image_create_subimage()
     checkEqual({255, 255, 255, 255}, {sim:getPixel(0, 0)})
     checkEqual({255, 0, 255, 255}, {sim:getPixel(4, 4)})
 end
+
+function test_image_split()
+    im = Image(16, 16)
+    
+    pieces = im:split(8, 8)
+    checkEqual(4, #pieces)
+    checkEqual(8, pieces[1].width)
+    checkEqual(8, pieces[1].height)
+end

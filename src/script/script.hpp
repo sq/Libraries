@@ -176,6 +176,27 @@ namespace script {
     
   };
   
+  class NameTable {
+    typedef std::map<const char *, script::Object> TValues;
+    TValues m_values;
+    script::Context * m_context;
+    
+  public:
+    inline NameTable(script::Context * context) :
+      m_context(context)
+    {
+    }
+  
+    inline script::Object & operator [] (const char * _literal) {
+      TValues::iterator iter = m_values.find(_literal);
+      if (iter == m_values.end()) {
+        m_values[_literal] = script::Object(m_context->getContext(), _literal);
+        iter = m_values.find(_literal);
+      }
+      return iter->second;
+    }
+  };
+  
   class CompiledScript {
     std::string m_name;
     shared_ptr<Context> m_parent;

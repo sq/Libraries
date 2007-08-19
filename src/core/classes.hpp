@@ -16,6 +16,8 @@ namespace script {
   class CompiledScript;
   struct TailCall;
   
+  class NameTable;
+  
   class SyntaxError;
   class RuntimeError;
 

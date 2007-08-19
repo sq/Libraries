@@ -4,18 +4,24 @@ function Enemy:__init(x, y)
     super(x, y)
     self.shoot_timer = 0
     self.dirchange_timer = 0
-    self.image = game.loadImage(game.respath .. "enemy0.png")
-    self.frames = self.image:split(17, 27)
+    self.frames = game.loadImageSplit(game.respath .. "enemy0.png", 17, 27)
+    self.radius = 9
+    self.health = 3
 end
 
 function Enemy:fire()
     local bullet = Bullet(self.x, self.y + 10, "bullet2", 1)
-    game.addObject(bullet)
-    self.shoot_timer = 1 + (math.random() * 8)
+    bullet.parent = self
+    game.addObject(game.bullets, bullet)
+    self.shoot_timer = 12 + (math.random() * 14)
 end
 
 function Enemy:onUpdate()
-    self.yv = 0.4
+    if self.health <= 0 then
+        return true
+    end
+
+    self.yv = 0.6
     
     if ((self.x < 0) and (self.xv < 0)) or ((self.x > 639) and (self.xv > 0)) then
         self.dirchange_timer = 0
