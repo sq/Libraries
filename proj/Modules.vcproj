@@ -273,6 +273,26 @@
 					</File>
 				</Filter>
 			</Filter>
+			<Filter
+				Name="audio"
+				>
+				<File
+					RelativePath="..\src\audio\audio.cpp"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="geom"
+				>
+				<File
+					RelativePath="..\src\geom\geom.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\geom\polygon.cpp"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -374,6 +394,26 @@
 						>
 					</File>
 				</Filter>
+			</Filter>
+			<Filter
+				Name="audio"
+				>
+				<File
+					RelativePath="..\src\audio\audio.hpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\audio\libs.hpp"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="geom"
+				>
+				<File
+					RelativePath="..\src\geom\geom.hpp"
+					>
+				</File>
 			</Filter>
 		</Filter>
 	</Files>

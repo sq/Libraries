@@ -17,7 +17,7 @@ function test_il_getImage()
     il:add(im1)
     il:add(im2)
     
-    checkEqual(im1, il(1))
+    checkEqual(im1, il:getImage(1))
     checkEqual(im2, il(2))
 end
 

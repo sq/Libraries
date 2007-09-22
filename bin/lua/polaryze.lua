@@ -13,6 +13,10 @@ game.spawnTimer = 0
 game.collChecks = 0
 game.ticked = false
 
+colors = {}
+colors['r'] = {220, 60, 0, 255}
+colors['b'] = {0, 171, 220, 255}
+
 game.addObject = function(d, obj)
     local n = d.n + 1
     d[n] = obj
@@ -48,7 +52,7 @@ game.onUpdate = function ()
     
     if game.spawnTimer <= 0 then
         game.addObject(game.objects, Enemy((math.random() * 440) + 100, -16))
-        game.spawnTimer = 10 + (math.random() * 15)
+        game.spawnTimer = 30 + (math.random() * 25)
     else
         game.spawnTimer = game.spawnTimer - 1
     end
@@ -74,9 +78,17 @@ game.onTick = function (elapsed)
             (od[i]):draw(g)
         end
     end
-    drawString(g, game.font, game.fps .. " fps", 0, 0)
-    drawString(g, game.font, game.player.health .. " hp", 0, 16)
+    local back = game.loadImage(game.respath .. "hud/energy_back.png")
+    local mask = game.loadImage(game.respath .. "hud/energy_mask.png")
+    local mtex = mask:getTexture(g)
+    g:drawImage(back, 0, 0)
+    local c = colors[game.player.color]
+    local w = game.player.health / game.player.maxHealth
+    local v = {
+        {{0, 0}, c, {0, 0}}, {{mask.width * w, 0}, c, {mtex.u1 * w, 0}}, 
+        {{mask.width * w, mask.height}, c, {mtex.u1 * w, mtex.v1}}, {{0, mask.height}, c, {0, mtex.v1}}
+    }
+    g:draw(gl.QUADS, v, {mtex})
     g:flip()
-    game.collChecks = 0
     collectgarbage()
 end

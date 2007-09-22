@@ -3,6 +3,8 @@
 #include <wm\wm.hpp>
 #include <gl\gl.hpp>
 #include <image\image.hpp>
+#include <audio\audio.hpp>
+#include <geom\geom.hpp>
 #include <float.h>
 
 namespace script {
@@ -88,6 +90,8 @@ void registerNamespaces(shared_ptr<Context> context) {
   wm::registerNamespace(context);
   gl::registerNamespace(context);
   image::registerNamespace(context);
+  audio::registerNamespace(context);
+  geom::registerNamespace(context);
 }
 
 }

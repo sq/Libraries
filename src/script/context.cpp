@@ -136,6 +136,7 @@ void Context::registerFunction(const char * name, lua_CFunction function) {
 }
 
 void Context::executeScript(const char * source) {
+  g_activeContext = getContext();
   handleError(
     luaL_loadbuffer(getContext(), source, strlen(source), source)
   );

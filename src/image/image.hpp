@@ -73,7 +73,6 @@ namespace image {
     string toString() const;    
   };
   
-  shared_ptr<Image> getNone();
   void registerNamespace(shared_ptr<script::Context> context);
   
 }

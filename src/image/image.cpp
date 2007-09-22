@@ -14,7 +14,6 @@ _CLASS_WRAP(Image, shared_ptr<Image>)
   .def(constructor<shared_ptr<Image>, script::Object>())
 
   .def("__tostring", &Image::toString)
-  .def("getTexture", (shared_ptr<gl::GLTexture>(Image::*)())&Image::getTexture)
   .def("getTexture", (shared_ptr<gl::GLTexture>(Image::*)(shared_ptr<gl::GLContext>))&Image::getTexture)
   .def("getPixel", &Image::getPixel, 
     pure_out_value(_4) + pure_out_value(_5) + pure_out_value(_6) + pure_out_value(_7)

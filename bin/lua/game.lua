@@ -5,6 +5,17 @@ require("gameobject")
 game = {}
 game.imageCache = {}
 game.splitCache = {}
+game.soundCache = {}
+
+game.loadSound = function(fn)
+    if game.soundCache[fn] then
+        return game.soundCache[fn]
+    else
+        local s = game.soundEngine:openSound(fn)
+        game.soundCache[fn] = s
+        return s
+    end
+end
 
 game.loadImageSplit = function(fn, w, h)
     if game.splitCache[fn] then
@@ -29,6 +40,7 @@ end
 
 game.initialize = function()
     game.respath = "../res/" .. game.name .. "/"
+    game.soundEngine = AudioDevice()
     game.font = Font("Consolas", 10)
     game.window = Window(640, 480)
     game.window.caption = game.name

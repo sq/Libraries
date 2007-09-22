@@ -10,6 +10,10 @@ namespace gl {
   class GLTexture;
 }
 
+namespace geom {
+  class Polygon;
+}
+
 namespace script {
   class LuaContext;
   class Context;
@@ -25,6 +29,11 @@ namespace script {
 
 namespace wm {
   class Window;
+}
+
+namespace audio {
+  class AudioDevice;
+  class SoundEffect;
 }
 
 namespace image {

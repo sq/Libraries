@@ -2,22 +2,29 @@ class "Enemy" (GameObject)
 
 function Enemy:__init(x, y)
     super(x, y)
+    if (math.random() >= 0.5) then
+        self.color = "r"
+    else
+        self.color = "b"
+    end
     self.shoot_timer = 0
     self.dirchange_timer = 0
-    self.frames = game.loadImageSplit(game.respath .. "enemy0.png", 17, 27)
+    self.frames = game.loadImageSplit(game.respath .. "enemy_" .. self.color .. ".png", 17, 27)
     self.radius = 9
     self.health = 3
 end
 
 function Enemy:fire()
-    local bullet = Bullet(self.x, self.y + 10, "bullet2", 1)
+    local bullet = Bullet(self.x, self.y + 10, "bullet_" .. self.color, 1, self.color)
     bullet.parent = self
     game.addObject(game.bullets, bullet)
-    self.shoot_timer = 12 + (math.random() * 14)
+    self.shoot_timer = 18 + (math.random() * 24)
 end
 
 function Enemy:onUpdate()
     if self.health <= 0 then
+        game.player:regen(2)
+        game.loadSound(game.respath .. "explode3.wav"):play()
         return true
     end
 

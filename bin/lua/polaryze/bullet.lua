@@ -1,6 +1,6 @@
 class "Bullet" (GameObject)
 
-function Bullet:__init(x, y, img, vel)
+function Bullet:__init(x, y, img, vel, color)
     super(x, y)
     self.yv = 2 * vel
     self.image = game.loadImage(game.respath .. img .. ".png")
@@ -8,6 +8,7 @@ function Bullet:__init(x, y, img, vel)
     self.h = self.image.height / 2
     self.radius = 4
     self.parent = nil
+    self.color = color
 end
 
 function Bullet:onUpdate()
@@ -20,21 +21,32 @@ function Bullet:onUpdate()
     if rawequal(self.parent, game.player) then
         local i = 1
         while i <= game.objects.n do
-            game.collChecks = game.collChecks + 1
             local o = game.objects[i]
             if rawequal(o, self.parent) then
             elseif self:touches(o) then
-                o.health = o.health - 1
-                game.addObject(game.effects, HitEffect(self.x, self.y))
+                if o.color ~= self.color then
+                    o.health = o.health - 1
+                    game.addObject(game.effects, HitEffect(self.x, self.y))
+                    game.loadSound(game.respath .. "explode3.wav"):play()
+                else
+                    o.health = o.health - 0.2
+                    game.loadSound(game.respath .. "explode2.wav"):play()
+                end
                 return true
             end
             i = i + 1
         end        
     else
-        game.collChecks = game.collChecks + 1
         if self:touches(game.player) then
-            game.player.health = game.player.health - 1
-            game.addObject(game.effects, HitEffect(self.x, self.y))
+            game.player.shieldAlpha = 1.0
+            if game.player.color ~= self.color then
+                game.player:damage(3.5)
+                game.addObject(game.effects, HitEffect(self.x, self.y))
+                game.loadSound(game.respath .. "explode3.wav"):play()
+            else
+                game.player:damage(0.3)
+                game.loadSound(game.respath .. "explode2.wav"):play()
+            end
             return true
         end
     end
