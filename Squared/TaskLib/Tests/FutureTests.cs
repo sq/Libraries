@@ -39,17 +39,36 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void IsFailedIsFalseIfFutureHasValue () {
+        public void FailedIsFalseIfFutureHasValue () {
             var f = new Future();
             f.Complete(5);
             Assert.IsFalse(f.Failed);
         }
 
         [Test]
-        public void IsFailedIsTrueIfFutureValueIsException () {
+        public void FailedIsTrueIfFutureValueIsException () {
             var f = new Future();
             f.Fail(new Exception("test"));
             Assert.IsTrue(f.Failed);
+        }
+
+        [Test]
+        public void TestGetResultMethodNeverThrows () {
+            var f = new Future();
+            object result;
+            Exception error;
+
+            Assert.IsFalse(f.GetResult(out result, out error));
+
+            f.SetResult(5, null);
+            Assert.IsTrue(f.GetResult(out result, out error));
+            Assert.AreEqual(5, result);
+
+            f = new Future();
+
+            f.SetResult(null, new Exception("earth-shattering kaboom"));
+            Assert.IsTrue(f.GetResult(out result, out error));
+            Assert.IsTrue(error is Exception);
         }
 
         [Test]

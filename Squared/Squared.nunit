@@ -5,5 +5,5 @@
   </Config>
   <Config name="Release" binpathtype="Auto">
     <assembly path="TaskLib\bin\Release\TaskLib.dll" />
-  </Config>  
+  </Config>
 </NUnitProject>

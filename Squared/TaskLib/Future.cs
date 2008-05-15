@@ -78,48 +78,61 @@ namespace Squared.Task {
             }
         }
 
-        public void Complete () {
-            Complete(null);
-        }
-
-        public void Complete (object result) {
+        public void SetResult (object result, Exception error) {
             lock (_Lock) {
                 if (Completed)
-                    throw new InvalidOperationException("Already completed");
-                _Result = new FutureResult(result, null);
+                    throw new InvalidOperationException("Future already completed");
+                _Result = new FutureResult(result, error);
             }
-            InvokeOnCompletes(result, null);
+            InvokeOnCompletes(result, error);
         }
 
-        public void Fail (Exception error) {
+        public bool GetResult (out object result, out Exception error) {
             lock (_Lock) {
-                if (Completed)
-                    throw new InvalidOperationException("Already completed");
-                _Result = new FutureResult(null, error);
+                if (!_Result.HasValue) {
+                    result = null;
+                    error = null;
+                    return false;
+                }
+
+                result = _Result.Value.Value;
+                error = _Result.Value.Exception;
+                return true;
             }
-            InvokeOnCompletes(null, error);
+        }
+    }
+
+    public static class FutureExtensionMethods {
+        public static void Bind (this Future future, Future target) {
+            OnComplete handler = (result, error) => {
+                future.SetResult(result, error);
+            };
+            target.RegisterOnComplete(handler);
         }
 
-        void BindOnComplete (object result, Exception error) {
-            if (error != null)
-                Fail(error);
-            else
-                Complete(result);
+        public static void Complete (this Future future) {
+            future.SetResult(null, null);
         }
 
-        public void Bind (Future target) {
-            target.RegisterOnComplete(this.BindOnComplete);
+        public static void Complete (this Future future, object result) {
+            future.SetResult(result, null);
         }
 
-        public ManualResetEvent GetCompletionEvent () {
-            lock (_Lock) {
-                ManualResetEvent evt = new ManualResetEvent(this.Completed);
-                OnComplete handler = (result, error) => {
-                    evt.Set();
-                };
-                RegisterOnComplete(handler);
-                return evt;
-            }
+        public static void Fail (this Future future, Exception error) {
+            future.SetResult(null, error);
+        }
+
+        public static ManualResetEvent GetCompletionEvent (this Future future) {
+            ManualResetEvent evt = new ManualResetEvent(false);
+            OnComplete handler = (result, error) => {
+                evt.Set();
+            };
+            future.RegisterOnComplete(handler);
+            return evt;
+        }
+
+        public static WaitWithTimeout WaitWithTimeout (this Future future, double timeout) {
+            return new WaitWithTimeout(future, timeout);
         }
     }
 }
