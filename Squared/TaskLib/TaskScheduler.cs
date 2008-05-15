@@ -254,8 +254,8 @@ namespace Squared.Task {
                 try {
                     var result = workItem.DynamicInvoke(arguments);
                     f.Complete(result);
-                } catch (Exception ex) {
-                    f.Fail(ex);
+                } catch (System.Reflection.TargetInvocationException ex) {
+                    f.Fail(ex.InnerException);
                 }
             };
             ThreadPool.QueueUserWorkItem(fn);
@@ -361,12 +361,11 @@ namespace Squared.Task {
         }
 
         public void Step () {
-            while (_StepListeners.Count > 0) {
+            while (_StepListeners.Count > 0)
                 _StepListeners.Dequeue()();
-            }
-            while (_JobQueue.Count > 0) {
+
+            while (_JobQueue.Count > 0)
                 _JobQueue.Dequeue()();
-            }
         }
 
         public bool HasPendingTasks {

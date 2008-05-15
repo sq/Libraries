@@ -394,5 +394,22 @@ namespace Squared.Task {
 
             Assert.IsTrue(Scheduler.HasPendingTasks);
         }
+
+        void CrashyWorkerThread () {
+            throw new Exception("maple syrup");
+        }
+
+        [Test]
+        public void TestWrapsExceptionsFromInsideWorkerThreads () {
+            var f = Scheduler.RunInThread(new Action(CrashyWorkerThread));
+            while (!f.Completed)
+                Scheduler.Step();
+            try {
+                var _ = f.Result;
+                Assert.Fail("Exception was not raised");
+            } catch (Exception ex) {
+                Assert.AreEqual("maple syrup", ex.Message);
+            }
+        }
     }
 }
