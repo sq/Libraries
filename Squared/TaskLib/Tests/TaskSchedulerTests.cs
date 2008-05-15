@@ -20,6 +20,8 @@ namespace Squared.Task {
 
         [TearDown]
         public void TearDown () {
+            if (Scheduler != null)
+                Scheduler.Dispose();
             Scheduler = null;
             GC.Collect();
         }
@@ -201,7 +203,7 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void MultipleSleepTest () {
+        public void ParallelSleepTest () {
             int timeScale = 10;
             var a = Scheduler.Start(new Sleep(1));
             var b = Scheduler.Start(new Sleep(2));
@@ -219,6 +221,42 @@ namespace Squared.Task {
             Assert.AreEqual(2 * timeScale, elapsed);
 
             c.GetCompletionEvent().WaitOne();
+            elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
+            Assert.AreEqual(4 * timeScale, elapsed);
+        }
+
+        [Test]
+        public void SequentialSleepTest () {
+            int timeScale = 10;
+            var a = Scheduler.Start(new Sleep(1));
+
+            long timeStart = DateTime.Now.Ticks;
+
+            Scheduler.Step();
+            a.GetCompletionEvent().WaitOne();
+
+            long elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
+            Assert.AreEqual(1 * timeScale, elapsed);
+
+            System.Threading.Thread.Sleep(500);
+
+            var b = Scheduler.Start(new Sleep(2));
+            timeStart = DateTime.Now.Ticks; 
+
+            Scheduler.Step();
+            b.GetCompletionEvent().WaitOne();
+
+            elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
+            Assert.AreEqual(2 * timeScale, elapsed);
+
+            System.Threading.Thread.Sleep(500);
+
+            var c = Scheduler.Start(new Sleep(4));
+            timeStart = DateTime.Now.Ticks; 
+
+            Scheduler.Step();
+            c.GetCompletionEvent().WaitOne();
+
             elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(4 * timeScale, elapsed);
         }
@@ -297,13 +335,14 @@ namespace Squared.Task {
 
             WeakReference wr = new WeakReference(Scheduler);
 
+            Scheduler.Dispose();
             Scheduler = null;
             GC.Collect();
 
             Assert.IsFalse(wr.IsAlive);
         }
 
-        // Disabled
+        // Disabled (doesn't pass, but I'm not sure it should)
         public void TestPendingSleepsDoNotCauseSchedulerToLeak () {
             var f = Scheduler.Start(new Sleep(30));
 
@@ -313,6 +352,7 @@ namespace Squared.Task {
 
             WeakReference wr = new WeakReference(Scheduler);
 
+            Scheduler.Dispose();
             Scheduler = null;
             GC.Collect();
 
@@ -337,6 +377,22 @@ namespace Squared.Task {
             } catch (Exception ex) {
                 Assert.AreEqual("pancakes", ex.Message);
             }
+        }
+
+        [Test]
+        public void TestRunUntilCompleteExecutionPolicy () {
+            var f = Scheduler.Start(InfiniteTask(), TaskExecutionPolicy.RunUntilComplete);
+
+            Scheduler.Step();
+
+            Assert.IsTrue(Scheduler.HasPendingTasks);
+
+            f = null;
+            GC.Collect();
+
+            Scheduler.Step();
+
+            Assert.IsTrue(Scheduler.HasPendingTasks);
         }
     }
 }

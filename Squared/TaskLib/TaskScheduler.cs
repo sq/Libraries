@@ -5,6 +5,12 @@ using System.Threading;
 namespace Squared.Task {
     delegate object SleeperDelegate(long now);
 
+    public enum TaskExecutionPolicy {
+        RunWhileFutureLives,
+        RunUntilComplete,
+        Default = RunWhileFutureLives
+    }
+
     public struct Result {
         public object Value;
 
@@ -144,7 +150,7 @@ namespace Squared.Task {
             Future future = _FutureWr.Target as Future;
             // Future was collected, so the task ends here
             if (future == null) {
-                System.Diagnostics.Debug.WriteLine(String.Format("Killing task {0} because future expired", _Task));
+                System.Diagnostics.Debug.WriteLine(String.Format("Task {0} aborted because its future was collected", _Task));
                 return;
             }
             
@@ -180,6 +186,7 @@ namespace Squared.Task {
                     // Completed with a result
                     if (value is Result)
                         value = ((Result)value).Value;
+
                     future.Complete(value);
                 }
             } catch (Exception ex) {
@@ -200,22 +207,45 @@ namespace Squared.Task {
         }
     }
 
-    public class TaskScheduler {
+    public class TaskScheduler : IDisposable {
         const long SleepFudgeFactor = 10000;
 
         private List<Future> _HeldFutures = new List<Future>();
         private Queue<Action> _JobQueue = new Queue<Action>();
         private Queue<Action> _StepListeners = new Queue<Action>();
         private List<SleeperDelegate> _PendingSleeps = new List<SleeperDelegate>();
+        private Thread _SleepWorkerThread = null;
+        private AutoResetEvent _NewSleepEvent = new AutoResetEvent(false);
+
+        public Future Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
+            var future = new Future();
+
+            task.Schedule(this, future);
+
+            switch (executionPolicy) {
+                case TaskExecutionPolicy.RunUntilComplete:
+                    this.HoldFuture(future);
+                    future.RegisterOnComplete((result, error) => {
+                        this.ReleaseFuture(future);
+                    });
+                    break;
+                default:
+                    break;
+            }
+
+            return future;
+        }
+
+        public Future Start (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
+            return Start(new SchedulableGeneratorThunk(task), executionPolicy);
+        }
 
         public Future Start (ISchedulable task) {
-            var result = new Future();
-            task.Schedule(this, result);
-            return result;
+            return Start(task, TaskExecutionPolicy.Default);
         }
 
         public Future Start (IEnumerator<object> task) {
-            return Start(new SchedulableGeneratorThunk(task));
+            return Start(task, TaskExecutionPolicy.Default);
         }
 
         public Future RunInThread (Delegate workItem, params object[] arguments) {
@@ -248,14 +278,16 @@ namespace Squared.Task {
             _StepListeners.Enqueue(listener);
         }
 
-        internal static void SleepWorker (WeakReference scheduler, List<SleeperDelegate> pendingSleeps) {
+        internal static void SleepWorker (WeakReference scheduler, List<SleeperDelegate> pendingSleeps, AutoResetEvent newSleepEvent) {
             while (scheduler.IsAlive) {
                 SleeperDelegate[] sleepers;
                 lock (pendingSleeps) {
                     sleepers = pendingSleeps.ToArray();
                 }
-                if (sleepers.Length == 0)
-                    break;
+                if (sleepers.Length == 0) {
+                    newSleepEvent.WaitOne();
+                    continue;
+                }
 
                 object sleepUntil = null;
                 List<SleeperDelegate> killList = new List<SleeperDelegate>();
@@ -304,9 +336,10 @@ namespace Squared.Task {
             return sleeper;
         }
 
-        internal static WaitCallback BuildSleepWorker (WeakReference wr, List<SleeperDelegate> pendingSleeps) {
-            WaitCallback sleepWorker = (object state) => {
-                TaskScheduler.SleepWorker(wr, pendingSleeps);
+        internal static ThreadStart BuildSleepWorker (WeakReference wr, List<SleeperDelegate> pendingSleeps, AutoResetEvent newSleepEvent) {
+            ThreadStart sleepWorker = () => {
+                TaskScheduler.SleepWorker(wr, pendingSleeps, newSleepEvent);
+                System.Diagnostics.Debug.WriteLine("TaskScheduler.SleepWorker finished running");
             };
             return sleepWorker;
         }
@@ -315,12 +348,15 @@ namespace Squared.Task {
             SleeperDelegate sleeper = TaskScheduler.BuildSleeper(completeWhen, future);
 
             lock (_PendingSleeps) {
-                bool startWorker = _PendingSleeps.Count == 0;
                 _PendingSleeps.Add(sleeper);
-                if (startWorker) {
-                    WaitCallback sleepWorker = TaskScheduler.BuildSleepWorker(new WeakReference(this), _PendingSleeps);
-                    ThreadPool.QueueUserWorkItem(sleepWorker);
-                }
+                _NewSleepEvent.Set();
+            }
+
+            if (_SleepWorkerThread == null) {
+                _SleepWorkerThread = new Thread(TaskScheduler.BuildSleepWorker(new WeakReference(this), _PendingSleeps, _NewSleepEvent));
+                _SleepWorkerThread.Name = "TaskScheduler._SleepWorkerThread";
+                _SleepWorkerThread.IsBackground = true;
+                _SleepWorkerThread.Start();
             }
         }
 
@@ -337,6 +373,22 @@ namespace Squared.Task {
             get {
                 return (_StepListeners.Count > 0) || (_JobQueue.Count > 0);
             }
+        }
+
+        public void Dispose () {
+            if (_SleepWorkerThread != null) {
+                _SleepWorkerThread.Abort();
+                System.Diagnostics.Debug.WriteLine("TaskScheduler.SleepWorker aborted");
+                _SleepWorkerThread = null;
+            }
+
+            lock (_PendingSleeps) {
+                _PendingSleeps.Clear();
+            }
+
+            _JobQueue.Clear();
+            _StepListeners.Clear();
+            _HeldFutures.Clear();
         }
     }
 }
