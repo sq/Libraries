@@ -147,8 +147,14 @@ namespace Squared.Task {
                 System.Diagnostics.Debug.WriteLine(String.Format("Killing task {0} because future expired", _Task));
                 return;
             }
+            
+            try {
+                if (!_Task.MoveNext()) {
+                    // Completed with no result
+                    future.Complete(null);
+                    return;
+                }
 
-            if (_Task.MoveNext()) {
                 object value = _Task.Current;
                 if (value is ISchedulable) {
                     Future temp = scheduler.Start(value as ISchedulable);
@@ -176,9 +182,8 @@ namespace Squared.Task {
                         value = ((Result)value).Value;
                     future.Complete(value);
                 }
-            } else {
-                // Completed with no result
-                future.Complete(null);
+            } catch (Exception ex) {
+                future.Fail(ex);
             }
         }
     }
@@ -286,7 +291,7 @@ namespace Squared.Task {
             }
         }
 
-        internal void QueueSleep (long completeWhen, Future future) {
+        internal static SleeperDelegate BuildSleeper (long completeWhen, Future future) {
             SleeperDelegate sleeper = (long now) => {
                 long ticksLeft = Math.Max(completeWhen - now, 0);
                 if (ticksLeft == 0) {
@@ -296,15 +301,24 @@ namespace Squared.Task {
                     return completeWhen;
                 }
             };
+            return sleeper;
+        }
+
+        internal static WaitCallback BuildSleepWorker (WeakReference wr, List<SleeperDelegate> pendingSleeps) {
+            WaitCallback sleepWorker = (object state) => {
+                TaskScheduler.SleepWorker(wr, pendingSleeps);
+            };
+            return sleepWorker;
+        }
+
+        internal void QueueSleep (long completeWhen, Future future) {
+            SleeperDelegate sleeper = TaskScheduler.BuildSleeper(completeWhen, future);
 
             lock (_PendingSleeps) {
                 bool startWorker = _PendingSleeps.Count == 0;
                 _PendingSleeps.Add(sleeper);
                 if (startWorker) {
-                    WeakReference wr = new WeakReference(this);
-                    WaitCallback sleepWorker = (state) => {
-                        SleepWorker(wr, this._PendingSleeps);
-                    };
+                    WaitCallback sleepWorker = TaskScheduler.BuildSleepWorker(new WeakReference(this), _PendingSleeps);
                     ThreadPool.QueueUserWorkItem(sleepWorker);
                 }
             }

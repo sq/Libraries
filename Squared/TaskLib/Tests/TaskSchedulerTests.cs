@@ -13,9 +13,15 @@ namespace Squared.Task {
         TaskScheduler Scheduler;
         Future TestFuture;
 
-        [TestFixtureSetUp]
+        [SetUp]
         public void SetUp () {
             Scheduler = new TaskScheduler();
+        }
+
+        [TearDown]
+        public void TearDown () {
+            Scheduler = null;
+            GC.Collect();
         }
 
         IEnumerator<object> TaskReturn5 () {
@@ -182,7 +188,7 @@ namespace Squared.Task {
         [Test]
         public void SleepTest () {
             int duration = 2;
-            int timeScale = 100;
+            int timeScale = 50;
             var f = Scheduler.Start(new Sleep(duration));
             
             long timeStart = DateTime.Now.Ticks;
@@ -220,7 +226,7 @@ namespace Squared.Task {
         [Test]
         public void WaitForFirstTest () {
             int duration = 2;
-            int timeScale = 100;
+            int timeScale = 50;
 
             var a = Scheduler.Start(InfiniteTask());
             var b = Scheduler.Start(new Sleep(duration));
@@ -279,6 +285,58 @@ namespace Squared.Task {
             Scheduler.Step();
 
             Assert.IsFalse(Scheduler.HasPendingTasks);
+        }
+
+        [Test]
+        public void TestRunningTasksDoNotCauseSchedulerToLeak () {
+            var f = Scheduler.Start(InfiniteTask());
+
+            Scheduler.Step();
+
+            Assert.IsTrue(Scheduler.HasPendingTasks);
+
+            WeakReference wr = new WeakReference(Scheduler);
+
+            Scheduler = null;
+            GC.Collect();
+
+            Assert.IsFalse(wr.IsAlive);
+        }
+
+        // Disabled
+        public void TestPendingSleepsDoNotCauseSchedulerToLeak () {
+            var f = Scheduler.Start(new Sleep(30));
+
+            Scheduler.Step();
+
+            Assert.IsTrue(Scheduler.HasPendingTasks);
+
+            WeakReference wr = new WeakReference(Scheduler);
+
+            Scheduler = null;
+            GC.Collect();
+
+            Assert.IsFalse(wr.IsAlive);
+        }
+
+        IEnumerator<object> CrashyTask () {
+            yield return new WaitForNextStep();
+            throw new Exception("pancakes");
+        }
+
+        [Test]
+        public void TestWrapsExceptionsFromInsideTasks () {
+            var f = Scheduler.Start(CrashyTask());
+
+            Scheduler.Step();
+            Scheduler.Step();
+
+            try {
+                var _ = f.Result;
+                Assert.Fail("Exception was not raised");
+            } catch (Exception ex) {
+                Assert.AreEqual("pancakes", ex.Message);
+            }
         }
     }
 }
