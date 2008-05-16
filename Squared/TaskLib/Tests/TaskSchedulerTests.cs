@@ -489,20 +489,23 @@ namespace Squared.Task {
             Assert.AreEqual(1, vh.Value);
         }
 
-        IEnumerator<object> ServerTask (TcpListener server) {
+        IEnumerator<object> ServerTask (TcpListener server, int numClients) {
             server.Start();
             try {
-                Console.WriteLine("Waiting for incoming connection...");
-                Future connection = server.AcceptIncomingConnection();
-                yield return connection;
-                Console.WriteLine("Connection established. Sending data...");
-                using (TcpClient peer = connection.Result as TcpClient) {
-                    byte[] bytes = Encoding.ASCII.GetBytes("Hello, world!");
-                    Future writer = peer.GetStream().AsyncWrite(bytes, 0, bytes.Length);
-                    yield return writer;
-                    Console.WriteLine("Data sent.");
+                while (numClients > 0) {
+                    Console.WriteLine("Waiting for incoming connection...");
+                    Future connection = server.AcceptIncomingConnection();
+                    yield return connection;
+                    Console.WriteLine("Connection established. Sending data...");
+                    using (TcpClient peer = connection.Result as TcpClient) {
+                        byte[] bytes = Encoding.ASCII.GetBytes("Hello, world!");
+                        Future writer = peer.GetStream().AsyncWrite(bytes, 0, bytes.Length);
+                        yield return writer;
+                        Console.WriteLine("Data sent.");
+                    }
+                    Console.WriteLine("Connection closed.");
+                    numClients -= 1;
                 }
-                Console.WriteLine("Connection closed.");
             } finally {
                 server.Stop();
             }
@@ -514,7 +517,7 @@ namespace Squared.Task {
             int port = 12345;
             TcpListener server = new TcpListener(System.Net.IPAddress.Any, port);
 
-            var a = Scheduler.Start(ServerTask(server));
+            var a = Scheduler.Start(ServerTask(server, 1));
 
             var b = Scheduler.RunInThread(new Action(() => {
                 Console.WriteLine("Connecting...");
@@ -556,13 +559,37 @@ namespace Squared.Task {
             int port = 12345;
             TcpListener server = new TcpListener(System.Net.IPAddress.Any, port);
 
-            var a = Scheduler.Start(ServerTask(server));
+            var a = Scheduler.Start(ServerTask(server, 1));
             var b = Scheduler.Start(ClientTask(results, "localhost", port));
 
             while (!b.Completed)
                 Scheduler.Step();
 
             Assert.AreEqual(new string[] { "Hello, world!" }, results.ToArray());
+        }
+
+        [Test]
+        public void MultipleSocketClientTest () {
+            var results = new List<string>();
+            int numClients = 4;
+            int port = 12345;
+            TcpListener server = new TcpListener(System.Net.IPAddress.Any, port);
+
+            var a = Scheduler.Start(ServerTask(server, numClients));
+            var clients = new List<Future>();
+            for (int i = 0; i < numClients; i++) {
+                clients.Add(Scheduler.Start(ClientTask(results, "localhost", port)));
+            }
+            var b = Scheduler.Start(new WaitForAll(clients));
+
+            while (!b.Completed)
+                Scheduler.Step();
+
+            string helloWorld = "Hello, world!";
+            var expectedResults = new List<string>();
+            for (int i = 0; i < numClients; i++)
+                expectedResults.Add(helloWorld);
+            Assert.AreEqual(expectedResults.ToArray(), results.ToArray());
         }
     }
 }
