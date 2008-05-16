@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Squared.Task;
 using NUnit.Framework;
+using System.Threading;
 
 namespace Squared.Task {
     class ValueHolder {
@@ -262,6 +263,21 @@ namespace Squared.Task {
         }
 
         [Test]
+        public void SleepUntilTest () {
+            int duration = 2;
+            int timeScale = 50;
+            
+            long timeStart = DateTime.Now.Ticks;
+            var f = Scheduler.Start(new SleepUntil(new DateTime(timeStart).AddSeconds(duration).Ticks));
+
+            Scheduler.Step();
+            f.GetCompletionEvent().WaitOne();
+
+            long elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
+            Assert.AreEqual(duration * timeScale, elapsed);
+        }
+
+        [Test]
         public void WaitForFirstTest () {
             int duration = 2;
             int timeScale = 50;
@@ -310,7 +326,7 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void TestCollectingFutureKillsTask () {
+        public void CollectingFutureKillsTask () {
             var f = Scheduler.Start(InfiniteTask());
 
             Scheduler.Step();
@@ -326,7 +342,7 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void TestRunningTasksDoNotCauseSchedulerToLeak () {
+        public void RunningTasksDoNotCauseSchedulerToLeak () {
             var f = Scheduler.Start(InfiniteTask());
 
             Scheduler.Step();
@@ -343,7 +359,7 @@ namespace Squared.Task {
         }
 
         // Disabled (doesn't pass, but I'm not sure it should)
-        public void TestPendingSleepsDoNotCauseSchedulerToLeak () {
+        public void PendingSleepsDoNotCauseSchedulerToLeak () {
             var f = Scheduler.Start(new Sleep(30));
 
             Scheduler.Step();
@@ -365,7 +381,7 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void TestWrapsExceptionsFromInsideTasks () {
+        public void WrapsExceptionsFromInsideTasks () {
             var f = Scheduler.Start(CrashyTask());
 
             Scheduler.Step();
@@ -380,7 +396,7 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void TestRunUntilCompleteExecutionPolicy () {
+        public void RunUntilCompleteExecutionPolicy () {
             var f = Scheduler.Start(InfiniteTask(), TaskExecutionPolicy.RunUntilComplete);
 
             Scheduler.Step();
@@ -400,7 +416,7 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void TestWrapsExceptionsFromInsideWorkerThreads () {
+        public void WrapsExceptionsFromInsideWorkerThreads () {
             var f = Scheduler.RunInThread(new Action(CrashyWorkerThread));
             while (!f.Completed)
                 Scheduler.Step();
@@ -410,6 +426,64 @@ namespace Squared.Task {
             } catch (Exception ex) {
                 Assert.AreEqual("maple syrup", ex.Message);
             }
+        }
+
+        [Test]
+        public void WaitForWaitHandleTest () {
+            ManualResetEvent e = new ManualResetEvent(false);
+            var f = Scheduler.Start(new WaitForWaitHandle(e));
+
+            Scheduler.Step();
+            Thread.Sleep(500);
+
+            long timeStart = DateTime.Now.Ticks;
+            e.Set();
+
+            f.GetCompletionEvent().WaitOne();
+            long elapsed = DateTime.Now.Ticks - timeStart;
+            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(1).Ticks);
+        }
+
+        [Test]
+        public void WaitForWaitHandlesTest () {
+            ManualResetEvent a = new ManualResetEvent(false);
+            ManualResetEvent b = new ManualResetEvent(false);
+            ManualResetEvent c = new ManualResetEvent(false);
+
+            var f = Scheduler.Start(new WaitForWaitHandles(a, b, c));
+
+            Scheduler.Step();
+            Thread.Sleep(500);
+
+            long timeStart = DateTime.Now.Ticks;
+            a.Set();
+            b.Set();
+            c.Set();
+
+            f.GetCompletionEvent().WaitOne();
+            long elapsed = DateTime.Now.Ticks - timeStart;
+            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(1).Ticks);
+        }
+
+        [Test]
+        public void WaitForWorkItemsTest () {
+            ValueHolder vh = new ValueHolder();
+            vh.Value = 0;
+
+            Future a = Scheduler.Start(new Sleep(2));
+            a.RegisterOnComplete((result, error) => {
+                Scheduler.QueueWorkItem(() => {
+                    vh.Value = 1;
+                });
+            });
+
+            long timeStart = DateTime.Now.Ticks;
+            Scheduler.Step();
+            Scheduler.WaitForWorkItems();
+            Scheduler.Step();
+            long elapsed = DateTime.Now.Ticks - timeStart;
+            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(2001).Ticks);
+            Assert.AreEqual(1, vh.Value);
         }
     }
 }

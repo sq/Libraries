@@ -5,7 +5,7 @@ using System.Threading;
 namespace Squared.Task {
     public delegate void OnComplete(object value, Exception error);
 
-    public struct FutureResult {
+    struct FutureResult {
         public object Value;
         public Exception Exception;
 
@@ -70,7 +70,9 @@ namespace Squared.Task {
         public object Result {
             get {
                 lock (_Lock) {
-                    if (_Result.Value.Exception != null)
+                    if (!_Result.HasValue)
+                        throw new InvalidOperationException("Future has no result");
+                    else if (_Result.Value.Exception != null)
                         throw _Result.Value.Exception;
                     else
                         return _Result.Value.Value;
@@ -81,7 +83,7 @@ namespace Squared.Task {
         public void SetResult (object result, Exception error) {
             lock (_Lock) {
                 if (Completed)
-                    throw new InvalidOperationException("Future already completed");
+                    throw new InvalidOperationException("Future already has a result");
                 _Result = new FutureResult(result, error);
             }
             InvokeOnCompletes(result, error);

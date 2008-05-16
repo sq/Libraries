@@ -32,9 +32,6 @@ namespace Squared.Task {
     public abstract class WaiterBase : ISchedulable {
         Future _TaskFuture;
 
-        public WaiterBase () {
-        }
-
         protected abstract IEnumerator<object> WaiterTask ();
 
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
@@ -61,25 +58,6 @@ namespace Squared.Task {
                 else
                     future.Complete();
             });
-        }
-    }
-
-    public class WaitForAll : WaiterBase {
-        IEnumerable<Future> _Futures;
-
-        public WaitForAll (IEnumerable<Future> futures)
-            : base() {
-            _Futures = futures;
-        }
-
-        public WaitForAll (params Future[] futures)
-            : base() {
-            _Futures = futures;
-        }
-
-        protected override IEnumerator<object> WaiterTask () {
-            foreach (Future future in _Futures)
-                yield return future;
         }
     }
 
@@ -195,15 +173,107 @@ namespace Squared.Task {
         }
     }
 
-    public struct Sleep : ISchedulable {
+    public struct SleepUntil : ISchedulable {
         long _EndWhen;
 
-        public Sleep (double duration) {
-            _EndWhen = DateTime.Now.Ticks + TimeSpan.FromSeconds(duration).Ticks;
+        public SleepUntil(long when) {
+            _EndWhen = when;
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             scheduler.QueueSleep(_EndWhen, future);
+        }
+    }
+
+    public struct Sleep : ISchedulable {
+        long _EndWhen;
+
+        public Sleep(double duration) {
+            _EndWhen = DateTime.Now.AddSeconds(duration).Ticks;
+        }
+
+        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+            scheduler.QueueSleep(_EndWhen, future);
+        }
+    }
+
+    public struct WaitForWaitHandle : ISchedulable {
+        WaitHandle _Handle;
+
+        public WaitForWaitHandle (WaitHandle handle) {
+            _Handle = handle;
+        }
+
+        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+            scheduler.QueueWait(_Handle, future);
+        }
+    }
+
+    public class WaitForAll : ISchedulable {
+        protected List<Future> _Futures = new List<Future>();
+        Future _CompositeFuture;
+
+        public WaitForAll () {
+        }
+
+        public WaitForAll (IEnumerable<Future> futures) {
+            _Futures.AddRange(futures);
+        }
+
+        public WaitForAll (params Future[] futures) {
+            _Futures.AddRange(futures);
+        }
+
+        protected virtual void OnSchedule (TaskScheduler scheduler) {
+        }
+
+        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+            _CompositeFuture = future;
+            OnSchedule(scheduler);
+            foreach (Future _ in _Futures) {
+                Future f = _;
+                f.RegisterOnComplete((result, error) => {
+                    lock (this._Futures) {
+                        this._Futures.Remove(f);
+                        if (this._Futures.Count == 0)
+                            this._CompositeFuture.Complete();
+                    }
+                });
+            }
+        }
+    }
+
+    public class WaitForWaitHandles : WaitForAll {
+        IEnumerable<WaitHandle> _Handles;
+
+        public WaitForWaitHandles (IEnumerable<WaitHandle> handles)
+            : base() {
+            _Handles = handles;
+        }
+
+        public WaitForWaitHandles (params WaitHandle[] handles)
+            : base() {
+            _Handles = handles;
+        }
+
+        protected override void OnSchedule(TaskScheduler scheduler) {
+            foreach (WaitHandle handle in _Handles) {
+                var f = new Future();
+                scheduler.QueueWait(handle, f);
+                _Futures.Add(f);
+            }
+
+            base.OnSchedule(scheduler);
+        }
+    }
+
+    struct BoundWaitHandle {
+        public WaitHandle Handle;
+        public Future Future;
+
+        public BoundWaitHandle(WaitHandle handle, Future future) {
+            this.Handle = handle;
+            this.Future = future;
         }
     }
 
@@ -214,8 +284,12 @@ namespace Squared.Task {
         private Queue<Action> _JobQueue = new Queue<Action>();
         private Queue<Action> _StepListeners = new Queue<Action>();
         private List<SleeperDelegate> _PendingSleeps = new List<SleeperDelegate>();
+        private List<BoundWaitHandle> _PendingWaits = new List<BoundWaitHandle>();
         private Thread _SleepWorkerThread = null;
+        private Thread _WaitWorkerThread = null;
         private AutoResetEvent _NewSleepEvent = new AutoResetEvent(false);
+        private AutoResetEvent _NewWaitEvent = new AutoResetEvent(false);
+        private AutoResetEvent _NewWorkItemEvent = new AutoResetEvent(false);
 
         public Future Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
             var future = new Future();
@@ -272,6 +346,7 @@ namespace Squared.Task {
 
         internal void QueueWorkItem (Action workItem) {
             _JobQueue.Enqueue(workItem);
+            _NewWorkItemEvent.Set();
         }
 
         internal void AddStepListener (Action listener) {
@@ -290,7 +365,7 @@ namespace Squared.Task {
                 }
 
                 object sleepUntil = null;
-                List<SleeperDelegate> killList = new List<SleeperDelegate>();
+                var killList = new List<SleeperDelegate>();
                 foreach (SleeperDelegate sleeper in sleepers) {
                     long now = DateTime.Now.Ticks;
                     object r = sleeper(now);
@@ -323,6 +398,30 @@ namespace Squared.Task {
             }
         }
 
+        internal static void WaitWorker (WeakReference scheduler, List<BoundWaitHandle> pendingWaits, AutoResetEvent newWaitEvent) {
+            while (scheduler.IsAlive) {
+                BoundWaitHandle[] waits;
+                WaitHandle[] waitHandles;
+                lock (pendingWaits) {
+                    waits = pendingWaits.ToArray();
+                }
+                waitHandles = new WaitHandle[waits.Length + 1];
+                waitHandles[0] = newWaitEvent;
+                for (int i = 0; i < waits.Length; i++)
+                    waitHandles[i + 1] = waits[i].Handle;
+
+                System.Diagnostics.Debug.WriteLine(String.Format("WaitWorker waiting on {0} handle(s)", waitHandles.Length - 1));
+                int completedWait = WaitHandle.WaitAny(waitHandles);
+                if (completedWait == 0)
+                    continue;
+                lock (pendingWaits) {
+                    BoundWaitHandle w = waits[completedWait - 1];
+                    pendingWaits.Remove(w);
+                    w.Future.Complete();
+                }
+            }
+        }
+
         internal static SleeperDelegate BuildSleeper (long completeWhen, Future future) {
             SleeperDelegate sleeper = (long now) => {
                 long ticksLeft = Math.Max(completeWhen - now, 0);
@@ -339,9 +438,31 @@ namespace Squared.Task {
         internal static ThreadStart BuildSleepWorker (WeakReference wr, List<SleeperDelegate> pendingSleeps, AutoResetEvent newSleepEvent) {
             ThreadStart sleepWorker = () => {
                 TaskScheduler.SleepWorker(wr, pendingSleeps, newSleepEvent);
-                System.Diagnostics.Debug.WriteLine("TaskScheduler.SleepWorker finished running");
             };
             return sleepWorker;
+        }
+
+        internal static ThreadStart BuildWaitWorker (WeakReference wr, List<BoundWaitHandle> pendingWaits, AutoResetEvent newWaitEvent) {
+            ThreadStart waitWorker = () => {
+                TaskScheduler.WaitWorker(wr, pendingWaits, newWaitEvent);
+            };
+            return waitWorker;
+        }
+
+        internal void QueueWait (WaitHandle handle, Future future) {
+            BoundWaitHandle wait = new BoundWaitHandle(handle, future);
+
+            lock (_PendingWaits) {
+                _PendingWaits.Add(wait);
+                _NewWaitEvent.Set();
+            }
+
+            if (_WaitWorkerThread == null) {
+                _WaitWorkerThread = new Thread(TaskScheduler.BuildWaitWorker(new WeakReference(this), _PendingWaits, _NewWaitEvent));
+                _WaitWorkerThread.Name = "TaskScheduler._WaitWorkerThread";
+                _WaitWorkerThread.IsBackground = true;
+                _WaitWorkerThread.Start();
+            }
         }
 
         internal void QueueSleep (long completeWhen, Future future) {
@@ -368,6 +489,11 @@ namespace Squared.Task {
                 _JobQueue.Dequeue()();
         }
 
+        public void WaitForWorkItems () {
+            if (_JobQueue.Count == 0)
+                _NewWorkItemEvent.WaitOne();
+        }
+
         public bool HasPendingTasks {
             get {
                 return (_StepListeners.Count > 0) || (_JobQueue.Count > 0);
@@ -381,8 +507,18 @@ namespace Squared.Task {
                 _SleepWorkerThread = null;
             }
 
+            if (_WaitWorkerThread != null) {
+                _WaitWorkerThread.Abort();
+                System.Diagnostics.Debug.WriteLine("TaskScheduler.WaitWorker aborted");
+                _WaitWorkerThread = null;
+            }
+
             lock (_PendingSleeps) {
                 _PendingSleeps.Clear();
+            }
+
+            lock (_PendingWaits) {
+                _PendingWaits.Clear();
             }
 
             _JobQueue.Clear();
