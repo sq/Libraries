@@ -5,6 +5,10 @@ using System.Threading;
 namespace Squared.Task {
     delegate object SleeperDelegate(long now);
 
+    public interface ISchedulable {
+        void Schedule (TaskScheduler scheduler, Future future);
+    }
+
     public enum TaskExecutionPolicy {
         RunWhileFutureLives,
         RunUntilComplete,
@@ -16,256 +20,6 @@ namespace Squared.Task {
 
         public Result (object value) {
             Value = value;
-        }
-    }
-
-    public interface ISchedulable {
-        void Schedule (TaskScheduler scheduler, Future future);
-    }
-
-    public struct WaitForNextStep : ISchedulable {
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            scheduler.AddStepListener(future.Complete);
-        }
-    }
-
-    public abstract class WaiterBase : ISchedulable {
-        Future _TaskFuture;
-
-        protected abstract IEnumerator<object> WaiterTask ();
-
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            _TaskFuture = scheduler.Start(WaiterTask());
-            future.Bind(_TaskFuture);
-        }
-    }
-
-    public class WaitWithTimeout : ISchedulable {
-        Future _Future, _TaskFuture, _SleepFuture;
-        double _Timeout;
-
-        public WaitWithTimeout (Future future, double timeout) {
-            _Future = future;
-            _Timeout = timeout;
-        }
-
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            _SleepFuture = scheduler.Start(new Sleep(_Timeout));
-            _TaskFuture = scheduler.Start(new WaitForFirst(_Future, _SleepFuture));
-            _TaskFuture.RegisterOnComplete((result, error) => {
-                if (result == _SleepFuture)
-                    future.Fail(new TimeoutException("WaitWithTimeout timed out."));
-                else
-                    future.Complete();
-            });
-        }
-    }
-
-    public class WaitForFirst : WaiterBase {
-        IEnumerable<Future> _Futures;
-
-        public WaitForFirst (IEnumerable<Future> futures) 
-            : base() {
-            _Futures = futures;
-        }
-
-        public WaitForFirst (params Future[] futures)
-            : base() {
-            _Futures = futures;
-        }
-
-        protected override IEnumerator<object> WaiterTask () {
-            while (true) {
-                foreach (Future future in _Futures)
-                    if (future.Completed)
-                        yield return new Result(future);
-
-                yield return new WaitForNextStep();
-            }
-        }
-    }
-
-    public class TaskRunner : ISchedulable {
-        IEnumerator<object> _Task;
-        Future _Future;
-
-        public TaskRunner (IEnumerator<object> task) {
-            _Task = task;
-            _Future = null;
-        }
-
-        void Completed (object result, Exception error) {
-            this._Future.Complete(result);
-        }
-
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            this._Future = scheduler.Start(_Task);
-            future.Bind(this._Future);
-        }
-
-        public object Result {
-            get {
-                return _Future.Result;
-            }
-        }
-    }
-
-    public class SchedulableGeneratorThunk : ISchedulable {
-        IEnumerator<object> _Task;
-        WeakReference _FutureWr;
-
-        public SchedulableGeneratorThunk (IEnumerator<object> task) {
-            _Task = task;
-        }
-
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            IEnumerator<object> task = _Task;
-            _FutureWr = new WeakReference(future);
-            scheduler.QueueWorkItem(() => { this.Step(scheduler); });
-        }
-
-        void Step (TaskScheduler scheduler) {
-            Future future = _FutureWr.Target as Future;
-            // Future was collected, so the task ends here
-            if (future == null) {
-                System.Diagnostics.Debug.WriteLine(String.Format("Task {0} aborted because its future was collected", _Task));
-                return;
-            }
-            
-            try {
-                if (!_Task.MoveNext()) {
-                    // Completed with no result
-                    future.Complete(null);
-                    return;
-                }
-
-                object value = _Task.Current;
-                if (value is ISchedulable) {
-                    Future temp = scheduler.Start(value as ISchedulable);
-                    scheduler.HoldFuture(temp);
-                    temp.RegisterOnComplete((result, error) => {
-                        scheduler.QueueWorkItem(() => {
-                            this.Step(scheduler);
-                            scheduler.ReleaseFuture(temp);
-                        });
-                    });
-                } else if (value is Future) {
-                    Future f = (Future)value;
-                    OnComplete oc = (result, error) => {
-                        scheduler.QueueWorkItem(() => { 
-                            this.Step(scheduler); 
-                        });
-                    };
-                    if (f.Completed)
-                        oc(null, null);
-                    else
-                        f.RegisterOnComplete(oc);
-                } else {
-                    // Completed with a result
-                    if (value is Result)
-                        value = ((Result)value).Value;
-
-                    future.Complete(value);
-                }
-            } catch (Exception ex) {
-                future.Fail(ex);
-            }
-        }
-    }
-
-    public struct SleepUntil : ISchedulable {
-        long _EndWhen;
-
-        public SleepUntil(long when) {
-            _EndWhen = when;
-        }
-
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            scheduler.QueueSleep(_EndWhen, future);
-        }
-    }
-
-    public struct Sleep : ISchedulable {
-        long _EndWhen;
-
-        public Sleep(double duration) {
-            _EndWhen = DateTime.Now.AddSeconds(duration).Ticks;
-        }
-
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            scheduler.QueueSleep(_EndWhen, future);
-        }
-    }
-
-    public struct WaitForWaitHandle : ISchedulable {
-        WaitHandle _Handle;
-
-        public WaitForWaitHandle (WaitHandle handle) {
-            _Handle = handle;
-        }
-
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            scheduler.QueueWait(_Handle, future);
-        }
-    }
-
-    public class WaitForAll : ISchedulable {
-        protected List<Future> _Futures = new List<Future>();
-        Future _CompositeFuture;
-
-        public WaitForAll () {
-        }
-
-        public WaitForAll (IEnumerable<Future> futures) {
-            _Futures.AddRange(futures);
-        }
-
-        public WaitForAll (params Future[] futures) {
-            _Futures.AddRange(futures);
-        }
-
-        protected virtual void OnSchedule (TaskScheduler scheduler) {
-        }
-
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            _CompositeFuture = future;
-            OnSchedule(scheduler);
-            foreach (Future _ in _Futures.ToArray()) {
-                Future f = _;
-                f.RegisterOnComplete((result, error) => {
-                    int count;
-                    lock (this._Futures) {
-                        this._Futures.Remove(f);
-                        count = this._Futures.Count;
-                    }
-                    if (count == 0)
-                        this._CompositeFuture.Complete();
-                });
-            }
-        }
-    }
-
-    public class WaitForWaitHandles : WaitForAll {
-        IEnumerable<WaitHandle> _Handles;
-
-        public WaitForWaitHandles (IEnumerable<WaitHandle> handles)
-            : base() {
-            _Handles = handles;
-        }
-
-        public WaitForWaitHandles (params WaitHandle[] handles)
-            : base() {
-            _Handles = handles;
-        }
-
-        protected override void OnSchedule(TaskScheduler scheduler) {
-            foreach (WaitHandle handle in _Handles) {
-                var f = new Future();
-                scheduler.QueueWait(handle, f);
-                _Futures.Add(f);
-            }
-
-            base.OnSchedule(scheduler);
         }
     }
 
@@ -282,16 +36,11 @@ namespace Squared.Task {
     public class TaskScheduler : IDisposable {
         const long SleepFudgeFactor = 10000;
 
+        private JobQueue _JobQueue = new JobQueue();
         private List<Future> _HeldFutures = new List<Future>();
-        private Queue<Action> _JobQueue = new Queue<Action>();
         private Queue<Action> _StepListeners = new Queue<Action>();
-        private List<SleeperDelegate> _PendingSleeps = new List<SleeperDelegate>();
-        private List<BoundWaitHandle> _PendingWaits = new List<BoundWaitHandle>();
-        private Thread _SleepWorkerThread = null;
-        private Thread _WaitWorkerThread = null;
-        private AutoResetEvent _NewSleepEvent = new AutoResetEvent(false);
-        private AutoResetEvent _NewWaitEvent = new AutoResetEvent(false);
-        private AutoResetEvent _NewWorkItemEvent = new AutoResetEvent(false);
+        private WorkerThread<SleeperDelegate> _SleepWorker;
+        private WorkerThread<BoundWaitHandle> _WaitWorker;
 
         public Future Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
             var future = new Future();
@@ -347,16 +96,15 @@ namespace Squared.Task {
         }
 
         internal void QueueWorkItem (Action workItem) {
-            _JobQueue.Enqueue(workItem);
-            _NewWorkItemEvent.Set();
+            _JobQueue.QueueWorkItem(workItem);
         }
 
         internal void AddStepListener (Action listener) {
             _StepListeners.Enqueue(listener);
         }
 
-        internal static void SleepWorker (WeakReference scheduler, List<SleeperDelegate> pendingSleeps, AutoResetEvent newSleepEvent) {
-            while (scheduler.IsAlive) {
+        internal static void SleepWorkerThreadFunc (List<SleeperDelegate> pendingSleeps, AutoResetEvent newSleepEvent) {
+            while (true) {
                 SleeperDelegate[] sleepers;
                 lock (pendingSleeps) {
                     sleepers = pendingSleeps.ToArray();
@@ -392,16 +140,16 @@ namespace Squared.Task {
                         using (var tempHandle = new ManualResetEvent(false)) {
                             WaitHandle.WaitAny(new WaitHandle[] { tempHandle }, TimeSpan.FromTicks(timeToSleep), false);
                         }
-                    } else {
-                        while (DateTime.Now.Ticks < sleepUntilValue) {
-                        }
+                    }
+
+                    while (DateTime.Now.Ticks < sleepUntilValue) {
                     }
                 }
             }
         }
 
-        internal static void WaitWorker (WeakReference scheduler, List<BoundWaitHandle> pendingWaits, AutoResetEvent newWaitEvent) {
-            while (scheduler.IsAlive) {
+        internal static void WaitWorkerThreadFunc (List<BoundWaitHandle> pendingWaits, AutoResetEvent newWaitEvent) {
+            while (true) {
                 BoundWaitHandle[] waits;
                 WaitHandle[] waitHandles;
                 lock (pendingWaits) {
@@ -437,63 +185,32 @@ namespace Squared.Task {
             return sleeper;
         }
 
-        internal static ThreadStart BuildSleepWorker (WeakReference wr, List<SleeperDelegate> pendingSleeps, AutoResetEvent newSleepEvent) {
-            ThreadStart sleepWorker = () => {
-                TaskScheduler.SleepWorker(wr, pendingSleeps, newSleepEvent);
-            };
-            return sleepWorker;
-        }
-
-        internal static ThreadStart BuildWaitWorker (WeakReference wr, List<BoundWaitHandle> pendingWaits, AutoResetEvent newWaitEvent) {
-            ThreadStart waitWorker = () => {
-                TaskScheduler.WaitWorker(wr, pendingWaits, newWaitEvent);
-            };
-            return waitWorker;
+        public TaskScheduler () {
+            _SleepWorker = new WorkerThread<SleeperDelegate>(SleepWorkerThreadFunc);
+            _WaitWorker = new WorkerThread<BoundWaitHandle>(WaitWorkerThreadFunc);
         }
 
         internal void QueueWait (WaitHandle handle, Future future) {
             BoundWaitHandle wait = new BoundWaitHandle(handle, future);
 
-            lock (_PendingWaits) {
-                _PendingWaits.Add(wait);
-                _NewWaitEvent.Set();
-            }
-
-            if (_WaitWorkerThread == null) {
-                _WaitWorkerThread = new Thread(TaskScheduler.BuildWaitWorker(new WeakReference(this), _PendingWaits, _NewWaitEvent));
-                _WaitWorkerThread.Name = "TaskScheduler._WaitWorkerThread";
-                _WaitWorkerThread.IsBackground = true;
-                _WaitWorkerThread.Start();
-            }
+            _WaitWorker.QueueWorkItem(wait);
         }
 
         internal void QueueSleep (long completeWhen, Future future) {
             SleeperDelegate sleeper = TaskScheduler.BuildSleeper(completeWhen, future);
 
-            lock (_PendingSleeps) {
-                _PendingSleeps.Add(sleeper);
-                _NewSleepEvent.Set();
-            }
-
-            if (_SleepWorkerThread == null) {
-                _SleepWorkerThread = new Thread(TaskScheduler.BuildSleepWorker(new WeakReference(this), _PendingSleeps, _NewSleepEvent));
-                _SleepWorkerThread.Name = "TaskScheduler._SleepWorkerThread";
-                _SleepWorkerThread.IsBackground = true;
-                _SleepWorkerThread.Start();
-            }
+            _SleepWorker.QueueWorkItem(sleeper);
         }
 
         public void Step () {
             while (_StepListeners.Count > 0)
                 _StepListeners.Dequeue()();
 
-            while (_JobQueue.Count > 0)
-                _JobQueue.Dequeue()();
+            _JobQueue.Step();
         }
 
         public void WaitForWorkItems () {
-            if (_JobQueue.Count == 0)
-                _NewWorkItemEvent.WaitOne();
+            _JobQueue.WaitForWorkItems();
         }
 
         public bool HasPendingTasks {
@@ -503,27 +220,9 @@ namespace Squared.Task {
         }
 
         public void Dispose () {
-            if (_SleepWorkerThread != null) {
-                _SleepWorkerThread.Abort();
-                System.Diagnostics.Debug.WriteLine("TaskScheduler.SleepWorker aborted");
-                _SleepWorkerThread = null;
-            }
+            _SleepWorker.Dispose();
+            _WaitWorker.Dispose();
 
-            if (_WaitWorkerThread != null) {
-                _WaitWorkerThread.Abort();
-                System.Diagnostics.Debug.WriteLine("TaskScheduler.WaitWorker aborted");
-                _WaitWorkerThread = null;
-            }
-
-            lock (_PendingSleeps) {
-                _PendingSleeps.Clear();
-            }
-
-            lock (_PendingWaits) {
-                _PendingWaits.Clear();
-            }
-
-            _JobQueue.Clear();
             _StepListeners.Clear();
             _HeldFutures.Clear();
         }

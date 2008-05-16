@@ -45,11 +45,14 @@
   <ItemGroup>
     <Compile Include="Future.cs" />
     <Compile Include="IO.cs" />
+    <Compile Include="JobQueue.cs" />
     <Compile Include="Network.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TaskScheduler.cs" />
     <Compile Include="Tests\FutureTests.cs" />
     <Compile Include="Tests\TaskSchedulerTests.cs" />
+    <Compile Include="Util.cs" />
+    <Compile Include="WorkerThread.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
