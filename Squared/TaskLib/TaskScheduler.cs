@@ -25,7 +25,7 @@ namespace Squared.Task {
 
     public struct WaitForNextStep : ISchedulable {
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            scheduler.AddStepListener(() => { future.Complete(null); });
+            scheduler.AddStepListener(future.Complete);
         }
     }
 
@@ -230,14 +230,16 @@ namespace Squared.Task {
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             _CompositeFuture = future;
             OnSchedule(scheduler);
-            foreach (Future _ in _Futures) {
+            foreach (Future _ in _Futures.ToArray()) {
                 Future f = _;
                 f.RegisterOnComplete((result, error) => {
+                    int count;
                     lock (this._Futures) {
                         this._Futures.Remove(f);
-                        if (this._Futures.Count == 0)
-                            this._CompositeFuture.Complete();
+                        count = this._Futures.Count;
                     }
+                    if (count == 0)
+                        this._CompositeFuture.Complete();
                 });
             }
         }
