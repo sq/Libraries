@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using Squared.Task;
 using NUnit.Framework;
 using System.Threading;
+using System.Net.Sockets;
+using System.Text;
+using System.IO;
 
 namespace Squared.Task {
     class ValueHolder {
@@ -484,6 +487,82 @@ namespace Squared.Task {
             long elapsed = DateTime.Now.Ticks - timeStart;
             Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(2001).Ticks);
             Assert.AreEqual(1, vh.Value);
+        }
+
+        IEnumerator<object> ServerTask (TcpListener server) {
+            server.Start();
+            try {
+                Console.WriteLine("Waiting for incoming connection...");
+                Future connection = server.AcceptIncomingConnection();
+                yield return connection;
+                Console.WriteLine("Connection established. Sending data...");
+                using (TcpClient peer = connection.Result as TcpClient) {
+                    byte[] bytes = Encoding.ASCII.GetBytes("Hello, world!");
+                    Future writer = peer.GetStream().AsyncWrite(bytes, 0, bytes.Length);
+                    yield return writer;
+                    Console.WriteLine("Data sent.");
+                }
+                Console.WriteLine("Connection closed.");
+            } finally {
+                server.Stop();
+            }
+        }
+
+        [Test]
+        public void SocketServerTest () {
+            var results = new List<string>();
+            int port = 12345;
+            TcpListener server = new TcpListener(System.Net.IPAddress.Any, port);
+
+            var a = Scheduler.Start(ServerTask(server));
+
+            var b = Scheduler.RunInThread(new Action(() => {
+                Console.WriteLine("Connecting...");
+                using (TcpClient client = new TcpClient("localhost", port)) {
+                    using (StreamReader reader = new StreamReader(client.GetStream(), Encoding.ASCII)) {
+                        Console.WriteLine("Connected. Receiving data...");
+                        string result = reader.ReadToEnd();
+                        Console.WriteLine("Data received.");
+                        results.Add(result);
+                    }
+                }
+                Console.WriteLine("Disconnected.");
+            }));
+
+            while (!b.Completed)
+                Scheduler.Step();
+
+            Assert.AreEqual(new string[] { "Hello, world!" }, results.ToArray());
+        }
+
+        IEnumerator<object> ClientTask (List<string> output, string server, int port) {
+            Console.WriteLine("Connecting...");
+            Future connect = Network.ConnectTo(server, port);
+            yield return connect;
+            Console.WriteLine("Connected. Receiving data...");
+            using (TcpClient client = connect.Result as TcpClient) {
+                byte[] bytes = new byte[256];
+                Future reader = client.GetStream().AsyncRead(bytes, 0, bytes.Length);
+                yield return reader;
+                Console.WriteLine("Data received.");
+                output.Add(Encoding.ASCII.GetString(bytes, 0, (int)reader.Result));
+            }
+            Console.WriteLine("Disconnected.");
+        }
+
+        [Test]
+        public void SocketClientTest () {
+            var results = new List<string>();
+            int port = 12345;
+            TcpListener server = new TcpListener(System.Net.IPAddress.Any, port);
+
+            var a = Scheduler.Start(ServerTask(server));
+            var b = Scheduler.Start(ClientTask(results, "localhost", port));
+
+            while (!b.Completed)
+                Scheduler.Step();
+
+            Assert.AreEqual(new string[] { "Hello, world!" }, results.ToArray());
         }
     }
 }
