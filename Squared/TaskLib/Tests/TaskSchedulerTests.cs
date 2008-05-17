@@ -194,7 +194,7 @@ namespace Squared.Task {
         [Test]
         public void SleepTest () {
             int duration = 2;
-            int timeScale = 50;
+            int timeScale = 25;
             var f = Scheduler.Start(new Sleep(duration));
             
             long timeStart = DateTime.Now.Ticks;
@@ -268,7 +268,7 @@ namespace Squared.Task {
         [Test]
         public void SleepUntilTest () {
             int duration = 2;
-            int timeScale = 50;
+            int timeScale = 25;
             
             long timeStart = DateTime.Now.Ticks;
             var f = Scheduler.Start(new SleepUntil(new DateTime(timeStart).AddSeconds(duration).Ticks));
@@ -283,16 +283,14 @@ namespace Squared.Task {
         [Test]
         public void WaitForFirstTest () {
             int duration = 2;
-            int timeScale = 50;
+            int timeScale = 25;
 
             var a = Scheduler.Start(InfiniteTask());
             var b = Scheduler.Start(new Sleep(duration));
             var c = Scheduler.Start(new WaitForFirst(a, b));
 
             long timeStart = DateTime.Now.Ticks;
-            while (!c.Completed) {
-                Scheduler.Step();
-            }
+            c.GetCompletionEvent().WaitOne();
             Assert.AreEqual(b, c.Result);
             long timeEnd = DateTime.Now.Ticks;
 

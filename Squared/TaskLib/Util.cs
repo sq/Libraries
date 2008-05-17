@@ -11,17 +11,6 @@ namespace Squared.Task {
         }
     }
 
-    public abstract class WaiterBase : ISchedulable {
-        Future _TaskFuture;
-
-        protected abstract IEnumerator<object> WaiterTask ();
-
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            _TaskFuture = scheduler.Start(WaiterTask());
-            future.Bind(_TaskFuture);
-        }
-    }
-
     public class WaitWithTimeout : ISchedulable {
         Future _Future, _TaskFuture, _SleepFuture;
         double _Timeout;
@@ -40,30 +29,6 @@ namespace Squared.Task {
                 else
                     future.Complete();
             });
-        }
-    }
-
-    public class WaitForFirst : WaiterBase {
-        IEnumerable<Future> _Futures;
-
-        public WaitForFirst (IEnumerable<Future> futures)
-            : base() {
-            _Futures = futures;
-        }
-
-        public WaitForFirst (params Future[] futures)
-            : base() {
-            _Futures = futures;
-        }
-
-        protected override IEnumerator<object> WaiterTask () {
-            while (true) {
-                foreach (Future future in _Futures)
-                    if (future.Completed)
-                        yield return new Result(future);
-
-                yield return new WaitForNextStep();
-            }
         }
     }
 
@@ -189,6 +154,35 @@ namespace Squared.Task {
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             scheduler.QueueWait(_Handle, future);
         }
+    }
+
+    public class WaitForFirst : ISchedulable {
+        protected List<Future> _Futures = new List<Future>();
+        Future _CompositeFuture;
+
+        public WaitForFirst (IEnumerable<Future> futures) {
+            _Futures.AddRange(futures);
+        }
+
+        public WaitForFirst (params Future[] futures) {
+            _Futures.AddRange(futures);
+        }
+
+        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+            _CompositeFuture = future;
+            foreach (Future _ in _Futures.ToArray()) {
+                Future f = _;
+                f.RegisterOnComplete((result, error) => {
+                    lock (this._CompositeFuture) {
+                        if (!this._CompositeFuture.Completed) {
+                            this._Futures.Clear();
+                            this._CompositeFuture.Complete(f);
+                        }
+                    }
+                });
+            }
+        }
+
     }
 
     public class WaitForAll : ISchedulable {

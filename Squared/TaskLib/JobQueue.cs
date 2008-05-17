@@ -8,27 +8,25 @@ namespace Squared.Task {
     internal class JobQueue {
         private Queue<Action> _Queue = new Queue<Action>();
         private AutoResetEvent _NewJobEvent = new AutoResetEvent(false);
+        private int _NumEventWaiters = 0;
 
         public void QueueWorkItem (Action item) {
             _Queue.Enqueue(item);
-            _NewJobEvent.Set();
+            if (_NumEventWaiters > 0)
+                _NewJobEvent.Set();
         }
 
         public void Step () {
-            Action item = null;
-            while (true) {
-                try {
-                    item = _Queue.Dequeue();
-                } catch (InvalidOperationException) {
-                    break;
-                }
-                item();
-            }
+            while (_Queue.Count > 0)
+                _Queue.Dequeue()();
         }
 
         public void WaitForWorkItems () {
-            if (_Queue.Count == 0)
-                _NewJobEvent.WaitOne();
+            Interlocked.Increment(ref _NumEventWaiters);
+            while (_Queue.Count == 0) {
+                _NewJobEvent.WaitOne(100, true);
+            }
+            Interlocked.Decrement(ref _NumEventWaiters);
         }
 
         public int Count {
