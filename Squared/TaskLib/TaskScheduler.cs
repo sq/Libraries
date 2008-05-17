@@ -33,18 +33,67 @@ namespace Squared.Task {
         }
     }
 
-    public class SchedulableGeneratorThunk : ISchedulable {
+    public class SchedulableGeneratorThunk : ISchedulable, IDisposable {
         IEnumerator<object> _Task;
         WeakReference _FutureWr;
+        List<Future> _HeldFutures = new List<Future>();
 
         public SchedulableGeneratorThunk (IEnumerator<object> task) {
             _Task = task;
+        }
+
+        public void Dispose () {
+            if (_Task != null) {
+                _Task.Dispose();
+                _Task = null;
+            }
+
+            _HeldFutures.Clear();
+            _FutureWr = null;
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             IEnumerator<object> task = _Task;
             _FutureWr = new WeakReference(future);
             scheduler.QueueWorkItem(() => { this.Step(scheduler); });
+        }
+
+        void ScheduleNextStepForSchedulable (TaskScheduler scheduler, ISchedulable value, Future future) {
+            if (value is WaitForNextStep) {
+                scheduler.AddStepListener(() => {
+                    scheduler.QueueWorkItem(() => {
+                        this.Step(scheduler);
+                    });
+                });
+            } else {
+                Future temp = scheduler.Start(value);
+                _HeldFutures.Add(temp);
+                temp.RegisterOnComplete((result, error) => {
+                    scheduler.QueueWorkItem(() => {
+                        this.Step(scheduler);
+                        _HeldFutures.Remove(temp);
+                    });
+                });
+            }
+        }
+
+        void ScheduleNextStep (TaskScheduler scheduler, Object value, Future future) {
+            if (value is ISchedulable) {
+                ScheduleNextStepForSchedulable(scheduler, value as ISchedulable, future);
+            } else if (value is Future) {
+                Future f = (Future)value;
+                f.RegisterOnComplete((result, error) => {
+                    scheduler.QueueWorkItem(() => {
+                        this.Step(scheduler);
+                    });
+                });
+            } else if (value is Result) {
+                future.Complete(((Result)value).Value);
+                Dispose();
+            } else {
+                future.Complete(value);
+                Dispose();
+            }
         }
 
         void Step (TaskScheduler scheduler) {
@@ -59,47 +108,15 @@ namespace Squared.Task {
                 if (!_Task.MoveNext()) {
                     // Completed with no result
                     future.Complete(null);
+                    Dispose();
                     return;
                 }
 
                 object value = _Task.Current;
-                if (value is ISchedulable) {
-                    if (value is WaitForNextStep) {
-                        scheduler.AddStepListener(() => {
-                            scheduler.QueueWorkItem(() => {
-                                this.Step(scheduler);
-                            });
-                        });
-                    } else {
-                        Future temp = scheduler.Start(value as ISchedulable);
-                        scheduler.HoldFuture(temp);
-                        temp.RegisterOnComplete((result, error) => {
-                            scheduler.QueueWorkItem(() => {
-                                this.Step(scheduler);
-                                scheduler.ReleaseFuture(temp);
-                            });
-                        });
-                    }
-                } else if (value is Future) {
-                    Future f = (Future)value;
-                    OnComplete oc = (result, error) => {
-                        scheduler.QueueWorkItem(() => {
-                            this.Step(scheduler);
-                        });
-                    };
-                    if (f.Completed)
-                        oc(null, null);
-                    else
-                        f.RegisterOnComplete(oc);
-                } else {
-                    // Completed with a result
-                    if (value is Result)
-                        value = ((Result)value).Value;
-
-                    future.Complete(value);
-                }
+                ScheduleNextStep(scheduler, value, future);
             } catch (Exception ex) {
                 future.Fail(ex);
+                Dispose();
             }
         }
     }
