@@ -57,6 +57,26 @@ namespace Squared.Task {
             Assert.AreEqual(10, future.Result);
         }
 
+        [Test]
+        public void MultipleYieldersOnFutureTest () {
+            this.TestFuture = new Future();
+            var futures = new List<Future>();
+            for (int i = 0; i < 10; i++)
+                futures.Add(Scheduler.Start(TaskReturnValueOfFuture()));
+
+            Scheduler.Step();
+            foreach (Future f in futures)
+                Assert.IsFalse(f.Completed);
+
+            TestFuture.Complete(10);
+            Scheduler.Step();
+
+            foreach (Future f in futures) {
+                Assert.IsTrue(f.Completed);
+                Assert.AreEqual(10, f.Result);
+            }
+        }
+
         IEnumerator<object> TaskReturnValueOfYieldedTask () {
             var tr = new TaskRunner(TaskReturnValueOfFuture());
             yield return tr;
@@ -289,6 +309,8 @@ namespace Squared.Task {
             var b = Scheduler.Start(new Sleep(duration));
             var c = Scheduler.Start(new WaitForFirst(a, b));
 
+            GC.Collect();
+
             long timeStart = DateTime.Now.Ticks;
             c.GetCompletionEvent().WaitOne();
             Assert.AreEqual(b, c.Result);
@@ -442,7 +464,7 @@ namespace Squared.Task {
 
             f.GetCompletionEvent().WaitOne();
             long elapsed = DateTime.Now.Ticks - timeStart;
-            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(1).Ticks);
+            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(10).Ticks);
         }
 
         [Test]
@@ -463,7 +485,25 @@ namespace Squared.Task {
 
             f.GetCompletionEvent().WaitOne();
             long elapsed = DateTime.Now.Ticks - timeStart;
-            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(1).Ticks);
+            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(10).Ticks);
+        }
+    }
+
+    [TestFixture]
+    public class ThreadedTaskSchedulerTests {
+        TaskScheduler Scheduler;
+
+        [SetUp]
+        public void SetUp () {
+            Scheduler = new TaskScheduler(true);
+        }
+
+        [TearDown]
+        public void TearDown () {
+            if (Scheduler != null)
+                Scheduler.Dispose();
+            Scheduler = null;
+            GC.Collect();
         }
 
         [Test]
@@ -491,17 +531,17 @@ namespace Squared.Task {
             server.Start();
             try {
                 while (numClients > 0) {
-                    Console.WriteLine("Waiting for incoming connection...");
+                    System.Diagnostics.Debug.WriteLine("Waiting for incoming connection...");
                     Future connection = server.AcceptIncomingConnection();
                     yield return connection;
-                    Console.WriteLine("Connection established. Sending data...");
+                    System.Diagnostics.Debug.WriteLine("Connection established. Sending data...");
                     using (TcpClient peer = connection.Result as TcpClient) {
                         byte[] bytes = Encoding.ASCII.GetBytes("Hello, world!");
                         Future writer = peer.GetStream().AsyncWrite(bytes, 0, bytes.Length);
                         yield return writer;
-                        Console.WriteLine("Data sent.");
+                        System.Diagnostics.Debug.WriteLine("Data sent.");
                     }
-                    Console.WriteLine("Connection closed.");
+                    System.Diagnostics.Debug.WriteLine("Connection closed.");
                     numClients -= 1;
                 }
             } finally {
@@ -518,16 +558,16 @@ namespace Squared.Task {
             var a = Scheduler.Start(ServerTask(server, 1));
 
             var b = Scheduler.RunInThread(new Action(() => {
-                Console.WriteLine("Connecting...");
+                System.Diagnostics.Debug.WriteLine("Connecting...");
                 using (TcpClient client = new TcpClient("localhost", port)) {
                     using (StreamReader reader = new StreamReader(client.GetStream(), Encoding.ASCII)) {
-                        Console.WriteLine("Connected. Receiving data...");
+                        System.Diagnostics.Debug.WriteLine("Connected. Receiving data...");
                         string result = reader.ReadToEnd();
-                        Console.WriteLine("Data received.");
+                        System.Diagnostics.Debug.WriteLine("Data received.");
                         results.Add(result);
                     }
                 }
-                Console.WriteLine("Disconnected.");
+                System.Diagnostics.Debug.WriteLine("Disconnected.");
             }));
 
             while (!b.Completed)
@@ -537,18 +577,18 @@ namespace Squared.Task {
         }
 
         IEnumerator<object> ClientTask (List<string> output, string server, int port) {
-            Console.WriteLine("Connecting...");
+            System.Diagnostics.Debug.WriteLine("Connecting...");
             Future connect = Network.ConnectTo(server, port);
             yield return connect;
-            Console.WriteLine("Connected. Receiving data...");
+            System.Diagnostics.Debug.WriteLine("Connected. Receiving data...");
             using (TcpClient client = connect.Result as TcpClient) {
                 byte[] bytes = new byte[256];
                 Future reader = client.GetStream().AsyncRead(bytes, 0, bytes.Length);
                 yield return reader;
-                Console.WriteLine("Data received.");
+                System.Diagnostics.Debug.WriteLine("Data received.");
                 output.Add(Encoding.ASCII.GetString(bytes, 0, (int)reader.Result));
             }
-            Console.WriteLine("Disconnected.");
+            System.Diagnostics.Debug.WriteLine("Disconnected.");
         }
 
         [Test]
@@ -588,6 +628,70 @@ namespace Squared.Task {
             for (int i = 0; i < numClients; i++)
                 expectedResults.Add(helloWorld);
             Assert.AreEqual(expectedResults.ToArray(), results.ToArray());
+        }
+    }
+
+    public class Entity {
+        public float X, Y, Z;
+        public float vX, vY, vZ;
+
+        public Entity () {
+            Random rng = new Random();
+            X = Y = Z = 0;
+            vX = (float)rng.NextDouble();
+            vY = (float)rng.NextDouble();
+            vZ = (float)rng.NextDouble();
+        }
+
+        public IEnumerator<object> Run () {
+            while (true) {
+                X += vX;
+                Y += vY;
+                Z += vZ;
+                yield return new WaitForNextStep();
+            }
+        }
+    }
+
+    [TestFixture]
+    public class FunctionalTests {
+        TaskScheduler Scheduler;
+
+        [SetUp]
+        public void SetUp () {
+            Scheduler = new TaskScheduler(true);
+        }
+
+        [TearDown]
+        public void TearDown () {
+            if (Scheduler != null)
+                Scheduler.Dispose();
+            Scheduler = null;
+            GC.Collect();
+        }
+
+        [Test]
+        public void TestLotsOfEntities () {
+            int numEntities = 10000;
+            int numSteps = 500;
+
+            var entities = new List<Entity>();
+            for (int i = 0; i < numEntities; i++)
+                entities.Add(new Entity());
+
+            foreach (Entity e in entities)
+                Scheduler.Start(e.Run(), TaskExecutionPolicy.RunUntilComplete);
+
+            long timeStart = DateTime.Now.Ticks;
+
+            for (int j = 0; j < numSteps; j++) {
+                Scheduler.Step();
+            }
+
+            long timeEnd = DateTime.Now.Ticks;
+            TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
+
+            Console.WriteLine("Took {0:N2} secs for {1} iterations. {2:N1} entities/sec", elapsed.TotalSeconds, numSteps, numEntities * numSteps / elapsed.TotalSeconds);
         }
     }
 }

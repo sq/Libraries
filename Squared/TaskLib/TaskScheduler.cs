@@ -33,6 +33,77 @@ namespace Squared.Task {
         }
     }
 
+    public class SchedulableGeneratorThunk : ISchedulable {
+        IEnumerator<object> _Task;
+        WeakReference _FutureWr;
+
+        public SchedulableGeneratorThunk (IEnumerator<object> task) {
+            _Task = task;
+        }
+
+        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+            IEnumerator<object> task = _Task;
+            _FutureWr = new WeakReference(future);
+            scheduler.QueueWorkItem(() => { this.Step(scheduler); });
+        }
+
+        void Step (TaskScheduler scheduler) {
+            Future future = _FutureWr.Target as Future;
+            // Future was collected, so the task ends here
+            if (future == null) {
+                System.Diagnostics.Debug.WriteLine(String.Format("Task {0} aborted because its future was collected", _Task));
+                return;
+            }
+
+            try {
+                if (!_Task.MoveNext()) {
+                    // Completed with no result
+                    future.Complete(null);
+                    return;
+                }
+
+                object value = _Task.Current;
+                if (value is ISchedulable) {
+                    if (value is WaitForNextStep) {
+                        scheduler.AddStepListener(() => {
+                            scheduler.QueueWorkItem(() => {
+                                this.Step(scheduler);
+                            });
+                        });
+                    } else {
+                        Future temp = scheduler.Start(value as ISchedulable);
+                        scheduler.HoldFuture(temp);
+                        temp.RegisterOnComplete((result, error) => {
+                            scheduler.QueueWorkItem(() => {
+                                this.Step(scheduler);
+                                scheduler.ReleaseFuture(temp);
+                            });
+                        });
+                    }
+                } else if (value is Future) {
+                    Future f = (Future)value;
+                    OnComplete oc = (result, error) => {
+                        scheduler.QueueWorkItem(() => {
+                            this.Step(scheduler);
+                        });
+                    };
+                    if (f.Completed)
+                        oc(null, null);
+                    else
+                        f.RegisterOnComplete(oc);
+                } else {
+                    // Completed with a result
+                    if (value is Result)
+                        value = ((Result)value).Value;
+
+                    future.Complete(value);
+                }
+            } catch (Exception ex) {
+                future.Fail(ex);
+            }
+        }
+    }
+
     public class TaskScheduler : IDisposable {
         const long SleepFudgeFactor = 10000;
 
@@ -42,9 +113,13 @@ namespace Squared.Task {
         private WorkerThread<SleeperDelegate> _SleepWorker;
         private WorkerThread<BoundWaitHandle> _WaitWorker;
 
-        public Future Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
-            var future = new Future();
 
+        public void WaitForWorkItems () {
+            _JobQueue.WaitForWorkItems();
+        }
+
+        public Future Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
+            Future future = new Future();
             task.Schedule(this, future);
 
             switch (executionPolicy) {
@@ -185,9 +260,14 @@ namespace Squared.Task {
             return sleeper;
         }
 
-        public TaskScheduler () {
+        public TaskScheduler (bool threadSafe) {
             _SleepWorker = new WorkerThread<SleeperDelegate>(SleepWorkerThreadFunc);
             _WaitWorker = new WorkerThread<BoundWaitHandle>(WaitWorkerThreadFunc);
+            _JobQueue.ThreadSafe = threadSafe;
+        }
+
+        public TaskScheduler ()
+            : this(false) {
         }
 
         internal void QueueWait (WaitHandle handle, Future future) {
@@ -207,10 +287,6 @@ namespace Squared.Task {
                 _StepListeners.Dequeue()();
 
             _JobQueue.Step();
-        }
-
-        public void WaitForWorkItems () {
-            _JobQueue.WaitForWorkItems();
         }
 
         public bool HasPendingTasks {

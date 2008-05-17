@@ -5,19 +5,11 @@ using System.Threading;
 namespace Squared.Task {
     public delegate void OnComplete(object value, Exception error);
 
-    struct FutureResult {
-        public object Value;
-        public Exception Exception;
-
-        public FutureResult(object value, Exception exception) {
-            Value = value;
-            Exception = exception;
-        }
-    }
-
     public class Future {
-        private object _Lock = new object();
-        private FutureResult? _Result;
+        private int _CompletionState = 0;
+        private volatile bool _Completed = false;
+        private volatile object _Value;
+        private volatile Exception _Error;
         private List<OnComplete> _OnCompletes = new List<OnComplete>();
 
         public Future () {
@@ -32,74 +24,68 @@ namespace Squared.Task {
         }
 
         private void InvokeOnCompletes (object result, Exception error) {
-            _OnCompletes.ForEach((f) => { f(result, error); });
+            foreach (OnComplete oc in _OnCompletes)
+                oc(result, error);
+            _OnCompletes.Clear();
         }
 
         public void RegisterOnComplete (OnComplete handler) {
-            lock (_Lock) {
-                if (Completed) {
-                    if (Failed)
-                        handler(null, _Result.Value.Exception);
-                    else
-                        handler(_Result.Value.Value, null);
-                } else {
-                    _OnCompletes.Add(handler);
-                }
+            if (_Completed) {
+                handler(_Value, _Error);
+            } else {
+                _OnCompletes.Add(handler);
             }
         }
 
         public bool Completed {
             get {
-                lock (_Lock) {
-                    return _Result.HasValue;
-                }
+                return _Completed;
             }
         }
 
         public bool Failed {
             get {
-                lock (_Lock) {
-                    if (_Result.HasValue)
-                        return _Result.Value.Exception != null;
-                    else
-                        return false;
-                }
+                if (_Completed)
+                    return (_Error != null);
+                else
+                    return false;
             }
         }
 
         public object Result {
             get {
-                lock (_Lock) {
-                    if (!_Result.HasValue)
-                        throw new InvalidOperationException("Future has no result");
-                    else if (_Result.Value.Exception != null)
-                        throw _Result.Value.Exception;
+                if (_Completed) {
+                    if (_Error != null)
+                        throw _Error;
                     else
-                        return _Result.Value.Value;
+                        return _Value;
+                } else {
+                    throw new InvalidOperationException("Future has no result");
                 }
             }
         }
 
         public void SetResult (object result, Exception error) {
-            lock (_Lock) {
-                if (Completed)
-                    throw new InvalidOperationException("Future already has a result");
-                _Result = new FutureResult(result, error);
+            int newState = Interlocked.Increment(ref _CompletionState);
+            if (newState != 1) {
+                throw new InvalidOperationException("Future already has a result");
+            } else {
+                _Value = result;
+                _Error = error;
+                _Completed = true;
+                InvokeOnCompletes(result, error);
             }
-            InvokeOnCompletes(result, error);
         }
 
         public bool GetResult (out object result, out Exception error) {
-            lock (_Lock) {
-                if (!_Result.HasValue) {
-                    result = null;
-                    error = null;
-                    return false;
-                }
-
-                result = _Result.Value.Value;
-                error = _Result.Value.Exception;
+            if (_Completed) {
+                result = _Value;
+                error = _Error;
                 return true;
+            } else {
+                result = null;
+                error = null;
+                return false;
             }
         }
     }

@@ -6,27 +6,80 @@ using System.Threading;
 
 namespace Squared.Task {
     internal class JobQueue {
+        public event Action OnNewWorkItem;
+
         private Queue<Action> _Queue = new Queue<Action>();
-        private AutoResetEvent _NewJobEvent = new AutoResetEvent(false);
-        private int _NumEventWaiters = 0;
+        private AutoResetEvent _NewWorkItemEvent = null;
+        private bool _ThreadSafe = false;
+
+        private void SetWorkItemEvent () {
+            _NewWorkItemEvent.Set();
+        }
+
+        public bool ThreadSafe {
+            get {
+                return _ThreadSafe;
+            }
+            set {
+                if (_ThreadSafe == value)
+                    return;
+
+                _ThreadSafe = value;
+                if (value) {
+                    _NewWorkItemEvent = new AutoResetEvent(false);
+                    OnNewWorkItem += SetWorkItemEvent;
+                } else {
+                    OnNewWorkItem -= SetWorkItemEvent;
+                    _NewWorkItemEvent = null;
+                }
+            }
+        }
 
         public void QueueWorkItem (Action item) {
-            _Queue.Enqueue(item);
-            if (_NumEventWaiters > 0)
-                _NewJobEvent.Set();
+            try {
+                if (_ThreadSafe)
+                    Monitor.Enter(_Queue);
+                _Queue.Enqueue(item);
+            } finally {
+                if (_ThreadSafe)
+                    Monitor.Exit(_Queue);
+            }
+            if (OnNewWorkItem != null)
+                OnNewWorkItem();
         }
 
         public void Step () {
-            while (_Queue.Count > 0)
-                _Queue.Dequeue()();
+            Action item;
+            while (true) {
+                if (_ThreadSafe)
+                    Monitor.Enter(_Queue);
+                try {
+                    if (_Queue.Count == 0)
+                        return;
+                    item = _Queue.Dequeue();
+                } finally {
+                    if (_ThreadSafe)
+                        Monitor.Exit(_Queue);
+                }
+                item();
+            }
         }
 
         public void WaitForWorkItems () {
-            Interlocked.Increment(ref _NumEventWaiters);
-            while (_Queue.Count == 0) {
-                _NewJobEvent.WaitOne(100, true);
+            if (!_ThreadSafe)
+                throw new InvalidOperationException("You cannot WaitForWorkItems unless in ThreadSafe mode");
+
+            if (_ThreadSafe)
+                Monitor.Enter(_Queue);
+            try {
+                if (_Queue.Count != 0)
+                    return;
+            } finally {
+                if (_ThreadSafe)
+                    Monitor.Exit(_Queue);
             }
-            Interlocked.Decrement(ref _NumEventWaiters);
+
+            _NewWorkItemEvent.WaitOne();
         }
 
         public int Count {
