@@ -631,25 +631,110 @@ namespace Squared.Task {
         }
     }
 
-    public class Entity {
+    public abstract class Entity<T>
+        where T : class {
+        public int NumSteps;
+        public int ID;
         public float X, Y, Z;
         public float vX, vY, vZ;
+        protected Random rng;
+        protected List<T> Entities;
 
-        public Entity () {
-            Random rng = new Random();
+        public Entity (int seed, List<T> entities) {
+            rng = new Random(seed);
+            Entities = entities;
             X = Y = Z = 0;
+            ID = rng.Next();
             vX = (float)rng.NextDouble();
             vY = (float)rng.NextDouble();
             vZ = (float)rng.NextDouble();
+            NumSteps = 0;
+        }
+
+        public override string ToString () {
+            return String.Format("{0}<{1}>", this.GetType().Name, ID);
+        }
+
+        protected T GetRandomSibling () {
+            if (Entities.Count <= 1)
+                throw new InvalidOperationException();
+
+            int i = rng.Next(0, Entities.Count - 1);
+            return Entities[i];
+        }
+
+        protected abstract object GetWaiter ();
+
+        public virtual void Start (TaskScheduler scheduler) {
+            scheduler.Start(this.Run(), TaskExecutionPolicy.RunUntilComplete);
         }
 
         public IEnumerator<object> Run () {
             while (true) {
+                NumSteps += 1;
                 X += vX;
                 Y += vY;
                 Z += vZ;
-                yield return new WaitForNextStep();
+                yield return this.GetWaiter();
             }
+        }
+    }
+
+    public class SimpleEntity : Entity<SimpleEntity> {
+        public SimpleEntity (int seed, List<SimpleEntity> entities)
+            : base(seed, entities) {
+        }
+
+        protected override object GetWaiter () {
+            return new WaitForNextStep();
+        }
+    }
+
+    public class SleepyEntity : Entity<SleepyEntity> {
+        public SleepyEntity (int seed, List<SleepyEntity> entities)
+            : base(seed, entities) {
+        }
+
+        protected override object GetWaiter () {
+            return new Sleep(rng.NextDouble() * 0.1);
+        }
+    }
+
+    public class ChattyEntity : Entity<ChattyEntity> {
+        BlockingQueue<int> _Messages = new BlockingQueue<int>();
+
+        public ChattyEntity (int seed, List<ChattyEntity> entities)
+            : base(seed, entities) {
+        }
+
+        protected override object GetWaiter () {
+            return new WaitForNextStep();
+
+        }
+
+        public void Tell (int message) {
+            _Messages.Enqueue(message);
+        }
+
+        public IEnumerator<object> Talk () {
+            int state = 10;
+            while (true) {
+                NumSteps += 1;
+                if (state <= 0)
+                    yield break;
+
+                ChattyEntity sibling = GetRandomSibling();
+                sibling.Tell(state - 1);
+                yield return new WaitForNextStep();
+
+                Future response = _Messages.Dequeue();
+                yield return response;
+                state = (int)response.Result;
+            }
+        }
+
+        public override void Start (TaskScheduler scheduler) {
+            scheduler.Start(this.Talk(), TaskExecutionPolicy.RunUntilComplete);
         }
     }
 
@@ -675,12 +760,12 @@ namespace Squared.Task {
             int numEntities = 10000;
             int numSteps = 500;
 
-            var entities = new List<Entity>();
+            var entities = new List<SimpleEntity>();
             for (int i = 0; i < numEntities; i++)
-                entities.Add(new Entity());
+                entities.Add(new SimpleEntity(i, entities));
 
-            foreach (Entity e in entities)
-                Scheduler.Start(e.Run(), TaskExecutionPolicy.RunUntilComplete);
+            foreach (var e in entities)
+                e.Start(Scheduler);
 
             long timeStart = DateTime.Now.Ticks;
 
@@ -691,7 +776,82 @@ namespace Squared.Task {
             long timeEnd = DateTime.Now.Ticks;
             TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
 
+            foreach (var e in entities)
+                Assert.AreEqual(numSteps, e.NumSteps);
+
             Console.WriteLine("Took {0:N2} secs for {1} iterations. {2:N1} entities/sec", elapsed.TotalSeconds, numSteps, numEntities * numSteps / elapsed.TotalSeconds);
+        }
+
+        [Test]
+        public void TestLotsOfSleepyEntities () {
+            int numEntities = 1500;
+            int numIterations = 0;
+            double duration = 3.0;
+
+            var entities = new List<SleepyEntity>();
+            for (int i = 0; i < numEntities; i++)
+                entities.Add(new SleepyEntity(i, entities));
+
+            foreach (var e in entities)
+                e.Start(Scheduler);
+
+            long elapsed = 0;
+            long desiredTicks = TimeSpan.FromSeconds(duration).Ticks;
+            int j = 0;
+
+            while (elapsed < desiredTicks) {
+                Scheduler.WaitForWorkItems(1.0);
+                long timeStart = DateTime.Now.Ticks;
+                Scheduler.Step();
+                long timeEnd = DateTime.Now.Ticks;
+                elapsed += (timeEnd - timeStart);
+                j += 1;
+                if ((j % 1000) == 0) {
+                    Console.Out.WriteLine(".");
+                } else if ((j % 10) == 0) {
+                    Console.Out.Write(".");
+                }
+                numIterations += 1;
+            }
+
+            Console.Out.WriteLine("");
+
+            int totalEntitySteps = 0;
+            foreach (var e in entities)
+                totalEntitySteps += e.NumSteps;
+
+            double elapsedSeconds = TimeSpan.FromTicks(elapsed).TotalSeconds;
+
+            Console.WriteLine("{0} iterations in {1:N2} secs of processing time. {2} entity steps @ {3} entities/sec", numIterations, elapsedSeconds, totalEntitySteps, totalEntitySteps / elapsedSeconds);
+        }
+
+        [Test]
+        public void TestLotsOfChattyEntities () {
+            int numEntities = 500;
+            int numSteps = 0;
+
+            var entities = new List<ChattyEntity>();
+            for (int i = 0; i < numEntities; i++)
+                entities.Add(new ChattyEntity(i, entities));
+
+            foreach (var e in entities)
+                e.Start(Scheduler);
+
+            long timeStart = DateTime.Now.Ticks;
+
+            while (Scheduler.HasPendingTasks) {
+                numSteps += 1;
+                Scheduler.Step();
+            }
+
+            long timeEnd = DateTime.Now.Ticks;
+            TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
+
+            int numEntitySteps = 0;
+            foreach (var e in entities)
+                numEntitySteps += e.NumSteps;
+
+            Console.WriteLine("Took {0:N2} secs for {1} iterations. {2:N1} entities/sec", elapsed.TotalSeconds, numSteps, numEntitySteps / elapsed.TotalSeconds);
         }
     }
 }

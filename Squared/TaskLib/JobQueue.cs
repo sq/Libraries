@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading;
 
@@ -36,9 +35,9 @@ namespace Squared.Task {
         }
 
         public void QueueWorkItem (Action item) {
+            if (_ThreadSafe)
+                Monitor.Enter(_Queue);
             try {
-                if (_ThreadSafe)
-                    Monitor.Enter(_Queue);
                 _Queue.Enqueue(item);
             } finally {
                 if (_ThreadSafe)
@@ -49,7 +48,7 @@ namespace Squared.Task {
         }
 
         public void Step () {
-            Action item;
+            Action item = null;
             while (true) {
                 if (_ThreadSafe)
                     Monitor.Enter(_Queue);
@@ -61,25 +60,26 @@ namespace Squared.Task {
                     if (_ThreadSafe)
                         Monitor.Exit(_Queue);
                 }
-                item();
+                if (item != null)
+                    item();
             }
         }
 
-        public void WaitForWorkItems () {
+        public void WaitForWorkItems (double timeout) {
             if (!_ThreadSafe)
-                throw new InvalidOperationException("You cannot WaitForWorkItems unless in ThreadSafe mode");
+                throw new InvalidOperationException("WaitForWorkItems is invalid in non-thread-safe mode");
 
-            if (_ThreadSafe)
-                Monitor.Enter(_Queue);
+            Monitor.Enter(_Queue);
             try {
                 if (_Queue.Count != 0)
                     return;
             } finally {
-                if (_ThreadSafe)
-                    Monitor.Exit(_Queue);
+                Monitor.Exit(_Queue);
             }
-
-            _NewWorkItemEvent.WaitOne();
+            if (timeout > 0)
+                _NewWorkItemEvent.WaitOne(TimeSpan.FromSeconds(timeout), true);
+            else
+                _NewWorkItemEvent.WaitOne();
         }
 
         public int Count {

@@ -130,9 +130,12 @@ namespace Squared.Task {
         private WorkerThread<SleeperDelegate> _SleepWorker;
         private WorkerThread<BoundWaitHandle> _WaitWorker;
 
-
         public void WaitForWorkItems () {
-            _JobQueue.WaitForWorkItems();
+            WaitForWorkItems(0);
+        }
+
+        public void WaitForWorkItems (double timeout) {
+            _JobQueue.WaitForWorkItems(timeout);
         }
 
         public Future Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
