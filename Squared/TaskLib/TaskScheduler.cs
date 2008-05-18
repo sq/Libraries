@@ -12,6 +12,7 @@ namespace Squared.Task {
     public enum TaskExecutionPolicy {
         RunWhileFutureLives,
         RunUntilComplete,
+        RunAsBackgroundTask,
         Default = RunWhileFutureLives
     }
 
@@ -147,6 +148,14 @@ namespace Squared.Task {
                     this.HoldFuture(future);
                     future.RegisterOnComplete((result, error) => {
                         this.ReleaseFuture(future);
+                    });
+                    break;
+                case TaskExecutionPolicy.RunAsBackgroundTask:
+                    this.HoldFuture(future);
+                    future.RegisterOnComplete((result, error) => {
+                        this.ReleaseFuture(future);
+                        if (error != null)
+                            throw new Exception("Unhandled exception in background task", error);
                     });
                     break;
                 default:

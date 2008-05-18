@@ -23,5 +23,33 @@ namespace Squared.Task {
             }, null);
             return f;
         }
+
+        public static Future AsyncWriteLine (this TextWriter writer, string value) {
+            var f = new Future();
+            WaitCallback fn = (state) => {
+                try {
+                    writer.WriteLine(value);
+                    f.Complete();
+                } catch (Exception e) {
+                    f.Fail(e);
+                }
+            };
+            ThreadPool.QueueUserWorkItem(fn);
+            return f;
+        }
+
+        public static Future AsyncReadLine (this TextReader reader) {
+            var f = new Future();
+            WaitCallback fn = (state) => {
+                try {
+                    string result = reader.ReadLine();
+                    f.Complete(result);
+                } catch (Exception e) {
+                    f.Fail(e);
+                }
+            };
+            ThreadPool.QueueUserWorkItem(fn);
+            return f;
+        }
     }
 }

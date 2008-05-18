@@ -33,11 +33,17 @@ namespace Squared.Task {
 
     public class TaskRunner : ISchedulable {
         IEnumerator<object> _Task;
+        TaskExecutionPolicy _ExecutionPolicy;
         Future _Future;
 
-        public TaskRunner (IEnumerator<object> task) {
+        public TaskRunner (IEnumerator<object> task) 
+            : this(task, TaskExecutionPolicy.RunWhileFutureLives) {
+        }
+
+        public TaskRunner (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
             _Task = task;
             _Future = null;
+            _ExecutionPolicy = executionPolicy;
         }
 
         void Completed (object result, Exception error) {
@@ -45,7 +51,7 @@ namespace Squared.Task {
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            this._Future = scheduler.Start(_Task);
+            this._Future = scheduler.Start(_Task, _ExecutionPolicy);
             future.Bind(this._Future);
         }
 

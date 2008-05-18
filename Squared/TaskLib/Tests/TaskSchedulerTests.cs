@@ -434,6 +434,20 @@ namespace Squared.Task {
             Assert.IsTrue(Scheduler.HasPendingTasks);
         }
 
+        [Test]
+        public void RunAsBackgroundTaskExecutionPolicyBubblesExceptionsOutOfSchedulerStep () {
+            Scheduler.Start(CrashyTask(), TaskExecutionPolicy.RunAsBackgroundTask);
+
+            Scheduler.Step();
+
+            try {
+                Scheduler.Step();
+                Assert.Fail("Exception did not bubble out of Scheduler.Step");
+            } catch (Exception ex) {
+                Assert.AreEqual("pancakes", ex.InnerException.Message);
+            }
+        }
+
         void CrashyWorkerThread () {
             throw new Exception("maple syrup");
         }
