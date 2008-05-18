@@ -10,6 +10,48 @@ namespace TelnetChatServer {
     public class DisconnectedException : Exception {
     }
 
+    internal static class VT100 {
+        public static char ESC = '\x1b';
+
+        public static char[] CursorUp { get {
+            return new char[] { ESC, '[', '1', 'A' };
+        }}
+
+        public static char[] EraseToStartOfLine { get {
+            return new char[] { ESC, '[', '1', 'K' };
+        }}
+
+        public static char[] EraseLine { get {
+            return new char[] { ESC, '[', '2', 'K' };
+        }}
+
+        public static char[] EraseScreen { get {
+            return new char[] { ESC, '[', '2', 'J' };
+        }}
+
+        public static char[] SaveCursor { get {
+            return new char[] { ESC, '7' };
+        }}
+
+        public static char[] RestoreCursor { get {
+            return new char[] { ESC, '8' };
+        }}
+
+        public static char[] SetScrollingRegion (int startRow, int stopRow) {
+            var buffer = new StringBuilder();
+            buffer.Append(ESC);
+            buffer.AppendFormat("[{0};{1}r", startRow, stopRow);
+            return buffer.ToString().ToCharArray();
+        }
+
+        public static char[] SetCursorPosition (int row, int column) {
+            var buffer = new StringBuilder();
+            buffer.Append(ESC);
+            buffer.AppendFormat("[{0};{1}f", row, column);
+            return buffer.ToString().ToCharArray();
+        }
+    }
+
     internal static class TelnetExtensionMethods {
         internal static Future TelnetWriteLine (this StreamWriter writer, string value) {
             Future f = writer.AsyncWriteLine(value);
@@ -70,14 +112,18 @@ namespace TelnetChatServer {
             while (true) {
                 lastId += 1;
 
-                Message message = Messages[lastId];
-                if (message.From != null)
-                    output.TelnetWriteLine(String.Format("<{0}> {1}", message.From, message.Text));
-                else
-                    output.TelnetWriteLine(String.Format("*** {0}", message.Text));
+                try {
+                    Message message = Messages[lastId];
+                    if (message.From != null)
+                        output.TelnetWriteLine(String.Format("<{0}> {1}", message.From, message.Text));
+                    else
+                        output.TelnetWriteLine(String.Format("*** {0}", message.Text));
 
-                if (lastId == newestMessageId)
-                    return lastId;
+                    if (lastId == newestMessageId)
+                        return lastId;
+                } catch (Exception) {
+                    throw new DisconnectedException();
+                }
             }
         }
 
@@ -110,12 +156,22 @@ namespace TelnetChatServer {
 
             PeerConnected(peer);
 
+            output.Write(VT100.EraseScreen);
+            output.Flush();
+
             Future nextLine = input.TelnetReadLine();
             while (true) {
-                lastMessageId = DispatchMessagesSinceId(peer, output, lastMessageId);
+                try {
+                    lastMessageId = DispatchMessagesSinceId(peer, output, lastMessageId);
+                } catch (DisconnectedException) {
+                    PeerDisconnected(peer);
+                    yield break;
+                }
+
                 Future newMessage = NewMessageFuture;
                 f = Scheduler.Start(new WaitForFirst(nextLine, newMessage));
                 yield return f;
+
                 if (f.Result == nextLine) {
                     string nextLineText = null;
                     try {
@@ -124,18 +180,16 @@ namespace TelnetChatServer {
                         PeerDisconnected(peer);
                         yield break;
                     }
-                    output.Write('\x1b');
-                    output.Write('[');
-                    output.Write('1');
-                    output.Write('A');
-                    output.Write('\x1b');
-                    output.Write('[');
-                    output.Write('1');
-                    output.Write('K');
+
+                    output.Write(VT100.CursorUp);
+                    output.Write(VT100.EraseToStartOfLine);
+                    output.Flush();
+
                     if (nextLineText.Length > 0) {
                         Console.WriteLine("New message from {0}: {1}", peer, nextLineText);
                         DispatchNewMessage(peer, nextLine.Result as string);
                     }
+
                     nextLine = input.TelnetReadLine();
                 }
             }
@@ -148,6 +202,7 @@ namespace TelnetChatServer {
                 while (true) {
                     Future connection = server.AcceptIncomingConnection();
                     yield return connection;
+
                     Peer peer = new Peer { Id = nextId++ };
                     var peerTask = PeerTask(connection.Result as TcpClient, peer);
                     Scheduler.Start(peerTask, TaskExecutionPolicy.RunAsBackgroundTask);
