@@ -61,8 +61,8 @@ namespace TelnetChatServer {
             return f;
         }
 
-        internal static Future TelnetReadLine (this StreamReader reader) {
-            Future innerFuture = reader.AsyncReadLine();
+        internal static Future TelnetReadLine (this AsyncStreamReader reader) {
+            Future innerFuture = reader.ReadLine();
             Future f = new Future();
             innerFuture.RegisterOnComplete((result, error) => {
                 if ((result == null) && (error == null))
@@ -139,20 +139,19 @@ namespace TelnetChatServer {
 
         static IEnumerator<object> PeerTask (TcpClient client, Peer peer) {
             client.NoDelay = true;
-            Stream stream = client.GetStream();
-            StreamReader input = new StreamReader(stream);
-            StreamWriter output = new StreamWriter(stream);
+            var stream = client.GetStream();
+            var input = new AsyncStreamReader(stream);
+            var output = new StreamWriter(stream);
             int lastMessageId = -1;
 
             yield return output.TelnetWriteLine("Welcome! Please enter your name.");
             Future f = input.TelnetReadLine();
             yield return f;
-            try {
-                peer.Name = f.Result as string;
-            } catch (DisconnectedException) {
+            if (f.CheckForFailure(typeof(DisconnectedException))) {
                 PeerDisconnected(peer);
                 yield break;
             }
+            peer.Name = f.Result as string;
 
             PeerConnected(peer);
 
@@ -174,12 +173,11 @@ namespace TelnetChatServer {
 
                 if (f.Result == nextLine) {
                     string nextLineText = null;
-                    try {
-                        nextLineText = (string)nextLine.Result;
-                    } catch (DisconnectedException) {
+                    if (nextLine.CheckForFailure(typeof(DisconnectedException))) {
                         PeerDisconnected(peer);
                         yield break;
                     }
+                    nextLineText = (string)nextLine.Result;
 
                     output.Write(VT100.CursorUp);
                     output.Write(VT100.EraseToStartOfLine);

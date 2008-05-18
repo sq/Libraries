@@ -344,7 +344,8 @@ namespace Squared.Task {
             try {
                 var _ = b.Result;
                 Assert.Fail("TimeoutException was not raised");
-            } catch (TimeoutException) {
+            } catch (FutureException ex) {
+                Assert.IsInstanceOfType(typeof(TimeoutException), ex.InnerException);
             }
         }
 
@@ -413,8 +414,8 @@ namespace Squared.Task {
             try {
                 var _ = f.Result;
                 Assert.Fail("Exception was not raised");
-            } catch (Exception ex) {
-                Assert.AreEqual("pancakes", ex.Message);
+            } catch (FutureException ex) {
+                Assert.AreEqual("pancakes", ex.InnerException.Message);
             }
         }
 
@@ -443,7 +444,7 @@ namespace Squared.Task {
             try {
                 Scheduler.Step();
                 Assert.Fail("Exception did not bubble out of Scheduler.Step");
-            } catch (Exception ex) {
+            } catch (TaskException ex) {
                 Assert.AreEqual("pancakes", ex.InnerException.Message);
             }
         }
@@ -461,7 +462,7 @@ namespace Squared.Task {
                 var _ = f.Result;
                 Assert.Fail("Exception was not raised");
             } catch (Exception ex) {
-                Assert.AreEqual("maple syrup", ex.Message);
+                Assert.AreEqual("maple syrup", ex.InnerException.Message);
             }
         }
 

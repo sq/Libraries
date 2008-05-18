@@ -33,8 +33,8 @@ namespace Squared.Task {
             try {
                 var _ = f.Result;
                 Assert.Fail();
-            } catch (Exception e) {
-                Assert.AreEqual("test", e.Message);
+            } catch (FutureException e) {
+                Assert.AreEqual("test", e.InnerException.Message);
             }
         }
 

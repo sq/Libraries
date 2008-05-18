@@ -24,6 +24,12 @@ namespace Squared.Task {
         }
     }
 
+    public class TaskException : Exception {
+        public TaskException (string message, Exception innerException)
+            : base(message, innerException) {
+        }
+    }
+
     struct BoundWaitHandle {
         public WaitHandle Handle;
         public Future Future;
@@ -155,7 +161,7 @@ namespace Squared.Task {
                     future.RegisterOnComplete((result, error) => {
                         this.ReleaseFuture(future);
                         if (error != null)
-                            throw new Exception("Unhandled exception in background task", error);
+                            throw new TaskException("Unhandled exception in background task", error);
                     });
                     break;
                 default:

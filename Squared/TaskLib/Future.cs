@@ -5,6 +5,12 @@ using System.Threading;
 namespace Squared.Task {
     public delegate void OnComplete(object value, Exception error);
 
+    public class FutureException : Exception {
+        public FutureException (string message, Exception innerException)
+            : base(message, innerException) {
+        }
+    }
+
     public class Future {
         private int _CompletionState = 0;
         private volatile bool _Completed = false;
@@ -56,7 +62,7 @@ namespace Squared.Task {
             get {
                 if (_Completed) {
                     if (_Error != null)
-                        throw _Error;
+                        throw new FutureException("Future's result was an error", _Error);
                     else
                         return _Value;
                 } else {
@@ -108,6 +114,15 @@ namespace Squared.Task {
 
         public static void Fail (this Future future, Exception error) {
             future.SetResult(null, error);
+        }
+
+        public static bool CheckForFailure (this Future future, Type failureType) {
+            object result;
+            Exception error;
+            if (future.GetResult(out result, out error))
+                return failureType.IsInstanceOfType(error);
+            else
+                return false;
         }
 
         public static ManualResetEvent GetCompletionEvent (this Future future) {
