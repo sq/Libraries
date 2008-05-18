@@ -30,16 +30,22 @@ namespace Squared.Task {
         }
 
         private void InvokeOnCompletes (object result, Exception error) {
-            foreach (OnComplete oc in _OnCompletes)
-                oc(result, error);
+            Monitor.Enter(_OnCompletes);
+            OnComplete[] onCompletes = _OnCompletes.ToArray();
             _OnCompletes.Clear();
+            Monitor.Exit(_OnCompletes);
+
+            foreach (OnComplete oc in onCompletes)
+                oc(result, error);
         }
 
         public void RegisterOnComplete (OnComplete handler) {
             if (_Completed) {
                 handler(_Value, _Error);
             } else {
+                Monitor.Enter(_OnCompletes);
                 _OnCompletes.Add(handler);
+                Monitor.Exit(_OnCompletes);
             }
         }
 
