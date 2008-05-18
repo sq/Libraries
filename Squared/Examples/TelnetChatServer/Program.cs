@@ -95,7 +95,8 @@ namespace TelnetChatServer {
                     else
                         text = String.Format("*** {0}", message.Text);
 
-                    output.TelnetWriteLine(text);
+                    Future f = output.TelnetWriteLine(text);
+                    f.GetCompletionEvent().WaitOne();                    
 
                     if (lastId == newestMessageId)
                         return lastId;
