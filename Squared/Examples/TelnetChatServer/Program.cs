@@ -21,35 +21,9 @@ namespace TelnetChatServer {
             return new char[] { ESC, '[', '1', 'K' };
         }}
 
-        public static char[] EraseLine { get {
-            return new char[] { ESC, '[', '2', 'K' };
-        }}
-
         public static char[] EraseScreen { get {
             return new char[] { ESC, '[', '2', 'J' };
         }}
-
-        public static char[] SaveCursor { get {
-            return new char[] { ESC, '7' };
-        }}
-
-        public static char[] RestoreCursor { get {
-            return new char[] { ESC, '8' };
-        }}
-
-        public static char[] SetScrollingRegion (int startRow, int stopRow) {
-            var buffer = new StringBuilder();
-            buffer.Append(ESC);
-            buffer.AppendFormat("[{0};{1}r", startRow, stopRow);
-            return buffer.ToString().ToCharArray();
-        }
-
-        public static char[] SetCursorPosition (int row, int column) {
-            var buffer = new StringBuilder();
-            buffer.Append(ESC);
-            buffer.AppendFormat("[{0};{1}f", row, column);
-            return buffer.ToString().ToCharArray();
-        }
     }
 
     internal static class TelnetExtensionMethods {
@@ -114,10 +88,14 @@ namespace TelnetChatServer {
 
                 try {
                     Message message = Messages[lastId];
+
+                    string text;
                     if (message.From != null)
-                        output.TelnetWriteLine(String.Format("<{0}> {1}", message.From, message.Text));
+                        text = String.Format("<{0}> {1}", message.From, message.Text);
                     else
-                        output.TelnetWriteLine(String.Format("*** {0}", message.Text));
+                        text = String.Format("*** {0}", message.Text);
+
+                    output.TelnetWriteLine(text);
 
                     if (lastId == newestMessageId)
                         return lastId;
