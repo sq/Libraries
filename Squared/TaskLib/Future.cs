@@ -122,13 +122,15 @@ namespace Squared.Task {
             future.SetResult(null, error);
         }
 
-        public static bool CheckForFailure (this Future future, Type failureType) {
+        public static bool CheckForFailure (this Future future, params Type[] failureTypes) {
             object result;
             Exception error;
-            if (future.GetResult(out result, out error))
-                return failureType.IsInstanceOfType(error);
-            else
-                return false;
+            if (future.GetResult(out result, out error)) {
+                foreach (Type type in failureTypes)
+                    if (type.IsInstanceOfType(error))
+                        return true;
+            }
+            return false;
         }
 
         public static ManualResetEvent GetCompletionEvent (this Future future) {

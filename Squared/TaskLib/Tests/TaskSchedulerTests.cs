@@ -472,6 +472,8 @@ namespace Squared.Task {
             var f = Scheduler.Start(new WaitForWaitHandle(e));
 
             Scheduler.Step();
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
             Thread.Sleep(500);
 
             long timeStart = DateTime.Now.Ticks;
@@ -479,7 +481,7 @@ namespace Squared.Task {
 
             f.GetCompletionEvent().WaitOne();
             long elapsed = DateTime.Now.Ticks - timeStart;
-            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(10).Ticks);
+            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(5).Ticks);
         }
 
         [Test]
@@ -491,6 +493,8 @@ namespace Squared.Task {
             var f = Scheduler.Start(new WaitForWaitHandles(a, b, c));
 
             Scheduler.Step();
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
             Thread.Sleep(500);
 
             long timeStart = DateTime.Now.Ticks;
@@ -500,7 +504,7 @@ namespace Squared.Task {
 
             f.GetCompletionEvent().WaitOne();
             long elapsed = DateTime.Now.Ticks - timeStart;
-            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(10).Ticks);
+            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(5).Ticks);
         }
     }
 

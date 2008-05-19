@@ -160,8 +160,11 @@ namespace Squared.Task {
                     this.HoldFuture(future);
                     future.RegisterOnComplete((result, error) => {
                         this.ReleaseFuture(future);
-                        if (error != null)
-                            throw new TaskException("Unhandled exception in background task", error);
+                        if (error != null) {
+                            this.QueueWorkItem(() => {
+                                throw new TaskException("Unhandled exception in background task", error);
+                            });
+                        }
                     });
                     break;
                 default:

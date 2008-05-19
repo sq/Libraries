@@ -9,8 +9,12 @@ namespace Squared.Task {
             var f = new Future();
             TcpClient client = new TcpClient();
             client.BeginConnect(host, port, (ar) => {
-                client.EndConnect(ar);
-                f.Complete(client);
+                try {
+                    client.EndConnect(ar);
+                    f.Complete(client);
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
             }, null);
             return f;
         }
@@ -20,8 +24,12 @@ namespace Squared.Task {
         public static Future AcceptIncomingConnection (this TcpListener listener) {
             var f = new Future();
             listener.BeginAcceptTcpClient((ar) => {
-                TcpClient result = listener.EndAcceptTcpClient(ar);
-                f.Complete(result);
+                try {
+                    TcpClient result = listener.EndAcceptTcpClient(ar);
+                    f.Complete(result);
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
             }, null);
             return f;
         }

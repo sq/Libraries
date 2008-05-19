@@ -109,19 +109,31 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void ReadTest () {
-            string testData = new string('a', 2);
+        public void ReadAndPeekTest () {
+            string testData = "ab";
 
             WriteTestData(testData);
             RewindStream();
 
-            Future f = Reader.Read();
+            Future f = Reader.Peek();
             f.GetCompletionEvent().WaitOne();
             Assert.AreEqual('a', f.Result);
 
             f = Reader.Read();
             f.GetCompletionEvent().WaitOne();
             Assert.AreEqual('a', f.Result);
+
+            f = Reader.Peek();
+            f.GetCompletionEvent().WaitOne();
+            Assert.AreEqual('b', f.Result);
+
+            f = Reader.Read();
+            f.GetCompletionEvent().WaitOne();
+            Assert.AreEqual('b', f.Result);
+
+            f = Reader.Peek();
+            f.GetCompletionEvent().WaitOne();
+            Assert.AreEqual(null, f.Result);
 
             f = Reader.Read();
             f.GetCompletionEvent().WaitOne();
