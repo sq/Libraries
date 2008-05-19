@@ -11,9 +11,11 @@ namespace Squared.Task {
         private Thread _Thread = null;
         private AutoResetEvent _WakeEvent = new AutoResetEvent(false);
         private List<T> _WorkItems = new List<T>();
+        private ThreadPriority _Priority;
 
-        public WorkerThread (WorkerThreadFunc<T> threadFunc) {
+        public WorkerThread (WorkerThreadFunc<T> threadFunc, ThreadPriority priority) {
             _ThreadFunc = threadFunc;
+            _Priority = priority;
         }
 
         public void QueueWorkItem (T item) {
@@ -26,6 +28,7 @@ namespace Squared.Task {
                 _Thread = new Thread(() => {
                     _ThreadFunc(_WorkItems, _WakeEvent);
                 });
+                _Thread.Priority = _Priority;
                 _Thread.IsBackground = true;
                 _Thread.Name = String.Format("WorkerThread<{0}>", typeof(T).Name);
                 _Thread.Start();

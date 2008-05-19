@@ -277,11 +277,11 @@ namespace Squared.Task {
                 int completedWait = WaitHandle.WaitAny(waitHandles);
                 if (completedWait == 0)
                     continue;
+                BoundWaitHandle w = waits[completedWait - 1];
                 lock (pendingWaits) {
-                    BoundWaitHandle w = waits[completedWait - 1];
                     pendingWaits.Remove(w);
-                    w.Future.Complete();
                 }
+                w.Future.Complete();
             }
         }
 
@@ -299,8 +299,8 @@ namespace Squared.Task {
         }
 
         public TaskScheduler (bool threadSafe) {
-            _SleepWorker = new WorkerThread<SleeperDelegate>(SleepWorkerThreadFunc);
-            _WaitWorker = new WorkerThread<BoundWaitHandle>(WaitWorkerThreadFunc);
+            _SleepWorker = new WorkerThread<SleeperDelegate>(SleepWorkerThreadFunc, ThreadPriority.AboveNormal);
+            _WaitWorker = new WorkerThread<BoundWaitHandle>(WaitWorkerThreadFunc, ThreadPriority.AboveNormal);
             _JobQueue.ThreadSafe = threadSafe;
         }
 

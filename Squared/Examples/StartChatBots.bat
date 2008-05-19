@@ -1,0 +1,1 @@
+@FOR /L %%i in (1,1,%1) DO @start "ChatBot%%i" /MIN .\TelnetChatBot\bin\debug\TelnetChatBot.exe

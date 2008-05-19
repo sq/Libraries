@@ -77,14 +77,22 @@ namespace TelnetChatServer {
     static class Program {
         static TaskScheduler Scheduler = new TaskScheduler(true);
         static List<Message> Messages = new List<Message>();
-        static Future NewMessageFuture = new Future();
+        static List<Future> NewMessageFutures = new List<Future>();
 
         static void DispatchNewMessage (Peer from, string message) {
             int newId = Messages.Count;
             Messages.Add(new Message { From = from, Text = message });
-            Future f = NewMessageFuture;
-            NewMessageFuture = new Future();
-            f.Complete(newId);
+
+            Future[] futures = NewMessageFutures.ToArray();
+            NewMessageFutures.Clear();
+            foreach (Future f in futures)
+                f.Complete();
+        }
+
+        static Future WaitForNewMessage () {
+            Future f = new Future();
+            NewMessageFutures.Add(f);
+            return f;
         }
 
         static IEnumerator<object> DispatchMessagesSinceId (Peer peer, StreamWriter output, int lastId) {
@@ -96,11 +104,11 @@ namespace TelnetChatServer {
             }
 
             if ((newestMessageId - lastId) > 10) {
-                Console.WriteLine("Limited message dispatch for {0} to {1} messages (would've been {2}.)", peer, 10, newestMessageId - lastId);
+                Console.WriteLine("Limited message dispatch for {0} to {1} messages (would've been {2}.)", peer, 20, newestMessageId - lastId);
                 lastId = newestMessageId - 10;
             }
 
-            while (true) {
+            while (peer.Connected) {
                 lastId += 1;
 
                 Message message = Messages[lastId];
@@ -148,10 +156,7 @@ namespace TelnetChatServer {
         static IEnumerator<object> PeerSendTask (StreamWriter output, Peer peer) {
             int lastId = -1;
             Future f;
-            Future newMessages = NewMessageFuture;
-            while (true) {
-                yield return newMessages;
-                newMessages = NewMessageFuture;
+            while (peer.Connected) {
                 f = Scheduler.Start(DispatchMessagesSinceId(peer, output, lastId), TaskExecutionPolicy.RunUntilComplete);
                 yield return f;
                 try {
@@ -162,6 +167,8 @@ namespace TelnetChatServer {
                     Console.WriteLine("Error in PeerSendTask({0}): {1}", peer, ex);
                     yield break;
                 }
+                f = WaitForNewMessage();
+                yield return f;
             }
         }
 
@@ -187,7 +194,7 @@ namespace TelnetChatServer {
 
             Scheduler.Start(PeerSendTask(output, peer), TaskExecutionPolicy.RunAsBackgroundTask);
 
-            while (true) {
+            while (peer.Connected) {
                 f = input.TelnetReadLine();
                 yield return f;
                 string nextLineText = null;

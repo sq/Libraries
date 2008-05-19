@@ -50,6 +50,7 @@ namespace TelnetChatBot {
             var output = new StreamWriter(stream);
             string nextMessageText = String.Format("ChatBot{0}", Process.GetCurrentProcess().Id);
             int i = 0;
+            yield return new Sleep(new Random(Process.GetCurrentProcess().Id).NextDouble());
             while (true) {
                 Future f = output.TelnetWriteLine(nextMessageText);
                 yield return f;
@@ -102,7 +103,6 @@ namespace TelnetChatBot {
                 }
             } catch (Exception ex) {
                 Console.WriteLine("Unhandled exception: {0}", ex);
-                Console.ReadLine();
             }
 
             Console.WriteLine("Disconnected.");
