@@ -4,6 +4,9 @@ using System.Text;
 using NUnit.Framework;
 using System.IO;
 using System.Threading;
+using System.Net.Sockets;
+using System.Net;
+using System.Linq;
 
 namespace Squared.Task {
     public class IOTests {
@@ -24,6 +27,14 @@ namespace Squared.Task {
 
         public void WriteTestData (string data) {
             WriteTestData(Encoding.ASCII.GetBytes(data));
+        }
+
+        public byte[] GetTestData () {
+            return Stream.GetBuffer();
+        }
+
+        public string GetTestDataString () {
+            return Encoding.ASCII.GetString(Stream.GetBuffer(), 0, (int)Stream.Length);
         }
     }
 
@@ -137,6 +148,211 @@ namespace Squared.Task {
 
             f = Reader.Read();
             f.GetCompletionEvent().WaitOne();
+            Assert.AreEqual(null, f.Result);
+        }
+    }
+
+    [TestFixture]
+    public class AsyncStreamWriterTests : IOTests {
+        AsyncStreamWriter Writer;
+
+        [SetUp]
+        public override void SetUp () {
+            base.SetUp();
+            Writer = new AsyncStreamWriter(this.Stream);
+        }
+
+        [Test]
+        public void WriteLineTest () {
+            Future f = Writer.WriteLine("test");
+            f.GetCompletionEvent().WaitOne();
+
+            f = Writer.WriteLine("foo");
+            f.GetCompletionEvent().WaitOne();
+
+            Assert.AreEqual("test\r\nfoo\r\n", GetTestDataString());
+        }
+
+        [Test]
+        public void WriteStringTest () {
+            Future f = Writer.Write("test");
+            f.GetCompletionEvent().WaitOne();
+
+            f = Writer.Write("foo");
+            f.GetCompletionEvent().WaitOne();
+
+            Assert.AreEqual("testfoo", GetTestDataString());
+        }
+
+        [Test]
+        public void MultipleWriteTest () {
+            byte[] buf = new byte[40960];
+            for (int i = 0; i < buf.Length; i++) 
+                buf[i] = (byte)(i % 256);
+
+            List<Future> futures = new List<Future>();
+
+            int numWrites = 128;
+            int numWorkers = 4;
+            int expectedLength = buf.Length * numWrites;
+            WaitCallback worker = (_) => {
+                for (int i = 0; i < numWrites / numWorkers; i++) {
+                    Future f = Writer.Write(buf);
+                    lock (futures)
+                        futures.Add(f);
+                }
+            };
+
+            for (int i = 0; i < numWorkers; i++)
+                ThreadPool.QueueUserWorkItem(worker);
+
+            while (Stream.Length < expectedLength)
+                Thread.Sleep(1);
+            
+            byte[] expected = new byte[expectedLength];
+            for (int i = 0; i < numWrites; i++)
+                Array.Copy(buf, 0, expected, buf.Length * i, buf.Length);
+
+            byte[] actual = new byte[Stream.Length];
+            Array.Copy(Stream.GetBuffer(), actual, Stream.Length);
+            Assert.AreEqual(expected, actual);
+        }
+    }
+
+    [TestFixture]
+    public class SocketTests {
+        TcpClient A, B;
+        NetworkStream StreamA, StreamB;
+        TcpListener Listener;
+
+        [SetUp]
+        public void SetUp () {
+            Listener = new TcpListener(IPAddress.Any, 1235);
+            Listener.Start();
+            Future fA = Listener.AcceptIncomingConnection();
+            Future fB = Network.ConnectTo("localhost", 1235);
+            fA.GetCompletionEvent().WaitOne();
+            A = fA.Result as TcpClient;
+            fB.GetCompletionEvent().WaitOne();
+            B = fB.Result as TcpClient;
+            Listener.Stop();
+            StreamA = A.GetStream();
+            StreamB = B.GetStream();
+        }
+
+        [TearDown]
+        public void TearDown () {
+            A.Close();
+            B.Close();
+        }
+
+        [Test]
+        public void TestLotsOfBlockingWrites () {
+            byte[] writeBuf = new byte[256];
+            byte[] readBuf = new byte[256];
+
+            for (int i = 0; i < 256; i++)
+                writeBuf[i] = (byte)i;
+
+            for (int i = 0; i < 100; i++)
+                StreamB.Write(writeBuf, 0, writeBuf.Length);
+
+            for (int i = 0; i < 100; i++) {
+                StreamA.Read(readBuf, 0, readBuf.Length);
+                Assert.AreEqual(readBuf, writeBuf);
+            }
+        }
+
+        [Test]
+        public void BeginReadInvokesCallbackWhenDataAvailable () {
+            byte[] writeBuf = new byte[256];
+            byte[] readBuf = new byte[256];
+
+            for (int i = 0; i < 256; i++)
+                writeBuf[i] = (byte)i;
+
+            bool[] readCallbackInvoked = new bool[1];
+            bool[] writeCallbackInvoked = new bool[1];
+
+            AsyncCallback readCallback = (ar) => {
+                int numBytes = StreamA.EndRead(ar);
+                Assert.AreEqual(readBuf.Length, numBytes);
+                readCallbackInvoked[0] = true;
+            };
+
+            AsyncCallback writeCallback = (ar) => {
+                StreamB.EndWrite(ar);
+                writeCallbackInvoked[0] = true;
+            };
+
+            StreamA.BeginRead(readBuf, 0, readBuf.Length, readCallback, null);
+
+            StreamB.BeginWrite(writeBuf, 0, writeBuf.Length, writeCallback, null);
+
+            while (!readCallbackInvoked[0] || !writeCallbackInvoked[0])
+                Thread.Sleep(1);
+
+            Assert.AreEqual(readBuf, writeBuf);
+
+        }
+
+        [Test]
+        public void BeginReadInvokesCallbackWhenOtherSocketDisconnects () {
+            byte[] readBuf = new byte[256];
+
+            bool[] readCallbackInvoked = new bool[1];
+
+            AsyncCallback readCallback = (ar) => {
+                int numBytes = StreamA.EndRead(ar);
+                Assert.AreEqual(0, numBytes);
+                readCallbackInvoked[0] = true;
+            };
+
+            StreamA.BeginRead(readBuf, 0, readBuf.Length, readCallback, null);
+
+            B.Close();
+
+            Thread.Sleep(1000);
+
+            Assert.IsTrue(readCallbackInvoked[0]);
+        }
+
+        [Test]
+        public void BeginReadInvokesCallbackWhenSocketDisconnectsButEndReadRaises () {
+            byte[] readBuf = new byte[256];
+
+            bool[] readCallbackInvoked = new bool[1];
+
+            AsyncCallback readCallback = (ar) => {
+                try {
+                    int numBytes = StreamA.EndRead(ar);
+                    Assert.Fail("ObjectDisposedException was not raised by EndRead");
+                } catch (ObjectDisposedException) {
+                }
+                readCallbackInvoked[0] = true;
+            };
+
+            StreamA.BeginRead(readBuf, 0, readBuf.Length, readCallback, null);
+
+            A.Close();
+
+            Thread.Sleep(1000);
+
+            Assert.IsTrue(readCallbackInvoked[0]);
+        }
+
+        [Test]
+        public void AsyncStreamReaderHandlingOfDisposedStream () {
+            var reader = new AsyncStreamReader(StreamA);
+            var f = reader.ReadLine();
+
+            Thread.Sleep(1000);
+
+            A.Close();
+
+            Thread.Sleep(1000);
+
+            Assert.IsTrue(f.Completed);
             Assert.AreEqual(null, f.Result);
         }
     }

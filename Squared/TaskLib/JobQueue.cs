@@ -8,7 +8,7 @@ namespace Squared.Task {
         public event Action OnNewWorkItem;
 
         private Queue<Action> _Queue = new Queue<Action>();
-        private AutoResetEvent _NewWorkItemEvent = null;
+        private ManualResetEvent _NewWorkItemEvent = null;
         private bool _ThreadSafe = false;
 
         private void SetWorkItemEvent () {
@@ -25,7 +25,7 @@ namespace Squared.Task {
 
                 _ThreadSafe = value;
                 if (value) {
-                    _NewWorkItemEvent = new AutoResetEvent(false);
+                    _NewWorkItemEvent = new ManualResetEvent(false);
                     OnNewWorkItem += SetWorkItemEvent;
                 } else {
                     OnNewWorkItem -= SetWorkItemEvent;
@@ -65,21 +65,26 @@ namespace Squared.Task {
             }
         }
 
-        public void WaitForWorkItems (double timeout) {
+        public bool WaitForWorkItems (double timeout) {
             if (!_ThreadSafe)
                 throw new InvalidOperationException("WaitForWorkItems is invalid in non-thread-safe mode");
 
             Monitor.Enter(_Queue);
             try {
                 if (_Queue.Count != 0)
-                    return;
+                    return true;
             } finally {
                 Monitor.Exit(_Queue);
             }
-            if (timeout > 0)
-                _NewWorkItemEvent.WaitOne(TimeSpan.FromSeconds(timeout), true);
-            else
+            if (timeout > 0) {
+                bool result = _NewWorkItemEvent.WaitOne(TimeSpan.FromSeconds(timeout), true);
+                _NewWorkItemEvent.Reset();
+                return result;
+            } else {
                 _NewWorkItemEvent.WaitOne();
+                _NewWorkItemEvent.Reset();
+                return true;
+            }
         }
 
         public int Count {

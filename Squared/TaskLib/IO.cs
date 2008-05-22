@@ -11,18 +11,21 @@ namespace Squared.Task {
         public static Future AsyncRead (this Stream stream, byte[] buffer, int offset, int count) {
             var f = new Future();
             try {
-                stream.BeginRead(buffer, offset, count, (ar) => {
-                    if (stream == null) {
-                        f.Fail(new Exception("Stream disposed before read could be completed"));
-                        return;
-                    }
-                    try {
-                        int bytesRead = stream.EndRead(ar);
-                        f.Complete(bytesRead);
-                    } catch (Exception ex) {
-                        f.Fail(ex);
-                    }
-                }, stream);
+                lock (stream)
+                    stream.BeginRead(buffer, offset, count, (ar) => {
+                        if (stream == null) {
+                            f.Fail(new Exception("Stream disposed before read could be completed"));
+                            return;
+                        }
+                        try {
+                            int bytesRead;
+                            lock (stream)
+                                bytesRead = stream.EndRead(ar);
+                            f.Complete(bytesRead);
+                        } catch (Exception ex) {
+                            f.Fail(ex);
+                        }
+                    }, stream);
             } catch (Exception ex) {
                 f.Fail(ex);
             }
@@ -32,18 +35,20 @@ namespace Squared.Task {
         public static Future AsyncWrite (this Stream stream, byte[] buffer, int offset, int count) {
             var f = new Future();
             try {
-                stream.BeginWrite(buffer, offset, count, (ar) => {
-                    if (stream == null) {
-                        f.Fail(new Exception("Stream disposed before write could be completed"));
-                        return;
-                    }
-                    try {
-                        stream.EndWrite(ar);
-                        f.Complete();
-                    } catch (Exception ex) {
-                        f.Fail(ex);
-                    }
-                }, stream);
+                lock (stream)
+                    stream.BeginWrite(buffer, offset, count, (ar) => {
+                        if (stream == null) {
+                            f.Fail(new Exception("Stream disposed before write could be completed"));
+                            return;
+                        }
+                        try {
+                            lock (stream)
+                                stream.EndWrite(ar);
+                            f.Complete();
+                        } catch (Exception ex) {
+                            f.Fail(ex);
+                        }
+                    }, stream);
             } catch (Exception ex) {
                 f.Fail(ex);
             }
@@ -54,7 +59,8 @@ namespace Squared.Task {
             var f = new Future();
             WaitCallback fn = (state) => {
                 try {
-                    writer.Write(value);
+                    lock (writer)
+                        writer.Write(value);
                     f.Complete();
                 } catch (Exception ex) {
                     f.Fail(ex);
@@ -68,7 +74,8 @@ namespace Squared.Task {
             var f = new Future();
             WaitCallback fn = (state) => {
                 try {
-                    writer.WriteLine(value);
+                    lock (writer)
+                        writer.WriteLine(value);
                     f.Complete();
                 } catch (Exception ex) {
                     f.Fail(ex);
@@ -82,7 +89,9 @@ namespace Squared.Task {
             var f = new Future();
             WaitCallback fn = (state) => {
                 try {
-                    string result = reader.ReadLine();
+                    string result;
+                    lock (reader)
+                        result = reader.ReadLine();
                     f.Complete(result);
                 } catch (Exception ex) {
                     f.Fail(ex);
@@ -112,6 +121,9 @@ namespace Squared.Task {
         }
 
         public AsyncStreamReader (Stream stream, Encoding encoding) {
+            if (!stream.CanRead)
+                throw new InvalidOperationException("Stream is not readable");
+
             _BaseStream = stream;
             _Encoding = encoding;
             _Decoder = _Encoding.GetDecoder();
@@ -143,18 +155,20 @@ namespace Squared.Task {
                     return;
                 }
                 try {
-                    int bytesRead = _BaseStream.EndRead(ar);
+                    int bytesRead;
+                    lock (_BaseStream)
+                        bytesRead = _BaseStream.EndRead(ar);
                     f.Complete(bytesRead);
-                    // Debug.WriteLine("ReadMoreData:Future.Complete");
+                } catch (ObjectDisposedException) {
+                    f.Complete(0);
                 } catch (Exception ex) {
                     f.Fail(ex);
-                    // Debug.WriteLine(String.Format("ReadMoreData:Future.Fail({0})", ex));
                     return;
                 }
             };
-            // Debug.WriteLine("ReadMoreData");
             try {
-                IAsyncResult _ar = _BaseStream.BeginRead(_InputBuffer, 0, _BufferSize, callback, this);
+                lock (_BaseStream)
+                    _BaseStream.BeginRead(_InputBuffer, 0, _BufferSize, callback, this);
             } catch (Exception ex) {
                 f.Fail(ex);
             }
@@ -163,12 +177,10 @@ namespace Squared.Task {
 
         private Future DecodeMoreData () {
             Future f = new Future();
-            // Debug.WriteLine("DecodeMoreData");
             Future readData = ReadMoreData();
             readData.RegisterOnComplete((result, error) => {
                 if (error != null) {
                     f.Fail(error);
-                    // Debug.WriteLine(String.Format("DecodeMoreData:Future.Fail({0})", error));
                     return;
                 }
 
@@ -178,10 +190,8 @@ namespace Squared.Task {
                     _DecodedCharacterCount = 0;
                     _DecodedCharacterCount = _Decoder.GetChars(_InputBuffer, 0, bytesRead, _DecodedBuffer, 0);
                     f.Complete(_DecodedCharacterCount);
-                    // Debug.WriteLine("DecodeMoreData:Future.Complete");
                 } catch (Exception ex) {
                     f.Fail(ex);
-                    // Debug.WriteLine(String.Format("DecodeMoreData:Future.Fail({0})", ex));
                 }
             });
             return f;
@@ -296,10 +306,7 @@ namespace Squared.Task {
             StringBuilder buffer = new StringBuilder();
             OnComplete[] oc = new OnComplete[1];
 
-            // Debug.WriteLine("ReadLine");
-
             Action processDecodedChars = () => {
-                // Debug.WriteLine("ReadLine:processDecodedChars");
                 char value;
                 while (GetCurrentCharacter(out value)) {
                     ReadNextCharacter();
@@ -310,22 +317,18 @@ namespace Squared.Task {
                             ReadNextCharacter();
                         }
                         f.Complete(ReturnBufferValue(buffer));
-                        // Debug.WriteLine("ReadLine:Future.Complete");
                         return;
                     }
 
                     buffer.Append(value);
                 }
 
-                // Debug.WriteLine("ReadLine:DecodeMoreData:Request");
                 Future decodeMoreChars = DecodeMoreData();
                 decodeMoreChars.RegisterOnComplete(oc[0]);
             };
 
             OnComplete onDecodeComplete = (result, error) => {
-                // Debug.WriteLine("ReadLine:DecodeMoreData");
                 if (error != null) {
-                    // Debug.WriteLine(String.Format("ReadLine:Future.Fail({0})", error));
                     f.Fail(error);
                 } else {
                     int numChars = (int)result;
@@ -334,7 +337,6 @@ namespace Squared.Task {
                         processDecodedChars();
                     } else {
                         f.Complete(ReturnBufferValue(buffer));
-                        // Debug.WriteLine("ReadLine:Future.Complete");
                     }
                 }
             };
@@ -376,6 +378,138 @@ namespace Squared.Task {
             oc[0] = onDecodeComplete;
             processDecodedChars();
             return f;
+        }
+    }
+
+    public class AsyncStreamWriter : IDisposable {
+        struct WorkItem {
+            public byte[] Bytes;
+            public Future Future;
+        }
+
+        public static Encoding DefaultEncoding = Encoding.UTF8;
+        public static char[] DefaultNewLine = new char[] { '\r', '\n' };
+
+        char[] _NewLine;
+        byte[] _NewLineBytes;
+        Stream _BaseStream;
+        Encoding _Encoding;
+        Encoder _Encoder;
+        List<WorkItem> _WorkItems = new List<WorkItem>();
+        volatile bool _Running = false;
+
+        public AsyncStreamWriter (Stream stream)
+            : this(stream, DefaultEncoding) {
+        }
+
+        public AsyncStreamWriter (Stream stream, Encoding encoding) {
+            if (!stream.CanWrite)
+                throw new InvalidOperationException("Stream is not writable");
+
+            _BaseStream = stream;
+            _Encoding = encoding;
+            _Encoder = encoding.GetEncoder();
+            _NewLine = DefaultNewLine;
+            _NewLineBytes = _Encoding.GetBytes(_NewLine);
+        }
+
+        public void Dispose () {
+            if (_BaseStream != null) {
+                _BaseStream.Dispose();
+                _BaseStream = null;
+            }
+            _Encoding = null;
+            _Encoder = null;
+        }
+
+        public char[] NewLine {
+            get {
+                return _NewLine;
+            }
+            set {
+                _NewLine = value;
+                _NewLineBytes = _Encoding.GetBytes(_NewLine);
+            }
+        }
+
+        private void ProcessWorkItem () {
+            if (_Running)
+                return;
+            _Running = true;
+            try {
+                WorkItem wi;
+                lock (_WorkItems) {
+                    if (_WorkItems.Count == 0) {
+                        _Running = false;
+                        return;
+                    }
+                    wi = _WorkItems[0];
+                }
+                byte[] bytes = wi.Bytes;
+                Future f = wi.Future;
+                AsyncCallback callback = (ar) => {
+                    Exception _failure = null;
+                    try {
+                        _BaseStream.EndWrite(ar);
+                    } catch (Exception ex) {
+                        _failure = ex;
+                    }
+                    if (!f.Completed) {
+                        lock (_WorkItems) {
+                            _WorkItems.RemoveAt(0);
+                        }
+                        f.SetResult(null, _failure);
+                        this._Running = false;
+                        this.ProcessWorkItem();
+                    }
+                };
+                lock (_BaseStream) {
+                    try {
+                        _BaseStream.BeginWrite(bytes, 0, bytes.Length, callback, null);
+                    } catch (Exception ex) {
+                        if (!f.Completed) {
+                            lock (_WorkItems) {
+                                _WorkItems.RemoveAt(0);
+                            }
+                            f.Fail(ex);
+                            this._Running = false;
+                            this.ProcessWorkItem();
+                        }
+                    }
+                }
+            } catch {
+                _Running = false;
+                throw;
+            }
+        }
+
+        public Future Write (byte[] bytes) {
+            Future f = new Future();
+            WorkItem wi = new WorkItem { Bytes = bytes, Future = f };
+            lock (_WorkItems) {
+                _WorkItems.Add(wi);
+            }
+            ProcessWorkItem();
+            return f;
+        }
+
+        public Future Write (string text) {
+            byte[] buf = _Encoding.GetBytes(text);
+            return Write(buf);
+        }
+
+        public Future WriteLine (string line) {
+            int numBytes = _Encoding.GetByteCount(line);
+            byte[] buf = new byte[numBytes + _NewLineBytes.Length];
+            _Encoding.GetBytes(line, 0, line.Length, buf, 0);
+            Array.Copy(_NewLineBytes, 0, buf, numBytes, _NewLineBytes.Length);
+
+            return Write(buf);
+        }
+
+        public void Flush () {
+            lock (_BaseStream)
+                _BaseStream.Flush();
         }
     }
 }
