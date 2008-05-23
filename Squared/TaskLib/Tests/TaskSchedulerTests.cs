@@ -350,15 +350,14 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void CollectingFutureKillsTask () {
+        public void DisposingFutureKillsTask () {
             var f = Scheduler.Start(InfiniteTask());
 
             Scheduler.Step();
 
             Assert.IsTrue(Scheduler.HasPendingTasks);
 
-            f = null;
-            GC.Collect();
+            f.Dispose();
 
             Scheduler.Step();
 
@@ -382,7 +381,7 @@ namespace Squared.Task {
             Assert.IsFalse(wr.IsAlive);
         }
 
-        // Disabled (doesn't pass, but I'm not sure it should)
+        // Doesn't pass yet :(
         public void PendingSleepsDoNotCauseSchedulerToLeak () {
             var f = Scheduler.Start(new Sleep(30));
 
@@ -421,7 +420,7 @@ namespace Squared.Task {
 
         [Test]
         public void RunUntilCompleteExecutionPolicy () {
-            var f = Scheduler.Start(InfiniteTask(), TaskExecutionPolicy.RunUntilComplete);
+            var f = Scheduler.Start(InfiniteTask());
 
             Scheduler.Step();
 
@@ -685,7 +684,7 @@ namespace Squared.Task {
         protected abstract object GetWaiter ();
 
         public virtual void Start (TaskScheduler scheduler) {
-            scheduler.Start(this.Run(), TaskExecutionPolicy.RunUntilComplete);
+            scheduler.Start(this.Run(), TaskExecutionPolicy.RunAsBackgroundTask);
         }
 
         public IEnumerator<object> Run () {
@@ -753,7 +752,7 @@ namespace Squared.Task {
         }
 
         public override void Start (TaskScheduler scheduler) {
-            scheduler.Start(this.Talk(), TaskExecutionPolicy.RunUntilComplete);
+            scheduler.Start(this.Talk(), TaskExecutionPolicy.RunAsBackgroundTask);
         }
     }
 

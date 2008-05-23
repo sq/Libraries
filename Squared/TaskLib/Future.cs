@@ -4,6 +4,7 @@ using System.Threading;
 
 namespace Squared.Task {
     public delegate void OnComplete(object value, Exception error);
+    public delegate void OnDispose();
 
     public class FutureException : Exception {
         public FutureException (string message, Exception innerException)
@@ -23,12 +24,20 @@ namespace Squared.Task {
         }
     }
 
-    public class Future {
+    public class FutureDisposedException : InvalidOperationException {
+        public FutureDisposedException ()
+            : base("Future is disposed") {
+        }
+    }
+
+    public class Future : IDisposable {
         private int _CompletionState = 0;
         private volatile bool _Completed = false;
+        private volatile bool _Disposed = false;
         private volatile object _Value;
         private volatile Exception _Error;
-        private List<OnComplete> _OnCompletes = new List<OnComplete>();
+        private OnComplete _OnComplete;
+        private OnDispose _OnDispose;
 
         public Future () {
         }
@@ -41,23 +50,57 @@ namespace Squared.Task {
             this.Fail(error);
         }
 
-        private void InvokeOnCompletes (object result, Exception error) {
-            Monitor.Enter(_OnCompletes);
-            OnComplete[] onCompletes = _OnCompletes.ToArray();
-            _OnCompletes.Clear();
-            Monitor.Exit(_OnCompletes);
+        private void InvokeOnDisposes () {
+            OnDispose evt = Interlocked.Exchange(ref _OnDispose, null);
 
-            foreach (OnComplete oc in onCompletes)
-                oc(result, error);
+            if (evt != null)
+                evt();
+        }
+
+        private void InvokeOnCompletes (object result, Exception error) {
+            OnComplete evt = Interlocked.Exchange(ref _OnComplete, null);
+
+            if (evt != null)
+                evt(result, error);
         }
 
         public void RegisterOnComplete (OnComplete handler) {
+            if (_Disposed)
+                return;
+
             if (_Completed) {
                 handler(_Value, _Error);
             } else {
-                Monitor.Enter(_OnCompletes);
-                _OnCompletes.Add(handler);
-                Monitor.Exit(_OnCompletes);
+                while (true) {
+                    OnComplete prev = _OnComplete;
+                    OnComplete result = prev;
+                    result += handler;
+                    if (Interlocked.CompareExchange(ref _OnComplete, result, prev) == prev)
+                        break;
+                }
+            }
+        }
+
+        public void RegisterOnDisposed (OnDispose handler) {
+            if (_Completed)
+                return;
+
+            if (_Disposed) {
+                handler();
+            } else {
+                while (true) {
+                    OnDispose prev = _OnDispose;
+                    OnDispose result = prev;
+                    result += handler;
+                    if (Interlocked.CompareExchange(ref _OnDispose, result, prev) == prev)
+                        break;
+                }
+            }
+        }
+
+        public bool Disposed {
+            get {
+                return _Disposed;
             }
         }
 
@@ -92,13 +135,28 @@ namespace Squared.Task {
         public void SetResult (object result, Exception error) {
             int newState = Interlocked.Increment(ref _CompletionState);
             if (newState != 1) {
-                throw new FutureAlreadyHasResultException();
+                if (_Disposed)
+                    throw new FutureDisposedException();
+                else
+                    throw new FutureAlreadyHasResultException();
             } else {
                 _Value = result;
                 _Error = error;
                 _Completed = true;
                 InvokeOnCompletes(result, error);
             }
+        }
+
+        public void Dispose () {
+            int newState = Interlocked.Increment(ref _CompletionState);
+            if (newState != 1)
+                return;
+
+            _Disposed = true;
+            InvokeOnDisposes();
+
+            _OnComplete = null;
+            _OnDispose = null;
         }
 
         public bool GetResult (out object result, out Exception error) {

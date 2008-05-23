@@ -7,6 +7,12 @@ using System.Text;
 using System.Diagnostics;
 
 namespace Squared.Task {
+    public class OperationPendingException : InvalidOperationException {
+        public OperationPendingException ()
+            : base("A previous operation on this object is still pending") {
+        }
+    }    
+
     public static class IOExtensionMethods {
         public static Future AsyncRead (this Stream stream, byte[] buffer, int offset, int count) {
             var f = new Future();
@@ -102,47 +108,6 @@ namespace Squared.Task {
         }
     }
 
-    delegate void WorkItemHandler<T> (T item);
-
-    internal class WorkItemManager<T> {
-        private Queue<T> _Items = new Queue<T>();
-        private WorkItemHandler<T> _Handler;
-        private int _WorkerState = 0;
-
-        public WorkItemManager (WorkItemHandler<T> handler) {
-            _Handler = handler;
-        }
-
-        public void WorkItemCompleted () {
-            if (Interlocked.CompareExchange(ref _WorkerState, 0, 1) == 1) {
-            } else {
-            }
-            lock (_Items) {
-                if (_Items.Count != 0)
-                    ThreadPool.QueueUserWorkItem(Step);
-            }
-        }
-
-        private void Step (object _) {
-            if (Interlocked.CompareExchange(ref _WorkerState, 1, 0) == 0) {
-                T wi;
-                lock (_Items) {
-                    if (_Items.Count == 0)
-                        return;
-                    wi = _Items.Dequeue();
-                }
-                _Handler(wi);
-            } else {
-            }
-        }
-
-        public void Add (T item) {
-            lock (_Items)
-                _Items.Enqueue(item);
-            ThreadPool.QueueUserWorkItem(Step);
-        }
-    }
-
     public class AsyncStreamReader : IDisposable {
         public static Encoding DefaultEncoding = Encoding.UTF8;
         public static int DefaultBufferSize = 1024;
@@ -151,6 +116,8 @@ namespace Squared.Task {
         Encoding _Encoding;
         Decoder _Decoder;
         int _BufferSize;
+
+        Future _PendingOperation;
 
         byte[] _InputBuffer;
         char[] _DecodedBuffer;
@@ -264,6 +231,15 @@ namespace Squared.Task {
                 return null;
         }
 
+        private void SetPendingOperation (Future f) {
+            if (Interlocked.CompareExchange(ref _PendingOperation, f, null) != null)
+                throw new OperationPendingException();
+        }
+
+        private void ClearPendingOperation (Future f) {
+            Interlocked.CompareExchange(ref _PendingOperation, null, f);
+        }
+
         public Future Read () {
             return Read(true);
         }
@@ -274,19 +250,25 @@ namespace Squared.Task {
 
         public Future Read (bool advance) {
             Future f = new Future();
+
+            SetPendingOperation(f);
+            
             char result;
             if (!GetCurrentCharacter(out result)) {
                 Future decodeMoreChars = DecodeMoreData();
                 decodeMoreChars.RegisterOnComplete((_, error) => {
                     if (error != null) {
+                        ClearPendingOperation(f);
                         f.Fail(error);
                     } else {
                         char ch;
                         if (GetCurrentCharacter(out ch)) {
                             if (advance)
                                 ReadNextCharacter();
+                            ClearPendingOperation(f);
                             f.Complete(ch);
                         } else {
+                            ClearPendingOperation(f);
                             f.Complete(null);
                         }
                     }
@@ -294,6 +276,7 @@ namespace Squared.Task {
             } else {
                 if (advance)
                     ReadNextCharacter();
+                ClearPendingOperation(f);
                 f.Complete(result);
             }
             return f;
@@ -304,10 +287,13 @@ namespace Squared.Task {
             int[] wp = new int[1];
             OnComplete[] oc = new OnComplete[1];
 
+            SetPendingOperation(f);
+
             Action processDecodedChars = () => {
                 char value;
                 while (GetCurrentCharacter(out value)) {
                     if (wp[0] >= (offset + count)) {
+                        ClearPendingOperation(f);
                         f.Complete(count);
                         return;
                     }
@@ -324,6 +310,7 @@ namespace Squared.Task {
 
             OnComplete onDecodeComplete = (result, error) => {
                 if (error != null) {
+                    ClearPendingOperation(f);
                     f.Fail(error);
                 } else {
                     int numChars = (int)result;
@@ -331,6 +318,7 @@ namespace Squared.Task {
                     if (numChars > 0)
                         processDecodedChars();
                     else {
+                        ClearPendingOperation(f);
                         f.Complete(wp[0] - offset);
                     }
                 }
@@ -347,6 +335,8 @@ namespace Squared.Task {
             StringBuilder buffer = new StringBuilder();
             OnComplete[] oc = new OnComplete[1];
 
+            SetPendingOperation(f);
+
             Action processDecodedChars = () => {
                 char value;
                 while (GetCurrentCharacter(out value)) {
@@ -357,6 +347,7 @@ namespace Squared.Task {
                         if (GetCurrentCharacter(out nextValue) && IsEOL(nextValue) && (nextValue != value)) {
                             ReadNextCharacter();
                         }
+                        ClearPendingOperation(f);
                         f.Complete(ReturnBufferValue(buffer));
                         return;
                     }
@@ -370,6 +361,7 @@ namespace Squared.Task {
 
             OnComplete onDecodeComplete = (result, error) => {
                 if (error != null) {
+                    ClearPendingOperation(f);
                     f.Fail(error);
                 } else {
                     int numChars = (int)result;
@@ -377,6 +369,7 @@ namespace Squared.Task {
                     if (numChars > 0) {
                         processDecodedChars();
                     } else {
+                        ClearPendingOperation(f);
                         f.Complete(ReturnBufferValue(buffer));
                     }
                 }
@@ -392,6 +385,8 @@ namespace Squared.Task {
             StringBuilder buffer = new StringBuilder();
             OnComplete[] oc = new OnComplete[1];
 
+            SetPendingOperation(f);
+
             Action processDecodedChars = () => {
                 char value;
                 while (GetCurrentCharacter(out value)) {
@@ -405,14 +400,17 @@ namespace Squared.Task {
 
             OnComplete onDecodeComplete = (result, error) => {
                 if (error != null) {
+                    ClearPendingOperation(f);
                     f.Fail(error);
                 } else {
                     int numChars = (int)result;
 
-                    if (numChars > 0)
+                    if (numChars > 0) {
                         processDecodedChars();
-                    else
+                    } else {
+                        ClearPendingOperation(f);
                         f.Complete(ReturnBufferValue(buffer));
+                    }
                 }
             };
 
@@ -431,12 +429,7 @@ namespace Squared.Task {
         Stream _BaseStream;
         Encoding _Encoding;
         Encoder _Encoder;
-
-        struct WorkItem {
-            public byte[] Bytes;
-            public Future Future;
-        }
-        WorkItemManager<WorkItem> _WorkItems;
+        Future _PendingOperation;
 
         public AsyncStreamWriter (Stream stream)
             : this(stream, DefaultEncoding) {
@@ -451,41 +444,6 @@ namespace Squared.Task {
             _Encoder = encoding.GetEncoder();
             _NewLine = DefaultNewLine;
             _NewLineBytes = _Encoding.GetBytes(_NewLine);
-            _WorkItems = new WorkItemManager<WorkItem>(HandleWorkItem);
-        }
-
-        private void HandleWorkItem (WorkItem wi) {
-            try {
-                bool[] kill = new bool[1];
-                byte[] bytes = wi.Bytes;
-                Future f = wi.Future;
-
-                AsyncCallback callback = (ar) => {
-                    Exception _failure = null;
-                    try {
-                        _BaseStream.EndWrite(ar);
-                    } catch (Exception ex) {
-                        _failure = ex;
-                    }
-                    if (kill[0])
-                        return;
-                    kill[0] = true;
-                    f.SetResult(null, _failure);
-                    _WorkItems.WorkItemCompleted();
-                };
-
-                try {
-                    lock (_BaseStream)
-                        _BaseStream.BeginWrite(bytes, 0, bytes.Length, callback, null);
-                } catch (Exception ex) {
-                    if (kill[0])
-                        return;
-                    kill[0] = true;
-                    f.SetResult(null, ex);
-                    _WorkItems.WorkItemCompleted();
-                }
-            } catch (FutureAlreadyHasResultException) {
-            }
         }
 
         public void Dispose () {
@@ -495,6 +453,15 @@ namespace Squared.Task {
             }
             _Encoding = null;
             _Encoder = null;
+        }
+
+        private void SetPendingOperation (Future f) {
+            if (Interlocked.CompareExchange(ref _PendingOperation, f, null) != null)
+                throw new OperationPendingException();
+        }
+
+        private void ClearPendingOperation (Future f) {
+            Interlocked.CompareExchange(ref _PendingOperation, null, f);
         }
 
         public char[] NewLine {
@@ -509,8 +476,28 @@ namespace Squared.Task {
 
         public Future Write (byte[] bytes) {
             Future f = new Future();
-            WorkItem wi = new WorkItem { Bytes = bytes, Future = f };
-            _WorkItems.Add(wi);
+
+            SetPendingOperation(f);
+
+            AsyncCallback callback = (ar) => {
+                Exception _failure = null;
+                try {
+                    _BaseStream.EndWrite(ar);
+                } catch (Exception ex) {
+                    _failure = ex;
+                }
+                ClearPendingOperation(f);
+                f.SetResult(null, _failure);
+            };
+
+            try {
+                lock (_BaseStream)
+                    _BaseStream.BeginWrite(bytes, 0, bytes.Length, callback, null);
+            } catch (Exception ex) {
+                ClearPendingOperation(f);
+                f.SetResult(null, ex);
+            }
+
             return f;
         }
 

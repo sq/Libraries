@@ -4,12 +4,12 @@ using System.Text;
 using System.Threading;
 
 namespace Squared.Task {
-    delegate void WorkerThreadFunc<T> (List<T> workItems, AutoResetEvent newWorkItemEvent);
+    delegate void WorkerThreadFunc<T> (List<T> workItems, ManualResetEvent newWorkItemEvent);
 
     internal class WorkerThread<T> : IDisposable {
         private WorkerThreadFunc<T> _ThreadFunc;
         private Thread _Thread = null;
-        private AutoResetEvent _WakeEvent = new AutoResetEvent(false);
+        private ManualResetEvent _WakeEvent = new ManualResetEvent(false);
         private List<T> _WorkItems = new List<T>();
         private ThreadPriority _Priority;
 
@@ -26,7 +26,10 @@ namespace Squared.Task {
 
             if (_Thread == null) {
                 _Thread = new Thread(() => {
-                    _ThreadFunc(_WorkItems, _WakeEvent);
+                    try {
+                        _ThreadFunc(_WorkItems, _WakeEvent);
+                    } catch (ThreadInterruptedException) {
+                    }
                 });
                 _Thread.Priority = _Priority;
                 _Thread.IsBackground = true;
@@ -36,13 +39,19 @@ namespace Squared.Task {
         }
 
         public void Dispose () {
-            if (_Thread != null) {
-                _Thread.Abort();
-                _Thread = null;
+            if (_WakeEvent != null) {
+                _WakeEvent = null;
             }
 
             lock (_WorkItems) {
                 _WorkItems.Clear();
+            }
+
+            if (_Thread != null) {
+                _Thread.Interrupt();
+                _Thread.Join(10);
+                _Thread.Abort();
+                _Thread = null;
             }
         }
     }

@@ -70,25 +70,6 @@ namespace Squared.Task {
             Assert.AreEqual(null, f.Result);
         }
 
-        // This doesn't pass yet
-        public void MultipleReadTest () {
-            WriteTestData("abcd\r\nefgh\nijkl");
-            RewindStream();
-
-            Future a = Reader.ReadLine();
-            Future b = Reader.ReadLine();
-            Future c = Reader.ReadLine();
-            Future d = Reader.ReadLine();
-            a.GetCompletionEvent().WaitOne();
-            b.GetCompletionEvent().WaitOne();
-            c.GetCompletionEvent().WaitOne();
-            d.GetCompletionEvent().WaitOne();
-            Assert.AreEqual("abcd", a.Result);
-            Assert.AreEqual("efgh", b.Result);
-            Assert.AreEqual("ijkl", c.Result);
-            Assert.AreEqual(null, d.Result);
-        }
-
         [Test]
         public void ReadToEndTest () {
             WriteTestData("abcd\r\nefgh\0ijkl");
@@ -169,6 +150,21 @@ namespace Squared.Task {
             f.GetCompletionEvent().WaitOne();
             Assert.AreEqual(null, f.Result);
         }
+
+        [Test]
+        public void ThrowsIfReadInvokedWhilePreviousReadIsPending () {
+            WriteTestData(new byte[1024 * 1024]);
+            RewindStream();
+
+            char[] buf = new char[1024 * 1024];
+
+            Future f = Reader.Read(buf, 0, buf.Length);
+            try {
+                f = Reader.Read(buf, 0, 16);
+                Assert.Fail("Read did not raise an OperationPending exception");
+            } catch (OperationPendingException) {
+            }
+        }
     }
 
     [TestFixture]
@@ -204,37 +200,14 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void MultipleWriteTest () {
-            byte[] buf = new byte[40960];
-            for (int i = 0; i < buf.Length; i++) 
-                buf[i] = (byte)(i % 256);
-
-            List<Future> futures = new List<Future>();
-
-            int numWrites = 128;
-            int numWorkers = 4;
-            int expectedLength = buf.Length * numWrites;
-            WaitCallback worker = (_) => {
-                for (int i = 0; i < numWrites / numWorkers; i++) {
-                    Future f = Writer.Write(buf);
-                    lock (futures)
-                        futures.Add(f);
-                }
-            };
-
-            for (int i = 0; i < numWorkers; i++)
-                ThreadPool.QueueUserWorkItem(worker);
-
-            while (Stream.Length < expectedLength)
-                Thread.Sleep(1);
-            
-            byte[] expected = new byte[expectedLength];
-            for (int i = 0; i < numWrites; i++)
-                Array.Copy(buf, 0, expected, buf.Length * i, buf.Length);
-
-            byte[] actual = new byte[Stream.Length];
-            Array.Copy(Stream.GetBuffer(), actual, Stream.Length);
-            Assert.AreEqual(expected, actual);
+        public void ThrowsIfWriteInvokedWhilePreviousWriteIsPending () {
+            string buf = new string(' ', 1024 * 1024);
+            Future f = Writer.Write(buf);
+            try {
+                f = Writer.Write("foo");
+                Assert.Fail("Write did not raise an OperationPending exception");
+            } catch (OperationPendingException) {
+            }
         }
     }
 

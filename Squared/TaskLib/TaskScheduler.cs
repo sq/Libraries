@@ -11,7 +11,6 @@ namespace Squared.Task {
 
     public enum TaskExecutionPolicy {
         RunWhileFutureLives,
-        RunUntilComplete,
         RunAsBackgroundTask,
         Default = RunWhileFutureLives
     }
@@ -42,8 +41,7 @@ namespace Squared.Task {
 
     public class SchedulableGeneratorThunk : ISchedulable, IDisposable {
         IEnumerator<object> _Task;
-        WeakReference _FutureWr;
-        List<Future> _HeldFutures = new List<Future>();
+        Future _Future;
 
         public SchedulableGeneratorThunk (IEnumerator<object> task) {
             _Task = task;
@@ -55,17 +53,19 @@ namespace Squared.Task {
                 _Task = null;
             }
 
-            _HeldFutures.Clear();
-            _FutureWr = null;
+            if (_Future != null) {
+                _Future.Dispose();
+                _Future = null;
+            }
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             IEnumerator<object> task = _Task;
-            _FutureWr = new WeakReference(future);
+            _Future = future;
             scheduler.QueueWorkItem(() => { this.Step(scheduler); });
         }
 
-        void ScheduleNextStepForSchedulable (TaskScheduler scheduler, ISchedulable value, Future future) {
+        void ScheduleNextStepForSchedulable (TaskScheduler scheduler, ISchedulable value) {
             if (value is WaitForNextStep) {
                 scheduler.AddStepListener(() => {
                     scheduler.QueueWorkItem(() => {
@@ -74,19 +74,17 @@ namespace Squared.Task {
                 });
             } else {
                 Future temp = scheduler.Start(value);
-                _HeldFutures.Add(temp);
                 temp.RegisterOnComplete((result, error) => {
                     scheduler.QueueWorkItem(() => {
                         this.Step(scheduler);
-                        _HeldFutures.Remove(temp);
                     });
                 });
             }
         }
 
-        void ScheduleNextStep (TaskScheduler scheduler, Object value, Future future) {
+        void ScheduleNextStep (TaskScheduler scheduler, Object value) {
             if (value is ISchedulable) {
-                ScheduleNextStepForSchedulable(scheduler, value as ISchedulable, future);
+                ScheduleNextStepForSchedulable(scheduler, value as ISchedulable);
             } else if (value is Future) {
                 Future f = (Future)value;
                 f.RegisterOnComplete((result, error) => {
@@ -95,34 +93,32 @@ namespace Squared.Task {
                     });
                 });
             } else if (value is Result) {
-                future.Complete(((Result)value).Value);
+                _Future.Complete(((Result)value).Value);
                 Dispose();
             } else {
-                future.Complete(value);
+                _Future.Complete(value);
                 Dispose();
             }
         }
 
         void Step (TaskScheduler scheduler) {
-            Future future = _FutureWr.Target as Future;
-            // Future was collected, so the task ends here
-            if (future == null) {
-                System.Diagnostics.Debug.WriteLine(String.Format("Task {0} aborted because its future was collected", _Task));
+            if (_Future.Disposed) {
+                System.Diagnostics.Debug.WriteLine(String.Format("Task {0} aborted because its future was disposed", _Task));
                 return;
             }
 
             try {
                 if (!_Task.MoveNext()) {
                     // Completed with no result
-                    future.Complete(null);
+                    _Future.Complete(null);
                     Dispose();
                     return;
                 }
 
                 object value = _Task.Current;
-                ScheduleNextStep(scheduler, value, future);
+                ScheduleNextStep(scheduler, value);
             } catch (Exception ex) {
-                future.Fail(ex);
+                _Future.Fail(ex);
                 Dispose();
             }
         }
@@ -132,7 +128,6 @@ namespace Squared.Task {
         const long SleepFudgeFactor = 10000;
 
         private JobQueue _JobQueue = new JobQueue();
-        private List<Future> _HeldFutures = new List<Future>();
         private Queue<Action> _StepListeners = new Queue<Action>();
         private WorkerThread<SleeperDelegate> _SleepWorker;
         private WorkerThread<BoundWaitHandle> _WaitWorker;
@@ -150,16 +145,8 @@ namespace Squared.Task {
             task.Schedule(this, future);
 
             switch (executionPolicy) {
-                case TaskExecutionPolicy.RunUntilComplete:
-                    this.HoldFuture(future);
-                    future.RegisterOnComplete((result, error) => {
-                        this.ReleaseFuture(future);
-                    });
-                    break;
                 case TaskExecutionPolicy.RunAsBackgroundTask:
-                    this.HoldFuture(future);
                     future.RegisterOnComplete((result, error) => {
-                        this.ReleaseFuture(future);
                         if (error != null) {
                             this.QueueWorkItem(() => {
                                 throw new TaskException("Unhandled exception in background task", error);
@@ -200,14 +187,6 @@ namespace Squared.Task {
             return f;
         }
 
-        internal void HoldFuture (Future f) {
-            _HeldFutures.Add(f);
-        }
-
-        internal void ReleaseFuture (Future f) {
-            _HeldFutures.Remove(f);
-        }
-
         internal void QueueWorkItem (Action workItem) {
             _JobQueue.QueueWorkItem(workItem);
         }
@@ -216,7 +195,8 @@ namespace Squared.Task {
             _StepListeners.Enqueue(listener);
         }
 
-        internal static void SleepWorkerThreadFunc (List<SleeperDelegate> pendingSleeps, AutoResetEvent newSleepEvent) {
+        internal static void SleepWorkerThreadFunc (List<SleeperDelegate> pendingSleeps, ManualResetEvent newSleepEvent) {
+            var tempHandle = new ManualResetEvent(false);
             while (true) {
                 SleeperDelegate[] sleepers;
                 lock (pendingSleeps) {
@@ -224,6 +204,7 @@ namespace Squared.Task {
                 }
                 if (sleepers.Length == 0) {
                     newSleepEvent.WaitOne();
+                    newSleepEvent.Reset();
                     continue;
                 }
 
@@ -250,8 +231,10 @@ namespace Squared.Task {
                     long timeToSleep = (sleepUntilValue - DateTime.Now.Ticks) - SleepFudgeFactor;
                     if (timeToSleep > 0) {
                         System.Diagnostics.Debug.WriteLine(String.Format("Sleeping for {0} ticks", timeToSleep));
-                        using (var tempHandle = new ManualResetEvent(false)) {
+                        try {
                             WaitHandle.WaitAny(new WaitHandle[] { tempHandle }, TimeSpan.FromTicks(timeToSleep), false);
+                        } catch (ThreadInterruptedException) {
+                            break;
                         }
                     }
 
@@ -261,7 +244,7 @@ namespace Squared.Task {
             }
         }
 
-        internal static void WaitWorkerThreadFunc (List<BoundWaitHandle> pendingWaits, AutoResetEvent newWaitEvent) {
+        internal static void WaitWorkerThreadFunc (List<BoundWaitHandle> pendingWaits, ManualResetEvent newWaitEvent) {
             while (true) {
                 BoundWaitHandle[] waits;
                 WaitHandle[] waitHandles;
@@ -274,14 +257,20 @@ namespace Squared.Task {
                     waitHandles[i + 1] = waits[i].Handle;
 
                 System.Diagnostics.Debug.WriteLine(String.Format("WaitWorker waiting on {0} handle(s)", waitHandles.Length - 1));
-                int completedWait = WaitHandle.WaitAny(waitHandles);
-                if (completedWait == 0)
-                    continue;
-                BoundWaitHandle w = waits[completedWait - 1];
-                lock (pendingWaits) {
-                    pendingWaits.Remove(w);
+                try {
+                    int completedWait = WaitHandle.WaitAny(waitHandles);
+                    if (completedWait == 0) {
+                        newWaitEvent.Reset();
+                        continue;
+                    }
+                    BoundWaitHandle w = waits[completedWait - 1];
+                    lock (pendingWaits) {
+                        pendingWaits.Remove(w);
+                    }
+                    w.Future.Complete();
+                } catch (ThreadInterruptedException) {
+                    break;
                 }
-                w.Future.Complete();
             }
         }
 
@@ -338,7 +327,6 @@ namespace Squared.Task {
             _WaitWorker.Dispose();
 
             _StepListeners.Clear();
-            _HeldFutures.Clear();
         }
     }
 }

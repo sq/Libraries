@@ -134,5 +134,54 @@ namespace Squared.Task {
             a.Complete(5);
             Assert.AreEqual(5, b.Result);
         }
+
+        [Test]
+        public void CannotBeCompletedIfDisposedFirst () {
+            var f = new Future();
+            f.Dispose();
+            Assert.IsTrue(f.Disposed);
+            try {
+                f.Complete(5);
+                Assert.Fail("Future did not throw when completed");
+            } catch (FutureDisposedException) {
+            }
+        }
+
+        [Test]
+        public void IfCompletedDisposeHasNoEffect () {
+            var f = new Future();
+            f.Complete(5);
+            f.Dispose();
+            Assert.AreEqual(5, f.Result);
+            Assert.IsFalse(f.Disposed);
+        }
+
+        [Test]
+        public void DisposingFutureInvokesOnDisposeHandlers () {
+            bool[] invoked = new bool[1];
+            
+            var f = new Future();
+            f.RegisterOnDisposed(() => {
+                invoked[0] = true;
+            });
+
+            f.Dispose();
+            Assert.IsTrue(invoked[0]);
+        }
+
+        [Test]
+        public void CollectingFutureDoesNotInvokeOnDisposeHandlers () {
+            bool[] invoked = new bool[1];
+
+            var f = new Future();
+            f.RegisterOnDisposed(() => {
+                invoked[0] = true;
+            });
+
+            f = null;
+            GC.Collect();
+
+            Assert.IsFalse(invoked[0]);
+        }
     }
 }
