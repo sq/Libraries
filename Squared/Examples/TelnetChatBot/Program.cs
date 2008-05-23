@@ -46,7 +46,7 @@ namespace TelnetChatBot {
                 }
                 i += 1;
                 nextMessageText = String.Format("Message {0}", i);
-                yield return new Sleep(1.0);
+                yield return new Sleep(0.5);
             }
         }
         

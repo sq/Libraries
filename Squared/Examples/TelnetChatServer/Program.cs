@@ -138,7 +138,7 @@ namespace TelnetChatServer {
             int lastId = -1;
             Future f;
             while (peer.Connected) {
-                f = Scheduler.Start(DispatchMessagesSinceId(peer, output, lastId), TaskExecutionPolicy.RunUntilComplete);
+                f = Scheduler.Start(DispatchMessagesSinceId(peer, output, lastId));
                 yield return f;
                 try {
                     lastId = (int)f.Result;
@@ -170,10 +170,8 @@ namespace TelnetChatServer {
 
             PeerConnected(peer);
 
-            lock (output) {
-                output.Write(VT100.EraseScreen);
-                output.Flush();
-            }
+            yield return output.Write(VT100.EraseScreen);
+            output.Flush();
 
             Scheduler.Start(PeerSendTask(output, peer), TaskExecutionPolicy.RunAsBackgroundTask);
 
