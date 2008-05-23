@@ -73,16 +73,16 @@ namespace Squared.Task {
             try {
                 if (_Queue.Count != 0)
                     return true;
+                else
+                    _NewWorkItemEvent.Reset();
             } finally {
                 Monitor.Exit(_Queue);
             }
             if (timeout > 0) {
                 bool result = _NewWorkItemEvent.WaitOne(TimeSpan.FromSeconds(timeout), true);
-                _NewWorkItemEvent.Reset();
                 return result;
             } else {
                 _NewWorkItemEvent.WaitOne();
-                _NewWorkItemEvent.Reset();
                 return true;
             }
         }

@@ -70,6 +70,25 @@ namespace Squared.Task {
             Assert.AreEqual(null, f.Result);
         }
 
+        // This doesn't pass yet
+        public void MultipleReadTest () {
+            WriteTestData("abcd\r\nefgh\nijkl");
+            RewindStream();
+
+            Future a = Reader.ReadLine();
+            Future b = Reader.ReadLine();
+            Future c = Reader.ReadLine();
+            Future d = Reader.ReadLine();
+            a.GetCompletionEvent().WaitOne();
+            b.GetCompletionEvent().WaitOne();
+            c.GetCompletionEvent().WaitOne();
+            d.GetCompletionEvent().WaitOne();
+            Assert.AreEqual("abcd", a.Result);
+            Assert.AreEqual("efgh", b.Result);
+            Assert.AreEqual("ijkl", c.Result);
+            Assert.AreEqual(null, d.Result);
+        }
+
         [Test]
         public void ReadToEndTest () {
             WriteTestData("abcd\r\nefgh\0ijkl");

@@ -17,10 +17,6 @@ namespace TelnetChatBot {
             Future innerFuture = reader.ReadLine();
             Future f = new Future();
             innerFuture.RegisterOnComplete((result, error) => {
-                /*
-                if ((result == null) && (error == null))
-                    error = new DisconnectedException();
-                 */
                 f.SetResult(result, error);
             });
             return f;
@@ -86,11 +82,8 @@ namespace TelnetChatBot {
                 Scheduler.Start(SendTask(client), TaskExecutionPolicy.RunAsBackgroundTask);
 
                 while (!Disconnected) {
-                    bool r = Scheduler.WaitForWorkItems(1.1);
-                    if (!r) {
-                        System.Windows.Forms.MessageBox.Show("WaitForWorkItems timed out!", Process.GetCurrentProcess().Id.ToString());
-                    }
                     Scheduler.Step();
+                    Scheduler.WaitForWorkItems(0.05);
                 }
                 Console.WriteLine("Disconnected.");
 

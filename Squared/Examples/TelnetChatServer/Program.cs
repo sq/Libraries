@@ -24,10 +24,6 @@ namespace TelnetChatServer {
             Future innerFuture = reader.ReadLine();
             Future f = new Future();
             innerFuture.RegisterOnComplete((result, error) => {
-                /*
-                if ((result == null) && (error == null))
-                    error = new DisconnectedException();
-                 */
                 f.SetResult(result, error);
             });
             return f;
@@ -66,6 +62,9 @@ namespace TelnetChatServer {
             NewMessageFutures.Clear();
             foreach (Future f in futures)
                 f.Complete();
+
+            if ((Messages.Count % 1000) == 0)
+                Console.WriteLine("Message count: {0}", Messages.Count);
         }
 
         static Future WaitForNewMessage () {
@@ -222,8 +221,8 @@ namespace TelnetChatServer {
 
             try {
                 while (true) {
-                    Scheduler.WaitForWorkItems(0.1);
                     Scheduler.Step();
+                    Scheduler.WaitForWorkItems(0.05);
                 }
             } catch (Exception ex) {
                 Console.WriteLine("Unhandled exception: {0}", ex);

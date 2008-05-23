@@ -11,6 +11,18 @@ namespace Squared.Task {
         }
     }
 
+    public class FutureAlreadyHasResultException : InvalidOperationException {
+        public FutureAlreadyHasResultException ()
+            : base("Future already has a result") {
+        }
+    }
+
+    public class FutureHasNoResultException : InvalidOperationException {
+        public FutureHasNoResultException ()
+            : base("Future does not yet have a result") {
+        }
+    }
+
     public class Future {
         private int _CompletionState = 0;
         private volatile bool _Completed = false;
@@ -72,7 +84,7 @@ namespace Squared.Task {
                     else
                         return _Value;
                 } else {
-                    throw new InvalidOperationException("Future has no result");
+                    throw new FutureHasNoResultException();
                 }
             }
         }
@@ -80,7 +92,7 @@ namespace Squared.Task {
         public void SetResult (object result, Exception error) {
             int newState = Interlocked.Increment(ref _CompletionState);
             if (newState != 1) {
-                throw new InvalidOperationException("Future already has a result");
+                throw new FutureAlreadyHasResultException();
             } else {
                 _Value = result;
                 _Error = error;
