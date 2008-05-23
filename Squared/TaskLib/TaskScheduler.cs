@@ -204,7 +204,6 @@ namespace Squared.Task {
                 }
                 if (sleepers.Length == 0) {
                     newSleepEvent.WaitOne();
-                    newSleepEvent.Reset();
                     continue;
                 }
 
@@ -232,7 +231,11 @@ namespace Squared.Task {
                     if (timeToSleep > 0) {
                         System.Diagnostics.Debug.WriteLine(String.Format("Sleeping for {0} ticks", timeToSleep));
                         try {
-                            WaitHandle.WaitAny(new WaitHandle[] { tempHandle }, TimeSpan.FromTicks(timeToSleep), false);
+                            int result = WaitHandle.WaitAny(new WaitHandle[] { newSleepEvent }, TimeSpan.FromTicks(timeToSleep), true);
+                            if (result == 0) {
+                                newSleepEvent.Reset();
+                                continue;
+                            }
                         } catch (ThreadInterruptedException) {
                             break;
                         }

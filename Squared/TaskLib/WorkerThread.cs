@@ -39,20 +39,17 @@ namespace Squared.Task {
         }
 
         public void Dispose () {
-            if (_WakeEvent != null) {
-                _WakeEvent = null;
-            }
-
             lock (_WorkItems) {
                 _WorkItems.Clear();
             }
 
             if (_Thread != null) {
                 _Thread.Interrupt();
-                _Thread.Join(10);
                 _Thread.Abort();
                 _Thread = null;
             }
+
+            _WakeEvent = null;
         }
     }
 }

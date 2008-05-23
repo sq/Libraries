@@ -75,7 +75,7 @@ namespace Squared.Task {
                     OnComplete prev = _OnComplete;
                     OnComplete result = prev;
                     result += handler;
-                    if (Interlocked.CompareExchange(ref _OnComplete, result, prev) == prev)
+                    if (Interlocked.CompareExchange<OnComplete>(ref _OnComplete, result, prev) == prev)
                         break;
                 }
             }
@@ -92,7 +92,7 @@ namespace Squared.Task {
                     OnDispose prev = _OnDispose;
                     OnDispose result = prev;
                     result += handler;
-                    if (Interlocked.CompareExchange(ref _OnDispose, result, prev) == prev)
+                    if (Interlocked.CompareExchange<OnDispose>(ref _OnDispose, result, prev) == prev)
                         break;
                 }
             }
