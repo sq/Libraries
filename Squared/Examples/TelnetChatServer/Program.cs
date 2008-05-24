@@ -19,27 +19,19 @@ namespace TelnetChatServer {
         public static string EraseScreen = "\x1b[2J";
     }
 
-    internal static class TelnetExtensionMethods {
-        internal static Future TelnetReadLine (this AsyncStreamReader reader) {
-            Future innerFuture = reader.ReadLine();
-            Future f = new Future();
-            innerFuture.RegisterOnComplete((result, error) => {
-                f.SetResult(result, error);
-            });
-            return f;
-        }
-    }
-
     class Peer {
-        public int Id;
+        public int PeerId;
         public string Name;
-        public bool Connected;
+        public bool Connected = false;
+        public int CurrentId = -1;
+        public AsyncStreamWriter Output = null;
+        public AsyncStreamReader Input = null;
 
         public override string ToString () {
             if (Name != null)
                 return Name;
             else
-                return String.Format("Peer{0}", Id);
+                return String.Format("Peer{0}", PeerId);
         }
     }
 
@@ -51,66 +43,79 @@ namespace TelnetChatServer {
     static class Program {
         static TaskScheduler Scheduler = new TaskScheduler(true);
         static List<Message> Messages = new List<Message>();
-        static List<Future> NewMessageFutures = new List<Future>();
+        static List<Peer> Peers = new List<Peer>();
+        static BlockingQueue<Message> NewMessages = new BlockingQueue<Message>();
+        static Future WaitingForMessages = null;
         const int MaxMessagesToDispatch = 100;
 
         static void DispatchNewMessage (Peer from, string message) {
-            int newId = Messages.Count;
             Messages.Add(new Message { From = from, Text = message });
-
-            Future[] futures = NewMessageFutures.ToArray();
-            NewMessageFutures.Clear();
-            foreach (Future f in futures)
-                f.Complete();
-
-            if ((Messages.Count % 1000) == 0)
-                Console.WriteLine("Message count: {0}", Messages.Count);
+            Future waitingFuture = Interlocked.Exchange<Future>(ref WaitingForMessages, null);
+            if (waitingFuture != null)
+                waitingFuture.Complete();
         }
 
-        static Future WaitForNewMessage () {
-            Future f = new Future();
-            NewMessageFutures.Add(f);
-            return f;
-        }
+        static IEnumerator<object> MessageDispatcher () {
+            while (true) {
+                var waitList = new List<Future>();
 
-        static IEnumerator<object> DispatchMessagesSinceId (Peer peer, AsyncStreamWriter output, int lastId) {
-            int newestMessageId = Messages.Count - 1;
+                bool moreWork;
+                do {
+                    moreWork = false;
+                    int newestId = Messages.Count - 1;
+                    foreach (Peer peer in Peers.ToArray()) {
+                        if (!peer.Connected)
+                            continue;
 
-            if (newestMessageId <= lastId) {
-                yield return lastId;
-                yield break;
-            }
+                        if (peer.CurrentId != newestId) {
+                            if ((newestId - peer.CurrentId) > MaxMessagesToDispatch)
+                                peer.CurrentId = newestId - MaxMessagesToDispatch;
 
-            if ((newestMessageId - lastId) > MaxMessagesToDispatch) {
-                Console.WriteLine("Limited message dispatch for {0} to {1} messages (would've been {2}.)", peer, MaxMessagesToDispatch, newestMessageId - lastId);
-                lastId = newestMessageId - MaxMessagesToDispatch;
-            }
+                            string text = null;
+                            try {
+                                Message message = Messages[peer.CurrentId + 1];
 
-            while (peer.Connected) {
-                lastId += 1;
+                                if (message.From == peer) {
+                                    peer.CurrentId += 1;
+                                    continue;
+                                } else if (message.From != null) {
+                                    text = String.Format("<{0}> {1}", message.From, message.Text);
+                                } else {
+                                    text = String.Format("*** {0}", message.Text);
+                                }
 
-                Message message = Messages[lastId];
+                            } catch {
+                                continue;
+                            }
 
-                string text = null;
-                if (message.From == peer) {
-                } else if (message.From != null) {
-                    text = String.Format("<{0}> {1}", message.From, message.Text);
-                } else {
-                    text = String.Format("*** {0}", message.Text);
-                }
+                            Future f = null;
+                            try {
+                                f = peer.Output.WriteLine(text);
+                                f.RegisterOnComplete((r, e) => {
+                                    if (e == null) {
+                                        peer.Output.Flush();
+                                    } else if ((e is DisconnectedException) || (e is IOException) || (e is SocketException)) {
+                                        PeerDisconnected(peer, new Future(e));
+                                    }
+                                });
+                                peer.CurrentId += 1;
+                            } catch (OperationPendingException) {
+                                if (f != null)
+                                    waitList.Add(f);
+                            }
+                        }
 
-                if (text != null) {
-                    Future f = output.WriteLine(text);
-                    yield return f;
-                    if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
-                        PeerDisconnected(peer, f);
-                        yield break;
+                        if (peer.CurrentId != newestId)
+                            moreWork = true;
                     }
-                }
+                } while (moreWork);
 
-                if (lastId == newestMessageId) {
-                    yield return lastId;
-                    yield break;
+                if (waitList.Count > 0) {
+                    yield return new WaitForAll(waitList);
+                } else {
+                    Future waitForNewMessage = new Future();
+                    Interlocked.Exchange<Future>(ref WaitingForMessages, waitForNewMessage);
+                    yield return waitForNewMessage;
                 }
             }
         }
@@ -121,11 +126,13 @@ namespace TelnetChatServer {
             peer.Connected = true;
             Console.WriteLine("User {0} has connected", peer);
             DispatchNewMessage(null, String.Format("{0} has joined the chat", peer));
+            Peers.Add(peer);
         }
 
         static void PeerDisconnected (Peer peer, Future future) {
             if (!peer.Connected)
                 return;
+            Peers.Remove(peer);
             peer.Connected = false;
             object r;
             Exception ex;
@@ -134,33 +141,16 @@ namespace TelnetChatServer {
             DispatchNewMessage(null, String.Format("{0} has left the chat", peer));
         }
 
-        static IEnumerator<object> PeerSendTask (AsyncStreamWriter output, Peer peer) {
-            int lastId = -1;
-            Future f;
-            while (peer.Connected) {
-                f = Scheduler.Start(DispatchMessagesSinceId(peer, output, lastId));
-                yield return f;
-                try {
-                    lastId = (int)f.Result;
-                } catch (NullReferenceException) {
-                    // Terminated
-                } catch (Exception ex) {
-                    Console.WriteLine("Error in PeerSendTask({0}): {1}", peer, ex);
-                    yield break;
-                }
-                f = WaitForNewMessage();
-                yield return f;
-            }
-        }
-
         static IEnumerator<object> PeerTask (TcpClient client, Peer peer) {
             client.NoDelay = true;
             var stream = client.GetStream();
             var input = new AsyncStreamReader(stream);
             var output = new AsyncStreamWriter(stream);
+            peer.Input = input;
+            peer.Output = output;
 
             yield return output.WriteLine("Welcome! Please enter your name.");
-            Future f = input.TelnetReadLine();
+            Future f = input.ReadLine();
             yield return f;
             if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
                 PeerDisconnected(peer, f);
@@ -173,19 +163,17 @@ namespace TelnetChatServer {
             yield return output.Write(VT100.EraseScreen);
             output.Flush();
 
-            Scheduler.Start(PeerSendTask(output, peer), TaskExecutionPolicy.RunAsBackgroundTask);
-
             while (peer.Connected) {
-                f = input.TelnetReadLine();
+                f = input.ReadLine();
                 yield return f;
                 string nextLineText = null;
                 if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
                     PeerDisconnected(peer, f);
                     yield break;
                 }
-                nextLineText = (string)f.Result;
+                nextLineText = f.Result as string;
 
-                if (nextLineText.Length > 0) {
+                if ((nextLineText != null) && (nextLineText.Length > 0)) {
                     DispatchNewMessage(peer, nextLineText);
                 }
             }
@@ -199,7 +187,7 @@ namespace TelnetChatServer {
                     Future connection = server.AcceptIncomingConnection();
                     yield return connection;
 
-                    Peer peer = new Peer { Id = nextId++ };
+                    Peer peer = new Peer { PeerId = nextId++ };
                     TcpClient client = connection.Result as TcpClient;
                     client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
                     client.NoDelay = true;
@@ -214,13 +202,14 @@ namespace TelnetChatServer {
         static void Main (string[] args) {
             TcpListener server = new TcpListener(System.Net.IPAddress.Any, 1234);
             Scheduler.Start(AcceptConnectionsTask(server), TaskExecutionPolicy.RunAsBackgroundTask);
+            Scheduler.Start(MessageDispatcher(), TaskExecutionPolicy.RunAsBackgroundTask);
 
             Console.WriteLine("Ready for connections.");
 
             try {
                 while (true) {
                     Scheduler.Step();
-                    Scheduler.WaitForWorkItems(0.05);
+                    Scheduler.WaitForWorkItems();
                 }
             } catch (Exception ex) {
                 Console.WriteLine("Unhandled exception: {0}", ex);

@@ -12,17 +12,6 @@ namespace TelnetChatBot {
     public class DisconnectedException : Exception {
     }
 
-    internal static class TelnetExtensionMethods {
-        internal static Future TelnetReadLine (this AsyncStreamReader reader) {
-            Future innerFuture = reader.ReadLine();
-            Future f = new Future();
-            innerFuture.RegisterOnComplete((result, error) => {
-                f.SetResult(result, error);
-            });
-            return f;
-        }
-    }
-
     static class Program {
         static TaskScheduler Scheduler = new TaskScheduler(true);
         static bool Disconnected = false;
@@ -54,7 +43,7 @@ namespace TelnetChatBot {
             var stream = client.GetStream();
             var input = new AsyncStreamReader(stream);
             while (true) {
-                Future f = input.TelnetReadLine();
+                Future f = input.ReadLine();
                 yield return f;
                 if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
                     object r;
@@ -83,7 +72,7 @@ namespace TelnetChatBot {
 
                 while (!Disconnected) {
                     Scheduler.Step();
-                    Scheduler.WaitForWorkItems(0.05);
+                    Scheduler.WaitForWorkItems();
                 }
                 Console.WriteLine("Disconnected.");
 

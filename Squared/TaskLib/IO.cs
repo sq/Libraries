@@ -124,6 +124,12 @@ namespace Squared.Task {
         int _DecodedCharacterCount = 0;
         int _DecodedCharacterOffset = 0;
 
+        public Future PendingOperation {
+            get {
+                return _PendingOperation;
+            }
+        }
+
         public AsyncStreamReader (Stream stream)
             : this(stream, DefaultEncoding) {
         }
@@ -164,8 +170,7 @@ namespace Squared.Task {
                 }
                 try {
                     int bytesRead;
-                    lock (_BaseStream)
-                        bytesRead = _BaseStream.EndRead(ar);
+                    bytesRead = _BaseStream.EndRead(ar);
                     f.Complete(bytesRead);
                 } catch (ObjectDisposedException) {
                     f.Complete(0);
@@ -232,12 +237,12 @@ namespace Squared.Task {
         }
 
         private void SetPendingOperation (Future f) {
-            if (Interlocked.CompareExchange(ref _PendingOperation, f, null) != null)
+            if (Interlocked.CompareExchange<Future>(ref _PendingOperation, f, null) != null)
                 throw new OperationPendingException();
         }
 
         private void ClearPendingOperation (Future f) {
-            Interlocked.CompareExchange(ref _PendingOperation, null, f);
+            Interlocked.CompareExchange<Future>(ref _PendingOperation, null, f);
         }
 
         public Future Read () {
@@ -431,6 +436,12 @@ namespace Squared.Task {
         Encoder _Encoder;
         Future _PendingOperation;
 
+        public Future PendingOperation {
+            get {
+                return _PendingOperation;
+            }
+        }
+
         public AsyncStreamWriter (Stream stream)
             : this(stream, DefaultEncoding) {
         }
@@ -456,12 +467,12 @@ namespace Squared.Task {
         }
 
         private void SetPendingOperation (Future f) {
-            if (Interlocked.CompareExchange(ref _PendingOperation, f, null) != null)
+            if (Interlocked.CompareExchange<Future>(ref _PendingOperation, f, null) != null)
                 throw new OperationPendingException();
         }
 
         private void ClearPendingOperation (Future f) {
-            Interlocked.CompareExchange(ref _PendingOperation, null, f);
+            Interlocked.CompareExchange<Future>(ref _PendingOperation, null, f);
         }
 
         public char[] NewLine {
