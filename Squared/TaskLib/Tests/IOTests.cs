@@ -40,12 +40,13 @@ namespace Squared.Task {
 
     [TestFixture]
     public class AsyncStreamReaderTests : IOTests {
-        AsyncStreamReader Reader;
+        AsyncTextReader Reader;
 
         [SetUp]
         public override void SetUp () {
             base.SetUp();
-            Reader = new AsyncStreamReader(this.Stream);
+            var adapter = new StreamDataAdapter(this.Stream);
+            Reader = new AsyncTextReader(adapter, Encoding.ASCII);
         }
 
         [Test]
@@ -111,7 +112,7 @@ namespace Squared.Task {
 
         [Test]
         public void MultiblockReadTest () {
-            string testData = new string('a', AsyncStreamReader.DefaultBufferSize * 4);
+            string testData = new string('a', AsyncTextReader.DefaultBufferSize * 4);
 
             WriteTestData(testData);
             RewindStream();
@@ -194,12 +195,13 @@ namespace Squared.Task {
 
     [TestFixture]
     public class AsyncStreamWriterTests : IOTests {
-        AsyncStreamWriter Writer;
+        AsyncTextWriter Writer;
 
         [SetUp]
         public override void SetUp () {
             base.SetUp();
-            Writer = new AsyncStreamWriter(this.Stream);
+            var adapter = new StreamDataAdapter(this.Stream);
+            Writer = new AsyncTextWriter(adapter, Encoding.ASCII);
         }
 
         [Test]
@@ -359,21 +361,6 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void AsyncStreamReaderHandlingOfDisposedStream () {
-            var reader = new AsyncStreamReader(StreamA);
-            var f = reader.ReadLine();
-
-            Thread.Sleep(1000);
-
-            A.Close();
-
-            Thread.Sleep(1000);
-
-            Assert.IsTrue(f.Completed);
-            Assert.AreEqual(null, f.Result);
-        }
-
-        [Test]
         public void FillingSendBufferCausesBeginWriteToBlockEvenIfSocketIsNonBlocking () {
             byte[] buf = new byte[102400];
 
@@ -484,6 +471,19 @@ namespace Squared.Task {
             GC.Collect();
 
             Thread.Sleep(1000);
+        }
+
+        [Test]
+        public void FillingSendBufferCausesPollToReturnFalseIfSocketIsNonBlocking () {
+            byte[] buf = new byte[102400];
+
+            A.Client.Blocking = false;
+            B.Client.Blocking = false;
+
+            Assert.IsTrue(A.Client.Poll(0, SelectMode.SelectWrite));
+            StreamA.Write(buf, 0, buf.Length);
+
+            Assert.IsFalse(A.Client.Poll(0, SelectMode.SelectWrite));
         }
 
         [Test]

@@ -7,15 +7,21 @@ using System.Text;
 using System.Diagnostics;
 
 namespace Squared.Task {
-    public class BufferFullException : InvalidOperationException {
-        public BufferFullException ()
-            : base("The operation could not be begun due to insufficient buffer space") {
+    public class SocketDisconnectedException : IOException {
+        public SocketDisconnectedException ()
+            : base("The operation failed because the socket has disconnected.") {
+        }
+    }
+
+    public class SocketBufferFullException : IOException {
+        public SocketBufferFullException ()
+            : base("The operation failed because the socket's buffer is full.") {
         }
     }
 
     public class OperationPendingException : InvalidOperationException {
         public OperationPendingException ()
-            : base("A previous operation on this object is still pending") {
+            : base("A previous operation on this object is still pending.") {
         }
     }    
 
@@ -24,10 +30,6 @@ namespace Squared.Task {
             var f = new Future();
             try {
                 stream.BeginRead(buffer, offset, count, (ar) => {
-                    if (stream == null) {
-                        f.Fail(new Exception("Stream disposed before read could be completed"));
-                        return;
-                    }
                     try {
                         int bytesRead;
                         lock (stream)
@@ -47,10 +49,6 @@ namespace Squared.Task {
             var f = new Future();
             try {
                 stream.BeginWrite(buffer, offset, count, (ar) => {
-                    if (stream == null) {
-                        f.Fail(new Exception("Stream disposed before write could be completed"));
-                        return;
-                    }
                     try {
                         lock (stream)
                             stream.EndWrite(ar);
@@ -86,218 +84,125 @@ namespace Squared.Task {
         }
     }
 
-    public class AwesomeResult : IAsyncResult {
-        internal volatile bool Completed;
-        public Exception Error;
-        public object Result;
-        public Socket Socket;
-        public string Type;
-
-        public override string ToString () {
-            return String.Format("<AwesomeRequest ({0}): r={1}, e={2}>", Type, Result, Error);
-        }
-
-        object IAsyncResult.AsyncState {
-            get { throw new NotImplementedException(); }
-        }
-
-        WaitHandle IAsyncResult.AsyncWaitHandle {
-            get { throw new NotImplementedException(); }
-        }
-
-        bool IAsyncResult.CompletedSynchronously {
-            get { return false; }
-        }
-
-        bool IAsyncResult.IsCompleted {
-            get { return Completed; }
-        }
+    public interface IAsyncDataSource : IDisposable {
+        Future Read (byte[] buffer, int offset, int count);
     }
 
-    public class AwesomeStream : Stream {
+    public interface IAsyncDataWriter : IDisposable {
+        Future Write (byte[] buffer, int offset, int count);
+    }
+
+    public class SocketDataAdapter : IAsyncDataSource, IAsyncDataWriter {
         Socket _Socket;
-        public bool UseThreadedOperations = false;
+        bool _OwnsSocket;
 
-        public AwesomeStream (Socket socket, bool ownsSocket) {
+        public SocketDataAdapter (Socket socket)
+            : this(socket, true) {
+        }
+
+        public SocketDataAdapter (Socket socket, bool ownsSocket) {
             _Socket = socket;
+            _OwnsSocket = ownsSocket;
         }
 
-        public override bool CanRead {
-            get { return true; }
+        public void Dispose () {
+            if (_OwnsSocket)
+                _Socket.Close();
         }
 
-        public override bool CanSeek {
-            get { return false; }
-        }
-
-        public override bool CanWrite {
-            get { return true; }
-        }
-
-        public override void Flush () {
-        }
-
-        public override long Length {
-            get { throw new NotImplementedException(); }
-        }
-
-        public override long Position {
-            get {
-                throw new NotImplementedException();
-            }
-            set {
-                throw new NotImplementedException();
-            }
-        }
-
-        public override int Read (byte[] buffer, int offset, int count) {
-            throw new NotImplementedException();
-        }
-
-        public override long Seek (long offset, SeekOrigin origin) {
-            throw new NotImplementedException();
-        }
-
-        public override void SetLength (long value) {
-            throw new NotImplementedException();
-        }
-
-        public override void Write (byte[] buffer, int offset, int count) {
-            throw new NotImplementedException();
-        }
-
-        public override IAsyncResult BeginRead (byte[] buffer, int offset, int count, AsyncCallback callback, object state) {
-            if (!_Socket.Connected)
-                throw new IOException("Not connected");
-
-            if (UseThreadedOperations) {
-                var ar = new AwesomeResult();
-                ar.Socket = _Socket;
-                ar.Type = "Read";
-                ThreadPool.QueueUserWorkItem((_) => {
-                    int result = 0;
-                    Exception error = null;
-                    try {
-                        SocketError errorCode;
-                        result = _Socket.Receive(buffer, offset, count, SocketFlags.None, out errorCode);
-                        if (errorCode != SocketError.Success)
-                            Console.WriteLine("Error code from Socket.Recieve: {0}", errorCode);
-                    } catch (Exception ex) {
-                        error = ex;
-                        Console.WriteLine("Error in socket worker: {0}", ex);
+        public Future Read (byte[] buffer, int offset, int count) {
+            Future f = new Future();
+            SocketError errorCode;
+            _Socket.BeginReceive(buffer, offset, count, SocketFlags.None, out errorCode, (ar) => {
+                try {
+                    int bytesRead = _Socket.EndReceive(ar);
+                    if (bytesRead == 0) {
+                        f.Fail(new SocketDisconnectedException());
+                    } else {
+                        f.Complete(bytesRead);
                     }
-                    ar.Error = error;
-                    ar.Result = result;
-                    ar.Completed = true;
-                    try {
-                        callback(ar);
-                    } catch (Exception ex) {
-                        Console.WriteLine("Error in socket callback: {0}", ex);
-                    }
-                });
-                return ar;
-            } else {
-                SocketError errorCode;
-                IAsyncResult ar = _Socket.BeginReceive(buffer, offset, count, SocketFlags.None, out errorCode, callback, state);
-                if (errorCode != SocketError.Success)
-                    Console.WriteLine("Error code from Socket.BeginReceive: {0}", errorCode);
-                return ar;
-            }
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
+            }, null);
+            return f;
         }
 
         private bool IsSendBufferFull () {
-            try {
-                int result = _Socket.Send(new byte[0]);
-            } catch (SocketException se) {
-                if (se.SocketErrorCode == SocketError.WouldBlock)
-                    return true;
-                else
-                    throw;
-            }
-            return false;
+            if (_Socket.Blocking)
+                return false;
+
+            return !_Socket.Poll(0, SelectMode.SelectWrite);
         }
+        
+        public Future Write (byte[] buffer, int offset, int count) {
+            if (IsSendBufferFull())
+                throw new SocketBufferFullException();
 
-        public override IAsyncResult BeginWrite (byte[] buffer, int offset, int count, AsyncCallback callback, object state) {
-            if (!_Socket.Connected)
-                throw new IOException("Not connected");
-
-            if (UseThreadedOperations) {
-                var ar = new AwesomeResult();
-                ar.Socket = _Socket;
-                ar.Type = "Write";
-                ThreadPool.QueueUserWorkItem((_) => {
-                    int result = 0;
-                    Exception error = null;
-                    try {
-                        SocketError errorCode;
-                        result = _Socket.Send(buffer, offset, count, SocketFlags.None, out errorCode);
-                        if (errorCode != SocketError.Success)
-                            Console.WriteLine("Error code from Socket.Send: {0}", errorCode);
-                    } catch (Exception ex) {
-                        error = ex;
-                        Console.WriteLine("Error in socket worker: {0}", ex);
-                    }
-                    if (result != count) {
-                        error = new Exception("Could not send data");
-                    }
-                    ar.Error = error;
-                    ar.Result = result;
-                    ar.Completed = true;
-                    try {
-                        callback(ar);
-                    } catch (Exception ex) {
-                        Console.WriteLine("Error in socket callback: {0}", ex);
-                    }
-                });
-                return ar;
-            } else {
-                if (IsSendBufferFull())
-                    throw new BufferFullException();
-                SocketError errorCode;
-                IAsyncResult ar = _Socket.BeginSend(buffer, offset, count, SocketFlags.None, out errorCode, callback, state);
-                if (errorCode != SocketError.Success)
-                    Console.WriteLine("Error code from Socket.BeginSend: {0}", errorCode);
-                return ar;
-            }
-        }
-
-        public override int EndRead (IAsyncResult asyncResult) {
-            if (UseThreadedOperations) {
-                AwesomeResult ar = (AwesomeResult)asyncResult;
-                if (ar.Error != null)
-                    throw ar.Error;
-                else
-                    return (int)ar.Result;
-            } else {
-                SocketError errorCode;
-                int result = _Socket.EndReceive(asyncResult, out errorCode);
-                if (errorCode != SocketError.Success)
-                    Console.WriteLine("Error code from Socket.EndReceive: {0}", errorCode);
-                return result;
-            }
-        }
-
-        public override void EndWrite (IAsyncResult asyncResult) {
-            if (UseThreadedOperations) {
-                AwesomeResult ar = (AwesomeResult)asyncResult;
-                if (ar.Error != null)
-                    throw ar.Error;
-            } else {
-                SocketError errorCode;
-                _Socket.EndSend(asyncResult, out errorCode);
-                if (errorCode != SocketError.Success)
-                    Console.WriteLine("Error code from Socket.EndSend: {0}", errorCode);
-            }
+            Future f = new Future();
+            SocketError errorCode;
+            _Socket.BeginSend(buffer, offset, count, SocketFlags.None, out errorCode, (ar) => {
+                try {
+                    int bytesSent = _Socket.EndSend(ar);
+                    f.Complete(bytesSent);
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
+            }, null);
+            return f;
         }
     }
 
-    public class AsyncStreamReader : PendingOperationManager, IDisposable {
-        public static List<AsyncStreamReader> Readers = new List<AsyncStreamReader>();
+    public class StreamDataAdapter : IAsyncDataSource, IAsyncDataWriter {
+        Stream _Stream;
+        bool _OwnsStream;
 
+        public StreamDataAdapter (Stream stream)
+            : this(stream, true) {
+        }
+
+        public StreamDataAdapter (Stream stream, bool ownsStream) {
+            _Stream = stream;
+            _OwnsStream = ownsStream;
+        }
+
+        public void Dispose () {
+            if (_OwnsStream)
+                _Stream.Dispose();
+        }
+
+        public Future Read (byte[] buffer, int offset, int count) {
+            Future f = new Future();
+            _Stream.BeginRead(buffer, offset, count, (ar) => {
+                try {
+                    int bytesRead = _Stream.EndRead(ar);
+                    f.Complete(bytesRead);
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
+            }, null);
+            return f;
+        }
+        
+        public Future Write (byte[] buffer, int offset, int count) {
+            Future f = new Future();
+            _Stream.BeginWrite(buffer, offset, count, (ar) => {
+                try {
+                    _Stream.EndWrite(ar);
+                    f.Complete();
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
+            }, null);
+            return f;
+        }
+    }
+
+    public class AsyncTextReader : PendingOperationManager, IDisposable {
         public static Encoding DefaultEncoding = Encoding.UTF8;
         public static int DefaultBufferSize = 1024;
 
-        Stream _BaseStream;
+        IAsyncDataSource _DataSource;
         Encoding _Encoding;
         Decoder _Decoder;
         int _BufferSize;
@@ -307,33 +212,28 @@ namespace Squared.Task {
         int _DecodedCharacterCount = 0;
         int _DecodedCharacterOffset = 0;
 
-        public Stream BaseStream {
+        public IAsyncDataSource DataSource {
             get {
-                return _BaseStream;
+                return _DataSource;
             }
         }
 
-        public AsyncStreamReader (Stream stream)
-            : this(stream, DefaultEncoding) {
+        public AsyncTextReader (IAsyncDataSource dataSource)
+            : this(dataSource, DefaultEncoding) {
         }
 
-        public AsyncStreamReader (Stream stream, Encoding encoding) {
-            if (!stream.CanRead)
-                throw new InvalidOperationException("Stream is not readable");
-
-            _BaseStream = stream;
+        public AsyncTextReader (IAsyncDataSource dataSource, Encoding encoding) {
+            _DataSource = dataSource;
             _Encoding = encoding;
             _Decoder = _Encoding.GetDecoder();
             _BufferSize = DefaultBufferSize;
             AllocateBuffer();
-
-            Readers.Add(this);
         }
 
         public void Dispose () {
-            if (_BaseStream != null) {
-                _BaseStream.Dispose();
-                _BaseStream = null;
+            if (_DataSource != null) {
+                _DataSource.Dispose();
+                _DataSource = null;
             }
             _Encoding = null;
             _Decoder = null;
@@ -347,27 +247,7 @@ namespace Squared.Task {
         }
 
         private Future ReadMoreData () {
-            Future f = new Future();
-
-            AsyncCallback callback = (ar) => {
-                int bytesRead = 0;
-                Exception _failure = null;
-                try {
-                    bytesRead = _BaseStream.EndRead(ar);
-                } catch (ObjectDisposedException) {
-                    bytesRead = 0;
-                } catch (Exception ex) {
-                    _failure = ex;
-                }
-                f.SetResult(bytesRead, _failure);
-            };
-            try {
-                IAsyncResult ar = _BaseStream.BeginRead(_InputBuffer, 0, _BufferSize, callback, _BaseStream);
-            } catch (Exception ex) {
-                f.Fail(ex);
-            }
-
-            return f;
+            return _DataSource.Read(_InputBuffer, 0, _BufferSize);
         }
 
         private Future DecodeMoreData () {
@@ -604,31 +484,28 @@ namespace Squared.Task {
         }
     }
 
-    public class AsyncStreamWriter : PendingOperationManager, IDisposable {
+    public class AsyncTextWriter : PendingOperationManager, IDisposable {
         public static Encoding DefaultEncoding = Encoding.UTF8;
         public static char[] DefaultNewLine = new char[] { '\r', '\n' };
 
         char[] _NewLine;
         byte[] _NewLineBytes;
-        Stream _BaseStream;
+        IAsyncDataWriter _DataWriter;
         Encoding _Encoding;
         Encoder _Encoder;
 
-        public Stream BaseStream {
+        public IAsyncDataWriter DataWriter {
             get {
-                return _BaseStream;
+                return _DataWriter;
             }
         }
 
-        public AsyncStreamWriter (Stream stream)
-            : this(stream, DefaultEncoding) {
+        public AsyncTextWriter (IAsyncDataWriter dataWriter)
+            : this(dataWriter, DefaultEncoding) {
         }
 
-        public AsyncStreamWriter (Stream stream, Encoding encoding) {
-            if (!stream.CanWrite)
-                throw new InvalidOperationException("Stream is not writable");
-
-            _BaseStream = stream;
+        public AsyncTextWriter (IAsyncDataWriter dataWriter, Encoding encoding) {
+            _DataWriter = dataWriter;
             _Encoding = encoding;
             _Encoder = encoding.GetEncoder();
             _NewLine = DefaultNewLine;
@@ -636,9 +513,9 @@ namespace Squared.Task {
         }
 
         public void Dispose () {
-            if (_BaseStream != null) {
-                _BaseStream.Dispose();
-                _BaseStream = null;
+            if (_DataWriter != null) {
+                _DataWriter.Dispose();
+                _DataWriter = null;
             }
             _Encoding = null;
             _Encoder = null;
@@ -655,28 +532,13 @@ namespace Squared.Task {
         }
 
         public Future Write (byte[] bytes) {
-            Future f = new Future();
-
+            var f = new Future();
             SetPendingOperation(f);
-
-            AsyncCallback callback = (ar) => {
-                Exception _failure = null;
-                try {
-                    _BaseStream.EndWrite(ar);
-                } catch (Exception ex) {
-                    _failure = ex;
-                }
+            var innerFuture = _DataWriter.Write(bytes, 0, bytes.Length);
+            innerFuture.RegisterOnComplete((r, e) => {
                 ClearPendingOperation(f);
-                f.SetResult(null, _failure);
-            };
-
-            try {
-                IAsyncResult ar = _BaseStream.BeginWrite(bytes, 0, bytes.Length, callback, _BaseStream);
-            } catch (Exception ex) {
-                ClearPendingOperation(f);
-                f.Fail(ex);
-            }
-
+                f.SetResult(r, e);
+            });
             return f;
         }
 
@@ -692,11 +554,6 @@ namespace Squared.Task {
             Array.Copy(_NewLineBytes, 0, buf, numBytes, _NewLineBytes.Length);
 
             return Write(buf);
-        }
-
-        public void Flush () {
-            lock (_BaseStream)
-                _BaseStream.Flush();
         }
     }
 }

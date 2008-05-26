@@ -40,7 +40,7 @@ namespace Squared.Task {
 
         public override string ToString () {
             lock (this)
-                return String.Format("<Future {0}(r={1} e={2})", _Completed ? "completed" : (_Disposed ? "disposed" : ""), _Value, _Error);
+                return String.Format("<Future ({0}) r={1},{2}>", _Completed ? "completed" : (_Disposed ? "disposed" : ""), _Value, _Error);
         }
 
         public Future () {

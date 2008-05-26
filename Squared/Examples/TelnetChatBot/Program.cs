@@ -13,13 +13,13 @@ namespace TelnetChatBot {
     }
 
     static class Program {
-        static AsyncStreamReader Reader;
-        static AsyncStreamWriter Writer;
+        static AsyncTextReader Reader;
+        static AsyncTextWriter Writer;
         static TaskScheduler Scheduler = new TaskScheduler(true);
         static bool Disconnected = false;
 
-        static IEnumerator<object> SendTask (TcpClient client) {
-            var output = new AsyncStreamWriter(new AwesomeStream(client.Client, false), Encoding.ASCII);
+        static IEnumerator<object> SendTask (SocketDataAdapter adapter) {
+            var output = new AsyncTextWriter(adapter, Encoding.ASCII);
             Writer = output;
             string nextMessageText = String.Format("ChatBot{0}", Process.GetCurrentProcess().Id);
             Console.Title = nextMessageText;
@@ -37,9 +37,9 @@ namespace TelnetChatBot {
                 yield return new Sleep(0.5);
             }
         }
-        
-        static IEnumerator<object> ReceiveTask (TcpClient client) {
-            var input = new AsyncStreamReader(new AwesomeStream(client.Client, false), Encoding.ASCII);
+
+        static IEnumerator<object> ReceiveTask (SocketDataAdapter adapter) {
+            var input = new AsyncTextReader(adapter, Encoding.ASCII);
             Reader = input;
             while (true) {
                 Future f = input.ReadLine();
@@ -67,8 +67,9 @@ namespace TelnetChatBot {
                 TcpClient client = f.Result as TcpClient;
                 client.Client.Blocking = false;
                 client.Client.NoDelay = true;
-                Scheduler.Start(ReceiveTask(client), TaskExecutionPolicy.RunAsBackgroundTask);
-                Scheduler.Start(SendTask(client), TaskExecutionPolicy.RunAsBackgroundTask);
+                SocketDataAdapter adapter = new SocketDataAdapter(client.Client);
+                Scheduler.Start(ReceiveTask(adapter), TaskExecutionPolicy.RunAsBackgroundTask);
+                Scheduler.Start(SendTask(adapter), TaskExecutionPolicy.RunAsBackgroundTask);
 
                 while (!Disconnected) {
                     Scheduler.Step();

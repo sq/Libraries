@@ -24,8 +24,8 @@ namespace TelnetChatServer {
         public string Name;
         public bool Connected = false;
         public int CurrentId = -1;
-        public AsyncStreamWriter Output = null;
-        public AsyncStreamReader Input = null;
+        public AsyncTextWriter Output = null;
+        public AsyncTextReader Input = null;
 
         public override string ToString () {
             if (Name != null)
@@ -98,7 +98,7 @@ namespace TelnetChatServer {
                             f = peer.Output.PendingOperation;
                             if (f == null) {
                                 f = peer.Output.WriteLine(text);
-                                if (f.CheckForFailure(typeof(BufferFullException))) {
+                                if (f.CheckForFailure(typeof(SocketBufferFullException))) {
                                     Console.WriteLine("Send buffer for peer {0} full", peer);
                                     continue;
                                 }
@@ -158,8 +158,9 @@ namespace TelnetChatServer {
         }
 
         static IEnumerator<object> PeerTask (TcpClient client, Peer peer) {
-            var input = new AsyncStreamReader(new AwesomeStream(client.Client, false), Encoding.ASCII);
-            var output = new AsyncStreamWriter(new AwesomeStream(client.Client, false), Encoding.ASCII);
+            var adapter = new SocketDataAdapter(client.Client, true);
+            var input = new AsyncTextReader(adapter, Encoding.ASCII);
+            var output = new AsyncTextWriter(adapter, Encoding.ASCII);
             peer.Input = input;
             peer.Output = output;
 
