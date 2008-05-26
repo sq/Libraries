@@ -38,6 +38,7 @@ namespace TelnetChatServer {
     struct Message {
         public Peer From;
         public string Text;
+        public string DisplayText;
     }
 
     static class Program {
@@ -48,9 +49,16 @@ namespace TelnetChatServer {
         static Future WaitingForMessages = null;
         const int MaxMessagesToDispatch = 100;
         static IEnumerator<object> _Dispatcher;
+        static StringBuilder _MessageBuilder = new StringBuilder();
 
         static void DispatchNewMessage (Peer from, string message) {
-            Messages.Add(new Message { From = from, Text = message });
+            _MessageBuilder.Remove(0, _MessageBuilder.Length);
+            if (from != null) {
+                _MessageBuilder.AppendFormat("<{0}> {1}", from, message);
+            } else {
+                _MessageBuilder.AppendFormat("*** {0}", message);
+            }
+            Messages.Add(new Message { From = from, Text = message, DisplayText = _MessageBuilder.ToString() });
             if (WaitingForMessages != null) {
                 WaitingForMessages.Complete();
                 WaitingForMessages = null;
@@ -80,17 +88,16 @@ namespace TelnetChatServer {
                             if (message.From == peer) {
                                 peer.CurrentId += 1;
                                 continue;
-                            } else if (message.From != null) {
-                                text = String.Format("<{0}> {1}", message.From, message.Text);
                             } else {
-                                text = String.Format("*** {0}", message.Text);
+                                text = message.DisplayText;
                             }
 
                             Future f = null;
                             f = peer.Output.PendingOperation;
                             if (f == null) {
-                                f = peer.Output.WriteLine(text);
-                                if (f.CheckForFailure(typeof(SocketBufferFullException))) {
+                                try {
+                                    f = peer.Output.WriteLine(text);
+                                } catch (SocketBufferFullException) {
                                     Console.WriteLine("Send buffer for peer {0} full", peer);
                                     continue;
                                 }
@@ -147,10 +154,12 @@ namespace TelnetChatServer {
             peer.Input = input;
             peer.Output = output;
 
+            Type[] disconnectExceptions = new Type[] { typeof(DisconnectedException), typeof(IOException), typeof(SocketException) };
+
             yield return output.WriteLine("Welcome! Please enter your name.");
             Future f = input.ReadLine();
             yield return f;
-            if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
+            if (f.CheckForFailure(disconnectExceptions)) {
                 PeerDisconnected(peer);
                 yield break;
             }
@@ -164,7 +173,7 @@ namespace TelnetChatServer {
                 f = input.ReadLine();
                 yield return f;
                 string nextLineText = null;
-                if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
+                if (f.CheckForFailure(disconnectExceptions)) {
                     PeerDisconnected(peer);
                     yield break;
                 }

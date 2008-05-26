@@ -183,59 +183,5 @@ namespace Squared.Task {
 
             Assert.IsFalse(invoked[0]);
         }
-
-        [Test]
-        public void IfOnCompleteIsUnregisteredItIsNotInvokedWhenCompleted () {
-            var f = new Future();
-            object resultA = null;
-            object resultB = null;
-            OnComplete ocA = (result, error) => { resultA = error ?? (object)result; };
-            OnComplete ocB = (result, error) => { resultB = error ?? (object)result; };
-            f.RegisterOnComplete(ocA);
-            f.RegisterOnComplete(ocB);
-            f.UnregisterOnComplete(ocA);
-            f.Complete(5);
-            Assert.AreEqual(null, resultA);
-            Assert.AreEqual(5, resultB);
-        }
-
-        [Test]
-        public void IfOnDisposeIsUnregisteredItIsNotInvokedWhenDisposed () {
-            var f = new Future();
-            bool[] invoked = new bool[1];
-            OnDispose od = () => {
-                invoked[0] = true;
-            };
-            f.RegisterOnDispose(od);
-            f.UnregisterOnDispose(od);
-            f.Dispose();
-            Assert.IsFalse(invoked[0]);
-        }
-
-        [Test]
-        public void CannotUnregisterHandlersOnceCompleted () {
-            var f = new Future();
-            OnComplete oc = (result, error) => {};
-            f.RegisterOnComplete(oc);
-            f.Complete(5);
-            try {
-                f.UnregisterOnComplete(oc);
-                Assert.Fail("CannotUnregisterHandlerException was not thrown");
-            } catch (CannotUnregisterHandlerException) {
-            }
-        }
-
-        [Test]
-        public void CannotUnregisterHandlersOnceDisposed () {
-            var f = new Future();
-            OnDispose od = () => { };
-            f.RegisterOnDispose(od);
-            f.Dispose();
-            try {
-                f.UnregisterOnDispose(od);
-                Assert.Fail("CannotUnregisterHandlerException was not thrown");
-            } catch (CannotUnregisterHandlerException) {
-            }
-        }
     }
 }

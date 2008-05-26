@@ -42,8 +42,8 @@ namespace Squared.Task {
         private bool _Disposed = false;
         private object _Value;
         private Exception _Error;
-        private OnComplete _OnComplete;
-        private OnDispose _OnDispose;
+        private Queue<OnComplete> _OnCompletes = new Queue<OnComplete>();
+        private Queue<OnDispose> _OnDisposes = new Queue<OnDispose>();
 
         public override string ToString () {
             lock (this)
@@ -61,14 +61,28 @@ namespace Squared.Task {
             this.Fail(error);
         }
 
-        private void InvokeOnDisposes (OnDispose evt) {
-            if (evt != null)
-                evt();
+        private void InvokeOnDisposes () {
+            while (_OnDisposes.Count != 0) {
+                OnDispose item = _OnDisposes.Dequeue();
+                Monitor.Exit(this);
+                try {
+                    item();
+                } finally {
+                    Monitor.Enter(this);
+                }
+            }
         }
 
-        private void InvokeOnCompletes (OnComplete evt, object result, Exception error) {
-            if (evt != null)
-                evt(result, error);
+        private void InvokeOnCompletes (object result, Exception error) {
+            while (_OnCompletes.Count != 0) {
+                OnComplete item = _OnCompletes.Dequeue();
+                Monitor.Exit(this);
+                try {
+                    item(result, error);
+                } finally {
+                    Monitor.Enter(this);
+                }
+            }
         }
 
         public void RegisterOnComplete (OnComplete handler) {
@@ -77,7 +91,7 @@ namespace Squared.Task {
                     return;
 
                 if (!_Completed) {
-                    _OnComplete += handler;
+                    _OnCompletes.Enqueue(handler);
                     return;
                 }
             }
@@ -90,29 +104,11 @@ namespace Squared.Task {
                     return;
 
                 if (!_Disposed) {
-                    _OnDispose += handler;
+                    _OnDisposes.Enqueue(handler);
                     return;
                 }
             }
             handler();
-        }
-
-        public void UnregisterOnComplete (OnComplete handler) {
-            lock (this) {
-                if (_Completed || _Disposed)
-                    throw new CannotUnregisterHandlerException();
-
-                _OnComplete -= handler;
-            }
-        }
-
-        public void UnregisterOnDispose (OnDispose handler) {
-            lock (this) {
-                if (_Completed || _Disposed)
-                    throw new CannotUnregisterHandlerException();
-
-                _OnDispose -= handler;
-            }
         }
 
         public bool Disposed {
@@ -156,7 +152,6 @@ namespace Squared.Task {
         }
 
         public void SetResult (object result, Exception error) {
-            OnComplete evt;
             lock (this) {
                 if (_Disposed)
                     throw new FutureDisposedException();
@@ -166,14 +161,15 @@ namespace Squared.Task {
                     _Value = result;
                     _Error = error;
                     _Completed = true;
-                    evt = _OnComplete;
+                    InvokeOnCompletes(result, error);
                 }
+
+                _OnCompletes.Clear();
+                _OnDisposes.Clear();
             }
-            InvokeOnCompletes(evt, result, error);
         }
 
         public void Dispose () {
-            OnDispose evt;
             lock (this) {
                 if (_Disposed)
                     return;
@@ -181,13 +177,12 @@ namespace Squared.Task {
                     return;
                 else {
                     _Disposed = true;
-                    evt = _OnDispose;
+                    InvokeOnDisposes();
                 }
-            }
-            InvokeOnDisposes(evt);
 
-            _OnComplete = null;
-            _OnDispose = null;
+                _OnCompletes.Clear();
+                _OnDisposes.Clear();
+            }
         }
 
         public bool GetResult (out object result, out Exception error) {

@@ -110,21 +110,24 @@ namespace Squared.Task {
                 _Socket.Close();
         }
 
+        private void ReadCallback (IAsyncResult ar) {
+            Future f = (Future)ar.AsyncState;
+            try {
+                int bytesRead = _Socket.EndReceive(ar);
+                if (bytesRead == 0) {
+                    f.Fail(new SocketDisconnectedException());
+                } else {
+                    f.Complete(bytesRead);
+                }
+            } catch (Exception ex) {
+                f.Fail(ex);
+            }
+        }
+
         public Future Read (byte[] buffer, int offset, int count) {
             Future f = new Future();
             SocketError errorCode;
-            _Socket.BeginReceive(buffer, offset, count, SocketFlags.None, out errorCode, (ar) => {
-                try {
-                    int bytesRead = _Socket.EndReceive(ar);
-                    if (bytesRead == 0) {
-                        f.Fail(new SocketDisconnectedException());
-                    } else {
-                        f.Complete(bytesRead);
-                    }
-                } catch (Exception ex) {
-                    f.Fail(ex);
-                }
-            }, null);
+            _Socket.BeginReceive(buffer, offset, count, SocketFlags.None, out errorCode, ReadCallback, f);
             return f;
         }
 
@@ -134,6 +137,16 @@ namespace Squared.Task {
 
             return !_Socket.Poll(0, SelectMode.SelectWrite);
         }
+
+        private void WriteCallback (IAsyncResult ar) {
+            Future f = (Future)ar.AsyncState;
+            try {
+                int bytesSent = _Socket.EndSend(ar);
+                f.Complete();
+            } catch (Exception ex) {
+                f.Fail(ex);
+            }
+        }
         
         public Future Write (byte[] buffer, int offset, int count) {
             if (IsSendBufferFull())
@@ -141,14 +154,7 @@ namespace Squared.Task {
 
             Future f = new Future();
             SocketError errorCode;
-            _Socket.BeginSend(buffer, offset, count, SocketFlags.None, out errorCode, (ar) => {
-                try {
-                    int bytesSent = _Socket.EndSend(ar);
-                    f.Complete(bytesSent);
-                } catch (Exception ex) {
-                    f.Fail(ex);
-                }
-            }, null);
+            _Socket.BeginSend(buffer, offset, count, SocketFlags.None, out errorCode, WriteCallback, f);
             return f;
         }
     }
@@ -171,29 +177,35 @@ namespace Squared.Task {
                 _Stream.Dispose();
         }
 
+        private void ReadCallback (IAsyncResult ar) {
+            Future f = (Future)ar.AsyncState;
+            try {
+                int bytesRead = _Stream.EndRead(ar);
+                f.Complete(bytesRead);
+            } catch (Exception ex) {
+                f.Fail(ex);
+            }
+        }
+
         public Future Read (byte[] buffer, int offset, int count) {
             Future f = new Future();
-            _Stream.BeginRead(buffer, offset, count, (ar) => {
-                try {
-                    int bytesRead = _Stream.EndRead(ar);
-                    f.Complete(bytesRead);
-                } catch (Exception ex) {
-                    f.Fail(ex);
-                }
-            }, null);
+            _Stream.BeginRead(buffer, offset, count, ReadCallback, f);
             return f;
+        }
+
+        private void WriteCallback (IAsyncResult ar) {
+            Future f = (Future)ar.AsyncState;
+            try {
+                _Stream.EndWrite(ar);
+                f.Complete();
+            } catch (Exception ex) {
+                f.Fail(ex);
+            }
         }
         
         public Future Write (byte[] buffer, int offset, int count) {
             Future f = new Future();
-            _Stream.BeginWrite(buffer, offset, count, (ar) => {
-                try {
-                    _Stream.EndWrite(ar);
-                    f.Complete();
-                } catch (Exception ex) {
-                    f.Fail(ex);
-                }
-            }, null);
+            _Stream.BeginWrite(buffer, offset, count, WriteCallback, f);
             return f;
         }
     }
@@ -487,12 +499,15 @@ namespace Squared.Task {
     public class AsyncTextWriter : PendingOperationManager, IDisposable {
         public static Encoding DefaultEncoding = Encoding.UTF8;
         public static char[] DefaultNewLine = new char[] { '\r', '\n' };
+        public static int DefaultBufferSize = 1024;
 
         char[] _NewLine;
         byte[] _NewLineBytes;
         IAsyncDataWriter _DataWriter;
         Encoding _Encoding;
         Encoder _Encoder;
+
+        byte[] _WriteBuffer;
 
         public IAsyncDataWriter DataWriter {
             get {
@@ -510,6 +525,7 @@ namespace Squared.Task {
             _Encoder = encoding.GetEncoder();
             _NewLine = DefaultNewLine;
             _NewLineBytes = _Encoding.GetBytes(_NewLine);
+            _WriteBuffer = new byte[DefaultBufferSize];
         }
 
         public void Dispose () {
@@ -532,28 +548,40 @@ namespace Squared.Task {
         }
 
         public Future Write (byte[] bytes) {
-            var f = new Future();
+            return Write(bytes, bytes.Length);
+        }
+
+        public Future Write (byte[] bytes, int count) {
+            SetPendingOperation(null);
+            var f = _DataWriter.Write(bytes, 0, count);
             SetPendingOperation(f);
-            var innerFuture = _DataWriter.Write(bytes, 0, bytes.Length);
-            innerFuture.RegisterOnComplete((r, e) => {
+            f.RegisterOnComplete((r, e) => {
                 ClearPendingOperation(f);
-                f.SetResult(r, e);
             });
             return f;
         }
 
-        public Future Write (string text) {
-            byte[] buf = _Encoding.GetBytes(text);
-            return Write(buf);
+        private byte[] GetStringBuffer (int numBytes) {
+            if (_WriteBuffer.Length < numBytes)
+                _WriteBuffer = new byte[numBytes];
+
+            return _WriteBuffer;
         }
 
-        public Future WriteLine (string line) {
-            int numBytes = _Encoding.GetByteCount(line);
-            byte[] buf = new byte[numBytes + _NewLineBytes.Length];
-            _Encoding.GetBytes(line, 0, line.Length, buf, 0);
-            Array.Copy(_NewLineBytes, 0, buf, numBytes, _NewLineBytes.Length);
+        public Future Write (string text) {
+            int numBytes = _Encoding.GetByteCount(text);
+            byte[] buf = GetStringBuffer(numBytes);
+            _Encoding.GetBytes(text, 0, text.Length, buf, 0);
+            return Write(buf, numBytes);
+        }
 
-            return Write(buf);
+        public Future WriteLine (string text) {
+            int numBytes = _Encoding.GetByteCount(text) + _NewLineBytes.Length;
+            byte[] buf = GetStringBuffer(numBytes);
+            _Encoding.GetBytes(text, 0, text.Length, buf, 0);
+            Array.Copy(_NewLineBytes, 0, buf, numBytes - _NewLineBytes.Length, _NewLineBytes.Length);
+
+            return Write(buf, numBytes);
         }
     }
 }
