@@ -51,12 +51,9 @@ namespace TelnetChatServer {
 
         static void DispatchNewMessage (Peer from, string message) {
             Messages.Add(new Message { From = from, Text = message });
-            Future waitingFuture = Interlocked.Exchange<Future>(ref WaitingForMessages, null);
-            if (waitingFuture != null) {
-                try {
-                    waitingFuture.Complete();
-                } catch (FutureAlreadyHasResultException) {
-                }
+            if (WaitingForMessages != null) {
+                WaitingForMessages.Complete();
+                WaitingForMessages = null;
             }
         }
 
@@ -78,20 +75,15 @@ namespace TelnetChatServer {
                                 peer.CurrentId = newestId - MaxMessagesToDispatch;
 
                             string text = null;
-                            try {
-                                Message message = Messages[peer.CurrentId + 1];
+                            Message message = Messages[peer.CurrentId + 1];
 
-                                if (message.From == peer) {
-                                    peer.CurrentId += 1;
-                                    continue;
-                                } else if (message.From != null) {
-                                    text = String.Format("<{0}> {1}", message.From, message.Text);
-                                } else {
-                                    text = String.Format("*** {0}", message.Text);
-                                }
-
-                            } catch {
+                            if (message.From == peer) {
+                                peer.CurrentId += 1;
                                 continue;
+                            } else if (message.From != null) {
+                                text = String.Format("<{0}> {1}", message.From, message.Text);
+                            } else {
+                                text = String.Format("*** {0}", message.Text);
                             }
 
                             Future f = null;
@@ -106,7 +98,7 @@ namespace TelnetChatServer {
                                 f.RegisterOnComplete((r, e) => {
                                     if ((e is DisconnectedException) || (e is IOException) || (e is SocketException) || (e is FutureDisposedException)) {
                                         Scheduler.QueueWorkItem(() => {
-                                            PeerDisconnected(peer, new Future(e));
+                                            PeerDisconnected(peer);
                                         });
                                     }
                                 });
@@ -127,10 +119,7 @@ namespace TelnetChatServer {
                     System.Diagnostics.Debug.WriteLine(String.Format("Waiting on peers: {0}", waitingPeers.ToArray()));
 
                 Future waitForNewMessage = new Future();
-                Future oldFuture = Interlocked.Exchange<Future>(ref WaitingForMessages, waitForNewMessage);
-                if (oldFuture != null) {
-                    oldFuture.RegisterOnComplete((r, e) => { waitForNewMessage.SetResult(r, e); });
-                }
+                WaitingForMessages = waitForNewMessage;
                 waitList.Add(waitForNewMessage);
                 yield return Future.WaitForFirst(waitList);
             }
@@ -145,14 +134,11 @@ namespace TelnetChatServer {
             Peers.Add(peer);
         }
 
-        static void PeerDisconnected (Peer peer, Future future) {
+        static void PeerDisconnected (Peer peer) {
             if (!peer.Connected)
                 return;
             Peers.Remove(peer);
             peer.Connected = false;
-            object r;
-            Exception ex;
-            future.GetResult(out r, out ex);
             Console.WriteLine("User {0} has disconnected", peer);
             DispatchNewMessage(null, String.Format("{0} has left the chat", peer));
         }
@@ -168,7 +154,7 @@ namespace TelnetChatServer {
             Future f = input.ReadLine();
             yield return f;
             if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
-                PeerDisconnected(peer, f);
+                PeerDisconnected(peer);
                 yield break;
             }
             peer.Name = f.Result as string;
@@ -182,7 +168,7 @@ namespace TelnetChatServer {
                 yield return f;
                 string nextLineText = null;
                 if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
-                    PeerDisconnected(peer, f);
+                    PeerDisconnected(peer);
                     yield break;
                 }
                 nextLineText = f.Result as string;
@@ -214,7 +200,6 @@ namespace TelnetChatServer {
         }
         
         static void Main (string[] args) {
-            ThreadPool.SetMaxThreads(100, 1000);
             TcpListener server = new TcpListener(System.Net.IPAddress.Any, 1234);
             Scheduler.Start(AcceptConnectionsTask(server), TaskExecutionPolicy.RunAsBackgroundTask);
             _Dispatcher = MessageDispatcher();

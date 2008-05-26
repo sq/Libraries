@@ -141,7 +141,7 @@ namespace Squared.Task {
     }
 
     public class TaskScheduler : IDisposable {
-        const long SleepFudgeFactor = 10000;
+        const long SleepFudgeFactor = 10;
 
         private JobQueue _JobQueue = new JobQueue();
         private Queue<Action> _StepListeners = new Queue<Action>();

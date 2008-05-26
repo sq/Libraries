@@ -17,6 +17,7 @@ namespace TelnetChatBot {
         static AsyncTextWriter Writer;
         static TaskScheduler Scheduler = new TaskScheduler(true);
         static bool Disconnected = false;
+        static float SendRate;
 
         static IEnumerator<object> SendTask (SocketDataAdapter adapter) {
             var output = new AsyncTextWriter(adapter, Encoding.ASCII);
@@ -34,7 +35,7 @@ namespace TelnetChatBot {
                 }
                 i += 1;
                 nextMessageText = String.Format("Message {0}", i);
-                yield return new Sleep(0.5);
+                yield return new Sleep(SendRate);
             }
         }
 
@@ -50,7 +51,7 @@ namespace TelnetChatBot {
                 }
                 try {
                     string message = (string)f.Result;
-                    Console.WriteLine(message);
+                    //Console.WriteLine(message);
                 } catch (Exception ex) {
                     Console.WriteLine(ex.ToString());
                 }
@@ -58,7 +59,10 @@ namespace TelnetChatBot {
         }
 
         static void Main (string[] args) {
-            try {                
+            if (!float.TryParse(args[0], out SendRate))
+                SendRate = 0.5f;
+
+            try {
                 Console.WriteLine("Connecting to server...");
                 Future f = Network.ConnectTo("localhost", 1234);
                 f.GetCompletionEvent().WaitOne();
