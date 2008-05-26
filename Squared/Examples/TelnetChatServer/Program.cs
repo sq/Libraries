@@ -132,7 +132,7 @@ namespace TelnetChatServer {
                     oldFuture.RegisterOnComplete((r, e) => { waitForNewMessage.SetResult(r, e); });
                 }
                 waitList.Add(waitForNewMessage);
-                yield return new WaitForFirst(waitList);
+                yield return Future.WaitForFirst(waitList);
             }
         }
 

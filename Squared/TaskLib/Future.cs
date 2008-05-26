@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Linq;
 
 namespace Squared.Task {
     public delegate void OnComplete(object value, Exception error);
@@ -178,8 +179,49 @@ namespace Squared.Task {
                 }
             }
         }
-    }
 
+        public static Future WaitForFirst (IEnumerable<Future> futures) {
+            return WaitForFirst(futures.ToArray());
+        }
+
+        public static Future WaitForFirst (params Future[] futures) {
+            return WaitForX(futures, futures.Length - 1);
+        }
+
+        public static Future WaitForAll (IEnumerable<Future> futures) {
+            return WaitForAll(futures.ToArray());
+        }
+
+        public static Future WaitForAll (params Future[] futures) {
+            return WaitForX(futures, 0);
+        }
+
+        private static Future WaitForX (Future[] futures, int x) {
+            if ((futures == null) || (futures.Length == 0))
+                throw new ArgumentException("Must specify at least one future to wait on", "futures");
+            Future f = new Future();
+            List<Future> state = new List<Future>();
+            state.AddRange(futures);
+            foreach (Future _ in futures) {
+                Future item = _;
+                item.RegisterOnComplete((r, e) => {
+                    bool completed = false;
+                    lock (state) {
+                        state.Remove(item);
+                        if (state.Count == x) {
+                            state.Clear();
+                            completed = true;
+                        }
+                    }
+                    if (completed) {
+                        f.Complete(item);
+                    }
+                });
+            }
+            return f;
+        }
+    }
+    
     public static class FutureExtensionMethods {
         public static void Bind (this Future future, Future target) {
             OnComplete handler = (result, error) => {

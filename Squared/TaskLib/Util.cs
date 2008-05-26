@@ -21,7 +21,7 @@ namespace Squared.Task {
 
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             _SleepFuture = scheduler.Start(new Sleep(_Timeout));
-            _TaskFuture = scheduler.Start(new WaitForFirst(_Future, _SleepFuture));
+            _TaskFuture = Future.WaitForFirst(_Future, _SleepFuture);
             _TaskFuture.RegisterOnComplete((result, error) => {
                 if (result == _SleepFuture)
                     future.Fail(new TimeoutException("WaitWithTimeout timed out."));
@@ -98,98 +98,26 @@ namespace Squared.Task {
         }
     }
 
-    public class WaitForFirst : ISchedulable {
-        protected List<Future> _Futures = new List<Future>();
-        Future _CompositeFuture;
-
-        public WaitForFirst (IEnumerable<Future> futures) {
-            _Futures.AddRange(futures);
-        }
-
-        public WaitForFirst (params Future[] futures) {
-            _Futures.AddRange(futures);
-        }
-
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            _CompositeFuture = future;
-            var futures = _Futures.ToArray();
-            if (futures.Length == 0)
-                throw new ArgumentException("No futures to wait on");
-            foreach (Future _ in futures) {
-                Future f = _;
-                f.RegisterOnComplete((result, error) => {
-                    lock (this._CompositeFuture) {
-                        if (!this._CompositeFuture.Completed) {
-                            this._Futures.Clear();
-                            this._CompositeFuture.Complete(f);
-                        }
-                    }
-                });
-            }
-        }
-
-    }
-
-    public class WaitForAll : ISchedulable {
-        protected List<Future> _Futures = new List<Future>();
-        Future _CompositeFuture;
-
-        public WaitForAll () {
-        }
-
-        public WaitForAll (IEnumerable<Future> futures) {
-            _Futures.AddRange(futures);
-        }
-
-        public WaitForAll (params Future[] futures) {
-            _Futures.AddRange(futures);
-        }
-
-        protected virtual void OnSchedule (TaskScheduler scheduler) {
-        }
-
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            _CompositeFuture = future;
-            OnSchedule(scheduler);
-            var futures = _Futures.ToArray();
-            if (futures.Length == 0)
-                throw new ArgumentException("No futures to wait on");
-            foreach (Future _ in futures) {
-                Future f = _;
-                f.RegisterOnComplete((result, error) => {
-                    int count;
-                    lock (this._Futures) {
-                        this._Futures.Remove(f);
-                        count = this._Futures.Count;
-                    }
-                    if (count == 0)
-                        this._CompositeFuture.Complete();
-                });
-            }
-        }
-    }
-
-    public class WaitForWaitHandles : WaitForAll {
+    public class WaitForWaitHandles : ISchedulable {
         IEnumerable<WaitHandle> _Handles;
 
-        public WaitForWaitHandles (IEnumerable<WaitHandle> handles)
-            : base() {
+        public WaitForWaitHandles (IEnumerable<WaitHandle> handles) {
             _Handles = handles;
         }
 
-        public WaitForWaitHandles (params WaitHandle[] handles)
-            : base() {
+        public WaitForWaitHandles (params WaitHandle[] handles) {
             _Handles = handles;
         }
 
-        protected override void OnSchedule (TaskScheduler scheduler) {
+        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+            List<Future> futures = new List<Future>();
             foreach (WaitHandle handle in _Handles) {
                 var f = new Future();
                 scheduler.QueueWait(handle, f);
-                _Futures.Add(f);
+                futures.Add(f);
             }
 
-            base.OnSchedule(scheduler);
+            future.Bind(Future.WaitForAll(futures));
         }
     }
 }

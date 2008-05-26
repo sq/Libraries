@@ -199,7 +199,7 @@ namespace Squared.Task {
                 futures.Add(Scheduler.RunInThread(fn, buf, numIterations));
             }
 
-            var f = Scheduler.Start(new WaitForAll(futures));
+            var f = Future.WaitForAll(futures);
             while (!f.Completed)
                 Scheduler.Step();
 
@@ -307,7 +307,7 @@ namespace Squared.Task {
 
             var a = Scheduler.Start(InfiniteTask());
             var b = Scheduler.Start(new Sleep(duration));
-            var c = Scheduler.Start(new WaitForFirst(a, b));
+            var c = Future.WaitForFirst(a, b);
 
             GC.Collect();
 
@@ -324,7 +324,7 @@ namespace Squared.Task {
         public void WaitForFirstGCTest () {
             var a = Scheduler.Start(InfiniteTask());
             var b = Scheduler.Start(new Sleep(2));
-            var c = Scheduler.Start(new WaitForFirst(a, b));
+            var c = Future.WaitForFirst(a, b);
 
             while (!c.Completed) {
                 Scheduler.Step();
@@ -636,7 +636,7 @@ namespace Squared.Task {
             for (int i = 0; i < numClients; i++) {
                 clients.Add(Scheduler.Start(ClientTask(results, "localhost", port)));
             }
-            var b = Scheduler.Start(new WaitForAll(clients));
+            var b = Future.WaitForAll(clients);
 
             while (!b.Completed)
                 Scheduler.Step();

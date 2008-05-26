@@ -58,8 +58,7 @@ namespace TelnetChatBot {
         }
 
         static void Main (string[] args) {
-            try {
-                
+            try {                
                 Console.WriteLine("Connecting to server...");
                 Future f = Network.ConnectTo("localhost", 1234);
                 f.GetCompletionEvent().WaitOne();
@@ -76,7 +75,6 @@ namespace TelnetChatBot {
                     Scheduler.WaitForWorkItems();
                 }
                 Console.WriteLine("Disconnected.");
-
             } catch (Exception ex) {
                 if (ex is TaskException && ex.InnerException is DisconnectedException) {
                 } else {
