@@ -115,9 +115,6 @@ namespace TelnetChatServer {
                     }
                 } while (moreWork);
 
-                if (waitList.Count > 0)
-                    System.Diagnostics.Debug.WriteLine(String.Format("Waiting on peers: {0}", waitingPeers.ToArray()));
-
                 Future waitForNewMessage = new Future();
                 WaitingForMessages = waitForNewMessage;
                 waitList.Add(waitForNewMessage);

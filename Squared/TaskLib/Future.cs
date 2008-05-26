@@ -236,6 +236,7 @@ namespace Squared.Task {
                     lock (state) {
                         if (state.Count == x) {
                             completed = true;
+                            state.Clear();
                         } else {
                             state.Remove(item);
                         }
@@ -243,9 +244,6 @@ namespace Squared.Task {
 
                     if (completed) {
                         f.Complete(item);
-                        lock (state) {
-                            state.Clear();
-                        }
                     }
                 };
                 _.RegisterOnComplete(handler);
