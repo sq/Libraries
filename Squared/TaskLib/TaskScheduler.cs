@@ -141,7 +141,7 @@ namespace Squared.Task {
     }
 
     public class TaskScheduler : IDisposable {
-        const long SleepFudgeFactor = 10;
+        const long SleepFudgeFactor = 100;
 
         private JobQueue _JobQueue = new JobQueue();
         private Queue<Action> _StepListeners = new Queue<Action>();
@@ -243,7 +243,7 @@ namespace Squared.Task {
 
                 if (sleepUntil != null) {
                     long sleepUntilValue = (long)sleepUntil;
-                    long timeToSleep = (sleepUntilValue - DateTime.Now.Ticks) - SleepFudgeFactor;
+                    long timeToSleep = (sleepUntilValue - DateTime.Now.Ticks) + SleepFudgeFactor;
                     if (timeToSleep > 0) {
                         System.Diagnostics.Debug.WriteLine(String.Format("Sleeping for {0} ticks", timeToSleep));
                         try {
@@ -255,9 +255,6 @@ namespace Squared.Task {
                         } catch (ThreadInterruptedException) {
                             break;
                         }
-                    }
-
-                    while (DateTime.Now.Ticks < sleepUntilValue) {
                     }
                 }
             }
