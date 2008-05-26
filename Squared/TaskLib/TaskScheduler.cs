@@ -40,8 +40,14 @@ namespace Squared.Task {
     }
 
     public class SchedulableGeneratorThunk : ISchedulable, IDisposable {
+        public static List<SchedulableGeneratorThunk> RunningTasks = new List<SchedulableGeneratorThunk>();
         IEnumerator<object> _Task;
         Future _Future;
+        public object WakeCondition;
+
+        public override string ToString () {
+            return String.Format("<Task {0} waiting on {1}>", _Task, WakeCondition);
+        }
 
         public SchedulableGeneratorThunk (IEnumerator<object> task) {
             _Task = task;
@@ -57,9 +63,15 @@ namespace Squared.Task {
                 _Future.Dispose();
                 _Future = null;
             }
+
+            try {
+                RunningTasks.Remove(this);
+            } catch {
+            }
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+            RunningTasks.Add(this);
             IEnumerator<object> task = _Task;
             _Future = future;
             scheduler.QueueWorkItem(() => { this.Step(scheduler); });
@@ -84,8 +96,10 @@ namespace Squared.Task {
 
         void ScheduleNextStep (TaskScheduler scheduler, Object value) {
             if (value is ISchedulable) {
+                this.WakeCondition = value;
                 ScheduleNextStepForSchedulable(scheduler, value as ISchedulable);
             } else if (value is Future) {
+                this.WakeCondition = value;
                 Future f = (Future)value;
                 f.RegisterOnComplete((result, error) => {
                     scheduler.QueueWorkItem(() => {
@@ -102,6 +116,8 @@ namespace Squared.Task {
         }
 
         void Step (TaskScheduler scheduler) {
+            WakeCondition = null;
+
             if (_Future.Disposed) {
                 System.Diagnostics.Debug.WriteLine(String.Format("Task {0} aborted because its future was disposed", _Task));
                 return;
@@ -187,7 +203,7 @@ namespace Squared.Task {
             return f;
         }
 
-        internal void QueueWorkItem (Action workItem) {
+        public void QueueWorkItem (Action workItem) {
             _JobQueue.QueueWorkItem(workItem);
         }
 

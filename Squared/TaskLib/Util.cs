@@ -112,7 +112,10 @@ namespace Squared.Task {
 
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             _CompositeFuture = future;
-            foreach (Future _ in _Futures.ToArray()) {
+            var futures = _Futures.ToArray();
+            if (futures.Length == 0)
+                throw new ArgumentException("No futures to wait on");
+            foreach (Future _ in futures) {
                 Future f = _;
                 f.RegisterOnComplete((result, error) => {
                     lock (this._CompositeFuture) {
@@ -148,7 +151,10 @@ namespace Squared.Task {
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             _CompositeFuture = future;
             OnSchedule(scheduler);
-            foreach (Future _ in _Futures.ToArray()) {
+            var futures = _Futures.ToArray();
+            if (futures.Length == 0)
+                throw new ArgumentException("No futures to wait on");
+            foreach (Future _ in futures) {
                 Future f = _;
                 f.RegisterOnComplete((result, error) => {
                     int count;

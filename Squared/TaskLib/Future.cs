@@ -31,13 +31,17 @@ namespace Squared.Task {
     }
 
     public class Future : IDisposable {
-        private int _CompletionState = 0;
-        private volatile bool _Completed = false;
-        private volatile bool _Disposed = false;
-        private volatile object _Value;
-        private volatile Exception _Error;
+        private bool _Completed = false;
+        private bool _Disposed = false;
+        private object _Value;
+        private Exception _Error;
         private OnComplete _OnComplete;
         private OnDispose _OnDispose;
+
+        public override string ToString () {
+            lock (this)
+                return String.Format("<Future {0}(r={1} e={2})", _Completed ? "completed" : (_Disposed ? "disposed" : ""), _Value, _Error);
+        }
 
         public Future () {
         }
@@ -50,124 +54,128 @@ namespace Squared.Task {
             this.Fail(error);
         }
 
-        private void InvokeOnDisposes () {
-            OnDispose evt = Interlocked.Exchange(ref _OnDispose, null);
-
+        private void InvokeOnDisposes (OnDispose evt) {
             if (evt != null)
                 evt();
         }
 
-        private void InvokeOnCompletes (object result, Exception error) {
-            OnComplete evt = Interlocked.Exchange(ref _OnComplete, null);
-
+        private void InvokeOnCompletes (OnComplete evt, object result, Exception error) {
             if (evt != null)
                 evt(result, error);
         }
 
         public void RegisterOnComplete (OnComplete handler) {
-            if (_Disposed)
-                return;
+            lock (this) {
+                if (_Disposed)
+                    return;
 
-            if (_Completed) {
-                handler(_Value, _Error);
-            } else {
-                while (true) {
-                    OnComplete prev = _OnComplete;
-                    OnComplete result = prev;
-                    result += handler;
-                    if (Interlocked.CompareExchange<OnComplete>(ref _OnComplete, result, prev) == prev)
-                        break;
+                if (!_Completed) {
+                    _OnComplete += handler;
+                    return;
                 }
             }
+            handler(_Value, _Error);
         }
 
         public void RegisterOnDisposed (OnDispose handler) {
-            if (_Completed)
-                return;
+            lock (this) {
+                if (_Completed)
+                    return;
 
-            if (_Disposed) {
-                handler();
-            } else {
-                while (true) {
-                    OnDispose prev = _OnDispose;
-                    OnDispose result = prev;
-                    result += handler;
-                    if (Interlocked.CompareExchange<OnDispose>(ref _OnDispose, result, prev) == prev)
-                        break;
+                if (!_Disposed) {
+                    _OnDispose += handler;
+                    return;
                 }
             }
+            handler();
         }
 
         public bool Disposed {
             get {
-                return _Disposed;
+                lock (this)
+                    return _Disposed;
             }
         }
 
         public bool Completed {
             get {
-                return _Completed;
+                lock (this)
+                    return _Completed;
             }
         }
 
         public bool Failed {
             get {
-                if (_Completed)
-                    return (_Error != null);
-                else
-                    return false;
+                lock (this) {
+                    if (_Completed)
+                        return (_Error != null);
+                    else
+                        return false;
+                }
             }
         }
 
         public object Result {
             get {
-                if (_Completed) {
-                    if (_Error != null)
-                        throw new FutureException("Future's result was an error", _Error);
-                    else
-                        return _Value;
-                } else {
-                    throw new FutureHasNoResultException();
+                lock (this) {
+                    if (_Completed) {
+                        if (_Error != null)
+                            throw new FutureException("Future's result was an error", _Error);
+                        else
+                            return _Value;
+                    } else {
+                        throw new FutureHasNoResultException();
+                    }
                 }
             }
         }
 
         public void SetResult (object result, Exception error) {
-            int newState = Interlocked.Increment(ref _CompletionState);
-            if (newState != 1) {
+            OnComplete evt;
+            lock (this) {
                 if (_Disposed)
                     throw new FutureDisposedException();
-                else
+                else if (_Completed)
                     throw new FutureAlreadyHasResultException();
-            } else {
-                _Value = result;
-                _Error = error;
-                _Completed = true;
-                InvokeOnCompletes(result, error);
+                else {
+                    _Value = result;
+                    _Error = error;
+                    _Completed = true;
+                    evt = _OnComplete;
+                }
             }
+            InvokeOnCompletes(evt, result, error);
         }
 
         public void Dispose () {
-            int newState = Interlocked.Increment(ref _CompletionState);
-            if (newState != 1)
-                return;
-
-            _Disposed = true;
-            InvokeOnDisposes();
+            OnDispose evt;
+            lock (this) {
+                if (_Disposed)
+                    return;
+                else if (_Completed)
+                    return;
+                else {
+                    _Disposed = true;
+                    evt = _OnDispose;
+                }
+            }
+            InvokeOnDisposes(evt);
 
             _OnComplete = null;
             _OnDispose = null;
         }
 
         public bool GetResult (out object result, out Exception error) {
-            if (_Completed) {
-                result = _Value;
-                error = _Error;
-                return true;
-            } else {
-                result = null;
-                error = null;
-                return false;
+            lock (this) {
+                if (_Completed) {
+                    result = _Value;
+                    error = _Error;
+                    return true;
+                } else {
+                    result = null;
+                    error = null;
+                    return false;
+                }
             }
         }
     }
@@ -196,9 +204,11 @@ namespace Squared.Task {
             object result;
             Exception error;
             if (future.GetResult(out result, out error)) {
-                foreach (Type type in failureTypes)
-                    if (type.IsInstanceOfType(error))
-                        return true;
+                if (error != null) {
+                    foreach (Type type in failureTypes)
+                        if (type.IsInstanceOfType(error))
+                            return true;
+                }
             }
             return false;
         }

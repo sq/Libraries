@@ -71,6 +71,31 @@ namespace Squared.Task {
         }
 
         [Test]
+        public void ReadLotsOfLinesTest () {
+            int lineCount = 5000;
+            var strings = new List<string>();
+            var rng = new Random();
+            for (int i = 0; i < lineCount; i++) {
+                string text = new string((char)rng.Next(32, 127), rng.Next(1, 64));
+                strings.Add(text);
+                WriteTestData(text);
+                WriteTestData("\r\n");
+            }
+
+            RewindStream();
+
+            var readLines = new List<string>();
+            for (int i = 0; i < lineCount; i++) {
+                Future f = Reader.ReadLine();
+                f.GetCompletionEvent().WaitOne();
+                string line = f.Result as string;
+                readLines.Add(line);
+            }
+
+            Assert.AreEqual(strings.ToArray(), readLines.ToArray());
+        }
+
+        [Test]
         public void ReadToEndTest () {
             WriteTestData("abcd\r\nefgh\0ijkl");
             RewindStream();
@@ -156,7 +181,7 @@ namespace Squared.Task {
             WriteTestData(new byte[1024 * 1024]);
             RewindStream();
 
-            char[] buf = new char[1024 * 1024];
+            char[] buf = new char[2048 * 1024];
 
             Future f = Reader.Read(buf, 0, buf.Length);
             try {
@@ -201,7 +226,7 @@ namespace Squared.Task {
 
         [Test]
         public void ThrowsIfWriteInvokedWhilePreviousWriteIsPending () {
-            string buf = new string(' ', 1024 * 1024);
+            string buf = new string(' ', 2048 * 1024);
             Future f = Writer.Write(buf);
             try {
                 f = Writer.Write("foo");
@@ -317,6 +342,7 @@ namespace Squared.Task {
 
             AsyncCallback readCallback = (ar) => {
                 try {
+                    Thread.Sleep(1000);
                     int numBytes = StreamA.EndRead(ar);
                     Assert.Fail("ObjectDisposedException was not raised by EndRead");
                 } catch (ObjectDisposedException) {
@@ -325,10 +351,9 @@ namespace Squared.Task {
             };
 
             StreamA.BeginRead(readBuf, 0, readBuf.Length, readCallback, null);
-
             A.Close();
 
-            Thread.Sleep(1000);
+            Thread.Sleep(2000);
 
             Assert.IsTrue(readCallbackInvoked[0]);
         }
@@ -346,6 +371,161 @@ namespace Squared.Task {
 
             Assert.IsTrue(f.Completed);
             Assert.AreEqual(null, f.Result);
+        }
+
+        [Test]
+        public void FillingSendBufferCausesBeginWriteToBlockEvenIfSocketIsNonBlocking () {
+            byte[] buf = new byte[102400];
+
+            A.Client.Blocking = false;
+            B.Client.Blocking = false;
+
+            StreamA.Write(buf, 0, buf.Length);
+
+            Future f = new Future();
+
+            StreamA.BeginWrite(buf, 0, buf.Length, (ar) => {
+                try {
+                    StreamA.EndWrite(ar);
+                    f.Complete();
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
+            }, null);
+
+            Thread.Sleep(3000);
+
+            Assert.IsFalse(f.Completed);
+
+            A.Close();
+            B.Close();
+            StreamA.Dispose();
+            StreamB.Dispose();
+
+            GC.Collect();
+
+            Thread.Sleep(1000);
+
+            Assert.IsTrue(f.Completed);
+            Assert.IsTrue(f.Failed);
+        }
+
+        [Test]
+        public void FillingSendBufferCausesWriteToBlock () {
+            byte[] buf = new byte[102400];
+
+            StreamA.Write(buf, 0, buf.Length);
+
+            Future f = new Future();
+
+            ThreadPool.QueueUserWorkItem((_) => {
+                try {
+                    StreamA.Write(buf, 0, buf.Length);
+                    f.Complete();
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
+            }, null);
+
+            Thread.Sleep(3000);
+
+            Assert.IsFalse(f.Completed);
+
+            A.Close();
+            B.Close();
+            StreamA.Dispose();
+            StreamB.Dispose();
+
+            GC.Collect();
+
+            Thread.Sleep(1000);
+
+            Assert.IsTrue(f.Completed);
+            Assert.IsTrue(f.Failed);
+        }
+
+        [Test]
+        public void FillingSendBufferCausesWriteToThrowIfSocketIsNonBlocking () {
+            byte[] buf = new byte[102400];
+
+            A.Client.Blocking = false;
+            B.Client.Blocking = false;
+
+            StreamA.Write(buf, 0, buf.Length);
+
+            Future f = new Future();
+
+            ThreadPool.QueueUserWorkItem((_) => {
+                try {
+                    StreamA.Write(buf, 0, buf.Length);
+                    f.Complete();
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
+            }, null);
+
+            Thread.Sleep(3000);
+
+            Assert.IsTrue(f.Completed);
+            Assert.IsTrue(f.Failed);
+            try {
+                var _ = f.Result;
+            } catch (FutureException fe) {
+                var ioe = (IOException)fe.InnerException;
+                var se = (SocketException)ioe.InnerException;
+                Assert.AreEqual(SocketError.WouldBlock, se.SocketErrorCode);
+            }
+
+            A.Close();
+            B.Close();
+            StreamA.Dispose();
+            StreamB.Dispose();
+
+            GC.Collect();
+
+            Thread.Sleep(1000);
+        }
+
+        [Test]
+        public void FillingSendBufferCauses0ByteWriteToThrowIfSocketIsNonBlocking () {
+            byte[] buf = new byte[102400];
+
+            A.Client.Blocking = false;
+            B.Client.Blocking = false;
+
+            StreamA.Write(buf, 0, buf.Length);
+
+            Future f = new Future();
+
+            ThreadPool.QueueUserWorkItem((_) => {
+                try {
+                    StreamA.Write(new byte[0], 0, 0);
+                    f.Complete();
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
+            }, null);
+
+            Thread.Sleep(3000);
+
+            Assert.IsTrue(f.Completed);
+            Assert.IsTrue(f.Failed);
+            try {
+                var _ = f.Result;
+            } catch (FutureException fe) {
+                var ioe = (IOException)fe.InnerException;
+                var se = (SocketException)ioe.InnerException;
+                Assert.AreEqual(SocketError.WouldBlock, se.SocketErrorCode);
+            }
+
+            A.Close();
+            B.Close();
+            StreamA.Dispose();
+            StreamB.Dispose();
+
+            GC.Collect();
+
+            Thread.Sleep(1000);
         }
     }
 }
