@@ -31,6 +31,12 @@ namespace Squared.Task {
         }
     }
 
+    public class CannotUnregisterHandlerException : InvalidOperationException {
+        public CannotUnregisterHandlerException ()
+            : base("Future handlers cannot be unregistered once a future is completed or disposed") {
+        }
+    }
+
     public class Future : IDisposable {
         private bool _Completed = false;
         private bool _Disposed = false;
@@ -78,7 +84,7 @@ namespace Squared.Task {
             handler(_Value, _Error);
         }
 
-        public void RegisterOnDisposed (OnDispose handler) {
+        public void RegisterOnDispose (OnDispose handler) {
             lock (this) {
                 if (_Completed)
                     return;
@@ -89,6 +95,24 @@ namespace Squared.Task {
                 }
             }
             handler();
+        }
+
+        public void UnregisterOnComplete (OnComplete handler) {
+            lock (this) {
+                if (_Completed || _Disposed)
+                    throw new CannotUnregisterHandlerException();
+
+                _OnComplete -= handler;
+            }
+        }
+
+        public void UnregisterOnDispose (OnDispose handler) {
+            lock (this) {
+                if (_Completed || _Disposed)
+                    throw new CannotUnregisterHandlerException();
+
+                _OnDispose -= handler;
+            }
         }
 
         public bool Disposed {
@@ -185,7 +209,7 @@ namespace Squared.Task {
         }
 
         public static Future WaitForFirst (params Future[] futures) {
-            return WaitForX(futures, futures.Length - 1);
+            return WaitForX(futures, futures.Length);
         }
 
         public static Future WaitForAll (IEnumerable<Future> futures) {
@@ -193,31 +217,40 @@ namespace Squared.Task {
         }
 
         public static Future WaitForAll (params Future[] futures) {
-            return WaitForX(futures, 0);
+            return WaitForX(futures, 1);
         }
 
         private static Future WaitForX (Future[] futures, int x) {
             if ((futures == null) || (futures.Length == 0))
                 throw new ArgumentException("Must specify at least one future to wait on", "futures");
+
             Future f = new Future();
-            List<Future> state = new List<Future>();
+
+            var state = new List<Future>();
             state.AddRange(futures);
+
             foreach (Future _ in futures) {
                 Future item = _;
-                item.RegisterOnComplete((r, e) => {
+                OnComplete handler = (r, e) => {
                     bool completed = false;
                     lock (state) {
-                        state.Remove(item);
                         if (state.Count == x) {
-                            state.Clear();
                             completed = true;
+                        } else {
+                            state.Remove(item);
                         }
                     }
+
                     if (completed) {
                         f.Complete(item);
+                        lock (state) {
+                            state.Clear();
+                        }
                     }
-                });
+                };
+                _.RegisterOnComplete(handler);
             }
+
             return f;
         }
     }
