@@ -5,11 +5,11 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>9.0.21022</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{173ABDCA-7278-46FF-A300-D3BF8CCEF181}</ProjectGuid>
+    <ProjectGuid>{9A7399F1-4410-4A4B-A04A-EC25D06FF244}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>TaskLib</RootNamespace>
-    <AssemblyName>TaskLib</AssemblyName>
+    <RootNamespace>TaskLibTests</RootNamespace>
+    <AssemblyName>TaskLibTests</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -31,29 +31,32 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="nunit.framework, Version=2.4.7.0, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL" />
     <Reference Include="System" />
     <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Xml.Linq">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.Data.DataSetExtensions">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.Data" />
-    <Reference Include="System.Net">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BlockingQueue.cs" />
-    <Compile Include="Future.cs" />
-    <Compile Include="IO.cs" />
-    <Compile Include="JobQueue.cs" />
-    <Compile Include="Network.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TaskScheduler.cs" />
-    <Compile Include="Util.cs" />
-    <Compile Include="WorkerThread.cs" />
+    <Compile Include="Tests\FutureTests.cs" />
+    <Compile Include="Tests\IOTests.cs" />
+    <Compile Include="Tests\QueueTests.cs" />
+    <Compile Include="Tests\TaskSchedulerTests.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TaskLib.csproj">
+      <Project>{173ABDCA-7278-46FF-A300-D3BF8CCEF181}</Project>
+      <Name>TaskLib</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

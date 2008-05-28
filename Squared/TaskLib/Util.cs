@@ -4,12 +4,27 @@ using System.Text;
 using System.Threading;
 
 namespace Squared.Task {
+    /// <summary>
+    /// Schedules your task to continue execution at the end of the current step.
+    /// </summary>
+    public struct Yield : ISchedulable {
+        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+            future.Complete();
+        }
+    }
+
+    /// <summary>
+    /// Schedules your task to continue execution at the beginning of the next step.
+    /// </summary>
     public struct WaitForNextStep : ISchedulable {
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             scheduler.AddStepListener(future.Complete);
         }
     }
 
+    /// <summary>
+    /// Completes when the specified future completes, or when (timeout) seconds have elapsed, whichever comes first.
+    /// </summary>
     public class WaitWithTimeout : ISchedulable {
         Future _Future, _TaskFuture, _SleepFuture;
         double _Timeout;
@@ -22,7 +37,7 @@ namespace Squared.Task {
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             _SleepFuture = scheduler.Start(new Sleep(_Timeout));
             _TaskFuture = Future.WaitForFirst(_Future, _SleepFuture);
-            _TaskFuture.RegisterOnComplete((result, error) => {
+            _TaskFuture.RegisterOnComplete((f, result, error) => {
                 if (result == _SleepFuture)
                     future.Fail(new TimeoutException("WaitWithTimeout timed out."));
                 else
@@ -31,16 +46,49 @@ namespace Squared.Task {
         }
     }
 
-    public class TaskRunner : ISchedulable {
+    /// <summary>
+    /// Starts a task and stores the resulting future.
+    /// </summary>
+    public class Start : ISchedulable {
         IEnumerator<object> _Task;
         TaskExecutionPolicy _ExecutionPolicy;
         Future _Future;
 
-        public TaskRunner (IEnumerator<object> task) 
+        public Start (IEnumerator<object> task) 
             : this(task, TaskExecutionPolicy.RunWhileFutureLives) {
         }
 
-        public TaskRunner (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
+        public Start (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
+            _Task = task;
+            _ExecutionPolicy = executionPolicy;
+            _Future = null;
+        }
+
+        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+            _Future = scheduler.Start(_Task, _ExecutionPolicy);
+            future.Complete(_Future);
+        }
+
+        public Future Future {
+            get {
+                return _Future;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Schedules a task to run to completion.
+    /// </summary>
+    public class RunToCompletion : ISchedulable {
+        IEnumerator<object> _Task;
+        TaskExecutionPolicy _ExecutionPolicy;
+        Future _Future;
+
+        public RunToCompletion (IEnumerator<object> task) 
+            : this(task, TaskExecutionPolicy.RunWhileFutureLives) {
+        }
+
+        public RunToCompletion (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
             _Task = task;
             _Future = null;
             _ExecutionPolicy = executionPolicy;
@@ -62,6 +110,9 @@ namespace Squared.Task {
         }
     }
 
+    /// <summary>
+    /// Waits until a specified time (in ticks).
+    /// </summary>
     public struct SleepUntil : ISchedulable {
         long _EndWhen;
 
@@ -74,6 +125,9 @@ namespace Squared.Task {
         }
     }
 
+    /// <summary>
+    /// Waits for a specified amount of time (in seconds).
+    /// </summary>
     public struct Sleep : ISchedulable {
         long _EndWhen;
 
@@ -86,6 +140,9 @@ namespace Squared.Task {
         }
     }
 
+    /// <summary>
+    /// Waits for a WaitHandle to become set.
+    /// </summary>
     public struct WaitForWaitHandle : ISchedulable {
         WaitHandle _Handle;
 
@@ -98,6 +155,9 @@ namespace Squared.Task {
         }
     }
 
+    /// <summary>
+    /// Waits for multiple WaitHandles to all become set.
+    /// </summary>
     public class WaitForWaitHandles : ISchedulable {
         IEnumerable<WaitHandle> _Handles;
 

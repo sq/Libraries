@@ -87,9 +87,22 @@ namespace Squared.Task {
             }
         }
 
+        public void Clear () {
+            if (_ThreadSafe)
+                Monitor.Enter(_Queue);
+            _Queue.Clear();
+            if (_ThreadSafe)
+                Monitor.Exit(_Queue);
+        }
+
         public int Count {
             get {
-                return _Queue.Count;
+                if (_ThreadSafe)
+                    Monitor.Enter(_Queue);
+                int count = _Queue.Count;
+                if (_ThreadSafe)
+                    Monitor.Exit(_Queue);
+                return count;
             }
         }
     }

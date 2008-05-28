@@ -102,7 +102,7 @@ namespace TelnetChatServer {
                                     continue;
                                 }
 
-                                f.RegisterOnComplete((r, e) => {
+                                f.RegisterOnComplete((_, r, e) => {
                                     if ((e is DisconnectedException) || (e is IOException) || (e is SocketException) || (e is FutureDisposedException)) {
                                         Scheduler.QueueWorkItem(() => {
                                             PeerDisconnected(peer);
@@ -163,7 +163,7 @@ namespace TelnetChatServer {
                 PeerDisconnected(peer);
                 yield break;
             }
-            peer.Name = f.Result as string;
+            peer.Name = (f.Result as string);
 
             PeerConnected(peer);
 

@@ -1,0 +1,1 @@
+@start "ChatServer" /MIN .\TelnetChatServer\bin\release\TelnetChatServer.exe

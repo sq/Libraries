@@ -4,8 +4,8 @@ using System.Threading;
 using System.Linq;
 
 namespace Squared.Task {
-    public delegate void OnComplete(object value, Exception error);
-    public delegate void OnDispose();
+    public delegate void OnComplete(Future future, object value, Exception error);
+    public delegate void OnDispose(Future future);
 
     public class FutureException : Exception {
         public FutureException (string message, Exception innerException)
@@ -66,7 +66,7 @@ namespace Squared.Task {
                 OnDispose item = _OnDisposes.Dequeue();
                 Monitor.Exit(this);
                 try {
-                    item();
+                    item(this);
                 } finally {
                     Monitor.Enter(this);
                 }
@@ -78,7 +78,7 @@ namespace Squared.Task {
                 OnComplete item = _OnCompletes.Dequeue();
                 Monitor.Exit(this);
                 try {
-                    item(result, error);
+                    item(this, result, error);
                 } finally {
                     Monitor.Enter(this);
                 }
@@ -95,7 +95,7 @@ namespace Squared.Task {
                     return;
                 }
             }
-            handler(_Value, _Error);
+            handler(this, _Value, _Error);
         }
 
         public void RegisterOnDispose (OnDispose handler) {
@@ -108,7 +108,7 @@ namespace Squared.Task {
                     return;
                 }
             }
-            handler();
+            handler(this);
         }
 
         public bool Disposed {
@@ -154,7 +154,7 @@ namespace Squared.Task {
         public void SetResult (object result, Exception error) {
             lock (this) {
                 if (_Disposed)
-                    throw new FutureDisposedException();
+                    return;
                 else if (_Completed)
                     throw new FutureAlreadyHasResultException();
                 else {
@@ -215,34 +215,41 @@ namespace Squared.Task {
             return WaitForX(futures, 1);
         }
 
+        private class WaitHandler {
+            public Future Composite;
+            public List<Future> State = new List<Future>();
+            public int Trigger;
+
+            public void OnComplete (Future f, object r, Exception e) {
+                bool completed = false;
+                lock (State) {
+                    if (State.Count == Trigger) {
+                        completed = true;
+                        State.Clear();
+                    } else {
+                        State.Remove(f);
+                    }
+                }
+
+                if (completed) {
+                    Composite.Complete(f);
+                }
+            }
+        }
+
         private static Future WaitForX (Future[] futures, int x) {
             if ((futures == null) || (futures.Length == 0))
                 throw new ArgumentException("Must specify at least one future to wait on", "futures");
 
             Future f = new Future();
+            var h = new WaitHandler();
+            h.Composite = f;
+            h.State.AddRange(futures);
+            h.Trigger = x;
+            OnComplete handler = h.OnComplete;
 
-            var state = new List<Future>();
-            state.AddRange(futures);
-
-            foreach (Future _ in futures) {
-                Future item = _;
-                OnComplete handler = (r, e) => {
-                    bool completed = false;
-                    lock (state) {
-                        if (state.Count == x) {
-                            completed = true;
-                            state.Clear();
-                        } else {
-                            state.Remove(item);
-                        }
-                    }
-
-                    if (completed) {
-                        f.Complete(item);
-                    }
-                };
+            foreach (Future _ in futures)
                 _.RegisterOnComplete(handler);
-            }
 
             return f;
         }
@@ -250,7 +257,7 @@ namespace Squared.Task {
     
     public static class FutureExtensionMethods {
         public static void Bind (this Future future, Future target) {
-            OnComplete handler = (result, error) => {
+            OnComplete handler = (f, result, error) => {
                 future.SetResult(result, error);
             };
             target.RegisterOnComplete(handler);
@@ -283,7 +290,7 @@ namespace Squared.Task {
 
         public static ManualResetEvent GetCompletionEvent (this Future future) {
             ManualResetEvent evt = new ManualResetEvent(false);
-            OnComplete handler = (result, error) => {
+            OnComplete handler = (f, result, error) => {
                 evt.Set();
             };
             future.RegisterOnComplete(handler);

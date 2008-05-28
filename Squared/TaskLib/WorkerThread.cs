@@ -18,6 +18,13 @@ namespace Squared.Task {
             _Priority = priority;
         }
 
+        public void DequeueWorkItem (T item) {
+            lock (_WorkItems) {
+                _WorkItems.Remove(item);
+                _WakeEvent.Set();
+            }
+        }
+
         public void QueueWorkItem (T item) {
             lock (_WorkItems) {
                 _WorkItems.Add(item);

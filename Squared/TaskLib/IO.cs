@@ -112,6 +112,12 @@ namespace Squared.Task {
 
         private void ReadCallback (IAsyncResult ar) {
             Future f = (Future)ar.AsyncState;
+
+            if (!_Socket.Connected) {
+                f.Fail(new SocketDisconnectedException());
+                return;
+            }
+
             try {
                 int bytesRead = _Socket.EndReceive(ar);
                 if (bytesRead == 0) {
@@ -126,8 +132,12 @@ namespace Squared.Task {
 
         public Future Read (byte[] buffer, int offset, int count) {
             Future f = new Future();
-            SocketError errorCode;
-            _Socket.BeginReceive(buffer, offset, count, SocketFlags.None, out errorCode, ReadCallback, f);
+            if (!_Socket.Connected) {
+                f.Fail(new SocketDisconnectedException());
+            } else {
+                SocketError errorCode;
+                _Socket.BeginReceive(buffer, offset, count, SocketFlags.None, out errorCode, ReadCallback, f);
+            }
             return f;
         }
 
@@ -140,6 +150,12 @@ namespace Squared.Task {
 
         private void WriteCallback (IAsyncResult ar) {
             Future f = (Future)ar.AsyncState;
+
+            if (!_Socket.Connected) {
+                f.Fail(new SocketDisconnectedException());
+                return;
+            }
+            
             try {
                 int bytesSent = _Socket.EndSend(ar);
                 f.Complete();
@@ -149,12 +165,15 @@ namespace Squared.Task {
         }
         
         public Future Write (byte[] buffer, int offset, int count) {
-            if (IsSendBufferFull())
-                throw new SocketBufferFullException();
-
             Future f = new Future();
-            SocketError errorCode;
-            _Socket.BeginSend(buffer, offset, count, SocketFlags.None, out errorCode, WriteCallback, f);
+            if (!_Socket.Connected) {
+                f.Fail(new SocketDisconnectedException());
+            } else {
+                if (IsSendBufferFull())
+                    throw new SocketBufferFullException();
+                SocketError errorCode;
+                _Socket.BeginSend(buffer, offset, count, SocketFlags.None, out errorCode, WriteCallback, f);
+            }
             return f;
         }
     }
@@ -265,7 +284,7 @@ namespace Squared.Task {
         private Future DecodeMoreData () {
             Future f = new Future();
             Future readData = ReadMoreData();
-            readData.RegisterOnComplete((result, error) => {
+            readData.RegisterOnComplete((_, result, error) => {
                 if (error != null) {
                     f.Fail(error);
                     return;
@@ -322,7 +341,7 @@ namespace Squared.Task {
             char result;
             if (!GetCurrentCharacter(out result)) {
                 Future decodeMoreChars = DecodeMoreData();
-                decodeMoreChars.RegisterOnComplete((_, error) => {
+                decodeMoreChars.RegisterOnComplete((_a, _b, error) => {
                     if (error != null) {
                         ClearPendingOperation(f);
                         f.Fail(error);
@@ -374,7 +393,7 @@ namespace Squared.Task {
                 decodeMoreChars.RegisterOnComplete(oc[0]);
             };
 
-            OnComplete onDecodeComplete = (result, error) => {
+            OnComplete onDecodeComplete = (_f, result, error) => {
                 if (error != null) {
                     ClearPendingOperation(f);
                     f.Fail(error);
@@ -431,7 +450,7 @@ namespace Squared.Task {
                 decodeMoreChars.RegisterOnComplete(oc[0]);
             };
 
-            OnComplete onDecodeComplete = (result, error) => {
+            OnComplete onDecodeComplete = (_f, result, error) => {
                 if (error != null) {
                     ClearPendingOperation(f);
                     f.Fail(error);
@@ -474,7 +493,7 @@ namespace Squared.Task {
                 decodeMoreChars.RegisterOnComplete(oc[0]);
             };
 
-            OnComplete onDecodeComplete = (result, error) => {
+            OnComplete onDecodeComplete = (_f, result, error) => {
                 if (error != null) {
                     ClearPendingOperation(f);
                     f.Fail(error);
@@ -551,13 +570,15 @@ namespace Squared.Task {
             return Write(bytes, bytes.Length);
         }
 
+        private void WriteOnComplete (Future f, object r, Exception e) {
+            ClearPendingOperation(f);
+        }
+
         public Future Write (byte[] bytes, int count) {
             SetPendingOperation(null);
             var f = _DataWriter.Write(bytes, 0, count);
             SetPendingOperation(f);
-            f.RegisterOnComplete((r, e) => {
-                ClearPendingOperation(f);
-            });
+            f.RegisterOnComplete(WriteOnComplete);
             return f;
         }
 
