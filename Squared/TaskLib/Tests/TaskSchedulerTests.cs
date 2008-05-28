@@ -78,7 +78,7 @@ namespace Squared.Task {
         }
 
         IEnumerator<object> TaskReturnValueOfYieldedTask () {
-            var tr = new TaskRunner(TaskReturnValueOfFuture());
+            var tr = new RunToCompletion(TaskReturnValueOfFuture());
             yield return tr;
             yield return tr.Result;
         }
@@ -365,7 +365,7 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void RunningTasksDoNotCauseSchedulerToLeak () {
+        public void DisposedTasksDoNotCauseSchedulerToLeakButRunningTasksDo () {
             var f = Scheduler.Start(InfiniteTask());
 
             Scheduler.Step();
@@ -376,6 +376,12 @@ namespace Squared.Task {
 
             Scheduler.Dispose();
             Scheduler = null;
+            GC.Collect();
+
+            Assert.IsTrue(wr.IsAlive);
+
+            f.Dispose();
+            f = null;
             GC.Collect();
 
             Assert.IsFalse(wr.IsAlive);
@@ -432,6 +438,28 @@ namespace Squared.Task {
             Scheduler.Step();
 
             Assert.IsTrue(Scheduler.HasPendingTasks);
+        }
+
+        IEnumerator<object> YieldOnLongSleep (Future sleepFuture) {
+            yield return sleepFuture;
+            yield return "ok";
+        }
+
+        [Test]
+        public void DisposingTaskFutureDisposesAnyFuturesTaskIsWaitingOn () {
+            var sleep = new Sleep(500);
+            var sleepFuture = Scheduler.Start(sleep);
+            var f = Scheduler.Start(YieldOnLongSleep(sleepFuture));
+
+            Scheduler.Step();
+
+            f.Dispose();
+
+            Scheduler.Step();
+
+            Assert.IsFalse(Scheduler.HasPendingTasks);
+            Assert.IsTrue(f.Disposed);
+            Assert.IsTrue(sleepFuture.Disposed);
         }
 
         [Test]
@@ -530,7 +558,7 @@ namespace Squared.Task {
             vh.Value = 0;
 
             Future a = Scheduler.Start(new Sleep(2));
-            a.RegisterOnComplete((result, error) => {
+            a.RegisterOnComplete((f, result, error) => {
                 Scheduler.QueueWorkItem(() => {
                     vh.Value = 1;
                 });

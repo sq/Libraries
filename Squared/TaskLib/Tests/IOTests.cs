@@ -228,7 +228,7 @@ namespace Squared.Task {
 
         [Test]
         public void ThrowsIfWriteInvokedWhilePreviousWriteIsPending () {
-            string buf = new string(' ', 2048 * 1024);
+            string buf = new string(' ', 4096 * 1024);
             Future f = Writer.Write(buf);
             try {
                 f = Writer.Write("foo");

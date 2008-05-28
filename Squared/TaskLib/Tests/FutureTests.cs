@@ -75,7 +75,7 @@ namespace Squared.Task {
         public void InvokesOnCompletesWhenCompleted () {
             var f = new Future();
             object completeResult = null;
-            f.RegisterOnComplete((result, error) => { completeResult = error ?? (object)result; });
+            f.RegisterOnComplete((_, result, error) => { completeResult = error ?? (object)result; });
             f.Complete(5);
             Assert.AreEqual(5, completeResult);
         }
@@ -84,7 +84,7 @@ namespace Squared.Task {
         public void InvokesOnCompletesWhenFailed () {
             var f = new Future();
             object completeResult = null;
-            f.RegisterOnComplete((result, error) => { completeResult = error ?? (object)result; });
+            f.RegisterOnComplete((_, result, error) => { completeResult = error ?? (object)result; });
             f.Fail(new Exception("test"));
             Assert.AreEqual("test", (completeResult as Exception).Message);
         }
@@ -105,7 +105,7 @@ namespace Squared.Task {
             var f = new Future();
             object completeResult = null;
             f.Complete(5);
-            f.RegisterOnComplete((result, error) => { completeResult = error ?? (object)result; });
+            f.RegisterOnComplete((_, result, error) => { completeResult = error ?? (object)result; });
             Assert.AreEqual(5, completeResult);
         }
 
@@ -140,11 +140,9 @@ namespace Squared.Task {
             var f = new Future();
             f.Dispose();
             Assert.IsTrue(f.Disposed);
-            try {
-                f.Complete(5);
-                Assert.Fail("Future did not throw when completed");
-            } catch (FutureDisposedException) {
-            }
+            f.Complete(5);
+            Assert.IsTrue(f.Disposed);
+            Assert.IsFalse(f.Completed);
         }
 
         [Test]
@@ -161,7 +159,7 @@ namespace Squared.Task {
             bool[] invoked = new bool[1];
             
             var f = new Future();
-            f.RegisterOnDispose(() => {
+            f.RegisterOnDispose((_) => {
                 invoked[0] = true;
             });
 
@@ -174,7 +172,7 @@ namespace Squared.Task {
             bool[] invoked = new bool[1];
 
             var f = new Future();
-            f.RegisterOnDispose(() => {
+            f.RegisterOnDispose((_) => {
                 invoked[0] = true;
             });
 
