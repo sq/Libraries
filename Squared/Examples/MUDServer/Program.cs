@@ -14,6 +14,10 @@ namespace MUDServer {
             get;
         }
 
+        string Description {
+            get;
+        }
+
         Location Location {
             get;
         }
@@ -29,9 +33,16 @@ namespace MUDServer {
         private BlockingQueue<Event> _EventQueue = new BlockingQueue<Event>();
         private Future _ThinkTask;
         protected string _State = null;
+        protected string _Description = null;
 
         public override string ToString () {
-            return _Name;
+            return Description;
+        }
+
+        public string Description {
+            get {
+                return _Description ?? _Name;
+            }
         }
 
         public string State {
@@ -145,7 +156,7 @@ namespace MUDServer {
             }
             foreach (var e in this.Location.Entities) {
                 if (e.Value != this)
-                    SendMessage("{0} is {1}.", e.Key, e.Value.State ?? "standing nearby");
+                    SendMessage("{0} is {1}.", e.Value.Description, e.Value.State ?? "standing nearby");
             }
         }
 

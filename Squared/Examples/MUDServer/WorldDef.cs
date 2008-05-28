@@ -31,10 +31,27 @@ namespace MUDServer {
                     new Exit("Forest path", "StartingForestB")
                 }
             };
+
+            new ForestBird(_);
+
+            _ = new Location("StartingForestB") {
+                Title = "Forest path",
+                Description = "You are standing on an overgrown path in the forest.\r\n" +
+                "You can hear the sounds of the forest all around you, and the sun is barely visible through the thick foliage.\r\n" +
+                "The path winds along to the north and south.",
+                Exits = {
+                    new Exit("North", "StartingForestA"),
+                    new Exit("South", "StartingForestC")
+                }
+            };
+
+            new ForestBird(_);
+            new ForestBird(_);
         }
     }
 
     public class StartingRoomOldMan : EntityBase {
+        List<string> _RememberedPlayers = new List<string>();
         Dictionary<string, Future> _PlayersToNag = new Dictionary<string, Future>();
 
         public StartingRoomOldMan (Location location)
@@ -52,7 +69,12 @@ namespace MUDServer {
                     case EventType.Enter:
                         if (evt.Sender is Player) {
                             Player p = evt.Sender as Player;
-                            new EventSay(this, String.Format("Ah don't believe I've seen yer round here 'fore, {0}. What brings yer round these parts?", p)).Send();
+                            if (_RememberedPlayers.Contains(p.Name)) {
+                                new EventSay(this, String.Format("Why hello again, {0}. It light'ns mah heart to see yer face.", p)).Send();
+                            } else {
+                                new EventSay(this, String.Format("Ah don't believe I've seen yer round here 'fore, {0}. What brings ya?", p)).Send();
+                                _RememberedPlayers.Add(p.Name);
+                            }
                             if (_PlayersToNag.ContainsKey(p.Name)) {
                                 _PlayersToNag[p.Name].Dispose();
                                 _PlayersToNag.Remove(p.Name);
@@ -73,7 +95,7 @@ namespace MUDServer {
         }
 
         IEnumerator<object> NagTask(string player) {
-            yield return new Sleep(30);
+            yield return new Sleep(45);
             try {
                 Player p = World.Players[player];
                 new EventTell(this, "Kids 'ese days... 'ever stoppin by to visit an ol man... 'eesh.", p).Send();
@@ -81,6 +103,37 @@ namespace MUDServer {
                 System.Diagnostics.Debug.WriteLine("Couldn't nag player because they are no longer in-game");
             }
             _PlayersToNag.Remove(player);
+        }
+    }
+
+    public class ForestBird : EntityBase {
+        public ForestBird (Location location)
+            : base(location, GetDefaultName()) {
+            _Description = "A bird";
+
+            string[] states = new string[] {
+                "perched on a nearby branch",
+                "flying around nearby",
+                "pecking around for worms"
+            };
+
+            _State = states[Program.RNG.Next(0, states.Length)];
+        }
+
+        protected override IEnumerator<object> ThinkTask () {
+            while (true) {
+                yield return new Sleep((Program.RNG.NextDouble() * 20.0) + 5.0);
+
+                string[] emotes = new string[] {
+                    "chirps.",
+                    "tweets.",
+                    "whistles a happy tune.",
+                    "squawks loudly for no particular reason.",
+                    "makes a bizarre rhythmic humming noise for exactly 75 milliseconds and then becomes eerily silent."
+                };
+
+                new EventEmote(this, emotes[Program.RNG.Next(0, emotes.Length)]).Send();
+            }
         }
     }
 }
