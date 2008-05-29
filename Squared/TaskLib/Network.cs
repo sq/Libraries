@@ -12,6 +12,8 @@ namespace Squared.Task {
                 try {
                     client.EndConnect(ar);
                     f.Complete(client);
+                } catch (FutureHandlerException) {
+                    throw;
                 } catch (Exception ex) {
                     f.Fail(ex);
                 }
@@ -27,6 +29,8 @@ namespace Squared.Task {
                 try {
                     TcpClient result = listener.EndAcceptTcpClient(ar);
                     f.Complete(result);
+                } catch (FutureHandlerException) {
+                    throw;
                 } catch (Exception ex) {
                     f.Fail(ex);
                 }

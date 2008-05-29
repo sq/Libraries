@@ -31,9 +31,12 @@ namespace Squared.Task {
         }
     }
 
-    public class CannotUnregisterHandlerException : InvalidOperationException {
-        public CannotUnregisterHandlerException ()
-            : base("Future handlers cannot be unregistered once a future is completed or disposed") {
+    public class FutureHandlerException : Exception {
+        Delegate Handler;
+
+        public FutureHandlerException (Delegate handler, Exception innerException) 
+            : base("One of the Future's handlers threw an uncaught exception", innerException) {
+            Handler = handler;
         }
     }
 
@@ -67,6 +70,8 @@ namespace Squared.Task {
                 Monitor.Exit(this);
                 try {
                     item(this);
+                } catch (Exception ex) {
+                    throw new FutureHandlerException(item, ex);
                 } finally {
                     Monitor.Enter(this);
                 }
@@ -79,6 +84,8 @@ namespace Squared.Task {
                 Monitor.Exit(this);
                 try {
                     item(this, result, error);
+                } catch (Exception ex) {
+                    throw new FutureHandlerException(item, ex);
                 } finally {
                     Monitor.Enter(this);
                 }

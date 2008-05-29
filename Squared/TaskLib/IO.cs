@@ -35,6 +35,8 @@ namespace Squared.Task {
                         lock (stream)
                             bytesRead = stream.EndRead(ar);
                         f.Complete(bytesRead);
+                    } catch (FutureHandlerException) {
+                        throw;
                     } catch (Exception ex) {
                         f.Fail(ex);
                     }
@@ -53,6 +55,8 @@ namespace Squared.Task {
                         lock (stream)
                             stream.EndWrite(ar);
                         f.Complete();
+                    } catch (FutureHandlerException) {
+                        throw;
                     } catch (Exception ex) {
                         f.Fail(ex);
                     }
@@ -125,11 +129,10 @@ namespace Squared.Task {
                 } else {
                     f.Complete(bytesRead);
                 }
+            } catch (FutureHandlerException) {
+                throw;
             } catch (Exception ex) {
-                if (!f.Completed)
-                    f.Fail(ex);
-                else
-                    throw;
+                f.Fail(ex);
             }
         }
 
@@ -162,6 +165,8 @@ namespace Squared.Task {
             try {
                 int bytesSent = _Socket.EndSend(ar);
                 f.Complete();
+            } catch (FutureHandlerException) {
+                throw;
             } catch (Exception ex) {
                 f.Fail(ex);
             }
@@ -204,6 +209,8 @@ namespace Squared.Task {
             try {
                 int bytesRead = _Stream.EndRead(ar);
                 f.Complete(bytesRead);
+            } catch (FutureHandlerException) {
+                throw;
             } catch (Exception ex) {
                 f.Fail(ex);
             }
@@ -220,6 +227,8 @@ namespace Squared.Task {
             try {
                 _Stream.EndWrite(ar);
                 f.Complete();
+            } catch (FutureHandlerException) {
+                throw;
             } catch (Exception ex) {
                 f.Fail(ex);
             }
@@ -299,6 +308,8 @@ namespace Squared.Task {
                     _DecodedCharacterCount = 0;
                     _DecodedCharacterCount = _Decoder.GetChars(_InputBuffer, 0, bytesRead, _DecodedBuffer, 0);
                     f.Complete(_DecodedCharacterCount);
+                } catch (FutureHandlerException) {
+                    throw;
                 } catch (Exception ex) {
                     f.Fail(ex);
                 }

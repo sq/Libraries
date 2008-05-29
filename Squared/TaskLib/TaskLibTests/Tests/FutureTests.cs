@@ -181,5 +181,37 @@ namespace Squared.Task {
 
             Assert.IsFalse(invoked[0]);
         }
+
+        [Test]
+        public void FutureWrapsExceptionIfOnCompleteHandlerThrows () {
+            var f = new Future();
+            f.RegisterOnComplete((_, r, e) => {
+                throw new Exception("pancakes");
+            });
+
+            try {
+                f.Complete(1);
+                Assert.Fail("Exception was swallowed");
+            } catch (FutureHandlerException fhe) {
+                Assert.IsInstanceOfType(typeof(Exception), fhe.InnerException);
+                Assert.AreEqual("pancakes", fhe.InnerException.Message);
+            }
+        }
+
+        [Test]
+        public void FutureWrapsExceptionIfOnDisposeHandlerThrows () {
+            var f = new Future();
+            f.RegisterOnDispose((_) => {
+                throw new Exception("pancakes");
+            });
+
+            try {
+                f.Dispose();
+                Assert.Fail("Exception was swallowed");
+            } catch (FutureHandlerException fhe) {
+                Assert.IsInstanceOfType(typeof(Exception), fhe.InnerException);
+                Assert.AreEqual("pancakes", fhe.InnerException.Message);
+            }
+        }
     }
 }
