@@ -69,7 +69,7 @@ namespace MUDServer {
             }
         }
 
-        public object ProcessInput (string text) {
+        public IEnumerator<object> ProcessInput (string text) {
             string[] words = text.Split(' ');
             if (words.Length < 1)
                 return null;
@@ -357,9 +357,9 @@ namespace MUDServer {
                 string line = newInputLine.Result as string;
 
                 if (line != null) {
-                    object next = ProcessInput(line);
+                    IEnumerator<object> next = ProcessInput(line);
                     if (next != null)
-                        yield return next;
+                        yield return new RunToCompletion(next);
                 }
             }
         }

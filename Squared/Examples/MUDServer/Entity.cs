@@ -121,7 +121,7 @@ namespace MUDServer {
             foreach (EventHandler handler in handlers) {
                 IEnumerator<object> task = handler(type, evt);
                 if (task != null)
-                    yield return task;
+                    yield return new RunToCompletion(task, TaskExecutionPolicy.RunAsBackgroundTask);
             }
         }
 

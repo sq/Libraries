@@ -61,7 +61,7 @@ namespace MUDServer {
             AddEventHandler(EventType.Leave, OnEventLeave);
         }
 
-        protected IEnumerator<object> OnEventEnter (EventType type, object evt) {
+        private IEnumerator<object> OnEventEnter (EventType type, object evt) {
             var sender = Event.GetProp<IEntity>("Sender", evt) as Player;
             if (sender == null)
                 yield break;
@@ -82,7 +82,7 @@ namespace MUDServer {
             }
         }
 
-        protected IEnumerator<object> OnEventLeave (EventType type, object evt) {
+        private IEnumerator<object> OnEventLeave (EventType type, object evt) {
             var sender = Event.GetProp<IEntity>("Sender", evt) as Player;
             if (sender == null)
                 yield break;

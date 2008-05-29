@@ -120,7 +120,7 @@ namespace Squared.Task {
         }
 
         void Step () {
-            if (_Task == null || _Future == null)
+            if (_Task == null)
                 return;
 
             WakeCondition = null;
@@ -134,7 +134,7 @@ namespace Squared.Task {
                 }
 
                 // Disposed during execution
-                if ((_Task == null) || (_Future == null))
+                if (_Task == null)
                     return;
 
                 object value = _Task.Current;
