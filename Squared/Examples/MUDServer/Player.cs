@@ -80,6 +80,7 @@ namespace MUDServer {
                 case "say":
                     if (words.Length < 2) {
                         SendMessage("What did you want to <say>, exactly?");
+                        SendPrompt();
                     } else {
                         Event.Send(new { Type = EventType.Say, Sender = this, Text = string.Join(" ", words, 1, words.Length - 1) });
                     }
@@ -87,6 +88,7 @@ namespace MUDServer {
                 case "emote":
                     if (words.Length < 2) {
                         SendMessage("What were you trying to do?");
+                        SendPrompt();
                     } else {
                         Event.Send(new { Type = EventType.Emote, Sender = this, Text = string.Join(" ", words, 1, words.Length - 1) });
                     }
@@ -94,6 +96,7 @@ namespace MUDServer {
                 case "tell":
                     if (words.Length < 3) {
                         SendMessage("Who did you want to <tell> what?");
+                        SendPrompt();
                     } else {
                         string name = words[1];
                         IEntity to = Location.ResolveName(name);
@@ -101,6 +104,7 @@ namespace MUDServer {
                             Event.Send(new { Type = EventType.Tell, Sender = this, Recipient = to, Text = string.Join(" ", words, 2, words.Length - 1) });
                         } else {
                             SendMessage("Who do you think you're talking to? There's nobody named {0} here.", name);
+                            SendPrompt();
                         }
                     }
                     return null;
@@ -110,6 +114,7 @@ namespace MUDServer {
                 case "go":
                     if (CurrentHealth <= 0) {
                         SendMessage("You can't do that while dead.");
+                        SendPrompt();
                         return null;
                     }
                     try {
@@ -121,6 +126,7 @@ namespace MUDServer {
                             else {
                                 Console.WriteLine("Warning: '{0}' exit '{1}' leads to undefined location '{2}'.", Location.Name, exit.Description, exit.Target);
                                 SendMessage("Your attempt to leave via {0} is thwarted by a mysterious force.", exit.Description);
+                                SendPrompt();
                             }
                         };
                         if (int.TryParse(exitText, out exitId)) {
@@ -135,20 +141,25 @@ namespace MUDServer {
                         }
                     } catch {
                         SendMessage("You can't find that exit.");
+                        SendPrompt();
                     }
                     return null;
                 case "kill":
                     if (words.Length < 2) {
                         SendMessage("Who did you want to kill?");
+                        SendPrompt();
                     } else if (CurrentHealth <= 0) {
                         SendMessage("You can't do that while dead.");
+                        SendPrompt();
                     } else if (InCombat) {
                         SendMessage("You're already busy fighting!");
+                        SendPrompt();
                     } else {
                         string name = words[1];
                         IEntity to = Location.ResolveName(name);
                         if (to == this) {
                             SendMessage("You don't really want to kill yourself, you're just looking for attention.");
+                            SendPrompt();
                         } else if (to != null) {
                             if (to is CombatEntity) {
                                 CombatEntity cto = to as CombatEntity;
@@ -158,12 +169,15 @@ namespace MUDServer {
                                     Event.Send(new { Type = EventType.CombatStart, Sender = this, Target = cto });
                                 } else {
                                     SendMessage("They're already in combat, and you don't want to interfere.");
+                                    SendPrompt();
                                 }
                             } else {
                                 SendMessage("You don't think that's such a great idea.");
+                                SendPrompt();
                             }
                         } else {
                             SendMessage("Who are you trying to kill, exactly? There's nobody named {0} here.", name);
+                            SendPrompt();
                         }
                     }
                     return null;
@@ -174,9 +188,11 @@ namespace MUDServer {
                     SendMessage("If you're feeling lost, try taking a <look> around.");
                     SendMessage("If you wish to <go> out an exit, simply speak its name or number.");
                     SendMessage("Looking to make trouble? Try to <kill> someone!");
+                    SendPrompt();
                     return null;
                 default:
                     SendMessage("Hmm... that doesn't make any sense. Do you need some <help>?");
+                    SendPrompt();
                     return null;
             }
         }
@@ -233,23 +249,22 @@ namespace MUDServer {
             IEntity sender = Event.GetProp<IEntity>("Sender", evt);
             string text = Event.GetProp<string>("Text", evt);
 
-            SendMessage("{0} says, \"{1}\"", sender, text);
+            if (sender == this) {
+                SendMessage("You say, \"{0}\"", text);
+            } else {
+                SendMessage("{0} says, \"{1}\"", sender, text);
+            }
 
             return null;
         }
 
         private IEnumerator<object> OnEventEmote (EventType type, object evt) {
-            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
-            string text = Event.GetProp<string>("Text", evt);
-
-            SendMessage("{0} {1}", sender, text);
-
+            SendMessage(Event.Format("{Sender} {Text}", this, evt));
             return null;
         }
 
         private IEnumerator<object> OnEventDeath (EventType type, object evt) {
             IEntity sender = Event.GetProp<IEntity>("Sender", evt);
-            string text = Event.GetProp<string>("Text", evt);
 
             if (sender == this) {
                 SendMessage("You collapse onto the floor and release your last breath.");
@@ -280,10 +295,8 @@ namespace MUDServer {
 
             if (sender == this) {
                 SendMessage("You lunge at {0} and attack!", target);
-            } else if (target == this) {
-                SendMessage("{0} lunges at you, weapon in hand!", sender);
             } else {
-                SendMessage("{0} charges at {1} and attacks!", sender, target);
+                SendMessage(Event.Format("{Sender} charges at {Target} and attacks!", this, evt));
             }
 
             return null;
@@ -291,16 +304,11 @@ namespace MUDServer {
 
         private IEnumerator<object> OnEventCombatHit (EventType type, object evt) {
             IEntity sender = Event.GetProp<IEntity>("Sender", evt);
-            IEntity target = Event.GetProp<IEntity>("Target", evt);
-            string weaponName = Event.GetProp<string>("WeaponName", evt);
-            int damage = Event.GetProp<int>("Damage", evt);
 
             if (sender == this) {
-                SendMessage("You hit {0} with your {1} and deal {2} damage!", target, weaponName, damage);
-            } else if (target == this) {
-                SendMessage("{0} hits you with their {1} for {2} damage.", sender, weaponName, damage);
+                SendMessage(Event.Format("You hit {Target} with your {WeaponName} for {Damage} damage.", this, evt));
             } else {
-                SendMessage("{0} hits {1} with their {2} for {3} damage.", sender, target, weaponName, damage);
+                SendMessage(Event.Format("{Sender} hits {Target} with their {WeaponName} for {Damage} damage.", this, evt));
             }
 
             return null;
@@ -313,10 +321,8 @@ namespace MUDServer {
 
             if (sender == this) {
                 SendMessage("You miss {0} with your {1}.", target, weaponName);
-            } else if (target == this) {
-                SendMessage("{0} misses you with their {1}.", sender, weaponName);
             } else {
-                SendMessage("{0} misses {1} with their {2}.", sender, target, weaponName);
+                SendMessage(Event.Format("{Sender} misses {Target} with their {WeaponName}.", this, evt));
             }
 
             return null;
@@ -345,7 +351,6 @@ namespace MUDServer {
                     object next = ProcessInput(line);
                     if (next != null)
                         yield return next;
-                    SendPrompt();
                 }
             }
         }

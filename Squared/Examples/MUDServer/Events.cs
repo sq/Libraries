@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace MUDServer {
     public enum EventType {
@@ -46,6 +47,10 @@ namespace MUDServer {
     }
 
     public static class Event {
+        private static Regex EventFormatRegex = new Regex(
+            @"\{(?'id'[A-Za-z_]([A-Za-z0-9_]*))\}", 
+            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+
         public static T GetProp<T> (string propertyName, object obj) {
             return GetProp<T>(propertyName, obj, obj.GetType());
         }
@@ -76,6 +81,26 @@ namespace MUDServer {
                     if (e != sender)
                         e.NotifyEvent(type, evt);
             }
+        }
+
+        public static string Format (string formatString, IEntity you, object evt, params object[] extraArguments) {
+            Type t = evt.GetType();
+            MatchEvaluator evaluator = (m) => {
+                string propertyName = m.Groups["id"].Value;
+                PropertyInfo prop = t.GetProperty(propertyName);
+                if (prop != null) {
+                    object value = prop.GetValue(evt, null);
+                    if (value == you) {
+                        return "You";
+                    } else {
+                        return value.ToString();
+                    }
+                } else {
+                    return "{{" + propertyName + "}}";
+                }
+            };
+            formatString = EventFormatRegex.Replace(formatString, evaluator);
+            return String.Format(formatString, extraArguments);
         }
     }
 }
