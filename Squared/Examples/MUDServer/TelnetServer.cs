@@ -21,8 +21,9 @@ namespace MUDServer {
             client.Client.NoDelay = true;
             client.Client.Blocking = false;
             Data = new SocketDataAdapter(client.Client, true);
-            Input = new AsyncTextReader(Data, Encoding.ASCII);
-            Output = new AsyncTextWriter(Data, Encoding.ASCII);
+            Encoding encoding = Encoding.GetEncoding(1252);
+            Input = new AsyncTextReader(Data, encoding);
+            Output = new AsyncTextWriter(Data, encoding);
             _SendFuture = server._Scheduler.Start(SendMessagesTask(), TaskExecutionPolicy.RunWhileFutureLives);
         }
 
@@ -41,15 +42,21 @@ namespace MUDServer {
                 }
                 string text = r as string;
                 int count = 0;
+                int toSkip = 0;
                 char[] buf = new char[text.Length];
                 for (int i = 0; i < text.Length; i++) {
+                    toSkip -= 1;
                     char ch = text[i];
                     if (ch == 8) {
                         if (count > 0)
                             count--;
+                    } else if (ch == 0xFF) {
+                        toSkip = 3;
                     } else if ((ch >= 32) && (ch <= 127)) {
-                        buf[count] = ch;
-                        count++;
+                        if (toSkip <= 0) {
+                            buf[count] = ch;
+                            count++;
+                        }
                     }
                 }
                 text = new string(buf, 0, count);
