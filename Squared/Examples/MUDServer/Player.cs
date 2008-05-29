@@ -110,6 +110,7 @@ namespace MUDServer {
                     return null;
                 case "look":
                     PerformLook();
+                    SendPrompt();
                     return null;
                 case "go":
                     if (CurrentHealth <= 0) {
