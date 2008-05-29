@@ -29,6 +29,12 @@ namespace Squared.Task {
         }
     }
 
+    public class TaskYieldedEnumeratorException : Exception {
+        public TaskYieldedEnumeratorException ()
+            : base("Task yielded an IEnumerator<object> as a result. To yield on another task, yield a Start or RunToCompletion object.") {
+        }
+    }
+
     struct BoundWaitHandle {
         public WaitHandle Handle;
         public Future Future;
@@ -114,8 +120,12 @@ namespace Squared.Task {
                 _Future.Complete(((Result)value).Value);
                 Dispose();
             } else {
-                _Future.Complete(value);
-                Dispose();
+                if (value is IEnumerator<object>) {
+                    throw new TaskYieldedEnumeratorException();
+                } else {
+                    _Future.Complete(value);
+                    Dispose();
+                }
             }
         }
 
