@@ -133,6 +133,10 @@ namespace Squared.Task {
                     return;
                 }
 
+                // Disposed during execution
+                if ((_Task == null) || (_Future == null))
+                    return;
+
                 object value = _Task.Current;
                 ScheduleNextStep(value);
             } catch (Exception ex) {
