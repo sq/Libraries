@@ -28,7 +28,7 @@ namespace MUDServer {
 
         public override void Dispose () {
             base.Dispose();
-            World.Players.Remove(this.Name);
+            World.Players.Remove(this.Name.ToLower());
             Console.WriteLine("{0} has left the world", Name);
         }
 
@@ -102,7 +102,7 @@ namespace MUDServer {
                         string name = words[1];
                         IEntity to = Location.ResolveName(name);
                         if (to != null) {
-                            Event.Send(new { Type = EventType.Tell, Sender = this, Recipient = to, Text = string.Join(" ", words, 2, words.Length - 1) });
+                            Event.Send(new { Type = EventType.Tell, Sender = this, Recipient = to, Text = string.Join(" ", words, 2, words.Length - 2) });
                         } else {
                             SendMessage("Who do you think you're talking to? There's nobody named {0} here.", name);
                             SendPrompt();
@@ -123,8 +123,8 @@ namespace MUDServer {
                         int exitId;
                         string exitText = string.Join(" ", words, 1, words.Length - 1).Trim().ToLower();
                         Action<Exit> go = (exit) => {
-                            if (World.Locations.ContainsKey(exit.Target))
-                                Location = World.Locations[exit.Target];
+                            if (World.Locations.ContainsKey(exit.Target.ToLower()))
+                                Location = World.Locations[exit.Target.ToLower()];
                             else {
                                 Console.WriteLine("Warning: '{0}' exit '{1}' leads to undefined location '{2}'.", Location.Name, exit.Description, exit.Target);
                                 SendMessage("Your attempt to leave via {0} is thwarted by a mysterious force.", exit.Description);
@@ -332,18 +332,24 @@ namespace MUDServer {
 
         protected override IEnumerator<object> ThinkTask () {
             while (Name == null) {
-                Client.ClearScreen();
                 Client.SendText("Greetings, traveller. What might your name be?\r\n");
                 Future f = Client.ReadLineText();
                 yield return f;
+                string tempName;
                 try {
-                    Name = (f.Result as string).Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                    tempName = (f.Result as string).Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[0];
                 } catch {
+                    continue;
                 }
+                if (World.Players.ContainsKey(tempName.ToLower())) {
+                    Client.SendText("A player with that name is already logged in.\r\n");
+                    continue;
+                }
+                Name = tempName;
             }
 
             Console.WriteLine("{0} has entered the world", Name);
-            World.Players[Name] = this;
+            World.Players[Name.ToLower()] = this;
 
             while (true) {
                 Future newInputLine = Client.ReadLineText();

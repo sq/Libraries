@@ -98,11 +98,10 @@ namespace MUDServer {
 
         IEnumerator<object> NagTask(string player) {
             yield return new Sleep(45);
-            try {
-                Player p = World.Players[player];
+            IEntity ent = Location.ResolveName(player);
+            if (ent != null) {
                 string messageText = "Kids 'ese days... 'ever stoppin by to visit an ol man... 'eesh.";
-                Event.Send(new { Type = EventType.Tell, Sender = this, Recipient = p, Text = messageText });
-            } catch (KeyNotFoundException) {
+                Event.Send(new { Type = EventType.Tell, Sender = this, Recipient = ent, Text = messageText });
             }
             _PlayersToNag.Remove(player);
         }

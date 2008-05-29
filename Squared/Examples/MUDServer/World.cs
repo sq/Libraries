@@ -36,27 +36,30 @@ namespace MUDServer {
         }
 
         public IEntity ResolveName (string name) {
-            if (Entities.ContainsKey(name))
-                return Entities[name];
-            else if (World.Players.ContainsKey(name))
-                return World.Players[name];
+            if (name == null || name.Length == 0)
+                return null;
+            string lowername = name.ToLower();
+            if (Entities.ContainsKey(lowername))
+                return Entities[lowername];
+            else if (World.Players.ContainsKey(lowername))
+                return World.Players[lowername];
             else
                 return null;
         }
 
         public void Enter (IEntity entity) {
-            Entities[entity.Name] = entity;
+            Entities[entity.Name.ToLower()] = entity;
             Event.Send(new { Type = EventType.Enter, Sender = entity });
         }
 
         public void Exit (IEntity entity) {
             Event.Send(new { Type = EventType.Leave, Sender = entity });
-            Entities.Remove(entity.Name);
+            Entities.Remove(entity.Name.ToLower());
         }
 
         public Location (string name) {
             _Name = name;
-            World.Locations.Add(name, this);
+            World.Locations.Add(name.ToLower(), this);
         }
     }
 }
