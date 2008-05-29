@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Reflection;
 
 namespace MUDServer {
     public enum EventType {
@@ -43,130 +44,38 @@ namespace MUDServer {
         CombatMiss,
     }
 
-    public class Event {
-        public EventType Type;
-        public object[] Arguments;
-
-        public Event (EventType type, params object[] arguments) {
-            Type = type;
-            Arguments = arguments;
+    public static class Event {
+        public static T GetProp<T> (string propertyName, object obj) {
+            return GetProp<T>(propertyName, obj, obj.GetType());
         }
 
-        protected Event (EventType type, int argumentCount) {
-            Type = type;
-            Arguments = new object[argumentCount + 1];
-        }
-
-        protected void SetValues (params object[] values) {
-            Array.Copy(values, Arguments, values.Length);
-        }
-
-        public IEntity Sender {
-            get {
-                return Arguments[0] as IEntity;
+        public static T GetProp<T> (string propertyName, object obj, Type type) {
+            PropertyInfo prop = type.GetProperty(propertyName);
+            if (prop != null) {
+                try {
+                    return (T)prop.GetValue(obj, null);
+                } catch (InvalidCastException) {
+                    return default(T);
+                }
+            } else {
+                return default(T);
             }
         }
 
-        public object this[int index] {
-            get {
-                return Arguments[index + 1];
+        public static void Send (object evt) {
+            Type t = evt.GetType();
+            EventType type = GetProp<EventType>("Type", evt, t);
+            IEntity sender = GetProp<IEntity>("Sender", evt, t);
+            IEntity recipient = GetProp<IEntity>("Recipient", evt, t);
+            sender.NotifyEvent(type, evt);
+            if (recipient != null) {
+                if (recipient != sender)
+                    recipient.NotifyEvent(type, evt);
+            } else {
+                foreach (var e in sender.Location.Entities.Values)
+                    if (e != sender)
+                        e.NotifyEvent(type, evt);
             }
         }
-
-        public virtual void Send () {
-            IEntity sender = Sender;
-            sender.NotifyEvent(this);
-            foreach (var e in Sender.Location.Entities.Values)
-                if (e != sender)
-                    e.NotifyEvent(this);
-        }
     }
-
-    public class TargetedEvent : Event {
-        protected TargetedEvent (EventType type, int argumentCount)
-            : base(type, argumentCount + 1) {
-        }
-
-        public object Recipient {
-            get {
-                return Arguments[Arguments.Length - 1];
-            }
-        }
-
-        public override void Send () {
-            Sender.NotifyEvent(this);
-            if (Recipient == Sender)
-                return;
-            else if (Recipient is IEntity)
-                (Recipient as IEntity).NotifyEvent(this);
-            else if (Recipient is string)
-                Sender.Location.Entities[Recipient as string].NotifyEvent(this);
-            else
-                throw new ArgumentException("Recipient must br a string or entity reference", "recipient");
-        }
-    }
-
-    public class EventSay : Event {
-        public EventSay (IEntity sender, string text)
-            : base(EventType.Say, 1) {
-            SetValues(sender, text);
-        }
-    }
-
-    public class EventTell : TargetedEvent {
-        public EventTell (IEntity from, string text, IEntity to)
-            : base(EventType.Tell, 1) {
-            SetValues(from, text, to);
-        }
-    }
-
-    public class EventCombatStart : TargetedEvent {
-        public EventCombatStart (IEntity from, IEntity to)
-            : base(EventType.CombatStart, 0) {
-            SetValues(from, to);
-        }
-    }
-
-    public class EventCombatHit : TargetedEvent {
-        public EventCombatHit (IEntity from, IEntity to, string weaponname, Int32 damage)
-            : base(EventType.CombatHit, 2) {
-            SetValues(from, weaponname, damage, to);
-        }
-    }
-
-    public class EventCombatMiss : TargetedEvent {
-        public EventCombatMiss (IEntity from, IEntity to, string weaponname)
-            : base(EventType.CombatMiss, 1) {
-            SetValues(from, weaponname, to);
-        }
-    }
-
-    public class EventEnter : Event {
-        public EventEnter (IEntity sender)
-            : base(EventType.Enter, 0) {
-            SetValues(sender);
-        }
-    }
-
-    public class EventLeave : Event {
-        public EventLeave (IEntity sender)
-            : base(EventType.Leave, 0) {
-            SetValues(sender);
-        }
-    }
-
-    public class EventEmote : Event {
-        public EventEmote (IEntity sender, string text)
-            : base(EventType.Emote, 1) {
-            SetValues(sender, text);
-        }
-    }
-
-    public class EventDeath : Event {
-        public EventDeath (IEntity sender)
-            : base(EventType.Death, 0) {
-            SetValues(sender);
-        }
-    }
-
 }

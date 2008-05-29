@@ -46,11 +46,11 @@ namespace MUDServer {
 
         public void Enter (IEntity entity) {
             Entities[entity.Name] = entity;
-            new EventEnter(entity).Send();
+            Event.Send(new { Type = EventType.Enter, Sender = entity });
         }
 
         public void Exit (IEntity entity) {
-            new EventLeave(entity).Send();
+            Event.Send(new { Type = EventType.Leave, Sender = entity });
             Entities.Remove(entity.Name);
         }
 

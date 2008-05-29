@@ -63,18 +63,24 @@ namespace MUDServer {
             while (true) {
                 var f = GetNewEvent();
                 yield return f;
-                var evt = f.Result as Event;
+                object evt = f.Result;
+                var type = Event.GetProp<EventType>("Type", evt);
+                var sender = Event.GetProp<IEntity>("Sender", evt);
 
-                switch (evt.Type) {
+                switch (type) {
                     case EventType.Enter:
-                        if (evt.Sender is Player) {
-                            Player p = evt.Sender as Player;
+                        if (sender is Player) {
+                            Player p = sender as Player;
+                            string messageText;
+
                             if (_RememberedPlayers.Contains(p.Name)) {
-                                new EventSay(this, String.Format("Why hello again, {0}. It light'ns mah heart to see yer face.", p)).Send();
+                                messageText = String.Format("Why hello again, {0}. It light'ns mah heart to see yer face.", p);
                             } else {
-                                new EventSay(this, String.Format("Ah don't believe I've seen yer round here 'fore, {0}. What brings ya?", p)).Send();
+                                messageText = String.Format("Ah don't believe I've seen yer round here 'fore, {0}. What brings ya?", p);
                                 _RememberedPlayers.Add(p.Name);
                             }
+                            Event.Send(new { Type = EventType.Say, Sender = this, Text = messageText });
+
                             if (_PlayersToNag.ContainsKey(p.Name)) {
                                 _PlayersToNag[p.Name].Dispose();
                                 _PlayersToNag.Remove(p.Name);
@@ -82,9 +88,12 @@ namespace MUDServer {
                         }
                         break;
                     case EventType.Leave:
-                        if (evt.Sender is Player) {
-                            Player p = evt.Sender as Player;
-                            new EventTell(this, "Always comin' and goin, always leavin' so soon... 'tis a shame.", evt.Sender).Send();
+                        if (sender is Player) {
+                            Player p = sender as Player;
+                            string messageText = "Always comin' and goin, always leavin' so soon... 'tis a shame.";
+
+                            Event.Send(new { Type = EventType.Tell, Sender = this, Recipient = p, Text = messageText });
+
                             var tr = new Start(NagTask(p.Name), TaskExecutionPolicy.RunWhileFutureLives);
                             yield return tr;
                             _PlayersToNag[p.Name] = tr.Future;
@@ -98,9 +107,9 @@ namespace MUDServer {
             yield return new Sleep(45);
             try {
                 Player p = World.Players[player];
-                new EventTell(this, "Kids 'ese days... 'ever stoppin by to visit an ol man... 'eesh.", p).Send();
+                string messageText = "Kids 'ese days... 'ever stoppin by to visit an ol man... 'eesh.";
+                Event.Send(new { Type = EventType.Tell, Sender = this, Recipient = p, Text = messageText });
             } catch (KeyNotFoundException) {
-                System.Diagnostics.Debug.WriteLine("Couldn't nag player because they are no longer in-game");
             }
             _PlayersToNag.Remove(player);
         }
@@ -132,7 +141,8 @@ namespace MUDServer {
                     "makes a bizarre rhythmic humming noise for exactly 75 milliseconds and then becomes eerily silent."
                 };
 
-                new EventEmote(this, emotes[Program.RNG.Next(0, emotes.Length)]).Send();
+                string emoteText = emotes[Program.RNG.Next(0, emotes.Length)];
+                Event.Send(new { Type = EventType.Emote, Sender = this, Text = emoteText });
             }
         }
     }

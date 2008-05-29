@@ -22,7 +22,7 @@ namespace MUDServer {
             get;
         }
 
-        void NotifyEvent (Event evt);
+        void NotifyEvent (EventType type, object evt);
     }
 
 
@@ -31,7 +31,7 @@ namespace MUDServer {
 
         private Location _Location;
         private string _Name = null;
-        private BlockingQueue<Event> _EventQueue = new BlockingQueue<Event>();
+        private BlockingQueue<object> _EventQueue = new BlockingQueue<object>();
         private Future _ThinkTask;
         protected string _State = null;
         protected string _Description = null;
@@ -83,12 +83,12 @@ namespace MUDServer {
             }
         }
 
-        protected virtual bool ShouldFilterNewEvent (Event evt) {
+        protected virtual bool ShouldFilterNewEvent (EventType type, object evt) {
             return false;
         }
 
-        public void NotifyEvent (Event evt) {
-            if (!ShouldFilterNewEvent(evt))
+        public void NotifyEvent (EventType type, object evt) {
+            if (!ShouldFilterNewEvent(type, evt))
                 _EventQueue.Enqueue(evt);
         }
 
@@ -166,9 +166,12 @@ namespace MUDServer {
         }
 
         public void Hurt (int damage) {
+            if (_CurrentHealth <= 0)
+                return;
+
             _CurrentHealth -= damage;
             if (_CurrentHealth <= 0) {
-                new EventDeath(this).Send();
+                Event.Send(new { Type = EventType.Death, Sender = this });
                 _CurrentHealth = 0;
                 _CombatTarget.EndCombat();
                 EndCombat();
@@ -200,11 +203,11 @@ namespace MUDServer {
                 // Damage = 2d6
                 int damage = Program.RNG.Next(1, 6-1) + Program.RNG.Next(1, 6-1);
                 if (Program.RNG.Next(0, 3) <= 1) {
-                    new EventCombatHit(this, _CombatTarget, "Longsword", damage).Send();
+                    Event.Send(new { Type = EventType.CombatHit, Sender = this, Target = _CombatTarget, WeaponName = "Longsword", Damage = damage });
                     _CombatTarget.Hurt(damage);
                 }
                 else {
-                    new EventCombatMiss(this, _CombatTarget, "Longsword").Send();
+                    Event.Send(new { Type = EventType.CombatMiss, Sender = this, Target = _CombatTarget, WeaponName = "Longsword" });
                 }
             }
         }
@@ -234,7 +237,6 @@ namespace MUDServer {
         public void SendMessage (string message, params object[] args) {
             StringBuilder output = new StringBuilder();
             if (_LastPrompt) {
-                output.AppendLine();
                 output.AppendLine();
                 _LastPrompt = false;
             }
@@ -268,20 +270,22 @@ namespace MUDServer {
             if (words.Length < 1)
                 return null;
             string firstWord = words[0].ToLower();
+
+            _LastPrompt = false;
             
             switch (firstWord) {
                 case "say":
                     if (words.Length < 2) {
                         SendMessage("What did you want to <say>, exactly?");
                     } else {
-                        new EventSay(this, string.Join(" ", words, 1, words.Length - 1)).Send();
+                        Event.Send(new { Type = EventType.Say, Sender = this, Text = string.Join(" ", words, 1, words.Length - 1) });
                     }
                     return null;
                 case "emote":
                     if (words.Length < 2) {
                         SendMessage("What were you trying to do?");
                     } else {
-                        new EventEmote(this, string.Join(" ", words, 1, words.Length - 1)).Send();
+                        Event.Send(new { Type = EventType.Emote, Sender = this, Text = string.Join(" ", words, 1, words.Length - 1) });
                     }
                     return null;
                 case "tell":
@@ -291,7 +295,7 @@ namespace MUDServer {
                         string name = words[1];
                         IEntity to = Location.ResolveName(name);
                         if (to != null) {
-                            new EventTell(this, string.Join(" ", words, 2, words.Length - 2), to).Send();
+                            Event.Send(new { Type = EventType.Tell, Sender = this, Recipient = to, Text = string.Join(" ", words, 2, words.Length - 1) });
                         } else {
                             SendMessage("Who do you think you're talking to? There's nobody named {0} here.", name);
                         }
@@ -352,7 +356,7 @@ namespace MUDServer {
                                 if (cto.InCombat == false) {
                                     this.StartCombat(cto);
                                     cto.StartCombat(this);
-                                    new EventCombatStart(this, to).Send();
+                                    Event.Send(new { Type = EventType.CombatStart, Sender = this, Target = cto });
                                 }
                                 else {
                                     SendMessage("They're already in combat, and you don't want to interfere.");
@@ -381,63 +385,73 @@ namespace MUDServer {
             }
         }
 
-        private object ProcessEvent (Event evt) {
-            switch (evt.Type) {
+        private object ProcessEvent (EventType type, object evt) {
+            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
+            IEntity recipient = Event.GetProp<IEntity>("Recipient", evt);
+            IEntity target = Event.GetProp<IEntity>("Target", evt);
+            string text = Event.GetProp<string>("Text", evt);
+
+            switch (type) {
                 case EventType.Enter:
-                    if (evt.Sender == this) {
+                    if (sender == this) {
+                        _LastPrompt = false;
                         Client.ClearScreen();
                         SendMessage("You enter {0}.", Location.Title ?? Location.Name);
                         PerformLook();
                     } else {
-                        SendMessage("{0} enters the room.", evt.Sender);
+                        SendMessage("{0} enters the room.", sender);
                     }
                     break;
                 case EventType.Leave:
-                    if (evt.Sender != this)
-                        SendMessage("{0} leaves the room.", evt.Sender);
+                    if (sender != this)
+                        SendMessage("{0} leaves the room.", sender);
                     break;
                 case EventType.Say:
-                    SendMessage("{0} says, \"{1}\"", evt.Sender, evt[0]);
+                    SendMessage("{0} says, \"{1}\"", sender, text);
                     break;
                 case EventType.Tell:
-                    if (evt.Sender == this) {
-                        SendMessage("You tell {0}, \"{1}\"", evt[1], evt[0]);
+                    if (sender == this) {
+                        SendMessage("You tell {0}, \"{1}\"", recipient, text);
                     } else {
-                        SendMessage("{0} tells you, \"{1}\"", evt.Sender, evt[0]);
+                        SendMessage("{0} tells you, \"{1}\"", sender, text);
                     }
                     break;
                 case EventType.Emote:
-                    SendMessage("{0} {1}", evt.Sender, evt[0]);
+                    SendMessage("{0} {1}", sender, text);
                     break;
                 case EventType.Death:
-                    if (evt.Sender == this) {
+                    if (sender == this) {
                         SendMessage("You collapse onto the floor and release your last breath.");
-                    }
-                    else {
-                        SendMessage("{0} collapses onto the floor, releasing their last breath!", evt.Sender);
+                    } else {
+                        SendMessage("{0} collapses onto the floor, releasing their last breath!", sender);
                     }
                     break;
                 case EventType.CombatStart:
-                    if (evt.Sender == this) {
-                        SendMessage("You lunge at {0} and attack!", evt[0]);
+                    if (sender == this) {
+                        SendMessage("You lunge at {0} and attack!", target);
+                    } else if (target == this) {
+                        SendMessage("{0} lunges at you, weapon in hand!", sender);
                     } else {
-                        SendMessage("{0} lunges at you, weapon in hand!", evt.Sender);
+                        SendMessage("{0} begins to attack {1}!", sender, target);
                     }
                     break;
-                case EventType.CombatHit:
-                    if (evt.Sender == this) {
-                        SendMessage("You hit {0} with your {1} and deal {2} damage!", evt[2], evt[0], evt[1] );
-                    }
-                    else {
-                        SendMessage("{0} hits you with their {1} for {2} damage.", evt.Sender, evt[0], evt[1]);
+                case EventType.CombatHit: {
+                        string weaponName = Event.GetProp<string>("WeaponName", evt);
+                        int damage = Event.GetProp<int>("Damage", evt);
+                        if (sender == this) {
+                            SendMessage("You hit {0} with your {1} and deal {2} damage!", target, weaponName, damage);
+                        } else {
+                            SendMessage("{0} hits you with their {1} for {2} damage.", sender, weaponName, damage);
+                        }
                     }
                     break;
-                case EventType.CombatMiss:
-                    if (evt.Sender == this) {
-                        SendMessage("You miss {0} with your {1}.", evt[1], evt[0]);
-                    }
-                    else {
-                        SendMessage("{0} misses you with their {1}.", evt.Sender, evt[0]);
+                case EventType.CombatMiss: {
+                        string weaponName = Event.GetProp<string>("WeaponName", evt);
+                        if (sender == this) {
+                            SendMessage("You miss {0} with your {1}.", target, weaponName);
+                        } else if (target == this) {
+                            SendMessage("{0} misses you with their {1}.", sender, weaponName);
+                        }
                     }
                     break;
             }
@@ -464,10 +478,11 @@ namespace MUDServer {
                 Future w = Future.WaitForFirst(newEvent, newInputLine);
                 yield return w;
                 if (w.Result == newEvent) {
-                    Event evt = newEvent.Result as Event;
+                    object evt = newEvent.Result;
                     newEvent = GetNewEvent();
 
-                    object next = ProcessEvent(evt);
+                    EventType type = Event.GetProp<EventType>("Type", evt);
+                    object next = ProcessEvent(type, evt);
                     if (next != null)
                         yield return next;
                 } else if (w.Result == newInputLine) {
