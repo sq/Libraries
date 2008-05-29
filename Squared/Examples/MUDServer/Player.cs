@@ -8,11 +8,13 @@ namespace MUDServer {
     public class Player : CombatEntity {
         public TelnetClient Client;
         private bool _LastPrompt;
+        private int _NumMessagesSent;
 
         public Player (TelnetClient client, Location location)
             : base(location, null) {
             Client = client;
             client.RegisterOnDispose(OnDisconnected);
+            SetEventHandler(EventType.None, ProcessEvent);
         }
 
         public override void Dispose () {
@@ -26,6 +28,7 @@ namespace MUDServer {
         }
 
         public void SendMessage (string message, params object[] args) {
+            _NumMessagesSent += 1;
             StringBuilder output = new StringBuilder();
             if (_LastPrompt) {
                 output.AppendLine();
@@ -169,11 +172,13 @@ namespace MUDServer {
             }
         }
 
-        private object ProcessEvent (EventType type, object evt) {
+        private IEnumerator<object> ProcessEvent (EventType type, object evt) {
             IEntity sender = Event.GetProp<IEntity>("Sender", evt);
             IEntity recipient = Event.GetProp<IEntity>("Recipient", evt);
             IEntity target = Event.GetProp<IEntity>("Target", evt);
             string text = Event.GetProp<string>("Text", evt);
+
+            int prevNumSent = _NumMessagesSent;
 
             switch (type) {
                 case EventType.Enter:
@@ -239,6 +244,10 @@ namespace MUDServer {
                     }
                     break;
             }
+
+            if (_NumMessagesSent > prevNumSent)
+                SendPrompt();
+
             return null;
         }
 
@@ -256,30 +265,17 @@ namespace MUDServer {
 
             World.Players[Name] = this;
 
-            Future newEvent = GetNewEvent();
-            Future newInputLine = Client.ReadLineText();
             while (true) {
-                Future w = Future.WaitForFirst(newEvent, newInputLine);
-                yield return w;
-                if (w.Result == newEvent) {
-                    object evt = newEvent.Result;
-                    newEvent = GetNewEvent();
+                Future newInputLine = Client.ReadLineText();
+                yield return newInputLine;
+                string line = newInputLine.Result as string;
 
-                    EventType type = Event.GetProp<EventType>("Type", evt);
-                    object next = ProcessEvent(type, evt);
+                if (line != null) {
+                    object next = ProcessInput(line);
                     if (next != null)
                         yield return next;
-                } else if (w.Result == newInputLine) {
-                    string line = newInputLine.Result as string;
-                    newInputLine = Client.ReadLineText();
-
-                    if (line != null) {
-                        object next = ProcessInput(line);
-                        if (next != null)
-                            yield return next;
-                    }
+                    SendPrompt();
                 }
-                SendPrompt();
             }
         }
     }

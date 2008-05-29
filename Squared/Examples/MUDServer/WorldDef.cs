@@ -57,50 +57,43 @@ namespace MUDServer {
         public StartingRoomOldMan (Location location)
             : base(location, "An old man") {
             _State = "sitting at the table";
+            SetEventHandler(EventType.Enter, OnEventEnter);
+            SetEventHandler(EventType.Leave, OnEventLeave);
         }
 
-        protected override IEnumerator<object> ThinkTask () {
-            while (true) {
-                var f = GetNewEvent();
-                yield return f;
-                object evt = f.Result;
-                var type = Event.GetProp<EventType>("Type", evt);
-                var sender = Event.GetProp<IEntity>("Sender", evt);
+        protected IEnumerator<object> OnEventEnter (EventType type, object evt) {
+            var sender = Event.GetProp<IEntity>("Sender", evt) as Player;
+            if (sender == null)
+                yield break;
 
-                switch (type) {
-                    case EventType.Enter:
-                        if (sender is Player) {
-                            Player p = sender as Player;
-                            string messageText;
+            string messageText;
 
-                            if (_RememberedPlayers.Contains(p.Name)) {
-                                messageText = String.Format("Why hello again, {0}. It light'ns mah heart to see yer face.", p);
-                            } else {
-                                messageText = String.Format("Ah don't believe I've seen yer round here 'fore, {0}. What brings ya?", p);
-                                _RememberedPlayers.Add(p.Name);
-                            }
-                            Event.Send(new { Type = EventType.Say, Sender = this, Text = messageText });
-
-                            if (_PlayersToNag.ContainsKey(p.Name)) {
-                                _PlayersToNag[p.Name].Dispose();
-                                _PlayersToNag.Remove(p.Name);
-                            }
-                        }
-                        break;
-                    case EventType.Leave:
-                        if (sender is Player) {
-                            Player p = sender as Player;
-                            string messageText = "Always comin' and goin, always leavin' so soon... 'tis a shame.";
-
-                            Event.Send(new { Type = EventType.Tell, Sender = this, Recipient = p, Text = messageText });
-
-                            var tr = new Start(NagTask(p.Name), TaskExecutionPolicy.RunWhileFutureLives);
-                            yield return tr;
-                            _PlayersToNag[p.Name] = tr.Future;
-                        }
-                        break;
-                }
+            if (_RememberedPlayers.Contains(sender.Name)) {
+                messageText = String.Format("Why hello again, {0}. It light'ns mah heart to see yer face.", sender);
+            } else {
+                messageText = String.Format("Ah don't believe I've seen yer round here 'fore, {0}. What brings ya?", sender);
+                _RememberedPlayers.Add(sender.Name);
             }
+            Event.Send(new { Type = EventType.Say, Sender = this, Text = messageText });
+
+            if (_PlayersToNag.ContainsKey(sender.Name)) {
+                _PlayersToNag[sender.Name].Dispose();
+                _PlayersToNag.Remove(sender.Name);
+            }
+        }
+
+        protected IEnumerator<object> OnEventLeave (EventType type, object evt) {
+            var sender = Event.GetProp<IEntity>("Sender", evt) as Player;
+            if (sender == null)
+                yield break;
+
+            string messageText = "Always comin' and goin, always leavin' so soon... 'tis a shame.";
+
+            Event.Send(new { Type = EventType.Tell, Sender = this, Recipient = sender, Text = messageText });
+
+            var tr = new Start(NagTask(sender.Name), TaskExecutionPolicy.RunWhileFutureLives);
+            yield return tr;
+            _PlayersToNag[sender.Name] = tr.Future;
         }
 
         IEnumerator<object> NagTask(string player) {

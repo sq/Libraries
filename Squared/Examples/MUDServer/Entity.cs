@@ -5,6 +5,8 @@ using System.Text;
 using Squared.Task;
 
 namespace MUDServer {
+    public delegate IEnumerator<object> EventHandler (EventType type, object evt);
+
     public interface IEntity {
         string Name {
             get;
@@ -25,14 +27,14 @@ namespace MUDServer {
         void NotifyEvent (EventType type, object evt);
     }
 
-
     public class EntityBase : IEntity, IDisposable {
         private static int _EntityCount;
 
         private Location _Location;
         private string _Name = null;
+        private Dictionary<EventType, EventHandler> _EventHandlers = new Dictionary<EventType, EventHandler>();
         private BlockingQueue<object> _EventQueue = new BlockingQueue<object>();
-        private Future _ThinkTask;
+        private Future _ThinkTask, _EventDispatchTask;
         protected string _State = null;
         protected string _Description = null;
 
@@ -87,6 +89,10 @@ namespace MUDServer {
             return false;
         }
 
+        protected void SetEventHandler (EventType type, EventHandler handler) {
+            _EventHandlers[type] = handler;
+        }
+
         public void NotifyEvent (EventType type, object evt) {
             if (!ShouldFilterNewEvent(type, evt))
                 _EventQueue.Enqueue(evt);
@@ -106,6 +112,31 @@ namespace MUDServer {
             _Name = name;
             Location = location;
             _ThinkTask = Program.Scheduler.Start(ThinkTask(), TaskExecutionPolicy.RunAsBackgroundTask);
+            _EventDispatchTask = Program.Scheduler.Start(EventDispatchTask(), TaskExecutionPolicy.RunAsBackgroundTask);
+        }
+
+        protected virtual EventHandler PickEventHandler (EventType type, object evt) {
+            EventHandler handler;
+            if (_EventHandlers.TryGetValue(type, out handler)) {
+                return handler;
+            } else if (_EventHandlers.TryGetValue(EventType.None, out handler)) {
+                return handler;
+            } else {
+                return null;
+            }
+        }
+
+        protected virtual IEnumerator<object> EventDispatchTask () {
+            while (true) {
+                var f = GetNewEvent();
+                yield return f;
+                object evt = f.Result;
+                var type = Event.GetProp<EventType>("Type", evt);
+
+                EventHandler handler = PickEventHandler(type, evt);
+                if (handler != null)
+                    yield return new Start(handler(type, evt), TaskExecutionPolicy.RunAsBackgroundTask);
+            }
         }
 
         protected virtual IEnumerator<object> ThinkTask () {
@@ -116,6 +147,11 @@ namespace MUDServer {
             if (_ThinkTask != null) {
                 _ThinkTask.Dispose();
                 _ThinkTask = null;
+            }
+
+            if (_EventDispatchTask != null) {
+                _EventDispatchTask.Dispose();
+                _EventDispatchTask = null;
             }
         }
     }

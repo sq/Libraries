@@ -6,6 +6,7 @@ using System.Reflection;
 
 namespace MUDServer {
     public enum EventType {
+        None,
         /// <summary>
         /// Enter { entity }
         /// </summary>
@@ -52,11 +53,10 @@ namespace MUDServer {
         public static T GetProp<T> (string propertyName, object obj, Type type) {
             PropertyInfo prop = type.GetProperty(propertyName);
             if (prop != null) {
-                try {
+                if (typeof(T).IsAssignableFrom(prop.PropertyType))
                     return (T)prop.GetValue(obj, null);
-                } catch (InvalidCastException) {
+                else
                     return default(T);
-                }
             } else {
                 return default(T);
             }

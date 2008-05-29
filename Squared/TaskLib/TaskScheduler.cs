@@ -145,6 +145,7 @@ namespace Squared.Task {
 
     public class TaskScheduler : IDisposable {
         const long SleepFudgeFactor = 100;
+        const long MinimumSleepLength = 12500;
 
         private JobQueue _JobQueue = new JobQueue();
         private Queue<Action> _StepListeners = new Queue<Action>();
@@ -251,6 +252,8 @@ namespace Squared.Task {
                     long sleepUntilValue = (long)sleepUntil;
                     long timeToSleep = (sleepUntilValue - DateTime.Now.Ticks) + SleepFudgeFactor;
                     if (timeToSleep > 0) {
+                        if (timeToSleep < MinimumSleepLength)
+                            timeToSleep = MinimumSleepLength;
                         System.Diagnostics.Debug.WriteLine(String.Format("Sleeping for {0} ticks", timeToSleep));
                         try {
                             newSleepEvent.Reset();
