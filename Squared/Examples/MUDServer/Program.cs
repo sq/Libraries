@@ -25,6 +25,7 @@ namespace MUDServer {
         void NotifyEvent (Event evt);
     }
 
+
     public class EntityBase : IEntity, IDisposable {
         private static int _EntityCount;
 
@@ -45,7 +46,7 @@ namespace MUDServer {
             }
         }
 
-        public string State {
+        public virtual string State {
             get {
                 return _State;
             }
@@ -119,8 +120,100 @@ namespace MUDServer {
         }
     }
 
-    public class Player : EntityBase {
+    public class CombatEntity : EntityBase {
+        private bool _InCombat;
+        private Future _CombatTask;
+        private CombatEntity _CombatTarget = null;
+        private double CombatPeriod;
+        private int _CurrentHealth;
+        private int _MaximumHealth;
+
+        public bool InCombat {
+            get {
+                return _InCombat;
+            }
+        }
+
+        public int CurrentHealth {
+            get {
+                return _CurrentHealth;
+            }
+        }
+
+        public int MaximumHealth {
+            get {
+                return _MaximumHealth;
+            }
+        }
+
+        public override string State {
+            get {
+                if (InCombat)
+                    return String.Format("engaged in combat with {0}", _CombatTarget.Name);
+                else if (_CurrentHealth <= 0)
+                    return String.Format("lying on the ground, dead");
+                else
+                    return _State;
+            }
+        }
+
+        public CombatEntity (Location location, string name)
+            : base(location, name) {
+            _InCombat = false;
+            CombatPeriod = Program.RNG.NextDouble() * 4.0;
+            _MaximumHealth = 20 + Program.RNG.Next(50);
+            _CurrentHealth = _MaximumHealth;
+        }
+
+        public void Hurt (int damage) {
+            _CurrentHealth -= damage;
+            if (_CurrentHealth <= 0) {
+                new EventDeath(this).Send();
+                _CurrentHealth = 0;
+                _CombatTarget.EndCombat();
+                EndCombat();
+            }
+        }
+
+        public void StartCombat (CombatEntity target) {
+            if (_InCombat)
+                throw new InvalidOperationException("Attempted to start combat while already in combat.");
+
+            _CombatTarget = target;
+            _InCombat = true;
+            _CombatTask = Program.Scheduler.Start(CombatTask(), TaskExecutionPolicy.RunAsBackgroundTask);
+        }
+
+        public void EndCombat () {
+            if (!_InCombat)
+                throw new InvalidOperationException("Attempted to end combat while not in combat.");
+
+            _CombatTarget = null;
+            _InCombat = false;
+            _CombatTask.Dispose();
+        }
+
+        public virtual IEnumerator<object> CombatTask () {
+            while (true) {
+                yield return new Sleep(CombatPeriod);
+                // Hitrate = 2/3
+                // Damage = 2d6
+                int damage = Program.RNG.Next(1, 6-1) + Program.RNG.Next(1, 6-1);
+                if (Program.RNG.Next(0, 3) <= 1) {
+                    new EventCombatHit(this, _CombatTarget, "Longsword", damage).Send();
+                    _CombatTarget.Hurt(damage);
+                }
+                else {
+                    new EventCombatMiss(this, _CombatTarget, "Longsword").Send();
+                }
+            }
+        }
+
+    }
+
+    public class Player : CombatEntity {
         public TelnetClient Client;
+        private bool _LastPrompt;
 
         public Player (TelnetClient client, Location location)
             : base(location, null) {
@@ -140,9 +233,19 @@ namespace MUDServer {
 
         public void SendMessage (string message, params object[] args) {
             StringBuilder output = new StringBuilder();
+            if (_LastPrompt) {
+                output.AppendLine();
+                output.AppendLine();
+                _LastPrompt = false;
+            }
             output.AppendFormat(message.Replace("{PlayerName}", Name), args);
             output.AppendLine();
             Client.SendText(output.ToString());
+        }
+
+        public void SendPrompt () {
+            _LastPrompt = true;
+            Client.SendText(String.Format("{0}/{1}hp> ", CurrentHealth, MaximumHealth));
         }
 
         private void PerformLook () {
@@ -198,6 +301,10 @@ namespace MUDServer {
                     PerformLook();
                     return null;
                 case "go":
+                    if (CurrentHealth <= 0) {
+                        SendMessage("You can't do that while dead.");
+                        return null;
+                    }
                     try {
                         int exitId;
                         string exitText = string.Join(" ", words, 1, words.Length - 1).Trim().ToLower();
@@ -223,12 +330,50 @@ namespace MUDServer {
                         SendMessage("You can't find that exit.");
                     }
                     return null;
+                case "kill":
+                    if (words.Length < 2) {
+                        SendMessage("Who did you want to kill?");
+                    }
+                    else if (CurrentHealth <= 0) {
+                        SendMessage("You can't do that while dead.");
+                    }
+                    else if (InCombat) {
+                        SendMessage("You're already busy fighting!");
+                    }
+                    else {
+                        string name = words[1];
+                        IEntity to = Location.ResolveName(name);
+                        if (to == this) {
+                            SendMessage("You don't really want to kill yourself, you're just looking for attention.");
+                        }
+                        else if (to != null) {
+                            if (to is CombatEntity) {
+                                CombatEntity cto = to as CombatEntity;
+                                if (cto.InCombat == false) {
+                                    this.StartCombat(cto);
+                                    cto.StartCombat(this);
+                                    new EventCombatStart(this, to).Send();
+                                }
+                                else {
+                                    SendMessage("They're already in combat, and you don't want to interfere.");
+                                }
+                            }
+                            else {
+                                SendMessage("You don't think that's such a great idea.");
+                            }
+                        }
+                        else {
+                            SendMessage("Who are you trying to kill, exactly? There's nobody named {0} here.", name);
+                        }
+                    }
+                    return null;
                 case "help":
                     SendMessage("You can <say> things to those nearby, if you feel like chatting.");
                     SendMessage("You can also <tell> somebody things if you wish to speak privately.");
                     SendMessage("You can also <emote> within sight of others.");
                     SendMessage("If you're feeling lost, try taking a <look> around.");
                     SendMessage("If you wish to <go> out an exit, simply speak its name or number.");
+                    SendMessage("Looking to make trouble? Try to <kill> someone!");
                     return null;
                 default:
                     SendMessage("Hmm... that doesn't make any sense. Do you need some <help>?");
@@ -263,6 +408,37 @@ namespace MUDServer {
                     break;
                 case EventType.Emote:
                     SendMessage("{0} {1}", evt.Sender, evt[0]);
+                    break;
+                case EventType.Death:
+                    if (evt.Sender == this) {
+                        SendMessage("You collapse onto the floor and release your last breath.");
+                    }
+                    else {
+                        SendMessage("{0} collapses onto the floor, releasing their last breath!", evt.Sender);
+                    }
+                    break;
+                case EventType.CombatStart:
+                    if (evt.Sender == this) {
+                        SendMessage("You lunge at {0} and attack!", evt[0]);
+                    } else {
+                        SendMessage("{0} lunges at you, weapon in hand!", evt.Sender);
+                    }
+                    break;
+                case EventType.CombatHit:
+                    if (evt.Sender == this) {
+                        SendMessage("You hit {0} with your {1} and deal {2} damage!", evt[2], evt[0], evt[1] );
+                    }
+                    else {
+                        SendMessage("{0} hits you with their {1} for {2} damage.", evt.Sender, evt[0], evt[1]);
+                    }
+                    break;
+                case EventType.CombatMiss:
+                    if (evt.Sender == this) {
+                        SendMessage("You miss {0} with your {1}.", evt[1], evt[0]);
+                    }
+                    else {
+                        SendMessage("{0} misses you with their {1}.", evt.Sender, evt[0]);
+                    }
                     break;
             }
             return null;
@@ -304,6 +480,7 @@ namespace MUDServer {
                             yield return next;
                     }
                 }
+                SendPrompt();
             }
         }
     }

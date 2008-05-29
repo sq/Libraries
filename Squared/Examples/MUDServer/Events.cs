@@ -24,7 +24,23 @@ namespace MUDServer {
         /// <summary>
         /// Leave { entity }
         /// </summary>
-        Leave
+        Leave,
+        /// <summary>
+        /// Death { entity }
+        /// </summary>
+        Death,
+        /// <summary>
+        /// CombatStart { from, to }
+        /// </summary>
+        CombatStart,
+        /// <summary>
+        /// CombatHit { from, weaponname, damage, to }
+        /// </summary>
+        CombatHit,
+        /// <summary>
+        /// CombatMiss { from, weaponname, to }
+        /// </summary>
+        CombatMiss,
     }
 
     public class Event {
@@ -104,6 +120,27 @@ namespace MUDServer {
         }
     }
 
+    public class EventCombatStart : TargetedEvent {
+        public EventCombatStart (IEntity from, IEntity to)
+            : base(EventType.CombatStart, 0) {
+            SetValues(from, to);
+        }
+    }
+
+    public class EventCombatHit : TargetedEvent {
+        public EventCombatHit (IEntity from, IEntity to, string weaponname, Int32 damage)
+            : base(EventType.CombatHit, 2) {
+            SetValues(from, weaponname, damage, to);
+        }
+    }
+
+    public class EventCombatMiss : TargetedEvent {
+        public EventCombatMiss (IEntity from, IEntity to, string weaponname)
+            : base(EventType.CombatMiss, 1) {
+            SetValues(from, weaponname, to);
+        }
+    }
+
     public class EventEnter : Event {
         public EventEnter (IEntity sender)
             : base(EventType.Enter, 0) {
@@ -124,4 +161,12 @@ namespace MUDServer {
             SetValues(sender, text);
         }
     }
+
+    public class EventDeath : Event {
+        public EventDeath (IEntity sender)
+            : base(EventType.Death, 0) {
+            SetValues(sender);
+        }
+    }
+
 }

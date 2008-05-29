@@ -126,7 +126,10 @@ namespace Squared.Task {
                     f.Complete(bytesRead);
                 }
             } catch (Exception ex) {
-                f.Fail(ex);
+                if (!f.Completed)
+                    f.Fail(ex);
+                else
+                    throw;
             }
         }
 
