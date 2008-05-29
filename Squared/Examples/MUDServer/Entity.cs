@@ -126,6 +126,14 @@ namespace MUDServer {
             }
         }
 
+        protected virtual IEnumerator<object> DispatchEvent (EventType type, object evt) {
+            EventHandler handler = PickEventHandler(type, evt);
+            if (handler != null)
+                return handler(type, evt);
+            else
+                return null;
+        }
+
         protected virtual IEnumerator<object> EventDispatchTask () {
             while (true) {
                 var f = GetNewEvent();
@@ -133,9 +141,9 @@ namespace MUDServer {
                 object evt = f.Result;
                 var type = Event.GetProp<EventType>("Type", evt);
 
-                EventHandler handler = PickEventHandler(type, evt);
-                if (handler != null)
-                    yield return new Start(handler(type, evt), TaskExecutionPolicy.RunAsBackgroundTask);
+                IEnumerator<object> task = DispatchEvent(type, evt);
+                if (task != null)
+                    yield return new Start(task, TaskExecutionPolicy.RunAsBackgroundTask);
             }
         }
 

@@ -14,7 +14,16 @@ namespace MUDServer {
             : base(location, null) {
             Client = client;
             client.RegisterOnDispose(OnDisconnected);
-            SetEventHandler(EventType.None, ProcessEvent);
+
+            SetEventHandler(EventType.CombatHit, OnEventCombatHit);
+            SetEventHandler(EventType.CombatMiss, OnEventCombatMiss);
+            SetEventHandler(EventType.CombatStart, OnEventCombatStart);
+            SetEventHandler(EventType.Death, OnEventDeath);
+            SetEventHandler(EventType.Emote, OnEventEmote);
+            SetEventHandler(EventType.Enter, OnEventEnter);
+            SetEventHandler(EventType.Leave, OnEventLeave);
+            SetEventHandler(EventType.Say, OnEventSay);
+            SetEventHandler(EventType.Tell, OnEventTell);
         }
 
         public override void Dispose () {
@@ -172,81 +181,143 @@ namespace MUDServer {
             }
         }
 
-        private IEnumerator<object> ProcessEvent (EventType type, object evt) {
+        private IEnumerator<object> PromptHelper (IEnumerator<object> task, OnComplete onComplete) {
+            Start ts = new Start(task, TaskExecutionPolicy.RunAsBackgroundTask);
+            yield return ts;
+            ts.Future.RegisterOnComplete(onComplete);
+        }
+
+        // Ensure that we send a new prompt to the user after dispatching any events that send output
+        protected override IEnumerator<object> DispatchEvent (EventType type, object evt) {
+            int prevMessages = _NumMessagesSent;
+            OnComplete oc = (f, r, e) => {
+                if (_NumMessagesSent > prevMessages)
+                    SendPrompt();
+            };
+
+            IEnumerator<object> result = base.DispatchEvent(type, evt);
+
+            if (result != null) {
+                return PromptHelper(result, oc);
+            } else {
+                oc(null, null, null);
+                return null;
+            }
+        }
+
+        private IEnumerator<object> OnEventEnter (EventType type, object evt) {
             IEntity sender = Event.GetProp<IEntity>("Sender", evt);
-            IEntity recipient = Event.GetProp<IEntity>("Recipient", evt);
-            IEntity target = Event.GetProp<IEntity>("Target", evt);
-            string text = Event.GetProp<string>("Text", evt);
 
-            int prevNumSent = _NumMessagesSent;
-
-            switch (type) {
-                case EventType.Enter:
-                    if (sender == this) {
-                        _LastPrompt = false;
-                        Client.ClearScreen();
-                        SendMessage("You enter {0}.", Location.Title ?? Location.Name);
-                        PerformLook();
-                    } else {
-                        SendMessage("{0} enters the room.", sender);
-                    }
-                    break;
-                case EventType.Leave:
-                    if (sender != this)
-                        SendMessage("{0} leaves the room.", sender);
-                    break;
-                case EventType.Say:
-                    SendMessage("{0} says, \"{1}\"", sender, text);
-                    break;
-                case EventType.Tell:
-                    if (sender == this) {
-                        SendMessage("You tell {0}, \"{1}\"", recipient, text);
-                    } else {
-                        SendMessage("{0} tells you, \"{1}\"", sender, text);
-                    }
-                    break;
-                case EventType.Emote:
-                    SendMessage("{0} {1}", sender, text);
-                    break;
-                case EventType.Death:
-                    if (sender == this) {
-                        SendMessage("You collapse onto the floor and release your last breath.");
-                    } else {
-                        SendMessage("{0} collapses onto the floor, releasing their last breath!", sender);
-                    }
-                    break;
-                case EventType.CombatStart:
-                    if (sender == this) {
-                        SendMessage("You lunge at {0} and attack!", target);
-                    } else if (target == this) {
-                        SendMessage("{0} lunges at you, weapon in hand!", sender);
-                    } else {
-                        SendMessage("{0} begins to attack {1}!", sender, target);
-                    }
-                    break;
-                case EventType.CombatHit: {
-                        string weaponName = Event.GetProp<string>("WeaponName", evt);
-                        int damage = Event.GetProp<int>("Damage", evt);
-                        if (sender == this) {
-                            SendMessage("You hit {0} with your {1} and deal {2} damage!", target, weaponName, damage);
-                        } else {
-                            SendMessage("{0} hits you with their {1} for {2} damage.", sender, weaponName, damage);
-                        }
-                    }
-                    break;
-                case EventType.CombatMiss: {
-                        string weaponName = Event.GetProp<string>("WeaponName", evt);
-                        if (sender == this) {
-                            SendMessage("You miss {0} with your {1}.", target, weaponName);
-                        } else if (target == this) {
-                            SendMessage("{0} misses you with their {1}.", sender, weaponName);
-                        }
-                    }
-                    break;
+            if (sender == this) {
+                _LastPrompt = false;
+                Client.ClearScreen();
+                SendMessage("You enter {0}.", Location.Title ?? Location.Name);
+                PerformLook();
+            } else {
+                SendMessage("{0} enters the room.", sender);
             }
 
-            if (_NumMessagesSent > prevNumSent)
-                SendPrompt();
+            return null;
+        }
+
+        private IEnumerator<object> OnEventLeave (EventType type, object evt) {
+            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
+
+            if (sender != this)
+                SendMessage("{0} leaves the room.", sender);
+
+            return null;
+        }
+
+        private IEnumerator<object> OnEventSay (EventType type, object evt) {
+            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
+            string text = Event.GetProp<string>("Text", evt);
+
+            SendMessage("{0} says, \"{1}\"", sender, text);
+
+            return null;
+        }
+
+        private IEnumerator<object> OnEventEmote (EventType type, object evt) {
+            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
+            string text = Event.GetProp<string>("Text", evt);
+
+            SendMessage("{0} {1}", sender, text);
+
+            return null;
+        }
+
+        private IEnumerator<object> OnEventDeath (EventType type, object evt) {
+            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
+            string text = Event.GetProp<string>("Text", evt);
+
+            if (sender == this) {
+                SendMessage("You collapse onto the floor and release your last breath.");
+            } else {
+                SendMessage("{0} collapses onto the floor, releasing their last breath!", sender);
+            }
+
+            return null;
+        }
+
+        private IEnumerator<object> OnEventTell (EventType type, object evt) {
+            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
+            IEntity recipient = Event.GetProp<IEntity>("Recipient", evt);
+            string text = Event.GetProp<string>("Text", evt);
+
+            if (sender == this) {
+                SendMessage("You tell {0}, \"{1}\"", recipient, text);
+            } else {
+                SendMessage("{0} tells you, \"{1}\"", sender, text);
+            }
+
+            return null;
+        }
+
+        private IEnumerator<object> OnEventCombatStart (EventType type, object evt) {
+            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
+            IEntity target = Event.GetProp<IEntity>("Target", evt);
+
+            if (sender == this) {
+                SendMessage("You lunge at {0} and attack!", target);
+            } else if (target == this) {
+                SendMessage("{0} lunges at you, weapon in hand!", sender);
+            } else {
+                SendMessage("{0} charges at {1} and attacks!", sender, target);
+            }
+
+            return null;
+        }
+
+        private IEnumerator<object> OnEventCombatHit (EventType type, object evt) {
+            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
+            IEntity target = Event.GetProp<IEntity>("Target", evt);
+            string weaponName = Event.GetProp<string>("WeaponName", evt);
+            int damage = Event.GetProp<int>("Damage", evt);
+
+            if (sender == this) {
+                SendMessage("You hit {0} with your {1} and deal {2} damage!", target, weaponName, damage);
+            } else if (target == this) {
+                SendMessage("{0} hits you with their {1} for {2} damage.", sender, weaponName, damage);
+            } else {
+                SendMessage("{0} hits {1} with their {2} for {3} damage.", sender, target, weaponName, damage);
+            }
+
+            return null;
+        }
+
+        private IEnumerator<object> OnEventCombatMiss (EventType type, object evt) {
+            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
+            IEntity target = Event.GetProp<IEntity>("Target", evt);
+            string weaponName = Event.GetProp<string>("WeaponName", evt);
+
+            if (sender == this) {
+                SendMessage("You miss {0} with your {1}.", target, weaponName);
+            } else if (target == this) {
+                SendMessage("{0} misses you with their {1}.", sender, weaponName);
+            } else {
+                SendMessage("{0} misses {1} with their {2}.", sender, target, weaponName);
+            }
 
             return null;
         }
