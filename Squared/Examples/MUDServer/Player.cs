@@ -15,20 +15,21 @@ namespace MUDServer {
             Client = client;
             client.RegisterOnDispose(OnDisconnected);
 
-            SetEventHandler(EventType.CombatHit, OnEventCombatHit);
-            SetEventHandler(EventType.CombatMiss, OnEventCombatMiss);
-            SetEventHandler(EventType.CombatStart, OnEventCombatStart);
-            SetEventHandler(EventType.Death, OnEventDeath);
-            SetEventHandler(EventType.Emote, OnEventEmote);
-            SetEventHandler(EventType.Enter, OnEventEnter);
-            SetEventHandler(EventType.Leave, OnEventLeave);
-            SetEventHandler(EventType.Say, OnEventSay);
-            SetEventHandler(EventType.Tell, OnEventTell);
+            AddEventHandler(EventType.CombatHit, OnEventCombatHit);
+            AddEventHandler(EventType.CombatMiss, OnEventCombatMiss);
+            AddEventHandler(EventType.CombatStart, OnEventCombatStart);
+            AddEventHandler(EventType.Death, OnEventDeath);
+            AddEventHandler(EventType.Emote, OnEventEmote);
+            AddEventHandler(EventType.Enter, OnEventEnter);
+            AddEventHandler(EventType.Leave, OnEventLeave);
+            AddEventHandler(EventType.Say, OnEventSay);
+            AddEventHandler(EventType.Tell, OnEventTell);
         }
 
         public override void Dispose () {
             base.Dispose();
             World.Players.Remove(this.Name);
+            Console.WriteLine("{0} has left the world", Name);
         }
 
         private void OnDisconnected (Future f) {
@@ -341,6 +342,7 @@ namespace MUDServer {
                 }
             }
 
+            Console.WriteLine("{0} has entered the world", Name);
             World.Players[Name] = this;
 
             while (true) {

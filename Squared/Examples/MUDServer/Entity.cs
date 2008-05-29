@@ -32,7 +32,7 @@ namespace MUDServer {
 
         private Location _Location;
         private string _Name = null;
-        private Dictionary<EventType, EventHandler> _EventHandlers = new Dictionary<EventType, EventHandler>();
+        private Dictionary<EventType, List<EventHandler>> _EventHandlers = new Dictionary<EventType, List<EventHandler>>();
         private BlockingQueue<object> _EventQueue = new BlockingQueue<object>();
         private Future _ThinkTask, _EventDispatchTask;
         protected string _State = null;
@@ -89,8 +89,10 @@ namespace MUDServer {
             return false;
         }
 
-        protected void SetEventHandler (EventType type, EventHandler handler) {
-            _EventHandlers[type] = handler;
+        protected void AddEventHandler (EventType type, EventHandler handler) {
+            if (!_EventHandlers.ContainsKey(type))
+                _EventHandlers[type] = new List<EventHandler>();
+            _EventHandlers[type].Add(handler);
         }
 
         public void NotifyEvent (EventType type, object evt) {
@@ -115,21 +117,18 @@ namespace MUDServer {
             _EventDispatchTask = Program.Scheduler.Start(EventDispatchTask(), TaskExecutionPolicy.RunAsBackgroundTask);
         }
 
-        protected virtual EventHandler PickEventHandler (EventType type, object evt) {
-            EventHandler handler;
-            if (_EventHandlers.TryGetValue(type, out handler)) {
-                return handler;
-            } else if (_EventHandlers.TryGetValue(EventType.None, out handler)) {
-                return handler;
-            } else {
-                return null;
+        protected IEnumerator<object> InvokeEventHandlers (EventType type, object evt, EventHandler[] handlers) {
+            foreach (EventHandler handler in handlers) {
+                IEnumerator<object> task = handler(type, evt);
+                if (task != null)
+                    yield return task;
             }
         }
 
         protected virtual IEnumerator<object> DispatchEvent (EventType type, object evt) {
-            EventHandler handler = PickEventHandler(type, evt);
-            if (handler != null)
-                return handler(type, evt);
+            List<EventHandler> handlers;
+            if (_EventHandlers.TryGetValue(type, out handlers))
+                return InvokeEventHandlers(type, evt, handlers.ToArray());
             else
                 return null;
         }
@@ -207,6 +206,22 @@ namespace MUDServer {
             CombatPeriod = Program.RNG.NextDouble() * 4.0;
             _MaximumHealth = 20 + Program.RNG.Next(50);
             _CurrentHealth = _MaximumHealth;
+
+            AddEventHandler(EventType.Leave, OnEventLeave);
+        }
+
+        private IEnumerator<object> OnEventLeave (EventType type, object evt) {
+            if (!InCombat)
+                return null;
+
+            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
+
+            if (sender == _CombatTarget) {
+                _CombatTarget.EndCombat();
+                EndCombat();
+            }
+
+            return null;
         }
 
         public void Hurt (int damage) {

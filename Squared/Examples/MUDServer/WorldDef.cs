@@ -57,8 +57,8 @@ namespace MUDServer {
         public StartingRoomOldMan (Location location)
             : base(location, "An old man") {
             _State = "sitting at the table";
-            SetEventHandler(EventType.Enter, OnEventEnter);
-            SetEventHandler(EventType.Leave, OnEventLeave);
+            AddEventHandler(EventType.Enter, OnEventEnter);
+            AddEventHandler(EventType.Leave, OnEventLeave);
         }
 
         protected IEnumerator<object> OnEventEnter (EventType type, object evt) {
