@@ -14,6 +14,7 @@ namespace MUDServer {
             Scheduler = new TaskScheduler(true);
 
             World.Create();
+            Event.Broadcast(new { Type = EventType.WorldConstructed });
 
             Server = new TelnetServer(Scheduler, System.Net.IPAddress.Any, 23);
             Scheduler.Start(HandleNewClients(), TaskExecutionPolicy.RunAsBackgroundTask);

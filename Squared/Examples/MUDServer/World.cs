@@ -27,11 +27,20 @@ namespace MUDServer {
         public Dictionary<string, IEntity> Entities = new Dictionary<string, IEntity>();
         public List<Exit> Exits = new List<Exit>();
 
+        private List<IEntity> _EventListeners = new List<IEntity>();
         private string _Name;
 
         public string Name {
             get {
                 return _Name;
+            }
+        }
+
+        public IEnumerable<Location> GetExits () {
+            foreach (Exit exit in Exits) {
+                string key = exit.Target.ToLower();
+                if (World.Locations.ContainsKey(key))
+                    yield return World.Locations[key];
             }
         }
 
@@ -45,6 +54,25 @@ namespace MUDServer {
                 return World.Players[lowername];
             else
                 return null;
+        }
+
+        public void AddEventListener (IEntity listener) {
+            _EventListeners.Add(listener);
+        }
+
+        public void RemoveEventListener (IEntity listener) {
+            _EventListeners.Remove(listener);
+        }
+
+        public void NotifyEvent (IEntity sender, EventType type, object evt) {
+            foreach (IEntity entity in _EventListeners) {
+                entity.NotifyEvent(type, evt);
+            }
+
+            foreach (IEntity entity in Entities.Values) {
+                if (entity != sender)
+                    entity.NotifyEvent(type, evt);
+            }
         }
 
         public void Enter (IEntity entity) {

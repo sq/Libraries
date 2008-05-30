@@ -20,6 +20,7 @@ namespace MUDServer {
             };
 
             new StartingRoomOldMan(_);
+            new StartingRoomCat(_);
 
             _ = new Location("StartingForestA") {
                 Title = "Forest clearing",
@@ -104,6 +105,36 @@ namespace MUDServer {
                 Event.Send(new { Type = EventType.Tell, Sender = this, Recipient = ent, Text = messageText });
             }
             _PlayersToNag.Remove(player);
+        }
+    }
+
+    public class StartingRoomCat : EntityBase {
+        public StartingRoomCat (Location location)
+            : base(location, GetDefaultName()) {
+            _Description = "A cat";
+            _State = "curled up on the ground, sleeping";
+
+            AddEventHandler(EventType.Emote, OnEventEmote);
+            AddEventHandler(EventType.WorldConstructed, OnEventWorldConstructed);
+        }
+
+        private IEnumerator<object> OnEventWorldConstructed (EventType type, object evt) {
+            foreach (Location l in this.Location.GetExits()) {
+                l.AddEventListener(this);
+            }
+
+            return null;
+        }
+
+        private IEnumerator<object> OnEventEmote (EventType type, object evt) {
+            IEntity sender = Event.GetProp<IEntity>("Sender", evt);
+            if (sender == null)
+                return null;
+
+            if (sender.Description.ToLower().Contains("bird"))
+                Event.Send(new { Type = EventType.Emote, Sender = this, Text = "'s ears perk up at the sound of a bird outside." });
+
+            return null;
         }
     }
 

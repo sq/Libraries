@@ -44,6 +44,10 @@ namespace MUDServer {
         /// CombatMiss { from, weaponname, to }
         /// </summary>
         CombatMiss,
+        /// <summary>
+        /// WorldConstructed { }
+        /// </summary>
+        WorldConstructed
     }
 
     public static class Event {
@@ -77,9 +81,15 @@ namespace MUDServer {
                 if (recipient != sender)
                     recipient.NotifyEvent(type, evt);
             } else {
-                foreach (var e in sender.Location.Entities.Values)
-                    if (e != sender)
-                        e.NotifyEvent(type, evt);
+                sender.Location.NotifyEvent(sender, type, evt);
+            }
+        }
+
+        public static void Broadcast (object evt) {
+            Type t = evt.GetType();
+            EventType type = GetProp<EventType>("Type", evt, t);
+            foreach (Location l in World.Locations.Values) {
+                l.NotifyEvent(null, type, evt);
             }
         }
 
