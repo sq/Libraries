@@ -30,11 +30,11 @@ namespace MUDServer {
     public class EntityBase : IEntity, IDisposable {
         private static int _EntityCount;
 
-        private Location _Location;
-        private string _Name = null;
         private Dictionary<EventType, List<EventHandler>> _EventHandlers = new Dictionary<EventType, List<EventHandler>>();
         private BlockingQueue<object> _EventQueue = new BlockingQueue<object>();
         private Future _ThinkTask, _EventDispatchTask;
+        protected Location _Location;
+        protected string _Name = null;
         protected string _State = null;
         protected string _Description = null;
 
@@ -54,7 +54,7 @@ namespace MUDServer {
             }
         }
 
-        public Location Location {
+        public virtual Location Location {
             get {
                 return _Location;
             }

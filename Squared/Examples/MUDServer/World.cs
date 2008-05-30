@@ -14,10 +14,15 @@ namespace MUDServer {
     public struct Exit {
         public string Description;
         public string Target;
+        public string Name;
 
-        public Exit (string description, string target) {
+        public Exit (string name, string description, string target) {
             Description = description;
             Target = target;
+            Name = name;
+            foreach (char c in Name.ToLower())
+                if (c < 'a' || c > 'z')
+                    throw new InvalidOperationException("Exit created with name that was not alphabetical.");
         }
     }
 

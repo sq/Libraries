@@ -12,12 +12,32 @@ namespace MUDServer {
         private delegate IEnumerator<object> CommandHandler (Player p, string[] words);
         private AlphaTrie<CommandHandler> _Commands;
 
+        public override Location Location {
+            get {
+                return _Location;
+            }
+            set {
+                if (_Name != null && _Location != null) {
+                    _Location.Exit(this);
+                    RemoveExitCommands(_Location);
+                }
+
+                _Location = value;
+
+                if (_Name != null && _Location != null) {
+                    AddExitCommands(_Location);
+                    _Location.Enter(this);
+                }
+            }
+        }
+
         public Player (TelnetClient client, Location location)
             : base(location, null) {
             Client = client;
             client.RegisterOnDispose(OnDisconnected);
 
             RebuildCommandTrie();
+            AddExitCommands(location);
 
             AddEventHandler(EventType.CombatHit, OnEventCombatHit);
             AddEventHandler(EventType.CombatMiss, OnEventCombatMiss);
@@ -69,13 +89,41 @@ namespace MUDServer {
             if (Location.Exits.Count != 0) {
                 SendMessage("Exits from this location:");
                 for (int i = 0; i < Location.Exits.Count; i++) {
-                    SendMessage("{0}: {1}", i, Location.Exits[i].Description);
+                    SendMessage("{0}: {1}", Location.Exits[i].Name, Location.Exits[i].Description);
                 }
             }
             foreach (var e in this.Location.Entities) {
                 if (e.Value != this)
                     SendMessage("{0} is {1}.", e.Value.Description, e.Value.State ?? "standing nearby");
             }
+        }
+
+        private void AddExitCommands (Location l) {
+            foreach (var ex in l.Exits) {
+                _Commands.Insert(
+                    ex.Name,
+                    delegate(Player p, string[] words) {
+                        if (p.CurrentHealth <= 0) {
+                            p.SendMessage("You can't do that while dead.");
+                            p.SendPrompt();
+                            return null;
+                        }
+                        var ourExit = p.Location.Exits.Where(x => (x.Name.ToLower() == words[0])).First();
+                        if (World.Locations.ContainsKey(ourExit.Target.ToLower()))
+                            p.Location = World.Locations[ourExit.Target.ToLower()];
+                        else {
+                            Console.WriteLine("Warning: '{0}' exit '{1}' leads to undefined location '{2}'.", p.Location.Name, ourExit.Description, ourExit.Target);
+                            p.SendMessage("Your attempt to leave via {0} is thwarted by a mysterious force.", ourExit.Description);
+                            p.SendPrompt();
+                        }
+                        return null;
+                    });
+            }
+        }
+
+        private void RemoveExitCommands (Location l) {
+            foreach (var ex in l.Exits)
+                _Commands.Remove(ex.Name);
         }
 
         private static void AddPlayerCommands(AlphaTrie<CommandHandler> _) {
@@ -154,15 +202,10 @@ namespace MUDServer {
                                 p.SendPrompt();
                             }
                         };
-                        if (int.TryParse(exitText, out exitId)) {
-                            go(p.Location.Exits[exitId]);
-                        }
-                        else {
-                            foreach (var e in p.Location.Exits) {
-                                if (e.Description.ToLower().Contains(exitText)) {
-                                    go(e);
-                                    break;
-                                }
+                        foreach (var e in p.Location.Exits) {
+                            if (e.Description.ToLower().Contains(exitText)) {
+                                go(e);
+                                break;
                             }
                         }
                     }
@@ -222,14 +265,31 @@ namespace MUDServer {
                 });
 
             _.Insert(
+                "quit",
+                delegate(Player p, string[] words) {
+                    p.Client.Dispose();
+                    return null;
+                });
+
+            _.Insert(
+                "commands",
+                delegate(Player p, string[] words) {
+                    p.SendMessage("Commands:");
+                    foreach (var Command in p._Commands.Traverse())
+                        p.SendMessage(" {0}", Command.Key);
+                    return null;
+                });
+
+            _.Insert(
                 "help",
                 delegate(Player p, string[] words) {
                     p.SendMessage("You can <say> things to those nearby, if you feel like chatting.");
                     p.SendMessage("You can also <tell> somebody things if you wish to speak privately.");
                     p.SendMessage("You can also <emote> within sight of others.");
                     p.SendMessage("If you're feeling lost, try taking a <look> around.");
-                    p.SendMessage("If you wish to <go> out an exit, simply speak its name or number.");
+                    p.SendMessage("To move somewhere either <go> there, or enter the name of the exit.");
                     p.SendMessage("Looking to make trouble? Try to <kill> someone!");
+                    p.SendMessage("If you get bored you can always <quit> the game.");
                     p.SendPrompt();
                     return null;
                 });
@@ -255,6 +315,8 @@ namespace MUDServer {
                 SendPrompt();
                 return null;
             }
+            // Populate the first word with the real name of the command.
+            words[0] = cmd.Key;
 
             return cmd.Value.Invoke(this, words);
         }

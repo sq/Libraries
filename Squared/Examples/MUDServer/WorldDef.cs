@@ -15,7 +15,7 @@ namespace MUDServer {
                 "A table sits in the center of the room surrounded by two chairs.\r\n" +
                 "There is a wooden door to your south that leads outside.",
                 Exits = {
-                    new Exit("A wooden door", "StartingForestA")
+                    new Exit("Door", "A wooden door", "StartingForestA")
                 }
             };
 
@@ -28,8 +28,8 @@ namespace MUDServer {
                 "In front of you is a small wooden cottage. A door leads inside.\r\n" +
                 "An unkempt forest path leads to the south.",
                 Exits = {
-                    new Exit("Cottage door", "StartingRoom"),
-                    new Exit("Forest path", "StartingForestB")
+                    new Exit("Door", "Cottage door", "StartingRoom"),
+                    new Exit("Path", "Forest path", "StartingForestB")
                 }
             };
 
@@ -41,8 +41,8 @@ namespace MUDServer {
                 "You can hear the sounds of the forest all around you, and the sun is barely visible through the thick foliage.\r\n" +
                 "The path winds along to the north and south.",
                 Exits = {
-                    new Exit("North", "StartingForestA"),
-                    new Exit("South", "StartingForestC")
+                    new Exit("North", "North", "StartingForestA"),
+                    new Exit("South", "South", "StartingForestC")
                 }
             };
 
