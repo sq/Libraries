@@ -2,6 +2,7 @@
   <Settings activeconfig="Debug" />
   <Config name="Debug" binpathtype="Auto">
     <assembly path="TaskLib\TaskLibTests\bin\Debug\TaskLibTests.dll" />
+    <assembly path="Examples\MUDServer\MUDServerTests\bin\Debug\MUDServerTests.dll" />
   </Config>
   <Config name="Release" binpathtype="Auto" />
 </NUnitProject>

@@ -124,6 +124,8 @@ namespace MUDServer {
         public void Insert (string key, T value) {
             if (key.Length == 0)
                 throw new InvalidOperationException("Attempted to insert a blank key into the trie.");
+            if (value == null)
+                throw new InvalidOperationException("Attempted to insert a blank value into the trie.");
 
             Insert(rootNode, new KeyValueReference<string, T>(key.ToLower(), value), 0);
         }
