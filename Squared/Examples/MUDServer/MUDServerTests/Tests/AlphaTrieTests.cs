@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 
 namespace MUDServer {
@@ -35,6 +36,45 @@ namespace MUDServer {
             Assert.IsNotNull(AT.FindByKeyExact("second"));
             Assert.IsNotNull(AT.FindByKeyExact("seconds"));
             Assert.IsNotNull(AT.FindByKeyExact("secondary"));
+        }
+
+        [Test]
+        public void GetStartKeys () {
+            var AT = new AlphaTrie<string>();
+            Assert.IsNotNull(AT.FindByKeyStart("a").Count() == 0);
+
+            AT.Insert("a", "word");
+            Assert.IsNotNull(AT.FindByKeyStart("a").Count() == 1);
+
+            AT.Insert("ab", "word");
+            Assert.IsNotNull(AT.FindByKeyStart("a").Count() == 2);
+
+            AT.Insert("aba", "word");
+            Assert.IsNotNull(AT.FindByKeyStart("a").Count() == 3);
+
+            AT.Insert("abb", "word");
+            Assert.IsNotNull(AT.FindByKeyStart("a").Count() == 4);
+
+            AT.Insert("abab", "word");
+            Assert.IsNotNull(AT.FindByKeyStart("a").Count() == 5);
+
+
+            Assert.IsNotNull(AT.FindByKeyStart("b").Count() == 0);
+
+            AT.Insert("bbbb", "word");
+            Assert.IsNotNull(AT.FindByKeyStart("b").Count() == 1);
+
+            AT.Insert("bbba", "word");
+            Assert.IsNotNull(AT.FindByKeyStart("b").Count() == 2);
+
+            AT.Insert("bbb", "word");
+            Assert.IsNotNull(AT.FindByKeyStart("b").Count() == 3);
+
+            AT.Insert("bb", "word");
+            Assert.IsNotNull(AT.FindByKeyStart("b").Count() == 4);
+
+            AT.Insert("b", "word");
+            Assert.IsNotNull(AT.FindByKeyStart("b").Count() == 5);
         }
 
         [Test]

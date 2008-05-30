@@ -244,12 +244,18 @@ namespace MUDServer {
 
             _LastPrompt = false;
 
-            var cmd = _Commands.FindByKeyStart(firstWord);
-            if (cmd == null) {
+            var cmdGenerator = _Commands.FindByKeyStart(firstWord);
+            KeyValueReference<string, CommandHandler> cmd;
+
+            try {
+                cmd = cmdGenerator.First();
+            }
+            catch (InvalidOperationException) {
                 SendMessage("Hmm... that doesn't make any sense. Do you need some <help>?");
                 SendPrompt();
                 return null;
             }
+
             return cmd.Value.Invoke(this, words);
         }
 

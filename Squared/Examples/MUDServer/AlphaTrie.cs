@@ -39,85 +39,47 @@ namespace MUDServer {
 
         // Searches the trie for a node with the exact key provided and returns the value of that node.
         public KeyValueReference<string, T> FindByKeyExact (string key) {
-            KeyValueReference<string, T> KVRTemp = FindByKeyStart(key);
-            if (KVRTemp == null || KVRTemp.Key != key.ToLower())
-                return null;
-            else
-                return KVRTemp;
-
+            foreach (var KV in FindByKeyStart(key))
+                if (KV.Key == key.ToLower())
+                    return KV;
+            return null;
         }
 
         // Searches the trie for a node starting with the given key. If multiple are found, null will be returned.
-        public KeyValueReference<string, T> FindByKeyStart (string _key) {
-            AlphaTrieNode parentNode, foundNode;
-            return FindByKeyStart(_key, out parentNode, out foundNode);
-        }
-
-        private KeyValueReference<string, T> FindByKeyStart (string _key, out AlphaTrieNode parentNode, out AlphaTrieNode foundNode) {
+        public IEnumerable<KeyValueReference<string, T>> FindByKeyStart (string _key) {
             string key = _key.ToLower();
-            AlphaTrieNode previousNode = null;
             AlphaTrieNode currentNode = rootNode;
-            parentNode = null;
-            foundNode = null;
 
             int level = -1;
             while (level < key.Length - 1) {
                 level++;
 
-                // Found the key exactly here.
-                if (currentNode.Value != null && currentNode.Value.Key == key) {
-                    parentNode = previousNode;
-                    foundNode = currentNode;
-                    return currentNode.Value;
-                }
+                // Found the key exactly here, so return it and all of its underlings.
+                if (currentNode.Value != null && currentNode.Value.Key == key)
+                    foreach (var retKV in Traverse(currentNode))
+                        yield return retKV;
 
                 int ix;
                 try {
                     ix = AlphaTrieNode.CharToTrieNodeIndex(key[level]);
                 } catch (InvalidOperationException) {
-                    return null;
+                    yield break;
                 }
 
                 // Ran into a dead end.
                 if (currentNode.Nodes == null || currentNode.Nodes[ix] == null) {
                     if (currentNode.Value == null)
-                        return null;
-                    if (currentNode.Value.Key.StartsWith(key)) {
-                        parentNode = previousNode;
-                        foundNode = currentNode;
-                        return currentNode.Value;
-                    }
-                    return null;
+                        yield break;
+                    if (currentNode.Value.Key.StartsWith(key))
+                        yield return currentNode.Value;
+                    yield break;
                 }
 
-                previousNode = currentNode;
                 currentNode = currentNode.Nodes[ix];
             }
 
-            while (true) {
-                if (currentNode.Branches > 1)
-                    return null;
-
-                if (currentNode.Value != null && currentNode.Branches == 0) {
-                    parentNode = previousNode;
-                    foundNode = currentNode;
-                    return currentNode.Value;
-                }
-
-                // Indeterminate. There's one value here, but there's another longer value later on.
-                if (currentNode.Value != null && currentNode.Branches == 1)
-                    return null;
-
-                // Guaranteed 1 branch.
-                for (int i = 0; i < NodeCount; i++) {
-                    if (currentNode.Nodes[i] != null) {
-                        previousNode = currentNode;
-                        currentNode = currentNode.Nodes[i];
-                        break;
-                    }
-                }
-            }
-
+            foreach (var retKV in Traverse(currentNode))
+                yield return retKV;
         }
 
         // Inserts a new key-value pair into the trie.
@@ -183,11 +145,13 @@ namespace MUDServer {
             }
 
         }
-
+        
         public bool Remove (string key) {
+            return false;
+            /*
             AlphaTrieNode parentNode, foundNode;
-            KeyValueReference<string, T> kvr = FindByKeyStart(key, out parentNode, out foundNode);
-            if (kvr.Key != key.ToLower())
+            KeyValueReference<string, T> kvr = FindByKeyExact(key, out parentNode, out foundNode);
+            if (kvr == null)
                 return false;
 
             for (int i = 0; i < parentNode.Nodes.Length; i++) {
@@ -199,6 +163,7 @@ namespace MUDServer {
             }
 
             return false;
+            */
         }
 
         // Traverse the trie with an enumerator.
