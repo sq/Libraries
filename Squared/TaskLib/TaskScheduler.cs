@@ -29,9 +29,9 @@ namespace Squared.Task {
         }
     }
 
-    public class TaskYieldedEnumeratorException : Exception {
-        public TaskYieldedEnumeratorException ()
-            : base("Task yielded an IEnumerator<object> as a result. To yield on another task, yield a Start or RunToCompletion object.") {
+    public class TaskYieldedValueException : Exception {
+        public TaskYieldedValueException ()
+            : base("Task directly yielded a value. To yield a result from a task, yield a Result() object containing the value.") {
         }
     }
 
@@ -121,10 +121,11 @@ namespace Squared.Task {
                 Dispose();
             } else {
                 if (value is IEnumerator<object>) {
-                    throw new TaskYieldedEnumeratorException();
+                    ScheduleNextStepForSchedulable(new RunToCompletion(value as IEnumerator<object>, TaskExecutionPolicy.RunAsBackgroundTask));
+                } else if (value == null) {
+                    QueueStep();
                 } else {
-                    _Future.Complete(value);
-                    Dispose();
+                    throw new TaskYieldedValueException();
                 }
             }
         }

@@ -31,7 +31,7 @@ namespace Squared.Task {
         }
 
         IEnumerator<object> TaskReturn5 () {
-            yield return 5;
+            yield return new Result(5);
         }
 
         [Test]
@@ -43,7 +43,7 @@ namespace Squared.Task {
 
         IEnumerator<object> TaskReturnValueOfFuture () {
             yield return this.TestFuture;
-            yield return this.TestFuture.Result;
+            yield return new Result(this.TestFuture.Result);
         }
 
         [Test]
@@ -80,7 +80,7 @@ namespace Squared.Task {
         IEnumerator<object> TaskReturnValueOfYieldedTask () {
             var tr = new RunToCompletion(TaskReturnValueOfFuture());
             yield return tr;
-            yield return tr.Result;
+            yield return new Result(tr.Result);
         }
 
         [Test]
@@ -91,6 +91,37 @@ namespace Squared.Task {
             TestFuture.Complete(10);
             Scheduler.Step();
             Assert.AreEqual(10, future.Result);
+        }
+
+        IEnumerator<object> TaskYieldEnumerator (int[] buf) {
+            yield return TaskLongLivedWorker(buf);
+        }
+
+        [Test]
+        public void YieldEnumeratorTest () {
+            var buf = new int[1];
+            long timeStart = DateTime.Now.Ticks;
+            var f = Scheduler.Start(TaskYieldEnumerator(buf));
+            Scheduler.Step();
+            long timeEnd = DateTime.Now.Ticks;
+            TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
+            Assert.AreEqual(1000000, buf[0]);
+        }
+
+        IEnumerator<object> TaskYieldValue () {
+            yield return 5;
+        }
+
+        [Test]
+        public void YieldValueTest () {
+            var f = Scheduler.Start(TaskYieldValue());
+            Scheduler.Step();
+            try {
+                var _ = f.Result;
+                Assert.Fail("Did not raise a TaskYieldedValueException");
+            } catch (FutureException fe) {
+                Assert.IsInstanceOfType(typeof(TaskYieldedValueException), fe.InnerException);
+            }
         }
 
         IEnumerator<object> TaskLongLivedWorker (int[] buf) {
@@ -442,7 +473,7 @@ namespace Squared.Task {
 
         IEnumerator<object> YieldOnLongSleep (Future sleepFuture) {
             yield return sleepFuture;
-            yield return "ok";
+            yield return new Result("ok");
         }
 
         [Test]

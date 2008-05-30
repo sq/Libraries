@@ -407,9 +407,7 @@ namespace MUDServer {
                 string line = newInputLine.Result as string;
 
                 if (line != null) {
-                    IEnumerator<object> next = ProcessInput(line);
-                    if (next != null)
-                        yield return new RunToCompletion(next);
+                    yield return ProcessInput(line);
                 }
             }
         }

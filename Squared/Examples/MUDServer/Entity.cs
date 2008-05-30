@@ -119,9 +119,7 @@ namespace MUDServer {
 
         protected IEnumerator<object> InvokeEventHandlers (EventType type, object evt, EventHandler[] handlers) {
             foreach (EventHandler handler in handlers) {
-                IEnumerator<object> task = handler(type, evt);
-                if (task != null)
-                    yield return new RunToCompletion(task, TaskExecutionPolicy.RunAsBackgroundTask);
+                yield return handler(type, evt);
             }
         }
 
@@ -147,7 +145,7 @@ namespace MUDServer {
         }
 
         protected virtual IEnumerator<object> ThinkTask () {
-            yield return null;
+            yield break;
         }
 
         public virtual void Dispose () {
