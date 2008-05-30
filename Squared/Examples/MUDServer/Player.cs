@@ -17,8 +17,7 @@ namespace MUDServer {
             Client = client;
             client.RegisterOnDispose(OnDisconnected);
 
-            _Commands = new AlphaTrie<CommandHandler>();
-            AddPlayerCommands(_Commands);
+            RebuildCommandTrie();
 
             AddEventHandler(EventType.CombatHit, OnEventCombatHit);
             AddEventHandler(EventType.CombatMiss, OnEventCombatMiss);
@@ -29,6 +28,11 @@ namespace MUDServer {
             AddEventHandler(EventType.Leave, OnEventLeave);
             AddEventHandler(EventType.Say, OnEventSay);
             AddEventHandler(EventType.Tell, OnEventTell);
+        }
+
+        private void RebuildCommandTrie () {
+            _Commands = new AlphaTrie<CommandHandler>();
+            AddPlayerCommands(_Commands);
         }
 
         public override void Dispose () {

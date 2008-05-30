@@ -269,7 +269,6 @@ namespace Squared.Task {
                     if (timeToSleep > 0) {
                         if (timeToSleep < MinimumSleepLength)
                             timeToSleep = MinimumSleepLength;
-                        System.Diagnostics.Debug.WriteLine(String.Format("Sleeping for {0} ticks", timeToSleep));
                         try {
                             newSleepEvent.Reset();
                             int result = WaitHandle.WaitAny(new WaitHandle[] { newSleepEvent }, TimeSpan.FromTicks(timeToSleep), true);

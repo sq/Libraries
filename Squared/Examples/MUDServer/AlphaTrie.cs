@@ -5,7 +5,7 @@ using System.Collections;
 namespace MUDServer {
 
     public class AlphaTrie<T> where T : class {
-        public const int NodeCount = 26;
+        public const int NodeCount = ('z' - 'a') + 1;
 
         AlphaTrieNode rootNode;
 
@@ -49,16 +49,27 @@ namespace MUDServer {
 
         // Searches the trie for a node starting with the given key. If multiple are found, null will be returned.
         public KeyValueReference<string, T> FindByKeyStart (string _key) {
+            AlphaTrieNode parentNode, foundNode;
+            return FindByKeyStart(_key, out parentNode, out foundNode);
+        }
+
+        private KeyValueReference<string, T> FindByKeyStart (string _key, out AlphaTrieNode parentNode, out AlphaTrieNode foundNode) {
             string key = _key.ToLower();
+            AlphaTrieNode previousNode = null;
             AlphaTrieNode currentNode = rootNode;
+            parentNode = null;
+            foundNode = null;
 
             int level = -1;
             while (level < key.Length - 1) {
                 level++;
 
                 // Found the key exactly here.
-                if (currentNode.Value != null && currentNode.Value.Key == key)
+                if (currentNode.Value != null && currentNode.Value.Key == key) {
+                    parentNode = previousNode;
+                    foundNode = currentNode;
                     return currentNode.Value;
+                }
 
                 int ix;
                 try {
@@ -71,11 +82,15 @@ namespace MUDServer {
                 if (currentNode.Nodes == null || currentNode.Nodes[ix] == null) {
                     if (currentNode.Value == null)
                         return null;
-                    if (currentNode.Value.Key.StartsWith(key))
+                    if (currentNode.Value.Key.StartsWith(key)) {
+                        parentNode = previousNode;
+                        foundNode = currentNode;
                         return currentNode.Value;
+                    }
                     return null;
                 }
 
+                previousNode = currentNode;
                 currentNode = currentNode.Nodes[ix];
             }
 
@@ -83,8 +98,11 @@ namespace MUDServer {
                 if (currentNode.Branches > 1)
                     return null;
 
-                if (currentNode.Value != null && currentNode.Branches == 0)
+                if (currentNode.Value != null && currentNode.Branches == 0) {
+                    parentNode = previousNode;
+                    foundNode = currentNode;
                     return currentNode.Value;
+                }
 
                 // Indeterminate. There's one value here, but there's another longer value later on.
                 if (currentNode.Value != null && currentNode.Branches == 1)
@@ -93,6 +111,7 @@ namespace MUDServer {
                 // Guaranteed 1 branch.
                 for (int i = 0; i < NodeCount; i++) {
                     if (currentNode.Nodes[i] != null) {
+                        previousNode = currentNode;
                         currentNode = currentNode.Nodes[i];
                         break;
                     }
@@ -163,9 +182,21 @@ namespace MUDServer {
 
         }
 
-        // Removes a key-value pair from the trie by its key.
-        public void Remove (string key) {
-            throw new NotImplementedException();
+        public bool Remove (string key) {
+            AlphaTrieNode parentNode, foundNode;
+            KeyValueReference<string, T> kvr = FindByKeyStart(key, out parentNode, out foundNode);
+            if (kvr.Key != key.ToLower())
+                return false;
+
+            for (int i = 0; i < parentNode.Nodes.Length; i++) {
+                if (parentNode.Nodes[i] == foundNode) {
+                    parentNode.Nodes[i] = null;
+                    parentNode.Branches -= 1;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // Traverse the trie with an enumerator.

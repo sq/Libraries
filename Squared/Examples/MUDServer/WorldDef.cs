@@ -154,7 +154,7 @@ namespace MUDServer {
 
         protected override IEnumerator<object> ThinkTask () {
             while (true) {
-                yield return new Sleep((Program.RNG.NextDouble() * 20.0) + 5.0);
+                yield return new Sleep((Program.RNG.NextDouble() * 30.0) + 10);
 
                 string[] emotes = new string[] {
                     "chirps.",
