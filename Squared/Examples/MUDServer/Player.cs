@@ -10,7 +10,7 @@ namespace MUDServer {
         private bool _LastPrompt;
         private int _NumMessagesSent;
         private delegate IEnumerator<object> CommandHandler (Player p, string[] words);
-        private IAlphaTrie<CommandHandler> _Commands;
+        private AlphaTrie<CommandHandler> _Commands;
 
         public Player (TelnetClient client, Location location)
             : base(location, null) {
@@ -74,7 +74,7 @@ namespace MUDServer {
             }
         }
 
-        private static void AddPlayerCommands(IAlphaTrie<CommandHandler> _) {
+        private static void AddPlayerCommands(AlphaTrie<CommandHandler> _) {
             _.Insert(
                 "say",
                 delegate(Player p, string[] words) {

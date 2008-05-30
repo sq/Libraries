@@ -3,20 +3,8 @@ using System.Collections.Generic;
 using System.Collections;
 
 namespace MUDServer {
-    public interface IAlphaTrie<T> where T : class {
-        // Searches the trie for a node with the exact key provided and returns the value of that node.
-        KeyValueReference<string, T> FindByKeyExact (string key);
-        // Searches the trie for a node starting with the given key. If multiple are found, null will be returned.
-        KeyValueReference<string, T> FindByKeyStart (string key);
-        // Inserts a new key-value pair into the trie.
-        void Insert (string key, T value);
-        // Removes a key-value pair from the trie by its key.
-        void Remove (string key);
-        // Traverse the trie with an enumerator.
-        IEnumerable<KeyValueReference<string, T>> Traverse ();
-    }
 
-    public class AlphaTrie<T> : IAlphaTrie<T> where T : class {
+    public class AlphaTrie<T> where T : class {
         public const int NodeCount = 26;
 
         AlphaTrieNode rootNode;
@@ -49,6 +37,7 @@ namespace MUDServer {
             rootNode = new AlphaTrieNode();
         }
 
+        // Searches the trie for a node with the exact key provided and returns the value of that node.
         public KeyValueReference<string, T> FindByKeyExact (string key) {
             KeyValueReference<string, T> KVRTemp = FindByKeyStart(key);
             if (KVRTemp == null || KVRTemp.Key != key.ToLower())
@@ -58,6 +47,7 @@ namespace MUDServer {
 
         }
 
+        // Searches the trie for a node starting with the given key. If multiple are found, null will be returned.
         public KeyValueReference<string, T> FindByKeyStart (string _key) {
             string key = _key.ToLower();
             AlphaTrieNode currentNode = rootNode;
@@ -111,6 +101,7 @@ namespace MUDServer {
 
         }
 
+        // Inserts a new key-value pair into the trie.
         public void Insert (string key, T value) {
             if (key.Length == 0)
                 throw new InvalidOperationException("Attempted to insert a blank key into the trie.");
@@ -172,10 +163,12 @@ namespace MUDServer {
 
         }
 
+        // Removes a key-value pair from the trie by its key.
         public void Remove (string key) {
             throw new NotImplementedException();
         }
 
+        // Traverse the trie with an enumerator.
         public IEnumerable<KeyValueReference<string, T>> Traverse () {
             return Traverse(rootNode);
         }
