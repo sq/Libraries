@@ -45,6 +45,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AlphaTrie.cs" />
     <Compile Include="Entity.cs" />
     <Compile Include="Events.cs" />
     <Compile Include="Player.cs" />
