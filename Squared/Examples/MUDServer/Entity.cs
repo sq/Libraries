@@ -33,7 +33,7 @@ namespace MUDServer {
         private Dictionary<EventType, List<EventHandler>> _EventHandlers = new Dictionary<EventType, List<EventHandler>>();
         private BlockingQueue<object> _EventQueue = new BlockingQueue<object>();
         private Future _ThinkTask, _EventDispatchTask;
-        protected Location _Location;
+        private Location _Location;
         protected string _Name = null;
         protected string _State = null;
         protected string _Description = null;
@@ -54,7 +54,7 @@ namespace MUDServer {
             }
         }
 
-        public virtual Location Location {
+        public Location Location {
             get {
                 return _Location;
             }
@@ -63,6 +63,7 @@ namespace MUDServer {
                     _Location.Exit(this);
                 }
 
+                OnLocationChange(_Location, value);
                 _Location = value;
 
                 if (_Name != null && _Location != null) {
@@ -84,6 +85,8 @@ namespace MUDServer {
                 }
             }
         }
+
+        protected virtual void OnLocationChange (Location oldLocation, Location newLocation) { }
 
         protected virtual bool ShouldFilterNewEvent (EventType type, object evt) {
             return false;

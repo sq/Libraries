@@ -12,24 +12,6 @@ namespace MUDServer {
         private delegate IEnumerator<object> CommandHandler (Player p, string[] words);
         private AlphaTrie<CommandHandler> _Commands;
 
-        public override Location Location {
-            get {
-                return _Location;
-            }
-            set {
-                if (_Name != null && _Location != null) {
-                    _Location.Exit(this);
-                    RemoveExitCommands(_Location);
-                }
-
-                _Location = value;
-
-                if (_Name != null && _Location != null) {
-                    AddExitCommands(_Location);
-                    _Location.Enter(this);
-                }
-            }
-        }
 
         public Player (TelnetClient client, Location location)
             : base(location, null) {
@@ -98,7 +80,19 @@ namespace MUDServer {
             }
         }
 
+        protected override void OnLocationChange (Location oldLocation, Location newLocation) {
+            // If there is no name, we won't have our player data instantiated.
+            if (_Name == null)
+                return;
+
+            RemoveExitCommands(oldLocation);
+            AddExitCommands(newLocation);
+        }
+
         private void AddExitCommands (Location l) {
+            if (l == null)
+                return;
+
             foreach (var ex in l.Exits) {
                 _Commands.Insert(
                     ex.Name,
@@ -122,6 +116,9 @@ namespace MUDServer {
         }
 
         private void RemoveExitCommands (Location l) {
+            if (l == null)
+                return;
+
             foreach (var ex in l.Exits)
                 _Commands.Remove(ex.Name);
         }
@@ -191,7 +188,6 @@ namespace MUDServer {
                         return null;
                     }
                     try {
-                        int exitId;
                         string exitText = string.Join(" ", words, 1, words.Length - 1).Trim().ToLower();
                         Action<Exit> go = (exit) => {
                             if (World.Locations.ContainsKey(exit.Target.ToLower()))
