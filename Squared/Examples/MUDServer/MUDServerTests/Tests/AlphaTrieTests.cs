@@ -89,6 +89,10 @@ namespace MUDServer {
             Assert.IsTrue(AT.Remove("first"));
             Assert.IsTrue(AT.Remove("seconds"));
             Assert.IsFalse(AT.Remove("seconds"));
+
+            AT.Insert("seconds", "matter");
+            Assert.IsTrue(AT.Remove("seconds"));
+
             Assert.IsFalse(AT.Remove("pancakes"));
             Assert.IsNotNull(AT.FindByKeyExact("firsts"));
             Assert.IsNotNull(AT.FindByKeyExact("second"));
