@@ -146,25 +146,31 @@ namespace MUDServer {
 
         }
         
+        // Very naive implementation of Remove that just gets rid of the Value when it finds it.
         public bool Remove (string key) {
-            return false;
-            /*
-            AlphaTrieNode parentNode, foundNode;
-            KeyValueReference<string, T> kvr = FindByKeyExact(key, out parentNode, out foundNode);
-            if (kvr == null)
-                return false;
+            return Remove(key.ToLower(), rootNode);
+        }
 
-            for (int i = 0; i < parentNode.Nodes.Length; i++) {
-                if (parentNode.Nodes[i] == foundNode) {
-                    parentNode.Nodes[i] = null;
-                    parentNode.Branches -= 1;
-                    return true;
+        private bool Remove (string key, AlphaTrieNode startingNode) {
+            if (startingNode.Value != null && startingNode.Value.Key == key) {
+                startingNode.Value = null;
+                return true;
+            }
+
+            if (startingNode.Nodes != null) {
+                for (int i = 0; i < NodeCount; i++) {
+                    AlphaTrieNode nextNode = startingNode.Nodes[i];
+                    if (nextNode != null) {
+                        bool retVal = Remove(key, nextNode);
+                        if (retVal == true)
+                            return true;
+                    }
                 }
             }
 
             return false;
-            */
         }
+
 
         // Traverse the trie with an enumerator.
         public IEnumerable<KeyValueReference<string, T>> Traverse () {
