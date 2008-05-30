@@ -49,7 +49,7 @@ namespace MUDServer {
                 output.AppendLine();
                 _LastPrompt = false;
             }
-            output.AppendFormat(message.Replace("{PlayerName}", Name), args);
+            output.AppendFormat(message, args);
             output.AppendLine();
             Client.SendText(output.ToString());
         }

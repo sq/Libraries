@@ -17,6 +17,7 @@ namespace MUDServer {
     }
 
     public class AlphaTrie<T> : IAlphaTrie<T> where T : class {
+        public const int NodeCount = 26;
 
         AlphaTrieNode rootNode;
 
@@ -68,8 +69,13 @@ namespace MUDServer {
                 // Found the key exactly here.
                 if (currentNode.Value != null && currentNode.Value.Key == key)
                     return currentNode.Value;
-                
-                int ix = AlphaTrieNode.CharToTrieNodeIndex(key[level]);
+
+                int ix;
+                try {
+                    ix = AlphaTrieNode.CharToTrieNodeIndex(key[level]);
+                } catch (InvalidOperationException) {
+                    return null;
+                }
 
                 // Ran into a dead end.
                 if (currentNode.Nodes == null || currentNode.Nodes[ix] == null) {
@@ -95,7 +101,7 @@ namespace MUDServer {
                     return null;
 
                 // Guaranteed 1 branch.
-                for (int i = 0; i < 26; i++) {
+                for (int i = 0; i < NodeCount; i++) {
                     if (currentNode.Nodes[i] != null) {
                         currentNode = currentNode.Nodes[i];
                         break;
@@ -123,7 +129,7 @@ namespace MUDServer {
             }
 
             if (node.Nodes == null && node.Value != null) {
-                node.Nodes = new AlphaTrieNode[26];
+                node.Nodes = new AlphaTrieNode[NodeCount];
                 // Only move the current Value if it isn't exactly there.
                 if (node.Value.Key.Length > level) {
                     KeyValueReference<string, T> moveKV = node.Value;
@@ -179,7 +185,7 @@ namespace MUDServer {
                 yield return startingNode.Value;
 
             if (startingNode.Nodes != null) {
-                for (int i = 0; i < 26; i++) {
+                for (int i = 0; i < NodeCount; i++) {
                     AlphaTrieNode nextNode = startingNode.Nodes[i];
                     if (nextNode != null)
                         foreach (var newNode in this.Traverse(nextNode))
