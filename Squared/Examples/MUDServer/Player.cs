@@ -5,11 +5,31 @@ using System.Text;
 using Squared.Task;
 
 namespace MUDServer {
+    
+    public class CommandHandler {
+        public delegate IEnumerator<object> HandlerDelegate (Player p, string[] words);
+        public delegate bool PlayerCheckDelegate (Player p);
+        private HandlerDelegate Handler;
+        private PlayerCheckDelegate[] PlayerChecks;
+
+        public CommandHandler (PlayerCheckDelegate[] playerChecks, HandlerDelegate handler) {
+            PlayerChecks = playerChecks;
+            Handler = handler;
+        }
+
+        public IEnumerator<object> Execute (Player p, string[] words) {
+            foreach (PlayerCheckDelegate check in PlayerChecks) {
+                if (check.Invoke(p) == false)
+                    return null;
+            }
+            return Handler.Invoke(p, words);
+        }
+    }
+
     public class Player : CombatEntity {
         public TelnetClient Client;
         private bool _LastPrompt;
         private int _NumMessagesSent;
-        private delegate IEnumerator<object> CommandHandler (Player p, string[] words);
         private AlphaTrie<CommandHandler> _Commands;
 
 
@@ -96,12 +116,11 @@ namespace MUDServer {
             foreach (var ex in l.Exits) {
                 _Commands.Insert(
                     ex.Name,
+                    new CommandHandler(
+                        new CommandHandler.PlayerCheckDelegate[] {
+                            CheckPlayerIsAlive
+                        },
                     delegate(Player p, string[] words) {
-                        if (p.CurrentHealth <= 0) {
-                            p.SendMessage("You can't do that while dead.");
-                            p.SendPrompt();
-                            return null;
-                        }
                         var ourExit = p.Location.Exits.Where(x => (x.Name.ToLower() == words[0])).First();
                         if (World.Locations.ContainsKey(ourExit.Target.ToLower()))
                             p.Location = World.Locations[ourExit.Target.ToLower()];
@@ -111,7 +130,7 @@ namespace MUDServer {
                             p.SendPrompt();
                         }
                         return null;
-                    });
+                    }));
             }
         }
 
@@ -123,9 +142,22 @@ namespace MUDServer {
                 _Commands.Remove(ex.Name);
         }
 
+        private static bool CheckPlayerIsAlive (Player p) {
+            if (p.CurrentHealth <= 0) {
+                p.SendMessage("You can't do that while dead.");
+                p.SendPrompt();
+                return false;
+            }
+            return true;
+        }
+
         private static void AddPlayerCommands(AlphaTrie<CommandHandler> _) {
             _.Insert(
                 "say",
+                new CommandHandler(
+                    new CommandHandler.PlayerCheckDelegate[] {
+                        CheckPlayerIsAlive
+                    },
                 delegate(Player p, string[] words) {
                     if (words.Length < 2) {
                         p.SendMessage("What did you want to <say>, exactly?");
@@ -135,10 +167,14 @@ namespace MUDServer {
                         Event.Send(new { Type = EventType.Say, Sender = p, Text = string.Join(" ", words, 1, words.Length - 1) });
                     }
                     return null;
-                });
+                }));
 
             _.Insert(
                 "emote",
+                new CommandHandler(
+                    new CommandHandler.PlayerCheckDelegate[] {
+                        CheckPlayerIsAlive
+                    },
                 delegate(Player p, string[] words) {
                     if (words.Length < 2) {
                         p.SendMessage("What were you trying to do?");
@@ -148,10 +184,14 @@ namespace MUDServer {
                         Event.Send(new { Type = EventType.Emote, Sender = p, Text = string.Join(" ", words, 1, words.Length - 1) });
                     }
                     return null;
-                });
+                }));
 
             _.Insert(
                 "tell",
+                new CommandHandler(
+                    new CommandHandler.PlayerCheckDelegate[] {
+                        CheckPlayerIsAlive
+                    },
                 delegate(Player p, string[] words) {
                     if (words.Length < 3) {
                         p.SendMessage("Who did you want to <tell> what?");
@@ -169,24 +209,26 @@ namespace MUDServer {
                         }
                     }
                     return null;
-                });
+                }));
 
             _.Insert(
                 "look",
+                new CommandHandler(
+                    new CommandHandler.PlayerCheckDelegate[] {
+                    },
                 delegate(Player p, string[] words) {
                     p.PerformLook();
                     p.SendPrompt();
                     return null;
-                });
+                }));
 
             _.Insert(
                 "go",
+                new CommandHandler(
+                    new CommandHandler.PlayerCheckDelegate[] {
+                        CheckPlayerIsAlive
+                    },
                 delegate(Player p, string[] words) {
-                    if (p.CurrentHealth <= 0) {
-                        p.SendMessage("You can't do that while dead.");
-                        p.SendPrompt();
-                        return null;
-                    }
                     try {
                         string exitText = string.Join(" ", words, 1, words.Length - 1).Trim().ToLower();
                         Action<Exit> go = (exit) => {
@@ -210,17 +252,17 @@ namespace MUDServer {
                         p.SendPrompt();
                     }
                     return null;
-                });
+                }));
 
             _.Insert(
                 "kill",
+                new CommandHandler(
+                    new CommandHandler.PlayerCheckDelegate[] {
+                        CheckPlayerIsAlive
+                    },
                 delegate(Player p, string[] words) {
                     if (words.Length < 2) {
                         p.SendMessage("Who did you want to kill?");
-                        p.SendPrompt();
-                    }
-                    else if (p.CurrentHealth <= 0) {
-                        p.SendMessage("You can't do that while dead.");
                         p.SendPrompt();
                     }
                     else if (p.InCombat) {
@@ -258,26 +300,36 @@ namespace MUDServer {
                         }
                     }
                     return null;
-                });
+                }));
 
             _.Insert(
                 "quit",
+                new CommandHandler(
+                    new CommandHandler.PlayerCheckDelegate[] {
+                    },
                 delegate(Player p, string[] words) {
                     p.Client.Dispose();
                     return null;
-                });
+                }));
 
             _.Insert(
                 "commands",
+                new CommandHandler(
+                    new CommandHandler.PlayerCheckDelegate[] {
+                    },
                 delegate(Player p, string[] words) {
                     p.SendMessage("Commands:");
                     foreach (var Command in p._Commands.Traverse())
                         p.SendMessage(" {0}", Command.Key);
                     return null;
-                });
+                }));
 
             _.Insert(
                 "help",
+                new CommandHandler(
+                    new CommandHandler.PlayerCheckDelegate[] {
+                        CheckPlayerIsAlive
+                    },
                 delegate(Player p, string[] words) {
                     p.SendMessage("You can <say> things to those nearby, if you feel like chatting.");
                     p.SendMessage("You can also <tell> somebody things if you wish to speak privately.");
@@ -288,7 +340,7 @@ namespace MUDServer {
                     p.SendMessage("If you get bored you can always <quit> the game.");
                     p.SendPrompt();
                     return null;
-                });
+                }));
 
         }
 
@@ -314,7 +366,7 @@ namespace MUDServer {
             // Populate the first word with the real name of the command.
             words[0] = cmd.Key;
 
-            return cmd.Value.Invoke(this, words);
+            return cmd.Value.Execute(this, words);
         }
 
         private IEnumerator<object> PromptHelper (IEnumerator<object> task, OnComplete onComplete) {
