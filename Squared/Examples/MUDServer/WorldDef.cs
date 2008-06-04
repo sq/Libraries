@@ -126,6 +126,11 @@ namespace MUDServer {
                     new Exit("Cave", "Cave entrance", "CaveA")
                 }
             };
+
+            int n = Program.RNG.Next(2, 6);
+            for (int i = 0; i < n; i++) {
+                new Wanderer();
+            }
         }
     }
 
@@ -244,6 +249,36 @@ namespace MUDServer {
 
                 string emoteText = emotes[Program.RNG.Next(0, emotes.Length)];
                 Event.Send(new { Type = EventType.Emote, Sender = this, Text = emoteText });
+            }
+        }
+    }
+
+    public class Wanderer : EntityBase {
+        public Wanderer ()
+            : base(World.SelectRandomLocation(), GetDefaultName()) {
+            _Description = "A weary traveler";
+        }
+
+        protected override IEnumerator<object> ThinkTask () {
+            while (true) {
+                _State = "resting nearby";
+
+                yield return new Sleep((Program.RNG.NextDouble() * 60.0) + 10.0);
+
+                _State = "walking slowly by";
+                Event.Send(new { Type = EventType.Emote, Sender = this, Text = "stands, and continues walking." });
+
+                yield return new Sleep((Program.RNG.NextDouble() * 4.0) + 6.0);
+
+                try {
+                    var exit = this.Location.Exits[Program.RNG.Next(0, this.Location.Exits.Count)];
+                    this.Location = World.Locations[exit.Target.ToLower()];
+                } catch {                    
+                }
+
+                yield return new Sleep((Program.RNG.NextDouble() * 8.0) + 4.0);
+
+                Event.Send(new { Type = EventType.Emote, Sender = this, Text = "sits down to rest." });
             }
         }
     }

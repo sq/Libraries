@@ -9,6 +9,13 @@ namespace MUDServer {
         public static Dictionary<string, Player> Players = new Dictionary<string, Player>();
         public static Dictionary<string, Location> Locations = new Dictionary<string, Location>();
         public static Location PlayerStartLocation;
+
+        public static Location SelectRandomLocation () {
+            int keyCount = Locations.Keys.Count;
+            int keyIndex = Program.RNG.Next(0, keyCount);
+            string key = Locations.Keys.ElementAt(keyIndex);
+            return Locations[key];
+        }
     }
 
     public struct Exit {

@@ -402,7 +402,7 @@ namespace MUDServer {
                 SendMessage("You enter {0}.", Location.Title ?? Location.Name);
                 PerformLook();
             } else {
-                SendMessage("{0} enters the room.", sender);
+                SendMessage("{0} enters the area.", sender);
             }
 
             return null;
@@ -412,7 +412,7 @@ namespace MUDServer {
             IEntity sender = Event.GetProp<IEntity>("Sender", evt);
 
             if (sender != this)
-                SendMessage("{0} leaves the room.", sender);
+                SendMessage("{0} leaves the area.", sender);
 
             return null;
         }
