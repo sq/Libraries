@@ -48,6 +48,84 @@ namespace MUDServer {
 
             new ForestBird(_);
             new ForestBird(_);
+
+            _ = new Location("StartingForestC") {
+                Title = "Forest path",
+                Description = "You are standing on an overgrown path in the forest.\r\n" +
+                "The wind blows quietly through the area, rustling the leaves of the trees.\r\n" +
+                "The path winds along to the north and south.",
+                Exits = {
+                    new Exit("North", "North", "StartingForestB"),
+                    new Exit("South", "South", "StartingForestD2")
+                }
+            };
+
+            new ForestBird(_);
+
+            _ = new Location("StartingForestD2") {
+                Title = "Forest entrance",
+                Description = "You are standing at the entrance to a small forest.\r\n" +
+                "The forest opens onto a small, overgrown path heading north. The grassline ends abruptly to your south.\r\n" +
+                "The path leads north into the forest. To the south you see a small path winding through sharp crags and worn stone. The treeline runs to your east and west.",
+                Exits = {
+                    new Exit("North", "North", "StartingForestC"),
+                    new Exit("West", "West", "StartingForestD1"),
+                    new Exit("East", "East", "StartingForestD3"),
+                    new Exit("South", "Winding path", "StonePathA")
+                }
+            };
+
+            _ = new Location("StartingForestD1") {
+                Title = "Forest outskirts",
+                Description = "You are standing at the edge of a small forest.\r\n" +
+                "You see thick, overgrown grass and trees to the north. The way south and west is blocked by rocky, impassable terrain.",
+                Exits = {
+                    new Exit("East", "East", "StartingForestD2"),
+                }
+            };
+
+            _ = new Location("StartingForestD3") {
+                Title = "Forest outskirts",
+                Description = "You are standing at the edge of a small forest.\r\n" +
+                "You see thick, overgrown grass and trees to the north. The way south and east is blocked by rocky, impassable terrain.",
+                Exits = {
+                    new Exit("West", "West", "StartingForestD2"),
+                }
+            };
+
+            _ = new Location("StonePathA") {
+                Title = "Winding path entrance",
+                Description = "You are standing at the entrance to a small, winding path.\r\n" +
+                "The path carves its way through solid stone, worn and aged by the passage of time.\r\n" +
+                "To your north you can see trees in the distance. The path continues southward.",
+                Exits = {
+                    new Exit("North", "Forest entrance", "StartingForestD2"),
+                    new Exit("South", "South", "StonePathB")
+                }
+            };
+
+            _ = new Location("StonePathB") {
+                Title = "Winding path",
+                Description = "You stand upon a small, winding path.\r\n" +
+                "The stone here is cracked and weary, and shows signs of having once been home to a flowing stream.\r\n" +
+                "The path continues to the north and south.",
+                Exits = {
+                    new Exit("North", "North", "StonePathA"),
+                    new Exit("South", "South", "StonePathC")
+                }
+            };
+
+            _ = new Location("StonePathC") {
+                Title = "Winding path",
+                Description = "You stand upon a winding path, at the mouth of a cave.\r\n" +
+                "The cave in front of you is small and foreboding. Faint traces of sunlight illuminate the ground within.\r\n" +
+                "The path continues to the north and south. The cave beckons.",
+                Exits = {
+                    new Exit("North", "North", "StonePathB"),
+                    new Exit("South", "South", "StonePathD"),
+                    new Exit("Cave", "Cave entrance", "CaveA")
+                }
+            };
         }
     }
 
