@@ -255,7 +255,7 @@ namespace MUDServer {
 
             Asteria.Add(_);
 
-            int n = Program.RNG.Next(16, 30);
+            int n = Program.RNG.Next(16, 26);
             for (int i = 0; i < n; i++) {
                 new Townsperson();
             }
@@ -397,6 +397,7 @@ namespace MUDServer {
             while (true) {
                 if (Program.RNG.NextDouble() >= 0.25) {
                     _State = "resting nearby";
+                    Event.Send(new { Type = EventType.Emote, Sender = this, Text = "sits down to rest." });
 
                     yield return new Sleep((Program.RNG.NextDouble() * 50.0) + 10.0);
 
@@ -414,8 +415,6 @@ namespace MUDServer {
                 }
 
                 yield return new Sleep((Program.RNG.NextDouble() * 8.0) + 4.0);
-
-                Event.Send(new { Type = EventType.Emote, Sender = this, Text = "sits down to rest." });
             }
         }
     }
