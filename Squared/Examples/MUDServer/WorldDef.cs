@@ -6,6 +6,8 @@ using Squared.Task;
 
 namespace MUDServer {
     public static partial class World {
+        public static List<Location> Asteria = new List<Location>();
+
         public static void Create () {
             Location _;
             
@@ -127,7 +129,138 @@ namespace MUDServer {
                 }
             };
 
-            int n = Program.RNG.Next(2, 6);
+            _ = new Location("StonePathD") {
+                Title = "Winding path entrance",
+                Description = "You stand at the end of a winding path hewn from stone.\r\n" +
+                "A path winds to the north through crags and ancient stone.\r\n" +
+                "To the south you see a bustling city.",
+                Exits = {
+                    new Exit("North", "North", "StonePathC"),
+                    new Exit("City", "City entrance", "CityNorth"),
+                }
+            };
+
+            _ = new Location("CityNorthwest") {
+                Title = "Asteria Northwest",
+                Description = "You stand upon a cobblestone street in the northwestern part of the city of Asteria.\r\n" +
+                "The city is quieter here. Homes and apartments line the street, mostly empty as their owners go about their daily business.",
+                Exits = {
+                    new Exit("East", "Asteria North", "CityNorth"),
+                    new Exit("South", "Asteria West", "CityWest"),
+                }
+            };
+
+            Asteria.Add(_);
+
+            _ = new Location("CityNorth") {
+                Title = "Asteria North",
+                Description = "You stand upon a cobblestone street in the northern part of the city of Asteria.\r\n" +
+                "Shops line both sides of the street, bustling with people.",
+                Exits = {
+                    new Exit("North", "Stone path", "StonePathD"),
+                    new Exit("West", "Asteria Northwest", "CityNorthwest"),
+                    new Exit("South", "Asteria City Center", "CityCenter"),
+                    new Exit("East", "Asteria Northeast", "CityNortheast"),
+                }
+            };
+
+            Asteria.Add(_);
+
+            _ = new Location("CityNortheast") {
+                Title = "Asteria Northeast",
+                Description = "You stand upon a cobblestone street in the northeastern part of the city of Asteria.\r\n" +
+                "The city here buzzes with activity. Businesses of all kinds line the street and men and women rush about, seeing to their work.",
+                Exits = {
+                    new Exit("West", "Asteria North", "CityNorth"),
+                    new Exit("South", "Asteria East", "CityEast"),
+                }
+            };
+
+            Asteria.Add(_);
+
+            _ = new Location("CityWest") {
+                Title = "Asteria West",
+                Description = "You stand upon a cobblestone street in the western part of the city of Asteria.\r\n" +
+                "The street is occupied by large, elaborate homes, surrounded by fences and brick walls.",
+                Exits = {
+                    new Exit("North", "Asteria Northwest", "CityNorthwest"),
+                    new Exit("East", "Asteria City Center", "CityCenter"),
+                    new Exit("South", "Asteria Southwest", "CitySouthwest"),
+                }
+            };
+
+            Asteria.Add(_);
+
+            _ = new Location("CityCenter") {
+                Title = "Asteria City Center",
+                Description = "You stand upon the street in the center of the city of Asteria, in front of the town hall building.\r\n" +
+                "The town hall is full of activity at this time of day, with politicians, businessmen, and people of all sort entering and leaving at a steady pace.",
+                Exits = {
+                    new Exit("North", "Asteria North", "CityNorth"),
+                    new Exit("West", "Asteria West", "CityWest"),
+                    new Exit("East", "Asteria East", "CityEast"),
+                    new Exit("South", "Asteria South", "CitySouth"),
+                }
+            };
+
+            Asteria.Add(_);
+
+            _ = new Location("CityEast") {
+                Title = "Asteria East",
+                Description = "You stand upon a cobblestone street in the eastern part of the city of Asteria.\r\n" +
+                "The city is quieter here. Homes and apartments line the street, mostly empty as their owners go about their daily business.",
+                Exits = {
+                    new Exit("North", "Asteria Northeast", "CityNortheast"),
+                    new Exit("West", "Asteria City Center", "CityCenter"),
+                    new Exit("South", "Asteria Southeast", "CitySoutheast"),
+                }
+            };
+
+            Asteria.Add(_);
+
+            _ = new Location("CitySouthwest") {
+                Title = "Asteria Southwest",
+                Description = "You stand upon a cobblestone street in the southwestern part of the city of Asteria.\r\n" +
+                "The city is quieter here. Homes and apartments line the street, mostly empty as their owners go about their daily business.",
+                Exits = {
+                    new Exit("East", "Asteria South", "CitySouth"),
+                    new Exit("North", "Asteria West", "CityWest"),
+                }
+            };
+
+            Asteria.Add(_);
+
+            _ = new Location("CitySouth") {
+                Title = "Asteria South",
+                Description = "You stand upon a cobblestone street in the southern part of the city of Asteria.\r\n" +
+                "Shops line both sides of the street, bustling with people.",
+                Exits = {
+                    new Exit("North", "Asteria City Center", "CityCenter"),
+                    new Exit("West", "Asteria Southwest", "CitySouthwest"),
+                    new Exit("East", "Asteria Southeast", "CitySoutheast"),
+                }
+            };
+
+            Asteria.Add(_);
+
+            _ = new Location("CitySoutheast") {
+                Title = "Asteria Southeast",
+                Description = "You stand upon a cobblestone street in the southeastern part of the city of Asteria.\r\n" +
+                "The city is quieter here. Homes and apartments line the street, mostly empty as their owners go about their daily business.",
+                Exits = {
+                    new Exit("West", "Asteria South", "CitySouth"),
+                    new Exit("North", "Asteria East", "CityEast"),
+                }
+            };
+
+            Asteria.Add(_);
+
+            int n = Program.RNG.Next(16, 30);
+            for (int i = 0; i < n; i++) {
+                new Townsperson();
+            }
+
+            n = Program.RNG.Next(2, 8);
             for (int i = 0; i < n; i++) {
                 new Wanderer();
             }
@@ -257,18 +390,22 @@ namespace MUDServer {
         public Wanderer ()
             : base(World.SelectRandomLocation(), GetDefaultName()) {
             _Description = "A weary traveler";
+            _State = "walking slowly by";
         }
 
         protected override IEnumerator<object> ThinkTask () {
             while (true) {
-                _State = "resting nearby";
+                if (Program.RNG.NextDouble() >= 0.25) {
+                    _State = "resting nearby";
 
-                yield return new Sleep((Program.RNG.NextDouble() * 60.0) + 10.0);
+                    yield return new Sleep((Program.RNG.NextDouble() * 50.0) + 10.0);
 
-                _State = "walking slowly by";
-                Event.Send(new { Type = EventType.Emote, Sender = this, Text = "stands, and continues walking." });
+                    _State = "walking slowly by";
+                    Event.Send(new { Type = EventType.Emote, Sender = this, Text = "stands, and continues walking." });
 
-                yield return new Sleep((Program.RNG.NextDouble() * 4.0) + 6.0);
+                    yield return new Sleep((Program.RNG.NextDouble() * 4.0) + 6.0);
+                }
+
 
                 try {
                     var exit = this.Location.Exits[Program.RNG.Next(0, this.Location.Exits.Count)];
@@ -279,6 +416,69 @@ namespace MUDServer {
                 yield return new Sleep((Program.RNG.NextDouble() * 8.0) + 4.0);
 
                 Event.Send(new { Type = EventType.Emote, Sender = this, Text = "sits down to rest." });
+            }
+        }
+    }
+
+    public class Townsperson : EntityBase {
+        public Townsperson ()
+            : base(World.SelectRandomLocation(World.Asteria), GetDefaultName()) {
+            _Description = "A busy townsperson";
+            _State = "running errands";
+        }
+
+        protected IEnumerator<object> Pause () {
+            yield return new Sleep((Program.RNG.NextDouble() * 30.0) + 8.0);
+        }
+
+        protected IEnumerator<object> LookAround () {
+            var oldState = _State;
+
+            _State = "looking around";
+            Event.Send(new { Type = EventType.Emote, Sender = this, Text = "stops and looks around." });
+
+            yield return new Sleep((Program.RNG.NextDouble() * 6.0) + 4.0);
+
+            _State = oldState;
+        }
+
+        protected IEnumerator<object> Chatter () {
+            var oldState = _State;
+
+            _State = "chatting with a friend";
+            Event.Send(new { Type = EventType.Emote, Sender = this, Text = "spots a friend nearby and stops to chat." });
+
+            yield return new Sleep((Program.RNG.NextDouble() * 22.0) + 8.0);
+
+            _State = oldState;
+        }
+
+        protected IEnumerator<object> Travel () {
+            for (int i = 0; i < 10; i++) {
+                try {
+                    var exit = this.Location.Exits[Program.RNG.Next(0, this.Location.Exits.Count)];
+                    var location = World.Locations[exit.Target.ToLower()];
+                    if (World.Asteria.Contains(location)) {
+                        this.Location = location;
+                        yield break;
+                    }
+                } catch {
+                }
+            }
+        }
+
+        protected override IEnumerator<object> ThinkTask () {
+            Func<IEnumerator<object>>[] actions = {
+                Pause, LookAround, Chatter, Travel
+            };
+
+            while (true) {
+                yield return new Sleep((Program.RNG.NextDouble() * 5.0) + 2.0);
+
+                int nextAction = Program.RNG.Next(0, actions.Length);
+                var action = actions[nextAction];
+
+                yield return action();
             }
         }
     }

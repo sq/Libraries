@@ -16,6 +16,12 @@ namespace MUDServer {
             string key = Locations.Keys.ElementAt(keyIndex);
             return Locations[key];
         }
+
+        public static Location SelectRandomLocation (List<Location> locations) {
+            int count = locations.Count;
+            int index = Program.RNG.Next(0, count);
+            return locations[index];
+        }
     }
 
     public struct Exit {
