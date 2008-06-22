@@ -30,5 +30,19 @@ namespace Squared.Util {
             Assert.AreEqual(4, pq.Dequeue());
             Assert.AreEqual(10, pq.Dequeue());
         }
+
+        [Test]
+        public void CustomComparer () {
+            var pq = new PriorityQueue<int>();
+            pq.Comparer = (lhs, rhs) => (10 - lhs).CompareTo(10 - rhs);
+            pq.Enqueue(5);
+            pq.Enqueue(3);
+            pq.Enqueue(10);
+            pq.Enqueue(1);
+            Assert.AreEqual(10, pq.Dequeue());
+            Assert.AreEqual(5, pq.Dequeue());
+            Assert.AreEqual(3, pq.Dequeue());
+            Assert.AreEqual(1, pq.Dequeue());
+        }
     }
 }
