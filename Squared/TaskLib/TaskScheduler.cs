@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
+using Squared.Util;
 
 namespace Squared.Task {
-    delegate object SleeperDelegate(long now);
-
     public interface ISchedulable {
         void Schedule (TaskScheduler scheduler, Future future);
     }
@@ -158,14 +157,33 @@ namespace Squared.Task {
         }
     }
 
+    struct SleepItem : IComparable<SleepItem> {
+        public long Until;
+        public Future Future;
+
+        public bool Tick (long now) {
+            long ticksLeft = Math.Max(Until - now, 0);
+            if (ticksLeft == 0) {
+                Future.Complete();
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        public int CompareTo (SleepItem rhs) {
+            return Until.CompareTo(rhs.Until);
+        }
+    }
+
     public class TaskScheduler : IDisposable {
         const long SleepFudgeFactor = 100;
         const long MinimumSleepLength = 15000;
 
         private JobQueue _JobQueue = new JobQueue();
         private Queue<Action> _StepListeners = new Queue<Action>();
-        private WorkerThread<SleeperDelegate> _SleepWorker;
-        private WorkerThread<BoundWaitHandle> _WaitWorker;
+        private WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
+        private WorkerThread<List<BoundWaitHandle>> _WaitWorker;
 
         public bool WaitForWorkItems () {
             return WaitForWorkItems(0);
@@ -232,52 +250,38 @@ namespace Squared.Task {
             _StepListeners.Enqueue(listener);
         }
 
-        internal static void SleepWorkerThreadFunc (List<SleeperDelegate> pendingSleeps, ManualResetEvent newSleepEvent) {
+        internal static void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, ManualResetEvent newSleepEvent) {
             var tempHandle = new ManualResetEvent(false);
             while (true) {
-                SleeperDelegate[] sleepers;
-                lock (pendingSleeps) {
-                    sleepers = pendingSleeps.ToArray();
-                }
-                if (sleepers.Length == 0) {
+                SleepItem currentSleep;
+                try {
+                    lock (pendingSleeps)
+                        currentSleep = pendingSleeps.Peek();
+                } catch (InvalidOperationException) {
                     newSleepEvent.WaitOne();
                     newSleepEvent.Reset();
                     continue;
                 }
 
-                object sleepUntil = null;
-                var killList = new List<SleeperDelegate>();
-                foreach (SleeperDelegate sleeper in sleepers) {
-                    long now = DateTime.Now.Ticks;
-                    object r = sleeper(now);
-                    if (r == null) {
-                        killList.Add(sleeper);
-                    } else if (sleepUntil != null) {
-                        sleepUntil = Math.Min((long)sleepUntil, (long)r);
-                    } else {
-                        sleepUntil = r;
-                    }
+                long now = DateTime.Now.Ticks;
+                if (currentSleep.Tick(now)) {
+                    lock (pendingSleeps)
+                        pendingSleeps.Dequeue();
+                    continue;
                 }
 
-                lock (pendingSleeps) {
-                    pendingSleeps.RemoveAll(killList.Contains);
-                }
+                long sleepUntil = currentSleep.Until;
 
-                if (sleepUntil != null) {
-                    long sleepUntilValue = (long)sleepUntil;
-                    long timeToSleep = (sleepUntilValue - DateTime.Now.Ticks) + SleepFudgeFactor;
-                    if (timeToSleep > 0) {
-                        if (timeToSleep < MinimumSleepLength)
-                            timeToSleep = MinimumSleepLength;
-                        try {
-                            newSleepEvent.Reset();
-                            int result = WaitHandle.WaitAny(new WaitHandle[] { newSleepEvent }, TimeSpan.FromTicks(timeToSleep), true);
-                            if (result == 0) {
-                                continue;
-                            }
-                        } catch (ThreadInterruptedException) {
-                            break;
-                        }
+                long timeToSleep = (sleepUntil - DateTime.Now.Ticks) + SleepFudgeFactor;
+                if (timeToSleep > 0) {
+                    if (timeToSleep < MinimumSleepLength)
+                        timeToSleep = MinimumSleepLength;
+                    try {
+                        newSleepEvent.Reset();
+                        if (newSleepEvent.WaitOne(TimeSpan.FromTicks(timeToSleep), true))
+                            continue;
+                    } catch (ThreadInterruptedException) {
+                        break;
                     }
                 }
             }
@@ -313,22 +317,9 @@ namespace Squared.Task {
             }
         }
 
-        internal static SleeperDelegate BuildSleeper (long completeWhen, Future future) {
-            SleeperDelegate sleeper = (long now) => {
-                long ticksLeft = Math.Max(completeWhen - now, 0);
-                if (ticksLeft == 0) {
-                    future.Complete();
-                    return null;
-                } else {
-                    return completeWhen;
-                }
-            };
-            return sleeper;
-        }
-
         public TaskScheduler (bool threadSafe) {
-            _SleepWorker = new WorkerThread<SleeperDelegate>(SleepWorkerThreadFunc, ThreadPriority.AboveNormal);
-            _WaitWorker = new WorkerThread<BoundWaitHandle>(WaitWorkerThreadFunc, ThreadPriority.AboveNormal);
+            _SleepWorker = new WorkerThread<PriorityQueue<SleepItem>>(SleepWorkerThreadFunc, ThreadPriority.AboveNormal);
+            _WaitWorker = new WorkerThread<List<BoundWaitHandle>>(WaitWorkerThreadFunc, ThreadPriority.AboveNormal);
             _JobQueue.ThreadSafe = threadSafe;
         }
 
@@ -339,21 +330,22 @@ namespace Squared.Task {
         internal void QueueWait (WaitHandle handle, Future future) {
             BoundWaitHandle wait = new BoundWaitHandle(handle, future);
 
-            _WaitWorker.QueueWorkItem(wait);
+            lock (_WaitWorker.WorkItems)
+                _WaitWorker.WorkItems.Add(wait);
+            _WaitWorker.Wake();
 
             future.RegisterOnDispose((_) => {
-                _WaitWorker.DequeueWorkItem(wait);
+                lock (_WaitWorker.WorkItems)
+                    _WaitWorker.WorkItems.Remove(wait);
             });
         }
 
         internal void QueueSleep (long completeWhen, Future future) {
-            SleeperDelegate sleeper = TaskScheduler.BuildSleeper(completeWhen, future);
+            SleepItem sleep = new SleepItem { Until = completeWhen, Future = future };
 
-            _SleepWorker.QueueWorkItem(sleeper);
-
-            future.RegisterOnDispose((_) => {
-                _SleepWorker.DequeueWorkItem(sleeper);
-            });
+            lock (_SleepWorker.WorkItems)
+                _SleepWorker.WorkItems.Enqueue(sleep);
+            _SleepWorker.Wake();
         }
 
         public void Step () {

@@ -7,30 +7,35 @@ namespace Squared.Task {
     public delegate void OnComplete(Future future, object value, Exception error);
     public delegate void OnDispose(Future future);
 
+    [Serializable]
     public class FutureException : Exception {
         public FutureException (string message, Exception innerException)
             : base(message, innerException) {
         }
     }
 
+    [Serializable]
     public class FutureAlreadyHasResultException : InvalidOperationException {
         public FutureAlreadyHasResultException ()
             : base("Future already has a result") {
         }
     }
 
+    [Serializable]
     public class FutureHasNoResultException : InvalidOperationException {
         public FutureHasNoResultException ()
             : base("Future does not yet have a result") {
         }
     }
 
+    [Serializable]
     public class FutureDisposedException : InvalidOperationException {
         public FutureDisposedException ()
             : base("Future is disposed") {
         }
     }
 
+    [Serializable]
     public class FutureHandlerException : Exception {
         Delegate Handler;
 

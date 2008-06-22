@@ -118,5 +118,16 @@ namespace Squared.Util {
 
             return result;
         }
+
+        public T Peek () {
+            if (_Count <= 0)
+                throw new InvalidOperationException("The queue is empty.");
+
+            return _Buffer[0];
+        }
+
+        public void Clear () {
+            _Count = 0;
+        }
     }
 }

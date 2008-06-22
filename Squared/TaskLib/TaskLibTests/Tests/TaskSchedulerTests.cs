@@ -768,11 +768,15 @@ namespace Squared.Task {
     }
 
     public class SleepyEntity : Entity<SleepyEntity> {
-        public SleepyEntity (int seed, List<SleepyEntity> entities)
+        int[] _Counter;
+
+        public SleepyEntity (int seed, List<SleepyEntity> entities, int[] counter)
             : base(seed, entities) {
+            _Counter = counter;
         }
 
         protected override object GetWaiter () {
+            Interlocked.Increment(ref _Counter[0]);
             return new Sleep(rng.NextDouble() * 0.1);
         }
     }
@@ -862,34 +866,31 @@ namespace Squared.Task {
         [Test]
         public void TestLotsOfSleepyEntities () {
             int numEntities = 1500;
-            int numIterations = 0;
-            double duration = 3.0;
+            int numIterations = 200 * numEntities;
+            int[] iterationCounter = new int[1];
 
             var entities = new List<SleepyEntity>();
             for (int i = 0; i < numEntities; i++)
-                entities.Add(new SleepyEntity(i, entities));
+                entities.Add(new SleepyEntity(i, entities, iterationCounter));
 
             foreach (var e in entities)
                 e.Start(Scheduler);
 
-            long elapsed = 0;
-            long desiredTicks = TimeSpan.FromSeconds(duration).Ticks;
             int j = 0;
 
-            while (elapsed < desiredTicks) {
+            long timeStart = DateTime.Now.Ticks;
+            while (iterationCounter[0] < numIterations) {
                 Scheduler.WaitForWorkItems(1.0);
-                long timeStart = DateTime.Now.Ticks;
                 Scheduler.Step();
-                long timeEnd = DateTime.Now.Ticks;
-                elapsed += (timeEnd - timeStart);
                 j += 1;
-                if ((j % 1000) == 0) {
+                if ((j % 800) == 0) {
                     Console.Out.WriteLine(".");
                 } else if ((j % 10) == 0) {
                     Console.Out.Write(".");
                 }
-                numIterations += 1;
             }
+            long timeEnd = DateTime.Now.Ticks;
+            long elapsed = (timeEnd - timeStart);
 
             Console.Out.WriteLine("");
 
@@ -899,7 +900,7 @@ namespace Squared.Task {
 
             double elapsedSeconds = TimeSpan.FromTicks(elapsed).TotalSeconds;
 
-            Console.WriteLine("{0} iterations in {1:N2} secs of processing time. {2} entity steps @ {3} entities/sec", numIterations, elapsedSeconds, totalEntitySteps, totalEntitySteps / elapsedSeconds);
+            Console.WriteLine("{0} iterations in {1:N2} secs. {2} entity steps @ {3} entities/sec", j, elapsedSeconds, totalEntitySteps, totalEntitySteps / elapsedSeconds);
         }
 
         [Test]
