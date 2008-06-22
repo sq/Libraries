@@ -142,7 +142,20 @@ namespace Squared.Task {
                 f.Fail(new SocketDisconnectedException());
             } else {
                 SocketError errorCode;
-                _Socket.BeginReceive(buffer, offset, count, SocketFlags.None, out errorCode, ReadCallback, f);
+                if (_Socket.Available >= count) {
+                    try {
+                        int bytesRead = _Socket.Receive(buffer, offset, count, SocketFlags.None, out errorCode);
+                        if (bytesRead == 0) {
+                            f.Fail(new SocketDisconnectedException());
+                        } else {
+                            f.Complete(bytesRead);
+                        }
+                    } catch (Exception ex) {
+                        f.Fail(ex);
+                    }
+                } else {
+                    _Socket.BeginReceive(buffer, offset, count, SocketFlags.None, out errorCode, ReadCallback, f);
+                }
             }
             return f;
         }
