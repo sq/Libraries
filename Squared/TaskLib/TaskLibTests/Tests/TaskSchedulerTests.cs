@@ -798,7 +798,7 @@ namespace Squared.Task {
         }
 
         public IEnumerator<object> Talk () {
-            int state = 10;
+            int state = 30;
             while (true) {
                 NumSteps += 1;
                 if (state <= 0)
@@ -930,6 +930,79 @@ namespace Squared.Task {
                 numEntitySteps += e.NumSteps;
 
             Console.WriteLine("Took {0:N2} secs for {1} iterations. {2:N1} entities/sec", elapsed.TotalSeconds, numSteps, numEntitySteps / elapsed.TotalSeconds);
+        }
+    }
+
+    [TestFixture]
+    public class ClockTests {
+        TaskScheduler Scheduler;
+
+        [SetUp]
+        public void SetUp () {
+            Scheduler = new TaskScheduler(true);
+        }
+
+        [TearDown]
+        public void TearDown () {
+            if (Scheduler != null)
+                Scheduler.Dispose();
+            Scheduler = null;
+            GC.Collect();
+        }
+
+        [Test]
+        public void BasicTest () {
+            Clock clock = Scheduler.CreateClock(0.25);
+            Assert.AreEqual(0, clock.ElapsedTicks);
+            Thread.Sleep(2075);
+            Assert.AreEqual(8, clock.ElapsedTicks);
+        }
+
+        [Test]
+        public void WaitForTick () {
+            Clock clock = Scheduler.CreateClock(0.25);
+            long startTime = DateTime.Now.Ticks;
+
+            Future f = clock.WaitForTick(1);
+            f.GetCompletionEvent().WaitOne();
+            long endTime = DateTime.Now.Ticks;
+            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.26).Ticks);
+
+            f = clock.WaitForTick(2);
+            f.GetCompletionEvent().WaitOne();
+            endTime = DateTime.Now.Ticks;
+            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.51).Ticks);
+        }
+
+        [Test]
+        public void WaitForNextTick () {
+            Clock clock = Scheduler.CreateClock(0.25);
+            long startTime = DateTime.Now.Ticks;
+
+            Future f = clock.WaitForNextTick();
+            f.GetCompletionEvent().WaitOne();
+            long endTime = DateTime.Now.Ticks;
+            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.26).Ticks);
+
+            f = clock.WaitForNextTick();
+            f.GetCompletionEvent().WaitOne();
+            endTime = DateTime.Now.Ticks;
+            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.51).Ticks);
+        }
+
+        [Test]
+        public void MultipleScheduledWaits () {
+            var trace = new List<int>();
+
+            Clock clock = Scheduler.CreateClock(0.25);
+            clock.WaitForTick(5).RegisterOnComplete((f, r, e) => { trace.Add(1); });
+            clock.WaitForTick(7).RegisterOnComplete((f, r, e) => { trace.Add(2); });
+            clock.WaitForTick(3).RegisterOnComplete((f, r, e) => { trace.Add(3); });
+            clock.WaitForTick(1).RegisterOnComplete((f, r, e) => { trace.Add(4); });
+
+            Thread.Sleep(2075);
+
+            Assert.AreEqual(new int[] { 4, 3, 1, 2 }, trace.ToArray());
         }
     }
 }

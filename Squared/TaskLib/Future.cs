@@ -75,6 +75,7 @@ namespace Squared.Task {
                 Monitor.Exit(this);
                 try {
                     item(this);
+                } catch (ThreadAbortException) {
                 } catch (Exception ex) {
                     throw new FutureHandlerException(item, ex);
                 } finally {
@@ -89,6 +90,7 @@ namespace Squared.Task {
                 Monitor.Exit(this);
                 try {
                     item(this, result, error);
+                } catch (ThreadAbortException) {
                 } catch (Exception ex) {
                     throw new FutureHandlerException(item, ex);
                 } finally {
