@@ -132,7 +132,7 @@ namespace Squared.Task {
         long _EndWhen;
 
         public Sleep (double duration) {
-            _EndWhen = DateTime.Now.AddSeconds(duration).Ticks;
+            _EndWhen = DateTime.UtcNow.AddSeconds(duration).Ticks;
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {

@@ -33,9 +33,15 @@ namespace Squared.Task {
 
         internal Clock (TaskScheduler scheduler, double tickInterval) {
             _Scheduler = scheduler;
-            _LastTick = _CreatedWhen = DateTime.Now.Ticks;
+            _LastTick = _CreatedWhen = DateTime.UtcNow.Ticks;
             _TickInterval = TimeSpan.FromSeconds(tickInterval).Ticks;
             ScheduleNextTick();
+        }
+
+        public double Interval {
+            get {
+                return TimeSpan.FromTicks(_TickInterval).TotalSeconds;
+            }
         }
 
         public int ElapsedTicks {
@@ -47,13 +53,14 @@ namespace Squared.Task {
         private void OnTick (Future f, object r, Exception e) {
             _LastTick += _TickInterval;
             int thisTick = Interlocked.Increment(ref _ElapsedTicks);
-            try {
+            if (_WaitingTicks.Count != 0) {
                 TickWaiter tw = _WaitingTicks.Peek();
                 while (tw.Tick(thisTick)) {
                     _WaitingTicks.Dequeue();
+                    if (_WaitingTicks.Count == 0)
+                        break;
                     tw = _WaitingTicks.Peek();
                 }
-            } catch (InvalidOperationException) {
             }
             ScheduleNextTick();
         }

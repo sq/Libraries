@@ -100,10 +100,10 @@ namespace Squared.Task {
         [Test]
         public void YieldEnumeratorTest () {
             var buf = new int[1];
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             var f = Scheduler.Start(TaskYieldEnumerator(buf));
             Scheduler.Step();
-            long timeEnd = DateTime.Now.Ticks;
+            long timeEnd = DateTime.UtcNow.Ticks;
             TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
             Assert.AreEqual(1000000, buf[0]);
         }
@@ -135,10 +135,10 @@ namespace Squared.Task {
         [Test]
         public void LongLivedWorkerTest () {
             var buf = new int[1];
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             var f = Scheduler.Start(TaskLongLivedWorker(buf));
             Scheduler.Step();
-            long timeEnd = DateTime.Now.Ticks;
+            long timeEnd = DateTime.UtcNow.Ticks;
             TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
             Assert.AreEqual(1000000, buf[0]);
             Console.WriteLine("Took {0:N2} secs for {1} iterations. {2:N1} iterations/sec", elapsed.TotalSeconds, buf[0], 1.0 * buf[0] / elapsed.TotalSeconds);
@@ -174,11 +174,11 @@ namespace Squared.Task {
         [Test]
         public void StepPerformanceTest () {
             var buf = new int[1];
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             var f = Scheduler.Start(TaskLongLivedWorkerStepWaiter(buf));
             while (Scheduler.HasPendingTasks)
                 Scheduler.Step();
-            long timeEnd = DateTime.Now.Ticks;
+            long timeEnd = DateTime.UtcNow.Ticks;
             TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
             Assert.AreEqual(1000000, buf[0]);
             Console.WriteLine("Took {0:N2} secs for {1} steps. {2:N1} steps/sec", elapsed.TotalSeconds, buf[0], 1.0 * buf[0] / elapsed.TotalSeconds);
@@ -191,9 +191,9 @@ namespace Squared.Task {
             for (int i = 0; i < 25; i++) {
                 futures.Add(Scheduler.Start(TaskLongLivedWorker(buf)));
             }
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             Scheduler.Step();
-            long timeEnd = DateTime.Now.Ticks;
+            long timeEnd = DateTime.UtcNow.Ticks;
             TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
             Assert.AreEqual(1000000 * 25, buf[0]);
             Console.WriteLine("Took {0:N2} secs for {1} iterations. {2:N1} iterations/sec", elapsed.TotalSeconds, buf[0], 1.0 * buf[0] / elapsed.TotalSeconds);
@@ -248,10 +248,10 @@ namespace Squared.Task {
             int timeScale = 25;
             var f = Scheduler.Start(new Sleep(duration));
             
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             Scheduler.Step();
             f.GetCompletionEvent().WaitOne();
-            long timeEnd = DateTime.Now.Ticks;
+            long timeEnd = DateTime.UtcNow.Ticks;
 
             long elapsed = (long)Math.Round(TimeSpan.FromTicks(timeEnd - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(duration * timeScale, elapsed);
@@ -264,19 +264,19 @@ namespace Squared.Task {
             var b = Scheduler.Start(new Sleep(2));
             var c = Scheduler.Start(new Sleep(4));
             
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             Scheduler.Step();
 
             a.GetCompletionEvent().WaitOne();
-            long elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
+            long elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.UtcNow.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(1 * timeScale, elapsed);
 
             b.GetCompletionEvent().WaitOne();
-            elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
+            elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.UtcNow.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(2 * timeScale, elapsed);
 
             c.GetCompletionEvent().WaitOne();
-            elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
+            elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.UtcNow.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(4 * timeScale, elapsed);
         }
 
@@ -285,34 +285,34 @@ namespace Squared.Task {
             int timeScale = 10;
             var a = Scheduler.Start(new Sleep(1));
 
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
 
             Scheduler.Step();
             a.GetCompletionEvent().WaitOne();
 
-            long elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
+            long elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.UtcNow.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(1 * timeScale, elapsed);
 
             System.Threading.Thread.Sleep(500);
 
             var b = Scheduler.Start(new Sleep(2));
-            timeStart = DateTime.Now.Ticks; 
+            timeStart = DateTime.UtcNow.Ticks; 
 
             Scheduler.Step();
             b.GetCompletionEvent().WaitOne();
 
-            elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
+            elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.UtcNow.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(2 * timeScale, elapsed);
 
             System.Threading.Thread.Sleep(500);
 
             var c = Scheduler.Start(new Sleep(4));
-            timeStart = DateTime.Now.Ticks; 
+            timeStart = DateTime.UtcNow.Ticks; 
 
             Scheduler.Step();
             c.GetCompletionEvent().WaitOne();
 
-            elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
+            elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.UtcNow.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(4 * timeScale, elapsed);
         }
 
@@ -321,13 +321,13 @@ namespace Squared.Task {
             int duration = 2;
             int timeScale = 25;
             
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             var f = Scheduler.Start(new SleepUntil(new DateTime(timeStart).AddSeconds(duration).Ticks));
 
             Scheduler.Step();
             f.GetCompletionEvent().WaitOne();
 
-            long elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.Now.Ticks - timeStart).TotalSeconds * timeScale);
+            long elapsed = (long)Math.Round(TimeSpan.FromTicks(DateTime.UtcNow.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(duration * timeScale, elapsed);
         }
 
@@ -342,10 +342,10 @@ namespace Squared.Task {
 
             GC.Collect();
 
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             c.GetCompletionEvent().WaitOne();
             Assert.AreEqual(b, c.Result);
-            long timeEnd = DateTime.Now.Ticks;
+            long timeEnd = DateTime.UtcNow.Ticks;
 
             long elapsed = (long)Math.Round(TimeSpan.FromTicks(timeEnd - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(duration * timeScale, elapsed);
@@ -534,11 +534,11 @@ namespace Squared.Task {
             GC.WaitForPendingFinalizers();
             Thread.Sleep(500);
 
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             e.Set();
 
             f.GetCompletionEvent().WaitOne();
-            long elapsed = DateTime.Now.Ticks - timeStart;
+            long elapsed = DateTime.UtcNow.Ticks - timeStart;
             Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(5).Ticks);
         }
 
@@ -555,13 +555,13 @@ namespace Squared.Task {
             GC.WaitForPendingFinalizers();
             Thread.Sleep(500);
 
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             a.Set();
             b.Set();
             c.Set();
 
             f.GetCompletionEvent().WaitOne();
-            long elapsed = DateTime.Now.Ticks - timeStart;
+            long elapsed = DateTime.UtcNow.Ticks - timeStart;
             Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(5).Ticks);
         }
     }
@@ -595,11 +595,11 @@ namespace Squared.Task {
                 });
             });
 
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             Scheduler.Step();
             Scheduler.WaitForWorkItems();
             Scheduler.Step();
-            long elapsed = DateTime.Now.Ticks - timeStart;
+            long elapsed = DateTime.UtcNow.Ticks - timeStart;
             Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(2001).Ticks);
             Assert.AreEqual(1, vh.Value);
         }
@@ -848,13 +848,13 @@ namespace Squared.Task {
             foreach (var e in entities)
                 e.Start(Scheduler);
 
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
 
             for (int j = 0; j < numSteps; j++) {
                 Scheduler.Step();
             }
 
-            long timeEnd = DateTime.Now.Ticks;
+            long timeEnd = DateTime.UtcNow.Ticks;
             TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
 
             foreach (var e in entities)
@@ -878,7 +878,7 @@ namespace Squared.Task {
 
             int j = 0;
 
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
             while (iterationCounter[0] < numIterations) {
                 Scheduler.WaitForWorkItems(1.0);
                 Scheduler.Step();
@@ -889,7 +889,7 @@ namespace Squared.Task {
                     Console.Out.Write(".");
                 }
             }
-            long timeEnd = DateTime.Now.Ticks;
+            long timeEnd = DateTime.UtcNow.Ticks;
             long elapsed = (timeEnd - timeStart);
 
             Console.Out.WriteLine("");
@@ -915,14 +915,14 @@ namespace Squared.Task {
             foreach (var e in entities)
                 e.Start(Scheduler);
 
-            long timeStart = DateTime.Now.Ticks;
+            long timeStart = DateTime.UtcNow.Ticks;
 
             while (Scheduler.HasPendingTasks) {
                 numSteps += 1;
                 Scheduler.Step();
             }
 
-            long timeEnd = DateTime.Now.Ticks;
+            long timeEnd = DateTime.UtcNow.Ticks;
             TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
 
             int numEntitySteps = 0;
@@ -961,32 +961,32 @@ namespace Squared.Task {
         [Test]
         public void WaitForTick () {
             Clock clock = Scheduler.CreateClock(0.25);
-            long startTime = DateTime.Now.Ticks;
+            long startTime = DateTime.UtcNow.Ticks;
 
             Future f = clock.WaitForTick(1);
             f.GetCompletionEvent().WaitOne();
-            long endTime = DateTime.Now.Ticks;
+            long endTime = DateTime.UtcNow.Ticks;
             Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.26).Ticks);
 
             f = clock.WaitForTick(2);
             f.GetCompletionEvent().WaitOne();
-            endTime = DateTime.Now.Ticks;
+            endTime = DateTime.UtcNow.Ticks;
             Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.51).Ticks);
         }
 
         [Test]
         public void WaitForNextTick () {
             Clock clock = Scheduler.CreateClock(0.25);
-            long startTime = DateTime.Now.Ticks;
+            long startTime = DateTime.UtcNow.Ticks;
 
             Future f = clock.WaitForNextTick();
             f.GetCompletionEvent().WaitOne();
-            long endTime = DateTime.Now.Ticks;
+            long endTime = DateTime.UtcNow.Ticks;
             Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.26).Ticks);
 
             f = clock.WaitForNextTick();
             f.GetCompletionEvent().WaitOne();
-            endTime = DateTime.Now.Ticks;
+            endTime = DateTime.UtcNow.Ticks;
             Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.51).Ticks);
         }
 

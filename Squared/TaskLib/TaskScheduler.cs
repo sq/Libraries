@@ -150,7 +150,7 @@ namespace Squared.Task {
                     continue;
                 }
 
-                long now = DateTime.Now.Ticks;
+                long now = DateTime.UtcNow.Ticks;
                 if (currentSleep.Tick(now)) {
                     lock (pendingSleeps)
                         pendingSleeps.Dequeue();
@@ -159,7 +159,7 @@ namespace Squared.Task {
 
                 long sleepUntil = currentSleep.Until;
 
-                long timeToSleep = (sleepUntil - DateTime.Now.Ticks) + SleepFudgeFactor;
+                long timeToSleep = (sleepUntil - DateTime.UtcNow.Ticks) + SleepFudgeFactor;
                 if (timeToSleep > 0) {
                     if (timeToSleep < MinimumSleepLength)
                         timeToSleep = MinimumSleepLength;
