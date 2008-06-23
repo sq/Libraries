@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using Squared.Util;
 
 namespace Squared.Task {
     /// <summary>
@@ -132,7 +133,7 @@ namespace Squared.Task {
         long _EndWhen;
 
         public Sleep (double duration) {
-            _EndWhen = DateTime.UtcNow.AddSeconds(duration).Ticks;
+            _EndWhen = Time.Ticks + TimeSpan.FromSeconds(duration).Ticks;
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {

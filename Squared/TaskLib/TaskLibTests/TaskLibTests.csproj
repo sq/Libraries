@@ -55,6 +55,10 @@
     <Compile Include="Tests\TaskSchedulerTests.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Util\Util.csproj">
+      <Project>{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}</Project>
+      <Name>Util</Name>
+    </ProjectReference>
     <ProjectReference Include="..\TaskLib.csproj">
       <Project>{173ABDCA-7278-46FF-A300-D3BF8CCEF181}</Project>
       <Name>TaskLib</Name>

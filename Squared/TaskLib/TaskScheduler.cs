@@ -64,8 +64,9 @@ namespace Squared.Task {
     }
 
     public class TaskScheduler : IDisposable {
-        const long SleepFudgeFactor = 100;
-        const long MinimumSleepLength = 15000;
+        const long SleepFudgeFactor = 10;
+        const long MinimumSleepLength = 10000;
+        const long MaximumSleepLength = Time.SecondInTicks * 60;
 
         private JobQueue _JobQueue = new JobQueue();
         private Queue<Action> _StepListeners = new Queue<Action>();
@@ -138,35 +139,42 @@ namespace Squared.Task {
         }
 
         internal static void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, ManualResetEvent newSleepEvent) {
-            var tempHandle = new ManualResetEvent(false);
             while (true) {
-                SleepItem currentSleep;
-                try {
-                    lock (pendingSleeps)
-                        currentSleep = pendingSleeps.Peek();
-                } catch (InvalidOperationException) {
-                    newSleepEvent.WaitOne();
-                    newSleepEvent.Reset();
-                    continue;
-                }
+                long now = Time.Ticks;
 
-                long now = DateTime.UtcNow.Ticks;
-                if (currentSleep.Tick(now)) {
-                    lock (pendingSleeps)
+                SleepItem currentSleep;
+                Monitor.Enter(pendingSleeps);
+                if (pendingSleeps.Count > 0) {
+                    currentSleep = pendingSleeps.Peek();
+                    if (currentSleep.Tick(now)) {
                         pendingSleeps.Dequeue();
+                        Monitor.Exit(pendingSleeps);
+                        continue;
+                    } else {
+                        Monitor.Exit(pendingSleeps);
+                    }
+                } else {
+                    Monitor.Exit(pendingSleeps);
+                    newSleepEvent.WaitOne(-1, true);
+                    newSleepEvent.Reset();
                     continue;
                 }
 
                 long sleepUntil = currentSleep.Until;
 
-                long timeToSleep = (sleepUntil - DateTime.UtcNow.Ticks) + SleepFudgeFactor;
+                now = Time.Ticks;
+                long timeToSleep = (sleepUntil - now) + SleepFudgeFactor;
                 if (timeToSleep > 0) {
                     if (timeToSleep < MinimumSleepLength)
                         timeToSleep = MinimumSleepLength;
+                    if (timeToSleep > MaximumSleepLength)
+                        timeToSleep = MaximumSleepLength;
+
+                    long estWakeTime = now + timeToSleep;
                     try {
                         newSleepEvent.Reset();
-                        if (newSleepEvent.WaitOne(TimeSpan.FromTicks(timeToSleep), true))
-                            continue;
+                        newSleepEvent.WaitOne(TimeSpan.FromTicks(timeToSleep), true);
+                        long wakeTime = Time.Ticks;
                     } catch (ThreadInterruptedException) {
                         break;
                     }
@@ -228,6 +236,12 @@ namespace Squared.Task {
         }
 
         internal void QueueSleep (long completeWhen, Future future) {
+            long now = Time.Ticks;
+            if (now > completeWhen) {
+                future.Complete();
+                return;
+            }
+
             SleepItem sleep = new SleepItem { Until = completeWhen, Future = future };
 
             lock (_SleepWorker.WorkItems)

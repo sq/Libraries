@@ -33,7 +33,7 @@ namespace Squared.Task {
 
         internal Clock (TaskScheduler scheduler, double tickInterval) {
             _Scheduler = scheduler;
-            _LastTick = _CreatedWhen = DateTime.UtcNow.Ticks;
+            _LastTick = _CreatedWhen = Time.Ticks;
             _TickInterval = TimeSpan.FromSeconds(tickInterval).Ticks;
             ScheduleNextTick();
         }
