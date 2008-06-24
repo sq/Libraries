@@ -11,7 +11,6 @@ namespace Squared.Task {
         public bool Tick (int currentTick) {
             long ticksLeft = Math.Max(Until - currentTick, 0);
             if (ticksLeft == 0) {
-                Future.Complete();
                 return true;
             } else {
                 return false;
@@ -50,19 +49,26 @@ namespace Squared.Task {
             }
         }
 
-        private void OnTick (Future f, object r, Exception e) {
+        private void Tick () {
             _LastTick += _TickInterval;
             int thisTick = Interlocked.Increment(ref _ElapsedTicks);
-            if (_WaitingTicks.Count != 0) {
-                TickWaiter tw = _WaitingTicks.Peek();
+            var completedWaits = new List<Future>();
+            TickWaiter tw;
+            if (_WaitingTicks.Peek(out tw)) {
                 while (tw.Tick(thisTick)) {
+                    completedWaits.Add(tw.Future);
                     _WaitingTicks.Dequeue();
-                    if (_WaitingTicks.Count == 0)
+                    if (!_WaitingTicks.Peek(out tw))
                         break;
-                    tw = _WaitingTicks.Peek();
                 }
             }
+            foreach (Future cwf in completedWaits)
+                cwf.Complete();
             ScheduleNextTick();
+        }
+
+        private void OnTick (Future f, object r, Exception e) {
+            _Scheduler.QueueWorkItem(Tick);
         }
 
         private void ScheduleNextTick () {
@@ -72,6 +78,12 @@ namespace Squared.Task {
         }
 
         public Future WaitForTick (int tick) {
+            TickWaiter tw;
+            if (_WaitingTicks.Peek(out tw)) {
+                if (tw.Until == tick)
+                    return tw.Future;
+            }
+
             Future f = new Future();
             _WaitingTicks.Enqueue(new TickWaiter { Until = tick, Future = f });
             return f;

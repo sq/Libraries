@@ -119,11 +119,14 @@ namespace Squared.Util {
             return result;
         }
 
-        public T Peek () {
-            if (_Count <= 0)
-                throw new InvalidOperationException("The queue is empty.");
-
-            return _Buffer[0];
+        public bool Peek (out T result) {
+            if (_Count <= 0) {
+                result = default(T);
+                return false;
+            } else {
+                result = _Buffer[0];
+                return true;
+            }
         }
 
         public void Clear () {

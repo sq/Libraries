@@ -144,8 +144,7 @@ namespace Squared.Task {
 
                 SleepItem currentSleep;
                 Monitor.Enter(pendingSleeps);
-                if (pendingSleeps.Count > 0) {
-                    currentSleep = pendingSleeps.Peek();
+                if (pendingSleeps.Peek(out currentSleep)) {
                     if (currentSleep.Tick(now)) {
                         pendingSleeps.Dequeue();
                         Monitor.Exit(pendingSleeps);

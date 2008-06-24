@@ -967,12 +967,12 @@ namespace Squared.Task {
             Future f = clock.WaitForTick(1);
             f.GetCompletionEvent().WaitOne();
             long endTime = Time.Ticks;
-            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.26).Ticks);
+            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.27).Ticks);
 
             f = clock.WaitForTick(2);
             f.GetCompletionEvent().WaitOne();
             endTime = Time.Ticks;
-            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.51).Ticks);
+            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.52).Ticks);
         }
 
         [Test]
@@ -983,12 +983,12 @@ namespace Squared.Task {
             Future f = clock.WaitForNextTick();
             f.GetCompletionEvent().WaitOne();
             long endTime = Time.Ticks;
-            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.26).Ticks);
+            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.27).Ticks);
 
             f = clock.WaitForNextTick();
             f.GetCompletionEvent().WaitOne();
             endTime = Time.Ticks;
-            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.51).Ticks);
+            Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.52).Ticks);
         }
 
         [Test]

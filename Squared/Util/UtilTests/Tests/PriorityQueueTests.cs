@@ -48,23 +48,23 @@ namespace Squared.Util {
         [Test]
         public void Peek () {
             var pq = new PriorityQueue<int>(new int[] {1, 2, 3});
-            Assert.AreEqual(1, pq.Peek());
+            int temp;
+            Assert.IsTrue(pq.Peek(out temp));
+            Assert.AreEqual(1, temp);
             Assert.AreEqual(1, pq.Dequeue());
-            Assert.AreEqual(2, pq.Peek());
+            Assert.IsTrue(pq.Peek(out temp));
+            Assert.AreEqual(2, temp);
         }
 
         [Test]
         public void Clear () {
             var pq = new PriorityQueue<int>(new int[] { 1, 2, 3 });
+            int temp;
             Assert.AreEqual(3, pq.Count);
-            Assert.AreEqual(1, pq.Peek());
+            Assert.IsTrue(pq.Peek(out temp));
             pq.Clear();
             Assert.AreEqual(0, pq.Count);
-            try {
-                pq.Peek();
-                Assert.Fail("InvalidOperationException was not raised");
-            } catch (InvalidOperationException) {
-            }
+            Assert.IsFalse(pq.Peek(out temp));
         }
     }
 }
