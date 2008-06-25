@@ -53,12 +53,34 @@ namespace Squared.Util {
         }
 
         [Test]
+        public void TwoValues () {
+            var c = new Curve<double>();
+            c[0] = 5.0;
+            c[1] = 10.0;
+            Assert.AreEqual(5.0, c[-1]);
+            Assert.AreEqual(5.0, c[0]);
+            Assert.AreEqual(10.0, c[1]);
+            Assert.AreEqual(10.0, c[2]);
+        }
+
+        [Test]
         public void StartAndEnd () {
             var c = new Curve<double>();
             c[-2] = 1;
             c[7] = 2;
             Assert.AreEqual(c.Start, -2);
             Assert.AreEqual(c.End, 7);
+        }
+
+        [Test]
+        public void Interpolation () {
+            var c = new Curve<double>();
+            c[0] = 5.0;
+            c[1] = 10.0;
+            Assert.AreEqual(6.0, c[0.2f]);
+            Assert.AreEqual(7.0, c[0.4f]);
+            Assert.AreEqual(8.0, c[0.6f]);
+            Assert.AreEqual(9.0, c[0.8f]);
         }
     }
 }

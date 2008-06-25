@@ -32,8 +32,64 @@ namespace Squared.Util {
         }
     }
 
-    public class Curve<T> {
+    public interface IInterpolator<T> where T : struct {
+        int WindowOffset {
+            get;
+        }
+
+        int WindowSize {
+            get;
+        }
+
+        T Interpolate (IEnumerator<T> window, float positionInWindow);
+    }
+
+    public struct NullInterpolator<T> : IInterpolator<T> where T : struct {
+        public int WindowOffset {
+            get { return 0; }
+        }
+
+        public int WindowSize {
+            get { return 1; }
+        }
+
+        public T Interpolate (IEnumerator<T> window, float positionInWindow) {
+            window.MoveNext();
+            T result = window.Current;
+            window.Dispose();
+            return result;
+        }
+    }
+
+    public struct LinearInterpolator<T> : IInterpolator<T> where T : struct {
+        public int WindowOffset {
+            get { return 0; }
+        }
+
+        public int WindowSize {
+            get { return 2; }
+        }
+
+        public T Interpolate (IEnumerator<T> window, float positionInWindow) {
+            window.MoveNext();
+            T a = window.Current;
+            window.MoveNext();
+            T b = window.Current;
+            window.Dispose();
+            return a;
+            /*
+            return (a * (1.0f - positionInWindow)) + (b * (positionInWindow));
+             */
+        }
+    }
+
+    public class Curve<T> where T : struct {
+        public IInterpolator<T> Interpolator;
         SortedList<float, T> _Items = new SortedList<float, T>();
+
+        public Curve () {
+            Interpolator = new NullInterpolator<T>();
+        }
 
         public float Start {
             get {
@@ -91,25 +147,36 @@ namespace Squared.Util {
         }
 
         private T GetValueAtPosition (float position) {
-            return GetValueAtIndexPair(GetIndexPairAtPosition(position));
+            var indexPair = GetIndexPairAtPosition(position);
+            var positionPair = GetPositionPair(indexPair);
+            float offset = (position - positionPair.Left) / (positionPair.Right - positionPair.Left);
+            return GetValueFromIndexPair(indexPair, offset);
+        }
+
+        private Pair<float> GetPositionPair (Pair<int> indexPair) {
+            var keys = _Items.Keys;
+            return new Pair<float>(keys[indexPair.Left], keys[indexPair.Right]);
         }
 
         private Pair<T> GetValuePair (Pair<int> indexPair) {
             var values = _Items.Values;
-            T left = values[indexPair.Left];
-            T right = values[indexPair.Right];
-            return new Pair<T>(left, right);
+            return new Pair<T>(values[indexPair.Left], values[indexPair.Right]);
         }
 
-        private T GetValueAtIndexPair (Pair<int> indexPair) {
-            var pair = GetValuePair(indexPair);
-            return pair.Left;
-        }
-
-        public T this[Pair<int> indexPair] {
-            get {
-                return GetValueAtIndexPair(indexPair);
+        private IEnumerator<T> GetWindow (int firstIndex, int lastIndex) {
+            var values = _Items.Values;
+            int max = values.Count - 1;
+            for (int i = firstIndex; i <= lastIndex; i++) {
+                int j = Math.Max(Math.Min(i, max), 0);
+                yield return values[j];
             }
+        }
+
+        private T GetValueFromIndexPair (Pair<int> indexPair, float offset) {
+            int first = indexPair.Left + Interpolator.WindowOffset;
+            int last = first + Interpolator.WindowSize - 1;
+            var window = GetWindow(first, last);
+            return Interpolator.Interpolate(window, offset);
         }
 
         public T this[float position] {
