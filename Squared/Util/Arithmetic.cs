@@ -83,7 +83,16 @@ namespace Squared.Util {
                 ilGenerator.Emit(opInfo.OpCode);
             } else if (!lhs.IsPrimitive) {
                 MethodInfo operatorMethod = lhs.GetMethod(opInfo.MethodName, new Type[] { lhs, rhs }, null);
-                ilGenerator.EmitCall(OpCodes.Call, operatorMethod, null);
+                if (operatorMethod != null) {
+                    ilGenerator.EmitCall(OpCodes.Call, operatorMethod, null);
+                } else {
+                    throw new InvalidOperationException(
+                        String.Format(
+                            "GenerateOperatorIL failed for operator {0} with operands {1}, {2}: operation not implemented",
+                            op, lhs, rhs
+                        )
+                    );
+                }
             } else {
                 throw new InvalidOperationException(
                     String.Format(

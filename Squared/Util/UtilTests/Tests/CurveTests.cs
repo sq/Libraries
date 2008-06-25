@@ -140,5 +140,24 @@ namespace Squared.Util {
             AssertEqualFloat(2.5f, c[20]);
             AssertEqualFloat(2.5f, c[30]);
         }
+
+        [Test]
+        public void MultipleInterpolatorTypes () {
+            var liFloat = new LinearInterpolator<float>();
+            var liDouble = new LinearInterpolator<double>();
+
+            var floats = new float[] { 0.0f, 1.0f };
+            var doubles = new double[] { 0.0, 1.0 };
+
+            Assert.AreEqual(
+                0.5f,
+                liFloat.Interpolate(floats.AsEnumerable().GetEnumerator(), 0.5f)
+            );
+
+            Assert.AreEqual(
+                0.5,
+                liDouble.Interpolate(doubles.AsEnumerable().GetEnumerator(), 0.5f)
+            );
+        }
     }
 }

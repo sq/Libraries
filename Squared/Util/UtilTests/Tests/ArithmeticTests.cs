@@ -112,5 +112,15 @@ namespace Squared.Util {
                 Assert.IsTrue(ex.Message.Contains("GenerateOperatorIL failed"));
             }
         }
+
+        [Test]
+        public void ThrowsIfParticularOperationNotImplemented () {
+            try {
+                Arithmetic.Add(2.0m, 1);
+                Assert.Fail("Did not throw");
+            } catch (InvalidOperationException ex) {
+                Assert.IsTrue(ex.Message.Contains("GenerateOperatorIL failed"));
+            }
+        }
     }
 }

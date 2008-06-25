@@ -62,6 +62,13 @@ namespace Squared.Util {
     }
 
     public struct LinearInterpolator<T> : IInterpolator<T> where T : struct {
+        private static Arithmetic.OperatorMethod<T, T> _Add =
+            Arithmetic.GetOperatorMethod<T, T>(Arithmetic.Operators.Add);
+        private static Arithmetic.OperatorMethod<T, T> _Subtract =
+            Arithmetic.GetOperatorMethod<T, T>(Arithmetic.Operators.Subtract);
+        private static Arithmetic.OperatorMethod<T, float> _Multiply =
+            Arithmetic.GetOperatorMethod<T, float>(Arithmetic.Operators.Multiply);
+
         public int WindowOffset {
             get { return 0; }
         }
@@ -77,10 +84,10 @@ namespace Squared.Util {
             T b = window.Current;
             window.Dispose();
             // a + ((b - a) * positionInWindow)
-            return Arithmetic.Add(
+            return _Add(
                 a, 
-                Arithmetic.Multiply(
-                    Arithmetic.Subtract(b, a), 
+                _Multiply(
+                    _Subtract(b, a), 
                     positionInWindow
                 )
             );
