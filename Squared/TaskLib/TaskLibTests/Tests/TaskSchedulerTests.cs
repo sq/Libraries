@@ -953,10 +953,20 @@ namespace Squared.Task {
 
         [Test]
         public void BasicTest () {
-            Clock clock = Scheduler.CreateClock(0.25);
+            Clock clock = Scheduler.CreateClock(0.1);
+
             Assert.AreEqual(0, clock.ElapsedTicks);
-            Thread.Sleep(2075);
-            Assert.AreEqual(8, clock.ElapsedTicks);
+
+            double timeStart = Time.Seconds;
+            double timeEnd;
+            while (clock.ElapsedTicks != 8) {
+                Scheduler.WaitForWorkItems(0.1);
+                Scheduler.Step();
+                timeEnd = Time.Seconds;
+
+                if ((timeEnd - timeStart) >= 1.0)
+                    Assert.Fail("Only {0} elapsed ticks after {1} seconds, expected {2}", clock.ElapsedTicks, timeEnd - timeStart, 8);
+            }
         }
 
         [Test]
@@ -965,12 +975,14 @@ namespace Squared.Task {
             long startTime = Time.Ticks;
 
             Future f = clock.WaitForTick(1);
-            f.GetCompletionEvent().WaitOne();
+            Scheduler.WaitForWorkItems(1.0);
+            Scheduler.Step();
             long endTime = Time.Ticks;
             Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.27).Ticks);
 
             f = clock.WaitForTick(2);
-            f.GetCompletionEvent().WaitOne();
+            Scheduler.WaitForWorkItems(1.0);
+            Scheduler.Step();
             endTime = Time.Ticks;
             Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.52).Ticks);
         }
@@ -981,12 +993,14 @@ namespace Squared.Task {
             long startTime = Time.Ticks;
 
             Future f = clock.WaitForNextTick();
-            f.GetCompletionEvent().WaitOne();
+            Scheduler.WaitForWorkItems(1.0);
+            Scheduler.Step();
             long endTime = Time.Ticks;
             Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.27).Ticks);
 
             f = clock.WaitForNextTick();
-            f.GetCompletionEvent().WaitOne();
+            Scheduler.WaitForWorkItems(1.0);
+            Scheduler.Step();
             endTime = Time.Ticks;
             Assert.LessOrEqual(endTime - startTime, TimeSpan.FromSeconds(0.52).Ticks);
         }
@@ -995,13 +1009,22 @@ namespace Squared.Task {
         public void MultipleScheduledWaits () {
             var trace = new List<int>();
 
-            Clock clock = Scheduler.CreateClock(0.25);
+            Clock clock = Scheduler.CreateClock(0.1);
             clock.WaitForTick(5).RegisterOnComplete((f, r, e) => { trace.Add(1); });
             clock.WaitForTick(7).RegisterOnComplete((f, r, e) => { trace.Add(2); });
             clock.WaitForTick(3).RegisterOnComplete((f, r, e) => { trace.Add(3); });
             clock.WaitForTick(1).RegisterOnComplete((f, r, e) => { trace.Add(4); });
 
-            Thread.Sleep(2075);
+            double timeStart = Time.Seconds;
+            double timeEnd;
+            while (trace.Count != 4) {
+                Scheduler.WaitForWorkItems(0.1);
+                Scheduler.Step();
+                timeEnd = Time.Seconds;
+
+                if ((timeEnd - timeStart) >= 1.0)
+                    Assert.Fail("Only {0} waits completed after {1} seconds, expected {2}", trace.Count, timeEnd - timeStart, 4);
+            }
 
             Assert.AreEqual(new int[] { 4, 3, 1, 2 }, trace.ToArray());
         }
