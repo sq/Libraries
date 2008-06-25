@@ -132,6 +132,13 @@ namespace Squared.Util {
             AssertEqualFloat(2.0f, c[10]);
             AssertEqualFloat(3.0f, c[20]);
             AssertEqualFloat(3.0f, c[30]);
+
+            c.Clamp(15, 15);
+
+            AssertEqualFloat(2.5f, c[0]);
+            AssertEqualFloat(2.5f, c[10]);
+            AssertEqualFloat(2.5f, c[20]);
+            AssertEqualFloat(2.5f, c[30]);
         }
     }
 }

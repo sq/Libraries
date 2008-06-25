@@ -102,5 +102,15 @@ namespace Squared.Util {
                 Arithmetic.Multiply(new ValueType(2.25f, 2.0f), 2.0f)
             );
         }
+
+        [Test]
+        public void ThrowsIfLeftIsPrimitiveButRightIsNot () {
+            try {
+                Arithmetic.Add(2.0f, new ValueType(1.0f, 1.0f));
+                Assert.Fail("Did not throw");
+            } catch (InvalidOperationException ex) {
+                Assert.IsTrue(ex.Message.Contains("GenerateOperatorIL failed"));
+            }
+        }
     }
 }

@@ -6,7 +6,6 @@ using System.Reflection.Emit;
 using System.Reflection;
 
 namespace Squared.Util {
-
     class MethodCache {
         public delegate void MethodGenerator (ILGenerator ilGenerator);
 
@@ -32,6 +31,7 @@ namespace Squared.Util {
             DynamicMethod newMethod = new DynamicMethod(key.Name, key.ReturnType, key.ParameterTypes, true);
             ILGenerator ilGenerator = newMethod.GetILGenerator();
             key.GenerateIL(ilGenerator);
+
             lock (_CachedMethods) {
                 _CachedMethods[key] = newMethod;
             }
@@ -75,23 +75,24 @@ namespace Squared.Util {
 
         private static void GenerateOperatorIL (ILGenerator ilGenerator, Type lhs, Type rhs, Operators op) {
             OperatorInfo opInfo = _OperatorInfo[op];
+
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ldarg_1);
-            if (lhs.IsPrimitive) {
-                if (!rhs.IsPrimitive) {
-                    throw new InvalidOperationException(
-                        String.Format(
-                            "GenerateOperatorIL failed for operator {0} with operands {1}, {2}: {2} is not a primitive type, but {1} is",
-                            op, lhs, rhs
-                        )
-                    );
-                } else {
-                    ilGenerator.Emit(opInfo.OpCode);
-                }
-            } else {
-                MethodInfo operatorMethod = lhs.GetMethod(opInfo.MethodName, new Type[] {lhs, rhs}, null);
+
+            if (lhs.IsPrimitive && rhs.IsPrimitive) {
+                ilGenerator.Emit(opInfo.OpCode);
+            } else if (!lhs.IsPrimitive) {
+                MethodInfo operatorMethod = lhs.GetMethod(opInfo.MethodName, new Type[] { lhs, rhs }, null);
                 ilGenerator.EmitCall(OpCodes.Call, operatorMethod, null);
+            } else {
+                throw new InvalidOperationException(
+                    String.Format(
+                        "GenerateOperatorIL failed for operator {0} with operands {1}, {2}: {2} is not a primitive type, but {1} is",
+                        op, lhs, rhs
+                    )
+                );
             }
+
             ilGenerator.Emit(OpCodes.Ret);
         }
 
