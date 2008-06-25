@@ -96,6 +96,12 @@ namespace Squared.Util {
         }
 
         [Test]
+        public void Modulus () {
+            Assert.AreEqual(1, Arithmetic.Modulus(5, 2));
+            Assert.AreEqual(1.25f, Arithmetic.Modulus(5.25f, 2.0f));
+        }
+
+        [Test]
         public void MultiplyMixedTypes () {
             Assert.AreEqual(
                 new ValueType(4.5f, 4.0f),

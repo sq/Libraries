@@ -49,7 +49,8 @@ namespace Squared.Util {
             Add,
             Subtract,
             Multiply,
-            Divide
+            Divide,
+            Modulus
         }
 
         public delegate T OperatorMethod<T, U> (T lhs, U rhs);
@@ -58,7 +59,8 @@ namespace Squared.Util {
             { Operators.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition" } },
             { Operators.Subtract, new OperatorInfo { OpCode = OpCodes.Sub, MethodName = "op_Subtraction" } },
             { Operators.Multiply, new OperatorInfo { OpCode = OpCodes.Mul, MethodName = "op_Multiply" } },
-            { Operators.Divide, new OperatorInfo { OpCode = OpCodes.Div, MethodName = "op_Division" } }
+            { Operators.Divide, new OperatorInfo { OpCode = OpCodes.Div, MethodName = "op_Division" } },
+            { Operators.Modulus, new OperatorInfo { OpCode = OpCodes.Rem, MethodName = "op_Modulus" } }
         };
 
         private static MethodCache _OperatorWrappers = new MethodCache();
@@ -150,6 +152,10 @@ namespace Squared.Util {
 
         public static T Divide<T, U> (T lhs, U rhs) {
             return InvokeOperator<T, U>(Operators.Divide, lhs, rhs);
+        }
+
+        public static T Modulus<T, U> (T lhs, U rhs) {
+            return InvokeOperator<T, U>(Operators.Modulus, lhs, rhs);
         }
     }
 }
