@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Util", "Util\Util.csproj", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UtilTests", "Util\UtilTests\UtilTests.csproj", "{4A2F0B6A-5A15-421B-B541-0639CCCB62B7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FramerateTest", "..\Tests\FramerateTest\FramerateTest.csproj", "{8B0C311A-A53F-4AFB-926C-EAF8F2A014FF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,10 @@ Global
 		{4A2F0B6A-5A15-421B-B541-0639CCCB62B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4A2F0B6A-5A15-421B-B541-0639CCCB62B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4A2F0B6A-5A15-421B-B541-0639CCCB62B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B0C311A-A53F-4AFB-926C-EAF8F2A014FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B0C311A-A53F-4AFB-926C-EAF8F2A014FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B0C311A-A53F-4AFB-926C-EAF8F2A014FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B0C311A-A53F-4AFB-926C-EAF8F2A014FF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

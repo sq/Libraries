@@ -6,61 +6,13 @@ using System.Collections;
 using System.Threading;
 
 namespace Squared.Util {
-    public class PriorityQueue<T> where T : IComparable<T> {
+    public static class HeapQueue<T> where T : IComparable<T> {
         public delegate int ComparisonFunction (T lhs, T rhs);
-
-        public const int DefaultSize = 16;
-
-        private T[] _Buffer = null;
-        private int _Count = 0;
-
-        public ComparisonFunction Comparer;
 
         public static ComparisonFunction DefaultComparer {
             get {
                 return (lhs, rhs) => (lhs.CompareTo(rhs));
             }
-        }
-
-        public PriorityQueue ()
-            : this (DefaultSize) {
-        }
-
-        public PriorityQueue (int capacity) {
-            Comparer = DefaultComparer;
-            _Buffer = new T[capacity];
-        }
-
-        public PriorityQueue (IEnumerable<T> contents) {
-            Comparer = DefaultComparer;
-            _Buffer = contents.ToArray();
-            _Count = _Buffer.Length;
-            Heapify(_Buffer, _Count, Comparer);
-        }
-
-        public int Capacity {
-            get {
-                return _Buffer.Length;
-            }
-        }
-
-        public int Count {
-            get {
-                return _Count;
-            }
-        }
-
-        private void Resize (int newSize) {
-            T[] newBuffer = new T[newSize];
-            T[] oldBuffer = _Buffer;
-            Array.Copy(oldBuffer, newBuffer, Math.Min(oldBuffer.Length, newBuffer.Length));
-            _Buffer = newBuffer;
-        }
-
-        private void Grow (int numberOfItems) {
-            _Count += numberOfItems;
-            if (_Count > _Buffer.Length)
-                Resize(_Buffer.Length * 2);
         }
 
         public static void SiftDown (T[] buffer, int startPosition, int endPosition, ComparisonFunction comparer) {
@@ -98,11 +50,61 @@ namespace Squared.Util {
             foreach (int i in positions)
                 SiftUp(buffer, i, count, comparer);
         }
+    }
+
+    public class PriorityQueue<T> where T : IComparable<T> {
+        public const int DefaultSize = 16;
+
+        private T[] _Buffer = null;
+        private int _Count = 0;
+
+        public HeapQueue<T>.ComparisonFunction Comparer;
+
+        public PriorityQueue ()
+            : this (DefaultSize) {
+        }
+
+        public PriorityQueue (int capacity) {
+            Comparer = HeapQueue<T>.DefaultComparer;
+            _Buffer = new T[capacity];
+        }
+
+        public PriorityQueue (IEnumerable<T> contents) {
+            Comparer = HeapQueue<T>.DefaultComparer;
+            _Buffer = contents.ToArray();
+            _Count = _Buffer.Length;
+            HeapQueue<T>.Heapify(_Buffer, _Count, Comparer);
+        }
+
+        public int Capacity {
+            get {
+                return _Buffer.Length;
+            }
+        }
+
+        public int Count {
+            get {
+                return _Count;
+            }
+        }
+
+        private void Resize (int newSize) {
+            T[] newBuffer = new T[newSize];
+            T[] oldBuffer = _Buffer;
+            Array.Copy(oldBuffer, newBuffer, Math.Min(oldBuffer.Length, newBuffer.Length));
+            _Buffer = newBuffer;
+        }
+
+        private void Grow (int numberOfItems) {
+            _Count += numberOfItems;
+            if (_Count > _Buffer.Length)
+                Resize(_Buffer.Length * 2);
+        }
 
         public void Enqueue (T value) {
             Grow(1);
             _Buffer[_Count - 1] = value;
-            SiftDown(_Buffer, 0, _Count - 1, Comparer);
+            HeapQueue<T>.SiftDown(_Buffer, 0, _Count - 1, Comparer);
         }
 
         public T Dequeue () {
@@ -113,7 +115,7 @@ namespace Squared.Util {
             T result = _Buffer[0];
             if (_Count > 0) {
                 _Buffer[0] = _Buffer[_Count];
-                SiftUp(_Buffer, 0, _Count, Comparer);
+                HeapQueue<T>.SiftUp(_Buffer, 0, _Count, Comparer);
             }
 
             return result;
