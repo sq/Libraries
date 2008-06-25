@@ -185,6 +185,20 @@ namespace Squared.Util {
             return Interpolator.Interpolate(window, offset);
         }
 
+        public void Clamp (float newStartPosition, float newEndPosition) {
+            T newStartValue = GetValueAtPosition(newStartPosition);
+            T newEndValue = GetValueAtPosition(newEndPosition);
+
+            float[] keys = _Items.Keys.ToArray();
+            foreach (float position in keys) {
+                if ((position <= newStartPosition) || (position >= newEndPosition))
+                    _Items.Remove(position);
+            }
+
+            _Items[newStartPosition] = newStartValue;
+            _Items[newEndPosition] = newEndValue;
+        }
+
         public T this[float position] {
             get {
                 return GetValueAtPosition(position);

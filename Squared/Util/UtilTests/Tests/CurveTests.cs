@@ -82,14 +82,56 @@ namespace Squared.Util {
         }
 
         [Test]
-        public void Interpolation () {
+        public void NullInterpolation () {
             var c = new Curve<float>();
+            c.Interpolator = new NullInterpolator<float>();
             c[0] = 5.0f;
             c[1] = 10.0f;
+            AssertEqualFloat(5.0f, c[-0.2f]);
+            AssertEqualFloat(5.0f, c[0.0f]);
+            AssertEqualFloat(5.0f, c[0.2f]);
+            AssertEqualFloat(10.0f, c[1.0f]);
+            AssertEqualFloat(10.0f, c[1.2f]);
+        }
+
+        [Test]
+        public void LinearInterpolation () {
+            var c = new Curve<float>();
+            c.Interpolator = new LinearInterpolator<float>();
+            c[0] = 5.0f;
+            c[1] = 10.0f;
+            AssertEqualFloat(5.0f, c[-0.2f]);
+            AssertEqualFloat(5.0f, c[0.0f]);
             AssertEqualFloat(6.0f, c[0.2f]);
             AssertEqualFloat(7.0f, c[0.4f]);
             AssertEqualFloat(8.0f, c[0.6f]);
             AssertEqualFloat(9.0f, c[0.8f]);
+            AssertEqualFloat(10.0f, c[1.0f]);
+            AssertEqualFloat(10.0f, c[1.2f]);
+        }
+
+        [Test]
+        public void Clamp () {
+            var c = new Curve<float>();
+            c.Interpolator = new LinearInterpolator<float>();
+            c[0] = 1.0f;
+            c[10] = 2.0f;
+            c[20] = 3.0f;
+            c[30] = 4.0f;
+
+            c.Clamp(5, 25);
+
+            AssertEqualFloat(1.5f, c[0]);
+            AssertEqualFloat(2.0f, c[10]);
+            AssertEqualFloat(3.0f, c[20]);
+            AssertEqualFloat(3.5f, c[30]);
+
+            c.Clamp(10, 20);
+
+            AssertEqualFloat(2.0f, c[0]);
+            AssertEqualFloat(2.0f, c[10]);
+            AssertEqualFloat(3.0f, c[20]);
+            AssertEqualFloat(3.0f, c[30]);
         }
     }
 }
