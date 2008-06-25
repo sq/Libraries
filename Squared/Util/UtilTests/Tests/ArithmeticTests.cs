@@ -29,6 +29,10 @@ namespace Squared.Util {
         public static ValueType operator / (ValueType lhs, ValueType rhs) {
             return new ValueType(lhs.A / rhs.A, lhs.B / rhs.B);
         }
+
+        public static ValueType operator * (ValueType lhs, float rhs) {
+            return new ValueType(lhs.A * rhs, lhs.B * rhs);
+        }
     }
 
     [TestFixture]
@@ -88,6 +92,14 @@ namespace Squared.Util {
             Assert.AreEqual(
                 new ValueType(2.25f, 2.0f),
                 Arithmetic.Divide(new ValueType(4.5f, 4.0f), new ValueType(2.0f, 2.0f))
+            );
+        }
+
+        [Test]
+        public void MultiplyMixedTypes () {
+            Assert.AreEqual(
+                new ValueType(4.5f, 4.0f),
+                Arithmetic.Multiply(new ValueType(2.25f, 2.0f), 2.0f)
             );
         }
     }

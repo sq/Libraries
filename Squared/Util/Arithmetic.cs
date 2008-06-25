@@ -52,7 +52,7 @@ namespace Squared.Util {
             Divide
         }
 
-        delegate T OperatorMethod<T> (T lhs, T rhs);
+        delegate T OperatorMethod<T, U> (T lhs, U rhs);
 
         private static Dictionary<Operators, OperatorInfo> _OperatorInfo = new Dictionary<Operators, OperatorInfo> {
             { Operators.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition" } },
@@ -73,60 +73,73 @@ namespace Squared.Util {
                 return value;
         }
 
-        private static void GenerateOperatorIL (ILGenerator ilGenerator, Type t, Operators op) {
+        private static void GenerateOperatorIL (ILGenerator ilGenerator, Type lhs, Type rhs, Operators op) {
             OperatorInfo opInfo = _OperatorInfo[op];
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ldarg_1);
-            if (t.IsPrimitive) {
-                ilGenerator.Emit(opInfo.OpCode);
+            if (lhs.IsPrimitive) {
+                if (!rhs.IsPrimitive) {
+                    throw new InvalidOperationException(
+                        String.Format(
+                            "GenerateOperatorIL failed for operator {0} with operands {1}, {2}: {2} is not a primitive type, but {1} is",
+                            op, lhs, rhs
+                        )
+                    );
+                } else {
+                    ilGenerator.Emit(opInfo.OpCode);
+                }
             } else {
-                MethodInfo operatorMethod = t.GetMethod(opInfo.MethodName, new Type[] {t, t}, null);
+                MethodInfo operatorMethod = lhs.GetMethod(opInfo.MethodName, new Type[] {lhs, rhs}, null);
                 ilGenerator.EmitCall(OpCodes.Call, operatorMethod, null);
             }
             ilGenerator.Emit(OpCodes.Ret);
         }
 
-        private static MethodCache.MethodGenerator GetOperatorGenerator (Type t, Operators op) {
+        private static MethodCache.MethodGenerator GetOperatorGenerator (Type lhs, Type rhs, Operators op) {
             return (ilGenerator) => {
-                GenerateOperatorIL(ilGenerator, t, op);
+                GenerateOperatorIL(ilGenerator, lhs, rhs, op);
             };
         }
 
-        private static OperatorMethod<T> GetOperatorMethod<T> (Operators op) 
-            where T : struct {
-            Type delegateType = typeof(OperatorMethod<T>);
-            Type valueType = typeof(T);
+        private static OperatorMethod<T, U> GetOperatorMethod<T, U> (Operators op) {
+            Type delegateType = typeof(OperatorMethod<T, U>);
+            Type lhsType = typeof(T);
+            Type rhsType = typeof(U);
+
             OperatorInfo opInfo = _OperatorInfo[op];
             MethodCache.MethodKey mk = new MethodCache.MethodKey { 
-                Name = String.Format("{0}_{1}", valueType, op),
-                ReturnType = valueType,
-                ParameterTypes = new Type[] { valueType, valueType },
-                MethodGenerator = GetOperatorGenerator(valueType, op)
+                Name = opInfo.MethodName,
+                ReturnType = lhsType,
+                ParameterTypes = new Type[] { lhsType, rhsType },
+                MethodGenerator = GetOperatorGenerator(lhsType, rhsType, op)
             };
+
             DynamicMethod dm = _OperatorWrappers.GetMethod(mk);
             Delegate del = dm.CreateDelegate(delegateType);
-            Console.WriteLine("Generated delegate {0} for type {1} operator {2}", del, valueType, op);
-            return (OperatorMethod<T>)del;
+
+            return (OperatorMethod<T, U>)del;
         }
 
-        public static T Add<T> (T lhs, T rhs)
-            where T : struct {
-            return GetOperatorMethod<T>(Operators.Add)(lhs, rhs);
+        private static T InvokeOperator<T, U> (Operators op, T lhs, U rhs) {
+            var method = GetOperatorMethod<T, U>(op);
+            T result = method(lhs, rhs);
+            return result;
         }
 
-        public static T Subtract<T> (T lhs, T rhs) 
-            where T : struct {
-            return GetOperatorMethod<T>(Operators.Subtract)(lhs, rhs);
+        public static T Add<T, U> (T lhs, U rhs) {
+            return InvokeOperator<T, U>(Operators.Add, lhs, rhs);
         }
 
-        public static T Multiply<T> (T lhs, T rhs)
-            where T : struct {
-            return GetOperatorMethod<T>(Operators.Multiply)(lhs, rhs);
+        public static T Subtract<T, U> (T lhs, U rhs) {
+            return InvokeOperator<T, U>(Operators.Subtract, lhs, rhs);
         }
 
-        public static T Divide<T> (T lhs, T rhs)
-            where T : struct {
-            return GetOperatorMethod<T>(Operators.Divide)(lhs, rhs);
+        public static T Multiply<T, U> (T lhs, U rhs) {
+            return InvokeOperator<T, U>(Operators.Multiply, lhs, rhs);
+        }
+
+        public static T Divide<T, U> (T lhs, U rhs) {
+            return InvokeOperator<T, U>(Operators.Divide, lhs, rhs);
         }
     }
 }

@@ -76,10 +76,14 @@ namespace Squared.Util {
             window.MoveNext();
             T b = window.Current;
             window.Dispose();
-            return a;
-            /*
-            return (a * (1.0f - positionInWindow)) + (b * (positionInWindow));
-             */
+            // a + ((b - a) * positionInWindow)
+            return Arithmetic.Add(
+                a, 
+                Arithmetic.Multiply(
+                    Arithmetic.Subtract(b, a), 
+                    positionInWindow
+                )
+            );
         }
     }
 
@@ -88,7 +92,7 @@ namespace Squared.Util {
         SortedList<float, T> _Items = new SortedList<float, T>();
 
         public Curve () {
-            Interpolator = new NullInterpolator<T>();
+            Interpolator = new LinearInterpolator<T>();
         }
 
         public float Start {
@@ -149,7 +153,9 @@ namespace Squared.Util {
         private T GetValueAtPosition (float position) {
             var indexPair = GetIndexPairAtPosition(position);
             var positionPair = GetPositionPair(indexPair);
-            float offset = (position - positionPair.Left) / (positionPair.Right - positionPair.Left);
+            float offset = 0.0f;
+            if (indexPair.Left != indexPair.Right)
+                offset = (position - positionPair.Left) / (positionPair.Right - positionPair.Left);
             return GetValueFromIndexPair(indexPair, offset);
         }
 

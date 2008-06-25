@@ -72,15 +72,24 @@ namespace Squared.Util {
             Assert.AreEqual(c.End, 7);
         }
 
+        private void AssertEqualFloat (float lhs, float rhs) {
+            AssertEqualFloat(lhs, rhs, 0.00001f);
+        }
+
+        private void AssertEqualFloat (float lhs, float rhs, float epsilon) {
+            float delta = Math.Abs(lhs - rhs);
+            Assert.LessOrEqual(delta, epsilon, "Expected {0} == {1} within {2}", lhs, rhs, epsilon);
+        }
+
         [Test]
         public void Interpolation () {
-            var c = new Curve<double>();
-            c[0] = 5.0;
-            c[1] = 10.0;
-            Assert.AreEqual(6.0, c[0.2f]);
-            Assert.AreEqual(7.0, c[0.4f]);
-            Assert.AreEqual(8.0, c[0.6f]);
-            Assert.AreEqual(9.0, c[0.8f]);
+            var c = new Curve<float>();
+            c[0] = 5.0f;
+            c[1] = 10.0f;
+            AssertEqualFloat(6.0f, c[0.2f]);
+            AssertEqualFloat(7.0f, c[0.4f]);
+            AssertEqualFloat(8.0f, c[0.6f]);
+            AssertEqualFloat(9.0f, c[0.8f]);
         }
     }
 }
