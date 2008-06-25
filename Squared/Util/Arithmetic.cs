@@ -52,7 +52,7 @@ namespace Squared.Util {
             Divide
         }
 
-        delegate T OperatorMethod<T, U> (T lhs, U rhs);
+        public delegate T OperatorMethod<T, U> (T lhs, U rhs);
 
         private static Dictionary<Operators, OperatorInfo> _OperatorInfo = new Dictionary<Operators, OperatorInfo> {
             { Operators.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition" } },
@@ -102,7 +102,7 @@ namespace Squared.Util {
             };
         }
 
-        private static OperatorMethod<T, U> GetOperatorMethod<T, U> (Operators op) {
+        public static OperatorMethod<T, U> GetOperatorMethod<T, U> (Operators op) {
             Type delegateType = typeof(OperatorMethod<T, U>);
             Type lhsType = typeof(T);
             Type rhsType = typeof(U);
@@ -121,7 +121,7 @@ namespace Squared.Util {
             return (OperatorMethod<T, U>)del;
         }
 
-        private static T InvokeOperator<T, U> (Operators op, T lhs, U rhs) {
+        public static T InvokeOperator<T, U> (Operators op, T lhs, U rhs) {
             var method = GetOperatorMethod<T, U>(op);
             T result = method(lhs, rhs);
             return result;
