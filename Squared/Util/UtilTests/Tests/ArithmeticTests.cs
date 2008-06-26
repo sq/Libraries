@@ -34,6 +34,22 @@ namespace Squared.Util {
         public static ValueType operator * (ValueType lhs, float rhs) {
             return new ValueType(lhs.A * rhs, lhs.B * rhs);
         }
+
+        public static bool operator == (ValueType lhs, ValueType rhs) {
+            return (lhs.A == rhs.A) && (lhs.B == rhs.B);
+        }
+
+        public static bool operator != (ValueType lhs, ValueType rhs) {
+            return (lhs.A != rhs.A) && (lhs.B != rhs.B);
+        }
+
+        public override bool Equals (object obj) {
+            return base.Equals(obj);
+        }
+
+        public override int GetHashCode () {
+            return base.GetHashCode();
+        }
     }
 
     [TestFixture]
@@ -98,8 +114,8 @@ namespace Squared.Util {
 
         [Test]
         public void Modulus () {
-            Assert.AreEqual(1, Arithmetic.InvokeOperator(Arithmetic.Operators.Modulus, 5, 2));
-            Assert.AreEqual(1.25f, Arithmetic.InvokeOperator(Arithmetic.Operators.Modulus, 5.25f, 2.0f));
+            Assert.AreEqual(1, Arithmetic.InvokeOperator(Arithmetic.Operators.Modulo, 5, 2));
+            Assert.AreEqual(1.25f, Arithmetic.InvokeOperator(Arithmetic.Operators.Modulo, 5.25f, 2.0f));
         }
 
         [Test]
@@ -131,6 +147,47 @@ namespace Squared.Util {
         }
 
         [Test]
+        public void CompileExpression () {
+            Func<float, float> fn;
+            Arithmetic.CompileExpression(
+                (a) => a * 2.0f,
+                out fn
+            );
+
+            Assert.AreEqual(fn(2.0f), 4.0f);
+            Assert.AreEqual(fn(2), 4.0f);
+
+            Arithmetic.CompileExpression(
+                (a) => -a / 2.0f + 1.0f,
+                out fn
+            );
+
+            Assert.AreEqual(fn(2.0f), 0.0f);
+            Assert.AreEqual(fn(-1), 1.5f);
+
+            Func<float, bool> cmp;
+            Arithmetic.CompileExpression(
+                (a) => a == 2.0f,
+                out cmp
+            );
+
+            Assert.IsTrue(cmp(2.0f));
+            Assert.IsTrue(cmp(2));
+            Assert.IsFalse(cmp(3.0f));
+
+            Func<ValueType, ValueType, bool> cmpvt;
+            Arithmetic.CompileExpression(
+                (a, b) => a == b,
+                out cmpvt
+            );
+
+            ValueType vtA = new ValueType(1.0f, 1.0f);
+            ValueType vtB = new ValueType(1.0f, 2.0f);
+            Assert.IsTrue(cmpvt(vtA, vtA));
+            Assert.IsFalse(cmpvt(vtA, vtB));
+        }
+
+        [Test]
         public void PerformanceTest () {
             int numIterations = 10000;
             float[] r = new float[numIterations];
@@ -146,6 +203,11 @@ namespace Squared.Util {
 
             Expression<Func<float, float, float, float>> expr = (A, B, C) => A + ((B - A) * C);
             Func<float, float, float, float> nativeExpr = expr.Compile();
+            Func<float, float, float, float> genericExpr;
+            Arithmetic.CompileExpression(
+                (A, B, C) => A + ((B - A) * C),
+                out genericExpr
+            );
 
             long start = Time.Ticks;
             for (int i = 0; i < numIterations; i++) {
@@ -178,6 +240,14 @@ namespace Squared.Util {
             }
             end = Time.Ticks;
             Console.WriteLine("Native expression delegate execution time: {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
+
+            start = Time.Ticks;
+            for (int i = 0; i < numIterations; i++) {
+                c = (i / numIterationsF);
+                r[i] = genericExpr(a, b, c);
+            }
+            end = Time.Ticks;
+            Console.WriteLine("Generic expression delegate execution time: {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
         }
     }
 }

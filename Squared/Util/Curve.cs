@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Linq.Expressions;
 
 namespace Squared.Util {
     public struct Pair<T> {
@@ -37,20 +38,12 @@ namespace Squared.Util {
             get;
         }
 
-        int WindowSize {
-            get;
-        }
-
         T Interpolate (IEnumerator<T> window, float positionInWindow);
     }
 
     public struct NullInterpolator<T> : IInterpolator<T> where T : struct {
         public int WindowOffset {
             get { return 0; }
-        }
-
-        public int WindowSize {
-            get { return 1; }
         }
 
         public T Interpolate (IEnumerator<T> window, float positionInWindow) {
@@ -61,20 +54,20 @@ namespace Squared.Util {
         }
     }
 
-    public struct LinearInterpolator<T> : IInterpolator<T> where T : struct {
-        private static Arithmetic.OperatorMethod<T, T> _Add =
-            Arithmetic.GetOperatorMethod<T, T>(Arithmetic.Operators.Add);
-        private static Arithmetic.OperatorMethod<T, T> _Subtract =
-            Arithmetic.GetOperatorMethod<T, T>(Arithmetic.Operators.Subtract);
-        private static Arithmetic.OperatorMethod<T, float> _Multiply =
-            Arithmetic.GetOperatorMethod<T, float>(Arithmetic.Operators.Multiply);
+    public class LinearInterpolator<T> : IInterpolator<T> where T : struct {
+        delegate T LerpFn (T a, T b, float c);
+
+        private LerpFn _Expression;
+
+        public LinearInterpolator () {
+            Arithmetic.CompileExpression(
+                (a, b, c) => a + ((b - a) * c),
+                out _Expression
+            );
+        }
 
         public int WindowOffset {
             get { return 0; }
-        }
-
-        public int WindowSize {
-            get { return 2; }
         }
 
         public T Interpolate (IEnumerator<T> window, float positionInWindow) {
@@ -83,14 +76,7 @@ namespace Squared.Util {
             window.MoveNext();
             T b = window.Current;
             window.Dispose();
-            // a + ((b - a) * positionInWindow)
-            return _Add(
-                a, 
-                _Multiply(
-                    _Subtract(b, a), 
-                    positionInWindow
-                )
-            );
+            return _Expression(a, b, positionInWindow);
         }
     }
 
@@ -187,7 +173,7 @@ namespace Squared.Util {
 
         private T GetValueFromIndexPair (Pair<int> indexPair, float offset) {
             int first = indexPair.Left + Interpolator.WindowOffset;
-            int last = first + Interpolator.WindowSize - 1;
+            int last = _Items.Values.Count - 1;
             var window = GetWindow(first, last);
             return Interpolator.Interpolate(window, offset);
         }
