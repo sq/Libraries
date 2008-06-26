@@ -33,59 +33,46 @@ namespace Squared.Util {
         }
     }
 
-    public interface IInterpolator<T> where T : struct {
-        int WindowOffset {
-            get;
-        }
+    public delegate T InterpolatorSource<T> (int index) where T : struct;
+    public delegate T Interpolator<T> (InterpolatorSource<T> data, int dataOffset, float positionInWindow) where T : struct;
 
-        T Interpolate (IEnumerator<T> window, float positionInWindow);
-    }
+    public static class Interpolators<T> 
+        where T : struct {
+        delegate T LinearFn (T a, T b, float c);
+        private static LinearFn _Linear = null;
 
-    public struct NullInterpolator<T> : IInterpolator<T> where T : struct {
-        public int WindowOffset {
-            get { return 0; }
-        }
-
-        public T Interpolate (IEnumerator<T> window, float positionInWindow) {
-            window.MoveNext();
-            T result = window.Current;
-            window.Dispose();
-            return result;
-        }
-    }
-
-    public class LinearInterpolator<T> : IInterpolator<T> where T : struct {
-        delegate T LerpFn (T a, T b, float c);
-
-        private LerpFn _Expression;
-
-        public LinearInterpolator () {
+        static Interpolators () {
             Arithmetic.CompileExpression(
                 (a, b, c) => a + ((b - a) * c),
-                out _Expression
+                out _Linear
             );
         }
 
-        public int WindowOffset {
-            get { return 0; }
+        public static T Null (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
+            return data(dataOffset);
         }
 
-        public T Interpolate (IEnumerator<T> window, float positionInWindow) {
-            window.MoveNext();
-            T a = window.Current;
-            window.MoveNext();
-            T b = window.Current;
-            window.Dispose();
-            return _Expression(a, b, positionInWindow);
+        public static T Linear (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
+            return _Linear(
+                data(dataOffset), 
+                data(dataOffset + 1), 
+                positionInWindow
+            );
+        }
+
+        public static Interpolator<T> Default {
+            get {
+                return Linear;
+            }
         }
     }
 
     public class Curve<T> where T : struct {
-        public IInterpolator<T> Interpolator;
+        public Interpolator<T> Interpolator;
         SortedList<float, T> _Items = new SortedList<float, T>();
 
         public Curve () {
-            Interpolator = new LinearInterpolator<T>();
+            Interpolator = Interpolators<T>.Default;
         }
 
         public float Start {
@@ -143,6 +130,12 @@ namespace Squared.Util {
             return _Items.Keys[index];
         }
 
+        public T GetValueAtIndex (int index) {
+            var values = _Items.Values;
+            index = Math.Min(Math.Max(0, index), values.Count - 1);
+            return values[index];
+        }
+
         private T GetValueAtPosition (float position) {
             var indexPair = GetIndexPairAtPosition(position);
             var positionPair = GetPositionPair(indexPair);
@@ -162,20 +155,8 @@ namespace Squared.Util {
             return new Pair<T>(values[indexPair.Left], values[indexPair.Right]);
         }
 
-        private IEnumerator<T> GetWindow (int firstIndex, int lastIndex) {
-            var values = _Items.Values;
-            int max = values.Count - 1;
-            for (int i = firstIndex; i <= lastIndex; i++) {
-                int j = Math.Max(Math.Min(i, max), 0);
-                yield return values[j];
-            }
-        }
-
         private T GetValueFromIndexPair (Pair<int> indexPair, float offset) {
-            int first = indexPair.Left + Interpolator.WindowOffset;
-            int last = _Items.Values.Count - 1;
-            var window = GetWindow(first, last);
-            return Interpolator.Interpolate(window, offset);
+            return Interpolator(GetValueAtIndex, indexPair.Left, offset);
         }
 
         public void Clamp (float newStartPosition, float newEndPosition) {

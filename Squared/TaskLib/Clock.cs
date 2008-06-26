@@ -49,6 +49,12 @@ namespace Squared.Task {
             }
         }
 
+        public double ElapsedSeconds {
+            get {
+                return _ElapsedTicks * Interval;
+            }
+        }
+
         private void Tick () {
             _LastTick += _TickInterval;
             int thisTick = Interlocked.Increment(ref _ElapsedTicks);

@@ -119,6 +119,15 @@ namespace Squared.Util {
         }
 
         [Test]
+        public void Lerp () {
+            Assert.AreEqual(0.0f, Arithmetic.Lerp(0.0f, 2.0f, -0.5f));
+            Assert.AreEqual(0.0f, Arithmetic.Lerp(0.0f, 2.0f, 0.0f));
+            Assert.AreEqual(1.0f, Arithmetic.Lerp(0.0f, 2.0f, 0.5f));
+            Assert.AreEqual(2.0f, Arithmetic.Lerp(0.0f, 2.0f, 1.0f));
+            Assert.AreEqual(2.0f, Arithmetic.Lerp(0.0f, 2.0f, 1.5f));
+        }
+
+        [Test]
         public void MultiplyMixedTypes () {
             Assert.AreEqual(
                 new ValueType(4.5f, 4.0f),
@@ -127,17 +136,14 @@ namespace Squared.Util {
         }
 
         [Test]
-        public void ThrowsIfLeftIsPrimitiveButRightIsNot () {
+        public void ThrowsIfParticularOperationNotImplemented () {
             try {
                 Arithmetic.InvokeOperator(Arithmetic.Operators.Add, 2.0f, new ValueType(1.0f, 1.0f));
                 Assert.Fail("Did not throw");
             } catch (InvalidOperationException ex) {
                 Assert.IsTrue(ex.Message.Contains("GenerateOperatorIL failed"));
             }
-        }
 
-        [Test]
-        public void ThrowsIfParticularOperationNotImplemented () {
             try {
                 Arithmetic.InvokeOperator(Arithmetic.Operators.Add, 2.0m, 1);
                 Assert.Fail("Did not throw");

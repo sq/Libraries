@@ -84,7 +84,7 @@ namespace Squared.Util {
         [Test]
         public void NullInterpolation () {
             var c = new Curve<float>();
-            c.Interpolator = new NullInterpolator<float>();
+            c.Interpolator = Interpolators<float>.Null;
             c[0] = 5.0f;
             c[1] = 10.0f;
             AssertEqualFloat(5.0f, c[-0.2f]);
@@ -97,7 +97,7 @@ namespace Squared.Util {
         [Test]
         public void LinearInterpolation () {
             var c = new Curve<float>();
-            c.Interpolator = new LinearInterpolator<float>();
+            c.Interpolator = Interpolators<float>.Linear;
             c[0] = 5.0f;
             c[1] = 10.0f;
             AssertEqualFloat(5.0f, c[-0.2f]);
@@ -113,7 +113,7 @@ namespace Squared.Util {
         [Test]
         public void Clamp () {
             var c = new Curve<float>();
-            c.Interpolator = new LinearInterpolator<float>();
+            c.Interpolator = Interpolators<float>.Linear;
             c[0] = 1.0f;
             c[10] = 2.0f;
             c[20] = 3.0f;
@@ -143,20 +143,23 @@ namespace Squared.Util {
 
         [Test]
         public void MultipleInterpolatorTypes () {
-            var liFloat = new LinearInterpolator<float>();
-            var liDouble = new LinearInterpolator<double>();
+            Interpolator<float> lerpFloat = Interpolators<float>.Linear;
+            Interpolator<double> lerpDouble = Interpolators<double>.Linear;
 
             var floats = new float[] { 0.0f, 1.0f };
             var doubles = new double[] { 0.0, 1.0 };
 
+            InterpolatorSource<float> floatWindow = (i) => floats[i];
+            InterpolatorSource<double> doubleWindow = (i) => doubles[i];
+
             Assert.AreEqual(
                 0.5f,
-                liFloat.Interpolate(floats.AsEnumerable().GetEnumerator(), 0.5f)
+                lerpFloat(floatWindow, 0, 0.5f)
             );
 
             Assert.AreEqual(
                 0.5,
-                liDouble.Interpolate(doubles.AsEnumerable().GetEnumerator(), 0.5f)
+                lerpDouble(doubleWindow, 0, 0.5f)
             );
         }
     }

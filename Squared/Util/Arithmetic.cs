@@ -7,84 +7,7 @@ using System.Reflection;
 using System.Linq.Expressions;
 
 namespace Squared.Util {
-    class MethodCache {
-        public delegate void MethodGenerator (ref MethodKey mk, ILGenerator ilGenerator);
-
-        public struct MethodKey : IEquatable<MethodKey> {
-            public string Name;
-            public Type ReturnType;
-            public Type[] ParameterTypes;
-            public object Extra;
-
-            public bool Equals (MethodKey other) {
-                return Name.Equals(other.Name) &&
-                    ReturnType.Equals(other.ReturnType) &&
-                    Extra.Equals(other.Extra) &&
-                    (ParameterTypes.Length == other.ParameterTypes.Length) &&
-                    (ParameterTypes.SequenceEqual(other.ParameterTypes));
-            }
-        }
-
-        struct DelegateKey : IEquatable<DelegateKey> {
-            public MethodKey MethodKey;
-            public Type DelegateType;
-
-            public DelegateKey (ref MethodKey key, Type delegateType) {
-                MethodKey = key;
-                DelegateType = delegateType;
-            }
-
-            public bool Equals (DelegateKey other) {
-                return DelegateType.Equals(other.DelegateType) &&
-                    MethodKey.Equals(other.MethodKey);
-            }
-        }
-
-        private Dictionary<MethodKey, DynamicMethod> _CachedMethods = new Dictionary<MethodKey, DynamicMethod>();
-        private Dictionary<DelegateKey, Delegate> _CachedDelegates = new Dictionary<DelegateKey, Delegate>();
-
-        public DynamicMethod GetMethod (ref MethodKey key, MethodGenerator mg) {
-            DynamicMethod newMethod;
-            lock (_CachedMethods) {
-                if (_CachedMethods.TryGetValue(key, out newMethod))
-                    return newMethod;
-            }
-
-            newMethod = new DynamicMethod(key.Name, key.ReturnType, key.ParameterTypes, true);
-            ILGenerator ilGenerator = newMethod.GetILGenerator();
-            mg(ref key, ilGenerator);
-
-            lock (_CachedMethods) {
-                _CachedMethods[key] = newMethod;
-            }
-            return newMethod;
-        }
-
-        public Delegate GetDelegate (ref MethodKey key, MethodGenerator mg, Type delegateType) {
-            Delegate newDelegate;
-            DelegateKey dk = new DelegateKey(ref key, delegateType);
-
-            lock (_CachedDelegates) {
-                if (_CachedDelegates.TryGetValue(dk, out newDelegate))
-                    return newDelegate;
-            }
-
-            DynamicMethod method = GetMethod(ref key, mg);
-            newDelegate = method.CreateDelegate(delegateType);
-
-            lock (_CachedDelegates) {
-                _CachedDelegates[dk] = newDelegate;
-            }
-            return newDelegate;
-        }
-    }
-
     public static class Arithmetic {
-        struct OperatorInfo {
-            public OpCode OpCode;
-            public String MethodName;
-        }
-
         public enum Operators {
             Add = ExpressionType.Add,
             Subtract = ExpressionType.Subtract,
@@ -93,7 +16,14 @@ namespace Squared.Util {
             Modulo = ExpressionType.Modulo
         }
 
+        struct OperatorInfo {
+            public OpCode OpCode;
+            public String MethodName;
+        }
+
         public delegate T OperatorMethod<T, U> (T lhs, U rhs);
+
+        #region Internal constants
 
         private static Dictionary<ExpressionType, OperatorInfo> _OperatorInfo = new Dictionary<ExpressionType, OperatorInfo> {
             { ExpressionType.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition" } },
@@ -116,7 +46,31 @@ namespace Squared.Util {
             { typeof(Double), 4 }
         };
 
-        private static MethodCache _OperatorWrappers = new MethodCache();
+        #endregion
+
+        public static OperatorMethod<T, U> GetOperatorMethod<T, U> (Operators op) {
+            Type delegateType = typeof(OperatorMethod<T, U>);
+            Type lhsType = typeof(T);
+            Type rhsType = typeof(U);
+
+            DynamicMethod dm = new DynamicMethod(
+                _OperatorInfo[(ExpressionType)op].MethodName,
+                lhsType,
+                new Type[] { lhsType, rhsType },
+                true
+            );
+            ILGenerator ilGenerator = dm.GetILGenerator();
+            GenerateArithmeticIL(ilGenerator, lhsType, rhsType, op);
+            Delegate del = dm.CreateDelegate(delegateType);
+
+            return (OperatorMethod<T, U>)del;
+        }
+
+        public static T InvokeOperator<T, U> (Operators op, T lhs, U rhs) {
+            var method = GetOperatorMethod<T, U>(op);
+            T result = method(lhs, rhs);
+            return result;
+        }
 
         public static T Clamp<T> (T value, T min, T max)
             where T : IComparable<T> {
@@ -128,76 +82,70 @@ namespace Squared.Util {
                 return value;
         }
 
-        private static void GenerateArithmeticIL (ILGenerator ilGenerator, Type lhs, Type rhs, Operators op) {
-            ilGenerator.Emit(OpCodes.Ldarg_0);
-            ilGenerator.Emit(OpCodes.Ldarg_1);
-
-            GenerateOperatorIL(ilGenerator, lhs, rhs, (ExpressionType)op);
-
-            ilGenerator.Emit(OpCodes.Ret);
+        public static T Lerp<T> (T a, T b, float x) 
+            where T : struct {
+            return Interpolators<T>.Linear(
+                (i) => (i >= 1) ? b : a,
+                0,
+                Clamp(x, 0.0f, 1.0f)
+            );
         }
 
-        private static Type GetPrimitiveResult (Type lhs, Type rhs) {
-            int rankLeft, rankRight;
-            if (_TypeRanking.TryGetValue(lhs, out rankLeft) &&
-                _TypeRanking.TryGetValue(rhs, out rankRight)) {
-                if (rankLeft > rankRight)
-                    return lhs;
-                else
-                    return rhs; // hack
-            } else {
-                return lhs; // hack
-            }
+        #region CompileExpression<T> overloads
+
+        public static void CompileExpression<T> (Expression<Func<double>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
         }
 
-        private static Type GenerateOperatorIL (ILGenerator ilGenerator, Type lhs, Type rhs, ExpressionType op) {
-            OperatorInfo opInfo = _OperatorInfo[op];
-
-            if (lhs.IsPrimitive && rhs.IsPrimitive) {
-                ilGenerator.Emit(opInfo.OpCode);
-                return GetPrimitiveResult(lhs, rhs);
-            } else {
-                MethodInfo operatorMethod = lhs.GetMethod(opInfo.MethodName, new Type[] { lhs, rhs }, null);
-                if (operatorMethod != null) {
-                    ilGenerator.EmitCall(OpCodes.Call, operatorMethod, null);
-                    return operatorMethod.ReturnType;
-                } else {
-                    throw new InvalidOperationException(
-                        String.Format(
-                            "GenerateOperatorIL failed for operator {0} with operands {1}, {2}: operation not implemented",
-                            op, lhs, rhs
-                        )
-                    );
-                }
-            }
+        public static void CompileExpression<T> (Expression<Func<double, double>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
         }
 
-        private static void GenerateILForMethod (ref MethodCache.MethodKey mk, ILGenerator ilGenerator) {
-            GenerateArithmeticIL(ilGenerator, mk.ReturnType, mk.ParameterTypes[1], (Operators)mk.Extra);
+        public static void CompileExpression<T> (Expression<Func<double, double, double>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
         }
 
-        public static OperatorMethod<T, U> GetOperatorMethod<T, U> (Operators op) {
-            Type delegateType = typeof(OperatorMethod<T, U>);
-            Type lhsType = typeof(T);
-            Type rhsType = typeof(U);
-
-            MethodCache.MethodKey mk = new MethodCache.MethodKey { 
-                Name = _OperatorInfo[(ExpressionType)op].MethodName,
-                ReturnType = lhsType,
-                ParameterTypes = new Type[] { lhsType, rhsType },
-                Extra = op
-            };
-
-            Delegate del = _OperatorWrappers.GetDelegate(ref mk, GenerateILForMethod, delegateType);
-
-            return (OperatorMethod<T, U>)del;
+        public static void CompileExpression<T> (Expression<Func<double, double, double, double>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
         }
 
-        public static T InvokeOperator<T, U> (Operators op, T lhs, U rhs) {
-            var method = GetOperatorMethod<T, U>(op);
-            T result = method(lhs, rhs);
-            return result;
+        public static void CompileExpression<T> (Expression<Func<double, double, double, double, double>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
         }
+
+        public static void CompileExpression<T, Ret> (Expression<Func<Ret>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
+        public static void CompileExpression<T, Ret> (Expression<Func<double, Ret>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
+        public static void CompileExpression<T, Ret> (Expression<Func<double, double, Ret>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
+        public static void CompileExpression<T, Ret> (Expression<Func<double, double, double, Ret>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
+        public static void CompileExpression<T, Ret> (Expression<Func<double, double, double, double, Ret>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
+        #endregion
+
+        #region Code generation functions
 
         private class EmitState {
             public ILGenerator ILGenerator;
@@ -310,7 +258,7 @@ namespace Squared.Util {
                 throw new InvalidOperationException(String.Format("Cannot compile expression nodes of type {0}", expr.GetType().Name));
         }
 
-        private static void _CompileExpression<T> (LambdaExpression expression, out T result) 
+        private static void _CompileExpression<T> (LambdaExpression expression, out T result)
             where T : class {
             Type t = typeof(T);
             if (!((t.BaseType == typeof(MulticastDelegate)) || (t.BaseType == typeof(Delegate))))
@@ -334,9 +282,9 @@ namespace Squared.Util {
             );
             ILGenerator ilGenerator = newMethod.GetILGenerator();
 
-            EmitState es = new EmitState { 
+            EmitState es = new EmitState {
                 ILGenerator = ilGenerator,
-                ReturnType = returnType, 
+                ReturnType = returnType,
                 ParameterTypes = parameterTypes,
                 ParameterIndices = parameterIndices
             };
@@ -347,54 +295,50 @@ namespace Squared.Util {
             result = newMethod.CreateDelegate(t) as T;
         }
 
-        public static void CompileExpression<T> (Expression<Func<double>> expression, out T result)
-            where T : class {
-            _CompileExpression(expression, out result);
+        private static void GenerateArithmeticIL (ILGenerator ilGenerator, Type lhs, Type rhs, Operators op) {
+            ilGenerator.Emit(OpCodes.Ldarg_0);
+            ilGenerator.Emit(OpCodes.Ldarg_1);
+
+            GenerateOperatorIL(ilGenerator, lhs, rhs, (ExpressionType)op);
+
+            ilGenerator.Emit(OpCodes.Ret);
         }
 
-        public static void CompileExpression<T> (Expression<Func<double, double>> expression, out T result)
-            where T : class {
-            _CompileExpression(expression, out result);
+        private static Type GetPrimitiveResult (Type lhs, Type rhs) {
+            int rankLeft, rankRight;
+            if (_TypeRanking.TryGetValue(lhs, out rankLeft) &&
+                _TypeRanking.TryGetValue(rhs, out rankRight)) {
+                if (rankLeft > rankRight)
+                    return lhs;
+                else
+                    return rhs; // hack
+            } else {
+                return lhs; // hack
+            }
         }
 
-        public static void CompileExpression<T> (Expression<Func<double, double, double>> expression, out T result)
-            where T : class {
-            _CompileExpression(expression, out result);
+        private static Type GenerateOperatorIL (ILGenerator ilGenerator, Type lhs, Type rhs, ExpressionType op) {
+            OperatorInfo opInfo = _OperatorInfo[op];
+
+            if (lhs.IsPrimitive && rhs.IsPrimitive) {
+                ilGenerator.Emit(opInfo.OpCode);
+                return GetPrimitiveResult(lhs, rhs);
+            } else {
+                MethodInfo operatorMethod = lhs.GetMethod(opInfo.MethodName, new Type[] { lhs, rhs }, null);
+                if (operatorMethod != null) {
+                    ilGenerator.EmitCall(OpCodes.Call, operatorMethod, null);
+                    return operatorMethod.ReturnType;
+                } else {
+                    throw new InvalidOperationException(
+                        String.Format(
+                            "GenerateOperatorIL failed for operator {0} with operands {1}, {2}: operation not implemented",
+                            op, lhs, rhs
+                        )
+                    );
+                }
+            }
         }
 
-        public static void CompileExpression<T> (Expression<Func<double, double, double, double>> expression, out T result)
-            where T : class {
-            _CompileExpression(expression, out result);
-        }
-
-        public static void CompileExpression<T> (Expression<Func<double, double, double, double, double>> expression, out T result)
-            where T : class {
-            _CompileExpression(expression, out result);
-        }
-
-        public static void CompileExpression<T, Ret> (Expression<Func<Ret>> expression, out T result)
-            where T : class {
-            _CompileExpression(expression, out result);
-        }
-
-        public static void CompileExpression<T, Ret> (Expression<Func<double, Ret>> expression, out T result)
-            where T : class {
-            _CompileExpression(expression, out result);
-        }
-
-        public static void CompileExpression<T, Ret> (Expression<Func<double, double, Ret>> expression, out T result)
-            where T : class {
-            _CompileExpression(expression, out result);
-        }
-
-        public static void CompileExpression<T, Ret> (Expression<Func<double, double, double, Ret>> expression, out T result)
-            where T : class {
-            _CompileExpression(expression, out result);
-        }
-
-        public static void CompileExpression<T, Ret> (Expression<Func<double, double, double, double, Ret>> expression, out T result)
-            where T : class {
-            _CompileExpression(expression, out result);
-        }
+        #endregion
     }
 }

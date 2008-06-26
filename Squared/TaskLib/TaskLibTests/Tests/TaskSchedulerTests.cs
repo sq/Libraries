@@ -956,10 +956,13 @@ namespace Squared.Task {
             Clock clock = Scheduler.CreateClock(0.1);
 
             Assert.AreEqual(0, clock.ElapsedTicks);
+            Assert.AreEqual(0, clock.ElapsedSeconds);
 
             double timeStart = Time.Seconds;
             double timeEnd;
             while (clock.ElapsedTicks != 8) {
+                Assert.AreEqual(clock.ElapsedTicks * clock.Interval, clock.ElapsedSeconds);
+
                 Scheduler.WaitForWorkItems(0.1);
                 Scheduler.Step();
                 timeEnd = Time.Seconds;
