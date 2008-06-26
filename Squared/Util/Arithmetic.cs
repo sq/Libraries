@@ -7,35 +7,74 @@ using System.Reflection;
 
 namespace Squared.Util {
     class MethodCache {
-        public delegate void MethodGenerator (ILGenerator ilGenerator);
+        public delegate void MethodGenerator (ref MethodKey mk, ILGenerator ilGenerator);
 
-        public struct MethodKey {
+        public struct MethodKey : IEquatable<MethodKey> {
             public string Name;
             public Type ReturnType;
             public Type[] ParameterTypes;
-            public MethodGenerator MethodGenerator;
+            public object Extra;
 
-            public void GenerateIL (ILGenerator ilGenerator) {
-                MethodGenerator(ilGenerator);
+            public bool Equals (MethodKey other) {
+                return Name.Equals(other.Name) &&
+                    ReturnType.Equals(other.ReturnType) &&
+                    Extra.Equals(other.Extra) &&
+                    (ParameterTypes.Length == other.ParameterTypes.Length) &&
+                    (ParameterTypes.SequenceEqual(other.ParameterTypes));
+            }
+        }
+
+        struct DelegateKey : IEquatable<DelegateKey> {
+            public MethodKey MethodKey;
+            public Type DelegateType;
+
+            public DelegateKey (ref MethodKey key, Type delegateType) {
+                MethodKey = key;
+                DelegateType = delegateType;
+            }
+
+            public bool Equals (DelegateKey other) {
+                return DelegateType.Equals(other.DelegateType) &&
+                    MethodKey.Equals(other.MethodKey);
             }
         }
 
         private Dictionary<MethodKey, DynamicMethod> _CachedMethods = new Dictionary<MethodKey, DynamicMethod>();
+        private Dictionary<DelegateKey, Delegate> _CachedDelegates = new Dictionary<DelegateKey, Delegate>();
 
-        public DynamicMethod GetMethod (MethodKey key) {
+        public DynamicMethod GetMethod (ref MethodKey key, MethodGenerator mg) {
+            DynamicMethod newMethod;
             lock (_CachedMethods) {
-                if (_CachedMethods.ContainsKey(key))
-                    return _CachedMethods[key];
+                if (_CachedMethods.TryGetValue(key, out newMethod))
+                    return newMethod;
             }
 
-            DynamicMethod newMethod = new DynamicMethod(key.Name, key.ReturnType, key.ParameterTypes, true);
+            newMethod = new DynamicMethod(key.Name, key.ReturnType, key.ParameterTypes, true);
             ILGenerator ilGenerator = newMethod.GetILGenerator();
-            key.GenerateIL(ilGenerator);
+            mg(ref key, ilGenerator);
 
             lock (_CachedMethods) {
                 _CachedMethods[key] = newMethod;
             }
             return newMethod;
+        }
+
+        public Delegate GetDelegate (ref MethodKey key, MethodGenerator mg, Type delegateType) {
+            Delegate newDelegate;
+            DelegateKey dk = new DelegateKey(ref key, delegateType);
+
+            lock (_CachedDelegates) {
+                if (_CachedDelegates.TryGetValue(dk, out newDelegate))
+                    return newDelegate;
+            }
+
+            DynamicMethod method = GetMethod(ref key, mg);
+            newDelegate = method.CreateDelegate(delegateType);
+
+            lock (_CachedDelegates) {
+                _CachedDelegates[dk] = newDelegate;
+            }
+            return newDelegate;
         }
     }
 
@@ -76,6 +115,7 @@ namespace Squared.Util {
         }
 
         private static void GenerateOperatorIL (ILGenerator ilGenerator, Type lhs, Type rhs, Operators op) {
+            //Console.WriteLine("Constructing method for params {0}, {1}, {2}", lhs, rhs, op);
             OperatorInfo opInfo = _OperatorInfo[op];
 
             ilGenerator.Emit(OpCodes.Ldarg_0);
@@ -107,10 +147,8 @@ namespace Squared.Util {
             ilGenerator.Emit(OpCodes.Ret);
         }
 
-        private static MethodCache.MethodGenerator GetOperatorGenerator (Type lhs, Type rhs, Operators op) {
-            return (ilGenerator) => {
-                GenerateOperatorIL(ilGenerator, lhs, rhs, op);
-            };
+        private static void GenerateILForMethod (ref MethodCache.MethodKey mk, ILGenerator ilGenerator) {
+            GenerateOperatorIL(ilGenerator, mk.ReturnType, mk.ParameterTypes[1], (Operators)mk.Extra);
         }
 
         public static OperatorMethod<T, U> GetOperatorMethod<T, U> (Operators op) {
@@ -118,16 +156,14 @@ namespace Squared.Util {
             Type lhsType = typeof(T);
             Type rhsType = typeof(U);
 
-            OperatorInfo opInfo = _OperatorInfo[op];
             MethodCache.MethodKey mk = new MethodCache.MethodKey { 
-                Name = opInfo.MethodName,
+                Name = _OperatorInfo[op].MethodName,
                 ReturnType = lhsType,
                 ParameterTypes = new Type[] { lhsType, rhsType },
-                MethodGenerator = GetOperatorGenerator(lhsType, rhsType, op)
+                Extra = op
             };
 
-            DynamicMethod dm = _OperatorWrappers.GetMethod(mk);
-            Delegate del = dm.CreateDelegate(delegateType);
+            Delegate del = _OperatorWrappers.GetDelegate(ref mk, GenerateILForMethod, delegateType);
 
             return (OperatorMethod<T, U>)del;
         }
@@ -136,26 +172,6 @@ namespace Squared.Util {
             var method = GetOperatorMethod<T, U>(op);
             T result = method(lhs, rhs);
             return result;
-        }
-
-        public static T Add<T, U> (T lhs, U rhs) {
-            return InvokeOperator<T, U>(Operators.Add, lhs, rhs);
-        }
-
-        public static T Subtract<T, U> (T lhs, U rhs) {
-            return InvokeOperator<T, U>(Operators.Subtract, lhs, rhs);
-        }
-
-        public static T Multiply<T, U> (T lhs, U rhs) {
-            return InvokeOperator<T, U>(Operators.Multiply, lhs, rhs);
-        }
-
-        public static T Divide<T, U> (T lhs, U rhs) {
-            return InvokeOperator<T, U>(Operators.Divide, lhs, rhs);
-        }
-
-        public static T Modulus<T, U> (T lhs, U rhs) {
-            return InvokeOperator<T, U>(Operators.Modulus, lhs, rhs);
         }
     }
 }

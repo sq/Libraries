@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using NUnit.Framework;
 using Squared.Util;
+using System.Linq.Expressions;
 
 namespace Squared.Util {
     public struct ValueType {
@@ -57,62 +58,62 @@ namespace Squared.Util {
 
         [Test]
         public void Add () {
-            Assert.AreEqual(5, Arithmetic.Add(2, 3));
-            Assert.AreEqual(5.5f, Arithmetic.Add(2.5f, 3.0f));
+            Assert.AreEqual(5, Arithmetic.InvokeOperator(Arithmetic.Operators.Add, 2, 3));
+            Assert.AreEqual(5.5f, Arithmetic.InvokeOperator(Arithmetic.Operators.Add, 2.5f, 3.0f));
             Assert.AreEqual(
                 new ValueType(5.0f, 4.0f),
-                Arithmetic.Add(new ValueType(3.0f, 2.0f), new ValueType(2.0f, 2.0f))
+                Arithmetic.InvokeOperator(Arithmetic.Operators.Add, new ValueType(3.0f, 2.0f), new ValueType(2.0f, 2.0f))
             );
         }
 
         [Test]
         public void Subtract () {
-            Assert.AreEqual(3, Arithmetic.Subtract(5, 2));
-            Assert.AreEqual(3.5f, Arithmetic.Subtract(5.5f, 2.0f));
+            Assert.AreEqual(3, Arithmetic.InvokeOperator(Arithmetic.Operators.Subtract, 5, 2));
+            Assert.AreEqual(3.5f, Arithmetic.InvokeOperator(Arithmetic.Operators.Subtract, 5.5f, 2.0f));
             Assert.AreEqual(
                 new ValueType(1.0f, 2.0f),
-                Arithmetic.Subtract(new ValueType(4.0f, 4.0f), new ValueType(3.0f, 2.0f))
+                Arithmetic.InvokeOperator(Arithmetic.Operators.Subtract, new ValueType(4.0f, 4.0f), new ValueType(3.0f, 2.0f))
             );
         }
 
         [Test]
         public void Multiply () {
-            Assert.AreEqual(4, Arithmetic.Multiply(2, 2));
-            Assert.AreEqual(4.5f, Arithmetic.Multiply(2.25f, 2.0f));
+            Assert.AreEqual(4, Arithmetic.InvokeOperator(Arithmetic.Operators.Multiply, 2, 2));
+            Assert.AreEqual(4.5f, Arithmetic.InvokeOperator(Arithmetic.Operators.Multiply, 2.25f, 2.0f));
             Assert.AreEqual(
                 new ValueType(4.5f, 4.0f),
-                Arithmetic.Multiply(new ValueType(2.25f, 2.0f), new ValueType(2.0f, 2.0f))
+                Arithmetic.InvokeOperator(Arithmetic.Operators.Multiply, new ValueType(2.25f, 2.0f), new ValueType(2.0f, 2.0f))
             );
         }
 
         [Test]
         public void Divide () {
-            Assert.AreEqual(2, Arithmetic.Divide(4, 2));
-            Assert.AreEqual(2.25f, Arithmetic.Divide(4.5f, 2.0f));
+            Assert.AreEqual(2, Arithmetic.InvokeOperator(Arithmetic.Operators.Divide, 4, 2));
+            Assert.AreEqual(2.25f, Arithmetic.InvokeOperator(Arithmetic.Operators.Divide, 4.5f, 2.0f));
             Assert.AreEqual(
                 new ValueType(2.25f, 2.0f),
-                Arithmetic.Divide(new ValueType(4.5f, 4.0f), new ValueType(2.0f, 2.0f))
+                Arithmetic.InvokeOperator(Arithmetic.Operators.Divide, new ValueType(4.5f, 4.0f), new ValueType(2.0f, 2.0f))
             );
         }
 
         [Test]
         public void Modulus () {
-            Assert.AreEqual(1, Arithmetic.Modulus(5, 2));
-            Assert.AreEqual(1.25f, Arithmetic.Modulus(5.25f, 2.0f));
+            Assert.AreEqual(1, Arithmetic.InvokeOperator(Arithmetic.Operators.Modulus, 5, 2));
+            Assert.AreEqual(1.25f, Arithmetic.InvokeOperator(Arithmetic.Operators.Modulus, 5.25f, 2.0f));
         }
 
         [Test]
         public void MultiplyMixedTypes () {
             Assert.AreEqual(
                 new ValueType(4.5f, 4.0f),
-                Arithmetic.Multiply(new ValueType(2.25f, 2.0f), 2.0f)
+                Arithmetic.InvokeOperator(Arithmetic.Operators.Multiply, new ValueType(2.25f, 2.0f), 2.0f)
             );
         }
 
         [Test]
         public void ThrowsIfLeftIsPrimitiveButRightIsNot () {
             try {
-                Arithmetic.Add(2.0f, new ValueType(1.0f, 1.0f));
+                Arithmetic.InvokeOperator(Arithmetic.Operators.Add, 2.0f, new ValueType(1.0f, 1.0f));
                 Assert.Fail("Did not throw");
             } catch (InvalidOperationException ex) {
                 Assert.IsTrue(ex.Message.Contains("GenerateOperatorIL failed"));
@@ -122,11 +123,61 @@ namespace Squared.Util {
         [Test]
         public void ThrowsIfParticularOperationNotImplemented () {
             try {
-                Arithmetic.Add(2.0m, 1);
+                Arithmetic.InvokeOperator(Arithmetic.Operators.Add, 2.0m, 1);
                 Assert.Fail("Did not throw");
             } catch (InvalidOperationException ex) {
                 Assert.IsTrue(ex.Message.Contains("GenerateOperatorIL failed"));
             }
+        }
+
+        [Test]
+        public void PerformanceTest () {
+            int numIterations = 10000;
+            float[] r = new float[numIterations];
+            float numIterationsF = numIterations;
+            float a = 0.0f, b = 1.0f, c;
+
+            var _add = Arithmetic.GetOperatorMethod<float, float>(Arithmetic.Operators.Add);
+            var _mul = Arithmetic.GetOperatorMethod<float, float>(Arithmetic.Operators.Multiply);
+            var _sub = Arithmetic.GetOperatorMethod<float, float>(Arithmetic.Operators.Subtract);
+            _add(0.0f, 0.0f);
+            _mul(0.0f, 0.0f);
+            _sub(0.0f, 0.0f);
+
+            Expression<Func<float, float, float, float>> expr = (A, B, C) => A + ((B - A) * C);
+            Func<float, float, float, float> nativeExpr = expr.Compile();
+
+            long start = Time.Ticks;
+            for (int i = 0; i < numIterations; i++) {
+                c = (i / numIterationsF);
+                r[i] = a + ((b - a) * c);
+            }
+            long end = Time.Ticks;
+            Console.WriteLine("Native expression execution time: {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
+
+            start = Time.Ticks;
+            for (int i = 0; i < numIterations; i++) {
+                c = (i / numIterationsF);
+                r[i] = Arithmetic.InvokeOperator(Arithmetic.Operators.Add, a, Arithmetic.InvokeOperator(Arithmetic.Operators.Multiply, Arithmetic.InvokeOperator(Arithmetic.Operators.Subtract, b, a), c));
+            }
+            end = Time.Ticks;
+            Console.WriteLine("Naive delegate generic execution time: {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
+
+            start = Time.Ticks;
+            for (int i = 0; i < numIterations; i++) {
+                c = (i / numIterationsF);
+                r[i] = _add(a, _mul(_sub(b, a), c));
+            }
+            end = Time.Ticks;
+            Console.WriteLine("Cached delegate execution time: {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
+
+            start = Time.Ticks;
+            for (int i = 0; i < numIterations; i++) {
+                c = (i / numIterationsF);
+                r[i] = nativeExpr(a, b, c);
+            }
+            end = Time.Ticks;
+            Console.WriteLine("Native expression delegate execution time: {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
         }
     }
 }
