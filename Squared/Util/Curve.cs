@@ -69,10 +69,12 @@ namespace Squared.Util {
 
     public class Curve<T> where T : struct {
         public Interpolator<T> Interpolator;
+        private InterpolatorSource<T> _InterpolatorSource;
         SortedList<float, T> _Items = new SortedList<float, T>();
 
         public Curve () {
             Interpolator = Interpolators<T>.Default;
+            _InterpolatorSource = GetValueAtIndex;
         }
 
         public float Start {
@@ -156,7 +158,7 @@ namespace Squared.Util {
         }
 
         private T GetValueFromIndexPair (Pair<int> indexPair, float offset) {
-            return Interpolator(GetValueAtIndex, indexPair.Left, offset);
+            return Interpolator(_InterpolatorSource, indexPair.Left, offset);
         }
 
         public void Clamp (float newStartPosition, float newEndPosition) {
