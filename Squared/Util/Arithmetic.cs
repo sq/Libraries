@@ -105,6 +105,17 @@ namespace Squared.Util {
             { ExpressionType.Equal, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality" } }
         };
 
+        private static Dictionary<Type, int> _TypeRanking = new Dictionary<Type, int> {
+            { typeof(UInt16), 0 },
+            { typeof(Int16), 0 },
+            { typeof(UInt32), 1 },
+            { typeof(Int32), 1 },
+            { typeof(UInt64), 2 },
+            { typeof(Int64), 2 },
+            { typeof(Single), 3 },
+            { typeof(Double), 4 }
+        };
+
         private static MethodCache _OperatorWrappers = new MethodCache();
 
         public static T Clamp<T> (T value, T min, T max)
@@ -126,15 +137,30 @@ namespace Squared.Util {
             ilGenerator.Emit(OpCodes.Ret);
         }
 
-        private static void GenerateOperatorIL (ILGenerator ilGenerator, Type lhs, Type rhs, ExpressionType op) {
+        private static Type GetPrimitiveResult (Type lhs, Type rhs) {
+            int rankLeft, rankRight;
+            if (_TypeRanking.TryGetValue(lhs, out rankLeft) &&
+                _TypeRanking.TryGetValue(rhs, out rankRight)) {
+                if (rankLeft > rankRight)
+                    return lhs;
+                else
+                    return rhs; // hack
+            } else {
+                return lhs; // hack
+            }
+        }
+
+        private static Type GenerateOperatorIL (ILGenerator ilGenerator, Type lhs, Type rhs, ExpressionType op) {
             OperatorInfo opInfo = _OperatorInfo[op];
 
             if (lhs.IsPrimitive && rhs.IsPrimitive) {
                 ilGenerator.Emit(opInfo.OpCode);
-            } else if (!lhs.IsPrimitive) {
+                return GetPrimitiveResult(lhs, rhs);
+            } else {
                 MethodInfo operatorMethod = lhs.GetMethod(opInfo.MethodName, new Type[] { lhs, rhs }, null);
                 if (operatorMethod != null) {
                     ilGenerator.EmitCall(OpCodes.Call, operatorMethod, null);
+                    return operatorMethod.ReturnType;
                 } else {
                     throw new InvalidOperationException(
                         String.Format(
@@ -143,13 +169,6 @@ namespace Squared.Util {
                         )
                     );
                 }
-            } else {
-                throw new InvalidOperationException(
-                    String.Format(
-                        "GenerateOperatorIL failed for operator {0} with operands {1}, {2}: {2} is not a primitive type, but {1} is",
-                        op, lhs, rhs
-                    )
-                );
             }
         }
 
@@ -203,12 +222,18 @@ namespace Squared.Util {
 
         private static Type EmitExpressionNode (UnaryExpression expr, EmitState es) {
             Type t = EmitExpression(expr.Operand, es);
-            if (!_OperatorInfo.ContainsKey(expr.NodeType))
-                throw new InvalidOperationException(String.Format("Unary operator {0} not supported in expressions", expr.NodeType));
 
-            OperatorInfo op = _OperatorInfo[expr.NodeType];
-            es.ILGenerator.Emit(op.OpCode);
-            return t;
+            if (expr.NodeType == ExpressionType.Convert) {
+                EmitConversion(t, es);
+                return t;
+            } else {
+                if (!_OperatorInfo.ContainsKey(expr.NodeType))
+                    throw new InvalidOperationException(String.Format("Unary operator {0} not supported in expressions", expr.NodeType));
+
+                OperatorInfo op = _OperatorInfo[expr.NodeType];
+                es.ILGenerator.Emit(op.OpCode);
+                return t;
+            }
         }
 
         private static Type EmitExpressionNode (ParameterExpression expr, EmitState es) {
@@ -315,8 +340,6 @@ namespace Squared.Util {
                 ParameterTypes = parameterTypes,
                 ParameterIndices = parameterIndices
             };
-
-            Console.WriteLine("Generating code for {0}", newMethod);
 
             EmitExpression(expression.Body, es);
             ilGenerator.Emit(OpCodes.Ret);

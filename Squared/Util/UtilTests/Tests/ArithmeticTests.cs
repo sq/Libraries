@@ -188,6 +188,18 @@ namespace Squared.Util {
         }
 
         [Test]
+        public void CompileExpressionWithMixedTypes () {
+            Func<ValueType, float, ValueType> mul;
+            Arithmetic.CompileExpression(
+                (a, b) => a * b,
+                out mul
+            );
+
+            ValueType vt = new ValueType(1.0f, 1.0f);
+            Assert.AreEqual(mul(vt, 2.0f), new ValueType(2.0f, 2.0f));
+        }
+
+        [Test]
         public void PerformanceTest () {
             int numIterations = 10000;
             float[] r = new float[numIterations];
