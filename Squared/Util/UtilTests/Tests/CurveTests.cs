@@ -9,7 +9,7 @@ namespace Squared.Util {
     [TestFixture]
     public class CurveTests {
         [Test]
-        public void GetIndexPairAtPosition () {
+        public void GetLowerIndexForPosition () {
             var c = new Curve<double>();
             c[-1] = 0;
             c[-0.5f] = 1;
@@ -19,28 +19,28 @@ namespace Squared.Util {
             c[4] = 5;
             c[32] = 6;
 
-            Pair<int> p;
+            int i;
 
-            p = c.GetIndexPairAtPosition(-2);
-            Assert.AreEqual(p, new Pair<int>(0));
+            i = c.GetLowerIndexForPosition(-2);
+            Assert.AreEqual(i, 0);
 
-            p = c.GetIndexPairAtPosition(-1);
-            Assert.AreEqual(p, new Pair<int>(0, 1));
+            i = c.GetLowerIndexForPosition(-1);
+            Assert.AreEqual(i, 0);
 
-            p = c.GetIndexPairAtPosition(-0.6f);
-            Assert.AreEqual(p, new Pair<int>(0, 1));
+            i = c.GetLowerIndexForPosition(-0.6f);
+            Assert.AreEqual(i, 0);
 
-            p = c.GetIndexPairAtPosition(-0.5f);
-            Assert.AreEqual(p, new Pair<int>(1, 2));
+            i = c.GetLowerIndexForPosition(-0.5f);
+            Assert.AreEqual(i, 1);
 
-            p = c.GetIndexPairAtPosition(0.5f);
-            Assert.AreEqual(p, new Pair<int>(2, 3));
+            i = c.GetLowerIndexForPosition(0.5f);
+            Assert.AreEqual(i, 2);
 
-            p = c.GetIndexPairAtPosition(5);
-            Assert.AreEqual(p, new Pair<int>(5, 6));
+            i = c.GetLowerIndexForPosition(5);
+            Assert.AreEqual(i, 5);
 
-            p = c.GetIndexPairAtPosition(36);
-            Assert.AreEqual(p, new Pair<int>(6));
+            i = c.GetLowerIndexForPosition(36);
+            Assert.AreEqual(i, 6);
         }
 
         [Test]
@@ -161,6 +161,39 @@ namespace Squared.Util {
                 0.5,
                 lerpDouble(doubleWindow, 0, 0.5f)
             );
+        }
+
+        [Test]
+        public void PerformanceTest () {
+            int numIterations = 50000;
+            float[] r = new float[numIterations];
+            float numIterationsF = numIterations;
+            Curve<float> curve = new Curve<float>();
+            float c;
+
+            curve[0.0f] = 0.0f;
+            curve[0.5f] = 1.0f;
+            curve[1.0f] = 2.0f;
+
+            curve.Interpolator = Interpolators<float>.Linear;
+
+            long start = Time.Ticks;
+            for (int i = 0; i < numIterations; i++) {
+                c = (i / numIterationsF);
+                r[i] = curve[c];
+            }
+            long end = Time.Ticks;
+            Console.WriteLine("Execution time (linear interpolation): {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
+
+            curve.Interpolator = Interpolators<float>.Null;
+
+            start = Time.Ticks;
+            for (int i = 0; i < numIterations; i++) {
+                c = (i / numIterationsF);
+                r[i] = curve[c];
+            }
+            end = Time.Ticks;
+            Console.WriteLine("Execution time (no interpolation): {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
         }
     }
 }

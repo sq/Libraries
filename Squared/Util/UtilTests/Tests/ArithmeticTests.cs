@@ -207,7 +207,7 @@ namespace Squared.Util {
 
         [Test]
         public void PerformanceTest () {
-            int numIterations = 10000;
+            int numIterations = 50000;
             float[] r = new float[numIterations];
             float numIterationsF = numIterations;
             float a = 0.0f, b = 1.0f, c;

@@ -9,15 +9,12 @@ using System.Reflection;
 namespace Squared.Util {
     using Elt = Single;
 
-    public interface IVector {
-    }
-
     delegate void VecOp<A, R> (ref A lhs, ref A rhs, out R result);
     delegate void VecOpScalar<A, B, R> (ref A lhs, B rhs, out R result);
     delegate void VecOpUnary<A, R> (ref A lhs, out R result);
 
     internal class VectorOperations<Vec> 
-        where Vec : struct, IVector {
+        where Vec : struct {
 
         public VecOp<Vec, Vec> Add;
         public VecOp<Vec, Vec> Subtract;
@@ -151,7 +148,7 @@ namespace Squared.Util {
         }
     }
 
-    public struct Vec2 : IVector {
+    public struct Vec2 {
         private static VectorOperations<Vec2> _Operators = new VectorOperations<Vec2>();
 
         public Elt X, Y;

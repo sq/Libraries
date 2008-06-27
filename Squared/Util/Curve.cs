@@ -5,34 +5,6 @@ using System.Text;
 using System.Linq.Expressions;
 
 namespace Squared.Util {
-    public struct Pair<T> {
-        public T Left, Right;
-
-        public Pair (T both) {
-            Left = Right = both;
-        }
-
-        public Pair (T left, T right) {
-            Left = left;
-            Right = right;
-        }
-
-        public T[] ToArray () {
-            return new T[] { Left, Right };
-        }
-
-        public T this[int index] {
-            get {
-                if (index == 0)
-                    return Left;
-                else if (index == 1)
-                    return Right;
-                else
-                    throw new IndexOutOfRangeException();
-            }
-        }
-    }
-
     public delegate T InterpolatorSource<T> (int index) where T : struct;
     public delegate T Interpolator<T> (InterpolatorSource<T> data, int dataOffset, float positionInWindow) where T : struct;
 
@@ -89,21 +61,20 @@ namespace Squared.Util {
             }
         }
 
-        public Pair<int> GetIndexPairAtPosition (float position) {
+        public int GetLowerIndexForPosition (float position) {
             var keys = _Items.Keys;
             int count = _Items.Count;
             int low = 0;
             int high = count - 1;
             int index = low;
-            int nextIndex = Math.Min(low + 1, high);
+            int nextIndex;
 
             if (position < Start) {
-                return new Pair<int>(0);
+                return 0;
             } else if (position >= End) {
-                return new Pair<int>(count - 1);
+                return count - 1;
             } else if (_Items.ContainsKey(position)) {
-                index = _Items.IndexOfKey(position);
-                return new Pair<int>(index, Math.Min(index + 1, count - 1));
+                return _Items.IndexOfKey(position);
             }
 
             while (low <= high) {
@@ -125,10 +96,12 @@ namespace Squared.Util {
                 }
             }
 
-            return new Pair<int>(index, nextIndex);
+            return index;
         }
 
         public float GetPositionAtIndex (int index) {
+            var values = _Items.Values;
+            index = Math.Min(Math.Max(0, index), values.Count - 1);
             return _Items.Keys[index];
         }
 
@@ -139,26 +112,21 @@ namespace Squared.Util {
         }
 
         private T GetValueAtPosition (float position) {
-            var indexPair = GetIndexPairAtPosition(position);
-            var positionPair = GetPositionPair(indexPair);
-            float offset = 0.0f;
-            if (indexPair.Left != indexPair.Right)
-                offset = (position - positionPair.Left) / (positionPair.Right - positionPair.Left);
-            return GetValueFromIndexPair(indexPair, offset);
-        }
+            int index = GetLowerIndexForPosition(position);
+            float lowerPosition = GetPositionAtIndex(index);
+            float upperPosition = GetPositionAtIndex(index + 1);
+            if (lowerPosition < upperPosition) {
+                float offset = (position - lowerPosition) / (upperPosition - lowerPosition);
 
-        private Pair<float> GetPositionPair (Pair<int> indexPair) {
-            var keys = _Items.Keys;
-            return new Pair<float>(keys[indexPair.Left], keys[indexPair.Right]);
-        }
-
-        private Pair<T> GetValuePair (Pair<int> indexPair) {
-            var values = _Items.Values;
-            return new Pair<T>(values[indexPair.Left], values[indexPair.Right]);
-        }
-
-        private T GetValueFromIndexPair (Pair<int> indexPair, float offset) {
-            return Interpolator(_InterpolatorSource, indexPair.Left, offset);
+                if (offset < 0.0f)
+                    offset = 0.0f;
+                else if (offset > 1.0f)
+                    offset = 1.0f;
+                
+                return Interpolator(_InterpolatorSource, index, offset);
+            } else {
+                return _Items.Values[index];
+            }
         }
 
         public void Clamp (float newStartPosition, float newEndPosition) {
