@@ -16,7 +16,7 @@ namespace Squared.Util {
             Modulo = ExpressionType.Modulo
         }
 
-        struct OperatorInfo {
+        internal struct OperatorInfo {
             public OpCode OpCode;
             public String MethodName;
         }
@@ -25,7 +25,7 @@ namespace Squared.Util {
 
         #region Internal constants
 
-        private static Dictionary<ExpressionType, OperatorInfo> _OperatorInfo = new Dictionary<ExpressionType, OperatorInfo> {
+        internal static Dictionary<ExpressionType, OperatorInfo> _OperatorInfo = new Dictionary<ExpressionType, OperatorInfo> {
             { ExpressionType.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition" } },
             { ExpressionType.Subtract, new OperatorInfo { OpCode = OpCodes.Sub, MethodName = "op_Subtraction" } },
             { ExpressionType.Multiply, new OperatorInfo { OpCode = OpCodes.Mul, MethodName = "op_Multiply" } },
@@ -35,7 +35,7 @@ namespace Squared.Util {
             { ExpressionType.Equal, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality" } }
         };
 
-        private static Dictionary<Type, int> _TypeRanking = new Dictionary<Type, int> {
+        internal static Dictionary<Type, int> _TypeRanking = new Dictionary<Type, int> {
             { typeof(UInt16), 0 },
             { typeof(Int16), 0 },
             { typeof(UInt32), 1 },
@@ -147,14 +147,14 @@ namespace Squared.Util {
 
         #region Code generation functions
 
-        private class EmitState {
+        internal class EmitState {
             public ILGenerator ILGenerator;
             public Type ReturnType;
             public Type[] ParameterTypes;
             public Dictionary<string, UInt16> ParameterIndices;
         }
 
-        private static Type EmitExpressionNode (BinaryExpression expr, EmitState es) {
+        internal static Type EmitExpressionNode (BinaryExpression expr, EmitState es) {
             Type typeLeft = EmitExpression(expr.Left, es);
             Type typeRight = EmitExpression(expr.Right, es);
             if (!_OperatorInfo.ContainsKey(expr.NodeType))
@@ -168,7 +168,7 @@ namespace Squared.Util {
                 return typeLeft;
         }
 
-        private static Type EmitExpressionNode (UnaryExpression expr, EmitState es) {
+        internal static Type EmitExpressionNode (UnaryExpression expr, EmitState es) {
             Type t = EmitExpression(expr.Operand, es);
 
             if (expr.NodeType == ExpressionType.Convert) {
@@ -184,7 +184,7 @@ namespace Squared.Util {
             }
         }
 
-        private static Type EmitExpressionNode (ParameterExpression expr, EmitState es) {
+        internal static Type EmitExpressionNode (ParameterExpression expr, EmitState es) {
             string paramName = expr.Name;
             UInt16 paramIndex = es.ParameterIndices[paramName];
             Type paramType = es.ParameterTypes[paramIndex];
@@ -208,7 +208,7 @@ namespace Squared.Util {
             return paramType;
         }
 
-        private static Type EmitConversion (Type desiredType, EmitState es) {
+        internal static Type EmitConversion (Type desiredType, EmitState es) {
             if (desiredType == typeof(Single))
                 es.ILGenerator.Emit(OpCodes.Conv_R4);
             else if (desiredType == typeof(Double))
@@ -222,11 +222,11 @@ namespace Squared.Util {
             return desiredType;
         }
 
-        private static Type EmitExpressionNode (MethodCallExpression expr, EmitState es) {
+        internal static Type EmitExpressionNode (MethodCallExpression expr, EmitState es) {
             throw new InvalidOperationException("Method calls not supported in expressions");
         }
 
-        private static Type EmitExpressionNode (ConstantExpression expr, EmitState es) {
+        internal static Type EmitExpressionNode (ConstantExpression expr, EmitState es) {
             Type t = expr.Type;
             if (t == typeof(byte))
                 es.ILGenerator.Emit(OpCodes.Ldc_I4_S, (byte)expr.Value);
@@ -243,7 +243,7 @@ namespace Squared.Util {
             return t;
         }
 
-        private static Type EmitExpression (Expression expr, EmitState es) {
+        internal static Type EmitExpression (Expression expr, EmitState es) {
             if (expr is BinaryExpression)
                 return EmitExpressionNode((BinaryExpression)expr, es);
             else if (expr is UnaryExpression)
@@ -258,7 +258,7 @@ namespace Squared.Util {
                 throw new InvalidOperationException(String.Format("Cannot compile expression nodes of type {0}", expr.GetType().Name));
         }
 
-        private static void _CompileExpression<T> (LambdaExpression expression, out T result)
+        internal static void _CompileExpression<T> (LambdaExpression expression, out T result)
             where T : class {
             Type t = typeof(T);
             if (!((t.BaseType == typeof(MulticastDelegate)) || (t.BaseType == typeof(Delegate))))
@@ -295,7 +295,7 @@ namespace Squared.Util {
             result = newMethod.CreateDelegate(t) as T;
         }
 
-        private static void GenerateArithmeticIL (ILGenerator ilGenerator, Type lhs, Type rhs, Operators op) {
+        internal static void GenerateArithmeticIL (ILGenerator ilGenerator, Type lhs, Type rhs, Operators op) {
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ldarg_1);
 
@@ -304,7 +304,7 @@ namespace Squared.Util {
             ilGenerator.Emit(OpCodes.Ret);
         }
 
-        private static Type GetPrimitiveResult (Type lhs, Type rhs) {
+        internal static Type GetPrimitiveResult (Type lhs, Type rhs) {
             int rankLeft, rankRight;
             if (_TypeRanking.TryGetValue(lhs, out rankLeft) &&
                 _TypeRanking.TryGetValue(rhs, out rankRight)) {
@@ -317,7 +317,7 @@ namespace Squared.Util {
             }
         }
 
-        private static Type GenerateOperatorIL (ILGenerator ilGenerator, Type lhs, Type rhs, ExpressionType op) {
+        internal static Type GenerateOperatorIL (ILGenerator ilGenerator, Type lhs, Type rhs, ExpressionType op) {
             OperatorInfo opInfo = _OperatorInfo[op];
 
             if (lhs.IsPrimitive && rhs.IsPrimitive) {

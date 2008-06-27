@@ -165,10 +165,15 @@ namespace Squared.Util {
             T newStartValue = GetValueAtPosition(newStartPosition);
             T newEndValue = GetValueAtPosition(newEndPosition);
 
-            float[] keys = _Items.Keys.ToArray();
-            foreach (float position in keys) {
-                if ((position <= newStartPosition) || (position >= newEndPosition))
-                    _Items.Remove(position);
+            var keys = _Items.Keys;
+            int i = 0;
+            while (i < keys.Count) {
+                float position = keys[i];
+                if ((position <= newStartPosition) || (position >= newEndPosition)) {
+                    _Items.RemoveAt(i);
+                } else {
+                    i++;
+                }
             }
 
             _Items[newStartPosition] = newStartValue;
