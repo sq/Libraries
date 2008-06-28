@@ -66,15 +66,19 @@ namespace Squared.Util {
             int count = _Items.Count;
             int low = 0;
             int high = count - 1;
-            int index = low;
+            int index;
             int nextIndex;
 
             if (position < Start) {
                 return 0;
             } else if (position >= End) {
                 return count - 1;
-            } else if (_Items.ContainsKey(position)) {
-                return _Items.IndexOfKey(position);
+            } else {
+                index = _Items.IndexOfKey(position);
+                if (index != -1)
+                    return index;
+                else
+                    index = low;
             }
 
             while (low <= high) {
