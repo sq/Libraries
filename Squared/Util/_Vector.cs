@@ -6,6 +6,8 @@ using System.Text;
 namespace Squared.Util {
     using Elt = Single;
 
+    #region Auto-generated code for struct Vec2
+
     public partial struct Vec2 {
         public Elt X, Y;
 
@@ -68,6 +70,22 @@ namespace Squared.Util {
             );
         }
 
+        public static bool operator == (Vec2 lhs, Vec2 rhs) {
+            return (lhs.X == rhs.X) && (lhs.Y == rhs.Y);
+        }
+
+        public static bool operator != (Vec2 lhs, Vec2 rhs) {
+            return (lhs.X != rhs.X) || (lhs.Y != rhs.Y);
+        }
+
+        public static bool operator < (Vec2 lhs, Vec2 rhs) {
+            return (lhs.X < rhs.X) || (lhs.Y < rhs.Y);
+        }
+
+        public static bool operator > (Vec2 lhs, Vec2 rhs) {
+            return (lhs.X > rhs.X) || (lhs.Y > rhs.Y);
+        }
+
         public Elt Magnitude {
             get {
                 return (Elt)Math.Sqrt((X * X) + (Y * Y));
@@ -87,6 +105,10 @@ namespace Squared.Util {
         }
 
     }
+
+    #endregion
+
+    #region Auto-generated code for struct Vec3
 
     public partial struct Vec3 {
         public Elt X, Y, Z;
@@ -151,6 +173,22 @@ namespace Squared.Util {
             );
         }
 
+        public static bool operator == (Vec3 lhs, Vec3 rhs) {
+            return (lhs.X == rhs.X) && (lhs.Y == rhs.Y) && (lhs.Z == rhs.Z);
+        }
+
+        public static bool operator != (Vec3 lhs, Vec3 rhs) {
+            return (lhs.X != rhs.X) || (lhs.Y != rhs.Y) || (lhs.Z != rhs.Z);
+        }
+
+        public static bool operator < (Vec3 lhs, Vec3 rhs) {
+            return (lhs.X < rhs.X) || (lhs.Y < rhs.Y) || (lhs.Z < rhs.Z);
+        }
+
+        public static bool operator > (Vec3 lhs, Vec3 rhs) {
+            return (lhs.X > rhs.X) || (lhs.Y > rhs.Y) || (lhs.Z > rhs.Z);
+        }
+
         public Elt Magnitude {
             get {
                 return (Elt)Math.Sqrt((X * X) + (Y * Y) + (Z * Z));
@@ -170,6 +208,10 @@ namespace Squared.Util {
         }
 
     }
+
+    #endregion
+
+    #region Auto-generated code for struct Vec4
 
     public partial struct Vec4 {
         public Elt X, Y, Z, W;
@@ -235,6 +277,22 @@ namespace Squared.Util {
             );
         }
 
+        public static bool operator == (Vec4 lhs, Vec4 rhs) {
+            return (lhs.X == rhs.X) && (lhs.Y == rhs.Y) && (lhs.Z == rhs.Z) && (lhs.W == rhs.W);
+        }
+
+        public static bool operator != (Vec4 lhs, Vec4 rhs) {
+            return (lhs.X != rhs.X) || (lhs.Y != rhs.Y) || (lhs.Z != rhs.Z) || (lhs.W != rhs.W);
+        }
+
+        public static bool operator < (Vec4 lhs, Vec4 rhs) {
+            return (lhs.X < rhs.X) || (lhs.Y < rhs.Y) || (lhs.Z < rhs.Z) || (lhs.W < rhs.W);
+        }
+
+        public static bool operator > (Vec4 lhs, Vec4 rhs) {
+            return (lhs.X > rhs.X) || (lhs.Y > rhs.Y) || (lhs.Z > rhs.Z) || (lhs.W > rhs.W);
+        }
+
         public Elt Magnitude {
             get {
                 return (Elt)Math.Sqrt((X * X) + (Y * Y) + (Z * Z) + (W * W));
@@ -254,5 +312,7 @@ namespace Squared.Util {
         }
 
     }
+
+    #endregion
 
 }

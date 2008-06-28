@@ -1,10 +1,20 @@
 UnaryOperators = ['-']
 BinaryOperators = ['+', '-', '*', '/']
+ComparisonOperators = {
+    '==' : " && ",
+    '!=' : " || ",
+    '<' : " || ",
+    '>' : " || "
+}
 UsingNamespaces = ['System', 'System.Text']
 VectorTypes = {
     'Vec2': ['X', 'Y'],
     'Vec3': ['X', 'Y', 'Z'],
     'Vec4': ['X', 'Y', 'Z', 'W']
+}
+ValueConstructors = {
+    'Zero': 0,
+    'One': 1
 }
 OutputNamespace = "Squared.Util"
 EltType = "Single"
@@ -21,6 +31,8 @@ f.write("\n")
 f.write("namespace %s {\n    using Elt = %s;\n\n" % (OutputNamespace, EltType))
 
 for ty in sorted(VectorTypes.keys()):
+    f.write("    #region Auto-generated code for struct %s\n\n" % (ty))
+    
     fields = VectorTypes[ty]
     f.write("    public partial struct %s {\n" % (ty))
     f.write("        public Elt %s;\n\n" % (", ".join(fields)))
@@ -50,6 +62,13 @@ for ty in sorted(VectorTypes.keys()):
         f.write("            );\n")
         f.write("        }\n\n")
     
+    for op in ComparisonOperators.keys():
+        f.write("        public static bool operator %s (%s lhs, %s rhs) {\n" % (op, ty, ty))
+        f.write("            return %s;\n" % (
+            ComparisonOperators[op].join('(lhs.' + x + ' ' + op + ' rhs.' + x + ')' for x in fields)
+        ))
+        f.write("        }\n\n")
+    
     f.write("        public Elt Magnitude {\n")
     f.write("            get {\n")
     f.write("                return (Elt)Math.Sqrt(%s);\n" % (
@@ -76,5 +95,6 @@ for ty in sorted(VectorTypes.keys()):
     f.write("        }\n\n")
     
     f.write("    }\n\n")
+    f.write("    #endregion\n\n")
     
 f.write("}\n")
