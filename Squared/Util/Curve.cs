@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Reflection;
 using System.Linq.Expressions;
 
 namespace Squared.Util {
@@ -10,13 +11,40 @@ namespace Squared.Util {
 
     public static class Interpolators<T> 
         where T : struct {
-        delegate T LinearFn (T a, T b, float c);
+
+        delegate T LinearFn (T a, T b, float x);
+        delegate T CosineFn (T a, T b, float x);
+        delegate T CubicPFn (T a, T b, T c, T d);
+        delegate T CubicRFn (T a, T b, T c, T d, T p, float x, float x2, float x3);
+
         private static LinearFn _Linear = null;
+        private static CosineFn _Cosine = null;
+        private static CubicPFn _CubicP = null;
+        private static CubicRFn _CubicR = null;
 
         static Interpolators () {
             Arithmetic.CompileExpression(
-                (a, b, c) => a + ((b - a) * c),
+                (a, b, x) => 
+                    a + ((b - a) * x),
                 out _Linear
+            );
+
+            Arithmetic.CompileExpression(
+                (a, b, x) =>
+                    a + ((b - a) * ((1.0f - Math.Cos(x * Math.PI)) * 0.5f)),
+                out _Cosine
+            );
+
+            Arithmetic.CompileExpression(
+                (a, b, c, d) => 
+                    (d - c) - (a - b),
+                out _CubicP
+            );
+
+            Arithmetic.CompileExpression(
+                (a, b, c, d, p, x, x2, x3) =>
+                    (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b,
+                out _CubicR
             );
         }
 
@@ -30,6 +58,34 @@ namespace Squared.Util {
                 data(dataOffset + 1), 
                 positionInWindow
             );
+        }
+
+        public static T Cosine (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
+            return _Cosine(
+                data(dataOffset),
+                data(dataOffset + 1),
+                positionInWindow
+            );
+        }
+
+        public static T Cubic (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
+            T a = data(dataOffset - 1);
+            T b = data(dataOffset);
+            T c = data(dataOffset + 1);
+            T d = data(dataOffset + 2);
+            T p = _CubicP(a, b, c, d);
+            float x2 = positionInWindow * positionInWindow;
+            float x3 = positionInWindow * x2;
+            return _CubicR(a, b, c, d, p, positionInWindow, x2, x3);
+        }
+
+        public static Interpolator<T> GetByName (string name) {
+            Type myType = typeof(Interpolators<T>);
+            Type resultType = typeof(Interpolator<T>);
+            MethodInfo mi = myType.GetMethod(name);
+            MethodInfo defaultMethod = myType.GetMethod("Null");
+            return Delegate.CreateDelegate(resultType, mi ?? defaultMethod)
+                as Interpolator<T>;
         }
 
         public static Interpolator<T> Default {

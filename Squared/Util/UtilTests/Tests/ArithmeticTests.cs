@@ -191,6 +191,14 @@ namespace Squared.Util {
             ValueType vtB = new ValueType(1.0f, 2.0f);
             Assert.IsTrue(cmpvt(vtA, vtA));
             Assert.IsFalse(cmpvt(vtA, vtB));
+
+            Arithmetic.CompileExpression(
+                (a) => Math.Cos(a),
+                out fn
+            );
+
+            Assert.AreEqual(fn(5.0f), (float)Math.Cos(5.0f));
+            Assert.AreEqual(fn(0.5f), (float)Math.Cos(0.5f));
         }
 
         [Test]
@@ -207,7 +215,7 @@ namespace Squared.Util {
 
         [Test]
         public void PerformanceTest () {
-            int numIterations = 50000;
+            int numIterations = 20000;
             float[] r = new float[numIterations];
             float numIterationsF = numIterations;
             float a = 0.0f, b = 1.0f, c;

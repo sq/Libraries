@@ -8,6 +8,13 @@ using System.Linq.Expressions;
 
 namespace Squared.Util {
     public static class Arithmetic {
+        #region Additional Func overloads
+        public delegate TResult Func<T1, T2, T3, T4, T5, TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5);
+        public delegate TResult Func<T1, T2, T3, T4, T5, T6, TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6);
+        public delegate TResult Func<T1, T2, T3, T4, T5, T6, T7, TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7);
+        public delegate TResult Func<T1, T2, T3, T4, T5, T6, T7, T8, TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8);
+        #endregion
+
         public enum Operators {
             Add = ExpressionType.Add,
             Subtract = ExpressionType.Subtract,
@@ -19,6 +26,7 @@ namespace Squared.Util {
         internal struct OperatorInfo {
             public OpCode OpCode;
             public String MethodName;
+            public bool IsComparison;
         }
 
         public delegate T OperatorMethod<T, U> (T lhs, U rhs);
@@ -32,7 +40,7 @@ namespace Squared.Util {
             { ExpressionType.Divide, new OperatorInfo { OpCode = OpCodes.Div, MethodName = "op_Division" } },
             { ExpressionType.Modulo, new OperatorInfo { OpCode = OpCodes.Rem, MethodName = "op_Modulus" } },
             { ExpressionType.Negate, new OperatorInfo { OpCode = OpCodes.Neg, MethodName = "op_UnaryNegation" } },
-            { ExpressionType.Equal, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality" } }
+            { ExpressionType.Equal, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality", IsComparison = true } }
         };
 
         internal static Dictionary<Type, int> _TypeRanking = new Dictionary<Type, int> {
@@ -118,6 +126,26 @@ namespace Squared.Util {
             _CompileExpression(expression, out result);
         }
 
+        public static void CompileExpression<T> (Expression<Func<double, double, double, double, double, double>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
+        public static void CompileExpression<T> (Expression<Func<double, double, double, double, double, double, double>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
+        public static void CompileExpression<T> (Expression<Func<double, double, double, double, double, double, double, double>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
+        public static void CompileExpression<T> (Expression<Func<double, double, double, double, double, double, double, double, double>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
         public static void CompileExpression<T, Ret> (Expression<Func<Ret>> expression, out T result)
             where T : class {
             _CompileExpression(expression, out result);
@@ -143,6 +171,26 @@ namespace Squared.Util {
             _CompileExpression(expression, out result);
         }
 
+        public static void CompileExpression<T, Ret> (Expression<Func<double, double, double, double, double, Ret>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
+        public static void CompileExpression<T, Ret> (Expression<Func<double, double, double, double, double, double, Ret>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
+        public static void CompileExpression<T, Ret> (Expression<Func<double, double, double, double, double, double, double, Ret>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
+        public static void CompileExpression<T, Ret> (Expression<Func<double, double, double, double, double, double, double, double, Ret>> expression, out T result)
+            where T : class {
+            _CompileExpression(expression, out result);
+        }
+
         #endregion
 
         #region Code generation functions
@@ -164,6 +212,8 @@ namespace Squared.Util {
 
             if (expr.Conversion != null)
                 return EmitExpression(expr.Conversion, es);
+            else if (_OperatorInfo[expr.NodeType].IsComparison)
+                return typeof(Boolean);
             else
                 return typeLeft;
         }
@@ -223,7 +273,24 @@ namespace Squared.Util {
         }
 
         internal static Type EmitExpressionNode (MethodCallExpression expr, EmitState es) {
-            throw new InvalidOperationException("Method calls not supported in expressions");
+            if (expr.NodeType == ExpressionType.Call) {
+                var paramInfo = expr.Method.GetParameters();
+                for (int i = 0; i < expr.Arguments.Count; i++) {
+                    var arg = expr.Arguments[i];
+                    var parInfo = paramInfo[i];
+                    Type argType = EmitExpression(arg, es);
+
+                    if (!parInfo.ParameterType.IsAssignableFrom(argType)) {
+                        EmitConversion(parInfo.ParameterType, es);
+                    }
+                }
+                
+                es.ILGenerator.EmitCall(OpCodes.Call, expr.Method, null);
+
+                return expr.Method.ReturnType;
+            } else {
+                throw new InvalidOperationException(String.Format("Method calls of type {0} not supported in expressions", expr.NodeType));
+            }
         }
 
         internal static Type EmitExpressionNode (ConstantExpression expr, EmitState es) {
@@ -289,7 +356,10 @@ namespace Squared.Util {
                 ParameterIndices = parameterIndices
             };
 
-            EmitExpression(expression.Body, es);
+            Type resultType = EmitExpression(expression.Body, es);
+            if (!returnType.IsAssignableFrom(resultType)) {
+                EmitConversion(returnType, es);
+            }            
             ilGenerator.Emit(OpCodes.Ret);
 
             result = newMethod.CreateDelegate(t) as T;

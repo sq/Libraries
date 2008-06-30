@@ -100,6 +100,7 @@ namespace Squared.Util {
             c.Interpolator = Interpolators<float>.Linear;
             c[0] = 5.0f;
             c[1] = 10.0f;
+
             AssertEqualFloat(5.0f, c[-0.2f]);
             AssertEqualFloat(5.0f, c[0.0f]);
             AssertEqualFloat(6.0f, c[0.2f]);
@@ -108,6 +109,50 @@ namespace Squared.Util {
             AssertEqualFloat(9.0f, c[0.8f]);
             AssertEqualFloat(10.0f, c[1.0f]);
             AssertEqualFloat(10.0f, c[1.2f]);
+        }
+
+        [Test]
+        public void CosineInterpolation () {
+            var c = new Curve<float>();
+            c.Interpolator = Interpolators<float>.Cosine;
+            c[0] = 5.0f;
+            c[1] = 10.0f;
+
+            float e = 0.001f;
+
+            AssertEqualFloat(5.000f, c[-0.2f], e);
+            AssertEqualFloat(5.000f, c[0.0f], e);
+            AssertEqualFloat(5.477f, c[0.2f], e);
+            AssertEqualFloat(6.727f, c[0.4f], e);
+            AssertEqualFloat(8.272f, c[0.6f], e);
+            AssertEqualFloat(9.522f, c[0.8f], e);
+            AssertEqualFloat(10.00f, c[1.0f], e);
+            AssertEqualFloat(10.00f, c[1.2f], e);
+        }
+
+        [Test]
+        public void CubicInterpolation () {
+            var c = new Curve<float>();
+            c.Interpolator = Interpolators<float>.Cubic;
+            c[-1] = 10.0f;
+            c[0] = 5.0f;
+            c[1] = 10.0f;
+            c[2] = 5.0f;
+
+            float e = 0.001f;
+
+            AssertEqualFloat(10.00f, c[-1.2f], e);
+            AssertEqualFloat(10.00f, c[-1f], e);
+            AssertEqualFloat(5.360f, c[-0.2f], e);
+            AssertEqualFloat(5.000f, c[0.0f], e);
+            AssertEqualFloat(5.520f, c[0.2f], e);
+            AssertEqualFloat(6.760f, c[0.4f], e);
+            AssertEqualFloat(8.240f, c[0.6f], e);
+            AssertEqualFloat(9.480f, c[0.8f], e);
+            AssertEqualFloat(10.00f, c[1.0f], e);
+            AssertEqualFloat(9.639f, c[1.2f], e);
+            AssertEqualFloat(5.000f, c[2.0f], e);
+            AssertEqualFloat(5.000f, c[2.2f], e);
         }
 
         [Test]
@@ -161,6 +206,22 @@ namespace Squared.Util {
                 0.5,
                 lerpDouble(doubleWindow, 0, 0.5f)
             );
+        }
+
+        [Test]
+        public void InterpolatorEquality () {
+            Interpolator<float> a = Interpolators<float>.Linear;
+            Interpolator<float> b = Interpolators<float>.Linear;
+            Interpolator<float> c = Interpolators<float>.Null;
+
+            Assert.AreEqual(a, b);
+            Assert.AreNotEqual(a, c);
+        }
+
+        [Test]
+        public void InterpolatorByName () {
+            Assert.AreEqual(Interpolators<float>.GetByName("Linear"), (Interpolator<float>)Interpolators<float>.Linear);
+            Assert.AreEqual(Interpolators<float>.GetByName("Foozle"), (Interpolator<float>)Interpolators<float>.Null);
         }
 
         [Test]
