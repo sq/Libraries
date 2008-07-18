@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FramerateTest", "..\Tests\F
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CurveTest", "CurveTest\CurveTest.csproj", "{3DCFF220-7400-4558-BDB3-2EF658990954}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Render", "Render\Render.csproj", "{EF259ADB-0012-4475-A993-70CC894FB4B7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -67,6 +69,10 @@ Global
 		{3DCFF220-7400-4558-BDB3-2EF658990954}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3DCFF220-7400-4558-BDB3-2EF658990954}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3DCFF220-7400-4558-BDB3-2EF658990954}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EF259ADB-0012-4475-A993-70CC894FB4B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF259ADB-0012-4475-A993-70CC894FB4B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF259ADB-0012-4475-A993-70CC894FB4B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF259ADB-0012-4475-A993-70CC894FB4B7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -31,10 +31,15 @@ f.write("\n")
 f.write("namespace %s {\n    using Elt = %s;\n\n" % (OutputNamespace, EltType))
 
 for ty in sorted(VectorTypes.keys()):
+    fields = VectorTypes[ty]
+
+    f.write("    public interface IComparable%d<T> {\n" % (len(fields)))
+    f.write("        %s CompareTo(T other);\n" % (ty))
+    f.write("    }\n\n")
+
     f.write("    #region Auto-generated code for struct %s\n\n" % (ty))
     
-    fields = VectorTypes[ty]
-    f.write("    public partial struct %s {\n" % (ty))
+    f.write("    public partial struct %s : IComparable<%s>, IComparable%d<%s> {\n" % (ty, ty, len(fields), ty))
     f.write("        public Elt %s;\n\n" % (", ".join(fields)))
     
     f.write("        public %s (%s) {\n" % (ty, ", ".join("Elt " + x.lower() for x in fields)))
@@ -68,6 +73,37 @@ for ty in sorted(VectorTypes.keys()):
             ComparisonOperators[op].join('(lhs.' + x + ' ' + op + ' rhs.' + x + ')' for x in fields)
         ))
         f.write("        }\n\n")
+    
+    f.write("        public override bool Equals (object o) {\n")
+    f.write("            if ((o == null) || (GetType() != o.GetType())) {\n")
+    f.write("                return false;\n")
+    f.write("            } else {\n")
+    f.write("                %s rhs = (%s)o;\n" % (ty, ty))
+    f.write("                return %s;\n" % (
+        " && ".join('(' + x + ' == rhs.' + x + ')' for x in fields)
+    ))
+    f.write("            }\n")
+    f.write("        }\n\n")
+    
+    f.write("        public override int GetHashCode () {\n")
+    f.write("            return %s;\n" % (
+        " ^ ".join(x + '.GetHashCode()' for x in fields)
+    ))
+    f.write("        }\n\n")
+    
+    f.write("        int IComparable<%s>.CompareTo (%s other) {\n" % (ty, ty))
+    f.write("            int result = 0;\n")
+    for x in fields:
+        f.write("            result = %s.CompareTo(other.%s);\n" % (x, x))
+        f.write("            if (result != 0) return result;\n")
+    f.write("            return result;\n")
+    f.write("        }\n\n")
+    
+    f.write("        public %s CompareTo (%s other) {\n" % (ty, ty))
+    f.write("            return new %s(\n" % (ty))
+    f.write("                %s\n" % (", ".join(x + '.CompareTo(other.' + x + ")" for x in fields)))
+    f.write("            );\n")
+    f.write("        }\n\n")
     
     f.write("        public Elt Magnitude {\n")
     f.write("            get {\n")

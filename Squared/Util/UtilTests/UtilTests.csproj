@@ -50,7 +50,6 @@
     <Compile Include="Tests\ArithmeticTests.cs" />
     <Compile Include="Tests\CurveTests.cs" />
     <Compile Include="Tests\PriorityQueueTests.cs" />
-    <Compile Include="Tests\QuadTreeTests.cs" />
     <Compile Include="Tests\VectorTests.cs" />
   </ItemGroup>
   <ItemGroup>

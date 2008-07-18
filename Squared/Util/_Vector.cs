@@ -6,9 +6,13 @@ using System.Text;
 namespace Squared.Util {
     using Elt = Single;
 
+    public interface IComparable2<T> {
+        Vec2 CompareTo(T other);
+    }
+
     #region Auto-generated code for struct Vec2
 
-    public partial struct Vec2 {
+    public partial struct Vec2 : IComparable<Vec2>, IComparable2<Vec2> {
         public Elt X, Y;
 
         public Vec2 (Elt x, Elt y) {
@@ -86,6 +90,34 @@ namespace Squared.Util {
             return (lhs.X > rhs.X) || (lhs.Y > rhs.Y);
         }
 
+        public override bool Equals (object o) {
+            if ((o == null) || (GetType() != o.GetType())) {
+                return false;
+            } else {
+                Vec2 rhs = (Vec2)o;
+                return (X == rhs.X) && (Y == rhs.Y);
+            }
+        }
+
+        public override int GetHashCode () {
+            return X.GetHashCode() ^ Y.GetHashCode();
+        }
+
+        int IComparable<Vec2>.CompareTo (Vec2 other) {
+            int result = 0;
+            result = X.CompareTo(other.X);
+            if (result != 0) return result;
+            result = Y.CompareTo(other.Y);
+            if (result != 0) return result;
+            return result;
+        }
+
+        public Vec2 CompareTo (Vec2 other) {
+            return new Vec2(
+                X.CompareTo(other.X), Y.CompareTo(other.Y)
+            );
+        }
+
         public Elt Magnitude {
             get {
                 return (Elt)Math.Sqrt((X * X) + (Y * Y));
@@ -108,9 +140,13 @@ namespace Squared.Util {
 
     #endregion
 
+    public interface IComparable3<T> {
+        Vec3 CompareTo(T other);
+    }
+
     #region Auto-generated code for struct Vec3
 
-    public partial struct Vec3 {
+    public partial struct Vec3 : IComparable<Vec3>, IComparable3<Vec3> {
         public Elt X, Y, Z;
 
         public Vec3 (Elt x, Elt y, Elt z) {
@@ -189,6 +225,36 @@ namespace Squared.Util {
             return (lhs.X > rhs.X) || (lhs.Y > rhs.Y) || (lhs.Z > rhs.Z);
         }
 
+        public override bool Equals (object o) {
+            if ((o == null) || (GetType() != o.GetType())) {
+                return false;
+            } else {
+                Vec3 rhs = (Vec3)o;
+                return (X == rhs.X) && (Y == rhs.Y) && (Z == rhs.Z);
+            }
+        }
+
+        public override int GetHashCode () {
+            return X.GetHashCode() ^ Y.GetHashCode() ^ Z.GetHashCode();
+        }
+
+        int IComparable<Vec3>.CompareTo (Vec3 other) {
+            int result = 0;
+            result = X.CompareTo(other.X);
+            if (result != 0) return result;
+            result = Y.CompareTo(other.Y);
+            if (result != 0) return result;
+            result = Z.CompareTo(other.Z);
+            if (result != 0) return result;
+            return result;
+        }
+
+        public Vec3 CompareTo (Vec3 other) {
+            return new Vec3(
+                X.CompareTo(other.X), Y.CompareTo(other.Y), Z.CompareTo(other.Z)
+            );
+        }
+
         public Elt Magnitude {
             get {
                 return (Elt)Math.Sqrt((X * X) + (Y * Y) + (Z * Z));
@@ -211,9 +277,13 @@ namespace Squared.Util {
 
     #endregion
 
+    public interface IComparable4<T> {
+        Vec4 CompareTo(T other);
+    }
+
     #region Auto-generated code for struct Vec4
 
-    public partial struct Vec4 {
+    public partial struct Vec4 : IComparable<Vec4>, IComparable4<Vec4> {
         public Elt X, Y, Z, W;
 
         public Vec4 (Elt x, Elt y, Elt z, Elt w) {
@@ -291,6 +361,38 @@ namespace Squared.Util {
 
         public static bool operator > (Vec4 lhs, Vec4 rhs) {
             return (lhs.X > rhs.X) || (lhs.Y > rhs.Y) || (lhs.Z > rhs.Z) || (lhs.W > rhs.W);
+        }
+
+        public override bool Equals (object o) {
+            if ((o == null) || (GetType() != o.GetType())) {
+                return false;
+            } else {
+                Vec4 rhs = (Vec4)o;
+                return (X == rhs.X) && (Y == rhs.Y) && (Z == rhs.Z) && (W == rhs.W);
+            }
+        }
+
+        public override int GetHashCode () {
+            return X.GetHashCode() ^ Y.GetHashCode() ^ Z.GetHashCode() ^ W.GetHashCode();
+        }
+
+        int IComparable<Vec4>.CompareTo (Vec4 other) {
+            int result = 0;
+            result = X.CompareTo(other.X);
+            if (result != 0) return result;
+            result = Y.CompareTo(other.Y);
+            if (result != 0) return result;
+            result = Z.CompareTo(other.Z);
+            if (result != 0) return result;
+            result = W.CompareTo(other.W);
+            if (result != 0) return result;
+            return result;
+        }
+
+        public Vec4 CompareTo (Vec4 other) {
+            return new Vec4(
+                X.CompareTo(other.X), Y.CompareTo(other.Y), Z.CompareTo(other.Z), W.CompareTo(other.W)
+            );
         }
 
         public Elt Magnitude {

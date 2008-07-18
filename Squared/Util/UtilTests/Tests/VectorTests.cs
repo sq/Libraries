@@ -61,6 +61,33 @@ namespace Squared.Util {
             Assert.AreEqual(new Vec2(1.0f, 0.5f), a / 2.0f);
         }
 
+        [Test]
+        public void Compare () {
+            var a = new Vec2(1.0f, 1.0f);
+            var b = new Vec2(1.0f, 2.0f);
+            var c = new Vec2(2.0f, 0.0f);
+
+            Assert.IsTrue(a < b);
+            Assert.IsTrue(a < c);
+            Assert.IsTrue(c > b);
+        }
+
+        [Test]
+        public void IComparable2 () {
+            var a = new Vec2(1.0f, 1.0f);
+            var b = new Vec2(1.0f, 2.0f);
+            var c = new Vec2(2.0f, 0.0f);
+
+            var r = a.CompareTo(b);
+            Assert.AreEqual(new Vec2(0, -1), r);
+
+            r = a.CompareTo(c);
+            Assert.AreEqual(new Vec2(-1, 1), r);
+
+            r = c.CompareTo(b);
+            Assert.AreEqual(new Vec2(1, -1), r);
+        }
+
         delegate void ComplexPerfFn (ref Vec2 A, ref Vec2 B, float C, out Vec2 Result);
 
         [Test]
