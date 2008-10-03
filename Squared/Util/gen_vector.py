@@ -8,15 +8,15 @@ ComparisonOperators = {
 }
 UsingNamespaces = ['System', 'System.Text']
 VectorTypes = {
-    'Vec2': ['X', 'Y'],
-    'Vec3': ['X', 'Y', 'Z'],
-    'Vec4': ['X', 'Y', 'Z', 'W']
+    'Vector2': ['X', 'Y'],
+    'Vector3': ['X', 'Y', 'Z'],
+    'Vector4': ['X', 'Y', 'Z', 'W']
 }
 ValueConstructors = {
     'Zero': 0,
     'One': 1
 }
-OutputNamespace = "Squared.Util"
+OutputNamespace = "Squared.Util.Vector"
 EltType = "Single"
 
 f = open(".\\_Vector.cs", "w")
@@ -105,16 +105,20 @@ for ty in sorted(VectorTypes.keys()):
     f.write("            );\n")
     f.write("        }\n\n")
     
-    f.write("        public Elt Magnitude {\n")
-    f.write("            get {\n")
-    f.write("                return (Elt)Math.Sqrt(%s);\n" % (
+    f.write("        public Elt Length() {\n")
+    f.write("            return (Elt)Math.Sqrt(%s);\n" % (
         " + ".join('(' + x + ' * ' + x + ')' for x in fields)
     ))
-    f.write("            }\n")
     f.write("        }\n\n")
     
-    f.write("        public %s ToUnit() {\n" % (ty))
-    f.write("            return this / this.Magnitude;\n")
+    f.write("        public Elt LengthSquared() {\n")
+    f.write("            return (Elt)(%s);\n" % (
+        " + ".join('(' + x + ' * ' + x + ')' for x in fields)
+    ))
+    f.write("        }\n\n")
+    
+    f.write("        public %s Normalize() {\n" % (ty))
+    f.write("            return this / this.Length();\n")
     f.write("        }\n\n")
     
     f.write("        public %s[] ToArray() {\n" % (EltType))

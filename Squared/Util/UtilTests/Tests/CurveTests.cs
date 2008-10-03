@@ -82,6 +82,19 @@ namespace Squared.Util {
         }
 
         [Test]
+        public void InterpolatorPerNode () {
+            var c = new Curve<float>();
+            c.SetValueAtPosition(0.0f, 1.0f, Interpolators<float>.Linear);
+            c.SetValueAtPosition(1.0f, 2.0f, Interpolators<float>.Null);
+            c.SetValueAtPosition(2.0f, 0.0f);
+            AssertEqualFloat(1.0f, c[0.0f]);
+            AssertEqualFloat(1.5f, c[0.5f]);
+            AssertEqualFloat(2.0f, c[1.0f]);
+            AssertEqualFloat(2.0f, c[1.5f]);
+            AssertEqualFloat(0.0f, c[2.0f]);
+        }
+
+        [Test]
         public void NullInterpolation () {
             var c = new Curve<float>();
             c.Interpolator = Interpolators<float>.Null;

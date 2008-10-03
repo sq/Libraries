@@ -3,90 +3,90 @@
 using System;
 using System.Text;
 
-namespace Squared.Util {
+namespace Squared.Util.Vector {
     using Elt = Single;
 
     public interface IComparable2<T> {
-        Vec2 CompareTo(T other);
+        Vector2 CompareTo(T other);
     }
 
-    #region Auto-generated code for struct Vec2
+    #region Auto-generated code for struct Vector2
 
-    public partial struct Vec2 : IComparable<Vec2>, IComparable2<Vec2> {
+    public partial struct Vector2 : IComparable<Vector2>, IComparable2<Vector2> {
         public Elt X, Y;
 
-        public Vec2 (Elt x, Elt y) {
+        public Vector2 (Elt x, Elt y) {
             X = x;
             Y = y;
         }
 
-        public static Vec2 operator - (Vec2 value) {
-            return new Vec2(
+        public static Vector2 operator - (Vector2 value) {
+            return new Vector2(
                 -value.X, -value.Y
             );
         }
 
-        public static Vec2 operator + (Vec2 lhs, Vec2 rhs) {
-            return new Vec2(
+        public static Vector2 operator + (Vector2 lhs, Vector2 rhs) {
+            return new Vector2(
                 lhs.X + rhs.X, lhs.Y + rhs.Y
             );
         }
 
-        public static Vec2 operator + (Vec2 lhs, Elt rhs) {
-            return new Vec2(
+        public static Vector2 operator + (Vector2 lhs, Elt rhs) {
+            return new Vector2(
                 lhs.X + rhs, lhs.Y + rhs
             );
         }
 
-        public static Vec2 operator - (Vec2 lhs, Vec2 rhs) {
-            return new Vec2(
+        public static Vector2 operator - (Vector2 lhs, Vector2 rhs) {
+            return new Vector2(
                 lhs.X - rhs.X, lhs.Y - rhs.Y
             );
         }
 
-        public static Vec2 operator - (Vec2 lhs, Elt rhs) {
-            return new Vec2(
+        public static Vector2 operator - (Vector2 lhs, Elt rhs) {
+            return new Vector2(
                 lhs.X - rhs, lhs.Y - rhs
             );
         }
 
-        public static Vec2 operator * (Vec2 lhs, Vec2 rhs) {
-            return new Vec2(
+        public static Vector2 operator * (Vector2 lhs, Vector2 rhs) {
+            return new Vector2(
                 lhs.X * rhs.X, lhs.Y * rhs.Y
             );
         }
 
-        public static Vec2 operator * (Vec2 lhs, Elt rhs) {
-            return new Vec2(
+        public static Vector2 operator * (Vector2 lhs, Elt rhs) {
+            return new Vector2(
                 lhs.X * rhs, lhs.Y * rhs
             );
         }
 
-        public static Vec2 operator / (Vec2 lhs, Vec2 rhs) {
-            return new Vec2(
+        public static Vector2 operator / (Vector2 lhs, Vector2 rhs) {
+            return new Vector2(
                 lhs.X / rhs.X, lhs.Y / rhs.Y
             );
         }
 
-        public static Vec2 operator / (Vec2 lhs, Elt rhs) {
-            return new Vec2(
+        public static Vector2 operator / (Vector2 lhs, Elt rhs) {
+            return new Vector2(
                 lhs.X / rhs, lhs.Y / rhs
             );
         }
 
-        public static bool operator == (Vec2 lhs, Vec2 rhs) {
+        public static bool operator == (Vector2 lhs, Vector2 rhs) {
             return (lhs.X == rhs.X) && (lhs.Y == rhs.Y);
         }
 
-        public static bool operator != (Vec2 lhs, Vec2 rhs) {
+        public static bool operator != (Vector2 lhs, Vector2 rhs) {
             return (lhs.X != rhs.X) || (lhs.Y != rhs.Y);
         }
 
-        public static bool operator < (Vec2 lhs, Vec2 rhs) {
+        public static bool operator < (Vector2 lhs, Vector2 rhs) {
             return (lhs.X < rhs.X) || (lhs.Y < rhs.Y);
         }
 
-        public static bool operator > (Vec2 lhs, Vec2 rhs) {
+        public static bool operator > (Vector2 lhs, Vector2 rhs) {
             return (lhs.X > rhs.X) || (lhs.Y > rhs.Y);
         }
 
@@ -94,7 +94,7 @@ namespace Squared.Util {
             if ((o == null) || (GetType() != o.GetType())) {
                 return false;
             } else {
-                Vec2 rhs = (Vec2)o;
+                Vector2 rhs = (Vector2)o;
                 return (X == rhs.X) && (Y == rhs.Y);
             }
         }
@@ -103,7 +103,7 @@ namespace Squared.Util {
             return X.GetHashCode() ^ Y.GetHashCode();
         }
 
-        int IComparable<Vec2>.CompareTo (Vec2 other) {
+        int IComparable<Vector2>.CompareTo (Vector2 other) {
             int result = 0;
             result = X.CompareTo(other.X);
             if (result != 0) return result;
@@ -112,20 +112,22 @@ namespace Squared.Util {
             return result;
         }
 
-        public Vec2 CompareTo (Vec2 other) {
-            return new Vec2(
+        public Vector2 CompareTo (Vector2 other) {
+            return new Vector2(
                 X.CompareTo(other.X), Y.CompareTo(other.Y)
             );
         }
 
-        public Elt Magnitude {
-            get {
-                return (Elt)Math.Sqrt((X * X) + (Y * Y));
-            }
+        public Elt Length() {
+            return (Elt)Math.Sqrt((X * X) + (Y * Y));
         }
 
-        public Vec2 ToUnit() {
-            return this / this.Magnitude;
+        public Elt LengthSquared() {
+            return (Elt)((X * X) + (Y * Y));
+        }
+
+        public Vector2 Normalize() {
+            return this / this.Length();
         }
 
         public Single[] ToArray() {
@@ -141,87 +143,87 @@ namespace Squared.Util {
     #endregion
 
     public interface IComparable3<T> {
-        Vec3 CompareTo(T other);
+        Vector3 CompareTo(T other);
     }
 
-    #region Auto-generated code for struct Vec3
+    #region Auto-generated code for struct Vector3
 
-    public partial struct Vec3 : IComparable<Vec3>, IComparable3<Vec3> {
+    public partial struct Vector3 : IComparable<Vector3>, IComparable3<Vector3> {
         public Elt X, Y, Z;
 
-        public Vec3 (Elt x, Elt y, Elt z) {
+        public Vector3 (Elt x, Elt y, Elt z) {
             X = x;
             Y = y;
             Z = z;
         }
 
-        public static Vec3 operator - (Vec3 value) {
-            return new Vec3(
+        public static Vector3 operator - (Vector3 value) {
+            return new Vector3(
                 -value.X, -value.Y, -value.Z
             );
         }
 
-        public static Vec3 operator + (Vec3 lhs, Vec3 rhs) {
-            return new Vec3(
+        public static Vector3 operator + (Vector3 lhs, Vector3 rhs) {
+            return new Vector3(
                 lhs.X + rhs.X, lhs.Y + rhs.Y, lhs.Z + rhs.Z
             );
         }
 
-        public static Vec3 operator + (Vec3 lhs, Elt rhs) {
-            return new Vec3(
+        public static Vector3 operator + (Vector3 lhs, Elt rhs) {
+            return new Vector3(
                 lhs.X + rhs, lhs.Y + rhs, lhs.Z + rhs
             );
         }
 
-        public static Vec3 operator - (Vec3 lhs, Vec3 rhs) {
-            return new Vec3(
+        public static Vector3 operator - (Vector3 lhs, Vector3 rhs) {
+            return new Vector3(
                 lhs.X - rhs.X, lhs.Y - rhs.Y, lhs.Z - rhs.Z
             );
         }
 
-        public static Vec3 operator - (Vec3 lhs, Elt rhs) {
-            return new Vec3(
+        public static Vector3 operator - (Vector3 lhs, Elt rhs) {
+            return new Vector3(
                 lhs.X - rhs, lhs.Y - rhs, lhs.Z - rhs
             );
         }
 
-        public static Vec3 operator * (Vec3 lhs, Vec3 rhs) {
-            return new Vec3(
+        public static Vector3 operator * (Vector3 lhs, Vector3 rhs) {
+            return new Vector3(
                 lhs.X * rhs.X, lhs.Y * rhs.Y, lhs.Z * rhs.Z
             );
         }
 
-        public static Vec3 operator * (Vec3 lhs, Elt rhs) {
-            return new Vec3(
+        public static Vector3 operator * (Vector3 lhs, Elt rhs) {
+            return new Vector3(
                 lhs.X * rhs, lhs.Y * rhs, lhs.Z * rhs
             );
         }
 
-        public static Vec3 operator / (Vec3 lhs, Vec3 rhs) {
-            return new Vec3(
+        public static Vector3 operator / (Vector3 lhs, Vector3 rhs) {
+            return new Vector3(
                 lhs.X / rhs.X, lhs.Y / rhs.Y, lhs.Z / rhs.Z
             );
         }
 
-        public static Vec3 operator / (Vec3 lhs, Elt rhs) {
-            return new Vec3(
+        public static Vector3 operator / (Vector3 lhs, Elt rhs) {
+            return new Vector3(
                 lhs.X / rhs, lhs.Y / rhs, lhs.Z / rhs
             );
         }
 
-        public static bool operator == (Vec3 lhs, Vec3 rhs) {
+        public static bool operator == (Vector3 lhs, Vector3 rhs) {
             return (lhs.X == rhs.X) && (lhs.Y == rhs.Y) && (lhs.Z == rhs.Z);
         }
 
-        public static bool operator != (Vec3 lhs, Vec3 rhs) {
+        public static bool operator != (Vector3 lhs, Vector3 rhs) {
             return (lhs.X != rhs.X) || (lhs.Y != rhs.Y) || (lhs.Z != rhs.Z);
         }
 
-        public static bool operator < (Vec3 lhs, Vec3 rhs) {
+        public static bool operator < (Vector3 lhs, Vector3 rhs) {
             return (lhs.X < rhs.X) || (lhs.Y < rhs.Y) || (lhs.Z < rhs.Z);
         }
 
-        public static bool operator > (Vec3 lhs, Vec3 rhs) {
+        public static bool operator > (Vector3 lhs, Vector3 rhs) {
             return (lhs.X > rhs.X) || (lhs.Y > rhs.Y) || (lhs.Z > rhs.Z);
         }
 
@@ -229,7 +231,7 @@ namespace Squared.Util {
             if ((o == null) || (GetType() != o.GetType())) {
                 return false;
             } else {
-                Vec3 rhs = (Vec3)o;
+                Vector3 rhs = (Vector3)o;
                 return (X == rhs.X) && (Y == rhs.Y) && (Z == rhs.Z);
             }
         }
@@ -238,7 +240,7 @@ namespace Squared.Util {
             return X.GetHashCode() ^ Y.GetHashCode() ^ Z.GetHashCode();
         }
 
-        int IComparable<Vec3>.CompareTo (Vec3 other) {
+        int IComparable<Vector3>.CompareTo (Vector3 other) {
             int result = 0;
             result = X.CompareTo(other.X);
             if (result != 0) return result;
@@ -249,20 +251,22 @@ namespace Squared.Util {
             return result;
         }
 
-        public Vec3 CompareTo (Vec3 other) {
-            return new Vec3(
+        public Vector3 CompareTo (Vector3 other) {
+            return new Vector3(
                 X.CompareTo(other.X), Y.CompareTo(other.Y), Z.CompareTo(other.Z)
             );
         }
 
-        public Elt Magnitude {
-            get {
-                return (Elt)Math.Sqrt((X * X) + (Y * Y) + (Z * Z));
-            }
+        public Elt Length() {
+            return (Elt)Math.Sqrt((X * X) + (Y * Y) + (Z * Z));
         }
 
-        public Vec3 ToUnit() {
-            return this / this.Magnitude;
+        public Elt LengthSquared() {
+            return (Elt)((X * X) + (Y * Y) + (Z * Z));
+        }
+
+        public Vector3 Normalize() {
+            return this / this.Length();
         }
 
         public Single[] ToArray() {
@@ -278,88 +282,88 @@ namespace Squared.Util {
     #endregion
 
     public interface IComparable4<T> {
-        Vec4 CompareTo(T other);
+        Vector4 CompareTo(T other);
     }
 
-    #region Auto-generated code for struct Vec4
+    #region Auto-generated code for struct Vector4
 
-    public partial struct Vec4 : IComparable<Vec4>, IComparable4<Vec4> {
+    public partial struct Vector4 : IComparable<Vector4>, IComparable4<Vector4> {
         public Elt X, Y, Z, W;
 
-        public Vec4 (Elt x, Elt y, Elt z, Elt w) {
+        public Vector4 (Elt x, Elt y, Elt z, Elt w) {
             X = x;
             Y = y;
             Z = z;
             W = w;
         }
 
-        public static Vec4 operator - (Vec4 value) {
-            return new Vec4(
+        public static Vector4 operator - (Vector4 value) {
+            return new Vector4(
                 -value.X, -value.Y, -value.Z, -value.W
             );
         }
 
-        public static Vec4 operator + (Vec4 lhs, Vec4 rhs) {
-            return new Vec4(
+        public static Vector4 operator + (Vector4 lhs, Vector4 rhs) {
+            return new Vector4(
                 lhs.X + rhs.X, lhs.Y + rhs.Y, lhs.Z + rhs.Z, lhs.W + rhs.W
             );
         }
 
-        public static Vec4 operator + (Vec4 lhs, Elt rhs) {
-            return new Vec4(
+        public static Vector4 operator + (Vector4 lhs, Elt rhs) {
+            return new Vector4(
                 lhs.X + rhs, lhs.Y + rhs, lhs.Z + rhs, lhs.W + rhs
             );
         }
 
-        public static Vec4 operator - (Vec4 lhs, Vec4 rhs) {
-            return new Vec4(
+        public static Vector4 operator - (Vector4 lhs, Vector4 rhs) {
+            return new Vector4(
                 lhs.X - rhs.X, lhs.Y - rhs.Y, lhs.Z - rhs.Z, lhs.W - rhs.W
             );
         }
 
-        public static Vec4 operator - (Vec4 lhs, Elt rhs) {
-            return new Vec4(
+        public static Vector4 operator - (Vector4 lhs, Elt rhs) {
+            return new Vector4(
                 lhs.X - rhs, lhs.Y - rhs, lhs.Z - rhs, lhs.W - rhs
             );
         }
 
-        public static Vec4 operator * (Vec4 lhs, Vec4 rhs) {
-            return new Vec4(
+        public static Vector4 operator * (Vector4 lhs, Vector4 rhs) {
+            return new Vector4(
                 lhs.X * rhs.X, lhs.Y * rhs.Y, lhs.Z * rhs.Z, lhs.W * rhs.W
             );
         }
 
-        public static Vec4 operator * (Vec4 lhs, Elt rhs) {
-            return new Vec4(
+        public static Vector4 operator * (Vector4 lhs, Elt rhs) {
+            return new Vector4(
                 lhs.X * rhs, lhs.Y * rhs, lhs.Z * rhs, lhs.W * rhs
             );
         }
 
-        public static Vec4 operator / (Vec4 lhs, Vec4 rhs) {
-            return new Vec4(
+        public static Vector4 operator / (Vector4 lhs, Vector4 rhs) {
+            return new Vector4(
                 lhs.X / rhs.X, lhs.Y / rhs.Y, lhs.Z / rhs.Z, lhs.W / rhs.W
             );
         }
 
-        public static Vec4 operator / (Vec4 lhs, Elt rhs) {
-            return new Vec4(
+        public static Vector4 operator / (Vector4 lhs, Elt rhs) {
+            return new Vector4(
                 lhs.X / rhs, lhs.Y / rhs, lhs.Z / rhs, lhs.W / rhs
             );
         }
 
-        public static bool operator == (Vec4 lhs, Vec4 rhs) {
+        public static bool operator == (Vector4 lhs, Vector4 rhs) {
             return (lhs.X == rhs.X) && (lhs.Y == rhs.Y) && (lhs.Z == rhs.Z) && (lhs.W == rhs.W);
         }
 
-        public static bool operator != (Vec4 lhs, Vec4 rhs) {
+        public static bool operator != (Vector4 lhs, Vector4 rhs) {
             return (lhs.X != rhs.X) || (lhs.Y != rhs.Y) || (lhs.Z != rhs.Z) || (lhs.W != rhs.W);
         }
 
-        public static bool operator < (Vec4 lhs, Vec4 rhs) {
+        public static bool operator < (Vector4 lhs, Vector4 rhs) {
             return (lhs.X < rhs.X) || (lhs.Y < rhs.Y) || (lhs.Z < rhs.Z) || (lhs.W < rhs.W);
         }
 
-        public static bool operator > (Vec4 lhs, Vec4 rhs) {
+        public static bool operator > (Vector4 lhs, Vector4 rhs) {
             return (lhs.X > rhs.X) || (lhs.Y > rhs.Y) || (lhs.Z > rhs.Z) || (lhs.W > rhs.W);
         }
 
@@ -367,7 +371,7 @@ namespace Squared.Util {
             if ((o == null) || (GetType() != o.GetType())) {
                 return false;
             } else {
-                Vec4 rhs = (Vec4)o;
+                Vector4 rhs = (Vector4)o;
                 return (X == rhs.X) && (Y == rhs.Y) && (Z == rhs.Z) && (W == rhs.W);
             }
         }
@@ -376,7 +380,7 @@ namespace Squared.Util {
             return X.GetHashCode() ^ Y.GetHashCode() ^ Z.GetHashCode() ^ W.GetHashCode();
         }
 
-        int IComparable<Vec4>.CompareTo (Vec4 other) {
+        int IComparable<Vector4>.CompareTo (Vector4 other) {
             int result = 0;
             result = X.CompareTo(other.X);
             if (result != 0) return result;
@@ -389,20 +393,22 @@ namespace Squared.Util {
             return result;
         }
 
-        public Vec4 CompareTo (Vec4 other) {
-            return new Vec4(
+        public Vector4 CompareTo (Vector4 other) {
+            return new Vector4(
                 X.CompareTo(other.X), Y.CompareTo(other.Y), Z.CompareTo(other.Z), W.CompareTo(other.W)
             );
         }
 
-        public Elt Magnitude {
-            get {
-                return (Elt)Math.Sqrt((X * X) + (Y * Y) + (Z * Z) + (W * W));
-            }
+        public Elt Length() {
+            return (Elt)Math.Sqrt((X * X) + (Y * Y) + (Z * Z) + (W * W));
         }
 
-        public Vec4 ToUnit() {
-            return this / this.Magnitude;
+        public Elt LengthSquared() {
+            return (Elt)((X * X) + (Y * Y) + (Z * Z) + (W * W));
+        }
+
+        public Vector4 Normalize() {
+            return this / this.Length();
         }
 
         public Single[] ToArray() {

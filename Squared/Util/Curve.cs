@@ -31,7 +31,7 @@ namespace Squared.Util {
 
             Arithmetic.CompileExpression(
                 (a, b, x) =>
-                    a + ((b - a) * ((1.0f - Math.Cos(x * Math.PI)) * 0.5f)),
+                    a + ((b - a) * ((1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f)),
                 out _Cosine
             );
 
@@ -98,7 +98,12 @@ namespace Squared.Util {
     public class Curve<T> where T : struct {
         public Interpolator<T> Interpolator;
         private InterpolatorSource<T> _InterpolatorSource;
-        SortedList<float, T> _Items = new SortedList<float, T>();
+        SortedList<float, TItem> _Items = new SortedList<float, TItem>();
+
+        private struct TItem {
+            public T Value;
+            public Interpolator<T> Interpolator;
+        }
 
         public Curve () {
             Interpolator = Interpolators<T>.Default;
@@ -168,13 +173,14 @@ namespace Squared.Util {
         public T GetValueAtIndex (int index) {
             var values = _Items.Values;
             index = Math.Min(Math.Max(0, index), values.Count - 1);
-            return values[index];
+            return values[index].Value;
         }
 
         private T GetValueAtPosition (float position) {
             int index = GetLowerIndexForPosition(position);
             float lowerPosition = GetPositionAtIndex(index);
             float upperPosition = GetPositionAtIndex(index + 1);
+            Interpolator<T> interpolator = _Items.Values[index].Interpolator ?? Interpolator;
             if (lowerPosition < upperPosition) {
                 float offset = (position - lowerPosition) / (upperPosition - lowerPosition);
 
@@ -183,9 +189,9 @@ namespace Squared.Util {
                 else if (offset > 1.0f)
                     offset = 1.0f;
                 
-                return Interpolator(_InterpolatorSource, index, offset);
+                return interpolator(_InterpolatorSource, index, offset);
             } else {
-                return _Items.Values[index];
+                return _Items.Values[index].Value;
             }
         }
 
@@ -204,8 +210,17 @@ namespace Squared.Util {
                 }
             }
 
-            _Items[newStartPosition] = newStartValue;
-            _Items[newEndPosition] = newEndValue;
+            SetValueAtPosition(newStartPosition, newStartValue);
+            SetValueAtPosition(newEndPosition, newEndValue);
+        }
+
+        public void SetValueAtPosition (float position, T value, Interpolator<T> interpolator) {
+            TItem item = new TItem { Value = value, Interpolator = interpolator };
+            _Items[position] = item;
+        }
+
+        public void SetValueAtPosition (float position, T value) {
+            SetValueAtPosition(position, value, null);
         }
 
         public T this[float position] {
@@ -213,7 +228,7 @@ namespace Squared.Util {
                 return GetValueAtPosition(position);
             }
             set {
-                _Items[position] = value;
+                SetValueAtPosition(position, value);
             }
         }
     }
