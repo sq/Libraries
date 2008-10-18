@@ -49,6 +49,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Tests\ArithmeticTests.cs" />
     <Compile Include="Tests\CurveTests.cs" />
+    <Compile Include="Tests\DependencyTests.cs" />
+    <Compile Include="Tests\IOTests.cs" />
     <Compile Include="Tests\PriorityQueueTests.cs" />
     <Compile Include="Tests\VectorTests.cs" />
   </ItemGroup>
