@@ -229,6 +229,20 @@ namespace Squared.Task {
             return WaitForX(futures, 1);
         }
 
+        public static Future RunInThread (Delegate workItem, params object[] arguments) {
+            var f = new Future();
+            WaitCallback fn = (state) => {
+                try {
+                    var result = workItem.DynamicInvoke(arguments);
+                    f.Complete(result);
+                } catch (System.Reflection.TargetInvocationException ex) {
+                    f.Fail(ex.InnerException);
+                }
+            };
+            ThreadPool.QueueUserWorkItem(fn);
+            return f;
+        }
+
         private class WaitHandler {
             public Future Composite;
             public List<Future> State = new List<Future>();

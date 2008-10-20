@@ -19,7 +19,7 @@ namespace Squared.Util {
             DataPath += @"dirs\";
 
             IEnumerable<string> dirList = Squared.Util.IO.EnumDirectories(DataPath);
-            string[] dirs = dirList.ToArray();
+            string[] dirs = (from x in dirList where !x.Contains(".svn") select x).ToArray();
             string[] expected = new string[] {
                 @"dirA",
                 @"dirB",
@@ -41,7 +41,7 @@ namespace Squared.Util {
             DataPath += @"dirs\";
 
             IEnumerable<string> dirList = Squared.Util.IO.EnumDirectories(DataPath, "*", true);
-            string[] dirs = dirList.ToArray();
+            string[] dirs = (from x in dirList where !x.Contains(".svn") select x).ToArray();
             string[] expected = new string[] {
                 @"dirA",
                 @"dirB",
@@ -66,7 +66,7 @@ namespace Squared.Util {
             DataPath += @"dirs\";
 
             IEnumerable<string> fileList = Squared.Util.IO.EnumFiles(DataPath);
-            string[] files = fileList.ToArray();
+            string[] files = (from x in fileList where !x.Contains(".svn") select x).ToArray();
             string[] expected = new string[] {
                 @"file"
             };
@@ -86,7 +86,7 @@ namespace Squared.Util {
             DataPath += @"dirs\";
 
             IEnumerable<string> fileList = Squared.Util.IO.EnumFiles(DataPath, "*", true);
-            string[] files = fileList.ToArray();
+            string[] files = (from x in fileList where !x.Contains(".svn") select x).ToArray();
             string[] expected = new string[] {
                 @"file",
                 @"dirA\subdirA_A\fileA_A_A.txt",
@@ -111,7 +111,7 @@ namespace Squared.Util {
             DataPath += @"dirs\";
 
             IEnumerable<string> fileList = Squared.Util.IO.EnumFiles(DataPath, "*.txt", true);
-            string[] files = fileList.ToArray();
+            string[] files = (from x in fileList where !x.Contains(".svn") select x).ToArray();
             string[] expected = new string[] {
                 @"dirA\subdirA_A\fileA_A_A.txt",
                 @"dirA\subdirA_B\fileA_B_A.txt",
@@ -135,7 +135,7 @@ namespace Squared.Util {
             DataPath += @"files\";
 
             IEnumerable<string> fileList = Squared.Util.IO.EnumFiles(DataPath, "*.txt;*.png;*.jpg", false);
-            string[] files = fileList.ToArray();
+            string[] files = (from x in fileList where !x.Contains(".svn") select x).ToArray();
             string[] expected = new string[] {
                 @"fileA.txt",
                 @"fileB.txt",
@@ -153,6 +153,23 @@ namespace Squared.Util {
                 expected,
                 files
             );
+        }
+
+        [Test]
+        public void EnumDirectoryEntriesTimestamps () {
+            DataPath += @"dirs\";
+
+            var entries = Squared.Util.IO.EnumDirectoryEntries(DataPath, "*.*", true, (_) => true);
+            foreach (var entry in entries) {
+                Assert.AreEqual(
+                    DateTime.FromFileTime(entry.Created),
+                    System.IO.File.GetCreationTime(entry.Name)
+                );
+                Assert.AreEqual(
+                    DateTime.FromFileTime(entry.LastWritten),
+                    System.IO.File.GetLastWriteTime(entry.Name)
+                );
+            }
         }
     }
 }

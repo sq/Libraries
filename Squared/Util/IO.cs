@@ -36,20 +36,28 @@ namespace Squared.Util {
     }
 
     public static class IO {
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack=1)]
         struct WIN32_FIND_DATA {
-            public uint dwFileAttributes;
-            public ComTypes.FILETIME ftCreationTime;
-            public ComTypes.FILETIME ftLastAccessTime;
-            public ComTypes.FILETIME ftLastWriteTime;
-            public uint nFileSizeHigh;
-            public uint nFileSizeLow;
-            public uint dwReserved0;
-            public uint dwReserved1;
+            public UInt32 dwFileAttributes;
+            public Int64 ftCreationTime;
+            public Int64 ftLastAccessTime;
+            public Int64 ftLastWriteTime;
+            public UInt32 dwFileSizeHigh;
+            public UInt32 dwFileSizeLow;
+            public UInt32 dwReserved0;
+            public UInt32 dwReserved1;
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
             public string cFileName;
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 14)]
             public string cAlternateFileName;
+        }
+
+        public struct DirectoryEntry {
+            public string Name;
+            public uint Attributes;
+            public ulong Size;
+            public long Created;
+            public long LastWritten;
         }
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
@@ -74,10 +82,12 @@ namespace Squared.Util {
         }
 
         public static IEnumerable<string> EnumDirectories (string path, string searchPattern, bool recursive) {
-            return EnumDirectoryEntries(
-                path, searchPattern, recursive, 
-                (a) => (a & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY
-            );
+            return 
+                from de in 
+                EnumDirectoryEntries(
+                    path, searchPattern, recursive, IsDirectory
+                )
+                select de.Name;
         }
 
         public static IEnumerable<string> EnumFiles (string path) {
@@ -89,28 +99,27 @@ namespace Squared.Util {
         }
 
         public static IEnumerable<string> EnumFiles (string path, string searchPattern, bool recursive) {
-            if ((searchPattern == "*") || (recursive == false)) {
-                return EnumDirectoryEntries(
-                    path, searchPattern, recursive,
-                    (a) => (a & FILE_ATTRIBUTE_DIRECTORY) != FILE_ATTRIBUTE_DIRECTORY
-                );
-            } else {
-                return _EnumFilesRecursive(path, searchPattern);
-            }
+            return 
+                from de in 
+                EnumDirectoryEntries(
+                    path, searchPattern, recursive, IsFile
+                )
+                select de.Name;
         }
 
-        internal static IEnumerable<string> _EnumFilesRecursive (string path, string searchPattern) {
-            foreach (string dir in EnumDirectories(path, "*", true)) {
-                foreach (string file in EnumFiles(dir, searchPattern, false)) {
-                    yield return file;
-                }
-            }
+        public static bool IsDirectory (uint attributes) {
+            return (attributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY;
         }
 
-        internal static IEnumerable<string> EnumDirectoryEntries (string path, string searchPattern, bool recursive, Func<uint, bool> filter) {
+        public static bool IsFile (uint attributes) {
+            return (attributes & FILE_ATTRIBUTE_DIRECTORY) != FILE_ATTRIBUTE_DIRECTORY;
+        }
+
+        public static IEnumerable<DirectoryEntry> EnumDirectoryEntries (string path, string searchPattern, bool recursive, Func<uint, bool> attributeFilter) {
             if (!System.IO.Directory.Exists(path))
                 throw new System.IO.DirectoryNotFoundException();
 
+            var buffer = new StringBuilder();
             string actualPath = System.IO.Path.GetFullPath(path + @"\");
             var patterns = searchPattern.Split(';');
             var findData = new WIN32_FIND_DATA();
@@ -119,25 +128,56 @@ namespace Squared.Util {
 
             while (searchPaths.Count != 0) {
                 string currentPath = searchPaths.Dequeue();
-                foreach (string pattern in patterns) {
-                    using (var handle = new FindHandle(FindFirstFile(actualPath + currentPath + pattern, out findData))) {
+
+                if (recursive) {
+                    buffer.Remove(0, buffer.Length);
+                    buffer.Append(actualPath);
+                    buffer.Append(currentPath);
+                    buffer.Append("*");
+
+                    using (var handle = new FindHandle(FindFirstFile(buffer.ToString(), out findData))) {
                         while (handle.Valid) {
                             string fileName = findData.cFileName;
-                            if (fileName.Length == 0)
-                                fileName = findData.cAlternateFileName;
                             bool isDirectory = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY;
-                            bool masked = !filter(findData.dwFileAttributes);
 
-                            if ((fileName == ".") || (fileName == "..")) {
-                            } else {
-                                if (isDirectory && recursive) {
-                                    var item = currentPath + fileName + @"\";
-                                    searchPaths.Enqueue(item);
-                                }
+                            if ((fileName != ".") && (fileName != "..") && (isDirectory)) {
+                                buffer.Remove(0, buffer.Length);
+                                buffer.Append(currentPath);
+                                buffer.Append(fileName);
+                                buffer.Append("\\");
+                                searchPaths.Enqueue(buffer.ToString());
+                            }
 
-                                if (!masked) {
-                                    yield return actualPath + currentPath + fileName;
-                                }
+                            if (!FindNextFile(handle, out findData))
+                                break;
+                        }
+                    }
+                }
+                
+                foreach (string pattern in patterns) {
+                    buffer.Remove(0, buffer.Length);
+                    buffer.Append(actualPath);
+                    buffer.Append(currentPath);
+                    buffer.Append(pattern);
+
+                    using (var handle = new FindHandle(FindFirstFile(buffer.ToString(), out findData))) {
+                        while (handle.Valid) {
+                            string fileName = findData.cFileName;
+                            bool masked = !attributeFilter(findData.dwFileAttributes);
+
+                            if ((fileName != ".") && (fileName != "..") && (!masked)) {
+                                buffer.Remove(0, buffer.Length);
+                                buffer.Append(actualPath);
+                                buffer.Append(currentPath);
+                                buffer.Append(fileName);
+
+                                yield return new DirectoryEntry {
+                                    Name = buffer.ToString(),
+                                    Attributes = findData.dwFileAttributes,
+                                    Size = findData.dwFileSizeLow + (findData.dwFileSizeHigh * ((ulong)(UInt32.MaxValue) + 1)),
+                                    Created = findData.ftCreationTime,
+                                    LastWritten = findData.ftLastWriteTime
+                                };
                             }
 
                             if (!FindNextFile(handle, out findData))

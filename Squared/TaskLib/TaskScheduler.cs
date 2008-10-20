@@ -116,20 +116,6 @@ namespace Squared.Task {
             return Start(task, TaskExecutionPolicy.Default);
         }
 
-        public Future RunInThread (Delegate workItem, params object[] arguments) {
-            var f = new Future();
-            WaitCallback fn = (state) => {
-                try {
-                    var result = workItem.DynamicInvoke(arguments);
-                    f.Complete(result);
-                } catch (System.Reflection.TargetInvocationException ex) {
-                    f.Fail(ex.InnerException);
-                }
-            };
-            ThreadPool.QueueUserWorkItem(fn);
-            return f;
-        }
-
         public void QueueWorkItem (Action workItem) {
             _JobQueue.QueueWorkItem(workItem);
         }

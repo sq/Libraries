@@ -211,7 +211,7 @@ namespace Squared.Task {
         public void RunInThreadTest () {
             int numIterations = 1000000 * 20;
             var buf = new ValueHolder();
-            var f = Scheduler.RunInThread(new Func<ValueHolder, int, int>(WorkerThread), buf, numIterations);
+            var f = Future.RunInThread(new Func<ValueHolder, int, int>(WorkerThread), buf, numIterations);
             while (!f.Completed)
                 Scheduler.Step();
             Assert.AreEqual(42, f.Result);
@@ -228,7 +228,7 @@ namespace Squared.Task {
 
             var futures = new List<Future>();
             for (int i = 0; i < numWorkers; i++) {
-                futures.Add(Scheduler.RunInThread(fn, buf, numIterations));
+                futures.Add(Future.RunInThread(fn, buf, numIterations));
             }
 
             var f = Future.WaitForAll(futures);
@@ -514,7 +514,7 @@ namespace Squared.Task {
 
         [Test]
         public void WrapsExceptionsFromInsideWorkerThreads () {
-            var f = Scheduler.RunInThread(new Action(CrashyWorkerThread));
+            var f = Future.RunInThread(new Action(CrashyWorkerThread));
             while (!f.Completed)
                 Scheduler.Step();
             try {
@@ -635,7 +635,7 @@ namespace Squared.Task {
 
             var a = Scheduler.Start(ServerTask(server, 1));
 
-            var b = Scheduler.RunInThread(new Action(() => {
+            var b = Future.RunInThread(new Action(() => {
                 System.Diagnostics.Debug.WriteLine("Connecting...");
                 using (TcpClient client = new TcpClient("localhost", port)) {
                     using (StreamReader reader = new StreamReader(client.GetStream(), Encoding.ASCII)) {
