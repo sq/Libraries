@@ -7,31 +7,18 @@ using System.Threading;
 using System.Net.Sockets;
 using System.Text;
 using System.IO;
+using System.Windows.Forms;
 
 namespace Squared.Task {
     class ValueHolder {
         public int Value;
     }
 
-    [TestFixture]
-    public class TaskSchedulerTests {
-        TaskScheduler Scheduler;
-        Future TestFuture;
+    public class BasicJobQueueTests {
+        protected TaskScheduler Scheduler;
+        protected Future TestFuture;
 
-        [SetUp]
-        public void SetUp () {
-            Scheduler = new TaskScheduler();
-        }
-
-        [TearDown]
-        public void TearDown () {
-            if (Scheduler != null)
-                Scheduler.Dispose();
-            Scheduler = null;
-            GC.Collect();
-        }
-
-        IEnumerator<object> TaskReturn5 () {
+        protected IEnumerator<object> TaskReturn5 () {
             yield return new Result(5);
         }
 
@@ -42,7 +29,7 @@ namespace Squared.Task {
             Assert.AreEqual(5, future.Result);
         }
 
-        IEnumerator<object> TaskReturnValueOfFuture () {
+        protected IEnumerator<object> TaskReturnValueOfFuture () {
             yield return this.TestFuture;
             yield return new Result(this.TestFuture.Result);
         }
@@ -56,6 +43,42 @@ namespace Squared.Task {
             TestFuture.Complete(10);
             Scheduler.Step();
             Assert.AreEqual(10, future.Result);
+        }
+
+        IEnumerator<object> TaskLongLivedWorkerStepWaiter (int[] buf) {
+            for (int i = 0; i < 500000; i++) {
+                buf[0] = buf[0] + 1;
+                yield return new WaitForNextStep();
+            }
+        }
+
+        [Test]
+        public void StepPerformanceTest () {
+            var buf = new int[1];
+            long timeStart = Time.Ticks;
+            var f = Scheduler.Start(TaskLongLivedWorkerStepWaiter(buf));
+            while (Scheduler.HasPendingTasks)
+                Scheduler.Step();
+            long timeEnd = Time.Ticks;
+            TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
+            Assert.AreEqual(500000, buf[0]);
+            Console.WriteLine("Took {0:N2} secs for {1} steps. {2:N1} steps/sec", elapsed.TotalSeconds, buf[0], 1.0 * buf[0] / elapsed.TotalSeconds);
+        }
+    }
+
+    [TestFixture]
+    public class TaskSchedulerTests : BasicJobQueueTests {
+        [SetUp]
+        public void SetUp () {
+            Scheduler = new TaskScheduler();
+        }
+
+        [TearDown]
+        public void TearDown () {
+            if (Scheduler != null)
+                Scheduler.Dispose();
+            Scheduler = null;
+            GC.Collect();
         }
 
         [Test]
@@ -163,26 +186,6 @@ namespace Squared.Task {
             Assert.AreEqual(2, buf.Count);
             Scheduler.Step();
             Assert.AreEqual(3, buf.Count);
-        }
-
-        IEnumerator<object> TaskLongLivedWorkerStepWaiter (int[] buf) {
-            for (int i = 0; i < 1000000; i++) {
-                buf[0] = buf[0] + 1;
-                yield return new WaitForNextStep();
-            }
-        }
-
-        [Test]
-        public void StepPerformanceTest () {
-            var buf = new int[1];
-            long timeStart = Time.Ticks;
-            var f = Scheduler.Start(TaskLongLivedWorkerStepWaiter(buf));
-            while (Scheduler.HasPendingTasks)
-                Scheduler.Step();
-            long timeEnd = Time.Ticks;
-            TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
-            Assert.AreEqual(1000000, buf[0]);
-            Console.WriteLine("Took {0:N2} secs for {1} steps. {2:N1} steps/sec", elapsed.TotalSeconds, buf[0], 1.0 * buf[0] / elapsed.TotalSeconds);
         }
 
         [Test]
@@ -568,12 +571,10 @@ namespace Squared.Task {
     }
 
     [TestFixture]
-    public class ThreadedTaskSchedulerTests {
-        TaskScheduler Scheduler;
-
+    public class ThreadedTaskSchedulerTests : BasicJobQueueTests {
         [SetUp]
         public void SetUp () {
-            Scheduler = new TaskScheduler(true);
+            Scheduler = new TaskScheduler(JobQueue.MultiThreaded);
         }
 
         [TearDown]
@@ -599,9 +600,10 @@ namespace Squared.Task {
 
             Scheduler.Step();
             Scheduler.WaitForWorkItems();
-            Scheduler.Step();
             long elapsed = Time.Ticks - timeStart;
-            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(2002).Ticks);
+            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(2005).Ticks);
+
+            Scheduler.Step();
             Assert.AreEqual(1, vh.Value);
         }
 
@@ -706,6 +708,29 @@ namespace Squared.Task {
             for (int i = 0; i < numClients; i++)
                 expectedResults.Add(helloWorld);
             Assert.AreEqual(expectedResults.ToArray(), results.ToArray());
+        }
+    }
+
+    [TestFixture]
+    public class WindowsMessageBasedTaskSchedulerTests : BasicJobQueueTests {
+        [SetUp]
+        public void SetUp () {
+            Scheduler = new TaskScheduler(JobQueue.WindowsMessageBased);
+        }
+
+        [TearDown]
+        public void TearDown () {
+            if (Scheduler != null)
+                Scheduler.Dispose();
+            Scheduler = null;
+            GC.Collect();
+        }
+
+        [Test]
+        public void PumpingWindowsMessagesIsEquivalentToStep () {
+            var future = Scheduler.Start(TaskReturn5());
+            Application.DoEvents();
+            Assert.AreEqual(5, future.Result);
         }
     }
 
@@ -826,7 +851,7 @@ namespace Squared.Task {
 
         [SetUp]
         public void SetUp () {
-            Scheduler = new TaskScheduler(true);
+            Scheduler = new TaskScheduler(JobQueue.MultiThreaded);
         }
 
         [TearDown]
@@ -940,7 +965,7 @@ namespace Squared.Task {
 
         [SetUp]
         public void SetUp () {
-            Scheduler = new TaskScheduler(true);
+            Scheduler = new TaskScheduler(JobQueue.MultiThreaded);
         }
 
         [TearDown]

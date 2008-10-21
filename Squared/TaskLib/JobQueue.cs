@@ -2,84 +2,100 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Windows.Forms;
+using System.Runtime.InteropServices;
+using System.Security;
 
 namespace Squared.Task {
-    internal class JobQueue {
-        public event Action OnNewWorkItem;
+    public interface IJobQueue : IDisposable {
+        void QueueWorkItem (Action item);
+        void Clear ();
+        void Step ();
+        bool WaitForWorkItems (double timeout);
+        int Count { get; }
+    }
 
-        private Queue<Action> _Queue = new Queue<Action>();
-        private ManualResetEvent _NewWorkItemEvent = null;
-        private bool _ThreadSafe = false;
-
-        private void SetWorkItemEvent () {
-            _NewWorkItemEvent.Set();
+    public static class JobQueue {
+        public static IJobQueue SingleThreaded () {
+            return new SingleThreadedJobQueue();
         }
 
-        public bool ThreadSafe {
-            get {
-                return _ThreadSafe;
-            }
-            set {
-                if (_ThreadSafe == value)
-                    return;
-
-                _ThreadSafe = value;
-                if (value) {
-                    _NewWorkItemEvent = new ManualResetEvent(false);
-                    OnNewWorkItem += SetWorkItemEvent;
-                } else {
-                    OnNewWorkItem -= SetWorkItemEvent;
-                    _NewWorkItemEvent = null;
-                }
-            }
+        public static IJobQueue MultiThreaded () {
+            return new MultiThreadedJobQueue();
         }
 
-        public void QueueWorkItem (Action item) {
-            if (_ThreadSafe)
-                Monitor.Enter(_Queue);
-            try {
-                _Queue.Enqueue(item);
-            } finally {
-                if (_ThreadSafe)
-                    Monitor.Exit(_Queue);
-            }
-            if (OnNewWorkItem != null)
-                OnNewWorkItem();
+        public static IJobQueue WindowsMessageBased () {
+            return new WindowsMessageJobQueue();
+        }
+    }
+
+    public class SingleThreadedJobQueue : IJobQueue {
+        protected Queue<Action> _Queue = new Queue<Action>();
+
+        public virtual void QueueWorkItem (Action item) {
+            _Queue.Enqueue(item);
         }
 
         public void Step () {
             Action item = null;
-            while (true) {
-                if (_ThreadSafe)
-                    Monitor.Enter(_Queue);
-                try {
-                    if (_Queue.Count == 0)
-                        return;
-                    item = _Queue.Dequeue();
-                } finally {
-                    if (_ThreadSafe)
-                        Monitor.Exit(_Queue);
-                }
+            do {
+                item = GetNextWorkItem();
                 if (item != null)
                     item();
+            } while (item != null);
+        }
+
+        protected virtual Action GetNextWorkItem () {
+            if (_Queue.Count == 0)
+                return null;
+
+            return _Queue.Dequeue();
+        }
+
+        public virtual bool WaitForWorkItems (double timeout) {
+            return (Count > 0);
+        }
+
+        public virtual void Clear () {
+            _Queue.Clear();
+        }
+
+        public virtual int Count {
+            get {
+                int count = _Queue.Count;
+                return count;
             }
         }
 
-        public bool WaitForWorkItems (double timeout) {
-            if (!_ThreadSafe)
-                throw new InvalidOperationException("WaitForWorkItems is invalid in non-thread-safe mode");
+        public virtual void Dispose () {
+            Clear();
+        }
+    }
 
-            Monitor.Enter(_Queue);
-            try {
+    public class MultiThreadedJobQueue : SingleThreadedJobQueue {
+        private ManualResetEvent _NewWorkItemEvent = new ManualResetEvent(false);
+
+        public override void QueueWorkItem (Action item) {
+            lock (_Queue)
+                base.QueueWorkItem(item);
+            _NewWorkItemEvent.Set();
+        }
+
+        protected override Action GetNextWorkItem() {
+            lock (_Queue)
+                return base.GetNextWorkItem();
+        }
+
+        public override bool WaitForWorkItems (double timeout) {
+            lock (_Queue) {
                 if (_Queue.Count != 0)
                     return true;
                 else
                     _NewWorkItemEvent.Reset();
-            } finally {
-                Monitor.Exit(_Queue);
             }
+
             if (timeout > 0) {
-                bool result = _NewWorkItemEvent.WaitOne(TimeSpan.FromSeconds(timeout), true);
+                bool result = _NewWorkItemEvent.WaitOne((int)Math.Floor(timeout * 1000), true);
                 return result;
             } else {
                 _NewWorkItemEvent.WaitOne();
@@ -87,23 +103,100 @@ namespace Squared.Task {
             }
         }
 
+        public override void Clear () {
+            lock (_Queue)
+                base.Clear();
+        }
+
+        public override int Count {
+            get {
+                lock (_Queue)
+                    return base.Count;
+            }
+        }
+
+        public override void Dispose () {
+            base.Dispose();
+            _NewWorkItemEvent.Close();
+        }
+    }
+
+    public class WindowsMessageJobQueue : NativeWindow, IJobQueue {
+        [DllImport("User32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        internal static extern int RegisterWindowMessage (string lpString);
+
+        [return: MarshalAs(UnmanagedType.Bool)]
+        [DllImport("user32.dll", SetLastError = true)]
+        [SuppressUnmanagedCodeSecurity]
+        internal static extern bool PostMessage (IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+
+        private int WM_RUN_WORK_ITEM;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
+
+        private Queue<Action> _Queue = new Queue<Action>();
+
+        public WindowsMessageJobQueue () 
+            : base () {
+            WM_RUN_WORK_ITEM = RegisterWindowMessage("Squared.TaskLib.RunWorkItem");
+            var cp = new CreateParams {
+                Caption = "Squared.TaskLib.Win32JobQueue",
+                X = 0,
+                Y = 0,
+                Width = 0,
+                Height = 0,
+                Style = 0,
+                ExStyle = WS_EX_NOACTIVATE,
+                Parent = new IntPtr(-3)
+            };
+            CreateHandle(cp);
+        }
+
+        protected override void WndProc (ref Message m) {
+            if (m.Msg == WM_RUN_WORK_ITEM) {
+                SingleStep();
+            }
+            base.WndProc(ref m);
+        }
+
+        public void QueueWorkItem (Action item) {
+            lock (_Queue)
+                _Queue.Enqueue(item);
+            PostMessage(Handle, WM_RUN_WORK_ITEM, IntPtr.Zero, IntPtr.Zero);
+        }
+
         public void Clear () {
-            if (_ThreadSafe)
-                Monitor.Enter(_Queue);
-            _Queue.Clear();
-            if (_ThreadSafe)
-                Monitor.Exit(_Queue);
+            lock (_Queue)
+                _Queue.Clear();
+        }
+
+        internal void SingleStep () {
+            Action item = null;
+            lock (_Queue) {
+                if (_Queue.Count == 0)
+                    return;
+                item = _Queue.Dequeue();
+            }
+            if (item != null)
+                item();
+        }
+
+        public void Step () {
+            Application.DoEvents();
+        }
+
+        public bool WaitForWorkItems (double timeout) {
+            return (Count > 0);
         }
 
         public int Count {
             get {
-                if (_ThreadSafe)
-                    Monitor.Enter(_Queue);
-                int count = _Queue.Count;
-                if (_ThreadSafe)
-                    Monitor.Exit(_Queue);
-                return count;
+                lock (_Queue)
+                    return _Queue.Count;
             }
+        }
+
+        public void Dispose () {
+            DestroyHandle();
         }
     }
 }

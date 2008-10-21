@@ -4,10 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 using ComTypes = System.Runtime.InteropServices.ComTypes;
+using System.Security;
 
 namespace Squared.Util {
     internal struct FindHandle : IDisposable {
         [DllImport("kernel32.dll")]
+        [SuppressUnmanagedCodeSecurity()]
         static extern bool FindClose (IntPtr hFindFile);
 
         public IntPtr Handle;
@@ -61,11 +63,13 @@ namespace Squared.Util {
         }
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        [SuppressUnmanagedCodeSecurity()]
         static extern IntPtr FindFirstFile (
             string lpFileName, out WIN32_FIND_DATA lpFindFileData
         );
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        [SuppressUnmanagedCodeSecurity()]
         static extern bool FindNextFile (
             IntPtr hFindFile, out WIN32_FIND_DATA lpFindFileData
         );

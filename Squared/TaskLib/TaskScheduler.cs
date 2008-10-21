@@ -68,10 +68,20 @@ namespace Squared.Task {
         const long MinimumSleepLength = 10000;
         const long MaximumSleepLength = Time.SecondInTicks * 60;
 
-        private JobQueue _JobQueue = new JobQueue();
+        private IJobQueue _JobQueue = null;
         private Queue<Action> _StepListeners = new Queue<Action>();
         private WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
         private WorkerThread<List<BoundWaitHandle>> _WaitWorker;
+
+        public TaskScheduler (Func<IJobQueue> JobQueueFactory) {
+            _JobQueue = JobQueueFactory();
+            _SleepWorker = new WorkerThread<PriorityQueue<SleepItem>>(SleepWorkerThreadFunc, ThreadPriority.AboveNormal);
+            _WaitWorker = new WorkerThread<List<BoundWaitHandle>>(WaitWorkerThreadFunc, ThreadPriority.AboveNormal);
+        }
+
+        public TaskScheduler ()
+            : this(JobQueue.SingleThreaded) {
+        }
 
         public bool WaitForWorkItems () {
             return WaitForWorkItems(0);
@@ -197,16 +207,6 @@ namespace Squared.Task {
             }
         }
 
-        public TaskScheduler (bool threadSafe) {
-            _SleepWorker = new WorkerThread<PriorityQueue<SleepItem>>(SleepWorkerThreadFunc, ThreadPriority.AboveNormal);
-            _WaitWorker = new WorkerThread<List<BoundWaitHandle>>(WaitWorkerThreadFunc, ThreadPriority.AboveNormal);
-            _JobQueue.ThreadSafe = threadSafe;
-        }
-
-        public TaskScheduler ()
-            : this(false) {
-        }
-
         internal void QueueWait (WaitHandle handle, Future future) {
             BoundWaitHandle wait = new BoundWaitHandle(handle, future);
 
@@ -253,10 +253,9 @@ namespace Squared.Task {
         }
 
         public void Dispose () {
+            _JobQueue.Dispose();
             _SleepWorker.Dispose();
             _WaitWorker.Dispose();
-
-            _JobQueue.Clear();
             _StepListeners.Clear();
         }
     }

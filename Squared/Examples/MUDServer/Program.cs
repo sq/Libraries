@@ -11,7 +11,7 @@ namespace MUDServer {
         public static TelnetServer Server;
 
         static void Main (string[] args) {
-            Scheduler = new TaskScheduler(true);
+            Scheduler = new TaskScheduler(JobQueue.MultiThreaded);
 
             World.Create();
             Event.Broadcast(new { Type = EventType.WorldConstructed });
