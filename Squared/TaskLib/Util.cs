@@ -3,14 +3,99 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using Squared.Util;
+using System.Collections;
 
 namespace Squared.Task {
+    public static class EnumeratorExtensionMethods {
+        internal struct Disposer : IDisposable {
+            IEnumerator _Enumerator;
+
+            public Disposer (IEnumerator enumerator) {
+                _Enumerator = enumerator;
+            }
+
+            public void Dispose () {
+                if (_Enumerator is IDisposable)
+                    ((IDisposable)_Enumerator).Dispose();
+            }
+        }
+
+        public static IEnumerator<object> EnumerateViaThreadpool (IEnumerator enumerator) {
+            WaitCallback moveNext = (state) => {
+                Future f = (Future)state;
+                try {
+                    bool r = enumerator.MoveNext();
+                    f.SetResult(r, null);
+                } catch (Exception e) {
+                    f.SetResult(null, e);
+                }
+            };
+
+            using (new Disposer(enumerator)) {
+                while (true) {
+                    Future f = new Future();
+                    ThreadPool.QueueUserWorkItem(moveNext, f);
+                    yield return f;
+
+                    bool hasValue = (bool)f.Result;
+                    if (!hasValue)
+                        yield break;
+
+                    yield return new NextValue(enumerator.Current);
+                }
+            }
+        }
+
+        public static IEnumerator<object> GetTask (this IEnumerable obj) {
+            return EnumerateViaThreadpool(obj.GetEnumerator());
+        }
+
+        public static IEnumerator<object> GetTask<T> (this IEnumerable<T> obj) {
+            return EnumerateViaThreadpool(obj.GetEnumerator());
+        }
+
+        public static IEnumerator<object> GetTask (this IEnumerator enumerator) {
+            return EnumerateViaThreadpool(enumerator);
+        }
+
+        public static IEnumerator<object> GetTask<T> (this IEnumerator<T> enumerator) {
+            return EnumerateViaThreadpool(enumerator);
+        }
+
+        public static TaskIterator<T> GetTaskIterator<T> (this IEnumerable<T> obj) {
+            return new TaskIterator<T>(EnumerateViaThreadpool(obj.GetEnumerator()));
+        }
+
+        public static TaskIterator<T> GetTaskIterator<T> (this IEnumerator<T> enumerator) {
+            return new TaskIterator<T>(EnumerateViaThreadpool(enumerator));
+        }
+
+        public static TaskIterator<T> GetTaskIterator<T> (this IEnumerable<T> obj, TaskScheduler scheduler) {
+            return new TaskIterator<T>(scheduler, EnumerateViaThreadpool(obj.GetEnumerator()));
+        }
+
+        public static TaskIterator<T> GetTaskIterator<T> (this IEnumerator<T> enumerator, TaskScheduler scheduler) {
+            return new TaskIterator<T>(scheduler, EnumerateViaThreadpool(enumerator));
+        }
+    }
+
     /// <summary>
     /// Schedules your task to continue execution at the end of the current step.
     /// </summary>
     public struct Yield : ISchedulable {
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             future.Complete();
+        }
+    }
+
+    /// <summary>
+    /// Allows your task to yield a value as if it were a normal generator, and resume execution.
+    /// </summary>
+    public struct NextValue {
+        public object Value;
+
+        public NextValue (object value) {
+            Value = value;
         }
     }
 
@@ -179,6 +264,160 @@ namespace Squared.Task {
             }
 
             future.Bind(Future.WaitForAll(futures));
+        }
+    }
+
+    /// <summary>
+    /// Manages iterating over a task that generates a sequence of values of type T. A task-oriented equivalent to IEnumerator.
+    /// </summary>
+    public class TaskIterator<T> : IDisposable {
+        protected IEnumerator<object> _Task = null;
+        TaskScheduler _Scheduler = null;
+        SchedulableGeneratorThunk _Thunk = null;
+        Future _MoveNextFuture = new Future();
+        Future _NextValueFuture = new Future();
+        Future _SequenceFuture = null;
+        bool _HasValue = false;
+        T _Current = default(T);
+
+        protected TaskIterator () {
+        }
+
+        public TaskIterator (TaskScheduler scheduler, IEnumerator<object> task) 
+            : this (task) {
+            Initialize(scheduler);
+        }
+
+        public TaskIterator (IEnumerator<object> task)
+            : this () {
+            _Task = task;
+        }
+
+        protected void Initialize (TaskScheduler scheduler) {
+            _Scheduler = scheduler;
+
+            _Thunk = new SchedulableGeneratorThunk(_Task);
+            _Thunk.OnNextValue = OnNextValue;
+
+            _SequenceFuture = scheduler.Start(_Thunk, TaskExecutionPolicy.RunWhileFutureLives);
+            _SequenceFuture.RegisterOnComplete((f, r, e) => {
+                _NextValueFuture.Complete(false);
+                Dispose();
+            });
+        }
+
+        /// <summary>
+        /// Returns a future that will be completed when the next item in the sequence is ready, or the sequence has completed iteration. The future's result will be true if another item is ready.
+        /// </summary>
+        public Future MoveNext () {
+            if (_SequenceFuture == null)
+                throw new InvalidOperationException("The iterator is not ready.");
+            if (_Thunk == null)
+                throw new InvalidOperationException("The iterator has been disposed.");
+
+            var f = _MoveNextFuture;
+            var nv = _NextValueFuture;
+            _MoveNextFuture = new Future();
+            f.Complete();
+            return nv;
+        }
+
+        internal Future OnNextValue (object value) {
+            var f = _NextValueFuture;
+            _NextValueFuture = new Future();
+            try {
+                _Current = (T)value;
+                _HasValue = true;
+                f.Complete(true);
+            } catch (InvalidCastException) {
+                _HasValue = false;
+                string valueString = "<?>";
+                try {
+                    valueString = value.ToString();
+                } catch (Exception e) {
+                    valueString = String.Format("<{0}>", e.ToString());
+                }
+                string errorString = String.Format(
+                    "Unable to convert value '{0}' of type {1} to type {2}", 
+                    valueString, value.GetType().Name, default(T).GetType().Name
+                );
+                f.SetResult(null, new InvalidCastException(errorString));
+            }
+            return _MoveNextFuture;
+        }
+
+        internal IEnumerator<object> GetArray () {
+            var temp = new List<T>();
+
+            while (!Disposed) {
+                if (_HasValue)
+                    temp.Add(_Current);
+
+                yield return MoveNext();
+            }
+
+            yield return new Result(temp.ToArray());
+        }
+
+        public Future ToArray () {
+            return _Scheduler.Start(GetArray(), TaskExecutionPolicy.RunWhileFutureLives);
+        }
+
+        public T Current {
+            get {
+                if (!_HasValue)
+                    throw new InvalidOperationException("The iterator does not have a value yet.");
+                if (_Thunk == null)
+                    throw new InvalidOperationException("The iterator has been disposed.");
+
+                return _Current;
+            }
+        }
+
+        internal Future Future {
+            get {
+                return _SequenceFuture;
+            }
+        }
+
+        public bool Disposed {
+            get {
+                return (_Thunk == null);
+            }
+        }
+
+        public void Dispose () {
+            if (_SequenceFuture != null) {
+                _SequenceFuture.Dispose();
+                _SequenceFuture = null;
+            }
+            if (_Thunk != null) {
+                _Thunk.Dispose();
+                _Thunk = null;
+            }
+            _HasValue = false;
+            _Current = default(T);
+        }
+
+        struct StartThunk : ISchedulable {
+            TaskIterator<T> _Iterator;
+
+            public StartThunk (TaskIterator<T> iterator) {
+                _Iterator = iterator;
+            }
+
+            public void Schedule (TaskScheduler scheduler, Future future) {
+                TaskIterator<T> i = _Iterator;
+                i.Initialize(scheduler);
+                future.Bind(i.MoveNext());
+            }
+        };
+
+        /// <summary>
+        /// Yield the result of this function from within a task to initialize the TaskIterator. The iterator will automatically be advanced to the first item.
+        /// </summary>
+        public virtual ISchedulable Start () {
+            return new StartThunk(this);
         }
     }
 }

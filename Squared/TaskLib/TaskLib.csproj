@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="BlockingQueue.cs" />
     <Compile Include="Clock.cs" />
+    <Compile Include="Db.cs" />
     <Compile Include="Future.cs" />
     <Compile Include="IO.cs" />
     <Compile Include="JobQueue.cs" />

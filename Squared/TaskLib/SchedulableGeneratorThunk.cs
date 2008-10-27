@@ -5,6 +5,8 @@ using Squared.Util;
 
 namespace Squared.Task {
     public class SchedulableGeneratorThunk : ISchedulable, IDisposable {
+        public Func<object, Future> OnNextValue = null;
+
         IEnumerator<object> _Task;
         Future _Future;
         public Future WakeCondition;
@@ -15,10 +17,17 @@ namespace Squared.Task {
         }
 
         public SchedulableGeneratorThunk (IEnumerator<object> task) {
+#if TASK_TRACING
+            Console.WriteLine("+Task({0})", task);
+#endif
             _Task = task;
         }
 
         public void Dispose () {
+#if TASK_TRACING
+            Console.WriteLine("~Task({0})", _Task);
+#endif
+
             if (WakeCondition != null) {
                 WakeCondition.Dispose();
                 WakeCondition = null;
@@ -71,6 +80,19 @@ namespace Squared.Task {
         void ScheduleNextStep (Object value) {
             if (value is ISchedulable) {
                 ScheduleNextStepForSchedulable(value as ISchedulable);
+            } else if (value is NextValue) {
+                NextValue nv = (NextValue)value;
+                Future f = null;
+
+                if (OnNextValue != null)
+                    f = OnNextValue(nv.Value);
+
+                if (f != null) {
+                    this.WakeCondition = f;
+                    f.RegisterOnComplete(QueueStepOnComplete);
+                } else {
+                    QueueStep();
+                }
             } else if (value is Future) {
                 Future f = (Future)value;
                 this.WakeCondition = f;
@@ -92,6 +114,10 @@ namespace Squared.Task {
         void Step () {
             if (_Task == null)
                 return;
+
+#if TASK_TRACING
+            Console.WriteLine("Task.Step({0})", _Task);
+#endif
 
             WakeCondition = null;
 

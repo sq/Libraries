@@ -246,6 +246,13 @@ namespace Squared.Task {
             _JobQueue.Step();
         }
 
+        public object WaitFor (Future future) {
+            while (!future.Completed)
+                Step();
+
+            return future.Result;
+        }
+
         public bool HasPendingTasks {
             get {
                 return (_StepListeners.Count > 0) || (_JobQueue.Count > 0);

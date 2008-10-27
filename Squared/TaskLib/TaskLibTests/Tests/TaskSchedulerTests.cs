@@ -246,6 +246,20 @@ namespace Squared.Task {
                 yield return new WaitForNextStep();
         }
 
+        IEnumerator<object> SleepThenReturn5 () {
+            yield return new Sleep(0.1);
+            yield return new Result(5);
+        }
+
+        [Test]
+        public void WaitForFutureTest () {
+            var f = Scheduler.Start(SleepThenReturn5());
+
+            var result = Scheduler.WaitFor(f);
+
+            Assert.AreEqual(5, result);
+        }
+
         [Test]
         public void SleepTest () {
             int duration = 2;

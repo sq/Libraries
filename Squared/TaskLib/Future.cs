@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace Squared.Task {
     public delegate void OnComplete(Future future, object value, Exception error);
@@ -55,7 +56,7 @@ namespace Squared.Task {
 
         public override string ToString () {
             lock (this)
-                return String.Format("<Future ({0}) r={1},{2}>", _Completed ? "completed" : (_Disposed ? "disposed" : ""), _Value, _Error);
+                return String.Format("<Future ({0}) r={1},{2}>", _Completed ? "completed" : (_Disposed ? "disposed" : "empty"), _Value, _Error);
         }
 
         public Future () {
@@ -284,6 +285,9 @@ namespace Squared.Task {
     }
     
     public static class FutureExtensionMethods {
+        /// <summary>
+        /// Causes this future to become completed when the specified future is completed.
+        /// </summary>
         public static void Bind (this Future future, Future target) {
             OnComplete handler = (f, result, error) => {
                 future.SetResult(result, error);
@@ -316,6 +320,9 @@ namespace Squared.Task {
             return false;
         }
 
+        /// <summary>
+        /// Creates a ManualResetEvent that will become set when this future is completed.
+        /// </summary>
         public static ManualResetEvent GetCompletionEvent (this Future future) {
             ManualResetEvent evt = new ManualResetEvent(false);
             OnComplete handler = (f, result, error) => {
