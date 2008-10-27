@@ -73,32 +73,25 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void TestAsyncEnumerateRows () {
+        public void TestQueryManager () {
             DoQuery("CREATE TEMPORARY TABLE Test (value int)");
             for (int i = 0; i < 100; i++)
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
-            var cmd = Connection.CreateCommand();
-            cmd.CommandText = "SELECT value FROM Test";
-            var reader = cmd.ExecuteReader();
+            var qm = new QueryManager(Connection);
+            var q = qm.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
 
             using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded)) {
-                var iterator = reader.AsyncEnumerateRows(scheduler);
+                var f = q.ExecuteScalar(5);
 
-                scheduler.WaitFor(iterator.MoveNext());
-                Assert.AreEqual(iterator.Current.GetInt32(0), 0);
+                var result = scheduler.WaitFor(f);
 
-                scheduler.WaitFor(iterator.MoveNext());
-                Assert.AreEqual(iterator.Current.GetInt32(0), 1);
-
-                iterator.Dispose();
+                Assert.AreEqual(result, 1);
             }
-
-            Assert.IsTrue(reader.IsClosed);
         }
 
         [Test]
-        public void TestQueryManager () {
+        public void TestDbTaskIterator () {
             DoQuery("CREATE TEMPORARY TABLE Test (value int)");
             for (int i = 0; i < 100; i++)
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
@@ -107,12 +100,10 @@ namespace Squared.Task {
             var q = qm.BuildQuery("SELECT value FROM Test WHERE value = ?");
 
             using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded)) {
-                var f = q.ExecuteReader(5);
+                var iterator = new DbTaskIterator(q, 5);
 
-                var reader = (IDataReader)scheduler.WaitFor(f);
-                var iterator = reader.AsyncEnumerateRows(scheduler);
+                scheduler.WaitFor(scheduler.Start(iterator.Start()));
 
-                scheduler.WaitFor(iterator.MoveNext());
                 Assert.AreEqual(iterator.Current.GetInt32(0), 5);
 
                 iterator.Dispose();

@@ -541,47 +541,6 @@ namespace Squared.Task {
                 Assert.AreEqual("maple syrup", ex.InnerException.Message);
             }
         }
-
-        [Test]
-        public void WaitForWaitHandleTest () {
-            ManualResetEvent e = new ManualResetEvent(false);
-            var f = Scheduler.Start(new WaitForWaitHandle(e));
-
-            Scheduler.Step();
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            Thread.Sleep(500);
-
-            long timeStart = Time.Ticks;
-            e.Set();
-
-            f.GetCompletionEvent().WaitOne();
-            long elapsed = Time.Ticks - timeStart;
-            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(5).Ticks);
-        }
-
-        [Test]
-        public void WaitForWaitHandlesTest () {
-            ManualResetEvent a = new ManualResetEvent(false);
-            ManualResetEvent b = new ManualResetEvent(false);
-            ManualResetEvent c = new ManualResetEvent(false);
-
-            var f = Scheduler.Start(new WaitForWaitHandles(a, b, c));
-
-            Scheduler.Step();
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            Thread.Sleep(500);
-
-            long timeStart = Time.Ticks;
-            a.Set();
-            b.Set();
-            c.Set();
-
-            f.GetCompletionEvent().WaitOne();
-            long elapsed = Time.Ticks - timeStart;
-            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(5).Ticks);
-        }
     }
 
     [TestFixture]

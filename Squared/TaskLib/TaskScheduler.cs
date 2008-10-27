@@ -71,12 +71,10 @@ namespace Squared.Task {
         private IJobQueue _JobQueue = null;
         private Queue<Action> _StepListeners = new Queue<Action>();
         private WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
-        private WorkerThread<List<BoundWaitHandle>> _WaitWorker;
 
         public TaskScheduler (Func<IJobQueue> JobQueueFactory) {
             _JobQueue = JobQueueFactory();
             _SleepWorker = new WorkerThread<PriorityQueue<SleepItem>>(SleepWorkerThreadFunc, ThreadPriority.AboveNormal);
-            _WaitWorker = new WorkerThread<List<BoundWaitHandle>>(WaitWorkerThreadFunc, ThreadPriority.AboveNormal);
         }
 
         public TaskScheduler ()
@@ -177,49 +175,6 @@ namespace Squared.Task {
             }
         }
 
-        internal static void WaitWorkerThreadFunc (List<BoundWaitHandle> pendingWaits, ManualResetEvent newWaitEvent) {
-            while (true) {
-                BoundWaitHandle[] waits;
-                WaitHandle[] waitHandles;
-                lock (pendingWaits) {
-                    waits = pendingWaits.ToArray();
-                }
-                waitHandles = new WaitHandle[waits.Length + 1];
-                waitHandles[0] = newWaitEvent;
-                for (int i = 0; i < waits.Length; i++)
-                    waitHandles[i + 1] = waits[i].Handle;
-
-                System.Diagnostics.Debug.WriteLine(String.Format("WaitWorker waiting on {0} handle(s)", waitHandles.Length - 1));
-                try {
-                    int completedWait = WaitHandle.WaitAny(waitHandles);
-                    if (completedWait == 0) {
-                        newWaitEvent.Reset();
-                        continue;
-                    }
-                    BoundWaitHandle w = waits[completedWait - 1];
-                    lock (pendingWaits) {
-                        pendingWaits.Remove(w);
-                    }
-                    w.Future.Complete();
-                } catch (ThreadInterruptedException) {
-                    break;
-                }
-            }
-        }
-
-        internal void QueueWait (WaitHandle handle, Future future) {
-            BoundWaitHandle wait = new BoundWaitHandle(handle, future);
-
-            lock (_WaitWorker.WorkItems)
-                _WaitWorker.WorkItems.Add(wait);
-            _WaitWorker.Wake();
-
-            future.RegisterOnDispose((_) => {
-                lock (_WaitWorker.WorkItems)
-                    _WaitWorker.WorkItems.Remove(wait);
-            });
-        }
-
         internal void QueueSleep (long completeWhen, Future future) {
             long now = Time.Ticks;
             if (now > completeWhen) {
@@ -262,7 +217,6 @@ namespace Squared.Task {
         public void Dispose () {
             _JobQueue.Dispose();
             _SleepWorker.Dispose();
-            _WaitWorker.Dispose();
             _StepListeners.Clear();
         }
     }

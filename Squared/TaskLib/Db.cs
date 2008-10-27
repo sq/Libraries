@@ -68,10 +68,7 @@ namespace Squared.Task {
             }
         }
 
-        /// <summary>
-        /// Yield the result of this function from within a task to initialize the DbTaskIterator and execute the query. The iterator will automatically be advanced to the first item.
-        /// </summary>
-        public override ISchedulable Start () {
+        protected override ISchedulable GetStartThunk () {
             return new StartThunk(this);
         }
     }
@@ -132,18 +129,6 @@ namespace Squared.Task {
                 )
             );
             return f;
-        }
-
-        public static TaskIterator<DbDataRecord> AsyncEnumerateRows (this IDataReader reader, TaskScheduler scheduler) {
-            var enumerator = new DbEnumerator(reader, true);
-            var task = EnumeratorExtensionMethods.EnumerateViaThreadpool(enumerator);
-            var iterator = new TaskIterator<DbDataRecord>(scheduler, task);
-            iterator.Future.RegisterOnDispose(
-                (f) => {
-                    reader.Dispose();
-                }
-            );
-            return iterator;
         }
     }
 

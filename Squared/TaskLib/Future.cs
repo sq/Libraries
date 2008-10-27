@@ -51,8 +51,8 @@ namespace Squared.Task {
         private bool _Disposed = false;
         private object _Value;
         private Exception _Error;
-        private Queue<OnComplete> _OnCompletes = new Queue<OnComplete>();
-        private Queue<OnDispose> _OnDisposes = new Queue<OnDispose>();
+        private OnComplete _OnComplete = null;
+        private OnDispose _OnDispose = null;
 
         public override string ToString () {
             lock (this)
@@ -71,32 +71,34 @@ namespace Squared.Task {
         }
 
         private void InvokeOnDisposes () {
-            while (_OnDisposes.Count != 0) {
-                OnDispose item = _OnDisposes.Dequeue();
-                Monitor.Exit(this);
-                try {
-                    item(this);
-                } catch (ThreadAbortException) {
-                } catch (Exception ex) {
-                    throw new FutureHandlerException(item, ex);
-                } finally {
-                    Monitor.Enter(this);
-                }
+            var f = _OnDispose;
+            if (f == null)
+                return;
+            _OnDispose = null;
+            Monitor.Exit(this);
+            try {
+                f(this);
+            } catch (ThreadAbortException) {
+            } catch (Exception ex) {
+                throw new FutureHandlerException(f, ex);
+            } finally {
+                Monitor.Enter(this);
             }
         }
 
         private void InvokeOnCompletes (object result, Exception error) {
-            while (_OnCompletes.Count != 0) {
-                OnComplete item = _OnCompletes.Dequeue();
-                Monitor.Exit(this);
-                try {
-                    item(this, result, error);
-                } catch (ThreadAbortException) {
-                } catch (Exception ex) {
-                    throw new FutureHandlerException(item, ex);
-                } finally {
-                    Monitor.Enter(this);
-                }
+            var f = _OnComplete;
+            if (f == null)
+                return;
+            _OnComplete = null;
+            Monitor.Exit(this);
+            try {
+                f(this, result, error);
+            } catch (ThreadAbortException) {
+            } catch (Exception ex) {
+                throw new FutureHandlerException(f, ex);
+            } finally {
+                Monitor.Enter(this);
             }
         }
 
@@ -106,7 +108,16 @@ namespace Squared.Task {
                     return;
 
                 if (!_Completed) {
-                    _OnCompletes.Enqueue(handler);
+                    var oldOnComplete = _OnComplete;
+                    if (oldOnComplete != null) {
+                        OnComplete newOnComplete = (f, r, e) => {
+                            oldOnComplete(f, r, e);
+                            handler(f, r, e);
+                        };
+                        _OnComplete = newOnComplete;
+                    } else {
+                        _OnComplete = handler;
+                    }
                     return;
                 }
             }
@@ -119,7 +130,16 @@ namespace Squared.Task {
                     return;
 
                 if (!_Disposed) {
-                    _OnDisposes.Enqueue(handler);
+                    var oldOnDispose = _OnDispose;
+                    if (oldOnDispose != null) {
+                        OnDispose newOnDispose = (f) => {
+                            oldOnDispose(f);
+                            handler(f);
+                        };
+                        _OnDispose = newOnDispose;
+                    } else {
+                        _OnDispose = handler;
+                    } 
                     return;
                 }
             }
@@ -178,9 +198,6 @@ namespace Squared.Task {
                     _Completed = true;
                     InvokeOnCompletes(result, error);
                 }
-
-                _OnCompletes.Clear();
-                _OnDisposes.Clear();
             }
         }
 
@@ -194,9 +211,6 @@ namespace Squared.Task {
                     _Disposed = true;
                     InvokeOnDisposes();
                 }
-
-                _OnCompletes.Clear();
-                _OnDisposes.Clear();
             }
         }
 
