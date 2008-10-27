@@ -268,7 +268,38 @@ namespace Squared.Task {
             var f = Scheduler.Start(IterationTask(iter, output));
             Scheduler.WaitFor(f);
 
-            Assert.AreEqual(output.Count, 100);
+            int[] expected = new int[100];
+            for (int i = 0; i < 100; i++)
+                expected[i] = i;
+
+            Assert.AreEqual(output.ToArray(), expected);
+        }
+
+        [Test]
+        public void TestToArray () {
+            var e = CountTo100(Thread.CurrentThread);
+            var iter = e.GetTaskIterator();
+
+            Scheduler.WaitFor(Scheduler.Start(iter.Start()));
+            int[] items = (int[])Scheduler.WaitFor(iter.ToArray());
+
+            int[] expected = new int[100];
+            for (int i = 0; i < 100; i++)
+                expected[i] = i;
+
+            Assert.AreEqual(expected, items);
+        }
+
+        [Test]
+        public void TestToArrayOnEmptySequence () {
+            var e = new TestEnumerator();
+            var iter = new TaskIterator<object>(e.GetTask());
+
+            Scheduler.WaitFor(Scheduler.Start(iter.Start()));
+            object[] items = (object[])Scheduler.WaitFor(iter.ToArray());
+            object[] expected = new object[0];
+
+            Assert.AreEqual(expected, items);
         }
     }
 }

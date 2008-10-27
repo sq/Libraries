@@ -324,7 +324,10 @@ namespace Squared.Task {
         }
 
         public Future ToArray () {
-            return _Scheduler.Start(GetArray(), TaskExecutionPolicy.RunWhileFutureLives);
+            if (Disposed)
+                return new Future(new T[0]);
+            else
+                return _Scheduler.Start(GetArray(), TaskExecutionPolicy.RunWhileFutureLives);
         }
 
         public T Current {
