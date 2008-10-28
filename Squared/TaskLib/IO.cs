@@ -99,6 +99,7 @@ namespace Squared.Task {
     public class SocketDataAdapter : IAsyncDataSource, IAsyncDataWriter {
         Socket _Socket;
         bool _OwnsSocket;
+        AsyncCallback _ReadCallback, _WriteCallback;
 
         public SocketDataAdapter (Socket socket)
             : this(socket, true) {
@@ -107,6 +108,8 @@ namespace Squared.Task {
         public SocketDataAdapter (Socket socket, bool ownsSocket) {
             _Socket = socket;
             _OwnsSocket = ownsSocket;
+            _ReadCallback = ReadCallback;
+            _WriteCallback = WriteCallback;
         }
 
         public void Dispose () {
@@ -154,7 +157,7 @@ namespace Squared.Task {
                         f.Fail(ex);
                     }
                 } else {
-                    _Socket.BeginReceive(buffer, offset, count, SocketFlags.None, out errorCode, ReadCallback, f);
+                    _Socket.BeginReceive(buffer, offset, count, SocketFlags.None, out errorCode, _ReadCallback, f);
                 }
             }
             return f;
@@ -193,7 +196,7 @@ namespace Squared.Task {
                 if (IsSendBufferFull())
                     throw new SocketBufferFullException();
                 SocketError errorCode;
-                _Socket.BeginSend(buffer, offset, count, SocketFlags.None, out errorCode, WriteCallback, f);
+                _Socket.BeginSend(buffer, offset, count, SocketFlags.None, out errorCode, _WriteCallback, f);
             }
             return f;
         }
@@ -202,6 +205,7 @@ namespace Squared.Task {
     public class StreamDataAdapter : IAsyncDataSource, IAsyncDataWriter {
         Stream _Stream;
         bool _OwnsStream;
+        AsyncCallback _ReadCallback, _WriteCallback;
 
         public StreamDataAdapter (Stream stream)
             : this(stream, true) {
@@ -210,6 +214,8 @@ namespace Squared.Task {
         public StreamDataAdapter (Stream stream, bool ownsStream) {
             _Stream = stream;
             _OwnsStream = ownsStream;
+            _ReadCallback = ReadCallback;
+            _WriteCallback = WriteCallback;
         }
 
         public void Dispose () {
@@ -231,7 +237,7 @@ namespace Squared.Task {
 
         public Future Read (byte[] buffer, int offset, int count) {
             Future f = new Future();
-            _Stream.BeginRead(buffer, offset, count, ReadCallback, f);
+            _Stream.BeginRead(buffer, offset, count, _ReadCallback, f);
             return f;
         }
 
@@ -249,14 +255,14 @@ namespace Squared.Task {
         
         public Future Write (byte[] buffer, int offset, int count) {
             Future f = new Future();
-            _Stream.BeginWrite(buffer, offset, count, WriteCallback, f);
+            _Stream.BeginWrite(buffer, offset, count, _WriteCallback, f);
             return f;
         }
     }
 
     internal static class BufferPool<T> {
-        public static int MaxPoolCount = 16;
-        public static int MaxBufferSize = 8192;
+        public static int MaxPoolCount = 8;
+        public static int MaxBufferSize = 4096;
 
         public class Buffer : IDisposable {
             public T[] Data;
@@ -309,7 +315,7 @@ namespace Squared.Task {
     }
 
     internal class CharacterBuffer : IDisposable {
-        public static int DefaultBufferSize = 1024;
+        public static int DefaultBufferSize = 512;
 
         private BufferPool<char>.Buffer _Buffer;
         private int _Length = 0;
@@ -395,7 +401,7 @@ namespace Squared.Task {
 
     public class AsyncTextReader : PendingOperationManager, IDisposable {
         public static Encoding DefaultEncoding = Encoding.UTF8;
-        public static int DefaultBufferSize = 1024;
+        public static int DefaultBufferSize = 2048;
 
         IAsyncDataSource _DataSource;
         Encoding _Encoding;
@@ -645,7 +651,7 @@ namespace Squared.Task {
 
         public Future ReadToEnd () {
             Future f = new Future();
-            StringBuilder buffer = new StringBuilder();
+            CharacterBuffer buffer = new CharacterBuffer();
             OnComplete[] oc = new OnComplete[1];
 
             SetPendingOperation(f);
@@ -664,6 +670,7 @@ namespace Squared.Task {
             OnComplete onDecodeComplete = (_f, result, error) => {
                 if (error != null) {
                     ClearPendingOperation(f);
+                    buffer.Dispose();
                     f.Fail(error);
                 } else {
                     int numChars = (int)result;
@@ -672,7 +679,7 @@ namespace Squared.Task {
                         processDecodedChars();
                     } else {
                         ClearPendingOperation(f);
-                        f.Complete(ReturnBufferValue(buffer));
+                        f.Complete(buffer.DisposeAndGetContents());
                     }
                 }
             };
@@ -686,13 +693,14 @@ namespace Squared.Task {
     public class AsyncTextWriter : PendingOperationManager, IDisposable {
         public static Encoding DefaultEncoding = Encoding.UTF8;
         public static char[] DefaultNewLine = new char[] { '\r', '\n' };
-        public static int DefaultBufferSize = 1024;
+        public static int DefaultBufferSize = 512;
 
         char[] _NewLine;
         byte[] _NewLineBytes;
         IAsyncDataWriter _DataWriter;
         Encoding _Encoding;
         Encoder _Encoder;
+        OnComplete _WriteOnComplete;
 
         byte[] _WriteBuffer;
 
@@ -713,6 +721,7 @@ namespace Squared.Task {
             _NewLine = DefaultNewLine;
             _NewLineBytes = _Encoding.GetBytes(_NewLine);
             _WriteBuffer = new byte[DefaultBufferSize];
+            _WriteOnComplete = WriteOnComplete;
         }
 
         public void Dispose () {
@@ -746,7 +755,7 @@ namespace Squared.Task {
             SetPendingOperation(null);
             var f = _DataWriter.Write(bytes, 0, count);
             SetPendingOperation(f);
-            f.RegisterOnComplete(WriteOnComplete);
+            f.RegisterOnComplete(_WriteOnComplete);
             return f;
         }
 
