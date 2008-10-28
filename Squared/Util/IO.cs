@@ -7,6 +7,154 @@ using ComTypes = System.Runtime.InteropServices.ComTypes;
 using System.Security;
 
 namespace Squared.Util {
+    public static class BufferPool<T> {
+        public static int MaxPoolCount = 8;
+        public static int MaxBufferSize = 4096;
+
+        public class Buffer : IDisposable {
+            public T[] Data;
+
+            public Buffer (T[] data) {
+                Data = data;
+            }
+
+            public static implicit operator T[] (Buffer _) {
+                return _.Data;
+            }
+
+            public void Dispose () {
+                T[] data = Data;
+                Data = null;
+                BufferPool<T>.AddToPool(data);
+            }
+        }
+
+        private static LinkedList<T[]> Pool = new LinkedList<T[]>();
+
+        internal static void AddToPool (T[] buffer) {
+            if (buffer.Length > MaxBufferSize)
+                return;
+
+            lock (Pool) {
+                if (Pool.Count < MaxPoolCount) {
+                    Pool.AddLast(buffer);
+                }
+            }
+        }
+
+        public static Buffer Allocate (int size) {
+            lock (Pool) {
+                LinkedListNode<T[]> node = Pool.First;
+                while (node != null) {
+                    if (node.Value.Length >= size) {
+                        T[] result = node.Value;
+                        Pool.Remove(node);
+                        return new Buffer(result);
+                    }
+                    node = node.Next;
+                }
+            }
+            {
+                T[] result = new T[size];
+                return new Buffer(result);
+            }
+        }
+    }
+
+    public class CharacterBuffer : IDisposable {
+        public static int DefaultBufferSize = 512;
+
+        private BufferPool<char>.Buffer _Buffer;
+        private int _Length = 0;
+
+        public CharacterBuffer () {
+            ResizeBuffer(DefaultBufferSize);
+        }
+
+        private void ResizeBuffer (int size) {
+            BufferPool<char>.Buffer temp = BufferPool<char>.Allocate(size);
+
+            if (_Buffer != null) {
+                Array.Copy(_Buffer.Data, temp.Data, _Length);
+                _Buffer.Dispose();
+            }
+
+            _Buffer = temp;
+        }
+
+        public string DisposeAndGetContents () {
+            string result = ToString();
+            Dispose();
+            return result;
+        }
+
+        public void Dispose () {
+            _Length = 0;
+            if (_Buffer != null) {
+                _Buffer.Dispose();
+                _Buffer = null;
+            }
+        }
+
+        public void Append (char character) {
+            int insertPosition = _Length;
+            int newLength = _Length + 1;
+            int bufferSize = _Buffer.Data.Length;
+
+            while (bufferSize < newLength)
+                bufferSize *= 2;
+
+            if (bufferSize > _Buffer.Data.Length)
+                ResizeBuffer(bufferSize);
+
+            _Length = newLength;
+            _Buffer.Data[insertPosition] = character;
+        }
+
+        public void Remove (int position, int length) {
+            int newLength = _Length - length;
+            int sourceIndex = position + length;
+            int copySize = _Length - position;
+
+            if ((position + copySize) < _Length)
+                Array.Copy(_Buffer, sourceIndex, _Buffer, position, copySize);
+
+            _Length = newLength;
+        }
+
+        public void Clear () {
+            _Length = 0;
+        }
+
+        public override string ToString () {
+            if (_Length > 0)
+                return new String(_Buffer, 0, _Length);
+            else
+                return null;
+        }
+
+        public char this[int index] {
+            get {
+                return _Buffer.Data[index];
+            }
+            set {
+                _Buffer.Data[index] = value;
+            }
+        }
+
+        public int Capacity {
+            get {
+                return _Buffer.Data.Length;
+            }
+        }
+
+        public int Length {
+            get {
+                return _Length;
+            }
+        }
+    }
+
     internal struct FindHandle : IDisposable {
         [DllImport("kernel32.dll")]
         [SuppressUnmanagedCodeSecurity()]

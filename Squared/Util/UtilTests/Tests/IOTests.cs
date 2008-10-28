@@ -172,4 +172,48 @@ namespace Squared.Util {
             }
         }
     }
+
+    [TestFixture]
+    public class CharacterBufferTests {
+        [Test]
+        public void TestBuildString () {
+            var buffer = new CharacterBuffer();
+
+            var s = "Some test string";
+
+            for (int i = 0; i < s.Length; i++)
+                buffer.Append(s[i]);
+
+            Assert.AreEqual(buffer.DisposeAndGetContents(), s);
+        }
+
+        [Test]
+        public void TestClear () {
+            var buffer = new CharacterBuffer();
+
+            buffer.Append('a');
+            buffer.Append('b');
+
+            buffer.Clear();
+
+            buffer.Append('c');
+
+            Assert.AreEqual(buffer.DisposeAndGetContents(), "c");
+        }
+
+        [Test]
+        public void TestRemoveLastCharacter () {
+            var buffer = new CharacterBuffer();
+
+            int size = buffer.Capacity;
+
+            for (int i = 0; i < size; i++)
+                buffer.Append('a');
+
+            for (int i = 0; i < size; i++)
+                buffer.Remove(buffer.Length - 1, 1);
+
+            buffer.Dispose();
+        }
+    }
 }
