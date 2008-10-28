@@ -11,6 +11,8 @@ namespace Squared.Task {
         Future _Future;
         public Future WakeCondition;
         TaskScheduler _Scheduler;
+        Action _Step, _QueueStep;
+        OnComplete _QueueStepOnComplete;
 
         public override string ToString () {
             return String.Format("<Task {0} waiting on {1}>", _Task, WakeCondition);
@@ -21,6 +23,9 @@ namespace Squared.Task {
             Console.WriteLine("+Task({0})", task);
 #endif
             _Task = task;
+            _QueueStep = QueueStep;
+            _QueueStepOnComplete = QueueStepOnComplete;
+            _Step = Step;
         }
 
         public void Dispose () {
@@ -58,22 +63,22 @@ namespace Squared.Task {
         }
 
         void QueueStepOnComplete (Future f, object r, Exception e) {
-            _Scheduler.QueueWorkItem(this.Step);
+            _Scheduler.QueueWorkItem(_Step);
         }
 
         void QueueStep () {
-            _Scheduler.QueueWorkItem(this.Step);
+            _Scheduler.QueueWorkItem(_Step);
         }
 
         void ScheduleNextStepForSchedulable (ISchedulable value) {
             if (value is WaitForNextStep) {
-                _Scheduler.AddStepListener(QueueStep);
+                _Scheduler.AddStepListener(_QueueStep);
             } else if (value is Yield) {
                 QueueStep();
             } else {
                 Future temp = _Scheduler.Start(value);
                 this.WakeCondition = temp;
-                temp.RegisterOnComplete(QueueStepOnComplete);
+                temp.RegisterOnComplete(_QueueStepOnComplete);
             }
         }
 
@@ -89,14 +94,14 @@ namespace Squared.Task {
 
                 if (f != null) {
                     this.WakeCondition = f;
-                    f.RegisterOnComplete(QueueStepOnComplete);
+                    f.RegisterOnComplete(_QueueStepOnComplete);
                 } else {
                     QueueStep();
                 }
             } else if (value is Future) {
                 Future f = (Future)value;
                 this.WakeCondition = f;
-                f.RegisterOnComplete(QueueStepOnComplete);
+                f.RegisterOnComplete(_QueueStepOnComplete);
             } else if (value is Result) {
                 _Future.Complete(((Result)value).Value);
                 Dispose();
