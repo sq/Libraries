@@ -33,7 +33,7 @@ namespace Squared.Task {
                             var task = EnumeratorExtensionMethods.EnumerateViaThreadpool(enumerator);
                             i._Task = task;
                             i.Initialize(scheduler);
-                            i.Future.RegisterOnComplete((_f,_r,_e) => {
+                            i.Future.RegisterOnComplete((_f, _r, _e) => {
                                 reader.Dispose();
                             });
                             i.Future.RegisterOnDispose((_) => {
@@ -203,14 +203,14 @@ namespace Squared.Task {
                 _Command.Dispose();
                 _Command = null;
             }
-            _Manager = null;            
+            _Manager = null;
         }
     }
 
     public class QueryManager : IDisposable {
-        static Regex 
-            _NormalParameter = new Regex(@"(^|\s)\?($|\s)", RegexOptions.Compiled),
-            _NamedParameter = new Regex(@"(^|\s)\@(?'name'[a-zA-Z0-9_]+)($|\s)", RegexOptions.Compiled);
+        static Regex
+            _NormalParameter = new Regex(@"(^|\s|[\(,=+-><])\?($|\s|[\),=+-><])", RegexOptions.Compiled),
+            _NamedParameter = new Regex(@"(^|\s|[\(,=+-><])\@(?'name'[a-zA-Z0-9_]+)($|\s|[\),=+-><])", RegexOptions.Compiled);
         IDbConnection _Connection;
 
         public QueryManager (IDbConnection connection) {
@@ -245,7 +245,7 @@ namespace Squared.Task {
                 }
             }
 
-            for (int i = 0; i <numParameters; i++) {
+            for (int i = 0; i < numParameters; i++) {
                 var param = cmd.CreateParameter();
                 param.ParameterName = parameterNames[i];
                 cmd.Parameters.Add(param);
