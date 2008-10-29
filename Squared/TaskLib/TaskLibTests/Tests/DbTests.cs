@@ -104,6 +104,13 @@ namespace Squared.Task {
                 result = scheduler.WaitFor(f);
 
                 Assert.AreEqual(result, 2);
+
+                q = qm.BuildQuery("SELECT @parm1 - @parm2");
+
+                f = q.ExecuteScalar(new NamedParam { N = "parm1", V = 1 }, new NamedParam { N = "parm2", V = 2 });
+                result = scheduler.WaitFor(f);
+
+                Assert.AreEqual(result, -1);
             }
         }
 

@@ -210,7 +210,7 @@ namespace Squared.Task {
     public class QueryManager : IDisposable {
         static Regex 
             _NormalParameter = new Regex(@"(^|\s)\?($|\s)", RegexOptions.Compiled),
-            _NamedParameter = new Regex(@"(^|\s)\@(?'name'[a-zA-Z0-9_].?)($|\s)", RegexOptions.Compiled);
+            _NamedParameter = new Regex(@"(^|\s)\@(?'name'[a-zA-Z0-9_]+)($|\s)", RegexOptions.Compiled);
         IDbConnection _Connection;
 
         public QueryManager (IDbConnection connection) {
