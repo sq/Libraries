@@ -6,6 +6,7 @@ using System.Text;
 using System.Diagnostics;
 using System.Data.Common;
 using System.Data;
+using System.Text.RegularExpressions;
 
 namespace Squared.Task {
     public class DbTaskIterator : TaskIterator<DbDataRecord> {
@@ -132,6 +133,23 @@ namespace Squared.Task {
         }
     }
 
+    public struct NamedParam {
+        public string Name;
+        public object Value;
+
+        public string N {
+            set {
+                Name = value;
+            }
+        }
+
+        public object V {
+            set {
+                Value = value;
+            }
+        }
+    }
+
     public class Query : IDisposable {
         QueryManager _Manager;
         IDbCommand _Command;
@@ -147,8 +165,15 @@ namespace Squared.Task {
                 throw new InvalidOperationException(errorString);
             }
             for (int i = 0; i < parameters.Length; i++) {
-                var parameter = (IDbDataParameter)_Command.Parameters[i];
-                parameter.Value = parameters[i];
+                var value = parameters[i];
+                if (value is NamedParam) {
+                    var namedParam = (NamedParam)value;
+                    var parameter = (IDbDataParameter)_Command.Parameters[namedParam.Name];
+                    parameter.Value = namedParam.Value;
+                } else {
+                    var parameter = (IDbDataParameter)_Command.Parameters[i];
+                    parameter.Value = value;
+                }
             }
         }
 
@@ -183,6 +208,9 @@ namespace Squared.Task {
     }
 
     public class QueryManager : IDisposable {
+        static Regex 
+            _NormalParameter = new Regex(@"(^|\s)\?($|\s)", RegexOptions.Compiled),
+            _NamedParameter = new Regex(@"(^|\s)\@(?'name'[a-zA-Z0-9_].?)($|\s)", RegexOptions.Compiled);
         IDbConnection _Connection;
 
         public QueryManager (IDbConnection connection) {
@@ -204,19 +232,22 @@ namespace Squared.Task {
 
             cmd.CommandText = sql;
 
-            int numParameters = 0;
-            int pos = 0;
-            do {
-                pos = sql.IndexOf('?', pos + 1);
-                if (pos < 0)
-                    break;
-
-                numParameters += 1;
-            } while (pos < (sql.Length - 1));
-
+            int numParameters = _NormalParameter.Matches(sql).Count;
+            var parameterNames = new List<string>();
             for (int i = 0; i < numParameters; i++) {
+                parameterNames.Add(String.Format("p{0}", i));
+            }
+            foreach (Match match in _NamedParameter.Matches(sql)) {
+                string name = match.Groups["name"].Value;
+                if (!parameterNames.Contains(name)) {
+                    numParameters += 1;
+                    parameterNames.Add(name);
+                }
+            }
+
+            for (int i = 0; i <numParameters; i++) {
                 var param = cmd.CreateParameter();
-                param.ParameterName = String.Format("p{0}", i);
+                param.ParameterName = parameterNames[i];
                 cmd.Parameters.Add(param);
             }
 

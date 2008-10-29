@@ -79,14 +79,31 @@ namespace Squared.Task {
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
             var qm = new QueryManager(Connection);
-            var q = qm.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
 
             using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded)) {
-                var f = q.ExecuteScalar(5);
+                var q = qm.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
 
+                var f = q.ExecuteScalar(5);
                 var result = scheduler.WaitFor(f);
 
                 Assert.AreEqual(result, 1);
+
+                q = qm.BuildQuery("SELECT @p0 - @p1");
+
+                f = q.ExecuteScalar(2, 3);                
+                result = scheduler.WaitFor(f);
+
+                Assert.AreEqual(result, -1);
+
+                f = q.ExecuteScalar(new NamedParam { N = "p0", V = 4 }, new NamedParam { N = "p1", V = 3 });
+                result = scheduler.WaitFor(f);
+
+                Assert.AreEqual(result, 1);
+
+                f = q.ExecuteScalar(5, new NamedParam { N = "p1", V = 3 });
+                result = scheduler.WaitFor(f);
+
+                Assert.AreEqual(result, 2);
             }
         }
 
