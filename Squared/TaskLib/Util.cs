@@ -266,6 +266,9 @@ namespace Squared.Task {
             });
         }
 
+        protected virtual void OnDispose () {
+        }
+
         /// <summary>
         /// Returns a future that will be completed when the next item in the sequence is ready, or the sequence has completed iteration. The future's result will be true if another item is ready.
         /// </summary>
@@ -354,6 +357,8 @@ namespace Squared.Task {
         }
 
         public void Dispose () {
+            OnDispose();
+
             if (_SequenceFuture != null) {
                 _SequenceFuture.Dispose();
                 _SequenceFuture = null;

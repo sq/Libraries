@@ -8,7 +8,7 @@ using System.Data.Common;
 
 namespace Squared.Task {
     [TestFixture]
-    public class DbTests {
+    public class MemoryDbTests {
         SQLiteConnection Connection;
 
         [SetUp]
@@ -73,14 +73,13 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void TestQueryManager () {
+        public void TestConnectionWrapper () {
             DoQuery("CREATE TEMPORARY TABLE Test (value int)");
             for (int i = 0; i < 100; i++)
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
-            var qm = new QueryManager(Connection);
-
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded)) {
+            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var q = qm.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
 
                 var f = q.ExecuteScalar(5);
@@ -120,17 +119,92 @@ namespace Squared.Task {
             for (int i = 0; i < 100; i++)
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
-            var qm = new QueryManager(Connection);
-            var q = qm.BuildQuery("SELECT value FROM Test WHERE value = ?");
+            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
+                var q = qm.BuildQuery("SELECT value FROM Test WHERE value = ?");
 
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded)) {
-                var iterator = new DbTaskIterator(q, 5);
+                using (var iterator = new DbTaskIterator(q, 5)) {
+                    scheduler.WaitFor(scheduler.Start(iterator.Start()));
 
-                scheduler.WaitFor(scheduler.Start(iterator.Start()));
+                    Assert.AreEqual(iterator.Current.GetInt32(0), 5);
+                }
+            }
+        }
 
-                Assert.AreEqual(iterator.Current.GetInt32(0), 5);
+        [Test]
+        public void TestQueryPipelining () {
+            DoQuery("CREATE TEMPORARY TABLE Test (value int)");
+            for (int i = 0; i < 100; i++)
+                DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
+
+            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
+                var q1 = qm.BuildQuery("SELECT value FROM test");
+                var q2 = qm.BuildQuery("INSERT INTO test (value) VALUES (?)");
+
+                var iterator = new DbTaskIterator(q1);
+                var f1 = scheduler.Start(iterator.Start());
+                var f2 = q2.ExecuteNonQuery(200);
+
+                f1.RegisterOnComplete((f, r, e) => {
+                    Assert.IsNull(e);
+                    Assert.AreEqual(f1, f);
+                    Assert.AreEqual(true, r);
+                    Assert.IsTrue(f1.Completed);
+                    Assert.IsFalse(f2.Completed);
+                });
+
+                f2.RegisterOnComplete((f, r, e) => {
+                    Assert.IsNull(e);
+                    Assert.AreEqual(f2, f);
+                    Assert.IsTrue(f1.Completed);
+                    Assert.IsTrue(f2.Completed);
+                });
+
+                scheduler.WaitFor(f1);
+
+                scheduler.WaitFor(scheduler.Start(new Sleep(1.0)));
+                Assert.IsFalse(f2.Completed);
 
                 iterator.Dispose();
+
+                scheduler.WaitFor(f2);
+            }
+        }
+
+        [Test]
+        public void TestTransactionPipelining () {
+            DoQuery("CREATE TEMPORARY TABLE Test (value int)");
+
+            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
+                var getNumValues = qm.BuildQuery("SELECT COUNT(value) FROM test");
+
+                var addValue = qm.BuildQuery("INSERT INTO test (value) VALUES (?)");
+
+                var fb = qm.BeginTransaction();
+                var fq = addValue.ExecuteNonQuery(1);
+                var fr = qm.RollbackTransaction();
+
+                scheduler.WaitFor(Future.WaitForAll(fb, fq, fr));
+
+                var fgnv = getNumValues.ExecuteScalar();
+                long numValues = Convert.ToInt64(
+                    scheduler.WaitFor(fgnv)
+                );
+                Assert.AreEqual(0, numValues);
+
+                fb = qm.BeginTransaction();
+                fq = addValue.ExecuteNonQuery(1);
+                var fc = qm.CommitTransaction();
+
+                scheduler.WaitFor(Future.WaitForAll(fb, fq, fc));
+
+                fgnv = getNumValues.ExecuteScalar();
+                numValues = Convert.ToInt64(
+                    scheduler.WaitFor(fgnv)
+                );
+                Assert.AreEqual(1, numValues);
             }
         }
     }

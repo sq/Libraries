@@ -19,8 +19,9 @@ namespace Squared.Task {
 
             public void Schedule (TaskScheduler scheduler, Future future) {
                 DbTaskIterator i = _Iterator;
-                var er = i.Query.ExecuteReader(i.Parameters);
-                er.RegisterOnComplete(
+                i._CompletionNotifier = i.Query.GetCompletionNotifier();
+                i._QueryFuture = i.Query.ExecuteReader(i.Parameters);
+                i._QueryFuture.RegisterOnComplete(
                     (f, r, e) => {
                         if (e != null) {
                             future.SetResult(null, e);
@@ -48,6 +49,8 @@ namespace Squared.Task {
             }
         };
 
+        Action<Future> _CompletionNotifier = null;
+        Future _QueryFuture = null;
         Query _Query;
         object[] _Parameters;
 
@@ -69,6 +72,21 @@ namespace Squared.Task {
             }
         }
 
+        protected override void OnDispose () {
+            if ((_CompletionNotifier != null) && (_QueryFuture != null)) {
+                try {
+                    _QueryFuture.Dispose();
+                } catch (FutureDisposedException) {
+                }
+                _CompletionNotifier(_QueryFuture);
+            }
+
+            _QueryFuture = null;
+            _CompletionNotifier = null;
+
+            base.OnDispose();
+        }
+
         protected override ISchedulable GetStartThunk () {
             return new StartThunk(this);
         }
@@ -82,8 +100,7 @@ namespace Squared.Task {
                     (state) => {
                         try {
                             object result;
-                            lock (cmd.Connection)
-                                result = cmd.ExecuteScalar();
+                            result = cmd.ExecuteScalar();
                             f.SetResult(result, null);
                         } catch (Exception e) {
                             f.SetResult(null, e);
@@ -101,8 +118,7 @@ namespace Squared.Task {
                     (state) => {
                         try {
                             int result;
-                            lock (cmd.Connection)
-                                result = cmd.ExecuteNonQuery();
+                            result = cmd.ExecuteNonQuery();
                             f.SetResult(result, null);
                         } catch (Exception e) {
                             f.SetResult(null, e);
@@ -120,8 +136,7 @@ namespace Squared.Task {
                     (state) => {
                         try {
                             IDataReader result;
-                            lock (cmd.Connection)
-                                result = cmd.ExecuteReader();
+                            result = cmd.ExecuteReader();
                             f.SetResult(result, null);
                         } catch (Exception e) {
                             f.SetResult(null, e);
@@ -151,19 +166,30 @@ namespace Squared.Task {
     }
 
     public class Query : IDisposable {
-        QueryManager _Manager;
+        ConnectionWrapper _Manager;
         IDbCommand _Command;
 
-        internal Query (QueryManager manager, IDbCommand command) {
+        internal Query (ConnectionWrapper manager, IDbCommand command) {
             _Manager = manager;
             _Command = command;
         }
 
-        internal void BindParameters (object[] parameters) {
+        internal void ValidateParameters (object[] parameters) {
             if (parameters.Length != _Command.Parameters.Count) {
                 string errorString = String.Format("Got {0} parameter(s), expected {1}.", parameters.Length, _Command.Parameters.Count);
                 throw new InvalidOperationException(errorString);
             }
+
+            for (int i = 0; i < parameters.Length; i++) {
+                var value = parameters[i];
+                if (value is NamedParam) {
+                    var namedParam = (NamedParam)value;
+                    var parameter = (IDbDataParameter)_Command.Parameters[namedParam.Name];
+                }
+            }
+        }
+
+        internal void BindParameters (object[] parameters) {
             for (int i = 0; i < parameters.Length; i++) {
                 var value = parameters[i];
                 if (value is NamedParam) {
@@ -177,19 +203,62 @@ namespace Squared.Task {
             }
         }
 
+        private Action GetExecuteFunc (object[] parameters, Func<object> queryFunc, Future future) {
+            WaitCallback wrapper = (_) => {
+                try {
+                    BindParameters(parameters);
+                    object result = queryFunc();
+                    future.SetResult(result, null);
+                } catch (Exception e) {
+                    future.SetResult(null, e);
+                }
+            };
+            Action ef = () => {
+                ThreadPool.QueueUserWorkItem(wrapper);
+            };
+            return ef;
+        }
+
+        private Future InternalExecuteQuery (object[] parameters, Func<object> queryFunc, bool suspendCompletion) {
+            ValidateParameters(parameters);
+            var f = new Future();
+            Action ef = GetExecuteFunc(parameters, queryFunc, f);
+            if (!suspendCompletion) {
+                OnComplete oc = (_, r, e) => {
+                    _Manager.NotifyQueryCompleted(f);
+                };
+                f.RegisterOnComplete(oc);
+            }
+            _Manager.EnqueueQuery(f, ef);
+            return f;
+        }
+
         public Future ExecuteNonQuery (params object[] parameters) {
-            BindParameters(parameters);
-            return _Command.AsyncExecuteNonQuery();
+            Func<object> queryFunc = () => {
+                return _Command.ExecuteNonQuery();
+            };
+            return InternalExecuteQuery(parameters, queryFunc, false);
         }
 
         public Future ExecuteScalar (params object[] parameters) {
-            BindParameters(parameters);
-            return _Command.AsyncExecuteScalar();
+            Func<object> queryFunc = () => {
+                return _Command.ExecuteScalar();
+            };
+            return InternalExecuteQuery(parameters, queryFunc, false);
         }
 
-        public Future ExecuteReader (params object[] parameters) {
-            BindParameters(parameters);
-            return _Command.AsyncExecuteReader();
+        internal Action<Future> GetCompletionNotifier () {
+            Action<Future> cn = (f) => {
+                _Manager.NotifyQueryCompleted(f);
+            };
+            return cn;
+        }
+
+        internal Future ExecuteReader (params object[] parameters) {
+            Func<object> queryFunc = () => {
+                return _Command.ExecuteReader();
+            };
+            return InternalExecuteQuery(parameters, queryFunc, true);
         }
 
         public IDbCommand Command {
@@ -207,14 +276,139 @@ namespace Squared.Task {
         }
     }
 
-    public class QueryManager : IDisposable {
+    public class ConnectionWrapper : IDisposable {
+        struct WaitingQuery {
+            public Future Future;
+            public Action ExecuteFunc;
+        }
+
         static Regex
             _NormalParameter = new Regex(@"(^|\s|[\(,=+-><])\?($|\s|[\),=+-><])", RegexOptions.Compiled),
             _NamedParameter = new Regex(@"(^|\s|[\(,=+-><])\@(?'name'[a-zA-Z0-9_]+)($|\s|[\),=+-><])", RegexOptions.Compiled);
-        IDbConnection _Connection;
 
-        public QueryManager (IDbConnection connection) {
+        IDbConnection _Connection;
+        TaskScheduler _Scheduler;
+
+        IDbTransaction _Transaction = null;
+        object _QueryLock = new object();
+        Future _ActiveQuery = null;
+        Queue<WaitingQuery> _WaitingQueries = new Queue<WaitingQuery>();
+
+        public ConnectionWrapper (TaskScheduler scheduler, IDbConnection connection) {
+            _Scheduler = scheduler;
             _Connection = connection;
+        }
+
+        public Future BeginTransaction () {
+            return BeginTransaction(IsolationLevel.Unspecified);
+        }
+
+        public Future BeginTransaction (IsolationLevel il) {
+            var f = new Future();
+            WaitCallback wc = (state) => {
+                var qm = (ConnectionWrapper)state;
+                Exception error = null;
+                lock (qm) {
+                    if (qm._Transaction == null) {
+                        qm._Transaction = qm._Connection.BeginTransaction(il);
+                    } else {
+                        error = new Exception("A transaction is already in progress");
+                    }
+                }
+                f.SetResult(null, error);
+            };
+            f.RegisterOnComplete((_, r, e) => {
+                NotifyQueryCompleted(f);
+            });
+            Action ef = () => {
+                ThreadPool.QueueUserWorkItem(wc, this);
+            };
+            EnqueueQuery(f, ef);
+            return f;
+        }
+
+        public Future CommitTransaction () {
+            var f = new Future();
+            WaitCallback wc = (state) => {
+                var qm = (ConnectionWrapper)state;
+                Exception error = null;
+                lock (qm) {
+                    if (qm._Transaction != null) {
+                        qm._Transaction.Commit();
+                        qm._Transaction.Dispose();
+                        qm._Transaction = null;
+                    } else {
+                        error = new Exception("No transaction is in progress");
+                    }
+                }
+                f.SetResult(null, error);
+            };
+            f.RegisterOnComplete((_, r, e) => {
+                NotifyQueryCompleted(f);
+            });
+            Action ef = () => {
+                ThreadPool.QueueUserWorkItem(wc, this);
+            };
+            EnqueueQuery(f, ef);
+            return f;
+        }
+
+        public Future RollbackTransaction () {
+            var f = new Future();
+            WaitCallback wc = (state) => {
+                var qm = (ConnectionWrapper)state;
+                Exception error = null;
+                lock (qm) {
+                    if (qm._Transaction != null) {
+                        qm._Transaction.Rollback();
+                        qm._Transaction.Dispose();
+                        qm._Transaction = null;
+                    } else {
+                        error = new Exception("No transaction is in progress");
+                    }
+                }
+                f.SetResult(null, error);
+            };
+            f.RegisterOnComplete((_, r, e) => {
+                NotifyQueryCompleted(f);
+            });
+            Action ef = () => {
+                ThreadPool.QueueUserWorkItem(wc, this);
+            };
+            EnqueueQuery(f, ef);
+            return f;
+        }
+
+        internal void EnqueueQuery (Future future, Action executeFunc) {
+            var wq = new WaitingQuery { Future = future, ExecuteFunc = executeFunc };
+            lock (_QueryLock) {
+                if (_ActiveQuery == null)
+                    IssueQuery(wq);
+                else
+                    _WaitingQueries.Enqueue(wq);
+            }
+        }
+
+        private void IssueQuery (WaitingQuery waitingQuery) {
+            if (_ActiveQuery != null)
+                throw new InvalidOperationException("IssueQuery invoked while a query was still active");
+
+            _ActiveQuery = waitingQuery.Future;
+            waitingQuery.ExecuteFunc();
+        }
+
+        internal void NotifyQueryCompleted (Future future) {
+            lock (_QueryLock) {
+                if (_ActiveQuery != future)
+                    throw new InvalidOperationException("NotifyQueryCompleted invoked by a query that was not active");
+                else
+                    _ActiveQuery = null;
+
+                if (_WaitingQueries.Count > 0) {
+                    var wq = _WaitingQueries.Dequeue();
+                    IssueQuery(wq);
+                }
+            }
         }
 
         public Future ExecuteSQL (string sql, params object[] parameters) {
@@ -255,7 +449,13 @@ namespace Squared.Task {
         }
 
         public void Dispose () {
+            if (_Transaction != null) {
+                _Transaction.Dispose();
+                _Transaction = null;
+            }
+
             _Connection = null;
+            _Scheduler = null;
         }
     }
 }
