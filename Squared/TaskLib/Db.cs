@@ -34,13 +34,18 @@ namespace Squared.Task {
                             var task = EnumeratorExtensionMethods.EnumerateViaThreadpool(enumerator);
                             i._Task = task;
                             i.Initialize(scheduler);
-                            i.Future.RegisterOnComplete((_f, _r, _e) => {
+                            if (i.Future != null) {
+                                i.Future.RegisterOnComplete((_f, _r, _e) => {
+                                    reader.Dispose();
+                                });
+                                i.Future.RegisterOnDispose((_) => {
+                                    reader.Dispose();
+                                });
+                                future.Bind(i.MoveNext());
+                            } else {
                                 reader.Dispose();
-                            });
-                            i.Future.RegisterOnDispose((_) => {
-                                reader.Dispose();
-                            });
-                            future.Bind(i.MoveNext());
+                                future.Complete();
+                            }
                         } catch (Exception ex) {
                             future.SetResult(null, ex);
                         }
