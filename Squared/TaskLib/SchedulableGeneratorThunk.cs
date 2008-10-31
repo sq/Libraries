@@ -111,7 +111,7 @@ namespace Squared.Task {
                 } else if (value == null) {
                     QueueStep();
                 } else {
-                    throw new TaskYieldedValueException();
+                    throw new TaskYieldedValueException(_Task);
                 }
             }
         }

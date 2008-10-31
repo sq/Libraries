@@ -281,7 +281,7 @@ namespace Squared.Task {
         }
     }
 
-    public struct TransactionWrapper : IDisposable {
+    public struct TransactionWrapper : IDisposable, ISchedulable {
         private ConnectionWrapper Wrapper;
         public Future Future;
 
@@ -315,6 +315,10 @@ namespace Squared.Task {
 
         public static implicit operator Future (TransactionWrapper tw) {
             return tw.Future;
+        }
+
+        void ISchedulable.Schedule(TaskScheduler scheduler, Future future) {
+            future.Bind(this.Future);
         }
     }
 

@@ -29,8 +29,11 @@ namespace Squared.Task {
     }
 
     public class TaskYieldedValueException : Exception {
-        public TaskYieldedValueException ()
-            : base("Task directly yielded a value. To yield a result from a task, yield a Result() object containing the value.") {
+        public IEnumerator<object> Task;
+
+        public TaskYieldedValueException (IEnumerator<object> task)
+            : base("A task directly yielded a value. To yield a result from a task, yield a Result() object containing the value.") {
+            Task = task;
         }
     }
 
