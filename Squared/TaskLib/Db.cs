@@ -281,6 +281,43 @@ namespace Squared.Task {
         }
     }
 
+    public struct TransactionWrapper : IDisposable {
+        private ConnectionWrapper Wrapper;
+        public Future Future;
+
+        public TransactionWrapper(ConnectionWrapper wrapper, Future future) {
+            Wrapper = wrapper;
+            Future = future;
+        }
+
+        public Future Commit () {
+            if (Future != null) {
+                Future = null;
+                return Wrapper.CommitTransaction();
+            }
+            return null;
+        }
+
+        public Future Rollback () {
+            if (Future != null) {
+                Future = null;
+                return Wrapper.RollbackTransaction();
+            }
+            return null;
+        }
+
+        public void Dispose () {
+            if (Future != null) {
+                Future = null;
+                Wrapper.RollbackTransaction();
+            }
+        }
+
+        public static implicit operator Future (TransactionWrapper tw) {
+            return tw.Future;
+        }
+    }
+
     public class ConnectionWrapper : IDisposable {
         struct WaitingQuery {
             public Future Future;
@@ -304,11 +341,11 @@ namespace Squared.Task {
             _Connection = connection;
         }
 
-        public Future BeginTransaction () {
+        public TransactionWrapper BeginTransaction () {
             return BeginTransaction(IsolationLevel.Unspecified);
         }
 
-        public Future BeginTransaction (IsolationLevel il) {
+        public TransactionWrapper BeginTransaction (IsolationLevel il) {
             var f = new Future();
             WaitCallback wc = (state) => {
                 var qm = (ConnectionWrapper)state;
@@ -329,7 +366,7 @@ namespace Squared.Task {
                 ThreadPool.QueueUserWorkItem(wc, this);
             };
             EnqueueQuery(f, ef);
-            return f;
+            return new TransactionWrapper(this, f);
         }
 
         public Future CommitTransaction () {

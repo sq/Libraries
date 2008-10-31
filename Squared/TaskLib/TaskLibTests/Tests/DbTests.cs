@@ -207,5 +207,40 @@ namespace Squared.Task {
                 Assert.AreEqual(1, numValues);
             }
         }
+
+        IEnumerator<object> CrashyTransactionTask (ConnectionWrapper cw, Query addValue) {
+            using (var trans = cw.BeginTransaction()) {
+                yield return addValue.ExecuteNonQuery(1);
+                yield return addValue.ExecuteNonQuery();
+                yield return trans.Commit();
+            }
+        }
+
+        [Test]
+        public void TestTransactionAutoRollback () {
+            DoQuery("CREATE TEMPORARY TABLE Test (value int)");
+
+            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
+                var getNumValues = qm.BuildQuery("SELECT COUNT(value) FROM test");
+
+                var addValue = qm.BuildQuery("INSERT INTO test (value) VALUES (?)");
+
+                var f = scheduler.Start(CrashyTransactionTask(qm, addValue));
+                try {
+                    scheduler.WaitFor(f);
+                    Assert.Fail("Did not throw");
+                } catch (FutureException fe) {
+                    Exception inner = fe.InnerException;
+                    Assert.IsInstanceOfType(typeof(InvalidOperationException), inner);
+                }
+
+                var fgnv = getNumValues.ExecuteScalar();
+                long numValues = Convert.ToInt64(
+                    scheduler.WaitFor(fgnv)
+                );
+                Assert.AreEqual(0, numValues);
+            }
+        }
     }
 }
