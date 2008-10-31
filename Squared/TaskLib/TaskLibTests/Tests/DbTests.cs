@@ -114,6 +114,23 @@ namespace Squared.Task {
         }
 
         [Test]
+        public void TestCloneConnectionWrapper() {
+            DoQuery("CREATE TEMPORARY TABLE Test (value int)");
+            for (int i = 0; i < 10; i++)
+                DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
+
+            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
+                using (var dupe = qm.Clone()) {
+                    var q = dupe.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
+                    var f = q.ExecuteScalar(5);
+                    var result = scheduler.WaitFor(f);
+                    Assert.AreEqual(result, 1);
+                }
+            }
+        }
+
+        [Test]
         public void TestDbTaskIterator () {
             DoQuery("CREATE TEMPORARY TABLE Test (value int)");
             for (int i = 0; i < 100; i++)

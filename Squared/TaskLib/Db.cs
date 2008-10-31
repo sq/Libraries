@@ -238,8 +238,17 @@ namespace Squared.Task {
             return f;
         }
 
+        internal Action<Future> GetCompletionNotifier() {
+            Action<Future> cn = (f) =>
+            {
+                _Manager.NotifyQueryCompleted(f);
+            };
+            return cn;
+        }
+
         public Future ExecuteNonQuery (params object[] parameters) {
             Func<object> queryFunc = () => {
+                _Manager.SetActiveQueryObject(this);
                 return _Command.ExecuteNonQuery();
             };
             return InternalExecuteQuery(parameters, queryFunc, false);
@@ -247,20 +256,15 @@ namespace Squared.Task {
 
         public Future ExecuteScalar (params object[] parameters) {
             Func<object> queryFunc = () => {
+                _Manager.SetActiveQueryObject(this);
                 return _Command.ExecuteScalar();
             };
             return InternalExecuteQuery(parameters, queryFunc, false);
         }
 
-        internal Action<Future> GetCompletionNotifier () {
-            Action<Future> cn = (f) => {
-                _Manager.NotifyQueryCompleted(f);
-            };
-            return cn;
-        }
-
         internal Future ExecuteReader (params object[] parameters) {
             Func<object> queryFunc = () => {
+                _Manager.SetActiveQueryObject(this);
                 return _Command.ExecuteReader();
             };
             return InternalExecuteQuery(parameters, queryFunc, true);
@@ -322,7 +326,7 @@ namespace Squared.Task {
         }
     }
 
-    public class ConnectionWrapper : IDisposable {
+    public class ConnectionWrapper : IDisposable, ICloneable {
         struct WaitingQuery {
             public Future Future;
             public Action ExecuteFunc;
@@ -338,6 +342,7 @@ namespace Squared.Task {
         IDbTransaction _Transaction = null;
         object _QueryLock = new object();
         Future _ActiveQuery = null;
+        Query _ActiveQueryObject = null;
         Queue<WaitingQuery> _WaitingQueries = new Queue<WaitingQuery>();
 
         public ConnectionWrapper (TaskScheduler scheduler, IDbConnection connection) {
@@ -435,10 +440,15 @@ namespace Squared.Task {
             }
         }
 
+        internal void SetActiveQueryObject (Query obj) {
+            _ActiveQueryObject = obj;
+        }
+
         private void IssueQuery (WaitingQuery waitingQuery) {
             if (_ActiveQuery != null)
                 throw new InvalidOperationException("IssueQuery invoked while a query was still active");
 
+            _ActiveQueryObject = null;
             _ActiveQuery = waitingQuery.Future;
             waitingQuery.ExecuteFunc();
         }
@@ -447,8 +457,10 @@ namespace Squared.Task {
             lock (_QueryLock) {
                 if (_ActiveQuery != future)
                     throw new InvalidOperationException("NotifyQueryCompleted invoked by a query that was not active");
-                else
+                else {
                     _ActiveQuery = null;
+                    _ActiveQueryObject = null;
+                }
 
                 if (_WaitingQueries.Count > 0) {
                     var wq = _WaitingQueries.Dequeue();
@@ -502,6 +514,19 @@ namespace Squared.Task {
 
             _Connection = null;
             _Scheduler = null;
+        }
+
+        public ConnectionWrapper Clone () {
+            if (_Connection is ICloneable) {
+                var newConnection = (IDbConnection)((ICloneable)_Connection).Clone();
+                return new ConnectionWrapper(_Scheduler, newConnection);
+            } else {
+                throw new InvalidOperationException("Native connection object is not cloneable");
+            }
+        }
+
+        object ICloneable.Clone () {
+            return Clone();
         }
     }
 }
