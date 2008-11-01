@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Squared.Task;
+using Squared.Task.IO;
 using Squared.Util;
 using NUnit.Framework;
 using System.Threading;

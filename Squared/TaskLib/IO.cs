@@ -7,7 +7,7 @@ using System.Text;
 using System.Diagnostics;
 using Squared.Util;
 
-namespace Squared.Task {
+namespace Squared.Task.IO {
     public class SocketDisconnectedException : IOException {
         public SocketDisconnectedException ()
             : base("The operation failed because the socket has disconnected.") {
@@ -257,6 +257,21 @@ namespace Squared.Task {
         public Future Write (byte[] buffer, int offset, int count) {
             Future f = new Future();
             _Stream.BeginWrite(buffer, offset, count, _WriteCallback, f);
+            return f;
+        }
+
+        public Future Flush () {
+            var f = new Future();
+            WaitCallback wc = (state) => {
+                var stream = (Stream)state;
+                try {
+                    stream.Flush();
+                    f.Complete();
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
+            };
+            ThreadPool.QueueUserWorkItem(wc, _Stream);
             return f;
         }
     }

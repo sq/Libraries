@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Net.Sockets;
 using Squared.Task;
+using Squared.Task.IO;
 using System.IO;
 using System.Threading;
 using System.Diagnostics;
