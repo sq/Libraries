@@ -285,7 +285,7 @@ namespace Squared.Task.Data {
         }
     }
 
-    public struct Transaction : IDisposable, ISchedulable {
+    public class Transaction : IDisposable, ISchedulable {
         private ConnectionWrapper _Wrapper;
         private Future _Future;
         private bool _Active;
