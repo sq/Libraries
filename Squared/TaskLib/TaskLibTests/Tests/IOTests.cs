@@ -8,7 +8,7 @@ using System.Net.Sockets;
 using System.Net;
 using System.Linq;
 
-namespace Squared.Task {
+namespace Squared.Task.IO {
     public class IOTests {
         public MemoryStream Stream;
 
@@ -526,6 +526,93 @@ namespace Squared.Task {
             GC.Collect();
 
             Thread.Sleep(1000);
+        }
+    }
+
+    [TestFixture]
+    public class DiskMonitorTests {
+        DiskMonitor Monitor;
+        string TempFolder;
+
+        [SetUp]
+        public void SetUp () {
+            TempFolder = System.IO.Path.GetTempPath() + System.IO.Path.GetRandomFileName();
+            System.IO.Directory.CreateDirectory(TempFolder);
+            string[] folders = new string[] {TempFolder};
+            string[] filters = new string[] {};
+            string[] exclusions = new string[] {};
+            Monitor = new DiskMonitor(folders, filters, exclusions);
+        }
+
+        [TearDown]
+        public void TearDown () {
+            Monitor.Dispose();
+            Monitor = null;
+
+            System.IO.Directory.Delete(TempFolder, true);
+        }
+
+        [Test]
+        public void CreateEvents () {
+            string fileName = TempFolder + @"\test.txt";
+
+            Monitor.Monitoring = true;
+
+            System.IO.File.WriteAllText(fileName, "test");
+
+            while (Monitor.NumChangedFiles < 1)
+                Thread.Sleep(1);
+
+            string[] files = Monitor.GetChangedFiles().Distinct().ToArray();
+
+            Assert.Contains(fileName, files);
+        }
+
+        [Test]
+        public void ModifiedEvents () {
+            string fileName = TempFolder + @"\test.txt";
+
+            System.IO.File.WriteAllText(fileName, "test");
+
+            Monitor.Monitoring = true;
+
+            for (int i = 0; i < 100; i++)
+                Thread.Sleep(10);
+
+            Assert.IsFalse(Monitor.GetChangedFiles().Distinct().ToArray().Contains(fileName));
+
+            System.IO.File.WriteAllText(fileName, "testy");
+
+            while (Monitor.NumChangedFiles < 1)
+                Thread.Sleep(1);
+
+            string[] files = Monitor.GetChangedFiles().Distinct().ToArray();
+
+            Assert.Contains(fileName, files);
+        }
+
+        [Test]
+        public void DeletedEvents () {
+            string fileName = TempFolder + @"\test.txt";
+
+            System.IO.File.WriteAllText(fileName, "test");
+
+            Monitor.Monitoring = true;
+
+            for (int i = 0; i < 100; i++)
+                Thread.Sleep(10);
+
+            Assert.IsFalse(Monitor.GetChangedFiles().Distinct().ToArray().Contains(fileName));
+            Assert.IsFalse(Monitor.GetDeletedFiles().Distinct().ToArray().Contains(fileName));
+
+            System.IO.File.Delete(fileName);
+
+            while (Monitor.NumDeletedFiles < 1)
+                Thread.Sleep(1);
+
+            string[] files = Monitor.GetDeletedFiles().Distinct().ToArray();
+
+            Assert.Contains(fileName, files);
         }
     }
 }
