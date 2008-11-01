@@ -39,6 +39,71 @@ namespace Squared.Task.IO {
     }
 
     [TestFixture]
+    public class DataAdapterTests {
+        class MockStream : Stream {
+            internal int _FlushCount = 0;
+
+            public override bool CanRead {
+                get { return false; }
+            }
+
+            public override bool CanSeek {
+                get { return false; }
+            }
+
+            public override bool CanWrite {
+                get { return false; }
+            }
+
+            public override void Flush () {
+                _FlushCount += 1;
+            }
+
+            public override long Length {
+                get { return 0; }
+            }
+
+            public override long Position {
+                get {
+                    return 0;
+                }
+                set {
+                    throw new NotImplementedException();
+                }
+            }
+
+            public override int Read (byte[] buffer, int offset, int count) {
+                throw new NotImplementedException();
+            }
+
+            public override long Seek (long offset, SeekOrigin origin) {
+                throw new NotImplementedException();
+            }
+
+            public override void SetLength (long value) {
+                throw new NotImplementedException();
+            }
+
+            public override void Write (byte[] buffer, int offset, int count) {
+                throw new NotImplementedException();
+            }
+        }
+
+        [Test]
+        public void TestFlushStream () {
+            var stream = new MockStream();
+            var adapter = new StreamDataAdapter(stream, true);
+            Assert.AreEqual(0, stream._FlushCount);
+
+            var f = adapter.Flush();
+            f.GetCompletionEvent().WaitOne();
+            Assert.AreEqual(1, stream._FlushCount);
+
+            adapter.Dispose();
+        }
+    }
+
+    [TestFixture]
     public class AsyncStreamReaderTests : IOTests {
         AsyncTextReader Reader;
 
