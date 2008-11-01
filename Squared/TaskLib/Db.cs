@@ -8,7 +8,7 @@ using System.Data.Common;
 using System.Data;
 using System.Text.RegularExpressions;
 
-namespace Squared.Task {
+namespace Squared.Task.Data {
     public class DbTaskIterator : TaskIterator<DbDataRecord> {
         struct StartThunk : ISchedulable {
             DbTaskIterator _Iterator;

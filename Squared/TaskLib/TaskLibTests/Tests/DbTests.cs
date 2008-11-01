@@ -6,7 +6,7 @@ using System.Data;
 using System.Data.SQLite;
 using System.Data.Common;
 
-namespace Squared.Task {
+namespace Squared.Task.Data {
     [TestFixture]
     public class MemoryDbTests {
         SQLiteConnection Connection;
