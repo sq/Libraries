@@ -114,23 +114,6 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void TestCloneConnectionWrapper() {
-            DoQuery("CREATE TEMPORARY TABLE Test (value int)");
-            for (int i = 0; i < 10; i++)
-                DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
-
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
-            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
-                using (var dupe = qm.Clone()) {
-                    var q = dupe.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
-                    var f = q.ExecuteScalar(5);
-                    var result = scheduler.WaitFor(f);
-                    Assert.AreEqual(result, 1);
-                }
-            }
-        }
-
-        [Test]
         public void TestDbTaskIterator () {
             DoQuery("CREATE TEMPORARY TABLE Test (value int)");
             for (int i = 0; i < 100; i++)
@@ -258,6 +241,50 @@ namespace Squared.Task {
                 );
                 Assert.AreEqual(0, numValues);
             }
+        }
+    }
+
+    [TestFixture]
+    public class DiskDbTests {
+        SQLiteConnection Connection;
+
+        [SetUp]
+        public void SetUp () {
+            string filename = System.IO.Path.GetTempFileName();
+            Connection = new SQLiteConnection(String.Format("Data Source={0}", filename));
+            Connection.Open();
+        }
+
+        internal void DoQuery (string sql) {
+            var cmd = Connection.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.ExecuteNonQuery();
+            cmd.Dispose();
+        }
+
+        [TearDown]
+        public void TearDown () {
+            Connection.Dispose();
+            Connection = null;
+        }
+
+        [Test]
+        public void TestCloneConnectionWrapper () {
+            DoQuery("CREATE TABLE Test (value int)");
+            for (int i = 0; i < 10; i++)
+                DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
+
+            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
+                using (var dupe = qm.Clone()) {
+                    var q = dupe.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
+                    var f = q.ExecuteScalar(5);
+                    var result = scheduler.WaitFor(f);
+                    Assert.AreEqual(result, 1);
+                }
+            }
+
+            DoQuery("DROP TABLE Test");
         }
     }
 }
