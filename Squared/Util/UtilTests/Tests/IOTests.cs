@@ -21,9 +21,9 @@ namespace Squared.Util {
             IEnumerable<string> dirList = Squared.Util.IO.EnumDirectories(DataPath);
             string[] dirs = (from x in dirList where !x.Contains(".svn") select x).ToArray();
             string[] expected = new string[] {
-                @"dirA",
-                @"dirB",
-                @"dirC"
+                @"dirA\",
+                @"dirB\",
+                @"dirC\"
             };
             expected = (from x in expected select DataPath + x).ToArray();
 
@@ -43,12 +43,12 @@ namespace Squared.Util {
             IEnumerable<string> dirList = Squared.Util.IO.EnumDirectories(DataPath, "*", true);
             string[] dirs = (from x in dirList where !x.Contains(".svn") select x).ToArray();
             string[] expected = new string[] {
-                @"dirA",
-                @"dirB",
-                @"dirC",
-                @"dirA\subdirA_A",
-                @"dirA\subdirA_B",
-                @"dirB\subdirB_A"
+                @"dirA\",
+                @"dirB\",
+                @"dirC\",
+                @"dirA\subdirA_A\",
+                @"dirA\subdirA_B\",
+                @"dirB\subdirB_A\"
             };
             expected = (from x in expected select DataPath + x).ToArray();
 
@@ -170,6 +170,22 @@ namespace Squared.Util {
                     System.IO.File.GetLastWriteTime(entry.Name)
                 );
             }
+        }
+
+        [Test]
+        public void TestGlobToRegex () {
+            var g = Squared.Util.IO.GlobToRegex("*.txt");
+            Assert.IsTrue(g.IsMatch("test.txt"));
+            Assert.IsTrue(g.IsMatch("test.png.txt"));
+            Assert.IsFalse(g.IsMatch("test.txt.png"));
+
+            g = Squared.Util.IO.GlobToRegex("*.png.txt");
+            Assert.IsTrue(g.IsMatch("test.png.txt"));
+            Assert.IsFalse(g.IsMatch("test.txt.png"));
+
+            g = Squared.Util.IO.GlobToRegex("*.txt.png");
+            Assert.IsFalse(g.IsMatch("test.png.txt"));
+            Assert.IsTrue(g.IsMatch("test.txt.png"));
         }
     }
 

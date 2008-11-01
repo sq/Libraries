@@ -5,6 +5,7 @@ using System.Text;
 using System.Runtime.InteropServices;
 using ComTypes = System.Runtime.InteropServices.ComTypes;
 using System.Security;
+using System.Text.RegularExpressions;
 
 namespace Squared.Util {
     public static class BufferPool<T> {
@@ -207,7 +208,9 @@ namespace Squared.Util {
             public uint Attributes;
             public ulong Size;
             public long Created;
+            public long LastAccessed;
             public long LastWritten;
+            public bool IsDirectory;
         }
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
@@ -224,6 +227,16 @@ namespace Squared.Util {
 
         const int FILE_ATTRIBUTE_DIRECTORY = 0x10;
         const int FILE_ATTRIBUTE_NORMAL = 0x80;
+
+        public static Regex GlobToRegex (string glob) {
+            if (glob.EndsWith(".*"))
+                glob = glob.Substring(0, glob.Length - 2);
+            glob = "^" + Regex.Escape(glob).Replace("\\*", ".*").Replace("\\?", ".") + "$";
+            return new Regex(
+                glob, 
+                RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture
+            );
+        }
 
         public static IEnumerable<string> EnumDirectories (string path) {
             return EnumDirectories(path, "*", false);
@@ -274,6 +287,7 @@ namespace Squared.Util {
             var buffer = new StringBuilder();
             string actualPath = System.IO.Path.GetFullPath(path + @"\");
             var patterns = searchPattern.Split(';');
+            var globs = (from p in patterns select GlobToRegex(p)).ToArray();
             var findData = new WIN32_FIND_DATA();
             var searchPaths = new Queue<string>();
             searchPaths.Enqueue("");
@@ -281,61 +295,57 @@ namespace Squared.Util {
             while (searchPaths.Count != 0) {
                 string currentPath = searchPaths.Dequeue();
 
-                if (recursive) {
-                    buffer.Remove(0, buffer.Length);
-                    buffer.Append(actualPath);
-                    buffer.Append(currentPath);
-                    buffer.Append("*");
+                buffer.Remove(0, buffer.Length);
+                buffer.Append(actualPath);
+                buffer.Append(currentPath);
+                buffer.Append("*");
 
-                    using (var handle = new FindHandle(FindFirstFile(buffer.ToString(), out findData))) {
-                        while (handle.Valid) {
-                            string fileName = findData.cFileName;
-                            bool isDirectory = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY;
+                using (var handle = new FindHandle(FindFirstFile(buffer.ToString(), out findData)))
+                while (handle.Valid) {
+                    string fileName = findData.cFileName;
 
-                            if ((fileName != ".") && (fileName != "..") && (isDirectory)) {
-                                buffer.Remove(0, buffer.Length);
-                                buffer.Append(currentPath);
-                                buffer.Append(fileName);
-                                buffer.Append("\\");
-                                searchPaths.Enqueue(buffer.ToString());
+                    if ((fileName != ".") && (fileName != "..")) {
+                        bool isDirectory = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY;
+                        bool masked = !attributeFilter(findData.dwFileAttributes);
+
+                        buffer.Remove(0, buffer.Length);
+                        buffer.Append(actualPath);
+                        buffer.Append(currentPath);
+                        buffer.Append(fileName);
+
+                        if (isDirectory)
+                            buffer.Append("\\");
+
+                        if (recursive && isDirectory) {
+                            var subdir = buffer.ToString().Substring(actualPath.Length);
+                            searchPaths.Enqueue(subdir);
+                        }
+
+                        if (!masked) {
+                            bool globMatch = false;
+                            foreach (var glob in globs) {
+                                if (glob.IsMatch(fileName)) {
+                                    globMatch = true;
+                                    break;
+                                }
                             }
 
-                            if (!FindNextFile(handle, out findData))
-                                break;
-                        }
-                    }
-                }
-                
-                foreach (string pattern in patterns) {
-                    buffer.Remove(0, buffer.Length);
-                    buffer.Append(actualPath);
-                    buffer.Append(currentPath);
-                    buffer.Append(pattern);
-
-                    using (var handle = new FindHandle(FindFirstFile(buffer.ToString(), out findData))) {
-                        while (handle.Valid) {
-                            string fileName = findData.cFileName;
-                            bool masked = !attributeFilter(findData.dwFileAttributes);
-
-                            if ((fileName != ".") && (fileName != "..") && (!masked)) {
-                                buffer.Remove(0, buffer.Length);
-                                buffer.Append(actualPath);
-                                buffer.Append(currentPath);
-                                buffer.Append(fileName);
-
+                            if (globMatch) {
                                 yield return new DirectoryEntry {
                                     Name = buffer.ToString(),
                                     Attributes = findData.dwFileAttributes,
                                     Size = findData.dwFileSizeLow + (findData.dwFileSizeHigh * ((ulong)(UInt32.MaxValue) + 1)),
                                     Created = findData.ftCreationTime,
-                                    LastWritten = findData.ftLastWriteTime
+                                    LastAccessed = findData.ftLastAccessTime,
+                                    LastWritten = findData.ftLastWriteTime,
+                                    IsDirectory = isDirectory
                                 };
                             }
-
-                            if (!FindNextFile(handle, out findData))
-                                break;
                         }
                     }
+
+                    if (!FindNextFile(handle, out findData))
+                        break;
                 }
             }
         }
