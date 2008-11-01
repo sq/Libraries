@@ -329,7 +329,7 @@ namespace Squared.Task.Data {
         }
     }
 
-    public class ConnectionWrapper : IDisposable, ICloneable {
+    public class ConnectionWrapper : ICloneable, IDisposable {
         struct WaitingQuery {
             public Future Future;
             public Action ExecuteFunc;
@@ -342,7 +342,7 @@ namespace Squared.Task.Data {
         IDbConnection _Connection;
         TaskScheduler _Scheduler;
 
-        object _QueryLock = new object();
+        bool _Closing = false;
         bool _OwnsConnection = false;
         Future _ActiveQuery = null;
         Query _ActiveQueryObject = null;
@@ -371,7 +371,8 @@ namespace Squared.Task.Data {
 
         internal bool Closed {
             get {
-                return (_Connection == null) || (_Connection.State == ConnectionState.Closed);
+                lock (this)
+                    return (_Closing) || (_Connection == null) || (_Connection.State == ConnectionState.Closed);
             }
         }
 
@@ -422,8 +423,11 @@ namespace Squared.Task.Data {
         }
 
         internal void EnqueueQuery (Future future, Action executeFunc) {
+            if (_Closing)
+                return;
+
             var wq = new WaitingQuery { Future = future, ExecuteFunc = executeFunc };
-            lock (_QueryLock) {
+            lock (this) {
                 if (_ActiveQuery == null)
                     IssueQuery(wq);
                 else
@@ -445,13 +449,16 @@ namespace Squared.Task.Data {
         }
 
         internal void NotifyQueryCompleted (Future future) {
-            lock (_QueryLock) {
+            lock (this) {
                 if (_ActiveQuery != future)
                     throw new InvalidOperationException("NotifyQueryCompleted invoked by a query that was not active");
                 else {
                     _ActiveQuery = null;
                     _ActiveQueryObject = null;
                 }
+
+                if (_Closing)
+                    return;
 
                 if (_WaitingQueries.Count > 0) {
                     var wq = _WaitingQueries.Dequeue();
@@ -470,7 +477,7 @@ namespace Squared.Task.Data {
         public Query BuildQuery (string sql) {
             IDbCommand cmd;
 
-            lock (_Connection)
+            lock (this)
                 cmd = _Connection.CreateCommand();
 
             cmd.CommandText = sql;
@@ -497,18 +504,37 @@ namespace Squared.Task.Data {
             return new Query(this, cmd);
         }
 
-        public void Dispose () {
-            if (_Connection != null) {
-                while (_TransactionDepth > 0)
-                    RollbackTransaction();
+        public IEnumerator<object> Dispose () {
+            lock (this) {
+                _Closing = true;
 
-                if (_OwnsConnection)
-                    _Connection.Close();
+                if (_Connection != null) {
+                    while (_ActiveQuery != null) {
+                        Monitor.Exit(this);
+                        yield return new Yield();
+                        Monitor.Enter(this);
+                    }
 
-                _Connection = null;
+                    while (_TransactionDepth > 0) {
+                        Monitor.Exit(this);
+                        yield return RollbackTransaction();
+                        Monitor.Enter(this);
+                    }
+
+                    if (_OwnsConnection)
+                        _Connection.Close();
+
+                    _Connection = null;
+                }
+
+                _Scheduler = null;
             }
+        }
 
-            _Scheduler = null;
+        void IDisposable.Dispose () {
+            var f = _Scheduler.Start(Dispose(), TaskExecutionPolicy.RunAsBackgroundTask);
+
+            _Scheduler.WaitFor(f);
         }
 
         public ConnectionWrapper Clone () {
