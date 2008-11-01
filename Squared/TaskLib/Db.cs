@@ -225,6 +225,9 @@ namespace Squared.Task.Data {
         }
 
         private Future InternalExecuteQuery (object[] parameters, Func<object> queryFunc, bool suspendCompletion) {
+            if (_Manager.Closed)
+                return null;
+
             ValidateParameters(parameters);
             var f = new Future();
             Action ef = GetExecuteFunc(parameters, queryFunc, f);
@@ -364,6 +367,12 @@ namespace Squared.Task.Data {
 
         public Transaction CreateTransaction () {
             return new Transaction(this);
+        }
+
+        internal bool Closed {
+            get {
+                return (_Connection == null) || (_Connection.State == ConnectionState.Closed);
+            }
         }
 
         internal Future BeginTransaction () {
