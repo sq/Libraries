@@ -285,44 +285,44 @@ namespace Squared.Task.Data {
         }
     }
 
-    public struct TransactionWrapper : IDisposable, ISchedulable {
-        private ConnectionWrapper Wrapper;
-        public Future Future;
+    public struct Transaction : IDisposable, ISchedulable {
+        private ConnectionWrapper _Wrapper;
+        private Future _Future;
+        private bool _Active;
 
-        public TransactionWrapper(ConnectionWrapper wrapper, Future future) {
-            Wrapper = wrapper;
-            Future = future;
+        public Transaction(ConnectionWrapper wrapper) {
+            _Wrapper = wrapper;
+            _Future = _Wrapper.BeginTransaction();
+            _Active = true;
         }
 
         public Future Commit () {
-            if (Future != null) {
-                Future = null;
-                return Wrapper.CommitTransaction();
-            }
-            return null;
+            if (!_Active)
+                return null;
+
+            _Active = false;
+            return _Wrapper.CommitTransaction();
         }
 
         public Future Rollback () {
-            if (Future != null) {
-                Future = null;
-                return Wrapper.RollbackTransaction();
-            }
-            return null;
+            if (!_Active)
+                return null;
+
+            _Active = false;
+            return _Wrapper.RollbackTransaction();
         }
 
         public void Dispose () {
-            if (Future != null) {
-                Future = null;
-                Wrapper.RollbackTransaction();
-            }
+            if (_Active)
+                _Wrapper.RollbackTransaction();
         }
 
-        public static implicit operator Future (TransactionWrapper tw) {
-            return tw.Future;
+        public static implicit operator Future (Transaction t) {
+            return t._Future;
         }
 
         void ISchedulable.Schedule(TaskScheduler scheduler, Future future) {
-            future.Bind(this.Future);
+            future.Bind(this._Future);
         }
     }
 
@@ -339,95 +339,77 @@ namespace Squared.Task.Data {
         IDbConnection _Connection;
         TaskScheduler _Scheduler;
 
-        IDbTransaction _Transaction = null;
         object _QueryLock = new object();
+        bool _OwnsConnection = false;
         Future _ActiveQuery = null;
         Query _ActiveQueryObject = null;
+        Query _BeginTransaction, _CommitTransaction, _RollbackTransaction;
+        int _TransactionDepth = 0;
+        bool _TransactionFailed = false;
         Queue<WaitingQuery> _WaitingQueries = new Queue<WaitingQuery>();
 
-        public ConnectionWrapper (TaskScheduler scheduler, IDbConnection connection) {
+        public ConnectionWrapper (TaskScheduler scheduler, IDbConnection connection)
+            : this(scheduler, connection, false) {
+        }
+
+        public ConnectionWrapper (TaskScheduler scheduler, IDbConnection connection, bool ownsConnection) {
             _Scheduler = scheduler;
             _Connection = connection;
+            _OwnsConnection = ownsConnection;
+
+            _BeginTransaction = BuildQuery("BEGIN");
+            _CommitTransaction = BuildQuery("COMMIT");
+            _RollbackTransaction = BuildQuery("ROLLBACK");
         }
 
-        public TransactionWrapper BeginTransaction () {
-            return BeginTransaction(IsolationLevel.Unspecified);
+        public Transaction CreateTransaction () {
+            return new Transaction(this);
         }
 
-        public TransactionWrapper BeginTransaction (IsolationLevel il) {
-            var f = new Future();
-            WaitCallback wc = (state) => {
-                var qm = (ConnectionWrapper)state;
-                Exception error = null;
-                lock (qm) {
-                    if (qm._Transaction == null) {
-                        qm._Transaction = qm._Connection.BeginTransaction(il);
-                    } else {
-                        error = new Exception("A transaction is already in progress");
-                    }
+        internal Future BeginTransaction () {
+            lock (this) {
+                _TransactionDepth += 1;
+
+                if (_TransactionDepth == 1) {
+                    _TransactionFailed = false;
+                    return _BeginTransaction.ExecuteNonQuery();
+                } else
+                    return new Future(null);
+            }
+        }
+
+        internal Future CommitTransaction () {
+            lock (this) {
+                _TransactionDepth -= 1;
+
+                if (_TransactionDepth == 0) {
+                    if (_TransactionFailed)
+                        return _RollbackTransaction.ExecuteNonQuery();
+                    else
+                        return _CommitTransaction.ExecuteNonQuery();
+                } else if (_TransactionDepth > 0)
+                    return new Future(null);
+                else {
+                    _TransactionDepth = 0;
+                    throw new InvalidOperationException("No transaction active");
                 }
-                f.SetResult(null, error);
-            };
-            f.RegisterOnComplete((_, r, e) => {
-                NotifyQueryCompleted(f);
-            });
-            Action ef = () => {
-                ThreadPool.QueueUserWorkItem(wc, this);
-            };
-            EnqueueQuery(f, ef);
-            return new TransactionWrapper(this, f);
+            }
         }
 
-        public Future CommitTransaction () {
-            var f = new Future();
-            WaitCallback wc = (state) => {
-                var qm = (ConnectionWrapper)state;
-                Exception error = null;
-                lock (qm) {
-                    if (qm._Transaction != null) {
-                        qm._Transaction.Commit();
-                        qm._Transaction.Dispose();
-                        qm._Transaction = null;
-                    } else {
-                        error = new Exception("No transaction is in progress");
-                    }
-                }
-                f.SetResult(null, error);
-            };
-            f.RegisterOnComplete((_, r, e) => {
-                NotifyQueryCompleted(f);
-            });
-            Action ef = () => {
-                ThreadPool.QueueUserWorkItem(wc, this);
-            };
-            EnqueueQuery(f, ef);
-            return f;
-        }
+        internal Future RollbackTransaction () {
+            lock (this) {
+                _TransactionDepth -= 1;
 
-        public Future RollbackTransaction () {
-            var f = new Future();
-            WaitCallback wc = (state) => {
-                var qm = (ConnectionWrapper)state;
-                Exception error = null;
-                lock (qm) {
-                    if (qm._Transaction != null) {
-                        qm._Transaction.Rollback();
-                        qm._Transaction.Dispose();
-                        qm._Transaction = null;
-                    } else {
-                        error = new Exception("No transaction is in progress");
-                    }
+                if (_TransactionDepth == 0)
+                    return _RollbackTransaction.ExecuteNonQuery();
+                else if (_TransactionDepth > 0) {
+                    _TransactionFailed = true;
+                    return new Future(null);
+                } else {
+                    _TransactionDepth = 0;
+                    throw new InvalidOperationException("No transaction active");
                 }
-                f.SetResult(null, error);
-            };
-            f.RegisterOnComplete((_, r, e) => {
-                NotifyQueryCompleted(f);
-            });
-            Action ef = () => {
-                ThreadPool.QueueUserWorkItem(wc, this);
-            };
-            EnqueueQuery(f, ef);
-            return f;
+            }
         }
 
         internal void EnqueueQuery (Future future, Action executeFunc) {
@@ -507,19 +489,23 @@ namespace Squared.Task.Data {
         }
 
         public void Dispose () {
-            if (_Transaction != null) {
-                _Transaction.Dispose();
-                _Transaction = null;
+            if (_Connection != null) {
+                while (_TransactionDepth > 0)
+                    RollbackTransaction();
+
+                if (_OwnsConnection)
+                    _Connection.Close();
+
+                _Connection = null;
             }
 
-            _Connection = null;
             _Scheduler = null;
         }
 
         public ConnectionWrapper Clone () {
             if (_Connection is ICloneable) {
                 var newConnection = (IDbConnection)((ICloneable)_Connection).Clone();
-                return new ConnectionWrapper(_Scheduler, newConnection);
+                return new ConnectionWrapper(_Scheduler, newConnection, true);
             } else {
                 throw new InvalidOperationException("Native connection object is not cloneable");
             }

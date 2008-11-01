@@ -182,11 +182,11 @@ namespace Squared.Task.Data {
 
                 var addValue = qm.BuildQuery("INSERT INTO test (value) VALUES (?)");
 
-                var fb = qm.BeginTransaction();
+                var t = qm.CreateTransaction();
                 var fq = addValue.ExecuteNonQuery(1);
-                var fr = qm.RollbackTransaction();
+                var fr = t.Rollback();
 
-                scheduler.WaitFor(Future.WaitForAll(fb, fq, fr));
+                scheduler.WaitFor(Future.WaitForAll(t, fq, fr));
 
                 var fgnv = getNumValues.ExecuteScalar();
                 long numValues = Convert.ToInt64(
@@ -194,11 +194,11 @@ namespace Squared.Task.Data {
                 );
                 Assert.AreEqual(0, numValues);
 
-                fb = qm.BeginTransaction();
+                t = qm.CreateTransaction();
                 fq = addValue.ExecuteNonQuery(1);
-                var fc = qm.CommitTransaction();
+                var fc = t.Commit();
 
-                scheduler.WaitFor(Future.WaitForAll(fb, fq, fc));
+                scheduler.WaitFor(Future.WaitForAll(t, fq, fc));
 
                 fgnv = getNumValues.ExecuteScalar();
                 numValues = Convert.ToInt64(
@@ -209,7 +209,7 @@ namespace Squared.Task.Data {
         }
 
         IEnumerator<object> CrashyTransactionTask (ConnectionWrapper cw, Query addValue) {
-            using (var trans = cw.BeginTransaction()) {
+            using (var trans = cw.CreateTransaction()) {
                 yield return addValue.ExecuteNonQuery(1);
                 yield return addValue.ExecuteNonQuery();
                 yield return trans.Commit();
@@ -240,6 +240,48 @@ namespace Squared.Task.Data {
                     scheduler.WaitFor(fgnv)
                 );
                 Assert.AreEqual(0, numValues);
+            }
+        }
+
+        [Test]
+        public void TestNestedTransactions () {
+            DoQuery("CREATE TEMPORARY TABLE Test (value int)");
+
+            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
+                var getNumValues = qm.BuildQuery("SELECT COUNT(value) FROM test");
+
+                var addValue = qm.BuildQuery("INSERT INTO test (value) VALUES (?)");
+
+                var t = qm.CreateTransaction();
+                var fq = addValue.ExecuteNonQuery(1);
+                var t2 = qm.CreateTransaction();
+                var fq2 = addValue.ExecuteNonQuery(2);
+                var fr = t2.Rollback();
+                var fc = t.Commit();
+
+                scheduler.WaitFor(Future.WaitForAll(t, fq, t2, fq2, fr, fc));
+
+                var fgnv = getNumValues.ExecuteScalar();
+                long numValues = Convert.ToInt64(
+                    scheduler.WaitFor(fgnv)
+                );
+                Assert.AreEqual(0, numValues);
+
+                t = qm.CreateTransaction();
+                fq = addValue.ExecuteNonQuery(1);
+                t2 = qm.CreateTransaction();
+                fq2 = addValue.ExecuteNonQuery(2);
+                var fc2 = t2.Commit();
+                fc = t.Commit();
+
+                scheduler.WaitFor(Future.WaitForAll(t, fq, t2, fq2, fc2, fc));
+
+                fgnv = getNumValues.ExecuteScalar();
+                numValues = Convert.ToInt64(
+                    scheduler.WaitFor(fgnv)
+                );
+                Assert.AreEqual(2, numValues);
             }
         }
     }
