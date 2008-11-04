@@ -37,6 +37,8 @@ namespace Squared.Task.Data {
             var f = cmd.AsyncExecuteScalar();
             f.GetCompletionEvent().WaitOne();
             Assert.AreEqual(1, f.Result);
+
+            cmd.Dispose();
         }
 
         [Test]
@@ -50,6 +52,8 @@ namespace Squared.Task.Data {
             f = cmd.AsyncExecuteScalar();
             f.GetCompletionEvent().WaitOne();
             Assert.AreEqual(1, f.Result);
+
+            cmd.Dispose();
         }
 
         [Test]
@@ -70,6 +74,7 @@ namespace Squared.Task.Data {
             Assert.AreEqual(1, reader.GetInt32(0));
 
             reader.Dispose();
+            cmd.Dispose();
         }
 
         [Test]
@@ -312,21 +317,78 @@ namespace Squared.Task.Data {
 
         [Test]
         public void TestCloneConnectionWrapper () {
+            DoQuery("DROP TABLE IF EXISTS Test");
             DoQuery("CREATE TABLE Test (value int)");
             for (int i = 0; i < 10; i++)
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
             using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
-                using (var dupe = qm.Clone()) {
+                var f = qm.Clone();
+                using (var dupe = (ConnectionWrapper)scheduler.WaitFor(f)) {
                     var q = dupe.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
-                    var f = q.ExecuteScalar(5);
+                    f = q.ExecuteScalar(5);
                     var result = scheduler.WaitFor(f);
                     Assert.AreEqual(result, 1);
                 }
             }
+        }
 
-            DoQuery("DROP TABLE Test");
+        [Test]
+        public void TestClonePipelining () {
+            DoQuery("DROP TABLE IF EXISTS Test");
+            DoQuery("CREATE TABLE Test (value int)");
+            for (int i = 0; i < 10; i++)
+                DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
+
+            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
+                var q = qm.BuildQuery("SELECT * FROM Test");
+                var iter = new DbTaskIterator(q);
+                var iterF = scheduler.Start(iter.Start());
+                var f = qm.Clone();
+
+                Assert.IsFalse(f.Completed);
+
+                iter.Dispose();
+                iterF.Dispose();
+                scheduler.WaitFor(f);
+                using (var dupe = (ConnectionWrapper)f.Result) {
+                    q = dupe.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
+                    f = q.ExecuteScalar(5);
+                    var result = scheduler.WaitFor(f);
+                    Assert.AreEqual(result, 1);
+                }
+            }
+        }
+
+        [Test]
+        public void TestDisposal () {
+            DoQuery("DROP TABLE IF EXISTS Test");
+            DoQuery("CREATE TABLE Test (value int)");
+            for (int i = 0; i < 10; i++)
+                DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
+
+            DbTaskIterator iter;
+            Future f;
+
+            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
+                var q = qm.BuildQuery("SELECT * FROM Test");
+                var q2 = qm.BuildQuery("SELECT COUNT(*) FROM Test");
+                iter = new DbTaskIterator(q);
+                scheduler.Start(iter.Start());
+                f = q2.ExecuteScalar();
+            }
+
+            iter.Dispose();
+
+            try {
+                int count = (int)f.Result;
+                Assert.Fail("Future's result was not a ConnectionDisposedException");
+            } catch (FutureException fe) {
+                Assert.IsInstanceOfType(typeof(ConnectionDisposedException), fe.InnerException);
+            }
         }
     }
 }

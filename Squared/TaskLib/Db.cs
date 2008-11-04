@@ -9,6 +9,12 @@ using System.Data;
 using System.Text.RegularExpressions;
 
 namespace Squared.Task.Data {
+    public class ConnectionDisposedException : Exception {
+        public ConnectionDisposedException() :
+            base("The connection was disposed.") {
+        }
+    }
+
     public class DbTaskIterator : TaskIterator<DbDataRecord> {
         struct StartThunk : ISchedulable {
             DbTaskIterator _Iterator;
@@ -329,7 +335,7 @@ namespace Squared.Task.Data {
         }
     }
 
-    public class ConnectionWrapper : ICloneable, IDisposable {
+    public class ConnectionWrapper : IDisposable {
         struct WaitingQuery {
             public Future Future;
             public Action ExecuteFunc;
@@ -450,15 +456,13 @@ namespace Squared.Task.Data {
 
         internal void NotifyQueryCompleted (Future future) {
             lock (this) {
-                if (_ActiveQuery != future)
-                    throw new InvalidOperationException("NotifyQueryCompleted invoked by a query that was not active");
-                else {
+                if (_ActiveQuery != future) {
+                    if (!_Closing)
+                        throw new InvalidOperationException("NotifyQueryCompleted invoked by a query that was not active");
+                } else {
                     _ActiveQuery = null;
                     _ActiveQueryObject = null;
                 }
-
-                if (_Closing)
-                    return;
 
                 if (_WaitingQueries.Count > 0) {
                     var wq = _WaitingQueries.Dequeue();
@@ -510,15 +514,29 @@ namespace Squared.Task.Data {
 
                 if (_Connection != null) {
                     while (_ActiveQuery != null) {
+                        if (_ActiveQuery.Completed) {
+                            break;
+                        } else {
+                            System.Diagnostics.Debug.WriteLine(String.Format("ConnectionWrapper waiting for enqueued query {0}", _ActiveQuery));
+                        }
                         Monitor.Exit(this);
                         yield return new Yield();
                         Monitor.Enter(this);
                     }
 
                     while (_TransactionDepth > 0) {
+                        System.Diagnostics.Debug.WriteLine("ConnectionWrapper.Dispose rolling back active transaction");
                         Monitor.Exit(this);
                         yield return RollbackTransaction();
                         Monitor.Enter(this);
+                    }
+
+                    while (_WaitingQueries.Count > 0) {
+                        try {
+                            _WaitingQueries.Dequeue().Future.SetResult(null, new ConnectionDisposedException());
+                        } catch (Exception ex) {
+                            System.Diagnostics.Debug.WriteLine(String.Format("Unhandled exception in connection teardown: {0}", ex));
+                        }
                     }
 
                     if (_OwnsConnection)
@@ -532,22 +550,46 @@ namespace Squared.Task.Data {
         }
 
         void IDisposable.Dispose () {
-            var f = _Scheduler.Start(Dispose(), TaskExecutionPolicy.RunAsBackgroundTask);
+            var s = _Scheduler;
+            var f = s.Start(Dispose(), TaskExecutionPolicy.RunAsBackgroundTask);
 
-            _Scheduler.WaitFor(f);
-        }
-
-        public ConnectionWrapper Clone () {
-            if (_Connection is ICloneable) {
-                var newConnection = (IDbConnection)((ICloneable)_Connection).Clone();
-                return new ConnectionWrapper(_Scheduler, newConnection, true);
-            } else {
-                throw new InvalidOperationException("Native connection object is not cloneable");
+            try {
+                s.WaitFor(f);
+            } catch (Exception ex) {
+                System.Windows.Forms.MessageBox.Show(ex.ToString(), "Disposal error");
             }
         }
 
-        object ICloneable.Clone () {
-            return Clone();
+        public Future Clone () {
+            return Clone(null);
+        }
+
+        public Future Clone (string extraConnectionParameters) {
+            var newConnectionString = _Connection.ConnectionString;
+            if (extraConnectionParameters != null)
+                newConnectionString = newConnectionString + ";" + extraConnectionParameters;
+
+            var newConnection = _Connection.GetType().GetConstructor(System.Type.EmptyTypes).Invoke(null);
+            newConnection.GetType().GetProperty("ConnectionString").SetValue(newConnection, newConnectionString, null);
+            var openMethod = newConnection.GetType().GetMethod("Open");
+
+            var f = new Future();
+            f.RegisterOnComplete((_, r, e) => {
+                NotifyQueryCompleted(f);
+            });
+
+            Action openAndReturn = () => {
+                try {
+                    openMethod.Invoke(newConnection, null);
+                    var result = new ConnectionWrapper(_Scheduler, (IDbConnection)newConnection, true);
+                    f.SetResult(result, null);
+                } catch (Exception e) {
+                    f.SetResult(null, e);
+                }
+            };
+
+            EnqueueQuery(f, openAndReturn);
+            return f;
         }
     }
 }
