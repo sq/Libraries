@@ -78,7 +78,9 @@ namespace Squared.Task {
         public override void QueueWorkItem (Action item) {
             lock (_Queue)
                 base.QueueWorkItem(item);
-            _NewWorkItemEvent.Set();
+
+            if (!_NewWorkItemEvent.SafeWaitHandle.IsClosed)
+                _NewWorkItemEvent.Set();
         }
 
         protected override Action GetNextWorkItem() {
