@@ -204,6 +204,11 @@ namespace Squared.Task {
             _JobQueue.Step();
         }
 
+        public object WaitFor (IEnumerator<object> task) {
+            var f = Start(task, TaskExecutionPolicy.RunWhileFutureLives);
+            return WaitFor(f);
+        }
+
         public object WaitFor (Future future) {
             while (!future.Completed)
                 Step();
