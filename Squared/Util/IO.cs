@@ -243,6 +243,7 @@ namespace Squared.Util {
         const uint SHGFI_ICON = 0x100;
         const uint SHGFI_LARGEICON = 0x0;
         const uint SHGFI_SMALLICON = 0x1;
+        const uint SHGFI_USEFILEATTRIBUTES = 0x10;
 
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
         [SuppressUnmanagedCodeSecurity()]
@@ -261,7 +262,15 @@ namespace Squared.Util {
             }
 
             var info = new SHFILEINFO();
-            SHGetFileInfo(path, 0, ref info, (uint)Marshal.SizeOf(info), SHGFI_ICON | (large ? SHGFI_LARGEICON : SHGFI_SMALLICON));
+            uint fileAttributes = FILE_ATTRIBUTE_NORMAL;
+            uint flags = SHGFI_ICON | (large ? SHGFI_LARGEICON : SHGFI_SMALLICON);
+            try {
+                if (!System.IO.File.Exists(path) && !System.IO.Directory.Exists(path))
+                    flags |= SHGFI_USEFILEATTRIBUTES;
+            } catch (Exception) {
+                flags |= SHGFI_USEFILEATTRIBUTES;
+            }
+            SHGetFileInfo(path, fileAttributes, ref info, (uint)Marshal.SizeOf(info), flags);
 
             var iconHandle = info.hIcon;
             if (iconHandle != IntPtr.Zero)
