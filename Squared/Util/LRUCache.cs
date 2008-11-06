@@ -6,7 +6,7 @@ using System.Collections;
 using System.Threading;
 
 namespace Squared.Util {
-    public class LRUCache<K, V> : IEnumerable<KeyValuePair<K, V>>
+    public class LRUCache<K, V> : IEnumerable<KeyValuePair<K, V>>, IDictionary<K, V>
         where K : IComparable<K> {
 
         internal class Node {
@@ -154,6 +154,13 @@ namespace Squared.Util {
             }
         }
 
+        public void Add (K key, V value) {
+            if (ContainsKey(key))
+                throw new InvalidOperationException("The specified key already exists in the LRUCache");
+
+            this[key] = value;
+        }
+
         public bool Remove (K key) {
             Node item;
             if (_Dict.TryGetValue(key, out item)) {
@@ -179,6 +186,20 @@ namespace Squared.Util {
             return _Dict.ContainsKey(key);
         }
 
+        public bool TryGetValue (K key, out V value) {
+            Node item;
+            if (_Dict.TryGetValue(key, out item)) {
+                value = item.Value;
+
+                this[item.Key] = item.Value;
+
+                return true;
+            }
+
+            value = default(V);
+            return false;
+        }
+
         public int Capacity {
             get {
                 return _CacheSize;
@@ -192,6 +213,9 @@ namespace Squared.Util {
         }
 
         public void Clear () {
+            _First = null;
+            _Last = null;
+            _Version += 1;
             _Dict.Clear();
         }
 
@@ -201,6 +225,53 @@ namespace Squared.Util {
 
         IEnumerator IEnumerable.GetEnumerator () {
             return new Enumerator(this);
+        }
+
+        ICollection<K> IDictionary<K, V>.Keys {
+            get { 
+                return _Dict.Keys; 
+            }
+        }
+
+        ICollection<V> IDictionary<K, V>.Values {
+            get {
+                throw new NotImplementedException();
+            }
+        }
+
+        void ICollection<KeyValuePair<K, V>>.Add (KeyValuePair<K, V> item) {
+            Add(item.Key, item.Value);
+        }
+
+        bool ICollection<KeyValuePair<K, V>>.Contains (KeyValuePair<K, V> item) {
+            Node node;
+            if (_Dict.TryGetValue(item.Key, out node))
+                return EqualityComparer<V>.Default.Equals(node.Value, item.Value);
+
+            return false;
+        }
+
+        void ICollection<KeyValuePair<K, V>>.CopyTo (KeyValuePair<K, V>[] array, int arrayIndex) {
+            int index = arrayIndex;
+            foreach (var item in this) {
+                array[index] = item;
+                index += 1;
+            }
+        }
+
+        bool ICollection<KeyValuePair<K, V>>.IsReadOnly {
+            get { 
+                return false; 
+            }
+        }
+
+        bool ICollection<KeyValuePair<K, V>>.Remove (KeyValuePair<K, V> item) {
+            Node node;
+            if (_Dict.TryGetValue(item.Key, out node))
+                if (EqualityComparer<V>.Default.Equals(node.Value, item.Value))
+                    return Remove(item.Key);
+
+            return false;
         }
     }
 }

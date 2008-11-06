@@ -8,11 +8,16 @@ using Squared.Util;
 namespace Squared.Util {
     [TestFixture]
     public class LRUCacheTests {
+        protected LRUCache<string, int> MakeCache (int size, int count) {
+            var lru = new LRUCache<string, int>(size);
+            for (int i = 0; i < count; i++)
+                lru[i.ToString()] = i;
+            return lru;
+        }
+
         [Test]
         public void BasicTest () {
-            var lru = new LRUCache<string, int>(4);
-            for (int i = 0; i < 6; i++)
-                lru[i.ToString()] = i;
+            var lru = MakeCache(4, 6);
 
             Assert.IsFalse(lru.ContainsKey("0"));
             Assert.IsFalse(lru.ContainsKey("1"));
@@ -27,9 +32,7 @@ namespace Squared.Util {
 
         [Test]
         public void AccessingItemsMakesThemRecentlyUsed () {
-            var lru = new LRUCache<string, int>(4);
-            for (int i = 0; i < 4; i++)
-                lru[i.ToString()] = i;
+            var lru = MakeCache(4, 4);
 
             int _ = lru["1"];
             _ = lru["3"];
@@ -47,9 +50,7 @@ namespace Squared.Util {
 
         [Test]
         public void IterationFollowsOrderOfUse () {
-            var lru = new LRUCache<string, int>(4);
-            for (int i = 0; i < 4; i++)
-                lru[i.ToString()] = i;
+            var lru = MakeCache(4, 4);
 
             int _ = lru["1"];
             _ = lru["3"];
@@ -67,9 +68,7 @@ namespace Squared.Util {
 
         [Test]
         public void ModifyingInvalidatesEnumerators () {
-            var lru = new LRUCache<string, int>(4);
-            for (int i = 0; i < 4; i++)
-                lru[i.ToString()] = i;
+            var lru = MakeCache(4, 4);
 
             var enumerator = lru.GetEnumerator();
 
@@ -82,6 +81,33 @@ namespace Squared.Util {
                 Assert.Fail("MoveNext did not raise an InvalidOperationException");
             } catch (InvalidOperationException) {
             }
+        }
+
+        [Test]
+        public void AddingDuplicateRaises () {
+            var lru = MakeCache(4, 4);
+
+            try {
+                lru.Add("2", 2);
+                Assert.Fail("Add did not raise an InvalidOperationException");
+            } catch (InvalidOperationException) {
+            }
+        }
+
+        [Test]
+        public void Interfaces () {
+            var lru = MakeCache(4, 4);
+
+            var idict = (IDictionary<string, int>)lru;
+
+            Assert.IsTrue(idict.Contains(new KeyValuePair<string, int>("0", 0)));
+            Assert.IsFalse(idict.Contains(new KeyValuePair<string, int>("0", 1)));
+
+            string[] keys = idict.Keys.ToArray();
+            Array.Sort(keys);
+            string[] expected = new string[] { "0", "1", "2", "3" };
+
+            Assert.AreEqual(expected, keys);
         }
     }
 }

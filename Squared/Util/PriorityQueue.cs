@@ -52,7 +52,7 @@ namespace Squared.Util {
         }
     }
 
-    public class PriorityQueue<T> : IEnumerable<T>, IEnumerable, ICollection
+    public class PriorityQueue<T> : IEnumerable<T>, ICollection
         where T : IComparable<T> {
         public const int DefaultSize = 16;
 
