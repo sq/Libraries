@@ -52,11 +52,13 @@ namespace Squared.Util {
         }
     }
 
-    public class PriorityQueue<T> where T : IComparable<T> {
+    public class PriorityQueue<T> : IEnumerable<T>, IEnumerable, ICollection
+        where T : IComparable<T> {
         public const int DefaultSize = 16;
 
         private T[] _Buffer = null;
         private int _Count = 0;
+        private object _SyncRoot = new object();
 
         public HeapQueue<T>.ComparisonFunction Comparer;
 
@@ -133,6 +135,26 @@ namespace Squared.Util {
 
         public void Clear () {
             _Count = 0;
+        }
+
+        public IEnumerator<T> GetEnumerator () {
+            return _Buffer.TakeWhile((item, index) => index < _Count).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return _Buffer.TakeWhile((item, index) => index < _Count).GetEnumerator();
+        }
+
+        void ICollection.CopyTo (Array array, int index) {
+            Array.Copy(_Buffer, 0, array, index, _Count);
+        }
+
+        bool ICollection.IsSynchronized {
+            get { return false; }
+        }
+
+        object ICollection.SyncRoot {
+            get { return _SyncRoot; }
         }
     }
 }

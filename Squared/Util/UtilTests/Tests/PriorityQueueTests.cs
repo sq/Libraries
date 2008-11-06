@@ -66,5 +66,15 @@ namespace Squared.Util {
             Assert.AreEqual(0, pq.Count);
             Assert.IsFalse(pq.Peek(out temp));
         }
+
+        [Test]
+        public void Interfaces () {
+            var pq = new PriorityQueue<int>(new int[] { 8, 4, 3, 1, 2 });
+            var icoll = (System.Collections.ICollection)pq;
+            
+            var expected = new int[5];
+            icoll.CopyTo(expected, 0);
+            Assert.AreEqual(expected, pq.ToArray());
+        }
     }
 }
