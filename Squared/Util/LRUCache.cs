@@ -6,6 +6,7 @@ using System.Collections;
 using System.Threading;
 
 namespace Squared.Util {
+    // Thanks to Josiah Carlson
     public class LRUCache<K, V> : IEnumerable<KeyValuePair<K, V>>, IDictionary<K, V>
         where K : IComparable<K> {
 
