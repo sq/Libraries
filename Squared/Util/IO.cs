@@ -261,7 +261,7 @@ namespace Squared.Util {
             }
 
             var info = new SHFILEINFO();
-            SHGetFileInfo(path, 0, ref info, (uint)Marshal.SizeOf(info), SHGFI_ICON | SHGFI_SMALLICON);
+            SHGetFileInfo(path, 0, ref info, (uint)Marshal.SizeOf(info), SHGFI_ICON | (large ? SHGFI_LARGEICON : SHGFI_SMALLICON));
 
             var iconHandle = info.hIcon;
             if (iconHandle != IntPtr.Zero)
