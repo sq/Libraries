@@ -11,6 +11,7 @@ namespace Squared.Task {
         void QueueWorkItem (Action item);
         void Clear ();
         void Step ();
+        void WaitForFuture (Future future);
         bool WaitForWorkItems (double timeout);
         int Count { get; }
     }
@@ -43,6 +44,15 @@ namespace Squared.Task {
                 if (item != null)
                     item();
             } while (item != null);
+        }
+
+        public void WaitForFuture (Future future) {
+            Action item = null;
+            while (!future.Completed) {
+                item = GetNextWorkItem();
+                if (item != null)
+                    item();
+            }
         }
 
         protected virtual Action GetNextWorkItem () {
@@ -136,6 +146,7 @@ namespace Squared.Task {
         private const int WS_EX_NOACTIVATE = 0x08000000;
 
         private Queue<Action> _Queue = new Queue<Action>();
+        private int ExecutionDepth = 0;
 
         public WindowsMessageJobQueue () 
             : base () {
@@ -156,8 +167,9 @@ namespace Squared.Task {
         protected override void WndProc (ref Message m) {
             if (m.Msg == WM_RUN_WORK_ITEM) {
                 SingleStep();
+            } else {
+                base.WndProc(ref m);
             }
-            base.WndProc(ref m);
         }
 
         public void QueueWorkItem (Action item) {
@@ -178,12 +190,40 @@ namespace Squared.Task {
                     return;
                 item = _Queue.Dequeue();
             }
-            if (item != null)
-                item();
+            if (item != null) {
+                try {
+                    int depth = Interlocked.Increment(ref ExecutionDepth);
+                    item();
+                } finally {
+                    Interlocked.Decrement(ref ExecutionDepth);
+                }
+            }
+        }
+
+        public void WaitForFuture (Future future) {
+            while (!future.Completed) {
+                Action item = null;
+                lock (_Queue)
+                    if (_Queue.Count > 0)
+                        item = _Queue.Dequeue();
+
+                if (item != null)
+                    item();
+                else
+                    Thread.Sleep(0);
+            }
         }
 
         public void Step () {
-            Application.DoEvents();
+            try {
+                int depth = Interlocked.Increment(ref ExecutionDepth);
+                if (depth > 1)
+                    throw new InvalidOperationException();
+
+                Application.DoEvents();
+            } finally {
+                Interlocked.Decrement(ref ExecutionDepth);
+            }
         }
 
         public bool WaitForWorkItems (double timeout) {

@@ -210,8 +210,7 @@ namespace Squared.Task {
         }
 
         public object WaitFor (Future future) {
-            while (!future.Completed)
-                Step();
+            _JobQueue.WaitForFuture(future);
 
             return future.Result;
         }
