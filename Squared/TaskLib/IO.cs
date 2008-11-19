@@ -291,7 +291,10 @@ namespace Squared.Task.IO {
         public bool EndOfStream {
             get {
                 try {
-                    return (_Stream.Position >= _Stream.Length);
+                    if (_Stream.CanSeek)
+                        return (_Stream.Position >= _Stream.Length);
+                    else
+                        return _EOF;
                 } catch (NotSupportedException) {
                     return _EOF;
                 }
