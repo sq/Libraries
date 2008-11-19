@@ -91,6 +91,8 @@ namespace Squared.Task.IO {
 
     public interface IAsyncDataSource : IDisposable {
         Future Read (byte[] buffer, int offset, int count);
+
+        bool EndOfStream { get; }
     }
 
     public interface IAsyncDataWriter : IDisposable {
@@ -201,11 +203,18 @@ namespace Squared.Task.IO {
             }
             return f;
         }
+
+        public bool EndOfStream {
+            get {
+                return !_Socket.Connected;
+            }
+        }
     }
 
     public class StreamDataAdapter : IAsyncDataSource, IAsyncDataWriter {
         Stream _Stream;
         bool _OwnsStream;
+        bool _EOF = false;
         AsyncCallback _ReadCallback, _WriteCallback;
 
         public StreamDataAdapter (Stream stream)
@@ -228,6 +237,10 @@ namespace Squared.Task.IO {
             Future f = (Future)ar.AsyncState;
             try {
                 int bytesRead = _Stream.EndRead(ar);
+
+                if (bytesRead == 0)
+                    _EOF = true;
+
                 f.Complete(bytesRead);
             } catch (FutureHandlerException) {
                 throw;
@@ -274,6 +287,16 @@ namespace Squared.Task.IO {
             ThreadPool.QueueUserWorkItem(wc, _Stream);
             return f;
         }
+
+        public bool EndOfStream {
+            get {
+                try {
+                    return (_Stream.Position >= _Stream.Length);
+                } catch (NotSupportedException) {
+                    return _EOF;
+                }
+            }
+        }
     }
 
     public class AsyncTextReader : PendingOperationManager, IDisposable {
@@ -284,6 +307,8 @@ namespace Squared.Task.IO {
         Encoding _Encoding;
         Decoder _Decoder;
         int _BufferSize;
+
+        bool _ExtraLine = false;
 
         byte[] _InputBuffer;
         char[] _DecodedBuffer;
@@ -337,7 +362,8 @@ namespace Squared.Task.IO {
                     return;
                 }
 
-                int bytesRead = (int)result;
+                int bytesRead = (int)result;                
+
                 try {
                     _DecodedCharacterOffset = 0;
                     _DecodedCharacterCount = 0;
@@ -372,6 +398,12 @@ namespace Squared.Task.IO {
                 return buffer.ToString();
             else
                 return null;
+        }
+
+        public bool EndOfStream {
+            get {
+                return (_DecodedCharacterOffset >= _DecodedCharacterCount) && (_DataSource.EndOfStream);
+            }
         }
 
         public Future Read () {
@@ -413,6 +445,7 @@ namespace Squared.Task.IO {
                 ClearPendingOperation(f);
                 f.Complete(result);
             }
+
             return f;
         }
 
@@ -420,6 +453,11 @@ namespace Squared.Task.IO {
             Future f = new Future();
             int[] wp = new int[1];
             OnComplete[] oc = new OnComplete[1];
+
+            if (EndOfStream) {
+                f.Complete(0);
+                return f;
+            }
 
             SetPendingOperation(f);
 
@@ -469,6 +507,12 @@ namespace Squared.Task.IO {
             CharacterBuffer buffer = new CharacterBuffer();
             OnComplete[] oc = new OnComplete[1];
 
+            if (EndOfStream) {
+                f.Complete(_ExtraLine ? "" : null);
+                _ExtraLine = false;
+                return f;
+            }
+
             SetPendingOperation(f);
 
             Action processDecodedChars = () => {
@@ -482,12 +526,17 @@ namespace Squared.Task.IO {
                         case '\n':
                             if ((buffer.Length > 0) && (buffer[buffer.Length - 1] == '\r'))
                                 buffer.Remove(buffer.Length - 1, 1);
+
+                            if (EndOfStream)
+                                _ExtraLine = true;
+
                             done = true;
                             break;
                         default:
                             buffer.Append(value);
                             break;
                     }
+
                     if (done) {
                         ClearPendingOperation(f);
                         f.Complete(buffer.DisposeAndGetContents());
@@ -516,7 +565,12 @@ namespace Squared.Task.IO {
                         }
                     } else {
                         ClearPendingOperation(f);
-                        f.Complete(buffer.DisposeAndGetContents());
+
+                        string resultString = buffer.DisposeAndGetContents();
+                        if (resultString.Length == 0)
+                            resultString = null;
+
+                        f.Complete(resultString);
                     }
                 }
             };
@@ -530,6 +584,11 @@ namespace Squared.Task.IO {
             Future f = new Future();
             CharacterBuffer buffer = new CharacterBuffer();
             OnComplete[] oc = new OnComplete[1];
+
+            if (EndOfStream) {
+                f.Complete(null);
+                return f;
+            }
 
             SetPendingOperation(f);
 
@@ -556,7 +615,12 @@ namespace Squared.Task.IO {
                         processDecodedChars();
                     } else {
                         ClearPendingOperation(f);
-                        f.Complete(buffer.DisposeAndGetContents());
+
+                        string resultString = buffer.DisposeAndGetContents();
+                        if (resultString.Length == 0)
+                            resultString = null;
+
+                        f.Complete(resultString);
                     }
                 }
             };

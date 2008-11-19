@@ -104,6 +104,49 @@ namespace Squared.Task.IO {
     }
 
     [TestFixture]
+    public class DiskIOTests {
+        FileStream Stream;
+        AsyncTextReader Reader;
+
+        [SetUp]
+        public void SetUp () {
+            var dataPath = System.IO.Path.GetFullPath(System.IO.Directory.GetCurrentDirectory() + @"\..\..\data\");
+            var testFile = dataPath + "test.py";
+            Stream = System.IO.File.OpenRead(testFile);
+            var encoding = Util.IO.DetectStreamEncoding(Stream);
+            var adapter = new StreamDataAdapter(Stream);
+            Reader = new AsyncTextReader(adapter, encoding);
+        }
+
+        [TearDown]
+        public void TearDown () {
+            Reader.Dispose();
+            Stream.Dispose();
+        }
+
+        [Test]
+        public void TestReadingAllLines () {
+            string[] expectedLines = System.IO.File.ReadAllLines(Stream.Name);
+            var lines = new List<string>();
+
+            Future f;
+
+            while (true) {
+                f = Reader.ReadLine();
+                f.GetCompletionEvent().WaitOne();
+                var line = f.Result as string;
+
+                if (line == null)
+                    break;
+
+                lines.Add(line);
+            }
+
+            Assert.AreEqual(expectedLines, lines.ToArray());
+        }
+    }
+
+    [TestFixture]
     public class AsyncStreamReaderTests : IOTests {
         AsyncTextReader Reader;
 
@@ -116,7 +159,7 @@ namespace Squared.Task.IO {
 
         [Test]
         public void ReadLineTest () {
-            WriteTestData("abcd\r\nefgh\nijkl");
+            WriteTestData("abcd\r\nefgh\nijkl\r\n");
             RewindStream();
 
             Future f = Reader.ReadLine();
@@ -130,6 +173,10 @@ namespace Squared.Task.IO {
             f = Reader.ReadLine();
             f.GetCompletionEvent().WaitOne();
             Assert.AreEqual("ijkl", f.Result);
+
+            f = Reader.ReadLine();
+            f.GetCompletionEvent().WaitOne();
+            Assert.AreEqual("", f.Result);
 
             f = Reader.ReadLine();
             f.GetCompletionEvent().WaitOne();

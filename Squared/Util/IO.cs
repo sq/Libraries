@@ -129,10 +129,7 @@ namespace Squared.Util {
         }
 
         public override string ToString () {
-            if (_Length > 0)
-                return new String(_Buffer, 0, _Length);
-            else
-                return null;
+            return new String(_Buffer, 0, _Length);
         }
 
         public char this[int index] {
@@ -250,6 +247,17 @@ namespace Squared.Util {
         static extern IntPtr SHGetFileInfo (string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
 
         static System.Reflection.ConstructorInfo _IconConstructor = null;
+
+        public static Encoding DetectStreamEncoding (System.IO.Stream stream) {
+            var reader = new System.IO.StreamReader(stream, true);
+            var buffer = new char[256];
+
+            reader.ReadBlock(buffer, 0, (int)Math.Min(buffer.Length, stream.Length));
+            var result = reader.CurrentEncoding;
+
+            stream.Seek(0, System.IO.SeekOrigin.Begin);
+            return result;
+        }
 
         public static Icon ExtractAssociatedIcon (string path, bool large) {
             if (_IconConstructor == null) {
