@@ -355,7 +355,7 @@ namespace Squared.Task.IO {
 
         private void AllocateBuffer () {
             _InputBuffer = new byte[_BufferSize];
-            _DecodedBuffer = new char[_BufferSize];
+            _DecodedBuffer = new char[_BufferSize + 1];
         }
 
         private Future ReadMoreData () {
