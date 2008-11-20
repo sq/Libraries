@@ -338,7 +338,7 @@ namespace Squared.Task.IO {
             _DataSource = dataSource;
             _Encoding = encoding;
             _Decoder = _Encoding.GetDecoder();
-            _BufferSize = Math.Min(MinimumBufferSize, bufferSize);
+            _BufferSize = Math.Max(MinimumBufferSize, bufferSize);
             AllocateBuffer();
         }
 
