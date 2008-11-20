@@ -304,7 +304,9 @@ namespace Squared.Task.IO {
 
     public class AsyncTextReader : PendingOperationManager, IDisposable {
         public static Encoding DefaultEncoding = Encoding.UTF8;
-        public static int DefaultBufferSize = 2048;
+
+        public const int MinimumBufferSize = 256;
+        public const int DefaultBufferSize = 2048;
 
         IAsyncDataSource _DataSource;
         Encoding _Encoding;
@@ -328,11 +330,15 @@ namespace Squared.Task.IO {
             : this(dataSource, DefaultEncoding) {
         }
 
-        public AsyncTextReader (IAsyncDataSource dataSource, Encoding encoding) {
+        public AsyncTextReader(IAsyncDataSource dataSource, Encoding encoding) 
+            : this(dataSource, encoding, DefaultBufferSize) {
+        }
+
+        public AsyncTextReader (IAsyncDataSource dataSource, Encoding encoding, int bufferSize) {
             _DataSource = dataSource;
             _Encoding = encoding;
             _Decoder = _Encoding.GetDecoder();
-            _BufferSize = DefaultBufferSize;
+            _BufferSize = Math.Min(MinimumBufferSize, bufferSize);
             AllocateBuffer();
         }
 
