@@ -68,7 +68,7 @@ namespace Squared.Task {
 
     public class TaskScheduler : IDisposable {
         const long SleepFudgeFactor = 10;
-        const long MinimumSleepLength = 10000;
+        const long MinimumSleepLength = 2500;
         const long MaximumSleepLength = Time.SecondInTicks * 60;
 
         private IJobQueue _JobQueue = null;

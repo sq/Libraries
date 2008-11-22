@@ -207,14 +207,14 @@ namespace Squared.Task {
     /// Waits for a specified amount of time (in seconds).
     /// </summary>
     public struct Sleep : ISchedulable {
-        long _EndWhen;
+        long _Duration;
 
         public Sleep (double duration) {
-            _EndWhen = Time.Ticks + TimeSpan.FromSeconds(duration).Ticks;
+            _Duration = TimeSpan.FromSeconds(duration).Ticks;
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
-            scheduler.QueueSleep(_EndWhen, future);
+            scheduler.QueueSleep(Time.Ticks + _Duration, future);
         }
     }
 
