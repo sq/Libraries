@@ -48,11 +48,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Color.cs" />
     <Compile Include="Interfaces.cs" />
-    <Compile Include="Material.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RenderObjects.cs" />
     <Compile Include="XNARenderContext.cs" />
   </ItemGroup>
   <ItemGroup>

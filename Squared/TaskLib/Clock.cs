@@ -59,15 +59,19 @@ namespace Squared.Task {
             _LastTick += _TickInterval;
             int thisTick = Interlocked.Increment(ref _ElapsedTicks);
             var completedWaits = new List<Future>();
-            TickWaiter tw;
-            if (_WaitingTicks.Peek(out tw)) {
-                while (tw.Tick(thisTick)) {
-                    completedWaits.Add(tw.Future);
-                    _WaitingTicks.Dequeue();
-                    if (!_WaitingTicks.Peek(out tw))
-                        break;
+
+            lock (_WaitingTicks) {
+                TickWaiter tw;
+                if (_WaitingTicks.Peek(out tw)) {
+                    while (tw.Tick(thisTick)) {
+                        completedWaits.Add(tw.Future);
+                        _WaitingTicks.Dequeue();
+                        if (!_WaitingTicks.Peek(out tw))
+                            break;
+                    }
                 }
             }
+
             foreach (Future cwf in completedWaits)
                 cwf.Complete();
             ScheduleNextTick();
@@ -84,15 +88,17 @@ namespace Squared.Task {
         }
 
         public Future WaitForTick (int tick) {
-            TickWaiter tw;
-            if (_WaitingTicks.Peek(out tw)) {
-                if (tw.Until == tick)
-                    return tw.Future;
-            }
+            lock (_WaitingTicks) {
+                TickWaiter tw;
+                if (_WaitingTicks.Peek(out tw)) {
+                    if (tw.Until == tick)
+                        return tw.Future;
+                }
 
-            Future f = new Future();
-            _WaitingTicks.Enqueue(new TickWaiter { Until = tick, Future = f });
-            return f;
+                Future f = new Future();
+                _WaitingTicks.Enqueue(new TickWaiter { Until = tick, Future = f });
+                return f;
+            }
         }
 
         public Future WaitForNextTick () {

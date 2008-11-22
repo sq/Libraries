@@ -3,52 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Squared.Util;
-using Squared.Render.Objects;
-using Microsoft.Xna.Framework.Graphics;
 using System.Windows.Forms;
+using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
 
 namespace Squared.Render {
-    internal static class XnaExtensionMethods {
-        public static Vector4 ToXna (this Vector4 vector) {
-            return new Vector4(vector.X, vector.Y, vector.Z, vector.W);
-        }
-
-        public static Vector3 ToXna3D (this Vector2 vector) {
-            return new Vector3(vector.X, vector.Y, 0);
-        }
-
-        public static Vector3 ToXna (this Vector3 vector) {
-            return new Vector3(vector.X, vector.Y, vector.Z);
-        }
-
-        public static Vector2 ToXna (this Vector2 vector) {
-            return new Vector2(vector.X, vector.Y);
-        }
-    }
-
-    public abstract class XnaRenderContext : IRenderContext, IRenderContextInternal, IGraphicsDeviceService {
-        protected struct MaterialDelegate : IDisposable {
-            private Effect _Effect;
-
-            public MaterialDelegate (Effect effect) {
-                _Effect = effect;
-                _Effect.Begin();
-                _Effect.Techniques[0].Passes[0].Begin();
-            }
-
-            public void Dispose () {
-                _Effect.Techniques[0].Passes[0].End();
-                _Effect.End();
-            }
-        }
-
+    public abstract class XnaRenderContextBase : IXnaRenderContext {
         protected GraphicsDevice _Device;
         protected GraphicsAdapter _Adapter;
         protected Matrix _ProjectionMatrix;
         protected PresentationParameters _Parameters;
+        protected VertexElement[] _VertexElements;
         protected VertexDeclaration _VertexDeclaration;
-        protected BasicEffect _Effect;
+
+        public event Action ParametersChanged;
 
         protected void CreateDevice (IntPtr windowHandle, PresentationParameters presentationParameters) {
             _Adapter = GraphicsAdapter.DefaultAdapter;
@@ -62,18 +30,12 @@ namespace Squared.Render {
 
             _Parameters = presentationParameters;
 
-            _VertexDeclaration = new VertexDeclaration(_Device, VertexPositionColorTexture.VertexElements);
-
-            _Device.RenderState.CullMode = CullMode.None;
-
-            _Effect = new BasicEffect(_Device, null);
-            _Effect.VertexColorEnabled = true;
-
-            ParametersChanged();
+            OnParametersChanged();
         }
 
-        protected void ParametersChanged () {
-            _Device.VertexDeclaration = _VertexDeclaration;
+        private void OnParametersChanged () {
+            if (_VertexElements != null)
+                VertexFormat = _VertexElements;
 
             _ProjectionMatrix = Matrix.CreateOrthographicOffCenter(
                 0, _Parameters.BackBufferWidth,
@@ -81,82 +43,63 @@ namespace Squared.Render {
                 0.0f, 1.0f
             );
 
-            _Effect.Projection = _ProjectionMatrix;
+            if (ParametersChanged != null)
+                ParametersChanged();
         }
 
-        protected IDisposable ApplyMaterial (Material material) {
-            _Device.RenderState.SourceBlend = Blend.SourceAlpha;
-            _Device.RenderState.DestinationBlend = Blend.InverseSourceAlpha;
+        public PresentationParameters PresentationParameters {
+            get {
+                return _Parameters;
+            }
 
-            return new MaterialDelegate(_Effect);
+            set {
+                _Parameters = value;
+                _Device.Reset(value, _Adapter);
+            }
         }
 
-        #region IRenderContext
-
-        public void Clear (Vector4 color) {
-            _Device.Clear(new Color(color.ToXna()));
+        public Matrix ProjectionMatrix {
+            get {
+                return _ProjectionMatrix;
+            }
         }
 
-        private void DrawRenderPoint (RenderPoint rp) {
-        }
-
-        public void Draw (IRenderObject obj) {
-            obj.DrawTo(this);
-        }
-
-        public void BeginDraw () {
-        }
-
-        public void EndDraw () {
-            _Device.Present();
-        }
-
-        #endregion
-
-        #region IRenderContextInternal
-
-        IDisposable IRenderContextInternal.ApplyMaterial (Material material) {
-            return ApplyMaterial(material);
-        }
-
-        GraphicsDevice IRenderContextInternal.Device {
+        public GraphicsDevice Device {
             get {
                 return _Device;
             }
         }
 
-        #endregion
+        public VertexElement[] VertexFormat {
+            get {
+                return _VertexElements;
+            }
+            set {
+                _VertexElements = value;
 
-        #region IGraphicsDeviceService Members
+                if (_VertexDeclaration != null)
+                    _VertexDeclaration.Dispose();
 
-        event EventHandler IGraphicsDeviceService.DeviceCreated {
-            add { throw new NotImplementedException(); }
-            remove { throw new NotImplementedException(); }
+                if (_Device != null) {
+                    _VertexDeclaration = new VertexDeclaration(_Device, _VertexElements);
+                    _Device.VertexDeclaration = _VertexDeclaration;
+                }
+            }
         }
 
-        event EventHandler IGraphicsDeviceService.DeviceDisposing {
-            add { throw new NotImplementedException(); }
-            remove { throw new NotImplementedException(); }
+        public VertexDeclaration VertexDeclaration {
+            get {
+                return _VertexDeclaration;
+            }
         }
 
-        event EventHandler IGraphicsDeviceService.DeviceReset {
-            add { throw new NotImplementedException(); }
-            remove { throw new NotImplementedException(); }
+        public void Dispose () {
+            _Device.Dispose();
+            _Adapter.Dispose();
         }
-
-        event EventHandler IGraphicsDeviceService.DeviceResetting {
-            add { throw new NotImplementedException(); }
-            remove { throw new NotImplementedException(); }
-        }
-
-        GraphicsDevice IGraphicsDeviceService.GraphicsDevice {
-            get { return _Device; }
-        }
-
-        #endregion
     }
 
-    public class XnaWinFormsRenderContext : XnaRenderContext {
+    public class XnaWinFormsRenderContext : XnaRenderContextBase {
         protected Control _Control;
 
         public XnaWinFormsRenderContext (Control control) {
@@ -170,9 +113,7 @@ namespace Squared.Render {
         }
 
         void OnControlResize (object sender, EventArgs e) {
-            _Parameters = BuildParameters(_Control);
-            _Device.Reset(_Parameters, _Adapter);
-            ParametersChanged();
+            PresentationParameters = BuildParameters(_Control);
         }
 
         PresentationParameters BuildParameters (Control control) {
