@@ -3,11 +3,39 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Reflection;
+#if !XBOX
 using System.Linq.Expressions;
+#endif
 
 namespace Squared.Util {
     public delegate T InterpolatorSource<T> (int index) where T : struct;
     public delegate T Interpolator<T> (InterpolatorSource<T> data, int dataOffset, float positionInWindow) where T : struct;
+
+    internal static class PrimitiveOperators {
+        public static float op_Subtraction (float lhs, float rhs) {
+            return lhs - rhs;
+        }
+
+        public static float op_Addition (float lhs, float rhs) {
+            return lhs + rhs;
+        }
+
+        public static float op_Multiply (float lhs, float rhs) {
+            return lhs * rhs;
+        }
+
+        public static double op_Subtraction (double lhs, double rhs) {
+            return lhs - rhs;
+        }
+
+        public static double op_Addition (double lhs, double rhs) {
+            return lhs + rhs;
+        }
+
+        public static double op_Multiply (double lhs, float rhs) {
+            return lhs * rhs;
+        }
+    }
 
     public static class Interpolators<T> 
         where T : struct {
@@ -17,14 +45,82 @@ namespace Squared.Util {
         delegate T CubicPFn (T a, T b, T c, T d);
         delegate T CubicRFn (T a, T b, T c, T d, T p, float x, float x2, float x3);
 
+        delegate T AddFn (T a, T b);
+        delegate T SubFn (T a, T b);
+        delegate T MulFloatFn (T a, float b);
+
         private static LinearFn _Linear = null;
         private static CosineFn _Cosine = null;
         private static CubicPFn _CubicP = null;
         private static CubicRFn _CubicR = null;
 
         static Interpolators () {
+            CompileFallbackExpressions();
+            CompileNativeExpressions();
+        }
+
+        private static U GetOperator<U> (string name, Type[] argumentTypes) 
+            where U : class {
+            var methodInfo = typeof(T).GetMethod(name, argumentTypes);
+
+            if (methodInfo == null)
+                methodInfo = typeof(PrimitiveOperators).GetMethod(name, argumentTypes);
+
+            if (methodInfo == null)
+                throw new InvalidOperationException(String.Format("No operator named {0} available for type {1}", name, typeof(T).Name));
+
+            var del = Delegate.CreateDelegate(typeof(U), null, methodInfo);
+            return del as U;
+        }
+
+        private static void CompileFallbackExpressions () {
+            Type t = typeof(T);
+            Type t_float = typeof(float);
+
+            var m_sub = GetOperator<SubFn>("op_Subtraction", new Type[] { t, t });
+            var m_add = GetOperator<AddFn>("op_Addition", new Type[] { t, t });
+            var m_mul_float = GetOperator<MulFloatFn>("op_Multiply", new Type[] { t, t_float });
+
+            _Linear = (a, b, x) => {
+                return m_add(a, m_mul_float(m_sub(b, a), x));
+            };
+
+            _Cosine = (a, b, x) => {
+                var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
+                return m_add(a, m_mul_float(m_sub(b, a), temp));
+            };
+
+            _CubicP = (a, b, c, d) => {
+                return m_sub(m_sub(d, c), m_sub(a, b));
+            };
+
+            _CubicR = (a, b, c, d, p, x, x2, x3) => {
+                return m_add(
+                    m_add(
+                        m_mul_float(p, x3),
+                        m_mul_float(
+                            m_sub(
+                                m_sub(a, b),
+                                p
+                            ),
+                            x2
+                        )
+                    ),
+                    m_add(
+                        m_mul_float(
+                            m_sub(c, a),
+                            x
+                        ),
+                        b
+                    )
+                );
+            };
+        }
+
+        private static void CompileNativeExpressions () {
+#if !XBOX
             Arithmetic.CompileExpression(
-                (a, b, x) => 
+                (a, b, x) =>
                     a + ((b - a) * x),
                 out _Linear
             );
@@ -36,7 +132,7 @@ namespace Squared.Util {
             );
 
             Arithmetic.CompileExpression(
-                (a, b, c, d) => 
+                (a, b, c, d) =>
                     (d - c) - (a - b),
                 out _CubicP
             );
@@ -46,6 +142,7 @@ namespace Squared.Util {
                     (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b,
                 out _CubicR
             );
+#endif
         }
 
         public static T Null (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
@@ -84,7 +181,7 @@ namespace Squared.Util {
             Type resultType = typeof(Interpolator<T>);
             MethodInfo mi = myType.GetMethod(name);
             MethodInfo defaultMethod = myType.GetMethod("Null");
-            return Delegate.CreateDelegate(resultType, mi ?? defaultMethod)
+            return Delegate.CreateDelegate(resultType, null, mi ?? defaultMethod)
                 as Interpolator<T>;
         }
 

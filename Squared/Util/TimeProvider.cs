@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Diagnostics;
 
 namespace Squared.Util {
     public static class Time {
@@ -13,9 +14,18 @@ namespace Squared.Util {
         public const long SecondInTicks = 10000000;
 
         /// <summary>
+        /// The length of a millisecond in ticks.
+        /// </summary>
+        public const long MillisecondInTicks = SecondInTicks / 1000;
+
+        /// <summary>
         /// The default time provider.
         /// </summary>
+#if XBOX
+        public static ITimeProvider DefaultTimeProvider = new XBoxTimeProvider();
+#else
         public static ITimeProvider DefaultTimeProvider = new Win32TimeProvider();
+#endif
 
         public static long Ticks {
             get {
@@ -64,6 +74,43 @@ namespace Squared.Util {
         }
     }
 
+#if XBOX
+    public class XBoxTimeProvider : ITimeProvider {
+        private decimal _Frequency;
+        private long _Offset;
+
+        public XBoxTimeProvider () {
+            _Frequency = Stopwatch.Frequency;
+
+            _Offset = Stopwatch.GetTimestamp();
+        }
+
+        public long Ticks {
+            get {
+                long temp;
+                temp = Stopwatch.GetTimestamp();
+                temp -= _Offset;
+                decimal ticks = temp;
+                ticks /= _Frequency;
+                ticks *= Time.SecondInTicks;
+                return (long)ticks;
+            }
+        }
+
+        public double Seconds {
+            get {
+                long temp;
+                temp = Stopwatch.GetTimestamp();
+                temp -= _Offset;
+                decimal ticks = temp;
+                ticks /= _Frequency;
+                return (double)ticks;
+            }
+        }
+    }
+#endif
+
+#if !XBOX
     public class Win32TimeProvider : ITimeProvider {
         [DllImport("Kernel32.dll")]
         [SuppressUnmanagedCodeSecurity()]
@@ -109,4 +156,5 @@ namespace Squared.Util {
             }
         }
     }
+#endif
 }

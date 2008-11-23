@@ -166,12 +166,16 @@ namespace Squared.Task {
                     if (timeToSleep > MaximumSleepLength)
                         timeToSleep = MaximumSleepLength;
 
-                    long estWakeTime = now + timeToSleep;
                     try {
                         newSleepEvent.Reset();
+#if XBOX
+                        newSleepEvent.WaitOne((int)(timeToSleep / Time.MillisecondInTicks), true);
+#else
                         newSleepEvent.WaitOne(TimeSpan.FromTicks(timeToSleep), true);
-                        long wakeTime = Time.Ticks;
                     } catch (ThreadInterruptedException) {
+                        break;
+#endif
+                    } catch (ThreadAbortException) {
                         break;
                     }
                 }

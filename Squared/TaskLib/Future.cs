@@ -248,7 +248,11 @@ namespace Squared.Task {
             var f = new Future();
             WaitCallback fn = (state) => {
                 try {
+#if XBOX
+                    var result = workItem.Method.Invoke(workItem.Target, arguments);
+#else
                     var result = workItem.DynamicInvoke(arguments);
+#endif
                     f.Complete(result);
                 } catch (System.Reflection.TargetInvocationException ex) {
                     f.Fail(ex.InnerException);

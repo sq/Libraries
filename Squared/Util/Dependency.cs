@@ -64,7 +64,7 @@ namespace Squared.Util.Dependency {
 
                 if (attributes.Length == 1) {
                     Type rt = mi.ReturnType;
-                    Delegate d = Delegate.CreateDelegate(typeof(DependencyResolver), mi);
+                    Delegate d = Delegate.CreateDelegate(typeof(DependencyResolver), null, mi);
                     AddResolver(rt, (DependencyResolver)d);
                 }
             }

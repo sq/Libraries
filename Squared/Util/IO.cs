@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
-using ComTypes = System.Runtime.InteropServices.ComTypes;
 using System.Security;
 using System.Text.RegularExpressions;
+#if !XBOX
+using ComTypes = System.Runtime.InteropServices.ComTypes;
 using System.Drawing;
+#endif
 
 namespace Squared.Util {
     public static class BufferPool<T> {
@@ -154,6 +156,7 @@ namespace Squared.Util {
         }
     }
 
+#if !XBOX
     internal struct FindHandle : IDisposable {
         [DllImport("kernel32.dll")]
         [SuppressUnmanagedCodeSecurity()]
@@ -183,8 +186,10 @@ namespace Squared.Util {
             }
         }
     }
+#endif
 
     public static class IO {
+#if !XBOX
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack=1)]
         struct WIN32_FIND_DATA {
             public UInt32 dwFileAttributes;
@@ -212,16 +217,6 @@ namespace Squared.Util {
             public string szTypeName;
         };
 
-        public struct DirectoryEntry {
-            public string Name;
-            public uint Attributes;
-            public ulong Size;
-            public long Created;
-            public long LastAccessed;
-            public long LastWritten;
-            public bool IsDirectory;
-        }
-
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
         [SuppressUnmanagedCodeSecurity()]
         static extern IntPtr FindFirstFile (
@@ -234,9 +229,6 @@ namespace Squared.Util {
             IntPtr hFindFile, out WIN32_FIND_DATA lpFindFileData
         );
 
-        const int FILE_ATTRIBUTE_DIRECTORY = 0x10;
-        const int FILE_ATTRIBUTE_NORMAL = 0x80;
-
         const uint SHGFI_ICON = 0x100;
         const uint SHGFI_LARGEICON = 0x0;
         const uint SHGFI_SMALLICON = 0x1;
@@ -247,17 +239,6 @@ namespace Squared.Util {
         static extern IntPtr SHGetFileInfo (string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
 
         static System.Reflection.ConstructorInfo _IconConstructor = null;
-
-        public static Encoding DetectStreamEncoding (System.IO.Stream stream) {
-            var reader = new System.IO.StreamReader(stream, true);
-            var buffer = new char[256];
-
-            reader.ReadBlock(buffer, 0, (int)Math.Min(buffer.Length, stream.Length));
-            var result = reader.CurrentEncoding;
-
-            stream.Seek(0, System.IO.SeekOrigin.Begin);
-            return result;
-        }
 
         public static Icon ExtractAssociatedIcon (string path, bool large) {
             if (_IconConstructor == null) {
@@ -285,6 +266,31 @@ namespace Squared.Util {
                 return (Icon)_IconConstructor.Invoke(new object[] { iconHandle, true });
             else
                 return null;
+        }
+#endif
+
+        const int FILE_ATTRIBUTE_DIRECTORY = 0x10;
+        const int FILE_ATTRIBUTE_NORMAL = 0x80;
+
+        public struct DirectoryEntry {
+            public string Name;
+            public uint Attributes;
+            public ulong Size;
+            public long Created;
+            public long LastAccessed;
+            public long LastWritten;
+            public bool IsDirectory;
+        }
+
+        public static Encoding DetectStreamEncoding (System.IO.Stream stream) {
+            var reader = new System.IO.StreamReader(stream, true);
+            var buffer = new char[256];
+
+            reader.ReadBlock(buffer, 0, (int)Math.Min(buffer.Length, stream.Length));
+            var result = reader.CurrentEncoding;
+
+            stream.Seek(0, System.IO.SeekOrigin.Begin);
+            return result;
         }
 
         public static Regex GlobToRegex (string glob) {
@@ -340,6 +346,9 @@ namespace Squared.Util {
         }
 
         public static IEnumerable<DirectoryEntry> EnumDirectoryEntries (string path, string searchPattern, bool recursive, Func<uint, bool> attributeFilter) {
+#if XBOX
+            throw new NotImplementedException();
+#else
             if (!System.IO.Directory.Exists(path))
                 throw new System.IO.DirectoryNotFoundException();
 
@@ -407,6 +416,7 @@ namespace Squared.Util {
                         break;
                 }
             }
+#endif
         }
     }
 }

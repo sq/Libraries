@@ -32,7 +32,10 @@ namespace Squared.Task {
                 _Thread = new Thread(() => {
                     try {
                         _ThreadFunc(_WorkItems, _WakeEvent);
+#if !XBOX
                     } catch (ThreadInterruptedException) {
+#endif
+                    } catch (ThreadAbortException) {                        
                     }
                 });
                 _Thread.Priority = _Priority;
@@ -44,7 +47,9 @@ namespace Squared.Task {
 
         public void Dispose () {
             if (_Thread != null) {
+#if !XBOX
                 _Thread.Interrupt();
+#endif
                 _Thread.Abort();
                 _Thread = null;
             }

@@ -56,8 +56,10 @@
     <Compile Include="Network.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SchedulableGeneratorThunk.cs" />
+    <Compile Include="Sockets.cs" />
     <Compile Include="TaskScheduler.cs" />
     <Compile Include="Util.cs" />
+    <Compile Include="Win32.cs" />
     <Compile Include="WorkerThread.cs" />
   </ItemGroup>
   <ItemGroup>
