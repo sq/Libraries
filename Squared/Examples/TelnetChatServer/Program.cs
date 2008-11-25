@@ -49,17 +49,31 @@ namespace TelnetChatServer {
         static BlockingQueue<Message> NewMessages = new BlockingQueue<Message>();
         static Future WaitingForMessages = null;
         const int MaxMessagesToDispatch = 100;
+        const int MaxMessagesToStore = 1024;
+        static int MessageIdBase = 0;
         static IEnumerator<object> _Dispatcher;
         static StringBuilder _MessageBuilder = new StringBuilder();
 
         static void DispatchNewMessage (Peer from, string message) {
             _MessageBuilder.Remove(0, _MessageBuilder.Length);
             if (from != null) {
-                _MessageBuilder.AppendFormat("<{0}> {1}", from, message);
+                _MessageBuilder.Append("<");
+                _MessageBuilder.Append(from);
+                _MessageBuilder.Append("> ");
+                _MessageBuilder.Append(message);
             } else {
-                _MessageBuilder.AppendFormat("*** {0}", message);
+                _MessageBuilder.Append("*** ");
+                _MessageBuilder.Append(message);
             }
+
             Messages.Add(new Message { From = from, Text = message, DisplayText = _MessageBuilder.ToString() });
+
+            if (Messages.Count > MaxMessagesToStore) {
+                int numToRemove = MaxMessagesToStore / 2;
+                Messages.RemoveRange(0, numToRemove);
+                MessageIdBase += numToRemove;
+            }
+
             if (WaitingForMessages != null) {
                 WaitingForMessages.Complete();
                 WaitingForMessages = null;
@@ -74,7 +88,7 @@ namespace TelnetChatServer {
                 bool moreWork;
                 do {
                     moreWork = false;
-                    int newestId = Messages.Count - 1;
+                    int newestId = (Messages.Count - 1) + MessageIdBase;
                     foreach (Peer peer in Peers.ToArray()) {
                         if (!peer.Connected)
                             continue;
@@ -84,7 +98,7 @@ namespace TelnetChatServer {
                                 peer.CurrentId = newestId - MaxMessagesToDispatch;
 
                             string text = null;
-                            Message message = Messages[peer.CurrentId + 1];
+                            Message message = Messages[peer.CurrentId - MessageIdBase + 1];
 
                             if (message.From == peer) {
                                 peer.CurrentId += 1;
