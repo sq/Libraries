@@ -185,16 +185,8 @@ namespace Squared.Task {
                         msToSleep = (int)(timeToSleep / Time.MillisecondInTicks);
                     }
 
-                    try {
-                        newSleepEvent.Reset();
-                        newSleepEvent.WaitOne(msToSleep, true);
-#if !XBOX
-                    } catch (ThreadInterruptedException) {
-                        break;
-#endif
-                    } catch (ThreadAbortException) {
-                        break;
-                    }
+                    newSleepEvent.Reset();
+                    newSleepEvent.WaitOne(msToSleep, true);
                 }
             }
         }

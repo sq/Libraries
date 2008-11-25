@@ -47,6 +47,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Arithmetic.cs" />
+    <Compile Include="AtomicQueue.cs" />
     <Compile Include="Curve.cs" />
     <Compile Include="Dependency.cs" />
     <Compile Include="IO.cs" />
