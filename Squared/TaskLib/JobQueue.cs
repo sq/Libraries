@@ -25,12 +25,13 @@ namespace Squared.Task {
         }
     }
 
-    public class JobQueueBase : IJobQueue {
-        protected AtomicQueue<Action> _Queue = new AtomicQueue<Action>();
+    public sealed class ThreadSafeJobQueue : IJobQueue {
+        public const double DefaultWaitTimeout = 1.0;
 
-        public virtual void QueueWorkItem (Action item) {
-            _Queue.Enqueue(item);
-        }
+        private AutoResetEvent _WaiterSignal = new AutoResetEvent(false);
+        private volatile int _WaiterCount = 0;
+
+        private AtomicQueue<Action> _Queue = new AtomicQueue<Action>();
 
         public void Step () {
             Action item = null;
@@ -48,34 +49,23 @@ namespace Squared.Task {
             }
         }
 
-        public virtual bool WaitForWorkItems (double timeout) {
-            return (_Queue.GetCount() > 0);
-        }
-
         public int Count {
             get {
                 return _Queue.GetCount();
             }
         }
 
-        public virtual void Dispose () {
+        public void Dispose () {
         }
-    }
 
-    public class ThreadSafeJobQueue : JobQueueBase {
-        public const double DefaultWaitTimeout = 1.0;
-
-        private volatile int _WaiterCount = 0;
-
-        public override void QueueWorkItem (Action item) {
-            base.QueueWorkItem(item);
+        public void QueueWorkItem (Action item) {
+            _Queue.Enqueue(item);
 
             if (_WaiterCount > 0)
-                lock (_Queue)
-                    Monitor.PulseAll(_Queue);
+                _WaiterSignal.Set();
         }
 
-        public override bool WaitForWorkItems (double timeout) {
+        public bool WaitForWorkItems (double timeout) {
             if (_Queue.GetCount() > 0) {
                 return true;
             } else {
@@ -84,21 +74,17 @@ namespace Squared.Task {
                 if (timeout <= 0)
                     timeout = DefaultWaitTimeout;
 
-                lock (_Queue) {
-                    try {
-                        if (_Queue.GetCount() > 0)
-                            return true;
-                        else
-                            return Monitor.Wait(_Queue, TimeSpan.FromSeconds(timeout), true);
-                    } finally {
-                        Interlocked.Decrement(ref _WaiterCount);
-                    }
+                int timeoutMs = (int)Math.Ceiling(TimeSpan.FromSeconds(timeout).TotalMilliseconds);
+
+                try {
+                    if (_Queue.GetCount() > 0)
+                        return true;
+                    else
+                        return _WaiterSignal.WaitOne(timeoutMs, true);
+                } finally {
+                    Interlocked.Decrement(ref _WaiterCount);
                 }
             }
-        }
-
-        public override void Dispose () {
-            base.Dispose();
         }
     }
 }

@@ -565,7 +565,7 @@ namespace Squared.Task {
             vh.Value = 0;
 
             long timeStart = Time.Ticks;
-            Future a = Scheduler.Start(new Sleep(2));
+            Future a = Scheduler.Start(new Sleep(1.5));
             a.RegisterOnComplete((f, result, error) => {
                 Scheduler.QueueWorkItem(() => {
                     vh.Value = 1;
@@ -573,9 +573,9 @@ namespace Squared.Task {
             });
 
             Scheduler.Step();
-            Scheduler.WaitForWorkItems(5.0);
+            Scheduler.WaitForWorkItems(3.0);
             long elapsed = Time.Ticks - timeStart;
-            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(2005).Ticks);
+            Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(1525).Ticks);
 
             Scheduler.Step();
             Assert.AreEqual(1, vh.Value);
