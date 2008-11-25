@@ -67,8 +67,9 @@ namespace Squared.Task {
     }
 
     public class TaskScheduler : IDisposable {
-        const long SleepFudgeFactor = 10;
-        const long MinimumSleepLength = 2500;
+        const long SleepFudgeFactor = 100;
+        const long SleepSpinThreshold = 1000;
+        const long MinimumSleepLength = 10000;
         const long MaximumSleepLength = Time.SecondInTicks * 60;
 
         private IJobQueue _JobQueue = null;
@@ -81,7 +82,7 @@ namespace Squared.Task {
         }
 
         public TaskScheduler ()
-            : this(JobQueue.SingleThreaded) {
+            : this(JobQueue.MultiThreaded) {
         }
 
         public bool WaitForWorkItems () {
@@ -132,7 +133,8 @@ namespace Squared.Task {
         }
 
         internal void AddStepListener (Action listener) {
-            _StepListeners.Enqueue(listener);
+            lock (_StepListeners)
+                _StepListeners.Enqueue(listener);
         }
 
         internal static void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, ManualResetEvent newSleepEvent) {
@@ -160,18 +162,33 @@ namespace Squared.Task {
 
                 now = Time.Ticks;
                 long timeToSleep = (sleepUntil - now) + SleepFudgeFactor;
+
+#if !XBOX
+                if (timeToSleep < SleepSpinThreshold) {
+                    int iteration = 1;
+
+                    while (Time.Ticks < sleepUntil) {
+                        Thread.SpinWait(20 * iteration);
+                        iteration += 1;
+                    }
+
+                    timeToSleep = 0;
+                }
+#endif
+
                 if (timeToSleep > 0) {
-                    if (timeToSleep < MinimumSleepLength)
-                        timeToSleep = MinimumSleepLength;
                     if (timeToSleep > MaximumSleepLength)
                         timeToSleep = MaximumSleepLength;
 
+                    int msToSleep = 0;
+                    if (timeToSleep >= MinimumSleepLength) {
+                        msToSleep = (int)(timeToSleep / Time.MillisecondInTicks);
+                    }
+
                     try {
                         newSleepEvent.Reset();
-#if XBOX
-                        newSleepEvent.WaitOne((int)(timeToSleep / Time.MillisecondInTicks), true);
-#else
-                        newSleepEvent.WaitOne(TimeSpan.FromTicks(timeToSleep), true);
+                        newSleepEvent.WaitOne(msToSleep, true);
+#if !XBOX
                     } catch (ThreadInterruptedException) {
                         break;
 #endif
@@ -202,8 +219,20 @@ namespace Squared.Task {
         }
 
         public void Step () {
-            while (_StepListeners.Count > 0)
-                _StepListeners.Dequeue()();
+            Action item = null;
+
+            while (true) {
+                try {
+                    Monitor.Enter(_StepListeners);
+                    if (_StepListeners.Count == 0)
+                        break;
+                    item = _StepListeners.Dequeue();
+                } finally {
+                    Monitor.Exit(_StepListeners);
+                }
+
+                item();
+            }
 
             _JobQueue.Step();
         }

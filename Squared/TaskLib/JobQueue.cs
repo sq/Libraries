@@ -15,6 +15,11 @@ namespace Squared.Task {
     }
 
     public static partial class JobQueue {
+        /// <summary>
+        /// Please don't use this unless you're really sure you need it! Things like Sleep don't work right if you use it.
+        /// </summary>
+        /// <returns></returns>
+        [Obsolete("Single-threaded job queues are not recommended for use. Use a multi-threaded job queue instead.", false)]
         public static IJobQueue SingleThreaded () {
             return new SingleThreadedJobQueue();
         }
