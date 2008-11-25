@@ -82,7 +82,7 @@ namespace Squared.Task {
         }
 
         public TaskScheduler ()
-            : this(JobQueue.MultiThreaded) {
+            : this(JobQueue.ThreadSafe) {
         }
 
         public bool WaitForWorkItems () {

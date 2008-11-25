@@ -15,7 +15,7 @@ namespace Squared.Task {
 
         [SetUp]
         public void SetUp () {
-            Scheduler = new TaskScheduler(JobQueue.MultiThreaded);
+            Scheduler = new TaskScheduler();
         }
 
         [TearDown]
@@ -163,7 +163,7 @@ namespace Squared.Task {
 
         [SetUp]
         public void SetUp () {
-            Scheduler = new TaskScheduler(JobQueue.MultiThreaded);
+            Scheduler = new TaskScheduler();
         }
 
         [TearDown]

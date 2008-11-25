@@ -83,7 +83,7 @@ namespace Squared.Task.Data {
             for (int i = 0; i < 100; i++)
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var q = qm.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
 
@@ -124,7 +124,7 @@ namespace Squared.Task.Data {
             for (int i = 0; i < 100; i++)
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var q = qm.BuildQuery("SELECT value FROM Test WHERE value = ?");
 
@@ -142,7 +142,7 @@ namespace Squared.Task.Data {
             for (int i = 0; i < 100; i++)
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var q1 = qm.BuildQuery("SELECT value FROM test");
                 var q2 = qm.BuildQuery("INSERT INTO test (value) VALUES (?)");
@@ -181,7 +181,7 @@ namespace Squared.Task.Data {
         public void TestTransactionPipelining () {
             DoQuery("CREATE TEMPORARY TABLE Test (value int)");
 
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var getNumValues = qm.BuildQuery("SELECT COUNT(value) FROM test");
 
@@ -225,7 +225,7 @@ namespace Squared.Task.Data {
         public void TestTransactionAutoRollback () {
             DoQuery("CREATE TEMPORARY TABLE Test (value int)");
 
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var getNumValues = qm.BuildQuery("SELECT COUNT(value) FROM test");
 
@@ -252,7 +252,7 @@ namespace Squared.Task.Data {
         public void TestNestedTransactions () {
             DoQuery("CREATE TEMPORARY TABLE Test (value int)");
 
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var getNumValues = qm.BuildQuery("SELECT COUNT(value) FROM test");
 
@@ -322,7 +322,7 @@ namespace Squared.Task.Data {
             for (int i = 0; i < 10; i++)
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var f = qm.Clone();
                 using (var dupe = (ConnectionWrapper)scheduler.WaitFor(f)) {
@@ -341,7 +341,7 @@ namespace Squared.Task.Data {
             for (int i = 0; i < 10; i++)
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var q = qm.BuildQuery("SELECT * FROM Test");
                 var iter = new DbTaskIterator(q);
@@ -372,7 +372,7 @@ namespace Squared.Task.Data {
             DbTaskIterator iter;
             Future f;
 
-            using (var scheduler = new TaskScheduler(JobQueue.MultiThreaded))
+            using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var q = qm.BuildQuery("SELECT * FROM Test");
                 var q2 = qm.BuildQuery("SELECT COUNT(*) FROM Test");

@@ -25,32 +25,39 @@ namespace Squared.Util {
         int _ConsumerLock;
         int _ProducerLock;
 
+        int _Count;
+
         public AtomicQueue () {
             _Head = _Tail = new Node(default(T));
             _ConsumerLock = _ProducerLock = 0;
+            _Count = 0;
+        }
+
+        public int GetCount () {
+            return _Count;
         }
 
         public void Enqueue (T value) {
             var temp = new Node(value);
 
-            int threadId = Thread.CurrentThread.ManagedThreadId;
             int iterations = 1;
-            while (Interlocked.CompareExchange(ref _ProducerLock, threadId, 0) != 0) {
+            while (Interlocked.CompareExchange(ref _ProducerLock, 1, 0) != 0) {
                 SpinWait(iterations++);
             }
 
             _Tail.Next = temp;
             _Tail = temp;
 
+            Interlocked.Increment(ref _Count);
+
             var x = Interlocked.Exchange(ref _ProducerLock, 0);
-            if (x != threadId)
+            if (x != 1)
                 throw new ThreadStateException();
         }
 
         public bool Dequeue (out T result) {
-            int threadId = Thread.CurrentThread.ManagedThreadId;
             int iterations = 1;
-            while (Interlocked.CompareExchange(ref _ConsumerLock, threadId, 0) != 0) {
+            while (Interlocked.CompareExchange(ref _ConsumerLock, 1, 0) != 0) {
                 SpinWait(iterations++);
             }
 
@@ -62,21 +69,26 @@ namespace Squared.Util {
                 result = next.Value;
                 _Head = next;
                 success = true;
+                Interlocked.Decrement(ref _Count);
             } else {
                 result = default(T);
             }
 
             var x = Interlocked.Exchange(ref _ConsumerLock, 0);
-            if (x != threadId)
+            if (x != 1)
                 throw new ThreadStateException();
 
             return success;
         }
 
         private void SpinWait (int iterationCount) {
+#if !XBOX
             if ((iterationCount < 5) && (Environment.ProcessorCount > 1)) {
                 Thread.SpinWait(10 * iterationCount);
             } else if (iterationCount < 8) {
+#else
+            if (iterationCount < 3) {
+#endif
                 Thread.Sleep(0);
             } else {
                 Thread.Sleep(1);

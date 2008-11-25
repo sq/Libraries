@@ -78,5 +78,21 @@ namespace Squared.Util {
                 Assert.AreEqual(iterations + 1, r);
             }
         }
+
+        [Test]
+        public void GetCountTest () {
+            var q = new AtomicQueue<int>();
+            int temp;
+
+            Assert.AreEqual(0, q.GetCount());
+
+            q.Enqueue(1);
+
+            Assert.AreEqual(1, q.GetCount());
+
+            q.Dequeue(out temp);
+
+            Assert.AreEqual(0, q.GetCount());
+        }
     }
 }

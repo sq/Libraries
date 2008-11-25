@@ -548,7 +548,7 @@ namespace Squared.Task {
     public class ThreadedTaskSchedulerTests : BasicJobQueueTests {
         [SetUp]
         public void SetUp () {
-            Scheduler = new TaskScheduler(JobQueue.MultiThreaded);
+            Scheduler = new TaskScheduler();
         }
 
         [TearDown]
@@ -573,7 +573,7 @@ namespace Squared.Task {
             });
 
             Scheduler.Step();
-            Scheduler.WaitForWorkItems();
+            Scheduler.WaitForWorkItems(5.0);
             long elapsed = Time.Ticks - timeStart;
             Assert.LessOrEqual(elapsed, TimeSpan.FromMilliseconds(2005).Ticks);
 
@@ -825,7 +825,7 @@ namespace Squared.Task {
 
         [SetUp]
         public void SetUp () {
-            Scheduler = new TaskScheduler(JobQueue.MultiThreaded);
+            Scheduler = new TaskScheduler();
         }
 
         [TearDown]
@@ -939,7 +939,7 @@ namespace Squared.Task {
 
         [SetUp]
         public void SetUp () {
-            Scheduler = new TaskScheduler(JobQueue.MultiThreaded);
+            Scheduler = new TaskScheduler();
         }
 
         [TearDown]

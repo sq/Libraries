@@ -16,7 +16,7 @@ namespace TelnetChatBot {
     static class Program {
         static AsyncTextReader Reader;
         static AsyncTextWriter Writer;
-        static TaskScheduler Scheduler = new TaskScheduler(JobQueue.MultiThreaded);
+        static TaskScheduler Scheduler = new TaskScheduler();
         static bool Disconnected = false;
         static float SendRate;
 

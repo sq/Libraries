@@ -43,7 +43,7 @@ namespace TelnetChatServer {
     }
 
     static class Program {
-        static TaskScheduler Scheduler = new TaskScheduler(JobQueue.MultiThreaded);
+        static TaskScheduler Scheduler = new TaskScheduler();
         static List<Message> Messages = new List<Message>();
         static List<Peer> Peers = new List<Peer>();
         static BlockingQueue<Message> NewMessages = new BlockingQueue<Message>();
