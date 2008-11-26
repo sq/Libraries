@@ -204,8 +204,8 @@ namespace MUDServer {
         public CombatEntity (Location location, string name)
             : base(location, name) {
             _InCombat = false;
-            CombatPeriod = Program.RNG.NextDouble() * 4.0;
-            _MaximumHealth = 20 + Program.RNG.Next(50);
+            CombatPeriod = 2.0 + Program.RNG.NextDouble();
+            _MaximumHealth = 40 + Program.RNG.Next(15);
             _CurrentHealth = _MaximumHealth;
 
             AddEventHandler(EventType.Leave, OnEventLeave);

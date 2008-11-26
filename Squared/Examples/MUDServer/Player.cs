@@ -32,7 +32,6 @@ namespace MUDServer {
         private int _NumMessagesSent;
         private AlphaTrie<CommandHandler> _Commands;
 
-
         public Player (TelnetClient client, Location location)
             : base(location, null) {
             Client = client;
@@ -85,18 +84,43 @@ namespace MUDServer {
             Client.SendText(String.Format("{0}/{1}hp> ", CurrentHealth, MaximumHealth));
         }
 
-        private void PerformLook () {
-            if (Location.Description != null)
-                SendMessage(Location.Description);
-            if (Location.Exits.Count != 0) {
-                SendMessage("Exits from this location:");
-                for (int i = 0; i < Location.Exits.Count; i++) {
-                    SendMessage("{0}: {1}", Location.Exits[i].Name, Location.Exits[i].Description);
+        private void PerformLook (string[] words) {
+            if ((words != null) && (words.Length > 1)) {
+                // Look at
+
+                string name = String.Join(" ", words, 1, words.Length - 1);
+                IEntity at = Location.ResolveName(name);
+                if (at == this) {
+                    SendMessage("You look fabulous!");
+                } else if (at != null) {
+                    SendMessage("You see {0} {1}.", at.Name, at.State ?? "standing nearby");
+                    if (at is CombatEntity) {
+                        var ce = (CombatEntity)at;
+                        SendMessage(
+                            "{0} has {1} health points remaining{2}",
+                            at.Name, ce.CurrentHealth, ce.InCombat ? " and is currently engaged in battle." : "."
+                        );
+                    }
+                } else {
+                    SendMessage("You don't see '{0}' around here.", name);
                 }
-            }
-            foreach (var e in this.Location.Entities) {
-                if (e.Value != this)
-                    SendMessage("{0} is {1}.", e.Value.Description, e.Value.State ?? "standing nearby");
+            } else {
+                // Look around
+
+                if (Location.Description != null)
+                    SendMessage(Location.Description);
+
+                if (Location.Exits.Count != 0) {
+                    SendMessage("Exits from this location:");
+                    for (int i = 0; i < Location.Exits.Count; i++) {
+                        SendMessage("{0}: {1}", Location.Exits[i].Name, Location.Exits[i].Description);
+                    }
+                }
+
+                foreach (var e in this.Location.Entities) {
+                    if (e.Value != this)
+                        SendMessage("{0} is {1}.", e.Value.Description, e.Value.State ?? "standing nearby");
+                }
             }
         }
 
@@ -217,7 +241,7 @@ namespace MUDServer {
                     new CommandHandler.PlayerCheckDelegate[] {
                     },
                 delegate(Player p, string[] words) {
-                    p.PerformLook();
+                    p.PerformLook(words);
                     p.SendPrompt();
                     return null;
                 }));
@@ -400,7 +424,7 @@ namespace MUDServer {
                 _LastPrompt = false;
                 Client.ClearScreen();
                 SendMessage("You enter {0}.", Location.Title ?? Location.Name);
-                PerformLook();
+                PerformLook(null);
             } else {
                 SendMessage("{0} enters the area.", sender);
             }
