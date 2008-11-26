@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable 0420 // a reference to a volatile field will not be treated as volatile
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -81,11 +83,11 @@ namespace Squared.Util {
             return success;
         }
 
-        private void SpinWait (int iterationCount) {
+        private static void SpinWait (int iterationCount) {
 #if !XBOX
-            if ((iterationCount < 5) && (Environment.ProcessorCount > 1)) {
-                Thread.SpinWait(10 * iterationCount);
-            } else if (iterationCount < 8) {
+            if ((iterationCount < 4) && (Environment.ProcessorCount > 1)) {
+                Thread.SpinWait(5 * iterationCount);
+            } else if (iterationCount < 7) {
 #else
             if (iterationCount < 3) {
 #endif

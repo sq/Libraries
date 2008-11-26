@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable 0420 // a reference to a volatile field will not be treated as volatile
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -46,6 +48,8 @@ namespace Squared.Task {
             while (!future.Completed) {
                 if (_Queue.Dequeue(out item))
                     item();
+                else
+                    Thread.Sleep(0);
             }
         }
 

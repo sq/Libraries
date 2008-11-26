@@ -221,6 +221,9 @@ namespace TelnetChatServer {
         }
         
         static void Main (string[] args) {
+            Thread.CurrentThread.Name = "MainThread";
+            ThreadPool.SetMinThreads(1, 4);
+
             TcpListener server = new TcpListener(System.Net.IPAddress.Any, 1234);
             Scheduler.Start(AcceptConnectionsTask(server), TaskExecutionPolicy.RunAsBackgroundTask);
             _Dispatcher = MessageDispatcher();

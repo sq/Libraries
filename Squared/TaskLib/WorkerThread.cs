@@ -40,7 +40,7 @@ namespace Squared.Task {
                 });
                 _Thread.Priority = _Priority;
                 _Thread.IsBackground = true;
-                _Thread.Name = String.Format("WorkerThread{0}", this.GetHashCode());
+                _Thread.Name = String.Format("{0}_{1}", _ThreadFunc.Method.Name, this.GetHashCode());
                 _Thread.Start();
             }
         }

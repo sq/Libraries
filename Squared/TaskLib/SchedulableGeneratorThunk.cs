@@ -63,6 +63,7 @@ namespace Squared.Task {
         }
 
         void QueueStepOnComplete (Future f, object r, Exception e) {
+            this.WakeCondition = null;
             _Scheduler.QueueWorkItem(_Step);
         }
 

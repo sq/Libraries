@@ -34,7 +34,12 @@ namespace TelnetChatBot {
                     Disconnected = true;
                     throw new DisconnectedException();
                 }
+
                 i += 1;
+
+                if ((i % 1000) == 0)
+                    Console.WriteLine("Sent: {0}", i);
+
                 nextMessageText = String.Format("Message {0}", i);
                 yield return new Sleep(SendRate);
             }
@@ -42,6 +47,7 @@ namespace TelnetChatBot {
 
         static IEnumerator<object> ReceiveTask (SocketDataAdapter adapter) {
             var input = new AsyncTextReader(adapter, Encoding.ASCII);
+            int i = 0;
             Reader = input;
             while (true) {
                 Future f = input.ReadLine();
@@ -50,18 +56,25 @@ namespace TelnetChatBot {
                     Disconnected = true;
                     throw new DisconnectedException();
                 }
+
                 try {
                     string message = (string)f.Result;
-                    //Console.WriteLine(message);
+                    i += 1;
                 } catch (Exception ex) {
                     Console.WriteLine(ex.ToString());
                 }
+
+                if ((i % 1000) == 0)
+                    Console.WriteLine("Recieved: {0}", i);
             }
         }
 
         static void Main (string[] args) {
             if (!float.TryParse(args[0], out SendRate))
                 SendRate = 0.5f;
+
+            Thread.CurrentThread.Name = "MainThread";
+            ThreadPool.SetMinThreads(1, 1);
 
             try {
                 Console.WriteLine("Connecting to server...");

@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable 0420 // a reference to a volatile field will not be treated as volatile
+
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Linq;
@@ -47,185 +49,265 @@ namespace Squared.Task {
     }
 
     public class Future : IDisposable {
-        private bool _Completed = false;
-        private bool _Disposed = false;
-        private object _Value;
-        private Exception _Error;
-        private OnComplete _OnComplete = null;
-        private OnDispose _OnDispose = null;
+        private const int State_Empty = 0;
+        private const int State_Indeterminate = 1;
+        private const int State_CompletedWithValue = 2;
+        private const int State_CompletedWithError = 3;
+        private const int State_Disposed = 4;
+
+        private volatile int _State = State_Empty;
+        private volatile object _Result = null;
+        private volatile OnComplete _OnComplete = null;
+        private volatile OnDispose _OnDispose = null;
 
         public override string ToString () {
-            lock (this)
-                return String.Format("<Future ({0}) r={1},{2}>", _Completed ? "completed" : (_Disposed ? "disposed" : "empty"), _Value, _Error);
+            int state = _State;
+            var result = _Result;
+            string stateText = "??";
+            switch (state) {
+                case State_Empty:
+                    stateText = "Empty";
+                    break;
+                case State_Indeterminate:
+                    stateText = "Indeterminate";
+                    break;
+                case State_CompletedWithValue:
+                    stateText = "CompletedWithValue";
+                    break;
+                case State_CompletedWithError:
+                    stateText = "CompletedWithError";
+                    break;
+                case State_Disposed:
+                    stateText = "Disposed";
+                    break;
+            }
+            return String.Format("<Future ({0}) r={1}>", stateText, result);
         }
 
         public Future () {
         }
 
         public Future (object value) {
-            this.Complete(value);
+            this.SetResult(value, null);
         }
 
-        public Future (Exception error) {
-            this.Fail(error);
-        }
-
-        private void InvokeOnDisposes () {
-            var f = _OnDispose;
-            if (f == null)
-                return;
-            _OnDispose = null;
-            Monitor.Exit(this);
-            try {
-                f(this);
-            } catch (ThreadAbortException) {
-            } catch (Exception ex) {
-                throw new FutureHandlerException(f, ex);
-            } finally {
-                Monitor.Enter(this);
+        private static void SpinWait (int iterationCount) {
+#if !XBOX
+            if ((iterationCount < 4) && (Environment.ProcessorCount > 1)) {
+                Thread.SpinWait(5 * iterationCount);
+            } else if (iterationCount < 7) {
+#else
+            if (iterationCount < 3) {
+#endif
+                Thread.Sleep(0);
+            } else {
+                Thread.Sleep(1);
             }
         }
 
-        private void InvokeOnCompletes (object result, Exception error) {
-            var f = _OnComplete;
-            if (f == null)
+        private void InvokeOnDispose (OnDispose handler) {
+            if (handler == null)
                 return;
-            _OnComplete = null;
-            Monitor.Exit(this);
+
             try {
-                f(this, result, error);
-            } catch (ThreadAbortException) {
+                handler(this);
             } catch (Exception ex) {
-                throw new FutureHandlerException(f, ex);
-            } finally {
-                Monitor.Enter(this);
+                throw new FutureHandlerException(handler, ex);
+            }
+        }
+
+        private void InvokeOnComplete (OnComplete handler, object result, Exception error) {
+            if (handler == null)
+                return;
+
+            try {
+                handler(this, result, error);
+            } catch (Exception ex) {
+                throw new FutureHandlerException(handler, ex);
             }
         }
 
         public void RegisterOnComplete (OnComplete handler) {
-            lock (this) {
-                if (_Disposed)
-                    return;
+            OnComplete newOnComplete;
+            int iterations = 1;
+            int state = 0;
 
-                if (!_Completed) {
-                    var oldOnComplete = _OnComplete;
-                    if (oldOnComplete != null) {
-                        OnComplete newOnComplete = (f, r, e) => {
-                            oldOnComplete(f, r, e);
-                            handler(f, r, e);
-                        };
-                        _OnComplete = newOnComplete;
-                    } else {
-                        _OnComplete = handler;
-                    }
-                    return;
-                }
+            while (true) {
+                state = Interlocked.CompareExchange(ref _State, State_Indeterminate, State_Empty);
+
+                if (state != State_Indeterminate)
+                    break;
+
+                SpinWait(iterations++);
             }
-            handler(this, _Value, _Error);
+
+            if (state == State_Empty) {
+                var oldOnComplete = _OnComplete;
+                if (oldOnComplete != null) {
+                    newOnComplete = (f, r, e) => {
+                        oldOnComplete(f, r, e);
+                        handler(f, r, e);
+                    };
+                } else {
+                    newOnComplete = handler;
+                }
+
+                _OnComplete = newOnComplete;
+
+                if (Interlocked.CompareExchange(ref _State, State_Empty, State_Indeterminate) != State_Indeterminate)
+                    throw new ThreadStateException();
+            } else if (state == State_CompletedWithValue) {
+                InvokeOnComplete(handler, _Result, null);
+            } else if (state == State_CompletedWithError) {
+                InvokeOnComplete(handler, null, (Exception)_Result);
+            }
         }
 
         public void RegisterOnDispose (OnDispose handler) {
-            lock (this) {
-                if (_Completed)
-                    return;
+            OnDispose newOnDispose;
+            int iterations = 1;
+            int state = 0;
 
-                if (!_Disposed) {
-                    var oldOnDispose = _OnDispose;
-                    if (oldOnDispose != null) {
-                        OnDispose newOnDispose = (f) => {
-                            oldOnDispose(f);
-                            handler(f);
-                        };
-                        _OnDispose = newOnDispose;
-                    } else {
-                        _OnDispose = handler;
-                    } 
-                    return;
-                }
+            while (true) {
+                state = Interlocked.CompareExchange(ref _State, State_Indeterminate, State_Empty);
+
+                if (state != State_Indeterminate)
+                    break;
+
+                SpinWait(iterations++);
             }
-            handler(this);
+
+            if (state == State_Empty) {
+                var oldOnDispose = _OnDispose;
+                if (oldOnDispose != null) {
+                    newOnDispose = (f) => {
+                        oldOnDispose(f);
+                        handler(f);
+                    };
+                } else {
+                    newOnDispose = handler;
+                }
+
+                _OnDispose = newOnDispose;
+
+                if (Interlocked.CompareExchange(ref _State, State_Empty, State_Indeterminate) != State_Indeterminate)
+                    throw new ThreadStateException();
+            } else if (state == State_Disposed) {
+                InvokeOnDispose(handler);
+            }
         }
 
         public bool Disposed {
             get {
-                lock (this)
-                    return _Disposed;
+                return _State == State_Disposed;
             }
         }
 
         public bool Completed {
             get {
-                lock (this)
-                    return _Completed;
+                int state = _State;
+                return (state == State_CompletedWithValue) || (state == State_CompletedWithError);
             }
         }
 
         public bool Failed {
             get {
-                lock (this) {
-                    if (_Completed)
-                        return (_Error != null);
-                    else
-                        return false;
-                }
+                return _State == State_CompletedWithError;
             }
         }
 
         public object Result {
             get {
-                lock (this) {
-                    if (_Completed) {
-                        if (_Error != null)
-                            throw new FutureException("Future's result was an error", _Error);
-                        else
-                            return _Value;
-                    } else {
-                        throw new FutureHasNoResultException();
-                    }
-                }
+                int state = _State;
+                if (state == State_CompletedWithValue) {
+                    return _Result;
+                } else if (state == State_CompletedWithError) {
+                    throw new FutureException("Future's result was an error", (Exception)_Result);
+                } else
+                    throw new FutureHasNoResultException();
             }
         }
 
         public void SetResult (object result, Exception error) {
-            lock (this) {
-                if (_Disposed)
-                    return;
-                else if (_Completed)
-                    throw new FutureAlreadyHasResultException();
-                else {
-                    _Value = result;
-                    _Error = error;
-                    _Completed = true;
-                    InvokeOnCompletes(result, error);
-                }
+            if ((result != null) && (error != null)) {
+                System.Diagnostics.Debug.WriteLine("SetResult failure: passed in both a result and an error");
+                throw new FutureException("Cannot complete a future with both a result and an error.", error);
             }
+
+            int iterations = 1;
+
+            while (true) {
+                int oldState = Interlocked.CompareExchange(ref _State, State_Indeterminate, State_Empty);
+
+                if (oldState == State_Disposed) {
+                    return;
+                } else if ((oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError))
+                    throw new FutureAlreadyHasResultException();
+                else if (oldState == State_Empty)
+                    break;
+
+                SpinWait(iterations++);
+            }
+
+            int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
+            _Result = error ?? result;
+            OnComplete handler = _OnComplete;
+            /*
+            _OnDispose = null;
+            _OnComplete = null;
+             */
+
+            if (Interlocked.Exchange(ref _State, newState) != State_Indeterminate)
+                throw new ThreadStateException();
+
+            if (newState == State_CompletedWithValue)
+                InvokeOnComplete(handler, result, null);
+            else if (newState == State_CompletedWithError)
+                InvokeOnComplete(handler, null, error);
         }
 
         public void Dispose () {
-            lock (this) {
-                if (_Disposed)
+            int iterations = 1;
+
+            while (true) {
+                int oldState = Interlocked.CompareExchange(ref _State, State_Indeterminate, State_Empty);
+
+                if ((oldState == State_Disposed) || (oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError)) {
                     return;
-                else if (_Completed)
-                    return;
-                else {
-                    _Disposed = true;
-                    InvokeOnDisposes();
-                }
+                } else if (oldState == State_Empty)
+                    break;
+
+                SpinWait(iterations++);
             }
+
+            OnDispose handler = _OnDispose;
+            /*
+            _OnDispose = null;
+            _OnComplete = null;
+             */
+
+            if (Interlocked.Exchange(ref _State, State_Disposed) != State_Indeterminate)
+                throw new ThreadStateException();
+
+            InvokeOnDispose(handler);
         }
 
         public bool GetResult (out object result, out Exception error) {
-            lock (this) {
-                if (_Completed) {
-                    result = _Value;
-                    error = _Error;
-                    return true;
-                } else {
-                    result = null;
-                    error = null;
-                    return false;
-                }
+            int state = _State;
+
+            if (state == State_CompletedWithValue) {
+                result = _Result;
+                error = null;
+                return true;
+            } else if (state == State_CompletedWithError) {
+                result = null;
+                error = (Exception)_Result;
+                return true;
             }
+
+            result = null;
+            error = null;
+            return false;
         }
 
         public static Future WaitForFirst (IEnumerable<Future> futures) {
@@ -248,14 +330,18 @@ namespace Squared.Task {
             var f = new Future();
             WaitCallback fn = (state) => {
                 try {
+                    try {
 #if XBOX
-                    var result = workItem.Method.Invoke(workItem.Target, arguments);
+                        var result = workItem.Method.Invoke(workItem.Target, arguments);
 #else
-                    var result = workItem.DynamicInvoke(arguments);
+                        var result = workItem.DynamicInvoke(arguments);
 #endif
-                    f.Complete(result);
-                } catch (System.Reflection.TargetInvocationException ex) {
-                    f.Fail(ex.InnerException);
+                        f.Complete(result);
+                    } catch (System.Reflection.TargetInvocationException ex) {
+                        f.Fail(ex.InnerException);
+                    }
+                } catch (Exception ex) {
+                    System.Diagnostics.Debug.WriteLine("Failure in RunInThread: " + ex.ToString());
                 }
             };
             ThreadPool.QueueUserWorkItem(fn);
