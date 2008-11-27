@@ -50,6 +50,7 @@
     <Compile Include="AtomicQueue.cs" />
     <Compile Include="Curve.cs" />
     <Compile Include="Dependency.cs" />
+    <Compile Include="Geometry.cs" />
     <Compile Include="IO.cs" />
     <Compile Include="LRUCache.cs" />
     <Compile Include="PriorityQueue.cs" />

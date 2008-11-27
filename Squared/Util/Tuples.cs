@@ -4,7 +4,9 @@ using System.Linq;
 using System.Text;
 
 namespace Squared.Util {
-    public struct Pair<T> : IComparable<Pair<T>> 
+    public delegate T Subtract<T> (T lhs, T rhs);
+
+    public struct Pair<T> : IComparable<Pair<T>>, IEquatable<Pair<T>> 
         where T : IComparable<T> {
 
         public T First, Second;
@@ -28,13 +30,23 @@ namespace Squared.Util {
             return result;
         }
 
+        public bool Equals (Pair<T> other) {
+            if (!((IEquatable<T>)First).Equals(other.First))
+                return false;
+
+            if (!((IEquatable<T>)Second).Equals(other.Second))
+                return false;
+
+            return true;
+        }
+
         public override string ToString () {
             return String.Format("{{{0}, {1}}}", First, Second);
         }
     }
 
-    public struct Interval<T> 
-        where T : IComparable<T> {
+    public struct Interval<T> : IEquatable<Interval<T>>
+        where T : IComparable<T>, IEquatable<T> {
 
         public T Min, Max;
 
@@ -54,6 +66,14 @@ namespace Squared.Util {
             return true;
         }
 
+        public T GetDistance (Interval<T> other, Subtract<T> subtractor) {
+            if (((IComparable<T>)Min).CompareTo(other.Min) <= -1) {
+                return subtractor(other.Min, Max);
+            } else {
+                return subtractor(Min, other.Max);
+            }
+        }
+
         public bool GetIntersection (Interval<T> other, out Interval<T> result) {
             int a = ((IComparable<T>)Min).CompareTo(other.Min);
             int b = ((IComparable<T>)Max).CompareTo(other.Max);
@@ -70,6 +90,16 @@ namespace Squared.Util {
             return Math.Sign(c) != Math.Sign(d);
         }
 
+        public bool Equals (Interval<T> other) {
+            if (!((IEquatable<T>)Min).Equals(other.Min))
+                return false;
+
+            if (!((IEquatable<T>)Max).Equals(other.Max))
+                return false;
+
+            return true;
+        }
+
         public T[] ToArray () {
             return new T[] { Min, Max };
         }
@@ -79,8 +109,8 @@ namespace Squared.Util {
         }
     }
 
-    public struct Triplet<T> : IComparable<Triplet<T>>
-        where T : IComparable<T> {
+    public struct Triplet<T> : IComparable<Triplet<T>>, IEquatable<Triplet<T>> 
+        where T : IComparable<T>, IEquatable<T> {
 
         public T First, Second, Third;
 
@@ -106,6 +136,19 @@ namespace Squared.Util {
             result = ((IComparable<T>)Third).CompareTo(other.Third);
 
             return result;
+        }
+
+        public bool Equals (Triplet<T> other) {
+            if (!((IEquatable<T>)First).Equals(other.First))
+                return false;
+
+            if (!((IEquatable<T>)Second).Equals(other.Second))
+                return false;
+
+            if (!((IEquatable<T>)Third).Equals(other.Third))
+                return false;
+
+            return true;
         }
 
         public override string ToString () {

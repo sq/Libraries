@@ -91,5 +91,25 @@ namespace Squared.Util {
             Assert.IsFalse(A.GetIntersection(C, out Temp));
             Assert.IsFalse(C.GetIntersection(A, out Temp));
         }
+
+        public float Subtract (float lhs, float rhs) {
+            return (lhs - rhs);
+        }
+
+        [Test]
+        public void GetDistanceTest () {
+            var A = new Interval<float>(0.0f, 5.0f);
+            var B = new Interval<float>(2.5f, 7.5f);
+            var C = new Interval<float>(6.0f, 10.0f);
+
+            Assert.AreEqual(-2.5f, A.GetDistance(B, Subtract));
+            Assert.AreEqual(-2.5f, B.GetDistance(A, Subtract));
+
+            Assert.AreEqual(-1.5f, B.GetDistance(C, Subtract));
+            Assert.AreEqual(-1.5f, C.GetDistance(B, Subtract));
+
+            Assert.AreEqual(1.0f, A.GetDistance(C, Subtract));
+            Assert.AreEqual(1.0f, C.GetDistance(A, Subtract));
+        }
     }
 }
