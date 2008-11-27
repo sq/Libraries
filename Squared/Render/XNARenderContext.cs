@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Squared.Util;
-using System.Windows.Forms;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
+
+#if !XBOX
+using System.Windows.Forms;
+#endif
 
 namespace Squared.Render {
     public abstract class XnaRenderContextBase : IXnaRenderContext {
@@ -99,6 +102,7 @@ namespace Squared.Render {
         }
     }
 
+#if !XBOX
     public class XnaWinFormsRenderContext : XnaRenderContextBase {
         protected Control _Control;
 
@@ -135,4 +139,6 @@ namespace Squared.Render {
             return parms;
         }
     }
+#endif
+
 }

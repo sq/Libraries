@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 
 namespace Squared.Util {
-    public delegate T Subtract<T> (T lhs, T rhs);
+    public delegate void Subtract<T> (ref T lhs, ref T rhs, out T result);
 
     public struct Pair<T> : IComparable<Pair<T>>, IEquatable<Pair<T>> 
-        where T : IComparable<T> {
+        where T : struct, IComparable<T> {
 
         public T First, Second;
 
@@ -21,20 +21,20 @@ namespace Squared.Util {
         }
 
         public int CompareTo (Pair<T> other) {
-            int result = ((IComparable<T>)First).CompareTo(other.First);
+            int result = First.CompareTo(other.First);
             if (result != 0)
                 return result;
 
-            result = ((IComparable<T>)Second).CompareTo(other.Second);
+            result = Second.CompareTo(other.Second);
 
             return result;
         }
 
         public bool Equals (Pair<T> other) {
-            if (!((IEquatable<T>)First).Equals(other.First))
+            if (!First.Equals(other.First))
                 return false;
 
-            if (!((IEquatable<T>)Second).Equals(other.Second))
+            if (!Second.Equals(other.Second))
                 return false;
 
             return true;
@@ -46,12 +46,12 @@ namespace Squared.Util {
     }
 
     public struct Interval<T> : IEquatable<Interval<T>>
-        where T : IComparable<T>, IEquatable<T> {
+        where T : struct, IComparable<T>, IEquatable<T> {
 
         public T Min, Max;
 
         public Interval (T a, T b) {
-            if (((IComparable<T>)a).CompareTo(b) == -1) {
+            if (a.CompareTo(b) == -1) {
                 Min = a;
                 Max = b;
             } else {
@@ -61,24 +61,26 @@ namespace Squared.Util {
         }
 
         public bool Intersects (Interval<T> other) {
-            if (((IComparable<T>)Min).CompareTo(other.Max) >= 0) return false;
-            if (((IComparable<T>)Max).CompareTo(other.Min) <= 0) return false;
+            if (Min.CompareTo(other.Max) >= 0) return false;
+            if (Max.CompareTo(other.Min) <= 0) return false;
             return true;
         }
 
         public T GetDistance (Interval<T> other, Subtract<T> subtractor) {
-            if (((IComparable<T>)Min).CompareTo(other.Min) <= -1) {
-                return subtractor(other.Min, Max);
+            T result;
+            if (Min.CompareTo(other.Min) <= -1) {
+                subtractor(ref other.Min, ref Max, out result);
             } else {
-                return subtractor(Min, other.Max);
+                subtractor(ref Min, ref other.Max, out result);
             }
+            return result;
         }
 
         public bool GetIntersection (Interval<T> other, out Interval<T> result) {
-            int a = ((IComparable<T>)Min).CompareTo(other.Min);
-            int b = ((IComparable<T>)Max).CompareTo(other.Max);
-            int c = ((IComparable<T>)Min).CompareTo(other.Max);
-            int d = ((IComparable<T>)Max).CompareTo(other.Min);
+            int a = Min.CompareTo(other.Min);
+            int b = Max.CompareTo(other.Max);
+            int c = Min.CompareTo(other.Max);
+            int d = Max.CompareTo(other.Min);
 
             result = new Interval<T>(
                 (a >= 0) ? Min : other.Min,
@@ -91,10 +93,10 @@ namespace Squared.Util {
         }
 
         public bool Equals (Interval<T> other) {
-            if (!((IEquatable<T>)Min).Equals(other.Min))
+            if (!Min.Equals(other.Min))
                 return false;
 
-            if (!((IEquatable<T>)Max).Equals(other.Max))
+            if (!Max.Equals(other.Max))
                 return false;
 
             return true;
@@ -109,8 +111,8 @@ namespace Squared.Util {
         }
     }
 
-    public struct Triplet<T> : IComparable<Triplet<T>>, IEquatable<Triplet<T>> 
-        where T : IComparable<T>, IEquatable<T> {
+    public struct Triplet<T> : IComparable<Triplet<T>>, IEquatable<Triplet<T>>
+        where T : struct, IComparable<T>, IEquatable<T> {
 
         public T First, Second, Third;
 
@@ -125,27 +127,27 @@ namespace Squared.Util {
         }
 
         public int CompareTo (Triplet<T> other) {
-            int result = ((IComparable<T>)First).CompareTo(other.First);
+            int result = First.CompareTo(other.First);
             if (result != 0)
                 return result;
 
-            result = ((IComparable<T>)Second).CompareTo(other.Second);
+            result = Second.CompareTo(other.Second);
             if (result != 0)
                 return result;
 
-            result = ((IComparable<T>)Third).CompareTo(other.Third);
+            result = Third.CompareTo(other.Third);
 
             return result;
         }
 
         public bool Equals (Triplet<T> other) {
-            if (!((IEquatable<T>)First).Equals(other.First))
+            if (!First.Equals(other.First))
                 return false;
 
-            if (!((IEquatable<T>)Second).Equals(other.Second))
+            if (!Second.Equals(other.Second))
                 return false;
 
-            if (!((IEquatable<T>)Third).Equals(other.Third))
+            if (!Third.Equals(other.Third))
                 return false;
 
             return true;

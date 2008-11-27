@@ -84,7 +84,7 @@ namespace Squared.Task {
                     if (_Queue.GetCount() > 0)
                         return true;
                     else
-                        return _WaiterSignal.WaitOne(timeoutMs, true);
+                        return _WaiterSignal.WaitOne(timeoutMs, false);
                 } finally {
                     Interlocked.Decrement(ref _WaiterCount);
                 }

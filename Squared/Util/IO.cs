@@ -15,7 +15,7 @@ namespace Squared.Util {
         public static int MaxPoolCount = 8;
         public static int MaxBufferSize = 4096;
 
-        public class Buffer : IDisposable {
+        public struct Buffer : IDisposable {
             public T[] Data;
 
             public Buffer (T[] data) {
@@ -33,31 +33,30 @@ namespace Squared.Util {
             }
         }
 
-        private static LinkedList<T[]> Pool = new LinkedList<T[]>();
+        private static List<T[]> Pool = new List<T[]>();
 
         internal static void AddToPool (T[] buffer) {
             if (buffer.Length > MaxBufferSize)
                 return;
 
             lock (Pool) {
-                if (Pool.Count < MaxPoolCount) {
-                    Pool.AddLast(buffer);
-                }
+                if (Pool.Count < MaxPoolCount)
+                    Pool.Add(buffer);
             }
         }
 
         public static Buffer Allocate (int size) {
             lock (Pool) {
-                LinkedListNode<T[]> node = Pool.First;
-                while (node != null) {
-                    if (node.Value.Length >= size) {
-                        T[] result = node.Value;
-                        Pool.Remove(node);
+                for (int i = Pool.Count - 1; i >= 0; i--) {
+                    var item = Pool[i];
+                    if (item.Length >= size) {
+                        T[] result = item;
+                        Pool.RemoveAt(i);
                         return new Buffer(result);
                     }
-                    node = node.Next;
                 }
             }
+
             {
                 T[] result = new T[size];
                 return new Buffer(result);
@@ -78,7 +77,7 @@ namespace Squared.Util {
         private void ResizeBuffer (int size) {
             BufferPool<char>.Buffer temp = BufferPool<char>.Allocate(size);
 
-            if (_Buffer != null) {
+            if (_Buffer.Data != null) {
                 Array.Copy(_Buffer.Data, temp.Data, _Length);
                 _Buffer.Dispose();
             }
@@ -94,9 +93,8 @@ namespace Squared.Util {
 
         public void Dispose () {
             _Length = 0;
-            if (_Buffer != null) {
+            if (_Buffer.Data != null) {
                 _Buffer.Dispose();
-                _Buffer = null;
             }
         }
 
@@ -121,7 +119,7 @@ namespace Squared.Util {
             int copySize = _Length - position;
 
             if ((position + copySize) < _Length)
-                Array.Copy(_Buffer, sourceIndex, _Buffer, position, copySize);
+                Array.Copy(_Buffer.Data, sourceIndex, _Buffer.Data, position, copySize);
 
             _Length = newLength;
         }
@@ -131,7 +129,7 @@ namespace Squared.Util {
         }
 
         public override string ToString () {
-            return new String(_Buffer, 0, _Length);
+            return new String(_Buffer.Data, 0, _Length);
         }
 
         public char this[int index] {

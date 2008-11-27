@@ -92,8 +92,8 @@ namespace Squared.Util {
             Assert.IsFalse(C.GetIntersection(A, out Temp));
         }
 
-        public float Subtract (float lhs, float rhs) {
-            return (lhs - rhs);
+        public void Subtract (ref float lhs, ref float rhs, out float result) {
+            result = lhs - rhs;
         }
 
         [Test]

@@ -53,9 +53,15 @@ namespace Squared.Render {
         public GeometryBuilder () {
         }
 
-        public int BuildQuad (Pos topLeft, Pos bottomRight, VertexBuilder builder, IGeometryWriter<Vert> writer) {
-            int count = 2;
+        public int BuildTriangle (Pos a, Pos b, Pos c, VertexBuilder builder, IGeometryWriter<Vert> writer) {
+            writer.Write(builder(a));
+            writer.Write(builder(b));
+            writer.Write(builder(c));
 
+            return 1;
+        }
+
+        public int BuildQuad (Pos topLeft, Pos bottomRight, VertexBuilder builder, IGeometryWriter<Vert> writer) {
             var topRight = new Pos(bottomRight.X, topLeft.Y);
             var bottomLeft = new Pos(topLeft.X, bottomRight.Y);
 
@@ -66,7 +72,7 @@ namespace Squared.Render {
             writer.Write(builder(bottomLeft));
             writer.Write(builder(topLeft));
 
-            return count;
+            return 2;
         }
     }
 }

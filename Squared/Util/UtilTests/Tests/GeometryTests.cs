@@ -9,13 +9,13 @@ using Squared.Util.Vector;
 namespace Squared.Util {
     [TestFixture]
     public class GeometryTests {
-        public float Dot (Vector2 lhs, Vector2 rhs) {
-            return lhs.Dot(rhs);
+        public void Dot (ref Vector2 lhs, ref Vector2 rhs, out float result) {
+            result = lhs.Dot(rhs);
         }
 
-        public Vector2 GetEdgeNormal (Vector2 first, Vector2 second) {
+        public void GetEdgeNormal (ref Vector2 first, ref Vector2 second, out Vector2 result) {
             var edgeVector = second - first;
-            return new Vector2(-edgeVector.Y, edgeVector.X).Normalize();
+            result = new Vector2(-edgeVector.Y, edgeVector.X).Normalize();
         }
 
         public Vector2[] MakeSquare (float x, float y, float size) {
