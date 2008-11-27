@@ -61,8 +61,8 @@ namespace Squared.Util {
         }
 
         public bool Intersects (Interval<T> other) {
-            if (((IComparable<T>)Min).CompareTo(other.Max) >= 1) return false;
-            if (((IComparable<T>)Max).CompareTo(other.Min) <= -1) return false;
+            if (((IComparable<T>)Min).CompareTo(other.Max) >= 0) return false;
+            if (((IComparable<T>)Max).CompareTo(other.Min) <= 0) return false;
             return true;
         }
 
@@ -105,7 +105,7 @@ namespace Squared.Util {
         }
 
         public override string ToString () {
-            return String.Format("[{0}, {1}]", Min, Max);
+            return String.Format("({0}, {1})", Min, Max);
         }
     }
 
