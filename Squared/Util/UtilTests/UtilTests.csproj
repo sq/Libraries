@@ -54,6 +54,7 @@
     <Compile Include="Tests\IOTests.cs" />
     <Compile Include="Tests\LRUCacheTests.cs" />
     <Compile Include="Tests\PriorityQueueTests.cs" />
+    <Compile Include="Tests\TupleTests.cs" />
     <Compile Include="Tests\VectorTests.cs" />
   </ItemGroup>
   <ItemGroup>

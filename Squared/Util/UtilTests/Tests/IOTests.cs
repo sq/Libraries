@@ -161,6 +161,7 @@ namespace Squared.Util {
 
             var entries = Squared.Util.IO.EnumDirectoryEntries(DataPath, "*.*", true, (_) => true);
             foreach (var entry in entries) {
+                /*
                 Console.WriteLine("entry created={0}, written={1}, accessed={2}", 
                     entry.Created, entry.LastWritten, entry.LastAccessed
                 );
@@ -169,6 +170,7 @@ namespace Squared.Util {
                     System.IO.File.GetLastWriteTimeUtc(entry.Name).ToFileTimeUtc(), 
                     System.IO.File.GetLastAccessTimeUtc(entry.Name).ToFileTimeUtc()
                 );
+                 */
 
                 Assert.AreEqual(
                     DateTime.FromFileTimeUtc(entry.Created),

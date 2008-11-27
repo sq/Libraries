@@ -55,6 +55,7 @@
     <Compile Include="PriorityQueue.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TimeProvider.cs" />
+    <Compile Include="Tuples.cs" />
     <Compile Include="Vector.cs" />
     <Compile Include="_Vector.cs" />
   </ItemGroup>
