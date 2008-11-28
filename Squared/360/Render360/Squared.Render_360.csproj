@@ -68,9 +68,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Util360\Util360.csproj">
+    <ProjectReference Include="..\Util360\Squared.Util_360.csproj">
       <Project>{BE3F46D8-C55A-4AC4-BCA7-D5CF9F3668E6}</Project>
-      <Name>Util360</Name>
+      <Name>Squared.Util_360</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

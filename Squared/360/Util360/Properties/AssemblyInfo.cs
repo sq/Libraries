@@ -5,13 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Util360")]
-[assembly: AssemblyProduct("Util360")]
+[assembly: AssemblyTitle("Squared.Util (XBox 360)")]
 [assembly: AssemblyDescription("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyCopyright("Copyright ©  2008")]
-[assembly: AssemblyTrademark("")]
-[assembly: AssemblyCulture("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("Squared Interactive")]
+[assembly: AssemblyProduct("Fracture")]
+[assembly: AssemblyCopyright("Copyright © Kevin Gadd 2008")]
 
 // Setting ComVisible to false makes the types in this assembly not visible
 // to COM components. Xbox 360 assemblies do not support COM.

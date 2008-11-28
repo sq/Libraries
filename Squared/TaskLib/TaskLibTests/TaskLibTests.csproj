@@ -59,13 +59,13 @@
     <Compile Include="Tests\TaskSchedulerTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Util\Util.csproj">
+    <ProjectReference Include="..\..\Util\Squared.Util.csproj">
       <Project>{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}</Project>
-      <Name>Util</Name>
+      <Name>Squared.Util</Name>
     </ProjectReference>
-    <ProjectReference Include="..\TaskLib.csproj">
+    <ProjectReference Include="..\Squared.Task.csproj">
       <Project>{173ABDCA-7278-46FF-A300-D3BF8CCEF181}</Project>
-      <Name>TaskLib</Name>
+      <Name>Squared.Task</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

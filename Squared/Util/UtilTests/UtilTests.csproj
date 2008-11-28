@@ -58,9 +58,9 @@
     <Compile Include="Tests\VectorTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Util.csproj">
+    <ProjectReference Include="..\Squared.Util.csproj">
       <Project>{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}</Project>
-      <Name>Util</Name>
+      <Name>Squared.Util</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
