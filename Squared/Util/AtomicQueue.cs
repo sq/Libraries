@@ -9,53 +9,97 @@ using System.Threading;
 namespace Squared.Util {
     // Thanks to Herb Sutter
     // http://www.ddj.com/cpp/211601363
-
     public class AtomicQueue<T> {
-        internal class Node {
-            public Node (T value) {
-                Value = value;
-                Next = null;
+        internal delegate Node NodeAllocator ();
+        internal delegate void NodeDeallocator (Node node);
+
+        internal class NodePool {
+            int _MaxSize;
+            AtomicQueue<T> _SpareNodes;
+
+            public NodePool (int size) {
+                _MaxSize = size;
+                var allocator = (NodeAllocator)(() => new Node());
+                _SpareNodes = new AtomicQueue<T>(allocator, null);
+
+                for (int i = 0; i < size; i++)
+                    _SpareNodes.EnqueueNode(new Node());
             }
 
-            public T Value;
-            public volatile Node Next;
+            public Node Create () {
+                Node temp, deadNode;
+                if (_SpareNodes.DequeueNode(out temp, out deadNode))
+                    return deadNode;
+                else
+                    return new Node();
+            }
+
+            public void Destroy (Node node) {
+                if (_SpareNodes.Count >= _MaxSize)
+                    return;
+
+                node.Next = null;
+                node.Value = default(T);
+                _SpareNodes.EnqueueNode(node);
+            }
         }
+
+        internal class Node {
+            public T Value;
+            public volatile Node Next = null;
+        }
+
+        NodeAllocator _Allocator = null;
+        NodeDeallocator _Deallocator = null;
 
         volatile Node _Head;
         volatile Node _Tail;
 
-        volatile int _ConsumerLock;
-        volatile int _ProducerLock;
+        volatile int _ConsumerLock = 0;
+        volatile int _ProducerLock = 0;
 
-        int _Count;
+        int _Count = 0;
 
         public AtomicQueue () {
-            _Head = _Tail = new Node(default(T));
-            _ConsumerLock = _ProducerLock = 0;
-            _Count = 0;
+            _Allocator = () => new Node();
+            _Deallocator = null;
+            _Head = _Tail = _Allocator();
         }
 
-        public int GetCount () {
-            return _Count;
+        internal AtomicQueue (NodeAllocator allocator, NodeDeallocator deallocator) {
+            _Allocator = allocator;
+            _Deallocator = deallocator;
+            _Head = _Tail = _Allocator();
         }
 
-        public void Enqueue (T value) {
-            var temp = new Node(value);
+        public int Count {
+            get {
+                return _Count;
+            }
+        }
 
+        internal void EnqueueNode (Node node) {
             int iterations = 1;
             while (Interlocked.CompareExchange(ref _ProducerLock, 1, 0) != 0) {
                 SpinWait(iterations++);
             }
 
-            _Tail.Next = temp;
-            _Tail = temp;
+            _Tail.Next = node;
+            _Tail = node;
 
             Interlocked.Increment(ref _Count);
 
             _ProducerLock = 0;
         }
 
-        public bool Dequeue (out T result) {
+        public void Enqueue (T value) {
+            var temp = _Allocator();
+            temp.Value = value;
+
+            EnqueueNode(temp);
+        }
+
+        internal bool DequeueNode (out Node result, out Node deadNode) {
             int iterations = 1;
             while (Interlocked.CompareExchange(ref _ConsumerLock, 1, 0) != 0) {
                 SpinWait(iterations++);
@@ -66,15 +110,37 @@ namespace Squared.Util {
             var head = _Head;
             var next = head.Next;
             if (next != null) {
-                result = next.Value;
+                head.Next = null;
+                head.Value = default(T);
                 _Head = next;
-                success = true;
                 Interlocked.Decrement(ref _Count);
+
+                deadNode = head;
+                result = next;
+                success = true;
             } else {
-                result = default(T);
+                result = null;
+                deadNode = null;
             }
 
             _ConsumerLock = 0;
+
+            return success;
+        }
+
+        public bool Dequeue (out T result) {
+            Node resultNode, deadNode;
+
+            bool success = DequeueNode(out resultNode, out deadNode);
+
+            if (resultNode != null)
+                result = resultNode.Value;
+            else
+                result = default(T);
+
+            if (deadNode != null)
+                if (_Deallocator != null)
+                    _Deallocator(deadNode);
 
             return success;
         }

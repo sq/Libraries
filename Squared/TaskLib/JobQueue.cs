@@ -55,7 +55,7 @@ namespace Squared.Task {
 
         public int Count {
             get {
-                return _Queue.GetCount();
+                return _Queue.Count;
             }
         }
 
@@ -70,7 +70,7 @@ namespace Squared.Task {
         }
 
         public bool WaitForWorkItems (double timeout) {
-            if (_Queue.GetCount() > 0) {
+            if (_Queue.Count > 0) {
                 return true;
             } else {
                 Interlocked.Increment(ref _WaiterCount);
@@ -81,7 +81,7 @@ namespace Squared.Task {
                 int timeoutMs = (int)Math.Ceiling(TimeSpan.FromSeconds(timeout).TotalMilliseconds);
 
                 try {
-                    if (_Queue.GetCount() > 0)
+                    if (_Queue.Count > 0)
                         return true;
                     else
                         return _WaiterSignal.WaitOne(timeoutMs, false);

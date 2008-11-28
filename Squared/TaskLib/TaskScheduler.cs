@@ -14,7 +14,7 @@ namespace Squared.Task {
         Default = RunWhileFutureLives
     }
 
-    public struct Result {
+    public class Result {
         public object Value;
 
         public Result (object value) {
@@ -34,16 +34,6 @@ namespace Squared.Task {
         public TaskYieldedValueException (IEnumerator<object> task)
             : base("A task directly yielded a value. To yield a result from a task, yield a Result() object containing the value.") {
             Task = task;
-        }
-    }
-
-    struct BoundWaitHandle {
-        public WaitHandle Handle;
-        public Future Future;
-
-        public BoundWaitHandle(WaitHandle handle, Future future) {
-            this.Handle = handle;
-            this.Future = future;
         }
     }
 
@@ -235,7 +225,7 @@ namespace Squared.Task {
 
         public bool HasPendingTasks {
             get {
-                return (_StepListeners.GetCount() > 0) || (_JobQueue.Count > 0);
+                return (_StepListeners.Count > 0) || (_JobQueue.Count > 0);
             }
         }
 

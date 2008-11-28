@@ -16,7 +16,7 @@ namespace Squared.Task.Data {
     }
 
     public class DbTaskIterator : TaskIterator<DbDataRecord> {
-        struct StartThunk : ISchedulable {
+        class StartThunk : ISchedulable {
             DbTaskIterator _Iterator;
 
             public StartThunk (DbTaskIterator iterator) {

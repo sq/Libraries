@@ -47,7 +47,7 @@ namespace Squared.Task {
         }
 
         IEnumerator<object> TaskLongLivedWorkerStepWaiter (int[] buf) {
-            for (int i = 0; i < 500000; i++) {
+            for (int i = 0; i < 250000; i++) {
                 buf[0] = buf[0] + 1;
                 yield return new WaitForNextStep();
             }
@@ -56,13 +56,26 @@ namespace Squared.Task {
         [Test]
         public void StepPerformanceTest () {
             var buf = new int[1];
-            long timeStart = Time.Ticks;
+
             var f = Scheduler.Start(TaskLongLivedWorkerStepWaiter(buf));
             while (Scheduler.HasPendingTasks)
                 Scheduler.Step();
+
+            Assert.AreEqual(250000, buf[0]);
+            buf[0] = 0;
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
+            long timeStart = Time.Ticks;
+
+            f = Scheduler.Start(TaskLongLivedWorkerStepWaiter(buf));
+            while (Scheduler.HasPendingTasks)
+                Scheduler.Step();
+
             long timeEnd = Time.Ticks;
             TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
-            Assert.AreEqual(500000, buf[0]);
+            Assert.AreEqual(250000, buf[0]);
             Console.WriteLine("Took {0:N2} secs for {1} steps. {2:N1} steps/sec", elapsed.TotalSeconds, buf[0], 1.0 * buf[0] / elapsed.TotalSeconds);
         }
     }

@@ -74,7 +74,7 @@ namespace Squared.Task {
     /// <summary>
     /// Schedules your task to continue execution at the end of the current step.
     /// </summary>
-    public struct Yield : ISchedulable {
+    public class Yield : ISchedulable {
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             future.Complete();
         }
@@ -83,7 +83,7 @@ namespace Squared.Task {
     /// <summary>
     /// Allows your task to yield a value as if it were a normal generator, and resume execution.
     /// </summary>
-    public struct NextValue {
+    public class NextValue {
         public object Value;
 
         public NextValue (object value) {
@@ -94,7 +94,7 @@ namespace Squared.Task {
     /// <summary>
     /// Schedules your task to continue execution at the beginning of the next step.
     /// </summary>
-    public struct WaitForNextStep : ISchedulable {
+    public class WaitForNextStep : ISchedulable {
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             scheduler.AddStepListener(future.Complete);
         }
@@ -191,7 +191,7 @@ namespace Squared.Task {
     /// <summary>
     /// Waits until a specified time (in ticks).
     /// </summary>
-    public struct SleepUntil : ISchedulable {
+    public class SleepUntil : ISchedulable {
         long _EndWhen;
 
         public SleepUntil (long when) {
@@ -206,7 +206,7 @@ namespace Squared.Task {
     /// <summary>
     /// Waits for a specified amount of time (in seconds).
     /// </summary>
-    public struct Sleep : ISchedulable {
+    public class Sleep : ISchedulable {
         long _Duration;
 
         public Sleep (double duration) {
@@ -222,7 +222,7 @@ namespace Squared.Task {
     /// Manages iterating over a task that generates a sequence of values of type T. A task-oriented equivalent to IEnumerator.
     /// </summary>
     public class TaskIterator<T> : IDisposable {
-        struct StartThunk : ISchedulable {
+        class StartThunk : ISchedulable {
             TaskIterator<T> _Iterator;
 
             public StartThunk (TaskIterator<T> iterator) {

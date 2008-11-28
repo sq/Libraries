@@ -80,19 +80,19 @@ namespace Squared.Util {
         }
 
         [Test]
-        public void GetCountTest () {
+        public void CountTest () {
             var q = new AtomicQueue<int>();
             int temp;
 
-            Assert.AreEqual(0, q.GetCount());
+            Assert.AreEqual(0, q.Count);
 
             q.Enqueue(1);
 
-            Assert.AreEqual(1, q.GetCount());
+            Assert.AreEqual(1, q.Count);
 
             q.Dequeue(out temp);
 
-            Assert.AreEqual(0, q.GetCount());
+            Assert.AreEqual(0, q.Count);
         }
     }
 }
