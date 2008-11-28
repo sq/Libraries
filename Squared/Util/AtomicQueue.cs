@@ -21,11 +21,11 @@ namespace Squared.Util {
             public volatile Node Next;
         }
 
-        Node _Head;
-        Node _Tail;
+        volatile Node _Head;
+        volatile Node _Tail;
 
-        int _ConsumerLock;
-        int _ProducerLock;
+        volatile int _ConsumerLock;
+        volatile int _ProducerLock;
 
         int _Count;
 
@@ -52,9 +52,7 @@ namespace Squared.Util {
 
             Interlocked.Increment(ref _Count);
 
-            var x = Interlocked.Exchange(ref _ProducerLock, 0);
-            if (x != 1)
-                throw new ThreadStateException();
+            _ProducerLock = 0;
         }
 
         public bool Dequeue (out T result) {
@@ -76,9 +74,7 @@ namespace Squared.Util {
                 result = default(T);
             }
 
-            var x = Interlocked.Exchange(ref _ConsumerLock, 0);
-            if (x != 1)
-                throw new ThreadStateException();
+            _ConsumerLock = 0;
 
             return success;
         }

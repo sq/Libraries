@@ -28,51 +28,53 @@ namespace Squared.Util {
             return result;
         }
 
-        public static int GetPolygonAxes<T> (T[] buffer, T[] polygonA, T[] polygonB, GetEdgeNormal<T> getEdgeNormal) {
-            int count = 0;
-            T axis;
+        public static void GetPolygonAxes<T> (T[] buffer, ref int bufferCount, T[] polygon, GetEdgeNormal<T> getEdgeNormal) {
+            if ((buffer.Length - bufferCount) < polygon.Length)
+                throw new ArgumentException(
+                    String.Format(
+                        "Not enough remaining space in the buffer ({0}/{1}) for all the polygon's potential axes ({2}).",
+                        (buffer.Length - bufferCount), buffer.Length, polygon.Length
+                    ),
+                    "buffer"
+                );
 
-            for (int j = 0; j < 2; j++) {
-                var vertexSet = (j == 0) ? polygonA : polygonB;
+            bool done = false;
+            int i = 0;
+            T firstPoint = default(T), previous, current = default(T), axis;
 
-                bool done = false;
-                int i = 0;
-                T firstPoint = default(T), previous, current = default(T);
+            while (!done) {
+                previous = current;
 
-                while (!done) {
-                    previous = current;
-
-                    if (i >= vertexSet.Length) {
-                        done = true;
-                        current = firstPoint;
-                    } else {
-                        current = vertexSet[i];
-                    }
-
-                    if (i == 0) {
-                        firstPoint = current;
-                        i += 1;
-                        continue;
-                    }
-
-                    getEdgeNormal(ref previous, ref current, out axis);
-                    if (Array.IndexOf<T>(buffer, axis, 0, count) == -1) {
-                        buffer[count] = axis;
-                        count += 1;
-                    }
-
-                    i += 1;
+                if (i >= polygon.Length) {
+                    done = true;
+                    current = firstPoint;
+                } else {
+                    current = polygon[i];
                 }
-            }
 
-            return count;
+                if (i == 0) {
+                    firstPoint = current;
+                    i += 1;
+                    continue;
+                }
+
+                getEdgeNormal(ref previous, ref current, out axis);
+                if (Array.IndexOf<T>(buffer, axis, 0, bufferCount) == -1) {
+                    buffer[bufferCount] = axis;
+                    bufferCount += 1;
+                }
+
+                i += 1;
+            }
         }
 
         public static bool DoPolygonsIntersect<T> (T[] verticesA, T[] verticesB, DotProduct<T> dotProduct, GetEdgeNormal<T> getEdgeNormal) {
             bool result = true;
 
             using (var axisBuffer = BufferPool<T>.Allocate(verticesA.Length + verticesB.Length)) {
-                int axisCount = GetPolygonAxes<T>(axisBuffer.Data, verticesA, verticesB, getEdgeNormal);
+                int axisCount = 0;
+                GetPolygonAxes<T>(axisBuffer.Data, ref axisCount, verticesA, getEdgeNormal);
+                GetPolygonAxes<T>(axisBuffer.Data, ref axisCount, verticesB, getEdgeNormal);
 
                 for (int i = 0; i < axisCount; i++) {
                     var axis = axisBuffer.Data[i];
@@ -104,7 +106,9 @@ namespace Squared.Util {
             float translationProjection;
 
             using (var axisBuffer = BufferPool<T>.Allocate(verticesA.Length + verticesB.Length)) {
-                int axisCount = GetPolygonAxes<T>(axisBuffer.Data, verticesA, verticesB, getEdgeNormal);
+                int axisCount = 0;
+                GetPolygonAxes<T>(axisBuffer.Data, ref axisCount, verticesA, getEdgeNormal);
+                GetPolygonAxes<T>(axisBuffer.Data, ref axisCount, verticesB, getEdgeNormal);
 
                 for (int i = 0; i < axisCount; i++) {
                     var axis = axisBuffer.Data[i];

@@ -68,7 +68,7 @@ namespace Squared.Task.IO {
         }
 
         void BufferOverflowed (object sender, ErrorEventArgs e) {
-            Console.WriteLine("File system monitoring buffer overflow");
+            System.Diagnostics.Debug.WriteLine("File system monitoring buffer overflow");
         }
 
         public int NumChangedFiles {

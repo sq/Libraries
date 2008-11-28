@@ -230,7 +230,6 @@ namespace Squared.Task {
 
         public void SetResult (object result, Exception error) {
             if ((result != null) && (error != null)) {
-                System.Diagnostics.Debug.WriteLine("SetResult failure: passed in both a result and an error");
                 throw new FutureException("Cannot complete a future with both a result and an error.", error);
             }
 
@@ -252,10 +251,8 @@ namespace Squared.Task {
             int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
             _Result = error ?? result;
             OnComplete handler = _OnComplete;
-            /*
             _OnDispose = null;
             _OnComplete = null;
-             */
 
             if (Interlocked.Exchange(ref _State, newState) != State_Indeterminate)
                 throw new ThreadStateException();
@@ -281,10 +278,8 @@ namespace Squared.Task {
             }
 
             OnDispose handler = _OnDispose;
-            /*
             _OnDispose = null;
             _OnComplete = null;
-             */
 
             if (Interlocked.Exchange(ref _State, State_Disposed) != State_Indeterminate)
                 throw new ThreadStateException();

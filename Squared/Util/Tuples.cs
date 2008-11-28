@@ -87,8 +87,6 @@ namespace Squared.Util {
                 (b <= 0) ? Max : other.Max
             );
 
-            // Console.WriteLine("{0} i {1} == {2} | a={3}, b={4}, c={5}, d={6}", this, other, result, a, b, c, d);
-
             return Math.Sign(c) != Math.Sign(d);
         }
 

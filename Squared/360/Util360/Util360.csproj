@@ -57,7 +57,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\..\Util\Curve.cs" />
-    <Compile Include="..\..\Util\Dependency.cs" />
     <Compile Include="..\..\Util\IO.cs" />
     <Compile Include="..\..\Util\LRUCache.cs" />
     <Compile Include="..\..\Util\PriorityQueue.cs" />

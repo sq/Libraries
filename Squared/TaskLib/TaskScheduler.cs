@@ -73,7 +73,7 @@ namespace Squared.Task {
         const long MaximumSleepLength = Time.SecondInTicks * 60;
 
         private IJobQueue _JobQueue = null;
-        private Queue<Action> _StepListeners = new Queue<Action>();
+        private AtomicQueue<Action> _StepListeners = new AtomicQueue<Action>();
         private WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
 
         public TaskScheduler (Func<IJobQueue> JobQueueFactory) {
@@ -133,8 +133,7 @@ namespace Squared.Task {
         }
 
         internal void AddStepListener (Action listener) {
-            lock (_StepListeners)
-                _StepListeners.Enqueue(listener);
+            _StepListeners.Enqueue(listener);
         }
 
         internal static void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, ManualResetEvent newSleepEvent) {
@@ -214,16 +213,10 @@ namespace Squared.Task {
             Action item = null;
 
             while (true) {
-                try {
-                    Monitor.Enter(_StepListeners);
-                    if (_StepListeners.Count == 0)
-                        break;
-                    item = _StepListeners.Dequeue();
-                } finally {
-                    Monitor.Exit(_StepListeners);
-                }
-
-                item();
+                if (_StepListeners.Dequeue(out item))
+                    item();
+                else
+                    break;
             }
 
             _JobQueue.Step();
@@ -242,14 +235,13 @@ namespace Squared.Task {
 
         public bool HasPendingTasks {
             get {
-                return (_StepListeners.Count > 0) || (_JobQueue.Count > 0);
+                return (_StepListeners.GetCount() > 0) || (_JobQueue.Count > 0);
             }
         }
 
         public void Dispose () {
             _JobQueue.Dispose();
             _SleepWorker.Dispose();
-            _StepListeners.Clear();
         }
     }
 }

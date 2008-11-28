@@ -19,9 +19,6 @@ namespace Squared.Task {
         }
 
         public SchedulableGeneratorThunk (IEnumerator<object> task) {
-#if TASK_TRACING
-            Console.WriteLine("+Task({0})", task);
-#endif
             _Task = task;
             _QueueStep = QueueStep;
             _QueueStepOnComplete = QueueStepOnComplete;
@@ -29,9 +26,6 @@ namespace Squared.Task {
         }
 
         public void Dispose () {
-#if TASK_TRACING
-            Console.WriteLine("~Task({0})", _Task);
-#endif
 
             if (WakeCondition != null) {
                 WakeCondition.Dispose();
@@ -120,10 +114,6 @@ namespace Squared.Task {
         void Step () {
             if (_Task == null)
                 return;
-
-#if TASK_TRACING
-            Console.WriteLine("Task.Step({0})", _Task);
-#endif
 
             WakeCondition = null;
 
