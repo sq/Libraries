@@ -134,6 +134,7 @@ namespace Squared.Game {
             result.WillBeIntersecting = true;
 
             float velocityProjection;
+            var velocityLength = velocityA.Length();
             var velocityAxis = velocityA;
             velocityAxis.Normalize();
 
@@ -166,10 +167,9 @@ namespace Squared.Game {
 
                     Vector2.Dot(ref axis, ref velocityA, out velocityProjection);
 
-                    intervalA.Min += velocityProjection;
-                    intervalA.Max += velocityProjection;
+                    var newIntervalA = new Interval<float>(intervalA.Min + velocityProjection, intervalA.Max + velocityProjection);
 
-                    var intersectionDistance = intervalA.GetDistance(intervalB, FloatSubtractor);
+                    var intersectionDistance = newIntervalA.GetDistance(intervalB, FloatSubtractor);
                     intersects = intersectionDistance < 0;
                     if (!intersects)
                         result.WouldHaveIntersected = false;
@@ -178,8 +178,29 @@ namespace Squared.Game {
                         if (intersectionDistance < minDistance) {
                             var minVect = axis * intersectionDistance;
                             var newVelocity = velocityA + minVect;
-                            var predResult = predicate(velocityA, newVelocity);
-                            if (predResult) {
+                            bool accept = true;
+
+                            if (newVelocity.Length() > velocityLength) {
+                                accept = false;
+
+                                /*
+                                newVelocity.Normalize();
+                                newVelocity *= velocityLength;
+
+                                Vector2.Dot(ref axis, ref newVelocity, out velocityProjection);
+                                newIntervalA = new Interval<float>(intervalA.Min + velocityProjection, intervalA.Max + velocityProjection);
+
+                                if (newIntervalA.Intersects(intervalB)) {
+                                    // Trivial rejection: This vector can only resolve the collision by moving object A through object B entirely, which is not desirable
+                                    accept = false;
+                                }
+                                 */
+                            }
+
+                            if (accept)
+                                accept &= predicate(velocityA, newVelocity);
+
+                            if (accept) {
                                 result.ResultVelocity = newVelocity;
                                 result.WillBeIntersecting = false;
                                 minDistance = intersectionDistance;
@@ -190,7 +211,7 @@ namespace Squared.Game {
                                 "axis={0}, velocity={1}, newVelocity={2}, predResult={3}",
                                 axis, velocityA, newVelocity, predResult
                             );
-                             */
+                            */
                         }
                     }
 

@@ -71,17 +71,10 @@ namespace Squared.Game {
                 Vector2.Normalize(new Vector2(-1, -1))
             };
 
-            var result = Geometry.ResolvePolygonMotion(MakeSquare(0, 0, 5), MakeSquare(0, 0, 5), new Vector2(0, 0), checkAxes, predFalse);
+            var result = Geometry.ResolvePolygonMotion(MakeSquare(0, 0, 5), MakeSquare(0, 0, 5), new Vector2(0, 0), checkAxes, predTrue);
             Assert.IsTrue(result.AreIntersecting);
             Assert.IsTrue(result.WouldHaveIntersected);
             Assert.IsTrue(result.WillBeIntersecting);
-
-            result = Geometry.ResolvePolygonMotion(MakeSquare(0, 0, 5), MakeSquare(0, 0, 5), new Vector2(0, 0), checkAxes, predTrue);
-            Assert.IsTrue(result.AreIntersecting);
-            Assert.IsTrue(result.WouldHaveIntersected);
-            Assert.IsFalse(result.WillBeIntersecting);
-
-            Assert.IsFalse(Geometry.DoPolygonsIntersect(MakeSquare(result.ResultVelocity.X, result.ResultVelocity.Y, 5), MakeSquare(0, 0, 5)));
 
             result = Geometry.ResolvePolygonMotion(MakeSquare(0, 0, 5), MakeSquare(5.1f, 0, 5), new Vector2(-5, 0), checkAxes, predTrue);
             Assert.IsFalse(result.AreIntersecting);
