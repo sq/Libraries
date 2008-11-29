@@ -13,6 +13,13 @@ using Microsoft.Xna.Framework.Storage;
 using Squared.Util;
 
 namespace Squared.Game {
+    public class Polygon {
+        public Polygon (Vector2[] vertices) {
+        }
+    }
+
+    public delegate bool ResolveMotionPredicate (Vector2 oldVelocity, Vector2 newVelocity);
+
     public static class Geometry {
         public static void GetEdgeNormal (ref Vector2 first, ref Vector2 second, out Vector2 result) {
             var edgeVector = second - first;
@@ -20,7 +27,7 @@ namespace Squared.Game {
             result.Normalize();
         }
 
-        public static Interval<float> ComputeInterval (Vector2 axis, Vector2[] vertices) {
+        public static Interval<float> ProjectOntoAxis (Vector2 axis, Vector2[] vertices) {
             var result = new Interval<float>(0.0f, 0.0f);
             float d = 0.0f;
 
@@ -92,8 +99,8 @@ namespace Squared.Game {
                 for (int i = 0; i < axisCount; i++) {
                     var axis = axisBuffer.Data[i];
 
-                    var intervalA = ComputeInterval(axis, verticesA);
-                    var intervalB = ComputeInterval(axis, verticesB);
+                    var intervalA = ProjectOntoAxis(axis, verticesA);
+                    var intervalB = ProjectOntoAxis(axis, verticesB);
 
                     bool intersects = intervalA.Intersects(intervalB);
 
@@ -105,47 +112,95 @@ namespace Squared.Game {
             return result;
         }
 
-        public struct IntersectionInfo {
+        public struct ResolvedMotion {
             public bool AreIntersecting;
+            public bool WouldHaveIntersected;
             public bool WillBeIntersecting;
+            public Vector2 ResultVelocity;
         }
 
-        public static IntersectionInfo WillPolygonsIntersect (Vector2[] verticesA, Vector2[] verticesB, Vector2 relativeTranslationA) {
-            var result = new IntersectionInfo();
+        private static void FloatSubtractor (ref float lhs, ref float rhs, out float result) {
+            result = lhs - rhs;
+        }
+
+        public static ResolvedMotion ResolvePolygonMotion (Vector2[] verticesA, Vector2[] verticesB, Vector2 velocityA, ResolveMotionPredicate predicate) {
+            return ResolvePolygonMotion(verticesA, verticesB, velocityA, null, predicate);
+        }
+
+        public static ResolvedMotion ResolvePolygonMotion (Vector2[] verticesA, Vector2[] verticesB, Vector2 velocityA, Vector2[] checkAxes, ResolveMotionPredicate predicate) {
+            var result = new ResolvedMotion();
             result.AreIntersecting = true;
+            result.WouldHaveIntersected = true;
             result.WillBeIntersecting = true;
 
-            Interval<float> intervalA, intervalB;
-            float translationProjection;
+            float velocityProjection;
+            var velocityAxis = velocityA;
+            velocityAxis.Normalize();
 
-            using (var axisBuffer = BufferPool<Vector2>.Allocate(verticesA.Length + verticesB.Length)) {
+            Interval<float> intervalA, intervalB;
+            float minDistance = float.MaxValue;
+
+            int bufferSize = verticesA.Length + verticesB.Length;
+            if (checkAxes != null)
+                bufferSize += checkAxes.Length;
+
+            using (var axisBuffer = BufferPool<Vector2>.Allocate(bufferSize)) {
                 int axisCount = 0;
+                if (checkAxes != null) {
+                    Array.Copy(checkAxes, axisBuffer.Data, checkAxes.Length);
+                    axisCount += checkAxes.Length;
+                }
+
                 GetPolygonAxes(axisBuffer.Data, ref axisCount, verticesA);
                 GetPolygonAxes(axisBuffer.Data, ref axisCount, verticesB);
 
                 for (int i = 0; i < axisCount; i++) {
                     var axis = axisBuffer.Data[i];
 
-                    intervalA = ComputeInterval(axis, verticesA);
-                    intervalB = ComputeInterval(axis, verticesB);
+                    intervalA = ProjectOntoAxis(axis, verticesA);
+                    intervalB = ProjectOntoAxis(axis, verticesB);
 
                     bool intersects = intervalA.Intersects(intervalB);
                     if (!intersects)
                         result.AreIntersecting = false;
 
-                    Vector2.Dot(ref axis, ref relativeTranslationA, out translationProjection);
+                    Vector2.Dot(ref axis, ref velocityA, out velocityProjection);
 
-                    intervalA.Min += translationProjection;
-                    intervalA.Max += translationProjection;
+                    intervalA.Min += velocityProjection;
+                    intervalA.Max += velocityProjection;
 
-                    intersects = intervalA.Intersects(intervalB);
+                    var intersectionDistance = intervalA.GetDistance(intervalB, FloatSubtractor);
+                    intersects = intersectionDistance < 0;
                     if (!intersects)
-                        result.WillBeIntersecting = false;
+                        result.WouldHaveIntersected = false;
+                    else {
+                        intersectionDistance = Math.Abs(intersectionDistance);
+                        if (intersectionDistance < minDistance) {
+                            var minVect = axis * intersectionDistance;
+                            var newVelocity = velocityA + minVect;
+                            var predResult = predicate(velocityA, newVelocity);
+                            if (predResult) {
+                                result.ResultVelocity = newVelocity;
+                                result.WillBeIntersecting = false;
+                                minDistance = intersectionDistance;
+                            }
+                            Console.WriteLine(
+                                "axis={0}, velocity={1}, newVelocity={2}, predResult={3}",
+                                axis, velocityA, newVelocity, predResult
+                            );
+                        }
+                    }
 
-                    if ((result.WillBeIntersecting == false) && (result.AreIntersecting == false))
+                    if ((result.WouldHaveIntersected == false) && (result.AreIntersecting == false)) {
+                        result.WillBeIntersecting = false;
                         break;
+                    }
                 }
             }
+
+            Console.WriteLine(
+                "{0} -> {1}", velocityA, result.ResultVelocity
+            );
 
             return result;
         }

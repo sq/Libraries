@@ -22,16 +22,16 @@ namespace Squared.Game {
         }
 
         [Test]
-        public void ComputeIntervalTest () {
+        public void ProjectOntoAxisTest () {
             var vertices = MakeSquare(0, 0, 5);
 
             var expected = new Interval<float>(-2.5f, 2.5f);
-            var interval = Geometry.ComputeInterval(new Vector2(0.0f, 1.0f), vertices);
+            var interval = Geometry.ProjectOntoAxis(new Vector2(0.0f, 1.0f), vertices);
 
             Assert.AreEqual(expected, interval);
 
             expected = new Interval<float>(-2.5f, 2.5f);
-            interval = Geometry.ComputeInterval(new Vector2(1.0f, 0.0f), vertices);
+            interval = Geometry.ProjectOntoAxis(new Vector2(1.0f, 0.0f), vertices);
 
             Assert.AreEqual(expected, interval);
 
@@ -39,7 +39,7 @@ namespace Squared.Game {
             expected = new Interval<float>(-distance / 2.0f, distance / 2.0f);
             var vec = new Vector2(1.0f, 1.0f);
             vec.Normalize();
-            interval = Geometry.ComputeInterval(vec, vertices);
+            interval = Geometry.ProjectOntoAxis(vec, vertices);
 
             Assert.AreEqual(expected, interval);
         }
@@ -60,18 +60,49 @@ namespace Squared.Game {
         }
 
         [Test]
-        public void WillPolygonsIntersectTest () {
-            var result = Geometry.WillPolygonsIntersect(MakeSquare(0, 0, 5), MakeSquare(0, 0, 5), new Vector2(0, 0));
+        public void ResolvePolygonMotionTest () {
+            var predTrue = (ResolveMotionPredicate)((o, n) => true);
+            var predFalse = (ResolveMotionPredicate)((o, n) => false);
+
+            Vector2[] checkAxes = new Vector2[] {
+                Vector2.Normalize(new Vector2(1, 1)),
+                Vector2.Normalize(new Vector2(1, -1)),
+                Vector2.Normalize(new Vector2(-1, 1)),
+                Vector2.Normalize(new Vector2(-1, -1))
+            };
+
+            var result = Geometry.ResolvePolygonMotion(MakeSquare(0, 0, 5), MakeSquare(0, 0, 5), new Vector2(0, 0), checkAxes, predFalse);
             Assert.IsTrue(result.AreIntersecting);
+            Assert.IsTrue(result.WouldHaveIntersected);
             Assert.IsTrue(result.WillBeIntersecting);
 
-            result = Geometry.WillPolygonsIntersect(MakeSquare(0, 0, 5), MakeSquare(5.1f, 0, 5), new Vector2(-5, 0));
-            Assert.IsFalse(result.AreIntersecting);
+            result = Geometry.ResolvePolygonMotion(MakeSquare(0, 0, 5), MakeSquare(0, 0, 5), new Vector2(0, 0), checkAxes, predTrue);
+            Assert.IsTrue(result.AreIntersecting);
+            Assert.IsTrue(result.WouldHaveIntersected);
             Assert.IsFalse(result.WillBeIntersecting);
 
-            result = Geometry.WillPolygonsIntersect(MakeSquare(0, 0, 5), MakeSquare(5.1f, 0, 5), new Vector2(5, 0));
+            Assert.IsFalse(Geometry.DoPolygonsIntersect(MakeSquare(result.ResultVelocity.X, result.ResultVelocity.Y, 5), MakeSquare(0, 0, 5)));
+
+            result = Geometry.ResolvePolygonMotion(MakeSquare(0, 0, 5), MakeSquare(5.1f, 0, 5), new Vector2(-5, 0), checkAxes, predTrue);
             Assert.IsFalse(result.AreIntersecting);
+            Assert.IsFalse(result.WouldHaveIntersected);
+            Assert.IsFalse(result.WillBeIntersecting);
+
+            Assert.IsFalse(Geometry.DoPolygonsIntersect(MakeSquare(result.ResultVelocity.X, result.ResultVelocity.Y, 5), MakeSquare(5.1f, 0, 5)));
+
+            result = Geometry.ResolvePolygonMotion(MakeSquare(0, 0, 5), MakeSquare(5.1f, 0, 5), new Vector2(5, 0), checkAxes, predTrue);
+            Assert.IsFalse(result.AreIntersecting);
+            Assert.IsTrue(result.WouldHaveIntersected);
+            Assert.IsFalse(result.WillBeIntersecting);
+
+            Assert.IsFalse(Geometry.DoPolygonsIntersect(MakeSquare(result.ResultVelocity.X, result.ResultVelocity.Y, 5), MakeSquare(5.1f, 0, 5)));
+
+            result = Geometry.ResolvePolygonMotion(MakeSquare(0, 0, 5), MakeSquare(5.1f, 0, 5), new Vector2(5, 0), checkAxes, predFalse);
+            Assert.IsFalse(result.AreIntersecting);
+            Assert.IsTrue(result.WouldHaveIntersected);
             Assert.IsTrue(result.WillBeIntersecting);
+
+            Assert.IsFalse(Geometry.DoPolygonsIntersect(MakeSquare(result.ResultVelocity.X, result.ResultVelocity.Y, 5), MakeSquare(5.1f, 0, 5)));
         }
     }
 }
