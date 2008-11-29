@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Squared.Render")]
+[assembly: AssemblyTitle("GameTests")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Squared Interactive")]
-[assembly: AssemblyProduct("Fracture")]
-[assembly: AssemblyCopyright("Copyright © Kevin Gadd 2008")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("GameTests")]
+[assembly: AssemblyCopyright("Copyright ©  2008")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("655cdb17-9414-41e0-acde-5e0e7cf12f0b")]
+[assembly: Guid("f68e5dd6-4dd8-494d-8b2f-d1ee5bfc7de3")]
 
 // Version information for an assembly consists of the following four values:
 //

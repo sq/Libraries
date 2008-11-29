@@ -30,6 +30,22 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="nunit.framework, Version=2.4.7.0, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL" />
     <Reference Include="System" />
@@ -50,12 +66,10 @@
     <Compile Include="Tests\ArithmeticTests.cs" />
     <Compile Include="Tests\AtomicQueueTests.cs" />
     <Compile Include="Tests\CurveTests.cs" />
-    <Compile Include="Tests\GeometryTests.cs" />
     <Compile Include="Tests\IOTests.cs" />
     <Compile Include="Tests\LRUCacheTests.cs" />
     <Compile Include="Tests\PriorityQueueTests.cs" />
     <Compile Include="Tests\TupleTests.cs" />
-    <Compile Include="Tests\VectorTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Squared.Util.csproj">

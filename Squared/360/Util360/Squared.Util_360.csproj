@@ -62,7 +62,6 @@
     <Compile Include="..\..\Util\PriorityQueue.cs" />
     <Compile Include="..\..\Util\AtomicQueue.cs" />
     <Compile Include="..\..\Util\Tuples.cs" />
-    <Compile Include="..\..\Util\Geometry.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\..\Util\TimeProvider.cs" />
   </ItemGroup>
