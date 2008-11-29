@@ -184,23 +184,29 @@ namespace Squared.Game {
                                 result.WillBeIntersecting = false;
                                 minDistance = intersectionDistance;
                             }
+
+                            /*
                             Console.WriteLine(
                                 "axis={0}, velocity={1}, newVelocity={2}, predResult={3}",
                                 axis, velocityA, newVelocity, predResult
                             );
+                             */
                         }
                     }
 
                     if ((result.WouldHaveIntersected == false) && (result.AreIntersecting == false)) {
                         result.WillBeIntersecting = false;
+                        result.ResultVelocity = velocityA;
                         break;
                     }
                 }
             }
 
-            Console.WriteLine(
-                "{0} -> {1}", velocityA, result.ResultVelocity
-            );
+            /*
+                Console.WriteLine(
+                    "{0} -> {{ wouldHave={1}, willBe={2}, resultVel={3} }}", velocityA, result.WouldHaveIntersected, result.WillBeIntersecting, result.ResultVelocity
+                );
+             */
 
             return result;
         }
