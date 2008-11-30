@@ -52,8 +52,8 @@ namespace Squared.Util {
         NodeAllocator _Allocator = null;
         NodeDeallocator _Deallocator = null;
 
-        volatile Node _Head;
-        volatile Node _Tail;
+        Node _Head;
+        Node _Tail;
 
         volatile int _ConsumerLock = 0;
         volatile int _ProducerLock = 0;
