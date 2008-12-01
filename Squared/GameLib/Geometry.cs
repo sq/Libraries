@@ -141,6 +141,71 @@ namespace Squared.Game {
             return result;
         }
 
+        public static bool DoLinesIntersect (Vector2 startA, Vector2 endA, Vector2 startB, Vector2 endB, out Vector2 intersection) {
+            intersection = new Vector2();
+
+            var lengthA = endA - startA;
+            var lengthB = endB - startB;
+
+            float q = (startA.Y - startB.Y) * (endB.X - startB.X) - (startA.X - startB.X) * (endB.Y - startB.Y);
+            float d = lengthA.X * (endB.Y - startB.Y) - lengthA.Y * (endB.X - startB.X);
+
+            if (d == 0.0f) return false;
+
+            d = 1 / d;
+            float r = q * d;
+
+            if (r < 0.0f || r > 1.0f) return false;
+
+            q = (startA.Y - startB.Y) * lengthA.X - (startA.X - startB.X) * lengthA.Y;
+            float s = q * d;
+
+            if (s < 0.0f || s > 1.0f ) return false;
+
+            intersection = startA + (r * lengthA);
+
+            return true;
+        }
+
+        public static float? LineIntersectPolygon (Vector2 start, Vector2 end, Vector2[] vertices) {
+            float? result = null;
+
+            bool done = false;
+            int i = 0;
+            float minDistance = float.MaxValue;
+            Vector2 firstPoint = new Vector2(), current = new Vector2();
+            Vector2 previous, intersection;
+
+            while (!done) {
+                previous = current;
+
+                if (i >= vertices.Length) {
+                    done = true;
+                    current = firstPoint;
+                } else {
+                    current = vertices[i];
+                }
+
+                if (i == 0) {
+                    firstPoint = current;
+                    i += 1;
+                    continue;
+                }
+
+                if (DoLinesIntersect(start, end, previous, current, out intersection)) {
+                    var distance = (intersection - start).LengthSquared();
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        result = (float)Math.Sqrt(distance);
+                    }
+                }
+
+                i += 1;
+            }
+
+            return result;
+        }
+
         public struct ResolvedMotion {
             public bool AreIntersecting;
             public bool WouldHaveIntersected;
