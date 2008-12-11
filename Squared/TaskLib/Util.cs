@@ -213,6 +213,15 @@ namespace Squared.Task {
             _Duration = TimeSpan.FromSeconds(duration).Ticks;
         }
 
+        public double Duration {
+            set {
+                _Duration = TimeSpan.FromSeconds(value).Ticks;
+            }
+            get {
+                return TimeSpan.FromTicks(_Duration).TotalSeconds;
+            }
+        }
+
         void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
             scheduler.QueueSleep(Time.Ticks + _Duration, future);
         }

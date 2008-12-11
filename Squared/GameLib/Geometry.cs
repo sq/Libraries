@@ -50,8 +50,6 @@ namespace Squared.Game {
         }
     }
 
-    public delegate bool ResolveMotionPredicate (Vector2 oldVelocity, Vector2 newVelocity);
-
     public static class Geometry {
         public static void GetEdgeNormal (ref Vector2 first, ref Vector2 second, out Vector2 result) {
             var edgeVector = second - first;
@@ -118,8 +116,6 @@ namespace Squared.Game {
         }
 
         public static bool DoPolygonsIntersect (Vector2[] verticesA, Vector2[] verticesB) {
-            bool result = true;
-
             using (var axisBuffer = BufferPool<Vector2>.Allocate(verticesA.Length + verticesB.Length)) {
                 int axisCount = 0;
                 GetPolygonAxes(axisBuffer.Data, ref axisCount, verticesA);
@@ -134,11 +130,11 @@ namespace Squared.Game {
                     bool intersects = intervalA.Intersects(intervalB);
 
                     if (!intersects)
-                        result = false;
+                        return false;
                 }
             }
 
-            return result;
+            return true;
         }
 
         public static bool DoLinesIntersect (Vector2 startA, Vector2 endA, Vector2 startB, Vector2 endB, out Vector2 intersection) {
@@ -213,41 +209,24 @@ namespace Squared.Game {
             public Vector2 ResultVelocity;
         }
 
-        private static void FloatSubtractor (ref float lhs, ref float rhs, out float result) {
+        private static Subtract<float> _FloatSubtractor = FloatSubtractor;
+
+        public static void FloatSubtractor (ref float lhs, ref float rhs, out float result) {
             result = lhs - rhs;
         }
 
-        public static bool DefaultMotionPredicate (Vector2 originalVelocity, Vector2 newVelocity) {
-            return (newVelocity.Length() <= originalVelocity.Length());
-        }
-
         public static ResolvedMotion ResolvePolygonMotion (Vector2[] verticesA, Vector2[] verticesB, Vector2 velocityA) {
-            return ResolvePolygonMotion(verticesA, verticesB, velocityA, DefaultMotionPredicate);
-        }
-
-        public static Vector2 ComputePolygonCenterpoint (Vector2[] vertices) {
-            Vector2 sum = new Vector2();
-
-            for (int i = 0; i < vertices.Length; i++)
-                sum += vertices[i];
-
-            sum /= vertices.Length;
-            return sum;
-        }
-
-        public static ResolvedMotion ResolvePolygonMotion (Vector2[] verticesA, Vector2[] verticesB, Vector2 velocityA, ResolveMotionPredicate predicate) {
             var result = new ResolvedMotion();
             result.AreIntersecting = true;
             result.WouldHaveIntersected = true;
             result.WillBeIntersecting = true;
 
             float velocityProjection;
+            var velocityDistance = velocityA.Length();
             var velocityAxis = Vector2.Normalize(velocityA);
 
             Interval<float> intervalA, intervalB;
             float minDistance = float.MaxValue;
-
-            Vector2 separationAxis = ComputePolygonCenterpoint(verticesA) - ComputePolygonCenterpoint(verticesB);
 
             int bufferSize = verticesA.Length + verticesB.Length + 4;
             using (var axisBuffer = BufferPool<Vector2>.Allocate(bufferSize)) {
@@ -278,34 +257,29 @@ namespace Squared.Game {
 
                     var newIntervalA = new Interval<float>(intervalA.Min + velocityProjection, intervalA.Max + velocityProjection);
 
-                    var intersectionDistance = newIntervalA.GetDistance(intervalB, FloatSubtractor);
+                    var intersectionDistance = newIntervalA.GetDistance(intervalB, _FloatSubtractor);
                     intersects = intersectionDistance < 0;
                     if (!intersects)
                         result.WouldHaveIntersected = false;
 
-                    if ((result.WouldHaveIntersected == false) && (result.AreIntersecting == false)) {
+                    if (result.WouldHaveIntersected == false) {
                         result.WillBeIntersecting = false;
                         result.ResultVelocity = velocityA;
                         break;
                     }
 
-                    if (Math.Abs(intersectionDistance) < minDistance) {
-                        var minVect = axis * intersectionDistance;
-
-                        if (Vector2.Dot(separationAxis, minVect) < 0)
-                            minVect = -minVect;
-
+                    if ((velocityDistance > 0) && (intersectionDistance < minDistance)) {
+                        var minVect = velocityAxis * intersectionDistance;
                         var newVelocity = velocityA + minVect;
 
-                        bool accept = true;
+                        if (newVelocity.LengthSquared() > velocityA.LengthSquared())
+                            continue;
+                        if (Vector2.Dot(velocityA, newVelocity) < 0.0f)
+                            continue;
 
-                        accept &= predicate(velocityA, newVelocity);
-
-                        if (accept) {
-                            result.ResultVelocity = newVelocity;
-                            result.WillBeIntersecting = false;
-                            minDistance = intersectionDistance;
-                        }
+                        result.ResultVelocity = newVelocity;
+                        result.WillBeIntersecting = false;
+                        minDistance = intersectionDistance;
                     }
                 }
             }
