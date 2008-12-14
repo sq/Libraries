@@ -68,6 +68,7 @@
     <Compile Include="Tests\CurveTests.cs" />
     <Compile Include="Tests\IOTests.cs" />
     <Compile Include="Tests\LRUCacheTests.cs" />
+    <Compile Include="Tests\ParserTests.cs" />
     <Compile Include="Tests\PriorityQueueTests.cs" />
     <Compile Include="Tests\TupleTests.cs" />
   </ItemGroup>

@@ -65,6 +65,7 @@
     <Compile Include="Arithmetic.cs" />
     <Compile Include="AtomicQueue.cs" />
     <Compile Include="Curve.cs" />
+    <Compile Include="ExpressionParser.cs" />
     <Compile Include="IO.cs" />
     <Compile Include="LRUCache.cs" />
     <Compile Include="PriorityQueue.cs" />

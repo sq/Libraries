@@ -56,13 +56,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\..\Util\Curve.cs" />
     <Compile Include="..\..\Util\IO.cs" />
     <Compile Include="..\..\Util\LRUCache.cs" />
     <Compile Include="..\..\Util\PriorityQueue.cs" />
     <Compile Include="..\..\Util\AtomicQueue.cs" />
     <Compile Include="..\..\Util\Tuples.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="..\..\Util\ExpressionParser.cs" />
     <Compile Include="..\..\Util\TimeProvider.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

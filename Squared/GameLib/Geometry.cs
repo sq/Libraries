@@ -42,6 +42,11 @@ namespace Squared.Game {
             }
         }
 
+        public void SetVertex (int index, Vector2 newVertex) {
+            _Vertices[index] = newVertex;
+            _Dirty = true;
+        }
+
         public Vector2[] GetVertices () {
             if (_Dirty)
                 ClearDirtyFlag();
