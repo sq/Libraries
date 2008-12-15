@@ -9,7 +9,8 @@ namespace Squared.Util.Expressions {
         Number,
         Identifier,
         Operator,
-        Paren
+        Paren,
+        Comma
     }
 
     public struct Token {
@@ -17,17 +18,17 @@ namespace Squared.Util.Expressions {
         public string Text;
 
         public override string ToString () {
-            return String.Format("Token.{0}({1})", Type, Text);
+            return String.Format("{0}({1})", Type, Text);
         }
     }
 
     public class Parser {
         protected Regex _Regex;
-        protected int _Group_Number, _Group_Identifier, _Group_Operator, _Group_Paren;
+        protected int _Group_Number, _Group_Identifier, _Group_Operator, _Group_Paren, _Group_Comma;
 
         public Parser () {
             _Regex = new Regex(
-                @"((?'number'(-?)[0-9]+(\.[0-9]+)?)|(?'identifier'[_A-Za-z][A-Za-z0-9_]*)|(?'operator'<=|>=|!=|[\-+/*&|^!><=.%?:])|(?'paren'[()]))",
+                @"((?'number'(-?)[0-9]+(\.[0-9]+)?)|(?'identifier'[_A-Za-z][A-Za-z0-9_]*)|(?'operator'<=|>=|!=|[\-+/*&|^!><=.%?:])|(?'paren'[(){}]))|(?'comma',)",
                 RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture
             );
 
@@ -35,6 +36,7 @@ namespace Squared.Util.Expressions {
             _Group_Identifier = _Regex.GroupNumberFromName("identifier");
             _Group_Operator = _Regex.GroupNumberFromName("operator");
             _Group_Paren = _Regex.GroupNumberFromName("paren");
+            _Group_Comma = _Regex.GroupNumberFromName("comma");
         }
 
         public IEnumerable<Token> Parse (string expression) {
@@ -51,6 +53,8 @@ namespace Squared.Util.Expressions {
                     current.Type = TokenType.Operator;
                 else if (match.Groups[_Group_Paren].Success)
                     current.Type = TokenType.Paren;
+                else if (match.Groups[_Group_Comma].Success)
+                    current.Type = TokenType.Comma;
 
                 yield return current;
             }

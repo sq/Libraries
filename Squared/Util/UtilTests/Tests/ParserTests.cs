@@ -85,5 +85,35 @@ namespace Squared.Util {
             var tokens = Parser.Parse(expression).ToArray();
             Assert.AreEqual(expected, tokens);
         }
+
+        [Test]
+        public void TestCommasAndCurlyBraces () {
+            var expression = "{0,1} + {0.5*2, (0.5 + 0.5)}";
+
+            var expected = new Token[] {
+                new Token { Type = TokenType.Paren, Text = "{" },
+                new Token { Type = TokenType.Number, Text = "0" },
+                new Token { Type = TokenType.Comma, Text = "," },
+                new Token { Type = TokenType.Number, Text = "1" },
+                new Token { Type = TokenType.Paren, Text = "}" },
+
+                new Token { Type = TokenType.Operator, Text = "+" },
+
+                new Token { Type = TokenType.Paren, Text = "{" },
+                new Token { Type = TokenType.Number, Text = "0.5" },
+                new Token { Type = TokenType.Operator, Text = "*" },
+                new Token { Type = TokenType.Number, Text = "2" },
+                new Token { Type = TokenType.Comma, Text = "," },
+                new Token { Type = TokenType.Paren, Text = "(" },
+                new Token { Type = TokenType.Number, Text = "0.5" },
+                new Token { Type = TokenType.Operator, Text = "+" },
+                new Token { Type = TokenType.Number, Text = "0.5" },
+                new Token { Type = TokenType.Paren, Text = ")" },
+                new Token { Type = TokenType.Paren, Text = "}" },
+            };
+
+            var tokens = Parser.Parse(expression).ToArray();
+            Assert.AreEqual(expected, tokens);
+        }
     }
 }
