@@ -25,18 +25,18 @@ namespace Squared.Game {
         public void ProjectOntoAxisTest () {
             var vertices = MakeSquare(0, 0, 5);
 
-            var expected = new Interval<float>(-2.5f, 2.5f);
+            var expected = new Interval(-2.5f, 2.5f);
             var interval = Geometry.ProjectOntoAxis(new Vector2(0.0f, 1.0f), vertices);
 
             Assert.AreEqual(expected, interval);
 
-            expected = new Interval<float>(-2.5f, 2.5f);
+            expected = new Interval(-2.5f, 2.5f);
             interval = Geometry.ProjectOntoAxis(new Vector2(1.0f, 0.0f), vertices);
 
             Assert.AreEqual(expected, interval);
 
             var distance = (vertices[2] - vertices[0]).Length();
-            expected = new Interval<float>(-distance / 2.0f, distance / 2.0f);
+            expected = new Interval(-distance / 2.0f, distance / 2.0f);
             var vec = new Vector2(1.0f, 1.0f);
             vec.Normalize();
             interval = Geometry.ProjectOntoAxis(vec, vertices);

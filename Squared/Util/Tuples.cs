@@ -45,13 +45,11 @@ namespace Squared.Util {
         }
     }
 
-    public struct Interval<T> : IEquatable<Interval<T>>
-        where T : struct, IComparable<T>, IEquatable<T> {
+    public struct Interval : IEquatable<Interval> {
+        public float Min, Max;
 
-        public T Min, Max;
-
-        public Interval (T a, T b) {
-            if (a.CompareTo(b) == -1) {
+        public Interval (float a, float b) {
+            if (a <= b) {
                 Min = a;
                 Max = b;
             } else {
@@ -60,29 +58,27 @@ namespace Squared.Util {
             }
         }
 
-        public bool Intersects (Interval<T> other) {
-            if (Min.CompareTo(other.Max) >= 0) return false;
-            if (Max.CompareTo(other.Min) <= 0) return false;
+        public bool Intersects (Interval other) {
+            if (Min >= other.Max) return false;
+            if (Max <= other.Min) return false;
             return true;
         }
 
-        public T GetDistance (Interval<T> other, Subtract<T> subtractor) {
-            T result;
-            if (Min.CompareTo(other.Min) <= -1) {
-                subtractor(ref other.Min, ref Max, out result);
+        public float GetDistance (Interval other) {
+            if (Min < other.Min) {
+                return other.Min - Max;
             } else {
-                subtractor(ref Min, ref other.Max, out result);
+                return Min - other.Max;
             }
-            return result;
         }
 
-        public bool GetIntersection (Interval<T> other, out Interval<T> result) {
+        public bool GetIntersection (Interval other, out Interval result) {
             int a = Min.CompareTo(other.Min);
             int b = Max.CompareTo(other.Max);
             int c = Min.CompareTo(other.Max);
             int d = Max.CompareTo(other.Min);
 
-            result = new Interval<T>(
+            result = new Interval(
                 (a >= 0) ? Min : other.Min,
                 (b <= 0) ? Max : other.Max
             );
@@ -90,18 +86,16 @@ namespace Squared.Util {
             return Math.Sign(c) != Math.Sign(d);
         }
 
-        public bool Equals (Interval<T> other) {
-            if (!Min.Equals(other.Min))
+        public bool Equals (Interval other) {
+            if (Min != other.Min)
                 return false;
-
-            if (!Max.Equals(other.Max))
+            if (Max != other.Max)
                 return false;
-
             return true;
         }
 
-        public T[] ToArray () {
-            return new T[] { Min, Max };
+        public float[] ToArray () {
+            return new float[] { Min, Max };
         }
 
         public override string ToString () {

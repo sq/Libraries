@@ -119,7 +119,7 @@ namespace Squared.Util {
             get {
                 var item = _Dict[key];
 
-                this[item.Key] = item.Value;
+                MoveToEnd(item);                             
 
                 return item.Value;
             }
@@ -162,6 +162,29 @@ namespace Squared.Util {
             this[key] = value;
         }
 
+        private void MoveToEnd (Node item) {
+            if (item.Prev != null)
+                item.Prev.Next = item.Next;
+            else
+                _First = item.Next;
+
+            if (item.Next != null)
+                item.Next.Prev = item.Prev;
+            else
+                _Last = item.Prev;
+
+            item.Prev = _Last;
+            item.Next = null;
+
+            if (_First == null)
+                _First = item;
+            if (_Last != null)
+                _Last.Next = item;
+            _Last = item;
+
+            _Version += 1;
+        }
+
         public bool Remove (K key) {
             Node item;
             if (_Dict.TryGetValue(key, out item)) {
@@ -192,7 +215,7 @@ namespace Squared.Util {
             if (_Dict.TryGetValue(key, out item)) {
                 value = item.Value;
 
-                this[item.Key] = item.Value;
+                MoveToEnd(item);
 
                 return true;
             }

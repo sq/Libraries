@@ -56,15 +56,9 @@ namespace Squared.Game {
     }
 
     public static class Geometry {
-        public static void GetEdgeNormal (ref Vector2 first, ref Vector2 second, out Vector2 result) {
-            var edgeVector = second - first;
-            result = new Vector2(-edgeVector.Y, edgeVector.X);
-            result.Normalize();
-        }
-
-        public static Interval<float> ProjectOntoAxis (Vector2 axis, Vector2[] vertices) {
+        public static Interval ProjectOntoAxis (Vector2 axis, Vector2[] vertices) {
             float d = Vector2.Dot(axis, vertices[0]);
-            var result = new Interval<float>(d, d);
+            var result = new Interval(d, d);
 
             for (int i = 0; i < vertices.Length; i++) {
                 Vector2.Dot(ref vertices[i], ref axis, out d);
@@ -109,12 +103,12 @@ namespace Squared.Game {
                     continue;
                 }
 
-                GetEdgeNormal(ref previous, ref current, out axis);
+                axis.X = -(current.Y - previous.Y);
+                axis.Y = current.X - previous.X;
+                axis.Normalize();
 
-                if (Array.IndexOf(buffer, axis, 0, bufferCount) == -1) {
-                    buffer[bufferCount] = axis;
-                    bufferCount += 1;
-                }
+                buffer[bufferCount] = axis;
+                bufferCount += 1;
 
                 i += 1;
             }
@@ -214,12 +208,6 @@ namespace Squared.Game {
             public Vector2 ResultVelocity;
         }
 
-        private static Subtract<float> _FloatSubtractor = FloatSubtractor;
-
-        public static void FloatSubtractor (ref float lhs, ref float rhs, out float result) {
-            result = lhs - rhs;
-        }
-
         public static ResolvedMotion ResolvePolygonMotion (Vector2[] verticesA, Vector2[] verticesB, Vector2 velocityA) {
             var result = new ResolvedMotion();
             result.AreIntersecting = true;
@@ -230,7 +218,7 @@ namespace Squared.Game {
             var velocityDistance = velocityA.Length();
             var velocityAxis = Vector2.Normalize(velocityA);
 
-            Interval<float> intervalA, intervalB;
+            Interval intervalA, intervalB;
             float minDistance = float.MaxValue;
 
             int bufferSize = verticesA.Length + verticesB.Length + 4;
@@ -260,9 +248,9 @@ namespace Squared.Game {
 
                     Vector2.Dot(ref axis, ref velocityA, out velocityProjection);
 
-                    var newIntervalA = new Interval<float>(intervalA.Min + velocityProjection, intervalA.Max + velocityProjection);
+                    var newIntervalA = new Interval(intervalA.Min + velocityProjection, intervalA.Max + velocityProjection);
 
-                    var intersectionDistance = newIntervalA.GetDistance(intervalB, _FloatSubtractor);
+                    var intersectionDistance = newIntervalA.GetDistance(intervalB);
                     intersects = intersectionDistance < 0;
                     if (!intersects)
                         result.WouldHaveIntersected = false;
