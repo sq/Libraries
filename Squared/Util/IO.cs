@@ -294,10 +294,10 @@ namespace Squared.Util {
         public static Regex GlobToRegex (string glob) {
             if (glob.EndsWith(".*"))
                 glob = glob.Substring(0, glob.Length - 2);
-            glob = "^" + Regex.Escape(glob).Replace("\\*", ".*").Replace("\\?", ".") + "$";
+            glob = "^" + Regex.Escape(glob.ToLower()).Replace("\\*", ".*").Replace("\\?", ".") + "$";
             return new Regex(
                 glob, 
-                RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture
+                RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture
             );
         }
 
@@ -388,9 +388,11 @@ namespace Squared.Util {
                         }
 
                         if (!masked) {
+                            string fileNameLower = fileName.ToLower();
+
                             bool globMatch = false;
                             foreach (var glob in globs) {
-                                if (glob.IsMatch(fileName)) {
+                                if (glob.IsMatch(fileNameLower)) {
                                     globMatch = true;
                                     break;
                                 }

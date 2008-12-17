@@ -22,6 +22,7 @@ namespace TelnetChatBot {
 
         static IEnumerator<object> SendTask (SocketDataAdapter adapter) {
             var output = new AsyncTextWriter(adapter, Encoding.ASCII);
+            output.AutoFlush = true;
             Writer = output;
             string nextMessageText = String.Format("ChatBot{0:00000}", Process.GetCurrentProcess().Id);
             Console.Title = nextMessageText;

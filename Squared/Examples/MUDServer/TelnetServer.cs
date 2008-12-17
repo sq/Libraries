@@ -25,6 +25,7 @@ namespace MUDServer {
             Encoding encoding = Encoding.GetEncoding(1252);
             Input = new AsyncTextReader(Data, encoding);
             Output = new AsyncTextWriter(Data, encoding);
+            Output.AutoFlush = true;
             _SendFuture = server._Scheduler.Start(SendMessagesTask(), TaskExecutionPolicy.RunWhileFutureLives);
         }
 

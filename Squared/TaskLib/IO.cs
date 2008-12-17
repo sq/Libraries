@@ -518,7 +518,11 @@ namespace Squared.Task.IO {
     public class AsyncTextWriter : PendingOperationManager, IDisposable {
         public static Encoding DefaultEncoding = Encoding.UTF8;
         public static char[] DefaultNewLine = new char[] { '\r', '\n' };
-        public static int DefaultBufferSize = 512;
+
+        public bool AutoFlush = false;
+
+        public const int MinimumBufferSize = 256;
+        public const int DefaultBufferSize = 1024;
 
         char[] _NewLine;
         byte[] _NewLineBytes;
@@ -527,7 +531,9 @@ namespace Squared.Task.IO {
         Encoder _Encoder;
         OnComplete _WriteOnComplete;
 
-        byte[] _WriteBuffer;
+        char[] _WriteBuffer;
+        byte[] _SendBuffer;
+        int _BufferCount;
 
         public IAsyncDataWriter DataWriter {
             get {
@@ -539,13 +545,21 @@ namespace Squared.Task.IO {
             : this(dataWriter, DefaultEncoding) {
         }
 
-        public AsyncTextWriter (IAsyncDataWriter dataWriter, Encoding encoding) {
+        public AsyncTextWriter (IAsyncDataWriter dataWriter, Encoding encoding)
+            : this(dataWriter, encoding, DefaultBufferSize) {
+        }
+
+        public AsyncTextWriter (IAsyncDataWriter dataWriter, Encoding encoding, int bufferSize) {
             _DataWriter = dataWriter;
             _Encoding = encoding;
             _Encoder = encoding.GetEncoder();
             _NewLine = DefaultNewLine;
             _NewLineBytes = _Encoding.GetBytes(_NewLine);
-            _WriteBuffer = new byte[DefaultBufferSize];
+            bufferSize = Math.Max(MinimumBufferSize, bufferSize);
+            _SendBuffer = new byte[bufferSize];
+            int decodeSize = encoding.GetMaxCharCount(bufferSize);
+            _WriteBuffer = new char[decodeSize];
+            _BufferCount = 0;
             _WriteOnComplete = WriteOnComplete;
         }
 
@@ -568,43 +582,98 @@ namespace Squared.Task.IO {
             }
         }
 
-        public Future Write (byte[] bytes) {
-            return Write(bytes, bytes.Length);
-        }
-
         private void WriteOnComplete (Future f, object r, Exception e) {
             ClearPendingOperation(f);
         }
 
-        public Future Write (byte[] bytes, int count) {
+        private Future Flush (int numChars) {
+            if (numChars > 0) {
+                _BufferCount = 0;
+                int numBytes = _Encoder.GetBytes(_WriteBuffer, 0, numChars, _SendBuffer, 0, true);
+                return _DataWriter.Write(_SendBuffer, 0, numBytes);
+            } else
+                return new Future(null);
+        }
+
+        public Future Flush () {
             SetPendingOperation(null);
-            var f = _DataWriter.Write(bytes, 0, count);
+            var f = Flush(_BufferCount);
             SetPendingOperation(f);
             f.RegisterOnComplete(_WriteOnComplete);
             return f;
         }
 
-        private byte[] GetStringBuffer (int numBytes) {
-            if (_WriteBuffer.Length < numBytes)
-                _WriteBuffer = new byte[numBytes];
+        public Future Write (params char[][] strings) {
+            SetPendingOperation(null);
+            var result = new Future();
+            SetPendingOperation(result);
+            result.RegisterOnComplete(_WriteOnComplete);
 
-            return _WriteBuffer;
+            bool flushWhenDone = AutoFlush;
+
+            var iter = ((IEnumerable<char[]>)strings).GetEnumerator();
+
+            var stepString = new Action<char[], int>[1];
+            var stepStrings = new Action[1];
+
+            stepStrings[0] = () => {
+                try {
+                    if (!iter.MoveNext()) {
+                        if (flushWhenDone)
+                            result.Bind(Flush(_BufferCount));
+                        else
+                            result.Complete();
+                        return;
+                    }
+
+                    stepString[0](iter.Current, 0);
+                } catch (Exception ex) {
+                    result.Fail(ex);
+                }
+            };
+
+            stepString[0] = (str, pos) => {
+                try {
+                    int charsRemaining = str.Length - pos;
+                    int bufferRemaining = _WriteBuffer.Length - _BufferCount;
+                    int numChars = Math.Min(charsRemaining, bufferRemaining);
+
+                    if (numChars <= 0) {
+                        stepStrings[0]();
+                        return;
+                    }
+
+                    Array.Copy(str, pos, _WriteBuffer, _BufferCount, numChars);
+                    pos += numChars;
+                    _BufferCount += numChars;
+
+                    if (_BufferCount >= _WriteBuffer.Length) {
+                        var f = Flush(_BufferCount);
+                        f.RegisterOnComplete((_, r, e) => {
+                            if (e != null)
+                                result.Fail(e);
+                            else
+                                stepString[0](str, pos);
+                        });
+                    } else {
+                        stepStrings[0]();
+                    }
+                } catch (Exception ex) {
+                    result.Fail(ex);
+                }
+            };
+
+            stepStrings[0]();
+
+            return result;
         }
 
         public Future Write (string text) {
-            int numBytes = _Encoding.GetByteCount(text);
-            byte[] buf = GetStringBuffer(numBytes);
-            _Encoding.GetBytes(text, 0, text.Length, buf, 0);
-            return Write(buf, numBytes);
+            return Write(text.ToCharArray());
         }
 
         public Future WriteLine (string text) {
-            int numBytes = _Encoding.GetByteCount(text) + _NewLineBytes.Length;
-            byte[] buf = GetStringBuffer(numBytes);
-            _Encoding.GetBytes(text, 0, text.Length, buf, 0);
-            Array.Copy(_NewLineBytes, 0, buf, numBytes - _NewLineBytes.Length, _NewLineBytes.Length);
-
-            return Write(buf, numBytes);
+            return Write(text.ToCharArray(), NewLine);
         }
     }
 }

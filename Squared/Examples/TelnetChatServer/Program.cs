@@ -171,7 +171,10 @@ namespace TelnetChatServer {
 
             Type[] disconnectExceptions = new Type[] { typeof(DisconnectedException), typeof(IOException), typeof(SocketException) };
 
+            output.AutoFlush = true;
             yield return output.WriteLine("Welcome! Please enter your name.");
+            output.AutoFlush = false;
+
             Future f = input.ReadLine();
             yield return f;
             if (f.CheckForFailure(disconnectExceptions)) {

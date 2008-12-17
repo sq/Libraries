@@ -324,6 +324,26 @@ namespace Squared.Task.IO {
             f = Writer.WriteLine("foo");
             f.GetCompletionEvent().WaitOne();
 
+            Assert.AreEqual(String.Empty, GetTestDataString());
+
+            f = Writer.Flush();
+            f.GetCompletionEvent().WaitOne();
+
+            Assert.AreEqual("test\r\nfoo\r\n", GetTestDataString());
+        }
+
+        [Test]
+        public void AutoFlushTest () {
+            Future f = Writer.WriteLine("test");
+            f.GetCompletionEvent().WaitOne();
+
+            Assert.AreEqual(String.Empty, GetTestDataString());
+
+            Writer.AutoFlush = true;
+
+            f = Writer.WriteLine("foo");
+            f.GetCompletionEvent().WaitOne();
+
             Assert.AreEqual("test\r\nfoo\r\n", GetTestDataString());
         }
 
@@ -333,6 +353,11 @@ namespace Squared.Task.IO {
             f.GetCompletionEvent().WaitOne();
 
             f = Writer.Write("foo");
+            f.GetCompletionEvent().WaitOne();
+
+            Assert.AreEqual(String.Empty, GetTestDataString());
+
+            f = Writer.Flush();
             f.GetCompletionEvent().WaitOne();
 
             Assert.AreEqual("testfoo", GetTestDataString());
