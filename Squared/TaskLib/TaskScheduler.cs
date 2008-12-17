@@ -56,11 +56,15 @@ namespace Squared.Task {
         }
     }
 
+    public delegate bool BackgroundTaskErrorHandler (Exception error);
+
     public class TaskScheduler : IDisposable {
         const long SleepFudgeFactor = 100;
         const long SleepSpinThreshold = 1000;
         const long MinimumSleepLength = 10000;
         const long MaximumSleepLength = Time.SecondInTicks * 60;
+
+        public BackgroundTaskErrorHandler ErrorHandler = null;
 
         private IJobQueue _JobQueue = null;
         private AtomicQueue<Action> _StepListeners = new AtomicQueue<Action>();
@@ -86,6 +90,10 @@ namespace Squared.Task {
         private void BackgroundTaskOnComplete (Future f, object r, Exception e) {
             if (e != null) {
                 this.QueueWorkItem(() => {
+                    if (ErrorHandler != null)
+                        if (ErrorHandler(e))
+                            return;
+
                     throw new TaskException("Unhandled exception in background task", e);
                 });
             }

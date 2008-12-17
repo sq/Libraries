@@ -85,7 +85,7 @@ namespace Squared.Game {
             bool done = false;
             int i = 0;
             Vector2 firstPoint = new Vector2(), current = new Vector2();
-            Vector2 previous, axis;
+            Vector2 previous, axis = new Vector2();
 
             while (!done) {
                 previous = current;

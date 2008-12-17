@@ -44,7 +44,6 @@ namespace Squared.Task {
         }
 
         void OnDisposed (Future _) {
-            System.Diagnostics.Debug.WriteLine(String.Format("Task {0}'s future disposed. Aborting.", _Task));
             Dispose();
         }
 

@@ -72,6 +72,23 @@ namespace Squared.Task {
     }
 
     /// <summary>
+    /// Allows you to emulate a try { } finally block inside of a task, via using () { }.
+    /// </summary>
+    public struct Finally : IDisposable {
+        Action _Action;
+
+        public static Finally Do (Action action) {
+            return new Finally { _Action = action };
+        }
+
+        public void Dispose () {
+            if (_Action != null)
+                _Action();
+            _Action = null;
+        }
+    }
+
+    /// <summary>
     /// Schedules your task to continue execution at the end of the current step.
     /// </summary>
     public class Yield : ISchedulable {
