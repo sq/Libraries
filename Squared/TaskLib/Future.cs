@@ -48,6 +48,60 @@ namespace Squared.Task {
         }
     }
 
+    internal static class FutureHelpers {
+        public static WaitCallback RunInThreadHelper;
+
+        static FutureHelpers () {
+            RunInThreadHelper = _RunInThreadHelper;
+        }
+
+        internal static void _RunInThreadHelper (object state) {
+            var thunk = (RunInThreadThunk)state;
+            try {
+                var result = thunk.Invoke();
+                thunk.Future.Complete(result);
+            } catch (System.Reflection.TargetInvocationException ex) {
+                thunk.Future.Fail(ex.InnerException);
+            }
+        }
+    }
+
+    internal abstract class RunInThreadThunk {
+        public Future Future = new Future();
+
+        public abstract object Invoke ();
+    }
+
+    internal class ActionRunInThreadThunk : RunInThreadThunk {
+        public Action WorkItem;
+
+        public override object Invoke () {
+            WorkItem();
+            return null;
+        }
+    }
+
+    internal class FuncRunInThreadThunk : RunInThreadThunk {
+        public Func<object> WorkItem;
+
+        public override object Invoke () {
+            return WorkItem();
+        }
+    }
+
+    internal class DynamicRunInThreadThunk : RunInThreadThunk {
+        public object[] Arguments;
+        public Delegate WorkItem;
+
+        public override object Invoke () {
+#if XBOX
+            return WorkItem.Method.Invoke(WorkItem.Target, Arguments);
+#else
+            return WorkItem.DynamicInvoke(Arguments);
+#endif
+        }
+    }
+
     public class Future : IDisposable {
         private const int State_Empty = 0;
         private const int State_Indeterminate = 1;
@@ -321,26 +375,29 @@ namespace Squared.Task {
             return WaitForX(futures, 1);
         }
 
-        public static Future RunInThread (Delegate workItem, params object[] arguments) {
-            var f = new Future();
-            WaitCallback fn = (state) => {
-                try {
-                    try {
-#if XBOX
-                        var result = workItem.Method.Invoke(workItem.Target, arguments);
-#else
-                        var result = workItem.DynamicInvoke(arguments);
-#endif
-                        f.Complete(result);
-                    } catch (System.Reflection.TargetInvocationException ex) {
-                        f.Fail(ex.InnerException);
-                    }
-                } catch (Exception ex) {
-                    System.Diagnostics.Debug.WriteLine("Failure in RunInThread: " + ex.ToString());
-                }
+        public static Future RunInThread (Func<object> workItem) {
+            var thunk = new FuncRunInThreadThunk {
+                WorkItem = workItem,
             };
-            ThreadPool.QueueUserWorkItem(fn);
-            return f;
+            ThreadPool.QueueUserWorkItem(FutureHelpers.RunInThreadHelper, thunk);
+            return thunk.Future;
+        }
+
+        public static Future RunInThread (Action workItem) {
+            var thunk = new ActionRunInThreadThunk {
+                WorkItem = workItem,
+            };
+            ThreadPool.QueueUserWorkItem(FutureHelpers.RunInThreadHelper, thunk);
+            return thunk.Future;
+        }
+
+        public static Future RunInThread (Delegate workItem, params object[] arguments) {
+            var thunk = new DynamicRunInThreadThunk {
+                WorkItem = workItem,
+                Arguments = arguments
+            };
+            ThreadPool.QueueUserWorkItem(FutureHelpers.RunInThreadHelper, thunk);
+            return thunk.Future;
         }
 
         private class WaitHandler {
