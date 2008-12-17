@@ -58,6 +58,7 @@ namespace Squared.Task.IO {
 
     public class PendingOperationManager {
         Future _PendingOperation;
+        internal OnComplete OperationOnComplete;
 
         public Future PendingOperation {
             get {
@@ -65,14 +66,22 @@ namespace Squared.Task.IO {
             }
         }
 
-        protected void SetPendingOperation (Future f) {
+        internal void SetPendingOperation (Future f) {
             if (Interlocked.CompareExchange<Future>(ref _PendingOperation, f, null) != null)
                 throw new OperationPendingException();
         }
 
-        protected void ClearPendingOperation (Future f) {
+        internal void ClearPendingOperation (Future f) {
             if (Interlocked.CompareExchange<Future>(ref _PendingOperation, null, f) != f)
                 throw new InvalidDataException();
+        }
+
+        private void _OperationOnComplete (Future f, object r, Exception e) {
+            ClearPendingOperation(f);
+        }
+
+        internal PendingOperationManager () {
+            OperationOnComplete = _OperationOnComplete;
         }
     }
 
@@ -183,6 +192,197 @@ namespace Squared.Task.IO {
         public const int MinimumBufferSize = 256;
         public const int DefaultBufferSize = 2048;
 
+        private class ReadThunk {
+            public AsyncTextReader Parent;
+            protected Future Result;
+
+            public ReadThunk () {
+                Result = new Future();
+            }
+        }
+
+        private class ReadBlockThunk : ReadThunk {
+            public int InitialPosition, Count;
+            public int Position;
+            public char[] Buffer;
+            public OnComplete OnDecodeComplete;
+
+            public ReadBlockThunk ()
+                : base () {
+
+                OnDecodeComplete = _OnDecodeComplete;
+            }
+
+            public Future Run () {
+                Parent.SetPendingOperation(Result);
+                Result.RegisterOnComplete(Parent.OperationOnComplete);
+
+                ProcessDecodedChars();
+
+                return Result;
+            }
+
+            public void ProcessDecodedChars () {
+                char value;
+                while (Parent.GetCurrentCharacter(out value)) {
+                    if (Position >= (InitialPosition + Count)) {
+                        Result.Complete(Count);
+                        return;
+                    }
+
+                    Parent.ReadNextCharacter();
+
+                    Buffer[Position] = value;
+                    Position += 1;
+                }
+
+                Future decodeMoreChars = Parent.DecodeMoreData();
+                decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
+            }
+
+            private void _OnDecodeComplete (Future f, object r, Exception e) {
+                if (e != null) {
+                    Result.Fail(e);
+                } else {
+                    int numChars = (int)r;
+
+                    if (numChars > 0)
+                        ProcessDecodedChars();
+                    else {
+                        Result.Complete(Position - InitialPosition);
+                    }
+                }
+            }
+        }
+
+        private class ReadLineThunk : ReadThunk {
+            public CharacterBuffer Buffer;
+            public OnComplete OnDecodeComplete;
+
+            public ReadLineThunk () 
+                : base() {
+
+                Buffer = new CharacterBuffer();
+                OnDecodeComplete = _OnDecodeComplete;
+            }
+
+            public Future Run () {
+                Parent.SetPendingOperation(Result);
+                Result.RegisterOnComplete(Parent.OperationOnComplete);
+
+                ProcessDecodedChars();
+
+                return Result;
+            }
+
+            public void ProcessDecodedChars () {
+                char value;
+                while (Parent.GetCurrentCharacter(out value)) {
+                    Parent.ReadNextCharacter();
+
+                    bool done = false;
+
+                    switch (value) {
+                        case '\n':
+                            if ((Buffer.Length > 0) && (Buffer[Buffer.Length - 1] == '\r'))
+                                Buffer.Remove(Buffer.Length - 1, 1);
+
+                            if (Parent.EndOfStream)
+                                Parent._ExtraLine = true;
+
+                            done = true;
+                        break;
+                        default:
+                            Buffer.Append(value);
+                        break;
+                    }
+
+                    if (done) {
+                        Result.Complete(Buffer.DisposeAndGetContents());
+                        return;
+                    }
+                }
+
+                Future decodeMoreChars = Parent.DecodeMoreData();
+                decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
+            }
+
+            private void _OnDecodeComplete (Future f, object r, Exception e) {
+                if (e != null) {
+                    Buffer.Dispose();
+                    Result.Fail(e);
+                } else {
+                    int numChars = (int)r;
+
+                    if (numChars > 0) {
+                        try {
+                            ProcessDecodedChars();
+                        } catch (Exception ex) {
+                            Buffer.Dispose();
+                            Result.Fail(ex);
+                        }
+                    } else {
+                        string resultString = Buffer.DisposeAndGetContents();
+                        if (resultString.Length == 0)
+                            resultString = null;
+
+                        Result.Complete(resultString);
+                    }
+                }
+            }
+        }
+
+        private class ReadToEndThunk : ReadThunk {
+            public CharacterBuffer Buffer;
+            public OnComplete OnDecodeComplete;
+
+            public ReadToEndThunk () 
+                : base() {
+
+                Buffer = new CharacterBuffer();
+                OnDecodeComplete = _OnDecodeComplete;
+            }
+
+            public Future Run () {
+                Parent.SetPendingOperation(Result);
+                Result.RegisterOnComplete(Parent.OperationOnComplete);
+
+                ProcessDecodedChars();
+
+                return Result;
+            }
+
+            void ProcessDecodedChars () {
+                char value;
+                while (Parent.GetCurrentCharacter(out value)) {
+                    Parent.ReadNextCharacter();
+                    Buffer.Append(value);
+                }
+
+                Future decodeMoreChars = Parent.DecodeMoreData();
+                decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
+            }
+
+            void _OnDecodeComplete (Future f, object r, Exception e) {
+                if (e != null) {
+                    Buffer.Dispose();
+                    Result.Fail(e);
+                } else {
+                    int numChars = (int)r;
+
+                    if (numChars > 0) {
+                        ProcessDecodedChars();
+                    } else {
+                        string resultString = Buffer.DisposeAndGetContents();
+                        if (resultString.Length == 0)
+                            resultString = null;
+
+                        Result.Complete(resultString);
+                    }
+                }
+            }
+        }
+
         IAsyncDataSource _DataSource;
         Encoding _Encoding;
         Decoder _Decoder;
@@ -209,7 +409,8 @@ namespace Squared.Task.IO {
             : this(dataSource, encoding, DefaultBufferSize) {
         }
 
-        public AsyncTextReader (IAsyncDataSource dataSource, Encoding encoding, int bufferSize) {
+        public AsyncTextReader (IAsyncDataSource dataSource, Encoding encoding, int bufferSize) 
+            : base() {
             _DataSource = dataSource;
             _Encoding = encoding;
             _Decoder = _Encoding.GetDecoder();
@@ -334,184 +535,44 @@ namespace Squared.Task.IO {
         }
 
         public Future Read (char[] buffer, int offset, int count) {
-            Future f = new Future();
-            int[] wp = new int[1];
-            OnComplete[] oc = new OnComplete[1];
+            if (EndOfStream)
+                return new Future(0);
 
-            if (EndOfStream) {
-                f.Complete(0);
-                return f;
-            }
-
-            SetPendingOperation(f);
-
-            Action processDecodedChars = () => {
-                char value;
-                while (GetCurrentCharacter(out value)) {
-                    if (wp[0] >= (offset + count)) {
-                        ClearPendingOperation(f);
-                        f.Complete(count);
-                        return;
-                    }
-
-                    ReadNextCharacter();
-
-                    buffer[wp[0]] = value;
-                    wp[0] += 1;
-                }
-
-                Future decodeMoreChars = DecodeMoreData();
-                decodeMoreChars.RegisterOnComplete(oc[0]);
+            var thunk = new ReadBlockThunk {
+                Parent = this,
+                InitialPosition = offset,
+                Position = offset,
+                Count = count,
+                Buffer = buffer
             };
 
-            OnComplete onDecodeComplete = (_f, result, error) => {
-                if (error != null) {
-                    ClearPendingOperation(f);
-                    f.Fail(error);
-                } else {
-                    int numChars = (int)result;
-
-                    if (numChars > 0)
-                        processDecodedChars();
-                    else {
-                        ClearPendingOperation(f);
-                        f.Complete(wp[0] - offset);
-                    }
-                }
-            };
-
-            oc[0] = onDecodeComplete;
-            wp[0] = offset;
-            processDecodedChars();
-            return f;
+            return thunk.Run();
         }
 
         public Future ReadLine () {
-            Future f = new Future();
-            CharacterBuffer buffer = new CharacterBuffer();
-            OnComplete[] oc = new OnComplete[1];
-
             if (EndOfStream) {
-                f.Complete(_ExtraLine ? "" : null);
+                string r = _ExtraLine ? "" : null;
                 _ExtraLine = false;
-                return f;
+                return new Future(r);
             }
 
-            SetPendingOperation(f);
-
-            Action processDecodedChars = () => {
-                char value;
-                while (GetCurrentCharacter(out value)) {
-                    ReadNextCharacter();
-
-                    bool done = false;
-
-                    switch (value) {
-                        case '\n':
-                            if ((buffer.Length > 0) && (buffer[buffer.Length - 1] == '\r'))
-                                buffer.Remove(buffer.Length - 1, 1);
-
-                            if (EndOfStream)
-                                _ExtraLine = true;
-
-                            done = true;
-                            break;
-                        default:
-                            buffer.Append(value);
-                            break;
-                    }
-
-                    if (done) {
-                        ClearPendingOperation(f);
-                        f.Complete(buffer.DisposeAndGetContents());
-                        return;
-                    }
-                }
-
-                Future decodeMoreChars = DecodeMoreData();
-                decodeMoreChars.RegisterOnComplete(oc[0]);
+            var thunk = new ReadLineThunk {
+                Parent = this,
             };
 
-            OnComplete onDecodeComplete = (_f, result, error) => {
-                if (error != null) {
-                    ClearPendingOperation(f);
-                    f.Fail(error);
-                    buffer.Dispose();
-                } else {
-                    int numChars = (int)result;
-
-                    if (numChars > 0) {
-                        try {
-                            processDecodedChars();
-                        } catch (Exception ex) {
-                            f.Fail(ex);
-                            buffer.Dispose();
-                        }
-                    } else {
-                        ClearPendingOperation(f);
-
-                        string resultString = buffer.DisposeAndGetContents();
-                        if (resultString.Length == 0)
-                            resultString = null;
-
-                        f.Complete(resultString);
-                    }
-                }
-            };
-
-            oc[0] = onDecodeComplete;
-            processDecodedChars();
-            return f;
+            return thunk.Run();
         }
 
         public Future ReadToEnd () {
-            Future f = new Future();
-            CharacterBuffer buffer = new CharacterBuffer();
-            OnComplete[] oc = new OnComplete[1];
-
             if (EndOfStream) {
-                f.Complete(null);
-                return f;
+                return new Future(null);
             }
 
-            SetPendingOperation(f);
-
-            Action processDecodedChars = () => {
-                char value;
-                while (GetCurrentCharacter(out value)) {
-                    ReadNextCharacter();
-                    buffer.Append(value);
-                }
-
-                Future decodeMoreChars = DecodeMoreData();
-                decodeMoreChars.RegisterOnComplete(oc[0]);
+            var thunk = new ReadToEndThunk {
+                Parent = this,
             };
 
-            OnComplete onDecodeComplete = (_f, result, error) => {
-                if (error != null) {
-                    ClearPendingOperation(f);
-                    buffer.Dispose();
-                    f.Fail(error);
-                } else {
-                    int numChars = (int)result;
-
-                    if (numChars > 0) {
-                        processDecodedChars();
-                    } else {
-                        ClearPendingOperation(f);
-
-                        string resultString = buffer.DisposeAndGetContents();
-                        if (resultString.Length == 0)
-                            resultString = null;
-
-                        f.Complete(resultString);
-                    }
-                }
-            };
-
-            oc[0] = onDecodeComplete;
-            processDecodedChars();
-            return f;
+            return thunk.Run();
         }
     }
 
@@ -519,17 +580,93 @@ namespace Squared.Task.IO {
         public static Encoding DefaultEncoding = Encoding.UTF8;
         public static char[] DefaultNewLine = new char[] { '\r', '\n' };
 
-        public bool AutoFlush = false;
-
         public const int MinimumBufferSize = 256;
         public const int DefaultBufferSize = 1024;
+
+        private class WriteThunk {
+            public AsyncTextWriter Parent;
+            private Future Result;
+            public char[][] Strings;
+            public int NumStrings;
+            public bool FlushWhenDone;
+            public int StringIndex = -1;
+            public int StringPos = 0;
+            private OnComplete FlushOnComplete;
+
+            public WriteThunk () {
+                Result = new Future();
+                FlushOnComplete = _FlushOnComplete;
+            }
+
+            public Future Run () {
+                Parent.SetPendingOperation(Result);
+                Result.RegisterOnComplete(Parent.OperationOnComplete);
+
+                StepStrings();
+
+                return Result;
+            }
+
+            private void _FlushOnComplete (Future f, object r, Exception e) {
+                if (e != null)
+                    Result.Fail(e);
+                else
+                    StepString();
+            }
+
+            public void StepStrings () {
+                try {
+                    StringIndex += 1;
+                    if (StringIndex >= NumStrings) {
+                        if (FlushWhenDone)
+                            Result.Bind(Parent.Flush(Parent._BufferCount));
+                        else
+                            Result.Complete();
+                        return;
+                    }
+
+                    StringPos = 0;
+                    StepString();
+                } catch (Exception ex) {
+                    Result.Fail(ex);
+                }
+            }
+
+            public void StepString () {
+                try {
+                    var str = Strings[StringIndex];
+                    int charsRemaining = str.Length - StringPos;
+                    int bufferRemaining = Parent._WriteBuffer.Length - Parent._BufferCount;
+                    int numChars = Math.Min(charsRemaining, bufferRemaining);
+
+                    if (numChars <= 0) {
+                        StepStrings();
+                        return;
+                    }
+
+                    Array.Copy(str, StringPos, Parent._WriteBuffer, Parent._BufferCount, numChars);
+                    StringPos += numChars;
+                    Parent._BufferCount += numChars;
+
+                    if (Parent._BufferCount >= Parent._WriteBuffer.Length) {
+                        var f = Parent.Flush(Parent._BufferCount);
+                        f.RegisterOnComplete(FlushOnComplete);
+                    } else {
+                        StepStrings();
+                    }
+                } catch (Exception ex) {
+                    Result.Fail(ex);
+                }
+            }
+        }
+
+        public bool AutoFlush = false;
 
         char[] _NewLine;
         byte[] _NewLineBytes;
         IAsyncDataWriter _DataWriter;
         Encoding _Encoding;
         Encoder _Encoder;
-        OnComplete _WriteOnComplete;
 
         char[] _WriteBuffer;
         byte[] _SendBuffer;
@@ -549,7 +686,8 @@ namespace Squared.Task.IO {
             : this(dataWriter, encoding, DefaultBufferSize) {
         }
 
-        public AsyncTextWriter (IAsyncDataWriter dataWriter, Encoding encoding, int bufferSize) {
+        public AsyncTextWriter (IAsyncDataWriter dataWriter, Encoding encoding, int bufferSize)
+            : base() {
             _DataWriter = dataWriter;
             _Encoding = encoding;
             _Encoder = encoding.GetEncoder();
@@ -560,7 +698,6 @@ namespace Squared.Task.IO {
             int decodeSize = encoding.GetMaxCharCount(bufferSize);
             _WriteBuffer = new char[decodeSize];
             _BufferCount = 0;
-            _WriteOnComplete = WriteOnComplete;
         }
 
         public void Dispose () {
@@ -582,10 +719,6 @@ namespace Squared.Task.IO {
             }
         }
 
-        private void WriteOnComplete (Future f, object r, Exception e) {
-            ClearPendingOperation(f);
-        }
-
         private Future Flush (int numChars) {
             if (numChars > 0) {
                 _BufferCount = 0;
@@ -599,73 +732,21 @@ namespace Squared.Task.IO {
             SetPendingOperation(null);
             var f = Flush(_BufferCount);
             SetPendingOperation(f);
-            f.RegisterOnComplete(_WriteOnComplete);
+            f.RegisterOnComplete(OperationOnComplete);
             return f;
         }
 
         public Future Write (params char[][] strings) {
             SetPendingOperation(null);
-            var result = new Future();
-            SetPendingOperation(result);
-            result.RegisterOnComplete(_WriteOnComplete);
 
-            bool flushWhenDone = AutoFlush;
-
-            var iter = ((IEnumerable<char[]>)strings).GetEnumerator();
-
-            var stepString = new Action<char[], int>[1];
-            var stepStrings = new Action[1];
-
-            stepStrings[0] = () => {
-                try {
-                    if (!iter.MoveNext()) {
-                        if (flushWhenDone)
-                            result.Bind(Flush(_BufferCount));
-                        else
-                            result.Complete();
-                        return;
-                    }
-
-                    stepString[0](iter.Current, 0);
-                } catch (Exception ex) {
-                    result.Fail(ex);
-                }
+            var state = new WriteThunk {
+                Parent = this,
+                Strings = strings,
+                NumStrings = strings.Length,
+                FlushWhenDone = AutoFlush
             };
 
-            stepString[0] = (str, pos) => {
-                try {
-                    int charsRemaining = str.Length - pos;
-                    int bufferRemaining = _WriteBuffer.Length - _BufferCount;
-                    int numChars = Math.Min(charsRemaining, bufferRemaining);
-
-                    if (numChars <= 0) {
-                        stepStrings[0]();
-                        return;
-                    }
-
-                    Array.Copy(str, pos, _WriteBuffer, _BufferCount, numChars);
-                    pos += numChars;
-                    _BufferCount += numChars;
-
-                    if (_BufferCount >= _WriteBuffer.Length) {
-                        var f = Flush(_BufferCount);
-                        f.RegisterOnComplete((_, r, e) => {
-                            if (e != null)
-                                result.Fail(e);
-                            else
-                                stepString[0](str, pos);
-                        });
-                    } else {
-                        stepStrings[0]();
-                    }
-                } catch (Exception ex) {
-                    result.Fail(ex);
-                }
-            };
-
-            stepStrings[0]();
-
-            return result;
+            return state.Run();
         }
 
         public Future Write (string text) {
