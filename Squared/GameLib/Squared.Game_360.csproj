@@ -54,6 +54,7 @@
     <XnaCompressContent>true</XnaCompressContent>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="GameExtensionMethods.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
