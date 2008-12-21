@@ -10,15 +10,15 @@ using Microsoft.Xna.Framework;
 namespace Squared.Game {
     [TestFixture]
     public class GeometryTests {
-        public Vector2[] MakeSquare (float x, float y, float size) {
+        public Polygon MakeSquare (float x, float y, float size) {
             size /= 2;
 
-            return new Vector2[] {
+            return new Polygon(new Vector2[] {
                 new Vector2(x - size, y - size),
                 new Vector2(x + size, y - size),
                 new Vector2(x + size, y + size),
                 new Vector2(x - size, y + size)
-            };
+            });
         }
 
         [Test]

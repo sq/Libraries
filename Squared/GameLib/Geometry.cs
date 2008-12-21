@@ -13,11 +13,23 @@ using Microsoft.Xna.Framework.Storage;
 using Squared.Util;
 
 namespace Squared.Game {
+    public class Vector2Comparer : IEqualityComparer<Vector2> {
+        public bool Equals (Vector2 x, Vector2 y) {
+            return (x.X == y.X) && (x.Y == y.Y);
+        }
+
+        public int GetHashCode (Vector2 obj) {
+            return obj.X.GetHashCode() + obj.Y.GetHashCode();
+        }
+    }
+
     public class Polygon {
         private Vector2 _Position = new Vector2(0, 0);
         protected Vector2[] _Vertices;
         protected Vector2[] _TranslatedVertices;
         protected bool _Dirty = true;
+
+        internal Vector2[] AxisCache = null;
         
         public Polygon (Vector2[] vertices) {
             _Vertices = vertices;
@@ -32,6 +44,12 @@ namespace Squared.Game {
             _Dirty = false;
         }
 
+        public int Count {
+            get {
+                return _Vertices.Length;
+            }
+        }
+
         public Vector2 Position {
             get {
                 return _Position;
@@ -42,9 +60,23 @@ namespace Squared.Game {
             }
         }
 
+        public Vector2 this[int index] {
+            get {
+                if (_Dirty)
+                    ClearDirtyFlag();
+                
+                return _TranslatedVertices[index];
+            }
+        }
+
         public void SetVertex (int index, Vector2 newVertex) {
             _Vertices[index] = newVertex;
+            AxisCache = null;
             _Dirty = true;
+        }
+
+        internal Vector2[] GetRawVertices () {
+            return _Vertices;
         }
 
         public Vector2[] GetVertices () {
@@ -56,12 +88,15 @@ namespace Squared.Game {
     }
 
     public static class Geometry {
-        public static Interval ProjectOntoAxis (Vector2 axis, Vector2[] vertices) {
+        public static Interval ProjectOntoAxis (Vector2 axis, Polygon polygon) {
+            Interval result;
+            var vertices = polygon.GetVertices();
             float d = Vector2.Dot(axis, vertices[0]);
-            var result = new Interval(d, d);
+            result = new Interval(d, d);
 
-            for (int i = 0; i < vertices.Length; i++) {
-                Vector2.Dot(ref vertices[i], ref axis, out d);
+            int length = polygon.Count;
+            for (int i = 1; i < length; i++) {
+                d = Vector2.Dot(vertices[i], axis);
 
                 if (d < result.Min)
                     result.Min = d;
@@ -72,15 +107,23 @@ namespace Squared.Game {
             return result;
         }
 
-        public static void GetPolygonAxes (Vector2[] buffer, ref int bufferCount, Vector2[] polygon) {
-            if ((buffer.Length - bufferCount) < polygon.Length)
+        public static void GetPolygonAxes (Vector2[] buffer, ref int bufferCount, Polygon polygon) {
+            int length = polygon.Count;
+
+            if ((buffer.Length - bufferCount) < length)
                 throw new ArgumentException(
                     String.Format(
                         "Not enough remaining space in the buffer ({0}/{1}) for all the polygon's potential axes ({2}).",
-                        (buffer.Length - bufferCount), buffer.Length, polygon.Length
+                        (buffer.Length - bufferCount), buffer.Length, length
                     ),
                     "buffer"
                 );
+
+            if (polygon.AxisCache != null) {
+                Array.Copy(polygon.AxisCache, 0, buffer, bufferCount, length);
+                bufferCount += polygon.Count;
+                return;
+            }
 
             bool done = false;
             int i = 0;
@@ -90,7 +133,7 @@ namespace Squared.Game {
             while (!done) {
                 previous = current;
 
-                if (i >= polygon.Length) {
+                if (i >= length) {
                     done = true;
                     current = firstPoint;
                 } else {
@@ -112,19 +155,22 @@ namespace Squared.Game {
 
                 i += 1;
             }
+
+            polygon.AxisCache = new Vector2[length];
+            Array.Copy(buffer, bufferCount - length, polygon.AxisCache, 0, length);
         }
 
-        public static bool DoPolygonsIntersect (Vector2[] verticesA, Vector2[] verticesB) {
-            using (var axisBuffer = BufferPool<Vector2>.Allocate(verticesA.Length + verticesB.Length)) {
+        public static bool DoPolygonsIntersect (Polygon polygonA, Polygon polygonB) {
+            using (var axisBuffer = BufferPool<Vector2>.Allocate(polygonA.Count + polygonB.Count)) {
                 int axisCount = 0;
-                GetPolygonAxes(axisBuffer.Data, ref axisCount, verticesA);
-                GetPolygonAxes(axisBuffer.Data, ref axisCount, verticesB);
+                GetPolygonAxes(axisBuffer.Data, ref axisCount, polygonA);
+                GetPolygonAxes(axisBuffer.Data, ref axisCount, polygonB);
 
                 for (int i = 0; i < axisCount; i++) {
                     var axis = axisBuffer.Data[i];
 
-                    var intervalA = ProjectOntoAxis(axis, verticesA);
-                    var intervalB = ProjectOntoAxis(axis, verticesB);
+                    var intervalA = ProjectOntoAxis(axis, polygonA);
+                    var intervalB = ProjectOntoAxis(axis, polygonB);
 
                     bool intersects = intervalA.Intersects(intervalB);
 
@@ -162,11 +208,11 @@ namespace Squared.Game {
             return true;
         }
 
-        public static float? LineIntersectPolygon (Vector2 start, Vector2 end, Vector2[] vertices) {
+        public static float? LineIntersectPolygon (Vector2 start, Vector2 end, Polygon polygon) {
             float? result = null;
 
             bool done = false;
-            int i = 0;
+            int i = 0, length = polygon.Count;
             float minDistance = float.MaxValue;
             Vector2 firstPoint = new Vector2(), current = new Vector2();
             Vector2 previous, intersection;
@@ -174,11 +220,11 @@ namespace Squared.Game {
             while (!done) {
                 previous = current;
 
-                if (i >= vertices.Length) {
+                if (i >= length) {
                     done = true;
                     current = firstPoint;
                 } else {
-                    current = vertices[i];
+                    current = polygon[i];
                 }
 
                 if (i == 0) {
@@ -208,7 +254,7 @@ namespace Squared.Game {
             public Vector2 ResultVelocity;
         }
 
-        public static ResolvedMotion ResolvePolygonMotion (Vector2[] verticesA, Vector2[] verticesB, Vector2 velocityA) {
+        public static ResolvedMotion ResolvePolygonMotion (Polygon polygonA, Polygon polygonB, Vector2 velocityA) {
             var result = new ResolvedMotion();
             result.AreIntersecting = true;
             result.WouldHaveIntersected = true;
@@ -221,7 +267,7 @@ namespace Squared.Game {
             Interval intervalA, intervalB;
             float minDistance = float.MaxValue;
 
-            int bufferSize = verticesA.Length + verticesB.Length + 4;
+            int bufferSize = polygonA.Count + polygonB.Count + 4;
             using (var axisBuffer = BufferPool<Vector2>.Allocate(bufferSize)) {
                 int axisCount = 0;
 
@@ -233,14 +279,14 @@ namespace Squared.Game {
                     axisBuffer.Data[3] = new Vector2(-axisBuffer.Data[0].X, -axisBuffer.Data[0].Y);
                 }
 
-                GetPolygonAxes(axisBuffer.Data, ref axisCount, verticesA);
-                GetPolygonAxes(axisBuffer.Data, ref axisCount, verticesB);
+                GetPolygonAxes(axisBuffer.Data, ref axisCount, polygonA);
+                GetPolygonAxes(axisBuffer.Data, ref axisCount, polygonB);
 
                 for (int i = 0; i < axisCount; i++) {
                     var axis = axisBuffer.Data[i];
 
-                    intervalA = ProjectOntoAxis(axis, verticesA);
-                    intervalB = ProjectOntoAxis(axis, verticesB);
+                    intervalA = ProjectOntoAxis(axis, polygonA);
+                    intervalB = ProjectOntoAxis(axis, polygonB);
 
                     bool intersects = intervalA.Intersects(intervalB);
                     if (!intersects)
