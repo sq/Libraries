@@ -308,12 +308,21 @@ namespace Squared.Game {
                     }
 
                     if ((velocityDistance > 0) && (intersectionDistance < minDistance)) {
-                        var minVect = velocityAxis * intersectionDistance;
+                        var minVect = axis * intersectionDistance;
                         var newVelocity = velocityA + minVect;
+                        newVelocity = velocityAxis * Vector2.Dot(velocityAxis, newVelocity);
 
                         if (newVelocity.LengthSquared() > velocityA.LengthSquared())
                             continue;
                         if (Vector2.Dot(velocityA, newVelocity) < 0.0f)
+                            continue;
+
+                        Vector2.Dot(ref axis, ref newVelocity, out velocityProjection);
+                        newIntervalA.Min = (intervalA.Min + velocityProjection);
+                        newIntervalA.Max = (intervalA.Max + velocityProjection);
+                        bool stillIntersects = newIntervalA.Intersects(intervalB);
+
+                        if (stillIntersects)
                             continue;
 
                         result.ResultVelocity = newVelocity;
