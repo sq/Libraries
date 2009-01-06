@@ -50,6 +50,7 @@ namespace Squared.Task {
 #if !XBOX
                 _Thread.Interrupt();
 #endif
+                _Thread.Join(10);
                 _Thread.Abort();
                 _Thread = null;
             }

@@ -88,5 +88,62 @@ namespace Squared.Game {
 
             Assert.IsFalse(Geometry.DoPolygonsIntersect(MakeSquare(result.ResultVelocity.X, result.ResultVelocity.Y, 5), MakeSquare(5.1f, 5.1f, 5)));
         }
+
+        [Test]
+        public void PointInTriangleTest () {
+            var tri = new Vector2[] { 
+                new Vector2(0.0f, 0.0f),
+                new Vector2(2.0f, 0.0f),
+                new Vector2(0.0f, 2.0f)
+            };
+
+            Assert.IsTrue(Geometry.PointInTriangle(
+                new Vector2(0.5f, 0.5f), tri
+            ));
+
+            Assert.IsFalse(Geometry.PointInTriangle(
+                tri[0], tri
+            ));
+            Assert.IsFalse(Geometry.PointInTriangle(
+                tri[1], tri
+            ));
+            Assert.IsFalse(Geometry.PointInTriangle(
+                tri[2], tri
+            ));
+
+            Assert.IsFalse(Geometry.PointInTriangle(
+                new Vector2(-1.0f, -1.0f), tri
+            ));
+            Assert.IsFalse(Geometry.PointInTriangle(
+                new Vector2(-1.0f, 2.0f), tri
+            ));
+            Assert.IsFalse(Geometry.PointInTriangle(
+                new Vector2(2.0f, -1.0f), tri
+            ));
+            Assert.IsFalse(Geometry.PointInTriangle(
+                new Vector2(2.0f, 2.0f), tri
+            ));
+        }
+
+        [Test]
+        public void TriangulateTest () {
+            var square = new Vector2[] {
+                new Vector2(0.0f, 0.0f),
+                new Vector2(1.0f, 0.0f),
+                new Vector2(1.0f, 1.0f),
+                new Vector2(0.0f, 1.0f)
+            };
+
+            var triangles = Geometry.Triangulate(square).ToArray();
+            Assert.AreEqual(2, triangles.Length);
+            Assert.AreEqual(3, triangles[0].Length);
+            Assert.AreEqual(3, triangles[1].Length);
+            Assert.AreEqual(square[3], triangles[0][0]);
+            Assert.AreEqual(square[0], triangles[0][1]);
+            Assert.AreEqual(square[1], triangles[0][2]);
+            Assert.AreEqual(square[1], triangles[1][0]);
+            Assert.AreEqual(square[2], triangles[1][1]);
+            Assert.AreEqual(square[3], triangles[1][2]);
+        }
     }
 }

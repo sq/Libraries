@@ -23,7 +23,7 @@ namespace Squared.Game {
         }
     }
 
-    public class Polygon {
+    public class Polygon : IEnumerable<Vector2> {
         private Vector2 _Position = new Vector2(0, 0);
         protected Vector2[] _Vertices;
         protected Vector2[] _TranslatedVertices;
@@ -85,9 +85,90 @@ namespace Squared.Game {
 
             return _TranslatedVertices;
         }
+
+        public IEnumerator<Vector2> GetEnumerator () {
+            if (_Dirty)
+                ClearDirtyFlag();
+
+            return ((IEnumerable<Vector2>)_TranslatedVertices).GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
+            if (_Dirty)
+                ClearDirtyFlag();
+
+            return _TranslatedVertices.GetEnumerator();
+        }
     }
 
     public static class Geometry {
+        public const double IntersectionRoundingFactor = 11111.00;
+        public const float IntersectionEpsilon = (float)-0.000001;
+
+        internal static float VectorDot (Vector2 lhs, Vector2 rhs) {
+            return (float)((lhs.X * rhs.X) + (lhs.Y * rhs.Y));
+        }
+
+        public static bool PointInTriangle (Vector2 pt, params Vector2[] triangle) {
+            if (triangle.Length != 3)
+                throw new ArgumentException("Triangle must contain 3 vertices", "triangle");
+
+            return PointInTriangle(pt, triangle[0], triangle[1], triangle[2]);
+        }
+
+        public static bool PointInTriangle (Vector2 pt, Vector2 a, Vector2 b, Vector2 c) {
+            Vector2 v0 = c - a, v1 = b - a, v2 = pt - a;
+            float dot00 = Vector2.Dot(v0, v0), dot01 = Vector2.Dot(v0, v1);
+            float dot02 = Vector2.Dot(v0, v2), dot11 = Vector2.Dot(v1, v1);
+            float dot12 = Vector2.Dot(v1, v2);
+
+            float invDenom = 1.0f / (dot00 * dot11 - dot01 * dot01);
+            float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+            float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+
+            return (u > 0.0f) && (v > 0.0f) && (u + v < 1.0f);
+        }
+
+        public static IEnumerable<Vector2[]> Triangulate (IEnumerable<Vector2> polygon) {
+            var ll = new LinkedList<Vector2>();
+            foreach (var pt in polygon)
+                ll.AddLast(pt);
+
+            bool done = false;
+            while (!done) {
+                var prev = ll.Last;
+                var current = ll.First;
+                var next = current.Next;
+
+                while (current != null) {
+                    bool isEar = true;
+                    foreach (var pt in ll) {
+                        if (PointInTriangle(pt, prev.Value, current.Value, next.Value)) {
+                            isEar = false;
+                            break;
+                        }
+                    }
+
+                    if (isEar) {
+                        yield return new Vector2[] { prev.Value, current.Value, next.Value };
+                        ll.Remove(current);
+                        break;
+                    }
+
+                    if (next == ll.First)
+                        break;
+
+                    prev = current;
+                    current = next;
+                    next = current.Next ?? ll.First;
+                }
+
+                done = (ll.Count <= 3);
+            }
+
+            yield return ll.ToArray();
+        }
+
         public static Interval ProjectOntoAxis (Vector2 axis, Polygon polygon) {
             Interval result;
             var vertices = polygon.GetVertices();
@@ -109,6 +190,7 @@ namespace Squared.Game {
 
         public static void GetPolygonAxes (Vector2[] buffer, ref int bufferCount, Polygon polygon) {
             int length = polygon.Count;
+            int numAxes = 0;
 
             if ((buffer.Length - bufferCount) < length)
                 throw new ArgumentException(
@@ -120,8 +202,8 @@ namespace Squared.Game {
                 );
 
             if (polygon.AxisCache != null) {
-                Array.Copy(polygon.AxisCache, 0, buffer, bufferCount, length);
-                bufferCount += polygon.Count;
+                Array.Copy(polygon.AxisCache, 0, buffer, bufferCount, polygon.AxisCache.Length);
+                bufferCount += polygon.AxisCache.Length;
                 return;
             }
 
@@ -148,16 +230,19 @@ namespace Squared.Game {
 
                 axis.X = -(current.Y - previous.Y);
                 axis.Y = current.X - previous.X;
-                axis.Normalize();
-
-                buffer[bufferCount] = axis;
-                bufferCount += 1;
+                var ls = axis.LengthSquared();
+                if (ls > 0 && !float.IsNaN(ls)) {
+                    axis /= ls;
+                    buffer[bufferCount] = axis;
+                    bufferCount += 1;
+                    numAxes += 1;
+                }
 
                 i += 1;
             }
 
-            polygon.AxisCache = new Vector2[length];
-            Array.Copy(buffer, bufferCount - length, polygon.AxisCache, 0, length);
+            polygon.AxisCache = new Vector2[numAxes];
+            Array.Copy(buffer, bufferCount - numAxes, polygon.AxisCache, 0, numAxes);
         }
 
         public static bool DoPolygonsIntersect (Polygon polygonA, Polygon polygonB) {
@@ -308,10 +393,13 @@ namespace Squared.Game {
                     }
 
                     if ((velocityDistance > 0) && (intersectionDistance < minDistance)) {
+                        int steps = 3;
                         var minVect = axis * intersectionDistance;
                         var newVelocity = velocityA + minVect;
-                        newVelocity = velocityAxis * Vector2.Dot(velocityAxis, newVelocity);
+                        var newLength = Vector2.Dot(velocityAxis, newVelocity);
+                        newVelocity = velocityAxis * newLength;
 
+                        tryVelocity:
                         if (newVelocity.LengthSquared() > velocityA.LengthSquared())
                             continue;
                         if (Vector2.Dot(velocityA, newVelocity) < 0.0f)
@@ -320,10 +408,15 @@ namespace Squared.Game {
                         Vector2.Dot(ref axis, ref newVelocity, out velocityProjection);
                         newIntervalA.Min = (intervalA.Min + velocityProjection);
                         newIntervalA.Max = (intervalA.Max + velocityProjection);
-                        bool stillIntersects = newIntervalA.Intersects(intervalB);
+                        intersectionDistance = newIntervalA.GetDistance(intervalB);
 
-                        if (stillIntersects)
+                        if (intersectionDistance < IntersectionEpsilon)
                             continue;
+                        else if ((steps > 0) && (intersectionDistance < 0)) {
+                            newVelocity = velocityAxis * (float)(Math.Floor(newLength * (IntersectionRoundingFactor * steps)) / (IntersectionRoundingFactor * steps));
+                            steps -= 1;
+                            goto tryVelocity;
+                        }
 
                         result.ResultVelocity = newVelocity;
                         result.WillBeIntersecting = false;
