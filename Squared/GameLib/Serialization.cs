@@ -14,17 +14,22 @@ namespace Squared.Game.Serialization {
         Type NameToType (string name);
     }
 
-    public class SystemTypeResolver : ITypeResolver {
+    public class AssemblyTypeResolver : ITypeResolver {
+        private Assembly _Assembly;
+
+        public AssemblyTypeResolver (Assembly assembly) {
+            _Assembly = assembly;
+        }
+
         public string TypeToName (Type t) {
-            if (t.Assembly != typeof(System.Int32).Assembly)
-                throw new InvalidOperationException("SystemTypeResolver cannot resolve types defined outside of the System assembly");
+            if (t.Assembly != _Assembly)
+                throw new InvalidOperationException(String.Format("SystemTypeResolver cannot resolve types defined outside of the {0} assembly", _Assembly.FullName));
 
             return t.Namespace + "." + t.Name;
         }
 
         public Type NameToType (string name) {
-            var asm = typeof(System.Int32).Assembly;
-            return asm.GetType(name, true);
+            return _Assembly.GetType(name, true);
         }
     }
 

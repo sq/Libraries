@@ -31,7 +31,7 @@ namespace Squared.Game.Serialization {
             var sb = new StringBuilder();
             using (var writer = XmlWriter.Create(sb, null)) {
                 writer.WriteStartElement("dict");
-                writer.WriteDictionary(dict, new SystemTypeResolver());
+                writer.WriteDictionary(dict, new AssemblyTypeResolver(typeof(int).Assembly));
                 writer.WriteEndElement();
             }
 
@@ -44,7 +44,7 @@ namespace Squared.Game.Serialization {
         public void ReadDictionary () {
             using (var reader = XmlReader.Create(new StringReader(DictionaryXML))) {
                 reader.ReadToDescendant("dict");
-                var dict = reader.ReadDictionary<object>(new SystemTypeResolver());
+                var dict = reader.ReadDictionary<object>(new AssemblyTypeResolver(typeof(int).Assembly));
 
                 Assert.AreEqual(2, dict.Count);
                 Assert.AreEqual(1, dict["a"]);

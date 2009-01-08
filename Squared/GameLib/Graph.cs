@@ -3,15 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Xml;
+using Squared.Game.Serialization;
 
 namespace Squared.Game.Graph {
     public interface INode {
         IEnumerable<INode> GetChildren ();
     }
 
-    public interface INodeWriter {
+    public interface IGraphWriter {
+        void BeginWrite (INode root);
         void WriteNodeHeader (INode node);
         void WriteNodeFooter (INode node);
+        void EndWrite ();
     }
 
     public struct NodeInfo {
@@ -30,6 +33,55 @@ namespace Squared.Game.Graph {
 
         public override string ToString () {
             return String.Format("NodeInfo({0}, {1})", Node, Parent);
+        }
+    }
+
+    public class XmlGraphWriter : IGraphWriter {
+        private XmlWriter _Writer;
+        private ITypeResolver _TypeResolver;
+        private int _NextNodeID;
+        private Dictionary<INode, int> _NodeIDs;
+        private StringValueDictionary<INode> _Nodes;
+
+        public XmlGraphWriter (XmlWriter writer) 
+            : this (writer, SerializationExtensions.DefaultTypeResolver) {
+        }
+
+        public XmlGraphWriter (XmlWriter writer, ITypeResolver typeResolver) {
+            _Writer = writer;
+            _TypeResolver = typeResolver;
+        }
+
+        public void BeginWrite (INode root) {
+            _NextNodeID = 1;
+            _Nodes = new StringValueDictionary<INode>();
+            _NodeIDs = new Dictionary<INode, int>();
+            _Writer.WriteStartElement("graph");
+        }
+
+        public void WriteNodeHeader (INode node) {
+            int id;
+            if (!_NodeIDs.TryGetValue(node, out id)) {
+                id = _NextNodeID;
+                _NextNodeID += 1;
+                _NodeIDs[node] = id;
+                _Nodes[id.ToString()] = node;
+            }
+
+            _Writer.WriteStartElement("node_instance");
+            _Writer.WriteAttributeString("key", id.ToString());
+        }
+
+        public void WriteNodeFooter (INode node) {
+            _Writer.WriteEndElement();
+        }
+
+        public void EndWrite () {
+            _Writer.WriteEndElement();
+            _Writer.WriteStartElement("nodes");
+            _Writer.WriteDictionary(_Nodes, _TypeResolver);
+            _Writer.WriteEndElement();
+            _Writer.Flush();
         }
     }
 
@@ -70,8 +122,10 @@ namespace Squared.Game.Graph {
             }
         }
 
-        public static void Serialize (this INode root, INodeWriter writer) {
+        public static void Serialize (this INode root, IGraphWriter writer) {
             var stack = new Stack<INode>();
+
+            writer.BeginWrite(root);
 
             foreach (var info in root.TraverseDepthFirst()) {
                 while ((stack.Count > 0) && (stack.Peek() != info.Parent)) {
@@ -84,6 +138,8 @@ namespace Squared.Game.Graph {
 
             while (stack.Count > 0)
                 writer.WriteNodeFooter(stack.Pop());
+
+            writer.EndWrite();
         }
     }
 }

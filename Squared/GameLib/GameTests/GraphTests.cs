@@ -5,9 +5,13 @@ using System.Text;
 using NUnit.Framework;
 using System.Xml;
 using Squared.Game.Graph;
+using System.Xml.Serialization;
+using Squared.Game.Serialization;
+using System.Reflection;
 
 namespace Squared.Game.Graph {
     public class Node : INode {
+        [XmlIgnore]
         public LinkedList<INode> Children = new LinkedList<INode>();
         public string Name;
 
@@ -20,8 +24,12 @@ namespace Squared.Game.Graph {
         }
     }
 
-    public class NodeWriter : INodeWriter {
+    public class GraphWriter : IGraphWriter {
         public List<string> Trace = new List<string>();
+
+        public void BeginWrite (INode root) {
+            Trace.Add(String.Format("begin({0})", (root as Node).Name));
+        }
 
         public void WriteNodeHeader (INode node) {
             Trace.Add("+" + (node as Node).Name);
@@ -29,6 +37,10 @@ namespace Squared.Game.Graph {
 
         public void WriteNodeFooter (INode node) {
             Trace.Add("-" + (node as Node).Name);
+        }
+
+        public void EndWrite () {
+            Trace.Add("end");
         }
     }
 
@@ -85,12 +97,53 @@ namespace Squared.Game.Graph {
             childA.Children.AddLast(subchildAB);
             subchildAA.Children.AddLast(subchildAAA);
 
-            var writer = new NodeWriter();
+            var writer = new GraphWriter();
             root.Serialize(writer);
 
             Assert.AreEqual(
-                new string[] { "+root", "+a", "+a.a", "+a.a.a", "-a.a.a", "-a.a", "+a.b", "-a.b", "-a", "+b", "-b", "-root" },
+                new string[] { "begin(root)", "+root", "+a", "+a.a", "+a.a.a", "-a.a.a", "-a.a", "+a.b", "-a.b", "-a", "+b", "-b", "-root", "end" },
                 writer.Trace.ToArray()
+            );
+        }
+
+        [Test]
+        public void GraphXmlSerialization () {
+            var root = new Node { Name = "root" };
+            var childA = new Node { Name = "a" };
+            var childB = new Node { Name = "b" };
+            var subchildAA = new Node { Name = "a.a" };
+
+            root.Children.AddLast(childA);
+            root.Children.AddLast(childB);
+            childA.Children.AddLast(subchildAA);
+
+            var sb = new StringBuilder();
+            using (var xwriter = XmlWriter.Create(sb, null)) {
+                xwriter.WriteStartElement("test");
+                var writer = new XmlGraphWriter(xwriter, new AssemblyTypeResolver(Assembly.GetExecutingAssembly()));
+                root.Serialize(writer);
+                xwriter.WriteEndElement();
+            }
+
+            var expected = 
+                "<?xml version=\"1.0\" encoding=\"utf-16\"?>" +
+                "<test><graph>" +
+                "<node_instance key=\"1\"><node_instance key=\"2\"><node_instance key=\"3\" /></node_instance><node_instance key=\"4\" /></node_instance>" +
+                "</graph><nodes>" +
+                "<types>" +
+                "<type id=\"0\" name=\"Squared.Game.Graph.Node\" />" +
+                "</types>" +
+                "<values>" +
+                "<Node key=\"1\" typeId=\"0\"><Name>root</Name></Node>" +
+                "<Node key=\"2\" typeId=\"0\"><Name>a</Name></Node>" +
+                "<Node key=\"3\" typeId=\"0\"><Name>a.a</Name></Node>" +
+                "<Node key=\"4\" typeId=\"0\"><Name>b</Name></Node>" +
+                "</values>" +
+                "</nodes></test>";
+
+            Assert.AreEqual(
+                expected,
+                sb.ToString()
             );
         }
     }
