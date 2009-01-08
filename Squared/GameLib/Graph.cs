@@ -8,6 +8,7 @@ using Squared.Game.Serialization;
 namespace Squared.Game.Graph {
     public interface INode {
         IEnumerable<INode> GetChildren ();
+        void AddChild (INode child);
     }
 
     public interface IGraphWriter {
@@ -33,6 +34,71 @@ namespace Squared.Game.Graph {
 
         public override string ToString () {
             return String.Format("NodeInfo({0}, {1})", Node, Parent);
+        }
+    }
+
+    public class XmlGraphReader {
+        struct StackEntry {
+            public XmlNode Child;
+            public INode Parent;
+        }
+
+        private XmlReader _Reader;
+        private ITypeResolver _TypeResolver;
+
+        public XmlGraphReader (XmlReader reader)
+            : this(reader, SerializationExtensions.DefaultTypeResolver) {
+        }
+
+        public XmlGraphReader (XmlReader reader, ITypeResolver typeResolver) {
+            _Reader = reader;
+            _TypeResolver = typeResolver;
+        }
+
+        private XmlDocument ReadXmlFragment (string elementName) {
+            var result = new XmlDocument();
+            _Reader.Read();
+
+            var node = result.ReadNode(_Reader);
+            result.AppendChild(node);
+
+            return result;
+        }
+
+        private INode ResolveNode (XmlNode node, StringValueDictionary<INode> nodes) {
+            return nodes[node.Attributes.GetNamedItem("key").Value];
+        }
+
+        private INode BuildGraph (XmlDocument graph, StringValueDictionary<INode> nodes) {
+            INode root = null;
+            var xmlStack = new LinkedList<StackEntry>();
+            xmlStack.AddLast(new StackEntry { Child = graph.FirstChild, Parent = null });
+
+            while (xmlStack.Count > 0) {
+                var current = xmlStack.First.Value;
+                xmlStack.RemoveFirst();
+
+                var node = ResolveNode(current.Child, nodes);
+                if (current.Parent == null)
+                    root = node;
+                else
+                    current.Parent.AddChild(node);
+
+                foreach (var child in current.Child.ChildNodes.Cast<XmlNode>())
+                    xmlStack.AddLast(new StackEntry { Child = child, Parent = node });
+            }
+
+            return root;
+        }
+
+        public INode Read () {
+            _Reader.ReadToDescendant("graph");
+            var graph = ReadXmlFragment("graph");
+
+            _Reader.ReadToFollowing("nodes");
+            var nodes = _Reader.ReadDictionary<INode>(_TypeResolver);
+
+            return BuildGraph(graph, nodes);
         }
     }
 
@@ -140,6 +206,15 @@ namespace Squared.Game.Graph {
                 writer.WriteNodeFooter(stack.Pop());
 
             writer.EndWrite();
+        }
+
+        public static INode ReadGraph (this XmlReader reader) {
+            return ReadGraph(reader, SerializationExtensions.DefaultTypeResolver);
+        }
+
+        public static INode ReadGraph (this XmlReader reader, ITypeResolver typeResolver) {
+            var greader = new XmlGraphReader(reader, typeResolver);
+            return greader.Read();
         }
     }
 }

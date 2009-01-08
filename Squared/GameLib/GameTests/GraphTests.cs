@@ -8,12 +8,17 @@ using Squared.Game.Graph;
 using System.Xml.Serialization;
 using Squared.Game.Serialization;
 using System.Reflection;
+using System.IO;
 
 namespace Squared.Game.Graph {
     public class Node : INode {
         [XmlIgnore]
         public LinkedList<INode> Children = new LinkedList<INode>();
         public string Name;
+
+        void INode.AddChild (INode child) {
+            Children.AddLast(child);
+        }
 
         IEnumerable<INode> INode.GetChildren () {
             return Children;
@@ -46,6 +51,21 @@ namespace Squared.Game.Graph {
 
     [TestFixture]
     public class GraphTests {
+        public const string GraphXML = "<?xml version=\"1.0\" encoding=\"utf-16\"?>" +
+            "<test><graph>" +
+            "<node_instance key=\"1\"><node_instance key=\"2\"><node_instance key=\"3\" /></node_instance><node_instance key=\"4\" /></node_instance>" +
+            "</graph><nodes>" +
+            "<types>" +
+            "<type id=\"0\" name=\"Squared.Game.Graph.Node\" />" +
+            "</types>" +
+            "<values>" +
+            "<Node key=\"1\" typeId=\"0\"><Name>root</Name></Node>" +
+            "<Node key=\"2\" typeId=\"0\"><Name>a</Name></Node>" +
+            "<Node key=\"3\" typeId=\"0\"><Name>a.a</Name></Node>" +
+            "<Node key=\"4\" typeId=\"0\"><Name>b</Name></Node>" +
+            "</values>" +
+            "</nodes></test>";
+
         [Test]
         public void BasicTraversal () {
             var root = new Node { Name = "root" };
@@ -125,26 +145,25 @@ namespace Squared.Game.Graph {
                 xwriter.WriteEndElement();
             }
 
-            var expected = 
-                "<?xml version=\"1.0\" encoding=\"utf-16\"?>" +
-                "<test><graph>" +
-                "<node_instance key=\"1\"><node_instance key=\"2\"><node_instance key=\"3\" /></node_instance><node_instance key=\"4\" /></node_instance>" +
-                "</graph><nodes>" +
-                "<types>" +
-                "<type id=\"0\" name=\"Squared.Game.Graph.Node\" />" +
-                "</types>" +
-                "<values>" +
-                "<Node key=\"1\" typeId=\"0\"><Name>root</Name></Node>" +
-                "<Node key=\"2\" typeId=\"0\"><Name>a</Name></Node>" +
-                "<Node key=\"3\" typeId=\"0\"><Name>a.a</Name></Node>" +
-                "<Node key=\"4\" typeId=\"0\"><Name>b</Name></Node>" +
-                "</values>" +
-                "</nodes></test>";
-
             Assert.AreEqual(
-                expected,
+                GraphXML,
                 sb.ToString()
             );
+        }
+
+        [Test]
+        public void GraphXmlDeserialization () {
+            INode root;
+
+            using (var xreader = XmlReader.Create(new StringReader(GraphXML))) {
+                xreader.ReadToDescendant("test");
+                root = xreader.ReadGraph(new AssemblyTypeResolver(Assembly.GetExecutingAssembly()));
+            }
+
+            var nodes = (from ni in root.TraverseDepthFirst() select ni.Node).ToArray();
+            var nodeNames = (from node in nodes select (node as Node).Name).ToArray();
+
+            Assert.AreEqual(new string[] { "root", "a", "a.a", "b" }, nodeNames);
         }
     }
 }
