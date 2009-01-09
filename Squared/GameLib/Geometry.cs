@@ -38,7 +38,8 @@ namespace Squared.Game {
 
         protected virtual void ClearDirtyFlag () {
             for (int i = 0; i < _Vertices.Length; i++) {
-                _TranslatedVertices[i] = _Vertices[i] + _Position;
+                _TranslatedVertices[i].X = _Vertices[i].X + _Position.X;
+                _TranslatedVertices[i].Y = _Vertices[i].Y + _Position.Y;
             }
 
             _Dirty = false;
