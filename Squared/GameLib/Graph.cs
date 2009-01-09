@@ -56,11 +56,16 @@ namespace Squared.Game.Graph {
         }
 
         private XmlDocument ReadXmlFragment (string elementName) {
+            if (_Reader.IsEmptyElement)
+                return null;
+
             var result = new XmlDocument();
             _Reader.Read();
 
-            var node = result.ReadNode(_Reader);
-            result.AppendChild(node);
+            while (_Reader.NodeType != XmlNodeType.EndElement || _Reader.Name != elementName) {
+                var node = result.ReadNode(_Reader);
+                result.AppendChild(node);
+            }
 
             return result;
         }
@@ -72,7 +77,12 @@ namespace Squared.Game.Graph {
         private INode BuildGraph (XmlDocument graph, StringValueDictionary<INode> nodes) {
             INode root = null;
             var xmlStack = new LinkedList<StackEntry>();
-            xmlStack.AddLast(new StackEntry { Child = graph.FirstChild, Parent = null });
+            foreach (var child in graph.ChildNodes.Cast<XmlNode>()) {
+                if (child.NodeType == XmlNodeType.Element) {
+                    xmlStack.AddLast(new StackEntry { Child = child, Parent = null });
+                    break;
+                }
+            }
 
             while (xmlStack.Count > 0) {
                 var current = xmlStack.First.Value;
@@ -84,8 +94,10 @@ namespace Squared.Game.Graph {
                 else
                     current.Parent.AddChild(node);
 
-                foreach (var child in current.Child.ChildNodes.Cast<XmlNode>())
-                    xmlStack.AddLast(new StackEntry { Child = child, Parent = node });
+                foreach (var child in current.Child.ChildNodes.Cast<XmlNode>()) {
+                    if (child.NodeType == XmlNodeType.Element)
+                        xmlStack.AddLast(new StackEntry { Child = child, Parent = node });
+                }
             }
 
             return root;

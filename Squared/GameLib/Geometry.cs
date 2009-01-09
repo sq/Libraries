@@ -211,6 +211,7 @@ namespace Squared.Game {
             int i = 0;
             Vector2 firstPoint = new Vector2(), current = new Vector2();
             Vector2 previous, axis = new Vector2();
+            var vertices = polygon.GetVertices();
 
             while (!done) {
                 previous = current;
@@ -219,7 +220,7 @@ namespace Squared.Game {
                     done = true;
                     current = firstPoint;
                 } else {
-                    current = polygon[i];
+                    current = vertices[i];
                 }
 
                 if (i == 0) {
@@ -301,6 +302,7 @@ namespace Squared.Game {
             float minDistance = float.MaxValue;
             Vector2 firstPoint = new Vector2(), current = new Vector2();
             Vector2 previous, intersection;
+            var vertices = polygon.GetVertices();
 
             while (!done) {
                 previous = current;
@@ -309,7 +311,7 @@ namespace Squared.Game {
                     done = true;
                     current = firstPoint;
                 } else {
-                    current = polygon[i];
+                    current = vertices[i];
                 }
 
                 if (i == 0) {
