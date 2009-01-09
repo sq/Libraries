@@ -62,6 +62,8 @@ namespace Squared.Task {
                 thunk.Future.Complete(result);
             } catch (System.Reflection.TargetInvocationException ex) {
                 thunk.Future.Fail(ex.InnerException);
+            } catch (Exception ex) {
+                thunk.Future.Fail(ex);
             }
         }
     }
