@@ -7,6 +7,9 @@ using System.Xml;
 using System.IO;
 
 namespace Squared.Game.Serialization {
+    public class EmptyType {
+    }
+
     [TestFixture]
     public class SerializationTests {
         public const string DictionaryXML =
@@ -49,6 +52,31 @@ namespace Squared.Game.Serialization {
                 Assert.AreEqual(2, dict.Count);
                 Assert.AreEqual(1, dict["a"]);
                 Assert.AreEqual("asdf", dict["b"]);
+            }
+        }
+
+        [Test]
+        public void SerializeEmptyType () {
+            var et1 = new EmptyType();
+            var et2 = new EmptyType();
+
+            var dict = new Dictionary<string, object>();
+            dict.Add("a", et1);
+            dict.Add("b", et2);
+
+            var sb = new StringBuilder();
+            using (var writer = XmlWriter.Create(sb, null)) {
+                writer.WriteStartElement("dict");
+                writer.WriteDictionary(dict);
+                writer.WriteEndElement();
+            }
+
+            using (var reader = XmlReader.Create(new StringReader(sb.ToString()), null)) {
+                reader.ReadToDescendant("dict");
+                var newDict = reader.ReadDictionary<object>();
+
+                Assert.AreEqual(2, newDict.Count);
+                Assert.AreNotEqual(newDict["a"], newDict["b"]);
             }
         }
     }

@@ -53,7 +53,7 @@ namespace Squared.Game.Graph {
     public class GraphTests {
         public const string GraphXML = "<?xml version=\"1.0\" encoding=\"utf-16\"?>" +
             "<test><graph>" +
-            "<node_instance key=\"1\"><node_instance key=\"2\"><node_instance key=\"3\" /></node_instance><node_instance key=\"4\" /></node_instance>" +
+            "<node key=\"1\"><node key=\"2\"><node key=\"3\" /></node><node key=\"4\" /></node>" +
             "</graph><nodes>" +
             "<types>" +
             "<type id=\"0\" name=\"Squared.Game.Graph.Node\" />" +

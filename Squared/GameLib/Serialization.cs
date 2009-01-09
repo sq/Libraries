@@ -207,19 +207,22 @@ namespace Squared.Game.Serialization {
                         writer.WriteAttributeString("key", fieldName);
                         writer.WriteAttributeString("typeId", typeId.ToString());
 
-                        using (var subtree = tempReader.ReadSubtree()) {
-                            subtree.Read();
-                            while (!subtree.EOF)
-                                if (subtree.Name != sentinel)
-                                    writer.WriteNode(subtree, true);
-                                else
-                                    subtree.Read();
+                        if (!tempReader.IsEmptyElement) {
+                            using (var subtree = tempReader.ReadSubtree()) {
+                                subtree.Read();
+                                while (!subtree.EOF)
+                                    if (subtree.Name != sentinel)
+                                        writer.WriteNode(subtree, true);
+                                    else
+                                        subtree.Read();
+                            }
+
+                            while (tempReader.Name != sentinel || tempReader.NodeType != XmlNodeType.EndElement)
+                                if (!tempReader.Read())
+                                    break;
                         }
 
                         writer.WriteEndElement();
-
-                        while (tempReader.Name != sentinel || tempReader.NodeType != XmlNodeType.EndElement)
-                            tempReader.Read();
                     }
                 }
             }

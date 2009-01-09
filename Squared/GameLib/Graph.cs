@@ -134,7 +134,7 @@ namespace Squared.Game.Graph {
                 _Nodes[id.ToString()] = node;
             }
 
-            _Writer.WriteStartElement("node_instance");
+            _Writer.WriteStartElement("node");
             _Writer.WriteAttributeString("key", id.ToString());
         }
 
