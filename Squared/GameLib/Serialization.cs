@@ -62,9 +62,6 @@ namespace Squared.Game.Serialization {
         public StringValueDictionary (int capacity, IEqualityComparer<string> comparer)
             : base(capacity, comparer) {
         }
-        protected StringValueDictionary (SerializationInfo info, StreamingContext context)
-            : base(info, context) {
-        }
 
         public StringValueDictionary (XmlReader reader)
             : base() {

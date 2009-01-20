@@ -82,6 +82,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Animation.cs" />
     <Compile Include="GameExtensionMethods.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="Graph.cs" />
