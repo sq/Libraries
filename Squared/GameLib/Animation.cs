@@ -24,6 +24,30 @@ namespace Squared.Game.Animation {
     public class WaitForUpdate : AnimCmd {
     }
 
+    public static class AnimationExtensions {
+        public static IEnumerator<AnimCmd> Chain (this IEnumerator<AnimCmd> first, Func<IEnumerator<AnimCmd>> second) {
+            using (first) {
+                while (first.MoveNext())
+                    yield return first.Current;
+            }
+
+            yield return new SetAnimation { Animation = second() };
+        }
+
+        public static IEnumerator<AnimCmd> SwitchIf (this IEnumerator<AnimCmd> root, Func<IEnumerator<AnimCmd>> leaf, Func<bool> predicate) {
+            using (root) {
+                while (root.MoveNext()) {
+                    if (predicate()) {
+                        yield return new SetAnimation { Animation = leaf() };
+                        break;
+                    } else {
+                        yield return root.Current;
+                    }
+                }
+            }
+        }
+    }
+
     public class Animator {
         public ITimeProvider TimeProvider = Time.DefaultTimeProvider;
         private IEnumerator<AnimCmd> _ActiveAnimation = null;
@@ -53,9 +77,11 @@ namespace Squared.Game.Animation {
 
         public void Update () {
             long now = TimeProvider.Ticks;
-            while (now >= _SuspendUntil) {
-                if (!_ActiveAnimation.MoveNext())
-                    throw new Exception("Animation terminated prematurely");
+            while ((_ActiveAnimation != null) && (now >= _SuspendUntil)) {
+                if (!_ActiveAnimation.MoveNext()) {
+                    _ActiveAnimation = null;
+                    break;
+                }
 
                 var item = _ActiveAnimation.Current;
 

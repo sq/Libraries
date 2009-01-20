@@ -8,22 +8,6 @@ using Squared.Game;
 using Microsoft.Xna.Framework;
 
 namespace Squared.Game.Animation {
-    public class MockTimeProvider : ITimeProvider {
-        public long CurrentTime = 0;
-
-        public long Ticks {
-            get { return CurrentTime; }
-        }
-
-        public double Seconds {
-            get { return CurrentTime / Squared.Util.Time.SecondInTicks; }
-        }
-
-        public void Advance (long ticks) {
-            CurrentTime += ticks;
-        }
-    }
-
     [TestFixture]
     public class AnimationTests {
         MockTimeProvider TimeProvider = new MockTimeProvider();
@@ -61,6 +45,13 @@ namespace Squared.Game.Animation {
                 yield return new SetFrame { Group = 0, Frame = i };
                 yield return new WaitForUpdate();
                 i += 1;
+            }
+        }
+
+        public IEnumerator<AnimCmd> SingleAnim (int group, int start, int end) {
+            for (int i = start; i <= end; i++) {
+                yield return new SetFrame { Group = group, Frame = i };
+                yield return new WaitForUpdate();
             }
         }
 
@@ -127,6 +118,28 @@ namespace Squared.Game.Animation {
 
             a.Update();
             Assert.AreEqual(2, a.Frame);
+        }
+
+        [Test]
+        public void ChainTest () {
+            var a = new Animator { TimeProvider = TimeProvider };
+            a.SetAnimation(SingleAnim(0, 0, 1).Chain(() => SingleAnim(1, 0, 1)));
+
+            a.Update();
+            Assert.AreEqual(0, a.Group);
+            Assert.AreEqual(0, a.Frame);
+
+            a.Update();
+            Assert.AreEqual(0, a.Group);
+            Assert.AreEqual(1, a.Frame);
+
+            a.Update();
+            Assert.AreEqual(1, a.Group);
+            Assert.AreEqual(0, a.Frame);
+
+            a.Update();
+            Assert.AreEqual(1, a.Group);
+            Assert.AreEqual(1, a.Frame);
         }
     }
 }

@@ -157,4 +157,20 @@ namespace Squared.Util {
         }
     }
 #endif
+
+    public class MockTimeProvider : ITimeProvider {
+        public long CurrentTime = 0;
+
+        public long Ticks {
+            get { return CurrentTime; }
+        }
+
+        public double Seconds {
+            get { return CurrentTime / Squared.Util.Time.SecondInTicks; }
+        }
+
+        public void Advance (long ticks) {
+            CurrentTime += ticks;
+        }
+    }
 }
