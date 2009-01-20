@@ -21,6 +21,9 @@ namespace Squared.Game.Animation {
         public long Duration;
     }
 
+    public class WaitForUpdate : AnimCmd {
+    }
+
     public class Animator {
         public ITimeProvider TimeProvider = Time.DefaultTimeProvider;
         private IEnumerator<AnimCmd> _ActiveAnimation = null;
@@ -65,6 +68,8 @@ namespace Squared.Game.Animation {
                 } else if (item is Delay) {
                     var _ = (Delay)item;
                     _SuspendUntil = _SuspendUntil + _.Duration;
+                } else if (item is WaitForUpdate) {
+                    break;
                 } else {
                     throw new Exception("Invalid animation command");
                 }

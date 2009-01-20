@@ -55,6 +55,15 @@ namespace Squared.Game.Animation {
             yield return new SetAnimation { Animation = AnimString1() };
         }
 
+        public IEnumerator<AnimCmd> WaitForUpdateAnim () {
+            int i = 0;
+            while (true) {
+                yield return new SetFrame { Group = 0, Frame = i };
+                yield return new WaitForUpdate();
+                i += 1;
+            }
+        }
+
         [Test]
         public void BasicAnimationTest () {
             var a = new Animator { TimeProvider = TimeProvider };
@@ -103,6 +112,21 @@ namespace Squared.Game.Animation {
             TimeProvider.Advance(50);
             a.Update();
             Assert.AreEqual(0, a.Group);
+        }
+
+        [Test]
+        public void WaitForUpdateTest () {
+            var a = new Animator { TimeProvider = TimeProvider };
+            a.SetAnimation(WaitForUpdateAnim());
+
+            a.Update();
+            Assert.AreEqual(0, a.Frame);
+
+            a.Update();
+            Assert.AreEqual(1, a.Frame);
+
+            a.Update();
+            Assert.AreEqual(2, a.Frame);
         }
     }
 }
