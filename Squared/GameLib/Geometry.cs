@@ -31,13 +31,31 @@ namespace Squared.Game {
         public Vector2 TopLeft;
         public Vector2 BottomRight;
 
-        public Bounds (Vector2 tl, Vector2 br) {
-            TopLeft = tl;
-            BottomRight = br;
+        public Bounds (Vector2 a, Vector2 b) {
+            TopLeft = new Vector2(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y));
+            BottomRight = new Vector2(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y));
         }
 
         public override string ToString () {
             return String.Format("{{{0} - {1}}}", TopLeft, BottomRight);
+        }
+
+        public static Bounds FromPoints (IEnumerable<Vector2> points) {
+            float minX = float.MaxValue, minY = float.MaxValue;
+            float maxX = float.MinValue, maxY = float.MinValue;
+
+            foreach (var point in points) {
+                minX = Math.Min(minX, point.X);
+                minY = Math.Min(minY, point.Y);
+                maxX = Math.Max(maxX, point.X);
+                maxY = Math.Max(maxY, point.Y);
+            }
+
+            return new Bounds { TopLeft = new Vector2(minX, minY), BottomRight = new Vector2(maxX, maxY) };
+        }
+
+        public static Bounds FromPoints (params Vector2[] points) {
+            return FromPoints((IEnumerable<Vector2>)points);
         }
     }
 

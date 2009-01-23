@@ -18,9 +18,15 @@ namespace Squared.Game {
             }
         }
 
+        public const float DefaultSubdivision = 512.0f;
+
         float _Subdivision;
         List<T> _Items = new List<T>();
         Dictionary<SectorIndex, Sector> _Sectors = new Dictionary<Squared.Util.Pair<int>, Sector>();
+
+        public SpatialCollection ()
+            : this(DefaultSubdivision) {
+        }
 
         public SpatialCollection (float subdivision) {
             _Subdivision = subdivision;
