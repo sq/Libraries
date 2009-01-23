@@ -26,10 +26,9 @@ namespace Squared.Game.Animation {
 
     public static class AnimationExtensions {
         public static IEnumerator<AnimCmd> Chain (this IEnumerator<AnimCmd> first, Func<IEnumerator<AnimCmd>> second) {
-            using (first) {
+            using (first)
                 while (first.MoveNext())
                     yield return first.Current;
-            }
 
             yield return new SetAnimation { Animation = second() };
         }

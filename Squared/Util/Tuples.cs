@@ -40,6 +40,10 @@ namespace Squared.Util {
             return true;
         }
 
+        public override int GetHashCode () {
+            return First.GetHashCode() ^ Second.GetHashCode();
+        }
+
         public override string ToString () {
             return String.Format("{{{0}, {1}}}", First, Second);
         }
@@ -98,6 +102,10 @@ namespace Squared.Util {
             return new float[] { Min, Max };
         }
 
+        public override int GetHashCode () {
+            return Min.GetHashCode() ^ Max.GetHashCode();
+        }
+
         public override string ToString () {
             return String.Format("({0}, {1})", Min, Max);
         }
@@ -143,6 +151,10 @@ namespace Squared.Util {
                 return false;
 
             return true;
+        }
+
+        public override int GetHashCode () {
+            return First.GetHashCode() ^ Second.GetHashCode() ^ Third.GetHashCode();
         }
 
         public override string ToString () {

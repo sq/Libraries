@@ -23,11 +23,30 @@ namespace Squared.Game {
         }
     }
 
-    public class Polygon : IEnumerable<Vector2> {
+    public interface IHasBounds {
+        Bounds Bounds { get; }
+    }
+
+    public struct Bounds {
+        public Vector2 TopLeft;
+        public Vector2 BottomRight;
+
+        public Bounds (Vector2 tl, Vector2 br) {
+            TopLeft = tl;
+            BottomRight = br;
+        }
+
+        public override string ToString () {
+            return String.Format("{{{0} - {1}}}", TopLeft, BottomRight);
+        }
+    }
+
+    public class Polygon : IEnumerable<Vector2>, IHasBounds {
         private Vector2 _Position = new Vector2(0, 0);
         protected Vector2[] _Vertices;
         protected Vector2[] _TranslatedVertices;
         protected bool _Dirty = true;
+        protected Bounds _Bounds;
 
         internal Vector2[] AxisCache = null;
         
@@ -37,10 +56,19 @@ namespace Squared.Game {
         }
 
         protected virtual void ClearDirtyFlag () {
+            float minX = float.MaxValue, minY = float.MaxValue;
+            float maxX = float.MinValue, maxY = float.MinValue;
+
             for (int i = 0; i < _Vertices.Length; i++) {
                 _TranslatedVertices[i].X = _Vertices[i].X + _Position.X;
                 _TranslatedVertices[i].Y = _Vertices[i].Y + _Position.Y;
+                minX = Math.Min(minX, _TranslatedVertices[i].X);
+                minY = Math.Min(minY, _TranslatedVertices[i].Y);
+                maxX = Math.Max(maxX, _TranslatedVertices[i].X);
+                maxY = Math.Max(maxY, _TranslatedVertices[i].Y);
             }
+
+            _Bounds = new Bounds { TopLeft = new Vector2(minX, minY), BottomRight = new Vector2(maxX, maxY) };
 
             _Dirty = false;
         }
@@ -85,6 +113,15 @@ namespace Squared.Game {
                 ClearDirtyFlag();
 
             return _TranslatedVertices;
+        }
+
+        public Bounds Bounds {
+            get {
+                if (_Dirty)
+                    ClearDirtyFlag();
+
+                return _Bounds;
+            }
         }
 
         public IEnumerator<Vector2> GetEnumerator () {

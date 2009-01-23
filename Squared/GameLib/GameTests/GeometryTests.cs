@@ -145,5 +145,64 @@ namespace Squared.Game {
             Assert.AreEqual(square[2], triangles[1][1]);
             Assert.AreEqual(square[3], triangles[1][2]);
         }
+
+        [Test]
+        public void GetBoundsTest () {
+            var square = MakeSquare(5, 5, 10);
+            var bounds = square.Bounds;
+
+            Assert.AreEqual(new Vector2(0, 0), bounds.TopLeft);
+            Assert.AreEqual(new Vector2(10, 10), bounds.BottomRight);
+        }
+    }
+
+    public class BoundedObject : IHasBounds {
+        public Bounds Bounds {
+            get;
+            set;
+        }
+
+        public BoundedObject (Vector2 tl, Vector2 br) {
+            Bounds = new Bounds(tl, br);
+        }
+
+        public override string ToString () {
+            return String.Format("{0}", Bounds);
+        }
+    }
+
+    [TestFixture]
+    public class SpatialCollectionTests {
+        public SpatialCollection<BoundedObject> Collection;
+
+        [SetUp]
+        public void SetUp () {
+            Collection = new SpatialCollection<BoundedObject>(16);
+        }
+
+        [Test]
+        public void BasicTest () {
+            var a = new BoundedObject(new Vector2(0, 0), new Vector2(15, 15));
+            var b = new BoundedObject(new Vector2(8, 8), new Vector2(23, 23));
+            var c = new BoundedObject(new Vector2(16, 16), new Vector2(31, 31));
+
+            Collection.Add(a);
+            Collection.Add(b);
+            Collection.Add(c);
+
+            Assert.AreEqual(new BoundedObject[] { a, b, c }, Collection.ToArray());
+
+            Assert.AreEqual(new BoundedObject[] { a, b }, Collection.GetItemsFromBounds(a.Bounds).ToArray());
+            Assert.AreEqual(new BoundedObject[] { a, b, c }, Collection.GetItemsFromBounds(b.Bounds).ToArray());
+            Assert.AreEqual(new BoundedObject[] { b, c }, Collection.GetItemsFromBounds(c.Bounds).ToArray());
+
+            var oldBounds = a.Bounds;
+            a.Bounds = new Bounds(new Vector2(24, 24), new Vector2(47, 47));
+            Collection.UpdateItemBounds(a, oldBounds);
+
+            Assert.AreEqual(new BoundedObject[] { b, c, a }, Collection.GetItemsFromBounds(a.Bounds).ToArray());
+            Assert.AreEqual(new BoundedObject[] { b, c, a }, Collection.GetItemsFromBounds(b.Bounds).ToArray());
+            Assert.AreEqual(new BoundedObject[] { b, c, a }, Collection.GetItemsFromBounds(c.Bounds).ToArray());
+        }
     }
 }
