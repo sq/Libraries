@@ -63,7 +63,7 @@ namespace Squared.Game {
         private Vector2 _Position = new Vector2(0, 0);
         protected Vector2[] _Vertices;
         protected Vector2[] _TranslatedVertices;
-        protected bool _Dirty = true;
+        protected bool _Dirty = true, _BoundsDirty = true;
         protected Bounds _Bounds;
 
         internal Vector2[] AxisCache = null;
@@ -74,19 +74,10 @@ namespace Squared.Game {
         }
 
         protected virtual void ClearDirtyFlag () {
-            float minX = float.MaxValue, minY = float.MaxValue;
-            float maxX = float.MinValue, maxY = float.MinValue;
-
             for (int i = 0; i < _Vertices.Length; i++) {
                 _TranslatedVertices[i].X = _Vertices[i].X + _Position.X;
                 _TranslatedVertices[i].Y = _Vertices[i].Y + _Position.Y;
-                minX = Math.Min(minX, _TranslatedVertices[i].X);
-                minY = Math.Min(minY, _TranslatedVertices[i].Y);
-                maxX = Math.Max(maxX, _TranslatedVertices[i].X);
-                maxY = Math.Max(maxY, _TranslatedVertices[i].Y);
             }
-
-            _Bounds = new Bounds { TopLeft = new Vector2(minX, minY), BottomRight = new Vector2(maxX, maxY) };
 
             _Dirty = false;
         }
@@ -102,8 +93,10 @@ namespace Squared.Game {
                 return _Position;
             }
             set {
-                _Position = value;
-                _Dirty = true;
+                if (_Position != value) {
+                    _Position = value;
+                    _Dirty = true;
+                }
             }
         }
 
@@ -120,6 +113,7 @@ namespace Squared.Game {
             _Vertices[index] = newVertex;
             AxisCache = null;
             _Dirty = true;
+            _BoundsDirty = true;
         }
 
         internal Vector2[] GetRawVertices () {
@@ -135,10 +129,12 @@ namespace Squared.Game {
 
         public Bounds Bounds {
             get {
-                if (_Dirty)
-                    ClearDirtyFlag();
+                if (_BoundsDirty) {
+                    _Bounds = Bounds.FromPoints(_Vertices);
+                    _BoundsDirty = false;
+                }
 
-                return _Bounds;
+                return new Bounds(_Bounds.TopLeft + Position, _Bounds.BottomRight + Position);
             }
         }
 

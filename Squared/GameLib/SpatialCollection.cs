@@ -22,47 +22,13 @@ namespace Squared.Game {
     public class SpatialCollection<T> : IEnumerable<T>
         where T : class, IHasBounds {
 
-#if XBOX
         internal class Sector : List<T> {
-#else
-        internal class Sector : HashSet<T> {
-#endif
             public SectorIndex Index;
 
             public Sector (SectorIndex index) 
                 : base () {
                 Index = index;
             }
-        }
-
-        public const float DefaultSubdivision = 512.0f;
-
-        internal float _Subdivision;
-        internal List<T> _Items = new List<T>();
-        internal Dictionary<SectorIndex, Sector> _Sectors;
-
-        public SpatialCollection ()
-            : this(DefaultSubdivision) {
-        }
-
-        public SpatialCollection (float subdivision) {
-            _Subdivision = subdivision;
-            _Sectors = new Dictionary<Squared.Util.Pair<int>, Sector>(new PairComparer<int>());
-        }
-
-        internal SectorIndex GetIndexFromPoint (Vector2 point) {
-            return new SectorIndex((int)Math.Floor(point.X / _Subdivision), (int)Math.Floor(point.Y / _Subdivision));
-        }
-
-        internal Sector GetSectorFromIndex (SectorIndex index) {
-            Sector sector = null;
-
-            if (!_Sectors.TryGetValue(index, out sector)) {
-                sector = new Sector(index);
-                _Sectors[index] = sector;
-            }
-
-            return sector;
         }
 
         internal struct GetSectorsFromBounds : IEnumerator<Sector> {
@@ -127,6 +93,111 @@ namespace Squared.Game {
             }
         }
 
+        public struct ItemBoundsEnumerator : IEnumerator<T>, IEnumerable<T> {
+            BufferPool<T>.Buffer _SeenList;
+            GetSectorsFromBounds _Sectors;
+            Sector _Sector;
+            T _Current;
+            int _Index, _SeenCount;
+
+            public ItemBoundsEnumerator (SpatialCollection<T> collection, Bounds bounds) {
+                _SeenList = BufferPool<T>.Allocate(collection.Count);
+                _Sectors = new SpatialCollection<T>.GetSectorsFromBounds(collection, bounds, false);
+                _Sector = null;
+                _Index = 0;
+                _SeenCount = 0;
+                _Current = null;
+            }
+
+            public T Current {
+                get { return _Current; }
+            }
+
+            public void Dispose () {
+                _SeenList.Dispose();
+                _Sectors.Dispose();
+                _Sector = null;
+            }
+
+            object System.Collections.IEnumerator.Current {
+                get { return _Current; }
+            }
+
+            public bool MoveNext () {
+                _Current = null;
+                while (_Current == null) {
+                    _Index += 1;
+
+                    while ((_Sector == null) || (_Index >= _Sector.Count)) {
+                        if (_Sectors.MoveNext()) {
+                            _Sector = _Sectors.Current;
+                            _Index = 0;
+                        } else {
+                            return false;
+                        }
+                    }
+
+                    _Current = _Sector[_Index];
+
+                    for (int i = 0; i < _SeenCount; i++) {
+                        if (_SeenList.Data[i] == _Current) {
+                            _Current = null;
+                            break;
+                        }
+                    }
+                }
+
+                _SeenList.Data[_SeenCount] = _Current;
+                _SeenCount += 1;
+
+                return true;
+            }
+
+            public void Reset () {
+                _Sectors.Reset();
+                _Sector = null;
+                _Index = 0;
+            }
+
+            public IEnumerator<T> GetEnumerator () {
+                return this;
+            }
+
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
+                return this;
+            }
+        }
+
+        public const float DefaultSubdivision = 512.0f;
+
+        internal float _Subdivision;
+        internal List<T> _Items = new List<T>();
+        internal Dictionary<SectorIndex, Sector> _Sectors;
+
+        public SpatialCollection ()
+            : this(DefaultSubdivision) {
+        }
+
+        public SpatialCollection (float subdivision) {
+            _Subdivision = subdivision;
+            _Sectors = new Dictionary<Squared.Util.Pair<int>, Sector>(new PairComparer<int>());
+        }
+
+        internal SectorIndex GetIndexFromPoint (Vector2 point) {
+            return new SectorIndex((int)Math.Floor(point.X / _Subdivision), (int)Math.Floor(point.Y / _Subdivision));
+        }
+
+        internal Sector GetSectorFromIndex (SectorIndex index) {
+            Sector sector = null;
+
+            if (!_Sectors.TryGetValue(index, out sector)) {
+                sector = new Sector(index);
+                _Sectors[index] = sector;
+            }
+
+            return sector;
+        }
+
         public void Add (T item) {
             _Items.Add(item);
 
@@ -177,29 +248,8 @@ namespace Squared.Game {
                 e.Current.Add(item);
         }
 
-        public IEnumerable<T> GetItemsFromBounds (Bounds bounds) {
-            var e = new GetSectorsFromBounds(this, bounds, false);
-            using (var seenList = BufferPool<T>.Allocate(Count)) {
-                int numSeen = 0;
-
-                while (e.MoveNext()) {
-                    foreach (var item in e.Current) {
-                        bool found = false;
-                        for (int i = 0; i < numSeen; i++) {
-                            if (seenList.Data[i] == item) {
-                                found = true;
-                                break;
-                            }
-                        }
-
-                        if (!found) {
-                            seenList.Data[numSeen] = item;
-                            numSeen += 1;
-                            yield return item;
-                        }
-                    }
-                }
-            }
+        public ItemBoundsEnumerator GetItemsFromBounds (Bounds bounds) {
+            return new ItemBoundsEnumerator(this, bounds);
         }
 
         public int Count {
