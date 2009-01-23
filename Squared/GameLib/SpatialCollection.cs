@@ -4,12 +4,29 @@ using System.Linq;
 using System.Text;
 using SectorIndex = Squared.Util.Pair<int>;
 using Microsoft.Xna.Framework;
+using Squared.Util;
+using System.Threading;
 
 namespace Squared.Game {
-    public class SpatialCollection<T> : IEnumerable<T>
-        where T : IHasBounds {
+    public class PairComparer<T> : IEqualityComparer<Pair<T>>
+        where T : struct, IComparable<T> {
+        public bool Equals (Pair<T> x, Pair<T> y) {
+            return (x.First.CompareTo(y.First) == 0) && (x.Second.CompareTo(y.Second) == 0);
+        }
 
+        public int GetHashCode (Pair<T> obj) {
+            return obj.First.GetHashCode() + obj.Second.GetHashCode();
+        }
+    }
+    
+    public class SpatialCollection<T> : IEnumerable<T>
+        where T : class, IHasBounds {
+
+#if XBOX
+        internal class Sector : List<T> {
+#else
         internal class Sector : HashSet<T> {
+#endif
             public SectorIndex Index;
 
             public Sector (SectorIndex index) 
@@ -20,9 +37,9 @@ namespace Squared.Game {
 
         public const float DefaultSubdivision = 512.0f;
 
-        float _Subdivision;
-        List<T> _Items = new List<T>();
-        Dictionary<SectorIndex, Sector> _Sectors = new Dictionary<Squared.Util.Pair<int>, Sector>();
+        internal float _Subdivision;
+        internal List<T> _Items = new List<T>();
+        internal Dictionary<SectorIndex, Sector> _Sectors;
 
         public SpatialCollection ()
             : this(DefaultSubdivision) {
@@ -30,6 +47,7 @@ namespace Squared.Game {
 
         public SpatialCollection (float subdivision) {
             _Subdivision = subdivision;
+            _Sectors = new Dictionary<Squared.Util.Pair<int>, Sector>(new PairComparer<int>());
         }
 
         internal SectorIndex GetIndexFromPoint (Vector2 point) {
@@ -47,35 +65,90 @@ namespace Squared.Game {
             return sector;
         }
 
-        internal IEnumerable<SectorIndex> GetIndicesFromBounds (Bounds bounds) {
-            var tl = GetIndexFromPoint(bounds.TopLeft);
-            var br = GetIndexFromPoint(bounds.BottomRight);
-            var item = new SectorIndex();
+        internal struct GetSectorsFromBounds : IEnumerator<Sector> {
+            SectorIndex tl, br, item;
+            Sector current;
+            int x, y;
+            SpatialCollection<T> collection;
+            bool create;
 
-            for (int y = tl.Second; y <= br.Second; y++) {
-                for (int x = tl.First; x <= br.First; x++) {
+            public GetSectorsFromBounds (SpatialCollection<T> collection, Bounds bounds, bool create) {
+                tl = collection.GetIndexFromPoint(bounds.TopLeft);
+                br = collection.GetIndexFromPoint(bounds.BottomRight);
+                item = new SectorIndex();
+                this.create = create;
+                this.collection = collection;
+                x = tl.First - 1;
+                y = tl.Second;
+                current = null;
+            }
+
+            public Sector Current {
+                get { return current; }
+            }
+
+            public void Dispose () {
+            }
+
+            object System.Collections.IEnumerator.Current {
+                get { return current; }
+            }
+
+            public bool MoveNext () {
+                current = null;
+
+                while (current == null) {
+                    x += 1;
+                    if (x > br.First) {
+                        x = tl.First;
+                        y += 1;
+                        if (y > br.Second) {
+                            current = null;
+                            return false;
+                        }
+                    }
+
                     item.First = x;
                     item.Second = y;
-                    yield return item;
+
+                    if (create)
+                        current = collection.GetSectorFromIndex(item);
+                    else
+                        collection._Sectors.TryGetValue(item, out current);
                 }
+
+                return true;
+            }
+
+            public void Reset () {
+                current = null;
+                x = tl.First - 1;
+                y = tl.Second;
             }
         }
 
         public void Add (T item) {
             _Items.Add(item);
 
-            foreach (var index in GetIndicesFromBounds(item.Bounds)) {
-                var sector = GetSectorFromIndex(index);
-                sector.Add(item);
+            using (var e = new GetSectorsFromBounds(this, item.Bounds, true))
+            while (e.MoveNext())
+                e.Current.Add(item);
+        }
+
+        internal void InternalRemove (T item, Bounds bounds) {
+            using (var e = new GetSectorsFromBounds(this, item.Bounds, false))
+            while (e.MoveNext()) {
+                var sector = e.Current;
+                sector.Remove(item);
+
+                if (sector.Count == 0)
+                    _Sectors.Remove(sector.Index);
             }
         }
 
         public bool Remove (T item) {
             if (_Items.Remove(item)) {
-                foreach (var index in GetIndicesFromBounds(item.Bounds)) {
-                    var sector = GetSectorFromIndex(index);
-                    sector.Remove(item);
-                }
+                InternalRemove(item, item.Bounds);
 
                 return true;
             }
@@ -87,10 +160,7 @@ namespace Squared.Game {
             var item = _Items[index];
             _Items.RemoveAt(index);
 
-            foreach (var i in GetIndicesFromBounds(item.Bounds)) {
-                var sector = GetSectorFromIndex(i);
-                sector.Remove(item);
-            }
+            InternalRemove(item, item.Bounds);
         }
 
         public T this[int index] {
@@ -100,26 +170,31 @@ namespace Squared.Game {
         }
 
         public void UpdateItemBounds (T item, Bounds previousBounds) {
-            foreach (var index in GetIndicesFromBounds(previousBounds)) {
-                var sector = GetSectorFromIndex(index);
-                sector.Remove(item);
-            }
+            InternalRemove(item, previousBounds);
 
-            foreach (var index in GetIndicesFromBounds(item.Bounds)) {
-                var sector = GetSectorFromIndex(index);
-                sector.Add(item);
-            }
+            using (var e = new GetSectorsFromBounds(this, item.Bounds, true))
+            while (e.MoveNext())
+                e.Current.Add(item);
         }
 
         public IEnumerable<T> GetItemsFromBounds (Bounds bounds) {
-            var seen = new HashSet<T>();
-            Sector sector = null;
+            var e = new GetSectorsFromBounds(this, bounds, false);
+            using (var seenList = BufferPool<T>.Allocate(Count)) {
+                int numSeen = 0;
 
-            foreach (var index in GetIndicesFromBounds(bounds)) {
-                if (_Sectors.TryGetValue(index, out sector)) {
-                    foreach (var item in sector) {
-                        if (!seen.Contains(item)) {
-                            seen.Add(item);
+                while (e.MoveNext()) {
+                    foreach (var item in e.Current) {
+                        bool found = false;
+                        for (int i = 0; i < numSeen; i++) {
+                            if (seenList.Data[i] == item) {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (!found) {
+                            seenList.Data[numSeen] = item;
+                            numSeen += 1;
                             yield return item;
                         }
                     }

@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Squared.Util;
 using Squared.Game;
 using Microsoft.Xna.Framework;
+using System.Collections;
 
 namespace Squared.Game {
     [TestFixture]
@@ -169,6 +170,16 @@ namespace Squared.Game {
         public override string ToString () {
             return String.Format("{0}", Bounds);
         }
+
+        public struct Comparer : IComparer, IComparer<BoundedObject> {
+            public int Compare (object x, object y) {
+                return (x.GetHashCode().CompareTo(y.GetHashCode()));
+            }
+
+            public int Compare (BoundedObject x, BoundedObject y) {
+                return (x.GetHashCode().CompareTo(y.GetHashCode()));
+            }
+        }
     }
 
     [TestFixture]
@@ -178,6 +189,11 @@ namespace Squared.Game {
         [SetUp]
         public void SetUp () {
             Collection = new SpatialCollection<BoundedObject>(16);
+        }
+
+        internal BoundedObject[] Sorted (params BoundedObject[] arr) {
+            Array.Sort(arr, new BoundedObject.Comparer());
+            return arr;
         }
 
         [Test]
@@ -190,19 +206,19 @@ namespace Squared.Game {
             Collection.Add(b);
             Collection.Add(c);
 
-            Assert.AreEqual(new BoundedObject[] { a, b, c }, Collection.ToArray());
+            Assert.AreEqual(Sorted(a, b, c), Sorted(Collection.ToArray()));
 
-            Assert.AreEqual(new BoundedObject[] { a, b }, Collection.GetItemsFromBounds(a.Bounds).ToArray());
-            Assert.AreEqual(new BoundedObject[] { a, b, c }, Collection.GetItemsFromBounds(b.Bounds).ToArray());
-            Assert.AreEqual(new BoundedObject[] { b, c }, Collection.GetItemsFromBounds(c.Bounds).ToArray());
+            Assert.AreEqual(Sorted( a, b ), Sorted(Collection.GetItemsFromBounds(a.Bounds).ToArray()));
+            Assert.AreEqual(Sorted( a, b, c ), Sorted(Collection.GetItemsFromBounds(b.Bounds).ToArray()));
+            Assert.AreEqual(Sorted( b, c ), Sorted(Collection.GetItemsFromBounds(c.Bounds).ToArray()));
 
             var oldBounds = a.Bounds;
             a.Bounds = new Bounds(new Vector2(24, 24), new Vector2(47, 47));
             Collection.UpdateItemBounds(a, oldBounds);
 
-            Assert.AreEqual(new BoundedObject[] { b, c, a }, Collection.GetItemsFromBounds(a.Bounds).ToArray());
-            Assert.AreEqual(new BoundedObject[] { b, c, a }, Collection.GetItemsFromBounds(b.Bounds).ToArray());
-            Assert.AreEqual(new BoundedObject[] { b, c, a }, Collection.GetItemsFromBounds(c.Bounds).ToArray());
+            Assert.AreEqual(Sorted( b, c, a ), Sorted(Collection.GetItemsFromBounds(a.Bounds).ToArray()));
+            Assert.AreEqual(Sorted( b, c, a ), Sorted(Collection.GetItemsFromBounds(b.Bounds).ToArray()));
+            Assert.AreEqual(Sorted( b, c, a ), Sorted(Collection.GetItemsFromBounds(c.Bounds).ToArray()));
         }
     }
 }
