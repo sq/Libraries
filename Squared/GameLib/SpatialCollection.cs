@@ -98,14 +98,14 @@ namespace Squared.Game {
             GetSectorsFromBounds _Sectors;
             Sector _Sector;
             T _Current;
-            int _Index, _SeenCount;
+            int _Index, _SeenCount, _Count;
 
             public ItemBoundsEnumerator (SpatialCollection<T> collection, Bounds bounds) {
                 _SeenList = BufferPool<T>.Allocate(collection.Count);
                 _Sectors = new SpatialCollection<T>.GetSectorsFromBounds(collection, bounds, false);
                 _Sector = null;
                 _Index = 0;
-                _SeenCount = 0;
+                _Count = _SeenCount = 0;
                 _Current = null;
             }
 
@@ -128,10 +128,14 @@ namespace Squared.Game {
                 while (_Current == null) {
                     _Index += 1;
 
-                    while ((_Sector == null) || (_Index >= _Sector.Count)) {
+                    while ((_Sector == null) || (_Index >= _Count)) {
                         if (_Sectors.MoveNext()) {
                             _Sector = _Sectors.Current;
                             _Index = 0;
+                            if (_Sector != null)
+                                _Count = _Sector.Count;
+                            else
+                                _Count = 0;
                         } else {
                             return false;
                         }
