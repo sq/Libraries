@@ -6,22 +6,41 @@ using Squared.Util;
 
 namespace Squared.Game.Animation {
     public interface AnimCmd {
+        bool Invoke (Animator animator);
     }
 
     public class SetAnimation : AnimCmd {
         public IEnumerator<AnimCmd> Animation;
+
+        public bool Invoke (Animator animator) {
+            animator.SetAnimation(Animation);
+            return false;
+        }
     }
 
     public class SetFrame : AnimCmd {
         public int Group;
         public int Frame;
+
+        public bool Invoke (Animator animator) {
+            animator.SetFrame(Group, Frame);
+            return false;
+        }
     }
 
     public class Delay : AnimCmd {
         public long Duration;
+
+        public bool Invoke (Animator animator) {
+            animator.Delay(Duration);
+            return false;
+        }
     }
 
     public class WaitForUpdate : AnimCmd {
+        public bool Invoke (Animator animator) {
+            return true;
+        }
     }
 
     public static class AnimationExtensions {
@@ -66,6 +85,10 @@ namespace Squared.Game.Animation {
             _Frame = frame;
         }
 
+        public void Delay (long duration) {
+            _SuspendUntil = _SuspendUntil + duration;
+        }
+
         public int Group {
             get { return _Group; }
         }
@@ -83,21 +106,8 @@ namespace Squared.Game.Animation {
                 }
 
                 var item = _ActiveAnimation.Current;
-
-                if (item is SetAnimation) {
-                    var _ = (SetAnimation)item;
-                    SetAnimation(_.Animation);
-                } else if (item is SetFrame) {
-                    var _ = (SetFrame)item;
-                    SetFrame(_.Group, _.Frame);
-                } else if (item is Delay) {
-                    var _ = (Delay)item;
-                    _SuspendUntil = _SuspendUntil + _.Duration;
-                } else if (item is WaitForUpdate) {
+                if (item.Invoke(this))
                     break;
-                } else {
-                    throw new Exception("Invalid animation command");
-                }
             }
         }
     }
