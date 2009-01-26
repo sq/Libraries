@@ -37,7 +37,7 @@ namespace Squared.Game {
         }
 
         public override string ToString () {
-            return String.Format("{{{0} - {1}}}", TopLeft, BottomRight);
+            return String.Format("{{{0}, {1}}} - {{{1}, {2}}}", TopLeft.X, TopLeft.Y, BottomRight.X, BottomRight.Y);
         }
 
         public static Bounds FromPoints (IEnumerable<Vector2> points) {

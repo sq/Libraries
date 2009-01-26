@@ -39,8 +39,8 @@ namespace Squared.Game {
             bool create;
 
             public GetSectorsFromBounds (SpatialCollection<T> collection, Bounds bounds, bool create) {
-                tl = collection.GetIndexFromPoint(bounds.TopLeft);
-                br = collection.GetIndexFromPoint(bounds.BottomRight);
+                tl = collection.GetIndexFromPoint(bounds.TopLeft, false);
+                br = collection.GetIndexFromPoint(bounds.BottomRight, true);
                 item = new SectorIndex();
                 this.create = create;
                 this.collection = collection;
@@ -190,8 +190,11 @@ namespace Squared.Game {
             _Sectors = new Dictionary<Squared.Util.Pair<int>, Sector>(new PairComparer<int>());
         }
 
-        internal SectorIndex GetIndexFromPoint (Vector2 point) {
-            return new SectorIndex((int)Math.Floor(point.X / _Subdivision), (int)Math.Floor(point.Y / _Subdivision));
+        internal SectorIndex GetIndexFromPoint (Vector2 point, bool roundUp) {
+            if (roundUp)
+                return new SectorIndex((int)Math.Ceiling(point.X / _Subdivision), (int)Math.Ceiling(point.Y / _Subdivision));
+            else
+                return new SectorIndex((int)Math.Floor(point.X / _Subdivision), (int)Math.Floor(point.Y / _Subdivision));
         }
 
         internal Sector GetSectorFromIndex (SectorIndex index) {
