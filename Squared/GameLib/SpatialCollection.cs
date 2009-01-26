@@ -22,7 +22,7 @@ namespace Squared.Game {
     public class SpatialCollection<T> : IEnumerable<T>
         where T : class, IHasBounds {
 
-        internal class Sector : List<T> {
+        internal class Sector : Dictionary<T, bool> {
             public SectorIndex Index;
 
             public Sector (SectorIndex index) 
@@ -97,16 +97,17 @@ namespace Squared.Game {
             BufferPool<T>.Buffer _SeenList;
             GetSectorsFromBounds _Sectors;
             Sector _Sector;
+            Dictionary<T, bool>.KeyCollection.Enumerator _SectorEnumerator;
             T _Current;
-            int _Index, _SeenCount, _Count;
+            int _SeenCount;
 
             public ItemBoundsEnumerator (SpatialCollection<T> collection, Bounds bounds) {
                 _SeenList = BufferPool<T>.Allocate(collection.Count);
                 _Sectors = new SpatialCollection<T>.GetSectorsFromBounds(collection, bounds, false);
                 _Sector = null;
-                _Index = 0;
-                _Count = _SeenCount = 0;
+                _SeenCount = 0;
                 _Current = null;
+                _SectorEnumerator = default(Dictionary<T, bool>.KeyCollection.Enumerator);
             }
 
             public T Current {
@@ -126,22 +127,21 @@ namespace Squared.Game {
             public bool MoveNext () {
                 _Current = null;
                 while (_Current == null) {
-                    _Index += 1;
-
-                    while ((_Sector == null) || (_Index >= _Count)) {
+                    while (_Sector == null) {
                         if (_Sectors.MoveNext()) {
                             _Sector = _Sectors.Current;
-                            _Index = 0;
-                            if (_Sector != null)
-                                _Count = _Sector.Count;
-                            else
-                                _Count = 0;
+                            if (_Sector != null) {
+                                _SectorEnumerator = _Sector.Keys.GetEnumerator();
+
+                                if (!_SectorEnumerator.MoveNext())
+                                    _Sector = null;
+                            }
                         } else {
                             return false;
                         }
                     }
 
-                    _Current = _Sector[_Index];
+                    _Current = _SectorEnumerator.Current;
 
                     for (int i = 0; i < _SeenCount; i++) {
                         if (_SeenList.Data[i] == _Current) {
@@ -149,6 +149,9 @@ namespace Squared.Game {
                             break;
                         }
                     }
+
+                    if (!_SectorEnumerator.MoveNext())
+                        _Sector = null;
                 }
 
                 _SeenList.Data[_SeenCount] = _Current;
@@ -160,7 +163,7 @@ namespace Squared.Game {
             public void Reset () {
                 _Sectors.Reset();
                 _Sector = null;
-                _Index = 0;
+                _SectorEnumerator = default(Dictionary<T, bool>.KeyCollection.Enumerator);
             }
 
             public IEnumerator<T> GetEnumerator () {
@@ -207,7 +210,7 @@ namespace Squared.Game {
 
             using (var e = new GetSectorsFromBounds(this, item.Bounds, true))
             while (e.MoveNext())
-                e.Current.Add(item);
+                e.Current.Add(item, false);
         }
 
         internal void InternalRemove (T item, Bounds bounds) {
@@ -249,7 +252,7 @@ namespace Squared.Game {
 
             using (var e = new GetSectorsFromBounds(this, item.Bounds, true))
             while (e.MoveNext())
-                e.Current.Add(item);
+                e.Current.Add(item, false);
         }
 
         public ItemBoundsEnumerator GetItemsFromBounds (Bounds bounds) {
