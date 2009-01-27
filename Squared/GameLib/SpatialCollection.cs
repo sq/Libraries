@@ -196,12 +196,7 @@ namespace Squared.Game {
         }
 
         public SectorIndex GetIndexFromPoint (Vector2 point) {
-            /*
-            if (roundUp)
-                return new SectorIndex((int)Math.Ceiling(point.X / _Subdivision), (int)Math.Ceiling(point.Y / _Subdivision));
-            else
-             */
-                return new SectorIndex((int)Math.Floor(point.X / _Subdivision), (int)Math.Floor(point.Y / _Subdivision));
+            return new SectorIndex((int)Math.Floor(point.X / _Subdivision), (int)Math.Floor(point.Y / _Subdivision));
         }
 
         internal Sector GetSectorFromIndex (SectorIndex index) {
@@ -213,6 +208,17 @@ namespace Squared.Game {
             }
 
             return sector;
+        }
+
+        public bool TryGetBounds (T item, out Bounds bounds) {
+            ItemInfo info;
+            if (_Items.TryGetValue(item, out info)) {
+                bounds = info.Bounds;
+                return true;
+            }
+
+            bounds = default(Bounds);
+            return false;
         }
 
         public void Add (T item) {

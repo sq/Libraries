@@ -37,7 +37,7 @@ namespace Squared.Game {
         }
 
         public override string ToString () {
-            return String.Format("{{{0}, {1}}} - {{{1}, {2}}}", TopLeft.X, TopLeft.Y, BottomRight.X, BottomRight.Y);
+            return String.Format("{{{0}, {1}}} - {{{2}, {3}}}", TopLeft.X, TopLeft.Y, BottomRight.X, BottomRight.Y);
         }
 
         public Bounds ApplyVelocity (Vector2 velocity) {
@@ -63,7 +63,7 @@ namespace Squared.Game {
                 (TopLeft.Y <= rhs.BottomRight.Y);
         }
 
-        public static Bounds FromPoints (IEnumerable<Vector2> points) {
+        public static Bounds FromPoints (params Vector2[] points) {
             float minX = float.MaxValue, minY = float.MaxValue;
             float maxX = float.MinValue, maxY = float.MinValue;
 
@@ -75,10 +75,6 @@ namespace Squared.Game {
             }
 
             return new Bounds { TopLeft = new Vector2(minX, minY), BottomRight = new Vector2(maxX, maxY) };
-        }
-
-        public static Bounds FromPoints (params Vector2[] points) {
-            return FromPoints((IEnumerable<Vector2>)points);
         }
     }
 
@@ -157,7 +153,10 @@ namespace Squared.Game {
                     _BoundsDirty = false;
                 }
 
-                return new Bounds(_Bounds.TopLeft + Position, _Bounds.BottomRight + Position);
+                var result = _Bounds;
+                result.TopLeft = result.TopLeft + Position;
+                result.BottomRight = result.BottomRight + Position;
+                return result;
             }
         }
 
