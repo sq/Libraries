@@ -212,9 +212,8 @@ namespace Squared.Game {
             Assert.AreEqual(Sorted( a, b, c ), Sorted(Collection.GetItemsFromBounds(b.Bounds).ToArray()));
             Assert.AreEqual(Sorted( b, c ), Sorted(Collection.GetItemsFromBounds(c.Bounds).ToArray()));
 
-            var oldBounds = a.Bounds;
             a.Bounds = new Bounds(new Vector2(24, 24), new Vector2(47, 47));
-            Collection.UpdateItemBounds(a, oldBounds);
+            Collection.UpdateItemBounds(a);
 
             Assert.AreEqual(Sorted( b, c, a ), Sorted(Collection.GetItemsFromBounds(a.Bounds).ToArray()));
             Assert.AreEqual(Sorted( b, c, a ), Sorted(Collection.GetItemsFromBounds(b.Bounds).ToArray()));

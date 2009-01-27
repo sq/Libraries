@@ -40,6 +40,29 @@ namespace Squared.Game {
             return String.Format("{{{0}, {1}}} - {{{1}, {2}}}", TopLeft.X, TopLeft.Y, BottomRight.X, BottomRight.Y);
         }
 
+        public Bounds ApplyVelocity (Vector2 velocity) {
+            var bounds = this;
+
+            if (velocity.X < 0)
+                bounds.TopLeft.X += velocity.X;
+            else
+                bounds.BottomRight.X += velocity.X;
+
+            if (velocity.Y < 0)
+                bounds.TopLeft.Y += velocity.Y;
+            else
+                bounds.BottomRight.Y += velocity.Y;
+
+            return bounds;
+        }
+
+        public bool Intersects (ref Bounds rhs) {
+            return (rhs.TopLeft.X <= BottomRight.X) && 
+                (TopLeft.X <= rhs.BottomRight.X) && 
+                (rhs.TopLeft.Y <= BottomRight.Y) && 
+                (TopLeft.Y <= rhs.BottomRight.Y);
+        }
+
         public static Bounds FromPoints (IEnumerable<Vector2> points) {
             float minX = float.MaxValue, minY = float.MaxValue;
             float maxX = float.MinValue, maxY = float.MinValue;
