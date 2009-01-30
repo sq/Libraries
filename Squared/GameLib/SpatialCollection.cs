@@ -8,14 +8,25 @@ using Squared.Util;
 using System.Threading;
 
 namespace Squared.Game {
-    public class PairComparer<T> : IEqualityComparer<Pair<T>>
-        where T : struct, IComparable<T> {
-        public bool Equals (Pair<T> x, Pair<T> y) {
-            return (x.First.CompareTo(y.First) == 0) && (x.Second.CompareTo(y.Second) == 0);
+    public class IntPairComparer : IEqualityComparer<Pair<int>> {
+        public bool Equals (Pair<int> x, Pair<int> y) {
+            return (x.First == y.First) && (x.Second == y.Second);
         }
 
-        public int GetHashCode (Pair<T> obj) {
-            return obj.First.GetHashCode() + obj.Second.GetHashCode();
+        public int GetHashCode (Pair<int> obj) {
+            return obj.First + (obj.Second << 16);
+        }
+    }
+
+    internal class ReferenceComparer<T> : IEqualityComparer<T>
+        where T : class {
+
+        public bool Equals (T x, T y) {
+            return (x == y);
+        }
+
+        public int GetHashCode (T obj) {
+            return obj.GetHashCode();
         }
     }
     
@@ -25,8 +36,12 @@ namespace Squared.Game {
         internal class Sector : Dictionary<T, bool> {
             public SectorIndex Index;
 
+            public Sector ()
+                : base() {
+            }
+
             public Sector (SectorIndex index) 
-                : base () {
+                : base (new ReferenceComparer<T>()) {
                 Index = index;
             }
         }
@@ -175,11 +190,14 @@ namespace Squared.Game {
         }
 
         public const float DefaultSubdivision = 512.0f;
+        public const int InitialFreeListSize = 8;
+        public const int MaxFreeListSize = 32;
 
         internal float _Subdivision;
-        internal Dictionary<T, ItemInfo> _Items = new Dictionary<T, ItemInfo>();
+        internal Dictionary<T, ItemInfo> _Items = new Dictionary<T, ItemInfo>(new ReferenceComparer<T>());
         internal Dictionary<SectorIndex, Sector> _Sectors;
-        internal Dictionary<T, bool> _SeenList = new Dictionary<T, bool>();
+        internal Dictionary<T, bool> _SeenList = new Dictionary<T, bool>(new ReferenceComparer<T>());
+        internal List<Sector> _FreeList = new List<Sector>();
 
         public SpatialCollection ()
             : this(DefaultSubdivision) {
@@ -187,7 +205,10 @@ namespace Squared.Game {
 
         public SpatialCollection (float subdivision) {
             _Subdivision = subdivision;
-            _Sectors = new Dictionary<Squared.Util.Pair<int>, Sector>(new PairComparer<int>());
+            _Sectors = new Dictionary<Squared.Util.Pair<int>, Sector>(new IntPairComparer());
+
+            for (int i = 0; i < InitialFreeListSize; i++)
+                _FreeList.Add(new Sector());
         }
 
         internal Dictionary<T, bool> GetSeenList () {
@@ -203,7 +224,14 @@ namespace Squared.Game {
             Sector sector = null;
 
             if (!_Sectors.TryGetValue(index, out sector)) {
-                sector = new Sector(index);
+                if (_FreeList.Count == 0) {
+                    sector = new Sector(index);
+                } else {
+                    sector = _FreeList[_FreeList.Count - 1];
+                    _FreeList.RemoveAt(_FreeList.Count - 1);
+                    sector.Index = index;
+                }
+
                 _Sectors[index] = sector;
             }
 
@@ -236,8 +264,12 @@ namespace Squared.Game {
                 var sector = e.Current;
                 sector.Remove(item);
 
-                if (sector.Count == 0)
+                if (sector.Count == 0) {
+                    if (_FreeList.Count < MaxFreeListSize)
+                        _FreeList.Add(sector);
+
                     _Sectors.Remove(sector.Index);
+                }
             }
         }
 
