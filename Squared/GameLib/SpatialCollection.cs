@@ -53,15 +53,19 @@ namespace Squared.Game {
             SpatialCollection<T> collection;
             bool create;
 
-            public GetSectorsFromBounds (SpatialCollection<T> collection, Bounds bounds, bool create) {
-                tl = collection.GetIndexFromPoint(bounds.TopLeft);
-                br = collection.GetIndexFromPoint(bounds.BottomRight);
+            public GetSectorsFromBounds (SpatialCollection<T> collection, SectorIndex tl_, SectorIndex br_, bool create) {
+                tl = tl_;
+                br = br_;
                 item = new SectorIndex();
                 this.create = create;
                 this.collection = collection;
-                x = tl.First - 1;
-                y = tl.Second;
+                x = tl_.First - 1;
+                y = tl_.Second;
                 current = null;
+            }
+
+            public GetSectorsFromBounds (SpatialCollection<T> collection, Bounds bounds, bool create) 
+                : this (collection, collection.GetIndexFromPoint(bounds.TopLeft), collection.GetIndexFromPoint(bounds.BottomRight), create) {
             }
 
             public Sector Current {
@@ -118,6 +122,14 @@ namespace Squared.Game {
             public ItemBoundsEnumerator (SpatialCollection<T> collection, Bounds bounds) {
                 _SeenList = collection.GetSeenList();
                 _Sectors = new SpatialCollection<T>.GetSectorsFromBounds(collection, bounds, false);
+                _Sector = null;
+                _Current = null;
+                _SectorEnumerator = default(Dictionary<T, bool>.KeyCollection.Enumerator);
+            }
+
+            public ItemBoundsEnumerator (SpatialCollection<T> collection, SectorIndex tl, SectorIndex br) {
+                _SeenList = collection.GetSeenList();
+                _Sectors = new SpatialCollection<T>.GetSectorsFromBounds(collection, tl, br, false);
                 _Sector = null;
                 _Current = null;
                 _SectorEnumerator = default(Dictionary<T, bool>.KeyCollection.Enumerator);
@@ -183,9 +195,12 @@ namespace Squared.Game {
 
         public struct ItemInfo {
             public Bounds Bounds;
+            public SectorIndex TopLeft, BottomRight;
 
-            public ItemInfo (IHasBounds item) {
+            public ItemInfo (IHasBounds item, SpatialCollection<T> parent) {
                 Bounds = item.Bounds;
+                TopLeft = parent.GetIndexFromPoint(Bounds.TopLeft);
+                BottomRight = parent.GetIndexFromPoint(Bounds.BottomRight);
             }
         }
 
@@ -250,7 +265,7 @@ namespace Squared.Game {
         }
 
         public void Add (T item) {
-            var info = new ItemInfo(item);
+            var info = new ItemInfo(item, this);
             _Items.Add(item, info);
 
             using (var e = new GetSectorsFromBounds(this, info.Bounds, true))
@@ -287,11 +302,21 @@ namespace Squared.Game {
         public void UpdateItemBounds (T item) {
             ItemInfo info;
             if (_Items.TryGetValue(item, out info)) {
-                InternalRemove(item, ref info);
-                info.Bounds = item.Bounds;
-                _Items[item] = info;
+                var newInfo = info;
+                newInfo.Bounds = item.Bounds;
+                newInfo.TopLeft = GetIndexFromPoint(newInfo.Bounds.TopLeft);
+                newInfo.BottomRight = GetIndexFromPoint(newInfo.Bounds.BottomRight);
+                _Items[item] = newInfo;
 
-                using (var e = new GetSectorsFromBounds(this, info.Bounds, true))
+                if ((newInfo.TopLeft.First == info.TopLeft.First) &&
+                    (newInfo.TopLeft.Second == info.TopLeft.Second) && 
+                    (newInfo.BottomRight.First == info.BottomRight.First) &&
+                    (newInfo.BottomRight.Second == info.BottomRight.Second))
+                    return;
+
+                InternalRemove(item, ref info);
+
+                using (var e = new GetSectorsFromBounds(this, newInfo.TopLeft, newInfo.BottomRight, true))
                 while (e.MoveNext())
                     e.Current.Add(item, false);
             }
