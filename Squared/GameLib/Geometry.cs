@@ -56,11 +56,15 @@ namespace Squared.Game {
             return bounds;
         }
 
-        public bool Intersects (ref Bounds rhs) {
-            return (rhs.TopLeft.X <= BottomRight.X) && 
-                (TopLeft.X <= rhs.BottomRight.X) && 
-                (rhs.TopLeft.Y <= BottomRight.Y) && 
-                (TopLeft.Y <= rhs.BottomRight.Y);
+        public bool Intersects (Bounds rhs) {
+            return Intersect(ref this, ref rhs);
+        }
+
+        public static bool Intersect (ref Bounds lhs, ref Bounds rhs) {
+            return (rhs.TopLeft.X <= lhs.BottomRight.X) &&
+                   (lhs.TopLeft.X <= rhs.BottomRight.X) &&
+                   (rhs.TopLeft.Y <= lhs.BottomRight.Y) &&
+                   (lhs.TopLeft.Y <= rhs.BottomRight.Y);
         }
 
         public static Bounds FromPoints (params Vector2[] points) {

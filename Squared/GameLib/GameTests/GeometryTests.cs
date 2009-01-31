@@ -192,8 +192,18 @@ namespace Squared.Game {
         }
 
         internal BoundedObject[] Sorted (params BoundedObject[] arr) {
-            Array.Sort(arr, new BoundedObject.Comparer());
-            return arr;
+            var result = new BoundedObject[arr.Length];
+            Array.Copy(arr, result, arr.Length);
+            Array.Sort(result, new BoundedObject.Comparer());
+            return result;
+        }
+
+        internal BoundedObject[] Sorted (params SpatialCollection<BoundedObject>.ItemInfo[] arr) {
+            var result = new BoundedObject[arr.Length];
+            for (int i = 0; i < arr.Length; i++)
+                result[i] = arr[i].Item;
+            Array.Sort(result, new BoundedObject.Comparer());
+            return result;
         }
 
         [Test]

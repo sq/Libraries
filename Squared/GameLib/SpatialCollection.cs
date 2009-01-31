@@ -33,7 +33,7 @@ namespace Squared.Game {
     public class SpatialCollection<T> : IEnumerable<T>
         where T : class, IHasBounds {
 
-        internal class Sector : Dictionary<T, bool> {
+        internal class Sector : Dictionary<ItemInfo, bool> {
             public SectorIndex Index;
 
             public Sector ()
@@ -41,7 +41,7 @@ namespace Squared.Game {
             }
 
             public Sector (SectorIndex index) 
-                : base (new ReferenceComparer<T>()) {
+                : base (new ReferenceComparer<ItemInfo>()) {
                 Index = index;
             }
         }
@@ -112,30 +112,33 @@ namespace Squared.Game {
             }
         }
 
-        public struct ItemBoundsEnumerator : IEnumerator<T>, IEnumerable<T> {
-            Dictionary<T, bool> _SeenList;
+        public struct ItemBoundsEnumerator : IEnumerator<ItemInfo>, IEnumerable<ItemInfo> {
             GetSectorsFromBounds _Sectors;
             Sector _Sector;
-            Dictionary<T, bool>.KeyCollection.Enumerator _SectorEnumerator;
-            T _Current;
+            Dictionary<ItemInfo, bool>.KeyCollection.Enumerator _SectorEnumerator;
+            ItemInfo _Current;
+            int _Flag;
+            SpatialCollection<T> _Collection;
 
             public ItemBoundsEnumerator (SpatialCollection<T> collection, Bounds bounds) {
-                _SeenList = collection.GetSeenList();
+                _Collection = collection;
+                _Flag = collection.GetNextFlag();
                 _Sectors = new SpatialCollection<T>.GetSectorsFromBounds(collection, bounds, false);
                 _Sector = null;
                 _Current = null;
-                _SectorEnumerator = default(Dictionary<T, bool>.KeyCollection.Enumerator);
+                _SectorEnumerator = default(Dictionary<ItemInfo, bool>.KeyCollection.Enumerator);
             }
 
             public ItemBoundsEnumerator (SpatialCollection<T> collection, SectorIndex tl, SectorIndex br) {
-                _SeenList = collection.GetSeenList();
+                _Collection = collection;
+                _Flag = collection.GetNextFlag();
                 _Sectors = new SpatialCollection<T>.GetSectorsFromBounds(collection, tl, br, false);
                 _Sector = null;
                 _Current = null;
-                _SectorEnumerator = default(Dictionary<T, bool>.KeyCollection.Enumerator);
+                _SectorEnumerator = default(Dictionary<ItemInfo, bool>.KeyCollection.Enumerator);
             }
 
-            public T Current {
+            public ItemInfo Current {
                 get { return _Current; }
             }
 
@@ -166,25 +169,25 @@ namespace Squared.Game {
                     }
 
                     _Current = _SectorEnumerator.Current;
-                    if (_SeenList.ContainsKey(_Current))
+                    if (_Current.Flag >= _Flag)
                         _Current = null;
 
                     if (!_SectorEnumerator.MoveNext())
                         _Sector = null;
                 }
 
-                _SeenList.Add(_Current, true);
+                _Current.Flag = _Flag;
                 return true;
             }
 
             public void Reset () {
                 _Sectors.Reset();
                 _Sector = null;
-                _SectorEnumerator = default(Dictionary<T, bool>.KeyCollection.Enumerator);
-                _SeenList.Clear();
+                _SectorEnumerator = default(Dictionary<ItemInfo, bool>.KeyCollection.Enumerator);
+                _Flag = _Collection.GetNextFlag();
             }
 
-            public IEnumerator<T> GetEnumerator () {
+            public IEnumerator<ItemInfo> GetEnumerator () {
                 return this;
             }
 
@@ -193,14 +196,18 @@ namespace Squared.Game {
             }
         }
 
-        public struct ItemInfo {
+        public class ItemInfo {
+            public T Item;
             public Bounds Bounds;
-            public SectorIndex TopLeft, BottomRight;
+            internal SectorIndex TopLeft, BottomRight;
+            internal int Flag;
 
-            public ItemInfo (IHasBounds item, SpatialCollection<T> parent) {
+            internal ItemInfo (T item, SpatialCollection<T> parent) {
+                Item = item;
                 Bounds = item.Bounds;
                 TopLeft = parent.GetIndexFromPoint(Bounds.TopLeft);
                 BottomRight = parent.GetIndexFromPoint(Bounds.BottomRight);
+                Flag = 0;
             }
         }
 
@@ -211,8 +218,8 @@ namespace Squared.Game {
         internal float _Subdivision;
         internal Dictionary<T, ItemInfo> _Items = new Dictionary<T, ItemInfo>(new ReferenceComparer<T>());
         internal Dictionary<SectorIndex, Sector> _Sectors;
-        internal Dictionary<T, bool> _SeenList = new Dictionary<T, bool>(new ReferenceComparer<T>());
         internal List<Sector> _FreeList = new List<Sector>();
+        internal int _Flag = 0;
 
         public SpatialCollection ()
             : this(DefaultSubdivision) {
@@ -224,11 +231,6 @@ namespace Squared.Game {
 
             for (int i = 0; i < InitialFreeListSize; i++)
                 _FreeList.Add(new Sector());
-        }
-
-        internal Dictionary<T, bool> GetSeenList () {
-            _SeenList.Clear();
-            return _SeenList;
         }
 
         public SectorIndex GetIndexFromPoint (Vector2 point) {
@@ -253,28 +255,17 @@ namespace Squared.Game {
             return sector;
         }
 
-        public bool TryGetBounds (T item, out Bounds bounds) {
-            ItemInfo info;
-            if (_Items.TryGetValue(item, out info)) {
-                bounds = info.Bounds;
-                return true;
-            }
-
-            bounds = default(Bounds);
-            return false;
-        }
-
         public void Add (T item) {
             var info = new ItemInfo(item, this);
             _Items.Add(item, info);
 
             using (var e = new GetSectorsFromBounds(this, info.Bounds, true))
             while (e.MoveNext())
-                e.Current.Add(item, false);
+                e.Current.Add(info, false);
         }
 
-        internal void InternalRemove (T item, ref ItemInfo info) {
-            using (var e = new GetSectorsFromBounds(this, info.Bounds, false))
+        internal void InternalRemove (ItemInfo item, SectorIndex topLeft, SectorIndex bottomRight) {
+            using (var e = new GetSectorsFromBounds(this, topLeft, bottomRight, false))
             while (e.MoveNext()) {
                 var sector = e.Current;
                 sector.Remove(item);
@@ -291,7 +282,7 @@ namespace Squared.Game {
         public bool Remove (T item) {
             ItemInfo info;
             if (_Items.TryGetValue(item, out info)) {
-                InternalRemove(item, ref info);
+                InternalRemove(info, info.TopLeft, info.BottomRight);
                 _Items.Remove(item);
                 return true;
             } else {
@@ -302,23 +293,24 @@ namespace Squared.Game {
         public void UpdateItemBounds (T item) {
             ItemInfo info;
             if (_Items.TryGetValue(item, out info)) {
-                var newInfo = info;
-                newInfo.Bounds = item.Bounds;
-                newInfo.TopLeft = GetIndexFromPoint(newInfo.Bounds.TopLeft);
-                newInfo.BottomRight = GetIndexFromPoint(newInfo.Bounds.BottomRight);
-                _Items[item] = newInfo;
+                var oldBounds = info.Bounds;
+                var oldTopLeft = info.TopLeft;
+                var oldBottomRight = info.BottomRight;
+                info.Bounds = item.Bounds;
+                info.TopLeft = GetIndexFromPoint(info.Bounds.TopLeft);
+                info.BottomRight = GetIndexFromPoint(info.Bounds.BottomRight);
 
-                if ((newInfo.TopLeft.First == info.TopLeft.First) &&
-                    (newInfo.TopLeft.Second == info.TopLeft.Second) && 
-                    (newInfo.BottomRight.First == info.BottomRight.First) &&
-                    (newInfo.BottomRight.Second == info.BottomRight.Second))
+                if ((oldTopLeft.First == info.TopLeft.First) &&
+                    (oldTopLeft.Second == info.TopLeft.Second) && 
+                    (oldBottomRight.First == info.BottomRight.First) &&
+                    (oldBottomRight.Second == info.BottomRight.Second))
                     return;
 
-                InternalRemove(item, ref info);
+                InternalRemove(info, oldTopLeft, oldBottomRight);
 
-                using (var e = new GetSectorsFromBounds(this, newInfo.TopLeft, newInfo.BottomRight, true))
+                using (var e = new GetSectorsFromBounds(this, info.TopLeft, info.BottomRight, true))
                 while (e.MoveNext())
-                    e.Current.Add(item, false);
+                    e.Current.Add(info, false);
             }
         }
 
@@ -338,6 +330,10 @@ namespace Squared.Game {
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
             return _Items.Keys.GetEnumerator();
+        }
+
+        internal int GetNextFlag () {
+            return ++_Flag;
         }
     }
 }
