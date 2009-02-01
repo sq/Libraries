@@ -31,6 +31,18 @@ namespace Squared.Game {
         public Vector2 TopLeft;
         public Vector2 BottomRight;
 
+        public Vector2 TopRight {
+            get {
+                return new Vector2(BottomRight.X, TopLeft.Y);
+            }
+        }
+
+        public Vector2 BottomLeft {
+            get {
+                return new Vector2(TopLeft.X, BottomRight.Y);
+            }
+        }
+
         public Bounds (Vector2 a, Vector2 b) {
             TopLeft = new Vector2(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y));
             BottomRight = new Vector2(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y));
@@ -88,12 +100,14 @@ namespace Squared.Game {
         protected Vector2[] _TranslatedVertices;
         protected bool _Dirty = true, _BoundsDirty = true;
         protected Bounds _Bounds;
+        public readonly int Count;
 
         internal Vector2[] AxisCache = null;
         
         public Polygon (Vector2[] vertices) {
             _Vertices = vertices;
             _TranslatedVertices = new Vector2[vertices.Length];
+            Count = vertices.Length;
         }
 
         protected virtual void ClearDirtyFlag () {
@@ -103,12 +117,6 @@ namespace Squared.Game {
             }
 
             _Dirty = false;
-        }
-
-        public int Count {
-            get {
-                return _Vertices.Length;
-            }
         }
 
         public Vector2 Position {
@@ -248,10 +256,10 @@ namespace Squared.Game {
         }
 
         public static Interval ProjectOntoAxis (Vector2 axis, Polygon polygon) {
-            Interval result;
             var vertices = polygon.GetVertices();
             float d = Vector2.Dot(axis, vertices[0]);
-            result = new Interval(d, d);
+            Interval result = new Interval();
+            result.Min = result.Max = d;
 
             int length = polygon.Count;
             for (int i = 1; i < length; i++) {
@@ -429,7 +437,7 @@ namespace Squared.Game {
             var velocityDistance = velocityA.Length();
             var velocityAxis = Vector2.Normalize(velocityA);
 
-            Interval intervalA, intervalB;
+            Interval intervalA, intervalB, newIntervalA;
             float minDistance = float.MaxValue;
 
             int bufferSize = polygonA.Count + polygonB.Count + 4;
@@ -459,7 +467,9 @@ namespace Squared.Game {
 
                     Vector2.Dot(ref axis, ref velocityA, out velocityProjection);
 
-                    var newIntervalA = new Interval(intervalA.Min + velocityProjection, intervalA.Max + velocityProjection);
+                    newIntervalA = intervalA;
+                    newIntervalA.Min += velocityProjection;
+                    newIntervalA.Max += velocityProjection;
 
                     var intersectionDistance = newIntervalA.GetDistance(intervalB);
                     intersects = intersectionDistance < 0;
