@@ -166,7 +166,10 @@ namespace Squared.Util {
         }
 
         public double Seconds {
-            get { return CurrentTime / Squared.Util.Time.SecondInTicks; }
+            get { 
+                decimal ticks = CurrentTime;
+                return (double)(ticks / Squared.Util.Time.SecondInTicks); 
+            }
         }
 
         public void Advance (long ticks) {

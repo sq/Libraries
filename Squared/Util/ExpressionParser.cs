@@ -28,7 +28,7 @@ namespace Squared.Util.Expressions {
 
         public Parser () {
             _Regex = new Regex(
-                @"((?'number'(-?)[0-9]+(\.[0-9]+)?)|(?'identifier'[_A-Za-z][A-Za-z0-9_]*)|(?'operator'<=|>=|!=|[\-+/*&|^!><=.%?:])|(?'paren'[(){}]))|(?'comma',)",
+                @"((?'number'(-?)[0-9]+(\.[0-9]+)?)|(?'identifier'[_A-Za-z][A-Za-z0-9_]*)|(?'operator'<=|>=|!=|[\-+/*&|^!><=.%?:@])|(?'paren'[(){}]))|(?'comma',)",
                 RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture
             );
 
