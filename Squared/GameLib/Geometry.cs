@@ -95,6 +95,10 @@ namespace Squared.Game {
     }
 
     public class Polygon : IEnumerable<Vector2>, IHasBounds {
+        public struct Edge {
+            public Vector2 Start, End;
+        }
+
         private Vector2 _Position = new Vector2(0, 0);
         protected Vector2[] _Vertices;
         protected Vector2[] _TranslatedVertices;
@@ -184,6 +188,14 @@ namespace Squared.Game {
                 ClearDirtyFlag();
 
             return _TranslatedVertices.GetEnumerator();
+        }
+
+        public Edge GetEdge (int i) {
+            int j = i + 1;
+            if (j >= _Vertices.Length)
+                j = 0;
+
+            return new Edge { Start = _TranslatedVertices[i], End = _TranslatedVertices[j] };
         }
     }
 

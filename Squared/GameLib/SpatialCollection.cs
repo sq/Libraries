@@ -79,6 +79,12 @@ namespace Squared.Game {
                 get { return current; }
             }
 
+            public bool GetNext (out Sector value) {
+                var result = MoveNext();
+                value = current;
+                return result;
+            }
+
             public bool MoveNext () {
                 current = null;
 
@@ -151,12 +157,17 @@ namespace Squared.Game {
                 get { return _Current; }
             }
 
+            public bool GetNext (out ItemInfo value) {
+                var result = MoveNext();
+                value = _Current;
+                return result;
+            }
+
             public bool MoveNext () {
                 _Current = null;
                 while (_Current == null) {
                     while (_Sector == null) {
-                        if (_Sectors.MoveNext()) {
-                            _Sector = _Sectors.Current;
+                        if (_Sectors.GetNext(out _Sector)) {
                             if (_Sector != null) {
                                 _SectorEnumerator = _Sector.Keys.GetEnumerator();
 
