@@ -92,6 +92,10 @@ namespace Squared.Game {
 
             return new Bounds { TopLeft = new Vector2(minX, minY), BottomRight = new Vector2(maxX, maxY) };
         }
+
+        public Bounds Expand (float x, float y) {
+            return new Bounds { TopLeft = new Vector2(TopLeft.X - x, TopLeft.Y - y), BottomRight = new Vector2(BottomRight.X + x, BottomRight.Y + y) };
+        }
     }
 
     public class Polygon : IEnumerable<Vector2>, IHasBounds {
@@ -207,6 +211,18 @@ namespace Squared.Game {
             return (float)((lhs.X * rhs.X) + (lhs.Y * rhs.Y));
         }
 
+        public static bool PointInPolygon (Vector2 pt, Polygon polygon) {
+            int numIntersections = 0;
+            var rayEnd = pt + new Vector2(999999, 0);
+            Vector2 temp;
+            for (int i = 0; i < polygon.Count; i++) {
+                var edge = polygon.GetEdge(i);
+                if (DoLinesIntersect(pt, rayEnd, edge.Start, edge.End, out temp))
+                    numIntersections += 1;
+            }
+            return (numIntersections % 2) == 1;
+        }
+
         public static bool PointInTriangle (Vector2 pt, params Vector2[] triangle) {
             if (triangle.Length != 3)
                 throw new ArgumentException("Triangle must contain 3 vertices", "triangle");
@@ -231,6 +247,13 @@ namespace Squared.Game {
             var ll = new LinkedList<Vector2>();
             foreach (var pt in polygon)
                 ll.AddLast(pt);
+
+            if (ll.Count < 3)
+                yield break;
+            else if (ll.Count == 3) {
+                yield return ll.ToArray();
+                yield break;
+            }
 
             bool done = false;
             while (!done) {

@@ -331,6 +331,10 @@ namespace Squared.Game {
             }
         }
 
+        public ItemBoundsEnumerator GetItemsFromSectors (SectorIndex tl, SectorIndex br) {
+            return new ItemBoundsEnumerator(this, tl, br);
+        }
+
         public ItemBoundsEnumerator GetItemsFromBounds (Bounds bounds) {
             return new ItemBoundsEnumerator(this, bounds);
         }
