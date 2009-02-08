@@ -301,6 +301,12 @@ namespace Squared.Game {
             }
         }
 
+        public void Clear () {
+            _Items.Clear();
+            _Sectors.Clear();
+            _FreeList.Clear();
+        }
+
         public void UpdateItemBounds (T item) {
             ItemInfo info;
             if (_Items.TryGetValue(item, out info)) {
