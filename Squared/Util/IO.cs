@@ -65,9 +65,10 @@ namespace Squared.Util {
     }
 
     public class CharacterBuffer : IDisposable {
-        public static int DefaultBufferSize = 512;
+        public static int DefaultBufferSize = 1024;
 
         private BufferPool<char>.Buffer _Buffer;
+        private char[] _Data;
         private int _Length = 0;
 
         public CharacterBuffer () {
@@ -83,6 +84,7 @@ namespace Squared.Util {
             }
 
             _Buffer = temp;
+            _Data = _Buffer.Data;
         }
 
         public string DisposeAndGetContents () {
@@ -93,24 +95,39 @@ namespace Squared.Util {
 
         public void Dispose () {
             _Length = 0;
-            if (_Buffer.Data != null) {
+            if (_Data != null)
                 _Buffer.Dispose();
-            }
+            _Data = null;
         }
 
-        public void Append (char character) {
-            int insertPosition = _Length;
-            int newLength = _Length + 1;
-            int bufferSize = _Buffer.Data.Length;
+        public void Grow (int extraCharactersNeeded) {
+            int newLength = _Length + extraCharactersNeeded;
+            int bufferSize = _Data.Length;
 
             while (bufferSize < newLength)
                 bufferSize *= 2;
 
-            if (bufferSize > _Buffer.Data.Length)
+            if (bufferSize > _Data.Length)
                 ResizeBuffer(bufferSize);
+        }
 
-            _Length = newLength;
-            _Buffer.Data[insertPosition] = character;
+        public void FastAppend (char character) {
+            _Data[_Length] = character;
+            _Length += 1;
+        }
+
+        public void FastAppend (char[] source, int offset, int count) {
+            Array.Copy(source, offset, _Data, _Length, count);
+            _Length += count;
+        }
+
+        public void Append (char character) {
+            int bufferSize = _Data.Length;
+            if (_Length == bufferSize)
+                ResizeBuffer(bufferSize * 2);
+
+            _Data[_Length] = character;
+            _Length += 1;
         }
 
         public void Remove (int position, int length) {
@@ -119,7 +136,7 @@ namespace Squared.Util {
             int copySize = _Length - position;
 
             if ((position + copySize) < _Length)
-                Array.Copy(_Buffer.Data, sourceIndex, _Buffer.Data, position, copySize);
+                Array.Copy(_Data, sourceIndex, _Data, position, copySize);
 
             _Length = newLength;
         }
@@ -129,21 +146,21 @@ namespace Squared.Util {
         }
 
         public override string ToString () {
-            return new String(_Buffer.Data, 0, _Length);
+            return new String(_Data, 0, _Length);
         }
 
         public char this[int index] {
             get {
-                return _Buffer.Data[index];
+                return _Data[index];
             }
             set {
-                _Buffer.Data[index] = value;
+                _Data[index] = value;
             }
         }
 
         public int Capacity {
             get {
-                return _Buffer.Data.Length;
+                return _Data.Length;
             }
         }
 

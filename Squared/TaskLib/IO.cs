@@ -95,8 +95,37 @@ namespace Squared.Task.IO {
         Future Write (byte[] buffer, int offset, int count);
     }
 
+    public class FileDataAdapter : StreamDataAdapter {
+        public const int DefaultBufferSize = 0x8000;
+
+        public FileDataAdapter (string filename, FileMode mode, FileAccess access)
+            : this (
+                filename, mode, access,
+                access == FileAccess.Write ? FileShare.Write : (
+                    access == FileAccess.Read ? FileShare.Read : FileShare.ReadWrite
+                )
+            ) {
+        }
+
+        public FileDataAdapter (string filename, FileMode mode, FileAccess access, FileShare share) 
+            : this (filename, mode, access, share, DefaultBufferSize) {
+        }
+
+        public FileDataAdapter (string filename, FileMode mode, FileAccess access, FileShare share, int bufferSize)
+            : base (
+                new FileStream(filename, mode, access, share, DefaultBufferSize, true), true
+            ) {
+        }
+
+        new public FileStream BaseStream {
+            get {
+                return _Stream as FileStream;
+            }
+        }
+    }
+
     public class StreamDataAdapter : IAsyncDataSource, IAsyncDataWriter {
-        Stream _Stream;
+        protected Stream _Stream;
         bool _OwnsStream;
         bool _EOF = false;
         AsyncCallback _ReadCallback, _WriteCallback;
@@ -182,6 +211,12 @@ namespace Squared.Task.IO {
                 } catch (NotSupportedException) {
                     return _EOF;
                 }
+            }
+        }
+
+        public Stream BaseStream {
+            get {
+                return _Stream;
             }
         }
     }
@@ -276,35 +311,18 @@ namespace Squared.Task.IO {
             }
 
             public void ProcessDecodedChars () {
-                char value;
-                while (Parent.GetCurrentCharacter(out value)) {
-                    Parent.ReadNextCharacter();
+                if (Parent.ReadDecodedCharactersUntilSentinel(Buffer, '\n')) {
+                    if ((Buffer.Length > 0) && (Buffer[Buffer.Length - 1] == '\r'))
+                        Buffer.Remove(Buffer.Length - 1, 1);
 
-                    bool done = false;
+                    if (Parent.EndOfStream)
+                        Parent._ExtraLine = true;
 
-                    switch (value) {
-                        case '\n':
-                            if ((Buffer.Length > 0) && (Buffer[Buffer.Length - 1] == '\r'))
-                                Buffer.Remove(Buffer.Length - 1, 1);
-
-                            if (Parent.EndOfStream)
-                                Parent._ExtraLine = true;
-
-                            done = true;
-                        break;
-                        default:
-                            Buffer.Append(value);
-                        break;
-                    }
-
-                    if (done) {
-                        Result.Complete(Buffer.DisposeAndGetContents());
-                        return;
-                    }
+                    Result.Complete(Buffer.DisposeAndGetContents());
+                } else {
+                    Future decodeMoreChars = Parent.DecodeMoreData();
+                    decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
                 }
-
-                Future decodeMoreChars = Parent.DecodeMoreData();
-                decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
             }
 
             private void _OnDecodeComplete (Future f, object r, Exception e) {
@@ -354,8 +372,7 @@ namespace Squared.Task.IO {
 
             void ProcessDecodedChars () {
                 char value;
-                while (Parent.GetCurrentCharacter(out value)) {
-                    Parent.ReadNextCharacter();
+                while (Parent.GetCurrentCharacterAndAdvance(out value)) {
                     Buffer.Append(value);
                 }
 
@@ -471,6 +488,35 @@ namespace Squared.Task.IO {
                 value = default(char);
                 return false;
             }
+        }
+
+        private bool GetCurrentCharacterAndAdvance (out char value) {
+            if (_DecodedCharacterOffset < _DecodedCharacterCount) {
+                value = _DecodedBuffer[_DecodedCharacterOffset++];
+                return true;
+            } else {
+                value = default(char);
+                return false;
+            }
+        }
+
+        private bool ReadDecodedCharactersUntilSentinel (CharacterBuffer buffer, char sentinel) {
+            bool result = false;
+            int startOffset = _DecodedCharacterOffset;
+            while (_DecodedCharacterOffset < _DecodedCharacterCount) {
+                if (_DecodedBuffer[_DecodedCharacterOffset++] == sentinel) {
+                    result = true;
+                    break;
+                }
+            }
+
+            int charCount = _DecodedCharacterOffset - startOffset;
+            if (result)
+                charCount -= 1;
+            buffer.Grow(charCount);
+            buffer.FastAppend(_DecodedBuffer, startOffset, charCount);
+
+            return result;
         }
 
         private bool ReadNextCharacter () {
