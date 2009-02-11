@@ -513,8 +513,7 @@ namespace Squared.Task.IO {
             int charCount = _DecodedCharacterOffset - startOffset;
             if (result)
                 charCount -= 1;
-            buffer.Grow(charCount);
-            buffer.FastAppend(_DecodedBuffer, startOffset, charCount);
+            buffer.Append(_DecodedBuffer, startOffset, charCount);
 
             return result;
         }

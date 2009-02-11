@@ -111,12 +111,16 @@ namespace Squared.Util {
                 ResizeBuffer(bufferSize);
         }
 
-        public void FastAppend (char character) {
-            _Data[_Length] = character;
-            _Length += 1;
-        }
+        public void Append (char[] source, int offset, int count) {
+            int newLength = _Length + count;
+            int bufferSize = _Data.Length;
 
-        public void FastAppend (char[] source, int offset, int count) {
+            while (bufferSize < newLength)
+                bufferSize *= 2;
+
+            if (bufferSize > _Data.Length)
+                ResizeBuffer(bufferSize);
+
             Array.Copy(source, offset, _Data, _Length, count);
             _Length += count;
         }
