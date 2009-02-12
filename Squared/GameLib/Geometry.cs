@@ -207,6 +207,10 @@ namespace Squared.Game {
         public const double IntersectionRoundingFactor = 11111.00;
         public const float IntersectionEpsilon = (float)-0.000001;
 
+        internal static double DotProduct (double x1, double y1, double x2, double y2) {
+            return (x1 * x2 + y1 * y2);
+        }
+
         internal static float VectorDot (Vector2 lhs, Vector2 rhs) {
             return (float)((lhs.X * rhs.X) + (lhs.Y * rhs.Y));
         }
@@ -231,16 +235,18 @@ namespace Squared.Game {
         }
 
         public static bool PointInTriangle (Vector2 pt, Vector2 a, Vector2 b, Vector2 c) {
-            Vector2 v0 = c - a, v1 = b - a, v2 = pt - a;
-            float dot00 = Vector2.Dot(v0, v0), dot01 = Vector2.Dot(v0, v1);
-            float dot02 = Vector2.Dot(v0, v2), dot11 = Vector2.Dot(v1, v1);
-            float dot12 = Vector2.Dot(v1, v2);
+            double x0 = c.X - a.X, y0 = c.Y - a.Y;
+            double x1 = b.X - a.X, y1 = b.Y - a.Y;
+            double x2 = pt.X - a.X, y2 = pt.Y - a.Y;
+            double dot00 = DotProduct(x0, y0, x0, y0), dot01 = DotProduct(x0, y0, x1, y1);
+            double dot02 = DotProduct(x0, y0, x2, y2), dot11 = DotProduct(x1, y1, x1, y1);
+            double dot12 = DotProduct(x1, y1, x2, y2);
 
-            float invDenom = 1.0f / (dot00 * dot11 - dot01 * dot01);
-            float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-            float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+            double invDenom = 1.0 / (dot00 * dot11 - dot01 * dot01);
+            double u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+            double v = (dot00 * dot12 - dot01 * dot02) * invDenom;
 
-            return (u > 0.0f) && (v > 0.0f) && (u + v < 1.0f);
+            return (u > 0.0) && (v > 0.0) && ((u + v) < 1.0);
         }
 
         public static IEnumerable<Vector2[]> Triangulate (IEnumerable<Vector2> polygon) {
@@ -255,6 +261,7 @@ namespace Squared.Game {
                 yield break;
             }
 
+            int steps = 0;
             bool done = false;
             while (!done) {
                 var prev = ll.Last;
@@ -273,18 +280,25 @@ namespace Squared.Game {
                     if (isEar) {
                         yield return new Vector2[] { prev.Value, current.Value, next.Value };
                         ll.Remove(current);
+                        steps = 0;
                         break;
+                    } else {
+                        steps += 1;
                     }
 
                     if (next == ll.First)
                         break;
+
+                    if (steps > ll.Count) {
+                        throw new System.TimeoutException("Triangulate made a complete pass over its remaining vertices without finding an ear");
+                    }
 
                     prev = current;
                     current = next;
                     next = current.Next ?? ll.First;
                 }
 
-                done = (ll.Count <= 3);
+                done |= (ll.Count <= 3);
             }
 
             yield return ll.ToArray();
