@@ -13,44 +13,10 @@ namespace Squared.Util {
         internal delegate Node NodeAllocator ();
         internal delegate void NodeDeallocator (Node node);
 
-        internal class NodePool {
-            int _MaxSize;
-            AtomicQueue<T> _SpareNodes;
-
-            public NodePool (int size) {
-                _MaxSize = size;
-                var allocator = (NodeAllocator)(() => new Node());
-                _SpareNodes = new AtomicQueue<T>(allocator, null);
-
-                for (int i = 0; i < size; i++)
-                    _SpareNodes.EnqueueNode(new Node());
-            }
-
-            public Node Create () {
-                Node temp, deadNode;
-                if (_SpareNodes.DequeueNode(out temp, out deadNode))
-                    return deadNode;
-                else
-                    return new Node();
-            }
-
-            public void Destroy (Node node) {
-                if (_SpareNodes.Count >= _MaxSize)
-                    return;
-
-                node.Next = null;
-                node.Value = default(T);
-                _SpareNodes.EnqueueNode(node);
-            }
-        }
-
         internal class Node {
             public T Value;
             public volatile Node Next = null;
         }
-
-        NodeAllocator _Allocator = null;
-        NodeDeallocator _Deallocator = null;
 
         Node _Head;
         Node _Tail;
@@ -61,15 +27,7 @@ namespace Squared.Util {
         int _Count = 0;
 
         public AtomicQueue () {
-            _Allocator = () => new Node();
-            _Deallocator = null;
-            _Head = _Tail = _Allocator();
-        }
-
-        internal AtomicQueue (NodeAllocator allocator, NodeDeallocator deallocator) {
-            _Allocator = allocator;
-            _Deallocator = deallocator;
-            _Head = _Tail = _Allocator();
+            _Head = _Tail = new Node();
         }
 
         public int Count {
@@ -93,8 +51,7 @@ namespace Squared.Util {
         }
 
         public void Enqueue (T value) {
-            var temp = _Allocator();
-            temp.Value = value;
+            var temp = new Node { Value = value };
 
             EnqueueNode(temp);
         }
@@ -137,10 +94,6 @@ namespace Squared.Util {
                 result = resultNode.Value;
             else
                 result = default(T);
-
-            if (deadNode != null)
-                if (_Deallocator != null)
-                    _Deallocator(deadNode);
 
             return success;
         }

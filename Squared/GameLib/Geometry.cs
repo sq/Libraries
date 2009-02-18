@@ -48,6 +48,11 @@ namespace Squared.Game {
             BottomRight = new Vector2(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y));
         }
 
+        public bool Contains (Vector2 point) {
+            return (point.X >= TopLeft.X) && (point.Y >= TopLeft.Y) &&
+                (point.X <= BottomRight.X) && (point.Y <= BottomRight.Y);
+        }
+
         public override string ToString () {
             return String.Format("{{{0}, {1}}} - {{{2}, {3}}}", TopLeft.X, TopLeft.Y, BottomRight.X, BottomRight.Y);
         }
