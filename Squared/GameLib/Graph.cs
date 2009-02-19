@@ -165,6 +165,7 @@ namespace Squared.Game.Graph {
 
     public static class GraphExtensionMethods {
         public static IEnumerable<NodeInfo> TraverseDepthFirst (this INode root) {
+            var visitedNodes = new Dictionary<INode, bool>();
             var list = new LinkedList<NodeInfo>();
             var result = new NodeInfo { Node = root, Parent = null };
             list.AddLast(result);
@@ -172,9 +173,12 @@ namespace Squared.Game.Graph {
             while (list.Count > 0) {
                 var current = list.First;
                 result.Parent = current.Value.Node;
-                foreach (var leaf in current.Value.Node.GetChildren()) {
-                    result.Node = leaf;
-                    list.AddBefore(current, result);
+                if (!visitedNodes.ContainsKey(result.Parent)) {
+                    visitedNodes.Add(result.Parent, true);
+                    foreach (var leaf in current.Value.Node.GetChildren()) {
+                        result.Node = leaf;
+                        list.AddBefore(current, result);
+                    }
                 }
 
                 list.Remove(current);
@@ -183,6 +187,7 @@ namespace Squared.Game.Graph {
         }
 
         public static IEnumerable<NodeInfo> TraverseBreadthFirst (this INode root) {
+            var visitedNodes = new Dictionary<INode, bool>();
             var list = new LinkedList<NodeInfo>();
             var result = new NodeInfo { Node = root, Parent = null };
             list.AddLast(result);
@@ -190,9 +195,12 @@ namespace Squared.Game.Graph {
             while (list.Count > 0) {
                 var current = list.First;
                 result.Parent = current.Value.Node;
-                foreach (var leaf in current.Value.Node.GetChildren()) {
-                    result.Node = leaf;
-                    list.AddLast(result);
+                if (!visitedNodes.ContainsKey(result.Parent)) {
+                    visitedNodes.Add(result.Parent, true);
+                    foreach (var leaf in current.Value.Node.GetChildren()) {
+                        result.Node = leaf;
+                        list.AddLast(result);
+                    }
                 }
 
                 list.Remove(current);

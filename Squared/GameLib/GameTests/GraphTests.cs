@@ -9,6 +9,7 @@ using System.Xml.Serialization;
 using Squared.Game.Serialization;
 using System.Reflection;
 using System.IO;
+using System.Collections;
 
 namespace Squared.Game.Graph {
     public class Node : INode {
@@ -100,6 +101,52 @@ namespace Squared.Game.Graph {
                 new NodeInfo(subchildAB, childA), 
                 new NodeInfo(subchildAAA, subchildAA)
             }, nodes);
+        }
+
+        [Test]
+        public void CycleTests () {
+            var root = new Node { Name = "root" };
+            var childA = new Node { Name = "a" };
+            var childB = new Node { Name = "b" };
+            var childC = new Node { Name = "c" };
+            var childD = new Node { Name = "d" };
+
+            root.Children.AddLast(childA);
+            root.Children.AddLast(childB);
+            root.Children.AddLast(childC);
+            root.Children.AddLast(childD);
+
+            foreach (var i in root.Children)
+                foreach (var j in root.Children)
+                    if (j != i)
+                        i.AddChild(j);
+
+            var depth = root.TraverseDepthFirst().ToArray();
+            var breadth = root.TraverseBreadthFirst().ToArray();
+            Assert.AreEqual(depth.Length, breadth.Length);
+            var depthHash = new HashSet<NodeInfo>(depth);
+            var breadthHash = new HashSet<NodeInfo>(breadth);
+            depthHash.UnionWith(breadthHash);
+            Assert.AreEqual(depthHash.Count, depth.Length);
+
+            var writer = new GraphWriter();
+            root.Serialize(writer);
+
+            Assert.AreEqual(
+                new string[] { 
+                    "begin(root)", "+root", 
+                    "+a", "+b", "+a", "-a", 
+                    "+c", "+a", "-a", "+b", 
+                    "-b", "+d", "+a", "-a", 
+                    "+b", "-b", "+c", "-c", 
+                    "-d", "-c", "+d", "-d", 
+                    "-b", "+c", "-c", "+d", 
+                    "-d", "-a", "+b", "-b", 
+                    "+c", "-c", "+d", "-d", 
+                    "-root", "end" 
+                },
+                writer.Trace.ToArray()
+            );
         }
 
         [Test]
