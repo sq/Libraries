@@ -229,5 +229,27 @@ namespace Squared.Game {
             Assert.AreEqual(Sorted( b, c, a ), Sorted(Collection.GetItemsFromBounds(b.Bounds).ToArray()));
             Assert.AreEqual(Sorted( b, c, a ), Sorted(Collection.GetItemsFromBounds(c.Bounds).ToArray()));
         }
+
+        [Test]
+        public void RecursionTest () {
+            var a = new BoundedObject(new Vector2(0, 0), new Vector2(15, 15));
+            var b = new BoundedObject(new Vector2(8, 8), new Vector2(23, 23));
+            var c = new BoundedObject(new Vector2(16, 16), new Vector2(31, 31));
+
+            Collection.Add(a);
+            Collection.Add(b);
+            Collection.Add(c);
+
+            var e1 = Collection.GetItemsFromBounds(new Bounds(new Vector2(8, 8), new Vector2(32, 32)));
+            var e2 = Collection.GetItemsFromBounds(new Bounds(new Vector2(8, 8), new Vector2(32, 32)));
+            var e3 = Collection.GetItemsFromBounds(new Bounds(new Vector2(8, 8), new Vector2(32, 32)));
+            var arr = Sorted(e3.ToArray());
+            Assert.AreEqual(Sorted(e2.ToArray()), arr);
+            Assert.AreEqual(Sorted(e1.ToArray()), arr);
+            Assert.AreEqual(Sorted(Collection.ToArray()), arr);
+            e3.Dispose();
+            e2.Dispose();
+            e1.Dispose();
+        }
     }
 }

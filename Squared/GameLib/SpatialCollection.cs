@@ -123,25 +123,25 @@ namespace Squared.Game {
             Sector _Sector;
             Dictionary<ItemInfo, bool>.KeyCollection.Enumerator _SectorEnumerator;
             ItemInfo _Current;
-            int _Flag;
             SpatialCollection<T> _Collection;
+            Dictionary<ItemInfo, bool> _SeenList;
 
             public ItemBoundsEnumerator (SpatialCollection<T> collection, Bounds bounds) {
                 _Collection = collection;
-                _Flag = collection.GetNextFlag();
                 _Sectors = new SpatialCollection<T>.GetSectorsFromBounds(collection, bounds, false);
                 _Sector = null;
                 _Current = null;
                 _SectorEnumerator = default(Dictionary<ItemInfo, bool>.KeyCollection.Enumerator);
+                _SeenList = collection.GetSeenList();
             }
 
             public ItemBoundsEnumerator (SpatialCollection<T> collection, SectorIndex tl, SectorIndex br) {
                 _Collection = collection;
-                _Flag = collection.GetNextFlag();
                 _Sectors = new SpatialCollection<T>.GetSectorsFromBounds(collection, tl, br, false);
                 _Sector = null;
                 _Current = null;
                 _SectorEnumerator = default(Dictionary<ItemInfo, bool>.KeyCollection.Enumerator);
+                _SeenList = collection.GetSeenList();
             }
 
             public ItemInfo Current {
@@ -149,8 +149,10 @@ namespace Squared.Game {
             }
 
             public void Dispose () {
+                _Collection.DisposeSeenList(_SeenList);
                 _Sectors.Dispose();
                 _Sector = null;
+                _SeenList = null;
             }
 
             object System.Collections.IEnumerator.Current {
@@ -180,14 +182,17 @@ namespace Squared.Game {
                     }
 
                     _Current = _SectorEnumerator.Current;
-                    if (_Current.Flag >= _Flag)
+
+                    if (_SeenList.ContainsKey(_Current)) {
                         _Current = null;
+                    } else {
+                        _SeenList.Add(_Current, true);
+                    }
 
                     if (!_SectorEnumerator.MoveNext())
                         _Sector = null;
                 }
 
-                _Current.Flag = _Flag;
                 return true;
             }
 
@@ -195,7 +200,7 @@ namespace Squared.Game {
                 _Sectors.Reset();
                 _Sector = null;
                 _SectorEnumerator = default(Dictionary<ItemInfo, bool>.KeyCollection.Enumerator);
-                _Flag = _Collection.GetNextFlag();
+                _SeenList.Clear();
             }
 
             public IEnumerator<ItemInfo> GetEnumerator () {
@@ -211,14 +216,12 @@ namespace Squared.Game {
             public T Item;
             public Bounds Bounds;
             internal SectorIndex TopLeft, BottomRight;
-            internal int Flag;
 
             internal ItemInfo (T item, SpatialCollection<T> parent) {
                 Item = item;
                 Bounds = item.Bounds;
                 TopLeft = parent.GetIndexFromPoint(Bounds.TopLeft);
                 BottomRight = parent.GetIndexFromPoint(Bounds.BottomRight);
-                Flag = 0;
             }
         }
 
@@ -230,7 +233,7 @@ namespace Squared.Game {
         internal Dictionary<T, ItemInfo> _Items = new Dictionary<T, ItemInfo>(new ReferenceComparer<T>());
         internal Dictionary<SectorIndex, Sector> _Sectors;
         internal List<Sector> _FreeList = new List<Sector>();
-        internal int _Flag = 0;
+        internal Stack<Dictionary<ItemInfo, bool>> _SeenListCache = new Stack<Dictionary<ItemInfo, bool>>();
 
         public SpatialCollection ()
             : this(DefaultSubdivision) {
@@ -353,8 +356,22 @@ namespace Squared.Game {
             return _Items.Keys.GetEnumerator();
         }
 
-        internal int GetNextFlag () {
-            return ++_Flag;
+        internal Dictionary<SpatialCollection<T>.ItemInfo, bool> GetSeenList () {
+            lock (_SeenListCache) {
+                if (_SeenListCache.Count > 0)
+                    return _SeenListCache.Pop();
+                else
+                    return new Dictionary<SpatialCollection<T>.ItemInfo, bool>();
+            }
+        }
+
+        internal void DisposeSeenList (Dictionary<SpatialCollection<T>.ItemInfo, bool> _SeenList) {
+            lock (_SeenListCache) {
+                if (_SeenListCache.Count < 16) {
+                    _SeenList.Clear();
+                    _SeenListCache.Push(_SeenList);
+                }
+            }
         }
     }
 }

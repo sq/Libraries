@@ -26,6 +26,10 @@ namespace Squared.Util {
                 return _.Data;
             }
 
+            public void Clear (int index, int length) {
+                Array.Clear(Data, index, length);
+            }
+
             public void Dispose () {
                 T[] data = Data;
                 Data = null;
