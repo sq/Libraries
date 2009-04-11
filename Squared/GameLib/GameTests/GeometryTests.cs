@@ -155,6 +155,27 @@ namespace Squared.Game {
             Assert.AreEqual(new Vector2(0, 0), bounds.TopLeft);
             Assert.AreEqual(new Vector2(10, 10), bounds.BottomRight);
         }
+
+        [Test]
+        public void ClosestPointOnLineTest () {
+            var pt1 = new Vector2(5, 5);
+            var pt2 = new Vector2(10, 5);
+
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(5, 0), pt1, pt2), pt1);
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(0, 0), pt1, pt2), pt1);
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(0, 5), pt1, pt2), pt1);
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(0, 10), pt1, pt2), pt1);
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(5, 10), pt1, pt2), pt1);
+
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(10, 0), pt1, pt2), pt2);
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(15, 0), pt1, pt2), pt2);
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(15, 5), pt1, pt2), pt2);
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(15, 10), pt1, pt2), pt2);
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(10, 10), pt1, pt2), pt2);
+
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(7.5f, 2.5f), pt1, pt2), new Vector2(7.5f, 5));
+            Assert.AreEqual(Geometry.ClosestPointOnLine(new Vector2(7.5f, 7.5f), pt1, pt2), new Vector2(7.5f, 5));
+        }
     }
 
     public class BoundedObject : IHasBounds {

@@ -216,12 +216,24 @@ namespace Squared.Game {
             public T Item;
             public Bounds Bounds;
             internal SectorIndex TopLeft, BottomRight;
+            internal int HashCode;
 
             internal ItemInfo (T item, SpatialCollection<T> parent) {
                 Item = item;
                 Bounds = item.Bounds;
                 TopLeft = parent.GetIndexFromPoint(Bounds.TopLeft);
                 BottomRight = parent.GetIndexFromPoint(Bounds.BottomRight);
+                HashCode = item.GetHashCode();
+            }
+        }
+
+        internal class ItemInfoComparer : IEqualityComparer<ItemInfo> {
+            public bool Equals (ItemInfo x, ItemInfo y) {
+                return (x == y);
+            }
+
+            public int GetHashCode (ItemInfo obj) {
+                return (obj.HashCode);
             }
         }
 
@@ -361,7 +373,7 @@ namespace Squared.Game {
                 if (_SeenListCache.Count > 0)
                     return _SeenListCache.Pop();
                 else
-                    return new Dictionary<SpatialCollection<T>.ItemInfo, bool>();
+                    return new Dictionary<SpatialCollection<T>.ItemInfo, bool>(new ItemInfoComparer());
             }
         }
 
