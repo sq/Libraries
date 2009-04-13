@@ -192,10 +192,17 @@ namespace Squared.Util {
         }
     }
 
-    public class Curve<T> where T : struct {
+    public class Curve<T> : IEnumerable<Curve<T>.Point>
+        where T : struct {
         public Interpolator<T> Interpolator;
         private InterpolatorSource<T> _InterpolatorSource;
         SortedList<float, TItem> _Items = new SortedList<float, TItem>();
+
+        public struct Point {
+            public float Position;
+            public T Value;
+            public Interpolator<T> Interpolator;
+        }
 
         private struct TItem {
             public T Value;
@@ -327,6 +334,27 @@ namespace Squared.Util {
             set {
                 SetValueAtPosition(position, value);
             }
+        }
+
+        public void Add (float position, T value) {
+            SetValueAtPosition(position, value);
+        }
+
+        public void Add (float position, T value, Interpolator<T> interpolator) {
+            SetValueAtPosition(position, value, interpolator);
+        }
+
+        public IEnumerator<Curve<T>.Point> GetEnumerator () {
+            foreach (var item in _Items)
+                yield return new Point {
+                    Position = item.Key,
+                    Value = item.Value.Value,
+                    Interpolator = item.Value.Interpolator
+                };
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
+            return this.GetEnumerator();
         }
     }
 }
