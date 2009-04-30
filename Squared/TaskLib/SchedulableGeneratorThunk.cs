@@ -5,11 +5,11 @@ using Squared.Util;
 
 namespace Squared.Task {
     public class SchedulableGeneratorThunk : ISchedulable, IDisposable {
-        public Func<object, Future> OnNextValue = null;
+        public Func<object, IFuture> OnNextValue = null;
 
         IEnumerator<object> _Task;
-        Future _Future;
-        public Future WakeCondition;
+        IFuture _Future;
+        public IFuture WakeCondition;
         TaskScheduler _Scheduler;
         Action _Step, _QueueStep;
         OnComplete _QueueStepOnComplete;
@@ -47,7 +47,7 @@ namespace Squared.Task {
             Dispose();
         }
 
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             IEnumerator<object> task = _Task;
             _Future = future;
             _Scheduler = scheduler;
@@ -70,7 +70,7 @@ namespace Squared.Task {
             } else if (value is Yield) {
                 QueueStep();
             } else {
-                Future temp = _Scheduler.Start(value);
+                var temp = _Scheduler.Start(value);
                 this.WakeCondition = temp;
                 temp.RegisterOnComplete(_QueueStepOnComplete);
             }
@@ -81,7 +81,7 @@ namespace Squared.Task {
                 ScheduleNextStepForSchedulable(value as ISchedulable);
             } else if (value is NextValue) {
                 NextValue nv = (NextValue)value;
-                Future f = null;
+                IFuture f = null;
 
                 if (OnNextValue != null)
                     f = OnNextValue(nv.Value);
@@ -92,8 +92,8 @@ namespace Squared.Task {
                 } else {
                     QueueStep();
                 }
-            } else if (value is Future) {
-                Future f = (Future)value;
+            } else if (value is IFuture) {
+                var f = (IFuture)value;
                 this.WakeCondition = f;
                 f.RegisterOnComplete(_QueueStepOnComplete);
             } else if (value is Result) {

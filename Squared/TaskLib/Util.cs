@@ -22,7 +22,7 @@ namespace Squared.Task {
 
         public static IEnumerator<object> EnumerateViaThreadpool (IEnumerator enumerator) {
             WaitCallback moveNext = (state) => {
-                Future f = (Future)state;
+                var f = (IFuture)state;
                 try {
                     bool r = enumerator.MoveNext();
                     f.SetResult(r, null);
@@ -33,7 +33,7 @@ namespace Squared.Task {
 
             using (new Disposer(enumerator)) {
                 while (true) {
-                    Future f = new Future();
+                    var f = new Future();
                     ThreadPool.QueueUserWorkItem(moveNext, f);
                     yield return f;
 
@@ -92,7 +92,7 @@ namespace Squared.Task {
     /// Schedules your task to continue execution at the end of the current step.
     /// </summary>
     public class Yield : ISchedulable {
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             future.Complete();
         }
     }
@@ -112,7 +112,7 @@ namespace Squared.Task {
     /// Schedules your task to continue execution at the beginning of the next step.
     /// </summary>
     public class WaitForNextStep : ISchedulable {
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             scheduler.AddStepListener(future.Complete);
         }
     }
@@ -129,7 +129,7 @@ namespace Squared.Task {
             _Timeout = timeout;
         }
 
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             _SleepFuture = scheduler.Start(new Sleep(_Timeout));
             _TaskFuture = Future.WaitForFirst(_Future, _SleepFuture);
             _TaskFuture.RegisterOnComplete((f, result, error) => {
@@ -147,7 +147,7 @@ namespace Squared.Task {
     public class Start : ISchedulable {
         IEnumerator<object> _Task;
         TaskExecutionPolicy _ExecutionPolicy;
-        Future _Future;
+        IFuture _Future;
 
         public Start (IEnumerator<object> task) 
             : this(task, TaskExecutionPolicy.RunWhileFutureLives) {
@@ -159,12 +159,12 @@ namespace Squared.Task {
             _Future = null;
         }
 
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             _Future = scheduler.Start(_Task, _ExecutionPolicy);
             future.Complete(_Future);
         }
 
-        public Future Future {
+        public IFuture Future {
             get {
                 return _Future;
             }
@@ -177,7 +177,7 @@ namespace Squared.Task {
     public class RunToCompletion : ISchedulable {
         IEnumerator<object> _Task;
         TaskExecutionPolicy _ExecutionPolicy;
-        Future _Future;
+        IFuture _Future;
 
         public RunToCompletion (IEnumerator<object> task) 
             : this(task, TaskExecutionPolicy.RunWhileFutureLives) {
@@ -193,7 +193,7 @@ namespace Squared.Task {
             this._Future.Complete(result);
         }
 
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             this._Future = scheduler.Start(_Task, _ExecutionPolicy);
             future.Bind(this._Future);
         }
@@ -215,7 +215,7 @@ namespace Squared.Task {
             _EndWhen = when;
         }
 
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             scheduler.QueueSleep(_EndWhen, future);
         }
     }
@@ -239,7 +239,7 @@ namespace Squared.Task {
             }
         }
 
-        void ISchedulable.Schedule (TaskScheduler scheduler, Future future) {
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             scheduler.QueueSleep(Time.Ticks + _Duration, future);
         }
     }
@@ -255,7 +255,7 @@ namespace Squared.Task {
                 _Iterator = iterator;
             }
 
-            public void Schedule (TaskScheduler scheduler, Future future) {
+            public void Schedule (TaskScheduler scheduler, IFuture future) {
                 TaskIterator<T> i = _Iterator;
                 i.Initialize(scheduler);
                 future.Bind(i.MoveNext());
@@ -265,9 +265,9 @@ namespace Squared.Task {
         protected IEnumerator<object> _Task = null;
         protected TaskScheduler _Scheduler = null;
         protected SchedulableGeneratorThunk _Thunk = null;
-        protected Future _MoveNextFuture = new Future();
-        protected Future _NextValueFuture = new Future();
-        protected Future _SequenceFuture = null;
+        protected IFuture _MoveNextFuture = new Future();
+        protected IFuture _NextValueFuture = new Future();
+        protected IFuture _SequenceFuture = null;
         protected bool _HasValue = false;
         protected T _Current = default(T);
 
@@ -298,7 +298,7 @@ namespace Squared.Task {
         /// <summary>
         /// Returns a future that will be completed when the next item in the sequence is ready, or the sequence has completed iteration. The future's result will be true if another item is ready.
         /// </summary>
-        public Future MoveNext () {
+        public IFuture MoveNext () {
             lock (this) {
                 if (_SequenceFuture == null)
                     throw new InvalidOperationException("The iterator is not ready.");
@@ -313,7 +313,7 @@ namespace Squared.Task {
             }
         }
 
-        internal Future OnNextValue (object value) {
+        internal IFuture OnNextValue (object value) {
             lock (this) {
                 var f = _NextValueFuture;
                 _NextValueFuture = new Future();
@@ -352,7 +352,7 @@ namespace Squared.Task {
             yield return new Result(temp.ToArray());
         }
 
-        public Future ToArray () {
+        public IFuture ToArray () {
             if (Disposed)
                 return new Future(new T[0]);
             else
@@ -370,7 +370,7 @@ namespace Squared.Task {
             }
         }
 
-        internal Future Future {
+        internal IFuture Future {
             get {
                 return _SequenceFuture;
             }

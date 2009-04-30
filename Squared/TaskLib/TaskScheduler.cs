@@ -5,7 +5,7 @@ using Squared.Util;
 
 namespace Squared.Task {
     public interface ISchedulable {
-        void Schedule (TaskScheduler scheduler, Future future);
+        void Schedule (TaskScheduler scheduler, IFuture future);
     }
 
     public enum TaskExecutionPolicy {
@@ -39,7 +39,7 @@ namespace Squared.Task {
 
     struct SleepItem : IComparable<SleepItem> {
         public long Until;
-        public Future Future;
+        public IFuture Future;
 
         public bool Tick (long now) {
             long ticksLeft = Math.Max(Until - now, 0);
@@ -99,8 +99,8 @@ namespace Squared.Task {
             }
         }
 
-        public Future Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
-            Future future = new Future();
+        public IFuture Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
+            var future = new Future();
             task.Schedule(this, future);
 
             switch (executionPolicy) {
@@ -114,15 +114,15 @@ namespace Squared.Task {
             return future;
         }
 
-        public Future Start (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
+        public IFuture Start (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
             return Start(new SchedulableGeneratorThunk(task), executionPolicy);
         }
 
-        public Future Start (ISchedulable task) {
+        public IFuture Start (ISchedulable task) {
             return Start(task, TaskExecutionPolicy.Default);
         }
 
-        public Future Start (IEnumerator<object> task) {
+        public IFuture Start (IEnumerator<object> task) {
             return Start(task, TaskExecutionPolicy.Default);
         }
 
@@ -188,7 +188,7 @@ namespace Squared.Task {
             }
         }
 
-        internal void QueueSleep (long completeWhen, Future future) {
+        internal void QueueSleep (long completeWhen, IFuture future) {
             long now = Time.Ticks;
             if (now > completeWhen) {
                 future.Complete();

@@ -23,7 +23,7 @@ namespace Squared.Task.Data {
                 _Iterator = iterator;
             }
 
-            public void Schedule (TaskScheduler scheduler, Future future) {
+            public void Schedule (TaskScheduler scheduler, IFuture future) {
                 DbTaskIterator i = _Iterator;
                 i._CompletionNotifier = i.Query.GetCompletionNotifier();
                 i._QueryFuture = i.Query.ExecuteReader(i.Parameters);
@@ -230,7 +230,7 @@ namespace Squared.Task.Data {
             return ef;
         }
 
-        private Future InternalExecuteQuery (object[] parameters, Func<object> queryFunc, bool suspendCompletion) {
+        private IFuture InternalExecuteQuery (object[] parameters, Func<object> queryFunc, bool suspendCompletion) {
             if (_Manager.Closed)
                 return null;
 
@@ -332,7 +332,7 @@ namespace Squared.Task.Data {
                 _Wrapper.RollbackTransaction();
         }
 
-        void ISchedulable.Schedule(TaskScheduler scheduler, Future future) {
+        void ISchedulable.Schedule(TaskScheduler scheduler, IFuture future) {
             future.Bind(this._Future);
         }
     }

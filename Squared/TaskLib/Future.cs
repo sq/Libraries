@@ -108,6 +108,9 @@ namespace Squared.Task {
         bool Completed {
             get;
         }
+        bool Disposed {
+            get;
+        }
         object Result {
             get;
         }

@@ -147,7 +147,7 @@ namespace Squared.Task.IO {
         }
 
         private void ReadCallback (IAsyncResult ar) {
-            Future f = (Future)ar.AsyncState;
+            var f = (IFuture)ar.AsyncState;
             try {
                 int bytesRead = _Stream.EndRead(ar);
 
@@ -169,7 +169,7 @@ namespace Squared.Task.IO {
         }
 
         private void WriteCallback (IAsyncResult ar) {
-            Future f = (Future)ar.AsyncState;
+            var f = (IFuture)ar.AsyncState;
             try {
                 _Stream.EndWrite(ar);
                 f.Complete();

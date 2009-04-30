@@ -15,7 +15,7 @@ namespace MUDServer {
         public AsyncTextReader Input;
         public AsyncTextWriter Output;
         private BlockingQueue<string> _OutboundText = new BlockingQueue<string>();
-        private Future _SendFuture;
+        private IFuture _SendFuture;
 
         internal TelnetClient (TelnetServer server, TcpClient client) {
             Server = server;
@@ -120,7 +120,7 @@ namespace MUDServer {
     public class TelnetServer : IDisposable {
         internal TaskScheduler _Scheduler;
         private TcpListener _Listener;
-        private Future _ListenerTask;
+        private IFuture _ListenerTask;
         private List<TelnetClient> _Clients = new List<TelnetClient>();
         private BlockingQueue<TelnetClient> _NewClients = new BlockingQueue<TelnetClient>();
 

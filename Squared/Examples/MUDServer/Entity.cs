@@ -32,7 +32,7 @@ namespace MUDServer {
 
         private Dictionary<EventType, List<EventHandler>> _EventHandlers = new Dictionary<EventType, List<EventHandler>>();
         private BlockingQueue<object> _EventQueue = new BlockingQueue<object>();
-        private Future _ThinkTask, _EventDispatchTask;
+        private IFuture _ThinkTask, _EventDispatchTask;
         private Location _Location;
         protected string _Name = null;
         protected string _State = null;
@@ -166,7 +166,7 @@ namespace MUDServer {
 
     public class CombatEntity : EntityBase {
         private bool _InCombat;
-        private Future _CombatTask;
+        private IFuture _CombatTask;
         private CombatEntity _CombatTarget = null;
         private double CombatPeriod;
         private int _CurrentHealth;

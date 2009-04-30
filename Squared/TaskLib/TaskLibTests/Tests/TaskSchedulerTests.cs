@@ -98,18 +98,18 @@ namespace Squared.Task {
         [Test]
         public void MultipleYieldersOnFutureTest () {
             this.TestFuture = new Future();
-            var futures = new List<Future>();
+            var futures = new List<IFuture>();
             for (int i = 0; i < 10; i++)
                 futures.Add(Scheduler.Start(TaskReturnValueOfFuture()));
 
             Scheduler.Step();
-            foreach (Future f in futures)
+            foreach (IFuture f in futures)
                 Assert.IsFalse(f.Completed);
 
             TestFuture.Complete(10);
             Scheduler.Step();
 
-            foreach (Future f in futures) {
+            foreach (IFuture f in futures) {
                 Assert.IsTrue(f.Completed);
                 Assert.AreEqual(10, f.Result);
             }
@@ -205,7 +205,7 @@ namespace Squared.Task {
         [Test]
         public void LotsOfWorkersTest () {
             var buf = new int[1];
-            var futures = new List<Future>();
+            var futures = new List<IFuture>();
             for (int i = 0; i < 25; i++) {
                 futures.Add(Scheduler.Start(TaskLongLivedWorker(buf)));
             }
@@ -503,7 +503,7 @@ namespace Squared.Task {
             Assert.IsTrue(Scheduler.HasPendingTasks);
         }
 
-        IEnumerator<object> YieldOnLongSleep (Future sleepFuture) {
+        IEnumerator<object> YieldOnLongSleep (IFuture sleepFuture) {
             yield return sleepFuture;
             yield return new Result("ok");
         }
@@ -578,7 +578,7 @@ namespace Squared.Task {
             vh.Value = 0;
 
             long timeStart = Time.Ticks;
-            Future a = Scheduler.Start(new Sleep(1.5));
+            var a = Scheduler.Start(new Sleep(1.5));
             a.RegisterOnComplete((f, result, error) => {
                 Scheduler.QueueWorkItem(() => {
                     vh.Value = 1;

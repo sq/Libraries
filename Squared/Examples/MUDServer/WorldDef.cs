@@ -269,7 +269,7 @@ namespace MUDServer {
 
     public class StartingRoomOldMan : EntityBase {
         List<string> _RememberedPlayers = new List<string>();
-        Dictionary<string, Future> _PlayersToNag = new Dictionary<string, Future>();
+        Dictionary<string, IFuture> _PlayersToNag = new Dictionary<string, IFuture>();
 
         public StartingRoomOldMan (Location location)
             : base(location, "An old man") {
