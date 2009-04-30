@@ -5,7 +5,7 @@ using Squared.Util;
 
 namespace Squared.Task {
     struct TickWaiter : IComparable<TickWaiter> {
-        public Future Future;
+        public IFuture Future;
         public int Until;
 
         public bool Tick (int currentTick) {
@@ -58,7 +58,7 @@ namespace Squared.Task {
         private void Tick () {
             _LastTick += _TickInterval;
             int thisTick = Interlocked.Increment(ref _ElapsedTicks);
-            var completedWaits = new List<Future>();
+            var completedWaits = new List<IFuture>();
 
             lock (_WaitingTicks) {
                 TickWaiter tw;
@@ -72,8 +72,9 @@ namespace Squared.Task {
                 }
             }
 
-            foreach (Future cwf in completedWaits)
+            foreach (IFuture cwf in completedWaits)
                 cwf.Complete();
+
             ScheduleNextTick();
         }
 
@@ -83,11 +84,11 @@ namespace Squared.Task {
 
         private void ScheduleNextTick () {
             long nextTick = _LastTick + _TickInterval;
-            Future nextTickFuture = _Scheduler.Start(new SleepUntil(nextTick));
+            IFuture nextTickFuture = _Scheduler.Start(new SleepUntil(nextTick));
             nextTickFuture.RegisterOnComplete(OnTick);
         }
 
-        public Future WaitForTick (int tick) {
+        public IFuture WaitForTick (int tick) {
             lock (_WaitingTicks) {
                 TickWaiter tw;
                 if (_WaitingTicks.Peek(out tw)) {

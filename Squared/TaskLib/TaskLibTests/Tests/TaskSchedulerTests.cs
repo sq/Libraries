@@ -599,12 +599,12 @@ namespace Squared.Task {
             try {
                 while (numClients > 0) {
                     System.Diagnostics.Debug.WriteLine("Waiting for incoming connection...");
-                    Future connection = server.AcceptIncomingConnection();
+                    var connection = server.AcceptIncomingConnection();
                     yield return connection;
                     System.Diagnostics.Debug.WriteLine("Connection established. Sending data...");
                     using (TcpClient peer = connection.Result as TcpClient) {
                         byte[] bytes = Encoding.ASCII.GetBytes("Hello, world!");
-                        Future writer = peer.GetStream().AsyncWrite(bytes, 0, bytes.Length);
+                        var writer = peer.GetStream().AsyncWrite(bytes, 0, bytes.Length);
                         yield return writer;
                         System.Diagnostics.Debug.WriteLine("Data sent.");
                     }
@@ -645,12 +645,12 @@ namespace Squared.Task {
 
         IEnumerator<object> ClientTask (List<string> output, string server, int port) {
             System.Diagnostics.Debug.WriteLine("Connecting...");
-            Future connect = Network.ConnectTo(server, port);
+            var connect = Network.ConnectTo(server, port);
             yield return connect;
             System.Diagnostics.Debug.WriteLine("Connected. Receiving data...");
             using (TcpClient client = connect.Result as TcpClient) {
                 byte[] bytes = new byte[256];
-                Future reader = client.GetStream().AsyncRead(bytes, 0, bytes.Length);
+                var reader = client.GetStream().AsyncRead(bytes, 0, bytes.Length);
                 yield return reader;
                 System.Diagnostics.Debug.WriteLine("Data received.");
                 output.Add(Encoding.ASCII.GetString(bytes, 0, (int)reader.Result));
@@ -989,7 +989,7 @@ namespace Squared.Task {
             Clock clock = Scheduler.CreateClock(0.25);
             long startTime = Time.Ticks;
 
-            Future f = clock.WaitForTick(1);
+            var f = clock.WaitForTick(1);
             Scheduler.WaitForWorkItems(1.0);
             Scheduler.Step();
             long endTime = Time.Ticks;

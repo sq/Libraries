@@ -29,9 +29,9 @@ namespace MUDServer {
             _SendFuture = server._Scheduler.Start(SendMessagesTask(), TaskExecutionPolicy.RunWhileFutureLives);
         }
 
-        public Future ReadLineText () {
-            Future f = new Future();
-            Future inner = Input.ReadLine();
+        public IFuture ReadLineText () {
+            var f = new Future();
+            var inner = Input.ReadLine();
             inner.RegisterOnComplete((_, r, e) => {
                 if (r == null) {
                     if ((e is SocketDisconnectedException) || (e is IOException) || (e is SocketException)) {
@@ -133,7 +133,7 @@ namespace MUDServer {
 
         private IEnumerator<object> ListenTask () {
             while (true) {
-                Future f = _Listener.AcceptIncomingConnection();
+                var f = _Listener.AcceptIncomingConnection();
                 yield return f;
                 TcpClient tcpClient = f.Result as TcpClient;
                 TelnetClient client = new TelnetClient(this, tcpClient);

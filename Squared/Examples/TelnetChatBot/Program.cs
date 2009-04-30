@@ -29,7 +29,7 @@ namespace TelnetChatBot {
             int i = 0;
             yield return new Sleep(new Random(Process.GetCurrentProcess().Id).NextDouble());
             while (true) {
-                Future f = output.WriteLine(nextMessageText);
+                var f = output.WriteLine(nextMessageText);
                 yield return f;
                 if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
                     Disconnected = true;
@@ -51,7 +51,7 @@ namespace TelnetChatBot {
             int i = 0;
             Reader = input;
             while (true) {
-                Future f = input.ReadLine();
+                IFuture f = input.ReadLine();
                 yield return f;
                 if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
                     Disconnected = true;
@@ -79,7 +79,7 @@ namespace TelnetChatBot {
 
             try {
                 Console.WriteLine("Connecting to server...");
-                Future f = Network.ConnectTo("localhost", 1234);
+                var f = Network.ConnectTo("localhost", 1234);
                 f.GetCompletionEvent().WaitOne();
                 Console.WriteLine("Connected.");
                 TcpClient client = f.Result as TcpClient;

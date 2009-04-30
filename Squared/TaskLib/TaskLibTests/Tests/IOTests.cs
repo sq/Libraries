@@ -129,7 +129,7 @@ namespace Squared.Task.IO {
             string[] expectedLines = System.IO.File.ReadAllLines(Stream.Name);
             var lines = new List<string>();
 
-            Future f;
+            IFuture f;
 
             while (true) {
                 f = Reader.ReadLine();
@@ -162,7 +162,7 @@ namespace Squared.Task.IO {
             WriteTestData("abcd\r\nefgh\nijkl\r\n");
             RewindStream();
 
-            Future f = Reader.ReadLine();
+            var f = Reader.ReadLine();
             f.GetCompletionEvent().WaitOne();
             Assert.AreEqual("abcd", f.Result);
 
@@ -199,7 +199,7 @@ namespace Squared.Task.IO {
 
             var readLines = new List<string>();
             for (int i = 0; i < lineCount; i++) {
-                Future f = Reader.ReadLine();
+                var f = Reader.ReadLine();
                 f.GetCompletionEvent().WaitOne();
                 string line = f.Result as string;
                 readLines.Add(line);
@@ -213,7 +213,7 @@ namespace Squared.Task.IO {
             WriteTestData("abcd\r\nefgh\0ijkl");
             RewindStream();
 
-            Future f = Reader.ReadToEnd();
+            var f = Reader.ReadToEnd();
             f.GetCompletionEvent().WaitOne();
             Assert.AreEqual("abcd\r\nefgh\0ijkl", f.Result);
 
@@ -229,7 +229,7 @@ namespace Squared.Task.IO {
             WriteTestData(testData);
             RewindStream();
 
-            Future f = Reader.ReadToEnd();
+            var f = Reader.ReadToEnd();
             f.GetCompletionEvent().WaitOne();
             Assert.AreEqual(testData, f.Result);
         }
@@ -242,7 +242,7 @@ namespace Squared.Task.IO {
             RewindStream();
 
             char[] buffer = new char[256];
-            Future f = Reader.Read(buffer, 0, 256);
+            var f = Reader.Read(buffer, 0, 256);
             f.GetCompletionEvent().WaitOne();
             Assert.AreEqual(256, f.Result);
             Assert.AreEqual(testData.Substring(0, 256), new string(buffer, 0, 256));
@@ -264,7 +264,7 @@ namespace Squared.Task.IO {
             WriteTestData(testData);
             RewindStream();
 
-            Future f = Reader.Peek();
+            var f = Reader.Peek();
             f.GetCompletionEvent().WaitOne();
             Assert.AreEqual('a', f.Result);
 
@@ -296,7 +296,7 @@ namespace Squared.Task.IO {
 
             char[] buf = new char[2048 * 1024];
 
-            Future f = Reader.Read(buf, 0, buf.Length);
+            var f = Reader.Read(buf, 0, buf.Length);
             try {
                 f = Reader.Read(buf, 0, 16);
                 Assert.Fail("Read did not raise an OperationPending exception");
@@ -318,7 +318,7 @@ namespace Squared.Task.IO {
 
         [Test]
         public void WriteLineTest () {
-            Future f = Writer.WriteLine("test");
+            var f = Writer.WriteLine("test");
             f.GetCompletionEvent().WaitOne();
 
             f = Writer.WriteLine("foo");
@@ -334,7 +334,7 @@ namespace Squared.Task.IO {
 
         [Test]
         public void AutoFlushTest () {
-            Future f = Writer.WriteLine("test");
+            var f = Writer.WriteLine("test");
             f.GetCompletionEvent().WaitOne();
 
             Assert.AreEqual(String.Empty, GetTestDataString());
@@ -349,7 +349,7 @@ namespace Squared.Task.IO {
 
         [Test]
         public void WriteStringTest () {
-            Future f = Writer.Write("test");
+            var f = Writer.Write("test");
             f.GetCompletionEvent().WaitOne();
 
             f = Writer.Write("foo");
@@ -366,7 +366,7 @@ namespace Squared.Task.IO {
         [Test]
         public void ThrowsIfWriteInvokedWhilePreviousWriteIsPending () {
             string buf = new string(' ', 4096 * 1024);
-            Future f = Writer.Write(buf);
+            var f = Writer.Write(buf);
             try {
                 f = Writer.Write("foo");
                 Assert.Fail("Write did not raise an OperationPending exception");
@@ -385,8 +385,8 @@ namespace Squared.Task.IO {
         public void SetUp () {
             Listener = new TcpListener(IPAddress.Any, 1235);
             Listener.Start();
-            Future fA = Listener.AcceptIncomingConnection();
-            Future fB = Network.ConnectTo("localhost", 1235);
+            var fA = Listener.AcceptIncomingConnection();
+            var fB = Network.ConnectTo("localhost", 1235);
             fA.GetCompletionEvent().WaitOne();
             A = fA.Result as TcpClient;
             fB.GetCompletionEvent().WaitOne();
@@ -506,7 +506,7 @@ namespace Squared.Task.IO {
 
             StreamA.Write(buf, 0, buf.Length);
 
-            Future f = new Future();
+            var f = new Future();
 
             StreamA.BeginWrite(buf, 0, buf.Length, (ar) => {
                 try {
@@ -540,7 +540,7 @@ namespace Squared.Task.IO {
 
             StreamA.Write(buf, 0, buf.Length);
 
-            Future f = new Future();
+            var f = new Future();
 
             ThreadPool.QueueUserWorkItem((_) => {
                 try {
@@ -577,7 +577,7 @@ namespace Squared.Task.IO {
 
             StreamA.Write(buf, 0, buf.Length);
 
-            Future f = new Future();
+            var f = new Future();
 
             ThreadPool.QueueUserWorkItem((_) => {
                 try {
@@ -632,7 +632,7 @@ namespace Squared.Task.IO {
 
             StreamA.Write(buf, 0, buf.Length);
 
-            Future f = new Future();
+            var f = new Future();
 
             ThreadPool.QueueUserWorkItem((_) => {
                 try {

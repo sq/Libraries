@@ -5,7 +5,7 @@ using System.Net.Sockets;
 
 namespace Squared.Task {
     public static class Network {
-        public static Future ConnectTo (string host, int port) {
+        public static IFuture ConnectTo (string host, int port) {
             var f = new Future();
             TcpClient client = new TcpClient();
             client.BeginConnect(host, port, (ar) => {
@@ -23,7 +23,7 @@ namespace Squared.Task {
     }
 
     public static class NetworkExtensionMethods {
-        public static Future AcceptIncomingConnection (this TcpListener listener) {
+        public static IFuture AcceptIncomingConnection (this TcpListener listener) {
             var f = new Future();
             listener.BeginAcceptTcpClient((ar) => {
                 try {

@@ -390,7 +390,7 @@ namespace Squared.Task {
             return WaitForX(futures, 1);
         }
 
-        public static Future RunInThread (Func<object> workItem) {
+        public static IFuture RunInThread (Func<object> workItem) {
             var thunk = new FuncRunInThreadThunk {
                 WorkItem = workItem,
             };
@@ -398,7 +398,7 @@ namespace Squared.Task {
             return thunk.Future;
         }
 
-        public static Future RunInThread (Action workItem) {
+        public static IFuture RunInThread (Action workItem) {
             var thunk = new ActionRunInThreadThunk {
                 WorkItem = workItem,
             };
@@ -406,7 +406,7 @@ namespace Squared.Task {
             return thunk.Future;
         }
 
-        public static Future RunInThread (Delegate workItem, params object[] arguments) {
+        public static IFuture RunInThread (Delegate workItem, params object[] arguments) {
             var thunk = new DynamicRunInThreadThunk {
                 WorkItem = workItem,
                 Arguments = arguments

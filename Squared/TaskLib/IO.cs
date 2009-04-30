@@ -14,7 +14,7 @@ namespace Squared.Task.IO {
     }    
 
     public static class IOExtensionMethods {
-        public static Future AsyncRead (this Stream stream, byte[] buffer, int offset, int count) {
+        public static IFuture AsyncRead (this Stream stream, byte[] buffer, int offset, int count) {
             var f = new Future();
             try {
                 stream.BeginRead(buffer, offset, count, (ar) => {
@@ -35,7 +35,7 @@ namespace Squared.Task.IO {
             return f;
         }
 
-        public static Future AsyncWrite (this Stream stream, byte[] buffer, int offset, int count) {
+        public static IFuture AsyncWrite (this Stream stream, byte[] buffer, int offset, int count) {
             var f = new Future();
             try {
                 stream.BeginWrite(buffer, offset, count, (ar) => {
@@ -86,13 +86,13 @@ namespace Squared.Task.IO {
     }
 
     public interface IAsyncDataSource : IDisposable {
-        Future Read (byte[] buffer, int offset, int count);
+        IFuture Read (byte[] buffer, int offset, int count);
 
         bool EndOfStream { get; }
     }
 
     public interface IAsyncDataWriter : IDisposable {
-        Future Write (byte[] buffer, int offset, int count);
+        IFuture Write (byte[] buffer, int offset, int count);
     }
 
     public class FileDataAdapter : StreamDataAdapter {
@@ -162,7 +162,7 @@ namespace Squared.Task.IO {
             }
         }
 
-        public Future Read (byte[] buffer, int offset, int count) {
+        public IFuture Read (byte[] buffer, int offset, int count) {
             Future f = new Future();
             _Stream.BeginRead(buffer, offset, count, _ReadCallback, f);
             return f;
@@ -180,13 +180,13 @@ namespace Squared.Task.IO {
             }
         }
         
-        public Future Write (byte[] buffer, int offset, int count) {
+        public IFuture Write (byte[] buffer, int offset, int count) {
             Future f = new Future();
             _Stream.BeginWrite(buffer, offset, count, _WriteCallback, f);
             return f;
         }
 
-        public Future Flush () {
+        public IFuture Flush () {
             var f = new Future();
             WaitCallback wc = (state) => {
                 var stream = (Stream)state;
@@ -229,7 +229,7 @@ namespace Squared.Task.IO {
 
         private class ReadThunk {
             public AsyncTextReader Parent;
-            protected Future Result;
+            protected IFuture Result;
 
             public ReadThunk () {
                 Result = new Future();
@@ -248,7 +248,7 @@ namespace Squared.Task.IO {
                 OnDecodeComplete = _OnDecodeComplete;
             }
 
-            public Future Run () {
+            public IFuture Run () {
                 Parent.SetPendingOperation(Result);
                 Result.RegisterOnComplete(Parent.OperationOnComplete);
 
@@ -271,7 +271,7 @@ namespace Squared.Task.IO {
                     Position += 1;
                 }
 
-                Future decodeMoreChars = Parent.DecodeMoreData();
+                var decodeMoreChars = Parent.DecodeMoreData();
                 decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
             }
 
@@ -301,7 +301,7 @@ namespace Squared.Task.IO {
                 OnDecodeComplete = _OnDecodeComplete;
             }
 
-            public Future Run () {
+            public IFuture Run () {
                 Parent.SetPendingOperation(Result);
                 Result.RegisterOnComplete(Parent.OperationOnComplete);
 
@@ -320,7 +320,7 @@ namespace Squared.Task.IO {
 
                     Result.Complete(Buffer.DisposeAndGetContents());
                 } else {
-                    Future decodeMoreChars = Parent.DecodeMoreData();
+                    var decodeMoreChars = Parent.DecodeMoreData();
                     decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
                 }
             }
@@ -361,7 +361,7 @@ namespace Squared.Task.IO {
                 OnDecodeComplete = _OnDecodeComplete;
             }
 
-            public Future Run () {
+            public IFuture Run () {
                 Parent.SetPendingOperation(Result);
                 Result.RegisterOnComplete(Parent.OperationOnComplete);
 
@@ -376,7 +376,7 @@ namespace Squared.Task.IO {
                     Buffer.Append(value);
                 }
 
-                Future decodeMoreChars = Parent.DecodeMoreData();
+                var decodeMoreChars = Parent.DecodeMoreData();
                 decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
             }
 
@@ -451,13 +451,13 @@ namespace Squared.Task.IO {
             _DecodedBuffer = new char[_BufferSize + 1];
         }
 
-        private Future ReadMoreData () {
+        private IFuture ReadMoreData () {
             return _DataSource.Read(_InputBuffer, 0, _BufferSize);
         }
 
-        private Future DecodeMoreData () {
+        private IFuture DecodeMoreData () {
             Future f = new Future();
-            Future readData = ReadMoreData();
+            IFuture readData = ReadMoreData();
             readData.RegisterOnComplete((_, result, error) => {
                 if (error != null) {
                     f.Fail(error);
@@ -536,22 +536,22 @@ namespace Squared.Task.IO {
             }
         }
 
-        public Future Read () {
+        public IFuture Read () {
             return Read(true);
         }
 
-        public Future Peek () {
+        public IFuture Peek () {
             return Read(false);
         }
 
-        public Future Read (bool advance) {
-            Future f = new Future();
+        public IFuture Read (bool advance) {
+            var f = new Future();
 
             SetPendingOperation(f);
             
             char result;
             if (!GetCurrentCharacter(out result)) {
-                Future decodeMoreChars = DecodeMoreData();
+                var decodeMoreChars = DecodeMoreData();
                 decodeMoreChars.RegisterOnComplete((_a, _b, error) => {
                     if (error != null) {
                         ClearPendingOperation(f);
@@ -579,7 +579,7 @@ namespace Squared.Task.IO {
             return f;
         }
 
-        public Future Read (char[] buffer, int offset, int count) {
+        public IFuture Read (char[] buffer, int offset, int count) {
             if (EndOfStream)
                 return new Future(0);
 
@@ -594,7 +594,7 @@ namespace Squared.Task.IO {
             return thunk.Run();
         }
 
-        public Future ReadLine () {
+        public IFuture ReadLine () {
             if (EndOfStream) {
                 string r = _ExtraLine ? "" : null;
                 _ExtraLine = false;
@@ -608,7 +608,7 @@ namespace Squared.Task.IO {
             return thunk.Run();
         }
 
-        public Future ReadToEnd () {
+        public IFuture ReadToEnd () {
             if (EndOfStream) {
                 return new Future(null);
             }
@@ -630,7 +630,7 @@ namespace Squared.Task.IO {
 
         private class WriteThunk {
             public AsyncTextWriter Parent;
-            private Future Result;
+            private IFuture Result;
             public char[][] Strings;
             public int NumStrings;
             public bool FlushWhenDone;
@@ -643,7 +643,7 @@ namespace Squared.Task.IO {
                 FlushOnComplete = _FlushOnComplete;
             }
 
-            public Future Run () {
+            public IFuture Run () {
                 Parent.SetPendingOperation(Result);
                 Result.RegisterOnComplete(Parent.OperationOnComplete);
 
@@ -764,7 +764,7 @@ namespace Squared.Task.IO {
             }
         }
 
-        private Future Flush (int numChars) {
+        private IFuture Flush (int numChars) {
             if (numChars > 0) {
                 _BufferCount = 0;
                 int numBytes = _Encoder.GetBytes(_WriteBuffer, 0, numChars, _SendBuffer, 0, true);
@@ -773,7 +773,7 @@ namespace Squared.Task.IO {
                 return new Future(null);
         }
 
-        public Future Flush () {
+        public IFuture Flush () {
             SetPendingOperation(null);
             var f = Flush(_BufferCount);
             SetPendingOperation(f);
@@ -781,7 +781,7 @@ namespace Squared.Task.IO {
             return f;
         }
 
-        public Future Write (params char[][] strings) {
+        public IFuture Write (params char[][] strings) {
             SetPendingOperation(null);
 
             var state = new WriteThunk {
@@ -794,11 +794,11 @@ namespace Squared.Task.IO {
             return state.Run();
         }
 
-        public Future Write (string text) {
+        public IFuture Write (string text) {
             return Write(text.ToCharArray());
         }
 
-        public Future WriteLine (string text) {
+        public IFuture WriteLine (string text) {
             return Write(text.ToCharArray(), NewLine);
         }
     }

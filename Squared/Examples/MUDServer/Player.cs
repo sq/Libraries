@@ -527,7 +527,7 @@ namespace MUDServer {
         protected override IEnumerator<object> ThinkTask () {
             while (Name == null) {
                 Client.SendText("Greetings, traveller. What might your name be?\r\n");
-                Future f = Client.ReadLineText();
+                var f = Client.ReadLineText();
                 yield return f;
                 string tempName;
                 try {
@@ -546,7 +546,7 @@ namespace MUDServer {
             World.Players[Name.ToLower()] = this;
 
             while (true) {
-                Future newInputLine = Client.ReadLineText();
+                var newInputLine = Client.ReadLineText();
                 yield return newInputLine;
                 string line = newInputLine.Result as string;
 

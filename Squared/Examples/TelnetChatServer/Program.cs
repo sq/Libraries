@@ -107,8 +107,8 @@ namespace TelnetChatServer {
                                 text = message.DisplayText;
                             }
 
-                            Future f = null;
-                            f = peer.Output.PendingOperation as Future;
+                            IFuture f = null;
+                            f = peer.Output.PendingOperation as IFuture;
                             if (f == null) {
                                 try {
                                     f = peer.Output.WriteLine(text);
@@ -175,7 +175,7 @@ namespace TelnetChatServer {
             yield return output.WriteLine("Welcome! Please enter your name.");
             output.AutoFlush = false;
 
-            Future f = input.ReadLine();
+            IFuture f = input.ReadLine();
             yield return f;
             if (f.CheckForFailure(disconnectExceptions)) {
                 PeerDisconnected(peer);
@@ -208,7 +208,7 @@ namespace TelnetChatServer {
             try {
                 int nextId = 0;
                 while (true) {
-                    Future connection = server.AcceptIncomingConnection();
+                    var connection = server.AcceptIncomingConnection();
                     yield return connection;
 
                     Peer peer = new Peer { PeerId = nextId++ };
