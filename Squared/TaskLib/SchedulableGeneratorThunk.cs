@@ -43,7 +43,7 @@ namespace Squared.Task {
             }
         }
 
-        void OnDisposed (Future _) {
+        void OnDisposed (IFuture _) {
             Dispose();
         }
 
@@ -55,7 +55,7 @@ namespace Squared.Task {
             QueueStep();
         }
 
-        void QueueStepOnComplete (Future f, object r, Exception e) {
+        void QueueStepOnComplete (IFuture f, object r, Exception e) {
             this.WakeCondition = null;
             _Scheduler.QueueWorkItem(_Step);
         }

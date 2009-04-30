@@ -82,7 +82,7 @@ namespace TelnetChatServer {
 
         static IEnumerator<object> MessageDispatcher () {
             while (true) {
-                var waitList = new List<Future>();
+                var waitList = new List<IFuture>();
                 var waitingPeers = new List<Peer>();
 
                 bool moreWork;
@@ -108,7 +108,7 @@ namespace TelnetChatServer {
                             }
 
                             Future f = null;
-                            f = peer.Output.PendingOperation;
+                            f = peer.Output.PendingOperation as Future;
                             if (f == null) {
                                 try {
                                     f = peer.Output.WriteLine(text);

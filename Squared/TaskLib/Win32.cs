@@ -80,7 +80,7 @@ namespace Squared.Task {
             }
         }
 
-        public void WaitForFuture (Future future) {
+        public void WaitForFuture (IFuture future) {
             while (!future.Completed) {
                 Action item = null;
                 lock (_Queue)

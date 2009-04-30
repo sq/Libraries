@@ -103,7 +103,7 @@ namespace MUDServer {
                 _EventQueue.Enqueue(evt);
         }
 
-        protected Future GetNewEvent () {
+        protected IFuture GetNewEvent () {
             return _EventQueue.Dequeue();
         }
 

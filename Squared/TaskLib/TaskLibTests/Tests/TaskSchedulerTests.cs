@@ -243,7 +243,7 @@ namespace Squared.Task {
             var buf = new ValueHolder();
             var fn = new Func<ValueHolder, int, int>(WorkerThread);
 
-            var futures = new List<Future>();
+            var futures = new List<IFuture>();
             for (int i = 0; i < numWorkers; i++) {
                 futures.Add(Future.RunInThread(fn, buf, numIterations));
             }
@@ -681,7 +681,7 @@ namespace Squared.Task {
             TcpListener server = new TcpListener(System.Net.IPAddress.Any, port);
 
             var a = Scheduler.Start(ServerTask(server, numClients));
-            var clients = new List<Future>();
+            var clients = new List<IFuture>();
             for (int i = 0; i < numClients; i++) {
                 clients.Add(Scheduler.Start(ClientTask(results, "localhost", port)));
             }
@@ -821,7 +821,7 @@ namespace Squared.Task {
                 sibling.Tell(state - 1);
                 yield return new WaitForNextStep();
 
-                Future response = _Messages.Dequeue();
+                IFuture response = _Messages.Dequeue();
                 yield return response;
                 state = (int)response.Result;
             }
@@ -1007,7 +1007,7 @@ namespace Squared.Task {
             Clock clock = Scheduler.CreateClock(0.25);
             long startTime = Time.Ticks;
 
-            Future f = clock.WaitForNextTick();
+            var f = clock.WaitForNextTick();
             Scheduler.WaitForWorkItems(1.0);
             Scheduler.Step();
             long endTime = Time.Ticks;

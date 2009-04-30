@@ -121,10 +121,10 @@ namespace Squared.Task {
     /// Completes when the specified future completes, or when (timeout) seconds have elapsed, whichever comes first.
     /// </summary>
     public class WaitWithTimeout : ISchedulable {
-        Future _Future, _TaskFuture, _SleepFuture;
+        IFuture _Future, _TaskFuture, _SleepFuture;
         double _Timeout;
 
-        public WaitWithTimeout (Future future, double timeout) {
+        public WaitWithTimeout (IFuture future, double timeout) {
             _Future = future;
             _Timeout = timeout;
         }

@@ -60,8 +60,8 @@ namespace Squared.Task.Data {
             }
         };
 
-        Action<Future> _CompletionNotifier = null;
-        Future _QueryFuture = null;
+        Action<IFuture> _CompletionNotifier = null;
+        IFuture _QueryFuture = null;
         Query _Query;
         object[] _Parameters;
 
@@ -104,7 +104,7 @@ namespace Squared.Task.Data {
     }
 
     public static class DbExtensionMethods {
-        public static Future AsyncExecuteScalar (this IDbCommand cmd) {
+        public static IFuture AsyncExecuteScalar (this IDbCommand cmd) {
             var f = new Future();
             ThreadPool.QueueUserWorkItem(
                 (WaitCallback)(
@@ -122,7 +122,7 @@ namespace Squared.Task.Data {
             return f;
         }
 
-        public static Future AsyncExecuteNonQuery (this IDbCommand cmd) {
+        public static IFuture AsyncExecuteNonQuery (this IDbCommand cmd) {
             var f = new Future();
             ThreadPool.QueueUserWorkItem(
                 (WaitCallback)(
@@ -140,7 +140,7 @@ namespace Squared.Task.Data {
             return f;
         }
 
-        public static Future AsyncExecuteReader (this IDbCommand cmd) {
+        public static IFuture AsyncExecuteReader (this IDbCommand cmd) {
             var f = new Future();
             ThreadPool.QueueUserWorkItem(
                 (WaitCallback)(
@@ -247,15 +247,15 @@ namespace Squared.Task.Data {
             return f;
         }
 
-        internal Action<Future> GetCompletionNotifier() {
-            Action<Future> cn = (f) =>
+        internal Action<IFuture> GetCompletionNotifier() {
+            Action<IFuture> cn = (f) =>
             {
                 _Manager.NotifyQueryCompleted(f);
             };
             return cn;
         }
 
-        public Future ExecuteNonQuery (params object[] parameters) {
+        public IFuture ExecuteNonQuery (params object[] parameters) {
             Func<object> queryFunc = () => {
                 _Manager.SetActiveQueryObject(this);
                 return _Command.ExecuteNonQuery();
@@ -263,7 +263,7 @@ namespace Squared.Task.Data {
             return InternalExecuteQuery(parameters, queryFunc, false);
         }
 
-        public Future ExecuteScalar (params object[] parameters) {
+        public IFuture ExecuteScalar (params object[] parameters) {
             Func<object> queryFunc = () => {
                 _Manager.SetActiveQueryObject(this);
                 return _Command.ExecuteScalar();
@@ -271,7 +271,7 @@ namespace Squared.Task.Data {
             return InternalExecuteQuery(parameters, queryFunc, false);
         }
 
-        internal Future ExecuteReader (params object[] parameters) {
+        internal IFuture ExecuteReader (params object[] parameters) {
             Func<object> queryFunc = () => {
                 _Manager.SetActiveQueryObject(this);
                 return _Command.ExecuteReader();
@@ -296,7 +296,7 @@ namespace Squared.Task.Data {
 
     public class Transaction : IDisposable, ISchedulable {
         private ConnectionWrapper _Wrapper;
-        private Future _Future;
+        private IFuture _Future;
         private bool _Active;
 
         public Transaction(ConnectionWrapper wrapper) {
@@ -305,7 +305,13 @@ namespace Squared.Task.Data {
             _Active = true;
         }
 
-        public Future Commit () {
+        public IFuture Future {
+            get {
+                return _Future;
+            }
+        }
+
+        public IFuture Commit () {
             if (!_Active)
                 return null;
 
@@ -313,7 +319,7 @@ namespace Squared.Task.Data {
             return _Wrapper.CommitTransaction();
         }
 
-        public Future Rollback () {
+        public IFuture Rollback () {
             if (!_Active)
                 return null;
 
@@ -326,10 +332,6 @@ namespace Squared.Task.Data {
                 _Wrapper.RollbackTransaction();
         }
 
-        public static implicit operator Future (Transaction t) {
-            return t._Future;
-        }
-
         void ISchedulable.Schedule(TaskScheduler scheduler, Future future) {
             future.Bind(this._Future);
         }
@@ -337,7 +339,7 @@ namespace Squared.Task.Data {
 
     public class ConnectionWrapper : IDisposable {
         struct WaitingQuery {
-            public Future Future;
+            public IFuture Future;
             public Action ExecuteFunc;
         }
 
@@ -350,7 +352,7 @@ namespace Squared.Task.Data {
 
         bool _Closing = false;
         bool _OwnsConnection = false;
-        Future _ActiveQuery = null;
+        IFuture _ActiveQuery = null;
         Query _ActiveQueryObject = null;
         Query _BeginTransaction, _CommitTransaction, _RollbackTransaction;
         int _TransactionDepth = 0;
@@ -382,7 +384,7 @@ namespace Squared.Task.Data {
             }
         }
 
-        internal Future BeginTransaction () {
+        internal IFuture BeginTransaction () {
             lock (this) {
                 _TransactionDepth += 1;
 
@@ -394,7 +396,7 @@ namespace Squared.Task.Data {
             }
         }
 
-        internal Future CommitTransaction () {
+        internal IFuture CommitTransaction () {
             lock (this) {
                 _TransactionDepth -= 1;
 
@@ -412,7 +414,7 @@ namespace Squared.Task.Data {
             }
         }
 
-        internal Future RollbackTransaction () {
+        internal IFuture RollbackTransaction () {
             lock (this) {
                 _TransactionDepth -= 1;
 
@@ -428,7 +430,7 @@ namespace Squared.Task.Data {
             }
         }
 
-        internal void EnqueueQuery (Future future, Action executeFunc) {
+        internal void EnqueueQuery (IFuture future, Action executeFunc) {
             if (_Closing)
                 return;
 
@@ -454,7 +456,7 @@ namespace Squared.Task.Data {
             waitingQuery.ExecuteFunc();
         }
 
-        internal void NotifyQueryCompleted (Future future) {
+        internal void NotifyQueryCompleted (IFuture future) {
             lock (this) {
                 if (_ActiveQuery != future) {
                     if (!_Closing)
@@ -471,7 +473,7 @@ namespace Squared.Task.Data {
             }
         }
 
-        public Future ExecuteSQL (string sql, params object[] parameters) {
+        public IFuture ExecuteSQL (string sql, params object[] parameters) {
             var cmd = BuildQuery(sql);
             var f = cmd.ExecuteNonQuery(parameters);
             f.RegisterOnDispose((_) => cmd.Dispose());
@@ -560,11 +562,11 @@ namespace Squared.Task.Data {
             }
         }
 
-        public Future Clone () {
+        public IFuture Clone () {
             return Clone(null);
         }
 
-        public Future Clone (string extraConnectionParameters) {
+        public IFuture Clone (string extraConnectionParameters) {
             var newConnectionString = _Connection.ConnectionString;
             if (extraConnectionParameters != null)
                 newConnectionString = newConnectionString + ";" + extraConnectionParameters;

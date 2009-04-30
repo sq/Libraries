@@ -751,5 +751,9 @@ namespace Squared.Task.IO {
 
             Assert.Contains(fileName, files);
         }
+
+        [Test]
+        public void WaitForChange() {
+        }
     }
 }

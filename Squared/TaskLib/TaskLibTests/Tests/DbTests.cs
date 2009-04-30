@@ -191,7 +191,7 @@ namespace Squared.Task.Data {
                 var fq = addValue.ExecuteNonQuery(1);
                 var fr = t.Rollback();
 
-                scheduler.WaitFor(Future.WaitForAll(t, fq, fr));
+                scheduler.WaitFor(Future.WaitForAll(t.Future, fq, fr));
 
                 var fgnv = getNumValues.ExecuteScalar();
                 long numValues = Convert.ToInt64(
@@ -203,7 +203,7 @@ namespace Squared.Task.Data {
                 fq = addValue.ExecuteNonQuery(1);
                 var fc = t.Commit();
 
-                scheduler.WaitFor(Future.WaitForAll(t, fq, fc));
+                scheduler.WaitFor(Future.WaitForAll(t.Future, fq, fc));
 
                 fgnv = getNumValues.ExecuteScalar();
                 numValues = Convert.ToInt64(
@@ -265,7 +265,7 @@ namespace Squared.Task.Data {
                 var fr = t2.Rollback();
                 var fc = t.Commit();
 
-                scheduler.WaitFor(Future.WaitForAll(t, fq, t2, fq2, fr, fc));
+                scheduler.WaitFor(Future.WaitForAll(t.Future, fq, t2.Future, fq2, fr, fc));
 
                 var fgnv = getNumValues.ExecuteScalar();
                 long numValues = Convert.ToInt64(
@@ -280,7 +280,7 @@ namespace Squared.Task.Data {
                 var fc2 = t2.Commit();
                 fc = t.Commit();
 
-                scheduler.WaitFor(Future.WaitForAll(t, fq, t2, fq2, fc2, fc));
+                scheduler.WaitFor(Future.WaitForAll(t.Future, fq, t2.Future, fq2, fc2, fc));
 
                 fgnv = getNumValues.ExecuteScalar();
                 numValues = Convert.ToInt64(
@@ -370,7 +370,7 @@ namespace Squared.Task.Data {
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
             DbTaskIterator iter;
-            Future f;
+            IFuture f;
 
             using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {

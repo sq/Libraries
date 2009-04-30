@@ -7,8 +7,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace Squared.Task {
-    public delegate void OnComplete(Future future, object value, Exception error);
-    public delegate void OnDispose(Future future);
+    public delegate void OnComplete(IFuture future, object value, Exception error);
+    public delegate void OnDispose(IFuture future);
 
     [Serializable]
     public class FutureException : Exception {
@@ -104,7 +104,20 @@ namespace Squared.Task {
         }
     }
 
-    public class Future : IDisposable {
+    public interface IFuture : IDisposable {
+        bool Completed {
+            get;
+        }
+        object Result {
+            get;
+        }
+        bool GetResult (out object result, out Exception error);
+        void SetResult (object result, Exception error);
+        void RegisterOnComplete (OnComplete handler);
+        void RegisterOnDispose (OnDispose handler);
+    }
+
+    public class Future : IDisposable, IFuture {
         private const int State_Empty = 0;
         private const int State_Indeterminate = 1;
         private const int State_CompletedWithValue = 2;
@@ -361,19 +374,19 @@ namespace Squared.Task {
             return false;
         }
 
-        public static Future WaitForFirst (IEnumerable<Future> futures) {
+        public static IFuture WaitForFirst (IEnumerable<IFuture> futures) {
             return WaitForFirst(futures.ToArray());
         }
 
-        public static Future WaitForFirst (params Future[] futures) {
+        public static IFuture WaitForFirst (params IFuture[] futures) {
             return WaitForX(futures, futures.Length);
         }
 
-        public static Future WaitForAll (IEnumerable<Future> futures) {
+        public static IFuture WaitForAll (IEnumerable<IFuture> futures) {
             return WaitForAll(futures.ToArray());
         }
 
-        public static Future WaitForAll (params Future[] futures) {
+        public static IFuture WaitForAll (params IFuture[] futures) {
             return WaitForX(futures, 1);
         }
 
@@ -403,11 +416,11 @@ namespace Squared.Task {
         }
 
         private class WaitHandler {
-            public Future Composite;
-            public List<Future> State = new List<Future>();
+            public IFuture Composite;
+            public List<IFuture> State = new List<IFuture>();
             public int Trigger;
 
-            public void OnComplete (Future f, object r, Exception e) {
+            public void OnComplete (IFuture f, object r, Exception e) {
                 bool completed = false;
                 lock (State) {
                     if (State.Count == Trigger) {
@@ -424,7 +437,7 @@ namespace Squared.Task {
             }
         }
 
-        private static Future WaitForX (Future[] futures, int x) {
+        private static IFuture WaitForX (IFuture[] futures, int x) {
             if ((futures == null) || (futures.Length == 0))
                 throw new ArgumentException("Must specify at least one future to wait on", "futures");
 
@@ -435,7 +448,7 @@ namespace Squared.Task {
             h.Trigger = x;
             OnComplete handler = h.OnComplete;
 
-            foreach (Future _ in futures)
+            foreach (IFuture _ in futures)
                 _.RegisterOnComplete(handler);
 
             return f;
@@ -446,26 +459,26 @@ namespace Squared.Task {
         /// <summary>
         /// Causes this future to become completed when the specified future is completed.
         /// </summary>
-        public static void Bind (this Future future, Future target) {
+        public static void Bind (this IFuture future, IFuture target) {
             OnComplete handler = (f, result, error) => {
                 future.SetResult(result, error);
             };
             target.RegisterOnComplete(handler);
         }
 
-        public static void Complete (this Future future) {
+        public static void Complete (this IFuture future) {
             future.SetResult(null, null);
         }
 
-        public static void Complete (this Future future, object result) {
+        public static void Complete (this IFuture future, object result) {
             future.SetResult(result, null);
         }
 
-        public static void Fail (this Future future, Exception error) {
+        public static void Fail (this IFuture future, Exception error) {
             future.SetResult(null, error);
         }
 
-        public static bool CheckForFailure (this Future future, params Type[] failureTypes) {
+        public static bool CheckForFailure (this IFuture future, params Type[] failureTypes) {
             object result;
             Exception error;
             if (future.GetResult(out result, out error)) {
@@ -481,7 +494,7 @@ namespace Squared.Task {
         /// <summary>
         /// Creates a ManualResetEvent that will become set when this future is completed.
         /// </summary>
-        public static ManualResetEvent GetCompletionEvent (this Future future) {
+        public static ManualResetEvent GetCompletionEvent (this IFuture future) {
             ManualResetEvent evt = new ManualResetEvent(false);
             OnComplete handler = (f, result, error) => {
                 evt.Set();
@@ -490,7 +503,7 @@ namespace Squared.Task {
             return evt;
         }
 
-        public static WaitWithTimeout WaitWithTimeout (this Future future, double timeout) {
+        public static WaitWithTimeout WaitWithTimeout (this IFuture future, double timeout) {
             return new WaitWithTimeout(future, timeout);
         }
     }

@@ -62,7 +62,7 @@ namespace MUDServer {
             Console.WriteLine("{0} has left the world", Name);
         }
 
-        private void OnDisconnected (Future f) {
+        private void OnDisconnected (IFuture f) {
             Location = null;
             this.Dispose();
         }

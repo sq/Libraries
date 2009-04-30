@@ -68,7 +68,7 @@ namespace MUDServer {
         }
 
         private IEnumerator<object> SendMessagesTask () {
-            Future f;
+            IFuture f;
             string text = null;
             while (true) {
                 f = _OutboundText.Dequeue();
@@ -142,7 +142,7 @@ namespace MUDServer {
             }
         }
 
-        public Future AcceptNewClient () {
+        public IFuture AcceptNewClient () {
             return _NewClients.Dequeue();
         }
 

@@ -57,26 +57,26 @@ namespace Squared.Task.IO {
     }
 
     public class PendingOperationManager {
-        Future _PendingOperation;
+        IFuture _PendingOperation;
         internal OnComplete OperationOnComplete;
 
-        public Future PendingOperation {
+        public IFuture PendingOperation {
             get {
                 return _PendingOperation;
             }
         }
 
-        internal void SetPendingOperation (Future f) {
-            if (Interlocked.CompareExchange<Future>(ref _PendingOperation, f, null) != null)
+        internal void SetPendingOperation (IFuture f) {
+            if (Interlocked.CompareExchange<IFuture>(ref _PendingOperation, f, null) != null)
                 throw new OperationPendingException();
         }
 
-        internal void ClearPendingOperation (Future f) {
-            if (Interlocked.CompareExchange<Future>(ref _PendingOperation, null, f) != f)
+        internal void ClearPendingOperation (IFuture f) {
+            if (Interlocked.CompareExchange<IFuture>(ref _PendingOperation, null, f) != f)
                 throw new InvalidDataException();
         }
 
-        private void _OperationOnComplete (Future f, object r, Exception e) {
+        private void _OperationOnComplete (IFuture f, object r, Exception e) {
             ClearPendingOperation(f);
         }
 
@@ -275,7 +275,7 @@ namespace Squared.Task.IO {
                 decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
             }
 
-            private void _OnDecodeComplete (Future f, object r, Exception e) {
+            private void _OnDecodeComplete (IFuture f, object r, Exception e) {
                 if (e != null) {
                     Result.Fail(e);
                 } else {
@@ -325,7 +325,7 @@ namespace Squared.Task.IO {
                 }
             }
 
-            private void _OnDecodeComplete (Future f, object r, Exception e) {
+            private void _OnDecodeComplete (IFuture f, object r, Exception e) {
                 if (e != null) {
                     Buffer.Dispose();
                     Result.Fail(e);
@@ -380,7 +380,7 @@ namespace Squared.Task.IO {
                 decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
             }
 
-            void _OnDecodeComplete (Future f, object r, Exception e) {
+            void _OnDecodeComplete (IFuture f, object r, Exception e) {
                 if (e != null) {
                     Buffer.Dispose();
                     Result.Fail(e);
@@ -652,7 +652,7 @@ namespace Squared.Task.IO {
                 return Result;
             }
 
-            private void _FlushOnComplete (Future f, object r, Exception e) {
+            private void _FlushOnComplete (IFuture f, object r, Exception e) {
                 if (e != null)
                     Result.Fail(e);
                 else

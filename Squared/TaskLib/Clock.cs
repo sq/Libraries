@@ -77,7 +77,7 @@ namespace Squared.Task {
             ScheduleNextTick();
         }
 
-        private void OnTick (Future f, object r, Exception e) {
+        private void OnTick (IFuture f, object r, Exception e) {
             _Scheduler.QueueWorkItem(Tick);
         }
 
@@ -101,7 +101,7 @@ namespace Squared.Task {
             }
         }
 
-        public Future WaitForNextTick () {
+        public IFuture WaitForNextTick () {
             return WaitForTick(_ElapsedTicks + 1);
         }
     }
