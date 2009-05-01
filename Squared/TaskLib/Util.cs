@@ -369,7 +369,7 @@ namespace Squared.Task {
         public Future<T[]> ToArray () {
             var f = new Future<T[]>();
             if (Disposed) {
-                f.Complete(null);
+                f.Complete(new T[0]);
             } else {
                 f.Bind(_Scheduler.Start(GetArray(), TaskExecutionPolicy.RunWhileFutureLives));
             }
