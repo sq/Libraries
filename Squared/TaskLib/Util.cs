@@ -208,6 +208,10 @@ namespace Squared.Task {
             future.Bind(this._Future);
         }
 
+        void AssertSucceeded () {
+            this._Future.AssertSucceeded();
+        }
+
         public T Result {
             get {
                 return (T)_Future.Result;
