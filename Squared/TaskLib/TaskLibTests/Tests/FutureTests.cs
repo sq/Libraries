@@ -75,7 +75,7 @@ namespace Squared.Task {
         public void InvokesOnCompletesWhenCompleted () {
             var f = new Future();
             object completeResult = null;
-            f.RegisterOnComplete((_, result, error) => { completeResult = error ?? (object)result; });
+            f.RegisterOnComplete((_) => { completeResult = _.Error ?? _.Result; });
             f.Complete(5);
             Assert.AreEqual(5, completeResult);
         }
@@ -84,7 +84,7 @@ namespace Squared.Task {
         public void InvokesOnCompletesWhenFailed () {
             var f = new Future();
             object completeResult = null;
-            f.RegisterOnComplete((_, result, error) => { completeResult = error ?? (object)result; });
+            f.RegisterOnComplete((_) => { completeResult = _.Error ?? _.Result; });
             f.Fail(new Exception("test"));
             Assert.AreEqual("test", (completeResult as Exception).Message);
         }
@@ -105,7 +105,7 @@ namespace Squared.Task {
             var f = new Future();
             object completeResult = null;
             f.Complete(5);
-            f.RegisterOnComplete((_, result, error) => { completeResult = error ?? (object)result; });
+            f.RegisterOnComplete((_) => { completeResult = _.Error ?? _.Result; });
             Assert.AreEqual(5, completeResult);
         }
 
@@ -185,7 +185,7 @@ namespace Squared.Task {
         [Test]
         public void FutureWrapsExceptionIfOnCompleteHandlerThrows () {
             var f = new Future();
-            f.RegisterOnComplete((_, r, e) => {
+            f.RegisterOnComplete((_) => {
                 throw new Exception("pancakes");
             });
 

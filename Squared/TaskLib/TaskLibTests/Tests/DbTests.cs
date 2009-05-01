@@ -151,16 +151,16 @@ namespace Squared.Task.Data {
                 var f1 = scheduler.Start(iterator.Start());
                 var f2 = q2.ExecuteNonQuery(200);
 
-                f1.RegisterOnComplete((f, r, e) => {
-                    Assert.IsNull(e);
+                f1.RegisterOnComplete((f) => {
+                    Assert.IsNull(f.Error);
                     Assert.AreEqual(f1, f);
-                    Assert.AreEqual(true, r);
+                    Assert.AreEqual(true, f.Result);
                     Assert.IsTrue(f1.Completed);
                     Assert.IsFalse(f2.Completed);
                 });
 
-                f2.RegisterOnComplete((f, r, e) => {
-                    Assert.IsNull(e);
+                f2.RegisterOnComplete((f) => {
+                    Assert.IsNull(f.Error);
                     Assert.AreEqual(f2, f);
                     Assert.IsTrue(f1.Completed);
                     Assert.IsTrue(f2.Completed);

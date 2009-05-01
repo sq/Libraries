@@ -435,6 +435,11 @@ namespace Squared.Game {
         }
 
         public static float? LineIntersectPolygon (Vector2 start, Vector2 end, Polygon polygon) {
+            Vector2 temp;
+            return LineIntersectPolygon(start, end, polygon, out temp);
+        }
+
+        public static float? LineIntersectPolygon (Vector2 start, Vector2 end, Polygon polygon, out Vector2 surfaceNormal) {
             float? result = null;
 
             bool done = false;
@@ -443,6 +448,8 @@ namespace Squared.Game {
             Vector2 firstPoint = new Vector2(), current = new Vector2();
             Vector2 previous, intersection;
             var vertices = polygon.GetVertices();
+
+            surfaceNormal = default(Vector2);
 
             while (!done) {
                 previous = current;
@@ -465,12 +472,14 @@ namespace Squared.Game {
                     if (distance < minDistance) {
                         minDistance = distance;
                         result = (float)Math.Sqrt(distance);
+                        surfaceNormal = (current - previous);
                     }
                 }
 
                 i += 1;
             }
 
+            surfaceNormal = Vector2.Normalize(surfaceNormal.PerpendicularLeft());
             return result;
         }
 

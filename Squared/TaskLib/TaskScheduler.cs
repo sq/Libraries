@@ -87,7 +87,8 @@ namespace Squared.Task {
             return _JobQueue.WaitForWorkItems(timeout);
         }
 
-        private void BackgroundTaskOnComplete (IFuture f, object r, Exception e) {
+        private void BackgroundTaskOnComplete (IFuture f) {
+            var e = f.Error;
             if (e != null) {
                 this.QueueWorkItem(() => {
                     if (ErrorHandler != null)

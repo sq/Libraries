@@ -402,7 +402,7 @@ namespace MUDServer {
         // Ensure that we send a new prompt to the user after dispatching any events that send output
         protected override IEnumerator<object> DispatchEvent (EventType type, object evt) {
             int prevMessages = _NumMessagesSent;
-            OnComplete oc = (f, r, e) => {
+            OnComplete oc = (f) => {
                 if (_NumMessagesSent > prevMessages)
                     SendPrompt();
             };
@@ -412,7 +412,7 @@ namespace MUDServer {
             if (result != null) {
                 return PromptHelper(result, oc);
             } else {
-                oc(null, null, null);
+                oc(null);
                 return null;
             }
         }

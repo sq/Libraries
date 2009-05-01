@@ -132,8 +132,8 @@ namespace Squared.Task {
         void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             _SleepFuture = scheduler.Start(new Sleep(_Timeout));
             _TaskFuture = Future.WaitForFirst(_Future, _SleepFuture);
-            _TaskFuture.RegisterOnComplete((f, result, error) => {
-                if (result == _SleepFuture)
+            _TaskFuture.RegisterOnComplete((f) => {
+                if (f.Result == _SleepFuture)
                     future.Fail(new TimeoutException("WaitWithTimeout timed out."));
                 else
                     future.Complete();
@@ -286,7 +286,7 @@ namespace Squared.Task {
             _Thunk.OnNextValue = OnNextValue;
 
             _SequenceFuture = scheduler.Start(_Thunk, TaskExecutionPolicy.RunWhileFutureLives);
-            _SequenceFuture.RegisterOnComplete((f, r, e) => {
+            _SequenceFuture.RegisterOnComplete((f) => {
                 _NextValueFuture.Complete(false);
                 Dispose();
             });

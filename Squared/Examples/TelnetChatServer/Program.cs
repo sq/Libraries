@@ -117,7 +117,8 @@ namespace TelnetChatServer {
                                     continue;
                                 }
 
-                                f.RegisterOnComplete((_, r, e) => {
+                                f.RegisterOnComplete((_) => {
+                                    var e = _.Error;
                                     if ((e is DisconnectedException) || (e is IOException) || (e is SocketException) || (e is FutureDisposedException)) {
                                         Scheduler.QueueWorkItem(() => {
                                             PeerDisconnected(peer);

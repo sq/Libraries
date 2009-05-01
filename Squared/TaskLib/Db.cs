@@ -28,20 +28,21 @@ namespace Squared.Task.Data {
                 i._CompletionNotifier = i.Query.GetCompletionNotifier();
                 i._QueryFuture = i.Query.ExecuteReader(i.Parameters);
                 i._QueryFuture.RegisterOnComplete(
-                    (f, r, e) => {
+                    (f) => {
+                        var e = f.Error;
                         if (e != null) {
                             future.SetResult(null, e);
                             return;
                         }
 
                         try {
-                            var reader = (IDataReader)r;
+                            var reader = (IDataReader)f.Result;
                             var enumerator = new DbEnumerator(reader, true);
                             var task = EnumeratorExtensionMethods.EnumerateViaThreadpool(enumerator);
                             i._Task = task;
                             i.Initialize(scheduler);
                             if (i.Future != null) {
-                                i.Future.RegisterOnComplete((_f, _r, _e) => {
+                                i.Future.RegisterOnComplete((_) => {
                                     reader.Dispose();
                                 });
                                 i.Future.RegisterOnDispose((_) => {
@@ -238,7 +239,7 @@ namespace Squared.Task.Data {
             var f = new Future();
             Action ef = GetExecuteFunc(parameters, queryFunc, f);
             if (!suspendCompletion) {
-                OnComplete oc = (_, r, e) => {
+                OnComplete oc = (_) => {
                     _Manager.NotifyQueryCompleted(f);
                 };
                 f.RegisterOnComplete(oc);
@@ -576,7 +577,7 @@ namespace Squared.Task.Data {
             var openMethod = newConnection.GetType().GetMethod("Open");
 
             var f = new Future();
-            f.RegisterOnComplete((_, r, e) => {
+            f.RegisterOnComplete((_) => {
                 NotifyQueryCompleted(f);
             });
 

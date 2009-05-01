@@ -579,7 +579,7 @@ namespace Squared.Task {
 
             long timeStart = Time.Ticks;
             var a = Scheduler.Start(new Sleep(1.5));
-            a.RegisterOnComplete((f, result, error) => {
+            a.RegisterOnComplete((f) => {
                 Scheduler.QueueWorkItem(() => {
                     vh.Value = 1;
                 });
@@ -1025,10 +1025,10 @@ namespace Squared.Task {
             var trace = new List<int>();
 
             Clock clock = Scheduler.CreateClock(0.1);
-            clock.WaitForTick(5).RegisterOnComplete((f, r, e) => { trace.Add(1); });
-            clock.WaitForTick(7).RegisterOnComplete((f, r, e) => { trace.Add(2); });
-            clock.WaitForTick(3).RegisterOnComplete((f, r, e) => { trace.Add(3); });
-            clock.WaitForTick(1).RegisterOnComplete((f, r, e) => { trace.Add(4); });
+            clock.WaitForTick(5).RegisterOnComplete((f) => { trace.Add(1); });
+            clock.WaitForTick(7).RegisterOnComplete((f) => { trace.Add(2); });
+            clock.WaitForTick(3).RegisterOnComplete((f) => { trace.Add(3); });
+            clock.WaitForTick(1).RegisterOnComplete((f) => { trace.Add(4); });
 
             double timeStart = Time.Seconds;
             double timeEnd;

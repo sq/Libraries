@@ -7,7 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace Squared.Task {
-    public delegate void OnComplete(IFuture future, object value, Exception error);
+    public delegate void OnComplete(IFuture future);
     public delegate void OnDispose(IFuture future);
 
     [Serializable]
@@ -114,6 +114,10 @@ namespace Squared.Task {
         object Result {
             get;
         }
+        Exception Error {
+            get;
+        }
+
         bool GetResult (out object result, out Exception error);
         void SetResult (object result, Exception error);
         void RegisterOnComplete (OnComplete handler);
@@ -222,7 +226,7 @@ namespace Squared.Task {
                 return;
 
             try {
-                handler(this, result, error);
+                handler(this);
             } catch (Exception ex) {
                 throw new FutureHandlerException(handler, ex);
             }
@@ -245,9 +249,9 @@ namespace Squared.Task {
             if (state == State_Empty) {
                 var oldOnComplete = _OnComplete;
                 if (oldOnComplete != null) {
-                    newOnComplete = (f, r, e) => {
-                        oldOnComplete(f, r, e);
-                        handler(f, r, e);
+                    newOnComplete = (f) => {
+                        oldOnComplete(f);
+                        handler(f);
                     };
                 } else {
                     newOnComplete = handler;
@@ -320,6 +324,18 @@ namespace Squared.Task {
         object IFuture.Result {
             get {
                 return this.Result;
+            }
+        }
+
+        public Exception Error {
+            get {
+                int state = _State;
+                if (state == State_CompletedWithValue) {
+                    return null;
+                } else if (state == State_CompletedWithError) {
+                    return _Error;
+                } else
+                    throw new FutureHasNoResultException();
             }
         }
 
@@ -473,7 +489,7 @@ namespace Squared.Task {
             public List<IFuture> State = new List<IFuture>();
             public int Trigger;
 
-            public void OnComplete (IFuture f, object r, Exception e) {
+            public void OnComplete (IFuture f) {
                 bool completed = false;
                 lock (State) {
                     if (State.Count == Trigger) {
@@ -513,7 +529,10 @@ namespace Squared.Task {
         /// Causes this future to become completed when the specified future is completed.
         /// </summary>
         public static void Bind (this IFuture future, IFuture target) {
-            OnComplete handler = (f, result, error) => {
+            OnComplete handler = (f) => {
+                object result;
+                Exception error;
+                f.GetResult(out result, out error);
                 future.SetResult(result, error);
             };
             target.RegisterOnComplete(handler);
@@ -557,9 +576,7 @@ namespace Squared.Task {
         /// </summary>
         public static ManualResetEvent GetCompletionEvent (this IFuture future) {
             ManualResetEvent evt = new ManualResetEvent(false);
-            OnComplete handler = (f, result, error) => {
-                evt.Set();
-            };
+            OnComplete handler = (f) => evt.Set();
             future.RegisterOnComplete(handler);
             return evt;
         }

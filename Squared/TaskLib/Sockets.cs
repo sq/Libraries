@@ -42,7 +42,7 @@ namespace Squared.Task.IO {
         }
 
         private void ReadCallback (IAsyncResult ar) {
-            var f = (IFuture)ar.AsyncState;
+            var f = (Future<int>)ar.AsyncState;
 
             if (!_Socket.Connected) {
                 f.Fail(new SocketDisconnectedException());
@@ -63,8 +63,8 @@ namespace Squared.Task.IO {
             }
         }
 
-        public IFuture Read (byte[] buffer, int offset, int count) {
-            var f = new Future();
+        public Future<int> Read (byte[] buffer, int offset, int count) {
+            var f = new Future<int>();
             if (!_Socket.Connected) {
                 f.Fail(new SocketDisconnectedException());
             } else {
@@ -95,7 +95,7 @@ namespace Squared.Task.IO {
         }
 
         private void WriteCallback (IAsyncResult ar) {
-            var f = (IFuture)ar.AsyncState;
+            var f = (SignalFuture)ar.AsyncState;
 
             if (!_Socket.Connected) {
                 f.Fail(new SocketDisconnectedException());
@@ -112,8 +112,8 @@ namespace Squared.Task.IO {
             }
         }
 
-        public IFuture Write (byte[] buffer, int offset, int count) {
-            var f = new Future();
+        public SignalFuture Write (byte[] buffer, int offset, int count) {
+            var f = new SignalFuture();
             if (!_Socket.Connected) {
                 f.Fail(new SocketDisconnectedException());
             } else {

@@ -32,17 +32,17 @@ namespace MUDServer {
         public IFuture ReadLineText () {
             var f = new Future();
             var inner = Input.ReadLine();
-            inner.RegisterOnComplete((_, r, e) => {
-                if (r == null) {
-                    if ((e is SocketDisconnectedException) || (e is IOException) || (e is SocketException)) {
-                        f.Complete();
-                        Dispose();
-                    } else {
-                        f.Fail(e);
-                    }
+            inner.RegisterOnComplete((_) => {
+                var e = f.Error;
+                if ((e is SocketDisconnectedException) || (e is IOException) || (e is SocketException)) {
+                    f.Complete();
+                    Dispose();
+                    return;
+                } else if (e != null) {
+                    f.Fail(e);
                     return;
                 }
-                string text = r as string;
+                string text = f.Result as string;
                 int count = 0;
                 int toSkip = 0;
                 char[] buf = new char[text.Length];

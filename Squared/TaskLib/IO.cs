@@ -76,7 +76,7 @@ namespace Squared.Task.IO {
                 throw new InvalidDataException();
         }
 
-        private void _OperationOnComplete (IFuture f, object r, Exception e) {
+        private void _OperationOnComplete (IFuture f) {
             ClearPendingOperation(f);
         }
 
@@ -86,13 +86,13 @@ namespace Squared.Task.IO {
     }
 
     public interface IAsyncDataSource : IDisposable {
-        IFuture Read (byte[] buffer, int offset, int count);
+        Future<int> Read (byte[] buffer, int offset, int count);
 
         bool EndOfStream { get; }
     }
 
     public interface IAsyncDataWriter : IDisposable {
-        IFuture Write (byte[] buffer, int offset, int count);
+        SignalFuture Write (byte[] buffer, int offset, int count);
     }
 
     public class FileDataAdapter : StreamDataAdapter {
@@ -147,7 +147,7 @@ namespace Squared.Task.IO {
         }
 
         private void ReadCallback (IAsyncResult ar) {
-            var f = (IFuture)ar.AsyncState;
+            var f = (Future<int>)ar.AsyncState;
             try {
                 int bytesRead = _Stream.EndRead(ar);
 
@@ -162,14 +162,14 @@ namespace Squared.Task.IO {
             }
         }
 
-        public IFuture Read (byte[] buffer, int offset, int count) {
-            Future f = new Future();
+        public Future<int> Read (byte[] buffer, int offset, int count) {
+            var f = new Future<int>();
             _Stream.BeginRead(buffer, offset, count, _ReadCallback, f);
             return f;
         }
 
         private void WriteCallback (IAsyncResult ar) {
-            var f = (IFuture)ar.AsyncState;
+            var f = (SignalFuture)ar.AsyncState;
             try {
                 _Stream.EndWrite(ar);
                 f.Complete();
@@ -180,14 +180,14 @@ namespace Squared.Task.IO {
             }
         }
         
-        public IFuture Write (byte[] buffer, int offset, int count) {
-            Future f = new Future();
+        public SignalFuture Write (byte[] buffer, int offset, int count) {
+            var f = new SignalFuture();
             _Stream.BeginWrite(buffer, offset, count, _WriteCallback, f);
             return f;
         }
 
-        public IFuture Flush () {
-            var f = new Future();
+        public SignalFuture Flush () {
+            var f = new SignalFuture();
             WaitCallback wc = (state) => {
                 var stream = (Stream)state;
                 try {
@@ -227,24 +227,15 @@ namespace Squared.Task.IO {
         public const int MinimumBufferSize = 256;
         public const int DefaultBufferSize = 2048;
 
-        private class ReadThunk {
+        private class ReadBlockThunk {
             public AsyncTextReader Parent;
-            protected IFuture Result;
-
-            public ReadThunk () {
-                Result = new Future();
-            }
-        }
-
-        private class ReadBlockThunk : ReadThunk {
+            public Future<int> Result = new Future<int>();
             public int InitialPosition, Count;
             public int Position;
             public char[] Buffer;
             public OnComplete OnDecodeComplete;
 
-            public ReadBlockThunk ()
-                : base () {
-
+            public ReadBlockThunk () {
                 OnDecodeComplete = _OnDecodeComplete;
             }
 
@@ -275,11 +266,12 @@ namespace Squared.Task.IO {
                 decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
             }
 
-            private void _OnDecodeComplete (IFuture f, object r, Exception e) {
+            private void _OnDecodeComplete (IFuture f) {
+                var e = f.Error;
                 if (e != null) {
                     Result.Fail(e);
                 } else {
-                    int numChars = (int)r;
+                    int numChars = (int)f.Result;
 
                     if (numChars > 0)
                         ProcessDecodedChars();
@@ -290,13 +282,13 @@ namespace Squared.Task.IO {
             }
         }
 
-        private class ReadLineThunk : ReadThunk {
+        private class ReadLineThunk {
+            public AsyncTextReader Parent;
+            public Future<string> Result = new Future<string>();
             public CharacterBuffer Buffer;
             public OnComplete OnDecodeComplete;
 
-            public ReadLineThunk () 
-                : base() {
-
+            public ReadLineThunk () {
                 Buffer = new CharacterBuffer();
                 OnDecodeComplete = _OnDecodeComplete;
             }
@@ -325,12 +317,13 @@ namespace Squared.Task.IO {
                 }
             }
 
-            private void _OnDecodeComplete (IFuture f, object r, Exception e) {
+            private void _OnDecodeComplete (IFuture f) {
+                var e = f.Error;
                 if (e != null) {
                     Buffer.Dispose();
                     Result.Fail(e);
                 } else {
-                    int numChars = (int)r;
+                    int numChars = (int)f.Result;
 
                     if (numChars > 0) {
                         try {
@@ -350,13 +343,13 @@ namespace Squared.Task.IO {
             }
         }
 
-        private class ReadToEndThunk : ReadThunk {
+        private class ReadToEndThunk {
+            public AsyncTextReader Parent;
+            public Future<string> Result = new Future<string>();
             public CharacterBuffer Buffer;
             public OnComplete OnDecodeComplete;
 
-            public ReadToEndThunk () 
-                : base() {
-
+            public ReadToEndThunk () {
                 Buffer = new CharacterBuffer();
                 OnDecodeComplete = _OnDecodeComplete;
             }
@@ -380,12 +373,13 @@ namespace Squared.Task.IO {
                 decodeMoreChars.RegisterOnComplete(OnDecodeComplete);
             }
 
-            void _OnDecodeComplete (IFuture f, object r, Exception e) {
+            void _OnDecodeComplete (IFuture f) {
+                var e = f.Error;
                 if (e != null) {
                     Buffer.Dispose();
                     Result.Fail(e);
                 } else {
-                    int numChars = (int)r;
+                    int numChars = (int)f.Result;
 
                     if (numChars > 0) {
                         ProcessDecodedChars();
@@ -451,20 +445,21 @@ namespace Squared.Task.IO {
             _DecodedBuffer = new char[_BufferSize + 1];
         }
 
-        private IFuture ReadMoreData () {
+        private Future<int> ReadMoreData () {
             return _DataSource.Read(_InputBuffer, 0, _BufferSize);
         }
 
-        private IFuture DecodeMoreData () {
-            Future f = new Future();
+        private Future<int> DecodeMoreData () {
+            var f = new Future<int>();
             IFuture readData = ReadMoreData();
-            readData.RegisterOnComplete((_, result, error) => {
+            readData.RegisterOnComplete((_) => {
+                var error = _.Error;
                 if (error != null) {
                     f.Fail(error);
                     return;
                 }
 
-                int bytesRead = (int)result;                
+                int bytesRead = (int)(_.Result);
 
                 try {
                     _DecodedCharacterOffset = 0;
@@ -544,15 +539,16 @@ namespace Squared.Task.IO {
             return Read(false);
         }
 
-        public IFuture Read (bool advance) {
-            var f = new Future();
+        public Future<char> Read (bool advance) {
+            var f = new Future<char>();
 
             SetPendingOperation(f);
             
             char result;
             if (!GetCurrentCharacter(out result)) {
                 var decodeMoreChars = DecodeMoreData();
-                decodeMoreChars.RegisterOnComplete((_a, _b, error) => {
+                decodeMoreChars.RegisterOnComplete((_) => {
+                    var error = _.Error;
                     if (error != null) {
                         ClearPendingOperation(f);
                         f.Fail(error);
@@ -652,7 +648,8 @@ namespace Squared.Task.IO {
                 return Result;
             }
 
-            private void _FlushOnComplete (IFuture f, object r, Exception e) {
+            private void _FlushOnComplete (IFuture f) {
+                var e = f.Error;
                 if (e != null)
                     Result.Fail(e);
                 else
