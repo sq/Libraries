@@ -117,6 +117,9 @@ namespace Squared.Task {
     }
 
     public interface IFuture : IDisposable {
+        bool Failed {
+            get;
+        }
         bool Completed {
             get;
         }
