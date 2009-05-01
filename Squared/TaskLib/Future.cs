@@ -553,6 +553,10 @@ namespace Squared.Task {
             target.RegisterOnComplete(handler);
         }
 
+        public static void AssertSucceeded (this IFuture future) {
+            var temp = future.Result;
+        }
+
         public static void Complete (this IFuture future) {
             future.SetResult(null, null);
         }
