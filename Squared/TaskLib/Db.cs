@@ -215,14 +215,14 @@ namespace Squared.Task.Data {
             }
         }
 
-        private Action GetExecuteFunc (object[] parameters, Func<object> queryFunc, Future future) {
+        private Action GetExecuteFunc<T> (object[] parameters, Func<T> queryFunc, Future<T> future) {
             WaitCallback wrapper = (_) => {
                 try {
                     BindParameters(parameters);
-                    object result = queryFunc();
+                    T result = queryFunc();
                     future.SetResult(result, null);
                 } catch (Exception e) {
-                    future.SetResult(null, e);
+                    future.Fail(e);
                 }
             };
             Action ef = () => {
@@ -231,12 +231,12 @@ namespace Squared.Task.Data {
             return ef;
         }
 
-        private IFuture InternalExecuteQuery (object[] parameters, Func<object> queryFunc, bool suspendCompletion) {
+        private Future<T> InternalExecuteQuery<T> (object[] parameters, Func<T> queryFunc, bool suspendCompletion) {
             if (_Manager.Closed)
                 return null;
 
             ValidateParameters(parameters);
-            var f = new Future();
+            var f = new Future<T>();
             Action ef = GetExecuteFunc(parameters, queryFunc, f);
             if (!suspendCompletion) {
                 OnComplete oc = (_) => {
@@ -249,22 +249,19 @@ namespace Squared.Task.Data {
         }
 
         internal Action<IFuture> GetCompletionNotifier() {
-            Action<IFuture> cn = (f) =>
-            {
-                _Manager.NotifyQueryCompleted(f);
-            };
+            Action<IFuture> cn = (f) => _Manager.NotifyQueryCompleted(f);
             return cn;
         }
 
-        public IFuture ExecuteNonQuery (params object[] parameters) {
-            Func<object> queryFunc = () => {
+        public Future<int> ExecuteNonQuery (params object[] parameters) {
+            Func<int> queryFunc = () => {
                 _Manager.SetActiveQueryObject(this);
                 return _Command.ExecuteNonQuery();
             };
             return InternalExecuteQuery(parameters, queryFunc, false);
         }
 
-        public IFuture ExecuteScalar (params object[] parameters) {
+        public Future<object> ExecuteScalar (params object[] parameters) {
             Func<object> queryFunc = () => {
                 _Manager.SetActiveQueryObject(this);
                 return _Command.ExecuteScalar();
@@ -272,8 +269,8 @@ namespace Squared.Task.Data {
             return InternalExecuteQuery(parameters, queryFunc, false);
         }
 
-        internal IFuture ExecuteReader (params object[] parameters) {
-            Func<object> queryFunc = () => {
+        internal Future<IDataReader> ExecuteReader (params object[] parameters) {
+            Func<IDataReader> queryFunc = () => {
                 _Manager.SetActiveQueryObject(this);
                 return _Command.ExecuteReader();
             };

@@ -239,7 +239,7 @@ namespace Squared.Task.IO {
                 OnDecodeComplete = _OnDecodeComplete;
             }
 
-            public IFuture Run () {
+            public Future<int> Run () {
                 Parent.SetPendingOperation(Result);
                 Result.RegisterOnComplete(Parent.OperationOnComplete);
 
@@ -293,7 +293,7 @@ namespace Squared.Task.IO {
                 OnDecodeComplete = _OnDecodeComplete;
             }
 
-            public IFuture Run () {
+            public Future<string> Run () {
                 Parent.SetPendingOperation(Result);
                 Result.RegisterOnComplete(Parent.OperationOnComplete);
 
@@ -354,7 +354,7 @@ namespace Squared.Task.IO {
                 OnDecodeComplete = _OnDecodeComplete;
             }
 
-            public IFuture Run () {
+            public Future<string> Run () {
                 Parent.SetPendingOperation(Result);
                 Result.RegisterOnComplete(Parent.OperationOnComplete);
 
@@ -451,7 +451,7 @@ namespace Squared.Task.IO {
 
         private Future<int> DecodeMoreData () {
             var f = new Future<int>();
-            IFuture readData = ReadMoreData();
+            var readData = ReadMoreData();
             readData.RegisterOnComplete((_) => {
                 var error = _.Error;
                 if (error != null) {
@@ -531,11 +531,11 @@ namespace Squared.Task.IO {
             }
         }
 
-        public IFuture Read () {
+        public Future<char> Read () {
             return Read(true);
         }
 
-        public IFuture Peek () {
+        public Future<char> Peek () {
             return Read(false);
         }
 
@@ -575,9 +575,9 @@ namespace Squared.Task.IO {
             return f;
         }
 
-        public IFuture Read (char[] buffer, int offset, int count) {
+        public Future<int> Read (char[] buffer, int offset, int count) {
             if (EndOfStream)
-                return new Future(0);
+                return new Future<int>(0);
 
             var thunk = new ReadBlockThunk {
                 Parent = this,
@@ -590,11 +590,11 @@ namespace Squared.Task.IO {
             return thunk.Run();
         }
 
-        public IFuture ReadLine () {
+        public Future<string> ReadLine () {
             if (EndOfStream) {
                 string r = _ExtraLine ? "" : null;
                 _ExtraLine = false;
-                return new Future(r);
+                return new Future<string>(r);
             }
 
             var thunk = new ReadLineThunk {
@@ -604,9 +604,9 @@ namespace Squared.Task.IO {
             return thunk.Run();
         }
 
-        public IFuture ReadToEnd () {
+        public Future<string> ReadToEnd () {
             if (EndOfStream) {
-                return new Future(null);
+                return new Future<string>(null);
             }
 
             var thunk = new ReadToEndThunk {

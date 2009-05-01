@@ -265,8 +265,8 @@ namespace Squared.Task {
         protected IEnumerator<object> _Task = null;
         protected TaskScheduler _Scheduler = null;
         protected SchedulableGeneratorThunk _Thunk = null;
-        protected IFuture _MoveNextFuture = new Future();
-        protected IFuture _NextValueFuture = new Future();
+        protected SignalFuture _MoveNextFuture = new SignalFuture();
+        protected Future<bool> _NextValueFuture = new Future<bool>();
         protected IFuture _SequenceFuture = null;
         protected bool _HasValue = false;
         protected T _Current = default(T);
@@ -298,7 +298,7 @@ namespace Squared.Task {
         /// <summary>
         /// Returns a future that will be completed when the next item in the sequence is ready, or the sequence has completed iteration. The future's result will be true if another item is ready.
         /// </summary>
-        public IFuture MoveNext () {
+        public Future<bool> MoveNext () {
             lock (this) {
                 if (_SequenceFuture == null)
                     throw new InvalidOperationException("The iterator is not ready.");
@@ -307,7 +307,7 @@ namespace Squared.Task {
 
                 var f = _MoveNextFuture;
                 var nv = _NextValueFuture;
-                _MoveNextFuture = new Future();
+                _MoveNextFuture = new SignalFuture();
                 f.Complete();
                 return nv;
             }
@@ -316,7 +316,7 @@ namespace Squared.Task {
         internal IFuture OnNextValue (object value) {
             lock (this) {
                 var f = _NextValueFuture;
-                _NextValueFuture = new Future();
+                _NextValueFuture = new Future<bool>();
                 try {
                     _Current = (T)value;
                     _HasValue = true;
@@ -333,7 +333,7 @@ namespace Squared.Task {
                         "Unable to convert value '{0}' of type {1} to type {2}",
                         valueString, value.GetType().Name, default(T).GetType().Name
                     );
-                    f.SetResult(null, new InvalidCastException(errorString));
+                    f.Fail(new InvalidCastException(errorString));
                 }
                 return _MoveNextFuture;
             }

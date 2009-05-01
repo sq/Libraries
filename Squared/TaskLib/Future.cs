@@ -58,49 +58,61 @@ namespace Squared.Task {
         internal static void _RunInThreadHelper (object state) {
             var thunk = (RunInThreadThunk)state;
             try {
-                var result = thunk.Invoke();
-                thunk.Future.Complete(result);
+                thunk.Invoke();
             } catch (System.Reflection.TargetInvocationException ex) {
-                thunk.Future.Fail(ex.InnerException);
+                thunk.Fail(ex.InnerException);
             } catch (Exception ex) {
-                thunk.Future.Fail(ex);
+                thunk.Fail(ex);
             }
         }
     }
 
     internal abstract class RunInThreadThunk {
-        public Future Future = new Future();
-
-        public abstract object Invoke ();
+        public abstract void Fail (Exception e);
+        public abstract void Invoke ();
     }
 
     internal class ActionRunInThreadThunk : RunInThreadThunk {
+        public SignalFuture Future = new SignalFuture();
         public Action WorkItem;
 
-        public override object Invoke () {
+        public override void Invoke () {
             WorkItem();
-            return null;
+        }
+
+        public override void Fail (Exception ex) {
+            Future.Fail(ex);
         }
     }
 
-    internal class FuncRunInThreadThunk : RunInThreadThunk {
-        public Func<object> WorkItem;
+    internal class FuncRunInThreadThunk<T> : RunInThreadThunk {
+        public Future<T> Future = new Future<T>();
+        public Func<T> WorkItem;
 
-        public override object Invoke () {
-            return WorkItem();
+        public override void Invoke () {
+            Future.Complete(WorkItem());
+        }
+
+        public override void Fail (Exception ex) {
+            Future.Fail(ex);
         }
     }
 
     internal class DynamicRunInThreadThunk : RunInThreadThunk {
+        public Future<object> Future = new Future<object>();
         public object[] Arguments;
         public Delegate WorkItem;
 
-        public override object Invoke () {
+        public override void Invoke () {
 #if XBOX
-            return WorkItem.Method.Invoke(WorkItem.Target, Arguments);
+            Future.Complete(WorkItem.Method.Invoke(WorkItem.Target, Arguments));
 #else
-            return WorkItem.DynamicInvoke(Arguments);
+            Future.Complete(WorkItem.DynamicInvoke(Arguments));
 #endif
+        }
+
+        public override void Fail (Exception ex) {
+            Future.Fail(ex);
         }
     }
 
@@ -459,15 +471,15 @@ namespace Squared.Task {
             return WaitForX(futures, 1);
         }
 
-        public static IFuture RunInThread (Func<object> workItem) {
-            var thunk = new FuncRunInThreadThunk {
+        public static Future<U> RunInThread<U> (Func<U> workItem) {
+            var thunk = new FuncRunInThreadThunk<U> {
                 WorkItem = workItem,
             };
             ThreadPool.QueueUserWorkItem(FutureHelpers.RunInThreadHelper, thunk);
             return thunk.Future;
         }
 
-        public static IFuture RunInThread (Action workItem) {
+        public static SignalFuture RunInThread (Action workItem) {
             var thunk = new ActionRunInThreadThunk {
                 WorkItem = workItem,
             };
