@@ -120,7 +120,34 @@ namespace Squared.Task {
         void RegisterOnDispose (OnDispose handler);
     }
 
-    public class Future : IDisposable, IFuture {
+    public class NoneType {
+        private NoneType () {
+        }
+
+        public static NoneType None = new NoneType();
+    }
+
+    public class Future : Future<object> {
+        public Future () 
+            : base() {
+        }
+
+        public Future (object value)
+            : base(value) {
+        }
+    }
+
+    public class SignalFuture : Future<NoneType> {
+        public SignalFuture ()
+            : base() {
+        }
+
+        public SignalFuture (bool signaled) 
+            : base(signaled ? NoneType.None : null) {
+        }
+    }
+
+    public class Future<T> : IDisposable, IFuture {
         private const int State_Empty = 0;
         private const int State_Indeterminate = 1;
         private const int State_CompletedWithValue = 2;
@@ -128,13 +155,15 @@ namespace Squared.Task {
         private const int State_Disposed = 4;
 
         private volatile int _State = State_Empty;
-        private volatile object _Result = null;
         private volatile OnComplete _OnComplete = null;
         private volatile OnDispose _OnDispose = null;
+        private volatile Exception _Error = null;
+        private T _Result = default(T);
 
         public override string ToString () {
             int state = _State;
             var result = _Result;
+            var error = _Error;
             string stateText = "??";
             switch (state) {
                 case State_Empty:
@@ -153,13 +182,13 @@ namespace Squared.Task {
                     stateText = "Disposed";
                     break;
             }
-            return String.Format("<Future ({0}) r={1}>", stateText, result);
+            return String.Format("<Future<{3}> ({0}) r={1} e={2}>", stateText, result, error, typeof(T).Name);
         }
 
         public Future () {
         }
 
-        public Future (object value) {
+        public Future (T value) {
             this.SetResult(value, null);
         }
 
@@ -231,7 +260,7 @@ namespace Squared.Task {
             } else if (state == State_CompletedWithValue) {
                 InvokeOnComplete(handler, _Result, null);
             } else if (state == State_CompletedWithError) {
-                InvokeOnComplete(handler, null, (Exception)_Result);
+                InvokeOnComplete(handler, null, (Exception)_Error);
             }
         }
 
@@ -288,19 +317,32 @@ namespace Squared.Task {
             }
         }
 
-        public object Result {
+        object IFuture.Result {
+            get {
+                return this.Result;
+            }
+        }
+
+        public T Result {
             get {
                 int state = _State;
                 if (state == State_CompletedWithValue) {
                     return _Result;
                 } else if (state == State_CompletedWithError) {
-                    throw new FutureException("Future's result was an error", (Exception)_Result);
+                    throw new FutureException("Future's result was an error", (Exception)_Error);
                 } else
                     throw new FutureHasNoResultException();
             }
         }
 
-        public void SetResult (object result, Exception error) {
+        void IFuture.SetResult (object result, Exception error) {
+            if (result == null)
+                SetResult(default(T), error);
+            else
+                SetResult((T)result, error);
+        }
+
+        public void SetResult (T result, Exception error) {
             if ((result != null) && (error != null)) {
                 throw new FutureException("Cannot complete a future with both a result and an error.", error);
             }
@@ -321,7 +363,8 @@ namespace Squared.Task {
             }
 
             int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
-            _Result = error ?? result;
+            _Result = result;
+            _Error = error;
             OnComplete handler = _OnComplete;
             _OnDispose = null;
             _OnComplete = null;
@@ -359,7 +402,14 @@ namespace Squared.Task {
             InvokeOnDispose(handler);
         }
 
-        public bool GetResult (out object result, out Exception error) {
+        bool IFuture.GetResult (out object result, out Exception error) {
+            T temp;
+            bool retval = this.GetResult(out temp, out error);
+            result = temp;
+            return retval;
+        }
+
+        public bool GetResult (out T result, out Exception error) {
             int state = _State;
 
             if (state == State_CompletedWithValue) {
@@ -367,12 +417,12 @@ namespace Squared.Task {
                 error = null;
                 return true;
             } else if (state == State_CompletedWithError) {
-                result = null;
-                error = (Exception)_Result;
+                result = default(T);
+                error = (Exception)_Error;
                 return true;
             }
 
-            result = null;
+            result = default(T);
             error = null;
             return false;
         }
@@ -477,8 +527,16 @@ namespace Squared.Task {
             future.SetResult(result, null);
         }
 
+        public static void Complete<T> (this Future<T> future, T result) {
+            future.SetResult(result, null);
+        }
+
         public static void Fail (this IFuture future, Exception error) {
             future.SetResult(null, error);
+        }
+
+        public static void Fail<T> (this Future<T> future, Exception error) {
+            future.SetResult(default(T), error);
         }
 
         public static bool CheckForFailure (this IFuture future, params Type[] failureTypes) {

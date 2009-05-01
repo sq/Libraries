@@ -45,7 +45,7 @@ namespace Squared.Task.Data {
         public void TestAsyncExecuteNonQuery () {
             var cmd = Connection.CreateCommand();
             cmd.CommandText = "CREATE TEMPORARY TABLE Test (value int); INSERT INTO Test (value) VALUES (1)";
-            var f = cmd.AsyncExecuteNonQuery();
+            IFuture f = cmd.AsyncExecuteNonQuery();
             f.GetCompletionEvent().WaitOne();
 
             cmd.CommandText = "SELECT value FROM Test LIMIT 1";

@@ -14,8 +14,8 @@ namespace Squared.Task.IO {
     }    
 
     public static class IOExtensionMethods {
-        public static IFuture AsyncRead (this Stream stream, byte[] buffer, int offset, int count) {
-            var f = new Future();
+        public static Future<int> AsyncRead (this Stream stream, byte[] buffer, int offset, int count) {
+            var f = new Future<int>();
             try {
                 stream.BeginRead(buffer, offset, count, (ar) => {
                     try {
@@ -35,8 +35,8 @@ namespace Squared.Task.IO {
             return f;
         }
 
-        public static IFuture AsyncWrite (this Stream stream, byte[] buffer, int offset, int count) {
-            var f = new Future();
+        public static SignalFuture AsyncWrite (this Stream stream, byte[] buffer, int offset, int count) {
+            var f = new SignalFuture();
             try {
                 stream.BeginWrite(buffer, offset, count, (ar) => {
                     try {

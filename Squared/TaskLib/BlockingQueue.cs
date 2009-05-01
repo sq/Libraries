@@ -6,7 +6,7 @@ using System.Threading;
 namespace Squared.Task {
     public class BlockingQueue<T> {
         private object _Lock = new object();
-        private Queue<IFuture> _WaitingFutures = new Queue<IFuture>();
+        private Queue<Future<T>> _WaitingFutures = new Queue<Future<T>>();
         private Queue<T> _Queue = new Queue<T>();
 
         public int Count {
@@ -17,8 +17,8 @@ namespace Squared.Task {
             }
         }
 
-        public IFuture Dequeue () {
-            IFuture f = new Future();
+        public Future<T> Dequeue () {
+            var f = new Future<T>();
             lock (_Lock) {
                 if (_Queue.Count > 0)
                     f.Complete(_Queue.Dequeue());

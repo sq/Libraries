@@ -104,7 +104,7 @@ namespace Squared.Task.Data {
     }
 
     public static class DbExtensionMethods {
-        public static IFuture AsyncExecuteScalar (this IDbCommand cmd) {
+        public static Future AsyncExecuteScalar (this IDbCommand cmd) {
             var f = new Future();
             ThreadPool.QueueUserWorkItem(
                 (WaitCallback)(
@@ -114,7 +114,7 @@ namespace Squared.Task.Data {
                             result = cmd.ExecuteScalar();
                             f.SetResult(result, null);
                         } catch (Exception e) {
-                            f.SetResult(null, e);
+                            f.Fail(e);
                         }
                     }
                 )
@@ -122,8 +122,8 @@ namespace Squared.Task.Data {
             return f;
         }
 
-        public static IFuture AsyncExecuteNonQuery (this IDbCommand cmd) {
-            var f = new Future();
+        public static Future<int> AsyncExecuteNonQuery (this IDbCommand cmd) {
+            var f = new Future<int>();
             ThreadPool.QueueUserWorkItem(
                 (WaitCallback)(
                     (state) => {
@@ -132,7 +132,7 @@ namespace Squared.Task.Data {
                             result = cmd.ExecuteNonQuery();
                             f.SetResult(result, null);
                         } catch (Exception e) {
-                            f.SetResult(null, e);
+                            f.Fail(e);
                         }
                     }
                 )
@@ -140,8 +140,8 @@ namespace Squared.Task.Data {
             return f;
         }
 
-        public static IFuture AsyncExecuteReader (this IDbCommand cmd) {
-            var f = new Future();
+        public static Future<IDataReader> AsyncExecuteReader (this IDbCommand cmd) {
+            var f = new Future<IDataReader>();
             ThreadPool.QueueUserWorkItem(
                 (WaitCallback)(
                     (state) => {
@@ -150,7 +150,7 @@ namespace Squared.Task.Data {
                             result = cmd.ExecuteReader();
                             f.SetResult(result, null);
                         } catch (Exception e) {
-                            f.SetResult(null, e);
+                            f.Fail(e);
                         }
                     }
                 )
