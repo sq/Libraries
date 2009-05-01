@@ -171,10 +171,20 @@ namespace Squared.Task {
         }
     }
 
+    public class RunToCompletion : RunToCompletion<object> {
+        public RunToCompletion (IEnumerator<object> task)
+            : base(task) {
+        }
+
+        public RunToCompletion (IEnumerator<object> task, TaskExecutionPolicy executionPolicy)
+            : base(task, executionPolicy) {
+        }
+    }
+
     /// <summary>
     /// Schedules a task to run to completion.
     /// </summary>
-    public class RunToCompletion : ISchedulable {
+    public class RunToCompletion<T> : ISchedulable {
         IEnumerator<object> _Task;
         TaskExecutionPolicy _ExecutionPolicy;
         IFuture _Future;
@@ -198,9 +208,9 @@ namespace Squared.Task {
             future.Bind(this._Future);
         }
 
-        public object Result {
+        public T Result {
             get {
-                return _Future.Result;
+                return (T)_Future.Result;
             }
         }
     }

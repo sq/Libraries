@@ -226,6 +226,12 @@ namespace Squared.Task {
             return WaitFor(f);
         }
 
+        public T WaitFor<T> (Future<T> future) {
+            _JobQueue.WaitForFuture(future);
+
+            return future.Result;
+        }
+
         public object WaitFor (IFuture future) {
             _JobQueue.WaitForFuture(future);
 

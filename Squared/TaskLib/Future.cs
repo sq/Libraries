@@ -99,7 +99,7 @@ namespace Squared.Task {
     }
 
     internal class DynamicRunInThreadThunk : RunInThreadThunk {
-        public Future<object> Future = new Future<object>();
+        public Future Future = new Future();
         public object[] Arguments;
         public Delegate WorkItem;
 
@@ -487,7 +487,7 @@ namespace Squared.Task {
             return thunk.Future;
         }
 
-        public static IFuture RunInThread (Delegate workItem, params object[] arguments) {
+        public static Future RunInThread (Delegate workItem, params object[] arguments) {
             var thunk = new DynamicRunInThreadThunk {
                 WorkItem = workItem,
                 Arguments = arguments

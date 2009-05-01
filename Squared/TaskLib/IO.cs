@@ -626,7 +626,7 @@ namespace Squared.Task.IO {
 
         private class WriteThunk {
             public AsyncTextWriter Parent;
-            private IFuture Result;
+            private SignalFuture Result;
             public char[][] Strings;
             public int NumStrings;
             public bool FlushWhenDone;
@@ -635,11 +635,11 @@ namespace Squared.Task.IO {
             private OnComplete FlushOnComplete;
 
             public WriteThunk () {
-                Result = new Future();
+                Result = new SignalFuture();
                 FlushOnComplete = _FlushOnComplete;
             }
 
-            public IFuture Run () {
+            public SignalFuture Run () {
                 Parent.SetPendingOperation(Result);
                 Result.RegisterOnComplete(Parent.OperationOnComplete);
 
@@ -761,16 +761,16 @@ namespace Squared.Task.IO {
             }
         }
 
-        private IFuture Flush (int numChars) {
+        private SignalFuture Flush (int numChars) {
             if (numChars > 0) {
                 _BufferCount = 0;
                 int numBytes = _Encoder.GetBytes(_WriteBuffer, 0, numChars, _SendBuffer, 0, true);
                 return _DataWriter.Write(_SendBuffer, 0, numBytes);
             } else
-                return new Future(null);
+                return new SignalFuture(true);
         }
 
-        public IFuture Flush () {
+        public SignalFuture Flush () {
             SetPendingOperation(null);
             var f = Flush(_BufferCount);
             SetPendingOperation(f);
@@ -778,7 +778,7 @@ namespace Squared.Task.IO {
             return f;
         }
 
-        public IFuture Write (params char[][] strings) {
+        public SignalFuture Write (params char[][] strings) {
             SetPendingOperation(null);
 
             var state = new WriteThunk {
@@ -791,11 +791,11 @@ namespace Squared.Task.IO {
             return state.Run();
         }
 
-        public IFuture Write (string text) {
+        public SignalFuture Write (string text) {
             return Write(text.ToCharArray());
         }
 
-        public IFuture WriteLine (string text) {
+        public SignalFuture WriteLine (string text) {
             return Write(text.ToCharArray(), NewLine);
         }
     }
