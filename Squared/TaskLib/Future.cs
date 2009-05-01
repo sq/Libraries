@@ -78,6 +78,7 @@ namespace Squared.Task {
 
         public override void Invoke () {
             WorkItem();
+            Future.Complete();
         }
 
         public override void Fail (Exception ex) {
@@ -132,6 +133,9 @@ namespace Squared.Task {
         Exception Error {
             get;
         }
+        int ErrorCheckFlag {
+            get;
+        }
 
         bool GetResult (out object result, out Exception error);
         void SetResult (object result, Exception error);
@@ -177,6 +181,7 @@ namespace Squared.Task {
         private volatile OnComplete _OnComplete = null;
         private volatile OnDispose _OnDispose = null;
         private volatile Exception _Error = null;
+        private volatile int _ErrorCheckFlag = 0;
         private T _Result = default(T);
 
         public override string ToString () {
@@ -236,7 +241,7 @@ namespace Squared.Task {
             }
         }
 
-        private void InvokeOnComplete (OnComplete handler, object result, Exception error) {
+        private void InvokeOnComplete (OnComplete handler) {
             if (handler == null)
                 return;
 
@@ -277,9 +282,9 @@ namespace Squared.Task {
                 if (Interlocked.CompareExchange(ref _State, State_Empty, State_Indeterminate) != State_Indeterminate)
                     throw new ThreadStateException();
             } else if (state == State_CompletedWithValue) {
-                InvokeOnComplete(handler, _Result, null);
+                InvokeOnComplete(handler);
             } else if (state == State_CompletedWithError) {
-                InvokeOnComplete(handler, null, (Exception)_Error);
+                InvokeOnComplete(handler);
             }
         }
 
@@ -332,6 +337,7 @@ namespace Squared.Task {
 
         public bool Failed {
             get {
+                Interlocked.Increment(ref _ErrorCheckFlag);
                 return _State == State_CompletedWithError;
             }
         }
@@ -342,12 +348,19 @@ namespace Squared.Task {
             }
         }
 
+        public int ErrorCheckFlag {
+            get {
+                return _ErrorCheckFlag;
+            }
+        }
+
         public Exception Error {
             get {
                 int state = _State;
                 if (state == State_CompletedWithValue) {
                     return null;
                 } else if (state == State_CompletedWithError) {
+                    Interlocked.Increment(ref _ErrorCheckFlag);
                     return _Error;
                 } else
                     throw new FutureHasNoResultException();
@@ -360,6 +373,7 @@ namespace Squared.Task {
                 if (state == State_CompletedWithValue) {
                     return _Result;
                 } else if (state == State_CompletedWithError) {
+                    Interlocked.Increment(ref _ErrorCheckFlag);
                     throw new FutureException("Future's result was an error", (Exception)_Error);
                 } else
                     throw new FutureHasNoResultException();
@@ -367,6 +381,10 @@ namespace Squared.Task {
         }
 
         void IFuture.SetResult (object result, Exception error) {
+            if ((error != null) && (result != null)) {
+                throw new FutureException("Cannot complete a future with both a result and an error.", error);
+            }
+
             if (result == null)
                 SetResult(default(T), error);
             else
@@ -374,10 +392,6 @@ namespace Squared.Task {
         }
 
         public void SetResult (T result, Exception error) {
-            if ((result != null) && (error != null)) {
-                throw new FutureException("Cannot complete a future with both a result and an error.", error);
-            }
-
             int iterations = 1;
 
             while (true) {
@@ -404,9 +418,9 @@ namespace Squared.Task {
                 throw new ThreadStateException();
 
             if (newState == State_CompletedWithValue)
-                InvokeOnComplete(handler, result, null);
+                InvokeOnComplete(handler);
             else if (newState == State_CompletedWithError)
-                InvokeOnComplete(handler, null, error);
+                InvokeOnComplete(handler);
         }
 
         public void Dispose () {
@@ -450,6 +464,7 @@ namespace Squared.Task {
             } else if (state == State_CompletedWithError) {
                 result = default(T);
                 error = (Exception)_Error;
+                Interlocked.Increment(ref _ErrorCheckFlag);
                 return true;
             }
 

@@ -80,7 +80,7 @@ namespace Squared.Task {
             }
         }
 
-        public void WaitForFuture (IFuture future) {
+        public bool WaitForFuture (IFuture future) {
             while (!future.Completed) {
                 Action item = null;
                 lock (_Queue)
@@ -89,9 +89,13 @@ namespace Squared.Task {
 
                 if (item != null)
                     item();
-                else
+                else {
                     Thread.Sleep(0);
+                    return false;
+                }
             }
+
+            return true;
         }
 
         public void Step () {

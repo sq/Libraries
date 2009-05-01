@@ -555,6 +555,56 @@ namespace Squared.Task {
                 Assert.AreEqual("maple syrup", ex.InnerException.Message);
             }
         }
+
+        IEnumerator<object> RunChildTaskThreeTimes (Func<IEnumerator<object>> childTask) {
+            yield return childTask();
+            yield return childTask();
+            yield return childTask();
+        }
+
+        IEnumerator<object> YieldAndIgnore (Future f) {
+            yield return f;
+            yield return new Result(true);
+        }
+
+        IEnumerator<object> YieldAndCheck (Future f) {
+            yield return f;
+            yield return new Result(!f.Failed);
+        }
+
+        [Test]
+        public void ChildTaskFailuresAbortTasks () {
+            var f = Scheduler.Start(RunChildTaskThreeTimes(CrashyTask), TaskExecutionPolicy.RunWhileFutureLives);
+            try {
+                Scheduler.WaitFor(f);
+                throw new Exception("WaitFor did not bubble an exception");
+            } catch (FutureException fe) {
+                Assert.AreEqual("pancakes", fe.InnerException.Message);
+            }
+        }
+
+        [Test]
+        public void ChildFutureFailuresAbortTasksIfIgnored () {
+            var failed = new Future();
+            failed.Fail(new Exception("pancakes"));
+
+            var f = Scheduler.Start(YieldAndIgnore(failed), TaskExecutionPolicy.RunWhileFutureLives);
+            try {
+                Scheduler.WaitFor(f);
+                throw new Exception("WaitFor did not bubble an exception");
+            } catch (FutureException fe) {
+                Assert.AreEqual("pancakes", fe.InnerException.Message);
+            }
+        }
+
+        [Test]
+        public void ChildFutureFailuresDoNotAbortTasksIfHandled () {
+            var failed = new Future();
+            failed.Fail(new Exception("pancakes"));
+
+            var f = Scheduler.Start(YieldAndCheck(failed), TaskExecutionPolicy.RunWhileFutureLives);
+            Assert.AreEqual(false, Scheduler.WaitFor(f));
+        }
     }
 
     [TestFixture]

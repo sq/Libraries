@@ -11,7 +11,7 @@ namespace Squared.Task {
     public interface IJobQueue : IDisposable {
         void QueueWorkItem (Action item);
         void Step ();
-        void WaitForFuture (IFuture future);
+        bool WaitForFuture (IFuture future);
         bool WaitForWorkItems (double timeout);
         int Count { get; }
     }
@@ -43,14 +43,18 @@ namespace Squared.Task {
             } while (item != null);
         }
 
-        public void WaitForFuture (IFuture future) {
+        public bool WaitForFuture (IFuture future) {
             Action item = null;
             while (!future.Completed) {
                 if (_Queue.Dequeue(out item))
                     item();
-                else
+                else {
                     Thread.Sleep(0);
+                    return false;
+                }
             }
+
+            return true;
         }
 
         public int Count {

@@ -208,7 +208,7 @@ namespace Squared.Task {
             return result;
         }
 
-        public void Step () {
+        internal void BeforeStep () {
             Action item = null;
 
             while (true) {
@@ -217,6 +217,10 @@ namespace Squared.Task {
                 else
                     break;
             }
+        }
+
+        public void Step () {
+            BeforeStep();
 
             _JobQueue.Step();
         }
@@ -227,15 +231,21 @@ namespace Squared.Task {
         }
 
         public T WaitFor<T> (Future<T> future) {
-            _JobQueue.WaitForFuture(future);
+            while (true) {
+                BeforeStep();
 
-            return future.Result;
+                if (_JobQueue.WaitForFuture(future))
+                    return future.Result;
+            }
         }
 
         public object WaitFor (IFuture future) {
-            _JobQueue.WaitForFuture(future);
+            while (true) {
+                BeforeStep();
 
-            return future.Result;
+                if (_JobQueue.WaitForFuture(future))
+                    return future.Result;
+            }
         }
 
         public bool HasPendingTasks {

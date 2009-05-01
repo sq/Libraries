@@ -282,11 +282,11 @@ namespace Squared.Task.IO {
 
             f = Reader.Peek();
             f.GetCompletionEvent().WaitOne();
-            Assert.AreEqual(null, f.Result);
+            Assert.AreEqual(default(char), f.Result);
 
             f = Reader.Read();
             f.GetCompletionEvent().WaitOne();
-            Assert.AreEqual(null, f.Result);
+            Assert.AreEqual(default(char), f.Result);
         }
 
         [Test]

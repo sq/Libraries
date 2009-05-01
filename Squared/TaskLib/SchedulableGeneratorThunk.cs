@@ -10,6 +10,9 @@ namespace Squared.Task {
         IEnumerator<object> _Task;
         IFuture _Future;
         public IFuture WakeCondition;
+        IFuture _WakePrevious = null;
+        bool _WakeDiscardingResult = false;
+        int _WakeFlag = 0;
         TaskScheduler _Scheduler;
         Action _Step, _QueueStep;
         OnComplete _QueueStepOnComplete;
@@ -25,7 +28,22 @@ namespace Squared.Task {
             _Step = Step;
         }
 
+        internal void CompleteWithResult (object result) {
+            if (CheckForDiscardedError())
+                return;
+
+            _Future.Complete(result);
+            Dispose();
+        }
+
+        internal void Abort (Exception ex) {
+            if (_Future != null)
+                _Future.Fail(ex);
+            Dispose();
+        }
+
         public void Dispose () {
+            _WakePrevious = null;
 
             if (WakeCondition != null) {
                 WakeCondition.Dispose();
@@ -56,7 +74,16 @@ namespace Squared.Task {
         }
 
         void QueueStepOnComplete (IFuture f) {
-            this.WakeCondition = null;
+            if (_WakeDiscardingResult && f.Failed) {
+                Abort(f.Error);
+                return;
+            }
+
+            if (WakeCondition != null) {
+                _WakePrevious = WakeCondition;
+                WakeCondition = null;
+            }
+
             _Scheduler.QueueWorkItem(_Step);
         }
 
@@ -70,13 +97,40 @@ namespace Squared.Task {
             } else if (value is Yield) {
                 QueueStep();
             } else {
-                var temp = _Scheduler.Start(value);
-                this.WakeCondition = temp;
+                var temp = _Scheduler.Start(value, TaskExecutionPolicy.RunWhileFutureLives);
+                SetWakeCondition(temp, true);
                 temp.RegisterOnComplete(_QueueStepOnComplete);
             }
         }
 
+        bool CheckForDiscardedError () {
+            if ((!_WakeDiscardingResult) && (_WakePrevious != null)) {
+                bool shouldRethrow = (_WakePrevious.ErrorCheckFlag <= _WakeFlag);
+                if (shouldRethrow && _WakePrevious.Failed) {
+                    Abort(_WakePrevious.Error);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        void SetWakeCondition (IFuture f, bool discardingResult) {
+            _WakePrevious = WakeCondition;
+
+            if (CheckForDiscardedError())
+                return;
+
+            WakeCondition = f;
+            _WakeDiscardingResult = discardingResult;
+            if (f != null)
+                _WakeFlag = f.ErrorCheckFlag;
+        }
+
         void ScheduleNextStep (Object value) {
+            if (CheckForDiscardedError())
+                return;
+
             if (value is ISchedulable) {
                 ScheduleNextStepForSchedulable(value as ISchedulable);
             } else if (value is NextValue) {
@@ -87,18 +141,17 @@ namespace Squared.Task {
                     f = OnNextValue(nv.Value);
 
                 if (f != null) {
-                    this.WakeCondition = f;
+                    SetWakeCondition(f, true);
                     f.RegisterOnComplete(_QueueStepOnComplete);
                 } else {
                     QueueStep();
                 }
             } else if (value is IFuture) {
                 var f = (IFuture)value;
-                this.WakeCondition = f;
+                SetWakeCondition(f, false);
                 f.RegisterOnComplete(_QueueStepOnComplete);
             } else if (value is Result) {
-                _Future.Complete(((Result)value).Value);
-                Dispose();
+                CompleteWithResult(((Result)value).Value);
             } else {
                 if (value is IEnumerator<object>) {
                     ScheduleNextStepForSchedulable(new RunToCompletion(value as IEnumerator<object>, TaskExecutionPolicy.RunAsBackgroundTask));
@@ -114,13 +167,15 @@ namespace Squared.Task {
             if (_Task == null)
                 return;
 
-            WakeCondition = null;
+            if (WakeCondition != null) {
+                _WakePrevious = WakeCondition;
+                WakeCondition = null;
+            }
 
             try {
                 if (!_Task.MoveNext()) {
                     // Completed with no result
-                    _Future.Complete(null);
-                    Dispose();
+                    CompleteWithResult(null);
                     return;
                 }
 
@@ -131,9 +186,7 @@ namespace Squared.Task {
                 object value = _Task.Current;
                 ScheduleNextStep(value);
             } catch (Exception ex) {
-                if (_Future != null)
-                    _Future.Fail(ex);
-                Dispose();
+                Abort(ex);
             }
         }
     }
