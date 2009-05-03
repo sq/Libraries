@@ -33,7 +33,7 @@ namespace MUDServer {
             var f = new Future();
             var inner = Input.ReadLine();
             inner.RegisterOnComplete((_) => {
-                var e = f.Error;
+                var e = _.Error;
                 if ((e is SocketDisconnectedException) || (e is IOException) || (e is SocketException)) {
                     f.Complete();
                     Dispose();
@@ -42,7 +42,7 @@ namespace MUDServer {
                     f.Fail(e);
                     return;
                 }
-                string text = f.Result as string;
+                string text = _.Result as string;
                 int count = 0;
                 int toSkip = 0;
                 char[] buf = new char[text.Length];
