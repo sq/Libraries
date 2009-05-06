@@ -158,6 +158,13 @@ namespace Squared.Task {
         public Future (object value)
             : base(value) {
         }
+
+        public static IFuture New<T> () {
+            if (typeof(T).Equals(typeof(object)))
+                return new Future();
+            else
+                return new Future<T>();
+        }
     }
 
     public class SignalFuture : Future<NoneType> {

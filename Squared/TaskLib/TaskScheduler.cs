@@ -100,18 +100,21 @@ namespace Squared.Task {
             }
         }
 
-        public IFuture Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
-            var future = new Future();
+        public void Start (IFuture future, ISchedulable task, TaskExecutionPolicy executionPolicy) {
             task.Schedule(this, future);
 
             switch (executionPolicy) {
                 case TaskExecutionPolicy.RunAsBackgroundTask:
                     future.RegisterOnComplete(BackgroundTaskOnComplete);
-                    break;
+                break;
                 default:
-                    break;
+                break;
             }
+        }
 
+        public IFuture Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
+            var future = new Future();
+            Start(future, task, executionPolicy);
             return future;
         }
 

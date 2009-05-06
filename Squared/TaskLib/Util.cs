@@ -69,6 +69,18 @@ namespace Squared.Task {
         public static TaskIterator<T> GetTaskIterator<T> (this IEnumerator<T> enumerator) {
             return new TaskIterator<T>(EnumerateViaThreadpool(enumerator));
         }
+
+        public static RunToCompletion<T> Run<T> (this IEnumerator<object> task, out Future<T> future) {
+            var rtc = new RunToCompletion<T>(task, TaskExecutionPolicy.RunWhileFutureLives);
+            future = rtc.Future;
+            return rtc;
+        }
+
+        public static RunToCompletion Run (this IEnumerator<object> task, out Future future) {
+            var rtc = new RunToCompletion(task, TaskExecutionPolicy.RunWhileFutureLives);
+            future = rtc.Future;
+            return rtc;
+        }
     }
 
     /// <summary>
@@ -179,6 +191,12 @@ namespace Squared.Task {
         public RunToCompletion (IEnumerator<object> task, TaskExecutionPolicy executionPolicy)
             : base(task, executionPolicy) {
         }
+
+        new public Future Future {
+            get {
+                return (Future)base.Future;
+            }
+        }
     }
 
     /// <summary>
@@ -186,8 +204,9 @@ namespace Squared.Task {
     /// </summary>
     public class RunToCompletion<T> : ISchedulable {
         IEnumerator<object> _Task;
+        SchedulableGeneratorThunk _Thunk;
         TaskExecutionPolicy _ExecutionPolicy;
-        IFuture _Future;
+        Future<T> _Future;
 
         public RunToCompletion (IEnumerator<object> task) 
             : this(task, TaskExecutionPolicy.RunWhileFutureLives) {
@@ -195,7 +214,8 @@ namespace Squared.Task {
 
         public RunToCompletion (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
             _Task = task;
-            _Future = null;
+            _Thunk = new SchedulableGeneratorThunk(_Task);
+            _Future = (Future<T>)Squared.Task.Future.New<T>();
             _ExecutionPolicy = executionPolicy;
         }
 
@@ -204,12 +224,18 @@ namespace Squared.Task {
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
-            this._Future = scheduler.Start(_Task, _ExecutionPolicy);
+            scheduler.Start(_Future, _Thunk, _ExecutionPolicy);
             future.Bind(this._Future);
         }
 
         public void AssertSucceeded () {
             this._Future.AssertSucceeded();
+        }
+
+        public Future<T> Future {
+            get {
+                return _Future;
+            }
         }
 
         public T Result {

@@ -605,6 +605,22 @@ namespace Squared.Task {
             var f = Scheduler.Start(YieldAndCheck(failed), TaskExecutionPolicy.RunWhileFutureLives);
             Assert.AreEqual(false, Scheduler.WaitFor(f));
         }
+
+        IEnumerator<object> UseRunExtension (IEnumerator<object> task) {
+            Future f;
+            yield return task.Run(out f);
+            yield return new Result(f.Result);
+        }
+
+        [Test]
+        public void RunExtensionStoresFuture () {
+            var f = Scheduler.Start(UseRunExtension(CrashyTask()), TaskExecutionPolicy.RunWhileFutureLives);
+            try {
+                Scheduler.WaitFor(f);
+            } catch (FutureException) {
+            }
+            Assert.AreEqual(f.Error.Message, "pancakes");
+        }
     }
 
     [TestFixture]
