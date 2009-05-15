@@ -19,7 +19,7 @@ namespace Squared.Game.Animation {
     }
 
     public class SetFrame : AnimCmd {
-        public int Group;
+        public object Group;
         public int Frame;
 
         public bool Invoke (Animator animator) {
@@ -69,7 +69,8 @@ namespace Squared.Game.Animation {
     public class Animator {
         public ITimeProvider TimeProvider = Time.DefaultTimeProvider;
         private IEnumerator<AnimCmd> _ActiveAnimation = null;
-        private int _Group = 0, _Frame = 0;
+        private int _Frame = 0;
+        private object _Group = null;
         private long _SuspendUntil = 0;
 
         public void SetAnimation (IEnumerator<AnimCmd> animation) {
@@ -80,7 +81,7 @@ namespace Squared.Game.Animation {
             _SuspendUntil = TimeProvider.Ticks;
         }
 
-        public void SetFrame (int group, int frame) {
+        public void SetFrame (object group, int frame) {
             _Group = group;
             _Frame = frame;
         }
@@ -89,7 +90,7 @@ namespace Squared.Game.Animation {
             _SuspendUntil = _SuspendUntil + duration;
         }
 
-        public int Group {
+        public object Group {
             get { return _Group; }
         }
 

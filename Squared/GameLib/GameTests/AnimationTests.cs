@@ -48,7 +48,7 @@ namespace Squared.Game.Animation {
             }
         }
 
-        public IEnumerator<AnimCmd> SingleAnim (int group, int start, int end) {
+        public IEnumerator<AnimCmd> SingleAnim<T> (T group, int start, int end) {
             for (int i = start; i <= end; i++) {
                 yield return new SetFrame { Group = group, Frame = i };
                 yield return new WaitForUpdate();
@@ -103,6 +103,26 @@ namespace Squared.Game.Animation {
             TimeProvider.Advance(50);
             a.Update();
             Assert.AreEqual(0, a.Group);
+        }
+
+        [Test]
+        public void StringGroupTest () {
+            var a = new Animator { TimeProvider = TimeProvider };
+            a.SetAnimation(SingleAnim("group1", 0, 2));
+
+            a.Update();
+            Assert.AreEqual("group1", a.Group);
+            Assert.AreEqual(0, a.Frame);
+
+            TimeProvider.Advance(50);
+            a.Update();
+            Assert.AreEqual("group1", a.Group);
+            Assert.AreEqual(1, a.Frame);
+
+            TimeProvider.Advance(50);
+            a.Update();
+            Assert.AreEqual("group1", a.Group);
+            Assert.AreEqual(2, a.Frame);
         }
 
         [Test]
