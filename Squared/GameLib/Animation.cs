@@ -44,6 +44,25 @@ namespace Squared.Game.Animation {
     }
 
     public static class AnimationExtensions {
+        public static IEnumerator<AnimCmd> WhenFinished (this IEnumerator<AnimCmd> animation, Action action) {
+            using (animation)
+                while (animation.MoveNext())
+                    yield return animation.Current;
+
+            action();
+        }
+        
+        public static IEnumerator<AnimCmd> WatchPlayState (this IEnumerator<AnimCmd> animation, Action<bool> playStateChanged) {
+            try {
+                playStateChanged(true);
+                while (animation.MoveNext())
+                    yield return animation.Current;
+            } finally {
+                animation.Dispose();
+                playStateChanged(false);
+            }
+        }
+
         public static IEnumerator<AnimCmd> Chain (this IEnumerator<AnimCmd> first, Func<IEnumerator<AnimCmd>> second) {
             using (first)
                 while (first.MoveNext())
@@ -101,9 +120,14 @@ namespace Squared.Game.Animation {
         public void Update () {
             long now = TimeProvider.Ticks;
             while ((_ActiveAnimation != null) && (now >= _SuspendUntil)) {
-                if (!_ActiveAnimation.MoveNext()) {
-                    _ActiveAnimation = null;
-                    break;
+                var a = _ActiveAnimation;
+                if (!a.MoveNext()) {
+                    if (a == _ActiveAnimation) {
+                        SetAnimation(null);
+                        break;
+                    } else {
+                        continue;
+                    }
                 }
 
                 var item = _ActiveAnimation.Current;

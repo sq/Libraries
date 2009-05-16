@@ -161,5 +161,28 @@ namespace Squared.Game.Animation {
             Assert.AreEqual(1, a.Group);
             Assert.AreEqual(1, a.Frame);
         }
+
+        [Test]
+        public void SetAnimationAtEndTest () {
+            var a = new Animator { TimeProvider = TimeProvider };
+            var anim = SingleAnim(0, 0, 1).WatchPlayState(
+                (playing) => {
+                    if (playing == false) a.SetAnimation(SingleAnim(1, 0, 1));
+            });
+
+            a.SetAnimation(anim);
+
+            a.Update();
+            Assert.AreEqual(0, a.Group);
+            Assert.AreEqual(0, a.Frame);
+
+            a.Update();
+            Assert.AreEqual(0, a.Group);
+            Assert.AreEqual(1, a.Frame);
+
+            a.Update();
+            Assert.AreEqual(1, a.Group);
+            Assert.AreEqual(0, a.Frame);
+        }
     }
 }

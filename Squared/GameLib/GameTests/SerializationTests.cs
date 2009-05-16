@@ -5,9 +5,14 @@ using System.Text;
 using NUnit.Framework;
 using System.Xml;
 using System.IO;
+using System.Reflection;
 
 namespace Squared.Game.Serialization {
     public class EmptyType {
+    }
+
+    public class NamedType : INamedObject {
+        public string Name { get; set; }
     }
 
     [TestFixture]
@@ -78,6 +83,34 @@ namespace Squared.Game.Serialization {
                 Assert.AreEqual(2, newDict.Count);
                 Assert.AreNotEqual(newDict["a"], newDict["b"]);
             }
+        }
+
+        [Test]
+        public void SerializeNamedObjects () {
+            const string expectedXML =
+                "<?xml version=\"1.0\" encoding=\"utf-16\"?>" +
+                "<dict><types><type id=\"0\" name=\"Squared.Game.Serialization.NamedType\" /></types>" +
+                "<values><NamedType typeId=\"0\"><Name>2</Name></NamedType>" +
+                "<NamedType typeId=\"0\"><Name>1</Name></NamedType>" +
+                "<NamedType key=\"3\" typeId=\"0\"><Name>1</Name></NamedType></values></dict>";
+
+            var nt1 = new NamedType { Name = "2" };
+            var nt2 = new NamedType { Name = "1" };
+            var nt3 = new NamedType { Name = "1" };
+
+            var dict = new Dictionary<string, object>();
+            dict.Add("2", nt1);
+            dict.Add("1", nt2);
+            dict.Add("3", nt3);
+
+            var sb = new StringBuilder();
+            using (var writer = XmlWriter.Create(sb, null)) {
+                writer.WriteStartElement("dict");
+                writer.WriteDictionary(dict, new AssemblyTypeResolver(Assembly.GetExecutingAssembly()));
+                writer.WriteEndElement();
+            }
+
+            Assert.AreEqual(expectedXML, sb.ToString());
         }
     }
 }

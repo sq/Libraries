@@ -8,6 +8,12 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.Serialization;
 
+namespace Squared.Game {
+    public interface INamedObject {
+        string Name { get; }
+    }
+}
+
 namespace Squared.Game.Serialization {
     public interface ITypeResolver {
         string TypeToName (Type t);
@@ -133,6 +139,14 @@ namespace Squared.Game.Serialization {
                     var ser = new XmlSerializer(typeIds[typeId]);
                     value = (T)ser.Deserialize(reader);
 
+                    if (key == null) {
+                        if (value is INamedObject)
+                            key = ((INamedObject)value).Name;
+                    }
+
+                    if (key == null)
+                        throw new InvalidDataException(String.Format("Item has no key and is not INamedObject: {0}", value));
+
                     result.Add(key, value);
                 } else if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "values") {
                     break;
@@ -146,11 +160,11 @@ namespace Squared.Game.Serialization {
                 reader.Read();
         }
 
-        public static void WriteDictionary<T> (this XmlWriter writer, IEnumerable<KeyValuePair<string, T>> values) {
+        public static void WriteDictionary<T> (this XmlWriter writer, IDictionary<string, T> values) {
             WriteDictionary<T>(writer, values, DefaultTypeResolver);
         }
 
-        public static void WriteDictionary<T> (this XmlWriter writer, IEnumerable<KeyValuePair<string, T>> values, ITypeResolver resolver) {
+        public static void WriteDictionary<T> (this XmlWriter writer, IDictionary<string, T> values, ITypeResolver resolver) {
             var typeIds = new Dictionary<Type, int>();
             string xml = null;
             {
@@ -195,13 +209,25 @@ namespace Squared.Game.Serialization {
                         if (!iter.MoveNext())
                             throw new InvalidDataException();
 
-                        var t = iter.Current.Value.GetType();
+                        var v = iter.Current.Value;
+                        var t = v.GetType();
                         var sentinel = tempReader.Name;
                         var typeId = typeIds[t];
                         var fieldName = iter.Current.Key;
 
                         writer.WriteStartElement(sentinel);
-                        writer.WriteAttributeString("key", fieldName);
+
+                        bool omitKey = false;
+                        if ((v is INamedObject) && ((v as INamedObject).Name == fieldName)) {
+                            T temp = default(T);
+                            if (values.TryGetValue(fieldName, out temp)) {
+                                if (object.Equals(v, temp))
+                                    omitKey = true;
+                            }
+                        }
+
+                        if (!omitKey)
+                            writer.WriteAttributeString("key", fieldName);
                         writer.WriteAttributeString("typeId", typeId.ToString());
 
                         if (!tempReader.IsEmptyElement) {

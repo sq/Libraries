@@ -118,7 +118,7 @@ namespace Squared.Game.Graph {
         private XmlWriter _Writer;
         private ITypeResolver _TypeResolver;
         private int _NextNodeID;
-        private Dictionary<INode, int> _NodeIDs;
+        private Dictionary<INode, string> _NodeIDs;
         private StringValueDictionary<INode> _Nodes;
 
         public XmlGraphWriter (XmlWriter writer) 
@@ -133,18 +133,35 @@ namespace Squared.Game.Graph {
         public void BeginWrite (INode root) {
             _NextNodeID = 1;
             _Nodes = new StringValueDictionary<INode>();
-            _NodeIDs = new Dictionary<INode, int>();
+            _NodeIDs = new Dictionary<INode, string>();
             _Writer.WriteStartElement("graph");
         }
 
+        internal string GetNodeID (INode node) {
+            string id = null;
+
+            if (_NodeIDs.TryGetValue(node, out id))
+                return id;
+
+            if (node is INamedObject)
+                id = (node as INamedObject).Name;
+
+            if ((id != null) && _Nodes.ContainsKey(id)) {
+                if (_Nodes[id] == node)
+                    return id;
+            } 
+
+            if (id == null)
+                id = _NextNodeID.ToString();
+
+            _NextNodeID += 1;
+            _NodeIDs[node] = id;
+            _Nodes[id] = node;
+            return id;
+        }
+
         public void WriteNodeHeader (INode node) {
-            int id;
-            if (!_NodeIDs.TryGetValue(node, out id)) {
-                id = _NextNodeID;
-                _NextNodeID += 1;
-                _NodeIDs[node] = id;
-                _Nodes[id.ToString()] = node;
-            }
+            string id = GetNodeID(node);
 
             _Writer.WriteStartElement("node");
             _Writer.WriteAttributeString("key", id.ToString());
