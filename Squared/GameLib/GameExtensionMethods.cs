@@ -14,30 +14,6 @@ namespace Squared.Game {
             return ((float)random.NextDouble() * (max - min)) + min;
         }
 
-        public static float Pulse (this float value, float min, float max) {
-            value = value % 1.0f;
-            float a;
-            if (value >= 0.5f) {
-                a = (value - 0.5f) / 0.5f;
-                return MathHelper.Lerp(max, min, a);
-            } else {
-                a = value / 0.5f;
-                return MathHelper.Lerp(min, max, a);
-            }
-        }
-
-        public static float PulseExp (this float value, float min, float max) {
-            value = value % 1.0f;
-            float a;
-            if (value >= 0.5f) {
-                a = (value - 0.5f) / 0.5f;
-                return MathHelper.Lerp(max, min, a * a);
-            } else {
-                a = value / 0.5f;
-                return MathHelper.Lerp(min, max, a * a);
-            }
-        }
-
         public static Vector2 Perpendicular (this Vector2 vector) {
             return new Vector2(-vector.Y, vector.X);
         }

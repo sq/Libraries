@@ -12,10 +12,10 @@ using System.IO;
 using System.Collections;
 
 namespace Squared.Game.Graph {
-    public class Node : INode {
+    public class Node : INode, INamedObject {
         [XmlIgnore]
         public LinkedList<INode> Children = new LinkedList<INode>();
-        public string Name;
+        public string Name { get; set; }
 
         void INode.AddChild (INode child) {
             Children.AddLast(child);
@@ -54,16 +54,16 @@ namespace Squared.Game.Graph {
     public class GraphTests {
         public const string GraphXML = "<?xml version=\"1.0\" encoding=\"utf-16\"?>" +
             "<test><graph>" +
-            "<node key=\"1\"><node key=\"2\"><node key=\"3\" /></node><node key=\"4\" /></node>" +
+            "<node key=\"root\"><node key=\"a\"><node key=\"a.a\" /></node><node key=\"b\" /></node>" +
             "</graph><nodes>" +
             "<types>" +
             "<type id=\"0\" name=\"Squared.Game.Graph.Node\" />" +
             "</types>" +
             "<values>" +
-            "<Node key=\"1\" typeId=\"0\"><Name>root</Name></Node>" +
-            "<Node key=\"2\" typeId=\"0\"><Name>a</Name></Node>" +
-            "<Node key=\"3\" typeId=\"0\"><Name>a.a</Name></Node>" +
-            "<Node key=\"4\" typeId=\"0\"><Name>b</Name></Node>" +
+            "<Node typeId=\"0\"><Name>root</Name></Node>" +
+            "<Node typeId=\"0\"><Name>a</Name></Node>" +
+            "<Node typeId=\"0\"><Name>a.a</Name></Node>" +
+            "<Node typeId=\"0\"><Name>b</Name></Node>" +
             "</values>" +
             "</nodes></test>";
 

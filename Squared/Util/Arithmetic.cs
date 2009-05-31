@@ -90,6 +90,42 @@ namespace Squared.Util {
                 return value;
         }
 
+        public static float Wrap (float value, float min, float max) {
+            float d = max - min;
+
+            if (value < min) {
+                return min + ((d - Math.Abs(min - value)) % d);
+            } else if (value > max) {
+                return min + (Math.Abs(value - min) % d);
+            } else {
+                return value;
+            }
+        }
+
+        public static float Pulse (float value, float min, float max) {
+            value = value % 1.0f;
+            float a;
+            if (value >= 0.5f) {
+                a = (value - 0.5f) / 0.5f;
+                return Lerp(max, min, a);
+            } else {
+                a = value / 0.5f;
+                return Lerp(min, max, a);
+            }
+        }
+
+        public static float PulseExp (float value, float min, float max) {
+            value = value % 1.0f;
+            float a;
+            if (value >= 0.5f) {
+                a = (value - 0.5f) / 0.5f;
+                return Lerp(max, min, a * a);
+            } else {
+                a = value / 0.5f;
+                return Lerp(min, max, a * a);
+            }
+        }
+
         public static T Lerp<T> (T a, T b, float x) 
             where T : struct {
             return Interpolators<T>.Linear(
