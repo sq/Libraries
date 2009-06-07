@@ -2,12 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Reflection.Emit;
 using System.Reflection;
+#if !XBOX
+using System.Reflection.Emit;
 using System.Linq.Expressions;
+#endif
 
 namespace Squared.Util {
     public static class Arithmetic {
+#if !XBOX
         #region Additional Func overloads
         public delegate TResult Func<T1, T2, T3, T4, T5, TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5);
         public delegate TResult Func<T1, T2, T3, T4, T5, T6, TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6);
@@ -79,6 +82,7 @@ namespace Squared.Util {
             T result = method(lhs, rhs);
             return result;
         }
+#endif
 
         public static T Clamp<T> (T value, T min, T max)
             where T : IComparable<T> {
@@ -135,6 +139,7 @@ namespace Squared.Util {
             );
         }
 
+#if !XBOX
         #region CompileExpression<T> overloads
 
         public static void CompileExpression<T> (Expression<Func<double>> expression, out T result)
@@ -446,5 +451,6 @@ namespace Squared.Util {
         }
 
         #endregion
+#endif
     }
 }

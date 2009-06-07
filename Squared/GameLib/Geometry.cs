@@ -43,6 +43,15 @@ namespace Squared.Game {
             }
         }
 
+        public Vector2 Center {
+            get {
+                return new Vector2(
+                    TopLeft.X + (BottomRight.X - TopLeft.X) * 0.5f,
+                    TopLeft.Y + (BottomRight.Y - TopLeft.Y) * 0.5f
+                );
+            }
+        }
+
         public Bounds (Vector2 a, Vector2 b) {
             TopLeft = new Vector2(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y));
             BottomRight = new Vector2(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y));
@@ -179,8 +188,8 @@ namespace Squared.Game {
                 }
 
                 var result = _Bounds;
-                result.TopLeft = result.TopLeft + Position;
-                result.BottomRight = result.BottomRight + Position;
+                result.TopLeft = result.TopLeft + _Position;
+                result.BottomRight = result.BottomRight + _Position;
                 return result;
             }
         }

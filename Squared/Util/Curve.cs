@@ -166,6 +166,12 @@ namespace Squared.Util {
         }
 
         public static T Cubic (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
+            if (positionInWindow < 0) {
+                var n = Math.Ceiling(Math.Abs(positionInWindow));
+                positionInWindow += (float)n;
+                dataOffset -= (int)n;
+            }
+
             T a = data(dataOffset - 1);
             T b = data(dataOffset);
             T c = data(dataOffset + 1);
