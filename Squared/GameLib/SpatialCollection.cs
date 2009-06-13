@@ -245,7 +245,8 @@ namespace Squared.Game {
         internal Dictionary<T, ItemInfo> _Items = new Dictionary<T, ItemInfo>(new ReferenceComparer<T>());
         internal Dictionary<SectorIndex, Sector> _Sectors;
         internal List<Sector> _FreeList = new List<Sector>();
-        internal Stack<Dictionary<ItemInfo, bool>> _SeenListCache = new Stack<Dictionary<ItemInfo, bool>>();
+        internal Dictionary<ItemInfo, bool>[] _SeenListCache = new Dictionary<ItemInfo, bool>[4];
+        internal int _NumCachedSeenLists = 4;
 
         public SpatialCollection ()
             : this(DefaultSubdivision) {
@@ -257,6 +258,9 @@ namespace Squared.Game {
 
             for (int i = 0; i < InitialFreeListSize; i++)
                 _FreeList.Add(new Sector());
+
+            for (int i = 0; i < _NumCachedSeenLists; i++)
+                _SeenListCache[i] = new Dictionary<ItemInfo, bool>();
         }
 
         public SectorIndex GetIndexFromPoint (Vector2 point) {
@@ -369,20 +373,21 @@ namespace Squared.Game {
         }
 
         internal Dictionary<SpatialCollection<T>.ItemInfo, bool> GetSeenList () {
-            lock (_SeenListCache) {
-                if (_SeenListCache.Count > 0)
-                    return _SeenListCache.Pop();
-                else
-                    return new Dictionary<SpatialCollection<T>.ItemInfo, bool>(new ItemInfoComparer());
+            if (_NumCachedSeenLists > 0) {
+                _NumCachedSeenLists -= 1;
+                var result = _SeenListCache[_NumCachedSeenLists];
+                _SeenListCache[_NumCachedSeenLists] = null;
+                return result;
+            } else {
+                return new Dictionary<SpatialCollection<T>.ItemInfo, bool>(new ItemInfoComparer());
             }
         }
 
-        internal void DisposeSeenList (Dictionary<SpatialCollection<T>.ItemInfo, bool> _SeenList) {
-            lock (_SeenListCache) {
-                if (_SeenListCache.Count < 16) {
-                    _SeenList.Clear();
-                    _SeenListCache.Push(_SeenList);
-                }
+        internal void DisposeSeenList (Dictionary<SpatialCollection<T>.ItemInfo, bool> seenList) {
+            if (_NumCachedSeenLists < _SeenListCache.Length) {
+                seenList.Clear();
+                _SeenListCache[_NumCachedSeenLists] = seenList;
+                _NumCachedSeenLists += 1;
             }
         }
     }

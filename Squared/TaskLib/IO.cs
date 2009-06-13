@@ -15,6 +15,9 @@ namespace Squared.Task.IO {
 
     public static class IOExtensionMethods {
         public static Future<int> AsyncRead (this Stream stream, byte[] buffer, int offset, int count) {
+#if XBOX
+            return Future.RunInThread(() => stream.Read(buffer, offset, count));
+#else
             var f = new Future<int>();
             try {
                 stream.BeginRead(buffer, offset, count, (ar) => {
@@ -33,9 +36,13 @@ namespace Squared.Task.IO {
                 f.Fail(ex);
             }
             return f;
+#endif
         }
 
         public static SignalFuture AsyncWrite (this Stream stream, byte[] buffer, int offset, int count) {
+#if XBOX
+            return Future.RunInThread(() => stream.Write(buffer, offset, count));
+#else
             var f = new SignalFuture();
             try {
                 stream.BeginWrite(buffer, offset, count, (ar) => {
@@ -53,6 +60,7 @@ namespace Squared.Task.IO {
                 f.Fail(ex);
             }
             return f;
+#endif
         }
     }
 
@@ -163,9 +171,13 @@ namespace Squared.Task.IO {
         }
 
         public Future<int> Read (byte[] buffer, int offset, int count) {
+#if XBOX
+            return Future.RunInThread(() => _Stream.Read(buffer, offset, count));
+#else
             var f = new Future<int>();
             _Stream.BeginRead(buffer, offset, count, _ReadCallback, f);
             return f;
+#endif
         }
 
         private void WriteCallback (IAsyncResult ar) {
@@ -181,9 +193,13 @@ namespace Squared.Task.IO {
         }
         
         public SignalFuture Write (byte[] buffer, int offset, int count) {
+#if XBOX
+            return Future.RunInThread(() => _Stream.Write(buffer, offset, count));
+#else
             var f = new SignalFuture();
             _Stream.BeginWrite(buffer, offset, count, _WriteCallback, f);
             return f;
+#endif
         }
 
         public SignalFuture Flush () {
