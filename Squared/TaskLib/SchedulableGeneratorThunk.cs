@@ -154,7 +154,7 @@ namespace Squared.Task {
                 CompleteWithResult(((Result)value).Value);
             } else {
                 if (value is IEnumerator<object>) {
-                    ScheduleNextStepForSchedulable(new RunToCompletion(value as IEnumerator<object>, TaskExecutionPolicy.RunAsBackgroundTask));
+                    ScheduleNextStepForSchedulable(new RunToCompletion(value as IEnumerator<object>, TaskExecutionPolicy.RunWhileFutureLives));
                 } else if (value == null) {
                     QueueStep();
                 } else {

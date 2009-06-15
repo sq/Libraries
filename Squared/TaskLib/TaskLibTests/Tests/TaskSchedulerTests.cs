@@ -472,6 +472,24 @@ namespace Squared.Task {
             throw new Exception("pancakes");
         }
 
+        IEnumerator<object> CallsCrashyTask () {
+            yield return CrashyTask();
+        }
+
+        [Test]
+        public void ExceptionDoesntBubbleOutRepeatedly () {
+            var f = Scheduler.Start(CallsCrashyTask(), TaskExecutionPolicy.RunAsBackgroundTask);
+
+            Scheduler.Step();
+            try {
+                Scheduler.Step();
+                Assert.Fail("Exception was not raised");
+            } catch (TaskException ex) {
+                Assert.AreEqual("pancakes", ex.InnerException.Message);
+            }
+            Scheduler.Step();
+        }
+
         [Test]
         public void WrapsExceptionsFromInsideTasks () {
             var f = Scheduler.Start(CrashyTask());
