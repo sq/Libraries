@@ -94,12 +94,24 @@ namespace Squared.Util {
                 return value;
         }
 
+        public static int Wrap (int value, int min, int max) {
+            int d = max - min + 1;
+
+            if (value < min) {
+                return min + ((d - (Math.Abs(min - value) % d)) % d);
+            } else if (value > max) {
+                return min + (Math.Abs(value - max - 1) % d);
+            } else {
+                return value;
+            }
+        }
+
         public static float Wrap (float value, float min, float max) {
             float d = max - min;
 
             if (value < min) {
                 return min + ((d - Math.Abs(min - value)) % d);
-            } else if (value > max) {
+            } else if (value >= max) {
                 return min + (Math.Abs(value - min) % d);
             } else {
                 return value;

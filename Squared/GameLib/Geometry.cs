@@ -110,6 +110,12 @@ namespace Squared.Game {
         public Bounds Expand (float x, float y) {
             return new Bounds { TopLeft = new Vector2(TopLeft.X - x, TopLeft.Y - y), BottomRight = new Vector2(BottomRight.X + x, BottomRight.Y + y) };
         }
+
+        public static Bounds Uninitialized {
+            get {
+                return new Bounds { TopLeft = new Vector2(float.MaxValue, float.MaxValue), BottomRight = new Vector2(float.MinValue, float.MinValue) };
+            }
+        }
     }
 
     public class Polygon : IEnumerable<Vector2>, IHasBounds {

@@ -18,7 +18,7 @@ namespace Squared.Game {
         }
     }
 
-    internal class ReferenceComparer<T> : IEqualityComparer<T>
+    public class ReferenceComparer<T> : IEqualityComparer<T>
         where T : class {
 
         public bool Equals (T x, T y) {

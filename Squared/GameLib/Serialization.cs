@@ -20,6 +20,44 @@ namespace Squared.Game.Serialization {
         Type NameToType (string name);
     }
 
+    public class TypeResolverChain : ITypeResolver {
+        public ITypeResolver[] Resolvers;
+
+        public TypeResolverChain (params ITypeResolver[] resolvers) {
+            Resolvers = resolvers;
+        }
+
+        public string TypeToName (Type t) {
+            foreach (var resolver in Resolvers) {
+                try {
+                    var result = resolver.TypeToName(t);
+                    if (result != null)
+                        return result;
+                } catch (InvalidOperationException) {
+                }
+            }
+
+            throw new InvalidOperationException(
+                String.Format("None of the resolvers in the chain could resolve the type '{0}'.", t.Name)
+            );
+        }
+
+        public Type NameToType (string name) {
+            foreach (var resolver in Resolvers) {
+                try {
+                    var type = resolver.NameToType(name);
+                    if (type != null)
+                        return type;
+                } catch {
+                }
+            }
+
+            throw new InvalidOperationException(
+                String.Format("None of the resolvers in the chain could resolve the name '{0}'.", name)
+            );
+        }
+    }
+
     public class AssemblyTypeResolver : ITypeResolver {
         private Assembly _Assembly;
 
@@ -29,13 +67,13 @@ namespace Squared.Game.Serialization {
 
         public string TypeToName (Type t) {
             if (t.Assembly != _Assembly)
-                throw new InvalidOperationException(String.Format("SystemTypeResolver cannot resolve types defined outside of the {0} assembly", _Assembly.FullName));
+                return null;
 
             return t.Namespace + "." + t.Name;
         }
 
         public Type NameToType (string name) {
-            return _Assembly.GetType(name, true);
+            return _Assembly.GetType(name, false);
         }
     }
 
@@ -110,6 +148,7 @@ namespace Squared.Game.Serialization {
             int typeId;
             T value;
             var typeIds = new Dictionary<int, Type>();
+            var serializers = new Dictionary<int, XmlSerializer>();
             string sentinel = reader.Name;
             var outputType = typeof(T);
 
@@ -136,7 +175,11 @@ namespace Squared.Game.Serialization {
                     key = reader.GetAttribute("key");
                     typeId = int.Parse(reader.GetAttribute("typeId"));
 
-                    var ser = new XmlSerializer(typeIds[typeId]);
+                    XmlSerializer ser;
+                    if (!serializers.TryGetValue(typeId, out ser)) {
+                        ser = new XmlSerializer(typeIds[typeId]);
+                        serializers[typeId] = ser;
+                    }
                     value = (T)ser.Deserialize(reader);
 
                     if (key == null) {
