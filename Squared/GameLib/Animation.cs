@@ -10,7 +10,7 @@ namespace Squared.Game.Animation {
     }
 
     public class SetAnimation : AnimCmd {
-        public IEnumerator<AnimCmd> Animation;
+        public Func<IEnumerator<AnimCmd>> Animation;
 
         public bool Invoke (Animator animator) {
             animator.SetAnimation(Animation);
@@ -68,14 +68,14 @@ namespace Squared.Game.Animation {
                 while (first.MoveNext())
                     yield return first.Current;
 
-            yield return new SetAnimation { Animation = second() };
+            yield return new SetAnimation { Animation = second };
         }
 
         public static IEnumerator<AnimCmd> SwitchIf (this IEnumerator<AnimCmd> root, Func<IEnumerator<AnimCmd>> leaf, Func<bool> predicate) {
             using (root) {
                 while (root.MoveNext()) {
                     if (predicate()) {
-                        yield return new SetAnimation { Animation = leaf() };
+                        yield return new SetAnimation { Animation = leaf };
                         break;
                     } else {
                         yield return root.Current;
@@ -92,11 +92,15 @@ namespace Squared.Game.Animation {
         private object _Group = null;
         private long _SuspendUntil = 0;
 
-        public void SetAnimation (IEnumerator<AnimCmd> animation) {
+        public void SetAnimation (Func<IEnumerator<AnimCmd>> animation) {
             if (_ActiveAnimation != null)
                 _ActiveAnimation.Dispose();
 
-            _ActiveAnimation = animation;
+            if (animation != null)
+                _ActiveAnimation = animation();
+            else
+                _ActiveAnimation = null;
+
             _SuspendUntil = TimeProvider.Ticks;
         }
 
