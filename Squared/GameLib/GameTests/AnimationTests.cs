@@ -24,19 +24,19 @@ namespace Squared.Game.Animation {
         public IEnumerator<AnimCmd> AnimString1 () {
             yield return new SetFrame { Group = 0, Frame = 0 };
             yield return new Delay { Duration = 50 };
-            yield return new SetAnimation { Animation = AnimString2() };
+            yield return new SetAnimation { Animation = AnimString2 };
         }
 
         public IEnumerator<AnimCmd> AnimString2 () {
             yield return new SetFrame { Group = 1, Frame = 0 };
             yield return new Delay { Duration = 50 };
-            yield return new SetAnimation { Animation = AnimString3() };
+            yield return new SetAnimation { Animation = AnimString3 };
         }
 
         public IEnumerator<AnimCmd> AnimString3 () {
             yield return new SetFrame { Group = 2, Frame = 0 };
             yield return new Delay { Duration = 50 };
-            yield return new SetAnimation { Animation = AnimString1() };
+            yield return new SetAnimation { Animation = AnimString1 };
         }
 
         public IEnumerator<AnimCmd> WaitForUpdateAnim () {
@@ -58,7 +58,7 @@ namespace Squared.Game.Animation {
         [Test]
         public void BasicAnimationTest () {
             var a = new Animator { TimeProvider = TimeProvider };
-            a.SetAnimation(BasicAnimation());
+            a.SetAnimation(BasicAnimation);
 
             a.Update();
             Assert.AreEqual(0, a.Frame);
@@ -87,7 +87,7 @@ namespace Squared.Game.Animation {
         [Test]
         public void AnimationStringTest () {
             var a = new Animator { TimeProvider = TimeProvider };
-            a.SetAnimation(AnimString1());
+            a.SetAnimation(AnimString1);
 
             a.Update();
             Assert.AreEqual(0, a.Group);
@@ -108,7 +108,7 @@ namespace Squared.Game.Animation {
         [Test]
         public void StringGroupTest () {
             var a = new Animator { TimeProvider = TimeProvider };
-            a.SetAnimation(SingleAnim("group1", 0, 2));
+            a.SetAnimation(() => SingleAnim("group1", 0, 2));
 
             a.Update();
             Assert.AreEqual("group1", a.Group);
@@ -128,7 +128,7 @@ namespace Squared.Game.Animation {
         [Test]
         public void WaitForUpdateTest () {
             var a = new Animator { TimeProvider = TimeProvider };
-            a.SetAnimation(WaitForUpdateAnim());
+            a.SetAnimation(WaitForUpdateAnim);
 
             a.Update();
             Assert.AreEqual(0, a.Frame);
@@ -143,7 +143,7 @@ namespace Squared.Game.Animation {
         [Test]
         public void ChainTest () {
             var a = new Animator { TimeProvider = TimeProvider };
-            a.SetAnimation(SingleAnim(0, 0, 1).Chain(() => SingleAnim(1, 0, 1)));
+            a.SetAnimation(() => SingleAnim(0, 0, 1).Chain(() => SingleAnim(1, 0, 1)));
 
             a.Update();
             Assert.AreEqual(0, a.Group);
@@ -167,10 +167,10 @@ namespace Squared.Game.Animation {
             var a = new Animator { TimeProvider = TimeProvider };
             var anim = SingleAnim(0, 0, 1).WatchPlayState(
                 (playing) => {
-                    if (playing == false) a.SetAnimation(SingleAnim(1, 0, 1));
+                    if (playing == false) a.SetAnimation(() => SingleAnim(1, 0, 1));
             });
 
-            a.SetAnimation(anim);
+            a.SetAnimation(() => anim);
 
             a.Update();
             Assert.AreEqual(0, a.Group);

@@ -73,6 +73,7 @@
     <Compile Include="Tests\ParserTests.cs" />
     <Compile Include="Tests\PriorityQueueTests.cs" />
     <Compile Include="Tests\TupleTests.cs" />
+    <Compile Include="Tests\UnorderedListTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Squared.Util.csproj">
