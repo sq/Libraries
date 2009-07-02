@@ -364,8 +364,12 @@ namespace Squared.Game {
             }
         }
 
-        public IEnumerator<T> GetEnumerator () {
+        IEnumerator<T> IEnumerable<T>.GetEnumerator () {
             return ((IEnumerable<T>)(_Items.Keys)).GetEnumerator();
+        }
+
+        public Dictionary<T, ItemInfo>.KeyCollection.Enumerator GetEnumerator () {
+            return _Items.Keys.GetEnumerator();
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {

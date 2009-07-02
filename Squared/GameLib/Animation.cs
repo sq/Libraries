@@ -135,7 +135,7 @@ namespace Squared.Game.Animation {
                 }
 
                 var item = _ActiveAnimation.Current;
-                if (item.Invoke(this))
+                if (item == null || item.Invoke(this))
                     break;
             }
         }

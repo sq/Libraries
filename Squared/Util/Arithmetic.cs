@@ -97,6 +97,9 @@ namespace Squared.Util {
         public static int Wrap (int value, int min, int max) {
             int d = max - min + 1;
 
+            if (max <= min)
+                return min;
+
             if (value < min) {
                 return min + ((d - (Math.Abs(min - value) % d)) % d);
             } else if (value > max) {
@@ -108,6 +111,9 @@ namespace Squared.Util {
 
         public static float Wrap (float value, float min, float max) {
             float d = max - min;
+
+            if (max <= min)
+                return min;
 
             if (value < min) {
                 return min + ((d - Math.Abs(min - value)) % d);
@@ -142,10 +148,27 @@ namespace Squared.Util {
             }
         }
 
+        private static class LerpSource<T> where T : struct {
+            static InterpolatorSource<T> Source;
+            static T[] Values;
+
+            static LerpSource () {
+                Source = (i) => (i >= 1) ? Values[1] : Values[0];
+                Values = new T[2];
+            }
+
+            public static InterpolatorSource<T> Get (ref T a, ref T b) {
+                Values[0] = a;
+                Values[1] = b;
+                return Source;
+            }
+        }
+
         public static T Lerp<T> (T a, T b, float x) 
             where T : struct {
+
             return Interpolators<T>.Linear(
-                (i) => (i >= 1) ? b : a,
+                LerpSource<T>.Get(ref a, ref b),
                 0,
                 Clamp(x, 0.0f, 1.0f)
             );

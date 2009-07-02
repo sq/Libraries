@@ -93,6 +93,20 @@ namespace Squared.Game {
                    (lhs.TopLeft.Y <= rhs.BottomRight.Y);
         }
 
+        public static Bounds? FromIntersection (ref Bounds lhs, ref Bounds rhs) {
+            Vector2 tl = Vector2.Zero, br = Vector2.Zero;
+            tl.X = Math.Max(lhs.TopLeft.X, rhs.TopLeft.X);
+            tl.Y = Math.Max(lhs.TopLeft.Y, rhs.TopLeft.Y);
+            br.X = Math.Min(lhs.BottomRight.X, rhs.BottomRight.X);
+            br.Y = Math.Min(lhs.BottomRight.Y, rhs.BottomRight.Y);
+
+            if ((br.X > tl.X) && (br.Y > tl.Y)) {
+                return new Bounds(tl, br);
+            } else {
+                return null;
+            }
+        }
+
         public static Bounds FromPoints (params Vector2[] points) {
             float minX = float.MaxValue, minY = float.MaxValue;
             float maxX = float.MinValue, maxY = float.MinValue;
@@ -108,7 +122,24 @@ namespace Squared.Game {
         }
 
         public Bounds Expand (float x, float y) {
-            return new Bounds { TopLeft = new Vector2(TopLeft.X - x, TopLeft.Y - y), BottomRight = new Vector2(BottomRight.X + x, BottomRight.Y + y) };
+            return new Bounds { 
+                TopLeft = new Vector2(TopLeft.X - x, TopLeft.Y - y), 
+                BottomRight = new Vector2(BottomRight.X + x, BottomRight.Y + y) 
+            };
+        }
+
+        public Bounds Translate (Vector2 velocity) {
+            return new Bounds {
+                TopLeft = TopLeft + velocity,
+                BottomRight = BottomRight + velocity
+            };
+        }
+
+        public Bounds Round () {
+            return new Bounds {
+                TopLeft = new Vector2((float)Math.Round(TopLeft.X), (float)Math.Round(TopLeft.Y)),
+                BottomRight = new Vector2((float)Math.Round(BottomRight.X), (float)Math.Round(BottomRight.Y)),
+            };
         }
 
         public static Bounds Uninitialized {

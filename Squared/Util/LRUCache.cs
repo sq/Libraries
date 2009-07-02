@@ -7,9 +7,7 @@ using System.Threading;
 
 namespace Squared.Util {
     // Thanks to Josiah Carlson
-    public class LRUCache<K, V> : IEnumerable<KeyValuePair<K, V>>, IDictionary<K, V>
-        where K : IComparable<K> {
-
+    public class LRUCache<K, V> : IEnumerable<KeyValuePair<K, V>>, IDictionary<K, V> {
         internal class Node {
             public K Key;
             public V Value;
@@ -100,6 +98,8 @@ namespace Squared.Util {
 
         public const int DefaultCacheSize = 16;
 
+        public event Action<KeyValuePair<K, V>> ItemEvicted;
+
         private Dict _Dict;
         private int _CacheSize;
         private int _Version = 0;
@@ -113,6 +113,11 @@ namespace Squared.Util {
         public LRUCache (int cacheSize) {
             _CacheSize = cacheSize;
             _Dict = new Dict(cacheSize);
+        }
+
+        public LRUCache (int cacheSize, IEqualityComparer<K> comparer) {
+            _CacheSize = cacheSize;
+            _Dict = new Dict(cacheSize, comparer);
         }
 
         public V this[K key] {
@@ -151,6 +156,9 @@ namespace Squared.Util {
                     _First = dead.Next;
                     dead.Next = null;
                     _Dict.Remove(dead.Key);
+
+                    if (ItemEvicted != null)
+                        ItemEvicted(new KeyValuePair<K, V>(dead.Key, dead.Value));
                 }
             }
         }
