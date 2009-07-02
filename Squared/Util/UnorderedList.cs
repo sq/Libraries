@@ -34,6 +34,10 @@ namespace Squared.Util {
                 get { return _List._Items[_Index]; }
             }
 
+            public void SetCurrent (ref T newValue) {
+                _List._Items[_Index] = newValue;
+            }
+
             public bool MoveNext () {
                 _Index += 1;
                 return (_Index < _List._Count);
@@ -84,6 +88,10 @@ namespace Squared.Util {
         }
 
         public void Add (T item) {
+            Add(ref item);
+        }
+
+        public void Add (ref T item) {
             int newCount = _Count + 1;
             if (newCount >= _Items.Length)
                 GrowBuffer();
@@ -102,6 +110,12 @@ namespace Squared.Util {
                 _Items[index] = _Items[newCount];
 
             _Count = newCount;
+        }
+
+        public int Count {
+            get {
+                return _Count;
+            }
         }
 
         public void Clear () {

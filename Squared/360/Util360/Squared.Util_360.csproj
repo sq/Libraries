@@ -67,6 +67,7 @@
     <Compile Include="..\..\Util\Tuples.cs" />
     <Compile Include="..\..\Util\ExpressionParser.cs" />
     <Compile Include="..\..\Util\TimeProvider.cs" />
+    <Compile Include="..\..\Util\UnorderedList.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\Microsoft.Xna.GameStudio.targets" />
