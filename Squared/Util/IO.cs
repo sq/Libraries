@@ -59,6 +59,20 @@ namespace Squared.Util {
                         return new Buffer(result);
                     }
                 }
+
+                if ((Pool.Count == MaxPoolCount) && (size < MaxBufferSize)) {
+                    int smallest = int.MaxValue;
+                    int smallestIndex = -1;
+                    for (int i = 0; i < Pool.Count; i++) {
+                        if (Pool[i].Length < smallest) {
+                            smallest = Pool[i].Length;
+                            smallestIndex = i;
+                        }
+                    }
+
+                    if (smallestIndex != -1)
+                        Pool.RemoveAt(smallestIndex);
+                }
             }
 
             {

@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace Squared.Game {
     public class PerfHUDDeviceManager : GraphicsDeviceManager {
@@ -31,7 +30,7 @@ namespace Squared.Game {
                 foundDevices.AddRange(temp);
 
                 foreach (var dev in foundDevices)
-                    dev.DeviceType = Microsoft.Xna.Framework.Graphics.DeviceType.Reference;
+                    dev.DeviceType = DeviceType.Reference;
             }
         }
     }
