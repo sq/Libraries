@@ -147,6 +147,13 @@ namespace Squared.Game {
                 return new Bounds { TopLeft = new Vector2(float.MaxValue, float.MaxValue), BottomRight = new Vector2(float.MinValue, float.MinValue) };
             }
         }
+
+        public Bounds Scale (float scale) {
+            return new Bounds {
+                TopLeft = TopLeft * scale,
+                BottomRight = BottomRight * scale
+            };
+        }
     }
 
     public class Polygon : IEnumerable<Vector2>, IHasBounds {
