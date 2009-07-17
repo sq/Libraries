@@ -212,7 +212,7 @@ namespace Squared.Game {
             }
         }
 
-        public class ItemInfo {
+        public class ItemInfo : IHasBounds {
             public T Item;
             public Bounds Bounds;
             internal SectorIndex TopLeft, BottomRight;
@@ -224,6 +224,10 @@ namespace Squared.Game {
                 TopLeft = parent.GetIndexFromPoint(Bounds.TopLeft);
                 BottomRight = parent.GetIndexFromPoint(Bounds.BottomRight);
                 HashCode = item.GetHashCode();
+            }
+
+            Bounds IHasBounds.Bounds {
+                get { return Bounds; }
             }
         }
 
