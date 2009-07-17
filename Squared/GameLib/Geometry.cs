@@ -93,6 +93,10 @@ namespace Squared.Game {
                    (lhs.TopLeft.Y <= rhs.BottomRight.Y);
         }
 
+        public static Bounds? FromIntersection (Bounds lhs, Bounds rhs) {
+            return FromIntersection(ref lhs, ref rhs);
+        }
+
         public static Bounds? FromIntersection (ref Bounds lhs, ref Bounds rhs) {
             Vector2 tl = Vector2.Zero, br = Vector2.Zero;
             tl.X = Math.Max(lhs.TopLeft.X, rhs.TopLeft.X);
