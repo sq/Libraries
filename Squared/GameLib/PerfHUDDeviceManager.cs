@@ -5,6 +5,8 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace Squared.Game {
     public class PerfHUDDeviceManager : GraphicsDeviceManager {
+        public bool PerfHUDActive = false;
+
         public PerfHUDDeviceManager (Microsoft.Xna.Framework.Game game)
             : base(game) {
         }
@@ -31,7 +33,10 @@ namespace Squared.Game {
 
                 foreach (var dev in foundDevices)
                     dev.DeviceType = DeviceType.Reference;
+
             }
+
+            PerfHUDActive = foundPerfHud;
         }
     }
 }
