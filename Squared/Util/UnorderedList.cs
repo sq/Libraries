@@ -11,8 +11,8 @@ namespace Squared.Util {
     public class UnorderedList<T> : IEnumerable<T> {
         public const int DefaultSize = 128;
 
-        private T[] _Items;
-        private int _Count;
+        protected T[] _Items;
+        protected int _Count;
 
         public struct Enumerator : IEnumerator<T>{
             UnorderedList<T> _List;
@@ -110,6 +110,17 @@ namespace Squared.Util {
                 _Items[index] = _Items[newCount];
 
             _Count = newCount;
+        }
+
+        public bool TryPopFront (out T result) {
+            if (_Count == 0) {
+                result = default(T);
+                return false;
+            }
+
+            result = _Items[0];
+            RemoveAt(0);
+            return true;
         }
 
         public int Count {
