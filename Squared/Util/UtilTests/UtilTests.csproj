@@ -68,6 +68,7 @@
     <Compile Include="Tests\ArithmeticTests.cs" />
     <Compile Include="Tests\AtomicQueueTests.cs" />
     <Compile Include="Tests\CurveTests.cs" />
+    <Compile Include="Tests\EventTests.cs" />
     <Compile Include="Tests\IOTests.cs" />
     <Compile Include="Tests\LRUCacheTests.cs" />
     <Compile Include="Tests\ParserTests.cs" />

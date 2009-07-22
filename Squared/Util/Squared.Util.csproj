@@ -67,6 +67,7 @@
     <Compile Include="Arithmetic.cs" />
     <Compile Include="AtomicQueue.cs" />
     <Compile Include="Curve.cs" />
+    <Compile Include="EventBus.cs" />
     <Compile Include="ExpressionParser.cs" />
     <Compile Include="Fixed.cs" />
     <Compile Include="IO.cs" />
