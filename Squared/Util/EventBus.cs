@@ -89,21 +89,30 @@ namespace Squared.Util.Event {
 
     public struct EventThunk {
         public readonly EventBus EventBus;
-        public readonly object Sender;
+        public readonly object Source;
         public readonly string Type;
 
-        public EventThunk (EventBus eventBus, object sender, string type) {
+        public EventThunk (EventBus eventBus, object source, string type) {
             EventBus = eventBus;
-            Sender = sender;
+            Source = source;
             Type = type;
         }
 
         public void Broadcast (object arguments) {
-            EventBus.Broadcast(Sender, Type, arguments);
+            EventBus.Broadcast(Source, Type, arguments);
         }
 
         public void Broadcast () {
-            EventBus.Broadcast(Sender, Type, null);
+            EventBus.Broadcast(Source, Type, null);
+        }
+
+        public EventSubscription Subscribe (EventSubscriber subscriber) {
+            return EventBus.Subscribe(Source, Type, subscriber);
+        }
+
+        public EventSubscription Subscribe<T> (TypedEventSubscriber<T> subscriber)
+            where T : class {
+            return EventBus.Subscribe<T>(Source, Type, subscriber);
         }
     }
 
