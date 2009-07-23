@@ -82,15 +82,21 @@ namespace Squared.Game.GamerServices {
         }
 
         public IAsyncResult BeginShowKeyboardInput (PlayerIndex player, string title, string description, string defaultText, AsyncCallback callback, object state) {
-            return new AsyncResult();
+            var result = new AsyncResult();
+            callback(result);
+            return result;
         }
 
         public IAsyncResult BeginShowMessageBox (string title, string text, IEnumerable<string> buttons, int focusButton, MessageBoxIcon icon, AsyncCallback callback, object state) {
-            return new AsyncResult();
+            var result = new AsyncResult();
+            callback(result);
+            return result;
         }
 
         public IAsyncResult BeginShowMessageBox (PlayerIndex player, string title, string text, IEnumerable<string> buttons, int focusButton, MessageBoxIcon icon, AsyncCallback callback, object state) {
-            return new AsyncResult();
+            var result = new AsyncResult();
+            callback(result);
+            return result;
         }
 
         public IAsyncResult BeginShowStorageDeviceSelector (AsyncCallback callback, object state) {
@@ -160,7 +166,6 @@ namespace Squared.Game.GamerServices {
         public void ShowSignIn (int paneCount, bool onlineOnly) {
         }
 
-        // Properties
         public bool IsScreenSaverEnabled { get; set; }
         public bool IsTrialMode {
             get {
