@@ -181,28 +181,6 @@ namespace Squared.Util.Event {
         }
 
         [Test]
-        public void TestWeakSubscriber () {
-            var tracer = new EventTracer();
-            var sender = "Foo";
-
-            {
-                EventSubscriber subscriber = tracer.EventHandler;
-
-                Bus.Subscribe(sender, "Foo", subscriber);
-
-                Bus.Broadcast(sender, "Foo", "Bar");
-            }
-
-            GC.Collect();
-
-            Bus.Broadcast(sender, "Foo", "Baz");
-
-            Assert.AreEqual(
-                new string[] { "Bar" }, tracer.Trace.ToArray()
-            );
-        }
-
-        [Test]
         public void TestWeakSource () {
             var trace = new List<string>();
             var sender = new object();

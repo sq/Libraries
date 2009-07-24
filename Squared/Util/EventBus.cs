@@ -71,51 +71,12 @@ namespace Squared.Util.Event {
     public delegate void EventSubscriber (EventInfo e);
     public delegate void TypedEventSubscriber<T> (EventInfo e, T arguments) where T : class;
 
-    public struct WeakEventSubscriber {
-        class Holder {
-            public readonly EventSubscriber Subscriber;
-
-            public Holder (EventSubscriber subscriber) {
-                Subscriber = subscriber;
-            }
-        }
-
-        public readonly WeakReference Inner;
-        public readonly int HashCode;
-
-        public WeakEventSubscriber (EventSubscriber subscriber) {
-            HashCode = subscriber.GetHashCode();
-            Inner = new WeakReference(new Holder(subscriber));
-        }
-
-        public override int GetHashCode () {
-            return HashCode;
-        }
-
-        public EventSubscriber Target {
-            get {
-                var inner = this.Inner.Target as Holder;
-                if (inner == null)
-                    return null;
-                else
-                    return inner.Subscriber;
-            }
-        }
-
-        public override bool Equals (object obj) {
-            if ((obj is WeakEventSubscriber) || (obj is EventSubscriber))
-                return (obj.GetHashCode() == HashCode) && (obj.Equals(Target));
-            else
-                return base.Equals(obj);
-        }
-    }
-
-    public class EventSubscriberList : List<WeakEventSubscriber> {
+    public class EventSubscriberList : List<EventSubscriber> {
     }
 
     public struct EventSubscription : IDisposable {
         public readonly EventBus EventBus;
-        public readonly WeakEventSubscriber EventSubscriber;
+        public readonly EventSubscriber EventSubscriber;
 
         private EventFilter _EventFilter;
 
@@ -125,7 +86,7 @@ namespace Squared.Util.Event {
             }
         }
 
-        public EventSubscription (EventBus eventBus, ref EventFilter eventFilter, WeakEventSubscriber subscriber) {
+        public EventSubscription (EventBus eventBus, ref EventFilter eventFilter, EventSubscriber subscriber) {
             EventBus = eventBus;
             _EventFilter = eventFilter;
             EventSubscriber = subscriber;
@@ -189,11 +150,9 @@ namespace Squared.Util.Event {
                 _Subscribers[filter] = subscribers;
             }
 
-            var weakSubscriber = new WeakEventSubscriber(subscriber);
+            subscribers.Add(subscriber);
 
-            subscribers.Add(weakSubscriber);
-
-            return new EventSubscription(this, ref filter, weakSubscriber);
+            return new EventSubscription(this, ref filter, subscriber);
         }
 
         public EventSubscription Subscribe<T> (object source, string type, TypedEventSubscriber<T> subscriber) 
@@ -208,10 +167,10 @@ namespace Squared.Util.Event {
         public bool Unsubscribe (object source, string type, EventSubscriber subscriber) {
             EventFilter filter;
             CreateFilter(source, type, out filter);
-            return Unsubscribe(ref filter, new WeakEventSubscriber(subscriber));
+            return Unsubscribe(ref filter, subscriber);
         }
 
-        public bool Unsubscribe (ref EventFilter filter, WeakEventSubscriber subscriber) {
+        public bool Unsubscribe (ref EventFilter filter, EventSubscriber subscriber) {
             EventSubscriberList subscribers;
             if (_Subscribers.TryGetValue(filter, out subscribers))
                 return subscribers.Remove(subscriber);
@@ -248,28 +207,14 @@ namespace Squared.Util.Event {
 
                 using (var b = BufferPool<EventSubscriber>.Allocate(count)) {
                     var temp = b.Data;
-                    for (int j = 0; j < count; j++) {
-                        var target = subscribers[j].Target;
-                        if (target == null) {
-                            subscribers.RemoveAt(j);
-                            count -= 1;
-                            j -= 1;
-                            continue;
-                        }
-                        temp[j] = target;
-                    }
+                    subscribers.CopyTo(temp);
 
                     for (int j = count - 1; j >= 0; j--) {
-                        var subscriber = temp[j];
-                        subscriber(info);
+                        temp[j](info);
 
-                        if (info.IsConsumed) {
-                            b.Clear(0, b.Data.Length);
+                        if (info.IsConsumed)
                             return;
-                        }
                     }
-
-                    b.Clear(0, b.Data.Length);
                 }
             }
         }
