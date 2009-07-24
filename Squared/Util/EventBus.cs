@@ -5,8 +5,10 @@ using System.Text;
 
 namespace Squared.Util.Event {
     public struct EventFilter {
-        public readonly object Source;
+        public readonly WeakReference Source;
+        public readonly int SourceHashCode;
         public readonly string Type;
+        public readonly int TypeHashCode;
 
         public EventFilter (object source, string type) {
             if (source == null)
@@ -14,22 +16,30 @@ namespace Squared.Util.Event {
             if (type == null)
                 throw new ArgumentNullException("type");
 
-            Source = source;
+            Source = new WeakReference(source);
+            SourceHashCode = source.GetHashCode();
             Type = type;
+            TypeHashCode = type.GetHashCode();
         }
 
         public override int GetHashCode () {
-            return Source.GetHashCode() ^ Type.GetHashCode();
+            return SourceHashCode ^ TypeHashCode;
         }
     }
 
     public class EventFilterComparer : IEqualityComparer<EventFilter> {
         public bool Equals (EventFilter x, EventFilter y) {
-            return (x.Source == y.Source) && (x.Type == y.Type);
+            if ((x.SourceHashCode != y.SourceHashCode) || (x.TypeHashCode != y.TypeHashCode) || (x.Type != y.Type))
+                return false;
+
+            var xSource = x.Source.Target;
+            var ySource = y.Source.Target;
+
+            return (xSource == ySource);
         }
 
         public int GetHashCode (EventFilter obj) {
-            return obj.GetHashCode();
+            return obj.SourceHashCode ^ obj.TypeHashCode;
         }
     }
 
@@ -61,12 +71,51 @@ namespace Squared.Util.Event {
     public delegate void EventSubscriber (EventInfo e);
     public delegate void TypedEventSubscriber<T> (EventInfo e, T arguments) where T : class;
 
-    public class EventSubscriberList : List<EventSubscriber> {
+    public struct WeakEventSubscriber {
+        class Holder {
+            public readonly EventSubscriber Subscriber;
+
+            public Holder (EventSubscriber subscriber) {
+                Subscriber = subscriber;
+            }
+        }
+
+        public readonly WeakReference Inner;
+        public readonly int HashCode;
+
+        public WeakEventSubscriber (EventSubscriber subscriber) {
+            HashCode = subscriber.GetHashCode();
+            Inner = new WeakReference(new Holder(subscriber));
+        }
+
+        public override int GetHashCode () {
+            return HashCode;
+        }
+
+        public EventSubscriber Target {
+            get {
+                var inner = this.Inner.Target as Holder;
+                if (inner == null)
+                    return null;
+                else
+                    return inner.Subscriber;
+            }
+        }
+
+        public override bool Equals (object obj) {
+            if ((obj is WeakEventSubscriber) || (obj is EventSubscriber))
+                return (obj.GetHashCode() == HashCode) && (obj.Equals(Target));
+            else
+                return base.Equals(obj);
+        }
+    }
+
+    public class EventSubscriberList : List<WeakEventSubscriber> {
     }
 
     public struct EventSubscription : IDisposable {
         public readonly EventBus EventBus;
-        public readonly EventSubscriber EventSubscriber;
+        public readonly WeakEventSubscriber EventSubscriber;
 
         private EventFilter _EventFilter;
 
@@ -76,7 +125,7 @@ namespace Squared.Util.Event {
             }
         }
 
-        public EventSubscription (EventBus eventBus, ref EventFilter eventFilter, EventSubscriber subscriber) {
+        public EventSubscription (EventBus eventBus, ref EventFilter eventFilter, WeakEventSubscriber subscriber) {
             EventBus = eventBus;
             _EventFilter = eventFilter;
             EventSubscriber = subscriber;
@@ -140,23 +189,29 @@ namespace Squared.Util.Event {
                 _Subscribers[filter] = subscribers;
             }
 
-            subscribers.Add(subscriber);
+            var weakSubscriber = new WeakEventSubscriber(subscriber);
 
-            return new EventSubscription(this, ref filter, subscriber);
+            subscribers.Add(weakSubscriber);
+
+            return new EventSubscription(this, ref filter, weakSubscriber);
         }
 
         public EventSubscription Subscribe<T> (object source, string type, TypedEventSubscriber<T> subscriber) 
             where T : class {
-            return Subscribe(source, type, (e) => subscriber(e, e.Arguments as T));
+            return Subscribe(source, type, (e) => {
+                var args = e.Arguments as T;
+                if (args != null)
+                    subscriber(e, args);
+            });
         }
 
         public bool Unsubscribe (object source, string type, EventSubscriber subscriber) {
             EventFilter filter;
             CreateFilter(source, type, out filter);
-            return Unsubscribe(ref filter, subscriber);
+            return Unsubscribe(ref filter, new WeakEventSubscriber(subscriber));
         }
 
-        public bool Unsubscribe (ref EventFilter filter, EventSubscriber subscriber) {
+        public bool Unsubscribe (ref EventFilter filter, WeakEventSubscriber subscriber) {
             EventSubscriberList subscribers;
             if (_Subscribers.TryGetValue(filter, out subscribers))
                 return subscribers.Remove(subscriber);
@@ -193,17 +248,45 @@ namespace Squared.Util.Event {
 
                 using (var b = BufferPool<EventSubscriber>.Allocate(count)) {
                     var temp = b.Data;
-                    subscribers.CopyTo(0, temp, 0, count);
+                    for (int j = 0; j < count; j++) {
+                        var target = subscribers[j].Target;
+                        if (target == null) {
+                            subscribers.RemoveAt(j);
+                            count -= 1;
+                            j -= 1;
+                            continue;
+                        }
+                        temp[j] = target;
+                    }
 
                     for (int j = count - 1; j >= 0; j--) {
                         var subscriber = temp[j];
                         subscriber(info);
 
-                        if (info.IsConsumed)
+                        if (info.IsConsumed) {
+                            b.Clear(0, b.Data.Length);
                             return;
+                        }
                     }
+
+                    b.Clear(0, b.Data.Length);
                 }
             }
+        }
+
+        public int Compact () {
+            int result = 0;
+            var keys = new EventFilter[_Subscribers.Count];
+            _Subscribers.Keys.CopyTo(keys, 0);
+
+            foreach (var ef in keys) {
+                if (!(ef.Source.IsAlive)) {
+                    _Subscribers.Remove(ef);
+                    result += 1;
+                }
+            }
+
+            return result;
         }
 
         public EventThunk GetThunk (object sender, string type) {

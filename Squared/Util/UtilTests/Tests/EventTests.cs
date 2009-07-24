@@ -169,7 +169,56 @@ namespace Squared.Util.Event {
             Bus.Broadcast(sender, "Test", "pancakes");
             Bus.Broadcast(sender, "Test", 5);
 
-            Assert.AreEqual(new string[] { "pancakes", null }, trace.ToArray());
+            Assert.AreEqual(new string[] { "pancakes" }, trace.ToArray());
+        }
+
+        class EventTracer {
+            public List<String> Trace = new List<string>();
+
+            public void EventHandler (EventInfo e) {
+                Trace.Add(e.Arguments.ToString());
+            }
+        }
+
+        [Test]
+        public void TestWeakSubscriber () {
+            var tracer = new EventTracer();
+            var sender = "Foo";
+
+            {
+                EventSubscriber subscriber = tracer.EventHandler;
+
+                Bus.Subscribe(sender, "Foo", subscriber);
+
+                Bus.Broadcast(sender, "Foo", "Bar");
+            }
+
+            GC.Collect();
+
+            Bus.Broadcast(sender, "Foo", "Baz");
+
+            Assert.AreEqual(
+                new string[] { "Bar" }, tracer.Trace.ToArray()
+            );
+        }
+
+        [Test]
+        public void TestWeakSource () {
+            var trace = new List<string>();
+            var sender = new object();
+
+            Bus.Subscribe(sender, "Foo", (e) => trace.Add(e.Arguments as string));
+
+            Bus.Broadcast(sender, "Foo", "Bar");
+
+            var senderWr = new WeakReference(sender);
+            sender = null;
+
+            GC.Collect();
+
+            Assert.IsFalse(senderWr.IsAlive);
+
+            Assert.AreEqual(1, Bus.Compact());
         }
 
         [TearDown]

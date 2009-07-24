@@ -23,6 +23,10 @@ namespace Squared.Game {
         }
     }
 
+    public interface IHasAnchor {
+        Vector2 Anchor { get; }
+    }
+
     public interface IHasBounds {
         Bounds Bounds { get; }
     }
