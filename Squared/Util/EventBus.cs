@@ -44,6 +44,7 @@ namespace Squared.Util.Event {
     }
 
     public class EventInfo {
+        public readonly EventBus Bus;
         public readonly object Source;
         public readonly string Type;
         public readonly object Arguments;
@@ -60,7 +61,8 @@ namespace Squared.Util.Event {
             _IsConsumed = true;
         }
 
-        public EventInfo (object source, string type, object arguments) {
+        public EventInfo (EventBus bus, object source, string type, object arguments) {
+            Bus = bus;
             Source = source;
             Type = type;
             Arguments = arguments;
@@ -203,7 +205,7 @@ namespace Squared.Util.Event {
                     continue;
 
                 if (info == null)
-                    info = new EventInfo(source, type, arguments);
+                    info = new EventInfo(this, source, type, arguments);
 
                 using (var b = BufferPool<EventSubscriber>.Allocate(count)) {
                     var temp = b.Data;
