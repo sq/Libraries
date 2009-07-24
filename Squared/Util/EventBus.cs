@@ -46,6 +46,8 @@ namespace Squared.Util.Event {
     public class EventInfo {
         public readonly EventBus Bus;
         public readonly object Source;
+        public readonly EventCategoryToken Category;
+        public readonly string CategoryName;
         public readonly string Type;
         public readonly object Arguments;
 
@@ -61,9 +63,11 @@ namespace Squared.Util.Event {
             _IsConsumed = true;
         }
 
-        public EventInfo (EventBus bus, object source, string type, object arguments) {
+        public EventInfo (EventBus bus, object source, EventCategoryToken categoryToken, string categoryName, string type, object arguments) {
             Bus = bus;
             Source = source;
+            Category = categoryToken;
+            CategoryName = categoryName;
             Type = type;
             Arguments = arguments;
             _IsConsumed = false;
@@ -128,9 +132,44 @@ namespace Squared.Util.Event {
         }
     }
 
+    public interface IEventSource {
+        string CategoryName {
+            get;
+        }
+    }
+
+    public class EventCategoryToken {
+        public readonly string Name;
+
+        public EventCategoryToken (string name) {
+            Name = name;
+        }
+
+        public override int GetHashCode () {
+            return Name.GetHashCode();
+        }
+    }
+
     public class EventBus : IDisposable {
+        public struct CategoryCollection {
+            public readonly EventBus EventBus;
+
+            public CategoryCollection (EventBus eventBus) {
+                EventBus = eventBus;
+            }
+
+            public EventCategoryToken this [string categoryName] {
+                get {
+                    return EventBus.GetCategory(categoryName);
+                }
+            }
+        }
+
         public static readonly object AnySource = "<Any Source>";
         public static readonly string AnyType = "<Any Type>";
+
+        private Dictionary<string, EventCategoryToken> _Categories = 
+            new Dictionary<string, EventCategoryToken>();
 
         private Dictionary<EventFilter, EventSubscriberList> _Subscribers =
             new Dictionary<EventFilter, EventSubscriberList>(new EventFilterComparer());
@@ -155,6 +194,23 @@ namespace Squared.Util.Event {
             subscribers.Add(subscriber);
 
             return new EventSubscription(this, ref filter, subscriber);
+        }
+
+        private EventCategoryToken GetCategory (string name) {
+            EventCategoryToken result;
+
+            if (!_Categories.TryGetValue(name, out result)) {
+                result = new EventCategoryToken(name);
+                _Categories[name] = result;
+            }
+
+            return result;
+        }
+
+        public CategoryCollection Categories {
+            get {
+                return new CategoryCollection(this);
+            }
         }
 
         public EventSubscription Subscribe<T> (object source, string type, TypedEventSubscriber<T> subscriber) 
@@ -189,11 +245,39 @@ namespace Squared.Util.Event {
             EventInfo info = null;
             EventSubscriberList subscribers;
             EventFilter filter;
+            EventCategoryToken categoryToken = null;
+            string categoryName = null;
 
-            for (int i = 0; i < 4; i++) {
+            IEventSource iSource = source as IEventSource;
+            if (iSource != null) {
+                categoryName = iSource.CategoryName;
+                categoryToken = GetCategory(categoryName);
+            }
+
+            for (int i = 0; i < 6; i++) {
+                string typeFilter = (i & 1) == 1 ? type : AnyType;
+                object sourceFilter;
+
+                switch (i) {
+                    case 0:
+                    case 1:
+                        sourceFilter = AnySource;
+                    break;
+                    case 2:
+                    case 3:
+                        sourceFilter = categoryToken;
+                    break;
+                    default:
+                        sourceFilter = source;
+                    break;
+                }
+
+                if ((sourceFilter == null) || (typeFilter == null))
+                    continue;
+
                 CreateFilter(                    
-                    (i & 1) == 1 ? source : AnySource,
-                    (i & 2) == 2 ? type : AnyType,
+                    sourceFilter,
+                    typeFilter,
                     out filter
                 );
 
@@ -205,7 +289,7 @@ namespace Squared.Util.Event {
                     continue;
 
                 if (info == null)
-                    info = new EventInfo(this, source, type, arguments);
+                    info = new EventInfo(this, source, categoryToken, categoryName, type, arguments);
 
                 using (var b = BufferPool<EventSubscriber>.Allocate(count)) {
                     var temp = b.Data;

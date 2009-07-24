@@ -199,6 +199,33 @@ namespace Squared.Util.Event {
             Assert.AreEqual(1, Bus.Compact());
         }
 
+        class BasicSender : IEventSource {
+            public string CategoryName {
+                get;
+                set;
+            }
+        }
+
+        [Test]
+        public void TestSourceCategories () {
+            var trace = new List<string>();
+
+            var sender1 = new BasicSender { CategoryName = "Test1" };
+            var sender2 = new BasicSender { CategoryName = "Test2" };
+
+            Bus.Subscribe(Bus.Categories["Test1"], null, (e) => trace.Add(e.Type));
+            Bus.Subscribe(Bus.Categories["Test2"], null, (e) => trace.Add(e.Type));
+
+            Bus.Broadcast(sender1, "Foo", null);
+            Bus.Broadcast(sender2, "Bar", null);
+            Bus.Broadcast("Test", "Baz", null);
+
+            Assert.AreEqual(
+                new string[] { "Foo", "Bar" },
+                trace.ToArray()
+            );
+        }
+
         [TearDown]
         public void TearDown () {
             Bus.Dispose();
