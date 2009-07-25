@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.GamerServices;
-using System.Runtime.Remoting.Messaging;
 using Microsoft.Xna.Framework.Storage;
 
 namespace Squared.Game.GamerServices {
@@ -20,6 +19,7 @@ namespace Squared.Game.GamerServices {
         public override void Initialize () {
 #if XBOX
             _Component = new GamerServicesComponent(Game);
+            _Component.Initialize();
 #endif
         }
 
