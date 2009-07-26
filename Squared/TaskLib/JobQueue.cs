@@ -8,6 +8,12 @@ using System.Security;
 using Squared.Util;
 
 namespace Squared.Task {
+    public class InfiniteStepException : Exception {
+        public InfiniteStepException (long duration) 
+            : base(String.Format("Stepped for {0:###.0} seconds without reaching the end of the job queue", TimeSpan.FromTicks(duration).TotalSeconds)) {
+        }
+    }
+
     public interface IJobQueue : IDisposable {
         void QueueWorkItem (Action item);
         void Step ();
@@ -25,21 +31,47 @@ namespace Squared.Task {
         public static IJobQueue ThreadSafe () {
             return new ThreadSafeJobQueue();
         }
+
+        public static Func<IJobQueue> ThreadSafe (TimeSpan maxStepDuration) {
+            long stepDurationTicks = maxStepDuration.Ticks;
+            return () => new ThreadSafeJobQueue(stepDurationTicks);
+        }
     }
 
     public sealed class ThreadSafeJobQueue : IJobQueue {
         public const double DefaultWaitTimeout = 1.0;
+        public readonly long MaxStepDuration = 0;
 
         private AutoResetEvent _WaiterSignal = new AutoResetEvent(false);
         private volatile int _WaiterCount = 0;
 
         private AtomicQueue<Action> _Queue = new AtomicQueue<Action>();
 
+        public ThreadSafeJobQueue ()
+            : this(0) {
+        }
+
+        public ThreadSafeJobQueue (long maxStepDuration) {
+            MaxStepDuration = maxStepDuration;
+        }
+
         public void Step () {
+            long stepStarted = 0;
+            if (MaxStepDuration > 0)
+                stepStarted = Time.Ticks;
+
+            int i = 0;
             Action item = null;
             do {
-                if (_Queue.Dequeue(out item))
+                if (_Queue.Dequeue(out item)) {
                     item();
+                    i++;
+
+                    if ((MaxStepDuration > 0) && ((i % 100) == 0)) {
+                        if ((Time.Ticks - stepStarted) > MaxStepDuration)
+                            throw new InfiniteStepException(MaxStepDuration);
+                    }
+                }
             } while (item != null);
         }
 
