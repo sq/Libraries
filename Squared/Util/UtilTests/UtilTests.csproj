@@ -73,6 +73,7 @@
     <Compile Include="Tests\LRUCacheTests.cs" />
     <Compile Include="Tests\ParserTests.cs" />
     <Compile Include="Tests\PriorityQueueTests.cs" />
+    <Compile Include="Tests\TimeTests.cs" />
     <Compile Include="Tests\TupleTests.cs" />
     <Compile Include="Tests\UnorderedListTests.cs" />
   </ItemGroup>

@@ -176,4 +176,60 @@ namespace Squared.Util {
             CurrentTime += ticks;
         }
     }
+
+    public class PausableTimeProvider : ITimeProvider {
+        public readonly ITimeProvider Source;
+
+        private long? _PausedSince = null;
+        private long _Offset = 0;
+
+        public PausableTimeProvider (ITimeProvider source) {
+            Source = source;
+        }
+
+        public long Ticks {
+            get {
+                if (_PausedSince.HasValue)
+                    return _PausedSince.Value + _Offset;
+
+                return Source.Ticks + _Offset; 
+            }
+        }
+
+        public double Seconds {
+            get {
+                decimal ticks;
+                if (_PausedSince.HasValue)
+                    ticks = _PausedSince.Value + _Offset;
+                else
+                    ticks = Source.Ticks + _Offset;
+
+                return (double)(ticks / Squared.Util.Time.SecondInTicks);
+            }
+        }
+
+        public bool Paused {
+            get {
+                return _PausedSince.HasValue;
+            }
+            set {
+                if (_PausedSince.HasValue == value)
+                    return;
+
+                long now = Source.Ticks;
+
+                if (value == true) {
+                    _PausedSince = now;
+                } else {
+                    long since = _PausedSince.Value;
+                    _PausedSince = null;
+                    _Offset -= (now - since);
+                }
+            }
+        }
+
+        public void Reset () {
+            _Offset = 0;
+        }
+    }
 }
