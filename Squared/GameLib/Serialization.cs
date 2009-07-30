@@ -7,6 +7,7 @@ using System.Xml;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Serialization;
+using System.Globalization;
 
 namespace Squared.Game {
     public interface INamedObject {
@@ -158,7 +159,7 @@ namespace Squared.Game.Serialization {
                 if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "types")
                     break;
                 else if (reader.NodeType == XmlNodeType.Element && reader.Name == "type") {
-                    int id = int.Parse(reader.GetAttribute("id"));
+                    int id = int.Parse(reader.GetAttribute("id"), CultureInfo.InvariantCulture);
                     string typeName = reader.GetAttribute("name");
                     var t = resolver.NameToType(typeName);
                     if (outputType.IsAssignableFrom(t))
@@ -173,7 +174,7 @@ namespace Squared.Game.Serialization {
             while (!reader.EOF) {
                 if (reader.NodeType == XmlNodeType.Element) {
                     key = reader.GetAttribute("key");
-                    typeId = int.Parse(reader.GetAttribute("typeId"));
+                    typeId = int.Parse(reader.GetAttribute("typeId"), CultureInfo.InvariantCulture);
 
                     XmlSerializer ser;
                     if (!serializers.TryGetValue(typeId, out ser)) {

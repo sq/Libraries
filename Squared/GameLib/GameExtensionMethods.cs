@@ -22,6 +22,10 @@ namespace Squared.Game {
             return new Vector2(vector.Y, -vector.X);
         }
 
+        public static Vector2 Round (this Vector2 vector) {
+            return new Vector2((float)Math.Round(vector.X), (float)Math.Round(vector.Y));
+        }
+
         public static Vector2 Rotate (this Vector2 vector, float radians) {
             var cos = (float)Math.Cos(radians);
             var sin = (float)Math.Sin(radians);
