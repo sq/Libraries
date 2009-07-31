@@ -11,6 +11,7 @@ using Microsoft.Xna.Framework.Media;
 using Microsoft.Xna.Framework.Net;
 using Microsoft.Xna.Framework.Storage;
 using Squared.Util;
+using System.Diagnostics;
 
 namespace Squared.Game {
     public class Vector2Comparer : IEqualityComparer<Vector2> {
@@ -185,10 +186,8 @@ namespace Squared.Game {
         }
 
         protected virtual void ClearDirtyFlag () {
-            for (int i = 0; i < _Vertices.Length; i++) {
-                _TranslatedVertices[i].X = _Vertices[i].X + _Position.X;
-                _TranslatedVertices[i].Y = _Vertices[i].Y + _Position.Y;
-            }
+            for (int i = 0; i < _Vertices.Length; i++)
+                _TranslatedVertices[i] = (_Vertices[i] + _Position).Round(Geometry.RoundingDecimals);
 
             _Dirty = false;
         }
@@ -198,6 +197,8 @@ namespace Squared.Game {
                 return _Position;
             }
             set {
+                value = value.Round(Geometry.RoundingDecimals);
+
                 if (_Position != value) {
                     _Position = value;
                     _Dirty = true;
@@ -270,8 +271,8 @@ namespace Squared.Game {
     }
 
     public static class Geometry {
-        public const double IntersectionRoundingFactor = 11111.00;
-        public const float IntersectionEpsilon = (float)-0.000001;
+        public const int RoundingDecimals = 5;
+        public const float IntersectionEpsilon = (float)0.00001;
 
         internal static double DotProduct (double x1, double y1, double x2, double y2) {
             return (x1 * x2 + y1 * y2);
@@ -371,14 +372,18 @@ namespace Squared.Game {
         }
 
         public static Interval ProjectOntoAxis (Vector2 axis, Polygon polygon) {
+            return ProjectOntoAxis(axis, polygon, Vector2.Zero);
+        }
+
+        public static Interval ProjectOntoAxis (Vector2 axis, Polygon polygon, Vector2 offset) {
             var vertices = polygon.GetVertices();
-            float d = Vector2.Dot(axis, vertices[0]);
+            float d = Vector2.Dot(axis, vertices[0] + offset);
             Interval result = new Interval();
             result.Min = result.Max = d;
 
             int length = polygon.Count;
             for (int i = 1; i < length; i++) {
-                d = Vector2.Dot(vertices[i], axis);
+                d = Vector2.Dot(vertices[i] + offset, axis);
 
                 if (d < result.Min)
                     result.Min = d;
@@ -447,7 +452,20 @@ namespace Squared.Game {
             Array.Copy(buffer, bufferCount - numAxes, polygon.AxisCache, 0, numAxes);
         }
 
+        public static Vector2 ComputeComparisonOffset (Polygon polygonA, Polygon polygonB) {
+            var boundsA = polygonA.Bounds;
+            var boundsB = polygonB.Bounds;
+            float fixedBoundary = 64.0f;
+
+            return new Vector2(
+                (float)-Math.Min(boundsA.TopLeft.X, boundsB.TopLeft.X) + fixedBoundary,
+                (float)-Math.Min(boundsA.TopLeft.Y, boundsB.TopLeft.Y) + fixedBoundary
+            ).Round(RoundingDecimals);
+        }
+
         public static bool DoPolygonsIntersect (Polygon polygonA, Polygon polygonB) {
+            var offset = ComputeComparisonOffset(polygonA, polygonB);
+
             using (var axisBuffer = BufferPool<Vector2>.Allocate(polygonA.Count + polygonB.Count)) {
                 int axisCount = 0;
                 GetPolygonAxes(axisBuffer.Data, ref axisCount, polygonA);
@@ -456,10 +474,10 @@ namespace Squared.Game {
                 for (int i = 0; i < axisCount; i++) {
                     var axis = axisBuffer.Data[i];
 
-                    var intervalA = ProjectOntoAxis(axis, polygonA);
-                    var intervalB = ProjectOntoAxis(axis, polygonB);
+                    var intervalA = ProjectOntoAxis(axis, polygonA, offset);
+                    var intervalB = ProjectOntoAxis(axis, polygonB, offset);
 
-                    bool intersects = intervalA.Intersects(intervalB);
+                    bool intersects = intervalA.Intersects(intervalB, Geometry.IntersectionEpsilon);
 
                     if (!intersects)
                         return false;
@@ -552,12 +570,15 @@ namespace Squared.Game {
         }
 
         public static ResolvedMotion ResolvePolygonMotion (Polygon polygonA, Polygon polygonB, Vector2 velocityA) {
+            var offset = ComputeComparisonOffset(polygonA, polygonB);
+
             var result = new ResolvedMotion();
             result.AreIntersecting = true;
             result.WouldHaveIntersected = true;
             result.WillBeIntersecting = true;
 
             float velocityProjection;
+            velocityA = velocityA.Round(RoundingDecimals);
             var velocityDistance = velocityA.Length();
             var velocityAxis = Vector2.Normalize(velocityA);
 
@@ -582,10 +603,10 @@ namespace Squared.Game {
                 for (int i = 0; i < axisCount; i++) {
                     var axis = axisBuffer.Data[i];
 
-                    intervalA = ProjectOntoAxis(axis, polygonA);
-                    intervalB = ProjectOntoAxis(axis, polygonB);
+                    intervalA = ProjectOntoAxis(axis, polygonA, offset);
+                    intervalB = ProjectOntoAxis(axis, polygonB, offset);
 
-                    bool intersects = intervalA.Intersects(intervalB);
+                    bool intersects = intervalA.Intersects(intervalB, Geometry.IntersectionEpsilon);
                     if (!intersects)
                         result.AreIntersecting = false;
 
@@ -607,13 +628,11 @@ namespace Squared.Game {
                     }
 
                     if ((velocityDistance > 0) && (intersectionDistance < minDistance)) {
-                        int steps = 3;
                         var minVect = axis * intersectionDistance;
                         var newVelocity = velocityA + minVect;
                         var newLength = Vector2.Dot(velocityAxis, newVelocity);
                         newVelocity = velocityAxis * newLength;
 
-                        tryVelocity:
                         if (newVelocity.LengthSquared() > velocityA.LengthSquared())
                             continue;
                         if (Vector2.Dot(velocityA, newVelocity) < 0.0f)
@@ -624,13 +643,8 @@ namespace Squared.Game {
                         newIntervalA.Max = (intervalA.Max + velocityProjection);
                         intersectionDistance = newIntervalA.GetDistance(intervalB);
 
-                        if (intersectionDistance < IntersectionEpsilon)
+                        if (intersectionDistance < -IntersectionEpsilon)
                             continue;
-                        else if ((steps > 0) && (intersectionDistance < 0)) {
-                            newVelocity = velocityAxis * (float)(Math.Floor(newLength * (IntersectionRoundingFactor * steps)) / (IntersectionRoundingFactor * steps));
-                            steps -= 1;
-                            goto tryVelocity;
-                        }
 
                         result.ResultVelocity = newVelocity;
                         result.WillBeIntersecting = false;

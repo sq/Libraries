@@ -68,6 +68,20 @@ namespace Squared.Util {
             return true;
         }
 
+        public bool Intersects (Interval other, float epsilon) {
+            return Intersects(other);
+
+            /*
+            float a = other.Max - Min;
+            float b = Max - other.Min;
+            if (a <= -epsilon)
+                return false;
+            if (b >= epsilon)
+                return false;
+            return true;
+             */
+        }
+
         public float GetDistance (Interval other) {
             if (Min < other.Min) {
                 return other.Min - Max;
