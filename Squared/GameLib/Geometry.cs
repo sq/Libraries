@@ -271,8 +271,8 @@ namespace Squared.Game {
     }
 
     public static class Geometry {
-        public const int RoundingDecimals = 5;
-        public const float IntersectionEpsilon = (float)0.00001;
+        public const int RoundingDecimals = 2;
+        public const float IntersectionEpsilon = (float)0.001;
 
         internal static double DotProduct (double x1, double y1, double x2, double y2) {
             return (x1 * x2 + y1 * y2);
@@ -439,7 +439,7 @@ namespace Squared.Game {
                 axis.Y = current.X - previous.X;
                 var ls = axis.LengthSquared();
                 if (ls > 0 && !float.IsNaN(ls)) {
-                    axis /= ls;
+                    axis /= (float)Math.Sqrt(ls);
                     buffer[bufferCount] = axis;
                     bufferCount += 1;
                     numAxes += 1;
@@ -578,7 +578,6 @@ namespace Squared.Game {
             result.WillBeIntersecting = true;
 
             float velocityProjection;
-            velocityA = velocityA.Round(RoundingDecimals);
             var velocityDistance = velocityA.Length();
             var velocityAxis = Vector2.Normalize(velocityA);
 
@@ -636,7 +635,7 @@ namespace Squared.Game {
                         if (newVelocity.LengthSquared() > velocityA.LengthSquared())
                             continue;
                         if (Vector2.Dot(velocityA, newVelocity) < 0.0f)
-                            continue;
+                            newVelocity = Vector2.Zero;
 
                         Vector2.Dot(ref axis, ref newVelocity, out velocityProjection);
                         newIntervalA.Min = (intervalA.Min + velocityProjection);

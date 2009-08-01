@@ -22,6 +22,15 @@ namespace Squared.Game {
             });
         }
 
+        public Polygon MakeRectangle (float x1, float y1, float x2, float y2) {
+            return new Polygon(new Vector2[] {
+                new Vector2(x1, y1),
+                new Vector2(x2, y1),
+                new Vector2(x2, y2),
+                new Vector2(x1, y2)
+            });
+        }
+
         [Test]
         public void ProjectOntoAxisTest () {
             var vertices = MakeSquare(0, 0, 5);
@@ -88,6 +97,69 @@ namespace Squared.Game {
             Assert.IsFalse(result.WillBeIntersecting);
 
             Assert.IsFalse(Geometry.DoPolygonsIntersect(MakeSquare(result.ResultVelocity.X, result.ResultVelocity.Y, 5), MakeSquare(5.1f, 5.1f, 5)));
+        }
+
+        [Test]
+        public void MotionRoundingTest () {
+            var a = MakeSquare(0, 0, 5);
+            var b = MakeSquare(5, 5, 5);
+
+            float x, y;
+
+            x = y = 0.0f;
+
+            for (x = 0; x < 5; x += 0.01f) {
+                var result = Geometry.ResolvePolygonMotion(a, b, new Vector2(x, y));
+                Assert.IsFalse(result.AreIntersecting);
+                Assert.IsFalse(result.WouldHaveIntersected);
+                Assert.IsFalse(result.WillBeIntersecting);
+
+                Assert.IsFalse(Geometry.DoPolygonsIntersect(MakeSquare(result.ResultVelocity.X, result.ResultVelocity.Y, 5), b));
+            }
+
+            x = y = 0.0f;
+
+            for (y = 0; y < 5; y += 0.01f) {
+                var result = Geometry.ResolvePolygonMotion(a, b, new Vector2(x, y));
+                Assert.IsFalse(result.AreIntersecting);
+                Assert.IsFalse(result.WouldHaveIntersected);
+                Assert.IsFalse(result.WillBeIntersecting);
+
+                Assert.IsFalse(Geometry.DoPolygonsIntersect(MakeSquare(result.ResultVelocity.X, result.ResultVelocity.Y, 5), b));
+            }
+
+            x = y = 0.0f;
+
+            for (float i = 0.01f; i <= 5; i += 0.01f) {
+                x = y = i;
+                var result = Geometry.ResolvePolygonMotion(a, b, new Vector2(x, y));
+                Assert.IsFalse(result.AreIntersecting);
+                Assert.IsTrue(result.WouldHaveIntersected);
+                Assert.IsFalse(result.WillBeIntersecting);
+
+                Assert.IsFalse(Geometry.DoPolygonsIntersect(MakeSquare(result.ResultVelocity.X, result.ResultVelocity.Y, 5), b));
+            }
+        }
+
+        [Test]
+        public void FPInsanityTest1 () {
+            var a = MakeRectangle(1691.58f, 996.0f, 1759.58f, 1056.0f);
+            var b = MakeRectangle(-744, 1056, 2560, 1112);
+            var v = new Vector2(0.0f, 1.26f);
+
+            for (float i = 0.01f; i <= 2.0f; i += 0.01f) {
+                var j = v * i;
+                a.Position = Vector2.Zero;
+                Assert.IsFalse(Geometry.DoPolygonsIntersect(a, b));
+
+                var result = Geometry.ResolvePolygonMotion(a, b, j);
+                Assert.IsFalse(result.AreIntersecting);
+                Assert.IsTrue(result.WouldHaveIntersected);
+                Assert.IsFalse(result.WillBeIntersecting);
+
+                a.Position = result.ResultVelocity;
+                Assert.IsFalse(Geometry.DoPolygonsIntersect(a, b));
+            }
         }
 
         [Test]
