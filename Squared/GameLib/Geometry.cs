@@ -57,6 +57,15 @@ namespace Squared.Game {
             }
         }
 
+        public Vector2 Size {
+            get {
+                return new Vector2(
+                    BottomRight.X - TopLeft.X,
+                    BottomRight.Y - TopLeft.Y
+                );
+            }
+        }
+
         public Bounds (Vector2 a, Vector2 b) {
             TopLeft = new Vector2(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y));
             BottomRight = new Vector2(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y));

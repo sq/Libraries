@@ -89,7 +89,10 @@ namespace Squared.Game.Animation {
         public ITimeProvider TimeProvider = Time.DefaultTimeProvider;
         private IEnumerator<AnimCmd> _ActiveAnimation = null;
         private int _Frame = 0;
+        private long _Speed = 10000;
         private object _Group = null;
+        private long _SuspendSince = 0;
+        private long _SuspendDuration = 0;
         private long _SuspendUntil = 0;
 
         public void SetAnimation (Func<IEnumerator<AnimCmd>> animation) {
@@ -101,7 +104,8 @@ namespace Squared.Game.Animation {
             else
                 _ActiveAnimation = null;
 
-            _SuspendUntil = TimeProvider.Ticks;
+            _SuspendSince = _SuspendUntil = TimeProvider.Ticks;
+            _SuspendDuration = 0;
         }
 
         public void SetFrame (object group, int frame) {
@@ -110,7 +114,9 @@ namespace Squared.Game.Animation {
         }
 
         public void Delay (long duration) {
-            _SuspendUntil = _SuspendUntil + duration;
+            _SuspendSince = _SuspendUntil;
+            _SuspendDuration = duration;
+            _SuspendUntil = _SuspendUntil + (duration * 10000 / _Speed);
         }
 
         public object Group {
@@ -138,6 +144,11 @@ namespace Squared.Game.Animation {
                 if (item == null || item.Invoke(this))
                     break;
             }
+        }
+
+        public void SetSpeed (float speed) {
+            _Speed = (long)Math.Round(speed * 10000);
+            _SuspendUntil = _SuspendSince + (_SuspendDuration * 10000 / _Speed);
         }
     }
 }

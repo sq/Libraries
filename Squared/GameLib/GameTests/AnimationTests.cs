@@ -85,6 +85,38 @@ namespace Squared.Game.Animation {
         }
 
         [Test]
+        public void AnimationSpeedTest () {
+            var a = new Animator { TimeProvider = TimeProvider };
+            a.SetAnimation(BasicAnimation);
+            a.SetSpeed(2.0f);
+
+            a.Update();
+            Assert.AreEqual(0, a.Frame);
+
+            TimeProvider.Advance(5);
+            a.Update();
+            Assert.AreEqual(0, a.Frame);
+
+            TimeProvider.Advance(25);
+            a.Update();
+            Assert.AreEqual(1, a.Frame);
+
+            TimeProvider.Advance(25);
+            a.Update();
+            Assert.AreEqual(2, a.Frame);
+
+            TimeProvider.Advance(25);
+            a.Update();
+            Assert.AreEqual(0, a.Frame);
+
+            a.SetSpeed(1.0f);
+
+            TimeProvider.Advance(100);
+            a.Update();
+            Assert.AreEqual(2, a.Frame);
+        }
+
+        [Test]
         public void AnimationStringTest () {
             var a = new Animator { TimeProvider = TimeProvider };
             a.SetAnimation(AnimString1);
