@@ -122,6 +122,19 @@ namespace Squared.Task {
         }
 
         [Test]
+        public void RunToCompletionFailureTest () {
+            var rtc = new RunToCompletion(CrashyTask());
+            var f = Scheduler.Start(rtc);
+
+            while (!f.Completed)
+                Scheduler.Step();
+
+            Assert.AreEqual(false, f.Result);
+            Assert.IsTrue(rtc.Future.Error is Exception);
+            Assert.AreEqual("pancakes", rtc.Future.Error.Message);
+        }
+
+        [Test]
         public void RecursiveYieldTest () {
             this.TestFuture = new Future();
             var future = Scheduler.Start(TaskReturnValueOfYieldedTask());
@@ -624,20 +637,21 @@ namespace Squared.Task {
             Assert.AreEqual(false, Scheduler.WaitFor(f));
         }
 
-        IEnumerator<object> UseRunExtension (IEnumerator<object> task) {
-            Future f;
-            yield return task.Run(out f);
-            yield return new Result(f.Result);
+        IEnumerator<object> UseRunExtension (IEnumerator<object> task, Future[] output) {
+            Future temp;
+            yield return task.Run(out temp);
+            output[0] = temp;
         }
 
         [Test]
         public void RunExtensionStoresFuture () {
-            var f = Scheduler.Start(UseRunExtension(CrashyTask()), TaskExecutionPolicy.RunWhileFutureLives);
+            Future[] f = new Future[1];
+            var _ = Scheduler.Start(UseRunExtension(CrashyTask(), f), TaskExecutionPolicy.RunWhileFutureLives);
             try {
-                Scheduler.WaitFor(f);
+                Scheduler.WaitFor(_);
             } catch (FutureException) {
             }
-            Assert.AreEqual(f.Error.Message, "pancakes");
+            Assert.AreEqual("pancakes", f[0].Error.Message);
         }
     }
 

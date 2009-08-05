@@ -207,6 +207,7 @@ namespace Squared.Task {
         SchedulableGeneratorThunk _Thunk;
         TaskExecutionPolicy _ExecutionPolicy;
         Future<T> _Future;
+        IFuture _CompletionSignal;
 
         public RunToCompletion (IEnumerator<object> task) 
             : this(task, TaskExecutionPolicy.RunWhileFutureLives) {
@@ -216,16 +217,17 @@ namespace Squared.Task {
             _Task = task;
             _Thunk = new SchedulableGeneratorThunk(_Task);
             _Future = (Future<T>)Squared.Task.Future.New<T>();
+            _Future.RegisterOnComplete(Completed);
             _ExecutionPolicy = executionPolicy;
         }
 
-        void Completed (object result, Exception error) {
-            this._Future.Complete(result);
+        void Completed (IFuture f) {
+            _CompletionSignal.SetResult(_Future.Error == null, null);
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
+            _CompletionSignal = future;
             scheduler.Start(_Future, _Thunk, _ExecutionPolicy);
-            future.Bind(this._Future);
         }
 
         public void AssertSucceeded () {

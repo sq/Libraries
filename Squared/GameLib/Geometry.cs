@@ -185,8 +185,6 @@ namespace Squared.Game {
         protected bool _Dirty = true, _BoundsDirty = true;
         protected Bounds _Bounds;
         public readonly int Count;
-
-        internal Vector2[] AxisCache = null;
         
         public Polygon (Vector2[] vertices) {
             _Vertices = vertices;
@@ -226,7 +224,6 @@ namespace Squared.Game {
 
         public void SetVertex (int index, Vector2 newVertex) {
             _Vertices[index] = newVertex;
-            AxisCache = null;
             _Dirty = true;
             _BoundsDirty = true;
         }
@@ -416,12 +413,6 @@ namespace Squared.Game {
                     "buffer"
                 );
 
-            if (polygon.AxisCache != null) {
-                Array.Copy(polygon.AxisCache, 0, buffer, bufferCount, polygon.AxisCache.Length);
-                bufferCount += polygon.AxisCache.Length;
-                return;
-            }
-
             bool done = false;
             int i = 0;
             Vector2 firstPoint = new Vector2(), current = new Vector2();
@@ -456,9 +447,6 @@ namespace Squared.Game {
 
                 i += 1;
             }
-
-            polygon.AxisCache = new Vector2[numAxes];
-            Array.Copy(buffer, bufferCount - numAxes, polygon.AxisCache, 0, numAxes);
         }
 
         public static Vector2 ComputeComparisonOffset (Polygon polygonA, Polygon polygonB) {

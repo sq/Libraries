@@ -99,7 +99,8 @@ namespace Squared.Util.Event {
         }
 
         public void Dispose () {
-            EventBus.Unsubscribe(ref _EventFilter, EventSubscriber);
+            if ((EventBus != null) && (EventSubscriber != null))
+                EventBus.Unsubscribe(ref _EventFilter, EventSubscriber);
         }
     }
 
