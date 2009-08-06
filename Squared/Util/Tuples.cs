@@ -7,7 +7,7 @@ namespace Squared.Util {
     public delegate void Subtract<T> (ref T lhs, ref T rhs, out T result);
 
     public struct Pair<T> : IComparable<Pair<T>>, IEquatable<Pair<T>> 
-        where T : struct, IComparable<T> {
+        where T : IComparable<T> {
 
         public T First, Second;
 
@@ -126,7 +126,7 @@ namespace Squared.Util {
     }
 
     public struct Triplet<T> : IComparable<Triplet<T>>, IEquatable<Triplet<T>>
-        where T : struct, IComparable<T>, IEquatable<T> {
+        where T : IComparable<T> {
 
         public T First, Second, Third;
 
