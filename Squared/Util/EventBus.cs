@@ -5,21 +5,37 @@ using System.Text;
 
 namespace Squared.Util.Event {
     public struct EventFilter {
-        public readonly WeakReference Source;
+        public readonly WeakReference WeakSource;
+        public readonly object StrongSource;
         public readonly int SourceHashCode;
         public readonly string Type;
         public readonly int TypeHashCode;
 
-        public EventFilter (object source, string type) {
+        public EventFilter (object source, string type, bool weak) {
             if (source == null)
                 throw new ArgumentNullException("source");
             if (type == null)
                 throw new ArgumentNullException("type");
 
-            Source = new WeakReference(source);
+            if (weak) {
+                WeakSource = new WeakReference(source);
+                StrongSource = null;
+            } else {
+                WeakSource = null;
+                StrongSource = source;
+            }
             SourceHashCode = source.GetHashCode();
             Type = type;
             TypeHashCode = type.GetHashCode();
+        }
+
+        public object Source {
+            get {
+                if (StrongSource != null)
+                    return StrongSource;
+                else
+                    return WeakSource.Target;
+            }
         }
 
         public override int GetHashCode () {
@@ -32,10 +48,7 @@ namespace Squared.Util.Event {
             if ((x.SourceHashCode != y.SourceHashCode) || (x.TypeHashCode != y.TypeHashCode) || (x.Type != y.Type))
                 return false;
 
-            var xSource = x.Source.Target;
-            var ySource = y.Source.Target;
-
-            return (xSource == ySource);
+            return (x.Source == y.Source);
         }
 
         public int GetHashCode (EventFilter obj) {
@@ -178,13 +191,13 @@ namespace Squared.Util.Event {
         public EventBus () {
         }
 
-        private void CreateFilter (object source, string type, out EventFilter filter) {
-            filter = new EventFilter(source ?? AnySource, type ?? AnyType);
+        private void CreateFilter (object source, string type, out EventFilter filter, bool weak) {
+            filter = new EventFilter(source ?? AnySource, type ?? AnyType, weak);
         }
 
         public EventSubscription Subscribe (object source, string type, EventSubscriber subscriber) {
             EventFilter filter;
-            CreateFilter(source, type, out filter);
+            CreateFilter(source, type, out filter, true);
 
             EventSubscriberList subscribers;
             if (!_Subscribers.TryGetValue(filter, out subscribers)) {
@@ -225,7 +238,7 @@ namespace Squared.Util.Event {
 
         public bool Unsubscribe (object source, string type, EventSubscriber subscriber) {
             EventFilter filter;
-            CreateFilter(source, type, out filter);
+            CreateFilter(source, type, out filter, false);
             return Unsubscribe(ref filter, subscriber);
         }
 
@@ -279,7 +292,8 @@ namespace Squared.Util.Event {
                 CreateFilter(                    
                     sourceFilter,
                     typeFilter,
-                    out filter
+                    out filter,
+                    false
                 );
 
                 if (!_Subscribers.TryGetValue(filter, out subscribers))
@@ -312,7 +326,7 @@ namespace Squared.Util.Event {
             _Subscribers.Keys.CopyTo(keys, 0);
 
             foreach (var ef in keys) {
-                if (!(ef.Source.IsAlive)) {
+                if (!(ef.WeakSource.IsAlive)) {
                     _Subscribers.Remove(ef);
                     result += 1;
                 }
