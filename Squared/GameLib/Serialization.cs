@@ -218,7 +218,11 @@ namespace Squared.Game.Serialization {
                     tempWriter.WriteStartElement("root");
 
                     foreach (var kvp in values) {
-                        var t = kvp.Value.GetType();
+                        var value = kvp.Value;
+                        if (value == null)
+                            continue;
+
+                        Type t = value.GetType();
                         var ser = new XmlSerializer(t);
                         ser.Serialize(tempWriter, kvp.Value);
                         if (!typeIds.ContainsKey(t))
