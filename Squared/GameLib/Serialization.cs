@@ -257,6 +257,10 @@ namespace Squared.Game.Serialization {
                         if (!iter.MoveNext())
                             throw new InvalidDataException();
 
+                        while (iter.Current.Value == null)
+                            if (!iter.MoveNext())
+                                throw new InvalidDataException();
+
                         var v = iter.Current.Value;
                         var t = v.GetType();
                         var sentinel = tempReader.Name;
