@@ -11,6 +11,41 @@ using System.Drawing;
 #endif
 
 namespace Squared.Util {
+    public static class DisposableBufferPool<T>
+        where T : IDisposable {
+
+        public struct DisposableBuffer : IDisposable {
+            public T[] Data;
+
+            public DisposableBuffer (T[] data) {
+                Data = data;
+            }
+
+            public static implicit operator T[] (DisposableBuffer _) {
+                return _.Data;
+            }
+
+            public void Clear (int index, int length) {
+                Array.Clear(Data, index, length);
+            }
+
+            public void Dispose () {
+                T[] data = Data;
+                Data = null;
+
+                foreach (var item in data)
+                    item.Dispose();
+
+                BufferPool<T>.AddToPool(data);
+            }
+        }
+
+        public static DisposableBuffer Allocate (int size) {
+            var b = BufferPool<T>.Allocate(size);
+            return new DisposableBuffer(b.Data);
+        }
+    }
+
     public static class BufferPool<T> {
         public static int MaxPoolCount = 8;
         public static int MaxBufferSize = 4096;
@@ -33,6 +68,7 @@ namespace Squared.Util {
             public void Dispose () {
                 T[] data = Data;
                 Data = null;
+
                 BufferPool<T>.AddToPool(data);
             }
         }
