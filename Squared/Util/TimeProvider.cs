@@ -192,7 +192,7 @@ namespace Squared.Util {
                 if (_PausedSince.HasValue)
                     return _PausedSince.Value + _Offset;
 
-                return Source.Ticks + _Offset; 
+                return Source.Ticks + _Offset;
             }
         }
 
@@ -226,6 +226,81 @@ namespace Squared.Util {
                     _Offset -= (now - since);
                 }
             }
+        }
+
+        public void Reset () {
+            _Offset = 0;
+        }
+    }
+
+    public class ScalableTimeProvider : ITimeProvider {
+        public readonly ITimeProvider Source;
+
+        private long? _LastTimeScaleChange = null;
+        private int _TimeScale = 10000;
+        private long _Offset = 0;
+
+        public ScalableTimeProvider (ITimeProvider source) {
+            Source = source;
+        }
+
+        protected long Elapsed {
+            get {
+                return Source.Ticks + _Offset;
+            }
+        }
+
+        protected long ScaledElapsed {
+            get {
+                long ticks = Source.Ticks;
+
+                if (_LastTimeScaleChange.HasValue)
+                    ticks -= _LastTimeScaleChange.Value;
+
+                return _Offset + (ticks * _TimeScale / 10000);
+            }
+        }
+
+        public long Ticks {
+            get {
+                return ScaledElapsed;
+            }
+        }
+
+        public double Seconds {
+            get {
+                decimal ticks = ScaledElapsed;
+
+                return (double)(ticks / Squared.Util.Time.SecondInTicks);
+            }
+        }
+
+        public float TimeScale {
+            get {
+                return _TimeScale / 10000.0f;
+            }
+            set {
+                var oldTimeScale = _TimeScale;
+                var newTimeScale = (int)Math.Floor(value * 10000.0f);
+                if (oldTimeScale == newTimeScale)
+                    return;
+
+                OnTimeScaleChange(oldTimeScale, newTimeScale);
+
+                _TimeScale = newTimeScale;
+            }
+        }
+
+        protected void OnTimeScaleChange (int oldTimeScale, int newTimeScale) {
+            long ticks = Source.Ticks;
+            long offset = 0;
+
+            if (_LastTimeScaleChange.HasValue)
+                offset = _LastTimeScaleChange.Value;
+
+            _Offset += (ticks - offset) * oldTimeScale / 10000;
+
+            _LastTimeScaleChange = ticks;
         }
 
         public void Reset () {

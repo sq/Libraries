@@ -29,5 +29,37 @@ namespace Squared.Util {
             realTime.Advance(100);
             Assert.AreEqual(realTime.Ticks - 100, pausable.Ticks);
         }
+
+        [Test]
+        public void TestScalableTimeProvider () {
+            var realTime = new MockTimeProvider();
+            var scalable = new ScalableTimeProvider(realTime);
+
+            Assert.AreEqual(realTime.Ticks, scalable.Ticks);
+
+            scalable.TimeScale = 0.5f;
+            realTime.Advance(100);
+            Assert.AreEqual(realTime.Ticks - 50, scalable.Ticks);
+
+            scalable.TimeScale = 1.0f;
+            realTime.Advance(100);
+            Assert.AreEqual(realTime.Ticks - 50, scalable.Ticks);
+
+            scalable.TimeScale = 2.0f;
+            realTime.Advance(100);
+            Assert.AreEqual(realTime.Ticks + 50, scalable.Ticks);
+
+            scalable.TimeScale = 0.0f;
+            Assert.AreEqual(realTime.Ticks + 50, scalable.Ticks);
+
+            realTime.Advance(100);
+            Assert.AreEqual(realTime.Ticks - 50, scalable.Ticks);
+
+            scalable.TimeScale = 1.0f;
+            Assert.AreEqual(realTime.Ticks - 50, scalable.Ticks);
+
+            realTime.Advance(100);
+            Assert.AreEqual(realTime.Ticks - 50, scalable.Ticks);
+        }
     }
 }
