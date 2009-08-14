@@ -38,6 +38,18 @@ namespace Squared.Util {
                 _List._Items[_Index] = newValue;
             }
 
+            public bool GetNext (out T nextItem) {
+                _Index += 1;
+
+                if (_Index < _List._Count) {
+                    nextItem = _List._Items[_Index];
+                    return true;
+                } else {
+                    nextItem = default(T);
+                    return false;
+                }
+            }
+
             public bool MoveNext () {
                 _Index += 1;
                 return (_Index < _List._Count);

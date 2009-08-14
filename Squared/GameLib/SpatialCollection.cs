@@ -123,25 +123,34 @@ namespace Squared.Game {
             Sector _Sector;
             Dictionary<ItemInfo, bool>.KeyCollection.Enumerator _SectorEnumerator;
             ItemInfo _Current;
-            SpatialCollection<T> _Collection;
             Dictionary<ItemInfo, bool> _SeenList;
+            readonly SpatialCollection<T> _Collection;
+            readonly bool _AllowDuplicates;
 
-            public ItemBoundsEnumerator (SpatialCollection<T> collection, Bounds bounds) {
+            public ItemBoundsEnumerator (SpatialCollection<T> collection, Bounds bounds, bool allowDuplicates) {
                 _Collection = collection;
                 _Sectors = new SpatialCollection<T>.GetSectorsFromBounds(collection, bounds, false);
                 _Sector = null;
                 _Current = null;
                 _SectorEnumerator = default(Dictionary<ItemInfo, bool>.KeyCollection.Enumerator);
-                _SeenList = collection.GetSeenList();
+                _AllowDuplicates = allowDuplicates;
+                if (!allowDuplicates)
+                    _SeenList = collection.GetSeenList();
+                else
+                    _SeenList = null;
             }
 
-            public ItemBoundsEnumerator (SpatialCollection<T> collection, SectorIndex tl, SectorIndex br) {
+            public ItemBoundsEnumerator (SpatialCollection<T> collection, SectorIndex tl, SectorIndex br, bool allowDuplicates) {
                 _Collection = collection;
                 _Sectors = new SpatialCollection<T>.GetSectorsFromBounds(collection, tl, br, false);
                 _Sector = null;
                 _Current = null;
                 _SectorEnumerator = default(Dictionary<ItemInfo, bool>.KeyCollection.Enumerator);
-                _SeenList = collection.GetSeenList();
+                _AllowDuplicates = allowDuplicates;
+                if (!allowDuplicates)
+                    _SeenList = collection.GetSeenList();
+                else
+                    _SeenList = null;
             }
 
             public ItemInfo Current {
@@ -149,10 +158,9 @@ namespace Squared.Game {
             }
 
             public void Dispose () {
-                _Collection.DisposeSeenList(_SeenList);
+                _Collection.DisposeSeenList(ref _SeenList);
                 _Sectors.Dispose();
                 _Sector = null;
-                _SeenList = null;
             }
 
             object System.Collections.IEnumerator.Current {
@@ -183,10 +191,12 @@ namespace Squared.Game {
 
                     _Current = _SectorEnumerator.Current;
 
-                    if (_SeenList.ContainsKey(_Current)) {
-                        _Current = null;
-                    } else {
-                        _SeenList.Add(_Current, true);
+                    if (!_AllowDuplicates) {
+                        if (_SeenList.ContainsKey(_Current)) {
+                            _Current = null;
+                        } else {
+                            _SeenList.Add(_Current, true);
+                        }
                     }
 
                     if (!_SectorEnumerator.MoveNext())
@@ -200,7 +210,9 @@ namespace Squared.Game {
                 _Sectors.Reset();
                 _Sector = null;
                 _SectorEnumerator = default(Dictionary<ItemInfo, bool>.KeyCollection.Enumerator);
-                _SeenList.Clear();
+
+                if (!_AllowDuplicates)
+                    _SeenList.Clear();
             }
 
             public IEnumerator<ItemInfo> GetEnumerator () {
@@ -355,11 +367,15 @@ namespace Squared.Game {
         }
 
         public ItemBoundsEnumerator GetItemsFromSectors (SectorIndex tl, SectorIndex br) {
-            return new ItemBoundsEnumerator(this, tl, br);
+            return new ItemBoundsEnumerator(this, tl, br, false);
         }
 
         public ItemBoundsEnumerator GetItemsFromBounds (Bounds bounds) {
-            return new ItemBoundsEnumerator(this, bounds);
+            return new ItemBoundsEnumerator(this, bounds, false);
+        }
+
+        public ItemBoundsEnumerator GetItemsFromBounds (Bounds bounds, bool allowDuplicates) {
+            return new ItemBoundsEnumerator(this, bounds, allowDuplicates);
         }
 
         public int Count {
@@ -391,12 +407,17 @@ namespace Squared.Game {
             }
         }
 
-        internal void DisposeSeenList (Dictionary<SpatialCollection<T>.ItemInfo, bool> seenList) {
+        internal void DisposeSeenList (ref Dictionary<SpatialCollection<T>.ItemInfo, bool> seenList) {
+            if (seenList == null)
+                return;
+
             if (_NumCachedSeenLists < _SeenListCache.Length) {
                 seenList.Clear();
                 _SeenListCache[_NumCachedSeenLists] = seenList;
                 _NumCachedSeenLists += 1;
             }
+
+            seenList = null;
         }
     }
 }
