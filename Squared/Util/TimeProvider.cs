@@ -133,6 +133,22 @@ namespace Squared.Util {
             QueryPerformanceCounter(out _Offset);
         }
 
+        public long RawToTicks (long raw) {
+            decimal ticks = raw;
+            ticks /= _Frequency;
+            ticks *= Time.SecondInTicks;
+            return (long)ticks;
+        }
+
+        public long Raw {
+            get {
+                long temp;
+                QueryPerformanceCounter(out temp);
+                temp -= _Offset;
+                return temp;
+            }
+        }
+
         public long Ticks {
             get {
                 long temp;

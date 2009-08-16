@@ -36,12 +36,12 @@ namespace Squared.Game {
         internal class Sector : Dictionary<ItemInfo, bool> {
             public SectorIndex Index;
 
-            public Sector ()
-                : base() {
+            public Sector (IEqualityComparer<ItemInfo> comparer)
+                : base(comparer) {
             }
 
-            public Sector (SectorIndex index) 
-                : base (new ReferenceComparer<ItemInfo>()) {
+            public Sector (SectorIndex index, IEqualityComparer<ItemInfo> comparer) 
+                : base (comparer) {
                 Index = index;
             }
         }
@@ -153,6 +153,18 @@ namespace Squared.Game {
                     _SeenList = null;
             }
 
+            public BufferPool<ItemInfo>.Buffer GetAsBuffer (out int count) {
+                var result = BufferPool<ItemInfo>.Allocate(_Collection.Count);
+
+                int i = 0;
+                while (MoveNext())
+                    result.Data[i++] = _Current;
+
+                count = i;
+
+                return result;
+            }
+
             public ItemInfo Current {
                 get { return _Current; }
             }
@@ -192,11 +204,11 @@ namespace Squared.Game {
                     _Current = _SectorEnumerator.Current;
 
                     if (!_AllowDuplicates) {
-                        if (_SeenList.ContainsKey(_Current)) {
+                        int oldCount = _SeenList.Count;
+                        _SeenList[_Current] = true;
+
+                        if (oldCount == _SeenList.Count)
                             _Current = null;
-                        } else {
-                            _SeenList.Add(_Current, true);
-                        }
                     }
 
                     if (!_SectorEnumerator.MoveNext())
@@ -257,6 +269,7 @@ namespace Squared.Game {
         public const int InitialFreeListSize = 8;
         public const int MaxFreeListSize = 32;
 
+        internal ItemInfoComparer _ItemInfoComparer = new ItemInfoComparer();
         internal float _Subdivision;
         internal Dictionary<T, ItemInfo> _Items = new Dictionary<T, ItemInfo>(new ReferenceComparer<T>());
         internal Dictionary<SectorIndex, Sector> _Sectors;
@@ -273,10 +286,10 @@ namespace Squared.Game {
             _Sectors = new Dictionary<Squared.Util.Pair<int>, Sector>(new IntPairComparer());
 
             for (int i = 0; i < InitialFreeListSize; i++)
-                _FreeList.Add(new Sector());
+                _FreeList.Add(new Sector(_ItemInfoComparer));
 
             for (int i = 0; i < _NumCachedSeenLists; i++)
-                _SeenListCache[i] = new Dictionary<ItemInfo, bool>();
+                _SeenListCache[i] = new Dictionary<ItemInfo, bool>(_ItemInfoComparer);
         }
 
         public SectorIndex GetIndexFromPoint (Vector2 point) {
@@ -288,7 +301,7 @@ namespace Squared.Game {
 
             if (!_Sectors.TryGetValue(index, out sector)) {
                 if (_FreeList.Count == 0) {
-                    sector = new Sector(index);
+                    sector = new Sector(index, _ItemInfoComparer);
                 } else {
                     sector = _FreeList[_FreeList.Count - 1];
                     _FreeList.RemoveAt(_FreeList.Count - 1);
