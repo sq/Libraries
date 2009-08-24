@@ -44,7 +44,13 @@ namespace Squared.Task {
         public bool Tick (long now) {
             long ticksLeft = Math.Max(Until - now, 0);
             if (ticksLeft == 0) {
-                Future.Complete();
+                try {
+                    Future.Complete();
+                } catch (FutureAlreadyHasResultException ex) {
+                    if (ex.Future != Future)
+                        throw;
+                }
+
                 return true;
             } else {
                 return false;

@@ -8,6 +8,12 @@ using System.Web;
 
 namespace Squared.Task {
     public static class Web {
+        public class RequestFailedException : Exception {
+            public RequestFailedException (Exception reason) 
+                : base ("The request failed.", reason) {
+            }
+        }
+
         public class Response {
             public string Body;
             public string ContentType;
@@ -21,23 +27,38 @@ namespace Squared.Task {
 
         public static IEnumerator<object> IssueRequest (HttpWebRequest request) {
             var fResponse = new Future<HttpWebResponse>();
-            request.BeginGetResponse(
-                (ar) => {
+            ThreadPool.QueueUserWorkItem(
+                (__) => {
                     try {
-                        var _ = (HttpWebResponse)request.EndGetResponse(ar);
-                        fResponse.SetResult(_, null);
-                    } catch (Exception ex) {
-                        fResponse.SetResult(null, ex);
+                        request.BeginGetResponse(
+                            (ar) => {
+                                try {
+                                    var _ = (HttpWebResponse)request.EndGetResponse(ar);
+                                    fResponse.SetResult(_, null);
+                                } catch (Exception ex) {
+                                    fResponse.SetResult(null, ex);
+                                }
+                            }, null
+                        );
+                    } catch (Exception ex_) {
+                        fResponse.SetResult(null, ex_);
                     }
-                }, null
+                }
             );
 
             yield return fResponse;
+            if (fResponse.Failed)
+                throw new RequestFailedException(fResponse.Error);
 
             string responseText = null;
 
             using (var response = fResponse.Result) {
-                using (var stream = response.GetResponseStream())
+                var fResponseStream = Future.RunInThread(
+                    () => response.GetResponseStream()
+                );
+                yield return fResponseStream;
+
+                using (var stream = fResponseStream.Result)
                 using (var adapter = new AsyncTextReader(new StreamDataAdapter(stream, false))) {
                     var fText = adapter.ReadToEnd();
 

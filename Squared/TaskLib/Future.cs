@@ -19,31 +19,42 @@ namespace Squared.Task {
 
     [Serializable]
     public class FutureAlreadyHasResultException : InvalidOperationException {
-        public FutureAlreadyHasResultException ()
+        public readonly IFuture Future;
+
+        public FutureAlreadyHasResultException (IFuture future)
             : base("Future already has a result") {
+            Future = future;
         }
     }
 
     [Serializable]
     public class FutureHasNoResultException : InvalidOperationException {
-        public FutureHasNoResultException ()
+        public readonly IFuture Future;
+
+        public FutureHasNoResultException (IFuture future)
             : base("Future does not yet have a result") {
+            Future = future;
         }
     }
 
     [Serializable]
     public class FutureDisposedException : InvalidOperationException {
-        public FutureDisposedException ()
+        public readonly IFuture Future;
+
+        public FutureDisposedException (IFuture future)
             : base("Future is disposed") {
+            Future = future;
         }
     }
 
     [Serializable]
     public class FutureHandlerException : Exception {
-        Delegate Handler;
+        public readonly IFuture Future;
+        public readonly Delegate Handler;
 
-        public FutureHandlerException (Delegate handler, Exception innerException) 
+        public FutureHandlerException (IFuture future, Delegate handler, Exception innerException) 
             : base("One of the Future's handlers threw an uncaught exception", innerException) {
+            Future = future;
             Handler = handler;
         }
     }
@@ -244,7 +255,7 @@ namespace Squared.Task {
             try {
                 handler(this);
             } catch (Exception ex) {
-                throw new FutureHandlerException(handler, ex);
+                throw new FutureHandlerException(this, handler, ex);
             }
         }
 
@@ -255,7 +266,7 @@ namespace Squared.Task {
             try {
                 handler(this);
             } catch (Exception ex) {
-                throw new FutureHandlerException(handler, ex);
+                throw new FutureHandlerException(this, handler, ex);
             }
         }
 
@@ -370,7 +381,7 @@ namespace Squared.Task {
                     Interlocked.Increment(ref _ErrorCheckFlag);
                     return _Error;
                 } else
-                    throw new FutureHasNoResultException();
+                    throw new FutureHasNoResultException(this);
             }
         }
 
@@ -383,7 +394,7 @@ namespace Squared.Task {
                     Interlocked.Increment(ref _ErrorCheckFlag);
                     throw new FutureException("Future's result was an error", (Exception)_Error);
                 } else
-                    throw new FutureHasNoResultException();
+                    throw new FutureHasNoResultException(this);
             }
         }
 
@@ -407,7 +418,7 @@ namespace Squared.Task {
                 if (oldState == State_Disposed) {
                     return;
                 } else if ((oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError))
-                    throw new FutureAlreadyHasResultException();
+                    throw new FutureAlreadyHasResultException(this);
                 else if (oldState == State_Empty)
                     break;
 

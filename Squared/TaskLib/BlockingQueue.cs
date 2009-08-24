@@ -17,6 +17,15 @@ namespace Squared.Task {
             }
         }
 
+        public T[] DequeueAll () {
+            lock (_Lock) {
+                T[] result = new T[_Queue.Count];
+                _Queue.CopyTo(result, 0);
+                _Queue.Clear();
+                return result;
+            }
+        }
+
         public Future<T> Dequeue () {
             var f = new Future<T>();
             lock (_Lock) {
@@ -29,12 +38,23 @@ namespace Squared.Task {
         }
 
         public void Enqueue (T value) {
+            Future<T> wf = null;
+
             lock (_Lock) {
-                if (_WaitingFutures.Count > 0)
-                    _WaitingFutures.Dequeue().Complete(value);
-                else
+                if (_WaitingFutures.Count > 0) {
+                    wf = _WaitingFutures.Dequeue();
+                } else {
                     _Queue.Enqueue(value);
+                    return;
+                }
             }
+
+            wf.Complete(value);
+        }
+
+        public void EnqueueMultiple (T[] values) {
+            foreach (var value in values)
+                Enqueue(value);
         }
     }
 }
