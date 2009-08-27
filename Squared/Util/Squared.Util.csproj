@@ -69,7 +69,6 @@
     <Compile Include="Curve.cs" />
     <Compile Include="EventBus.cs" />
     <Compile Include="ExpressionParser.cs" />
-    <Compile Include="Fixed.cs" />
     <Compile Include="IO.cs" />
     <Compile Include="LRUCache.cs" />
     <Compile Include="PriorityQueue.cs" />
