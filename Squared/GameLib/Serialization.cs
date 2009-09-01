@@ -155,6 +155,7 @@ namespace Squared.Game.Serialization {
 
             reader.ReadToDescendant("types");
 
+            if (!reader.IsEmptyElement)
             while (reader.Read()) {
                 if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "types")
                     break;
@@ -170,33 +171,35 @@ namespace Squared.Game.Serialization {
             }
 
             reader.ReadToFollowing("values");
-            reader.Read();
-            while (!reader.EOF) {
-                if (reader.NodeType == XmlNodeType.Element) {
-                    key = reader.GetAttribute("key");
-                    typeId = int.Parse(reader.GetAttribute("typeId"), CultureInfo.InvariantCulture);
+            if (!reader.IsEmptyElement) {
+                reader.Read();
+                while (!reader.EOF) {
+                    if (reader.NodeType == XmlNodeType.Element) {
+                        key = reader.GetAttribute("key");
+                        typeId = int.Parse(reader.GetAttribute("typeId"), CultureInfo.InvariantCulture);
 
-                    XmlSerializer ser;
-                    if (!serializers.TryGetValue(typeId, out ser)) {
-                        ser = new XmlSerializer(typeIds[typeId]);
-                        serializers[typeId] = ser;
-                    }
-                    value = (T)ser.Deserialize(reader);
+                        XmlSerializer ser;
+                        if (!serializers.TryGetValue(typeId, out ser)) {
+                            ser = new XmlSerializer(typeIds[typeId]);
+                            serializers[typeId] = ser;
+                        }
+                        value = (T)ser.Deserialize(reader);
 
-                    if (key == null) {
-                        if (value is INamedObject)
-                            key = ((INamedObject)value).Name;
-                    }
+                        if (key == null) {
+                            if (value is INamedObject)
+                                key = ((INamedObject)value).Name;
+                        }
 
-                    if (key == null)
-                        throw new InvalidDataException(String.Format("Item has no key and is not INamedObject: {0}", value));
+                        if (key == null)
+                            throw new InvalidDataException(String.Format("Item has no key and is not INamedObject: {0}", value));
 
-                    result.Add(key, value);
-                } else if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "values") {
-                    break;
-                } else {
-                    if (!reader.Read())
+                        result.Add(key, value);
+                    } else if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "values") {
                         break;
+                    } else {
+                        if (!reader.Read())
+                            break;
+                    }
                 }
             }
 

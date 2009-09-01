@@ -61,6 +61,25 @@ namespace Squared.Game.Serialization {
         }
 
         [Test]
+        public void WriteAndReadEmptyDictionary () {
+            var dict = new Dictionary<string, object>();
+            var typeResolver = new AssemblyTypeResolver(typeof(int).Assembly);
+
+            var sb = new StringBuilder();
+            using (var writer = XmlWriter.Create(sb, null)) {
+                writer.WriteStartElement("dict");
+                writer.WriteDictionary(dict, typeResolver);
+                writer.WriteEndElement();
+            }
+
+            using (var reader = XmlReader.Create(new StringReader(sb.ToString()))) {
+                reader.ReadToDescendant("dict");
+                var result = reader.ReadDictionary<object>(typeResolver);
+                Assert.AreEqual(result.Count, 0);
+            }
+        }
+
+        [Test]
         public void SerializeEmptyType () {
             var et1 = new EmptyType();
             var et2 = new EmptyType();
