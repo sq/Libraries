@@ -77,6 +77,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Animation.cs" />
+    <Compile Include="Database.cs" />
     <Compile Include="GameExtensionMethods.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="Graph.cs" />
@@ -114,6 +115,10 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Labyrinth\csharp-sqlite\C#-SQLite\XnaSQLite.csproj">
+      <Project>{40E7C10A-E909-407C-9570-121F2AB4DC6E}</Project>
+      <Name>XnaSQLite</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Util\Squared.Util.csproj">
       <Project>{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}</Project>
       <Name>Squared.Util</Name>

@@ -21,6 +21,12 @@ namespace Squared.Game.Serialization {
         Type NameToType (string name);
     }
 
+    public interface ITypeSerializer {
+        Type Type { get; }
+        void ReadInto (ReadContext context, object instance);
+        void Write (WriteContext context, object instance);
+    }
+
     public class TypeResolverChain : ITypeResolver {
         public ITypeResolver[] Resolvers;
 
@@ -61,16 +67,22 @@ namespace Squared.Game.Serialization {
 
     public class AssemblyTypeResolver : ITypeResolver {
         private Assembly _Assembly;
+        private StringBuilder _StringBuilder;
 
         public AssemblyTypeResolver (Assembly assembly) {
             _Assembly = assembly;
+            _StringBuilder = new StringBuilder();
         }
 
         public string TypeToName (Type t) {
             if (t.Assembly != _Assembly)
                 return null;
 
-            return t.Namespace + "." + t.Name;
+            _StringBuilder.Remove(0, _StringBuilder.Length);
+            _StringBuilder.Append(t.Namespace);
+            _StringBuilder.Append(".");
+            _StringBuilder.Append(t.Name);
+            return _StringBuilder.ToString();
         }
 
         public Type NameToType (string name) {
@@ -306,6 +318,71 @@ namespace Squared.Game.Serialization {
             }
 
             writer.WriteEndElement();
+        }
+    }
+
+    public class SerializationContext {
+        public Dictionary<Type, ITypeSerializer> Serializers = new Dictionary<Type, ITypeSerializer>();
+    }
+
+    public abstract class RWContextBase {
+        public readonly SerializationContext SerializationContext;
+
+        public RWContextBase (SerializationContext sc) {
+            SerializationContext = sc;
+        }
+    }
+
+    public abstract class ReadContext : RWContextBase {
+        public ReadContext (SerializationContext sc) 
+            : base (sc) {
+        }
+
+        public abstract T ReadAttribute<T> (string attributeName);
+    }
+
+    public abstract class WriteContext : RWContextBase {
+        public WriteContext (SerializationContext sc) 
+            : base (sc) {
+        }
+
+        public abstract void WriteAttribute<T> (string attributeName, T value);
+    }
+
+    public class SerializationHelper {
+        public readonly Type Type;
+        public List<FieldInfo> SerializedFields = new List<FieldInfo>();
+        public List<PropertyInfo> SerializedProperties = new List<PropertyInfo>();
+
+        public SerializationHelper (Type type) {
+            Type = type;
+            GenerateFieldList();
+            GeneratePropertyList();
+        }
+
+        protected bool IsIgnored (MemberInfo member) {
+            if (member.GetCustomAttributes(typeof(XmlIgnoreAttribute), true).Length > 0)
+                return true;
+
+            return false;
+        }
+
+        protected void GenerateFieldList () {
+            foreach (var field in Type.GetFields()) {
+                if (IsIgnored(field))
+                    continue;
+
+                SerializedFields.Add(field);
+            }
+        }
+
+        protected void GeneratePropertyList () {
+            foreach (var property in Type.GetProperties()) {
+                if (IsIgnored(property))
+                    continue;
+
+                SerializedProperties.Add(property);
+            }
         }
     }
 }
