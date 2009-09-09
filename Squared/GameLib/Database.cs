@@ -49,6 +49,11 @@ namespace Squared.Game.Graph {
             }
 
             public void BindValue (int columnIndex, Type valueType, object value) {
+                if (SerializationHelper.IsNullable(valueType)) {
+                    value = SerializationHelper.UnpackNullable(value);
+                    valueType = SerializationHelper.GetNullableInnerType(valueType);
+                }
+
                 ITypeSerializer serializer;
                 if (value == null) {
                     csSQLite.sqlite3_bind_null(Statement.VirtualMachine(), columnIndex);
@@ -90,7 +95,7 @@ namespace Squared.Game.Graph {
         protected Stack<long> _NodeIDStack = new Stack<long>();
         protected Dictionary<object, long> _NodeIDs = new Dictionary<object, long>(new ReferenceComparer<object>());
         protected Dictionary<Type, long> _TypeIDs = new Dictionary<Type, long>();
-        protected Dictionary<string, long> _StringIDs = new Dictionary<string, long>();
+        protected Dictionary<string, long> _StringIDs = new Dictionary<string, long>(StringComparer.Ordinal);
 
         protected SQLiteVdbe _WriteString, _GetString;
         protected SQLiteVdbe _WriteType, _GetType;
@@ -150,13 +155,10 @@ namespace Squared.Game.Graph {
                 "TypeName TEXT"
             );
 
-            CreateIndex("Types", "TypeName");
-
             CreateTable(
                 "Nodes",
                 "NodeID INTEGER PRIMARY KEY",
-                "TypeID INTEGER",
-                "ElementCount INTEGER"
+                "TypeID INTEGER"
             );
 
             CreateTable(
@@ -172,7 +174,7 @@ namespace Squared.Game.Graph {
                 "AttributeNameID INTEGER",
                 "ValueTypeID INTEGER",
                 "Value VARIANT",
-                "PRIMARY KEY (NodeID, AttributeNameID)"
+                "PRIMARY KEY (NodeID DESC, AttributeNameID ASC)"
             );
 
             CreateTable(
@@ -188,7 +190,7 @@ namespace Squared.Game.Graph {
             _WriteType = new SQLiteVdbe(Database, "INSERT INTO Types (TypeID, TypeName) VALUES (NULL, ?)");
             _GetType = new SQLiteVdbe(Database, "SELECT TypeID FROM Types WHERE TypeName = ?");
             _WriteAttribute = new SQLiteVdbe(Database, "INSERT INTO NodeAttributes (NodeID, AttributeNameID, ValueTypeID, Value) VALUES (?, ?, ?, ?)");
-            _WriteNode = new SQLiteVdbe(Database, "INSERT INTO Nodes (NodeID, TypeID, ElementCount) VALUES (NULL, ?, ?)");
+            _WriteNode = new SQLiteVdbe(Database, "INSERT INTO Nodes (NodeID, TypeID) VALUES (NULL, ?)");
             _WriteNodeRelationship = new SQLiteVdbe(Database, "INSERT INTO NodeRelationships (NodeID, ParentNodeID) VALUES (?, ?)");
         }
 
@@ -201,30 +203,19 @@ namespace Squared.Game.Graph {
         }
 
         protected long GetStringIDFromDatabase (string text) {
-            _GetString.BindText(1, text);
-            var results = Database.ExecuteQuery(_GetString);
-            if (results.Rows.Count > 0) {
-                return Convert.ToInt64(results.Rows[0][0]);
-            } else {
-                _WriteString.BindText(1, text);
-                Database.ExecuteNonQuery(_WriteString);
+            _WriteString.BindText(1, text);
+            Database.ExecuteNonQuery(_WriteString);
 
-                return Database.Connection().lastRowid;
-            }
+            return Database.Connection().lastRowid;
         }
 
         protected long GetTypeIDFromDatabase (Type type) {
             var typeName = Context.TypeResolver.TypeToName(type);
-            _GetType.BindText(1, typeName);
-            var results = Database.ExecuteQuery(_GetType);
-            if (results.Rows.Count > 0) {
-                return Convert.ToInt64(results.Rows[0][0]);
-            } else {
-                _WriteType.BindText(1, typeName);
-                Database.ExecuteNonQuery(_WriteType);
 
-                return Database.Connection().lastRowid;
-            }
+            _WriteType.BindText(1, typeName);
+            Database.ExecuteNonQuery(_WriteType);
+
+            return Database.Connection().lastRowid;
         }
 
         protected long GetTypeID (Type type) {
@@ -249,13 +240,7 @@ namespace Squared.Game.Graph {
         protected long SerializeNode (object node, long typeID) {
             var helper = SerializationHelper.Create(node.GetType());
 
-            int itemCount = 0;
             _WriteNode.BindLong(1, typeID);
-            if (helper.GetItemCount != null) {
-                itemCount = helper.GetItemCount(node);
-                _WriteNode.BindInteger(2, itemCount);
-            } else
-                _WriteNode.BindNull(2);
 
             Database.ExecuteNonQuery(_WriteNode);
             long nodeID = Database.Connection().lastRowid;
@@ -266,9 +251,13 @@ namespace Squared.Game.Graph {
             foreach (var member in helper.SerializedMembers.Values)
                 wc.WriteAttribute<object>(member.Name, member.Type, member.GetValue(node));
 
+            int itemCount = 0;
+            if (!(node is INode) && (helper.GetItemCount != null))
+                itemCount = helper.GetItemCount(node);
+
             if (itemCount > 0) {
-                // Start at -(n+1), end at -1 - so that iterating over the attributes later returns them in the correct order
-                int i = -(itemCount + 1);
+                // Start at -n, end at -1 - so that iterating over the attributes later returns them in the correct order
+                int i = -(itemCount);
                 foreach (object element in (System.Collections.IEnumerable)node) {
                     wc.WriteAttribute<object>(i, helper.ItemType, element);
                     i += 1;
@@ -285,8 +274,6 @@ namespace Squared.Game.Graph {
 
             if (!_NodeIDs.TryGetValue(node, out nodeID))
                 nodeID = SerializeNode(node, typeID);
-
-            string parentNodeID;
 
             _WriteNodeRelationship.BindLong(1, nodeID);
             if (_NodeIDStack.Count > 0)
@@ -322,7 +309,7 @@ namespace Squared.Game.Graph {
     public class SQLiteGraphReader : IDisposable {
         protected struct DeferredAttribute {
             public object Object;
-            public long AttributeID;
+            public Action<object, object> Setter;
             public long NodeID;
         }
 
@@ -352,10 +339,10 @@ namespace Squared.Game.Graph {
         protected void ReadTypes () {
             var sql = "SELECT TypeID, TypeName FROM Types;";
 
-            var results = Database.ExecuteQuery(sql);
-            foreach (DataRow row in results.Rows) {
-                var typeID = Convert.ToInt64(row[0]);
-                var typeName = Convert.ToString(row[1]);
+            using (var statement = new SQLiteVdbe(Database, sql))
+            foreach (var row in statement.Execute()) {
+                var typeID = csSQLite.sqlite3_column_int64(statement.VirtualMachine(), 0);
+                var typeName = csSQLite.sqlite3_column_text(statement.VirtualMachine(), 1);
                 _Types[typeID] = Context.TypeResolver.NameToType(typeName);
             }
         }
@@ -363,10 +350,10 @@ namespace Squared.Game.Graph {
         protected void ReadStrings () {
             var sql = "SELECT StringID, Text FROM Strings;";
 
-            var results = Database.ExecuteQuery(sql);
-            foreach (DataRow row in results.Rows) {
-                var stringID = Convert.ToInt64(row[0]);
-                var text = Convert.ToString(row[1]);
+            using (var statement = new SQLiteVdbe(Database, sql))
+            foreach (var row in statement.Execute()) {
+                var stringID = csSQLite.sqlite3_column_int64(statement.VirtualMachine(), 0);
+                var text = csSQLite.sqlite3_column_text(statement.VirtualMachine(), 1);
                 _Strings[stringID] = text;
             }
         }
@@ -375,10 +362,11 @@ namespace Squared.Game.Graph {
             var sql = "SELECT NodeID, TypeID FROM Nodes";
 
             var result = new Dictionary<long, object>();
-            var results = Database.ExecuteQuery(sql);
-            foreach (DataRow row in results.Rows) {
-                var nodeID = Convert.ToInt64(row[0]);
-                var typeID = Convert.ToInt64(row[1]);
+
+            using (var statement = new SQLiteVdbe(Database, sql))
+            foreach (var row in statement.Execute()) {
+                var nodeID = csSQLite.sqlite3_column_int64(statement.VirtualMachine(), 0);
+                var typeID = csSQLite.sqlite3_column_int64(statement.VirtualMachine(), 1);
                 var type = _Types[typeID];
                 var constructor = type.GetConstructor(Type.EmptyTypes);
                 object instance;
@@ -390,8 +378,6 @@ namespace Squared.Game.Graph {
                 } else {
                     throw new InvalidDataException(String.Format("Type {0} has no parameterless constructor", type.Name));
                 }
-
-                ReadNodeAttributes(nodeID, instance, type);
 
                 _Nodes[nodeID] = instance;
             }
@@ -416,28 +402,46 @@ namespace Squared.Game.Graph {
             }
         }
 
-        protected void ReadNodeAttributes (long nodeID, object node, Type type) {
-            var helper = SerializationHelper.Create(type);
+        protected void ReadNodeAttributes () {
+            // We need to iterate through the nodes in reverse order so that
+            // we populate value types before assigning them to parent objects
+            // (god this is disgusting :|)
+            var sql = "SELECT NodeID, AttributeNameID, ValueTypeID, Value FROM NodeAttributes ORDER BY NodeID DESC, AttributeNameID ASC";
 
-            var sql = String.Format(
-                "SELECT AttributeNameID, ValueTypeID, Value FROM NodeAttributes WHERE NodeID = {0} ORDER BY AttributeNameID ASC",
-                nodeID
-            );
+            long lastNodeID = -1;
 
+            object node = null, value = null;
+            SerializationHelper helper = null;
             SerializationHelper.Member member;
-            foreach (DataRow row in Database.ExecuteQuery(sql).Rows) {
-                var attributeID = Convert.ToInt64(row[0]);
-                var typeID = Convert.ToInt64(row[1]);
+            using (var statement = new SQLiteVdbe(Database, sql))
+            foreach (var row in statement.Execute()) {
+                var vm = statement.VirtualMachine();
+
+                var nodeID = csSQLite.sqlite3_column_int64(vm, 0);
+                if (nodeID != lastNodeID) {
+                    lastNodeID = nodeID;
+                    node = _Nodes[nodeID];
+                    helper = SerializationHelper.Create(node.GetType());
+                }
+
+                var attributeID = csSQLite.sqlite3_column_int64(vm, 1);
+                var typeID = csSQLite.sqlite3_column_int64(vm, 2);
                 var attributeType = _Types[typeID];
-                var value = row[2];
+                var columnType = csSQLite.sqlite3_column_type(vm, 3);
+                bool forceConversion = false;
+
+                if (SerializationHelper.IsNullable(attributeType)) {
+                    attributeType = SerializationHelper.GetNullableInnerType(attributeType);
+                    forceConversion = true;
+                }
 
                 ITypeSerializer serializer;
-                if (value is DBNull) {
+                if (columnType == csSQLite.SQLITE_NULL) {
                     value = null;
                 } else if (Context.Serializers.TryGetValue(attributeType, out serializer)) {
                     var vs = serializer as IValueSerializer;
                     if (vs != null) {
-                        long stringID = Convert.ToInt64(value);
+                        long stringID = csSQLite.sqlite3_column_int64(vm, 3);
                         var blob = Convert.FromBase64String(_Strings[stringID]);
                         value = vs.Read(blob);
                     } else {
@@ -448,21 +452,44 @@ namespace Squared.Game.Graph {
                     (attributeType == typeof(decimal)) ||
                     (attributeType == typeof(ulong)) ||
                     (attributeType == typeof(DateTime))) {
+
+                    if (columnType == csSQLite.SQLITE_INTEGER)
+                        value = csSQLite.sqlite3_column_int64(vm, 3);
+                    else if (columnType == csSQLite.SQLITE_FLOAT)
+                        value = csSQLite.sqlite3_column_double(vm, 3);
+                    else if (columnType == csSQLite.SQLITE_TEXT)
+                        value = csSQLite.sqlite3_column_text(vm, 3);
+                    else
+                        throw new InvalidDataException();
+
                 } else if (attributeType == typeof(string)) {
-                    long stringID = Convert.ToInt64(value);
+                    long stringID = csSQLite.sqlite3_column_int64(vm, 3);
                     value = _Strings[stringID];
                 } else {
-                    var valueID = (long)value;
-                    if (!_Nodes.TryGetValue(valueID, out value)) {
+                    long valueID = csSQLite.sqlite3_column_int64(vm, 3);
+
+                    if (attributeID > 0) {
+                        var attributeName = _Strings[attributeID];
+                        if (!helper.SerializedMembers.TryGetValue(attributeName, out member))
+                            continue;
+
                         _DeferredAttributes.Add(new DeferredAttribute {
-                            Object = node,
-                            AttributeID = attributeID,
-                            NodeID = valueID
+                            NodeID = valueID,
+                            Setter = member.SetValue,
+                            Object = node
                         });
-                        value = null;
-                        continue;
+                    } else {
+                        _DeferredAttributes.Add(new DeferredAttribute {
+                            NodeID = valueID,
+                            Setter = helper.AddItem,
+                            Object = node
+                        });
                     }
+                    continue;
                 }
+
+                if (forceConversion && (value != null))
+                    value = Convert.ChangeType(value, attributeType);
 
                 if (attributeID < 0) {
                     helper.AddItem(node, value);
@@ -476,18 +503,9 @@ namespace Squared.Game.Graph {
             }
         }
 
-        protected void ReadDeferredAttributes () {
-            SerializationHelper.Member member;
-
-            foreach (var da in _DeferredAttributes) {
-                var node = _Nodes[da.NodeID];
-                var attributeName = _Strings[da.AttributeID];
-                var helper = SerializationHelper.Create(node.GetType());
-                if (!helper.SerializedMembers.TryGetValue(attributeName, out member))
-                    continue;
-
-                member.SetValue(node, da.Object);
-            }
+        protected void SetDeferredAttributes () {
+            foreach (var da in _DeferredAttributes)
+                da.Setter(da.Object, _Nodes[da.NodeID]);
 
             _DeferredAttributes.Clear();
         }
@@ -496,8 +514,9 @@ namespace Squared.Game.Graph {
             ReadTypes();
             ReadStrings();
             ReadNodes();
+            ReadNodeAttributes();
+            SetDeferredAttributes();
             ReadRelationships();
-            ReadDeferredAttributes();
 
             return (INode)_Nodes[_RootNodeID];
         }

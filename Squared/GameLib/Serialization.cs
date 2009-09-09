@@ -144,7 +144,10 @@ namespace Squared.Game.Serialization {
         static SerializationExtensions () {
             DefaultContext.AddSerializer<Color>(new ColorSerializer());
             DefaultContext.AddSerializer<Vector2>(new Vector2Serializer());
+            DefaultContext.AddSerializer<Vector3>(new Vector3Serializer());
+            DefaultContext.AddSerializer<Vector4>(new Vector4Serializer());
             DefaultContext.AddSerializer<Point>(new PointSerializer());
+            DefaultContext.AddSerializer<Bounds>(new BoundsSerializer());
         }
 
         public static StringValueDictionary<T> ReadDictionary<T> (this XmlReader reader) {
@@ -405,6 +408,30 @@ namespace Squared.Game.Serialization {
 
         protected static Dictionary<Type, SerializationHelper> _Cache = new Dictionary<Type, SerializationHelper>(new ReferenceComparer<Type>());
 
+        public static bool IsNullable (Type type) {
+            return (type.IsGenericType) && (type.GetGenericTypeDefinition() == typeof(Nullable<>));
+        }
+
+        public static Type GetNullableInnerType (Type type) {
+            return type.GetGenericArguments()[0];
+        }
+
+        public static object UnpackNullable (object nullable) {
+            if (nullable == null)
+                return null;
+
+            var t = nullable.GetType();
+            if (!IsNullable(t))
+                return nullable;
+
+            var innerType = t.GetGenericArguments()[0];
+            if ((bool)t.GetProperty("HasValue").GetValue(nullable, null) == true) {
+                return t.GetProperty("Value").GetValue(nullable, null);
+            } else {
+                return null;
+            }
+        }
+
         public static SerializationHelper Create (Type type) {
             SerializationHelper result;
 
@@ -451,7 +478,7 @@ namespace Squared.Game.Serialization {
         }
 
         protected void GenerateFieldList () {
-            foreach (var field in Type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
+            foreach (var field in Type.GetFields(BindingFlags.Instance | BindingFlags.Public)) {
                 if (IsIgnored(field))
                     continue;
 
@@ -467,7 +494,7 @@ namespace Squared.Game.Serialization {
         }
 
         protected void GeneratePropertyList () {
-            foreach (var property in Type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
+            foreach (var property in Type.GetProperties(BindingFlags.Instance | BindingFlags.Public)) {
                 if (IsIgnored(property))
                     continue;
 
