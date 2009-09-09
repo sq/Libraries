@@ -11,84 +11,117 @@ using System.IO;
 using CS_SQLite3.XNA;
 #else
 using System.Data;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using Squared.Util;
 #endif
 
 namespace Squared.Game.Graph {
-    public class SQLiteGraphWriter : IGraphWriter {
-        public class NodeWriteContext : WriteContext, IDisposable {
-            public int NodeID;
+    public class SQLiteGraphWriter : IGraphWriter, IDisposable {
+        public class NodeWriteContext : WriteContext {
+            public long NodeID;
             public readonly SQLiteGraphWriter GraphWriter;
+            public readonly SQLiteVdbe Statement;
 
-            protected SQLiteVdbe Statement;
-
-            public NodeWriteContext (SQLiteGraphWriter gw, int nodeID) 
-                : base (gw.SerializationContext) {
+            public NodeWriteContext (SQLiteGraphWriter gw, SQLiteVdbe statement, long nodeID) 
+                : base (gw.Context) {
                 GraphWriter = gw;
                 NodeID = nodeID;
 
-                Statement = new SQLiteVdbe(
-                    gw.Database,
-                    "INSERT INTO NodeAttributes (GraphID, NodeID, AttributeName, ValueTypeID, Value) VALUES (?, ?, ?, ?, ?)"
-                );
-                Statement.BindInteger(1, gw._GraphID);
+                Statement = statement;
             }
 
-            public override void WriteAttribute<T> (string attributeName, T value) {
-                var t = value.GetType();
-                var typeID = GraphWriter.GetTypeID(t);
+            public void WriteAttribute<T> (long attributeID, Type attributeType, T value) {
+                var typeID = GraphWriter.GetTypeID(attributeType);
 
-                Statement.BindInteger(2, NodeID);
-                Statement.BindText(3, attributeName);
-                Statement.BindInteger(4, typeID);
+                BindValue(4, attributeType, value);
 
-                BindValue(5, t, value);
+                Statement.BindLong(1, NodeID);
+                Statement.BindLong(2, attributeID);
+                Statement.BindLong(3, typeID);
 
                 GraphWriter.Database.ExecuteNonQuery(Statement);
-                Statement.Reset();
             }
 
-            protected void BindValue (int columnIndex, Type valueType, object value) {
-                if (value == null)
+            public override void WriteAttribute<T> (string attributeName, Type attributeType, T value) {
+                var attributeID = GraphWriter.GetStringID(attributeName);
+                WriteAttribute<T>(attributeID, attributeType, value);
+            }
+
+            public void BindValue (int columnIndex, Type valueType, object value) {
+                ITypeSerializer serializer;
+                if (value == null) {
                     csSQLite.sqlite3_bind_null(Statement.VirtualMachine(), columnIndex);
-                else if (typeof(int).IsAssignableFrom(valueType))
-                    Statement.BindInteger(columnIndex, (int)value);
-                else if (typeof(long).IsAssignableFrom(valueType))
-                    Statement.BindLong(columnIndex, (long)value);
-                else if (typeof(string).IsAssignableFrom(valueType))
-                    Statement.BindText(columnIndex, (string)value);
-                else {
-                    var sw = new StringWriter();
-                    var xs = new XmlSerializer(valueType);
-                    xs.Serialize(sw, value);
-                    Statement.BindText(columnIndex, sw.GetStringBuilder().ToString());
+                } else if (GraphWriter.Context.Serializers.TryGetValue(valueType, out serializer)) {
+                    var vs = serializer as IValueSerializer;
+                    if (vs != null) {
+                        var blob = vs.Write(value);
+                        Statement.BindLong(columnIndex, GraphWriter.GetStringID(Convert.ToBase64String(blob)));
+                    } else {
+                        throw new InvalidDataException();
+                    }
+                } else if (valueType.IsPrimitive) {
+                    if ((valueType == typeof(double)) ||
+                        (valueType == typeof(float))
+                    ) {
+                        Statement.BindDouble(columnIndex, Convert.ToDouble(value));
+                    } else if (valueType == typeof(decimal)) {
+                        throw new InvalidDataException();
+                    } else if (valueType == typeof(ulong)) {
+                        throw new InvalidDataException();
+                    } else {
+                        Statement.BindLong(columnIndex, Convert.ToInt64(value));
+                    }
+                } else if (valueType == typeof(DateTime)) {
+                    Statement.BindText(columnIndex, ((DateTime)value).ToString("u"));
+                } else if (valueType == typeof(string)) {
+                    Statement.BindLong(columnIndex, GraphWriter.GetStringID((string)value));
+                } else if (valueType.IsEnum) {
+                    Statement.BindLong(columnIndex, Convert.ToInt64(value));
+                } else {
+                    Statement.BindLong(columnIndex, GraphWriter.SerializeAnonymousObject(value));
                 }
-            }
-
-            public void Dispose () {
-                Statement.Close();
             }
         }
 
         public readonly SQLiteDatabase Database;
-        public readonly string GraphName;
-        public readonly ITypeResolver TypeResolver;
-        public readonly SerializationContext SerializationContext;
+        public readonly SerializationContext Context;
 
-        protected int _GraphID;
-        protected Stack<int> _NodeIDStack = new Stack<int>();
-        protected Dictionary<INode, int> _NodeIDs = new Dictionary<INode, int>();
-        protected Dictionary<Type, int> _TypeIDs = new Dictionary<Type, int>();
+        protected Stack<long> _NodeIDStack = new Stack<long>();
+        protected Dictionary<object, long> _NodeIDs = new Dictionary<object, long>(new ReferenceComparer<object>());
+        protected Dictionary<Type, long> _TypeIDs = new Dictionary<Type, long>();
+        protected Dictionary<string, long> _StringIDs = new Dictionary<string, long>();
 
-        public SQLiteGraphWriter (SQLiteDatabase database, string graphName)
-            : this(database, graphName, SerializationExtensions.DefaultTypeResolver) {
-            Database = database;
-            GraphName = graphName;
+        protected SQLiteVdbe _WriteString, _GetString;
+        protected SQLiteVdbe _WriteType, _GetType;
+        protected SQLiteVdbe _WriteAttribute;
+        protected SQLiteVdbe _WriteNode;
+        protected SQLiteVdbe _WriteNodeRelationship;
+
+        public SQLiteGraphWriter (SQLiteDatabase database)
+            : this(database, SerializationExtensions.DefaultContext) {
         }
 
-        public SQLiteGraphWriter (SQLiteDatabase database, string graphName, ITypeResolver typeResolver) {
+        public SQLiteGraphWriter (SQLiteDatabase database, SerializationContext context) {
             Database = database;
-            GraphName = graphName;
-            TypeResolver = typeResolver;
+            Context = context;
+        }
+
+        protected void Dispose (ref SQLiteVdbe statement) {
+            if (statement != null) {
+                statement.Dispose();
+                statement = null;
+            }
+        }
+
+        public void Dispose () {
+            Dispose(ref _WriteString);
+            Dispose(ref _GetString);
+            Dispose(ref _WriteType);
+            Dispose(ref _GetType);
+            Dispose(ref _WriteAttribute);
+            Dispose(ref _WriteNode);
+            Dispose(ref _WriteNodeRelationship);
         }
 
         protected void CreateTable (string tableName, params string[] columnNames) {
@@ -112,103 +145,90 @@ namespace Squared.Game.Graph {
 
         protected void CreateTables () {
             CreateTable(
-                "Graphs", 
-                "GraphID int",
-                "GraphName text",
-                "RootNodeID int",
-                "PRIMARY KEY (GraphID)"
-            );
-
-            CreateIndex("Graphs", "GraphName");
-
-            CreateTable(
                 "Types",
-                "TypeID int",
-                "TypeName string",
-                "PRIMARY KEY (TypeID)"
+                "TypeID INTEGER PRIMARY KEY",
+                "TypeName TEXT"
             );
 
             CreateIndex("Types", "TypeName");
 
             CreateTable(
                 "Nodes",
-                "GraphID int",
-                "NodeID int",
-                "TypeID int",
-                "PRIMARY KEY (GraphID, NodeID)"
+                "NodeID INTEGER PRIMARY KEY",
+                "TypeID INTEGER",
+                "ElementCount INTEGER"
             );
 
             CreateTable(
                 "NodeRelationships",
-                "GraphID int",
-                "NodeID int",
-                "ParentNodeID int",
-                "PRIMARY KEY (GraphID, ParentNodeID, NodeID)"
+                "NodeID INTEGER",
+                "ParentNodeID INTEGER",
+                "PRIMARY KEY (NodeID, ParentNodeID)"
             );
 
             CreateTable(
                 "NodeAttributes",
-                "GraphID int",
-                "NodeID int",
-                "AttributeName text",
-                "ValueTypeID int",
-                "Value variant",
-                "PRIMARY KEY (GraphID, NodeID, AttributeName)"
+                "NodeID INTEGER",
+                "AttributeNameID INTEGER",
+                "ValueTypeID INTEGER",
+                "Value VARIANT",
+                "PRIMARY KEY (NodeID, AttributeNameID)"
+            );
+
+            CreateTable(
+                "Strings",
+                "StringID INTEGER PRIMARY KEY",
+                "Text TEXT"
             );
         }
 
-        protected int GetTypeIDFromDatabase (Type type) {
-            var typeName = TypeResolver.TypeToName(type);
-            var sql = String.Format(
-                "SELECT TypeID FROM Types WHERE TypeName = '{0}';",
-                typeName
-            );
-            var results = Database.ExecuteQuery(sql);
-            if (results.Rows.Count > 0) {
-                return Convert.ToInt32(results.Rows[0][0]);
-            } else {
-                var insertSql = String.Format(
-                    @"INSERT INTO Types (TypeID, TypeName) 
-                    VALUES (
-                        (SELECT IFNULL(MAX(TypeID) + 1, 0) FROM Types),
-                        '{0}'
-                    );",
-                    typeName
-                );
-                Database.ExecuteNonQuery(insertSql);
+        protected void CreateStatements () {
+            _WriteString = new SQLiteVdbe(Database, "INSERT INTO Strings (StringID, Text) VALUES (NULL, ?)");
+            _GetString = new SQLiteVdbe(Database, "SELECT StringID FROM Strings WHERE Text = ?");
+            _WriteType = new SQLiteVdbe(Database, "INSERT INTO Types (TypeID, TypeName) VALUES (NULL, ?)");
+            _GetType = new SQLiteVdbe(Database, "SELECT TypeID FROM Types WHERE TypeName = ?");
+            _WriteAttribute = new SQLiteVdbe(Database, "INSERT INTO NodeAttributes (NodeID, AttributeNameID, ValueTypeID, Value) VALUES (?, ?, ?, ?)");
+            _WriteNode = new SQLiteVdbe(Database, "INSERT INTO Nodes (NodeID, TypeID, ElementCount) VALUES (NULL, ?, ?)");
+            _WriteNodeRelationship = new SQLiteVdbe(Database, "INSERT INTO NodeRelationships (NodeID, ParentNodeID) VALUES (?, ?)");
+        }
 
-                results = Database.ExecuteQuery(sql);
-                return Convert.ToInt32(results.Rows[0][0]);
+        protected long GetStringID (string text) {
+            long result;
+            if (!_StringIDs.TryGetValue(text, out result))
+                result = _StringIDs[text] = GetStringIDFromDatabase(text);
+
+            return result;
+        }
+
+        protected long GetStringIDFromDatabase (string text) {
+            _GetString.BindText(1, text);
+            var results = Database.ExecuteQuery(_GetString);
+            if (results.Rows.Count > 0) {
+                return Convert.ToInt64(results.Rows[0][0]);
+            } else {
+                _WriteString.BindText(1, text);
+                Database.ExecuteNonQuery(_WriteString);
+
+                return Database.Connection().lastRowid;
             }
         }
 
-        protected void CreateGraphID () {
-            var sql = String.Format(
-                "SELECT GraphID FROM Graphs WHERE GraphName = '{0}';",
-                GraphName
-            );
-
-            var results = Database.ExecuteQuery(sql);
+        protected long GetTypeIDFromDatabase (Type type) {
+            var typeName = Context.TypeResolver.TypeToName(type);
+            _GetType.BindText(1, typeName);
+            var results = Database.ExecuteQuery(_GetType);
             if (results.Rows.Count > 0) {
-                _GraphID = Convert.ToInt32(results.Rows[0][0]);
+                return Convert.ToInt64(results.Rows[0][0]);
             } else {
-                var insertSql = String.Format(
-                    @"INSERT INTO Graphs (GraphID, GraphName) 
-                    VALUES (
-                        (SELECT IFNULL(MAX(GraphID) + 1, 0) FROM Graphs),
-                        '{0}'
-                    );",
-                    GraphName
-                );
-                Database.ExecuteNonQuery(insertSql);
+                _WriteType.BindText(1, typeName);
+                Database.ExecuteNonQuery(_WriteType);
 
-                results = Database.ExecuteQuery(sql);
-                _GraphID = Convert.ToInt32(results.Rows[0][0]);
+                return Database.Connection().lastRowid;
             }
         }
 
-        protected int GetTypeID (Type type) {
-            int result;
+        protected long GetTypeID (Type type) {
+            long result;
             if (!_TypeIDs.TryGetValue(type, out result)) {
                 result = GetTypeIDFromDatabase(type);
                 _TypeIDs[type] = result;
@@ -217,70 +237,72 @@ namespace Squared.Game.Graph {
             return result;
         }
 
-        protected bool GetNodeID (INode node, out int result) {
-            if (!_NodeIDs.TryGetValue(node, out result)) {
-                result = _NodeIDs.Count;
-                _NodeIDs[node] = result;
-                return true;
+        protected long SerializeAnonymousObject (object obj) {
+            long result;
+            if (_NodeIDs.TryGetValue(obj, out result))
+                return result;
+
+            long typeID = GetTypeID(obj.GetType());
+            return SerializeNode(obj, typeID);
+        }
+
+        protected long SerializeNode (object node, long typeID) {
+            var helper = SerializationHelper.Create(node.GetType());
+
+            int itemCount = 0;
+            _WriteNode.BindLong(1, typeID);
+            if (helper.GetItemCount != null) {
+                itemCount = helper.GetItemCount(node);
+                _WriteNode.BindInteger(2, itemCount);
+            } else
+                _WriteNode.BindNull(2);
+
+            Database.ExecuteNonQuery(_WriteNode);
+            long nodeID = Database.Connection().lastRowid;
+            _NodeIDs[node] = nodeID;
+
+            var wc = new NodeWriteContext(this, _WriteAttribute, nodeID);
+
+            foreach (var member in helper.SerializedMembers.Values)
+                wc.WriteAttribute<object>(member.Name, member.Type, member.GetValue(node));
+
+            if (itemCount > 0) {
+                // Start at -(n+1), end at -1 - so that iterating over the attributes later returns them in the correct order
+                int i = -(itemCount + 1);
+                foreach (object element in (System.Collections.IEnumerable)node) {
+                    wc.WriteAttribute<object>(i, helper.ItemType, element);
+                    i += 1;
+                }
             }
 
-            return false;
+            return nodeID;
         }
 
-        protected void SerializeNode (INode node, int nodeID, int typeID) {
-            var sql = String.Format(
-                @"INSERT INTO Nodes (GraphID, NodeID, TypeID) VALUES ({0}, {1}, {2})",
-                _GraphID, nodeID, typeID
-            );
-            Database.ExecuteNonQuery(sql);
-
-            using (var wc = new NodeWriteContext(this, nodeID)) {
-                var helper = new SerializationHelper(node.GetType());
-
-                foreach (var field in helper.SerializedFields)
-                    wc.WriteAttribute<object>(field.Name, field.GetValue(node));
-
-                foreach (var property in helper.SerializedProperties)
-                    wc.WriteAttribute<object>(property.Name, property.GetValue(node, null));
-            }            
-        }
-
-        protected int WriteNode (INode node) {
+        protected long WriteNode (INode node) {
             var type = node.GetType();
-            int nodeID, typeID;
+            long nodeID, typeID;
             typeID = GetTypeID(type);
 
-            if (GetNodeID(node, out nodeID))
-                SerializeNode(node, nodeID, typeID);
+            if (!_NodeIDs.TryGetValue(node, out nodeID))
+                nodeID = SerializeNode(node, typeID);
 
-            int? parentNodeId = null;
+            string parentNodeID;
+
+            _WriteNodeRelationship.BindLong(1, nodeID);
             if (_NodeIDStack.Count > 0)
-                parentNodeId = _NodeIDStack.Peek();
+                _WriteNodeRelationship.BindLong(2, _NodeIDStack.Peek());
+            else
+                _WriteNodeRelationship.BindNull(2);
 
-            var sql = String.Format(
-                @"INSERT INTO NodeRelationships (GraphID, NodeID, ParentNodeID) VALUES ({0}, {1}, {2});",
-                _GraphID,
-                nodeID,
-                (parentNodeId.HasValue) ? parentNodeId.Value.ToString() : "NULL"
-            );
-            Database.ExecuteNonQuery(sql);
-
-            if (!parentNodeId.HasValue) {
-                sql = String.Format(
-                    "UPDATE Graphs SET RootNodeID = {0} WHERE GraphID = {1}",
-                    nodeID,
-                    _GraphID
-                );
-                Database.ExecuteNonQuery(sql);
-            }
+            Database.ExecuteNonQuery(_WriteNodeRelationship);
 
             return nodeID;
         }
 
         public void BeginWrite (INode root) {
             CreateTables();
+            CreateStatements();
             Database.ExecuteNonQuery("BEGIN");
-            CreateGraphID();
         }
 
         public void WriteNodeHeader (INode node) {
@@ -293,168 +315,191 @@ namespace Squared.Game.Graph {
         }
 
         public void EndWrite () {
-            Database.ExecuteNonQuery("END");
+            Database.ExecuteNonQuery("COMMIT");
         }
     }
 
-    public class SQLiteGraphReader {
-        public class NodeReadContext : ReadContext, IDisposable {
-            public int NodeID;
-            public readonly SQLiteGraphReader GraphReader;
-
-            protected SQLiteVdbe Statement;
-
-            public NodeReadContext (SQLiteGraphReader gr, int nodeID) 
-                : base (gr.SerializationContext) {
-                GraphReader = gr;
-                NodeID = nodeID;
-
-                Statement = new SQLiteVdbe(
-                    gr.Database,
-                    "SELECT ValueTypeID, Value FROM NodeAttributes WHERE GraphID = ? AND NodeID = ? AND AttributeName = ?"
-                );
-                Statement.BindInteger(1, gr._GraphID);
-            }
-
-            public override T ReadAttribute<T> (string attributeName) {
-                Statement.BindInteger(2, NodeID);
-                Statement.BindText(3, attributeName);
-
-                var result = GraphReader.Database.ExecuteQuery(Statement);
-                Statement.Reset();
-
-                var row = (DataRow)result.Rows[0];
-                var typeID = Convert.ToInt32(row[0]);
-
-                return default(T);
-            }
-
-            public void Dispose () {
-                Statement.Close();
-            }
+    public class SQLiteGraphReader : IDisposable {
+        protected struct DeferredAttribute {
+            public object Object;
+            public long AttributeID;
+            public long NodeID;
         }
 
         public readonly SQLiteDatabase Database;
-        public readonly string GraphName;
-        public readonly ITypeResolver TypeResolver;
-        public readonly SerializationContext SerializationContext;
+        public readonly SerializationContext Context;
 
-        protected int _GraphID;
+        protected Dictionary<long, Type> _Types = new Dictionary<long, Type>();
+        protected Dictionary<long, object> _Nodes = new Dictionary<long, object>();
+        protected Dictionary<long, string> _Strings = new Dictionary<long, string>();
+        protected List<DeferredAttribute> _DeferredAttributes = new List<DeferredAttribute>();
 
-        public SQLiteGraphReader (SQLiteDatabase database, string graphName)
-            : this(database, graphName, SerializationExtensions.DefaultTypeResolver) {
+        protected long _RootNodeID;
+
+        public SQLiteGraphReader (SQLiteDatabase database)
+            : this(database, SerializationExtensions.DefaultContext) {
             Database = database;
-            GraphName = graphName;
         }
 
-        public SQLiteGraphReader (SQLiteDatabase database, string graphName, ITypeResolver typeResolver) {
+        public SQLiteGraphReader (SQLiteDatabase database, SerializationContext context) {
             Database = database;
-            GraphName = graphName;
-            TypeResolver = typeResolver;
+            Context = context;
         }
 
-        protected void GetGraphIDFromDatabase () {
-            var sql = String.Format(
-                "SELECT GraphID FROM Graphs WHERE GraphName = '{0}';",
-                GraphName
-            );
-
-            var results = Database.ExecuteQuery(sql);
-            if (results.Rows.Count > 0) {
-                _GraphID = Convert.ToInt32(results.Rows[0][0]);
-            } else {
-                throw new InvalidDataException();
-            }
+        public void Dispose () {
         }
 
-        protected Dictionary<int, Type> ReadTypes () {
+        protected void ReadTypes () {
             var sql = "SELECT TypeID, TypeName FROM Types;";
 
-            var result = new Dictionary<int, Type>();
             var results = Database.ExecuteQuery(sql);
             foreach (DataRow row in results.Rows) {
-                int typeID = Convert.ToInt32(row[0]);
+                var typeID = Convert.ToInt64(row[0]);
                 var typeName = Convert.ToString(row[1]);
-                result[typeID] = TypeResolver.NameToType(typeName);
+                _Types[typeID] = Context.TypeResolver.NameToType(typeName);
             }
-
-            return result;
         }
 
-        protected Dictionary<int, INode> ReadNodes (Dictionary<int, Type> types) {
-            var sql = String.Format(
-                "SELECT NodeID, TypeID FROM Nodes WHERE GraphID = {0}",
-                _GraphID
-            );
+        protected void ReadStrings () {
+            var sql = "SELECT StringID, Text FROM Strings;";
 
-            var result = new Dictionary<int, INode>();
             var results = Database.ExecuteQuery(sql);
             foreach (DataRow row in results.Rows) {
-                int nodeID = Convert.ToInt32(row[0]);
-                int typeID = Convert.ToInt32(row[1]);
-                var type = types[typeID];
+                var stringID = Convert.ToInt64(row[0]);
+                var text = Convert.ToString(row[1]);
+                _Strings[stringID] = text;
+            }
+        }
+
+        protected void ReadNodes () {
+            var sql = "SELECT NodeID, TypeID FROM Nodes";
+
+            var result = new Dictionary<long, object>();
+            var results = Database.ExecuteQuery(sql);
+            foreach (DataRow row in results.Rows) {
+                var nodeID = Convert.ToInt64(row[0]);
+                var typeID = Convert.ToInt64(row[1]);
+                var type = _Types[typeID];
                 var constructor = type.GetConstructor(Type.EmptyTypes);
-                var instance = constructor.Invoke(null);
+                object instance;
 
-                ReadNodeAttributes(nodeID, instance, type, types);
+                if (constructor != null) {
+                    instance = constructor.Invoke(null);
+                } else if (type.IsValueType) {
+                    instance = Activator.CreateInstance(type);
+                } else {
+                    throw new InvalidDataException(String.Format("Type {0} has no parameterless constructor", type.Name));
+                }
 
-                result[nodeID] = (INode)instance;
+                ReadNodeAttributes(nodeID, instance, type);
+
+                _Nodes[nodeID] = instance;
             }
+       }
 
-            return result;
+        protected void ReadRelationships () {
+            var sql = "SELECT NodeID, ParentNodeID FROM NodeRelationships";
+
+            foreach (DataRow row in Database.ExecuteQuery(sql).Rows) {
+                var nodeID = Convert.ToInt64(row[0]);
+                var child = (INode)(_Nodes[nodeID]);
+
+                if (row[1] is DBNull) {
+                    _RootNodeID = nodeID;
+                    continue;
+                }
+
+                var parentID = Convert.ToInt64(row[1]);
+                var parent = (INode)(_Nodes[parentID]);
+
+                parent.AddChild(child);
+            }
         }
 
-        protected void ReadNodeAttributes (int nodeID, object node, Type type, Dictionary<int, Type> types) {
-            /*
-            CreateTable(
-                "NodeRelationships",
-                "GraphID int",
-                "NodeID int",
-                "ParentNodeID int",
-                "PRIMARY KEY (GraphID, ParentNodeID, NodeID)"
-            );
-            */
+        protected void ReadNodeAttributes (long nodeID, object node, Type type) {
+            var helper = SerializationHelper.Create(type);
 
             var sql = String.Format(
-                "SELECT AttributeName, ValueTypeID, Value FROM NodeAttributes WHERE GraphID = {0} AND NodeID = {1}",
-                _GraphID, nodeID
+                "SELECT AttributeNameID, ValueTypeID, Value FROM NodeAttributes WHERE NodeID = {0} ORDER BY AttributeNameID ASC",
+                nodeID
             );
 
-            var results = Database.ExecuteQuery(sql);
-            foreach (DataRow row in results.Rows) {
-                var attributeName = Convert.ToString(row[0]);
-                var typeID = Convert.ToInt32(row[1]);
-                var attributeType = types[typeID];
+            SerializationHelper.Member member;
+            foreach (DataRow row in Database.ExecuteQuery(sql).Rows) {
+                var attributeID = Convert.ToInt64(row[0]);
+                var typeID = Convert.ToInt64(row[1]);
+                var attributeType = _Types[typeID];
                 var value = row[2];
-                Console.WriteLine("{0}.{1} = {2}", node, attributeName, value);
+
+                ITypeSerializer serializer;
+                if (value is DBNull) {
+                    value = null;
+                } else if (Context.Serializers.TryGetValue(attributeType, out serializer)) {
+                    var vs = serializer as IValueSerializer;
+                    if (vs != null) {
+                        long stringID = Convert.ToInt64(value);
+                        var blob = Convert.FromBase64String(_Strings[stringID]);
+                        value = vs.Read(blob);
+                    } else {
+                        throw new InvalidDataException();
+                    }
+                } else if (attributeType.IsPrimitive ||
+                    attributeType.IsEnum ||
+                    (attributeType == typeof(decimal)) ||
+                    (attributeType == typeof(ulong)) ||
+                    (attributeType == typeof(DateTime))) {
+                } else if (attributeType == typeof(string)) {
+                    long stringID = Convert.ToInt64(value);
+                    value = _Strings[stringID];
+                } else {
+                    var valueID = (long)value;
+                    if (!_Nodes.TryGetValue(valueID, out value)) {
+                        _DeferredAttributes.Add(new DeferredAttribute {
+                            Object = node,
+                            AttributeID = attributeID,
+                            NodeID = valueID
+                        });
+                        value = null;
+                        continue;
+                    }
+                }
+
+                if (attributeID < 0) {
+                    helper.AddItem(node, value);
+                } else {
+                    var attributeName = _Strings[attributeID];
+                    if (!helper.SerializedMembers.TryGetValue(attributeName, out member))
+                        continue;
+
+                    member.SetValue(node, value);
+                }
             }
         }
 
-        /*
-        protected void SerializeNode (INode node, int nodeID, int typeID) {
-            var sql = String.Format(
-                @"INSERT INTO Nodes (GraphID, NodeID, TypeID) VALUES ({0}, {1}, {2})",
-                _GraphID, nodeID, typeID
-            );
-            Database.ExecuteNonQuery(sql);
+        protected void ReadDeferredAttributes () {
+            SerializationHelper.Member member;
 
-            using (var wc = new NodeWriteContext(this, nodeID)) {
-                var helper = new SerializationHelper(node.GetType());
+            foreach (var da in _DeferredAttributes) {
+                var node = _Nodes[da.NodeID];
+                var attributeName = _Strings[da.AttributeID];
+                var helper = SerializationHelper.Create(node.GetType());
+                if (!helper.SerializedMembers.TryGetValue(attributeName, out member))
+                    continue;
 
-                foreach (var field in helper.SerializedFields)
-                    wc.WriteAttribute<object>(field.Name, field.GetValue(node));
+                member.SetValue(node, da.Object);
+            }
 
-                foreach (var property in helper.SerializedProperties)
-                    wc.WriteAttribute<object>(property.Name, property.GetValue(node, null));
-            }            
+            _DeferredAttributes.Clear();
         }
-        */
 
         public INode Read () {
-            GetGraphIDFromDatabase();
-            var types = ReadTypes();
-            var nodes = ReadNodes(types);
-            return null;
+            ReadTypes();
+            ReadStrings();
+            ReadNodes();
+            ReadRelationships();
+            ReadDeferredAttributes();
+
+            return (INode)_Nodes[_RootNodeID];
         }
     }
 }

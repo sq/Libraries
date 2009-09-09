@@ -8,6 +8,9 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Globalization;
+using System.Threading;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace Squared.Game {
     public interface INamedObject {
@@ -22,9 +25,11 @@ namespace Squared.Game.Serialization {
     }
 
     public interface ITypeSerializer {
-        Type Type { get; }
-        void ReadInto (ReadContext context, object instance);
-        void Write (WriteContext context, object instance);
+    }
+
+    public interface IValueSerializer : ITypeSerializer {
+        object Read (byte[] data);
+        byte[] Write (object instance);
     }
 
     public class TypeResolverChain : ITypeResolver {
@@ -67,22 +72,16 @@ namespace Squared.Game.Serialization {
 
     public class AssemblyTypeResolver : ITypeResolver {
         private Assembly _Assembly;
-        private StringBuilder _StringBuilder;
 
         public AssemblyTypeResolver (Assembly assembly) {
             _Assembly = assembly;
-            _StringBuilder = new StringBuilder();
         }
 
         public string TypeToName (Type t) {
             if (t.Assembly != _Assembly)
                 return null;
 
-            _StringBuilder.Remove(0, _StringBuilder.Length);
-            _StringBuilder.Append(t.Namespace);
-            _StringBuilder.Append(".");
-            _StringBuilder.Append(t.Name);
-            return _StringBuilder.ToString();
+            return t.FullName;
         }
 
         public Type NameToType (string name) {
@@ -140,6 +139,13 @@ namespace Squared.Game.Serialization {
 
     public static class SerializationExtensions {
         public static readonly ReflectionTypeResolver DefaultTypeResolver = new ReflectionTypeResolver();
+        public static readonly SerializationContext DefaultContext = new SerializationContext();
+
+        static SerializationExtensions () {
+            DefaultContext.AddSerializer<Color>(new ColorSerializer());
+            DefaultContext.AddSerializer<Vector2>(new Vector2Serializer());
+            DefaultContext.AddSerializer<Point>(new PointSerializer());
+        }
 
         public static StringValueDictionary<T> ReadDictionary<T> (this XmlReader reader) {
             return ReadDictionary<T>(reader, DefaultTypeResolver);
@@ -322,7 +328,12 @@ namespace Squared.Game.Serialization {
     }
 
     public class SerializationContext {
+        public ITypeResolver TypeResolver = SerializationExtensions.DefaultTypeResolver;
         public Dictionary<Type, ITypeSerializer> Serializers = new Dictionary<Type, ITypeSerializer>();
+
+        public void AddSerializer<T> (ITypeSerializer serializer) {
+            Serializers[typeof(T)] = serializer;
+        }
     }
 
     public abstract class RWContextBase {
@@ -346,18 +357,90 @@ namespace Squared.Game.Serialization {
             : base (sc) {
         }
 
-        public abstract void WriteAttribute<T> (string attributeName, T value);
+        public abstract void WriteAttribute<T> (string attributeName, Type attributeType, T value);
     }
 
     public class SerializationHelper {
-        public readonly Type Type;
-        public List<FieldInfo> SerializedFields = new List<FieldInfo>();
-        public List<PropertyInfo> SerializedProperties = new List<PropertyInfo>();
+        public class Member {
+            public readonly string Name;
+            public readonly Type Type;
 
-        public SerializationHelper (Type type) {
+            public readonly Func<object, object> GetValue;
+            public readonly Action<object, object> SetValue;
+
+            private object ConvertValue (object value) {
+                if (value == null)
+                    return value;
+                else if (Type.IsAssignableFrom(value.GetType()))
+                    return value;
+                else if (Type.IsEnum)
+                    return Enum.ToObject(Type, Convert.ToInt64(value));
+                else
+                    return Convert.ChangeType(value, Type);
+            }
+
+            public Member (FieldInfo field) {
+                Name = field.Name;
+                Type = field.FieldType;
+
+                GetValue = (obj) => field.GetValue(obj);
+                SetValue = (obj, value) => field.SetValue(obj, ConvertValue(value));
+            }
+
+            public Member (PropertyInfo property) {
+                Name = property.Name;
+                Type = property.PropertyType;
+
+                GetValue = (obj) => property.GetValue(obj, null);
+                SetValue = (obj, value) => property.SetValue(obj, ConvertValue(value), null);
+            }
+        }
+
+        public readonly Type Type;
+        public readonly Type ItemType = null;
+        public Dictionary<string, Member> SerializedMembers = new Dictionary<string, Member>();
+
+        public readonly Func<object, int> GetItemCount = null;
+        public readonly Action<object, object> AddItem = null;
+
+        protected static Dictionary<Type, SerializationHelper> _Cache = new Dictionary<Type, SerializationHelper>(new ReferenceComparer<Type>());
+
+        public static SerializationHelper Create (Type type) {
+            SerializationHelper result;
+
+            lock (_Cache)
+                if (_Cache.TryGetValue(type, out result))
+                    return result;
+
+            result = new SerializationHelper(type);
+
+            lock (_Cache)
+                _Cache[type] = result;
+
+            return result;
+        }
+
+        protected SerializationHelper (Type type) {
             Type = type;
             GenerateFieldList();
             GeneratePropertyList();
+
+            foreach (var iface in type.GetInterfaces()) {
+                if (!iface.IsGenericType)
+                    continue;
+
+                var gtd = iface.GetGenericTypeDefinition();
+                if (gtd == typeof(ICollection<>)) {
+                    ItemType = iface.GetGenericArguments()[0];
+
+                    var mAdd = iface.GetMethod("Add");
+                    AddItem = (obj, item) => mAdd.Invoke(obj, new object[] { item });
+                    var pCount = iface.GetProperty("Count");
+                    GetItemCount = (obj) => Convert.ToInt32(pCount.GetValue(obj, null));
+
+                    break;
+                }
+            }
         }
 
         protected bool IsIgnored (MemberInfo member) {
@@ -368,20 +451,34 @@ namespace Squared.Game.Serialization {
         }
 
         protected void GenerateFieldList () {
-            foreach (var field in Type.GetFields()) {
+            foreach (var field in Type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
                 if (IsIgnored(field))
                     continue;
 
-                SerializedFields.Add(field);
+                if (field.IsStatic)
+                    continue;
+                if (field.IsLiteral)
+                    continue;
+                if (field.IsInitOnly)
+                    continue;
+
+                SerializedMembers[field.Name] = new Member(field);
             }
         }
 
         protected void GeneratePropertyList () {
-            foreach (var property in Type.GetProperties()) {
+            foreach (var property in Type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
                 if (IsIgnored(property))
                     continue;
 
-                SerializedProperties.Add(property);
+                if (!property.CanRead || !property.CanWrite)
+                    continue;
+
+                var indexParameters = property.GetIndexParameters();
+                if ((indexParameters != null) && (indexParameters.Length > 0))
+                    continue;
+
+                SerializedMembers[property.Name] = new Member(property);
             }
         }
     }
