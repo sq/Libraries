@@ -92,10 +92,10 @@ namespace Squared.Game.Graph {
         public readonly SQLiteDatabase Database;
         public readonly SerializationContext Context;
 
-        protected Stack<long> _NodeIDStack = new Stack<long>();
-        protected Dictionary<object, long> _NodeIDs = new Dictionary<object, long>(new ReferenceComparer<object>());
-        protected Dictionary<Type, long> _TypeIDs = new Dictionary<Type, long>();
-        protected Dictionary<string, long> _StringIDs = new Dictionary<string, long>(StringComparer.Ordinal);
+        protected Stack<long> _NodeIDStack = new Stack<long>(128);
+        protected Dictionary<object, long> _NodeIDs = new Dictionary<object, long>(1024, new ReferenceComparer<object>());
+        protected Dictionary<Type, long> _TypeIDs = new Dictionary<Type, long>(128, new ReferenceComparer<Type>());
+        protected Dictionary<string, long> _StringIDs = new Dictionary<string, long>(1024, StringComparer.Ordinal);
 
         protected SQLiteVdbe _WriteString, _GetString;
         protected SQLiteVdbe _WriteType, _GetType;
@@ -316,10 +316,10 @@ namespace Squared.Game.Graph {
         public readonly SQLiteDatabase Database;
         public readonly SerializationContext Context;
 
-        protected Dictionary<long, Type> _Types = new Dictionary<long, Type>();
-        protected Dictionary<long, object> _Nodes = new Dictionary<long, object>();
-        protected Dictionary<long, string> _Strings = new Dictionary<long, string>();
-        protected List<DeferredAttribute> _DeferredAttributes = new List<DeferredAttribute>();
+        protected Dictionary<long, Type> _Types = new Dictionary<long, Type>(128);
+        protected Dictionary<long, object> _Nodes = new Dictionary<long, object>(1024);
+        protected Dictionary<long, string> _Strings = new Dictionary<long, string>(1024);
+        protected List<DeferredAttribute> _DeferredAttributes = new List<DeferredAttribute>(1024);
 
         protected long _RootNodeID;
 
@@ -384,18 +384,18 @@ namespace Squared.Game.Graph {
        }
 
         protected void ReadRelationships () {
-            var sql = "SELECT NodeID, ParentNodeID FROM NodeRelationships";
-
-            foreach (DataRow row in Database.ExecuteQuery(sql).Rows) {
-                var nodeID = Convert.ToInt64(row[0]);
+            using (var statement = new SQLiteVdbe(Database, "SELECT NodeID, ParentNodeID FROM NodeRelationships"))
+            foreach (var row in statement.Execute()) {
+                var vm = statement.VirtualMachine();
+                var nodeID = csSQLite.sqlite3_column_int64(vm, 0);
                 var child = (INode)(_Nodes[nodeID]);
 
-                if (row[1] is DBNull) {
+                if (csSQLite.sqlite3_column_type(vm, 1) == csSQLite.SQLITE_NULL) {
                     _RootNodeID = nodeID;
                     continue;
                 }
 
-                var parentID = Convert.ToInt64(row[1]);
+                var parentID = csSQLite.sqlite3_column_int64(vm, 1);
                 var parent = (INode)(_Nodes[parentID]);
 
                 parent.AddChild(child);
@@ -406,7 +406,7 @@ namespace Squared.Game.Graph {
             // We need to iterate through the nodes in reverse order so that
             // we populate value types before assigning them to parent objects
             // (god this is disgusting :|)
-            var sql = "SELECT NodeID, AttributeNameID, ValueTypeID, Value FROM NodeAttributes ORDER BY NodeID DESC, AttributeNameID ASC";
+            var sql = "SELECT NodeID, AttributeNameID, ValueTypeID, Value FROM NodeAttributes ORDER BY NodeID";
 
             long lastNodeID = -1;
 
