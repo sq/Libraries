@@ -362,13 +362,14 @@ namespace Squared.Game.Graph {
             var sql = "SELECT NodeID, TypeID FROM Nodes";
 
             var result = new Dictionary<long, object>();
+            var emptyTypes = new Type[0];
 
             using (var statement = new SQLiteVdbe(Database, sql))
             foreach (var row in statement.Execute()) {
                 var nodeID = csSQLite.sqlite3_column_int64(statement.VirtualMachine(), 0);
                 var typeID = csSQLite.sqlite3_column_int64(statement.VirtualMachine(), 1);
                 var type = _Types[typeID];
-                var constructor = type.GetConstructor(Type.EmptyTypes);
+                var constructor = type.GetConstructor(emptyTypes);
                 object instance;
 
                 if (constructor != null) {
@@ -489,7 +490,7 @@ namespace Squared.Game.Graph {
                 }
 
                 if (forceConversion && (value != null))
-                    value = Convert.ChangeType(value, attributeType);
+                    value = Convert.ChangeType(value, attributeType, System.Globalization.CultureInfo.InvariantCulture);
 
                 if (attributeID < 0) {
                     helper.AddItem(node, value);

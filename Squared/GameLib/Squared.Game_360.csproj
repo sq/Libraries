@@ -119,6 +119,10 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Labyrinth\csharp-sqlite\C#-SQLite\XnaSQLite360.csproj">
+      <Project>{C2ED340E-BF18-43FB-84CA-4DE873F30BDF}</Project>
+      <Name>XnaSQLite360</Name>
+    </ProjectReference>
     <ProjectReference Include="..\360\Util360\Squared.Util_360.csproj">
       <Project>{BE3F46D8-C55A-4AC4-BCA7-D5CF9F3668E6}</Project>
       <Name>Squared.Util_360</Name>

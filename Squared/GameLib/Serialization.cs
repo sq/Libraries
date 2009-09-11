@@ -379,7 +379,7 @@ namespace Squared.Game.Serialization {
                 else if (Type.IsEnum)
                     return Enum.ToObject(Type, Convert.ToInt64(value));
                 else
-                    return Convert.ChangeType(value, Type);
+                    return Convert.ChangeType(value, Type, System.Globalization.CultureInfo.InvariantCulture);
             }
 
             public Member (FieldInfo field) {

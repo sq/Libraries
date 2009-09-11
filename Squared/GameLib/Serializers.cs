@@ -31,6 +31,11 @@ namespace Squared.Game.Serialization {
 
     public class Vector2Serializer : IValueSerializer {
         public object Read (byte[] data) {
+            if (!BitConverter.IsLittleEndian) {
+                Array.Reverse(data, 0, 4);
+                Array.Reverse(data, 4, 4);
+            }
+
             return new Vector2(
                 BitConverter.ToSingle(data, 0),
                 BitConverter.ToSingle(data, 4)
@@ -48,6 +53,12 @@ namespace Squared.Game.Serialization {
 
     public class Vector3Serializer : IValueSerializer {
         public object Read (byte[] data) {
+            if (!BitConverter.IsLittleEndian) {
+                Array.Reverse(data, 0, 4);
+                Array.Reverse(data, 4, 4);
+                Array.Reverse(data, 8, 4);
+            }
+
             return new Vector3(
                 BitConverter.ToSingle(data, 0),
                 BitConverter.ToSingle(data, 4),
@@ -67,6 +78,13 @@ namespace Squared.Game.Serialization {
 
     public class Vector4Serializer : IValueSerializer {
         public object Read (byte[] data) {
+            if (!BitConverter.IsLittleEndian) {
+                Array.Reverse(data, 0, 4);
+                Array.Reverse(data, 4, 4);
+                Array.Reverse(data, 8, 4);
+                Array.Reverse(data, 12, 4);
+            }
+
             return new Vector4(
                 BitConverter.ToSingle(data, 0),
                 BitConverter.ToSingle(data, 4),
@@ -88,6 +106,11 @@ namespace Squared.Game.Serialization {
 
     public class PointSerializer : IValueSerializer {
         public object Read (byte[] data) {
+            if (!BitConverter.IsLittleEndian) {
+                Array.Reverse(data, 0, 4);
+                Array.Reverse(data, 4, 4);
+            }
+
             return new Point(
                 BitConverter.ToInt32(data, 0),
                 BitConverter.ToInt32(data, 4)
@@ -105,6 +128,13 @@ namespace Squared.Game.Serialization {
 
     public class BoundsSerializer : IValueSerializer {
         public object Read (byte[] data) {
+            if (!BitConverter.IsLittleEndian) {
+                Array.Reverse(data, 0, 4);
+                Array.Reverse(data, 4, 4);
+                Array.Reverse(data, 8, 4);
+                Array.Reverse(data, 12, 4);
+            }
+
             return new Bounds(
                 new Vector2(
                     BitConverter.ToSingle(data, 0),
