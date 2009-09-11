@@ -316,9 +316,9 @@ namespace Squared.Game.Graph {
         public readonly SQLiteDatabase Database;
         public readonly SerializationContext Context;
 
-        protected Dictionary<long, Type> _Types = new Dictionary<long, Type>(128);
-        protected Dictionary<long, object> _Nodes = new Dictionary<long, object>(1024);
-        protected Dictionary<long, string> _Strings = new Dictionary<long, string>(1024);
+        protected Type[] _Types;
+        protected object[] _Nodes;
+        protected string[] _Strings;
         protected List<DeferredAttribute> _DeferredAttributes = new List<DeferredAttribute>(1024);
 
         protected long _RootNodeID;
@@ -336,29 +336,49 @@ namespace Squared.Game.Graph {
         public void Dispose () {
         }
 
+        protected int CountItems (string column, string table) {
+            var sql = String.Format("SELECT COUNT({0}) FROM {1};", column, table);
+
+            int result = 0;
+            using (var statement = new SQLiteVdbe(Database, sql))
+            foreach (var row in statement.Execute())
+                result += csSQLite.sqlite3_column_int(statement.VirtualMachine(), 0);
+
+            return result;
+        }
+
         protected void ReadTypes () {
+            int numTypes = CountItems("TypeID", "Types");
+            _Types = new Type[numTypes + 8];
+
             var sql = "SELECT TypeID, TypeName FROM Types;";
 
             using (var statement = new SQLiteVdbe(Database, sql))
             foreach (var row in statement.Execute()) {
-                var typeID = csSQLite.sqlite3_column_int64(statement.VirtualMachine(), 0);
+                var typeID = csSQLite.sqlite3_column_int(statement.VirtualMachine(), 0);
                 var typeName = csSQLite.sqlite3_column_text(statement.VirtualMachine(), 1);
                 _Types[typeID] = Context.TypeResolver.NameToType(typeName);
             }
         }
 
         protected void ReadStrings () {
+            int numStrings = CountItems("StringID", "Strings");
+            _Strings = new string[numStrings + 8];
+
             var sql = "SELECT StringID, Text FROM Strings;";
 
             using (var statement = new SQLiteVdbe(Database, sql))
             foreach (var row in statement.Execute()) {
-                var stringID = csSQLite.sqlite3_column_int64(statement.VirtualMachine(), 0);
+                var stringID = csSQLite.sqlite3_column_int(statement.VirtualMachine(), 0);
                 var text = csSQLite.sqlite3_column_text(statement.VirtualMachine(), 1);
                 _Strings[stringID] = text;
             }
         }
 
         protected void ReadNodes () {
+            int numNodes = CountItems("NodeID", "Nodes");
+            _Nodes = new object[numNodes + 8];
+
             var sql = "SELECT NodeID, TypeID FROM Nodes";
 
             var result = new Dictionary<long, object>();
@@ -366,8 +386,8 @@ namespace Squared.Game.Graph {
 
             using (var statement = new SQLiteVdbe(Database, sql))
             foreach (var row in statement.Execute()) {
-                var nodeID = csSQLite.sqlite3_column_int64(statement.VirtualMachine(), 0);
-                var typeID = csSQLite.sqlite3_column_int64(statement.VirtualMachine(), 1);
+                var nodeID = csSQLite.sqlite3_column_int(statement.VirtualMachine(), 0);
+                var typeID = csSQLite.sqlite3_column_int(statement.VirtualMachine(), 1);
                 var type = _Types[typeID];
                 var constructor = type.GetConstructor(emptyTypes);
                 object instance;
@@ -388,7 +408,7 @@ namespace Squared.Game.Graph {
             using (var statement = new SQLiteVdbe(Database, "SELECT NodeID, ParentNodeID FROM NodeRelationships"))
             foreach (var row in statement.Execute()) {
                 var vm = statement.VirtualMachine();
-                var nodeID = csSQLite.sqlite3_column_int64(vm, 0);
+                var nodeID = csSQLite.sqlite3_column_int(vm, 0);
                 var child = (INode)(_Nodes[nodeID]);
 
                 if (csSQLite.sqlite3_column_type(vm, 1) == csSQLite.SQLITE_NULL) {
