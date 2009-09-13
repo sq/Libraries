@@ -67,7 +67,7 @@ namespace Squared.Task {
                     item();
                     i++;
 
-                    if ((MaxStepDuration > 0) && ((i % 100) == 0)) {
+                    if ((MaxStepDuration > 0) && ((i % 1000) == 0)) {
                         if ((Time.Ticks - stepStarted) > MaxStepDuration)
                             throw new InfiniteStepException(MaxStepDuration);
                     }

@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
 using System.Data;
-using System.Data.SQLite;
 using System.Data.Common;
 
+// Requires System.Data.SQLite
+#if SQLITE
+using System.Data.SQLite;
 namespace Squared.Task.Data {
     [TestFixture]
     public class MemoryDbTests {
@@ -392,3 +394,4 @@ namespace Squared.Task.Data {
         }
     }
 }
+#endif
