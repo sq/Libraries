@@ -1,0 +1,363 @@
+#########################################################################################
+# $Header$
+#########################################################################################
+set testdir [file dirname $argv0]
+source $testdir/tester.tcl
+source $testdir/_RunWorking.txt
+
+# Uncomment the _RunWorking line to run all the tests
+# or copy one of test filenames 
+# or enter TCL commands such as the ones that are listed 
+# after these comments
+
+##########################################################################################
+puts -nonewline "Press RETURN to exit..."; gets stdin; exit
+
+            
+##########################################################################################
+#
+# Sample TCL command sequences
+#
+##########################################################################################
+do_test SIMPLE_SQLITE_VERSION {
+    execsql { 
+    SELECT SQLITE_VERSION();
+  }
+} {3.6.17.C#}
+
+do_test SIMPLE_COUNT_SQL_MASTER {
+    execsql { 
+    SELECT COUNT(*) FROM SQLITE_MASTER;
+  }
+} {0}
+do_test SIMPLE_CREATE_TABLE {
+    execsql { 
+    CREATE TABLE T1 (C1);
+  }
+} {}
+
+do_test SIMPLE_SELECT_ALL {
+    execsql { 
+    SELECT * FROM SQLITE_MASTER;
+  }
+} {table T1 T1 2 {CREATE TABLE T1 (C1)}}
+
+
+
+
+##########################################################################################
+#
+# Individual TCL Test files
+#
+##########################################################################################
+source $testdir/aggerror.test
+source $testdir/alias.test
+source $testdir/alter.test
+source $testdir/alter2.test
+source $testdir/alter3.test
+source $testdir/alter4.test
+source $testdir/analyze.test
+source $testdir/async4.test
+source $testdir/attach.test
+source $testdir/attach2.test
+source $testdir/attach3.test
+source $testdir/auth.test
+source $testdir/auth2.test
+source $testdir/auth3.test
+source $testdir/autoinc.test
+source $testdir/avtrans.test
+source $testdir/backup2.test
+source $testdir/badutf.test
+source $testdir/between.test
+source $testdir/bigfile.test
+source $testdir/bigrow.test
+source $testdir/bind.test
+source $testdir/bindxfer.test
+source $testdir/bitvec.test
+source $testdir/blob.test
+source $testdir/boundary1.test
+source $testdir/boundary2.test
+source $testdir/boundary3.test
+source $testdir/boundary4.test
+source $testdir/busy.test
+source $testdir/cache.test
+source $testdir/capi2.test
+source $testdir/capi3.test
+source $testdir/capi3b.test
+source $testdir/capi3c.test
+source $testdir/capi3d.test
+source $testdir/cast.test
+source $testdir/check.test
+source $testdir/collate1.test
+source $testdir/collate2.test
+source $testdir/collate4.test
+source $testdir/collate5.test
+source $testdir/collate6.test
+source $testdir/collate7.test
+source $testdir/collate8.test
+source $testdir/collate9.test
+source $testdir/collateA.test
+source $testdir/colmeta.test
+source $testdir/colname.test
+source $testdir/conflict.test
+source $testdir/corrupt2.test
+source $testdir/corrupt3.test
+source $testdir/corrupt4.test
+source $testdir/corrupt5.test
+source $testdir/corrupt6.test
+source $testdir/corrupt7.test
+source $testdir/corrupt8.test
+source $testdir/corrupt9.test
+source $testdir/corruptA.test
+source $testdir/corruptB.test
+source $testdir/corruptD.test
+source $testdir/count.test
+source $testdir/crash8.test
+source $testdir/createtab.test
+source $testdir/cse.test
+source $testdir/date.test
+source $testdir/default.test
+source $testdir/delete.test
+source $testdir/delete2.test
+source $testdir/descidx1.test
+source $testdir/descidx2.test
+source $testdir/descidx3.test
+source $testdir/diskfull.test
+source $testdir/distinctagg.test
+source $testdir/enc.test
+source $testdir/enc2.test
+source $testdir/enc3.test
+source $testdir/exclusive.test
+source $testdir/exclusive2.test
+source $testdir/exec.test
+source $testdir/expr.test
+source $testdir/filectrl.test
+source $testdir/filefmt.test
+source $testdir/fkey1.test
+source $testdir/format4.test
+source $testdir/func.test
+source $testdir/fuzz2.test
+source $testdir/hook.test
+source $testdir/in.test
+source $testdir/in3.test
+source $testdir/in4.test
+source $testdir/incrvacuum.test
+source $testdir/incrvacuum2.test
+source $testdir/index.test
+source $testdir/index2.test
+source $testdir/index3.test
+source $testdir/indexedby.test
+source $testdir/insert.test
+source $testdir/insert2.test
+source $testdir/insert3.test
+source $testdir/insert4.test
+source $testdir/insert5.test
+source $testdir/intpkey.test
+source $testdir/join.test
+source $testdir/join2.test
+source $testdir/join3.test
+source $testdir/join4.test
+source $testdir/join5.test
+source $testdir/journal1.test
+source $testdir/jrnlmode.test
+source $testdir/jrnlmode2.test
+source $testdir/jrnlmode3.test
+source $testdir/keyword1.test
+source $testdir/lastinsert.test
+source $testdir/laststmtchanges.test
+source $testdir/like.test
+source $testdir/like2.test
+source $testdir/limit.test
+source $testdir/loadext2.test
+source $testdir/lock.test
+source $testdir/lock3.test
+source $testdir/lock5.test
+source $testdir/lock6.test
+source $testdir/lookaside.test
+source $testdir/main.test
+source $testdir/manydb.test
+source $testdir/memdb.test
+source $testdir/minmax.test
+source $testdir/minmax2.test
+source $testdir/minmax3.test
+source $testdir/misc1.test
+source $testdir/misc2.test
+source $testdir/misc3.test
+source $testdir/misc4.test
+source $testdir/misc5.test
+source $testdir/misc6.test
+source $testdir/mutex1.test
+source $testdir/nan.test
+source $testdir/notify1.test
+source $testdir/notnull.test
+source $testdir/null.test
+source $testdir/openv2.test
+source $testdir/pageropt.test
+source $testdir/pagesize.test
+source $testdir/pcache.test
+source $testdir/pragma.test
+source $testdir/pragma2.test
+source $testdir/printf.test
+source $testdir/progress.test
+source $testdir/ptrchng.test
+source $testdir/quote.test
+source $testdir/randexpr1.test
+source $testdir/rdonly.test
+source $testdir/reindex.test
+source $testdir/rowhash.test
+source $testdir/rowid.test
+source $testdir/safety.test
+source $testdir/savepoint.test
+source $testdir/savepoint2.test
+source $testdir/savepoint3.test
+source $testdir/savepoint5.test
+source $testdir/schema.test
+source $testdir/schema2.test
+source $testdir/select1.test
+source $testdir/select2.test
+source $testdir/select3.test
+source $testdir/select4.test
+source $testdir/select5.test
+source $testdir/select6.test
+source $testdir/select7.test
+source $testdir/select8.test
+source $testdir/selectA.test
+source $testdir/selectB.test
+source $testdir/selectC.test
+source $testdir/server1.test
+source $testdir/shared.test
+source $testdir/shared2.test
+source $testdir/shared3.test
+source $testdir/shared4.test
+source $testdir/shared6.test
+source $testdir/shared7.test
+source $testdir/shortread1.test
+source $testdir/sidedelete.test
+source $testdir/softheap1.test
+source $testdir/sort.test
+source $testdir/subquery.test
+source $testdir/subselect.test
+source $testdir/substr.test
+source $testdir/sync.test
+source $testdir/table.test
+source $testdir/tableapi.test
+source $testdir/tempdb.test
+source $testdir/temptable.test
+source $testdir/temptrigger.test
+source $testdir/thread1.test
+source $testdir/thread2.test
+source $testdir/tkt35xx.test
+source $testdir/tkt1435.test
+source $testdir/tkt1443.test
+source $testdir/tkt1444.test
+source $testdir/tkt1449.test
+source $testdir/tkt1473.test
+source $testdir/tkt1501.test
+source $testdir/tkt1512.test
+source $testdir/tkt1514.test
+source $testdir/tkt1536.test
+source $testdir/tkt1537.test
+source $testdir/tkt1567.test
+source $testdir/tkt1644.test
+source $testdir/tkt1667.test
+source $testdir/tkt1873.test
+source $testdir/tkt2141.test
+source $testdir/tkt2192.test
+source $testdir/tkt2213.test
+source $testdir/tkt2251.test
+source $testdir/tkt2285.test
+source $testdir/tkt2332.test
+source $testdir/tkt2339.test
+source $testdir/tkt2391.test
+source $testdir/tkt2409.test
+source $testdir/tkt2450.test
+source $testdir/tkt2640.test
+source $testdir/tkt2643.test
+source $testdir/tkt2767.test
+source $testdir/tkt2817.test
+source $testdir/tkt2820.test
+source $testdir/tkt2822.test
+source $testdir/tkt2832.test
+source $testdir/tkt2854.test
+source $testdir/tkt2920.test
+source $testdir/tkt2927.test
+source $testdir/tkt2942.test
+source $testdir/tkt3080.test
+source $testdir/tkt3093.test
+source $testdir/tkt3121.test
+source $testdir/tkt3201.test
+source $testdir/tkt3292.test
+source $testdir/tkt3298.test
+source $testdir/tkt3334.test
+source $testdir/tkt3346.test
+source $testdir/tkt3357.test
+source $testdir/tkt3419.test
+source $testdir/tkt3424.test
+source $testdir/tkt3442.test
+source $testdir/tkt3457.test
+source $testdir/tkt3461.test
+source $testdir/tkt3472.test
+source $testdir/tkt3493.test
+source $testdir/tkt3508.test
+source $testdir/tkt3522.test
+source $testdir/tkt3527.test
+source $testdir/tkt3541.test
+source $testdir/tkt3554.test
+source $testdir/tkt3581.test
+source $testdir/tkt3630.test
+source $testdir/tkt3718.test
+source $testdir/tkt3731.test
+source $testdir/tkt3757.test
+source $testdir/tkt3761.test
+source $testdir/tkt3762.test
+source $testdir/tkt3773.test
+source $testdir/tkt3791.test
+source $testdir/tkt3793.test
+source $testdir/tkt3824.test
+source $testdir/tkt3832.test
+source $testdir/tkt3838.test
+source $testdir/tkt3841.test
+source $testdir/tkt3871.test
+source $testdir/tkt3879.test
+source $testdir/tkt3911.test
+source $testdir/tkt3918.test
+source $testdir/tkt3922.test
+source $testdir/tkt3929.test
+source $testdir/tkt3992.test
+source $testdir/tkt3997.test
+source $testdir/tokenize.test
+source $testdir/trace.test
+source $testdir/trans.test
+source $testdir/trans3.test
+source $testdir/trigger1.test
+source $testdir/trigger3.test
+source $testdir/trigger4.test
+source $testdir/trigger5.test
+source $testdir/trigger6.test
+source $testdir/trigger7.test
+source $testdir/trigger8.test
+source $testdir/trigger9.test
+source $testdir/triggerA.test
+source $testdir/triggerB.test
+source $testdir/types.test
+source $testdir/types2.test
+source $testdir/unique.test
+source $testdir/update.test
+source $testdir/utf16align.test
+source $testdir/vacuum.test
+source $testdir/vacuum2.test
+source $testdir/varint.test
+source $testdir/view.test
+source $testdir/where.test
+source $testdir/where2.test
+source $testdir/where3.test
+source $testdir/where4.test
+source $testdir/where5.test
+source $testdir/where6.test
+source $testdir/where7.test
+source $testdir/where8.test
+source $testdir/where8m.test
+source $testdir/where9.test
+source $testdir/whereA.test
+source $testdir/wherelimit.test
+source $testdir/zeroblob.test

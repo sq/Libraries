@@ -1,0 +1,234 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.21022</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{5275CAE1-E902-44C8-9DA6-0FC33FC0B68C}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>tcl</RootNamespace>
+    <AssemblyName>tcl</AssemblyName>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="src\base\AssocData.cs" />
+    <Compile Include="src\base\BackSlashResult.cs" />
+    <Compile Include="src\base\BgErrorMgr.cs" />
+    <Compile Include="src\base\CallFrame.cs" />
+    <Compile Include="src\base\CharPointer.cs" />
+    <Compile Include="src\base\CObject.cs" />
+    <Compile Include="src\base\Command.cs" />
+    <Compile Include="src\base\CommandWithDispose.cs" />
+    <Compile Include="src\base\DebugInfo.cs" />
+    <Compile Include="src\base\Env.cs" />
+    <Compile Include="src\base\EventDeleter.cs" />
+    <Compile Include="src\base\EventuallyFreed.cs" />
+    <Compile Include="src\base\Expression.cs" />
+    <Compile Include="src\base\ExprValue.cs" />
+    <Compile Include="src\base\Extension.cs" />
+    <Compile Include="src\base\FindElemResult.cs" />
+    <Compile Include="src\base\IdleHandler.cs" />
+    <Compile Include="src\base\ImportedCmdData.cs" />
+    <Compile Include="src\base\ImportRef.cs" />
+    <Compile Include="src\base\InternalRep.cs" />
+    <Compile Include="src\base\Interp.cs" />
+    <Compile Include="src\base\JACL.cs" />
+    <Compile Include="src\base\Notifier.cs" />
+    <Compile Include="src\base\Parser.cs" />
+    <Compile Include="src\base\ParseResult.cs" />
+    <Compile Include="src\base\Procedure.cs" />
+    <Compile Include="src\base\QSort.cs" />
+    <Compile Include="src\base\Resolver.cs" />
+    <Compile Include="src\base\SearchId.cs" />
+    <Compile Include="src\base\TCL.cs" />
+    <Compile Include="src\base\TclBoolean.cs" />
+    <Compile Include="src\base\TclByteArray.cs" />
+    <Compile Include="src\base\TclDouble.cs" />
+    <Compile Include="src\base\TclEvent.cs" />
+    <Compile Include="src\base\TclException.cs" />
+    <Compile Include="src\base\TclIndex.cs" />
+    <Compile Include="src\base\TclInteger.cs" />
+    <Compile Include="src\base\TclList.cs" />
+    <Compile Include="src\base\TclLong.cs" />
+    <Compile Include="src\base\TclNumArgsException.cs" />
+    <Compile Include="src\base\TCLObj.cs" />
+    <Compile Include="src\base\TclObject.cs" />
+    <Compile Include="src\base\TclParse.cs" />
+    <Compile Include="src\base\TclPosixException.cs" />
+    <Compile Include="src\base\TclRegexp.cs" />
+    <Compile Include="src\base\TclRuntimeError.cs" />
+    <Compile Include="src\base\TclString.cs" />
+    <Compile Include="src\base\TclToken.cs" />
+    <Compile Include="src\base\TclVarException.cs" />
+    <Compile Include="src\base\TimerHandler.cs" />
+    <Compile Include="src\base\TraceRecord.cs" />
+    <Compile Include="src\base\Util.cs" />
+    <Compile Include="src\base\Var.cs" />
+    <Compile Include="src\base\VarTrace.cs" />
+    <Compile Include="src\base\WrappedCommand.cs" />
+    <Compile Include="src\commands\AfterCmd.cs" />
+    <Compile Include="src\commands\AppendCmd.cs" />
+    <Compile Include="src\commands\ArrayCmd.cs" />
+    <Compile Include="src\commands\BinaryCmd.cs" />
+    <Compile Include="src\commands\BreakCmd.cs" />
+    <Compile Include="src\commands\CaseCmd.cs" />
+    <Compile Include="src\commands\CatchCmd.cs" />
+    <Compile Include="src\commands\CdCmd.cs" />
+    <Compile Include="src\commands\ClockCmd.cs" />
+    <Compile Include="src\commands\CloseCmd.cs" />
+    <Compile Include="src\commands\ConcatCmd.cs" />
+    <Compile Include="src\commands\ContinueCmd.cs" />
+    <Compile Include="src\commands\EncodingCmd.cs" />
+    <Compile Include="src\commands\EofCmd.cs" />
+    <Compile Include="src\commands\ErrorCmd.cs" />
+    <Compile Include="src\commands\EvalCmd.cs" />
+    <Compile Include="src\commands\ExecCmd.cs" />
+    <Compile Include="src\commands\ExitCmd.cs" />
+    <Compile Include="src\commands\ExprCmd.cs" />
+    <Compile Include="src\commands\FblockedCmd.cs" />
+    <Compile Include="src\commands\FconfigureCmd.cs" />
+    <Compile Include="src\commands\FileCmd.cs" />
+    <Compile Include="src\commands\FlushCmd.cs" />
+    <Compile Include="src\commands\ForCmd.cs" />
+    <Compile Include="src\commands\ForeachCmd.cs" />
+    <Compile Include="src\commands\FormatCmd.cs" />
+    <Compile Include="src\commands\GetsCmd.cs" />
+    <Compile Include="src\commands\GlobalCmd.cs" />
+    <Compile Include="src\commands\GlobCmd.cs" />
+    <Compile Include="src\commands\IfCmd.cs" />
+    <Compile Include="src\commands\IncrCmd.cs" />
+    <Compile Include="src\commands\InfoCmd.cs" />
+    <Compile Include="src\commands\InterpAliasCmd.cs" />
+    <Compile Include="src\commands\InterpCmd.cs" />
+    <Compile Include="src\commands\InterpSlaveCmd.cs" />
+    <Compile Include="src\commands\JoinCmd.cs" />
+    <Compile Include="src\commands\LappendCmd.cs" />
+    <Compile Include="src\commands\LindexCmd.cs" />
+    <Compile Include="src\commands\LinsertCmd.cs" />
+    <Compile Include="src\commands\ListCmd.cs" />
+    <Compile Include="src\commands\LlengthCmd.cs" />
+    <Compile Include="src\commands\LrangeCmd.cs" />
+    <Compile Include="src\commands\LreplaceCmd.cs" />
+    <Compile Include="src\commands\LsearchCmd.cs" />
+    <Compile Include="src\commands\LsortCmd.cs" />
+    <Compile Include="src\commands\NamespaceCmd.cs" />
+    <Compile Include="src\commands\OpenCmd.cs" />
+    <Compile Include="src\commands\PackageCmd.cs" />
+    <Compile Include="src\commands\ParseAdaptor.cs" />
+    <Compile Include="src\commands\ProcCmd.cs" />
+    <Compile Include="src\commands\PutsCmd.cs" />
+    <Compile Include="src\commands\PwdCmd.cs" />
+    <Compile Include="src\commands\ReadCmd.cs" />
+    <Compile Include="src\commands\RegexpCmd.cs" />
+    <Compile Include="src\commands\RegsubCmd.cs" />
+    <Compile Include="src\commands\RenameCmd.cs" />
+    <Compile Include="src\commands\ReturnCmd.cs" />
+    <Compile Include="src\commands\ScanCmd.cs" />
+    <Compile Include="src\commands\SeekCmd.cs" />
+    <Compile Include="src\commands\SetCmd.cs" />
+    <Compile Include="src\commands\SocketChannel.cs" />
+    <Compile Include="src\commands\SourceCmd.cs" />
+    <Compile Include="src\commands\SplitCmd.cs" />
+    <Compile Include="src\commands\StdChannel.cs" />
+    <Compile Include="src\commands\StringCmd.cs" />
+    <Compile Include="src\commands\StrtodResult.cs" />
+    <Compile Include="src\commands\StrtoulResult.cs" />
+    <Compile Include="src\commands\SubstCmd.cs" />
+    <Compile Include="src\commands\SwitchCmd.cs" />
+    <Compile Include="src\commands\TellCmd.cs" />
+    <Compile Include="src\commands\TimeCmd.cs" />
+    <Compile Include="src\commands\TraceCmd.cs" />
+    <Compile Include="src\commands\UnsetCmd.cs" />
+    <Compile Include="src\commands\UpdateCmd.cs" />
+    <Compile Include="src\commands\UplevelCmd.cs" />
+    <Compile Include="src\commands\UpvarCmd.cs" />
+    <Compile Include="src\commands\VariableCmd.cs" />
+    <Compile Include="src\commands\VwaitCmd.cs" />
+    <Compile Include="src\commands\WhileCmd.cs" />
+    <Compile Include="src\csTCL.cs" />
+    <Compile Include="src\io\Channel.cs" />
+    <Compile Include="src\io\ChannelBuffer.cs" />
+    <Compile Include="src\io\FileChannel.cs" />
+    <Compile Include="src\io\FileUtil.cs" />
+    <Compile Include="src\io\TclInputStream.cs" />
+    <Compile Include="src\io\TclIO.cs" />
+    <Compile Include="src\io\TclOutputStream.cs" />
+    <Compile Include="src\regexp_brazil\Regexp.cs" />
+    <Compile Include="src\regexp_brazil\Regsub.cs" />
+    <Compile Include="src\SupportClass.cs" />
+    <Compile Include="src\tcl_h.cs" />
+    <Compile Include="src\_tcl_Conversions.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

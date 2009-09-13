@@ -1,0 +1,2269 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.21022</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{FDA6FB30-1601-4C64-85C1-49C7AD3C78DD}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>CS_SQLite3</RootNamespace>
+    <AssemblyName>Testfixture</AssemblyName>
+    <StartupObject>Testing</StartupObject>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRUE WIN32 _MSC_VER SQLITE_ASCII SQLITE_DEBUG SQLITE_DISABLE_LFS  SQLITE_ENABLE_OVERSIZE_CELL_CHECK SQLITE_MUTEX_OMIT SQLITE_OMIT_AUTHORIZATION SQLITE_OMIT_DEPRECATED SQLITE_OMIT_GET_TABLE SQLITE_OMIT_INCRBLOB SQLITE_OMIT_LOOKASIDE SQLITE_OMIT_SHARED_CACHE SQLITE_OMIT_UTF16 SQLITE_OMIT_VIRTUALTABLE SQLITE_OS_WIN SQLITE_TEST VDBE_PROFILE_OFF</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoWarn>0168 ; 0169; 0414; 0618; 0649</NoWarn>
+    <PlatformTarget>x86</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;TRUE WIN32 _MSC_VER SQLITE_ASCII SQLITE_DEBUG SQLITE_DISABLE_LFS  SQLITE_ENABLE_OVERSIZE_CELL_CHECK SQLITE_MUTEX_OMIT SQLITE_OMIT_AUTHORIZATION SQLITE_OMIT_DEPRECATED SQLITE_OMIT_GET_TABLE SQLITE_OMIT_INCRBLOB SQLITE_OMIT_LOOKASIDE SQLITE_OMIT_SHARED_CACHE SQLITE_OMIT_UTF16 SQLITE_OMIT_VIRTUALTABLE SQLITE_OS_WIN SQLITE_SYSTEM_MALLOC SQLITE_TEST VDBE_PROFILE_OFF</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoWarn>0168 ; 0169; 0414; 0618; 0649</NoWarn>
+    <PlatformTarget>x86</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Management" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\C#-SQLite\src\alter_c.cs">
+      <Link>C#-SQLite\alter_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\analyze_c.cs">
+      <Link>C#-SQLite\analyze_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\attach_c.cs">
+      <Link>C#-SQLite\attach_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\auth_c.cs">
+      <Link>C#-SQLite\auth_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\backup_c.cs">
+      <Link>C#-SQLite\backup_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\bitvec_c.cs">
+      <Link>C#-SQLite\bitvec_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\btmutex_c.cs">
+      <Link>C#-SQLite\btmutex_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\BtreeInt_h.cs">
+      <Link>C#-SQLite\BtreeInt_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\btree_c.cs">
+      <Link>C#-SQLite\btree_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\Btree_h.cs">
+      <Link>C#-SQLite\Btree_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\build_c.cs">
+      <Link>C#-SQLite\build_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\callback_c.cs">
+      <Link>C#-SQLite\callback_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\complete_c.cs">
+      <Link>C#-SQLite\complete_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\date_c.cs">
+      <Link>C#-SQLite\date_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\Delagates.cs">
+      <Link>C#-SQLite\Delagates.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\delete_c.cs">
+      <Link>C#-SQLite\delete_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\expr_c.cs">
+      <Link>C#-SQLite\expr_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\fault_c.cs">
+      <Link>C#-SQLite\fault_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\func_c.cs">
+      <Link>C#-SQLite\func_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\global_c.cs">
+      <Link>C#-SQLite\global_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\hash_c.cs">
+      <Link>C#-SQLite\hash_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\Hash_h.cs">
+      <Link>C#-SQLite\Hash_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\hwtime_c.cs">
+      <Link>C#-SQLite\hwtime_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\insert_c.cs">
+      <Link>C#-SQLite\insert_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\journal_c.cs">
+      <Link>C#-SQLite\journal_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\keywordhash_h.cs">
+      <Link>C#-SQLite\keywordhash_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\legacy_c.cs">
+      <Link>C#-SQLite\legacy_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\loadext_c.cs">
+      <Link>C#-SQLite\loadext_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\main_c.cs">
+      <Link>C#-SQLite\main_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\malloc_c.cs">
+      <Link>C#-SQLite\malloc_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\memjournal_c.cs">
+      <Link>C#-SQLite\memjournal_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\mutex_c.cs">
+      <Link>C#-SQLite\mutex_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\mutex_h.cs">
+      <Link>C#-SQLite\mutex_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\mutex_noop_c.cs">
+      <Link>C#-SQLite\mutex_noop_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\mutex_w32.cs">
+      <Link>C#-SQLite\mutex_w32.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\notify_c.cs">
+      <Link>C#-SQLite\notify_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\opcodes_c.cs">
+      <Link>C#-SQLite\opcodes_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\opcodes_h.cs">
+      <Link>C#-SQLite\opcodes_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\os_c.cs">
+      <Link>C#-SQLite\os_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\os_common_h.cs">
+      <Link>C#-SQLite\os_common_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\os_h.cs">
+      <Link>C#-SQLite\os_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\os_win_c.cs">
+      <Link>C#-SQLite\os_win_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\pager_c.cs">
+      <Link>C#-SQLite\pager_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\pager_h.cs">
+      <Link>C#-SQLite\pager_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\parse_c.cs">
+      <Link>C#-SQLite\parse_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\parse_h.cs">
+      <Link>C#-SQLite\parse_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\pcache1_c.cs">
+      <Link>C#-SQLite\pcache1_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\pcache_c.cs">
+      <Link>C#-SQLite\pcache_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\pcache_h.cs">
+      <Link>C#-SQLite\pcache_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\pragma_c.cs">
+      <Link>C#-SQLite\pragma_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\prepare_c.cs">
+      <Link>C#-SQLite\prepare_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\printf_c.cs">
+      <Link>C#-SQLite\printf_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\random_c.cs">
+      <Link>C#-SQLite\random_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\resolve_c.cs">
+      <Link>C#-SQLite\resolve_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\rowset_c.cs">
+      <Link>C#-SQLite\rowset_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\select_c.cs">
+      <Link>C#-SQLite\select_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\sqlite3ext_h.cs">
+      <Link>C#-SQLite\sqlite3ext_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\sqlite3_h.cs">
+      <Link>C#-SQLite\sqlite3_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\sqliteicu_h.cs">
+      <Link>C#-SQLite\sqliteicu_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\sqliteInt_h.cs">
+      <Link>C#-SQLite\sqliteInt_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\sqliteLimit_h.cs">
+      <Link>C#-SQLite\sqliteLimit_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\status_c.cs">
+      <Link>C#-SQLite\status_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\table_c.cs">
+      <Link>C#-SQLite\table_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\tokenize_c.cs">
+      <Link>C#-SQLite\tokenize_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\trigger_c.cs">
+      <Link>C#-SQLite\trigger_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\update_c.cs">
+      <Link>C#-SQLite\update_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\utf_c.cs">
+      <Link>C#-SQLite\utf_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\util_c.cs">
+      <Link>C#-SQLite\util_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\vacuum_c.cs">
+      <Link>C#-SQLite\vacuum_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\vdbeapi_c.cs">
+      <Link>C#-SQLite\vdbeapi_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\vdbeaux_c.cs">
+      <Link>C#-SQLite\vdbeaux_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\vdbeblob_c.cs">
+      <Link>C#-SQLite\vdbeblob_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\VdbeInt_h.cs">
+      <Link>C#-SQLite\VdbeInt_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\vdbemem_c.cs">
+      <Link>C#-SQLite\vdbemem_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\vdbe_c.cs">
+      <Link>C#-SQLite\vdbe_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\Vdbe_h.cs">
+      <Link>C#-SQLite\Vdbe_h.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\vtab_c.cs">
+      <Link>C#-SQLite\vtab_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\walker_c.cs">
+      <Link>C#-SQLite\walker_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\where_c.cs">
+      <Link>C#-SQLite\where_c.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\src\_Custom.cs">
+      <Link>C#-SQLite\_Custom.cs</Link>
+    </Compile>
+    <Compile Include="..\C#-SQLite\Ext.cs" />
+    <Compile Include="..\C#-SQLite\XNA.cs" />
+    <Compile Include="..\TCL\src\base\AssocData.cs">
+      <Link>TCL\src\base\AssocData.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\BackSlashResult.cs">
+      <Link>TCL\src\base\BackSlashResult.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\BgErrorMgr.cs">
+      <Link>TCL\src\base\BgErrorMgr.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\CallFrame.cs">
+      <Link>TCL\src\base\CallFrame.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\CharPointer.cs">
+      <Link>TCL\src\base\CharPointer.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\CObject.cs">
+      <Link>TCL\src\base\CObject.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\Command.cs">
+      <Link>TCL\src\base\Command.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\CommandWithDispose.cs">
+      <Link>TCL\src\base\CommandWithDispose.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\DebugInfo.cs">
+      <Link>TCL\src\base\DebugInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\Env.cs">
+      <Link>TCL\src\base\Env.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\EventDeleter.cs">
+      <Link>TCL\src\base\EventDeleter.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\EventuallyFreed.cs">
+      <Link>TCL\src\base\EventuallyFreed.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\Expression.cs">
+      <Link>TCL\src\base\Expression.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\ExprValue.cs">
+      <Link>TCL\src\base\ExprValue.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\Extension.cs">
+      <Link>TCL\src\base\Extension.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\FindElemResult.cs">
+      <Link>TCL\src\base\FindElemResult.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\IdleHandler.cs">
+      <Link>TCL\src\base\IdleHandler.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\ImportedCmdData.cs">
+      <Link>TCL\src\base\ImportedCmdData.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\ImportRef.cs">
+      <Link>TCL\src\base\ImportRef.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\InternalRep.cs">
+      <Link>TCL\src\base\InternalRep.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\Interp.cs">
+      <Link>TCL\src\base\Interp.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\JACL.cs">
+      <Link>TCL\src\base\JACL.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\Notifier.cs">
+      <Link>TCL\src\base\Notifier.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\Parser.cs">
+      <Link>TCL\src\base\Parser.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\ParseResult.cs">
+      <Link>TCL\src\base\ParseResult.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\Procedure.cs">
+      <Link>TCL\src\base\Procedure.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\QSort.cs">
+      <Link>TCL\src\base\QSort.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\Resolver.cs">
+      <Link>TCL\src\base\Resolver.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\SearchId.cs">
+      <Link>TCL\src\base\SearchId.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TCL.cs">
+      <Link>TCL\src\base\TCL.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclBoolean.cs">
+      <Link>TCL\src\base\TclBoolean.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclByteArray.cs">
+      <Link>TCL\src\base\TclByteArray.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclDouble.cs">
+      <Link>TCL\src\base\TclDouble.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclEvent.cs">
+      <Link>TCL\src\base\TclEvent.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclException.cs">
+      <Link>TCL\src\base\TclException.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclIndex.cs">
+      <Link>TCL\src\base\TclIndex.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclInteger.cs">
+      <Link>TCL\src\base\TclInteger.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclList.cs">
+      <Link>TCL\src\base\TclList.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclLong.cs">
+      <Link>TCL\src\base\TclLong.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclNumArgsException.cs">
+      <Link>TCL\src\base\TclNumArgsException.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TCLObj.cs">
+      <Link>TCL\src\base\TCLObj.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclObject.cs">
+      <Link>TCL\src\base\TclObject.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclParse.cs">
+      <Link>TCL\src\base\TclParse.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclPosixException.cs">
+      <Link>TCL\src\base\TclPosixException.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclRegexp.cs">
+      <Link>TCL\src\base\TclRegexp.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclRuntimeError.cs">
+      <Link>TCL\src\base\TclRuntimeError.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclString.cs">
+      <Link>TCL\src\base\TclString.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclToken.cs">
+      <Link>TCL\src\base\TclToken.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TclVarException.cs">
+      <Link>TCL\src\base\TclVarException.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TimerHandler.cs">
+      <Link>TCL\src\base\TimerHandler.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\TraceRecord.cs">
+      <Link>TCL\src\base\TraceRecord.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\Util.cs">
+      <Link>TCL\src\base\Util.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\Var.cs">
+      <Link>TCL\src\base\Var.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\VarTrace.cs">
+      <Link>TCL\src\base\VarTrace.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\base\WrappedCommand.cs">
+      <Link>TCL\src\base\WrappedCommand.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\AfterCmd.cs">
+      <Link>TCL\src\commands\AfterCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\AppendCmd.cs">
+      <Link>TCL\src\commands\AppendCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ArrayCmd.cs">
+      <Link>TCL\src\commands\ArrayCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\BinaryCmd.cs">
+      <Link>TCL\src\commands\BinaryCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\BreakCmd.cs">
+      <Link>TCL\src\commands\BreakCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\CaseCmd.cs">
+      <Link>TCL\src\commands\CaseCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\CatchCmd.cs">
+      <Link>TCL\src\commands\CatchCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\CdCmd.cs">
+      <Link>TCL\src\commands\CdCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ClockCmd.cs">
+      <Link>TCL\src\commands\ClockCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\CloseCmd.cs">
+      <Link>TCL\src\commands\CloseCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ConcatCmd.cs">
+      <Link>TCL\src\commands\ConcatCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ContinueCmd.cs">
+      <Link>TCL\src\commands\ContinueCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\EncodingCmd.cs">
+      <Link>TCL\src\commands\EncodingCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\EofCmd.cs">
+      <Link>TCL\src\commands\EofCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ErrorCmd.cs">
+      <Link>TCL\src\commands\ErrorCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\EvalCmd.cs">
+      <Link>TCL\src\commands\EvalCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ExecCmd.cs">
+      <Link>TCL\src\commands\ExecCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ExitCmd.cs">
+      <Link>TCL\src\commands\ExitCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ExprCmd.cs">
+      <Link>TCL\src\commands\ExprCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\FblockedCmd.cs">
+      <Link>TCL\src\commands\FblockedCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\FconfigureCmd.cs">
+      <Link>TCL\src\commands\FconfigureCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\FileCmd.cs">
+      <Link>TCL\src\commands\FileCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\FlushCmd.cs">
+      <Link>TCL\src\commands\FlushCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ForCmd.cs">
+      <Link>TCL\src\commands\ForCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ForeachCmd.cs">
+      <Link>TCL\src\commands\ForeachCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\FormatCmd.cs">
+      <Link>TCL\src\commands\FormatCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\GetsCmd.cs">
+      <Link>TCL\src\commands\GetsCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\GlobalCmd.cs">
+      <Link>TCL\src\commands\GlobalCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\GlobCmd.cs">
+      <Link>TCL\src\commands\GlobCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\IfCmd.cs">
+      <Link>TCL\src\commands\IfCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\IncrCmd.cs">
+      <Link>TCL\src\commands\IncrCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\InfoCmd.cs">
+      <Link>TCL\src\commands\InfoCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\InterpAliasCmd.cs">
+      <Link>TCL\src\commands\InterpAliasCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\InterpCmd.cs">
+      <Link>TCL\src\commands\InterpCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\InterpSlaveCmd.cs">
+      <Link>TCL\src\commands\InterpSlaveCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\JoinCmd.cs">
+      <Link>TCL\src\commands\JoinCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\LappendCmd.cs">
+      <Link>TCL\src\commands\LappendCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\LindexCmd.cs">
+      <Link>TCL\src\commands\LindexCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\LinsertCmd.cs">
+      <Link>TCL\src\commands\LinsertCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ListCmd.cs">
+      <Link>TCL\src\commands\ListCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\LlengthCmd.cs">
+      <Link>TCL\src\commands\LlengthCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\LrangeCmd.cs">
+      <Link>TCL\src\commands\LrangeCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\LreplaceCmd.cs">
+      <Link>TCL\src\commands\LreplaceCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\LsearchCmd.cs">
+      <Link>TCL\src\commands\LsearchCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\LsortCmd.cs">
+      <Link>TCL\src\commands\LsortCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\NamespaceCmd.cs">
+      <Link>TCL\src\commands\NamespaceCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\OpenCmd.cs">
+      <Link>TCL\src\commands\OpenCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\PackageCmd.cs">
+      <Link>TCL\src\commands\PackageCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ParseAdaptor.cs">
+      <Link>TCL\src\commands\ParseAdaptor.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ProcCmd.cs">
+      <Link>TCL\src\commands\ProcCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\PutsCmd.cs">
+      <Link>TCL\src\commands\PutsCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\PwdCmd.cs">
+      <Link>TCL\src\commands\PwdCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ReadCmd.cs">
+      <Link>TCL\src\commands\ReadCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\RegexpCmd.cs">
+      <Link>TCL\src\commands\RegexpCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\RegsubCmd.cs">
+      <Link>TCL\src\commands\RegsubCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\RenameCmd.cs">
+      <Link>TCL\src\commands\RenameCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ReturnCmd.cs">
+      <Link>TCL\src\commands\ReturnCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\ScanCmd.cs">
+      <Link>TCL\src\commands\ScanCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\SeekCmd.cs">
+      <Link>TCL\src\commands\SeekCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\SetCmd.cs">
+      <Link>TCL\src\commands\SetCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\SocketChannel.cs">
+      <Link>TCL\src\commands\SocketChannel.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\SourceCmd.cs">
+      <Link>TCL\src\commands\srcCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\SplitCmd.cs">
+      <Link>TCL\src\commands\SplitCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\StdChannel.cs">
+      <Link>TCL\src\commands\StdChannel.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\StringCmd.cs">
+      <Link>TCL\src\commands\StringCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\StrtodResult.cs">
+      <Link>TCL\src\commands\StrtodResult.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\StrtoulResult.cs">
+      <Link>TCL\src\commands\StrtoulResult.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\SubstCmd.cs">
+      <Link>TCL\src\commands\SubstCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\SwitchCmd.cs">
+      <Link>TCL\src\commands\SwitchCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\TellCmd.cs">
+      <Link>TCL\src\commands\TellCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\TimeCmd.cs">
+      <Link>TCL\src\commands\TimeCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\TraceCmd.cs">
+      <Link>TCL\src\commands\TraceCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\UnsetCmd.cs">
+      <Link>TCL\src\commands\UnsetCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\UpdateCmd.cs">
+      <Link>TCL\src\commands\UpdateCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\UplevelCmd.cs">
+      <Link>TCL\src\commands\UplevelCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\UpvarCmd.cs">
+      <Link>TCL\src\commands\UpvarCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\VariableCmd.cs">
+      <Link>TCL\src\commands\VariableCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\VwaitCmd.cs">
+      <Link>TCL\src\commands\VwaitCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\commands\WhileCmd.cs">
+      <Link>TCL\src\commands\WhileCmd.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\io\Channel.cs">
+      <Link>TCL\src\io\Channel.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\io\ChannelBuffer.cs">
+      <Link>TCL\src\io\ChannelBuffer.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\io\FileChannel.cs">
+      <Link>TCL\src\io\FileChannel.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\io\FileUtil.cs">
+      <Link>TCL\src\io\FileUtil.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\io\TclInputStream.cs">
+      <Link>TCL\src\io\TclInputStream.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\io\TclIO.cs">
+      <Link>TCL\src\io\TclIO.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\io\TclOutputStream.cs">
+      <Link>TCL\src\io\TclOutputStream.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\regexp_brazil\Regexp.cs">
+      <Link>TCL\src\regexp_brazil\Regexp.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\regexp_brazil\Regsub.cs">
+      <Link>TCL\src\regexp_brazil\Regsub.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\SupportClass.cs">
+      <Link>TCL\src\SupportClass.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\tcl_h.cs">
+      <Link>TCL\src\tcl_h.cs</Link>
+    </Compile>
+    <Compile Include="..\TCL\src\_tcl_Conversions.cs">
+      <Link>TCL\src\_tcl_Conversions.cs</Link>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="src\tclsqlite_c.cs" />
+    <Compile Include="src\test1_c.cs" />
+    <Compile Include="src\test2_c.cs" />
+    <Compile Include="src\test3_c.cs" />
+    <Compile Include="src\test6_c.cs" />
+    <Compile Include="src\test9_c.cs" />
+    <Compile Include="src\testfixture.cs" />
+    <Compile Include="src\test_autoext_c.cs" />
+    <Compile Include="src\test_backup_c.cs" />
+    <Compile Include="src\test_config_c.cs" />
+    <Compile Include="src\test_func_c.cs" />
+    <Compile Include="src\test_hexio_c.cs" />
+    <Compile Include="src\test_journal_c.cs" />
+    <Compile Include="src\test_malloc_c.cs" />
+    <Compile Include="src\test_md5_c.cs" />
+    <Compile Include="src\test_mutex_c.cs" />
+    <Compile Include="src\test_onefile_c.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\test\crashtest1.c">
+      <Link>test\crashtest1.c</Link>
+    </Content>
+    <Content Include="..\test\threadtest1.c">
+      <Link>test\threadtest1.c</Link>
+    </Content>
+    <Content Include="..\test\threadtest2.c">
+      <Link>test\threadtest2.c</Link>
+    </Content>
+    <Content Include="..\test\^testscripts.txt">
+      <Link>test\^testscripts.txt</Link>
+    </Content>
+    <Content Include="..\test\_RunWorking.txt">
+      <Link>test\_RunWorking.txt</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\test\aggerror.test">
+      <Link>test\aggerror.test</Link>
+    </None>
+    <None Include="..\test\alias.test">
+      <Link>test\alias.test</Link>
+    </None>
+    <None Include="..\test\all.test">
+      <Link>test\all.test</Link>
+    </None>
+    <None Include="..\test\alter.test">
+      <Link>test\alter.test</Link>
+    </None>
+    <None Include="..\test\alter2.test">
+      <Link>test\alter2.test</Link>
+    </None>
+    <None Include="..\test\alter3.test">
+      <Link>test\alter3.test</Link>
+    </None>
+    <None Include="..\test\alter4.test">
+      <Link>test\alter4.test</Link>
+    </None>
+    <None Include="..\test\altermalloc.test">
+      <Link>test\altermalloc.test</Link>
+    </None>
+    <None Include="..\test\analyze.test">
+      <Link>test\analyze.test</Link>
+    </None>
+    <None Include="..\test\async.test">
+      <Link>test\async.test</Link>
+    </None>
+    <None Include="..\test\async2.test">
+      <Link>test\async2.test</Link>
+    </None>
+    <None Include="..\test\async3.test">
+      <Link>test\async3.test</Link>
+    </None>
+    <None Include="..\test\async4.test">
+      <Link>test\async4.test</Link>
+    </None>
+    <None Include="..\test\attach.test">
+      <Link>test\attach.test</Link>
+    </None>
+    <None Include="..\test\attach2.test">
+      <Link>test\attach2.test</Link>
+    </None>
+    <None Include="..\test\attach3.test">
+      <Link>test\attach3.test</Link>
+    </None>
+    <None Include="..\test\attachmalloc.test">
+      <Link>test\attachmalloc.test</Link>
+    </None>
+    <None Include="..\test\auth.test">
+      <Link>test\auth.test</Link>
+    </None>
+    <None Include="..\test\auth2.test">
+      <Link>test\auth2.test</Link>
+    </None>
+    <None Include="..\test\auth3.test">
+      <Link>test\auth3.test</Link>
+    </None>
+    <None Include="..\test\autoinc.test">
+      <Link>test\autoinc.test</Link>
+    </None>
+    <None Include="..\test\autovacuum.test">
+      <Link>test\autovacuum.test</Link>
+    </None>
+    <None Include="..\test\autovacuum_ioerr2.test">
+      <Link>test\autovacuum_ioerr2.test</Link>
+    </None>
+    <None Include="..\test\avtrans.test">
+      <Link>test\avtrans.test</Link>
+    </None>
+    <None Include="..\test\backup.test">
+      <Link>test\backup.test</Link>
+    </None>
+    <None Include="..\test\backup2.test">
+      <Link>test\backup2.test</Link>
+    </None>
+    <None Include="..\test\backup_ioerr.test">
+      <Link>test\backup_ioerr.test</Link>
+    </None>
+    <None Include="..\test\backup_malloc.test">
+      <Link>test\backup_malloc.test</Link>
+    </None>
+    <None Include="..\test\badutf.test">
+      <Link>test\badutf.test</Link>
+    </None>
+    <None Include="..\test\between.test">
+      <Link>test\between.test</Link>
+    </None>
+    <None Include="..\test\bigfile.test">
+      <Link>test\bigfile.test</Link>
+    </None>
+    <None Include="..\test\bigrow.test">
+      <Link>test\bigrow.test</Link>
+    </None>
+    <None Include="..\test\bind.test">
+      <Link>test\bind.test</Link>
+    </None>
+    <None Include="..\test\bindxfer.test">
+      <Link>test\bindxfer.test</Link>
+    </None>
+    <None Include="..\test\bitvec.test">
+      <Link>test\bitvec.test</Link>
+    </None>
+    <None Include="..\test\blob.test">
+      <Link>test\blob.test</Link>
+    </None>
+    <None Include="..\test\boundary1.tcl">
+      <Link>test\boundary1.tcl</Link>
+    </None>
+    <None Include="..\test\boundary1.test">
+      <Link>test\boundary1.test</Link>
+    </None>
+    <None Include="..\test\boundary2.tcl">
+      <Link>test\boundary2.tcl</Link>
+    </None>
+    <None Include="..\test\boundary2.test">
+      <Link>test\boundary2.test</Link>
+    </None>
+    <None Include="..\test\boundary3.tcl">
+      <Link>test\boundary3.tcl</Link>
+    </None>
+    <None Include="..\test\boundary3.test">
+      <Link>test\boundary3.test</Link>
+    </None>
+    <None Include="..\test\boundary4.tcl">
+      <Link>test\boundary4.tcl</Link>
+    </None>
+    <None Include="..\test\boundary4.test">
+      <Link>test\boundary4.test</Link>
+    </None>
+    <None Include="..\test\busy.test">
+      <Link>test\busy.test</Link>
+    </None>
+    <None Include="..\test\cache.test">
+      <Link>test\cache.test</Link>
+    </None>
+    <None Include="..\test\capi2.test">
+      <Link>test\capi2.test</Link>
+    </None>
+    <None Include="..\test\capi3.test">
+      <Link>test\capi3.test</Link>
+    </None>
+    <None Include="..\test\capi3b.test">
+      <Link>test\capi3b.test</Link>
+    </None>
+    <None Include="..\test\capi3c.test">
+      <Link>test\capi3c.test</Link>
+    </None>
+    <None Include="..\test\capi3d.test">
+      <Link>test\capi3d.test</Link>
+    </None>
+    <None Include="..\test\cast.test">
+      <Link>test\cast.test</Link>
+    </None>
+    <None Include="..\test\check.test">
+      <Link>test\check.test</Link>
+    </None>
+    <None Include="..\test\collate1.test">
+      <Link>test\collate1.test</Link>
+    </None>
+    <None Include="..\test\collate2.test">
+      <Link>test\collate2.test</Link>
+    </None>
+    <None Include="..\test\collate3.test">
+      <Link>test\collate3.test</Link>
+    </None>
+    <None Include="..\test\collate4.test">
+      <Link>test\collate4.test</Link>
+    </None>
+    <None Include="..\test\collate5.test">
+      <Link>test\collate5.test</Link>
+    </None>
+    <None Include="..\test\collate6.test">
+      <Link>test\collate6.test</Link>
+    </None>
+    <None Include="..\test\collate7.test">
+      <Link>test\collate7.test</Link>
+    </None>
+    <None Include="..\test\collate8.test">
+      <Link>test\collate8.test</Link>
+    </None>
+    <None Include="..\test\collate9.test">
+      <Link>test\collate9.test</Link>
+    </None>
+    <None Include="..\test\collateA.test">
+      <Link>test\collateA.test</Link>
+    </None>
+    <None Include="..\test\colmeta.test">
+      <Link>test\colmeta.test</Link>
+    </None>
+    <None Include="..\test\colname.test">
+      <Link>test\colname.test</Link>
+    </None>
+    <None Include="..\test\conflict.test">
+      <Link>test\conflict.test</Link>
+    </None>
+    <None Include="..\test\corrupt.test">
+      <Link>test\corrupt.test</Link>
+    </None>
+    <None Include="..\test\corrupt2.test">
+      <Link>test\corrupt2.test</Link>
+    </None>
+    <None Include="..\test\corrupt3.test">
+      <Link>test\corrupt3.test</Link>
+    </None>
+    <None Include="..\test\corrupt4.test">
+      <Link>test\corrupt4.test</Link>
+    </None>
+    <None Include="..\test\corrupt5.test">
+      <Link>test\corrupt5.test</Link>
+    </None>
+    <None Include="..\test\corrupt6.test">
+      <Link>test\corrupt6.test</Link>
+    </None>
+    <None Include="..\test\corrupt7.test">
+      <Link>test\corrupt7.test</Link>
+    </None>
+    <None Include="..\test\corrupt8.test">
+      <Link>test\corrupt8.test</Link>
+    </None>
+    <None Include="..\test\corrupt9.test">
+      <Link>test\corrupt9.test</Link>
+    </None>
+    <None Include="..\test\corruptA.test">
+      <Link>test\corruptA.test</Link>
+    </None>
+    <None Include="..\test\corruptB.test">
+      <Link>test\corruptB.test</Link>
+    </None>
+    <None Include="..\test\corruptC.test">
+      <Link>test\corruptC.test</Link>
+    </None>
+    <None Include="..\test\corruptD.test">
+      <Link>test\corruptD.test</Link>
+    </None>
+    <None Include="..\test\count.test">
+      <Link>test\count.test</Link>
+    </None>
+    <None Include="..\test\crash.test">
+      <Link>test\crash.test</Link>
+    </None>
+    <None Include="..\test\crash2.test">
+      <Link>test\crash2.test</Link>
+    </None>
+    <None Include="..\test\crash3.test">
+      <Link>test\crash3.test</Link>
+    </None>
+    <None Include="..\test\crash4.test">
+      <Link>test\crash4.test</Link>
+    </None>
+    <None Include="..\test\crash5.test">
+      <Link>test\crash5.test</Link>
+    </None>
+    <None Include="..\test\crash6.test">
+      <Link>test\crash6.test</Link>
+    </None>
+    <None Include="..\test\crash7.test">
+      <Link>test\crash7.test</Link>
+    </None>
+    <None Include="..\test\crash8.test">
+      <Link>test\crash8.test</Link>
+    </None>
+    <None Include="..\test\createtab.test">
+      <Link>test\createtab.test</Link>
+    </None>
+    <None Include="..\test\cse.test">
+      <Link>test\cse.test</Link>
+    </None>
+    <None Include="..\test\date.test">
+      <Link>test\date.test</Link>
+    </None>
+    <None Include="..\test\default.test">
+      <Link>test\default.test</Link>
+    </None>
+    <None Include="..\test\delete.test">
+      <Link>test\delete.test</Link>
+    </None>
+    <None Include="..\test\delete2.test">
+      <Link>test\delete2.test</Link>
+    </None>
+    <None Include="..\test\delete3.test">
+      <Link>test\delete3.test</Link>
+    </None>
+    <None Include="..\test\descidx1.test">
+      <Link>test\descidx1.test</Link>
+    </None>
+    <None Include="..\test\descidx2.test">
+      <Link>test\descidx2.test</Link>
+    </None>
+    <None Include="..\test\descidx3.test">
+      <Link>test\descidx3.test</Link>
+    </None>
+    <None Include="..\test\diskfull.test">
+      <Link>test\diskfull.test</Link>
+    </None>
+    <None Include="..\test\distinctagg.test">
+      <Link>test\distinctagg.test</Link>
+    </None>
+    <None Include="..\test\enc.test">
+      <Link>test\enc.test</Link>
+    </None>
+    <None Include="..\test\enc2.test">
+      <Link>test\enc2.test</Link>
+    </None>
+    <None Include="..\test\enc3.test">
+      <Link>test\enc3.test</Link>
+    </None>
+    <None Include="..\test\eval.test">
+      <Link>test\eval.test</Link>
+    </None>
+    <None Include="..\test\exclusive.test">
+      <Link>test\exclusive.test</Link>
+    </None>
+    <None Include="..\test\exclusive2.test">
+      <Link>test\exclusive2.test</Link>
+    </None>
+    <None Include="..\test\exec.test">
+      <Link>test\exec.test</Link>
+    </None>
+    <None Include="..\test\expr.test">
+      <Link>test\expr.test</Link>
+    </None>
+    <None Include="..\test\filectrl.test">
+      <Link>test\filectrl.test</Link>
+    </None>
+    <None Include="..\test\filefmt.test">
+      <Link>test\filefmt.test</Link>
+    </None>
+    <None Include="..\test\fkey1.test">
+      <Link>test\fkey1.test</Link>
+    </None>
+    <None Include="..\test\format4.test">
+      <Link>test\format4.test</Link>
+    </None>
+    <None Include="..\test\fts1a.test">
+      <Link>test\fts1a.test</Link>
+    </None>
+    <None Include="..\test\fts1b.test">
+      <Link>test\fts1b.test</Link>
+    </None>
+    <None Include="..\test\fts1c.test">
+      <Link>test\fts1c.test</Link>
+    </None>
+    <None Include="..\test\fts1d.test">
+      <Link>test\fts1d.test</Link>
+    </None>
+    <None Include="..\test\fts1e.test">
+      <Link>test\fts1e.test</Link>
+    </None>
+    <None Include="..\test\fts1f.test">
+      <Link>test\fts1f.test</Link>
+    </None>
+    <None Include="..\test\fts1i.test">
+      <Link>test\fts1i.test</Link>
+    </None>
+    <None Include="..\test\fts1j.test">
+      <Link>test\fts1j.test</Link>
+    </None>
+    <None Include="..\test\fts1k.test">
+      <Link>test\fts1k.test</Link>
+    </None>
+    <None Include="..\test\fts1l.test">
+      <Link>test\fts1l.test</Link>
+    </None>
+    <None Include="..\test\fts1m.test">
+      <Link>test\fts1m.test</Link>
+    </None>
+    <None Include="..\test\fts1n.test">
+      <Link>test\fts1n.test</Link>
+    </None>
+    <None Include="..\test\fts1o.test">
+      <Link>test\fts1o.test</Link>
+    </None>
+    <None Include="..\test\fts1porter.test">
+      <Link>test\fts1porter.test</Link>
+    </None>
+    <None Include="..\test\fts2.test">
+      <Link>test\fts2.test</Link>
+    </None>
+    <None Include="..\test\fts2a.test">
+      <Link>test\fts2a.test</Link>
+    </None>
+    <None Include="..\test\fts2b.test">
+      <Link>test\fts2b.test</Link>
+    </None>
+    <None Include="..\test\fts2c.test">
+      <Link>test\fts2c.test</Link>
+    </None>
+    <None Include="..\test\fts2d.test">
+      <Link>test\fts2d.test</Link>
+    </None>
+    <None Include="..\test\fts2e.test">
+      <Link>test\fts2e.test</Link>
+    </None>
+    <None Include="..\test\fts2f.test">
+      <Link>test\fts2f.test</Link>
+    </None>
+    <None Include="..\test\fts2g.test">
+      <Link>test\fts2g.test</Link>
+    </None>
+    <None Include="..\test\fts2h.test">
+      <Link>test\fts2h.test</Link>
+    </None>
+    <None Include="..\test\fts2i.test">
+      <Link>test\fts2i.test</Link>
+    </None>
+    <None Include="..\test\fts2j.test">
+      <Link>test\fts2j.test</Link>
+    </None>
+    <None Include="..\test\fts2k.test">
+      <Link>test\fts2k.test</Link>
+    </None>
+    <None Include="..\test\fts2l.test">
+      <Link>test\fts2l.test</Link>
+    </None>
+    <None Include="..\test\fts2m.test">
+      <Link>test\fts2m.test</Link>
+    </None>
+    <None Include="..\test\fts2n.test">
+      <Link>test\fts2n.test</Link>
+    </None>
+    <None Include="..\test\fts2o.test">
+      <Link>test\fts2o.test</Link>
+    </None>
+    <None Include="..\test\fts2p.test">
+      <Link>test\fts2p.test</Link>
+    </None>
+    <None Include="..\test\fts2q.test">
+      <Link>test\fts2q.test</Link>
+    </None>
+    <None Include="..\test\fts2r.test">
+      <Link>test\fts2r.test</Link>
+    </None>
+    <None Include="..\test\fts2token.test">
+      <Link>test\fts2token.test</Link>
+    </None>
+    <None Include="..\test\fts3.test">
+      <Link>test\fts3.test</Link>
+    </None>
+    <None Include="..\test\fts3aa.test">
+      <Link>test\fts3aa.test</Link>
+    </None>
+    <None Include="..\test\fts3ab.test">
+      <Link>test\fts3ab.test</Link>
+    </None>
+    <None Include="..\test\fts3ac.test">
+      <Link>test\fts3ac.test</Link>
+    </None>
+    <None Include="..\test\fts3ad.test">
+      <Link>test\fts3ad.test</Link>
+    </None>
+    <None Include="..\test\fts3ae.test">
+      <Link>test\fts3ae.test</Link>
+    </None>
+    <None Include="..\test\fts3af.test">
+      <Link>test\fts3af.test</Link>
+    </None>
+    <None Include="..\test\fts3ag.test">
+      <Link>test\fts3ag.test</Link>
+    </None>
+    <None Include="..\test\fts3ah.test">
+      <Link>test\fts3ah.test</Link>
+    </None>
+    <None Include="..\test\fts3ai.test">
+      <Link>test\fts3ai.test</Link>
+    </None>
+    <None Include="..\test\fts3aj.test">
+      <Link>test\fts3aj.test</Link>
+    </None>
+    <None Include="..\test\fts3ak.test">
+      <Link>test\fts3ak.test</Link>
+    </None>
+    <None Include="..\test\fts3al.test">
+      <Link>test\fts3al.test</Link>
+    </None>
+    <None Include="..\test\fts3am.test">
+      <Link>test\fts3am.test</Link>
+    </None>
+    <None Include="..\test\fts3an.test">
+      <Link>test\fts3an.test</Link>
+    </None>
+    <None Include="..\test\fts3ao.test">
+      <Link>test\fts3ao.test</Link>
+    </None>
+    <None Include="..\test\fts3atoken.test">
+      <Link>test\fts3atoken.test</Link>
+    </None>
+    <None Include="..\test\fts3b.test">
+      <Link>test\fts3b.test</Link>
+    </None>
+    <None Include="..\test\fts3c.test">
+      <Link>test\fts3c.test</Link>
+    </None>
+    <None Include="..\test\fts3d.test">
+      <Link>test\fts3d.test</Link>
+    </None>
+    <None Include="..\test\fts3e.test">
+      <Link>test\fts3e.test</Link>
+    </None>
+    <None Include="..\test\fts3expr.test">
+      <Link>test\fts3expr.test</Link>
+    </None>
+    <None Include="..\test\fts3expr2.test">
+      <Link>test\fts3expr2.test</Link>
+    </None>
+    <None Include="..\test\fts3near.test">
+      <Link>test\fts3near.test</Link>
+    </None>
+    <None Include="..\test\func.test">
+      <Link>test\func.test</Link>
+    </None>
+    <None Include="..\test\fuzz.test">
+      <Link>test\fuzz.test</Link>
+    </None>
+    <None Include="..\test\fuzz2.test">
+      <Link>test\fuzz2.test</Link>
+    </None>
+    <None Include="..\test\fuzz3.test">
+      <Link>test\fuzz3.test</Link>
+    </None>
+    <None Include="..\test\fuzz_common.tcl">
+      <Link>test\fuzz_common.tcl</Link>
+    </None>
+    <None Include="..\test\fuzz_malloc.test">
+      <Link>test\fuzz_malloc.test</Link>
+    </None>
+    <None Include="..\test\hook.test">
+      <Link>test\hook.test</Link>
+    </None>
+    <None Include="..\test\icu.test">
+      <Link>test\icu.test</Link>
+    </None>
+    <None Include="..\test\in.test">
+      <Link>test\in.test</Link>
+    </None>
+    <None Include="..\test\in2.test">
+      <Link>test\in2.test</Link>
+    </None>
+    <None Include="..\test\in3.test">
+      <Link>test\in3.test</Link>
+    </None>
+    <None Include="..\test\in4.test">
+      <Link>test\in4.test</Link>
+    </None>
+    <None Include="..\test\incrblob.test">
+      <Link>test\incrblob.test</Link>
+    </None>
+    <None Include="..\test\incrblob2.test">
+      <Link>test\incrblob2.test</Link>
+    </None>
+    <None Include="..\test\incrblob_err.test">
+      <Link>test\incrblob_err.test</Link>
+    </None>
+    <None Include="..\test\incrvacuum.test">
+      <Link>test\incrvacuum.test</Link>
+    </None>
+    <None Include="..\test\incrvacuum2.test">
+      <Link>test\incrvacuum2.test</Link>
+    </None>
+    <None Include="..\test\incrvacuum_ioerr.test">
+      <Link>test\incrvacuum_ioerr.test</Link>
+    </None>
+    <None Include="..\test\index.test">
+      <Link>test\index.test</Link>
+    </None>
+    <None Include="..\test\index2.test">
+      <Link>test\index2.test</Link>
+    </None>
+    <None Include="..\test\index3.test">
+      <Link>test\index3.test</Link>
+    </None>
+    <None Include="..\test\indexedby.test">
+      <Link>test\indexedby.test</Link>
+    </None>
+    <None Include="..\test\insert.test">
+      <Link>test\insert.test</Link>
+    </None>
+    <None Include="..\test\insert2.test">
+      <Link>test\insert2.test</Link>
+    </None>
+    <None Include="..\test\insert3.test">
+      <Link>test\insert3.test</Link>
+    </None>
+    <None Include="..\test\insert4.test">
+      <Link>test\insert4.test</Link>
+    </None>
+    <None Include="..\test\insert5.test">
+      <Link>test\insert5.test</Link>
+    </None>
+    <None Include="..\test\interrupt.test">
+      <Link>test\interrupt.test</Link>
+    </None>
+    <None Include="..\test\intpkey.test">
+      <Link>test\intpkey.test</Link>
+    </None>
+    <None Include="..\test\io.test">
+      <Link>test\io.test</Link>
+    </None>
+    <None Include="..\test\ioerr.test">
+      <Link>test\ioerr.test</Link>
+    </None>
+    <None Include="..\test\ioerr2.test">
+      <Link>test\ioerr2.test</Link>
+    </None>
+    <None Include="..\test\ioerr3.test">
+      <Link>test\ioerr3.test</Link>
+    </None>
+    <None Include="..\test\ioerr4.test">
+      <Link>test\ioerr4.test</Link>
+    </None>
+    <None Include="..\test\ioerr5.test">
+      <Link>test\ioerr5.test</Link>
+    </None>
+    <None Include="..\test\join.test">
+      <Link>test\join.test</Link>
+    </None>
+    <None Include="..\test\join2.test">
+      <Link>test\join2.test</Link>
+    </None>
+    <None Include="..\test\join3.test">
+      <Link>test\join3.test</Link>
+    </None>
+    <None Include="..\test\join4.test">
+      <Link>test\join4.test</Link>
+    </None>
+    <None Include="..\test\join5.test">
+      <Link>test\join5.test</Link>
+    </None>
+    <None Include="..\test\journal1.test">
+      <Link>test\journal1.test</Link>
+    </None>
+    <None Include="..\test\jrnlmode.test">
+      <Link>test\jrnlmode.test</Link>
+    </None>
+    <None Include="..\test\jrnlmode2.test">
+      <Link>test\jrnlmode2.test</Link>
+    </None>
+    <None Include="..\test\jrnlmode3.test">
+      <Link>test\jrnlmode3.test</Link>
+    </None>
+    <None Include="..\test\keyword1.test">
+      <Link>test\keyword1.test</Link>
+    </None>
+    <None Include="..\test\lastinsert.test">
+      <Link>test\lastinsert.test</Link>
+    </None>
+    <None Include="..\test\laststmtchanges.test">
+      <Link>test\laststmtchanges.test</Link>
+    </None>
+    <None Include="..\test\like.test">
+      <Link>test\like.test</Link>
+    </None>
+    <None Include="..\test\like2.test">
+      <Link>test\like2.test</Link>
+    </None>
+    <None Include="..\test\limit.test">
+      <Link>test\limit.test</Link>
+    </None>
+    <None Include="..\test\loadext.test">
+      <Link>test\loadext.test</Link>
+    </None>
+    <None Include="..\test\loadext2.test">
+      <Link>test\loadext2.test</Link>
+    </None>
+    <None Include="..\test\lock.test">
+      <Link>test\lock.test</Link>
+    </None>
+    <None Include="..\test\lock2.test">
+      <Link>test\lock2.test</Link>
+    </None>
+    <None Include="..\test\lock3.test">
+      <Link>test\lock3.test</Link>
+    </None>
+    <None Include="..\test\lock4.test">
+      <Link>test\lock4.test</Link>
+    </None>
+    <None Include="..\test\lock5.test">
+      <Link>test\lock5.test</Link>
+    </None>
+    <None Include="..\test\lock6.test">
+      <Link>test\lock6.test</Link>
+    </None>
+    <None Include="..\test\lookaside.test">
+      <Link>test\lookaside.test</Link>
+    </None>
+    <None Include="..\test\main.test">
+      <Link>test\main.test</Link>
+    </None>
+    <None Include="..\test\make-where7.tcl">
+      <Link>test\make-where7.tcl</Link>
+    </None>
+    <None Include="..\test\malloc.test">
+      <Link>test\malloc.test</Link>
+    </None>
+    <None Include="..\test\malloc3.test">
+      <Link>test\malloc3.test</Link>
+    </None>
+    <None Include="..\test\malloc4.test">
+      <Link>test\malloc4.test</Link>
+    </None>
+    <None Include="..\test\malloc5.test">
+      <Link>test\malloc5.test</Link>
+    </None>
+    <None Include="..\test\malloc6.test">
+      <Link>test\malloc6.test</Link>
+    </None>
+    <None Include="..\test\malloc7.test">
+      <Link>test\malloc7.test</Link>
+    </None>
+    <None Include="..\test\malloc8.test">
+      <Link>test\malloc8.test</Link>
+    </None>
+    <None Include="..\test\malloc9.test">
+      <Link>test\malloc9.test</Link>
+    </None>
+    <None Include="..\test\mallocA.test">
+      <Link>test\mallocA.test</Link>
+    </None>
+    <None Include="..\test\mallocAll.test">
+      <Link>test\mallocAll.test</Link>
+    </None>
+    <None Include="..\test\mallocB.test">
+      <Link>test\mallocB.test</Link>
+    </None>
+    <None Include="..\test\mallocC.test">
+      <Link>test\mallocC.test</Link>
+    </None>
+    <None Include="..\test\mallocD.test">
+      <Link>test\mallocD.test</Link>
+    </None>
+    <None Include="..\test\mallocE.test">
+      <Link>test\mallocE.test</Link>
+    </None>
+    <None Include="..\test\mallocF.test">
+      <Link>test\mallocF.test</Link>
+    </None>
+    <None Include="..\test\mallocG.test">
+      <Link>test\mallocG.test</Link>
+    </None>
+    <None Include="..\test\mallocH.test">
+      <Link>test\mallocH.test</Link>
+    </None>
+    <None Include="..\test\mallocI.test">
+      <Link>test\mallocI.test</Link>
+    </None>
+    <None Include="..\test\mallocJ.test">
+      <Link>test\mallocJ.test</Link>
+    </None>
+    <None Include="..\test\mallocK.test">
+      <Link>test\mallocK.test</Link>
+    </None>
+    <None Include="..\test\malloc_common.tcl">
+      <Link>test\malloc_common.tcl</Link>
+    </None>
+    <None Include="..\test\manydb.test">
+      <Link>test\manydb.test</Link>
+    </None>
+    <None Include="..\test\memdb.test">
+      <Link>test\memdb.test</Link>
+    </None>
+    <None Include="..\test\memleak.test">
+      <Link>test\memleak.test</Link>
+    </None>
+    <None Include="..\test\memsubsys1.test">
+      <Link>test\memsubsys1.test</Link>
+    </None>
+    <None Include="..\test\memsubsys2.test">
+      <Link>test\memsubsys2.test</Link>
+    </None>
+    <None Include="..\test\minmax.test">
+      <Link>test\minmax.test</Link>
+    </None>
+    <None Include="..\test\minmax2.test">
+      <Link>test\minmax2.test</Link>
+    </None>
+    <None Include="..\test\minmax3.test">
+      <Link>test\minmax3.test</Link>
+    </None>
+    <None Include="..\test\misc1.test">
+      <Link>test\misc1.test</Link>
+    </None>
+    <None Include="..\test\misc2.test">
+      <Link>test\misc2.test</Link>
+    </None>
+    <None Include="..\test\misc3.test">
+      <Link>test\misc3.test</Link>
+    </None>
+    <None Include="..\test\misc4.test">
+      <Link>test\misc4.test</Link>
+    </None>
+    <None Include="..\test\misc5.test">
+      <Link>test\misc5.test</Link>
+    </None>
+    <None Include="..\test\misc6.test">
+      <Link>test\misc6.test</Link>
+    </None>
+    <None Include="..\test\misc7.test">
+      <Link>test\misc7.test</Link>
+    </None>
+    <None Include="..\test\misuse.test">
+      <Link>test\misuse.test</Link>
+    </None>
+    <None Include="..\test\mutex1.test">
+      <Link>test\mutex1.test</Link>
+    </None>
+    <None Include="..\test\mutex2.test">
+      <Link>test\mutex2.test</Link>
+    </None>
+    <None Include="..\test\nan.test">
+      <Link>test\nan.test</Link>
+    </None>
+    <None Include="..\test\notify1.test">
+      <Link>test\notify1.test</Link>
+    </None>
+    <None Include="..\test\notify2.test">
+      <Link>test\notify2.test</Link>
+    </None>
+    <None Include="..\test\notnull.test">
+      <Link>test\notnull.test</Link>
+    </None>
+    <None Include="..\test\null.test">
+      <Link>test\null.test</Link>
+    </None>
+    <None Include="..\test\openv2.test">
+      <Link>test\openv2.test</Link>
+    </None>
+    <None Include="..\test\pageropt.test">
+      <Link>test\pageropt.test</Link>
+    </None>
+    <None Include="..\test\pagesize.test">
+      <Link>test\pagesize.test</Link>
+    </None>
+    <None Include="..\test\pcache.test">
+      <Link>test\pcache.test</Link>
+    </None>
+    <None Include="..\test\pcache2.test">
+      <Link>test\pcache2.test</Link>
+    </None>
+    <None Include="..\test\performance.sql">
+      <Link>test\performance.sql</Link>
+    </None>
+    <None Include="..\test\permutations.test">
+      <Link>test\permutations.test</Link>
+    </None>
+    <None Include="..\test\pragma.test">
+      <Link>test\pragma.test</Link>
+    </None>
+    <None Include="..\test\pragma2.test">
+      <Link>test\pragma2.test</Link>
+    </None>
+    <None Include="..\test\printf.test">
+      <Link>test\printf.test</Link>
+    </None>
+    <None Include="..\test\progress.test">
+      <Link>test\progress.test</Link>
+    </None>
+    <None Include="..\test\ptrchng.test">
+      <Link>test\ptrchng.test</Link>
+    </None>
+    <None Include="..\test\quick.test">
+      <Link>test\quick.test</Link>
+    </None>
+    <None Include="..\test\quote.test">
+      <Link>test\quote.test</Link>
+    </None>
+    <None Include="..\test\randexpr1.tcl">
+      <Link>test\randexpr1.tcl</Link>
+    </None>
+    <None Include="..\test\randexpr1.test">
+      <Link>test\randexpr1.test</Link>
+    </None>
+    <None Include="..\test\rdonly.test">
+      <Link>test\rdonly.test</Link>
+    </None>
+    <None Include="..\test\reindex.test">
+      <Link>test\reindex.test</Link>
+    </None>
+    <None Include="..\test\rollback.test">
+      <Link>test\rollback.test</Link>
+    </None>
+    <None Include="..\test\rowhash.test">
+      <Link>test\rowhash.test</Link>
+    </None>
+    <None Include="..\test\rowid.test">
+      <Link>test\rowid.test</Link>
+    </None>
+    <None Include="..\test\rtree.test">
+      <Link>test\rtree.test</Link>
+    </None>
+    <None Include="..\test\safety.test">
+      <Link>test\safety.test</Link>
+    </None>
+    <None Include="..\test\savepoint.test">
+      <Link>test\savepoint.test</Link>
+    </None>
+    <None Include="..\test\savepoint2.test">
+      <Link>test\savepoint2.test</Link>
+    </None>
+    <None Include="..\test\savepoint3.test">
+      <Link>test\savepoint3.test</Link>
+    </None>
+    <None Include="..\test\savepoint4.test">
+      <Link>test\savepoint4.test</Link>
+    </None>
+    <None Include="..\test\savepoint5.test">
+      <Link>test\savepoint5.test</Link>
+    </None>
+    <None Include="..\test\savepoint6.test">
+      <Link>test\savepoint6.test</Link>
+    </None>
+    <None Include="..\test\schema.test">
+      <Link>test\schema.test</Link>
+    </None>
+    <None Include="..\test\schema2.test">
+      <Link>test\schema2.test</Link>
+    </None>
+    <None Include="..\test\select1.test">
+      <Link>test\select1.test</Link>
+    </None>
+    <None Include="..\test\select2.test">
+      <Link>test\select2.test</Link>
+    </None>
+    <None Include="..\test\select3.test">
+      <Link>test\select3.test</Link>
+    </None>
+    <None Include="..\test\select4.test">
+      <Link>test\select4.test</Link>
+    </None>
+    <None Include="..\test\select5.test">
+      <Link>test\select5.test</Link>
+    </None>
+    <None Include="..\test\select6.test">
+      <Link>test\select6.test</Link>
+    </None>
+    <None Include="..\test\select7.test">
+      <Link>test\select7.test</Link>
+    </None>
+    <None Include="..\test\select8.test">
+      <Link>test\select8.test</Link>
+    </None>
+    <None Include="..\test\select9.test">
+      <Link>test\select9.test</Link>
+    </None>
+    <None Include="..\test\selectA.test">
+      <Link>test\selectA.test</Link>
+    </None>
+    <None Include="..\test\selectB.test">
+      <Link>test\selectB.test</Link>
+    </None>
+    <None Include="..\test\selectC.test">
+      <Link>test\selectC.test</Link>
+    </None>
+    <None Include="..\test\server1.test">
+      <Link>test\server1.test</Link>
+    </None>
+    <None Include="..\test\shared.test">
+      <Link>test\shared.test</Link>
+    </None>
+    <None Include="..\test\shared2.test">
+      <Link>test\shared2.test</Link>
+    </None>
+    <None Include="..\test\shared3.test">
+      <Link>test\shared3.test</Link>
+    </None>
+    <None Include="..\test\shared4.test">
+      <Link>test\shared4.test</Link>
+    </None>
+    <None Include="..\test\shared6.test">
+      <Link>test\shared6.test</Link>
+    </None>
+    <None Include="..\test\shared7.test">
+      <Link>test\shared7.test</Link>
+    </None>
+    <None Include="..\test\shared_err.test">
+      <Link>test\shared_err.test</Link>
+    </None>
+    <None Include="..\test\shortread1.test">
+      <Link>test\shortread1.test</Link>
+    </None>
+    <None Include="..\test\sidedelete.test">
+      <Link>test\sidedelete.test</Link>
+    </None>
+    <None Include="..\test\soak.test">
+      <Link>test\soak.test</Link>
+    </None>
+    <None Include="..\test\softheap1.test">
+      <Link>test\softheap1.test</Link>
+    </None>
+    <None Include="..\test\sort.test">
+      <Link>test\sort.test</Link>
+    </None>
+    <None Include="..\test\speed1.test">
+      <Link>test\speed1.test</Link>
+    </None>
+    <None Include="..\test\speed1p.explain">
+      <Link>test\speed1p.explain</Link>
+    </None>
+    <None Include="..\test\speed1p.test">
+      <Link>test\speed1p.test</Link>
+    </None>
+    <None Include="..\test\speed2.test">
+      <Link>test\speed2.test</Link>
+    </None>
+    <None Include="..\test\speed3.test">
+      <Link>test\speed3.test</Link>
+    </None>
+    <None Include="..\test\speed4.test">
+      <Link>test\speed4.test</Link>
+    </None>
+    <None Include="..\test\speed4p.explain">
+      <Link>test\speed4p.explain</Link>
+    </None>
+    <None Include="..\test\speed4p.test">
+      <Link>test\speed4p.test</Link>
+    </None>
+    <None Include="..\test\sqllimits1.test">
+      <Link>test\sqllimits1.test</Link>
+    </None>
+    <None Include="..\test\subquery.test">
+      <Link>test\subquery.test</Link>
+    </None>
+    <None Include="..\test\subselect.test">
+      <Link>test\subselect.test</Link>
+    </None>
+    <None Include="..\test\substr.test">
+      <Link>test\substr.test</Link>
+    </None>
+    <None Include="..\test\sync.test">
+      <Link>test\sync.test</Link>
+    </None>
+    <None Include="..\test\table.test">
+      <Link>test\table.test</Link>
+    </None>
+    <None Include="..\test\tableapi.test">
+      <Link>test\tableapi.test</Link>
+    </None>
+    <None Include="..\test\tclsqlite.test">
+      <Link>test\tclsqlite.test</Link>
+    </None>
+    <None Include="..\test\tempdb.test">
+      <Link>test\tempdb.test</Link>
+    </None>
+    <None Include="..\test\temptable.test">
+      <Link>test\temptable.test</Link>
+    </None>
+    <None Include="..\test\temptrigger.test">
+      <Link>test\temptrigger.test</Link>
+    </None>
+    <None Include="..\test\tester.tcl">
+      <Link>test\tester.tcl</Link>
+    </None>
+    <None Include="..\test\thread001.test">
+      <Link>test\thread001.test</Link>
+    </None>
+    <None Include="..\test\thread002.test">
+      <Link>test\thread002.test</Link>
+    </None>
+    <None Include="..\test\thread003.test">
+      <Link>test\thread003.test</Link>
+    </None>
+    <None Include="..\test\thread004.test">
+      <Link>test\thread004.test</Link>
+    </None>
+    <None Include="..\test\thread005.test">
+      <Link>test\thread005.test</Link>
+    </None>
+    <None Include="..\test\thread1.test">
+      <Link>test\thread1.test</Link>
+    </None>
+    <None Include="..\test\thread2.test">
+      <Link>test\thread2.test</Link>
+    </None>
+    <None Include="..\test\thread_common.tcl">
+      <Link>test\thread_common.tcl</Link>
+    </None>
+    <None Include="..\test\tkt1435.test">
+      <Link>test\tkt1435.test</Link>
+    </None>
+    <None Include="..\test\tkt1443.test">
+      <Link>test\tkt1443.test</Link>
+    </None>
+    <None Include="..\test\tkt1444.test">
+      <Link>test\tkt1444.test</Link>
+    </None>
+    <None Include="..\test\tkt1449.test">
+      <Link>test\tkt1449.test</Link>
+    </None>
+    <None Include="..\test\tkt1473.test">
+      <Link>test\tkt1473.test</Link>
+    </None>
+    <None Include="..\test\tkt1501.test">
+      <Link>test\tkt1501.test</Link>
+    </None>
+    <None Include="..\test\tkt1512.test">
+      <Link>test\tkt1512.test</Link>
+    </None>
+    <None Include="..\test\tkt1514.test">
+      <Link>test\tkt1514.test</Link>
+    </None>
+    <None Include="..\test\tkt1536.test">
+      <Link>test\tkt1536.test</Link>
+    </None>
+    <None Include="..\test\tkt1537.test">
+      <Link>test\tkt1537.test</Link>
+    </None>
+    <None Include="..\test\tkt1567.test">
+      <Link>test\tkt1567.test</Link>
+    </None>
+    <None Include="..\test\tkt1644.test">
+      <Link>test\tkt1644.test</Link>
+    </None>
+    <None Include="..\test\tkt1667.test">
+      <Link>test\tkt1667.test</Link>
+    </None>
+    <None Include="..\test\tkt1873.test">
+      <Link>test\tkt1873.test</Link>
+    </None>
+    <None Include="..\test\tkt2141.test">
+      <Link>test\tkt2141.test</Link>
+    </None>
+    <None Include="..\test\tkt2192.test">
+      <Link>test\tkt2192.test</Link>
+    </None>
+    <None Include="..\test\tkt2213.test">
+      <Link>test\tkt2213.test</Link>
+    </None>
+    <None Include="..\test\tkt2251.test">
+      <Link>test\tkt2251.test</Link>
+    </None>
+    <None Include="..\test\tkt2285.test">
+      <Link>test\tkt2285.test</Link>
+    </None>
+    <None Include="..\test\tkt2332.test">
+      <Link>test\tkt2332.test</Link>
+    </None>
+    <None Include="..\test\tkt2339.test">
+      <Link>test\tkt2339.test</Link>
+    </None>
+    <None Include="..\test\tkt2391.test">
+      <Link>test\tkt2391.test</Link>
+    </None>
+    <None Include="..\test\tkt2409.test">
+      <Link>test\tkt2409.test</Link>
+    </None>
+    <None Include="..\test\tkt2450.test">
+      <Link>test\tkt2450.test</Link>
+    </None>
+    <None Include="..\test\tkt2565.test">
+      <Link>test\tkt2565.test</Link>
+    </None>
+    <None Include="..\test\tkt2640.test">
+      <Link>test\tkt2640.test</Link>
+    </None>
+    <None Include="..\test\tkt2643.test">
+      <Link>test\tkt2643.test</Link>
+    </None>
+    <None Include="..\test\tkt2686.test">
+      <Link>test\tkt2686.test</Link>
+    </None>
+    <None Include="..\test\tkt2767.test">
+      <Link>test\tkt2767.test</Link>
+    </None>
+    <None Include="..\test\tkt2817.test">
+      <Link>test\tkt2817.test</Link>
+    </None>
+    <None Include="..\test\tkt2820.test">
+      <Link>test\tkt2820.test</Link>
+    </None>
+    <None Include="..\test\tkt2822.test">
+      <Link>test\tkt2822.test</Link>
+    </None>
+    <None Include="..\test\tkt2832.test">
+      <Link>test\tkt2832.test</Link>
+    </None>
+    <None Include="..\test\tkt2854.test">
+      <Link>test\tkt2854.test</Link>
+    </None>
+    <None Include="..\test\tkt2920.test">
+      <Link>test\tkt2920.test</Link>
+    </None>
+    <None Include="..\test\tkt2927.test">
+      <Link>test\tkt2927.test</Link>
+    </None>
+    <None Include="..\test\tkt2942.test">
+      <Link>test\tkt2942.test</Link>
+    </None>
+    <None Include="..\test\tkt3080.test">
+      <Link>test\tkt3080.test</Link>
+    </None>
+    <None Include="..\test\tkt3093.test">
+      <Link>test\tkt3093.test</Link>
+    </None>
+    <None Include="..\test\tkt3121.test">
+      <Link>test\tkt3121.test</Link>
+    </None>
+    <None Include="..\test\tkt3201.test">
+      <Link>test\tkt3201.test</Link>
+    </None>
+    <None Include="..\test\tkt3292.test">
+      <Link>test\tkt3292.test</Link>
+    </None>
+    <None Include="..\test\tkt3298.test">
+      <Link>test\tkt3298.test</Link>
+    </None>
+    <None Include="..\test\tkt3334.test">
+      <Link>test\tkt3334.test</Link>
+    </None>
+    <None Include="..\test\tkt3346.test">
+      <Link>test\tkt3346.test</Link>
+    </None>
+    <None Include="..\test\tkt3357.test">
+      <Link>test\tkt3357.test</Link>
+    </None>
+    <None Include="..\test\tkt3419.test">
+      <Link>test\tkt3419.test</Link>
+    </None>
+    <None Include="..\test\tkt3424.test">
+      <Link>test\tkt3424.test</Link>
+    </None>
+    <None Include="..\test\tkt3442.test">
+      <Link>test\tkt3442.test</Link>
+    </None>
+    <None Include="..\test\tkt3457.test">
+      <Link>test\tkt3457.test</Link>
+    </None>
+    <None Include="..\test\tkt3461.test">
+      <Link>test\tkt3461.test</Link>
+    </None>
+    <None Include="..\test\tkt3472.test">
+      <Link>test\tkt3472.test</Link>
+    </None>
+    <None Include="..\test\tkt3493.test">
+      <Link>test\tkt3493.test</Link>
+    </None>
+    <None Include="..\test\tkt3508.test">
+      <Link>test\tkt3508.test</Link>
+    </None>
+    <None Include="..\test\tkt3522.test">
+      <Link>test\tkt3522.test</Link>
+    </None>
+    <None Include="..\test\tkt3527.test">
+      <Link>test\tkt3527.test</Link>
+    </None>
+    <None Include="..\test\tkt3541.test">
+      <Link>test\tkt3541.test</Link>
+    </None>
+    <None Include="..\test\tkt3554.test">
+      <Link>test\tkt3554.test</Link>
+    </None>
+    <None Include="..\test\tkt3581.test">
+      <Link>test\tkt3581.test</Link>
+    </None>
+    <None Include="..\test\tkt35xx.test">
+      <Link>test\tkt35xx.test</Link>
+    </None>
+    <None Include="..\test\tkt3630.test">
+      <Link>test\tkt3630.test</Link>
+    </None>
+    <None Include="..\test\tkt3718.test">
+      <Link>test\tkt3718.test</Link>
+    </None>
+    <None Include="..\test\tkt3731.test">
+      <Link>test\tkt3731.test</Link>
+    </None>
+    <None Include="..\test\tkt3757.test">
+      <Link>test\tkt3757.test</Link>
+    </None>
+    <None Include="..\test\tkt3761.test">
+      <Link>test\tkt3761.test</Link>
+    </None>
+    <None Include="..\test\tkt3762.test">
+      <Link>test\tkt3762.test</Link>
+    </None>
+    <None Include="..\test\tkt3773.test">
+      <Link>test\tkt3773.test</Link>
+    </None>
+    <None Include="..\test\tkt3791.test">
+      <Link>test\tkt3791.test</Link>
+    </None>
+    <None Include="..\test\tkt3793.test">
+      <Link>test\tkt3793.test</Link>
+    </None>
+    <None Include="..\test\tkt3824.test">
+      <Link>test\tkt3824.test</Link>
+    </None>
+    <None Include="..\test\tkt3832.test">
+      <Link>test\tkt3832.test</Link>
+    </None>
+    <None Include="..\test\tkt3838.test">
+      <Link>test\tkt3838.test</Link>
+    </None>
+    <None Include="..\test\tkt3841.test">
+      <Link>test\tkt3841.test</Link>
+    </None>
+    <None Include="..\test\tkt3871.test">
+      <Link>test\tkt3871.test</Link>
+    </None>
+    <None Include="..\test\tkt3879.test">
+      <Link>test\tkt3879.test</Link>
+    </None>
+    <None Include="..\test\tkt3911.test">
+      <Link>test\tkt3911.test</Link>
+    </None>
+    <None Include="..\test\tkt3918.test">
+      <Link>test\tkt3918.test</Link>
+    </None>
+    <None Include="..\test\tkt3922.test">
+      <Link>test\tkt3922.test</Link>
+    </None>
+    <None Include="..\test\tkt3929.test">
+      <Link>test\tkt3929.test</Link>
+    </None>
+    <None Include="..\test\tkt3992.test">
+      <Link>test\tkt3992.test</Link>
+    </None>
+    <None Include="..\test\tkt3997.test">
+      <Link>test\tkt3997.test</Link>
+    </None>
+    <None Include="..\test\tokenize.test">
+      <Link>test\tokenize.test</Link>
+    </None>
+    <None Include="..\test\trace.test">
+      <Link>test\trace.test</Link>
+    </None>
+    <None Include="..\test\trans.test">
+      <Link>test\trans.test</Link>
+    </None>
+    <None Include="..\test\trans2.test">
+      <Link>test\trans2.test</Link>
+    </None>
+    <None Include="..\test\trans3.test">
+      <Link>test\trans3.test</Link>
+    </None>
+    <None Include="..\test\trigger1.test">
+      <Link>test\trigger1.test</Link>
+    </None>
+    <None Include="..\test\trigger2.test">
+      <Link>test\trigger2.test</Link>
+    </None>
+    <None Include="..\test\trigger3.test">
+      <Link>test\trigger3.test</Link>
+    </None>
+    <None Include="..\test\trigger4.test">
+      <Link>test\trigger4.test</Link>
+    </None>
+    <None Include="..\test\trigger5.test">
+      <Link>test\trigger5.test</Link>
+    </None>
+    <None Include="..\test\trigger6.test">
+      <Link>test\trigger6.test</Link>
+    </None>
+    <None Include="..\test\trigger7.test">
+      <Link>test\trigger7.test</Link>
+    </None>
+    <None Include="..\test\trigger8.test">
+      <Link>test\trigger8.test</Link>
+    </None>
+    <None Include="..\test\trigger9.test">
+      <Link>test\trigger9.test</Link>
+    </None>
+    <None Include="..\test\triggerA.test">
+      <Link>test\triggerA.test</Link>
+    </None>
+    <None Include="..\test\triggerB.test">
+      <Link>test\triggerB.test</Link>
+    </None>
+    <None Include="..\test\types.test">
+      <Link>test\types.test</Link>
+    </None>
+    <None Include="..\test\types2.test">
+      <Link>test\types2.test</Link>
+    </None>
+    <None Include="..\test\types3.test">
+      <Link>test\types3.test</Link>
+    </None>
+    <None Include="..\test\unique.test">
+      <Link>test\unique.test</Link>
+    </None>
+    <None Include="..\test\update.test">
+      <Link>test\update.test</Link>
+    </None>
+    <None Include="..\test\utf16align.test">
+      <Link>test\utf16align.test</Link>
+    </None>
+    <None Include="..\test\vacuum.test">
+      <Link>test\vacuum.test</Link>
+    </None>
+    <None Include="..\test\vacuum2.test">
+      <Link>test\vacuum2.test</Link>
+    </None>
+    <None Include="..\test\vacuum3.test">
+      <Link>test\vacuum3.test</Link>
+    </None>
+    <None Include="..\test\varint.test">
+      <Link>test\varint.test</Link>
+    </None>
+    <None Include="..\test\veryquick.test">
+      <Link>test\veryquick.test</Link>
+    </None>
+    <None Include="..\test\view.test">
+      <Link>test\view.test</Link>
+    </None>
+    <None Include="..\test\vtab1.test">
+      <Link>test\vtab1.test</Link>
+    </None>
+    <None Include="..\test\vtab2.test">
+      <Link>test\vtab2.test</Link>
+    </None>
+    <None Include="..\test\vtab3.test">
+      <Link>test\vtab3.test</Link>
+    </None>
+    <None Include="..\test\vtab4.test">
+      <Link>test\vtab4.test</Link>
+    </None>
+    <None Include="..\test\vtab5.test">
+      <Link>test\vtab5.test</Link>
+    </None>
+    <None Include="..\test\vtab6.test">
+      <Link>test\vtab6.test</Link>
+    </None>
+    <None Include="..\test\vtab7.test">
+      <Link>test\vtab7.test</Link>
+    </None>
+    <None Include="..\test\vtab8.test">
+      <Link>test\vtab8.test</Link>
+    </None>
+    <None Include="..\test\vtab9.test">
+      <Link>test\vtab9.test</Link>
+    </None>
+    <None Include="..\test\vtabA.test">
+      <Link>test\vtabA.test</Link>
+    </None>
+    <None Include="..\test\vtabB.test">
+      <Link>test\vtabB.test</Link>
+    </None>
+    <None Include="..\test\vtabC.test">
+      <Link>test\vtabC.test</Link>
+    </None>
+    <None Include="..\test\vtabD.test">
+      <Link>test\vtabD.test</Link>
+    </None>
+    <None Include="..\test\vtab_alter.test">
+      <Link>test\vtab_alter.test</Link>
+    </None>
+    <None Include="..\test\vtab_err.test">
+      <Link>test\vtab_err.test</Link>
+    </None>
+    <None Include="..\test\vtab_shared.test">
+      <Link>test\vtab_shared.test</Link>
+    </None>
+    <None Include="..\test\where.test">
+      <Link>test\where.test</Link>
+    </None>
+    <None Include="..\test\where2.test">
+      <Link>test\where2.test</Link>
+    </None>
+    <None Include="..\test\where3.test">
+      <Link>test\where3.test</Link>
+    </None>
+    <None Include="..\test\where4.test">
+      <Link>test\where4.test</Link>
+    </None>
+    <None Include="..\test\where5.test">
+      <Link>test\where5.test</Link>
+    </None>
+    <None Include="..\test\where6.test">
+      <Link>test\where6.test</Link>
+    </None>
+    <None Include="..\test\where7.test">
+      <Link>test\where7.test</Link>
+    </None>
+    <None Include="..\test\where8.test">
+      <Link>test\where8.test</Link>
+    </None>
+    <None Include="..\test\where8m.test">
+      <Link>test\where8m.test</Link>
+    </None>
+    <None Include="..\test\where9.test">
+      <Link>test\where9.test</Link>
+    </None>
+    <None Include="..\test\whereA.test">
+      <Link>test\whereA.test</Link>
+    </None>
+    <None Include="..\test\wherelimit.test">
+      <Link>test\wherelimit.test</Link>
+    </None>
+    <None Include="..\test\zeroblob.test">
+      <Link>test\zeroblob.test</Link>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
