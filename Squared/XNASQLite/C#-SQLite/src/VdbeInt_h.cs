@@ -116,7 +116,7 @@ public readonly sqlite3_module pModule; /* Module for cursor pVtabCursor */
       public Pgno payloadSize;     /* Total number of bytes in the record */
       public u32[] aType;          /* Type values for all entries in the record */
       public u32[] aOffset;        /* Cached offsets to the start of each columns data */
-      public byte[] aRow;          /* Data for the current row, if all on one page */
+      public int aRow;             /* Pointer to Data for the current row, if all on one page */
 
     };
     //typedef struct VdbeCursor VdbeCursor;

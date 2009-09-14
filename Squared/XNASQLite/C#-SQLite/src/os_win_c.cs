@@ -19,8 +19,78 @@ using sqlite3_int64 = System.Int64;
 
 namespace CS_SQLite3
 {
+  internal static class HelperMethods
+  {
+    public static bool IsRunningMediumTrust()
+    {
+      // placeholder method
+      // this is where it needs to check if it's running in an ASP.Net MediumTrust or lower environment
+      // in order to pick the appropriate locking strategy
+      return false;
+    }
+  }
+
   public partial class csSQLite
   {
+    /// <summary>
+    /// Basic locking strategy for Console/Winform applications
+    /// </summary>
+    private class LockingStrategy
+    {
+      [DllImport( "kernel32.dll" )]
+      static extern bool LockFileEx( IntPtr hFile, uint dwFlags, uint dwReserved,
+      uint nNumberOfBytesToLockLow, uint nNumberOfBytesToLockHigh,
+      [In] ref System.Threading.NativeOverlapped lpOverlapped );
+
+      const int LOCKFILE_FAIL_IMMEDIATELY = 1;
+
+      public virtual void LockFile( sqlite3_file pFile, long offset, long length )
+      {
+        pFile.fs.Lock( offset, length );
+      }
+
+      public virtual int SharedLockFile( sqlite3_file pFile, long offset, long length )
+      {
+        Debug.Assert( length == SHARED_SIZE );
+        Debug.Assert( offset == SHARED_FIRST );
+        System.Threading.NativeOverlapped ovlp = new System.Threading.NativeOverlapped();
+        ovlp.OffsetLow = (int)offset;
+        ovlp.OffsetHigh = 0;
+        ovlp.EventHandle = IntPtr.Zero;
+
+        return LockFileEx( pFile.fs.Handle, LOCKFILE_FAIL_IMMEDIATELY, 0, (uint)length, 0, ref ovlp ) ? 1 : 0;
+      }
+
+      public virtual void UnlockFile( sqlite3_file pFile, long offset, long length )
+      {
+        pFile.fs.Unlock( offset, length );
+      }
+    }
+
+    /// <summary>
+    /// Locking strategy for Medium Trust. It uses the same trick used in the native code for WIN_CE
+    /// which doesn't support LockFileEx as well.
+    /// </summary>
+    private class MediumTrustLockingStrategy : LockingStrategy
+    {
+      public override int SharedLockFile( sqlite3_file pFile, long offset, long length )
+      {
+        Debug.Assert( length == SHARED_SIZE );
+        Debug.Assert( offset == SHARED_FIRST );
+        try
+        {
+          pFile.fs.Lock( offset + pFile.sharedLockByte, 1 );
+        }
+        catch ( IOException )
+        {
+          return 0;
+        }
+        return 1;
+      }
+    }
+
+
+
     /*
     ** 2004 May 22
     **
@@ -122,10 +192,12 @@ BOOL bExclusive;    /* Indicates an exclusive lock has been obtained */
 } winceLock;
 #endif
 
+    private static LockingStrategy lockingStrategy = HelperMethods.IsRunningMediumTrust() ? new MediumTrustLockingStrategy() : new LockingStrategy();
+
     /*
-** The winFile structure is a subclass of sqlite3_file* specific to the win32
-** portability layer.
-*/
+    ** The winFile structure is a subclass of sqlite3_file* specific to the win32
+    ** portability layer.
+    */
     //typedef struct sqlite3_file sqlite3_file;
     public partial class sqlite3_file
     {
@@ -528,7 +600,7 @@ bReturn = TRUE;
 }
 
 /* Want a read-only lock? */
-  else if (dwFileOffsetLow == SHARED_FIRST &&
+else if (dwFileOffsetLow == SHARED_FIRST &&
 nNumberOfBytesToLockLow == 1){
 if (pFile.shared.bExclusive == 0){
 pFile.local.nReaders ++;
@@ -944,18 +1016,12 @@ return SQLITE_OK;
       return SQLITE_OK;
     }
 
-    /*
-    ** LOCKFILE_FAIL_IMMEDIATELY is undefined on some Windows systems.
-    */
-#if !LOCKFILE_FAIL_IMMEDIATELY
-    const int LOCKFILE_FAIL_IMMEDIATELY = 1;
-#endif
 
     /*
-** Acquire a reader lock.
-** Different API routines are called depending on whether or not this
-** is Win95 or WinNT.
-*/
+    ** Acquire a reader lock.
+    ** Different API routines are called depending on whether or not this
+    ** is Win95 or WinNT.
+    */
     static int getReadLock( sqlite3_file pFile )
     {
 #if XBOX360
@@ -964,22 +1030,7 @@ return SQLITE_OK;
       int res = 0;
       if ( isNT() )
       {
-        OVERLAPPED ovlp = new OVERLAPPED();
-        ovlp.Offset = SHARED_FIRST;
-        ovlp.OffsetHigh = 0;
-        ovlp.hEvent = 0;
-          res = LockFileEx( pFile.fs.SafeFileHandle.DangerousGetHandle().ToInt32() , LOCKFILE_FAIL_IMMEDIATELY,
-        0, SHARED_SIZE, 0, ref ovlp );
-        //try
-        //{
-        //  pFile.fs.Lock(SHARED_FIRST, SHARED_SIZE);
-        //  res = 1;
-        //}
-        //catch ( IOException e )
-        //{
-        ////  Debug.WriteLine(e.Message );
-        //  res = 0;
-        //}
+        res = lockingStrategy.SharedLockFile( pFile, SHARED_FIRST, SHARED_SIZE );
       }
       /* isNT() is 1 if SQLITE_OS_WINCE==1, so this else is never executed.
       */
@@ -1013,7 +1064,7 @@ return SQLITE_OK;
       {
         try
         {
-          pFile.fs.Unlock( SHARED_FIRST, SHARED_SIZE ); //     res = UnlockFile(pFilE.h, SHARED_FIRST, 0, SHARED_SIZE, 0);
+          lockingStrategy.UnlockFile( pFile, SHARED_FIRST, SHARED_SIZE ); //     res = UnlockFile(pFilE.h, SHARED_FIRST, 0, SHARED_SIZE, 0);
         }
         catch ( Exception e )
         {
@@ -1111,7 +1162,7 @@ return SQLITE_OK;
         {
           try
           {
-            pFile.fs.Lock( PENDING_BYTE, 1 );
+            lockingStrategy.LockFile( pFile, PENDING_BYTE, 1 );
             res = 1;
           }
           catch ( Exception e )
@@ -1152,10 +1203,10 @@ return SQLITE_OK;
       */
       if ( ( locktype == RESERVED_LOCK ) && res != 0 )
       {
-        Debug.Assert( pFile.locktype == SHARED_LOCK );        
+        Debug.Assert( pFile.locktype == SHARED_LOCK );
         try
         {
-          pFile.fs.Lock( RESERVED_BYTE, 1 );//res = LockFile(pFile.fs.SafeFileHandle.DangerousGetHandle().ToInt32(), RESERVED_BYTE, 0, 1, 0);
+          lockingStrategy.LockFile( pFile, RESERVED_BYTE, 1 );//res = LockFile(pFile.fs.SafeFileHandle.DangerousGetHandle().ToInt32(), RESERVED_BYTE, 0, 1, 0);
           newLocktype = RESERVED_LOCK;
           res = 1;
         }
@@ -1194,7 +1245,7 @@ return SQLITE_OK;
         //res = LockFile(pFile.fs.SafeFileHandle.DangerousGetHandle().ToInt32(), SHARED_FIRST, 0, SHARED_SIZE, 0);
         try
         {
-          pFile.fs.Lock( SHARED_FIRST, SHARED_SIZE );
+          lockingStrategy.LockFile( pFile, SHARED_FIRST, SHARED_SIZE );
           newLocktype = EXCLUSIVE_LOCK;
           res = 1;
         }
@@ -1221,7 +1272,7 @@ return SQLITE_OK;
       */
       if ( gotPendingLock && locktype == SHARED_LOCK )
       {
-        pFile.fs.Unlock( PENDING_BYTE, 1 );
+        lockingStrategy.UnlockFile( pFile, PENDING_BYTE, 1 );
       }
 
       /* Update the state of the lock has held in the file descriptor then
@@ -1269,8 +1320,8 @@ return SQLITE_OK;
       {
         try
         {
-          id.fs.Lock( RESERVED_BYTE, 1 );
-          id.fs.Unlock( RESERVED_BYTE, 1 );
+          lockingStrategy.LockFile( pFile, RESERVED_BYTE, 1 );
+          lockingStrategy.UnlockFile( pFile, RESERVED_BYTE, 1 );
           rc = 1;
         }
         catch ( IOException e )
@@ -1314,7 +1365,7 @@ return SQLITE_OK;
       type = pFile.locktype;
       if ( type >= EXCLUSIVE_LOCK )
       {
-        id.fs.Unlock( SHARED_FIRST, SHARED_SIZE ); // UnlockFile(pFilE.h, SHARED_FIRST, 0, SHARED_SIZE, 0);
+        lockingStrategy.UnlockFile( pFile, SHARED_FIRST, SHARED_SIZE ); // UnlockFile(pFilE.h, SHARED_FIRST, 0, SHARED_SIZE, 0);
         if ( locktype == SHARED_LOCK && getReadLock( pFile ) == 0 )
         {
           /* This should never happen.  We should always be able to
@@ -1326,7 +1377,7 @@ return SQLITE_OK;
       {
         try
         {
-          id.fs.Unlock( RESERVED_BYTE, 1 );// UnlockFile(pFilE.h, RESERVED_BYTE, 0, 1, 0);
+          lockingStrategy.UnlockFile( pFile, RESERVED_BYTE, 1 );// UnlockFile(pFilE.h, RESERVED_BYTE, 0, 1, 0);
         }
         catch ( Exception e ) { }
       }
@@ -1338,7 +1389,7 @@ return SQLITE_OK;
       {
         try
         {
-          id.fs.Unlock( PENDING_BYTE, 1 );//    UnlockFile(pFilE.h, PENDING_BYTE, 0, 1, 0);
+          lockingStrategy.UnlockFile( pFile, PENDING_BYTE, 1 );//    UnlockFile(pFilE.h, PENDING_BYTE, 0, 1, 0);
         }
         catch ( Exception e )
         { }
@@ -1546,7 +1597,7 @@ sqlite3_snprintf(nBuf, zBuf, "OsError 0x%x (%u)", error, error);
       //  sqlite3_snprintf( nBuf, ref zBuf, "OsError 0x%x (%u)", error, error );
       //}
 #endif
-      zBuf = new Win32Exception(Marshal.GetLastWin32Error()).Message;
+      zBuf = new Win32Exception( Marshal.GetLastWin32Error() ).Message;
 
       return 0;
     }
@@ -1663,19 +1714,28 @@ int isTemp = 0;
         //   dwFlagsAndAttributes,
         //   NULL
         //);
-        try
-        {
+
+        //
+        // retry opening the file a few times; this is because of a racing condition between a delete and open call to the FS
+        //
+        int retries = 3;
+        while ( ( fs == null ) && ( retries > 0 ) )
+          try
+          {
+            retries--;
 #if XBOX360
-          fs = new FileStream( zConverted, dwCreationDisposition, dwDesiredAccess, dwShareMode, 1024);
+            fs = new FileStream( zConverted, dwCreationDisposition, dwDesiredAccess, dwShareMode, 1024);
 #else
-          fs = new FileStream(zConverted, dwCreationDisposition, dwDesiredAccess, dwShareMode, 1024, dwFlagsAndAttributes);
+            fs = new FileStream(zConverted, dwCreationDisposition, dwDesiredAccess, dwShareMode, 1024, dwFlagsAndAttributes);
 #endif
 #if SQLITE_DEBUG
-          OSTRACE3( "OPEN %d (%s)\n", fs.GetHashCode(), fs.Name );
+            OSTRACE3( "OPEN %d (%s)\n", fs.GetHashCode(), fs.Name );
 #endif
-        }
-        catch ( Exception e )
-        { }
+          }
+          catch ( Exception e )
+          {
+            Thread.Sleep( 100 );
+          }
 
         /* isNT() is 1 if SQLITE_OS_WINCE==1, so this else is never executed.
         ** Since the ASCII version of these Windows API do not exist for WINCE,
@@ -2093,7 +2153,7 @@ return SQLITE_OK;
         //    bytesPerSector = SQLITE_DEFAULT_SECTOR_SIZE;
         //  }
         //}
-      bytesPerSector=  GetbytesPerSector( zConverted );
+        bytesPerSector = GetbytesPerSector( zConverted );
       }
       return bytesPerSector == 0 ? SQLITE_DEFAULT_SECTOR_SIZE : bytesPerSector;
     }
@@ -2188,7 +2248,7 @@ static int winDlClose(ref sqlite3_vfs vfs, object data) { return 0; }
       n = nBuf;
       Array.Clear( zBuf, 0, n );// memset( zBuf, 0, nBuf );
 #else
-      byte[] sBuf = BitConverter.GetBytes(System.DateTime.Now.Ticks);
+byte[] sBuf = BitConverter.GetBytes(System.DateTime.Now.Ticks);
 zBuf[0] = sBuf[0];
 zBuf[1] = sBuf[1];
 zBuf[2] = sBuf[2];
@@ -2270,19 +2330,19 @@ n += sizeof( long );
       //const sqlite3_int64 max32BitValue =
       //(sqlite3_int64)2000000000 + (sqlite3_int64)2000000000 + (sqlite3_int64)294967296;
 
-//#if SQLITE_OS_WINCE
-//SYSTEMTIME time;
-//GetSystemTime(&time);
-///* if SystemTimeToFileTime() fails, it returns zero. */
-//if (!SystemTimeToFileTime(&time,&ft)){
-//return 1;
-//}
-//#else
-//      GetSystemTimeAsFileTime( ref ft );
-//      ft = System.DateTime.UtcNow.ToFileTime();
-//#endif
-//      UNUSED_PARAMETER( pVfs );
-//      timeW = ( ( (sqlite3_int64)ft.dwHighDateTime ) * max32BitValue ) + (sqlite3_int64)ft.dwLowDateTime;
+      //#if SQLITE_OS_WINCE
+      //SYSTEMTIME time;
+      //GetSystemTime(&time);
+      ///* if SystemTimeToFileTime() fails, it returns zero. */
+      //if (!SystemTimeToFileTime(&time,&ft)){
+      //return 1;
+      //}
+      //#else
+      //      GetSystemTimeAsFileTime( ref ft );
+      //      ft = System.DateTime.UtcNow.ToFileTime();
+      //#endif
+      //      UNUSED_PARAMETER( pVfs );
+      //      timeW = ( ( (sqlite3_int64)ft.dwHighDateTime ) * max32BitValue ) + (sqlite3_int64)ft.dwLowDateTime;
       timeW = System.DateTime.UtcNow.ToFileTime();
       timeF = timeW % ntuPerDay;          /* fractional days (100-nanoseconds) */
       timeW = timeW / ntuPerDay;          /* whole days */
@@ -2377,18 +2437,6 @@ n += sizeof( long );
     //          Windows DLL definitions
     //
 
-    [DllImport( "kernel32", SetLastError = true )]
-    static extern int LockFileEx(int hFile, int dwFlags, int dwReserved, int nNumberOfBytesToLockLow, int nNumberOfBytesToLockHigh, ref OVERLAPPED lpOverlapped);
-    const int LOCKFILE_EXCLUSIVE_LOCK = 0x00000002;
-
-    public struct OVERLAPPED
-    {
-      public int Internal;
-      public int InternalHigh;
-      public int Offset;
-      public int OffsetHigh;
-      public int hEvent;
-    }
     const int NO_ERROR = 0;
   }
 }

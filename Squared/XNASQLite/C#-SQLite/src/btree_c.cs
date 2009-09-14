@@ -740,8 +740,8 @@ p.eState = CURSOR_INVALID;
     //         SQLITE_OK)
     static int restoreCursorPosition(BtCursor pCur)
     {
-      if (pCur.eState == CURSOR_REQUIRESEEK)
-        return btreeRestoreCursorPosition(pCur);
+      if ( pCur.eState >= CURSOR_REQUIRESEEK )
+        return btreeRestoreCursorPosition( pCur );
       else
         return SQLITE_OK;
     }
@@ -974,7 +974,7 @@ return SQLITE_CORRUPT_BKPT;
     byte[] pCell,         /* The actual data */
     ref CellInfo pInfo        /* Fill in this structure */
     )
-    { btreeParseCellPtr(pPage, pCell, 0, ref pInfo); }
+    { btreeParseCellPtr( pPage, pCell, 0, ref pInfo ); }
     static void btreeParseCellPtr(
     MemPage pPage,         /* Page containing the cell */
     u8[] pCell,            /* Pointer to the cell text. */
@@ -1064,9 +1064,9 @@ return SQLITE_CORRUPT_BKPT;
     }
     //#define parseCell(pPage, iCell, pInfo) \
     //  btreeParseCellPtr((pPage), findCell((pPage), (iCell)), (pInfo))
-    static void parseCell(MemPage pPage, int iCell, ref CellInfo pInfo)
+    static void parseCell( MemPage pPage, int iCell, ref CellInfo pInfo )
     {
-      btreeParseCellPtr(pPage, findCell(pPage, iCell), ref pInfo);
+      btreeParseCellPtr( ( pPage ), findCell( ( pPage ), ( iCell ) ), ref ( pInfo ) );
     }
 
     static void btreeParseCell(
@@ -1075,7 +1075,7 @@ return SQLITE_CORRUPT_BKPT;
     ref CellInfo pInfo         /* Fill in this structure */
     )
     {
-      parseCell(pPage, iCell, ref pInfo);
+      parseCell( pPage, iCell, ref pInfo );
     }
 
     /*
@@ -1187,7 +1187,7 @@ static int cellSize(MemPage pPage, int iCell) { return -1; }
       if (pRC != 0) return;
       CellInfo info = new CellInfo();
       Debug.Assert(pCell != 0);
-      btreeParseCellPtr(pPage, pCell, ref info);
+      btreeParseCellPtr( pPage, pCell, ref info );
       Debug.Assert((info.nData + (pPage.intKey != 0 ? 0 : info.nKey)) == info.nPayload);
       if (info.iOverflow != 0)
       {
@@ -1201,7 +1201,7 @@ static int cellSize(MemPage pPage, int iCell) { return -1; }
       if (pRC != 0) return;
       CellInfo info = new CellInfo();
       Debug.Assert(pCell != null);
-      btreeParseCellPtr(pPage, pCell, ref info);
+      btreeParseCellPtr( pPage, pCell, ref info );
       Debug.Assert((info.nData + (pPage.intKey != 0 ? 0 : info.nKey)) == info.nPayload);
       if (info.iOverflow != 0)
       {
@@ -2987,7 +2987,7 @@ return SQLITE_CORRUPT_BKPT;
           if (eType == PTRMAP_OVERFLOW1)
           {
             CellInfo info = new CellInfo();
-            btreeParseCellPtr(pPage, pCell, ref info);
+            btreeParseCellPtr( pPage, pCell, ref info );
             if (info.iOverflow != 0)
             {
               if (iFrom == sqlite3Get4byte(pPage.aData, pCell, info.iOverflow))
@@ -3954,7 +3954,7 @@ static void assertCellInfo(BtCursor pCur) { }
       if (pCur.info.nSize == 0)
       {
         int iPage = pCur.iPage;
-        btreeParseCell(pCur.apPage[iPage], pCur.aiIdx[iPage], ref pCur.info);
+        btreeParseCell( pCur.apPage[iPage], pCur.aiIdx[iPage], ref pCur.info );
         pCur.validNKey = true;
       }
       else
@@ -4440,6 +4440,7 @@ return SQLITE_ABORT;
     static byte[] fetchPayload(
     BtCursor pCur,   /* Cursor pointing to entry to read from */
     ref int pAmt,    /* Write the number of available bytes here */
+    ref int outOffset, /* Offset into Buffer */
     bool skipKey    /* read beginning at data if this is true */
     )
     {
@@ -4451,12 +4452,13 @@ return SQLITE_ABORT;
       Debug.Assert(pCur != null && pCur.iPage >= 0 && pCur.apPage[pCur.iPage] != null);
       Debug.Assert(pCur.eState == CURSOR_VALID);
       Debug.Assert(cursorHoldsMutex(pCur));
+      outOffset = -1;
       pPage = pCur.apPage[pCur.iPage];
       Debug.Assert(pCur.aiIdx[pCur.iPage] < pPage.nCell);
       if (NEVER(pCur.info.nSize == 0))
       {
         btreeParseCell(pCur.apPage[pCur.iPage], pCur.aiIdx[pCur.iPage],
-        ref pCur.info);
+        ref pCur.info );
       }
 
       //aPayload = pCur.info.pCell;
@@ -4476,17 +4478,19 @@ return SQLITE_ABORT;
       {
         nKey = (u32)pCur.info.nKey;
       }
-      if (skipKey)
+      if ( skipKey )
       {
         //aPayload += nKey;
-        Buffer.BlockCopy(pCur.info.pCell, (int)(pCur.info.iCell + pCur.info.nHeader + nKey), aPayload, 0, (int)(pCur.info.nSize - pCur.info.nHeader - nKey));
+        outOffset = (int)( pCur.info.iCell + pCur.info.nHeader + nKey );
+        Buffer.BlockCopy( pCur.info.pCell, outOffset, aPayload, 0, (int)( pCur.info.nSize - pCur.info.nHeader - nKey ) );
         nLocal = pCur.info.nLocal - nKey;
       }
       else
       {
-        Buffer.BlockCopy(pCur.info.pCell, pCur.info.iCell + pCur.info.nHeader, aPayload, 0, pCur.info.nSize - pCur.info.nHeader);
+        outOffset = (int)( pCur.info.iCell + pCur.info.nHeader );
+        Buffer.BlockCopy( pCur.info.pCell, outOffset, aPayload, 0, pCur.info.nSize - pCur.info.nHeader );
         nLocal = pCur.info.nLocal;
-        Debug.Assert(nLocal <= nKey);
+        Debug.Assert( nLocal <= nKey );
       }
       pAmt = (int)nLocal;
       return aPayload;
@@ -4506,29 +4510,28 @@ return SQLITE_ABORT;
     ** These routines is used to get quick access to key and data
     ** in the common case where no overflow pages are used.
     */
-    static byte[] sqlite3BtreeKeyFetch(BtCursor pCur, ref int pAmt)
+    static byte[] sqlite3BtreeKeyFetch( BtCursor pCur, ref int pAmt, ref int outOffset )
     {
       byte[] p = null;
-      Debug.Assert(sqlite3_mutex_held(pCur.pBtree.db.mutex));
-      Debug.Assert(cursorHoldsMutex(pCur));
-      if (ALWAYS(pCur.eState == CURSOR_VALID))
+      Debug.Assert( sqlite3_mutex_held( pCur.pBtree.db.mutex ) );
+      Debug.Assert( cursorHoldsMutex( pCur ) );
+      if ( ALWAYS( pCur.eState == CURSOR_VALID ) )
       {
-        p = fetchPayload(pCur, ref pAmt, false);
+        p = fetchPayload( pCur, ref pAmt, ref outOffset, false );
       }
       return p;
     }
-    static byte[] sqlite3BtreeDataFetch(BtCursor pCur, ref int pAmt)
+    static byte[] sqlite3BtreeDataFetch( BtCursor pCur, ref int pAmt, ref int outOffset )
     {
       byte[] p = null;
-      Debug.Assert(sqlite3_mutex_held(pCur.pBtree.db.mutex));
-      Debug.Assert(cursorHoldsMutex(pCur));
-      if (ALWAYS(pCur.eState == CURSOR_VALID))
+      Debug.Assert( sqlite3_mutex_held( pCur.pBtree.db.mutex ) );
+      Debug.Assert( cursorHoldsMutex( pCur ) );
+      if ( ALWAYS( pCur.eState == CURSOR_VALID ) )
       {
-        p = fetchPayload(pCur, ref pAmt, true);
+        p = fetchPayload( pCur, ref pAmt, ref outOffset, true );
       }
       return p;
     }
-
 
     /*
     ** Move the cursor down to a new child page.  The newPgno argument is the
@@ -5038,7 +5041,7 @@ return SQLITE_CORRUPT_BKPT;
               u8[] pCellKey;
               u8[] pCellBody = new u8[pPage.aData.Length - pCell + pPage.childPtrSize];
               Buffer.BlockCopy(pPage.aData, pCell - pPage.childPtrSize, pCellBody, 0, pCellBody.Length);//          u8 * const pCellBody = pCell - pPage->childPtrSize;
-              btreeParseCellPtr(pPage, pCellBody, ref pCur.info);
+              btreeParseCellPtr( pPage, pCellBody, ref pCur.info );
               nCell = (int)pCur.info.nKey;
               pCellKey = new byte[nCell]; //sqlite3Malloc( nCell );
               //if ( pCellKey == null )
@@ -5842,7 +5845,7 @@ rc = SQLITE_CORRUPT_BKPT;
       u16 ovflPageSize;
 
       Debug.Assert(sqlite3_mutex_held(pPage.pBt.mutex));
-      btreeParseCellPtr(pPage, pCell, ref info);
+      btreeParseCellPtr( pPage, pCell, ref info );
       if (info.iOverflow == 0)
       {
         return SQLITE_OK;  /* No overflow pages. Return without doing anything */
@@ -5940,7 +5943,7 @@ return SQLITE_CORRUPT_BKPT;
         nData = nZero = 0;
       }
       nHeader += putVarint(pCell, nHeader, (u64)nKey); //putVarint( pCell[nHeader], *(u64*)&nKey );
-      btreeParseCellPtr(pPage, pCell, ref info);
+      btreeParseCellPtr( pPage, pCell, ref info );
       Debug.Assert(info.nHeader == nHeader);
       Debug.Assert(info.nKey == nKey);
       Debug.Assert(info.nData == (u32)(nData + nZero));
@@ -6663,7 +6666,7 @@ if (false)
       int usableSpace;             /* Bytes in pPage beyond the header */
       int pageFlags;               /* Value of pPage.aData[0] */
       int subtotal;                /* Subtotal of bytes in cells on one page */
-      int iSpace1 = 0;             /* First unused byte of aSpace1[] */
+      //int iSpace1 = 0;             /* First unused byte of aSpace1[] */
       int iOvflSpace = 0;          /* First unused byte of aOvflSpace[] */
       int szScratch;               /* Size of scratch memory requested */
       Buffer<MemPage> apOld = BufferPool<MemPage>.Allocate(NB);    /* pPage and up to two siblings */
@@ -6861,9 +6864,9 @@ apDiv[i] = &aOvflSpace[apDiv[i]-pParent.aData];
           Debug.Assert(nCell < nMaxCells);
           szCell[nCell] = sz;
           //pTemp = &aSpace1[iSpace1];
-          iSpace1 += sz;
+          //iSpace1 += sz;
           Debug.Assert(sz <= pBt.pageSize / 4);
-          Debug.Assert(iSpace1 <= pBt.pageSize);
+          //Debug.Assert(iSpace1 <= pBt.pageSize);
           Buffer.BlockCopy(pParent.aData, apDiv[i], pTemp.Array, 0, sz);//memcpy( pTemp, apDiv[i], sz );
           apCell[nCell] = new byte[sz];
           Buffer.BlockCopy(pTemp.Array, leafCorrection, apCell[nCell], 0, sz);//apCell[nCell] = pTemp + leafCorrection;
@@ -7116,7 +7119,7 @@ if (false)
             */
             CellInfo info = new CellInfo();
             j--;
-            btreeParseCellPtr(pNew, apCell[j], ref info);
+            btreeParseCellPtr( pNew, apCell[j], ref info );
             pCell = pTemp;
             sz = 4 + putVarint( pCell, 4, (u64)info.nKey );
             pTemp = null;
@@ -8672,7 +8675,7 @@ if( idx==BTREE_LARGEST_ROOT_PAGE && pMeta>0 ) pBt.readOnly = 1;
         "On tree page %d cell %d: ", iPage, i);
         int iCell = findCell(pPage, i); //pCell = findCell( pPage, i );
         pCell = pPage.aData;
-        btreeParseCellPtr(pPage, iCell, ref info); //btreeParseCellPtr( pPage, pCell, info );
+        btreeParseCellPtr( pPage, iCell, ref info ); //btreeParseCellPtr( pPage, pCell, info );
         sz = info.nData;
         if (0 == pPage.intKey) sz += (u32)info.nKey;
         Debug.Assert(sz == info.nPayload);

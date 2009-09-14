@@ -2399,10 +2399,11 @@ Debug.Assert( pC.pVtabCursor==0 );
                 {
                   payloadSize = 0;
                 }
-                else if ( pC.cacheStatus == p.cacheCtr )
+                else if ( ( pC.cacheStatus == p.cacheCtr ) && ( pC.aRow != -1 ) )
                 {
                   payloadSize = pC.payloadSize;
-                  zRec = pC.aRow;
+                  zRec = new byte[payloadSize];
+                  Buffer.BlockCopy( pCrsr.info.pCell, pC.aRow, zRec, 0, (int)payloadSize );
                 }
                 else if ( pC.isIndex )
                 {
@@ -2478,26 +2479,26 @@ Debug.Assert( pC.pVtabCursor==0 );
                 {
                   if ( pC.isIndex )
                   {
-                    zData = sqlite3BtreeKeyFetch( pCrsr, ref avail );
+                    zData = sqlite3BtreeKeyFetch( pCrsr, ref avail, ref pC.aRow );
                   }
                   else
                   {
-                    zData = sqlite3BtreeDataFetch( pCrsr, ref avail );
+                    zData = sqlite3BtreeDataFetch( pCrsr, ref avail, ref pC.aRow );
                   }
                   /* If KeyFetch()/DataFetch() managed to get the entire payload,
-                  ** save the payload in the pC.aRow cache.  That will save us from
-                  ** having to make additional calls to fetch the content portion of
-                  ** the record.
-                  */
+** save the payload in the pC.aRow cache.  That will save us from
+** having to make additional calls to fetch the content portion of
+** the record.
+*/
                   Debug.Assert( avail >= 0 );
                   if ( payloadSize <= (u32)avail )
                   {
                     zRec = zData;
-                    pC.aRow = zData;
+                    //pC.aRow = zData;
                   }
                   else
                   {
-                    pC.aRow = null;
+                    pC.aRow = -1; //pC.aRow = null;
                   }
                 }
                 /* The following Debug.Assert is true in all cases accept when
@@ -3480,9 +3481,10 @@ rc = SQLITE_CORRUPT_BKPT;
               ** SQLITE_EMPTY is only returned when attempting to open the table
               ** rooted at page 1 of a zero-byte database.  */
               Debug.Assert( rc==SQLITE_EMPTY || rc==SQLITE_OK );
-              if( rc==SQLITE_EMPTY ){
-                    pCur.pCursor = null;
-                    rc = SQLITE_OK;
+              if ( rc == SQLITE_EMPTY )
+              {
+                pCur.pCursor = null;
+                rc = SQLITE_OK;
               }
               /* Set the VdbeCursor.isTable and isIndex variables. Previous versions of
               ** SQLite used to check if the root-page flags were sane at this point

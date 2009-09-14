@@ -1131,13 +1131,14 @@ return SQLITE_NOMEM;
 	/* Note: the calls to BtreeKeyFetch() and DataFetch() below assert()
       ** that both the BtShared and database handle mutexes are held. */
       Debug.Assert( ( pMem.flags & MEM_RowSet ) == 0 );
+      int outOffset = -1;
       if ( key )
       {
-        zData = sqlite3BtreeKeyFetch( pCur, ref available );
+        zData = sqlite3BtreeKeyFetch( pCur, ref available, ref outOffset );
       }
       else
       {
-        zData = sqlite3BtreeDataFetch( pCur, ref available );
+        zData = sqlite3BtreeDataFetch( pCur, ref available, ref outOffset );
       }
       Debug.Assert( zData != null );
 

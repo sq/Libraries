@@ -92,7 +92,7 @@ namespace CS_SQLite3
 ** any limit on the number of terms in a compount SELECT.
 */
 #if !SQLITE_MAX_COMPOUND_SELECT
-    const int SQLITE_MAX_COMPOUND_SELECT = 500;
+    const int SQLITE_MAX_COMPOUND_SELECT = 250;
 #endif
 
     /*

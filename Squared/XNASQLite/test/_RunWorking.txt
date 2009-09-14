@@ -107,13 +107,13 @@ set EXCLUDE {
 	interrupt.test
 	io.test
 	ioerr.test
-	memsubsys2.test
 	tkt2565.test
 	types3.test
 
 #Not implemented in C# port for TCL
 	lock2.test
 	lock4.test
+	memsubsys2.test
 
 #No MALLOC implemented in C# port for TCL
 altermalloc.test
@@ -144,8 +144,6 @@ malloc_common.tcl
 
 #broken to fix in C# port; 3.6.17
   autovacuum.test
-	eval.test
-	rollback.test
 	tclsqlite.test
 }
 
