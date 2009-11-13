@@ -95,4 +95,21 @@ namespace Squared.Task {
             return sb.ToString();
         }
     }
+
+    public static class WebExtensionMethods {
+        public static Future<HttpListenerContext> GetContextAsync (this HttpListener listener) {
+            var f = new Future<HttpListenerContext>();
+            listener.BeginGetContext((ar) => {
+                try {
+                    var result = listener.EndGetContext(ar);
+                    f.Complete(result);
+                } catch (FutureHandlerException) {
+                    throw;
+                } catch (Exception ex) {
+                    f.Fail(ex);
+                }
+            }, null);
+            return f;
+        }
+    }
 }

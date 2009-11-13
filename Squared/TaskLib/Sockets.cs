@@ -21,6 +21,7 @@ namespace Squared.Task.IO {
     }
 
     public class SocketDataAdapter : IAsyncDataSource, IAsyncDataWriter {
+        public bool ThrowOnDisconnect = true;
         Socket _Socket;
         bool _OwnsSocket;
         AsyncCallback _ReadCallback, _WriteCallback;
@@ -45,13 +46,17 @@ namespace Squared.Task.IO {
             var f = (Future<int>)ar.AsyncState;
 
             if (!_Socket.Connected) {
-                f.Fail(new SocketDisconnectedException());
+                if (ThrowOnDisconnect)
+                    f.Fail(new SocketDisconnectedException());
+                else
+                    f.Complete(0);
+
                 return;
             }
 
             try {
                 int bytesRead = _Socket.EndReceive(ar);
-                if (bytesRead == 0) {
+                if (ThrowOnDisconnect && (bytesRead == 0)) {
                     f.Fail(new SocketDisconnectedException());
                 } else {
                     f.Complete(bytesRead);
@@ -66,13 +71,16 @@ namespace Squared.Task.IO {
         public Future<int> Read (byte[] buffer, int offset, int count) {
             var f = new Future<int>();
             if (!_Socket.Connected) {
-                f.Fail(new SocketDisconnectedException());
+                if (ThrowOnDisconnect)
+                    f.Fail(new SocketDisconnectedException());
+                else
+                    f.Complete(0);
             } else {
                 SocketError errorCode;
                 if (_Socket.Available >= count) {
                     try {
                         int bytesRead = _Socket.Receive(buffer, offset, count, SocketFlags.None, out errorCode);
-                        if (bytesRead == 0) {
+                        if (ThrowOnDisconnect && (bytesRead == 0)) {
                             f.Fail(new SocketDisconnectedException());
                         } else {
                             f.Complete(bytesRead);

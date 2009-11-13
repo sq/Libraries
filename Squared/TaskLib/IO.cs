@@ -759,6 +759,9 @@ namespace Squared.Task.IO {
         }
 
         public void Dispose () {
+            if (_BufferCount > 0)
+                Flush();
+
             if (_DataWriter != null) {
                 _DataWriter.Dispose();
                 _DataWriter = null;
