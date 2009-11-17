@@ -4,6 +4,7 @@ using System.Threading;
 using System.IO;
 using System.Text;
 using System.Diagnostics;
+using System.Linq;
 using Squared.Util;
 
 namespace Squared.Task.IO {
@@ -814,8 +815,21 @@ namespace Squared.Task.IO {
             return Write(text.ToCharArray());
         }
 
+        public SignalFuture Write (params string[] strings) {
+            return Write((from str in strings select str.ToCharArray()).ToArray());
+        }
+
         public SignalFuture WriteLine (string text) {
             return Write(text.ToCharArray(), NewLine);
+        }
+
+        public SignalFuture WriteLines (params string[] lines) {
+            char[][] chars = new char[lines.Length * 2][];
+            for (int i = 0; i < lines.Length; i++) {
+                chars[i * 2] = lines[i].ToCharArray();
+                chars[i * 2 + 1] = NewLine;
+            }
+            return Write(chars);
         }
     }
 }

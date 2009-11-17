@@ -179,6 +179,10 @@ namespace CS_SQLite3
         }
     }
 
+    public bool Result_IsNull (int index) {
+        return csSQLite.sqlite3_column_type(vm, index) == csSQLite.SQLITE_NULL;
+    }
+
     /// <summary>
     /// Returns Result column as Long
     /// </summary>
