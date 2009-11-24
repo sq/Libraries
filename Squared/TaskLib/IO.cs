@@ -753,9 +753,9 @@ namespace Squared.Task.IO {
             _NewLine = DefaultNewLine;
             _NewLineBytes = _Encoding.GetBytes(_NewLine);
             bufferSize = Math.Max(MinimumBufferSize, bufferSize);
-            _SendBuffer = new byte[bufferSize];
-            int decodeSize = encoding.GetMaxCharCount(bufferSize);
-            _WriteBuffer = new char[decodeSize];
+            _WriteBuffer = new char[bufferSize];
+            int encodeSize = encoding.GetMaxByteCount(bufferSize);
+            _SendBuffer = new byte[encodeSize];
             _BufferCount = 0;
         }
 
