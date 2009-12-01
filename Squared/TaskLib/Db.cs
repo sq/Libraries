@@ -269,6 +269,14 @@ namespace Squared.Task.Data {
             return InternalExecuteQuery(parameters, queryFunc, false);
         }
 
+        public Future<T> ExecuteScalar<T> (params object[] parameters) {
+            Func<T> queryFunc = () => {
+                _Manager.SetActiveQueryObject(this);
+                return (T)_Command.ExecuteScalar();
+            };
+            return InternalExecuteQuery(parameters, queryFunc, false);
+        }
+
         internal Future<IDataReader> ExecuteReader (params object[] parameters) {
             Func<IDataReader> queryFunc = () => {
                 _Manager.SetActiveQueryObject(this);
@@ -471,9 +479,26 @@ namespace Squared.Task.Data {
             }
         }
 
-        public IFuture ExecuteSQL (string sql, params object[] parameters) {
+        public Future<object> ExecuteScalar (string sql, params object[] parameters) {
+            var cmd = BuildQuery(sql);
+            var f = cmd.ExecuteScalar(parameters);
+            f.RegisterOnComplete((_) => cmd.Dispose());
+            f.RegisterOnDispose((_) => cmd.Dispose());
+            return f;
+        }
+
+        public Future<T> ExecuteScalar<T> (string sql, params object[] parameters) {
+            var cmd = BuildQuery(sql);
+            var f = cmd.ExecuteScalar<T>(parameters);
+            f.RegisterOnComplete((_) => cmd.Dispose());
+            f.RegisterOnDispose((_) => cmd.Dispose());
+            return f;
+        }
+
+        public Future<int> ExecuteSQL (string sql, params object[] parameters) {
             var cmd = BuildQuery(sql);
             var f = cmd.ExecuteNonQuery(parameters);
+            f.RegisterOnComplete((_) => cmd.Dispose());
             f.RegisterOnDispose((_) => cmd.Dispose());
             return f;
         }
