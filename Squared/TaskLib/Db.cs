@@ -36,7 +36,8 @@ namespace Squared.Task.Data {
                         }
 
                         try {
-                            var reader = (IDataReader)f.Result;
+                            var qdr = (QueryDataReader)f.Result;
+                            var reader = qdr.Reader;
                             var enumerator = new DbEnumerator(reader, true);
                             var task = EnumeratorExtensionMethods.EnumerateViaThreadpool(enumerator);
                             i._Task = task;
@@ -177,6 +178,24 @@ namespace Squared.Task.Data {
         }
     }
 
+    public class QueryDataReader : IDisposable {
+        public readonly Query Query;
+        public readonly IDataReader Reader;
+        public readonly IFuture Future;
+        private readonly Action<IFuture> CompletionNotifier;
+
+        public QueryDataReader (Query query, IDataReader reader, IFuture future) {
+            Query = query;
+            Reader = reader;
+            CompletionNotifier = Query.GetCompletionNotifier();
+            Future = future;
+        }
+
+        public void Dispose () {
+            CompletionNotifier(Future);
+        }
+    }
+
     public class Query : IDisposable {
         ConnectionWrapper _Manager;
         IDbCommand _Command;
@@ -215,11 +234,11 @@ namespace Squared.Task.Data {
             }
         }
 
-        private Action GetExecuteFunc<T> (object[] parameters, Func<T> queryFunc, Future<T> future) {
+        private Action GetExecuteFunc<T> (object[] parameters, Func<IFuture, T> queryFunc, Future<T> future) {
             WaitCallback wrapper = (_) => {
                 try {
                     BindParameters(parameters);
-                    T result = queryFunc();
+                    T result = queryFunc(future);
                     future.SetResult(result, null);
                 } catch (Exception e) {
                     future.Fail(e);
@@ -231,7 +250,7 @@ namespace Squared.Task.Data {
             return ef;
         }
 
-        private Future<T> InternalExecuteQuery<T> (object[] parameters, Func<T> queryFunc, bool suspendCompletion) {
+        private Future<T> InternalExecuteQuery<T> (object[] parameters, Func<IFuture, T> queryFunc, bool suspendCompletion) {
             if (_Manager.Closed)
                 return null;
 
@@ -254,7 +273,7 @@ namespace Squared.Task.Data {
         }
 
         public Future<int> ExecuteNonQuery (params object[] parameters) {
-            Func<int> queryFunc = () => {
+            Func<IFuture, int> queryFunc = (f) => {
                 _Manager.SetActiveQueryObject(this);
                 return _Command.ExecuteNonQuery();
             };
@@ -262,7 +281,7 @@ namespace Squared.Task.Data {
         }
 
         public Future<object> ExecuteScalar (params object[] parameters) {
-            Func<object> queryFunc = () => {
+            Func<IFuture, object> queryFunc = (f) => {
                 _Manager.SetActiveQueryObject(this);
                 return _Command.ExecuteScalar();
             };
@@ -270,17 +289,17 @@ namespace Squared.Task.Data {
         }
 
         public Future<T> ExecuteScalar<T> (params object[] parameters) {
-            Func<T> queryFunc = () => {
+            Func<IFuture, T> queryFunc = (f) => {
                 _Manager.SetActiveQueryObject(this);
                 return (T)_Command.ExecuteScalar();
             };
             return InternalExecuteQuery(parameters, queryFunc, false);
         }
 
-        internal Future<IDataReader> ExecuteReader (params object[] parameters) {
-            Func<IDataReader> queryFunc = () => {
+        public Future<QueryDataReader> ExecuteReader (params object[] parameters) {
+            Func<IFuture, QueryDataReader> queryFunc = (f) => {
                 _Manager.SetActiveQueryObject(this);
-                return _Command.ExecuteReader();
+                return new QueryDataReader(this, _Command.ExecuteReader(), f);
             };
             return InternalExecuteQuery(parameters, queryFunc, true);
         }
