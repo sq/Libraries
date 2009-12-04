@@ -38,9 +38,10 @@ namespace Squared.Task.IO {
         }
 
         public void Dispose () {
-            if (_OwnsSocket) {
+            if (_OwnsSocket && (_Socket != null)) {
                 _Socket.Shutdown(SocketShutdown.Both);
                 _Socket.Close();
+                _Socket = null;
             }
         }
 
