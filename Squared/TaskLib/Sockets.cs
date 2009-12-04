@@ -21,7 +21,7 @@ namespace Squared.Task.IO {
     }
 
     public class SocketDataAdapter : IAsyncDataSource, IAsyncDataWriter {
-        public bool ThrowOnDisconnect = true;
+        public bool ThrowOnDisconnect = true, ThrowOnFullSendBuffer = true;
         Socket _Socket;
         bool _OwnsSocket;
         AsyncCallback _ReadCallback, _WriteCallback;
@@ -38,8 +38,10 @@ namespace Squared.Task.IO {
         }
 
         public void Dispose () {
-            if (_OwnsSocket)
+            if (_OwnsSocket) {
+                _Socket.Shutdown(SocketShutdown.Both);
                 _Socket.Close();
+            }
         }
 
         private void ReadCallback (IAsyncResult ar) {
@@ -106,7 +108,11 @@ namespace Squared.Task.IO {
             var f = (SignalFuture)ar.AsyncState;
 
             if (!_Socket.Connected) {
-                f.Fail(new SocketDisconnectedException());
+                if (ThrowOnDisconnect)
+                    f.Fail(new SocketDisconnectedException());
+                else
+                    f.Complete();
+
                 return;
             }
 
@@ -123,10 +129,15 @@ namespace Squared.Task.IO {
         public SignalFuture Write (byte[] buffer, int offset, int count) {
             var f = new SignalFuture();
             if (!_Socket.Connected) {
-                f.Fail(new SocketDisconnectedException());
+                if (ThrowOnDisconnect)
+                    f.Fail(new SocketDisconnectedException());
+                else
+                    f.Complete();
+
             } else {
-                if (IsSendBufferFull())
+                if (ThrowOnFullSendBuffer && IsSendBufferFull())
                     throw new SocketBufferFullException();
+
                 SocketError errorCode;
                 _Socket.BeginSend(buffer, offset, count, SocketFlags.None, out errorCode, _WriteCallback, f);
             }
