@@ -468,7 +468,12 @@ namespace Squared.Task {
         bool IFuture.GetResult (out object result, out Exception error) {
             T temp;
             bool retval = this.GetResult(out temp, out error);
-            result = temp;
+
+            if (error != null)
+                result = null;
+            else
+                result = temp;
+
             return retval;
         }
 

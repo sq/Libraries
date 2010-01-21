@@ -329,7 +329,11 @@ namespace Squared.Task {
 
             _SequenceFuture = scheduler.Start(_Thunk, TaskExecutionPolicy.RunWhileFutureLives);
             _SequenceFuture.RegisterOnComplete((f) => {
-                _NextValueFuture.Complete(false);
+                if (f.Failed)
+                    _NextValueFuture.Fail(f.Error);
+                else
+                    _NextValueFuture.Complete(false);
+
                 Dispose();
             });
         }

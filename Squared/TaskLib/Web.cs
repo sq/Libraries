@@ -19,6 +19,7 @@ namespace Squared.Task {
             public string ContentType;
             public HttpStatusCode StatusCode;
             public string StatusDescription;
+            public Cookie[] Cookies;
 
             public override string ToString () {
                 return Body;
@@ -58,8 +59,10 @@ namespace Squared.Task {
                 );
                 yield return fResponseStream;
 
+                var encoding = Encoding.GetEncoding(response.CharacterSet);
+
                 using (var stream = fResponseStream.Result)
-                using (var adapter = new AsyncTextReader(new StreamDataAdapter(stream, false))) {
+                using (var adapter = new AsyncTextReader(new StreamDataAdapter(stream, false), encoding)) {
                     var fText = adapter.ReadToEnd();
 
                     yield return fText;
@@ -67,11 +70,15 @@ namespace Squared.Task {
                     responseText = fText.Result;
                 }
 
+                var cookies = new Cookie[response.Cookies.Count];
+                response.Cookies.CopyTo(cookies, 0);
+
                 yield return new Result(new Response {
                     Body = responseText,
                     ContentType = response.ContentType,
                     StatusCode = response.StatusCode,
-                    StatusDescription = response.StatusDescription
+                    StatusDescription = response.StatusDescription,
+                    Cookies = cookies
                 });
             }
         }
