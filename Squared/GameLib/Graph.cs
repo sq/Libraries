@@ -60,11 +60,16 @@ namespace Squared.Game.Graph {
                 return null;
 
             var result = new XmlDocument();
-            _Reader.Read();
+            if (!_Reader.Read())
+                return null;
 
             while (_Reader.NodeType != XmlNodeType.EndElement || _Reader.Name != elementName) {
                 var node = result.ReadNode(_Reader);
-                result.AppendChild(node);
+
+                if (node != null)
+                    result.AppendChild(node);
+                else
+                    throw new ArgumentException("Invalid XML fragment");
             }
 
             return result;

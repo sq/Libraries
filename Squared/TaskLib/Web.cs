@@ -59,7 +59,9 @@ namespace Squared.Task {
                 );
                 yield return fResponseStream;
 
-                var encoding = Encoding.GetEncoding(response.CharacterSet);
+                Encoding encoding = AsyncTextReader.DefaultEncoding;
+                if ((response.CharacterSet != null) && (response.CharacterSet.Length > 0))
+                    encoding = Encoding.GetEncoding(response.CharacterSet);
 
                 using (var stream = fResponseStream.Result)
                 using (var adapter = new AsyncTextReader(new StreamDataAdapter(stream, false), encoding)) {
