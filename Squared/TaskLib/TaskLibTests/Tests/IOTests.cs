@@ -403,23 +403,6 @@ namespace Squared.Task.IO {
         }
 
         [Test]
-        public void TestLotsOfBlockingWrites () {
-            byte[] writeBuf = new byte[256];
-            byte[] readBuf = new byte[256];
-
-            for (int i = 0; i < 256; i++)
-                writeBuf[i] = (byte)i;
-
-            for (int i = 0; i < 100; i++)
-                StreamB.Write(writeBuf, 0, writeBuf.Length);
-
-            for (int i = 0; i < 100; i++) {
-                StreamA.Read(readBuf, 0, readBuf.Length);
-                Assert.AreEqual(readBuf, writeBuf);
-            }
-        }
-
-        [Test]
         public void BeginReadInvokesCallbackWhenDataAvailable () {
             byte[] writeBuf = new byte[256];
             byte[] readBuf = new byte[256];

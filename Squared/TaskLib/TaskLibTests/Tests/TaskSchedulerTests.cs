@@ -15,6 +15,7 @@ namespace Squared.Task {
         public int Value;
     }
 
+    [Ignore]
     public class BasicJobQueueTests {
         protected TaskScheduler Scheduler;
         protected Future TestFuture;
