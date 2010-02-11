@@ -11,7 +11,7 @@ using System.Linq.Expressions;
 
 namespace Squared.Task.Data {
     public class ConnectionDisposedException : Exception {
-        public ConnectionDisposedException() :
+        public ConnectionDisposedException () :
             base("The connection was disposed.") {
         }
     }
@@ -268,7 +268,7 @@ namespace Squared.Task.Data {
             return f;
         }
 
-        internal Action<IFuture> GetCompletionNotifier() {
+        internal Action<IFuture> GetCompletionNotifier () {
             Action<IFuture> cn = (f) => _Manager.NotifyQueryCompleted(f);
             return cn;
         }
@@ -331,7 +331,7 @@ namespace Squared.Task.Data {
         private IFuture _Future;
         private bool _Active;
 
-        public Transaction(ConnectionWrapper wrapper) {
+        public Transaction (ConnectionWrapper wrapper) {
             _Wrapper = wrapper;
             _Future = _Wrapper.BeginTransaction();
             _Active = true;
@@ -364,7 +364,7 @@ namespace Squared.Task.Data {
                 _Wrapper.RollbackTransaction();
         }
 
-        void ISchedulable.Schedule(TaskScheduler scheduler, IFuture future) {
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             future.Bind(this._Future);
         }
     }
@@ -466,7 +466,10 @@ namespace Squared.Task.Data {
             if (_Closing)
                 return;
 
-            var wq = new WaitingQuery { Future = future, ExecuteFunc = executeFunc };
+            var wq = new WaitingQuery {
+                Future = future,
+                ExecuteFunc = executeFunc
+            };
             lock (this) {
                 if (_ActiveQuery == null)
                     IssueQuery(wq);
@@ -516,6 +519,14 @@ namespace Squared.Task.Data {
         public Future<T> ExecuteScalar<T> (string sql, params object[] parameters) {
             var cmd = BuildQuery(sql);
             var f = cmd.ExecuteScalar<T>(parameters);
+            f.RegisterOnComplete((_) => cmd.Dispose());
+            f.RegisterOnDispose((_) => cmd.Dispose());
+            return f;
+        }
+
+        public Future<T> ExecuteScalar<T> (string sql, Expression<Func<T>> target, params object[] parameters) {
+            var cmd = BuildQuery(sql);
+            var f = cmd.ExecuteScalar<T>(target, parameters);
             f.RegisterOnComplete((_) => cmd.Dispose());
             f.RegisterOnDispose((_) => cmd.Dispose());
             return f;

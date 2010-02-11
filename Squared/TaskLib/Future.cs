@@ -632,7 +632,7 @@ namespace Squared.Task {
             } 
         }
 
-        public static void Bind<T> (this Future<T> future, Expression<Func<T>> target) {
+        public static Future<T> Bind<T> (this Future<T> future, Expression<Func<T>> target) {
             var member = target.Body as MemberExpression;
 
             if (member == null)
@@ -660,6 +660,8 @@ namespace Squared.Task {
                 default:
                     throw new ArgumentException("Target member must be a field or property", "target");
             }
+
+            return future;
         }
 
         public static void AssertSucceeded (this IFuture future) {
