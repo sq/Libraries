@@ -648,11 +648,35 @@ namespace Squared.Task {
         public void RunExtensionStoresFuture () {
             Future[] f = new Future[1];
             var _ = Scheduler.Start(UseRunExtension(CrashyTask(), f), TaskExecutionPolicy.RunWhileFutureLives);
+            Scheduler.WaitFor(_);
+            Assert.AreEqual("pancakes", f[0].Error.Message);
+        }
+
+        IEnumerator<object> BindToChildTask (IEnumerator<object> task, object[] output) {
+            object result = null;
+            yield return task.Bind(() => result);
+            output[0] = result;
+        }
+
+        [Test]
+        public void BindTaskToVariableStoresResult () {
+            object[] r = new object[1];
+            var _ = Scheduler.Start(BindToChildTask(TaskReturn5(), r), TaskExecutionPolicy.RunWhileFutureLives);
+            Scheduler.WaitFor(_);
+            Assert.AreEqual(5, r[0]);
+        }
+
+        [Test]
+        public void BindTaskToVariableBubblesExceptions () {
+            object[] r = new object[1];
+            var _ = Scheduler.Start(BindToChildTask(CrashyTask(), r), TaskExecutionPolicy.RunWhileFutureLives);
             try {
                 Scheduler.WaitFor(_);
-            } catch (FutureException) {
+                Assert.Fail("Exception was not raised");
+            } catch (FutureException ex) {
+                Console.WriteLine(ex);
             }
-            Assert.AreEqual("pancakes", f[0].Error.Message);
+            Assert.AreEqual(null, r[0]);
         }
     }
 

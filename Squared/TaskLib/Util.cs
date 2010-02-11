@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using Squared.Util;
 using System.Collections;
+using System.Linq.Expressions;
 
 namespace Squared.Task {
     public static class EnumeratorExtensionMethods {
@@ -80,6 +81,47 @@ namespace Squared.Task {
             var rtc = new RunToCompletion(task, TaskExecutionPolicy.RunWhileFutureLives);
             future = rtc.Future;
             return rtc;
+        }
+
+        public static StoreResult<T> Bind<T> (this IEnumerator<object> task, Expression<Func<T>> target) {
+            var sr = new StoreResult<T>(task, target, TaskExecutionPolicy.RunWhileFutureLives);
+            return sr;
+        }
+    }
+
+    /// <summary>
+    /// Schedules a task to run to completion and store its result into a target field or property.
+    /// </summary>
+    public class StoreResult<T> : ISchedulable {
+        IEnumerator<object> _Task;
+        SchedulableGeneratorThunk _Thunk;
+        TaskExecutionPolicy _ExecutionPolicy;
+        Future<T> _Future;
+        IFuture _CompletionSignal;
+
+        public StoreResult (IEnumerator<object> task, Expression<Func<T>> target)
+            : this(task, target, TaskExecutionPolicy.RunWhileFutureLives) {
+        }
+
+        public StoreResult (IEnumerator<object> task, Expression<Func<T>> target, TaskExecutionPolicy executionPolicy) {
+            _Task = task;
+            _Thunk = new SchedulableGeneratorThunk(_Task);
+            _ExecutionPolicy = executionPolicy;
+            _Future = (Future<T>)Squared.Task.Future.New<T>();
+            _Future.Bind(target);
+            _Future.RegisterOnComplete(Completed);
+        }
+
+        void Completed (IFuture f) {
+            if (f.Failed)
+                _CompletionSignal.Fail(f.Error);
+            else
+                _CompletionSignal.Complete();
+        }
+
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
+            _CompletionSignal = future;
+            scheduler.Start(_Future, _Thunk, _ExecutionPolicy);
         }
     }
 

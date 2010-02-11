@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Squared.Task {
     public delegate void OnComplete(IFuture future);
@@ -477,6 +479,18 @@ namespace Squared.Task {
             return retval;
         }
 
+        public bool GetResult (out T result) {
+            int state = _State;
+
+            if (state == State_CompletedWithValue) {
+                result = _Result;
+                return true;
+            }
+
+            result = default(T);
+            return false;
+        }
+
         public bool GetResult (out T result, out Exception error) {
             int state = _State;
 
@@ -589,6 +603,63 @@ namespace Squared.Task {
                 future.SetResult(result, error);
             };
             target.RegisterOnComplete(handler);
+        }
+
+        private static object ResolveTarget (Expression expr) {
+            switch (expr.NodeType) {
+                case ExpressionType.Constant:
+                    return ((ConstantExpression)expr).Value;
+
+                case ExpressionType.MemberAccess:
+                    var me = ((MemberExpression)expr);
+                    var obj = ResolveTarget(me.Expression);
+
+                    switch (me.Member.MemberType) {
+                        case MemberTypes.Property:
+                            var prop = (PropertyInfo)me.Member;
+                            return prop.GetValue(obj, null);
+
+                        case MemberTypes.Field:
+                            var field = (FieldInfo)me.Member;
+                            return field.GetValue(obj);
+
+                        default:
+                            throw new ArgumentException("Expression is not constant");
+                    }
+
+                default:
+                    throw new ArgumentException("Expression is not constant");
+            } 
+        }
+
+        public static void Bind<T> (this Future<T> future, Expression<Func<T>> target) {
+            var member = target.Body as MemberExpression;
+
+            if (member == null)
+                throw new ArgumentException("Target must be an expression that points to a field or property", "target");
+
+            var obj = ResolveTarget(member.Expression);
+
+            switch (member.Member.MemberType) {
+                case MemberTypes.Property:
+                    var prop = (PropertyInfo)member.Member;
+                    future.RegisterOnComplete((_) => {
+                        T result;
+                        if (future.GetResult(out result))
+                            prop.SetValue(obj, result, null);
+                    });
+                break;
+                case MemberTypes.Field:
+                    var field = (FieldInfo)member.Member;
+                    future.RegisterOnComplete((_) => {
+                        T result;
+                        if (future.GetResult(out result))
+                            field.SetValue(obj, result);
+                    });
+                break;
+                default:
+                    throw new ArgumentException("Target member must be a field or property", "target");
+            }
         }
 
         public static void AssertSucceeded (this IFuture future) {

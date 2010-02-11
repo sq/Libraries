@@ -213,5 +213,51 @@ namespace Squared.Task {
                 Assert.AreEqual("pancakes", fhe.InnerException.Message);
             }
         }
+
+        class TestClass {
+            public int Field;
+            public int Property {
+                get;
+                set;
+            }
+        }
+
+        struct TestStruct {
+            public int Field;
+            public int Property {
+                get;
+                set;
+            }
+        }
+
+        [Test]
+        public void BindToField () {
+            var tc = new TestClass();
+            var ts = new TestStruct();
+
+            var f = new Future<int>();
+            f.Bind(() => tc.Field);
+            f.Bind(() => ts.Field);
+            f.Complete(5);
+
+            Assert.AreEqual(5, tc.Field);
+            // () => ts binds to a copy of the struct, not the source struct. Oh well!
+            Assert.AreNotEqual(5, ts.Field);
+        }
+
+        [Test]
+        public void BindToProperty () {
+            var tc = new TestClass();
+            var ts = new TestStruct();
+
+            var f = new Future<int>();
+            f.Bind(() => tc.Property);
+            f.Bind(() => ts.Property);
+            f.Complete(5);
+
+            Assert.AreEqual(5, tc.Property);
+            // () => ts binds to a copy of the struct, not the source struct. Oh well!
+            Assert.AreNotEqual(5, ts.Property);
+        }
     }
 }
