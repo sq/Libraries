@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Data.Common;
 using System.Data;
 using System.Text.RegularExpressions;
+using System.Linq.Expressions;
 
 namespace Squared.Task.Data {
     public class ConnectionDisposedException : Exception {
@@ -294,6 +295,12 @@ namespace Squared.Task.Data {
                 return (T)_Command.ExecuteScalar();
             };
             return InternalExecuteQuery(parameters, queryFunc, false);
+        }
+
+        public Future<T> ExecuteScalar<T> (Expression<Func<T>> target, params object[] parameters) {
+            var f = ExecuteScalar<T>(parameters);
+            f.Bind<T>(target);
+            return f;
         }
 
         public Future<QueryDataReader> ExecuteReader (params object[] parameters) {
