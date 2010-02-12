@@ -203,7 +203,7 @@ namespace Squared.Task {
         [Test]
         public void GetTaskIterator () {
             var e = CountTo100(Thread.CurrentThread);
-            var iter = TaskIterator<int>.FromEnumerator(e);
+            var iter = TaskIterator<int>.FromEnumerable(e);
 
             Scheduler.WaitFor(Scheduler.Start(iter.Start()));
             Assert.AreEqual(iter.Current, 0);
@@ -234,7 +234,7 @@ namespace Squared.Task {
         [Test]
         public void YieldStartGetTaskIterator () {
             var e = CountTo100(Thread.CurrentThread);
-            var iter = TaskIterator<int>.FromEnumerator(e);
+            var iter = TaskIterator<int>.FromEnumerable(e);
 
             var output = new List<int>();
             var f = Scheduler.Start(IterationTask(iter, output));
@@ -250,7 +250,7 @@ namespace Squared.Task {
         [Test]
         public void TestToArray () {
             var e = CountTo100(Thread.CurrentThread);
-            var iter = TaskIterator<int>.FromEnumerator(e);
+            var iter = TaskIterator<int>.FromEnumerable(e);
 
             Scheduler.WaitFor(Scheduler.Start(iter.Start()));
             int[] items = (int[])Scheduler.WaitFor(iter.ToArray());

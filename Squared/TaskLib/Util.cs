@@ -367,11 +367,11 @@ namespace Squared.Task {
         protected virtual void OnDispose () {
         }
 
-        public static TaskIterator<T> FromEnumerator (IEnumerable<T> enumerable) {
+        public static TaskIterator<T> FromEnumerable (IEnumerable<T> enumerable) {
             return FromEnumerator(enumerable.GetEnumerator());
         }
 
-        public static TaskIterator<T> FromEnumerator (IEnumerable enumerable) {
+        public static TaskIterator<T> FromEnumerable (IEnumerable enumerable) {
             return FromEnumerator(enumerable.GetEnumerator());
         }
 
