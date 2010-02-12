@@ -51,30 +51,6 @@ namespace Squared.Task {
             }
         }
 
-        public static IEnumerator<object> GetTask (this IEnumerable obj) {
-            return EnumerateViaThreadpool(obj.GetEnumerator());
-        }
-
-        public static IEnumerator<object> GetTask<T> (this IEnumerable<T> obj) {
-            return EnumerateViaThreadpool(obj.GetEnumerator());
-        }
-
-        public static IEnumerator<object> GetTask (this IEnumerator enumerator) {
-            return EnumerateViaThreadpool(enumerator);
-        }
-
-        public static IEnumerator<object> GetTask<T> (this IEnumerator<T> enumerator) {
-            return EnumerateViaThreadpool(enumerator);
-        }
-
-        public static TaskIterator<T> GetTaskIterator<T> (this IEnumerable<T> obj) {
-            return new TaskIterator<T>(EnumerateViaThreadpool(obj.GetEnumerator()));
-        }
-
-        public static TaskIterator<T> GetTaskIterator<T> (this IEnumerator<T> enumerator) {
-            return new TaskIterator<T>(EnumerateViaThreadpool(enumerator));
-        }
-
         public static RunToCompletion<T> Run<T> (this IEnumerator<object> task, out Future<T> future) {
             var rtc = new RunToCompletion<T>(task, TaskExecutionPolicy.RunWhileFutureLives);
             future = rtc.Future;
@@ -389,6 +365,26 @@ namespace Squared.Task {
         }
 
         protected virtual void OnDispose () {
+        }
+
+        public static TaskIterator<T> FromEnumerator (IEnumerable<T> enumerable) {
+            return FromEnumerator(enumerable.GetEnumerator());
+        }
+
+        public static TaskIterator<T> FromEnumerator (IEnumerable enumerable) {
+            return FromEnumerator(enumerable.GetEnumerator());
+        }
+
+        public static TaskIterator<T> FromEnumerator (IEnumerator<T> enumerator) {
+            return new TaskIterator<T>(
+                EnumeratorExtensionMethods.EnumerateViaThreadpool(enumerator)
+            );
+        }
+
+        public static TaskIterator<T> FromEnumerator (IEnumerator enumerator) {
+            return new TaskIterator<T>(
+                EnumeratorExtensionMethods.EnumerateViaThreadpool(enumerator)
+            );
         }
 
         /// <summary>
