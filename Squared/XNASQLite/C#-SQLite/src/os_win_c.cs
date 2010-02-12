@@ -32,22 +32,38 @@ namespace CS_SQLite3
 
   public partial class csSQLite
   {
+#if XBOX
     /// <summary>
+    /// No-op locking strategy for XBox 360
+    /// </summary>
+    private class LockingStrategy
+    {
+      public virtual int SharedLockFile( sqlite3_file pFile, long offset, long length )
+      {
+        return 0;
+      }
+
+      public virtual void LockFile (sqlite3_file pFile, long offset, long length) {
+      }
+
+      public virtual void UnlockFile (sqlite3_file pFile, long offset, long length) {
+      }
+    }
+
+    private class MediumTrustLockingStrategy : LockingStrategy {
+    }
+#else
+      /// <summary>
     /// Basic locking strategy for Console/Winform applications
     /// </summary>
     private class LockingStrategy
     {
-      [DllImport( "kernel32.dll" )]
+        [DllImport("kernel32.dll")]
       static extern bool LockFileEx( IntPtr hFile, uint dwFlags, uint dwReserved,
       uint nNumberOfBytesToLockLow, uint nNumberOfBytesToLockHigh,
       [In] ref System.Threading.NativeOverlapped lpOverlapped );
 
       const int LOCKFILE_FAIL_IMMEDIATELY = 1;
-
-      public virtual void LockFile( sqlite3_file pFile, long offset, long length )
-      {
-        pFile.fs.Lock( offset, length );
-      }
 
       public virtual int SharedLockFile( sqlite3_file pFile, long offset, long length )
       {
@@ -61,9 +77,12 @@ namespace CS_SQLite3
         return LockFileEx( pFile.fs.Handle, LOCKFILE_FAIL_IMMEDIATELY, 0, (uint)length, 0, ref ovlp ) ? 1 : 0;
       }
 
-      public virtual void UnlockFile( sqlite3_file pFile, long offset, long length )
-      {
-        pFile.fs.Unlock( offset, length );
+      public virtual void LockFile (sqlite3_file pFile, long offset, long length) {
+          pFile.fs.Lock(offset, length);
+      }
+
+      public virtual void UnlockFile (sqlite3_file pFile, long offset, long length) {
+          pFile.fs.Unlock(offset, length);
       }
     }
 
@@ -88,8 +107,7 @@ namespace CS_SQLite3
         return 1;
       }
     }
-
-
+#endif
 
     /*
     ** 2004 May 22

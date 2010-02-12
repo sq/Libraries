@@ -4,7 +4,11 @@ using System.Text;
 using System.Threading;
 using Squared.Util;
 using System.Collections;
+
+#if !XBOX
+using System.Linq;
 using System.Linq.Expressions;
+#endif
 
 namespace Squared.Task {
     public static class EnumeratorExtensionMethods {
@@ -83,12 +87,15 @@ namespace Squared.Task {
             return rtc;
         }
 
+#if !XBOX
         public static StoreResult<T> Bind<T> (this IEnumerator<object> task, Expression<Func<T>> target) {
             var sr = new StoreResult<T>(task, target, TaskExecutionPolicy.RunWhileFutureLives);
             return sr;
         }
+#endif
     }
 
+#if !XBOX
     /// <summary>
     /// Schedules a task to run to completion and store its result into a target field or property.
     /// </summary>
@@ -124,6 +131,7 @@ namespace Squared.Task {
             scheduler.Start(_Future, _Thunk, _ExecutionPolicy);
         }
     }
+#endif
 
     /// <summary>
     /// Allows you to emulate a try { } finally block inside of a task, via using () { }.

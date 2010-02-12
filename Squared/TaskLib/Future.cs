@@ -3,10 +3,13 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Linq.Expressions;
 using System.Reflection;
+using System.Linq;
+
+#if !XBOX
+using System.Linq.Expressions;
+#endif
 
 namespace Squared.Task {
     public delegate void OnComplete(IFuture future);
@@ -605,6 +608,7 @@ namespace Squared.Task {
             target.RegisterOnComplete(handler);
         }
 
+#if !XBOX
         private static object ResolveTarget (Expression expr) {
             switch (expr.NodeType) {
                 case ExpressionType.Constant:
@@ -663,6 +667,7 @@ namespace Squared.Task {
 
             return future;
         }
+#endif
 
         public static void AssertSucceeded (this IFuture future) {
             var temp = future.Result;
