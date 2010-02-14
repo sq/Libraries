@@ -130,10 +130,13 @@ namespace Squared.Task.Data {
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var q = qm.BuildQuery("SELECT value FROM Test WHERE value = ?");
 
-                using (var iterator = new DbTaskIterator(q, 5)) {
-                    scheduler.WaitFor(scheduler.Start(iterator.Start()));
+                using (var iterator = q.Execute(5)) {
+                    scheduler.WaitFor(iterator.Fetch());
 
-                    Assert.AreEqual(iterator.Current.GetInt32(0), 5);
+                    using (var e = iterator.CurrentItems) {
+                        Assert.IsTrue(e.MoveNext());
+                        Assert.AreEqual(e.Current.GetInt32(0), 5);
+                    }
                 }
             }
         }
@@ -149,8 +152,8 @@ namespace Squared.Task.Data {
                 var q1 = qm.BuildQuery("SELECT value FROM test");
                 var q2 = qm.BuildQuery("INSERT INTO test (value) VALUES (?)");
 
-                var iterator = new DbTaskIterator(q1);
-                var f1 = scheduler.Start(iterator.Start());
+                var iterator = q1.Execute();
+                var f1 = scheduler.Start(iterator.Fetch());
                 var f2 = q2.ExecuteNonQuery(200);
 
                 f1.RegisterOnComplete((f) => {
@@ -346,8 +349,8 @@ namespace Squared.Task.Data {
             using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var q = qm.BuildQuery("SELECT * FROM Test");
-                var iter = new DbTaskIterator(q);
-                var iterF = scheduler.Start(iter.Start());
+                var iter = q.Execute();
+                var iterF = scheduler.Start(iter.Fetch());
                 var f = qm.Clone();
 
                 Assert.IsFalse(f.Completed);
@@ -371,15 +374,15 @@ namespace Squared.Task.Data {
             for (int i = 0; i < 10; i++)
                 DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
 
-            DbTaskIterator iter;
+            TaskEnumerator<IDataRecord> iter;
             IFuture f;
 
             using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var q = qm.BuildQuery("SELECT * FROM Test");
                 var q2 = qm.BuildQuery("SELECT COUNT(*) FROM Test");
-                iter = new DbTaskIterator(q);
-                scheduler.Start(iter.Start());
+                iter = q.Execute();
+                scheduler.Start(iter.Fetch());
                 f = q2.ExecuteScalar();
             }
 

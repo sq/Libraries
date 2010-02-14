@@ -6,6 +6,7 @@ using System.Data;
 using System.Data.Common;
 using System.Threading;
 using System.Collections;
+using Squared.Util;
 
 namespace Squared.Task {
     [TestFixture]
@@ -42,27 +43,37 @@ namespace Squared.Task {
 
         [Test]
         public void TestIterateSequence () {
-            var iter = new TaskIterator<int>(CountToThree());
+            using (var iter = new TaskEnumerator<int>(CountToThree(), 1)) {
+                for (int i = 1; i <= 3; i++) {
+                    Assert.IsFalse(iter.Disposed);
+                    Scheduler.WaitFor(iter.Fetch());
 
-            Scheduler.WaitFor(Scheduler.Start(iter.Start()));
-            Assert.AreEqual(iter.Current, 1);
-            Scheduler.WaitFor(iter.MoveNext());
-            Assert.AreEqual(iter.Current, 2);
-            Scheduler.WaitFor(iter.MoveNext());
-            Assert.AreEqual(iter.Current, 3);
-
-            iter.Dispose();
+                    using (var e = iter.CurrentItems) {
+                        Assert.IsTrue(e.MoveNext());
+                        Assert.AreEqual(i, e.Current);
+                        Assert.IsFalse(e.MoveNext());
+                    }
+                }
+            }
         }
 
         [Test]
         public void TestTypeCoercion () {
-            var iter = new TaskIterator<int>(TwoTypes());
+            var iter = new TaskEnumerator<int>(TwoTypes(), 1);
 
-            Scheduler.WaitFor(Scheduler.Start(iter.Start()));
-            Assert.AreEqual(iter.Current, 1);
+            Assert.IsFalse(iter.Disposed);
+            Scheduler.WaitFor(iter.Fetch());
+
+            using (var e = iter.CurrentItems) {
+                Assert.IsTrue(e.MoveNext());
+                Assert.AreEqual(1, e.Current);
+            }
+
+            Assert.IsFalse(iter.Disposed);
+
             try {
-                Scheduler.WaitFor(iter.MoveNext());
-                Assert.Fail("MoveNext did not throw an InvalidCastException");
+                Scheduler.WaitFor(iter.Fetch());
+                Assert.Fail("Fetch did not throw an InvalidCastException");
             } catch (FutureException fe) {
                 Assert.IsInstanceOfType(typeof(InvalidCastException), fe.InnerException);
             }
@@ -71,33 +82,37 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void IteratorRaisesOnceIterationIsComplete () {
-            var iter = new TaskIterator<int>(JustOne());
+        public void IteratorFailsMoveNextOnceIterationIsComplete () {
+            var iter = new TaskEnumerator<int>(JustOne(), 1);
 
-            Scheduler.WaitFor(Scheduler.Start(iter.Start()));
-            Scheduler.WaitFor(iter.MoveNext());
+            Assert.IsFalse(iter.Disposed);
+            Scheduler.WaitFor(iter.Fetch());
 
-            try {
-                var _ = iter.Current;
-                Assert.Fail("iter.Current did not throw an InvalidOperationException");
-            } catch (InvalidOperationException) {
+            using (var e = iter.CurrentItems) {
+                Assert.IsTrue(e.MoveNext());
+                Assert.AreEqual(1, e.Current);
+                Assert.IsFalse(e.MoveNext());
             }
-            try {
-                var f = iter.MoveNext();
-                Assert.Fail("iter.MoveNext did not throw an InvalidOperationException");
-            } catch (InvalidOperationException) {
-            }
+
+            Assert.IsFalse(iter.Disposed);
+            Scheduler.WaitFor(iter.Fetch());
+            Assert.IsTrue(iter.Disposed);
 
             iter.Dispose();
         }
 
         [Test]
         public void IteratorRaisesIfCurrentIsAccessedBeforeInitialMoveNext () {
-            var iter = new TaskIterator<int>(JustOne());
+            var iter = new TaskEnumerator<int>(JustOne(), 1);
+
+            Assert.IsFalse(iter.Disposed);
+            Scheduler.WaitFor(iter.Fetch());
 
             try {
-                var _ = iter.Current;
-                Assert.Fail("iter.Current did not throw an InvalidOperationException");
+                using (var e = iter.CurrentItems) {
+                    var _ = e.Current;
+                    Assert.Fail("e.Current did not throw an InvalidOperationException");
+                }
             } catch (InvalidOperationException) {
             }
 
@@ -106,51 +121,31 @@ namespace Squared.Task {
 
         [Test]
         public void IteratorRaisesOnceIteratorIsDisposed () {
-            var iter = new TaskIterator<int>(JustOne());
+            var iter = new TaskEnumerator<int>(JustOne(), 1);
             iter.Dispose();
 
             try {
-                var _ = iter.Current;
-                Assert.Fail("iter.Current did not throw an InvalidOperationException");
-            } catch (InvalidOperationException) {
-            }
-            try {
-                var f = iter.MoveNext();
-                Assert.Fail("iter.MoveNext did not throw an InvalidOperationException");
+                using (var e = iter.CurrentItems) {
+                    var _ = e.Current;
+                    Assert.Fail("e.Current did not throw an InvalidOperationException");
+                }
             } catch (InvalidOperationException) {
             }
         }
 
         [Test]
         public void IteratorDisposedIsTrueOnceDisposed () {
-            var iter = new TaskIterator<int>(JustOne());
+            var iter = new TaskEnumerator<int>(JustOne(), 1);
             iter.Dispose();
 
             Assert.IsTrue(iter.Disposed);
         }
 
         [Test]
-        public void IteratorDisposedIsTrueOnceIterationCompletesButNotBefore () {
-            var iter = new TaskIterator<int>(CountToThree());
-            Assert.IsFalse(iter.Disposed);
-
-            Scheduler.WaitFor(Scheduler.Start(iter.Start()));
-            Assert.IsFalse(iter.Disposed);
-
-            Scheduler.WaitFor(iter.MoveNext());
-            Scheduler.WaitFor(iter.MoveNext());
-            Scheduler.WaitFor(iter.MoveNext());
-            Assert.IsTrue(iter.Disposed);
-        }
-
-        [Test]
         public void TestToArray () {
-            var iter = new TaskIterator<int>(CountToThree());
+            var iter = new TaskEnumerator<int>(CountToThree(), 1);
 
-            Scheduler.WaitFor(Scheduler.Start(iter.Start()));
-
-            var f = iter.ToArray();
-            int[] result = (int[])Scheduler.WaitFor(f);
+            int[] result = (int[])Scheduler.WaitFor(iter.GetArray());
 
             Assert.AreEqual(new int[] { 1, 2, 3 }, result);
         }
@@ -201,40 +196,27 @@ namespace Squared.Task {
         }
 
         [Test]
-        public void GetTaskIterator () {
-            var e = CountTo100(Thread.CurrentThread);
-            var iter = TaskIterator<int>.FromEnumerable(e);
-
-            Scheduler.WaitFor(Scheduler.Start(iter.Start()));
-            Assert.AreEqual(iter.Current, 0);
-
-            Scheduler.WaitFor(iter.MoveNext());
-            Assert.AreEqual(iter.Current, 1);
-        }
-
-        [Test]
         public void EnumeratorDisposal () {
             var e = new TestEnumerator();
-            var iter = TaskIterator<object>.FromEnumerator(e);
-            Scheduler.WaitFor(Scheduler.Start(iter.Start()));
+            var iter = TaskEnumerator<object>.FromEnumerator(e, 1);
+            Scheduler.WaitFor(iter.Fetch());
+            iter.Dispose();
             Assert.IsTrue(e.Disposed);
-            Assert.IsTrue(iter.Disposed);
         }
 
-        IEnumerator<object> IterationTask (TaskIterator<int> iterator, List<int> output) {
-            yield return iterator.Start();
-
+        IEnumerator<object> IterationTask (TaskEnumerator<int> iterator, List<int> output) {
             while (!iterator.Disposed) {
-                output.Add(iterator.Current);
+                yield return iterator.Fetch();
 
-                yield return iterator.MoveNext();
+                foreach (var item in iterator)
+                    output.Add(item);
             }
         }
 
         [Test]
         public void YieldStartGetTaskIterator () {
             var e = CountTo100(Thread.CurrentThread);
-            var iter = TaskIterator<int>.FromEnumerable(e);
+            var iter = TaskEnumerator<int>.FromEnumerable(e, 1);
 
             var output = new List<int>();
             var f = Scheduler.Start(IterationTask(iter, output));
@@ -250,10 +232,9 @@ namespace Squared.Task {
         [Test]
         public void TestToArray () {
             var e = CountTo100(Thread.CurrentThread);
-            var iter = TaskIterator<int>.FromEnumerable(e);
+            var iter = TaskEnumerator<int>.FromEnumerable(e, 1);
 
-            Scheduler.WaitFor(Scheduler.Start(iter.Start()));
-            int[] items = (int[])Scheduler.WaitFor(iter.ToArray());
+            int[] items = (int[])Scheduler.WaitFor(iter.GetArray());
 
             int[] expected = new int[100];
             for (int i = 0; i < 100; i++)
@@ -265,13 +246,32 @@ namespace Squared.Task {
         [Test]
         public void TestToArrayOnEmptySequence () {
             var e = new TestEnumerator();
-            var iter = TaskIterator<object>.FromEnumerator(e);
+            var iter = TaskEnumerator<object>.FromEnumerator(e, 1);
 
-            Scheduler.WaitFor(Scheduler.Start(iter.Start()));
-            object[] items = (object[])Scheduler.WaitFor(iter.ToArray());
+            object[] items = (object[])Scheduler.WaitFor(iter.GetArray());
             object[] expected = new object[0];
 
             Assert.AreEqual(expected, items);
+        }
+
+        [Test]
+        public void TestBufferingPerformance () {
+            int[] buf = new int[1024 * 64], copy = null;
+            for (int i = 0; i < buf.Length; i++)
+                buf[i] = i;
+
+            for (int bs = 1; bs <= 512; bs *= 2) {
+                long timeStart = Time.Ticks;
+
+                using (var iter = TaskEnumerator<int>.FromEnumerator(buf.GetEnumerator(), bs)) {
+                    copy = (int[])Scheduler.WaitFor(iter.GetArray());
+                }
+
+                long timeEnd = Time.Ticks;
+
+                TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
+                Console.WriteLine("Took {0:N2} secs with a buffer size of {1}.", elapsed.TotalSeconds, bs);
+            }
         }
     }
 }

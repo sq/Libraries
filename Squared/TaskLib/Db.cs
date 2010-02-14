@@ -16,96 +16,6 @@ namespace Squared.Task.Data {
         }
     }
 
-    public class DbTaskIterator : TaskIterator<DbDataRecord> {
-        class StartThunk : ISchedulable {
-            DbTaskIterator _Iterator;
-
-            public StartThunk (DbTaskIterator iterator) {
-                _Iterator = iterator;
-            }
-
-            public void Schedule (TaskScheduler scheduler, IFuture future) {
-                DbTaskIterator i = _Iterator;
-                i._CompletionNotifier = i.Query.GetCompletionNotifier();
-                i._QueryFuture = i.Query.ExecuteReader(i.Parameters);
-                i._QueryFuture.RegisterOnComplete(
-                    (f) => {
-                        var e = f.Error;
-                        if (e != null) {
-                            future.SetResult(null, e);
-                            return;
-                        }
-
-                        try {
-                            var qdr = (QueryDataReader)f.Result;
-                            var reader = qdr.Reader;
-                            var enumerator = new DbEnumerator(reader, true);
-                            var task = EnumeratorExtensionMethods.EnumerateViaThreadpool(enumerator);
-                            i._Task = task;
-                            i.Initialize(scheduler);
-                            if (i.Future != null) {
-                                i.Future.RegisterOnComplete((_) => {
-                                    reader.Dispose();
-                                });
-                                i.Future.RegisterOnDispose((_) => {
-                                    reader.Dispose();
-                                });
-                                future.Bind(i.MoveNext());
-                            } else {
-                                reader.Dispose();
-                                future.Complete();
-                            }
-                        } catch (Exception ex) {
-                            future.SetResult(null, ex);
-                        }
-                    }
-                );
-            }
-        };
-
-        Action<IFuture> _CompletionNotifier = null;
-        IFuture _QueryFuture = null;
-        Query _Query;
-        object[] _Parameters;
-
-        public DbTaskIterator (Query query, params object[] parameters)
-            : base() {
-            _Query = query;
-            _Parameters = parameters;
-        }
-
-        public Query Query {
-            get {
-                return _Query;
-            }
-        }
-
-        public object[] Parameters {
-            get {
-                return _Parameters;
-            }
-        }
-
-        protected override void OnDispose () {
-            if ((_CompletionNotifier != null) && (_QueryFuture != null)) {
-                try {
-                    _QueryFuture.Dispose();
-                } catch (FutureDisposedException) {
-                }
-                _CompletionNotifier(_QueryFuture);
-            }
-
-            _QueryFuture = null;
-            _CompletionNotifier = null;
-
-            base.OnDispose();
-        }
-
-        protected override ISchedulable GetStartThunk () {
-            return new StartThunk(this);
-        }
-    }
-
     public static class DbExtensionMethods {
         public static Future AsyncExecuteScalar (this IDbCommand cmd) {
             var f = new Future();
@@ -257,14 +167,23 @@ namespace Squared.Task.Data {
 
             ValidateParameters(parameters);
             var f = new Future<T>();
-            Action ef = GetExecuteFunc(parameters, queryFunc, f);
+
+            OnDispose od = (_) => {
+                _Manager.NotifyQueryCompleted(f);
+            };
+            f.RegisterOnDispose(od);
+
             if (!suspendCompletion) {
                 OnComplete oc = (_) => {
                     _Manager.NotifyQueryCompleted(f);
                 };
+
                 f.RegisterOnComplete(oc);
             }
+
+            Action ef = GetExecuteFunc(parameters, queryFunc, f);
             _Manager.EnqueueQuery(f, ef);
+
             return f;
         }
 
@@ -309,6 +228,40 @@ namespace Squared.Task.Data {
                 return new QueryDataReader(this, _Command.ExecuteReader(), f);
             };
             return InternalExecuteQuery(parameters, queryFunc, true);
+        }
+
+        public TaskEnumerator<IDataRecord> Execute (params object[] parameters) {
+            var fReader = this.ExecuteReader(parameters);
+
+            var e = new TaskEnumerator<IDataRecord>(ExecuteTask(fReader), 1);
+            e.OnEarlyDispose = () => {
+                fReader.Dispose();
+
+                if (fReader.Completed)
+                    fReader.Result.Dispose();
+            };
+
+            return e;
+        }
+
+        protected IEnumerator<object> ExecuteTask (Future<QueryDataReader> fReader) {
+            yield return fReader;
+
+            using (var reader = fReader.Result) {
+                Func<bool> moveNext = () =>
+                    reader.Reader.Read();
+                var nv = new NextValue(reader.Reader);
+
+                while (true) {
+                    var f = Future.RunInThread(moveNext);
+                    yield return f;
+
+                    if (f.Result == false)
+                        break;
+                    else
+                        yield return nv;
+                }
+            }
         }
 
         public IDbCommand Command {
@@ -494,8 +447,10 @@ namespace Squared.Task.Data {
         internal void NotifyQueryCompleted (IFuture future) {
             lock (this) {
                 if (_ActiveQuery != future) {
+                    /*
                     if (!_Closing)
                         throw new InvalidOperationException("NotifyQueryCompleted invoked by a query that was not active");
+                     */
                 } else {
                     _ActiveQuery = null;
                     _ActiveQueryObject = null;

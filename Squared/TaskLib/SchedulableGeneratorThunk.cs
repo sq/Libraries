@@ -131,14 +131,20 @@ namespace Squared.Task {
             if (CheckForDiscardedError())
                 return;
 
-            if (value is ISchedulable) {
-                ScheduleNextStepForSchedulable(value as ISchedulable);
-            } else if (value is NextValue) {
-                NextValue nv = (NextValue)value;
-                IFuture f = null;
+            NextValue nv;
+            IFuture f;
+            Result r;
+            IEnumerator<object> e;
 
+            if (value == null) {
+                QueueStep();
+            } else if (value is ISchedulable) {
+                ScheduleNextStepForSchedulable(value as ISchedulable);
+            } else if ((nv = (value as NextValue)) != null) {
                 if (OnNextValue != null)
                     f = OnNextValue(nv.Value);
+                else
+                    f = null;
 
                 if (f != null) {
                     SetWakeCondition(f, true);
@@ -146,20 +152,15 @@ namespace Squared.Task {
                 } else {
                     QueueStep();
                 }
-            } else if (value is IFuture) {
-                var f = (IFuture)value;
+            } else if ((f = (value as IFuture)) != null) {
                 SetWakeCondition(f, false);
                 f.RegisterOnComplete(_QueueStepOnComplete);
-            } else if (value is Result) {
-                CompleteWithResult(((Result)value).Value);
+            } else if ((r = (value as Result)) != null) {
+                CompleteWithResult(r.Value);
+            } else if ((e = (value as IEnumerator<object>)) != null) {
+                ScheduleNextStepForSchedulable(new SchedulableGeneratorThunk(value as IEnumerator<object>));
             } else {
-                if (value is IEnumerator<object>) {
-                    ScheduleNextStepForSchedulable(new SchedulableGeneratorThunk(value as IEnumerator<object>));
-                } else if (value == null) {
-                    QueueStep();
-                } else {
-                    throw new TaskYieldedValueException(_Task);
-                }
+                throw new TaskYieldedValueException(_Task);
             }
         }
 
