@@ -424,6 +424,10 @@ namespace Squared.Task {
             _Task = task;
         }
 
+        public TaskEnumerator (IEnumerator<object> task)
+            : this(task, DefaultBufferSize) {
+        }
+
         protected virtual void Start () {
             _Thunk = new SchedulableGeneratorThunk(_Task);
             _Thunk.OnNextValue = OnNextValue;
