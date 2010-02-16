@@ -74,11 +74,11 @@ namespace MUDServer {
             _NumMessagesSent += 1;
             StringBuilder output = new StringBuilder();
             if (_LastPrompt) {
-                output.AppendLine();
+                output.Append("\r\n");
                 _LastPrompt = false;
             }
             output.AppendFormat(message, args);
-            output.AppendLine();
+            output.Append("\r\n");
             Client.SendText(output.ToString());
         }
 
