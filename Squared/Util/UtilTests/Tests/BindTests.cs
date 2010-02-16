@@ -70,5 +70,29 @@ namespace Squared.Util {
             } catch (InvalidOperationException) {
             }
         }
+
+        [Test]
+        public void BindToClassFieldViaExpression () {
+            var tc = new TestClass();
+
+            var classField = BoundMember.New(() => tc.Field);
+
+            tc.Field = 5;
+            Assert.AreEqual(5, classField.Value);
+            classField.Value = 10;
+            Assert.AreEqual(10, tc.Field);
+        }
+
+        [Test]
+        public void BindToClassPropertyViaExpression () {
+            var tc = new TestClass();
+
+            var classProp = BoundMember.New(() => tc.Property);
+
+            tc.Property = 5;
+            Assert.AreEqual(5, classProp.Value);
+            classProp.Value = 10;
+            Assert.AreEqual(10, tc.Property);
+        }
     }
 }
