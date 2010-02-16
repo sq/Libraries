@@ -1,7 +1,6 @@
 ﻿<NUnitProject>
   <Settings activeconfig="Debug" />
   <Config name="Debug" binpathtype="Auto">
-    <assembly path="GameLib\GameTests\bin\Debug\GameTests.dll" />
     <assembly path="TaskLib\TaskLibTests\bin\Debug\TaskLibTests.dll" />
     <assembly path="Examples\MUDServer\MUDServerTests\bin\Debug\MUDServerTests.dll" />
     <assembly path="Util\UtilTests\bin\Debug\UtilTests.dll" />

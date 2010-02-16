@@ -236,12 +236,18 @@ namespace Squared.Task {
             var ts = new TestStruct();
 
             var f = new Future<int>();
+
             f.Bind(() => tc.Field);
-            f.Bind(() => ts.Field);
+
+            try {
+                f.Bind(() => ts.Field);
+                Assert.Fail("Did not throw InvalidOperationException");
+            } catch (InvalidOperationException) {
+            }
+
             f.Complete(5);
 
             Assert.AreEqual(5, tc.Field);
-            // () => ts binds to a copy of the struct, not the source struct. Oh well!
             Assert.AreNotEqual(5, ts.Field);
         }
 
@@ -251,12 +257,18 @@ namespace Squared.Task {
             var ts = new TestStruct();
 
             var f = new Future<int>();
+
             f.Bind(() => tc.Property);
-            f.Bind(() => ts.Property);
+
+            try {
+                f.Bind(() => ts.Property);
+                Assert.Fail("Did not throw InvalidOperationException");
+            } catch (InvalidOperationException) {
+            }
+
             f.Complete(5);
 
             Assert.AreEqual(5, tc.Property);
-            // () => ts binds to a copy of the struct, not the source struct. Oh well!
             Assert.AreNotEqual(5, ts.Property);
         }
     }

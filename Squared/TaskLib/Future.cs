@@ -9,6 +9,7 @@ using System.Linq;
 
 #if !XBOX
 using System.Linq.Expressions;
+using Squared.Util.Bind;
 #endif
 
 namespace Squared.Task {
@@ -609,62 +610,15 @@ namespace Squared.Task {
         }
 
 #if !XBOX
-        private static object ResolveTarget (Expression expr) {
-            switch (expr.NodeType) {
-                case ExpressionType.Constant:
-                    return ((ConstantExpression)expr).Value;
-
-                case ExpressionType.MemberAccess:
-                    var me = ((MemberExpression)expr);
-                    var obj = ResolveTarget(me.Expression);
-
-                    switch (me.Member.MemberType) {
-                        case MemberTypes.Property:
-                            var prop = (PropertyInfo)me.Member;
-                            return prop.GetValue(obj, null);
-
-                        case MemberTypes.Field:
-                            var field = (FieldInfo)me.Member;
-                            return field.GetValue(obj);
-
-                        default:
-                            throw new ArgumentException("Expression is not constant");
-                    }
-
-                default:
-                    throw new ArgumentException("Expression is not constant");
-            } 
-        }
-
         public static Future<T> Bind<T> (this Future<T> future, Expression<Func<T>> target) {
-            var member = target.Body as MemberExpression;
+            var member = BoundMember.New(target);
 
-            if (member == null)
-                throw new ArgumentException("Target must be an expression that points to a field or property", "target");
-
-            var obj = ResolveTarget(member.Expression);
-
-            switch (member.Member.MemberType) {
-                case MemberTypes.Property:
-                    var prop = (PropertyInfo)member.Member;
-                    future.RegisterOnComplete((_) => {
-                        T result;
-                        if (future.GetResult(out result))
-                            prop.SetValue(obj, result, null);
-                    });
-                break;
-                case MemberTypes.Field:
-                    var field = (FieldInfo)member.Member;
-                    future.RegisterOnComplete((_) => {
-                        T result;
-                        if (future.GetResult(out result))
-                            field.SetValue(obj, result);
-                    });
-                break;
-                default:
-                    throw new ArgumentException("Target member must be a field or property", "target");
-            }
-
+            future.RegisterOnComplete((_) => {
+                T result;
+                if (future.GetResult(out result));
+                    member.Value = result;
+            });
+            
             return future;
         }
 #endif
