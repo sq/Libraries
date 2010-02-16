@@ -31,6 +31,7 @@ namespace MUDServer {
         private bool _LastPrompt;
         private int _NumMessagesSent;
         private AlphaTrie<CommandHandler> _Commands;
+        private bool _Disposed = false;
 
         public Player (TelnetClient client, Location location)
             : base(location, null) {
@@ -57,6 +58,8 @@ namespace MUDServer {
         }
 
         public override void Dispose () {
+            _Disposed = true;
+
             base.Dispose();
             World.Players.Remove(this.Name.ToLower());
             Console.WriteLine("{0} has left the world", Name);
@@ -525,16 +528,20 @@ namespace MUDServer {
         }
 
         protected override IEnumerator<object> ThinkTask () {
+            string line = null;
+
             while (Name == null) {
                 Client.SendText("Greetings, traveller. What might your name be?\r\n");
-                var f = Client.ReadLineText();
-                yield return f;
+
+                yield return Client.ReadLineText().Bind(() => line);
+
                 string tempName;
                 try {
-                    tempName = (f.Result as string).Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                    tempName = line.Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[0];
                 } catch {
                     continue;
                 }
+
                 if (World.Players.ContainsKey(tempName.ToLower())) {
                     Client.SendText("A player with that name is already logged in.\r\n");
                     continue;
@@ -545,10 +552,8 @@ namespace MUDServer {
             Console.WriteLine("{0} has entered the world", Name);
             World.Players[Name.ToLower()] = this;
 
-            while (true) {
-                var newInputLine = Client.ReadLineText();
-                yield return newInputLine;
-                string line = newInputLine.Result as string;
+            while (!_Disposed) {
+                yield return Client.ReadLineText().Bind(() => line);
 
                 if (line != null) {
                     yield return ProcessInput(line);

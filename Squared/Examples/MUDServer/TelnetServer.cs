@@ -22,49 +22,46 @@ namespace MUDServer {
             client.Client.NoDelay = true;
             client.Client.Blocking = false;
             Data = new SocketDataAdapter(client.Client, true);
-            Encoding encoding = Encoding.GetEncoding(1252);
+            Data.ThrowOnDisconnect = false;
+            Data.ThrowOnFullSendBuffer = false;
+            Encoding encoding = Encoding.ASCII;
             Input = new AsyncTextReader(Data, encoding);
             Output = new AsyncTextWriter(Data, encoding);
             Output.AutoFlush = true;
             _SendFuture = server._Scheduler.Start(SendMessagesTask(), TaskExecutionPolicy.RunWhileFutureLives);
         }
 
-        public IFuture ReadLineText () {
-            var f = new Future();
-            var inner = Input.ReadLine();
-            inner.RegisterOnComplete((_) => {
-                var e = _.Error;
-                if ((e is SocketDisconnectedException) || (e is IOException) || (e is SocketException)) {
-                    f.Complete();
-                    Dispose();
-                    return;
-                } else if (e != null) {
-                    f.Fail(e);
-                    return;
-                }
-                string text = _.Result as string;
-                int count = 0;
-                int toSkip = 0;
-                char[] buf = new char[text.Length];
-                for (int i = 0; i < text.Length; i++) {
-                    toSkip -= 1;
-                    char ch = text[i];
-                    if (ch == 8) {
-                        if (count > 0)
-                            count--;
-                    } else if (ch == 0xFF) {
-                        toSkip = 3;
-                    } else if ((ch >= 32) && (ch <= 127)) {
-                        if (toSkip <= 0) {
-                            buf[count] = ch;
-                            count++;
-                        }
+        public IEnumerator<object> ReadLineText () {
+            string text = null;
+
+            yield return Input.ReadLine().Bind(() => text);
+
+            if (text == null) {
+                Dispose();
+                yield break;
+            }
+
+            int count = 0;
+            int toSkip = 0;
+            char[] buf = new char[text.Length];
+            for (int i = 0; i < text.Length; i++) {
+                toSkip -= 1;
+                char ch = text[i];
+                if (ch == 8) {
+                    if (count > 0)
+                        count--;
+                } else if (ch == 0xFF) {
+                    toSkip = 3;
+                } else if ((ch >= 32) && (ch <= 127)) {
+                    if (toSkip <= 0) {
+                        buf[count] = ch;
+                        count++;
                     }
                 }
-                text = new string(buf, 0, count);
-                f.Complete(text);
-            });
-            return f;
+            }
+            text = new string(buf, 0, count);
+
+            yield return new Result(text);
         }
 
         private IEnumerator<object> SendMessagesTask () {
@@ -129,6 +126,8 @@ namespace MUDServer {
             _Listener = new TcpListener(address, port);
             _Listener.Start();
             _ListenerTask = scheduler.Start(this.ListenTask(), TaskExecutionPolicy.RunWhileFutureLives);
+
+            Console.WriteLine("Ready for connections.");
         }
 
         private IEnumerator<object> ListenTask () {
@@ -136,6 +135,7 @@ namespace MUDServer {
                 var f = _Listener.AcceptIncomingConnection();
                 yield return f;
                 TcpClient tcpClient = f.Result as TcpClient;
+                Console.WriteLine("Accepted connection from {0}.", tcpClient.Client.RemoteEndPoint);
                 TelnetClient client = new TelnetClient(this, tcpClient);
                 _Clients.Add(client);
                 _NewClients.Enqueue(client);
