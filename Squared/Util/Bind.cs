@@ -104,20 +104,9 @@ namespace Squared.Util.Bind {
             if (field.IsStatic || field.IsInitOnly)
                 throw new InvalidOperationException("Cannot bind to a static or initonly field");
 
-            if (field.FieldType.IsPrimitive) {
+#if !MONO
+            if (!field.FieldType.IsPrimitive) {
                 // :(
-
-                Get = () => {
-                    return (T)field.GetValue(this.Target);
-                };
-
-                if (field.IsLiteral)
-                    Set = null;
-                else
-                    Set = (v) => {
-                        field.SetValue(this.Target, v);
-                    };
-            } else {
 
                 var fieldInfos = new FieldInfo[] { field };
 
@@ -134,6 +123,18 @@ namespace Squared.Util.Bind {
                         __refvalue(tr, T) = v;
                     };
             }
+#endif
+
+            Get = () => {
+                return (T)field.GetValue(this.Target);
+            };
+
+            if (field.IsLiteral)
+                Set = null;
+            else
+                Set = (v) => {
+                    field.SetValue(this.Target, v);
+                };
         }
 
         public BoundMember (object target, PropertyInfo property) 

@@ -21,11 +21,7 @@ namespace Squared.Util {
         /// <summary>
         /// The default time provider.
         /// </summary>
-#if XBOX
-        public static ITimeProvider DefaultTimeProvider = new XBoxTimeProvider();
-#else
-        public static ITimeProvider DefaultTimeProvider = new Win32TimeProvider();
-#endif
+        public static ITimeProvider DefaultTimeProvider;
 
         public static long Ticks {
             get {
@@ -37,6 +33,21 @@ namespace Squared.Util {
             get {
                 return DefaultTimeProvider.Seconds;
             }
+        }
+
+        static Time () {
+#if XBOX
+            // XNA
+            DefaultTimeProvider = new XBoxTimeProvider();
+#else
+            if (Type.GetType("Mono.Runtime") != null) {
+                // Mono
+                DefaultTimeProvider = new DotNetTimeProvider();
+            } else {
+                // MS CLR
+                DefaultTimeProvider = new Win32TimeProvider();
+            }
+#endif
         }
     }
 
