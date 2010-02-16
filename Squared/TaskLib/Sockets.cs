@@ -48,7 +48,7 @@ namespace Squared.Task.IO {
         private void ReadCallback (IAsyncResult ar) {
             var f = (Future<int>)ar.AsyncState;
 
-            if (!_Socket.Connected) {
+            if (_Socket == null || !_Socket.Connected) {
                 if (ThrowOnDisconnect)
                     f.Fail(new SocketDisconnectedException());
                 else

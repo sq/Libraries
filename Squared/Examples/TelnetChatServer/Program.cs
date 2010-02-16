@@ -167,14 +167,15 @@ namespace TelnetChatServer {
             var adapter = new SocketDataAdapter(client.Client, true);
             var input = new AsyncTextReader(adapter, Encoding.ASCII);
             var output = new AsyncTextWriter(adapter, Encoding.ASCII);
+
+            output.AutoFlush = true;
+
             peer.Input = input;
             peer.Output = output;
 
             Type[] disconnectExceptions = new Type[] { typeof(DisconnectedException), typeof(IOException), typeof(SocketException) };
 
-            output.AutoFlush = true;
             yield return output.WriteLine("Welcome! Please enter your name.");
-            output.AutoFlush = false;
 
             IFuture f = input.ReadLine();
             yield return f;

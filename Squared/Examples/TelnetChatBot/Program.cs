@@ -71,15 +71,15 @@ namespace TelnetChatBot {
         }
 
         static void Main (string[] args) {
-            if (!float.TryParse(args[0], out SendRate))
-                SendRate = 0.5f;
+            if ((args.Length < 1) || !float.TryParse(args[0], out SendRate))
+                SendRate = 1.0f;
 
             Thread.CurrentThread.Name = "MainThread";
             ThreadPool.SetMinThreads(1, 1);
 
             try {
                 Console.WriteLine("Connecting to server...");
-                var f = Network.ConnectTo("localhost", 1234);
+                var f = Network.ConnectTo("hildr.luminance.org", 1234);
                 f.GetCompletionEvent().WaitOne();
                 Console.WriteLine("Connected.");
                 TcpClient client = f.Result as TcpClient;
