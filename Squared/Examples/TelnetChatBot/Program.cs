@@ -31,7 +31,8 @@ namespace TelnetChatBot {
             while (true) {
                 var f = output.WriteLine(nextMessageText);
                 yield return f;
-                if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
+
+                if (f.Failed) {
                     Disconnected = true;
                     throw new DisconnectedException();
                 }
@@ -49,21 +50,19 @@ namespace TelnetChatBot {
         static IEnumerator<object> ReceiveTask (SocketDataAdapter adapter) {
             var input = new AsyncTextReader(adapter, Encoding.ASCII);
             int i = 0;
+            string message = null;
             Reader = input;
-            while (true) {
-                IFuture f = input.ReadLine();
+            while (true) {                
+                var f = input.ReadLine();
                 yield return f;
-                if (f.CheckForFailure(typeof(DisconnectedException), typeof(IOException), typeof(SocketException))) {
-                    Disconnected = true;
-                    throw new DisconnectedException();
-                }
 
-                try {
-                    string message = (string)f.Result;
+                if (!f.GetResult(out message))
+                    throw new DisconnectedException();
+
+                if (message == null)
+                    throw new DisconnectedException();
+                else
                     i += 1;
-                } catch (Exception ex) {
-                    Console.WriteLine(ex.ToString());
-                }
 
                 if ((i % 1000) == 0)
                     Console.WriteLine("Recieved: {0}", i);
@@ -79,13 +78,16 @@ namespace TelnetChatBot {
 
             try {
                 Console.WriteLine("Connecting to server...");
-                var f = Network.ConnectTo("hildr.luminance.org", 1234);
+                var f = Network.ConnectTo("localhost", 1234);
                 f.GetCompletionEvent().WaitOne();
                 Console.WriteLine("Connected.");
                 TcpClient client = f.Result as TcpClient;
                 client.Client.Blocking = false;
                 client.Client.NoDelay = true;
                 SocketDataAdapter adapter = new SocketDataAdapter(client.Client);
+                adapter.ThrowOnDisconnect = false;
+                adapter.ThrowOnFullSendBuffer = false;
+
                 Scheduler.Start(ReceiveTask(adapter), TaskExecutionPolicy.RunAsBackgroundTask);
                 Scheduler.Start(SendTask(adapter), TaskExecutionPolicy.RunAsBackgroundTask);
 

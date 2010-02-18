@@ -8,6 +8,7 @@ using Squared.Task.IO;
 using System.IO;
 using System.Threading;
 using System.Diagnostics;
+using Squared.Util;
 
 namespace TelnetChatServer {
     public class DisconnectedException : Exception {
@@ -48,8 +49,8 @@ namespace TelnetChatServer {
         static List<Peer> Peers = new List<Peer>();
         static BlockingQueue<Message> NewMessages = new BlockingQueue<Message>();
         static Future WaitingForMessages = null;
-        const int MaxMessagesToDispatch = 100;
-        const int MaxMessagesToStore = 1024;
+        const int MaxMessagesToDispatch = 50;
+        const int MaxMessagesToStore = 100;
         static int MessageIdBase = 0;
         static IEnumerator<object> _Dispatcher;
         static StringBuilder _MessageBuilder = new StringBuilder();
@@ -89,6 +90,8 @@ namespace TelnetChatServer {
                 do {
                     moreWork = false;
                     int newestId = (Messages.Count - 1) + MessageIdBase;
+                    long now = Time.Ticks;
+
                     foreach (Peer peer in Peers.ToArray()) {
                         if (!peer.Connected)
                             continue;
@@ -108,18 +111,12 @@ namespace TelnetChatServer {
                             }
 
                             IFuture f = null;
-                            f = peer.Output.PendingOperation as IFuture;
+                            f = peer.Output.PendingOperation;
                             if (f == null) {
-                                try {
-                                    f = peer.Output.WriteLine(text);
-                                } catch (SocketBufferFullException) {
-                                    Console.WriteLine("Send buffer for peer {0} full", peer);
-                                    continue;
-                                }
+                                f = peer.Output.WriteLine(text);
 
                                 f.RegisterOnComplete((_) => {
-                                    var e = _.Error;
-                                    if ((e is DisconnectedException) || (e is IOException) || (e is SocketException) || (e is FutureDisposedException)) {
+                                    if (_.Failed) {
                                         Scheduler.QueueWorkItem(() => {
                                             PeerDisconnected(peer);
                                         });
@@ -168,40 +165,42 @@ namespace TelnetChatServer {
             var input = new AsyncTextReader(adapter, Encoding.ASCII);
             var output = new AsyncTextWriter(adapter, Encoding.ASCII);
 
+            adapter.ThrowOnDisconnect = false;
+            adapter.ThrowOnFullSendBuffer = false;
             output.AutoFlush = true;
 
             peer.Input = input;
             peer.Output = output;
 
-            Type[] disconnectExceptions = new Type[] { typeof(DisconnectedException), typeof(IOException), typeof(SocketException) };
-
             yield return output.WriteLine("Welcome! Please enter your name.");
 
-            IFuture f = input.ReadLine();
-            yield return f;
-            if (f.CheckForFailure(disconnectExceptions)) {
+            string name = null;
+            yield return input.ReadLine().Bind(() => name);
+
+            if (name == null) {
                 PeerDisconnected(peer);
                 yield break;
             }
-            peer.Name = (f.Result as string);
+
+            peer.Name = name;
 
             PeerConnected(peer);
 
             yield return output.Write(VT100.EraseScreen);
-            
+
+            string nextLine = null;
+
             while (peer.Connected) {
-                f = input.ReadLine();
+                var f = input.ReadLine();
                 yield return f;
-                string nextLineText = null;
-                if (f.CheckForFailure(disconnectExceptions)) {
+
+                if (!f.GetResult(out nextLine) || nextLine == null) {
                     PeerDisconnected(peer);
                     yield break;
                 }
-                nextLineText = f.Result as string;
 
-                if ((nextLineText != null) && (nextLineText.Length > 0)) {
-                    DispatchNewMessage(peer, nextLineText);
-                }
+                if (nextLine.Length > 0)
+                    DispatchNewMessage(peer, nextLine);
             }
         }
 
@@ -216,7 +215,6 @@ namespace TelnetChatServer {
                     Peer peer = new Peer { PeerId = nextId++ };
                     TcpClient client = connection.Result as TcpClient;
                     client.Client.Blocking = false;
-                    client.Client.NoDelay = true;
                     var peerTask = PeerTask(client, peer);
                     Scheduler.Start(peerTask, TaskExecutionPolicy.RunAsBackgroundTask);
                 }
