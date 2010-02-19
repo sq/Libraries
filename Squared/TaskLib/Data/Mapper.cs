@@ -104,12 +104,12 @@ namespace Squared.Task.Data.Mapper {
     }
 
     public class Mapper<T> 
-        where T : new() {
+        where T : class, new() {
 
-        protected delegate void Setter<U> (ref T target, U newValue);
+        protected delegate void Setter<U> (T target, U newValue);
 
         protected interface ISetHelper {
-            void Set (ref T item);
+            void Set (T item);
         }
 
         protected class SetHelper<U> : ISetHelper {
@@ -128,23 +128,7 @@ namespace Squared.Task.Data.Mapper {
                     Getter = DefaultGetter;
             }
 
-            static void StructPropertySetter (PropertyInfo property, ref T item, U value) {
-                object boxed = item;
-                property.SetValue(boxed, value, null);
-                item = (T)boxed;
-            }
-
-            static void StructFieldSetter (FieldInfo field, ref T item, U value) {
-                object boxed = item;
-                field.SetValue(boxed, value);
-                item = (T)boxed;
-            }
-
-            static void PropertySetter (Action<T, U> setMethod, ref T item, U value) {
-                setMethod(item, value);
-            }
-
-            static void FieldSetter (FieldInfo field, ref T item, U value) {
+            static void FieldSetter (FieldInfo field, T item, U value) {
                 field.SetValue(item, value);
             }
 
@@ -152,8 +136,8 @@ namespace Squared.Task.Data.Mapper {
                 return (U)reader.GetValue(ordinal);
             }
 
-            public void Set (ref T item) {
-                Setter(ref item, Getter(Reader, Ordinal));
+            public void Set (T item) {
+                Setter(item, Getter(Reader, Ordinal));
             }
         }
 
@@ -252,24 +236,11 @@ namespace Squared.Task.Data.Mapper {
                 Delegate setterDelegate;
 
                 if (column.Property != null) {
-                    if (t.IsValueType) {
-                        var helperMethod = helperType.GetMethod("StructPropertySetter", BindingFlags.Static | BindingFlags.NonPublic);
-                        setterDelegate = Delegate.CreateDelegate(setterType, column.Property, helperMethod, true);
-                    } else {
-                        var setterMethod = column.Property.GetSetMethod(true);
-                        var innerSetterType = typeof(Action<,>).MakeGenericType(t, memberType);
-                        var innerSetterDelegate = Delegate.CreateDelegate(innerSetterType, setterMethod, true);
-                        var helperMethod = helperType.GetMethod("PropertySetter", BindingFlags.Static | BindingFlags.NonPublic);
-                        setterDelegate = Delegate.CreateDelegate(setterType, innerSetterDelegate, helperMethod, true);
-                    }
+                    var setterMethod = column.Property.GetSetMethod(true);
+                    setterDelegate = Delegate.CreateDelegate(setterType, setterMethod, true);
                 } else {
-                    if (t.IsValueType) {
-                        var helperMethod = helperType.GetMethod("StructFieldSetter", BindingFlags.Static | BindingFlags.NonPublic);
-                        setterDelegate = Delegate.CreateDelegate(setterType, column.Field, helperMethod, true);
-                    } else {
-                        var helperMethod = helperType.GetMethod("FieldSetter", BindingFlags.Static | BindingFlags.NonPublic);
-                        setterDelegate = Delegate.CreateDelegate(setterType, column.Field, helperMethod, true);
-                    }
+                    var helperMethod = helperType.GetMethod("FieldSetter", BindingFlags.Static | BindingFlags.NonPublic);
+                    setterDelegate = Delegate.CreateDelegate(setterType, column.Field, helperMethod, true);
                 }
 
                 var helper = (ISetHelper)helperConstructor.Invoke(new object[] { Reader, ordinal, setterDelegate });
@@ -289,7 +260,7 @@ namespace Squared.Task.Data.Mapper {
             result = _Constructor();
 
             foreach (var setter in Setters)
-                setter.Set(ref result);
+                setter.Set(result);
 
             return true;
         }

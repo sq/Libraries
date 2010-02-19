@@ -209,7 +209,7 @@ namespace Squared.Task.Data {
         }
 
         public TaskEnumerator<T> Execute<T> (params object[] parameters)
-            where T : new() {
+            where T : class, new() {
             var fReader = this.ExecuteReader(parameters);
 
             var e = new TaskEnumerator<T>(ExecuteTask<T>(fReader));
@@ -224,7 +224,7 @@ namespace Squared.Task.Data {
         }
 
         protected IEnumerator<object> ExecuteTask<T> (Future<QueryDataReader> fReader)
-            where T : new() {
+            where T : class, new() {
             yield return fReader;
 
             using (var reader = fReader.Result) {
