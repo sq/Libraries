@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Reflection;
 using System.Data;
+using System.Linq.Expressions;
 
 namespace Squared.Task.Data.Mapper {
     public class MapperAttribute : Attribute {
@@ -132,6 +133,7 @@ namespace Squared.Task.Data.Mapper {
             }
         }
 
+        static Func<T> _Constructor;
         static object _Lock = new object();
         static List<BoundColumn> _Columns = new List<BoundColumn>();
 
@@ -140,6 +142,9 @@ namespace Squared.Task.Data.Mapper {
         protected ISetHelper[] Setters = null;
 
         static Mapper () {
+            Expression<Func<T>> expr = (() => new T());
+            _Constructor = expr.Compile();
+
             InitializeBindings();
         }
 
@@ -225,7 +230,7 @@ namespace Squared.Task.Data.Mapper {
                 return false;
             }
 
-            result = new T();
+            result = _Constructor();
 
             foreach (var setter in Setters)
                 setter.Set(result);
