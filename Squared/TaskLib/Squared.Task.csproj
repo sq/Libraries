@@ -81,7 +81,10 @@
   <ItemGroup>
     <Compile Include="BlockingQueue.cs" />
     <Compile Include="Clock.cs" />
-    <Compile Include="Db.cs" />
+    <Compile Include="Data\Connection.cs" />
+    <Compile Include="Data\Mapper.cs" />
+    <Compile Include="Data\Misc.cs" />
+    <Compile Include="Data\Query.cs" />
     <Compile Include="DiskMonitor.cs" />
     <Compile Include="Future.cs" />
     <Compile Include="IO.cs" />
