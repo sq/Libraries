@@ -4,6 +4,7 @@ using System.Text;
 using NUnit.Framework;
 using System.Data;
 using System.Data.Common;
+using Squared.Task.Data.Extensions;
 
 // Requires System.Data.SQLite
 #if SQLITE
