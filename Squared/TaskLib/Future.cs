@@ -150,14 +150,12 @@ namespace Squared.Task {
         Exception Error {
             get;
         }
-        int ErrorCheckFlag {
-            get;
-        }
 
         bool GetResult (out object result, out Exception error);
         void SetResult (object result, Exception error);
         void RegisterOnComplete (OnComplete handler);
         void RegisterOnDispose (OnDispose handler);
+        void RegisterOnErrorCheck (Action handler);
     }
 
     public class NoneType {
@@ -201,11 +199,13 @@ namespace Squared.Task {
         private const int State_CompletedWithError = 3;
         private const int State_Disposed = 4;
 
+        private static int ProcessorCount;
+
         private volatile int _State = State_Empty;
         private volatile OnComplete _OnComplete = null;
         private volatile OnDispose _OnDispose = null;
         private volatile Exception _Error = null;
-        private volatile int _ErrorCheckFlag = 0;
+        private volatile Action _OnErrorChecked = null;
         private T _Result = default(T);
 
         public override string ToString () {
@@ -240,10 +240,14 @@ namespace Squared.Task {
             this.SetResult(value, null);
         }
 
+        static Future () {
+            ProcessorCount = Environment.ProcessorCount;
+        }
+
         private static void SpinWait (int iterationCount) {
 #if !XBOX
-            if ((iterationCount < 4) && (Environment.ProcessorCount > 1)) {
-                Thread.SpinWait(5 * iterationCount);
+            if ((iterationCount < 5) && (ProcessorCount > 1)) {
+                Thread.SpinWait(7 * iterationCount);
             } else if (iterationCount < 7) {
 #else
             if (iterationCount < 3) {
@@ -273,6 +277,38 @@ namespace Squared.Task {
                 handler(this);
             } catch (Exception ex) {
                 throw new FutureHandlerException(this, handler, ex);
+            }
+        }
+
+        void OnErrorCheck () {
+            var ec = _OnErrorChecked;
+            if (ec != null) {
+                ec = Interlocked.Exchange(ref _OnErrorChecked, null);
+                if (ec != null)
+                    ec();
+            }
+        }
+
+        public void RegisterOnErrorCheck (Action handler) {
+            Action newHandler;
+            int iterations = 1;
+
+            while (true) {
+                var oldHandler = _OnErrorChecked;
+                if (oldHandler != null) {
+                    newHandler = () => {
+                        oldHandler();
+                        handler();
+                    };
+                } else {
+                    newHandler = handler;
+                }
+
+                if (Interlocked.CompareExchange(ref _OnErrorChecked, newHandler, oldHandler) == oldHandler)
+                    break;
+
+                SpinWait(iterations);
+                iterations += 1;
             }
         }
 
@@ -361,7 +397,7 @@ namespace Squared.Task {
 
         public bool Failed {
             get {
-                Interlocked.Increment(ref _ErrorCheckFlag);
+                OnErrorCheck();
                 return _State == State_CompletedWithError;
             }
         }
@@ -372,19 +408,13 @@ namespace Squared.Task {
             }
         }
 
-        public int ErrorCheckFlag {
-            get {
-                return _ErrorCheckFlag;
-            }
-        }
-
         public Exception Error {
             get {
                 int state = _State;
                 if (state == State_CompletedWithValue) {
                     return null;
                 } else if (state == State_CompletedWithError) {
-                    Interlocked.Increment(ref _ErrorCheckFlag);
+                    OnErrorCheck();
                     return _Error;
                 } else
                     throw new FutureHasNoResultException(this);
@@ -397,7 +427,7 @@ namespace Squared.Task {
                 if (state == State_CompletedWithValue) {
                     return _Result;
                 } else if (state == State_CompletedWithError) {
-                    Interlocked.Increment(ref _ErrorCheckFlag);
+                    OnErrorCheck();
                     throw new FutureException("Future's result was an error", (Exception)_Error);
                 } else
                     throw new FutureHasNoResultException(this);
@@ -503,9 +533,9 @@ namespace Squared.Task {
                 error = null;
                 return true;
             } else if (state == State_CompletedWithError) {
+                OnErrorCheck();
                 result = default(T);
                 error = (Exception)_Error;
-                Interlocked.Increment(ref _ErrorCheckFlag);
                 return true;
             }
 

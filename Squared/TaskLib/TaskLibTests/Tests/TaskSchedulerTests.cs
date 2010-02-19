@@ -104,8 +104,9 @@ namespace Squared.Task {
                 futures.Add(Scheduler.Start(TaskReturnValueOfFuture()));
 
             Scheduler.Step();
-            foreach (IFuture f in futures)
+            foreach (IFuture f in futures) {
                 Assert.IsFalse(f.Completed);
+            }
 
             TestFuture.Complete(10);
             Scheduler.Step();
@@ -674,7 +675,7 @@ namespace Squared.Task {
                 Scheduler.WaitFor(_);
                 Assert.Fail("Exception was not raised");
             } catch (FutureException ex) {
-                Console.WriteLine(ex);
+                Assert.AreEqual("pancakes", ex.InnerException.Message);
             }
             Assert.AreEqual(null, r[0]);
         }

@@ -12,9 +12,9 @@ namespace Squared.Task {
         public IFuture WakeCondition;
         IFuture _WakePrevious = null;
         bool _WakeDiscardingResult = false;
-        int _WakeFlag = 0;
+        bool _ErrorChecked = false;
         TaskScheduler _Scheduler;
-        Action _Step, _QueueStep;
+        Action _Step, _QueueStep, _OnErrorChecked;
         OnComplete _QueueStepOnComplete;
 
         public override string ToString () {
@@ -25,6 +25,7 @@ namespace Squared.Task {
             _Task = task;
             _QueueStep = QueueStep;
             _QueueStepOnComplete = QueueStepOnComplete;
+            _OnErrorChecked = OnErrorChecked;
             _Step = Step;
         }
 
@@ -105,7 +106,7 @@ namespace Squared.Task {
 
         bool CheckForDiscardedError () {
             if ((!_WakeDiscardingResult) && (_WakePrevious != null)) {
-                bool shouldRethrow = (_WakePrevious.ErrorCheckFlag <= _WakeFlag);
+                bool shouldRethrow = !_ErrorChecked;
                 if (shouldRethrow && _WakePrevious.Failed) {
                     Abort(_WakePrevious.Error);
                     return true;
@@ -123,8 +124,14 @@ namespace Squared.Task {
 
             WakeCondition = f;
             _WakeDiscardingResult = discardingResult;
-            if (f != null)
-                _WakeFlag = f.ErrorCheckFlag;
+            if (f != null) {
+                _ErrorChecked = false;
+                f.RegisterOnErrorCheck(_OnErrorChecked);
+            }
+        }
+
+        void OnErrorChecked () {
+            _ErrorChecked = true;
         }
 
         void ScheduleNextStep (Object value) {
