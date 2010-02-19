@@ -38,6 +38,14 @@ namespace Squared.Task.Data {
         }
 
         public void Dispose () {
+            try {
+                Reader.Close();
+            } catch {
+            }
+            try {
+                Reader.Dispose();
+            } catch {
+            }
             CompletionNotifier(Future);
         }
     }
@@ -221,7 +229,6 @@ namespace Squared.Task.Data {
 
             using (var reader = fReader.Result) {
                 var mapper = new Mapper.Mapper<T>(reader.Reader);
-                var nv = new NextValue(null);
 
                 using (var e = EnumeratorExtensionMethods.EnumerateViaThreadpool(
                     mapper.ReadSequence(), TaskEnumerator<T>.DefaultBufferSize
