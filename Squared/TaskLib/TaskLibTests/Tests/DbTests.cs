@@ -5,10 +5,12 @@ using NUnit.Framework;
 using System.Data;
 using System.Data.Common;
 using Squared.Task.Data.Extensions;
+using Squared.Task.Data.Mapper;
 
 // Requires System.Data.SQLite
 #if SQLITE
 using System.Data.SQLite;
+using Squared.Util;
 namespace Squared.Task.Data {
     [TestFixture]
     public class MemoryDbTests {
@@ -394,6 +396,100 @@ namespace Squared.Task.Data {
                 Assert.Fail("Future's result was not a ConnectionDisposedException");
             } catch (FutureException fe) {
                 Assert.IsInstanceOfType(typeof(ConnectionDisposedException), fe.InnerException);
+            }
+        }
+    }
+
+    [TestFixture]
+    public class MapperTests {
+        public class ImplicitlyMappedClass {
+            public long A {
+                get;
+                set;
+            }
+            public long B {
+                get;
+                set;
+            }
+        }
+
+        [Mapper(Explicit=true)]
+        public class ExplicitlyMappedClass {
+            [Column(0)]
+            public long Foo {
+                get;
+                set;
+            }
+            [Column("B")]
+            public long Bar {
+                get;
+                set;
+            }
+        }
+
+        SQLiteConnection Connection;
+        TaskScheduler Scheduler;
+        ConnectionWrapper Wrapper;
+
+        [SetUp]
+        public void SetUp () {
+            Connection = new SQLiteConnection("Data Source=:memory:");
+            Connection.Open();
+            Scheduler = new TaskScheduler();
+            Wrapper = new ConnectionWrapper(Scheduler, Connection);
+        }
+
+        [TearDown]
+        public void TearDown () {
+            Scheduler.WaitFor(Wrapper.Dispose());
+            Scheduler.Dispose();
+            Connection.Dispose();
+            Connection = null;
+        }
+
+        [Test]
+        public void TestImplicitMapping () {
+            Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Test (a int, b int)"));
+
+            int rowCount = 100;
+
+            using (var q = Wrapper.BuildQuery("INSERT INTO TEST (a, b) VALUES (?, ?)"))
+            for (int i = 0; i < rowCount; i++)
+                Scheduler.WaitFor(q.ExecuteNonQuery(i, i * 2));
+
+            using (var q = Wrapper.BuildQuery("SELECT a, b FROM Test"))
+            using (var e = q.Execute<ImplicitlyMappedClass>()) {
+                var items = (ImplicitlyMappedClass[])Scheduler.WaitFor(e.GetArray());
+
+                for (int i = 0; i < rowCount; i++) {
+                    Assert.AreEqual(i, items[i].A);
+                    Assert.AreEqual(i * 2, items[i].B);
+                }
+
+                Assert.AreEqual(rowCount, items.Length);
+            }
+        }
+
+        [Test]
+        public void TestExplicitMapping () {
+            Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Test (a int, b int)"));
+
+            int rowCount = 100;
+
+            using (var q = Wrapper.BuildQuery("INSERT INTO TEST (a, b) VALUES (?, ?)"))
+                for (int i = 0; i < rowCount; i++)
+                    Scheduler.WaitFor(q.ExecuteNonQuery(i, i * 2));
+
+            using (var q = Wrapper.BuildQuery("SELECT a, b FROM Test"))
+            using (var e = q.Execute<ExplicitlyMappedClass>()) {
+                var items = (ExplicitlyMappedClass[])Scheduler.WaitFor(e.GetArray());
+
+                Assert.AreEqual(rowCount, items.Length);
+
+                for (int i = 0; i < rowCount; i++) {
+                    Assert.AreEqual(i, items[i].Foo);
+                    Assert.AreEqual(i * 2, items[i].Bar);
+                }
             }
         }
     }

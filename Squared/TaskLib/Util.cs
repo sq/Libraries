@@ -25,9 +25,9 @@ namespace Squared.Task {
             }
         }
 
-        public static IEnumerator<object> EnumerateViaThreadpool (IEnumerator enumerator, int blockSize) {
+        public static IEnumerator<object> EnumerateViaThreadpool<T> (IEnumerator<T> enumerator, int blockSize) {
             using (new Disposer(enumerator)) {
-                var buffer = new List<object>(blockSize);
+                var buffer = new List<T>(blockSize);
                 var nv = new NextValue(null);
 
                 WaitCallback moveNext = (state) => {
@@ -54,10 +54,8 @@ namespace Squared.Task {
                     ThreadPool.QueueUserWorkItem(moveNext, f);
                     yield return f;
 
-                    foreach (var item in buffer) {
-                        nv.Value = item;
-                        yield return nv;
-                    }
+                    nv.Value = buffer;
+                    yield return nv;
 
                     bool atEnd = (bool)f.Result;
                     if (atEnd)
@@ -331,7 +329,7 @@ namespace Squared.Task {
     /// Manages iterating over a task that generates a sequence of values of type T. A task-oriented equivalent to IEnumerator.
     /// </summary>
     public class TaskEnumerator<T> : IDisposable, IEnumerable<T> {
-        public static int DefaultBufferSize = 32;
+        public static int DefaultBufferSize = 256;
 
         public class FetchThunk : ISchedulable {
             public readonly TaskEnumerator<T> Enumerator;
@@ -411,12 +409,13 @@ namespace Squared.Task {
         protected IFuture _ResumeFuture = null;
         protected IFuture _SequenceFuture = null;
         protected IFuture _ReadyForMoreFuture = null;
-        protected List<T> _Buffer = new List<T>();
+        protected List<T> _Buffer;
         protected FetchThunk _FetchThunk;
 
         protected TaskEnumerator (int capacity) {
             Capacity = capacity;
             _FetchThunk = new TaskEnumerator<T>.FetchThunk(this);
+            _Buffer = new List<T>(capacity);
         }
 
         public TaskEnumerator (IEnumerator<object> task, int capacity)
@@ -482,8 +481,14 @@ namespace Squared.Task {
 
         public static TaskEnumerator<T> FromEnumerator (IEnumerator enumerator, int capacity) {
             return new TaskEnumerator<T>(
-                EnumeratorExtensionMethods.EnumerateViaThreadpool(enumerator, capacity), capacity
+                EnumeratorExtensionMethods.EnumerateViaThreadpool<object>(Wrap(enumerator), capacity), capacity
             );
+        }
+
+        static IEnumerator<object> Wrap (IEnumerator inner) {
+            using (new Squared.Task.EnumeratorExtensionMethods.Disposer(inner))
+            while (inner.MoveNext())
+                yield return inner.Current;
         }
 
         /// <summary>
@@ -514,34 +519,54 @@ namespace Squared.Task {
             Dispose();
         }
 
+        internal Exception TryConvertValue (object value, out T result) {
+            try {
+                result = (T)value;
+                return null;
+            } catch (InvalidCastException) {
+                result = default(T);
+
+                string valueString = "<?>";
+                try {
+                    valueString = value.ToString();
+                } catch {
+                }
+
+                string errorString = String.Format(
+                    "Unable to convert value '{0}' from {1} to {2}",
+                    valueString, value.GetType().Name, typeof(T).Name
+                );
+
+                return new InvalidCastException(errorString);
+            }
+        }
+
         internal IFuture OnNextValue (object value) {
             OnEarlyDispose = null;
 
             int count;
 
-            lock (_Buffer) {
-                try {
-                    _Buffer.Add((T)value);
+            var seq = value as IEnumerable<T>;
+            if (seq != null) {
+                lock (_Buffer) {
+                    _Buffer.AddRange(seq);
                     count = _Buffer.Count;
-                } catch (InvalidCastException) {
-                    string valueString = "<?>";
-                    try {
-                        valueString = value.ToString();
-                    } catch {
-                    }
+                }
+            } else {
+                T convertedValue;
+                var e = TryConvertValue(value, out convertedValue);
 
-                    string errorString = String.Format(
-                        "Unable to convert value '{0}' from {1} to {2}",
-                        valueString, value.GetType().Name, typeof(T).Name
-                    );
-
-                    var exc = new InvalidCastException(errorString);
-
-                    Fail(exc);
+                if (e != null) {
+                    Fail(e);
 
                     var f = new SignalFuture();
-                    f.Fail(exc);
+                    f.Fail(e);
                     return f;
+                } else {
+                    lock (_Buffer) {
+                        _Buffer.Add(convertedValue);
+                        count = _Buffer.Count;
+                    }
                 }
             }
 
@@ -605,13 +630,14 @@ namespace Squared.Task {
         }
 
         public IEnumerator<object> GetArray () {
-            var temp = new List<T>();
+            var temp = new List<T>(Capacity);
 
             while (!Disposed) {
                 yield return this.Fetch();
 
-                foreach (var item in this)
-                    temp.Add(item);
+                temp.AddRange(_Buffer);
+
+                new Enumerator(this, _Buffer.GetEnumerator()).Dispose();
             }
 
             yield return new Result(temp.ToArray());

@@ -7,7 +7,7 @@ using System.Data;
 
 namespace Squared.Task.Data.Mapper {
     public class MapperAttribute : Attribute {
-        public readonly bool Explicit = false;
+        public bool Explicit = false;
 
         public MapperAttribute () {
         }

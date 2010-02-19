@@ -615,7 +615,7 @@ namespace Squared.Task {
 
             future.RegisterOnComplete((_) => {
                 T result;
-                if (future.GetResult(out result));
+                if (future.GetResult(out result))
                     member.Value = result;
             });
             

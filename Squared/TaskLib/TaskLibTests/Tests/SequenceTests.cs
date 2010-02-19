@@ -256,14 +256,14 @@ namespace Squared.Task {
 
         [Test]
         public void TestBufferingPerformance () {
-            int[] buf = new int[1024 * 64], copy = null;
+            int[] buf = new int[1024 * 512], copy = null;
             for (int i = 0; i < buf.Length; i++)
                 buf[i] = i;
 
-            for (int bs = 1; bs <= 512; bs *= 2) {
+            for (int bs = 8; bs <= 4096; bs *= 2) {
                 long timeStart = Time.Ticks;
 
-                using (var iter = TaskEnumerator<int>.FromEnumerator(buf.GetEnumerator(), bs)) {
+                using (var iter = TaskEnumerator<int>.FromEnumerator((buf as IEnumerable<int>).GetEnumerator(), bs)) {
                     copy = (int[])Scheduler.WaitFor(iter.GetArray());
                 }
 
