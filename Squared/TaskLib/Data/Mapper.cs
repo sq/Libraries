@@ -34,6 +34,8 @@ namespace Squared.Task.Data.Mapper {
         public string Name;
         public int? Index;
         public PropertyInfo Property;
+        public FieldInfo Field;
+        public Type Type;
     }
 
     public static class DataRecordHelper {
@@ -102,34 +104,55 @@ namespace Squared.Task.Data.Mapper {
     }
 
     public class Mapper<T> 
-        where T : class, new() {
+        where T : new() {
+
+        protected delegate void Setter<U> (ref T target, U newValue);
 
         protected interface ISetHelper {
-            void Set (T item);
+            void Set (ref T item);
         }
 
         protected class SetHelper<U> : ISetHelper {
             public readonly IDataReader Reader;
             public readonly int Ordinal;
             public readonly Func<IDataReader, int, U> Getter;
-            public readonly Action<T, U> Setter;
+            public readonly Setter<U> Setter;
 
             public SetHelper (IDataReader reader, int ordinal, Delegate setter) {
                 Reader = reader;
                 Ordinal = ordinal;
-                Setter = (Action<T, U>)setter;
+                Setter = (Setter<U>)setter;
                 Getter = DataRecordHelper.GetReadMethod<U>();
 
                 if (Getter == null)
                     Getter = DefaultGetter;
             }
 
+            static void StructPropertySetter (PropertyInfo property, ref T item, U value) {
+                object boxed = item;
+                property.SetValue(boxed, value, null);
+                item = (T)boxed;
+            }
+
+            static void StructFieldSetter (FieldInfo field, ref T item, U value) {
+                var tr = __makeref(item);
+                field.SetValueDirect(tr, value);
+            }
+
+            static void PropertySetter (Action<T, U> setMethod, ref T item, U value) {
+                setMethod(item, value);
+            }
+
+            static void FieldSetter (FieldInfo field, ref T item, U value) {
+                field.SetValue(item, value);
+            }
+
             static U DefaultGetter (IDataReader reader, int ordinal) {
                 return (U)reader.GetValue(ordinal);
             }
 
-            public void Set (T item) {
-                Setter(item, Getter(Reader, Ordinal));
+            public void Set (ref T item) {
+                Setter(ref item, Getter(Reader, Ordinal));
             }
         }
 
@@ -156,9 +179,9 @@ namespace Squared.Task.Data.Mapper {
             if ((ca != null) && (ca.Length > 0))
                 xplicit = ((MapperAttribute)ca[0]).Explicit;
 
-            foreach (var prop in t.GetProperties()) {
+            foreach (var member in t.GetMembers()) {
                 ColumnAttribute attr = null;
-                ca = prop.GetCustomAttributes(typeof(ColumnAttribute), false);
+                ca = member.GetCustomAttributes(typeof(ColumnAttribute), false);
                 if ((ca == null) || (ca.Length == 0)) {
                     if (xplicit)
                         continue;
@@ -166,7 +189,7 @@ namespace Squared.Task.Data.Mapper {
                     attr = ca[0] as ColumnAttribute;
                 }
 
-                string name = prop.Name;
+                string name = member.Name;
                 int? index = null;
                 if (attr != null) {
                     name = attr.Name ?? name;
@@ -176,11 +199,25 @@ namespace Squared.Task.Data.Mapper {
                 if ((name == null) && (index.HasValue == false))
                     throw new ArgumentException("A column attribute must specify either a name or an index");
 
-                _Columns.Add(new BoundColumn {
-                    Name = name,
-                    Index = index,
-                    Property = prop
-                });
+                if (member.MemberType == MemberTypes.Field) {
+                    var field = (FieldInfo)member;
+
+                    _Columns.Add(new BoundColumn {
+                        Name = name,
+                        Index = index,
+                        Field = field,
+                        Type = field.FieldType
+                    });
+                } else if (member.MemberType == MemberTypes.Property) {
+                    var prop = (PropertyInfo)member;
+
+                    _Columns.Add(new BoundColumn {
+                        Name = name,
+                        Index = index,
+                        Property = prop,
+                        Type = prop.PropertyType
+                    });
+                }
             }
         }
 
@@ -189,7 +226,7 @@ namespace Squared.Task.Data.Mapper {
 
             var t = typeof(T);
             var fieldCount = reader.FieldCount;
-            var setterBaseType = typeof(Action<,>);
+            var setterBaseType = typeof(Setter<>);
             var helperBaseType = typeof(SetHelper<>);
             var helperConstructorTypes = new Type[] { 
                 typeof(IDataReader), typeof(int), typeof(Delegate)
@@ -197,7 +234,6 @@ namespace Squared.Task.Data.Mapper {
             var setters = new List<ISetHelper>();
 
             foreach (var column in _Columns) {
-                var prop = column.Property;
                 string name = column.Name;
                 int ordinal = -1;
 
@@ -208,14 +244,33 @@ namespace Squared.Task.Data.Mapper {
                     ordinal = reader.GetOrdinal(name);
                 }
 
-                var propertyType = prop.PropertyType;
-
-                var setterMethod = prop.GetSetMethod(true);
-                var setterType = setterBaseType.MakeGenericType(t, propertyType);
-                var setterDelegate = Delegate.CreateDelegate(setterType, setterMethod);
-
-                var helperType = helperBaseType.MakeGenericType(t, propertyType);
+                var memberType = column.Type;
+                var setterType = setterBaseType.MakeGenericType(t, memberType);
+                var helperType = helperBaseType.MakeGenericType(t, memberType);
                 var helperConstructor = helperType.GetConstructor(helperConstructorTypes);
+                Delegate setterDelegate;
+
+                if (column.Property != null) {
+                    if (t.IsValueType) {
+                        var helperMethod = helperType.GetMethod("StructPropertySetter", BindingFlags.Static | BindingFlags.NonPublic);
+                        setterDelegate = Delegate.CreateDelegate(setterType, column.Property, helperMethod, true);
+                    } else {
+                        var setterMethod = column.Property.GetSetMethod(true);
+                        var innerSetterType = typeof(Action<,>).MakeGenericType(t, memberType);
+                        var innerSetterDelegate = Delegate.CreateDelegate(innerSetterType, setterMethod, true);
+                        var helperMethod = helperType.GetMethod("PropertySetter", BindingFlags.Static | BindingFlags.NonPublic);
+                        setterDelegate = Delegate.CreateDelegate(setterType, innerSetterDelegate, helperMethod, true);
+                    }
+                } else {
+                    if (t.IsValueType) {
+                        var helperMethod = helperType.GetMethod("StructFieldSetter", BindingFlags.Static | BindingFlags.NonPublic);
+                        setterDelegate = Delegate.CreateDelegate(setterType, column.Field, helperMethod, true);
+                    } else {
+                        var helperMethod = helperType.GetMethod("FieldSetter", BindingFlags.Static | BindingFlags.NonPublic);
+                        setterDelegate = Delegate.CreateDelegate(setterType, column.Field, helperMethod, true);
+                    }
+                }
+
                 var helper = (ISetHelper)helperConstructor.Invoke(new object[] { Reader, ordinal, setterDelegate });
 
                 setters.Add(helper);
@@ -226,14 +281,14 @@ namespace Squared.Task.Data.Mapper {
 
         public bool Read (out T result) {
             if (!Reader.Read()) {
-                result = null;
+                result = default(T);
                 return false;
             }
 
             result = _Constructor();
 
             foreach (var setter in Setters)
-                setter.Set(result);
+                setter.Set(ref result);
 
             return true;
         }

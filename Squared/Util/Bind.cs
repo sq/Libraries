@@ -104,27 +104,6 @@ namespace Squared.Util.Bind {
             if (field.IsStatic || field.IsInitOnly)
                 throw new InvalidOperationException("Cannot bind to a static or initonly field");
 
-#if !MONO
-            if (!field.FieldType.IsPrimitive) {
-                // :(
-
-                var fieldInfos = new FieldInfo[] { field };
-
-                Get = () => {
-                    var tr = TypedReference.MakeTypedReference(this.Target, fieldInfos);
-                    return __refvalue( tr,T);
-                };
-
-                if (field.IsLiteral)
-                    Set = null;
-                else
-                    Set = (v) => {
-                        var tr = TypedReference.MakeTypedReference(this.Target, fieldInfos);
-                        __refvalue(tr, T) = v;
-                    };
-            }
-#endif
-
             Get = () => {
                 return (T)field.GetValue(this.Target);
             };

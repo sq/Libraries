@@ -407,10 +407,7 @@ namespace Squared.Task.Data {
                 get;
                 set;
             }
-            public long B {
-                get;
-                set;
-            }
+            public long B;
         }
 
         [Mapper(Explicit=true)]
@@ -421,10 +418,26 @@ namespace Squared.Task.Data {
                 set;
             }
             [Column("B")]
-            public long Bar {
+            public long Bar;
+        }
+
+        public struct ImplicitlyMappedStruct {
+            public long A {
                 get;
                 set;
             }
+            public long B;
+        }
+
+        [Mapper(Explicit = true)]
+        public struct ExplicitlyMappedStruct {
+            [Column(0)]
+            public long Foo {
+                get;
+                set;
+            }
+            [Column("B")]
+            public long Bar;
         }
 
         SQLiteConnection Connection;
@@ -448,7 +461,7 @@ namespace Squared.Task.Data {
         }
 
         [Test]
-        public void TestImplicitMapping () {
+        public void TestImplicitMappingClass () {
             Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Test (a int, b int)"));
 
             int rowCount = 100;
@@ -471,7 +484,7 @@ namespace Squared.Task.Data {
         }
 
         [Test]
-        public void TestExplicitMapping () {
+        public void TestExplicitMappingClass () {
             Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Test (a int, b int)"));
 
             int rowCount = 100;
@@ -483,6 +496,52 @@ namespace Squared.Task.Data {
             using (var q = Wrapper.BuildQuery("SELECT a, b FROM Test"))
             using (var e = q.Execute<ExplicitlyMappedClass>()) {
                 var items = (ExplicitlyMappedClass[])Scheduler.WaitFor(e.GetArray());
+
+                Assert.AreEqual(rowCount, items.Length);
+
+                for (int i = 0; i < rowCount; i++) {
+                    Assert.AreEqual(i, items[i].Foo);
+                    Assert.AreEqual(i * 2, items[i].Bar);
+                }
+            }
+        }
+
+        [Test]
+        public void TestImplicitMappingStruct () {
+            Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Test (a int, b int)"));
+
+            int rowCount = 100;
+
+            using (var q = Wrapper.BuildQuery("INSERT INTO TEST (a, b) VALUES (?, ?)"))
+                for (int i = 0; i < rowCount; i++)
+                    Scheduler.WaitFor(q.ExecuteNonQuery(i, i * 2));
+
+            using (var q = Wrapper.BuildQuery("SELECT a, b FROM Test"))
+            using (var e = q.Execute<ImplicitlyMappedStruct>()) {
+                var items = (ImplicitlyMappedStruct[])Scheduler.WaitFor(e.GetArray());
+
+                for (int i = 0; i < rowCount; i++) {
+                    Assert.AreEqual(i, items[i].A);
+                    Assert.AreEqual(i * 2, items[i].B);
+                }
+
+                Assert.AreEqual(rowCount, items.Length);
+            }
+        }
+
+        [Test]
+        public void TestExplicitMappingStruct () {
+            Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Test (a int, b int)"));
+
+            int rowCount = 100;
+
+            using (var q = Wrapper.BuildQuery("INSERT INTO TEST (a, b) VALUES (?, ?)"))
+                for (int i = 0; i < rowCount; i++)
+                    Scheduler.WaitFor(q.ExecuteNonQuery(i, i * 2));
+
+            using (var q = Wrapper.BuildQuery("SELECT a, b FROM Test"))
+            using (var e = q.Execute<ExplicitlyMappedStruct>()) {
+                var items = (ExplicitlyMappedStruct[])Scheduler.WaitFor(e.GetArray());
 
                 Assert.AreEqual(rowCount, items.Length);
 
