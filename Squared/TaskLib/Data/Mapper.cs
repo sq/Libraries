@@ -135,8 +135,9 @@ namespace Squared.Task.Data.Mapper {
             }
 
             static void StructFieldSetter (FieldInfo field, ref T item, U value) {
-                var tr = __makeref(item);
-                field.SetValueDirect(tr, value);
+                object boxed = item;
+                field.SetValue(boxed, value);
+                item = (T)boxed;
             }
 
             static void PropertySetter (Action<T, U> setMethod, ref T item, U value) {
