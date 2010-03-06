@@ -51,6 +51,41 @@ namespace Squared.Task.Data {
     }
 
     public class Query : IDisposable {
+        public struct ParameterCollection : IEnumerable<IDataParameter> {
+            public readonly Query Query;
+
+            public ParameterCollection (Query query) {
+                Query = query;
+            }
+
+            public IDataParameter this[int index] {
+                get {
+                    return (IDataParameter)Query.Command.Parameters[index];
+                }
+            }
+
+            public IDataParameter this[string name] {
+                get {
+                    return (IDataParameter)Query.Command.Parameters[name];
+                }
+            }
+
+            public int Count {
+                get {
+                    return Query.Command.Parameters.Count;
+                }
+            }
+
+            public IEnumerator<IDataParameter> GetEnumerator () {
+                foreach (var p in Query.Command.Parameters)
+                    yield return (IDataParameter)p;
+            }
+
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
+                return Query.Command.Parameters.GetEnumerator();
+            }
+        }
+
         ConnectionWrapper _Manager;
         IDbCommand _Command;
 
@@ -274,6 +309,12 @@ namespace Squared.Task.Data {
 
                         yield return v;
                     }
+            }
+        }
+
+        public ParameterCollection Parameters {
+            get {
+                return new ParameterCollection(this);
             }
         }
 

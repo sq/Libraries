@@ -6,6 +6,7 @@ using System.Data;
 using System.Data.Common;
 using Squared.Task.Data.Extensions;
 using Squared.Task.Data.Mapper;
+using System.Linq;
 
 // Requires System.Data.SQLite
 #if SQLITE
@@ -297,6 +298,19 @@ namespace Squared.Task.Data {
                 Assert.AreEqual(2, numValues);
             }
         }
+
+        [Test]
+        public void TestQueryParameters () {
+            using (var scheduler = new TaskScheduler())
+            using (var wrapper = new ConnectionWrapper(scheduler, Connection)) {
+                scheduler.WaitFor(wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Test (a INTEGER, b VARIANT)"));
+
+                using (var q = wrapper.BuildQuery("INSERT INTO Test (a, b) VALUES (?, ?)")) {
+                    q.Parameters[1].DbType = DbType.Object;
+                    Assert.AreEqual(DbType.Object, q.Parameters[1].DbType);
+                }
+            }
+        }
     }
 
     [TestFixture]
@@ -489,7 +503,7 @@ namespace Squared.Task.Data {
 
             int rowCount = 100;
 
-            using (var q = Wrapper.BuildQuery("INSERT INTO TEST (a, b) VALUES (?, ?)"))
+            using (var q = Wrapper.BuildQuery("INSERT INTO Test (a, b) VALUES (?, ?)"))
                 for (int i = 0; i < rowCount; i++)
                     Scheduler.WaitFor(q.ExecuteNonQuery(i, i * 2));
 
@@ -504,6 +518,135 @@ namespace Squared.Task.Data {
                     Assert.AreEqual(i * 2, items[i].Bar);
                 }
             }
+        }
+    }
+
+    [TestFixture]
+    public class PropertySerializerTests {
+        public class ClassWithProperties {
+            public long A {
+                get;
+                set;
+            }
+            public long B;
+            public string C;
+            public DateTime D {
+                get;
+                set;
+            }
+        }
+
+        SQLiteConnection Connection;
+        TaskScheduler Scheduler;
+        ConnectionWrapper Wrapper;
+
+        [SetUp]
+        public void SetUp () {
+            Connection = new SQLiteConnection("Data Source=:memory:");
+            Connection.Open();
+            Scheduler = new TaskScheduler();
+            Wrapper = new ConnectionWrapper(Scheduler, Connection);
+        }
+
+        [TearDown]
+        public void TearDown () {
+            Scheduler.WaitFor(Wrapper.Dispose());
+            Scheduler.Dispose();
+            Connection.Dispose();
+            Connection = null;
+        }
+
+        [Test]
+        public void TestPropertySerializerSaveAndLoad () {
+            Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Data (name TEXT, value VARIANT)"));
+
+            var props = new ClassWithProperties();
+            var serializer = new PropertySerializer(Wrapper, "Data");
+
+            serializer.Bind(() => props.A);
+            serializer.Bind(() => props.B);
+            serializer.Bind(() => props.C);
+            serializer.Bind(() => props.D);
+
+            var timeA = DateTime.UtcNow;
+            var timeB = timeA.AddDays(1);
+
+            props.A = 5;
+            props.B = 10;
+            props.C = "Test";
+            props.D = timeA;
+
+            Scheduler.WaitFor(serializer.Save());
+
+            Assert.AreEqual(
+                4,
+                Scheduler.WaitFor(Wrapper.ExecuteScalar<long>("SELECT COUNT(value) FROM Data"))
+            );
+
+            props.A = props.B = 0;
+            props.C = "Baz";
+            props.D = timeB;
+
+            Scheduler.WaitFor(serializer.Load());
+
+            Assert.AreEqual(
+                5, props.A
+            );
+            Assert.AreEqual(
+                10, props.B
+            );
+            Assert.AreEqual(
+                "Test", props.C
+            );
+            Assert.AreEqual(
+                timeA, props.D
+            );
+        }
+
+        [Test]
+        public void TestPropertySerializerLoadMissingValues () {
+            Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Data (name TEXT, value VARIANT)"));
+
+            var props = new ClassWithProperties();
+            var serializer = new PropertySerializer(Wrapper, "Data");
+
+            serializer.Bind(() => props.A);
+            serializer.Bind(() => props.C);
+
+            var timeA = DateTime.UtcNow;
+            var timeB = timeA.AddDays(1);
+
+            props.A = 5;
+            props.C = "Test";
+
+            Scheduler.WaitFor(serializer.Save());
+
+            Assert.AreEqual(
+                2,
+                Scheduler.WaitFor(Wrapper.ExecuteScalar<long>("SELECT COUNT(value) FROM Data"))
+            );
+
+            serializer.Bind(() => props.B);
+            serializer.Bind(() => props.D);
+
+            props.A = props.B = 0;
+            props.C = "Baz";
+            props.D = timeB;
+
+            Scheduler.WaitFor(serializer.Load());
+
+            Assert.AreEqual(
+                5, props.A
+            );
+            Assert.AreEqual(
+                0, props.B
+            );
+            Assert.AreEqual(
+                "Test", props.C
+            );
+            Assert.AreEqual(
+                timeB, props.D
+            );
         }
     }
 }

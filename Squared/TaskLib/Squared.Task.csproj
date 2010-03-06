@@ -84,6 +84,7 @@
     <Compile Include="Data\Connection.cs" />
     <Compile Include="Data\Mapper.cs" />
     <Compile Include="Data\Misc.cs" />
+    <Compile Include="Data\PropertySerializer.cs" />
     <Compile Include="Data\Query.cs" />
     <Compile Include="DiskMonitor.cs" />
     <Compile Include="Future.cs" />
