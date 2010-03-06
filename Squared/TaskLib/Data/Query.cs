@@ -212,7 +212,7 @@ namespace Squared.Task.Data {
             where T : class, new() {
             var fReader = this.ExecuteReader(parameters);
 
-            var e = new TaskEnumerator<T>(ExecuteTask<T>(fReader));
+            var e = new TaskEnumerator<T>(ExecuteMapper<T>(fReader));
             e.OnEarlyDispose = () => {
                 fReader.Dispose();
 
@@ -223,7 +223,7 @@ namespace Squared.Task.Data {
             return e;
         }
 
-        protected IEnumerator<object> ExecuteTask<T> (Future<QueryDataReader> fReader)
+        protected IEnumerator<object> ExecuteMapper<T> (Future<QueryDataReader> fReader)
             where T : class, new() {
             yield return fReader;
 
@@ -238,6 +238,42 @@ namespace Squared.Task.Data {
 
                     yield return v;
                 }
+            }
+        }
+
+        public TaskEnumerator<T> Execute<T> (Func<IDataReader, T> customMapper, params object[] parameters) {
+            var fReader = this.ExecuteReader(parameters);
+
+            var e = new TaskEnumerator<T>(ExecuteCustomMapper<T>(customMapper, fReader));
+            e.OnEarlyDispose = () => {
+                fReader.Dispose();
+
+                if (fReader.Completed)
+                    fReader.Result.Dispose();
+            };
+
+            return e;
+        }
+
+        protected IEnumerator<T> CustomMapperWrapper<T> (IDataReader reader, Func<IDataReader, T> customMapper) {
+            using (reader)
+            while (reader.Read())
+                yield return customMapper(reader);
+        }
+
+        protected IEnumerator<object> ExecuteCustomMapper<T> (Func<IDataReader, T> customMapper, Future<QueryDataReader> fReader) {
+            yield return fReader;
+
+            using (var reader = fReader.Result) {
+                using (var e = EnumeratorExtensionMethods.EnumerateViaThreadpool(
+                    CustomMapperWrapper<T>(reader.Reader, customMapper), 
+                    TaskEnumerator<T>.DefaultBufferSize
+                ))
+                    while (e.MoveNext()) {
+                        var v = e.Current;
+
+                        yield return v;
+                    }
             }
         }
 
