@@ -9,6 +9,12 @@ using System.Linq.Expressions;
 
 namespace Squared.Util.Bind {
     public interface IBoundMember {
+        object Target {
+            get;
+        }
+        string Name {
+            get;
+        }
         object Value {
             get;
             set;
@@ -86,20 +92,22 @@ namespace Squared.Util.Bind {
     public class BoundMember<T> : IBoundMember {
         public readonly Type Type;
         public readonly object Target;
+        public readonly string Name;
 
         protected readonly Func<T> Get;
         protected readonly Action<T> Set;
 
-        protected BoundMember (object target) {
+        protected BoundMember (object target, string name) {
             if (target.GetType().IsValueType)
                 throw new InvalidOperationException("Cannot bind to a member of a value type");
 
             Target = target;
+            Name = name;
             Type = typeof(T);
         }
 
         public BoundMember (object target, FieldInfo field) 
-            : this (target) {
+            : this (target, field.Name) {
 
             if (field.IsStatic || field.IsInitOnly)
                 throw new InvalidOperationException("Cannot bind to a static or initonly field");
@@ -117,7 +125,7 @@ namespace Squared.Util.Bind {
         }
 
         public BoundMember (object target, PropertyInfo property) 
-            : this (target) {
+            : this (target, property.Name) {
             
             if (!property.CanRead)
                 Get = null;
@@ -145,12 +153,27 @@ namespace Squared.Util.Bind {
             }
         }
 
+        string IBoundMember.Name {
+            get {
+                return this.Name;
+            }
+        }
+
+        object IBoundMember.Target {
+            get {
+                return this.Target;
+            }
+        }
+
         object IBoundMember.Value {
             get {
                 return (object)this.Value;
             }
             set {
-                this.Value = (T)value;
+                if (value is T)
+                    this.Value = (T)value;
+                else
+                    this.Value = (T)Convert.ChangeType(value, Type);
             }
         }
 
