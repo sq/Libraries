@@ -17,6 +17,7 @@ namespace Squared.Task.Data.Mapper {
     public class ColumnAttribute : Attribute {
         public readonly string Name;
         public readonly int? Index;
+        public readonly bool Coerce = true;
 
         public ColumnAttribute () {
         }
@@ -36,6 +37,7 @@ namespace Squared.Task.Data.Mapper {
         public PropertyInfo Property;
         public FieldInfo Field;
         public Type Type;
+        public bool Coerce;
     }
 
     public static class DataRecordHelper {
@@ -56,12 +58,30 @@ namespace Squared.Task.Data.Mapper {
             }
         }
 
+        class ReferenceHelper<T>
+            where T : class {
+
+            readonly Func<IDataReader, int, T> Getter;
+
+            public ReferenceHelper (Delegate getter) {
+                Getter = (Func<IDataReader, int, T>)getter;
+            }
+
+            public T Get (IDataReader reader, int ordinal) {
+                if (reader.IsDBNull(ordinal))
+                    return null;
+                else
+                    return Getter(reader, ordinal);
+            }
+        }
+
         static Dictionary<Type, Delegate> Getters = new Dictionary<Type, Delegate>();
 
         static DataRecordHelper () {
             var t = typeof(IDataRecord);
             var baseType = typeof(Func<,,>);
-            var baseHelperType = typeof(NullableHelper<>);
+            var baseNullableHelperType = typeof(NullableHelper<>);
+            var baseReferenceHelperType = typeof(ReferenceHelper<>);
             var baseNullableType = typeof(Nullable<>);
             var constructorTypes = new Type[] { typeof(Delegate) };
 
@@ -75,10 +95,10 @@ namespace Squared.Task.Data.Mapper {
                 var getterType = baseType.MakeGenericType(typeof(IDataReader), typeof(int), rt);
                 var getter = Delegate.CreateDelegate(getterType, method);
 
-                Getters[rt] = getter;
-
                 if (rt.IsValueType) {
-                    var helperType = baseHelperType.MakeGenericType(rt);
+                    Getters[rt] = getter;
+
+                    var helperType = baseNullableHelperType.MakeGenericType(rt);
                     var helperConstructor = helperType.GetConstructor(constructorTypes);
                     var helper = helperConstructor.Invoke(new object[] { getter });
                     var helperMethod = helper.GetType().GetMethod("Get", BindingFlags.Instance | BindingFlags.Public);
@@ -88,6 +108,15 @@ namespace Squared.Task.Data.Mapper {
                     var nullableGetter = Delegate.CreateDelegate(nullableGetterType, helper, helperMethod);
 
                     Getters[nullableType] = nullableGetter;
+                } else {
+                    var helperType = baseReferenceHelperType.MakeGenericType(rt);
+                    var helperConstructor = helperType.GetConstructor(constructorTypes);
+                    var helper = helperConstructor.Invoke(new object[] { getter });
+                    var helperMethod = helper.GetType().GetMethod("Get", BindingFlags.Instance | BindingFlags.Public);
+
+                    getter = Delegate.CreateDelegate(getterType, helper, helperMethod);
+
+                    Getters[rt] = getter;
                 }
             }
         }
@@ -118,22 +147,30 @@ namespace Squared.Task.Data.Mapper {
             public readonly Func<IDataReader, int, U> Getter;
             public readonly Setter<U> Setter;
 
-            public SetHelper (IDataReader reader, int ordinal, Delegate setter) {
+            public SetHelper (IDataReader reader, int ordinal, Delegate setter, bool coerce) {
                 Reader = reader;
                 Ordinal = ordinal;
                 Setter = (Setter<U>)setter;
                 Getter = DataRecordHelper.GetReadMethod<U>();
 
-                if (Getter == null)
-                    Getter = DefaultGetter;
+                if (Getter == null || coerce) {
+                    if (typeof(U).IsEnum)
+                        Getter = EnumGetter;
+                    else
+                        Getter = DefaultGetter;
+                }
             }
 
             static void FieldSetter (FieldInfo field, T item, U value) {
                 field.SetValue(item, value);
             }
 
+            static U EnumGetter (IDataReader reader, int ordinal) {
+                return (U)Enum.ToObject(typeof(U), reader.GetValue(ordinal));
+            }
+
             static U DefaultGetter (IDataReader reader, int ordinal) {
-                return (U)reader.GetValue(ordinal);
+                return (U)Convert.ChangeType(reader.GetValue(ordinal), typeof(U));
             }
 
             public void Set (T item) {
@@ -176,9 +213,11 @@ namespace Squared.Task.Data.Mapper {
 
                 string name = member.Name;
                 int? index = null;
+                bool coerce = false;
                 if (attr != null) {
                     name = attr.Name ?? name;
                     index = attr.Index;
+                    coerce = attr.Coerce;
                 }
 
                 if ((name == null) && (index.HasValue == false))
@@ -191,7 +230,8 @@ namespace Squared.Task.Data.Mapper {
                         Name = name,
                         Index = index,
                         Field = field,
-                        Type = field.FieldType
+                        Type = field.FieldType,
+                        Coerce = coerce
                     });
                 } else if (member.MemberType == MemberTypes.Property) {
                     var prop = (PropertyInfo)member;
@@ -200,7 +240,8 @@ namespace Squared.Task.Data.Mapper {
                         Name = name,
                         Index = index,
                         Property = prop,
-                        Type = prop.PropertyType
+                        Type = prop.PropertyType,
+                        Coerce = coerce
                     });
                 }
             }
@@ -214,7 +255,7 @@ namespace Squared.Task.Data.Mapper {
             var setterBaseType = typeof(Setter<>);
             var helperBaseType = typeof(SetHelper<>);
             var helperConstructorTypes = new Type[] { 
-                typeof(IDataReader), typeof(int), typeof(Delegate)
+                typeof(IDataReader), typeof(int), typeof(Delegate), typeof(bool)
             };
             var setters = new List<ISetHelper>();
 
@@ -243,7 +284,7 @@ namespace Squared.Task.Data.Mapper {
                     setterDelegate = Delegate.CreateDelegate(setterType, column.Field, helperMethod, true);
                 }
 
-                var helper = (ISetHelper)helperConstructor.Invoke(new object[] { Reader, ordinal, setterDelegate });
+                var helper = (ISetHelper)helperConstructor.Invoke(new object[] { Reader, ordinal, setterDelegate, column.Coerce });
 
                 setters.Add(helper);
             }
