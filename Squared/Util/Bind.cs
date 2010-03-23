@@ -69,6 +69,27 @@ namespace Squared.Util.Bind {
             } 
         }
 
+        public static IBoundMember New (object obj, MemberInfo member) {
+            Type type = null;
+            var prop = member as PropertyInfo;
+            var field = member as FieldInfo;
+
+            if (prop != null) {
+                type = prop.PropertyType;
+            } else if (field != null) {
+                type = field.FieldType;
+            } else {
+                throw new ArgumentException("Must specify a property or field.", "member");
+            }
+
+            var boundType = typeof(BoundMember<>).MakeGenericType(type);
+            if (prop != null) {
+                return Activator.CreateInstance(boundType, obj, prop) as IBoundMember;
+            } else {
+                return Activator.CreateInstance(boundType, obj, field) as IBoundMember;
+            }
+        }
+
         public static BoundMember<T> New<T> (Expression<Func<T>> target) {
             var member = target.Body as MemberExpression;
 

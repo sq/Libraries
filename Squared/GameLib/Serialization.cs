@@ -176,18 +176,21 @@ namespace Squared.Game.Serialization {
 
             reader.ReadToDescendant("types");
 
-            if (!reader.IsEmptyElement)
-            while (reader.Read()) {
-                if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "types")
-                    break;
-                else if (reader.NodeType == XmlNodeType.Element && reader.Name == "type") {
-                    int id = int.Parse(reader.GetAttribute("id"), CultureInfo.InvariantCulture);
-                    string typeName = reader.GetAttribute("name");
-                    var t = resolver.NameToType(typeName);
-                    if (outputType.IsAssignableFrom(t))
-                        typeIds[id] = t;
-                    else
-                        throw new InvalidDataException(String.Format("Cannot store an {0} into a Dictionary<String, {1}>.", t.Name, outputType.Name));
+            if (!reader.IsEmptyElement &&
+                (reader.GetAttribute("nil") == null) &&
+                (reader.GetAttribute("xsi:nil") == null)) {
+                while (reader.Read()) {
+                    if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "types")
+                        break;
+                    else if (reader.NodeType == XmlNodeType.Element && reader.Name == "type") {
+                        int id = int.Parse(reader.GetAttribute("id"), CultureInfo.InvariantCulture);
+                        string typeName = reader.GetAttribute("name");
+                        var t = resolver.NameToType(typeName);
+                        if (outputType.IsAssignableFrom(t))
+                            typeIds[id] = t;
+                        else
+                            throw new InvalidDataException(String.Format("Cannot store an {0} into a Dictionary<String, {1}>.", t.Name, outputType.Name));
+                    }
                 }
             }
 
@@ -224,7 +227,7 @@ namespace Squared.Game.Serialization {
                 }
             }
 
-            while (reader.NodeType != XmlNodeType.EndElement || reader.Name != sentinel)
+            while (!reader.EOF && (reader.NodeType != XmlNodeType.EndElement || reader.Name != sentinel))
                 reader.Read();
         }
 
