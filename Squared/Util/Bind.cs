@@ -115,7 +115,7 @@ namespace Squared.Util.Bind {
 
             DynamicMethod m = new DynamicMethod(
                 String.Format("{0}.set{1}", field.DeclaringType.Name, field.Name), typeof(void),
-                new Type[] { field.DeclaringType, field.FieldType }, typeof(BoundMember), true
+                new Type[] { field.DeclaringType, field.FieldType }, field.DeclaringType, true
             );
             ILGenerator cg = m.GetILGenerator();
 
@@ -135,7 +135,7 @@ namespace Squared.Util.Bind {
 
             DynamicMethod m = new DynamicMethod(
                 String.Format("{0}.get{1}", field.DeclaringType.Name, field.Name), field.FieldType,
-                new Type[] { field.DeclaringType }, typeof(BoundMember), true
+                new Type[] { field.DeclaringType }, field.DeclaringType, true
             );
             ILGenerator cg = m.GetILGenerator();
 
