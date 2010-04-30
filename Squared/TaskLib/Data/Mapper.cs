@@ -5,6 +5,7 @@ using System.Text;
 using System.Reflection;
 using System.Data;
 using System.Linq.Expressions;
+using System.Reflection.Emit;
 
 namespace Squared.Task.Data.Mapper {
     public class MapperAttribute : Attribute {
@@ -161,8 +162,8 @@ namespace Squared.Task.Data.Mapper {
                 }
             }
 
-            static void FieldSetter (FieldInfo field, T item, U value) {
-                field.SetValue(item, value);
+            static Setter<U> MakeFieldSetter (FieldInfo field) {
+                return Squared.Util.Bind.BoundMember.MakeFieldSetter<Setter<U>>(null, field);
             }
 
             static U EnumGetter (IDataReader reader, int ordinal) {
@@ -280,8 +281,8 @@ namespace Squared.Task.Data.Mapper {
                     var setterMethod = column.Property.GetSetMethod(true);
                     setterDelegate = Delegate.CreateDelegate(setterType, setterMethod, true);
                 } else {
-                    var helperMethod = helperType.GetMethod("FieldSetter", BindingFlags.Static | BindingFlags.NonPublic);
-                    setterDelegate = Delegate.CreateDelegate(setterType, column.Field, helperMethod, true);
+                    setterDelegate = helperType.GetMethod("MakeFieldSetter", BindingFlags.Static | BindingFlags.NonPublic)
+                        .Invoke(null, new object[] { column.Field }) as System.Delegate;
                 }
 
                 var helper = (ISetHelper)helperConstructor.Invoke(new object[] { Reader, ordinal, setterDelegate, column.Coerce });

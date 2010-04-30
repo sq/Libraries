@@ -5,6 +5,7 @@ using System.Text;
 using System.Reflection;
 #if !XBOX
 using System.Linq.Expressions;
+using System.Reflection.Emit;
 #endif
 
 namespace Squared.Util.Bind {
@@ -108,6 +109,45 @@ namespace Squared.Util.Bind {
             }
         }
 #endif
+
+        public static TDelegate MakeFieldSetter<TDelegate> (object target, FieldInfo field)
+            where TDelegate : class {
+
+            DynamicMethod m = new DynamicMethod(
+                String.Format("{0}.set{1}", field.DeclaringType.Name, field.Name), typeof(void),
+                new Type[] { field.DeclaringType, field.FieldType }, typeof(BoundMember), true
+            );
+            ILGenerator cg = m.GetILGenerator();
+
+            cg.Emit(OpCodes.Ldarg_0);
+            cg.Emit(OpCodes.Ldarg_1);
+            cg.Emit(OpCodes.Stfld, field);
+            cg.Emit(OpCodes.Ret);
+
+            if (target != null)
+                return m.CreateDelegate(typeof(TDelegate), target) as TDelegate;
+            else
+                return m.CreateDelegate(typeof(TDelegate)) as TDelegate;
+        }
+
+        public static TDelegate MakeFieldGetter<TDelegate> (object target, FieldInfo field)
+            where TDelegate : class {
+
+            DynamicMethod m = new DynamicMethod(
+                String.Format("{0}.get{1}", field.DeclaringType.Name, field.Name), field.FieldType,
+                new Type[] { field.DeclaringType }, typeof(BoundMember), true
+            );
+            ILGenerator cg = m.GetILGenerator();
+
+            cg.Emit(OpCodes.Ldarg_0);
+            cg.Emit(OpCodes.Ldfld, field);
+            cg.Emit(OpCodes.Ret);
+
+            if (target != null)
+                return m.CreateDelegate(typeof(TDelegate), target) as TDelegate;
+            else
+                return m.CreateDelegate(typeof(TDelegate)) as TDelegate;
+        }
     }
 
     public class BoundMember<T> : IBoundMember {
@@ -133,16 +173,12 @@ namespace Squared.Util.Bind {
             if (field.IsStatic || field.IsInitOnly)
                 throw new InvalidOperationException("Cannot bind to a static or initonly field");
 
-            Get = () => {
-                return (T)field.GetValue(this.Target);
-            };
+            Get = BoundMember.MakeFieldGetter<Func<T>>(target, field);
 
             if (field.IsLiteral)
                 Set = null;
             else
-                Set = (v) => {
-                    field.SetValue(this.Target, v);
-                };
+                Set = BoundMember.MakeFieldSetter<Action<T>>(target, field);
         }
 
         public BoundMember (object target, PropertyInfo property) 

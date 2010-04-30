@@ -192,8 +192,10 @@ namespace Squared.Task {
                         msToSleep = (int)(timeToSleep / Time.MillisecondInTicks);
                     }
 
-                    newSleepEvent.Reset();
-                    newSleepEvent.WaitOne(msToSleep, false);
+                    if (newSleepEvent != null) {
+                        newSleepEvent.Reset();
+                        newSleepEvent.WaitOne(msToSleep, false);
+                    }
                 }
             }
         }

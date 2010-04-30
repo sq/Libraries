@@ -26,7 +26,8 @@ namespace Squared.Task {
         }
 
         public void Wake () {
-            _WakeEvent.Set();
+            if (_WakeEvent != null)
+                _WakeEvent.Set();
 
             if (_Thread == null) {
                 _Thread = new Thread(() => {
