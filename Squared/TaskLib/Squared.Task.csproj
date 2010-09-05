@@ -8,7 +8,7 @@
     <ProjectGuid>{173ABDCA-7278-46FF-A300-D3BF8CCEF181}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>TaskLib</RootNamespace>
+    <RootNamespace>Squared.Task</RootNamespace>
     <AssemblyName>TaskLib</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>

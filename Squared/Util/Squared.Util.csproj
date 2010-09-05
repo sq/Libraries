@@ -8,7 +8,7 @@
     <ProjectGuid>{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Util</RootNamespace>
+    <RootNamespace>Squared.Util</RootNamespace>
     <AssemblyName>Util</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
