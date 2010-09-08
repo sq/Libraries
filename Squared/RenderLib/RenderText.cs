@@ -168,5 +168,12 @@ namespace Squared.Render {
             Color = color;
             Scale = scale;
         }
+
+        public StringDrawCall Shadow (Color color, float offset) {
+            return new StringDrawCall(
+                Text, new Vector2(Position.X + offset, Position.Y + offset), 
+                color, Scale
+            );
+        }
     }
 }

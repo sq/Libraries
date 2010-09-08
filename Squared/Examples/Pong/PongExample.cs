@@ -19,7 +19,10 @@ namespace Pong {
         DefaultMaterialSet Materials;
         Playfield Playfield;
         Paddle[] Paddles;
+        int[] Scores = new int[2];
         Ball Ball;
+        SpriteFont Font;
+        SpriteBatch SpriteBatch;
 
         public PongExample() {
             Graphics = new GraphicsDeviceManager(this);
@@ -40,37 +43,10 @@ namespace Pong {
             rs.DestinationBlend = Blend.InverseSourceAlpha;
 
             Playfield = new Playfield {
-                Bounds = new Bounds(new Vector2(24, 24), new Vector2(Graphics.GraphicsDevice.Viewport.Width - 24, Graphics.GraphicsDevice.Viewport.Height - 24))
+                Bounds = new Bounds(new Vector2(-32, 24), new Vector2(Graphics.GraphicsDevice.Viewport.Width + 32, Graphics.GraphicsDevice.Viewport.Height - 24))
             };
 
-            Paddles = new Paddle[] { 
-                new Paddle {
-                    Bounds = new Bounds(
-                        new Vector2(Playfield.Bounds.TopLeft.X, Playfield.Bounds.Center.Y - 48),
-                        new Vector2(Playfield.Bounds.TopLeft.X + 16, Playfield.Bounds.Center.Y + 48)
-                    ),
-                    Playfield = Playfield
-                },
-                new Paddle {
-                    Bounds = new Bounds(
-                        new Vector2(Playfield.Bounds.BottomRight.X - 16, Playfield.Bounds.Center.Y - 48), 
-                        new Vector2(Playfield.Bounds.BottomRight.X, Playfield.Bounds.Center.Y + 48)
-                    ),
-                    Playfield = Playfield
-                }
-            };
-
-            var random = new Random();
-            var velocity = new Vector2((float)random.NextDouble(-1, 1), (float)random.NextDouble(-1, 1));
-            velocity.Normalize();
-            velocity *= 4;
-
-            Ball = new Ball {
-                Position = Playfield.Bounds.Center,
-                Velocity = velocity,
-                Playfield = Playfield,
-                Radius = 8.0f
-            };
+            ResetPlayfield(0);
         }
 
         protected override void LoadContent() {
@@ -80,6 +56,41 @@ namespace Pong {
                     GraphicsDevice.Viewport.Height, 0,
                     0, 1
                 )
+            };
+
+            Font = Content.Load<SpriteFont>("Tahoma");
+
+            SpriteBatch = new SpriteBatch(GraphicsDevice);
+        }
+
+        public void ResetPlayfield (int loserIndex) {
+            Paddles = new Paddle[] { 
+                new Paddle {
+                    Bounds = new Bounds(
+                        new Vector2(24, Playfield.Bounds.Center.Y - 48),
+                        new Vector2(24 + 16, Playfield.Bounds.Center.Y + 48)
+                    ),
+                    Playfield = Playfield
+                },
+                new Paddle {
+                    Bounds = new Bounds(
+                        new Vector2(GraphicsDevice.Viewport.Width - 24 - 16, Playfield.Bounds.Center.Y - 48), 
+                        new Vector2(GraphicsDevice.Viewport.Width - 24, Playfield.Bounds.Center.Y + 48)
+                    ),
+                    Playfield = Playfield
+                }
+            };
+
+            var random = new Random();
+            var velocity = new Vector2(loserIndex == 0 ? 1 : -1, (float)random.NextDouble(-1, 1));
+            velocity.Normalize();
+            velocity *= 4;
+
+            Ball = new Ball {
+                Position = Playfield.Bounds.Center,
+                Velocity = velocity,
+                Playfield = Playfield,
+                Radius = 8.0f
             };
         }
 
@@ -113,6 +124,14 @@ namespace Pong {
                 paddle.Update();
 
             Ball.Update(Paddles);
+
+            if (Ball.Position.X <= Paddles[0].Bounds.TopLeft.X) {
+                Scores[1] += 1;
+                ResetPlayfield(0);
+            } else if (Ball.Position.X >= Paddles[1].Bounds.BottomRight.X) {
+                Scores[0] += 1;
+                ResetPlayfield(1);
+            }
 
             base.Update(gameTime);
         }
@@ -163,8 +182,25 @@ namespace Pong {
                         gb, paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.White, Color.TransparentWhite, 4
                     );
 
-                Primitives.FilledRing(gb, Ball.Position, 0.0f, Ball.Radius, Color.White, Color.TransparentWhite);
+                Primitives.FilledRing(gb, Ball.Position, 0.0f, Ball.Radius, Color.TransparentWhite, Color.White);
                 Primitives.FilledRing(gb, Ball.Position, Ball.Radius - 0.8f, Ball.Radius + 0.8f, Color.White, Color.White);
+            }
+
+            using (var sb = StringBatch.New(frame, 4, Materials.ScreenSpaceBitmap, SpriteBatch, Font)) {
+                var drawCall = new StringDrawCall(
+                    String.Format("Player 1 Score: {0:00}", Scores[0]),
+                    new Vector2(16, 16),
+                    Color.White
+                );
+
+                sb.Add(drawCall.Shadow(Color.Black, 1));
+                sb.Add(drawCall);
+
+                drawCall.Text = String.Format("Player 2 Score: {0:00}", Scores[1]);
+                drawCall.Position.X = GraphicsDevice.Viewport.Width - 16 - sb.Measure(ref drawCall).X;
+
+                sb.Add(drawCall.Shadow(Color.Black, 1));
+                sb.Add(drawCall);
             }
         }
     }
