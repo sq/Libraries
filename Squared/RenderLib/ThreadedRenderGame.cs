@@ -35,8 +35,9 @@ namespace Squared.Render {
         // Evil hack :(
         private PropertyInfo _IsDeviceLost;
 
-        public abstract RenderManager RenderManager {
+        public RenderManager RenderManager {
             get;
+            protected set;
         }
 
         public MultithreadedGame()
@@ -47,6 +48,12 @@ namespace Squared.Render {
 #if XBOX
             Thread.CurrentThread.SetProcessorAffinity(1);
 #endif
+        }
+
+        protected override void Initialize () {
+            base.Initialize();
+
+            RenderManager = new RenderManager(GraphicsDevice);
         }
 
         public abstract void Draw(GameTime gameTime, Frame frame);

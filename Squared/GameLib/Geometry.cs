@@ -76,6 +76,11 @@ namespace Squared.Game {
                 (point.X <= BottomRight.X) && (point.Y <= BottomRight.Y);
         }
 
+        public bool Contains (Bounds other) {
+            return (other.TopLeft.X >= TopLeft.X) && (other.TopLeft.Y >= TopLeft.Y) &&
+                (other.BottomRight.X <= BottomRight.X) && (other.BottomRight.Y <= BottomRight.Y);
+        }
+
         public override string ToString () {
             return String.Format("{{{0}, {1}}} - {{{2}, {3}}}", TopLeft.X, TopLeft.Y, BottomRight.X, BottomRight.Y);
         }
@@ -273,6 +278,16 @@ namespace Squared.Game {
                 j = 0;
 
             return new Edge { Start = _TranslatedVertices[i], End = _TranslatedVertices[j] };
+        }
+
+        public static Polygon FromBounds (Bounds bounds) {
+            return FromBounds(ref bounds);
+        }
+
+        public static Polygon FromBounds (ref Bounds bounds) {
+            return new Polygon(new Vector2[] { 
+                bounds.TopLeft, bounds.TopRight, bounds.BottomRight, bounds.BottomLeft
+            });
         }
     }
 
