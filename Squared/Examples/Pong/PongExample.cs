@@ -27,7 +27,7 @@ namespace Pong {
         RenderTarget2D TrailBuffer;
         DepthStencilBuffer DefaultDepthStencilBuffer;
         bool FirstFrame = false;
-        int TrailScale = 3;
+        const int TrailScale = 2;
 
         public PongExample() {
             Graphics = new GraphicsDeviceManager(this);
@@ -256,7 +256,7 @@ namespace Pong {
                 sb.Add(drawCall);
             }
 
-            SetRenderTargetBatch.AddNew(frame, 0, 0, TrailBuffer, null, Materials.Clear);
+            SetRenderTargetBatch.AddNew(frame, 0, 0, TrailBuffer, null);
             if (FirstFrame) {
                 ClearBatch.AddNew(frame, 1, Color.Black, Materials.Clear);
                 FirstFrame = false;
@@ -269,7 +269,7 @@ namespace Pong {
                     );
                 }
             }
-            SetRenderTargetBatch.AddNew(frame, 3, 0, null, DefaultDepthStencilBuffer, Materials.Clear);
+            SetRenderTargetBatch.AddNew(frame, 3, 0, null, DefaultDepthStencilBuffer);
         }
     }
 

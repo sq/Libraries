@@ -601,8 +601,8 @@ namespace Squared.Render {
         public RenderTarget2D RenderTarget;
         public DepthStencilBuffer DepthStencilBuffer;
 
-        public void Initialize (Frame frame, int layer, int renderTargetIndex, RenderTarget2D renderTarget, DepthStencilBuffer depthStencilBuffer, Material material) {
-            base.Initialize(frame, layer, material);
+        public void Initialize (Frame frame, int layer, int renderTargetIndex, RenderTarget2D renderTarget, DepthStencilBuffer depthStencilBuffer) {
+            base.Initialize(frame, layer, null);
             RenderTargetIndex = renderTargetIndex;
             RenderTarget = renderTarget;
             DepthStencilBuffer = depthStencilBuffer;
@@ -612,18 +612,16 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            using (manager.ApplyMaterial(Material)) {
-                manager.Device.SetRenderTarget(RenderTargetIndex, RenderTarget);
-                manager.Device.DepthStencilBuffer = DepthStencilBuffer;
-            }
+            manager.Device.SetRenderTarget(RenderTargetIndex, RenderTarget);
+            manager.Device.DepthStencilBuffer = DepthStencilBuffer;
         }
 
-        public static void AddNew (Frame frame, int layer, int renderTargetIndex, RenderTarget2D renderTarget, DepthStencilBuffer depthStencilBuffer, Material material) {
+        public static void AddNew (Frame frame, int layer, int renderTargetIndex, RenderTarget2D renderTarget, DepthStencilBuffer depthStencilBuffer) {
             if (frame == null)
                 throw new ArgumentNullException("frame");
 
             var result = frame.RenderManager.AllocateBatch<SetRenderTargetBatch>();
-            result.Initialize(frame, layer, renderTargetIndex, renderTarget, depthStencilBuffer, material);
+            result.Initialize(frame, layer, renderTargetIndex, renderTarget, depthStencilBuffer);
             result.Dispose();
         }
     }
@@ -632,8 +630,8 @@ namespace Squared.Render {
     public class ResolveBackbufferBatch : Batch {
         public ResolveTexture2D ResolveTexture;
 
-        public void Initialize (Frame frame, int layer, ResolveTexture2D resolveTexture, Material material) {
-            base.Initialize(frame, layer, material);
+        public void Initialize (Frame frame, int layer, ResolveTexture2D resolveTexture) {
+            base.Initialize(frame, layer, null);
             ResolveTexture = resolveTexture;
         }
 
@@ -641,16 +639,15 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            using (manager.ApplyMaterial(Material))
-                manager.Device.ResolveBackBuffer(ResolveTexture);
+            manager.Device.ResolveBackBuffer(ResolveTexture);
         }
 
-        public static void AddNew (Frame frame, int layer, ResolveTexture2D resolveTexture, Material material) {
+        public static void AddNew (Frame frame, int layer, ResolveTexture2D resolveTexture) {
             if (frame == null)
                 throw new ArgumentNullException("frame");
 
             var result = frame.RenderManager.AllocateBatch<ResolveBackbufferBatch>();
-            result.Initialize(frame, layer, resolveTexture, material);
+            result.Initialize(frame, layer, resolveTexture);
             result.Dispose();
         }
     }
