@@ -190,8 +190,8 @@ namespace ThreadedPlatformer {
                     timeString, hudLocation, timeColor
                 );
 
-                sb.Add(sdc);
                 sb.Add(sdc.Shadow(Color.Black, 1.0f));
+                sb.Add(sdc);
 
                 // Draw score
                 float timeHeight = hudFont.MeasureString(timeString).Y;
@@ -199,8 +199,8 @@ namespace ThreadedPlatformer {
                 sdc.Position += new Vector2(0.0f, timeHeight * 1.2f);
                 sdc.Color = Color.Yellow;
 
-                sb.Add(sdc);
                 sb.Add(sdc.Shadow(Color.Black, 1.0f));
+                sb.Add(sdc);
 
                 // Determine the status overlay message to show.
                 Texture2D status = null;

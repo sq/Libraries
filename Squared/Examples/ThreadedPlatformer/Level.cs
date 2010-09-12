@@ -450,13 +450,16 @@ namespace ThreadedPlatformer {
         /// Draw everything in the level from background to foreground.
         /// </summary>
         public void Draw (GameTime gameTime, Frame frame, DefaultMaterialSet materials) {
+            BitmapBatch bb;
+
             for (int i = 0; i <= EntityLayer; ++i)
-                using (var bb = BitmapBatch.New(frame, i, materials.ScreenSpaceBitmap))
+                using (bb = BitmapBatch.New(frame, i, materials.ScreenSpaceBitmap))
                     bb.Add(new BitmapDrawCall(layers[i], Vector2.Zero));
 
-            using (var entityBatch = BitmapBatch.New(frame, EntityLayer, materials.ScreenSpaceBitmap)) {
-                DrawTiles(entityBatch);
+            using (bb = BitmapBatch.New(frame, EntityLayer, materials.ScreenSpaceBitmap))
+                DrawTiles(bb);
 
+            using (var entityBatch = BitmapBatch.New(frame, EntityLayer, materials.ScreenSpaceBitmap)) {
                 foreach (Gem gem in gems)
                     gem.Draw(gameTime, entityBatch);
 
@@ -467,7 +470,7 @@ namespace ThreadedPlatformer {
             }
 
             for (int i = EntityLayer + 1; i < layers.Length; ++i)
-                using (var bb = BitmapBatch.New(frame, i, materials.ScreenSpaceBitmap))
+                using (bb = BitmapBatch.New(frame, i, materials.ScreenSpaceBitmap))
                     bb.Add(new BitmapDrawCall(layers[i], Vector2.Zero));
         }
 
