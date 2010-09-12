@@ -139,6 +139,8 @@ namespace Pong {
             var random = new Random();
             var velocity = new Vector2(loserIndex == 0 ? 1 : -1, (float)random.NextDouble(-1, 1));
             velocity.Normalize();
+            if (Math.Abs(velocity.Y) < 0.15f)
+                velocity.Y += Math.Sign(velocity.Y) * 0.15f;
             velocity *= 4;
 
             Ball = new Ball {
@@ -214,34 +216,36 @@ namespace Pong {
                 );
             }
 
-            using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 8, Materials.ScreenSpaceGeometry))
-            using (var trailBatch = PrimitiveBatch<VertexPositionColor>.New(frame, 2, Materials.ScreenSpaceGeometry)) {
-                foreach (var paddle in Paddles) {
-                    Primitives.FilledBorderedBox(
-                        gb, paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.White, Color.TransparentWhite, 4
-                    );
-
-                    Primitives.FilledBorderedBox(
-                        trailBatch, paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.White, Color.TransparentWhite, 4
-                    );
-                }
-
-                Primitives.FilledRing(gb, Ball.Position, 0.0f, Ball.Radius, Color.TransparentWhite, Color.White);
-                Primitives.FilledRing(gb, Ball.Position, Ball.Radius - 0.9f, Ball.Radius + 0.9f, Color.White, Color.White);
-
-                Primitives.FilledRing(trailBatch, Ball.Position, 0.0f, Ball.Radius, Color.TransparentWhite, Color.White);
-                Primitives.FilledRing(trailBatch, Ball.Position, Ball.Radius - 0.4f, Ball.Radius + 0.4f, Color.White, Color.White);
-            }
-
             using (var bb = BitmapBatch.New(frame, 7, TrailMaterial)) {
                 bb.Add(new BitmapDrawCall(
                     TrailBuffer, Vector2.Zero, (float)TrailScale
                 ));
             }
 
+            using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 8, Materials.ScreenSpaceGeometry))
+            using (var trailBatch = PrimitiveBatch<VertexPositionColor>.New(frame, 2, Materials.ScreenSpaceGeometry)) {
+                foreach (var paddle in Paddles) {
+                    Primitives.FilledQuad(
+                        gb, paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.White
+                    );
+                    Primitives.BorderedBox(
+                        gb, paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.Black, Color.Black, 2.25f
+                    );
+
+                    Primitives.FilledQuad(
+                        trailBatch, paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.White
+                    );
+                }
+
+                Primitives.FilledRing(gb, Ball.Position, 0.0f, Ball.Radius, Color.White, Color.White);
+                Primitives.FilledRing(gb, Ball.Position, Ball.Radius - 0.5f, Ball.Radius + 1.5f, Color.Black, Color.Black);
+
+                Primitives.FilledRing(trailBatch, Ball.Position, 0.0f, Ball.Radius, Color.White, Color.White);
+            }
+
             using (var sb = StringBatch.New(frame, 9, Materials.ScreenSpaceBitmap, SpriteBatch, Font)) {
                 var drawCall = new StringDrawCall(
-                    String.Format("Player 1 Score: {0:00}", Scores[0]),
+                    String.Format("Player 1: {0:00}", Scores[0]),
                     new Vector2(16, 16),
                     Color.White
                 );
@@ -249,7 +253,7 @@ namespace Pong {
                 sb.Add(drawCall.Shadow(Color.Black, 1));
                 sb.Add(drawCall);
 
-                drawCall.Text = String.Format("Player 2 Score: {0:00}", Scores[1]);
+                drawCall.Text = String.Format("Player 2: {0:00}", Scores[1]);
                 drawCall.Position.X = GraphicsDevice.Viewport.Width - 16 - sb.Measure(ref drawCall).X;
 
                 sb.Add(drawCall.Shadow(Color.Black, 1));
