@@ -17,12 +17,17 @@ namespace Pong {
     public class PongExample : MultithreadedGame {
         GraphicsDeviceManager Graphics;
         DefaultMaterialSet Materials;
+        Material TrailMaterial, SubtractiveGeometry;
         Playfield Playfield;
         Paddle[] Paddles;
         int[] Scores = new int[2];
         Ball Ball;
         SpriteFont Font;
         SpriteBatch SpriteBatch;
+        RenderTarget2D TrailBuffer;
+        DepthStencilBuffer DefaultDepthStencilBuffer;
+        bool FirstFrame = false;
+        int TrailScale = 3;
 
         public PongExample() {
             Graphics = new GraphicsDeviceManager(this);
@@ -42,6 +47,15 @@ namespace Pong {
             rs.SourceBlend = Blend.SourceAlpha;
             rs.DestinationBlend = Blend.InverseSourceAlpha;
 
+            DefaultDepthStencilBuffer = GraphicsDevice.DepthStencilBuffer;
+
+            TrailBuffer = new RenderTarget2D(
+                Graphics.GraphicsDevice,
+                Graphics.GraphicsDevice.Viewport.Width / TrailScale,
+                Graphics.GraphicsDevice.Viewport.Height / TrailScale,
+                1, SurfaceFormat.Rgb32, RenderTargetUsage.PreserveContents
+            );
+
             Playfield = new Playfield {
                 Bounds = new Bounds(new Vector2(-32, 24), new Vector2(Graphics.GraphicsDevice.Viewport.Width + 32, Graphics.GraphicsDevice.Viewport.Height - 24))
             };
@@ -57,6 +71,47 @@ namespace Pong {
                     0, 1
                 )
             };
+
+            TrailMaterial = new DelegateMaterial(
+                Materials.ScreenSpaceBitmap,
+                new Action<DeviceManager>[] {
+                    (dm) => {
+                        var rs = dm.Device.RenderState;
+                        rs.SourceBlend = Blend.One;
+                        rs.DestinationBlend = Blend.One;
+                        var ss = dm.Device.SamplerStates[0];
+                        ss.MinFilter = TextureFilter.Linear;
+                        ss.MagFilter = TextureFilter.Linear;
+                    }
+                },
+                new Action<DeviceManager>[] { 
+                    (dm) => {
+                        var rs = dm.Device.RenderState;
+                        rs.SourceBlend = Blend.SourceAlpha;
+                        rs.DestinationBlend = Blend.InverseSourceAlpha;
+                    }
+                }
+            );
+
+            SubtractiveGeometry = new DelegateMaterial(
+                Materials.ScreenSpaceGeometry,
+                new Action<DeviceManager>[] {
+                    (dm) => {
+                        var rs = dm.Device.RenderState;
+                        rs.BlendFunction = BlendFunction.ReverseSubtract;
+                        rs.SourceBlend = Blend.One;
+                        rs.DestinationBlend = Blend.One;
+                    }
+                },
+                new Action<DeviceManager>[] { 
+                    (dm) => {
+                        var rs = dm.Device.RenderState;
+                        rs.BlendFunction = BlendFunction.Add;
+                        rs.SourceBlend = Blend.SourceAlpha;
+                        rs.DestinationBlend = Blend.InverseSourceAlpha;
+                    }
+                }
+            );
 
             Font = Content.Load<SpriteFont>("Tahoma");
 
@@ -125,10 +180,10 @@ namespace Pong {
 
             Ball.Update(Paddles);
 
-            if (Ball.Position.X <= Paddles[0].Bounds.TopLeft.X) {
+            if (Ball.Position.X < Paddles[0].Bounds.TopLeft.X - 8) {
                 Scores[1] += 1;
                 ResetPlayfield(0);
-            } else if (Ball.Position.X >= Paddles[1].Bounds.BottomRight.X) {
+            } else if (Ball.Position.X > Paddles[1].Bounds.BottomRight.X + 8) {
                 Scores[0] += 1;
                 ResetPlayfield(1);
             }
@@ -137,9 +192,9 @@ namespace Pong {
         }
 
         public override void Draw(GameTime gameTime, Frame frame) {
-            ClearBatch.AddNew(frame, 0, Color.Black, Materials.Clear);
+            ClearBatch.AddNew(frame, 4, Color.Black, Materials.Clear);
 
-            using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 1, Materials.ScreenSpaceGeometry)) {
+            using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 5, Materials.ScreenSpaceGeometry)) {
                 Primitives.GradientFilledQuad(
                     gb, Vector2.Zero, new Vector2(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height),
                     Color.DarkSlateGray, Color.DarkSlateGray,
@@ -147,46 +202,44 @@ namespace Pong {
                 );
             }
 
-            using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 2, Materials.ScreenSpaceGeometry)) {
-                var transparentBlack = new Color(0, 0, 0, 127);
+            using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 6, Materials.ScreenSpaceGeometry)) {
+                var alphaBlack = new Color(0, 0, 0, 192);
+                var alphaBlack2 = new Color(0, 0, 0, 64);
 
-                Primitives.FilledQuad(
+                Primitives.BorderedBox(
                     gb, 
-                    new Vector2(24, 0), 
-                    new Vector2(GraphicsDevice.Viewport.Width, 24), 
-                    transparentBlack
-                );
-                Primitives.FilledQuad(
-                    gb, 
-                    new Vector2(0, 0), 
-                    new Vector2(24, GraphicsDevice.Viewport.Height), 
-                    transparentBlack
-                );
-                Primitives.FilledQuad(
-                    gb,
-                    new Vector2(GraphicsDevice.Viewport.Width - 24, 24),
-                    new Vector2(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height),
-                    transparentBlack
-                );
-                Primitives.FilledQuad(
-                    gb,
-                    new Vector2(24, GraphicsDevice.Viewport.Height - 24),
-                    new Vector2(GraphicsDevice.Viewport.Width - 24, GraphicsDevice.Viewport.Height),
-                    transparentBlack
+                    Playfield.Bounds.TopLeft + new Vector2(32 + 24, 0), 
+                    Playfield.Bounds.BottomRight + new Vector2(-32 - 24, 0), 
+                    alphaBlack2, alphaBlack, 24
                 );
             }
 
-            using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 3, Materials.ScreenSpaceGeometry)) {
-                foreach (var paddle in Paddles)
+            using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 8, Materials.ScreenSpaceGeometry))
+            using (var trailBatch = PrimitiveBatch<VertexPositionColor>.New(frame, 2, Materials.ScreenSpaceGeometry)) {
+                foreach (var paddle in Paddles) {
                     Primitives.FilledBorderedBox(
                         gb, paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.White, Color.TransparentWhite, 4
                     );
 
+                    Primitives.FilledBorderedBox(
+                        trailBatch, paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.White, Color.TransparentWhite, 4
+                    );
+                }
+
                 Primitives.FilledRing(gb, Ball.Position, 0.0f, Ball.Radius, Color.TransparentWhite, Color.White);
-                Primitives.FilledRing(gb, Ball.Position, Ball.Radius - 0.8f, Ball.Radius + 0.8f, Color.White, Color.White);
+                Primitives.FilledRing(gb, Ball.Position, Ball.Radius - 0.9f, Ball.Radius + 0.9f, Color.White, Color.White);
+
+                Primitives.FilledRing(trailBatch, Ball.Position, 0.0f, Ball.Radius, Color.TransparentWhite, Color.White);
+                Primitives.FilledRing(trailBatch, Ball.Position, Ball.Radius - 0.4f, Ball.Radius + 0.4f, Color.White, Color.White);
             }
 
-            using (var sb = StringBatch.New(frame, 4, Materials.ScreenSpaceBitmap, SpriteBatch, Font)) {
+            using (var bb = BitmapBatch.New(frame, 7, TrailMaterial)) {
+                bb.Add(new BitmapDrawCall(
+                    TrailBuffer, Vector2.Zero, (float)TrailScale
+                ));
+            }
+
+            using (var sb = StringBatch.New(frame, 9, Materials.ScreenSpaceBitmap, SpriteBatch, Font)) {
                 var drawCall = new StringDrawCall(
                     String.Format("Player 1 Score: {0:00}", Scores[0]),
                     new Vector2(16, 16),
@@ -202,6 +255,21 @@ namespace Pong {
                 sb.Add(drawCall.Shadow(Color.Black, 1));
                 sb.Add(drawCall);
             }
+
+            SetRenderTargetBatch.AddNew(frame, 0, 0, TrailBuffer, null, Materials.Clear);
+            if (FirstFrame) {
+                ClearBatch.AddNew(frame, 1, Color.Black, Materials.Clear);
+                FirstFrame = false;
+            } else {
+                using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 1, SubtractiveGeometry)) {
+                    Primitives.FilledQuad(
+                        gb, 
+                        new Bounds(Vector2.Zero, new Vector2(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height)), 
+                        new Color(12, 12, 12)
+                    );
+                }
+            }
+            SetRenderTargetBatch.AddNew(frame, 3, 0, null, DefaultDepthStencilBuffer, Materials.Clear);
         }
     }
 
