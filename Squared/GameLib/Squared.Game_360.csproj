@@ -126,6 +126,7 @@
     <ProjectReference Include="..\XNASQLite\C#-SQLite\XnaSQLite360.csproj">
       <Project>{C2ED340E-BF18-43FB-84CA-4DE873F30BDF}</Project>
       <Name>XnaSQLite360</Name>
+      <Private>False</Private>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
