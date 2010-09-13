@@ -26,7 +26,7 @@ namespace Pong {
         SpriteBatch SpriteBatch;
         RenderTarget2D TrailBuffer;
         DepthStencilBuffer DefaultDepthStencilBuffer;
-        bool FirstFrame = false;
+        bool FirstFrame = true;
         const int TrailScale = 2;
 
         public PongExample() {
@@ -125,14 +125,14 @@ namespace Pong {
                         new Vector2(24, Playfield.Bounds.Center.Y - 48),
                         new Vector2(24 + 16, Playfield.Bounds.Center.Y + 48)
                     ),
-                    Playfield = Playfield
+                    Playfield = this.Playfield
                 },
                 new Paddle {
                     Bounds = new Bounds(
                         new Vector2(GraphicsDevice.Viewport.Width - 24 - 16, Playfield.Bounds.Center.Y - 48), 
                         new Vector2(GraphicsDevice.Viewport.Width - 24, Playfield.Bounds.Center.Y + 48)
                     ),
-                    Playfield = Playfield
+                    Playfield = this.Playfield
                 }
             };
 
@@ -146,7 +146,7 @@ namespace Pong {
             Ball = new Ball {
                 Position = Playfield.Bounds.Center,
                 Velocity = velocity,
-                Playfield = Playfield,
+                Playfield = this.Playfield,
                 Radius = 8.0f
             };
         }
