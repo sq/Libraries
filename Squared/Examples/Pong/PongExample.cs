@@ -53,7 +53,7 @@ namespace Pong {
                 Graphics.GraphicsDevice,
                 Graphics.GraphicsDevice.Viewport.Width / TrailScale,
                 Graphics.GraphicsDevice.Viewport.Height / TrailScale,
-                1, SurfaceFormat.Rgb32, RenderTargetUsage.PreserveContents
+                1, SurfaceFormat.Color, RenderTargetUsage.PreserveContents
             );
 
             Playfield = new Playfield {
@@ -77,11 +77,10 @@ namespace Pong {
                 new Action<DeviceManager>[] {
                     (dm) => {
                         var rs = dm.Device.RenderState;
+                        rs.BlendFunction = BlendFunction.Add;
                         rs.SourceBlend = Blend.One;
                         rs.DestinationBlend = Blend.One;
-                        var ss = dm.Device.SamplerStates[0];
-                        ss.MinFilter = TextureFilter.Linear;
-                        ss.MagFilter = TextureFilter.Linear;
+                        rs.AlphaTestEnable = false;
                     }
                 },
                 new Action<DeviceManager>[] { 
@@ -101,6 +100,7 @@ namespace Pong {
                         rs.BlendFunction = BlendFunction.ReverseSubtract;
                         rs.SourceBlend = Blend.One;
                         rs.DestinationBlend = Blend.One;
+                        rs.AlphaTestEnable = false;
                     }
                 },
                 new Action<DeviceManager>[] { 
