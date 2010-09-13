@@ -1,23 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Media;
-using Microsoft.Xna.Framework.Net;
-using Microsoft.Xna.Framework.Storage;
 using Squared.Render;
 using Squared.Game;
 
 namespace Pong {
     public class PongExample : MultithreadedGame {
         GraphicsDeviceManager Graphics;
-        DefaultMaterialSet Materials;
-        Material TrailMaterial, SubtractiveGeometry;
+        PongMaterials Materials;
         Playfield Playfield;
         Paddle[] Paddles;
         int[] Scores = new int[2];
@@ -41,14 +34,10 @@ namespace Pong {
         protected override void Initialize() {
             base.Initialize();
 
-            var rs = Graphics.GraphicsDevice.RenderState;
-            rs.DepthBufferEnable = false;
-            rs.AlphaBlendEnable = true;
-            rs.SourceBlend = Blend.SourceAlpha;
-            rs.DestinationBlend = Blend.InverseSourceAlpha;
-
+            // Remember the depth/stencil buffer created with the graphics device, so we can restore it later
             DefaultDepthStencilBuffer = GraphicsDevice.DepthStencilBuffer;
 
+            // Create a render target to use for rendering trails for the ball and paddles
             TrailBuffer = new RenderTarget2D(
                 Graphics.GraphicsDevice,
                 Graphics.GraphicsDevice.Viewport.Width / TrailScale,
@@ -64,54 +53,13 @@ namespace Pong {
         }
 
         protected override void LoadContent() {
-            Materials = new DefaultMaterialSet(Content) {
+            Materials = new PongMaterials(Content) {
                 ProjectionMatrix = Matrix.CreateOrthographicOffCenter(
                     0, GraphicsDevice.Viewport.Width,
                     GraphicsDevice.Viewport.Height, 0,
                     0, 1
                 )
             };
-
-            TrailMaterial = new DelegateMaterial(
-                Materials.ScreenSpaceBitmap,
-                new Action<DeviceManager>[] {
-                    (dm) => {
-                        var rs = dm.Device.RenderState;
-                        rs.BlendFunction = BlendFunction.Add;
-                        rs.SourceBlend = Blend.One;
-                        rs.DestinationBlend = Blend.One;
-                        rs.AlphaTestEnable = false;
-                    }
-                },
-                new Action<DeviceManager>[] { 
-                    (dm) => {
-                        var rs = dm.Device.RenderState;
-                        rs.SourceBlend = Blend.SourceAlpha;
-                        rs.DestinationBlend = Blend.InverseSourceAlpha;
-                    }
-                }
-            );
-
-            SubtractiveGeometry = new DelegateMaterial(
-                Materials.ScreenSpaceGeometry,
-                new Action<DeviceManager>[] {
-                    (dm) => {
-                        var rs = dm.Device.RenderState;
-                        rs.BlendFunction = BlendFunction.ReverseSubtract;
-                        rs.SourceBlend = Blend.One;
-                        rs.DestinationBlend = Blend.One;
-                        rs.AlphaTestEnable = false;
-                    }
-                },
-                new Action<DeviceManager>[] { 
-                    (dm) => {
-                        var rs = dm.Device.RenderState;
-                        rs.BlendFunction = BlendFunction.Add;
-                        rs.SourceBlend = Blend.SourceAlpha;
-                        rs.DestinationBlend = Blend.InverseSourceAlpha;
-                    }
-                }
-            );
 
             Font = Content.Load<SpriteFont>("Tahoma");
 
@@ -216,12 +164,14 @@ namespace Pong {
                 );
             }
 
-            using (var bb = BitmapBatch.New(frame, 7, TrailMaterial)) {
+            // Render the contents of the trail buffer to the screen using additive blending
+            using (var bb = BitmapBatch.New(frame, 7, Materials.Trail)) {
                 bb.Add(new BitmapDrawCall(
                     TrailBuffer, Vector2.Zero, (float)TrailScale
                 ));
             }
 
+            // Render the paddles and ball to both the framebuffer and the trail buffer (note the different layer values)
             using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 8, Materials.ScreenSpaceGeometry))
             using (var trailBatch = PrimitiveBatch<VertexPositionColor>.New(frame, 2, Materials.ScreenSpaceGeometry)) {
                 foreach (var paddle in Paddles) {
@@ -243,6 +193,7 @@ namespace Pong {
                 Primitives.FilledRing(trailBatch, Ball.Position, 0.0f, Ball.Radius, Color.White, Color.White);
             }
 
+            // Render the score values using a stringbatch (unfortunately this uses spritebatch to render spritefonts :( )
             using (var sb = StringBatch.New(frame, 9, Materials.ScreenSpaceBitmap, SpriteBatch, Font)) {
                 var drawCall = new StringDrawCall(
                     String.Format("Player 1: {0:00}", Scores[0]),
@@ -260,12 +211,15 @@ namespace Pong {
                 sb.Add(drawCall);
             }
 
+            // The first stage of our frame involves selecting the trail buffer as our render target (note that it's layer 0)
             SetRenderTargetBatch.AddNew(frame, 0, 0, TrailBuffer, null);
             if (FirstFrame) {
+                // If it's the first time we've rendered, we erase the trail buffer since it could contain anything
                 ClearBatch.AddNew(frame, 1, Color.Black, Materials.Clear);
                 FirstFrame = false;
             } else {
-                using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 1, SubtractiveGeometry)) {
+                // Otherwise, we fade out the contents of the trail buffer
+                using (var gb = PrimitiveBatch<VertexPositionColor>.New(frame, 1, Materials.SubtractiveGeometry)) {
                     Primitives.FilledQuad(
                         gb, 
                         new Bounds(Vector2.Zero, new Vector2(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height)), 
@@ -273,6 +227,7 @@ namespace Pong {
                     );
                 }
             }
+            // After the trail buffer has been updated, we turn it off and begin rendering to the framebuffer. Note layer 3.
             SetRenderTargetBatch.AddNew(frame, 3, 0, null, DefaultDepthStencilBuffer);
         }
     }
@@ -293,6 +248,7 @@ namespace Pong {
             var oldEdge = Position + (Radius * orientation);
             var newEdge = oldEdge + Velocity;
 
+            // Check to see if the ball is going to collide with a paddle or with the edges of the playfield
             foreach (var poly in new[] { 
                 Polygon.FromBounds(paddles[0].Bounds),
                 Polygon.FromBounds(paddles[1].Bounds),
@@ -303,6 +259,7 @@ namespace Pong {
                 if (!intersection.HasValue)
                     continue;
 
+                // The ball is colliding, so we make it bounce off whatever it just hit
                 Velocity = Vector2.Reflect(Velocity, surfaceNormal);
 
                 return;
@@ -322,6 +279,78 @@ namespace Pong {
 
             if (Playfield.Bounds.Contains(newBounds))
                 Bounds = newBounds;
+        }
+    }
+
+    public class PongMaterials : DefaultMaterialSet {
+        public Material Trail;
+        public Material SubtractiveGeometry;
+
+        public PongMaterials (ContentManager content)
+            : base(content) {
+
+            // Set up various blending modes by changing render states
+            var additiveBlend = new Action<DeviceManager>[] {
+                (dm) => {
+                    var rs = dm.Device.RenderState;
+                    rs.DepthBufferEnable = false;
+                    rs.AlphaBlendEnable = true;
+                    rs.BlendFunction = BlendFunction.Add;
+                    rs.SourceBlend = Blend.One;
+                    rs.DestinationBlend = Blend.One;
+                    rs.AlphaTestEnable = false;
+                }
+            };
+
+            var subtractiveBlend = new Action<DeviceManager>[] {
+                (dm) => {
+                    var rs = dm.Device.RenderState;
+                    rs.DepthBufferEnable = false;
+                    rs.AlphaBlendEnable = true;
+                    rs.BlendFunction = BlendFunction.ReverseSubtract;
+                    rs.SourceBlend = Blend.One;
+                    rs.DestinationBlend = Blend.One;
+                    rs.AlphaTestEnable = false;
+                }
+            };
+
+            var alphaBlend = new Action<DeviceManager>[] {
+                (dm) => {
+                    var rs = dm.Device.RenderState;
+                    rs.DepthBufferEnable = false;
+                    rs.AlphaBlendEnable = true;
+                    rs.BlendFunction = BlendFunction.Add;
+                    rs.SourceBlend = Blend.SourceAlpha;
+                    rs.DestinationBlend = Blend.InverseSourceAlpha;
+                    rs.AlphaTestEnable = false;
+                }
+            };
+
+            // Replace the default materials with ones that set up our custom render states
+            ScreenSpaceBitmap = new DelegateMaterial(
+                base.ScreenSpaceBitmap,
+                alphaBlend,
+                null
+            );
+
+            ScreenSpaceGeometry = new DelegateMaterial(
+                base.ScreenSpaceGeometry,
+                alphaBlend,
+                null
+            );
+
+            // Create a couple custom materials
+            Trail = new DelegateMaterial(
+                base.ScreenSpaceBitmap,
+                additiveBlend,
+                null
+            );
+
+            SubtractiveGeometry = new DelegateMaterial(
+                base.ScreenSpaceGeometry,
+                subtractiveBlend,
+                null
+            );
         }
     }
 }

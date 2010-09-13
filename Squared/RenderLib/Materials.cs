@@ -8,6 +8,12 @@ using System.Threading;
 using Microsoft.Xna.Framework.Content;
 
 namespace Squared.Render {
+    public interface IEffectMaterial {
+        Effect Effect {
+            get;
+        }
+    }
+
     public class MaterialDictionary<TKey> : Dictionary<TKey, Material>, IDisposable {
         public MaterialDictionary () 
             : base() {
@@ -72,8 +78,8 @@ namespace Squared.Render {
     }
 
     public class DefaultMaterialSet : MaterialSetBase {
-        public EffectMaterial ScreenSpaceBitmap, WorldSpaceBitmap;
-        public EffectMaterial ScreenSpaceGeometry, WorldSpaceGeometry;
+        public Material ScreenSpaceBitmap, WorldSpaceBitmap;
+        public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material Clear;
 
         public DefaultMaterialSet (ContentManager content) {
@@ -134,7 +140,10 @@ namespace Squared.Render {
         }
 
         protected void SetShaderVariables(DeviceManager deviceManager) {
-            var e = ScreenSpaceBitmap.Effect;
+            var em = ScreenSpaceBitmap as IEffectMaterial;
+            if (em == null)
+                return;
+            var e = em.Effect;
             e.Parameters["ViewportScale"].SetValue(ViewportScale);
             e.Parameters["ViewportPosition"].SetValue(ViewportPosition);
             e.Parameters["ProjectionMatrix"].SetValue(ProjectionMatrix);
@@ -196,7 +205,7 @@ namespace Squared.Render {
         }
     }
 
-    public class EffectMaterial : Material {
+    public class EffectMaterial : Material, IEffectMaterial {
         public readonly Effect Effect;
 
         public EffectMaterial (VertexDeclaration vertexDeclaration, Effect effect, string techniqueName)
@@ -235,6 +244,12 @@ namespace Squared.Render {
             base.End(deviceManager);
         }
 
+        Effect IEffectMaterial.Effect {
+            get {
+                return Effect;
+            }
+        }
+
         public override void Dispose () {
             /*
             if (Effect != null)
@@ -244,7 +259,7 @@ namespace Squared.Render {
         }
     }
 
-    public class DelegateMaterial : Material, IDerivedMaterial {
+    public class DelegateMaterial : Material, IDerivedMaterial, IEffectMaterial {
         public readonly Material BaseMaterial;
         public readonly Action<DeviceManager>[] BeginHandlers;
         public readonly Action<DeviceManager>[] EndHandlers;
@@ -295,6 +310,16 @@ namespace Squared.Render {
                 BaseMaterial.End(deviceManager);
             else
                 base.End(deviceManager);
+        }
+
+        Effect IEffectMaterial.Effect {
+            get {
+                var em = BaseMaterial as IEffectMaterial;
+                if (em != null)
+                    return em.Effect;
+                else
+                    return null;
+            }
         }
 
         Material IDerivedMaterial.BaseMaterial {
