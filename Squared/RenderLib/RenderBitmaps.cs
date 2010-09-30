@@ -412,6 +412,16 @@ namespace Squared.Render {
         }
     }
 
+    public class ImageReference {
+        public readonly TextureRef Texture;
+        public readonly Bounds TextureRegion;
+
+        public ImageReference (TextureRef texture, Bounds region) {
+            Texture = texture;
+            TextureRegion = region;
+        }
+    }
+
     public struct BitmapDrawCall {
         public TextureSet Textures;
         public Vector2 Position;
@@ -535,6 +545,16 @@ namespace Squared.Render {
                 TextureRegion.BottomRight.Y += (newBounds.BottomRight.Y - drawBounds.BottomRight.Y) / texSize.Y / Scale.Y;
 
             return true;
+        }
+
+        public ImageReference ImageRef {
+            get {
+                return new ImageReference(Textures.Texture1, TextureRegion);
+            }
+            set {
+                Textures = new TextureSet(value.Texture);
+                TextureRegion = value.TextureRegion;
+            }
         }
     }
 }
