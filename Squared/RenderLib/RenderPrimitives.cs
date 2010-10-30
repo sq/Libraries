@@ -105,7 +105,7 @@ namespace Squared.Render.Internal {
 
 namespace Squared.Render {
     public class PrimitiveBatch<T> : ListBatch<PrimitiveDrawCall<T>>
-        where T : struct, IVertexType {
+        where T : struct {
 
         private ArrayPoolAllocator<T> _Allocator;
 
@@ -255,18 +255,16 @@ namespace Squared.Render {
         }
 
         public static void FilledQuad (PrimitiveBatch<VertexPositionColor> batch, Vector2 topLeft, Vector2 bottomRight, Color fillColor) {
-            using (var buffer = batch.CreateBuffer(6)) {
+            using (var buffer = batch.CreateBuffer(4)) {
                 var vertices = buffer.Buffer;
 
                 vertices[0] = new VertexPositionColor(new Vector3(topLeft.X, topLeft.Y, 0), fillColor);
                 vertices[1] = new VertexPositionColor(new Vector3(bottomRight.X, topLeft.Y, 0), fillColor);
-                vertices[2] = new VertexPositionColor(new Vector3(topLeft.X, bottomRight.Y, 0), fillColor);
-                vertices[3] = vertices[1];
-                vertices[4] = vertices[2];
-                vertices[5] = new VertexPositionColor(new Vector3(bottomRight.X, bottomRight.Y, 0), fillColor);
+                vertices[2] = new VertexPositionColor(new Vector3(bottomRight.X, bottomRight.Y, 0), fillColor);
+                vertices[3] = new VertexPositionColor(new Vector3(topLeft.X, bottomRight.Y, 0), fillColor);
 
                 batch.Add(PrimitiveDrawCall.New(
-                    PrimitiveType.TriangleList,
+                    PrimitiveType.TriangleFan,
                     vertices, 0, 2
                 ));
             }

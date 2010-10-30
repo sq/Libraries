@@ -9,6 +9,8 @@ uniform const float2 Texel;
 
 uniform const texture SecondTexture;
 
+float2 HalfTexel;
+
 uniform const sampler TextureSampler = sampler_state {
     Texture = (BitmapTexture);
     
@@ -36,6 +38,10 @@ const float2 Corners[] = {
     {0, 1}
 };
 
+inline void ComputeHalfTexel () {
+	HalfTexel = Texel * 0.5f;
+}
+
 inline float2 ComputeRegionSize(
 	in float4 texRgn : POSITION1
 ) {
@@ -55,7 +61,7 @@ inline float2 ComputeTexCoord(
     in float2 corner,
     in float4 texRgn : POSITION1
 ) {
-    return (texRgn.xy + corner) + (Texel * 0.5);
+    return (texRgn.xy + corner) + HalfTexel;
 }
 
 inline float2 ComputeRotatedCorner(
@@ -73,7 +79,7 @@ inline float2 ComputeRotatedCorner(
     return float2(
 		(sinCos.y * corner.x) - (sinCos.x * corner.y),
 		(sinCos.x * corner.x) + (sinCos.y * corner.y)
-	) - (Texel * 0.5);
+	) - HalfTexel;
 }
 
 inline void OutputRegions(
@@ -81,9 +87,8 @@ inline void OutputRegions(
     out float2 texTL : TEXCOORD1,
     out float2 texBR : TEXCOORD2
 ) {
-    float2 halfTexel = Texel * 0.5f;
-    texTL = min(texRgn.xy, texRgn.zw) + halfTexel;
-    texBR = max(texRgn.xy, texRgn.zw) - halfTexel;
+    texTL = min(texRgn.xy, texRgn.zw) + HalfTexel;
+    texBR = max(texRgn.xy, texRgn.zw) - HalfTexel;
 }
 
 void ScreenSpaceVertexShader(
@@ -99,6 +104,8 @@ void ScreenSpaceVertexShader(
     out float2 texTL : TEXCOORD1,
     out float2 texBR : TEXCOORD2
 ) {
+	ComputeHalfTexel();
+
 	float2 regionSize = ComputeRegionSize(texRgn);
 	float2 corner = ComputeCorner(cornerIndex, regionSize);
     texCoord = ComputeTexCoord(cornerIndex, corner, texRgn);
@@ -123,6 +130,8 @@ void WorldSpaceVertexShader(
     out float2 texTL : TEXCOORD1,
     out float2 texBR : TEXCOORD2
 ) {
+	ComputeHalfTexel();
+	
 	float2 regionSize = ComputeRegionSize(texRgn);
 	float2 corner = ComputeCorner(cornerIndex, regionSize);
     texCoord = ComputeTexCoord(cornerIndex, corner, texRgn);
@@ -154,7 +163,7 @@ technique WorldSpaceBitmapTechnique
     pass P0
     {
         vertexShader = compile vs_1_1 WorldSpaceVertexShader();
-        pixelShader = compile ps_2_0 BasicPixelShader();
+        pixelShader = compile ps_1_4 BasicPixelShader();
     }
 }
 
@@ -163,6 +172,6 @@ technique ScreenSpaceBitmapTechnique
     pass P0
     {
         vertexShader = compile vs_1_1 ScreenSpaceVertexShader();
-        pixelShader = compile ps_2_0 BasicPixelShader();
+        pixelShader = compile ps_1_4 BasicPixelShader();
     }
 }

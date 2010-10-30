@@ -11,7 +11,7 @@ using System.Reflection;
 
 namespace Squared.Render {
     [Serializable, StructLayout(LayoutKind.Explicit)]
-    public struct BitmapVertex : IVertexType {
+    public struct BitmapVertex {
         [FieldOffset(0)]
         public Vector2 Position;
         [FieldOffset(8)]
@@ -34,7 +34,6 @@ namespace Squared.Render {
         public short Unused;
 
         public static readonly VertexElement[] Elements;
-        static readonly VertexDeclaration _VertexDeclaration;
 
         public unsafe static int SizeInBytes {
             get { return sizeof(BitmapVertex); }
@@ -42,26 +41,21 @@ namespace Squared.Render {
 
         unsafe static BitmapVertex () {
             Elements = new VertexElement[] {
-                new VertexElement( 0, 
-                    VertexElementFormat.Vector2, VertexElementUsage.Position, 0 ),
-                new VertexElement( (short)(sizeof(Vector2)), 
-                    VertexElementFormat.Vector4, VertexElementUsage.Position, 1 ),
-                new VertexElement( (short)(sizeof(Vector2) + sizeof(Vector4)), 
-                    VertexElementFormat.Vector4, VertexElementUsage.Position, 2 ),
-                new VertexElement( (short)(sizeof(Vector2) + sizeof(Vector4) * 2), 
-                    VertexElementFormat.Single, VertexElementUsage.Position, 3 ),
-                new VertexElement( (short)(sizeof(Vector2) + sizeof(Vector4) * 2 + sizeof(float)), 
-                    VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
-                new VertexElement( (short)(sizeof(Vector2) + sizeof(Vector4) * 2 + sizeof(float) + sizeof(Color)), 
-                    VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
-                new VertexElement( (short)(sizeof(Vector2) + sizeof(Vector4) * 2 + sizeof(float) + sizeof(Color) * 2), 
-                    VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 )
-            };
-            _VertexDeclaration = new VertexDeclaration(Elements);
-        }
-
-        public VertexDeclaration VertexDeclaration {
-            get { return _VertexDeclaration; }
+            new VertexElement( 0, 0, 
+                VertexElementFormat.Vector2, VertexElementMethod.Default, VertexElementUsage.Position, 0 ),
+            new VertexElement( 0, (short)(sizeof(Vector2)), 
+                VertexElementFormat.Vector4, VertexElementMethod.Default, VertexElementUsage.Position, 1 ),
+            new VertexElement( 0, (short)(sizeof(Vector2) + sizeof(Vector4)), 
+                VertexElementFormat.Vector4, VertexElementMethod.Default, VertexElementUsage.Position, 2 ),
+            new VertexElement( 0, (short)(sizeof(Vector2) + sizeof(Vector4) * 2), 
+                VertexElementFormat.Single, VertexElementMethod.Default, VertexElementUsage.Position, 3 ),
+            new VertexElement( 0, (short)(sizeof(Vector2) + sizeof(Vector4) * 2 + sizeof(float)), 
+                VertexElementFormat.Color, VertexElementMethod.Default, VertexElementUsage.Color, 0 ),
+            new VertexElement( 0, (short)(sizeof(Vector2) + sizeof(Vector4) * 2 + sizeof(float) + sizeof(Color)), 
+                VertexElementFormat.Color, VertexElementMethod.Default, VertexElementUsage.Color, 1 ),
+            new VertexElement( 0, (short)(sizeof(Vector2) + sizeof(Vector4) * 2 + sizeof(float) + sizeof(Color) * 2), 
+                VertexElementFormat.Short2, VertexElementMethod.Default, VertexElementUsage.BlendIndices, 0 )
+          };
         }
     }
 
@@ -222,13 +216,13 @@ namespace Squared.Render {
                 foreach (var nb in _NativeBatches) {
                     if (nb.TextureSet != currentTexture) {
                         currentTexture = nb.TextureSet;
-                        var tex1 = currentTexture.Texture1;
+                        var tex1 = currentTexture.Texture1.Texture;
                         paramTexture.SetValue(tex1);
-                        paramTexture2.SetValue(currentTexture.Texture2);
+                        paramTexture2.SetValue(currentTexture.Texture2.Texture);
                         var vSize = new Vector2(tex1.Width, tex1.Height);
                         paramSize.SetValue(vSize);
                         paramTexel.SetValue(new Vector2(1.0f / vSize.X, 1.0f / vSize.Y));
-                        manager.CurrentEffect.CurrentTechnique.Passes[0].Apply();
+                        manager.CommitChanges();
                     }
 
                     device.DrawUserIndexedPrimitives(
@@ -251,20 +245,129 @@ namespace Squared.Render {
         }
     }
 
-    public struct TextureSet {
-        public Texture2D Texture1, Texture2;
+    // This allows us to automatically defer a RenderTarget2D.GetTexture() 
+    //  invocation until preceding draw calls have completed
+    public struct TextureRef {
+        private readonly Texture2D _Texture;
+        private readonly RenderTarget2D _RenderTarget;
+        private bool _NeedsMipmapsGenerated;
 
-        public TextureSet (Texture2D texture1) {
-            Texture1 = texture1;
-            Texture2 = null;
+        public TextureRef (Texture2D texture) {
+            _Texture = texture;
+            _RenderTarget = null;
+            _NeedsMipmapsGenerated = false;
         }
 
-        public TextureSet (Texture2D texture1, Texture2D texture2) {
+        public TextureRef (RenderTarget2D renderTarget) {
+            _Texture = null;
+            _RenderTarget = renderTarget;
+            _NeedsMipmapsGenerated = false;
+        }
+
+        public TextureRef (RenderTarget2D renderTarget, bool needsMipmapsGenerated) {
+            _Texture = null;
+            _RenderTarget = renderTarget;
+            _NeedsMipmapsGenerated = needsMipmapsGenerated;
+        }
+
+        public static implicit operator TextureRef (Texture2D texture) {
+            return new TextureRef(texture);
+        }
+
+        public static implicit operator TextureRef (RenderTarget2D renderTarget) {
+            return new TextureRef(renderTarget);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is TextureRef) {
+                var rhs = (TextureRef)obj;
+                return this == rhs;
+            } else {
+                return base.Equals(obj);
+            }
+        }
+
+        public override int GetHashCode () {
+            if (_Texture != null)
+                return _Texture.GetHashCode();
+            else if (_RenderTarget != null)
+                return _RenderTarget.GetHashCode();
+            else
+                return 0;
+        }
+
+        public static bool operator == (TextureRef lhs, TextureRef rhs) {
+            return (lhs._Texture == rhs._Texture) && (lhs._RenderTarget == rhs._RenderTarget);
+        }
+
+        public static bool operator != (TextureRef lhs, TextureRef rhs) {
+            return (lhs._Texture != rhs._Texture) || (lhs._RenderTarget != rhs._RenderTarget);
+        }
+
+        public bool IsDisposed {
+            get {
+                if (_Texture != null)
+                    return _Texture.IsDisposed;
+                else if (_RenderTarget != null)
+                    return _RenderTarget.IsDisposed;
+                else
+                    return false;
+            }
+        }
+
+        public int Width {
+            get {
+                if (_Texture != null)
+                    return _Texture.Width;
+                else if (_RenderTarget != null)
+                    return _RenderTarget.Width;
+                else
+                    return 0;
+            }
+        }
+
+        public int Height {
+            get {
+                if (_Texture != null)
+                    return _Texture.Height;
+                else if (_RenderTarget != null)
+                    return _RenderTarget.Height;
+                else
+                    return 0;
+            }
+        }
+
+        public Texture2D Texture {
+            get {
+                if (_Texture != null)
+                    return _Texture;
+                else if (_RenderTarget != null) {
+                    var result = _RenderTarget.GetTexture();
+                    if (_NeedsMipmapsGenerated) {
+                        result.GenerateMipMaps(TextureFilter.Linear);
+                        _NeedsMipmapsGenerated = false;
+                    }
+                    return result;
+                } else
+                    return null;
+            }
+        }
+    }
+
+    public struct TextureSet {
+        public TextureRef Texture1, Texture2;
+
+        public TextureSet (TextureRef texture1) {
+            Texture1 = texture1;
+            Texture2 = new TextureRef();
+        }
+
+        public TextureSet (TextureRef texture1, TextureRef texture2) {
             Texture1 = texture1;
             Texture2 = texture2;
         }
 
-        public Texture2D this[int index] {
+        public TextureRef this[int index] {
             get {
                 if (index == 0)
                     return Texture1;
@@ -284,7 +387,7 @@ namespace Squared.Render {
         }
 
         public static implicit operator TextureSet (Texture2D texture1) {
-            return new TextureSet(texture1);
+            return new TextureSet(new TextureRef(texture1));
         }
 
         public override bool Equals (object obj) {
@@ -305,18 +408,15 @@ namespace Squared.Render {
         }
 
         public override int GetHashCode () {
-            if (Texture2 != null)
-                return Texture1.GetHashCode() ^ Texture2.GetHashCode();
-            else
-                return Texture1.GetHashCode();
+            return Texture1.GetHashCode() ^ Texture2.GetHashCode();
         }
     }
 
     public class ImageReference {
-        public readonly Texture2D Texture;
+        public readonly TextureRef Texture;
         public readonly Bounds TextureRegion;
 
-        public ImageReference (Texture2D texture, Bounds region) {
+        public ImageReference (TextureRef texture, Bounds region) {
             Texture = texture;
             TextureRegion = region;
         }
@@ -334,39 +434,39 @@ namespace Squared.Render {
 
         internal int TextureID;
 
-        public BitmapDrawCall (Texture2D texture, Vector2 position) 
+        public BitmapDrawCall (TextureRef texture, Vector2 position) 
             : this (texture, position, new Bounds(Vector2.Zero, Vector2.One)) {
         }
 
-        public BitmapDrawCall (Texture2D texture, Vector2 position, Color color)
+        public BitmapDrawCall (TextureRef texture, Vector2 position, Color color)
             : this(texture, position, new Bounds(Vector2.Zero, Vector2.One), color) {
         }
 
-        public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion)
+        public BitmapDrawCall (TextureRef texture, Vector2 position, Bounds textureRegion)
             : this(texture, position, textureRegion, Color.White) {
         }
 
-        public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color)
+        public BitmapDrawCall (TextureRef texture, Vector2 position, Bounds textureRegion, Color color)
             : this(texture, position, textureRegion, color, Vector2.One) {
         }
 
-        public BitmapDrawCall (Texture2D texture, Vector2 position, float scale)
+        public BitmapDrawCall (TextureRef texture, Vector2 position, float scale)
             : this(texture, position, new Bounds(Vector2.Zero, Vector2.One), Color.White, new Vector2(scale, scale)) {
         }
 
-        public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, float scale)
+        public BitmapDrawCall (TextureRef texture, Vector2 position, Bounds textureRegion, Color color, float scale)
             : this(texture, position, textureRegion, color, new Vector2(scale, scale)) {
         }
 
-        public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, Vector2 scale)
+        public BitmapDrawCall (TextureRef texture, Vector2 position, Bounds textureRegion, Color color, Vector2 scale)
             : this(texture, position, textureRegion, color, scale, Vector2.Zero) {
         }
 
-        public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin)
+        public BitmapDrawCall (TextureRef texture, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin)
             : this(texture, position, textureRegion, color, scale, origin, 0.0f) {
         }
 
-        public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin, float rotation) {
+        public BitmapDrawCall (TextureRef texture, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin, float rotation) {
             if (texture.IsDisposed)
                 throw new ObjectDisposedException("texture");
 

@@ -68,7 +68,7 @@ technique ScreenSpaceUntextured
     pass P0
     {
         vertexShader = compile vs_1_1 ScreenSpaceVertexShader();
-        pixelShader = compile ps_2_0 VertexColorPixelShader();
+        pixelShader = compile ps_1_1 VertexColorPixelShader();
     }
 }
 
@@ -77,7 +77,7 @@ technique WorldSpaceUntextured
     pass P0
     {
         vertexShader = compile vs_1_1 WorldSpaceVertexShader();
-        pixelShader = compile ps_2_0 VertexColorPixelShader();
+        pixelShader = compile ps_1_1 VertexColorPixelShader();
     }
 }
 
@@ -86,7 +86,7 @@ technique ScreenSpaceTextured
     pass P0
     {
         vertexShader = compile vs_1_1 ScreenSpaceTexturedVertexShader();
-        pixelShader = compile ps_2_0 TexturedPixelShader();
+        pixelShader = compile ps_1_1 TexturedPixelShader();
     }
 }
 
@@ -95,6 +95,6 @@ technique WorldSpaceTextured
     pass P0
     {
         vertexShader = compile vs_1_1 WorldSpaceTexturedVertexShader();
-        pixelShader = compile ps_2_0 TexturedPixelShader();
+        pixelShader = compile ps_1_1 TexturedPixelShader();
     }
 }

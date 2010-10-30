@@ -86,7 +86,7 @@ namespace Squared.Task {
         }
 
         public static string FormEncode (string text) {
-            return Uri.EscapeDataString(text);
+            return HttpUtility.UrlEncode(text, Encoding.UTF8);
         }
 
         public static string BuildPostText (params string[] pairs) {
