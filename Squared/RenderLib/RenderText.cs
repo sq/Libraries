@@ -97,10 +97,16 @@ namespace Squared.Render {
                 manager.Device.ScissorRectangle = scissorRect;
             }
 
-            if (TransformMatrix.HasValue)
-                SpriteBatch.Begin(SpriteBlendMode.AlphaBlend, SpriteSortMode.FrontToBack, SaveStateMode.None, TransformMatrix.Value);
-            else
-                SpriteBatch.Begin(SpriteBlendMode.AlphaBlend, SpriteSortMode.FrontToBack, SaveStateMode.None);
+            if (TransformMatrix.HasValue) {
+                SpriteBatch.Begin(
+                    SpriteSortMode.FrontToBack, BlendState.AlphaBlend, SamplerState.LinearClamp,
+                    DepthStencilState.None, RasterizerState.CullNone, null, TransformMatrix.Value
+                );
+            } else
+                SpriteBatch.Begin(
+                    SpriteSortMode.FrontToBack, BlendState.AlphaBlend, SamplerState.LinearClamp,
+                    DepthStencilState.None, RasterizerState.CullNone
+                );
 
             try {
                 float z = 0.0f;

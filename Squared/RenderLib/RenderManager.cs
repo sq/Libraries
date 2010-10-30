@@ -19,9 +19,6 @@ namespace Squared.Render {
                     return vertexCount - 1;
                 case PrimitiveType.LineList:
                     return vertexCount / 2;
-                case PrimitiveType.PointList:
-                    return vertexCount;
-                case PrimitiveType.TriangleFan:
                 case PrimitiveType.TriangleStrip:
                     return vertexCount - 2;
                 case PrimitiveType.TriangleList:
@@ -79,10 +76,6 @@ namespace Squared.Render {
             get {
                 return CurrentEffect.Parameters;
             }
-        }
-
-        public void CommitChanges () {
-            CurrentEffect.CommitChanges();
         }
 
         public ActiveMaterial ApplyMaterial (Material material) {
@@ -567,17 +560,6 @@ namespace Squared.Render {
         public override void Issue (DeviceManager manager) {
             using (manager.ApplyMaterial(Material)) {
                 var clearOptions = ClearOptions.Target;
-                if (manager.Device.DepthStencilBuffer != null) {
-                    clearOptions |= ClearOptions.DepthBuffer;
-                    switch (manager.Device.DepthStencilBuffer.Format) {
-                        case DepthFormat.Depth15Stencil1:
-                        case DepthFormat.Depth24Stencil4:
-                        case DepthFormat.Depth24Stencil8:
-                        case DepthFormat.Depth24Stencil8Single:
-                            clearOptions |= ClearOptions.Stencil;
-                            break;
-                    }
-                }
 
                 manager.Device.Clear(
                     clearOptions,
@@ -597,57 +579,26 @@ namespace Squared.Render {
     }
 
     public class SetRenderTargetBatch : Batch {
-        public int RenderTargetIndex;
         public RenderTarget2D RenderTarget;
-        public DepthStencilBuffer DepthStencilBuffer;
 
-        public void Initialize (Frame frame, int layer, int renderTargetIndex, RenderTarget2D renderTarget, DepthStencilBuffer depthStencilBuffer) {
+        public void Initialize (Frame frame, int layer, RenderTarget2D renderTarget) {
             base.Initialize(frame, layer, null);
-            RenderTargetIndex = renderTargetIndex;
             RenderTarget = renderTarget;
-            DepthStencilBuffer = depthStencilBuffer;
         }
 
         public override void Prepare () {
         }
 
         public override void Issue (DeviceManager manager) {
-            manager.Device.SetRenderTarget(RenderTargetIndex, RenderTarget);
-            manager.Device.DepthStencilBuffer = DepthStencilBuffer;
+            manager.Device.SetRenderTarget(RenderTarget);
         }
 
-        public static void AddNew (Frame frame, int layer, int renderTargetIndex, RenderTarget2D renderTarget, DepthStencilBuffer depthStencilBuffer) {
+        public static void AddNew (Frame frame, int layer, RenderTarget2D renderTarget) {
             if (frame == null)
                 throw new ArgumentNullException("frame");
 
             var result = frame.RenderManager.AllocateBatch<SetRenderTargetBatch>();
-            result.Initialize(frame, layer, renderTargetIndex, renderTarget, depthStencilBuffer);
-            result.Dispose();
-        }
-    }
-
-
-    public class ResolveBackbufferBatch : Batch {
-        public ResolveTexture2D ResolveTexture;
-
-        public void Initialize (Frame frame, int layer, ResolveTexture2D resolveTexture) {
-            base.Initialize(frame, layer, null);
-            ResolveTexture = resolveTexture;
-        }
-
-        public override void Prepare () {
-        }
-
-        public override void Issue (DeviceManager manager) {
-            manager.Device.ResolveBackBuffer(ResolveTexture);
-        }
-
-        public static void AddNew (Frame frame, int layer, ResolveTexture2D resolveTexture) {
-            if (frame == null)
-                throw new ArgumentNullException("frame");
-
-            var result = frame.RenderManager.AllocateBatch<ResolveBackbufferBatch>();
-            result.Initialize(frame, layer, resolveTexture);
+            result.Initialize(frame, layer, renderTarget);
             result.Dispose();
         }
     }

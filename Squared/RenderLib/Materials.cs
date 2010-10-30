@@ -42,7 +42,10 @@ namespace Squared.Render {
                 var tMaterialDictionary = typeof(MaterialDictionary<>);
 
                 foreach (var field in this.GetType().GetFields()) {
-                    if (field.FieldType == tMaterial) {
+                    if (field.FieldType == tMaterial || 
+                        tMaterial.IsAssignableFrom(field.FieldType) ||
+                        field.FieldType.IsSubclassOf(tMaterial)
+                    ) {
                         var material = field.GetValue(this) as Material;
                         if (material != null)
                             yield return new KeyValuePair<string, Material>(
@@ -83,38 +86,28 @@ namespace Squared.Render {
         public Material Clear;
 
         public DefaultMaterialSet (ContentManager content) {
-            var deviceService = (IGraphicsDeviceService)content.ServiceProvider.GetService(typeof(IGraphicsDeviceService));
-
             Clear = new DelegateMaterial(
                 new NullMaterial(),
                 new Action<DeviceManager>[] { SetShaderVariables }, 
                 null
             );
 
-            var bitmapVertex = new VertexDeclaration(deviceService.GraphicsDevice, BitmapVertex.Elements);
-
             ScreenSpaceBitmap = new EffectMaterial(
-                bitmapVertex, 
                 content.Load<Effect>("SquaredBitmapShader"), 
                 "ScreenSpaceBitmapTechnique"
             );
 
             WorldSpaceBitmap = new EffectMaterial(
-                bitmapVertex,
                 content.Load<Effect>("SquaredBitmapShader"),
                 "WorldSpaceBitmapTechnique"
             );
 
-            var geometryVertex = new VertexDeclaration(deviceService.GraphicsDevice, VertexPositionColor.VertexElements);
-
             ScreenSpaceGeometry = new EffectMaterial(
-                geometryVertex,
                 content.Load<Effect>("SquaredGeometryShader"),
                 "ScreenSpaceUntextured"
             );
 
             WorldSpaceGeometry = new EffectMaterial(
-                geometryVertex,
                 content.Load<Effect>("SquaredGeometryShader"),
                 "WorldSpaceUntextured"
             );
@@ -147,7 +140,6 @@ namespace Squared.Render {
             e.Parameters["ViewportScale"].SetValue(ViewportScale);
             e.Parameters["ViewportPosition"].SetValue(ViewportPosition);
             e.Parameters["ProjectionMatrix"].SetValue(ProjectionMatrix);
-            e.CommitChanges();
         }
     }
 
@@ -157,7 +149,7 @@ namespace Squared.Render {
 
     public class NullMaterial : Material {
         public NullMaterial()
-            : base(null) {
+            : base() {
         }
 
         public override void Begin(DeviceManager deviceManager) {
@@ -171,19 +163,16 @@ namespace Squared.Render {
         private static int _NextMaterialID;
 
         public readonly int MaterialID;
-        public readonly VertexDeclaration VertexDeclaration;
 
         protected bool _IsDisposed;
 
-        public Material (VertexDeclaration vertexDeclaration) {
+        public Material () {
             MaterialID = Interlocked.Increment(ref _NextMaterialID);
-            VertexDeclaration = vertexDeclaration;
-
+            
             _IsDisposed = false;
         }
 
         public virtual void Begin (DeviceManager deviceManager) {
-            deviceManager.Device.VertexDeclaration = VertexDeclaration;
         }
 
         public virtual void End (DeviceManager deviceManager) {
@@ -191,11 +180,6 @@ namespace Squared.Render {
 
         public virtual void Dispose () {
             _IsDisposed = true;
-
-            /*
-            if (VertexDeclaration != null)
-                VertexDeclaration.Dispose();
-             */
         }
 
         public bool IsDisposed {
@@ -203,24 +187,44 @@ namespace Squared.Render {
                 return _IsDisposed;
             }
         }
+
+        public static Action<DeviceManager> MakeDelegate (RasterizerState state) {
+            return (dm) => { dm.Device.RasterizerState = state; };
+        }
+
+        public static Action<DeviceManager> MakeDelegate (DepthStencilState state) {
+            return (dm) => { dm.Device.DepthStencilState = state; };
+        }
+
+        public static Action<DeviceManager> MakeDelegate (BlendState state) {
+            return (dm) => { dm.Device.BlendState = state; };
+        }
+
+        public static Action<DeviceManager> MakeDelegate (RasterizerState rasterState, DepthStencilState depthState, BlendState blendState) {
+            return (dm) => { 
+                dm.Device.RasterizerState = rasterState;
+                dm.Device.DepthStencilState = depthState;
+                dm.Device.BlendState = blendState;
+            };
+        }
     }
 
     public class EffectMaterial : Material, IEffectMaterial {
         public readonly Effect Effect;
 
-        public EffectMaterial (VertexDeclaration vertexDeclaration, Effect effect, string techniqueName)
-            : base(vertexDeclaration) {
+        public EffectMaterial (Effect effect, string techniqueName)
+            : base() {
 
             if (techniqueName != null) {
-                Effect = effect.Clone(effect.GraphicsDevice);
+                Effect = effect.Clone();
                 Effect.CurrentTechnique = Effect.Techniques[techniqueName];
             } else {
                 Effect = effect;
             }
         }
 
-        public EffectMaterial (VertexDeclaration vertexDeclaration, Effect effect)
-            : this(vertexDeclaration, effect, null) {
+        public EffectMaterial (Effect effect)
+            : this(effect, null) {
         }
 
         public override void Begin (DeviceManager deviceManager) {
@@ -230,16 +234,12 @@ namespace Squared.Render {
                 throw new InvalidOperationException();
 
             deviceManager.CurrentEffect = Effect;
-            Effect.Begin();
-            Effect.CurrentTechnique.Passes[0].Begin();
+            Effect.CurrentTechnique.Passes[0].Apply();
         }
 
         public override void End (DeviceManager deviceManager) {
             if (Effect.GraphicsDevice != deviceManager.Device)
                 throw new InvalidOperationException();
-
-            Effect.CurrentTechnique.Passes[0].End();
-            Effect.End();
 
             base.End(deviceManager);
         }
@@ -265,11 +265,10 @@ namespace Squared.Render {
         public readonly Action<DeviceManager>[] EndHandlers;
 
         public DelegateMaterial (
-            VertexDeclaration vertexDeclaration,
             Action<DeviceManager>[] beginHandlers,
             Action<DeviceManager>[] endHandlers
         )
-            : base(vertexDeclaration) {
+            : base() {
             BeginHandlers = beginHandlers;
             EndHandlers = endHandlers;
         }
@@ -279,15 +278,8 @@ namespace Squared.Render {
             Action<DeviceManager>[] beginHandlers,
             Action<DeviceManager>[] endHandlers
         )
-            : this((VertexDeclaration)null, beginHandlers, endHandlers) {
+            : this(beginHandlers, endHandlers) {
             BaseMaterial = baseMaterial;
-        }
-
-        public DelegateMaterial(
-            Action<DeviceManager>[] beginHandlers,
-            Action<DeviceManager>[] endHandlers
-        )
-            : this((VertexDeclaration)null, beginHandlers, endHandlers) {
         }
 
         public override void Begin (DeviceManager deviceManager) {
