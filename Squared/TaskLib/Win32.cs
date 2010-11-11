@@ -125,4 +125,60 @@ namespace Squared.Task {
             DestroyHandle();
         }
     }
+
+    public class TaskForm : Form {
+        public readonly TaskScheduler Scheduler;
+        protected HashSet<IFuture> OwnedFutures = new HashSet<IFuture>();
+
+        internal TaskForm ()
+            : base() {
+            Scheduler = null;
+        }
+
+        public TaskForm (TaskScheduler scheduler)
+            : base() {
+            Scheduler = scheduler;
+        }
+
+        public IFuture Start (ISchedulable schedulable) {
+            var f = Scheduler.Start(schedulable, TaskExecutionPolicy.RunWhileFutureLives);
+            OwnedFutures.Add(f);
+            return f;
+        }
+
+        public IFuture Start (IEnumerator<object> task) {
+            var f = Scheduler.Start(task, TaskExecutionPolicy.RunWhileFutureLives);
+            OwnedFutures.Add(f);
+            return f;
+        }
+
+        new public SignalFuture Show () {
+            return this.Show(null);
+        }
+
+        new public SignalFuture Show (IWin32Window owner) {
+            var f = new SignalFuture();
+            FormClosedEventHandler del = (s, e) =>
+                f.Complete();
+            f.RegisterOnComplete((_) => {
+                this.FormClosed -= del;
+            });
+            this.FormClosed += del;
+
+            if (owner != null)
+                base.Show(owner);
+            else
+                base.Show();
+
+            return f;
+        }
+
+        protected override void Dispose (bool disposing) {
+            foreach (var future in OwnedFutures)
+                future.Dispose();
+            OwnedFutures.Clear();
+
+            base.Dispose(disposing);
+        }
+    }
 }

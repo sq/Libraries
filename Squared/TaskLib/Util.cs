@@ -8,6 +8,8 @@ using System.Collections;
 #if !XBOX
 using System.Linq;
 using System.Linq.Expressions;
+using Squared.Util.Event;
+using Squared.Util.Bind;
 #endif
 
 namespace Squared.Task {
@@ -671,6 +673,50 @@ namespace Squared.Task {
 
             _Task = null;
             _Scheduler = null;
+        }
+    }
+
+    public class EventSink<T> : BlockingQueue<T>, IDisposable
+        where T : EventArgs {
+
+        public EventSink () {
+        }
+
+        public void OnEvent (object sender, T eventArgs) {
+            this.Enqueue(eventArgs);
+        }
+
+        public static implicit operator EventHandler<T> (EventSink<T> sink) {
+            return sink.OnEvent;
+        }
+
+        public void Dispose () {
+        }
+    }
+
+    public class Signal<T> : IDisposable {
+        private Future<T> _Current = new Future<T>();
+
+        public void Set (T value, Exception exception) {
+            var newFuture = new Future<T>();
+            var currentFuture = Interlocked.Exchange(ref _Current, newFuture);
+            currentFuture.SetResult(value, null);
+        }
+
+        public Future<T> Wait () {
+            return _Current;
+        }
+
+        public void Dispose () {
+            var current = Interlocked.Exchange(ref _Current, null);
+            if (current != null)
+                current.Dispose();
+        }
+    }
+
+    public class Signal : Signal<NoneType> {
+        public void Set () {
+            base.Set(NoneType.None, null);
         }
     }
 }
