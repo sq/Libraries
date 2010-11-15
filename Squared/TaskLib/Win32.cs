@@ -126,7 +126,12 @@ namespace Squared.Task {
         }
     }
 
-    public class TaskForm : Form {
+    public interface ITaskForm {
+        IFuture Start (ISchedulable schedulable);
+        IFuture Start (IEnumerator<object> task);
+    }
+
+    public class TaskForm : Form, ITaskForm {
         public readonly TaskScheduler Scheduler;
         protected HashSet<IFuture> OwnedFutures = new HashSet<IFuture>();
 
@@ -141,13 +146,13 @@ namespace Squared.Task {
         }
 
         public IFuture Start (ISchedulable schedulable) {
-            var f = Scheduler.Start(schedulable, TaskExecutionPolicy.RunWhileFutureLives);
+            var f = Scheduler.Start(schedulable, TaskExecutionPolicy.RunAsBackgroundTask);
             OwnedFutures.Add(f);
             return f;
         }
 
         public IFuture Start (IEnumerator<object> task) {
-            var f = Scheduler.Start(task, TaskExecutionPolicy.RunWhileFutureLives);
+            var f = Scheduler.Start(task, TaskExecutionPolicy.RunAsBackgroundTask);
             OwnedFutures.Add(f);
             return f;
         }

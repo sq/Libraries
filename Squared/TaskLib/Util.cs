@@ -695,7 +695,7 @@ namespace Squared.Task {
     }
 
     public class Signal<T> : IDisposable {
-        private Future<T> _Current = new Future<T>();
+        private volatile Future<T> _Current = new Future<T>();
 
         public void Set (T value, Exception exception) {
             var newFuture = new Future<T>();
