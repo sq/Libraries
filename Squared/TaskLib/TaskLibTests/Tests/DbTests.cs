@@ -385,6 +385,48 @@ namespace Squared.Task.Data {
         }
 
         [Test]
+        public void TestExecuteSequence () {
+            DoQuery("DROP TABLE IF EXISTS Test");
+            DoQuery("CREATE TABLE Test (value int)");
+            for (int i = 0; i < 10; i++)
+                DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
+
+            using (var scheduler = new TaskScheduler())
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
+                var q = qm.BuildQuery("SELECT * FROM Test");
+                var f = q.ExecuteArray<int>();
+
+                Assert.IsFalse(f.Completed);
+                var seq = scheduler.WaitFor(f);
+
+                Assert.AreEqual(
+                    new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, seq
+                );
+            }
+        }
+
+        [Test]
+        public void TestGetResultAsObject () {
+            DoQuery("DROP TABLE IF EXISTS Test");
+            DoQuery("CREATE TABLE Test (value int)");
+            for (int i = 0; i < 10; i++)
+                DoQuery(String.Format("INSERT INTO Test (value) VALUES ({0})", i));
+
+            using (var scheduler = new TaskScheduler())
+            using (var qm = new ConnectionWrapper(scheduler, Connection)) {
+                var q = qm.BuildQuery("SELECT * FROM Test");
+                var f = q.ExecuteArray<object>();
+
+                Assert.IsFalse(f.Completed);
+                var seq = scheduler.WaitFor(f);
+
+                Assert.AreEqual(
+                    new object[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, seq
+                );
+            }
+        }
+
+        [Test]
         public void TestDisposal () {
             DoQuery("DROP TABLE IF EXISTS Test");
             DoQuery("CREATE TABLE Test (value int)");

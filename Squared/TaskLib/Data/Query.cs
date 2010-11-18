@@ -7,6 +7,15 @@ using System.Threading;
 using System.Linq.Expressions;
 
 namespace Squared.Task.Data {
+    [Mapper.Mapper]
+    internal class SequenceItem<T> {
+        [Mapper.Column(0)]
+        public T Value {
+            get;
+            set;
+        }
+    }
+
     public struct NamedParam {
         public string Name;
         public object Value;
@@ -241,6 +250,32 @@ namespace Squared.Task.Data {
                         yield return nv;
                 }
             }
+        }
+
+        public Future<T[]> ExecuteArray<T> (params object[] parameters) {
+            var fResult = new Future<T[]>();
+
+            _Manager.Scheduler.Start(
+                fResult,
+                new SchedulableGeneratorThunk(ExecuteSequenceTask<T>(parameters)),
+                TaskExecutionPolicy.RunWhileFutureLives
+            );
+
+            return fResult;
+        }
+
+        protected IEnumerator<object> ExecuteSequenceTask<T> (params object[] parameters) {
+            var result = new List<T>();
+
+            using (var e = this.Execute<SequenceItem<T>>(parameters))
+            while (!e.Disposed) {
+                yield return e.Fetch();
+
+                foreach (var item in e)
+                    result.Add(item.Value);
+            }
+
+            yield return new Result(result.ToArray());
         }
 
         public TaskEnumerator<T> Execute<T> (params object[] parameters)

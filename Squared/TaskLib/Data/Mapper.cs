@@ -155,7 +155,9 @@ namespace Squared.Task.Data.Mapper {
                 Getter = DataRecordHelper.GetReadMethod<U>();
 
                 if (Getter == null || coerce) {
-                    if (typeof(U).IsEnum)
+                    if (typeof(U) == typeof(object))
+                        Getter = ObjectGetter;
+                    else if (typeof(U).IsEnum)
                         Getter = EnumGetter;
                     else
                         Getter = DefaultGetter;
@@ -166,12 +168,21 @@ namespace Squared.Task.Data.Mapper {
                 return Squared.Util.Bind.BoundMember.MakeFieldSetter<Setter<U>>(null, field);
             }
 
+            static U ObjectGetter (IDataReader reader, int ordinal) {
+                return (U)reader.GetValue(ordinal);
+            }
+
             static U EnumGetter (IDataReader reader, int ordinal) {
                 return (U)Enum.ToObject(typeof(U), reader.GetValue(ordinal));
             }
 
             static U DefaultGetter (IDataReader reader, int ordinal) {
-                return (U)Convert.ChangeType(reader.GetValue(ordinal), typeof(U));
+                object value = reader.GetValue(ordinal);
+                Type type = typeof(U);
+                if ((value != null) && (value.GetType() == type))
+                    return (U)value;
+                else
+                    return (U)Convert.ChangeType(value, type);
             }
 
             public void Set (T item) {

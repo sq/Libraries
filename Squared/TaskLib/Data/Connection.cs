@@ -54,6 +54,12 @@ namespace Squared.Task.Data {
             return new Transaction(this);
         }
 
+        internal TaskScheduler Scheduler {
+            get {
+                return _Scheduler;
+            }
+        }
+
         internal bool Closed {
             get {
                 lock (this)
@@ -174,6 +180,14 @@ namespace Squared.Task.Data {
         public Future<T> ExecuteScalar<T> (string sql, Expression<Func<T>> target, params object[] parameters) {
             var cmd = BuildQuery(sql);
             var f = cmd.ExecuteScalar<T>(target, parameters);
+            f.RegisterOnComplete((_) => cmd.Dispose());
+            f.RegisterOnDispose((_) => cmd.Dispose());
+            return f;
+        }
+
+        public Future<T[]> ExecuteArray<T> (string sql, params object[] parameters) {
+            var cmd = BuildQuery(sql);
+            var f = cmd.ExecuteArray<T>(parameters);
             f.RegisterOnComplete((_) => cmd.Dispose());
             f.RegisterOnDispose((_) => cmd.Dispose());
             return f;
