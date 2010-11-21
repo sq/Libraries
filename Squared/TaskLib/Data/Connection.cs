@@ -31,7 +31,7 @@ namespace Squared.Task.Data {
         bool _OwnsConnection = false;
         IFuture _ActiveQuery = null;
         Query _ActiveQueryObject = null;
-        Query _BeginTransaction, _CommitTransaction, _RollbackTransaction;
+        Query _BeginTransaction, _CommitTransaction, _RollbackTransaction, _BeginTransactionExclusive;
         int _TransactionDepth = 0;
         bool _TransactionFailed = false;
         Queue<WaitingQuery> _WaitingQueries = new Queue<WaitingQuery>();
@@ -46,12 +46,17 @@ namespace Squared.Task.Data {
             _OwnsConnection = ownsConnection;
 
             _BeginTransaction = BuildQuery("BEGIN");
+            _BeginTransactionExclusive = BuildQuery("BEGIN EXCLUSIVE");
             _CommitTransaction = BuildQuery("COMMIT");
             _RollbackTransaction = BuildQuery("ROLLBACK");
         }
 
         public Transaction CreateTransaction () {
             return new Transaction(this);
+        }
+
+        public Transaction CreateTransaction (bool exclusive) {
+            return new Transaction(this, exclusive);
         }
 
         internal TaskScheduler Scheduler {
@@ -68,12 +73,19 @@ namespace Squared.Task.Data {
         }
 
         internal IFuture BeginTransaction () {
+            return BeginTransaction(false);
+        }
+
+        internal IFuture BeginTransaction (bool exclusive) {
             lock (this) {
                 _TransactionDepth += 1;
 
                 if (_TransactionDepth == 1) {
                     _TransactionFailed = false;
-                    return _BeginTransaction.ExecuteNonQuery();
+                    if (exclusive)
+                        return _BeginTransactionExclusive.ExecuteNonQuery();
+                    else
+                        return _BeginTransaction.ExecuteNonQuery();
                 } else
                     return new Future(null);
             }
@@ -185,9 +197,18 @@ namespace Squared.Task.Data {
             return f;
         }
 
-        public Future<T[]> ExecuteArray<T> (string sql, params object[] parameters) {
+        public Future<T[]> ExecuteArray<T> (string sql, params object[] parameters)
+            where T : class, new() {
             var cmd = BuildQuery(sql);
             var f = cmd.ExecuteArray<T>(parameters);
+            f.RegisterOnComplete((_) => cmd.Dispose());
+            f.RegisterOnDispose((_) => cmd.Dispose());
+            return f;
+        }
+
+        public Future<T[]> ExecutePrimitiveArray<T> (string sql, params object[] parameters) {
+            var cmd = BuildQuery(sql);
+            var f = cmd.ExecutePrimitiveArray<T>(parameters);
             f.RegisterOnComplete((_) => cmd.Dispose());
             f.RegisterOnDispose((_) => cmd.Dispose());
             return f;

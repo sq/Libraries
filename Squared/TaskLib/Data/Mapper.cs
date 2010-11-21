@@ -18,7 +18,6 @@ namespace Squared.Task.Data.Mapper {
     public class ColumnAttribute : Attribute {
         public readonly string Name;
         public readonly int? Index;
-        public readonly bool Coerce = true;
 
         public ColumnAttribute () {
         }
@@ -38,7 +37,6 @@ namespace Squared.Task.Data.Mapper {
         public PropertyInfo Property;
         public FieldInfo Field;
         public Type Type;
-        public bool Coerce;
     }
 
     public static class DataRecordHelper {
@@ -120,6 +118,12 @@ namespace Squared.Task.Data.Mapper {
                     Getters[rt] = getter;
                 }
             }
+
+            Getters[typeof(object)] = (Func<IDataReader, int, object>)GetObject;
+        }
+
+        private static object GetObject (IDataReader reader, int ordinal) {
+            return reader.GetValue(ordinal);
         }
 
         public static Func<IDataReader, int, T> GetReadMethod<T> () {
@@ -148,16 +152,14 @@ namespace Squared.Task.Data.Mapper {
             public readonly Func<IDataReader, int, U> Getter;
             public readonly Setter<U> Setter;
 
-            public SetHelper (IDataReader reader, int ordinal, Delegate setter, bool coerce) {
+            public SetHelper (IDataReader reader, int ordinal, Delegate setter) {
                 Reader = reader;
                 Ordinal = ordinal;
                 Setter = (Setter<U>)setter;
                 Getter = DataRecordHelper.GetReadMethod<U>();
 
-                if (Getter == null || coerce) {
-                    if (typeof(U) == typeof(object))
-                        Getter = ObjectGetter;
-                    else if (typeof(U).IsEnum)
+                if (Getter == null) {
+                    if (typeof(U).IsEnum)
                         Getter = EnumGetter;
                     else
                         Getter = DefaultGetter;
@@ -178,6 +180,9 @@ namespace Squared.Task.Data.Mapper {
 
             static U DefaultGetter (IDataReader reader, int ordinal) {
                 object value = reader.GetValue(ordinal);
+                if (value is DBNull)
+                    value = null;
+
                 Type type = typeof(U);
                 if ((value != null) && (value.GetType() == type))
                     return (U)value;
@@ -225,11 +230,9 @@ namespace Squared.Task.Data.Mapper {
 
                 string name = member.Name;
                 int? index = null;
-                bool coerce = false;
                 if (attr != null) {
                     name = attr.Name ?? name;
                     index = attr.Index;
-                    coerce = attr.Coerce;
                 }
 
                 if ((name == null) && (index.HasValue == false))
@@ -243,7 +246,6 @@ namespace Squared.Task.Data.Mapper {
                         Index = index,
                         Field = field,
                         Type = field.FieldType,
-                        Coerce = coerce
                     });
                 } else if (member.MemberType == MemberTypes.Property) {
                     var prop = (PropertyInfo)member;
@@ -253,7 +255,6 @@ namespace Squared.Task.Data.Mapper {
                         Index = index,
                         Property = prop,
                         Type = prop.PropertyType,
-                        Coerce = coerce
                     });
                 }
             }
@@ -267,7 +268,7 @@ namespace Squared.Task.Data.Mapper {
             var setterBaseType = typeof(Setter<>);
             var helperBaseType = typeof(SetHelper<>);
             var helperConstructorTypes = new Type[] { 
-                typeof(IDataReader), typeof(int), typeof(Delegate), typeof(bool)
+                typeof(IDataReader), typeof(int), typeof(Delegate)
             };
             var setters = new List<ISetHelper>();
 
@@ -296,7 +297,7 @@ namespace Squared.Task.Data.Mapper {
                         .Invoke(null, new object[] { column.Field }) as System.Delegate;
                 }
 
-                var helper = (ISetHelper)helperConstructor.Invoke(new object[] { Reader, ordinal, setterDelegate, column.Coerce });
+                var helper = (ISetHelper)helperConstructor.Invoke(new object[] { Reader, ordinal, setterDelegate });
 
                 setters.Add(helper);
             }

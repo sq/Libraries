@@ -394,7 +394,7 @@ namespace Squared.Task.Data {
             using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
                 var q = qm.BuildQuery("SELECT * FROM Test");
-                var f = q.ExecuteArray<int>();
+                var f = q.ExecutePrimitiveArray<int>();
 
                 Assert.IsFalse(f.Completed);
                 var seq = scheduler.WaitFor(f);
@@ -496,6 +496,15 @@ namespace Squared.Task.Data {
             public long Bar;
         }
 
+        [Mapper]
+        public class NullableInt {
+            [Column(0)]
+            public int? Foo {
+                get;
+                set;
+            }
+        }
+
         SQLiteConnection Connection;
         TaskScheduler Scheduler;
         ConnectionWrapper Wrapper;
@@ -559,6 +568,26 @@ namespace Squared.Task.Data {
                     Assert.AreEqual(i, items[i].Foo);
                     Assert.AreEqual(i * 2, items[i].Bar);
                 }
+            }
+        }
+
+        [Test]
+        public void TestNullableInt () {
+            Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Test (a int)"));
+
+            using (var q = Wrapper.BuildQuery("INSERT INTO Test (a) VALUES (?)")) {
+                Scheduler.WaitFor(q.ExecuteNonQuery(1));
+                Scheduler.WaitFor(q.ExecuteNonQuery(new object[] { null }));
+            }
+
+            using (var q = Wrapper.BuildQuery("SELECT a FROM Test"))
+            using (var e = q.Execute<NullableInt>()) {
+                var items = (NullableInt[])Scheduler.WaitFor(e.GetArray());
+
+                Assert.AreEqual(2, items.Length);
+
+                Assert.AreEqual(1, items[0].Foo);
+                Assert.AreEqual(null, items[1].Foo);
             }
         }
     }

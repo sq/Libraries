@@ -126,12 +126,42 @@ namespace Squared.Task {
         }
     }
 
-    public interface ITaskForm {
+    public interface ITaskOwner {
         IFuture Start (ISchedulable schedulable);
         IFuture Start (IEnumerator<object> task);
     }
 
-    public class TaskForm : Form, ITaskForm {
+    public class ControlWaitCursor : IDisposable {
+        public readonly Control Control;
+        public readonly bool OldUseWaitCursor;
+
+        public ControlWaitCursor (Control ctl) {
+            Control = ctl;
+            OldUseWaitCursor = ctl.UseWaitCursor;
+            ctl.UseWaitCursor = true;
+        }
+
+        public virtual void Dispose () {
+            Control.UseWaitCursor = OldUseWaitCursor;
+        }
+    }
+
+    public class ControlDisabler : ControlWaitCursor {
+        public readonly bool OldEnabled;
+
+        public ControlDisabler (Control ctl) 
+            : base (ctl) {
+            OldEnabled = ctl.Enabled;
+            ctl.Enabled = false;
+        }
+
+        public override void Dispose () {
+            base.Dispose();
+            Control.Enabled = OldEnabled;
+        }
+    }
+
+    public class TaskForm : Form, ITaskOwner {
         public readonly TaskScheduler Scheduler;
         protected HashSet<IFuture> OwnedFutures = new HashSet<IFuture>();
 
@@ -175,6 +205,41 @@ namespace Squared.Task {
             else
                 base.Show();
 
+            return f;
+        }
+
+        protected override void Dispose (bool disposing) {
+            foreach (var future in OwnedFutures)
+                future.Dispose();
+            OwnedFutures.Clear();
+
+            base.Dispose(disposing);
+        }
+    }
+
+    public class TaskUserControl : UserControl, ITaskOwner {
+        public readonly TaskScheduler Scheduler;
+        protected HashSet<IFuture> OwnedFutures = new HashSet<IFuture>();
+
+        internal TaskUserControl ()
+            : base() {
+            Scheduler = null;
+        }
+
+        public TaskUserControl (TaskScheduler scheduler)
+            : base() {
+            Scheduler = scheduler;
+        }
+
+        public IFuture Start (ISchedulable schedulable) {
+            var f = Scheduler.Start(schedulable, TaskExecutionPolicy.RunAsBackgroundTask);
+            OwnedFutures.Add(f);
+            return f;
+        }
+
+        public IFuture Start (IEnumerator<object> task) {
+            var f = Scheduler.Start(task, TaskExecutionPolicy.RunAsBackgroundTask);
+            OwnedFutures.Add(f);
             return f;
         }
 

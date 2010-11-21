@@ -75,6 +75,12 @@ namespace Squared.Task.Data {
             _Active = true;
         }
 
+        public Transaction (ConnectionWrapper wrapper, bool exclusive) {
+            _Wrapper = wrapper;
+            _Future = _Wrapper.BeginTransaction(exclusive);
+            _Active = true;
+        }
+
         public IFuture Future {
             get {
                 return _Future;

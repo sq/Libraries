@@ -252,19 +252,56 @@ namespace Squared.Task.Data {
             }
         }
 
-        public Future<T[]> ExecuteArray<T> (params object[] parameters) {
+        public Future<T[]> ExecuteArray<T> (params object[] parameters)
+            where T : class, new() {
+
+            var ca = typeof(T).GetCustomAttributes(
+                typeof(Squared.Task.Data.Mapper.MapperAttribute), false
+            );
+            if ((ca != null) && (ca.Length > 0)) {
+                var fResult = new Future<T[]>();
+
+                _Manager.Scheduler.Start(
+                    fResult,
+                    new SchedulableGeneratorThunk(ExecuteMapperArrayTask<T>(parameters)),
+                    TaskExecutionPolicy.RunWhileFutureLives
+                );
+
+                return fResult;
+            } else {
+                return ExecutePrimitiveArray<T>(parameters);
+            }
+        }
+
+        public Future<T[]> ExecutePrimitiveArray<T> (params object[] parameters) {
             var fResult = new Future<T[]>();
 
             _Manager.Scheduler.Start(
                 fResult,
-                new SchedulableGeneratorThunk(ExecuteSequenceTask<T>(parameters)),
+                new SchedulableGeneratorThunk(ExecuteArrayTask<T>(parameters)),
                 TaskExecutionPolicy.RunWhileFutureLives
             );
 
             return fResult;
         }
 
-        protected IEnumerator<object> ExecuteSequenceTask<T> (params object[] parameters) {
+        protected IEnumerator<object> ExecuteMapperArrayTask<T> (params object[] parameters)
+            where T : class, new() {
+
+            var result = new List<T>();
+
+            using (var e = this.Execute<T>(parameters))
+                while (!e.Disposed) {
+                    yield return e.Fetch();
+
+                    foreach (var item in e)
+                        result.Add(item);
+                }
+
+            yield return new Result(result.ToArray());
+        }
+
+        protected IEnumerator<object> ExecuteArrayTask<T> (params object[] parameters) {
             var result = new List<T>();
 
             using (var e = this.Execute<SequenceItem<T>>(parameters))

@@ -697,10 +697,15 @@ namespace Squared.Task {
     public class Signal<T> : IDisposable {
         private volatile Future<T> _Current = new Future<T>();
 
-        public void Set (T value, Exception exception) {
+        public bool Set (T value, Exception exception) {
             var newFuture = new Future<T>();
             var currentFuture = Interlocked.Exchange(ref _Current, newFuture);
-            currentFuture.SetResult(value, null);
+            try {
+                currentFuture.SetResult(value, null);
+                return true;
+            } catch (FutureAlreadyHasResultException) {
+                return false;
+            }
         }
 
         public Future<T> Wait () {
@@ -715,8 +720,8 @@ namespace Squared.Task {
     }
 
     public class Signal : Signal<NoneType> {
-        public void Set () {
-            base.Set(NoneType.None, null);
+        public bool Set () {
+            return base.Set(NoneType.None, null);
         }
     }
 }

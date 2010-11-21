@@ -605,6 +605,21 @@ namespace Squared.Task {
                     Composite.Complete(f);
                 }
             }
+
+            public void OnDispose (IFuture f) {
+                bool completed = false;
+                lock (State) {
+                    if (State.Count == Trigger) {
+                        completed = true;
+                        State.Clear();
+                    } else {
+                        State.Remove(f);
+                    }
+                }
+
+                if (completed)
+                    Composite.Dispose();
+            }
         }
 
         private static IFuture WaitForX (IFuture[] futures, int x) {
@@ -616,10 +631,13 @@ namespace Squared.Task {
             h.Composite = f;
             h.State.AddRange(futures);
             h.Trigger = x;
-            OnComplete handler = h.OnComplete;
+            OnComplete oc = h.OnComplete;
+            OnDispose od = h.OnDispose;
 
-            foreach (IFuture _ in futures)
-                _.RegisterOnComplete(handler);
+            foreach (IFuture _ in futures) {
+                _.RegisterOnComplete(oc);
+                _.RegisterOnDispose(od);
+            }
 
             return f;
         }
