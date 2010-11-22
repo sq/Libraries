@@ -1,6 +1,4 @@
-﻿#pragma warning disable 0420 // a reference to a volatile field will not be treated as volatile
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Runtime.InteropServices;
@@ -201,17 +199,18 @@ namespace Squared.Task {
 
         private static int ProcessorCount;
 
-        private volatile int _State = State_Empty;
-        private volatile OnComplete _OnComplete = null;
-        private volatile OnDispose _OnDispose = null;
-        private volatile Exception _Error = null;
-        private volatile Action _OnErrorChecked = null;
+        private int _State = State_Empty;
+        private OnComplete _OnComplete = null;
+        private OnDispose _OnDispose = null;
+        private Exception _Error = null;
+        private Action _OnErrorChecked = null;
         private T _Result = default(T);
 
         public override string ToString () {
             int state = _State;
             var result = _Result;
             var error = _Error;
+            Thread.MemoryBarrier();
             string stateText = "??";
             switch (state) {
                 case State_Empty:
@@ -411,6 +410,7 @@ namespace Squared.Task {
         public Exception Error {
             get {
                 int state = _State;
+                Thread.MemoryBarrier();
                 if (state == State_CompletedWithValue) {
                     return null;
                 } else if (state == State_CompletedWithError) {
@@ -424,6 +424,7 @@ namespace Squared.Task {
         public T Result {
             get {
                 int state = _State;
+                Thread.MemoryBarrier();
                 if (state == State_CompletedWithValue) {
                     return _Result;
                 } else if (state == State_CompletedWithError) {
@@ -461,10 +462,12 @@ namespace Squared.Task {
                 SpinWait(iterations++);
             }
 
+            Thread.MemoryBarrier();
             int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
             _Result = result;
             _Error = error;
             OnComplete handler = _OnComplete;
+            Thread.MemoryBarrier();
             _OnDispose = null;
             _OnComplete = null;
 
@@ -491,6 +494,7 @@ namespace Squared.Task {
                 SpinWait(iterations++);
             }
 
+            Thread.MemoryBarrier();
             OnDispose handler = _OnDispose;
             _OnDispose = null;
             _OnComplete = null;
@@ -516,6 +520,7 @@ namespace Squared.Task {
         public bool GetResult (out T result) {
             int state = _State;
 
+            Thread.MemoryBarrier();
             if (state == State_CompletedWithValue) {
                 result = _Result;
                 return true;
@@ -528,6 +533,7 @@ namespace Squared.Task {
         public bool GetResult (out T result, out Exception error) {
             int state = _State;
 
+            Thread.MemoryBarrier();
             if (state == State_CompletedWithValue) {
                 result = _Result;
                 error = null;

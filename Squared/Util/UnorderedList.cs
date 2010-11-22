@@ -1,6 +1,4 @@
-﻿#pragma warning disable 0420 // a reference to a volatile field will not be treated as volatile
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;

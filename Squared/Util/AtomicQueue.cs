@@ -1,6 +1,4 @@
-﻿#pragma warning disable 0420 // a reference to a volatile field will not be treated as volatile
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -15,14 +13,14 @@ namespace Squared.Util {
 
         internal class Node {
             public T Value;
-            public volatile Node Next = null;
+            public Node Next = null;
         }
 
         Node _Head;
         Node _Tail;
 
-        volatile int _ConsumerLock = 0;
-        volatile int _ProducerLock = 0;
+        int _ConsumerLock = 0;
+        int _ProducerLock = 0;
 
         int _Count = 0;
 
@@ -43,11 +41,13 @@ namespace Squared.Util {
             }
 
             _Tail.Next = node;
+            Thread.MemoryBarrier();
             _Tail = node;
 
             Interlocked.Increment(ref _Count);
 
             _ProducerLock = 0;
+            Thread.MemoryBarrier();
         }
 
         public void Enqueue (T value) {
@@ -65,10 +65,14 @@ namespace Squared.Util {
             bool success = false;
 
             var head = _Head;
+            Thread.MemoryBarrier();
             var next = head.Next;
+            Thread.MemoryBarrier();
             if (next != null) {
+                Thread.MemoryBarrier();
                 head.Next = null;
                 head.Value = default(T);
+                Thread.MemoryBarrier();
                 _Head = next;
                 Interlocked.Decrement(ref _Count);
 
@@ -80,7 +84,9 @@ namespace Squared.Util {
                 deadNode = null;
             }
 
+            Thread.MemoryBarrier();
             _ConsumerLock = 0;
+            Thread.MemoryBarrier();
 
             return success;
         }

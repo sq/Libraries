@@ -695,21 +695,32 @@ namespace Squared.Task {
     }
 
     public class Signal<T> : IDisposable {
-        private volatile Future<T> _Current = new Future<T>();
+        private Future<T> _Current = new Future<T>();
 
         public bool Set (T value, Exception exception) {
             var newFuture = new Future<T>();
             var currentFuture = Interlocked.Exchange(ref _Current, newFuture);
+
+            if (currentFuture == null)
+                throw new ObjectDisposedException("Signal");
+
             try {
                 currentFuture.SetResult(value, null);
                 return true;
-            } catch (FutureAlreadyHasResultException) {
+            } catch {
                 return false;
             }
         }
 
         public Future<T> Wait () {
-            return _Current;
+            Thread.MemoryBarrier();
+            var f = _Current;
+            Thread.MemoryBarrier();
+
+            if (f != null)
+                return f;
+            else
+                throw new ObjectDisposedException("Signal");
         }
 
         public void Dispose () {

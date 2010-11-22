@@ -1,6 +1,4 @@
-﻿#pragma warning disable 0420 // a reference to a volatile field will not be treated as volatile
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -43,7 +41,7 @@ namespace Squared.Task {
         public readonly long MaxStepDuration = 0;
 
         private AutoResetEvent _WaiterSignal = new AutoResetEvent(false);
-        private volatile int _WaiterCount = 0;
+        private int _WaiterCount = 0;
 
         private AtomicQueue<Action> _Queue = new AtomicQueue<Action>();
 
@@ -101,8 +99,11 @@ namespace Squared.Task {
         public void QueueWorkItem (Action item) {
             _Queue.Enqueue(item);
 
-            if (_WaiterCount > 0)
+            Thread.MemoryBarrier();
+            if (_WaiterCount > 0) {
+                Thread.MemoryBarrier();
                 _WaiterSignal.Set();
+            }
         }
 
         public bool WaitForWorkItems (double timeout) {
