@@ -698,8 +698,9 @@ namespace Squared.Task {
         private Future<T> _Current = new Future<T>();
 
         public bool Set (T value, Exception exception) {
-            var newFuture = new Future<T>();
-            var currentFuture = Interlocked.Exchange(ref _Current, newFuture);
+            Future<T> currentFuture;
+            lock (this)
+                currentFuture = Interlocked.Exchange(ref _Current, new Future<T>());
 
             if (currentFuture == null)
                 throw new ObjectDisposedException("Signal");
@@ -713,20 +714,19 @@ namespace Squared.Task {
         }
 
         public Future<T> Wait () {
-            Thread.MemoryBarrier();
-            var f = _Current;
-            Thread.MemoryBarrier();
-
-            if (f != null)
-                return f;
+            lock (this)
+            if (_Current != null)
+                return _Current;
             else
                 throw new ObjectDisposedException("Signal");
         }
 
         public void Dispose () {
-            var current = Interlocked.Exchange(ref _Current, null);
-            if (current != null)
-                current.Dispose();
+            lock (this)
+            if (_Current != null) {
+                _Current.Dispose();
+                _Current = null;
+            }
         }
     }
 
