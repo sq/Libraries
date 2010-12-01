@@ -679,6 +679,33 @@ namespace Squared.Task {
             }
             Assert.AreEqual(null, r[0]);
         }
+
+        IEnumerator<object> RunAsBackgroundTestTask (Future<int> fOut) {
+            yield return new RunAsBackground(CrashyTask());
+
+            fOut.SetResult(5, null);
+        }
+
+        [Test]
+        public void RunAsBackgroundTest () {
+            {
+                var result = new Future<int>();
+                var theTask = Scheduler.Start(RunAsBackgroundTestTask(result));
+                try {
+                    Scheduler.WaitFor(theTask);
+                    Assert.AreEqual(5, result.Result);
+                } catch (TaskException) {
+                }
+            }
+
+            {
+                var result = new Future<int>();
+                Scheduler.ErrorHandler = (e) => true;
+                var theTask = Scheduler.Start(RunAsBackgroundTestTask(result));
+                Assert.AreEqual(null, Scheduler.WaitFor(theTask));
+                Assert.AreEqual(5, Scheduler.WaitFor(result));
+            }
+        }
     }
 
     [TestFixture]

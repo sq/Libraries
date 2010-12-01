@@ -224,6 +224,38 @@ namespace Squared.Task {
         }
     }
 
+    /// <summary>
+    /// Runs as task as a background task so that you can ignore any errors (on the assumption that you have a background task error handler).
+    /// </summary>
+    public class RunAsBackground : ISchedulable {
+        IEnumerator<object> _Task;
+        IFuture _Future;
+
+        public RunAsBackground (IEnumerator<object> task) {
+            _Task = task;
+        }
+
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
+            _Future = scheduler.Start(_Task, TaskExecutionPolicy.RunAsBackgroundTask);
+
+            _Future.RegisterOnComplete((f) => {
+                object r;
+                Exception e;
+                f.GetResult(out r, out e);
+                future.Complete(r);
+            });
+            _Future.RegisterOnDispose((f) => {
+                future.Dispose();
+            });
+        }
+
+        public IFuture Future {
+            get {
+                return _Future;
+            }
+        }
+    }
+
     public class RunToCompletion : RunToCompletion<object> {
         public RunToCompletion (IEnumerator<object> task)
             : base(task) {
@@ -733,6 +765,28 @@ namespace Squared.Task {
     public class Signal : Signal<NoneType> {
         public bool Set () {
             return base.Set(NoneType.None, null);
+        }
+    }
+
+    public static class TaskEventSubscriber {
+        public static EventSubscriber New (TaskScheduler scheduler, Func<EventInfo, IEnumerator<object>> task) {
+            return (e) =>
+                scheduler.Start(task(e), TaskExecutionPolicy.RunAsBackgroundTask);
+        }
+
+        public static TypedEventSubscriber<T> New<T> (TaskScheduler scheduler, Func<EventInfo, T, IEnumerator<object>> task)
+            where T : class {
+            return (e, args) =>
+                scheduler.Start(task(e, args), TaskExecutionPolicy.RunAsBackgroundTask);
+        }
+
+        public static EventSubscription Subscribe (this EventBus eventBus, object source, string type, TaskScheduler scheduler, Func<EventInfo, IEnumerator<object>> task) {
+            return eventBus.Subscribe(source, type, TaskEventSubscriber.New(scheduler, task));
+        }
+
+        public static EventSubscription Subscribe<T> (this EventBus eventBus, object source, string type, TaskScheduler scheduler, Func<EventInfo, T, IEnumerator<object>> task)
+            where T : class {
+            return eventBus.Subscribe<T>(source, type, TaskEventSubscriber.New<T>(scheduler, task));
         }
     }
 }

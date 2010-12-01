@@ -59,7 +59,7 @@ namespace Squared.Task.Data {
             return new Transaction(this, exclusive);
         }
 
-        internal TaskScheduler Scheduler {
+        public TaskScheduler Scheduler {
             get {
                 return _Scheduler;
             }

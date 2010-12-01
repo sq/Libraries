@@ -38,7 +38,6 @@ namespace Squared.Util.Bind {
             switch (expr.NodeType) {
                 case ExpressionType.Convert:
                 case ExpressionType.ConvertChecked:
-                    Console.WriteLine("Attempting conversion {0}", expr);
                     var ue = (UnaryExpression)expr;
                     if (ue.Method.IsStatic)
                         return ue.Method.Invoke(null, new object[] { ResolveTarget(ue.Operand) });

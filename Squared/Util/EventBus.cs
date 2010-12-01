@@ -41,6 +41,21 @@ namespace Squared.Util.Event {
         public override int GetHashCode () {
             return SourceHashCode ^ TypeHashCode;
         }
+
+        public override bool Equals (object obj) {
+            if (obj is EventFilter) {
+                var ef = (EventFilter)obj;
+                return this.Equals(ef);
+            } else
+                return base.Equals(obj);
+        }
+
+        public bool Equals (EventFilter rhs) {
+            return (SourceHashCode == rhs.SourceHashCode) &&
+                (TypeHashCode == rhs.TypeHashCode) &&
+                (Type == rhs.Type) &&
+                (Source == rhs.Source);
+        }
     }
 
     public class EventFilterComparer : IEqualityComparer<EventFilter> {
@@ -109,6 +124,24 @@ namespace Squared.Util.Event {
             EventBus = eventBus;
             _EventFilter = eventFilter;
             EventSubscriber = subscriber;
+        }
+
+        public override int GetHashCode () {
+            return EventBus.GetHashCode() ^ EventSubscriber.GetHashCode() ^ _EventFilter.GetHashCode();
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is EventSubscription) {
+                var es = (EventSubscription)obj;
+                return this.Equals(es);
+            } else
+                return base.Equals(obj);
+        }
+
+        public bool Equals (EventSubscription rhs) {
+            return (EventBus == rhs.EventBus) &&
+                (EventSubscriber == rhs.EventSubscriber) &&
+                (_EventFilter.Equals(rhs._EventFilter));
         }
 
         public void Dispose () {

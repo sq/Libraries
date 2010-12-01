@@ -5,6 +5,7 @@ using System.Threading;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Security;
+using Squared.Util.Event;
 
 namespace Squared.Task {
     public static partial class JobQueue {
@@ -90,7 +91,8 @@ namespace Squared.Task {
                 if (item != null)
                     item();
                 else {
-                    Thread.Sleep(0);
+                    Application.DoEvents();
+                    Thread.Sleep(10);
                     return false;
                 }
             }
@@ -164,6 +166,7 @@ namespace Squared.Task {
     public class TaskForm : Form, ITaskOwner {
         public readonly TaskScheduler Scheduler;
         protected HashSet<IFuture> OwnedFutures = new HashSet<IFuture>();
+        protected HashSet<EventSubscription> OwnedSubscriptions = new HashSet<EventSubscription>();
 
         internal TaskForm ()
             : base() {
@@ -208,10 +211,32 @@ namespace Squared.Task {
             return f;
         }
 
+        public void SubscribeTo (EventBus eventBus, object source, string type, EventSubscriber subscriber) {
+            OwnedSubscriptions.Add(eventBus.Subscribe(source, type, subscriber));
+        }
+
+        public void SubscribeTo<T> (EventBus eventBus, object source, string type, TypedEventSubscriber<T> subscriber) 
+            where T : class {
+            OwnedSubscriptions.Add(eventBus.Subscribe(source, type, subscriber));
+        }
+
+        public void SubscribeTo (EventBus eventBus, object source, string type, Func<EventInfo, IEnumerator<object>> subscriber) {
+            OwnedSubscriptions.Add(eventBus.Subscribe(source, type, Scheduler, subscriber));
+        }
+
+        public void SubscribeTo<T> (EventBus eventBus, object source, string type, Func<EventInfo, T, IEnumerator<object>> subscriber)
+            where T : class {
+            OwnedSubscriptions.Add(eventBus.Subscribe(source, type, Scheduler, subscriber));
+        }
+
         protected override void Dispose (bool disposing) {
             foreach (var future in OwnedFutures)
                 future.Dispose();
             OwnedFutures.Clear();
+
+            foreach (var subscription in OwnedSubscriptions)
+                subscription.Dispose();
+            OwnedSubscriptions.Clear();
 
             base.Dispose(disposing);
         }
