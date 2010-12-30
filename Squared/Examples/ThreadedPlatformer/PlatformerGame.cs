@@ -133,9 +133,13 @@ namespace ThreadedPlatformer {
             while (true) {
                 // Try to find the next level. They are sequentially numbered txt files.
                 levelPath = String.Format("Levels/{0}.txt", ++levelIndex);
-                levelPath = Path.Combine(StorageContainer.TitleLocation, "Content/" + levelPath);
-                if (File.Exists(levelPath))
-                    break;
+                levelPath = Path.Combine("Content/", levelPath);
+
+                try {
+                    using (var stream = TitleContainer.OpenStream(levelPath))
+                        break;
+                } catch (FileNotFoundException) {
+                }
 
                 // If there isn't even a level 0, something has gone wrong.
                 if (levelIndex == 0)

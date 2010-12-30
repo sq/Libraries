@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using Squared.Util;
+using Squared.Util.Event;
 using System.Collections;
 
 #if !XBOX

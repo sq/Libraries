@@ -106,7 +106,9 @@ namespace ThreadedPlatformer {
             // Load the level and ensure all of the lines are the same length.
             int width;
             List<string> lines = new List<string>();
-            using (StreamReader reader = new StreamReader(path)) {
+
+            using (var stream = TitleContainer.OpenStream(path))
+            using (StreamReader reader = new StreamReader(stream)) {
                 string line = reader.ReadLine();
                 width = line.Length;
                 while (line != null) {

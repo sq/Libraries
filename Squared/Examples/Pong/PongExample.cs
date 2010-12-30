@@ -18,7 +18,6 @@ namespace Pong {
         SpriteFont Font;
         SpriteBatch SpriteBatch;
         RenderTarget2D TrailBuffer;
-        DepthStencilBuffer DefaultDepthStencilBuffer;
         bool FirstFrame = true;
         const int TrailScale = 2;
 
@@ -34,15 +33,13 @@ namespace Pong {
         protected override void Initialize() {
             base.Initialize();
 
-            // Remember the depth/stencil buffer created with the graphics device, so we can restore it later
-            DefaultDepthStencilBuffer = GraphicsDevice.DepthStencilBuffer;
-
             // Create a render target to use for rendering trails for the ball and paddles
             TrailBuffer = new RenderTarget2D(
                 Graphics.GraphicsDevice,
                 Graphics.GraphicsDevice.Viewport.Width / TrailScale,
                 Graphics.GraphicsDevice.Viewport.Height / TrailScale,
-                1, SurfaceFormat.Color, RenderTargetUsage.PreserveContents
+                false, SurfaceFormat.Color, DepthFormat.None, 0,
+                RenderTargetUsage.PreserveContents
             );
 
             Playfield = new Playfield {
@@ -54,6 +51,8 @@ namespace Pong {
 
         protected override void LoadContent() {
             Materials = new PongMaterials(Content) {
+                ViewportScale = new Vector2(1, 1),
+                ViewportPosition = new Vector2(0, 0),
                 ProjectionMatrix = Matrix.CreateOrthographicOffCenter(
                     0, GraphicsDevice.Viewport.Width,
                     GraphicsDevice.Viewport.Height, 0,
@@ -212,7 +211,8 @@ namespace Pong {
             }
 
             // The first stage of our frame involves selecting the trail buffer as our render target (note that it's layer 0)
-            SetRenderTargetBatch.AddNew(frame, 0, 0, TrailBuffer, null);
+            SetRenderTargetBatch.AddNew(frame, 0, TrailBuffer);
+
             if (FirstFrame) {
                 // If it's the first time we've rendered, we erase the trail buffer since it could contain anything
                 ClearBatch.AddNew(frame, 1, Color.Black, Materials.Clear);
@@ -227,8 +227,9 @@ namespace Pong {
                     );
                 }
             }
+            
             // After the trail buffer has been updated, we turn it off and begin rendering to the framebuffer. Note layer 3.
-            SetRenderTargetBatch.AddNew(frame, 3, 0, null, DefaultDepthStencilBuffer);
+            SetRenderTargetBatch.AddNew(frame, 3, null);
         }
     }
 
@@ -289,40 +290,56 @@ namespace Pong {
         public PongMaterials (ContentManager content)
             : base(content) {
 
+            var addBs = new BlendState {
+                AlphaBlendFunction = BlendFunction.Add,
+                ColorBlendFunction = BlendFunction.Add,
+                AlphaSourceBlend = Blend.One,
+                ColorSourceBlend = Blend.One,
+                AlphaDestinationBlend = Blend.One,
+                ColorDestinationBlend = Blend.One
+            };
+
+            var ds = new DepthStencilState {
+                DepthBufferEnable = false
+            };
+
             // Set up various blending modes by changing render states
             var additiveBlend = new Action<DeviceManager>[] {
                 (dm) => {
-                    var rs = dm.Device.RenderState;
-                    rs.DepthBufferEnable = false;
-                    rs.AlphaBlendEnable = true;
-                    rs.BlendFunction = BlendFunction.Add;
-                    rs.SourceBlend = Blend.One;
-                    rs.DestinationBlend = Blend.One;
-                    rs.AlphaTestEnable = false;
+                    dm.Device.BlendState = addBs;
+                    dm.Device.DepthStencilState = ds;
                 }
+            };
+
+            var subBs = new BlendState {
+                AlphaBlendFunction = BlendFunction.ReverseSubtract,
+                ColorBlendFunction = BlendFunction.ReverseSubtract,
+                AlphaSourceBlend = Blend.One,
+                ColorSourceBlend = Blend.One,
+                AlphaDestinationBlend = Blend.One, 
+                ColorDestinationBlend = Blend.One
             };
 
             var subtractiveBlend = new Action<DeviceManager>[] {
                 (dm) => {
-                    var rs = dm.Device.RenderState;
-                    rs.DepthBufferEnable = false;
-                    rs.AlphaBlendEnable = true;
-                    rs.BlendFunction = BlendFunction.ReverseSubtract;
-                    rs.SourceBlend = Blend.One;
-                    rs.DestinationBlend = Blend.One;
-                    rs.AlphaTestEnable = false;
+                    dm.Device.BlendState = subBs;
+                    dm.Device.DepthStencilState = ds;
                 }
+            };
+
+            var alphaBs = new BlendState {
+                AlphaBlendFunction = BlendFunction.Add,
+                ColorBlendFunction = BlendFunction.Add,
+                AlphaSourceBlend = Blend.SourceAlpha,
+                ColorSourceBlend = Blend.SourceAlpha,
+                AlphaDestinationBlend = Blend.InverseSourceAlpha,
+                ColorDestinationBlend = Blend.InverseSourceAlpha
             };
 
             var alphaBlend = new Action<DeviceManager>[] {
                 (dm) => {
-                    var rs = dm.Device.RenderState;
-                    rs.DepthBufferEnable = false;
-                    rs.AlphaBlendEnable = true;
-                    rs.BlendFunction = BlendFunction.Add;
-                    rs.SourceBlend = Blend.SourceAlpha;
-                    rs.DestinationBlend = Blend.InverseSourceAlpha;
-                    rs.AlphaTestEnable = false;
+                    dm.Device.BlendState = alphaBs;
+                    dm.Device.DepthStencilState = ds;
                 }
             };
 

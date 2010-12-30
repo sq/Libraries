@@ -133,13 +133,20 @@ namespace Squared.Render {
         }
 
         protected void SetShaderVariables(DeviceManager deviceManager) {
-            var em = ScreenSpaceBitmap as IEffectMaterial;
-            if (em == null)
-                return;
-            var e = em.Effect;
-            e.Parameters["ViewportScale"].SetValue(ViewportScale);
-            e.Parameters["ViewportPosition"].SetValue(ViewportPosition);
-            e.Parameters["ProjectionMatrix"].SetValue(ProjectionMatrix);
+            foreach (var kvp in AllMaterials) {
+                var em = kvp.Value as IEffectMaterial;
+
+                if (em == null)
+                    continue;
+
+                var e = em.Effect;
+                if (e == null)
+                    continue;
+
+                e.Parameters["ViewportScale"].SetValue(ViewportScale);
+                e.Parameters["ViewportPosition"].SetValue(ViewportPosition);
+                e.Parameters["ProjectionMatrix"].SetValue(ProjectionMatrix);
+            }
         }
     }
 
