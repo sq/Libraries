@@ -5,6 +5,9 @@ using System.Net;
 using Squared.Task.IO;
 using System.Text;
 using System.Web;
+using System.Collections.Specialized;
+using System.Reflection;
+using System.IO;
 
 namespace Squared.Task {
     public static class Web {
@@ -119,6 +122,57 @@ namespace Squared.Task {
                 }
             }, null);
             return f;
+        }
+
+        public static NameValueCollection ParseRequestBody (this HttpListenerContext context) {
+            NameValueCollection result = null;
+
+            byte[] bytes;
+            using (var ms = new MemoryStream())
+            using (var stream = context.Request.InputStream) {
+                byte[] buf = new byte[4096];
+                while (true) {
+                    int count = stream.Read(buf, 0, buf.Length);
+                    if (count == 0)
+                        break;
+
+                    ms.Write(buf, 0, count);
+                }
+
+                bytes = ms.ToArray();
+            }
+
+            var encoding = context.Request.ContentEncoding ?? Encoding.UTF8;
+
+            var asm = Assembly.GetAssembly(typeof(HttpUtility));
+            var type = asm.GetType("System.Web.HttpValueCollection", true, false);
+            var constructor = type.GetConstructor(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null,
+                new Type[0], null
+            );
+
+            result = (NameValueCollection)constructor.Invoke(new object[0]);
+            type.InvokeMember(
+                "FillFromEncodedBytes",
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.InvokeMethod,
+                null, result, new object[] { bytes, encoding }
+            );
+                
+            return result;
+        }
+
+        public static AsyncTextReader GetRequestReader (this HttpListenerContext context) {
+            var encoding = context.Request.ContentEncoding ?? Encoding.UTF8;
+            var adapter = new StreamDataAdapter(context.Request.InputStream, true);
+            var result = new AsyncTextReader(adapter, encoding);
+            return result;
+        }
+
+        public static AsyncTextWriter GetResponseWriter (this HttpListenerContext context, Encoding encoding) {
+            var adapter = new StreamDataAdapter(context.Response.OutputStream, true);
+            var result = new AsyncTextWriter(adapter, encoding);
+            result.AutoFlush = true;
+            return result;
         }
     }
 }

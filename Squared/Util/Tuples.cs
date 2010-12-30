@@ -6,6 +6,13 @@ using System.Text;
 namespace Squared.Util {
     public delegate void Subtract<T> (ref T lhs, ref T rhs, out T result);
 
+    public static class Pair {
+        public static Pair<T> New<T> (T first, T second)
+             where T : IComparable<T> {
+            return new Pair<T>(first, second);
+        }
+    }
+
     public struct Pair<T> : IComparable<Pair<T>>, IEquatable<Pair<T>> 
         where T : IComparable<T> {
 
@@ -122,6 +129,13 @@ namespace Squared.Util {
 
         public override string ToString () {
             return String.Format("({0}, {1})", Min, Max);
+        }
+    }
+
+    public static class Triplet {
+        public static Triplet<T> New<T> (T first, T second, T third)
+             where T : IComparable<T> {
+            return new Triplet<T>(first, second, third);
         }
     }
 

@@ -305,6 +305,26 @@ namespace Squared.Task.Data.Mapper {
             Setters = setters.ToArray();
         }
 
+        public static string[] ColumnNames {
+            get {
+                return (from col in _Columns select col.Name).ToArray();
+            }
+        }
+
+        public static object[] GetColumnValues (T instance) {
+            object[] result = new object[_Columns.Count];
+
+            for (int i = 0; i < _Columns.Count; i++) {
+                var col = _Columns[i];
+                if (col.Property != null)
+                    result[i] = col.Property.GetValue(instance, null);
+                else if (col.Field != null)
+                    result[i] = col.Field.GetValue(instance);
+            }
+
+            return result;
+        }
+
         public bool Read (out T result) {
             if (!Reader.Read()) {
                 result = default(T);

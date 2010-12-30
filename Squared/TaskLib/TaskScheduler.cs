@@ -95,15 +95,18 @@ namespace Squared.Task {
 
         private void BackgroundTaskOnComplete (IFuture f) {
             var e = f.Error;
-            if (e != null) {
-                this.QueueWorkItem(() => {
-                    if (ErrorHandler != null)
-                        if (ErrorHandler(e))
-                            return;
+            if (e != null)
+                OnTaskError(e);
+        }
 
-                    throw new TaskException("Unhandled exception in background task", e);
-                });
-            }
+        public void OnTaskError (Exception exception) {
+            this.QueueWorkItem(() => {
+                if (ErrorHandler != null)
+                    if (ErrorHandler(exception))
+                        return;
+
+                throw new TaskException("Unhandled exception in background task", exception);
+            });
         }
 
         public void Start (IFuture future, ISchedulable task, TaskExecutionPolicy executionPolicy) {

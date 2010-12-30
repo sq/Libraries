@@ -149,7 +149,7 @@ namespace Squared.Util.Bind {
         }
     }
 
-    public class BoundMember<T> : IBoundMember {
+    public class BoundMember<T> : IBoundMember, IComparable<BoundMember<T>> {
         public readonly Type Type;
         public readonly object Target;
         public readonly string Name;
@@ -237,6 +237,21 @@ namespace Squared.Util.Bind {
             get {
                 return Type;
             }
+        }
+
+        public int CompareTo (BoundMember<T> other) {
+            if ((Type == other.Type) && (Target == other.Target) && (Name == other.Name))
+                return 0;
+
+            int result = Type.GetHashCode().CompareTo(other.Type.GetHashCode());
+            if (result == 0)
+                result = Target.GetHashCode().CompareTo(other.Target.GetHashCode());
+            if (result == 0)
+                result = Name.GetHashCode().CompareTo(other.Name.GetHashCode());
+            if (result == 0)
+                result = GetHashCode().CompareTo(other.GetHashCode());
+
+            return result;
         }
     }
 }
