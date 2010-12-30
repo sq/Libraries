@@ -10,6 +10,25 @@ using ComTypes = System.Runtime.InteropServices.ComTypes;
 using System.Drawing;
 #endif
 
+#if XBOX
+namespace System.IO {
+    // Who would ever want to throw exceptions on the XBox? Apparently more people than they thought
+    public sealed class InvalidDataException : SystemException {
+        public InvalidDataException ()
+            : base() {
+        }
+
+        public InvalidDataException (string message)
+            : base(message) {
+        }
+
+        public InvalidDataException (string message, Exception innerException)
+            : base(message, innerException) {
+        }
+    }
+}
+#endif
+
 namespace Squared.Util {
     public static class DisposableBufferPool<T>
         where T : IDisposable {

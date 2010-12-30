@@ -14,14 +14,12 @@ namespace Squared.Task {
     public delegate void OnComplete(IFuture future);
     public delegate void OnDispose(IFuture future);
 
-    [Serializable]
     public class FutureException : Exception {
         public FutureException (string message, Exception innerException)
             : base(message, innerException) {
         }
     }
 
-    [Serializable]
     public class FutureAlreadyHasResultException : InvalidOperationException {
         public readonly IFuture Future;
 
@@ -31,7 +29,6 @@ namespace Squared.Task {
         }
     }
 
-    [Serializable]
     public class FutureHasNoResultException : InvalidOperationException {
         public readonly IFuture Future;
 
@@ -41,7 +38,6 @@ namespace Squared.Task {
         }
     }
 
-    [Serializable]
     public class FutureDisposedException : InvalidOperationException {
         public readonly IFuture Future;
 
@@ -51,7 +47,6 @@ namespace Squared.Task {
         }
     }
 
-    [Serializable]
     public class FutureHandlerException : Exception {
         public readonly IFuture Future;
         public readonly Delegate Handler;

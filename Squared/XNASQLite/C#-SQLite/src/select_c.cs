@@ -3298,11 +3298,11 @@ break;
       if ( pEList == null || pEList.nExpr != 1 ) return 0;
       if ( pEList.a[0].pExpr.op != TK_AGG_COLUMN ) return WHERE_ORDERBY_NORMAL;
       Debug.Assert( !ExprHasProperty( pExpr, EP_IntValue ) );
-      if ( String.Compare( pExpr.u.zToken, "min", true ) == 0 )//sqlite3StrICmp(pExpr->u.zToken,"min")==0 )
+      if ( String.Compare( pExpr.u.zToken, "min", StringComparison.OrdinalIgnoreCase ) == 0 )//sqlite3StrICmp(pExpr->u.zToken,"min")==0 )
       {
         return WHERE_ORDERBY_MIN;
       }
-      else if ( String.Compare( pExpr.u.zToken, "max", true ) == 0 )//sqlite3StrICmp(pExpr->u.zToken,"max")==0 )
+      else if ( String.Compare( pExpr.u.zToken, "max", StringComparison.OrdinalIgnoreCase ) == 0 )//sqlite3StrICmp(pExpr->u.zToken,"max")==0 )
       {
         return WHERE_ORDERBY_MAX;
       }

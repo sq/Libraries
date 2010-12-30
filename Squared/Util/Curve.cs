@@ -202,7 +202,8 @@ namespace Squared.Util {
         where T : struct {
         public Interpolator<T> Interpolator;
         private InterpolatorSource<T> _InterpolatorSource;
-        SortedList<float, TItem> _Items = new SortedList<float, TItem>();
+        private PointPositionComparer _PositionComparer = new PointPositionComparer();
+        protected List<Point> _Items = new List<Point>();
 
         public struct Point {
             public float Position;
@@ -210,9 +211,10 @@ namespace Squared.Util {
             public Interpolator<T> Interpolator;
         }
 
-        private struct TItem {
-            public T Value;
-            public Interpolator<T> Interpolator;
+        public class PointPositionComparer : IComparer<Point> {
+            public int Compare (Point x, Point y) {
+                return x.Position.CompareTo(y.Position);
+            }
         }
 
         public Curve () {
@@ -222,18 +224,23 @@ namespace Squared.Util {
 
         public float Start {
             get {
-                return _Items.Keys[0];
+                return _Items[0].Position;
             }
         }
 
         public float End {
             get {
-                return _Items.Keys[_Items.Count - 1];
+                return _Items[_Items.Count - 1].Position;
             }
         }
 
+        protected int IndexOfKey (float position) {
+            return _Items.BinarySearch(new Point {
+                Position = position
+            });
+        }
+
         public int GetLowerIndexForPosition (float position) {
-            var keys = _Items.Keys;
             int count = _Items.Count;
             int low = 0;
             int high = count - 1;
@@ -245,7 +252,7 @@ namespace Squared.Util {
             } else if (position >= End) {
                 return count - 1;
             } else {
-                index = _Items.IndexOfKey(position);
+                index = IndexOfKey(position);
                 if (index != -1)
                     return index;
                 else
@@ -255,11 +262,11 @@ namespace Squared.Util {
             while (low <= high) {
                 index = (low + high) / 2;
                 nextIndex = Math.Min(index + 1, count - 1);
-                float key = keys[index];
+                float key = _Items[index].Position;
                 if (low == high)
                     break;
                 if (key < position) {
-                    if ((nextIndex >= count) || (keys[nextIndex] > position)) {
+                    if ((nextIndex >= count) || (_Items[nextIndex].Position > position)) {
                         break;
                     } else {
                         low = index + 1;
@@ -275,22 +282,20 @@ namespace Squared.Util {
         }
 
         public float GetPositionAtIndex (int index) {
-            var values = _Items.Values;
-            index = Math.Min(Math.Max(0, index), values.Count - 1);
-            return _Items.Keys[index];
+            index = Math.Min(Math.Max(0, index), _Items.Count - 1);
+            return _Items[index].Position;
         }
 
         public T GetValueAtIndex (int index) {
-            var values = _Items.Values;
-            index = Math.Min(Math.Max(0, index), values.Count - 1);
-            return values[index].Value;
+            index = Math.Min(Math.Max(0, index), _Items.Count - 1);
+            return _Items[index].Value;
         }
 
         private T GetValueAtPosition (float position) {
             int index = GetLowerIndexForPosition(position);
             float lowerPosition = GetPositionAtIndex(index);
             float upperPosition = GetPositionAtIndex(index + 1);
-            Interpolator<T> interpolator = _Items.Values[index].Interpolator ?? Interpolator;
+            Interpolator<T> interpolator = _Items[index].Interpolator ?? Interpolator;
             if (lowerPosition < upperPosition) {
                 float offset = (position - lowerPosition) / (upperPosition - lowerPosition);
 
@@ -301,7 +306,7 @@ namespace Squared.Util {
                 
                 return interpolator(_InterpolatorSource, index, offset);
             } else {
-                return _Items.Values[index].Value;
+                return _Items[index].Value;
             }
         }
 
@@ -309,10 +314,9 @@ namespace Squared.Util {
             T newStartValue = GetValueAtPosition(newStartPosition);
             T newEndValue = GetValueAtPosition(newEndPosition);
 
-            var keys = _Items.Keys;
             int i = 0;
-            while (i < keys.Count) {
-                float position = keys[i];
+            while (i < _Items.Count) {
+                float position = _Items[i].Position;
                 if ((position <= newStartPosition) || (position >= newEndPosition)) {
                     _Items.RemoveAt(i);
                 } else {
@@ -325,8 +329,20 @@ namespace Squared.Util {
         }
 
         public void SetValueAtPosition (float position, T value, Interpolator<T> interpolator) {
-            TItem item = new TItem { Value = value, Interpolator = interpolator };
-            _Items[position] = item;
+            var oldIndex = IndexOfKey(position);
+
+            var newItem = new Point {
+                Position = position,
+                Value = value,
+                Interpolator = interpolator
+            };
+
+            if (oldIndex >= 0) {
+                _Items[oldIndex] = newItem;
+            } else {
+                _Items.Add(newItem);
+                _Items.Sort(_PositionComparer);
+            }
         }
 
         public void SetValueAtPosition (float position, T value) {
@@ -351,16 +367,11 @@ namespace Squared.Util {
         }
 
         public IEnumerator<Curve<T>.Point> GetEnumerator () {
-            foreach (var item in _Items)
-                yield return new Point {
-                    Position = item.Key,
-                    Value = item.Value.Value,
-                    Interpolator = item.Value.Interpolator
-                };
+            return _Items.GetEnumerator();
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
-            return this.GetEnumerator();
+            return _Items.GetEnumerator();
         }
     }
 }

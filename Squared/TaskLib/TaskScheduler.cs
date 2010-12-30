@@ -163,7 +163,11 @@ namespace Squared.Task {
                     }
                 } else {
                     Monitor.Exit(pendingSleeps);
+#if XBOX
+                    newSleepEvent.WaitOne(-1);
+#else
                     newSleepEvent.WaitOne(-1, false);
+#endif
                     newSleepEvent.Reset();
                     continue;
                 }
@@ -197,7 +201,11 @@ namespace Squared.Task {
 
                     if (newSleepEvent != null) {
                         newSleepEvent.Reset();
+#if XBOX
+                        newSleepEvent.WaitOne(msToSleep);
+#else
                         newSleepEvent.WaitOne(msToSleep, false);
+#endif
                     }
                 }
             }

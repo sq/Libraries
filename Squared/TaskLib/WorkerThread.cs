@@ -3,6 +3,38 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
+#if XBOX
+namespace System.Threading {
+    public enum ThreadPriority {
+        // Summary:
+        //     The System.Threading.Thread can be scheduled after threads with any other
+        //     priority.
+        Lowest = 0,
+        //
+        // Summary:
+        //     The System.Threading.Thread can be scheduled after threads with Normal priority
+        //     and before those with Lowest priority.
+        BelowNormal = 1,
+        //
+        // Summary:
+        //     The System.Threading.Thread can be scheduled after threads with AboveNormal
+        //     priority and before those with BelowNormal priority. Threads have Normal
+        //     priority by default.
+        Normal = 2,
+        //
+        // Summary:
+        //     The System.Threading.Thread can be scheduled after threads with Highest priority
+        //     and before those with Normal priority.
+        AboveNormal = 3,
+        //
+        // Summary:
+        //     The System.Threading.Thread can be scheduled before threads with any other
+        //     priority.
+        Highest = 4,
+    }
+}
+#endif
+
 namespace Squared.Task {
     delegate void WorkerThreadFunc<T> (T workItems, ManualResetEvent newWorkItemEvent);
 
@@ -39,7 +71,9 @@ namespace Squared.Task {
                     } catch (ThreadAbortException) {                        
                     }
                 });
+#if !XBOX
                 _Thread.Priority = _Priority;
+#endif
                 _Thread.IsBackground = true;
                 _Thread.Name = String.Format("{0}_{1}", _ThreadFunc.Method.Name, this.GetHashCode());
                 _Thread.Start();

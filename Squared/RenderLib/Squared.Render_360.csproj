@@ -16,7 +16,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <XnaUpgrade>1</XnaUpgrade>
     <XnaOutputType>Library</XnaOutputType>
-    <XnaProfile>HiDef</XnaProfile>
+    <XnaProfile>Reach</XnaProfile>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
@@ -171,6 +171,11 @@
     <ProjectReference Include="..\GameLib\Squared.Game_360.csproj">
       <Project>{79D3EA69-8C39-4A76-B9A6-8D7F443097E0}</Project>
       <Name>Squared.Game_360</Name>
+    </ProjectReference>
+    <ProjectReference Include="Content\RenderLibContent.contentproj">
+      <Project>{D4565A8E-D70B-4E36-B1AE-DF5D9C0EA4B0}</Project>
+      <Name>RenderLibContent %28Content%29</Name>
+      <XnaReferenceType>Content</XnaReferenceType>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

@@ -10,7 +10,7 @@ using Squared.Util;
 using System.Reflection;
 
 namespace Squared.Render {
-    [Serializable, StructLayout(LayoutKind.Explicit)]
+    [StructLayout(LayoutKind.Explicit)]
     public struct BitmapVertex : IVertexType {
         [FieldOffset(0)]
         public Vector2 Position;

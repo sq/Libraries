@@ -1615,7 +1615,11 @@ sqlite3_snprintf(nBuf, zBuf, "OsError 0x%x (%u)", error, error);
       //  sqlite3_snprintf( nBuf, ref zBuf, "OsError 0x%x (%u)", error, error );
       //}
 #endif
+#if !XBOX
       zBuf = new Win32Exception( Marshal.GetLastWin32Error() ).Message;
+#else
+      zBuf = "Unknown Error";
+#endif
 
       return 0;
     }

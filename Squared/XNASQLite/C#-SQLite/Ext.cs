@@ -118,7 +118,7 @@ namespace CS_SQLite3 {
                 array = new T[count];
 
             if (array.Length < count)
-                throw new InvalidDataException();
+                throw new Exception();
 
             return new Buffer<T>(array, 0, count, true);
         }

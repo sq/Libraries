@@ -4,7 +4,6 @@
     *************************************************************************
     */
 using System;
-using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 #if XBOX360

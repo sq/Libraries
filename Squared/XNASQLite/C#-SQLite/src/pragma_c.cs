@@ -611,7 +611,7 @@ new VdbeOpList( OP_ResultRow,   1, 1,        0),
                     {
                       int n = sqlite3Strlen30( zRight );
                       eMode = azModeName.Length - 1;//sizeof(azModeName)/sizeof(azModeName[0]) - 1;
-                      while ( eMode >= 0 && String.Compare( zRight, azModeName[eMode], true ) != 0 )
+                      while (eMode >= 0 && String.Compare(zRight, azModeName[eMode], StringComparison.OrdinalIgnoreCase) != 0)
                       {
                         eMode--;
                       }

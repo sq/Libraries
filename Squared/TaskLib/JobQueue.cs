@@ -121,7 +121,11 @@ namespace Squared.Task {
                     if (_Queue.Count > 0)
                         return true;
                     else
+#if XBOX
+                        return _WaiterSignal.WaitOne(timeoutMs);
+#else
                         return _WaiterSignal.WaitOne(timeoutMs, false);
+#endif
                 } finally {
                     Interlocked.Decrement(ref _WaiterCount);
                 }

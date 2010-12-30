@@ -12,6 +12,7 @@ namespace CS_SQLite3
 
   using sqlite = csSQLite.sqlite3;
   using Vdbe = csSQLite.Vdbe;
+    using System.Collections.Generic;
   /// <summary>
   /// C#-SQLite wrapper with functions for opening, closing and executing queries.
   /// </summary>
@@ -95,7 +96,7 @@ namespace CS_SQLite3
     /// Returns the list of tables in opened database.
     /// </summary>
     /// <returns></returns>
-    public ArrayList GetTables()
+    public List<string> GetTables()
     {
       // executes query that select names of all tables in master table of the database
       String query = "SELECT name FROM sqlite_master " +
@@ -104,7 +105,7 @@ namespace CS_SQLite3
       DataTable table = ExecuteQuery( query );
 
       // Return all table names in the ArrayList
-      ArrayList list = new ArrayList();
+      List<string> list = new List<string>();
       foreach ( DataRow row in table.Rows )
       {
         list.Add( row.ItemArray[0].ToString() );
