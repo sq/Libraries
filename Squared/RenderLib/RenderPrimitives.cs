@@ -100,12 +100,35 @@ namespace Squared.Render.Internal {
                 type, Buffer, Offset, primCount
             );
         }
+
+        public PrimitiveDrawCall<T> GetDrawCall (PrimitiveType type, short[] indices, int indexOffset, int indexCount) {
+            int primCount = type.ComputePrimitiveCount(indexCount);
+            return new PrimitiveDrawCall<T>(
+                type, Buffer, Offset, Count, indices, indexOffset, primCount
+            );
+        }
+
+        public PrimitiveDrawCall<T> GetDrawCallTriangleFan (Batch batch) {
+            int primCount = Count - 2;
+            var ibuf = batch.Frame.RenderManager.GetArrayAllocator<short>().Allocate(primCount * 3);
+            var indices = ibuf.Buffer;
+
+            for (int i = 2, j = 0; i < Count; i++, j += 3) {
+                indices[j] = 0;
+                indices[j + 1] = (short)(i - 1);
+                indices[j + 2] = (short)i;
+            }
+
+            return new PrimitiveDrawCall<T>(
+                PrimitiveType.TriangleList, Buffer, Offset, Count, indices, 0, primCount
+            );
+        }
     }
 }
 
 namespace Squared.Render {
     public class PrimitiveBatch<T> : ListBatch<PrimitiveDrawCall<T>>
-        where T : struct {
+        where T : struct, IVertexType {
 
         private ArrayPoolAllocator<T> _Allocator;
 
@@ -255,16 +278,18 @@ namespace Squared.Render {
         }
 
         public static void FilledQuad (PrimitiveBatch<VertexPositionColor> batch, Vector2 topLeft, Vector2 bottomRight, Color fillColor) {
-            using (var buffer = batch.CreateBuffer(4)) {
+            using (var buffer = batch.CreateBuffer(6)) {
                 var vertices = buffer.Buffer;
 
                 vertices[0] = new VertexPositionColor(new Vector3(topLeft.X, topLeft.Y, 0), fillColor);
                 vertices[1] = new VertexPositionColor(new Vector3(bottomRight.X, topLeft.Y, 0), fillColor);
-                vertices[2] = new VertexPositionColor(new Vector3(bottomRight.X, bottomRight.Y, 0), fillColor);
-                vertices[3] = new VertexPositionColor(new Vector3(topLeft.X, bottomRight.Y, 0), fillColor);
+                vertices[2] = new VertexPositionColor(new Vector3(topLeft.X, bottomRight.Y, 0), fillColor);
+                vertices[3] = vertices[1];
+                vertices[4] = vertices[2];
+                vertices[5] = new VertexPositionColor(new Vector3(bottomRight.X, bottomRight.Y, 0), fillColor);
 
                 batch.Add(PrimitiveDrawCall.New(
-                    PrimitiveType.TriangleFan,
+                    PrimitiveType.TriangleList,
                     vertices, 0, 2
                 ));
             }

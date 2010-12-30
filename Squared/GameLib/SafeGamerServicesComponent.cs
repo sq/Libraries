@@ -100,19 +100,19 @@ namespace Squared.Game.GamerServices {
         }
 
         public IAsyncResult BeginShowStorageDeviceSelector (AsyncCallback callback, object state) {
-            return Guide.BeginShowStorageDeviceSelector(callback, state);
+            return StorageDevice.BeginShowSelector(callback, state);
         }
 
         public IAsyncResult BeginShowStorageDeviceSelector (PlayerIndex player, AsyncCallback callback, object state) {
-            return Guide.BeginShowStorageDeviceSelector(player, callback, state);
+            return StorageDevice.BeginShowSelector(player, callback, state);
         }
 
         public IAsyncResult BeginShowStorageDeviceSelector (int sizeInBytes, int directoryCount, AsyncCallback callback, object state) {
-            return Guide.BeginShowStorageDeviceSelector(sizeInBytes, directoryCount, callback, state);
+            return StorageDevice.BeginShowSelector(sizeInBytes, directoryCount, callback, state);
         }
 
         public IAsyncResult BeginShowStorageDeviceSelector (PlayerIndex player, int sizeInBytes, int directoryCount, AsyncCallback callback, object state) {
-            return Guide.BeginShowStorageDeviceSelector(player, sizeInBytes, directoryCount, callback, state);
+            return StorageDevice.BeginShowSelector(player, sizeInBytes, directoryCount, callback, state);
         }
 
         public void DelayNotifications (TimeSpan delay) {
@@ -127,7 +127,7 @@ namespace Squared.Game.GamerServices {
         }
 
         public StorageDevice EndShowStorageDeviceSelector (IAsyncResult result) {
-            return Guide.EndShowStorageDeviceSelector(result);
+            return StorageDevice.EndShowSelector(result);
         }
 
         public void ShowComposeMessage (PlayerIndex player, string text, IEnumerable<Gamer> recipients) {
@@ -196,19 +196,19 @@ namespace Squared.Game.GamerServices {
         }
 
         public IAsyncResult BeginShowStorageDeviceSelector (AsyncCallback callback, object state) {
-            return Guide.BeginShowStorageDeviceSelector(callback, state);
+            return StorageDevice.BeginShowSelector(callback, state);
         }
 
         public IAsyncResult BeginShowStorageDeviceSelector (PlayerIndex player, AsyncCallback callback, object state) {
-            return Guide.BeginShowStorageDeviceSelector(player, callback, state);
+            return StorageDevice.BeginShowSelector(player, callback, state);
         }
 
         public IAsyncResult BeginShowStorageDeviceSelector (int sizeInBytes, int directoryCount, AsyncCallback callback, object state) {
-            return Guide.BeginShowStorageDeviceSelector(sizeInBytes, directoryCount, callback, state);
+            return StorageDevice.BeginShowSelector(sizeInBytes, directoryCount, callback, state);
         }
 
         public IAsyncResult BeginShowStorageDeviceSelector (PlayerIndex player, int sizeInBytes, int directoryCount, AsyncCallback callback, object state) {
-            return Guide.BeginShowStorageDeviceSelector(player, sizeInBytes, directoryCount, callback, state);
+            return StorageDevice.BeginShowSelector(player, sizeInBytes, directoryCount, callback, state);
         }
 
         public void DelayNotifications (TimeSpan delay) {
@@ -224,7 +224,7 @@ namespace Squared.Game.GamerServices {
         }
 
         public StorageDevice EndShowStorageDeviceSelector (IAsyncResult result) {
-            return Guide.EndShowStorageDeviceSelector(result);
+            return StorageDevice.EndShowSelector(result);
         }
 
         public void ShowComposeMessage (PlayerIndex player, string text, IEnumerable<Gamer> recipients) {

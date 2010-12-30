@@ -8,8 +8,6 @@ using System.Collections;
 #if !XBOX
 using System.Linq;
 using System.Linq.Expressions;
-using Squared.Util.Event;
-using Squared.Util.Bind;
 #endif
 
 namespace Squared.Task {
