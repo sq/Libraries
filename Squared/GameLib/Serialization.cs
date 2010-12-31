@@ -11,6 +11,7 @@ using System.Globalization;
 using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Util;
 
 namespace Squared.Game {
     public interface INamedObject {
@@ -67,6 +68,49 @@ namespace Squared.Game.Serialization {
             throw new InvalidOperationException(
                 String.Format("None of the resolvers in the chain could resolve the name '{0}'.", name)
             );
+        }
+    }
+
+    public class NameReplacementTypeResolver : ITypeResolver {
+        public readonly Pair<string>[] Replacements;
+        public ITypeResolver Inner;
+
+        public NameReplacementTypeResolver (ITypeResolver inner, params Pair<string>[] replacements) {
+            Inner = inner;
+            Replacements = replacements;
+        }
+
+        public string TypeToName (Type t) {
+            return Inner.TypeToName(t);
+        }
+
+        public Type NameToType (string name) {
+            Type result = null;
+            try {
+                result = Inner.NameToType(name);
+            } catch (InvalidOperationException) {
+            }
+
+            if (result == null) {
+                foreach (var replacement in Replacements) {
+                    name = name.Replace(replacement.First, replacement.Second);
+
+                    try {
+                        result = Inner.NameToType(name);
+                    } catch (InvalidOperationException) {
+                        result = null;
+                    }
+
+                    if (result != null)
+                        return result;
+                }
+
+                throw new InvalidOperationException(
+                    String.Format("None of the resolvers in the chain could resolve the name '{0}'.", name)
+                );
+            }
+
+            return result;
         }
     }
 

@@ -237,7 +237,7 @@ namespace Squared.Util {
         protected int IndexOfKey (float position) {
             return _Items.BinarySearch(new Point {
                 Position = position
-            });
+            }, _PositionComparer);
         }
 
         public int GetLowerIndexForPosition (float position) {
@@ -253,7 +253,7 @@ namespace Squared.Util {
                 return count - 1;
             } else {
                 index = IndexOfKey(position);
-                if (index != -1)
+                if (index >= 0)
                     return index;
                 else
                     index = low;
