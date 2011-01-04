@@ -165,7 +165,7 @@ namespace Squared.Task {
 
     public class TaskForm : Form, ITaskOwner {
         public readonly TaskScheduler Scheduler;
-        protected HashSet<IFuture> OwnedFutures = new HashSet<IFuture>();
+        protected OwnedFutureSet OwnedFutures = new OwnedFutureSet();
         protected HashSet<EventSubscription> OwnedSubscriptions = new HashSet<EventSubscription>();
 
         internal TaskForm ()
@@ -230,9 +230,7 @@ namespace Squared.Task {
         }
 
         protected override void Dispose (bool disposing) {
-            foreach (var future in OwnedFutures)
-                future.Dispose();
-            OwnedFutures.Clear();
+            OwnedFutures.Dispose();
 
             foreach (var subscription in OwnedSubscriptions)
                 subscription.Dispose();
@@ -244,7 +242,7 @@ namespace Squared.Task {
 
     public class TaskUserControl : UserControl, ITaskOwner {
         public readonly TaskScheduler Scheduler;
-        protected HashSet<IFuture> OwnedFutures = new HashSet<IFuture>();
+        protected OwnedFutureSet OwnedFutures = new OwnedFutureSet();
 
         internal TaskUserControl ()
             : base() {
@@ -269,9 +267,7 @@ namespace Squared.Task {
         }
 
         protected override void Dispose (bool disposing) {
-            foreach (var future in OwnedFutures)
-                future.Dispose();
-            OwnedFutures.Clear();
+            OwnedFutures.Dispose();
 
             base.Dispose(disposing);
         }

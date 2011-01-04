@@ -161,7 +161,14 @@ namespace Squared.Task.Data {
             };
             f.RegisterOnDispose(od);
 
-            if (!suspendCompletion) {
+            if (suspendCompletion) {
+                OnComplete oc = (_) => {
+                    if (_.Failed)
+                        m.NotifyQueryCompleted(f);
+                };
+
+                f.RegisterOnComplete(oc);
+            } else {
                 OnComplete oc = (_) => {
                     m.NotifyQueryCompleted(f);
                 };

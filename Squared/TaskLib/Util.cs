@@ -788,4 +788,50 @@ namespace Squared.Task {
             return eventBus.Subscribe<T>(source, type, TaskEventSubscriber.New<T>(scheduler, task));
         }
     }
+
+    public class OwnedFutureSet : IDisposable {
+        private class FutureComparer : IEqualityComparer<IFuture> {
+            bool IEqualityComparer<IFuture>.Equals (IFuture x, IFuture y) {
+                return x == y;
+            }
+
+            int IEqualityComparer<IFuture>.GetHashCode (IFuture obj) {
+                return obj.GetHashCode();
+            }
+        }
+
+        private HashSet<IFuture> _OwnedFutures = new HashSet<IFuture>(new FutureComparer());
+        private OnComplete _OnComplete;
+        private OnDispose _OnDispose;
+
+        public OwnedFutureSet () {
+            _OnComplete = OnComplete;
+            _OnDispose = OnDispose;
+        }
+
+        private void OnComplete (IFuture f) {
+            if (_OwnedFutures != null)
+                _OwnedFutures.Remove(f);
+        }
+
+        private void OnDispose (IFuture f) {
+            if (_OwnedFutures != null)
+                _OwnedFutures.Remove(f);
+        }
+
+        public void Add (IFuture future) {
+            _OwnedFutures.Add(future);
+            future.RegisterOnComplete(_OnComplete);
+            future.RegisterOnDispose(_OnDispose);
+        }
+
+        public void Dispose () {
+            var of = Interlocked.Exchange(ref _OwnedFutures, null);
+
+            foreach (var f in of)
+                f.Dispose();
+
+            of.Clear();
+        }
+    }
 }
