@@ -83,18 +83,22 @@ namespace Squared.Render {
                 this.Draw(gameTime, _FrameBeingPrepared);
         }
 
-        protected void SwapFrameToDraw() {
+        protected void PrepareNextFrame() {
             var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
+
+            newFrame.Prepare(UseThreadedDraw);
+
+            if (UseThreadedDraw)
+                _DrawThread.WaitForPendingWork();
+
             var oldFrame = Interlocked.Exchange(ref _FrameBeingDrawn, newFrame);
+
             if (oldFrame != null)
                 oldFrame.Dispose();
         }
 
         protected override void EndDraw() {
-            if (UseThreadedDraw)
-                _DrawThread.WaitForPendingWork();
-
-            SwapFrameToDraw();
+            PrepareNextFrame();
 
             if (_Running) {
                 lock (UseResourceLock)
@@ -124,8 +128,6 @@ namespace Squared.Render {
             lock (UseResourceLock)
                 if (frameToDraw != null) {
                     using (frameToDraw) {
-                        frameToDraw.Prepare(UseThreadedDraw);
-
                         _DeviceLost |= CheckGraphicsDeviceLost();
 
                         if (!_DeviceLost)

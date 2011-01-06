@@ -422,8 +422,13 @@ namespace Squared.Render {
             Index = Interlocked.Increment(ref _BatchCount);
         }
 
+        // This is where you should do any computation necessary to prepare a batch for rendering.
+        // Examples: State sorting, computing vertices.
         public abstract void Prepare ();
+
+        // This is where you send commands to the video card to render your batch.
         public abstract void Issue (DeviceManager manager);
+
         public virtual void ReleaseResources () {
             if (Released)
                 throw new ObjectDisposedException("Batch");

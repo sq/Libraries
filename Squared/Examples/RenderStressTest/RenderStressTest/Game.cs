@@ -31,7 +31,7 @@ namespace RenderStressTest {
             Graphics = new GraphicsDeviceManager(this);
             Graphics.PreferredBackBufferWidth = Width;
             Graphics.PreferredBackBufferHeight = Height;
-            Graphics.PreferMultiSampling = true;
+            Graphics.PreferMultiSampling = false;
             Graphics.SynchronizeWithVerticalRetrace = true;
 
             UseThreadedDraw = ThreadedPaint;
@@ -144,7 +144,11 @@ namespace RenderStressTest {
                 if (batch == null)
                     batch = GeometryBatch<VertexPositionColor>.New(frame, 1, Materials.WorldSpaceGeometry);
 
-                orb.Draw(batch, now);
+                var position = Orb.Interpolator(Orb.InterpolatorSource, ref orb, 0, (now - orb.LastUpdateAt) / orb.Duration);
+
+                batch.AddFilledRing(
+                    position, Vector2.Zero, orb.Size, orb.Color, Color.Transparent
+                );
 
                 i += 1;
                 if ((i % BatchSize) == 0) {
@@ -160,6 +164,9 @@ namespace RenderStressTest {
 
     public struct Orb {
         public const float PixelsPerSecond = 30f;
+        public const float MinSize = 1.75f;
+        public const float MaxSize = 9.0f;
+        public const int Brightness = 70;
 
         public Vector2 LastPosition, NextPosition;
         public Vector2 Size;
@@ -194,10 +201,10 @@ namespace RenderStressTest {
             LastUpdateAt = now;
             Duration = (NextPosition - LastPosition).Length() / PixelsPerSecond;
 
-            Size = new Vector2((float)rng.NextDouble() * 8f + 1.5f);
-            int r = rng.Next(0, 64);
-            int g = rng.Next(64 - r, 64);
-            int b = rng.Next(64 - Math.Max(r, g), 64);
+            Size = new Vector2((float)rng.NextDouble() * (MaxSize - MinSize) + MinSize);
+            int r = rng.Next(0, Brightness);
+            int g = rng.Next(Brightness - r, Brightness);
+            int b = rng.Next(Brightness - Math.Max(r, g), Brightness);
             Color = new Color(r, g, b, 0);
         }
 
@@ -211,14 +218,6 @@ namespace RenderStressTest {
                 );
                 Duration = (NextPosition - LastPosition).Length() / PixelsPerSecond;
             }
-        }
-
-        public void Draw (GeometryBatch<VertexPositionColor> batch, float now) {
-            var position = Interpolator(InterpolatorSource, ref this, 0, (now - LastUpdateAt) / Duration);
-
-            batch.AddFilledRing(
-                position, Vector2.Zero, Size, Color, Color.Transparent
-            );
         }
     }
 }
