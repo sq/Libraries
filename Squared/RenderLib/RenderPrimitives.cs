@@ -58,7 +58,7 @@ namespace Squared.Render.Internal {
             Count = 0;
         }
 
-        public void Write(T newVertex) {
+        public void Write (T newVertex) {
             if (Count >= Size)
                 throw new InvalidOperationException();
 
@@ -66,7 +66,7 @@ namespace Squared.Render.Internal {
             Count += 1;
         }
 
-        public void Write(ref T newVertex) {
+        public void Write (ref T newVertex) {
             if (Count >= Size)
                 throw new InvalidOperationException();
 
@@ -74,7 +74,7 @@ namespace Squared.Render.Internal {
             Count += 1;
         }
 
-        public void Write(int index, T newVertex) {
+        public void Write (int index, T newVertex) {
             if (index >= Size)
                 throw new InvalidOperationException();
 
@@ -84,7 +84,7 @@ namespace Squared.Render.Internal {
             Buffer[index] = newVertex;
         }
 
-        public void Write(int index, ref T newVertex) {
+        public void Write (int index, ref T newVertex) {
             if (index >= Size)
                 throw new InvalidOperationException();
 

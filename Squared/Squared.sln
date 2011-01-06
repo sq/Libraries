@@ -51,7 +51,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderLibContent", "RenderL
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderStressTest", "Examples\RenderStressTest\RenderStressTest\RenderStressTest.csproj", "{67FE3293-3EBC-4E46-8210-C518F1C5745D}"
 EndProject
-Project("{96E2B04D-8817-42C6-938A-82C39BA4D311}") = "RenderStressTestContent", "Examples\RenderStressTest\RenderStressTestContent\RenderStressTestContent.contentproj", "{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderStressTestContent", "Examples\RenderStressTest\RenderStressTestContent\RenderStressTestContent.contentproj", "{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
