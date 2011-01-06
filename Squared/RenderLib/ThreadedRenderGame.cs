@@ -60,9 +60,28 @@ namespace Squared.Render {
             base.Initialize();
 
             RenderManager = new RenderManager(GraphicsDevice);
+
+            GraphicsDevice.DeviceResetting += new EventHandler<EventArgs>(OnDeviceResetting);
+            GraphicsDevice.DeviceReset += new EventHandler<EventArgs>(OnDeviceReset);
+        }
+
+        protected void OnDeviceReset (object sender, EventArgs args) {
+            Monitor.Exit(UseResourceLock);
+            Monitor.Exit(CreateResourceLock);
+        }
+
+        protected void OnDeviceResetting (object sender, EventArgs args) {
+            Monitor.Enter(UseResourceLock);
+            Monitor.Enter(CreateResourceLock);
         }
 
         public abstract void Draw(GameTime gameTime, Frame frame);
+
+        protected void WaitForActiveDraw () {
+            if (_DrawDepth > 0)
+                if (UseThreadedDraw)
+                    _DrawThread.WaitForPendingWork();
+        }
 
         protected override bool BeginDraw() {
             if (Interlocked.Increment(ref _DrawDepth) > 1)
@@ -83,7 +102,7 @@ namespace Squared.Render {
                 this.Draw(gameTime, _FrameBeingPrepared);
         }
 
-        protected void PrepareNextFrame() {
+        protected virtual void PrepareNextFrame() {
             var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
             newFrame.Prepare(UseThreadedDraw);
