@@ -20,9 +20,7 @@ namespace Squared.Render {
         }
 
         public GeometryVertex (float x, float y, float z, Color color) {
-            Position.X = x;
-            Position.Y = y;
-            Position.Z = z;
+            Position = new Vector3(x, y, z);
             Color = color;
         }
     }

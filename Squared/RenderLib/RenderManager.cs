@@ -135,6 +135,10 @@ namespace Squared.Render {
             _FrameAllocator = new FramePool(this);
 
             int threadCount = Math.Max(2, Math.Min(8, Environment.ProcessorCount));
+#if XBOX
+            // XNA reserves two hardware threads for its own purposes
+            threadCount -= 2;
+#endif
 
             _WorkerInfo = new WorkerThreadInfo[threadCount];
             for (int i = 0; i < threadCount; i++)
@@ -145,6 +149,7 @@ namespace Squared.Render {
 
             for (int i = 0; i < _WorkerThreads.Length; i++) {
                 _WorkerThreads[i] = new WorkerThread(WorkerThreadFunc, i);
+                _WorkerThreads[i].Tag = _WorkerInfo[i];
             }
 #else
             _WorkerDelegates = new Action[threadCount];

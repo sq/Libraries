@@ -10,14 +10,23 @@ using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 using Squared.Render;
 using Squared.Util;
+using System.Threading;
+
+#if !XBOX
 using System.Threading.Tasks;
+#endif
 
 namespace RenderStressTest {
     public class Game : MultithreadedGame {
         public const int Width = 1280;
         public const int Height = 720;
 
-        public const int NumberOfOrbs = 32767;
+#if XBOX
+        // Floating-point computation is pretty slow on the XBox 360. :(
+        public const int NumberOfOrbs = 16384;
+#else
+        public const int NumberOfOrbs = 32768;
+#endif
 
         // The number of spheres to pack into a single GPU draw batch.
         public const int BatchSize = 256;
@@ -27,11 +36,24 @@ namespace RenderStressTest {
         // Controls whether we paint across multiple threads.
         public const bool ThreadedPaint = true;
 
-        public int RNGPermutation = 0;
-        public int ThreadCount;
         DefaultMaterialSet Materials;
         GraphicsDeviceManager Graphics;
         UnorderedList<Orb> Orbs = new UnorderedList<Orb>();
+
+        UnorderedList<Random> RNGs = new UnorderedList<Random>();
+        int TotalRNGs, RNGSeed;
+
+        public class UpdateArgs {
+            public float Now;
+        }
+
+        public class DrawArgs {
+            public float Now;
+            public Frame Frame;
+        }
+
+        ParallelInvoker<UpdateArgs> ParallelUpdater;
+        ParallelInvoker<DrawArgs> ParallelDrawer;
 
         public Game () {
             Graphics = new GraphicsDeviceManager(this);
@@ -44,9 +66,16 @@ namespace RenderStressTest {
             IsFixedTimeStep = false;
             Content.RootDirectory = "Content";
 
-            // Try to pick a good number of threads based on the current CPU count.
-            // Too many and we'll get bogged down in scheduling overhead. Too few and we won't benefit from parallelism.
-            ThreadCount = Math.Max(2, Math.Min(8, Environment.ProcessorCount));
+#if XBOX
+            Components.Add(new KiloWatt.Runtime.Support.ThreadPoolComponent(this));
+#endif
+
+            ParallelUpdater = new ParallelInvoker<UpdateArgs>(
+                this, ParallelUpdateOrbs, ThreadedUpdate
+            );
+            ParallelDrawer = new ParallelInvoker<DrawArgs>(
+                this, ParallelPrepareOrbs, ThreadedPaint
+            );
         }
 
         protected override void Initialize () {
@@ -57,22 +86,27 @@ namespace RenderStressTest {
             float now = (float)Time.Seconds;
             for (int i = 0; i < NumberOfOrbs; i++)
                 Orbs.Add(new Orb(rng, now - (float)rng.NextDouble()));
+
+            RNGSeed = rng.Next();
+
+            RNGs.Add(rng);
         }
 
         protected override void LoadContent () {
-            Materials = new DefaultMaterialSet(Content);
-
-            // Configure the camera for the default materials
-            Materials.ProjectionMatrix = Matrix.CreateOrthographicOffCenter(
-                0.0f, Width, Height, 0.0f, -1.0f, 1.0f
-            );
-            Materials.ViewportPosition = Vector2.Zero;
-            Materials.ViewportScale = Vector2.One;
+            // Load the default materials provided with the rendering library
+            //  and provide a projection matrix
+            Materials = new DefaultMaterialSet(Content) {
+                ProjectionMatrix = Matrix.CreateOrthographicOffCenter(
+                    0.0f, Width, Height, 0.0f, -1.0f, 1.0f
+                )
+            };
 
             // Attach a blend state setter to the geometry material so that we get alpha blending
             Materials.WorldSpaceGeometry = new DelegateMaterial(
                 Materials.WorldSpaceGeometry, 
-                new Action<DeviceManager>[] { (dm) => dm.Device.BlendState = BlendState.AlphaBlend },
+                new Action<DeviceManager>[] { 
+                    Material.MakeDelegate(BlendState.AlphaBlend)
+                },
                 new Action<DeviceManager>[0]
             );
         }
@@ -84,67 +118,53 @@ namespace RenderStressTest {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
                 this.Exit();
 
-            float now = (float)Time.Seconds;
-
-            if (ThreadedUpdate) {
-                // We could normally cache these delegates, but because we have to pass in the current time
-                //  and Parallel.Invoke doesn't accept an argument, we have to construct new closures :(
-                var actions = new List<Action>();
-
-                for (int i = 0; i < ThreadCount; i++) {
-                    // If we don't copy, all closures will share the same value of i
-                    int j = i;
-                    actions.Add(() => ParallelUpdateOrbs(j, ThreadCount, now));
-                }
-
-                Parallel.Invoke(new ParallelOptions {
-                    MaxDegreeOfParallelism = ThreadCount
-                }, actions.ToArray());
-            } else {
-                ParallelUpdateOrbs(0, 1, now);
-            }
-
-            // We have to increment the RNG seed every step so that we get new random values instead
-            //  of ones we've seen before
-            RNGPermutation += ThreadCount;
+            ParallelUpdater.UserData.Now = (float)Time.Seconds;
+            ParallelUpdater.Invoke();
 
             base.Update(gameTime);
         }
 
-        private void ParallelUpdateOrbs (int partitionIndex, int partitionCount, float now) {
-            var rng = new Random(partitionIndex + RNGPermutation);
+        protected Random GetRNG () {
+            Random rng = null;
+            lock (RNGs)
+                RNGs.TryPopFront(out rng);
+
+            if (rng == null) {
+                rng = new Random(TotalRNGs + RNGSeed);
+                Interlocked.Increment(ref TotalRNGs);
+            }
+
+            return rng;
+        }
+
+        protected void ReleaseRNG (Random rng) {
+            lock (RNGs)
+                RNGs.Add(rng);
+        }
+
+        private void ParallelUpdateOrbs (int partitionIndex, int partitionCount, UpdateArgs args) {
+            var rng = GetRNG();
 
             Orb orb;
             using (var e = Orbs.GetParallelEnumerator(partitionIndex, partitionCount))
             while (e.GetNext(out orb)) {
-                orb.Update(rng, now);
+                orb.Update(rng, args.Now);
                 e.SetCurrent(ref orb);
             }
+
+            ReleaseRNG(rng);
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
             ClearBatch.AddNew(frame, 0, Color.Black, Materials.Clear);
 
-            float now = (float)Time.Seconds;
+            ParallelDrawer.UserData.Now = (float)Time.Seconds;
+            ParallelDrawer.UserData.Frame = frame;
 
-            if (ThreadedPaint) {
-                var actions = new List<Action>();
-
-                for (int i = 0; i < ThreadCount; i++) {
-                    // If we don't copy, all closures will share the same value of i
-                    int j = i;
-                    actions.Add(() => ParallelPrepareOrbs(frame, j, ThreadCount, now));
-                }
-
-                Parallel.Invoke(new ParallelOptions {
-                    MaxDegreeOfParallelism = ThreadCount
-                }, actions.ToArray());
-            } else {
-                ParallelPrepareOrbs(frame, 0, 1, now);
-            }
+            ParallelDrawer.Invoke();
         }
 
-        private void ParallelPrepareOrbs (Frame frame, int partitionIndex, int partitionCount, float now) {
+        private void ParallelPrepareOrbs (int partitionIndex, int partitionCount, DrawArgs args) {
             Orb orb;
             int i = 0;
             GeometryBatch<VertexPositionColor> batch = null;
@@ -152,17 +172,25 @@ namespace RenderStressTest {
             using (var e = Orbs.GetParallelEnumerator(partitionIndex, partitionCount))
             while (e.GetNext(out orb)) {
                 if (batch == null)
-                    batch = GeometryBatch<VertexPositionColor>.New(frame, 1, Materials.WorldSpaceGeometry);
+                    batch = GeometryBatch<VertexPositionColor>.New(args.Frame, 1, Materials.WorldSpaceGeometry);
 
                 // Compute the position of this orb at the current time
                 var position = Orb.Interpolator(
                     Orb.InterpolatorSource, ref orb, 
-                    0, (now - orb.LastUpdateAt) / orb.Duration
+                    0, (args.Now - orb.LastUpdateAt) / orb.Duration
                 );
 
+                // AddFilledRing is actually pretty computationally intensive compared to drawing a quad
+                //  so on XBox 360 you can get much higher performance by switching from filled rings to quads
                 batch.AddFilledRing(
                     position, Vector2.Zero, orb.Size, orb.Color, Color.Transparent
                 );
+
+                /*
+                batch.AddFilledQuad(
+                    position - orb.Size, position + orb.Size, orb.Color
+                );
+                 */
 
                 i += 1;
                 if ((i % BatchSize) == 0) {

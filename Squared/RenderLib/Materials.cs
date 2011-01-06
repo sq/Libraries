@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
 using System.Threading;
 using Microsoft.Xna.Framework.Content;
+using System.Reflection;
 
 namespace Squared.Render {
     public interface IEffectMaterial {
@@ -32,51 +33,68 @@ namespace Squared.Render {
     }
 
     public abstract class MaterialSetBase : IDisposable {
+        protected FieldInfo[] MaterialFields;
+        protected FieldInfo[] MaterialDictionaryFields;
+
         public MaterialSetBase() 
             : base() {
+
+            BuildFieldList();
         }
 
-        public IEnumerable<KeyValuePair<string, Material>> AllMaterials {
+        protected void BuildFieldList () {
+            var fields = new List<FieldInfo>();
+            var dictFields = new List<FieldInfo>();
+
+            var tMaterial = typeof(Material);
+            var tMaterialDictionary = typeof(MaterialDictionary<>);
+
+            foreach (var field in this.GetType().GetFields()) {
+                if (field.FieldType == tMaterial ||
+                    tMaterial.IsAssignableFrom(field.FieldType) ||
+                    field.FieldType.IsSubclassOf(tMaterial)
+                ) {
+                    fields.Add(field);
+                } else if (field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == tMaterialDictionary) {
+                    dictFields.Add(field);
+                }
+            }
+
+            MaterialFields = fields.ToArray();
+            MaterialDictionaryFields = dictFields.ToArray();
+        }
+
+        public IEnumerable<Material> AllMaterials {
             get {
-                var tMaterial = typeof(Material);
-                var tMaterialDictionary = typeof(MaterialDictionary<>);
+                foreach (var field in MaterialFields) {
+                    var material = field.GetValue(this) as Material;
+                    if (material != null)
+                        yield return material;
+                }
 
-                foreach (var field in this.GetType().GetFields()) {
-                    if (field.FieldType == tMaterial || 
-                        tMaterial.IsAssignableFrom(field.FieldType) ||
-                        field.FieldType.IsSubclassOf(tMaterial)
-                    ) {
-                        var material = field.GetValue(this) as Material;
+                foreach (var dictField in MaterialDictionaryFields) {
+                    var dict = dictField.GetValue(this);
+                    if (dict == null)
+                        continue;
+
+                    // Generics, bluhhhhh
+                    var values = dict.GetType().
+                        GetProperty("Values").GetValue(dict, null) 
+                        as IEnumerable<Material>;
+
+                    if (values == null)
+                        continue;
+
+                    foreach (var material in values)
                         if (material != null)
-                            yield return new KeyValuePair<string, Material>(
-                                field.Name,
-                                material
-                            );
-                    } else if (field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == tMaterialDictionary) {
-                        var dict = field.GetValue(this);
-                        if (dict != null) {
-                            // Stupid generics :-(
-                            var values = dict.GetType().GetProperty("Values").GetValue(dict, null) as IEnumerable<Material>;
-
-                            int i = 0;
-                            foreach (var material in values) {
-                                if (material != null)
-                                    yield return new KeyValuePair<string, Material>(
-                                        String.Format("{0}[{1}]", field.Name, i),
-                                        material
-                                    );
-
-                                i++;
-                            }
-                        }
-                    }
+                            yield return material;
                 }
             }
         }
 
         public void Dispose () {
             foreach (var material in AllMaterials)
-                material.Value.Dispose();
+                material.Dispose();
         }
     }
 
@@ -133,8 +151,8 @@ namespace Squared.Render {
         }
 
         protected void SetShaderVariables(DeviceManager deviceManager) {
-            foreach (var kvp in AllMaterials) {
-                var em = kvp.Value as IEffectMaterial;
+            foreach (var m in AllMaterials) {
+                var em = m as IEffectMaterial;
 
                 if (em == null)
                     continue;

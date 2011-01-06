@@ -32,17 +32,10 @@ namespace ThreadedPlatformer {
         // When the time remaining is less than the warning time, it blinks on the hud
         private static readonly TimeSpan WarningTime = TimeSpan.FromSeconds(30);
 
-#if ZUNE
-        private const int TargetFrameRate = 30;        
-        private const int BackBufferWidth = 240;
-        private const int BackBufferHeight = 320;
-        private const Buttons ContinueButton = Buttons.B;        
-#else
         private const int TargetFrameRate = 60;
         private const int BackBufferWidth = 1280;
         private const int BackBufferHeight = 720;
         private const Buttons ContinueButton = Buttons.A;
-#endif
 
         public PlatformerGame () {
             graphics = new GraphicsDeviceManager(this);

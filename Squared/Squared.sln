@@ -53,6 +53,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderStressTest", "Example
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderStressTestContent", "Examples\RenderStressTest\RenderStressTestContent\RenderStressTestContent.contentproj", "{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderStressTest_360", "Examples\RenderStressTest\RenderStressTest\RenderStressTest_360.csproj", "{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -290,6 +292,18 @@ Global
 		{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}.Mono|Xbox 360.ActiveCfg = Release|x86
 		{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}.Release|x86.ActiveCfg = Release|x86
 		{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}.Release|Xbox 360.ActiveCfg = Release|x86
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Debug|x86.ActiveCfg = Debug|Xbox 360
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Debug|Xbox 360.ActiveCfg = Debug|Xbox 360
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Debug|Xbox 360.Build.0 = Debug|Xbox 360
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Debug|Xbox 360.Deploy.0 = Debug|Xbox 360
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Mono|x86.ActiveCfg = Release|Xbox 360
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Mono|Xbox 360.ActiveCfg = Release|Xbox 360
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Mono|Xbox 360.Build.0 = Release|Xbox 360
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Mono|Xbox 360.Deploy.0 = Release|Xbox 360
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Release|x86.ActiveCfg = Release|Xbox 360
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Release|Xbox 360.ActiveCfg = Release|Xbox 360
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Release|Xbox 360.Build.0 = Release|Xbox 360
+		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Release|Xbox 360.Deploy.0 = Release|Xbox 360
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
