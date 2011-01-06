@@ -124,8 +124,12 @@ namespace Squared.Util {
 
             var newCount = _Count - 1;
 
-            if (index < newCount)
+            if (index < newCount) {
                 _Items[index] = _Items[newCount];
+                _Items[newCount] = default(T);
+            } else {
+                _Items[index] = default(T);
+            }
 
             _Count = newCount;
         }
@@ -149,6 +153,9 @@ namespace Squared.Util {
 
         public void Clear () {
             _Count = 0;
+
+            for (int i = 0; i < _Items.Length; i++)
+                _Items[i] = default(T);
         }
 
         public T[] GetBuffer () {

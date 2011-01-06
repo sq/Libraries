@@ -49,11 +49,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThreadedPlatformerSharedCon
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderLibContent", "RenderLib\Content\RenderLibContent.contentproj", "{D4565A8E-D70B-4E36-B1AE-DF5D9C0EA4B0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderStressTest", "Examples\RenderStressTest\RenderStressTest\RenderStressTest.csproj", "{67FE3293-3EBC-4E46-8210-C518F1C5745D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderStressTest", "Examples\RenderStressTest\RenderStressTest.csproj", "{67FE3293-3EBC-4E46-8210-C518F1C5745D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderStressTestContent", "Examples\RenderStressTest\RenderStressTestContent\RenderStressTestContent.contentproj", "{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderStressTest_360", "Examples\RenderStressTest\RenderStressTest\RenderStressTest_360.csproj", "{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderStressTest_360", "Examples\RenderStressTest\RenderStressTest_360.csproj", "{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -286,12 +284,6 @@ Global
 		{67FE3293-3EBC-4E46-8210-C518F1C5745D}.Release|x86.ActiveCfg = Release|x86
 		{67FE3293-3EBC-4E46-8210-C518F1C5745D}.Release|x86.Build.0 = Release|x86
 		{67FE3293-3EBC-4E46-8210-C518F1C5745D}.Release|Xbox 360.ActiveCfg = Release|x86
-		{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}.Debug|x86.ActiveCfg = Debug|x86
-		{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}.Debug|Xbox 360.ActiveCfg = Debug|x86
-		{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}.Mono|x86.ActiveCfg = Release|x86
-		{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}.Mono|Xbox 360.ActiveCfg = Release|x86
-		{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}.Release|x86.ActiveCfg = Release|x86
-		{6C9756DB-86AE-4D4B-A2BE-ECE57BFC8A21}.Release|Xbox 360.ActiveCfg = Release|x86
 		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Debug|x86.ActiveCfg = Debug|Xbox 360
 		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Debug|Xbox 360.ActiveCfg = Debug|Xbox 360
 		{41FD4C31-1D93-488E-9B3A-3DA442A1F6BB}.Debug|Xbox 360.Build.0 = Debug|Xbox 360
