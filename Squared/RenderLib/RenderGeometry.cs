@@ -7,7 +7,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 
 namespace Squared.Render {
-    public delegate void GeometryDrawCallPreparer<T> (GeometryBatch<T> batch, ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> call)
+    public delegate void GeometryDrawCallPreparer<T> (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> call)
         where T : struct, IVertexType;
 
     public struct GeometryVertex {
@@ -57,13 +57,21 @@ namespace Squared.Render {
         }
     }
 
-    public class GeometryBatch<T> : ListBatch<GeometryDrawCall<T>>
+    public class GeometryDrawCallSorter<T> : IComparer<GeometryDrawCall<T>> 
+        where T : struct, IVertexType {
+        
+        public int Compare (GeometryDrawCall<T> lhs, GeometryDrawCall<T> rhs) {
+            return lhs.PreparerHash.CompareTo(rhs.PreparerHash);
+        }
+    }
+    
+    public class GeometryBatch<T> : Batch
         where T : struct, IVertexType {
 
         #region Primitive Infrastructure
 
         internal static VertexBuilder<T> _VertexBuilder = null;
-        internal static Comparison<GeometryDrawCall<T>> _DrawCallSorter;
+        internal static GeometryDrawCallSorter<T> _DrawCallSorter;
 
         // 0   1   2   3
         // tl, tr, bl, br
@@ -105,24 +113,11 @@ namespace Squared.Render {
         static GeometryBatch () {
             if (typeof(T) == typeof(VertexPositionColor)) {
                 GeometryBatch.SetVertexBuilder<VertexPositionColor>(
-                    (src, dest, offset, count) => {
-                        int end = offset + count;
-
-                        for (int i = offset; i < end; i++) {
-                            dest[i].Position = src[i].Position;
-                            dest[i].Color = src[i].Color;
-                        }
-                    }
+                    VertexPositionColorBuilder
                 );
             }
 
-            _DrawCallSorter = (lhs, rhs) => {
-                int result = ((int)lhs.PrimitiveType).CompareTo((int)rhs.PrimitiveType);
-                if (result == 0)
-                    result = lhs.PreparerHash.CompareTo(rhs.PreparerHash);
-
-                return result;
-            };
+            _DrawCallSorter = new GeometryDrawCallSorter<T>();
 
             PrepareQuad = _PrepareQuad;
             PrepareGradientQuad = _PrepareGradientQuad;
@@ -132,14 +127,35 @@ namespace Squared.Render {
             PrepareRing = _PrepareRing;
         }
 
+        static unsafe void VertexPositionColorBuilder (GeometryVertex[] source, VertexPositionColor[] dest, int offset, int count) {
+            int end = offset + count;
+            if (offset < 0)
+                throw new InvalidOperationException();
+            if ((end >= dest.Length) || (end >= source.Length))
+                throw new InvalidOperationException();
+
+            fixed (GeometryVertex* pSource = &source[offset])
+            fixed (VertexPositionColor* pDest = &dest[offset])
+            for (int i = 0; i < count; i++) {
+                pDest[i].Position = pSource[i].Position;
+                pDest[i].Color = pSource[i].Color;
+            }
+        }
+
         #endregion
 
         #region Implementation
 
+        private static ListPool<GeometryDrawCall<T>> _ListPool = new ListPool<GeometryDrawCall<T>>(
+            256, 128, 1024
+        );
+
+        internal Dictionary<PrimitiveType, List<GeometryDrawCall<T>>> Lists = new Dictionary<PrimitiveType, List<GeometryDrawCall<T>>>();
+
         internal PrimitiveBatch<T> InnerBatch;
         internal ArrayPoolAllocator<GeometryVertex> VertexAllocator;
         internal ArrayPoolAllocator<short> IndexAllocator;
-        internal int VertexCount = 0, IndexCount = 0;
+        internal int VertexCount = 0, IndexCount = 0, Count = 0;
 
         public override void Initialize (Frame frame, int layer, Material material) {
             if (_VertexBuilder == null)
@@ -154,13 +170,19 @@ namespace Squared.Render {
             if (IndexAllocator == null)
                 IndexAllocator = frame.RenderManager.GetArrayAllocator<short>();
 
-            VertexCount = IndexCount = 0;
+            Count = VertexCount = IndexCount = 0;
         }
 
         protected void Add (ref GeometryDrawCall<T> drawCall, int vertexCount, int indexCount) {
+            Count += 1;
             VertexCount += vertexCount;
             IndexCount += indexCount;
-            base.Add(ref drawCall);
+
+            List<GeometryDrawCall<T>> list;
+            if (!Lists.TryGetValue(drawCall.PrimitiveType, out list))
+                list = Lists[drawCall.PrimitiveType] = _ListPool.Allocate();
+
+            list.Add(drawCall);
         }
 
         protected void CreateInternalBatch (PrimitiveType primitiveType, ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.VertexBuffer<T> outputVb, ref Internal.IndexBuffer ib, ref int vertexOffset, ref int indexOffset) {
@@ -183,30 +205,27 @@ namespace Squared.Render {
         }
 
         public override void Prepare () {
-            if (_DrawCalls.Count > 0) {
-                _DrawCalls.Sort(_DrawCallSorter);
-
-                int count = _DrawCalls.Count;
+            if (Count > 0) {
                 GeometryDrawCall<T> dc;
 
                 var vb = new Internal.VertexBuffer<GeometryVertex>(VertexAllocator, VertexCount);
                 var outputVb = InnerBatch.CreateBuffer(VertexCount);
                 var ib = new Internal.IndexBuffer(IndexAllocator, IndexCount);
                 int vertexOffset = 0, indexOffset = 0;
-                PrimitiveType primitiveType = _DrawCalls[0].PrimitiveType;
 
-                for (int i = 0; i < count; i++) {
-                    dc = _DrawCalls[i];
-                    if (dc.PrimitiveType != primitiveType) {
-                        CreateInternalBatch(primitiveType, ref vb, ref outputVb, ref ib, ref vertexOffset, ref indexOffset);
+                foreach (var kvp in Lists) {
+                    var l = kvp.Value;
+                    var c = l.Count;
 
-                        primitiveType = dc.PrimitiveType;
+                    l.Sort(_DrawCallSorter);
+
+                    for (int i = 0; i < c; i++) {
+                        dc = l[i];
+                        dc.Preparer(ref vb, ref ib, ref dc);
                     }
 
-                    dc.Preparer(this, ref vb, ref ib, ref dc);
+                    CreateInternalBatch(kvp.Key, ref vb, ref outputVb, ref ib, ref vertexOffset, ref indexOffset);
                 }
-
-                CreateInternalBatch(primitiveType, ref vb, ref outputVb, ref ib, ref vertexOffset, ref indexOffset);
             }
 
             InnerBatch.Prepare();
@@ -223,6 +242,13 @@ namespace Squared.Render {
         public override void ReleaseResources () {
             if (InnerBatch != null)
                 InnerBatch.ReleaseResources();
+
+            foreach (var kvp in Lists) {
+                var l = kvp.Value;
+                _ListPool.Release(ref l);
+            }
+
+            Lists.Clear();
 
             InnerBatch = null;
             base.ReleaseResources();
@@ -259,7 +285,7 @@ namespace Squared.Render {
             Add(ref dc, 4, OutlinedQuadIndices.Length);
         }
 
-        protected static void _PrepareOutlinedQuad (GeometryBatch<T> batch, ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
+        protected static void _PrepareOutlinedQuad (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
             var vw = vb.GetWriter(4);
             var iw = ib.GetWriter(OutlinedQuadIndices.Length, (short)vw.Offset);
 
@@ -287,7 +313,7 @@ namespace Squared.Render {
             Add(ref dc, 4, QuadIndices.Length);
         }
 
-        protected static void _PrepareQuad (GeometryBatch<T> batch, ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
+        protected static void _PrepareQuad (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
             var vw = vb.GetWriter(4);
             var iw = ib.GetWriter(QuadIndices.Length, (short)vw.Offset);
 
@@ -318,7 +344,7 @@ namespace Squared.Render {
             Add(ref dc, 4, QuadIndices.Length);
         }
 
-        protected static void _PrepareGradientQuad (GeometryBatch<T> batch, ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
+        protected static void _PrepareGradientQuad (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
             var vw = vb.GetWriter(4);
             var iw = ib.GetWriter(QuadIndices.Length, (short)vw.Offset);
 
@@ -344,7 +370,7 @@ namespace Squared.Render {
             Add(ref dc, 8, QuadBorderIndices.Length);
         }
 
-        protected static void _PrepareQuadBorder (GeometryBatch<T> batch, ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
+        protected static void _PrepareQuadBorder (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
             var vw = vb.GetWriter(8);
             var iw = ib.GetWriter(QuadBorderIndices.Length, (short)vw.Offset);
 
@@ -407,7 +433,7 @@ namespace Squared.Render {
             Add(ref dc, 2, LineIndices.Length);
         }
 
-        protected static void _PrepareLine (GeometryBatch<T> batch, ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
+        protected static void _PrepareLine (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
             var vw = vb.GetWriter(2);
             var iw = ib.GetWriter(LineIndices.Length, (short)vw.Offset);
 
@@ -427,7 +453,7 @@ namespace Squared.Render {
         }
 
         protected static int ComputeRingPoints (ref Vector2 radius) {
-            return (int)Math.Ceiling(Math.Abs(radius.X + radius.Y) / 2) + 8;
+            return (int)Math.Ceiling(Math.Abs(radius.X + radius.Y) / 4) + 6;
         }
 
         public void AddFilledRing (Vector2 center, Vector2 innerRadius, Vector2 outerRadius, Color innerColor, Color outerColor) {
@@ -443,14 +469,17 @@ namespace Squared.Render {
 
             int numPoints = ComputeRingPoints(ref outerRadius);
 
-            Add(ref dc, numPoints * 2, (numPoints - 1) * 3);
+            Add(ref dc, numPoints * 2, (numPoints - 1) * 6);
         }
 
-        public static void _PrepareRing (GeometryBatch<T> batch, ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
+        public static unsafe void _PrepareRing (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
             int numPoints = ComputeRingPoints(ref dc.Vector2);
 
-            var vw = vb.GetWriter(numPoints * 2);
-            var iw = ib.GetWriter((numPoints - 1) * 3, (short)vw.Offset);
+            const int vertexStride = 2;
+            const int indexStride = 6;
+
+            var vw = vb.GetWriter(numPoints * vertexStride);
+            var iw = ib.GetWriter((numPoints - 1) * indexStride, (short)vw.Offset);
 
             float a = 0;
             float step = (float)(Math.PI * 2.0 / (numPoints - 1));
@@ -458,25 +487,29 @@ namespace Squared.Render {
             var vertexInner = new GeometryVertex(0, 0, dc.Z, dc.Color0);
             var vertexOuter = new GeometryVertex(0, 0, dc.Z, dc.Color1);
 
-            for (int i = 0; i < numPoints; i++) {
+            fixed (GeometryVertex * pVertices = &vw.Buffer[vw.Offset])
+            fixed (short * pIndices = &iw.Buffer[iw.Offset])
+            for (int i = 0, j = 0, k = 0; i < numPoints; i++, j += vertexStride, k += indexStride) {
                 cos = (float)Math.Cos(a);
                 sin = (float)Math.Sin(a);
 
                 vertexInner.Position.X = dc.Vector0.X + (float)(cos * dc.Vector1.X);
                 vertexInner.Position.Y = dc.Vector0.Y + (float)(sin * dc.Vector1.Y);
-                vw.Write(ref vertexInner);
+                pVertices[j] = vertexInner;
 
                 vertexOuter.Position.X = dc.Vector0.X + (float)(cos * dc.Vector2.X);
                 vertexOuter.Position.Y = dc.Vector0.Y + (float)(sin * dc.Vector2.Y);
-                vw.Write(ref vertexOuter);
+                pVertices[j + 1] = vertexOuter;
 
                 if (i == (numPoints - 1))
                     break;
 
-                int j = i * 2;
-                iw.Write((short)j);
-                iw.Write((short)(j + 1));
-                iw.Write((short)(j + 3));
+                pIndices[k] = (short)(j + iw.IndexOffset);
+                pIndices[k + 1] = (short)(j + 1 + iw.IndexOffset);
+                pIndices[k + 2] = (short)(j + 3 + iw.IndexOffset);
+                pIndices[k + 3] = (short)(j + 2 + iw.IndexOffset);
+                pIndices[k + 4] = (short)(j + iw.IndexOffset);
+                pIndices[k + 5] = (short)(j + 3 + iw.IndexOffset);
 
                 a += step;
             }

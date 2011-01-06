@@ -316,9 +316,6 @@ namespace Squared.Render {
 
                 result = mx - my;
             }
-            if (result == 0) {
-                result = x.Index - y.Index;
-            }
 
             return result;
         }
