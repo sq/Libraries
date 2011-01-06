@@ -10,6 +10,8 @@ using System.Linq.Expressions;
 namespace Squared.Util {
     public delegate T InterpolatorSource<T> (int index) where T : struct;
     public delegate T Interpolator<T> (InterpolatorSource<T> data, int dataOffset, float positionInWindow) where T : struct;
+    public delegate T BoundInterpolatorSource<T, U> (ref U obj, int index) where T : struct;
+    public delegate T BoundInterpolator<T, U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) where T : struct;
 
     internal static class PrimitiveOperators {
         public static float op_Subtraction (float lhs, float rhs) {
@@ -176,6 +178,43 @@ namespace Squared.Util {
             T b = data(dataOffset);
             T c = data(dataOffset + 1);
             T d = data(dataOffset + 2);
+            T p = _CubicP(a, b, c, d);
+            float x2 = positionInWindow * positionInWindow;
+            float x3 = positionInWindow * x2;
+            return _CubicR(a, b, c, d, p, positionInWindow, x2, x3);
+        }
+
+        public static T Null<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+            return data(ref obj, dataOffset);
+        }
+
+        public static T Linear<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+            return _Linear(
+                data(ref obj, dataOffset),
+                data(ref obj, dataOffset + 1),
+                positionInWindow
+            );
+        }
+
+        public static T Cosine<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+            return _Cosine(
+                data(ref obj, dataOffset),
+                data(ref obj, dataOffset + 1),
+                positionInWindow
+            );
+        }
+
+        public static T Cubic<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+            if (positionInWindow < 0) {
+                var n = Math.Ceiling(Math.Abs(positionInWindow));
+                positionInWindow += (float)n;
+                dataOffset -= (int)n;
+            }
+
+            T a = data(ref obj, dataOffset - 1);
+            T b = data(ref obj, dataOffset);
+            T c = data(ref obj, dataOffset + 1);
+            T d = data(ref obj, dataOffset + 2);
             T p = _CubicP(a, b, c, d);
             float x2 = positionInWindow * positionInWindow;
             float x3 = positionInWindow * x2;

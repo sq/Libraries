@@ -135,7 +135,11 @@ namespace Squared.Render {
             _NativeBatches = _NativePool.Allocate();
         }
 
-        public override void Add (ref BitmapDrawCall item) {
+        public void Add (BitmapDrawCall item) {
+            Add(ref item);
+        }
+
+        new public void Add (ref BitmapDrawCall item) {
             item.TextureID = item.Textures.GetHashCode();
 
             base.Add(ref item);

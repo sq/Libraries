@@ -52,6 +52,7 @@ namespace ThreadedPlatformer {
             Content.RootDirectory = "Content";
 
             // Framerate differs between platforms.
+            UseThreadedDraw = true;
             TargetElapsedTime = TimeSpan.FromTicks(TimeSpan.TicksPerSecond / TargetFrameRate);
         }
 

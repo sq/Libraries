@@ -70,6 +70,7 @@
     <Compile Include="Materials.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RenderBitmaps.cs" />
+    <Compile Include="RenderGeometry.cs" />
     <Compile Include="RenderManager.cs" />
     <Compile Include="RenderPrimitives.cs" />
     <Compile Include="RenderText.cs" />

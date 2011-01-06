@@ -172,7 +172,7 @@
       <Project>{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}</Project>
       <Name>Squared.Util</Name>
     </ProjectReference>
-    <ProjectReference Include="..\XNASQLite\C#-SQLite\XnaSQLite.csproj">
+    <ProjectReference Include="..\XNASQLite\XnaSQLite.csproj">
       <Project>{40E7C10A-E909-407C-9570-121F2AB4DC6E}</Project>
       <Name>XnaSQLite</Name>
       <Private>False</Private>

@@ -138,6 +138,14 @@ namespace Squared.Render {
             ScissorRect = null;
         }
 
+        public void Add (StringDrawCall sdc) {
+            Add(ref sdc);
+        }
+
+        new public void Add (ref StringDrawCall sdc) {
+            base.Add(ref sdc);
+        }
+
         public static StringBatch New (Frame frame, int layer, Material material, SpriteBatch spriteBatch, SpriteFont font) {
             return New(frame, layer, material, spriteBatch, font, null);
         }

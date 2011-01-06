@@ -27,6 +27,21 @@ namespace Squared.Render {
                     throw new ArgumentException();
             }
         }
+
+        public static int ComputeVertexCount (this PrimitiveType primitiveType, int primitiveCount) {
+            switch (primitiveType) {
+                case PrimitiveType.LineStrip:
+                    return primitiveCount + 1;
+                case PrimitiveType.LineList:
+                    return primitiveCount * 2;
+                case PrimitiveType.TriangleStrip:
+                    return primitiveCount + 2;
+                case PrimitiveType.TriangleList:
+                    return primitiveCount * 3;
+                default:
+                    throw new ArgumentException();
+            }
+        }
     }
 
     public sealed class DeviceManager {
@@ -95,7 +110,7 @@ namespace Squared.Render {
     // Thread-safe
     public sealed class RenderManager {
         class WorkerThreadInfo {
-            public volatile int Start, Step;
+            public volatile int Start, Count;
             public volatile Frame Frame;
         }
 
@@ -108,55 +123,85 @@ namespace Squared.Render {
             new Dictionary<Type, IBatchPool>(new ReferenceComparer<Type>());
         private FramePool _FrameAllocator;
 
+        private WorkerThreadInfo[] _WorkerInfo;
+#if XBOX
         private WorkerThread[] _WorkerThreads;
+#else
+        private Action[] _WorkerDelegates;
+#endif
 
         public RenderManager (GraphicsDevice device) {
             DeviceManager = new DeviceManager(device);
             _FrameAllocator = new FramePool(this);
 
-            _WorkerThreads = new WorkerThread[2];
+            int threadCount = Math.Max(2, Math.Min(8, Environment.ProcessorCount));
+
+            _WorkerInfo = new WorkerThreadInfo[threadCount];
+            for (int i = 0; i < threadCount; i++)
+                _WorkerInfo[i] = new WorkerThreadInfo();
+
+#if XBOX
+            _WorkerThreads = new WorkerThread[threadCount];
 
             for (int i = 0; i < _WorkerThreads.Length; i++) {
-                _WorkerThreads[i] = new WorkerThread(WorkerThreadFunc, 5 - i);
-                _WorkerThreads[i].Tag = new WorkerThreadInfo { 
-                    Start = i, 
-                    Step = _WorkerThreads.Length, 
-                    Frame = null 
-                };
+                _WorkerThreads[i] = new WorkerThread(WorkerThreadFunc, i);
             }
+#else
+            _WorkerDelegates = new Action[threadCount];
+
+            for (int i = 0; i < threadCount; i++) {
+                // Make a copy so that each delegate gets a different value
+                int j = i;
+                _WorkerDelegates[i] = () =>
+                    WorkerThreadFunc(_WorkerInfo[j]);
+            }
+#endif
         }
 
+#if XBOX
         private void WorkerThreadFunc (WorkerThread thread) {
             var info = thread.Tag as WorkerThreadInfo;
+#else
+        private void WorkerThreadFunc (WorkerThreadInfo info) {
+#endif
             Frame frame;
-            int start, step;
+            int start, count;
             lock (info) {
                 frame = info.Frame;
                 start = info.Start;
-                step = info.Step;
+                count = info.Count;
             }
 
-            frame.PrepareSubset(start, step);
+            frame.PrepareSubset(start, count);
 
             lock (info) {
                 info.Frame = null;
+                info.Start = info.Count = 0;
             }
         }
 
         internal void ParallelPrepare (Frame frame) {
-            for (int i = 0; i < _WorkerThreads.Length; i++) {
-                var wt = _WorkerThreads[i];
+            int batchCount = frame.Batches.Count;
+            int chunkSize = (int)Math.Ceiling((float)batchCount / _WorkerInfo.Length);
 
-                var info = wt.Tag as WorkerThreadInfo;
+            for (int i = 0, j = 0; i < _WorkerInfo.Length; i++, j += chunkSize) {
+                var info = _WorkerInfo[i];
+
                 lock (info) {
                     if (info.Frame != null)
                         throw new InvalidOperationException();
+
                     info.Frame = frame;
+                    info.Start = j;
+                    info.Count = Math.Min(chunkSize, batchCount - j);
                 }
 
-                wt.RequestWork();
+#if XBOX
+                _WorkerThreads[i].RequestWork();
+#endif
             }
 
+#if XBOX
             for (int i = 0; i < _WorkerThreads.Length; i++) {
                 var wt = _WorkerThreads[i];
 
@@ -168,6 +213,14 @@ namespace Squared.Render {
                         throw new InvalidOperationException();
                 }
             }
+#else
+            System.Threading.Tasks.Parallel.Invoke(
+                new System.Threading.Tasks.ParallelOptions {
+                    MaxDegreeOfParallelism = _WorkerInfo.Length
+                },
+                _WorkerDelegates
+            );
+#endif
         }
 
         internal int PickFrameIndex () {
@@ -274,8 +327,6 @@ namespace Squared.Render {
             8, 256, 4096
         );
 
-        public static bool UseThreadedPrepare = true;
-
         public RenderManager RenderManager;
         public int Index;
 
@@ -301,25 +352,25 @@ namespace Squared.Render {
                 Batches.Add(batch);
         }
 
-        public void Prepare () {
+        public void Prepare (bool parallel) {
             if (Interlocked.Exchange(ref _Prepared, 1) != 0)
                 return;
 
             Batches.Sort(BatchComparer);
 
-            if (UseThreadedPrepare)
+            if (parallel)
                 RenderManager.ParallelPrepare(this);
             else
-                PrepareSubset(0, 1);
+                PrepareSubset(0, Batches.Count);
 
             if (Interlocked.Exchange(ref _Prepared, 2) != 1)
                 throw new InvalidOperationException();
         }
 
-        internal void PrepareSubset (int start, int step) {
-            int c = Batches.Count;
+        internal void PrepareSubset (int start, int count) {
+            int end = start + count;
 
-            for (int i = start; i < c; i += step)
+            for (int i = start; i < end; i++)
                 Batches[i].Prepare();
         }
 
@@ -382,7 +433,7 @@ namespace Squared.Render {
                 Pool.Release(this);
         }
 
-        public void Dispose () {
+        public virtual void Dispose () {
             Frame.Add(this);
         }
     }
@@ -531,12 +582,15 @@ namespace Squared.Render {
             _DrawCalls = _ListPool.Allocate();
         }
 
-        public void Add (T item) {
-            this.Add(ref item);
+        protected void Add (ref T item) {
+            _DrawCalls.Add(item);
         }
 
-        public virtual void Add (ref T item) {
-            _DrawCalls.Add(item);
+        public override void Dispose () {
+            if (_DrawCalls.Count > 0)
+                base.Dispose();
+            else
+                ReleaseResources();
         }
 
         public override void ReleaseResources() {

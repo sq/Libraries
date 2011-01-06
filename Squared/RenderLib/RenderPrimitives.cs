@@ -108,6 +108,13 @@ namespace Squared.Render.Internal {
             );
         }
 
+        public PrimitiveDrawCall<T> GetDrawCall (PrimitiveType type, ref IndexWriter indices) {
+            int primCount = type.ComputePrimitiveCount(indices.Count);
+            return new PrimitiveDrawCall<T>(
+                type, Buffer, Offset, Count, indices.Buffer, indices.Offset, primCount
+            );
+        }
+
         public PrimitiveDrawCall<T> GetDrawCallTriangleFan (Batch batch) {
             int primCount = Count - 2;
             var ibuf = batch.Frame.RenderManager.GetArrayAllocator<short>().Allocate(primCount * 3);
@@ -122,6 +129,82 @@ namespace Squared.Render.Internal {
             return new PrimitiveDrawCall<T>(
                 PrimitiveType.TriangleList, Buffer, Offset, Count, indices, 0, primCount
             );
+        }
+    }
+
+    public struct IndexBuffer : IDisposable {
+        public readonly ArrayPoolAllocator<short>.Allocation Allocation;
+        public int Count;
+
+        public IndexBuffer(ArrayPoolAllocator<short> allocator, int capacity) {
+            Allocation = allocator.Allocate(capacity);
+            Count = 0;
+        }
+
+        public short[] Buffer {
+            get {
+                return Allocation.Buffer;
+            }
+        }
+
+        public IndexWriter GetWriter(int capacity, short indexOffset) {
+            var offset = Count;
+            var newCount = Count + capacity;
+
+            if (newCount >= Allocation.Buffer.Length)
+                throw new InvalidOperationException();
+
+            Count = newCount;
+            return new IndexWriter(this.Allocation.Buffer, offset, Count, indexOffset);
+        }
+
+        public void Dispose() {
+            Count = 0;
+        }
+    }
+
+    public struct IndexWriter {
+        public readonly short[] Buffer;
+        public readonly int Offset;
+        public readonly int Size;
+        public readonly short IndexOffset;
+        public int Count;
+
+        public IndexWriter (short[] buffer, int offset, int size, short indexOffset) {
+            Buffer = buffer;
+            Offset = offset;
+            IndexOffset = indexOffset;
+            Size = size;
+            Count = 0;
+        }
+
+        public void Write (short newIndex) {
+            if (Count >= Size)
+                throw new InvalidOperationException();
+
+            Buffer[Offset + Count] = (short)(newIndex + IndexOffset);
+            Count += 1;
+        }
+
+        public void Write (short[] newIndices) {
+            int l = newIndices.Length;
+            if (Count + l - 1 >= Size)
+                throw new InvalidOperationException();
+
+            for (int i = 0; i < l; i++)
+                Buffer[Offset + Count + i] = (short)(newIndices[i] + IndexOffset);
+
+            Count += l;
+        }
+
+        public void Write (int index, short newIndex) {
+            if (index >= Size)
+                throw new InvalidOperationException();
+
+            Count = Math.Max(Count, index + 1);
+            index += Offset;
+
+            Buffer[index] = (short)(newIndex + IndexOffset);
         }
     }
 }
@@ -143,9 +226,38 @@ namespace Squared.Render {
             return new Internal.VertexBuffer<T>(_Allocator, capacity);
         }
 
-        public override void Add (ref PrimitiveDrawCall<T> item) {
+        public void Add (PrimitiveDrawCall<T> item) {
+            Add(ref item);
+        }
+
+        new public void Add (ref PrimitiveDrawCall<T> item) {
             if (item.Vertices == null)
                 return;
+
+            int count = _DrawCalls.Count;
+            while (count > 0) {
+                PrimitiveDrawCall<T> lastCall = _DrawCalls[count - 1];
+
+                // Attempt to combine
+                if (lastCall.PrimitiveType != item.PrimitiveType)
+                    break;
+
+                if ((item.PrimitiveType == PrimitiveType.TriangleStrip) || (item.PrimitiveType == PrimitiveType.LineStrip))
+                    break;
+
+                if (lastCall.Vertices != item.Vertices)
+                    break;
+                if (item.VertexOffset != lastCall.VertexOffset + lastCall.VertexCount)
+                    break;
+
+                if ((lastCall.Indices ?? item.Indices) != null)
+                    break;
+
+                _DrawCalls[count - 1] = new PrimitiveDrawCall<T>(
+                    lastCall.PrimitiveType, lastCall.Vertices, lastCall.VertexOffset, lastCall.VertexCount, lastCall.Indices, lastCall.IndexOffset, lastCall.PrimitiveCount
+                );
+                return;
+            }
 
             base.Add(ref item);
         }
@@ -253,122 +365,6 @@ namespace Squared.Render {
     }
 
     public static class Primitives {
-        public static void OutlinedQuad (PrimitiveBatch<VertexPositionColor> batch, Bounds bounds, Color outlineColor) {
-            OutlinedQuad(batch, bounds.TopLeft, bounds.BottomRight, outlineColor);
-        }
-
-        public static void OutlinedQuad (PrimitiveBatch<VertexPositionColor> batch, Vector2 topLeft, Vector2 bottomRight, Color outlineColor) {
-            using (var buffer = batch.CreateBuffer(5)) {
-                var vertices = buffer.Buffer;
-                vertices[0] = new VertexPositionColor(new Vector3(topLeft.X, topLeft.Y, 0), outlineColor);
-                vertices[1] = new VertexPositionColor(new Vector3(bottomRight.X, topLeft.Y, 0), outlineColor);
-                vertices[2] = new VertexPositionColor(new Vector3(bottomRight.X, bottomRight.Y, 0), outlineColor);
-                vertices[3] = new VertexPositionColor(new Vector3(topLeft.X, bottomRight.Y, 0), outlineColor);
-                vertices[4] = vertices[0];
-
-                batch.Add(PrimitiveDrawCall.New(
-                    PrimitiveType.LineStrip,
-                    vertices, 0, 4
-                ));
-            }
-        }
-
-        public static void FilledQuad (PrimitiveBatch<VertexPositionColor> batch, Bounds bounds, Color fillColor) {
-            FilledQuad(batch, bounds.TopLeft, bounds.BottomRight, fillColor);
-        }
-
-        public static void FilledQuad (PrimitiveBatch<VertexPositionColor> batch, Vector2 topLeft, Vector2 bottomRight, Color fillColor) {
-            using (var buffer = batch.CreateBuffer(6)) {
-                var vertices = buffer.Buffer;
-
-                vertices[0] = new VertexPositionColor(new Vector3(topLeft.X, topLeft.Y, 0), fillColor);
-                vertices[1] = new VertexPositionColor(new Vector3(bottomRight.X, topLeft.Y, 0), fillColor);
-                vertices[2] = new VertexPositionColor(new Vector3(topLeft.X, bottomRight.Y, 0), fillColor);
-                vertices[3] = vertices[1];
-                vertices[4] = vertices[2];
-                vertices[5] = new VertexPositionColor(new Vector3(bottomRight.X, bottomRight.Y, 0), fillColor);
-
-                batch.Add(PrimitiveDrawCall.New(
-                    PrimitiveType.TriangleList,
-                    vertices, 0, 2
-                ));
-            }
-        }
-
-        public static void GradientFilledQuad (PrimitiveBatch<VertexPositionColor> batch, Vector2 p1, Vector2 p2, Color tl, Color tr, Color bl, Color br) {
-            GradientFilledQuad(
-                batch,
-                Math.Min(p1.X, p2.X), Math.Min(p1.Y, p2.Y),
-                Math.Max(p1.X, p2.X), Math.Max(p1.Y, p2.Y),
-                tl, tr, bl, br
-            );
-        }
-
-        public static void GradientFilledQuad (PrimitiveBatch<VertexPositionColor> batch, float x1, float y1, float x2, float y2, Color tl, Color tr, Color bl, Color br) {
-            using (var buffer = batch.CreateBuffer(6)) {
-                var vertices = buffer.Buffer;
-
-                vertices[0] = new VertexPositionColor(new Vector3(x1, y1, 0), tl);
-                vertices[1] = new VertexPositionColor(new Vector3(x2, y1, 0), tr);
-                vertices[2] = new VertexPositionColor(new Vector3(x2, y2, 0), br);
-                vertices[3] = new VertexPositionColor(new Vector3(x1, y1, 0), tl);
-                vertices[4] = new VertexPositionColor(new Vector3(x2, y2, 0), br);
-                vertices[5] = new VertexPositionColor(new Vector3(x1, y2, 0), bl);
-
-                batch.Add(PrimitiveDrawCall.New(
-                    PrimitiveType.TriangleList,
-                    vertices, 0, 2
-                ));
-            }
-        }
-
-        public static void FilledBorderedBox (PrimitiveBatch<VertexPositionColor> batch, Vector2 tl, Vector2 br, Color colorInner, Color colorOuter, float border) {
-            FilledQuad(batch, tl, br, colorInner);
-            BorderedBox(batch, tl, br, colorInner, colorOuter, border);
-        }
-
-        public static void BorderedBox (PrimitiveBatch<VertexPositionColor> batch, Vector2 tl, Vector2 br, Color colorInner, Color colorOuter, float border) {
-            var tr = new Vector2(br.X, tl.Y);
-            var bl = new Vector2(tl.X, br.Y);
-
-            var tlOuter = tl + new Vector2(-border, -border);
-            var trOuter = tr + new Vector2(border, -border);
-            var brOuter = br + new Vector2(border, border);
-            var blOuter = bl + new Vector2(-border, border);
-
-            VertexPositionColor vOuter = new VertexPositionColor(new Vector3(tlOuter, 0), colorOuter);
-            VertexPositionColor vInner = new VertexPositionColor(new Vector3(tl, 0), colorInner);
-
-            using (var buffer = batch.CreateBuffer(16)) {
-                var writer = buffer.GetWriter(16);
-
-                writer.Write(ref vInner);
-                writer.Write(ref vOuter);
-
-                vOuter.Position = new Vector3(trOuter, 0);
-                vInner.Position = new Vector3(tr, 0);
-                writer.Write(ref vInner);
-                writer.Write(ref vOuter);
-
-                vOuter.Position = new Vector3(brOuter, 0);
-                vInner.Position = new Vector3(br, 0);
-                writer.Write(ref vInner);
-                writer.Write(ref vOuter);
-
-                vOuter.Position = new Vector3(blOuter, 0);
-                vInner.Position = new Vector3(bl, 0);
-                writer.Write(ref vInner);
-                writer.Write(ref vOuter);
-
-                vOuter.Position = new Vector3(tlOuter, 0);
-                vInner.Position = new Vector3(tl, 0);
-                writer.Write(ref vInner);
-                writer.Write(ref vOuter);
-
-                batch.Add(writer.GetDrawCall(PrimitiveType.TriangleStrip));
-            }
-        }
-
         public static void FilledRing (PrimitiveBatch<VertexPositionColor> batch, Vector2 center, float innerRadius, float outerRadius, Color innerColor, Color outerColor) {
             FilledRing(batch, center, new Vector2(innerRadius, innerRadius), new Vector2(outerRadius, outerRadius), innerColor, outerColor);
         }
@@ -451,16 +447,6 @@ namespace Squared.Render {
                     PrimitiveType.TriangleStrip,
                     points, 0, numPoints - 2
                 ));
-            }
-        }
-
-        public static void Line (PrimitiveBatch<VertexPositionColor> batch, Vector2 a, Vector2 b, Color color) {
-            using (var buffer = batch.CreateBuffer(2)) {
-                var writer = buffer.GetWriter(2);
-                writer.Write(new VertexPositionColor(new Vector3(a, 0), color));
-                writer.Write(new VertexPositionColor(new Vector3(b, 0), color));
-
-                batch.Add(writer.GetDrawCall(PrimitiveType.LineList));
             }
         }
     }

@@ -6,6 +6,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Diagnostics;
+using System.Security.Permissions;
+using System.Runtime.InteropServices;
 
 namespace Squared.Render.Internal {
     public class WorkerThread : IDisposable {
@@ -82,7 +84,24 @@ namespace Squared.Render.Internal {
 
         private void WorkerFn () {
 #if XBOX
-            Thread.CurrentThread.SetProcessorAffinity(ProcessorAffinity);        
+            int masked;
+            switch (ProcessorAffinity % 4) {
+                default:
+                    masked = 1;
+                    break;
+                case 1:
+                    masked = 3;
+                    break;
+                case 2:
+                    masked = 4;
+                    break;
+                case 3:
+                    masked = 5;
+                    break;
+            }
+            Thread.CurrentThread.SetProcessorAffinity(masked);
+#else
+            // No way to do this on PC :(
 #endif
 
             Interlocked.Increment(ref _ThreadWaiting);

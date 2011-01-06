@@ -11,7 +11,7 @@ using System.Reflection;
 namespace Squared.Render {
     public abstract class MultithreadedGame : Microsoft.Xna.Framework.Game {
         // Set this to false to disable multithreaded rendering
-        public bool UseThreadedDraw = false;
+        public bool UseThreadedDraw = true;
         // Lock this when applying changes to the device or loading content
         // (NOT when drawing)
         public object CreateResourceLock = new object();
@@ -19,6 +19,7 @@ namespace Squared.Render {
         // (NOT when loading content)
         public object UseResourceLock = new object();
 
+        private bool _Running = true;
         private Frame _FrameBeingPrepared = null;
         private Frame _FrameBeingDrawn = null;
 
@@ -31,9 +32,6 @@ namespace Squared.Render {
         // Lost devices can cause things to go horribly wrong if we're 
         //  using multithreaded rendering
         private bool _DeviceLost = false;
-
-        // Evil hack :(
-        private PropertyInfo _IsDeviceLost;
 
         public RenderManager RenderManager {
             get;
@@ -50,6 +48,14 @@ namespace Squared.Render {
 #endif
         }
 
+        protected override void Dispose (bool disposing) {
+            _Running = false;
+            if (UseThreadedDraw)
+                _DrawThread.WaitForPendingWork();
+
+            base.Dispose(disposing);
+        }
+
         protected override void Initialize () {
             base.Initialize();
 
@@ -63,13 +69,18 @@ namespace Squared.Render {
                 if (UseThreadedDraw)
                     _DrawThread.WaitForPendingWork();
 
-            _FrameBeingPrepared = RenderManager.CreateFrame();
+            if (_Running) {
+                _FrameBeingPrepared = RenderManager.CreateFrame();
 
-            return true;
+                return true;
+            } else {
+                return false;
+            }
         }
 
         sealed protected override void Draw(GameTime gameTime) {
-            this.Draw(gameTime, _FrameBeingPrepared);
+            if (_Running) 
+                this.Draw(gameTime, _FrameBeingPrepared);
         }
 
         protected void SwapFrameToDraw() {
@@ -85,21 +96,25 @@ namespace Squared.Render {
 
             SwapFrameToDraw();
 
-            lock (UseResourceLock)
-                if (!base.BeginDraw())
-                    return;
+            if (_Running) {
+                lock (UseResourceLock)
+                    if (!base.BeginDraw())
+                        return;
 
-            if (UseThreadedDraw) {
-                _DrawThread.RequestWork();
+                if (UseThreadedDraw) {
+                    _DrawThread.RequestWork();
+                } else {
+                    ThreadedDraw(_DrawThread);
+                }
+
+                if (_DeviceLost && IsActive) {
+                    if (UseThreadedDraw)
+                        _DrawThread.WaitForPendingWork();
+
+                    _DeviceLost = CheckGraphicsDeviceLost();
+                }
             } else {
-                ThreadedDraw(_DrawThread);
-            }
-
-            if (_DeviceLost && IsActive) {
-                if (UseThreadedDraw)
-                    _DrawThread.WaitForPendingWork();
-
-                _DeviceLost = CheckGraphicsDeviceLost();
+                Interlocked.Decrement(ref _DrawDepth);
             }
         }
 
@@ -109,7 +124,7 @@ namespace Squared.Render {
             lock (UseResourceLock)
                 if (frameToDraw != null) {
                     using (frameToDraw) {
-                        frameToDraw.Prepare();
+                        frameToDraw.Prepare(UseThreadedDraw);
 
                         _DeviceLost |= CheckGraphicsDeviceLost();
 
@@ -140,13 +155,9 @@ namespace Squared.Render {
             if (device == null)
                 return false;
 
-            if (_IsDeviceLost == null)
-                _IsDeviceLost = device.GetType().GetProperty("IsDeviceLost", BindingFlags.Instance | BindingFlags.NonPublic);
-
             bool result = false;
 
-            if (_IsDeviceLost != null)
-                result = (bool)_IsDeviceLost.GetValue(device, null);
+            result = (bool)(device.GraphicsDeviceStatus != GraphicsDeviceStatus.Normal);
 
             return result;
         }

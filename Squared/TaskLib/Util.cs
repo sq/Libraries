@@ -800,7 +800,11 @@ namespace Squared.Task {
             }
         }
 
+#if XBOX
+        private Dictionary<IFuture, byte> _OwnedFutures = new Dictionary<IFuture, byte>(new FutureComparer());
+#else
         private HashSet<IFuture> _OwnedFutures = new HashSet<IFuture>(new FutureComparer());
+#endif
         private OnComplete _OnComplete;
         private OnDispose _OnDispose;
 
@@ -820,7 +824,11 @@ namespace Squared.Task {
         }
 
         public void Add (IFuture future) {
+#if XBOX
+            _OwnedFutures.Add(future, 0);
+#else
             _OwnedFutures.Add(future);
+#endif
             future.RegisterOnComplete(_OnComplete);
             future.RegisterOnDispose(_OnDispose);
         }
@@ -828,8 +836,16 @@ namespace Squared.Task {
         public void Dispose () {
             var of = Interlocked.Exchange(ref _OwnedFutures, null);
 
+            if (of == null)
+                return;
+
+#if XBOX
+            foreach (var f in of.Keys)
+                f.Dispose();
+#else
             foreach (var f in of)
                 f.Dispose();
+#endif
 
             of.Clear();
         }
