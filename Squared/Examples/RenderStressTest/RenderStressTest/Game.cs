@@ -16,16 +16,22 @@ namespace RenderStressTest {
     public class Game : MultithreadedGame {
         public const int Width = 1280;
         public const int Height = 720;
+
         public const int NumberOfOrbs = 32767;
+
+        // The number of spheres to pack into a single GPU draw batch.
         public const int BatchSize = 256;
+
+        // Controls whether we perform updates across multiple threads.
         public const bool ThreadedUpdate = true;
+        // Controls whether we paint across multiple threads.
         public const bool ThreadedPaint = true;
 
         public int RNGPermutation = 0;
         public int ThreadCount;
         DefaultMaterialSet Materials;
         GraphicsDeviceManager Graphics;
-        UnorderedList<Orb> Orbs;
+        UnorderedList<Orb> Orbs = new UnorderedList<Orb>();
 
         public Game () {
             Graphics = new GraphicsDeviceManager(this);
@@ -46,8 +52,6 @@ namespace RenderStressTest {
         protected override void Initialize () {
             base.Initialize();
 
-            Orbs = new UnorderedList<Orb>();
-
             var rng = new Random();
 
             float now = (float)Time.Seconds;
@@ -58,12 +62,14 @@ namespace RenderStressTest {
         protected override void LoadContent () {
             Materials = new DefaultMaterialSet(Content);
 
+            // Configure the camera for the default materials
             Materials.ProjectionMatrix = Matrix.CreateOrthographicOffCenter(
                 0.0f, Width, Height, 0.0f, -1.0f, 1.0f
             );
             Materials.ViewportPosition = Vector2.Zero;
             Materials.ViewportScale = Vector2.One;
 
+            // Attach a blend state setter to the geometry material so that we get alpha blending
             Materials.WorldSpaceGeometry = new DelegateMaterial(
                 Materials.WorldSpaceGeometry, 
                 new Action<DeviceManager>[] { (dm) => dm.Device.BlendState = BlendState.AlphaBlend },
@@ -81,6 +87,8 @@ namespace RenderStressTest {
             float now = (float)Time.Seconds;
 
             if (ThreadedUpdate) {
+                // We could normally cache these delegates, but because we have to pass in the current time
+                //  and Parallel.Invoke doesn't accept an argument, we have to construct new closures :(
                 var actions = new List<Action>();
 
                 for (int i = 0; i < ThreadCount; i++) {
@@ -96,6 +104,8 @@ namespace RenderStressTest {
                 ParallelUpdateOrbs(0, 1, now);
             }
 
+            // We have to increment the RNG seed every step so that we get new random values instead
+            //  of ones we've seen before
             RNGPermutation += ThreadCount;
 
             base.Update(gameTime);
@@ -136,15 +146,19 @@ namespace RenderStressTest {
 
         private void ParallelPrepareOrbs (Frame frame, int partitionIndex, int partitionCount, float now) {
             Orb orb;
-            GeometryBatch<VertexPositionColor> batch = null;
             int i = 0;
+            GeometryBatch<VertexPositionColor> batch = null;
 
             using (var e = Orbs.GetParallelEnumerator(partitionIndex, partitionCount))
             while (e.GetNext(out orb)) {
                 if (batch == null)
                     batch = GeometryBatch<VertexPositionColor>.New(frame, 1, Materials.WorldSpaceGeometry);
 
-                var position = Orb.Interpolator(Orb.InterpolatorSource, ref orb, 0, (now - orb.LastUpdateAt) / orb.Duration);
+                // Compute the position of this orb at the current time
+                var position = Orb.Interpolator(
+                    Orb.InterpolatorSource, ref orb, 
+                    0, (now - orb.LastUpdateAt) / orb.Duration
+                );
 
                 batch.AddFilledRing(
                     position, Vector2.Zero, orb.Size, orb.Color, Color.Transparent
@@ -152,6 +166,8 @@ namespace RenderStressTest {
 
                 i += 1;
                 if ((i % BatchSize) == 0) {
+                    // Once our batch contains enough objects, we 'dispose' it to tell the renderer that it is done being prepared.
+                    // This normally looks like 'using (batch)', which is (IMO) easier to understand... still, kind of a nasty hack.
                     batch.Dispose();
                     batch = null;
                 }

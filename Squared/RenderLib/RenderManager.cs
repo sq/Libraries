@@ -321,6 +321,11 @@ namespace Squared.Render {
 
     // Thread-safe
     public sealed class Frame : IDisposable {
+        private const int State_Initialized = 0;
+        private const int State_Preparing = 1;
+        private const int State_Prepared = 2;
+        private const int State_Disposed = 3;
+
         public static BatchComparer BatchComparer = new BatchComparer();
 
         private static ListPool<Batch> _ListPool = new ListPool<Batch>(
@@ -332,8 +337,10 @@ namespace Squared.Render {
 
         public List<Batch> Batches;
 
-        volatile int _Prepared;
+        volatile int State = State_Disposed;
 
+        // If you allocate a frame manually instead of using the pool, you'll need to initialize it
+        //  yourself using Initialize (below).
         public Frame () {
         }
 
@@ -341,11 +348,11 @@ namespace Squared.Render {
             Batches = _ListPool.Allocate();
             RenderManager = renderManager;
             Index = index;
-            _Prepared = 0;
+            State = State_Initialized;
         }
 
         public void Add (Batch batch) {
-            if (_Prepared == 1)
+            if (State != State_Initialized)
                 throw new InvalidOperationException();
 
             lock (Batches)
@@ -353,8 +360,8 @@ namespace Squared.Render {
         }
 
         public void Prepare (bool parallel) {
-            if (Interlocked.Exchange(ref _Prepared, 1) != 0)
-                return;
+            if (Interlocked.Exchange(ref State, State_Preparing) != State_Initialized)
+                throw new InvalidOperationException();
 
             Batches.Sort(BatchComparer);
 
@@ -363,7 +370,7 @@ namespace Squared.Render {
             else
                 PrepareSubset(0, Batches.Count);
 
-            if (Interlocked.Exchange(ref _Prepared, 2) != 1)
+            if (Interlocked.Exchange(ref State, State_Prepared) != State_Preparing)
                 throw new InvalidOperationException();
         }
 
@@ -375,7 +382,7 @@ namespace Squared.Render {
         }
 
         public void Draw () {
-            if (_Prepared != 2)
+            if (State != State_Prepared)
                 throw new InvalidOperationException();
 
             var dm = RenderManager.DeviceManager;
@@ -389,6 +396,9 @@ namespace Squared.Render {
         }
 
         public void Dispose () {
+            if (State == State_Disposed)
+                return;
+
             for (int i = 0; i < Batches.Count; i++)
                 Batches[i].ReleaseResources();
 
@@ -396,7 +406,7 @@ namespace Squared.Render {
 
             RenderManager.ReleaseFrame(this);
 
-            _Prepared = 0;
+            State = State_Disposed;
         }
     }
 
@@ -438,6 +448,8 @@ namespace Squared.Render {
                 Pool.Release(this);
         }
 
+        // In the render framework, disposing a batch marks it as 'ready to render'.
+        // Yes, this is terrible. But using(batch) is too good to pass up!
         public virtual void Dispose () {
             Frame.Add(this);
         }
@@ -666,54 +678,6 @@ namespace Squared.Render {
         void Collect ();
     }
 
-    /*
-    // Thread-safe
-    public class PoolAllocator<T> : IPoolAllocator
-        where T : class, new() {
-
-        public struct Allocation {
-            public readonly T Object;
-
-            internal Allocation (T obj) {
-                Object = obj;
-            }
-        }
-
-        public const int DefaultPoolCapacity = 128;
-        public const int MaxPoolCapacity = 512;
-
-        private UnorderedList<Allocation> LiveAllocations = new UnorderedList<Allocation>(DefaultPoolCapacity);
-        private UnorderedList<T> Pool = new UnorderedList<T>(DefaultPoolCapacity);
-
-        public PoolAllocator () {
-        }
-
-        public T Allocate () {
-            T[] result;
-            lock (Pool)
-                Pool.TryPopFront(out result);
-
-            if (result == null)
-                result = new T();
-
-            var a = new Allocation(poolId, result);
-            lock (Pool)
-                LiveAllocations.Add(a);
-      
-            return a;
-        }
-
-        public void Collect () {
-            lock (Pool) {
-                foreach (var a in LiveAllocations)
-                    Pool.Add(a.Buffer);
-
-                LiveAllocations.Clear();
-            }
-        }
-    }
-     */
-
     public interface IArrayPoolAllocator {
         void Step ();
     }
@@ -758,8 +722,36 @@ namespace Squared.Render {
                 Pools[power - MinPower] = new Pool(1 << power, DefaultPoolCapacity);
         }
 
+        private static int IntLog2 (int x) {
+            int l = 0;
+
+            if (x >= 1 << 16) {
+                x >>= 16;
+                l |= 16;
+            }
+            if (x >= 1 << 8) { 
+                x >>= 8; 
+                l |= 8; 
+            }
+            if (x >= 1 << 4) { 
+                x >>= 4; 
+                l |= 4; 
+            }
+            if (x >= 1 << 2) { 
+                x >>= 2; 
+                l |= 2; 
+            }
+            if (x >= 1 << 1)
+                l |= 1;
+            return l;
+        }
+
         private int SelectPool (int capacity) {
-            for (int power = 0; power < PowerCount; power++) {
+            int log2 = IntLog2(capacity) - MinPower + 1;
+            if (log2 < 0)
+                log2 = 0;
+
+            for (int power = log2; power < PowerCount; power++) {
                 var poolSize = Pools[power].AllocationSize;
                 if (poolSize > capacity)
                     return power;
