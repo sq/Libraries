@@ -69,6 +69,15 @@ namespace Squared.Render {
 
         // 0   1   2   3
         // tl, tr, bl, br
+        internal static readonly short[] OutlinedQuadIndices = new short[] { 
+            0, 1,
+            1, 3,
+            3, 2,
+            2, 0
+        };
+
+        // 0   1   2   3
+        // tl, tr, bl, br
         internal static readonly short[] QuadIndices = new short[] { 
             0, 1, 3, 
             0, 3, 2 
@@ -92,8 +101,8 @@ namespace Squared.Render {
         };
 
         internal static GeometryDrawCallPreparer<T> 
-            PrepareQuad, PrepareGradientQuad, 
-            PrepareQuadBorder, PrepareLine;
+            PrepareOutlinedQuad, PrepareQuad, PrepareGradientQuad, 
+            PrepareQuadBorder, PrepareLine, PrepareRing;
 
         static GeometryBatch () {
             if (typeof(T) == typeof(VertexPositionColor)) {
@@ -119,8 +128,10 @@ namespace Squared.Render {
 
             PrepareQuad = _PrepareQuad;
             PrepareGradientQuad = _PrepareGradientQuad;
+            PrepareOutlinedQuad = _PrepareOutlinedQuad;
             PrepareQuadBorder = _PrepareQuadBorder;
             PrepareLine = _PrepareLine;
+            PrepareRing = _PrepareRing;
         }
 
         #endregion
@@ -240,14 +251,26 @@ namespace Squared.Render {
 
         public void AddOutlinedQuad (Vector2 topLeft, Vector2 bottomRight, Color outlineColor) {
             var dc = new GeometryDrawCall<T> {
-                Preparer = PrepareQuad,
+                Preparer = PrepareOutlinedQuad,
                 PrimitiveType = PrimitiveType.LineList,
                 Vector0 = topLeft,
                 Vector1 = bottomRight,
                 Color0 = outlineColor
             };
 
-            Add(ref dc, 4, QuadIndices.Length);
+            Add(ref dc, 4, OutlinedQuadIndices.Length);
+        }
+
+        protected static void _PrepareOutlinedQuad (GeometryBatch<T> batch, ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
+            var vw = vb.GetWriter(4);
+            var iw = ib.GetWriter(OutlinedQuadIndices.Length, (short)vw.Offset);
+
+            vw.Write(new GeometryVertex(dc.Vector0.X, dc.Vector0.Y, dc.Z, dc.Color0));
+            vw.Write(new GeometryVertex(dc.Vector1.X, dc.Vector0.Y, dc.Z, dc.Color0));
+            vw.Write(new GeometryVertex(dc.Vector0.X, dc.Vector1.Y, dc.Z, dc.Color0));
+            vw.Write(new GeometryVertex(dc.Vector1.X, dc.Vector1.Y, dc.Z, dc.Color0));
+
+            iw.Write(OutlinedQuadIndices);
         }
 
         public void AddFilledQuad (Bounds bounds, Color fillColor) {
@@ -335,26 +358,26 @@ namespace Squared.Render {
             var vInner = new GeometryVertex(tl.X, tl.Y, dc.Z, dc.Color0);
             var vOuter = new GeometryVertex(tl.X - border, tl.Y - border, dc.Z, dc.Color1);
 
-            vw.Write(vInner);
-            vw.Write(vOuter);
+            vw.Write(ref vInner);
+            vw.Write(ref vOuter);
 
             vInner.Position.X = br.X;
             vOuter.Position.X = br.X + border;
 
-            vw.Write(vInner);
-            vw.Write(vOuter);
+            vw.Write(ref vInner);
+            vw.Write(ref vOuter);
 
             vInner.Position.Y = br.Y;
             vOuter.Position.Y = br.Y + border;
 
-            vw.Write(vInner);
-            vw.Write(vOuter);
+            vw.Write(ref vInner);
+            vw.Write(ref vOuter);
 
             vInner.Position.X = tl.X;
             vOuter.Position.X = tl.X - border;
 
-            vw.Write(vInner);
-            vw.Write(vOuter);
+            vw.Write(ref vInner);
+            vw.Write(ref vOuter);
 
             iw.Write(QuadBorderIndices);
         }
@@ -394,6 +417,71 @@ namespace Squared.Render {
             vw.Write(new GeometryVertex(dc.Vector1.X, dc.Vector1.Y, dc.Z, dc.Color1));
 
             iw.Write(LineIndices);
+        }
+
+        public void AddFilledRing (Vector2 center, float innerRadius, float outerRadius, Color innerColor, Color outerColor) {
+            AddFilledRing(
+                center, 
+                new Vector2(innerRadius, innerRadius), 
+                new Vector2(outerRadius, outerRadius), 
+                innerColor, outerColor
+            );
+        }
+
+        protected static int ComputeRingPoints (ref Vector2 radius) {
+            return (int)Math.Ceiling(Math.Abs(radius.X + radius.Y) / 2) + 8;
+        }
+
+        public void AddFilledRing (Vector2 center, Vector2 innerRadius, Vector2 outerRadius, Color innerColor, Color outerColor) {
+            var dc = new GeometryDrawCall<T> {
+                Preparer = PrepareRing,
+                PrimitiveType = PrimitiveType.TriangleList,
+                Vector0 = center,
+                Vector1 = innerRadius,
+                Vector2 = outerRadius,
+                Color0 = innerColor,
+                Color1 = outerColor
+            };
+
+            int numPoints = ComputeRingPoints(ref outerRadius);
+
+            Add(ref dc, numPoints * 2, (numPoints - 1) * 3);
+        }
+
+        public static void _PrepareRing (GeometryBatch<T> batch, ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall<T> dc) {
+            int numPoints = ComputeRingPoints(ref dc.Vector2);
+
+            var vw = vb.GetWriter(numPoints * 2);
+            var iw = ib.GetWriter((numPoints - 1) * 3, (short)vw.Offset);
+
+            float a = 0;
+            float step = (float)(Math.PI * 2.0 / (numPoints - 1));
+            float cos, sin;
+            var vertexInner = new GeometryVertex(0, 0, dc.Z, dc.Color0);
+            var vertexOuter = new GeometryVertex(0, 0, dc.Z, dc.Color1);
+
+            for (int i = 0; i < numPoints; i++) {
+                cos = (float)Math.Cos(a);
+                sin = (float)Math.Sin(a);
+
+                vertexInner.Position.X = dc.Vector0.X + (float)(cos * dc.Vector1.X);
+                vertexInner.Position.Y = dc.Vector0.Y + (float)(sin * dc.Vector1.Y);
+                vw.Write(ref vertexInner);
+
+                vertexOuter.Position.X = dc.Vector0.X + (float)(cos * dc.Vector2.X);
+                vertexOuter.Position.Y = dc.Vector0.Y + (float)(sin * dc.Vector2.Y);
+                vw.Write(ref vertexOuter);
+
+                if (i == (numPoints - 1))
+                    break;
+
+                int j = i * 2;
+                iw.Write((short)j);
+                iw.Write((short)(j + 1));
+                iw.Write((short)(j + 3));
+
+                a += step;
+            }
         }
 
         #endregion

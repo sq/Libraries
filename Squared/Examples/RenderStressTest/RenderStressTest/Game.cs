@@ -16,8 +16,8 @@ namespace RenderStressTest {
     public class Game : MultithreadedGame {
         public const int Width = 1280;
         public const int Height = 720;
-        public const int NumberOfOrbs = 4;
-        public const int BatchSize = 128;
+        public const int NumberOfOrbs = 32767;
+        public const int BatchSize = 256;
         public const bool ThreadedUpdate = true;
         public const bool ThreadedPaint = true;
 
@@ -159,10 +159,12 @@ namespace RenderStressTest {
     }
 
     public struct Orb {
+        public const float PixelsPerSecond = 30f;
+
         public Vector2 LastPosition, NextPosition;
         public Vector2 Size;
         public Color Color;
-        public float LastUpdateAt, NextUpdateAt;
+        public float LastUpdateAt, Duration;
 
         public static BoundInterpolator<Vector2, Orb> Interpolator;
         public static BoundInterpolatorSource<Vector2, Orb> InterpolatorSource;
@@ -182,9 +184,6 @@ namespace RenderStressTest {
         }
 
         public Orb (Random rng, float now) {
-            LastUpdateAt = now;
-            NextUpdateAt = now + 1;
-
             LastPosition = new Vector2(
                 (float)(rng.NextDouble() * Game.Width), (float)(rng.NextDouble() * Game.Height)
             );
@@ -192,30 +191,33 @@ namespace RenderStressTest {
                 (float)(rng.NextDouble() * Game.Width), (float)(rng.NextDouble() * Game.Height)
             );
 
-            Size = new Vector2((float)rng.NextDouble() * 16.0f + 2.0f);
-            int r = rng.Next(0, 127);
-            int g = rng.Next(127 - r, 127);
-            int b = rng.Next(127 - Math.Max(r, g), 127);
+            LastUpdateAt = now;
+            Duration = (NextPosition - LastPosition).Length() / PixelsPerSecond;
+
+            Size = new Vector2((float)rng.NextDouble() * 8f + 1.5f);
+            int r = rng.Next(0, 64);
+            int g = rng.Next(64 - r, 64);
+            int b = rng.Next(64 - Math.Max(r, g), 64);
             Color = new Color(r, g, b, 0);
         }
 
         public void Update (Random rng, float now) {
-            if (now >= NextUpdateAt) {
+            if ((now - LastUpdateAt) >= Duration) {
                 LastPosition = NextPosition;
-                LastUpdateAt = NextUpdateAt;
+                LastUpdateAt = now;
 
                 NextPosition = new Vector2(
                     (float)(rng.NextDouble() * Game.Width), (float)(rng.NextDouble() * Game.Height)
                 );
-                NextUpdateAt = LastUpdateAt + 1;
+                Duration = (NextPosition - LastPosition).Length() / PixelsPerSecond;
             }
         }
 
         public void Draw (GeometryBatch<VertexPositionColor> batch, float now) {
-            var position = Interpolator(InterpolatorSource, ref this, 0, now - LastUpdateAt);
+            var position = Interpolator(InterpolatorSource, ref this, 0, (now - LastUpdateAt) / Duration);
 
-            batch.AddFilledQuad(
-                position - Size, position + Size, Color
+            batch.AddFilledRing(
+                position, Vector2.Zero, Size, Color, Color.Transparent
             );
         }
     }

@@ -365,46 +365,6 @@ namespace Squared.Render {
     }
 
     public static class Primitives {
-        public static void FilledRing (PrimitiveBatch<VertexPositionColor> batch, Vector2 center, float innerRadius, float outerRadius, Color innerColor, Color outerColor) {
-            FilledRing(batch, center, new Vector2(innerRadius, innerRadius), new Vector2(outerRadius, outerRadius), innerColor, outerColor);
-        }
-
-        public static void FilledRing (PrimitiveBatch<VertexPositionColor> batch, Vector2 center, Vector2 innerRadius, Vector2 outerRadius, Color innerColor, Color outerColor) {
-            int numPoints = (int)Math.Ceiling(Math.Abs(outerRadius.X + outerRadius.Y) / 2) * 2 + 8;
-            float a = 0;
-            float step = (float)(Math.PI * 4.0 / numPoints);
-            float cos, sin;
-            var vertex = new VertexPositionColor();
-
-            using (var buffer = batch.CreateBuffer(numPoints + 2)) {
-                var points = buffer.Buffer;
-
-                for (int i = 0; i <= numPoints + 1; i++) {
-                    cos = (float)Math.Cos(a);
-                    sin = (float)Math.Sin(a);
-
-                    vertex.Position.X = center.X + (float)(cos * innerRadius.X);
-                    vertex.Position.Y = center.Y + (float)(sin * innerRadius.Y);
-                    vertex.Color = innerColor;
-                    points[i] = vertex;
-
-                    i++;
-
-                    vertex.Position.X = center.X + (float)(cos * outerRadius.X);
-                    vertex.Position.Y = center.Y + (float)(sin * outerRadius.Y);
-                    vertex.Color = outerColor;
-                    points[i] = vertex;
-
-                    a += step;
-                }
-
-                batch.Add(PrimitiveDrawCall.New(
-                    PrimitiveType.TriangleStrip,
-                    points, 0, numPoints
-                ));
-            }
-        }
-
         public static void FilledArc (PrimitiveBatch<VertexPositionColor> batch, Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, Color startColor, Color endColor) {
             FilledArc(batch, center, new Vector2(innerRadius, innerRadius), new Vector2(outerRadius, outerRadius), startAngle, endAngle, startColor, endColor);
         }
