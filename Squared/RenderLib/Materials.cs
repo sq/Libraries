@@ -106,7 +106,7 @@ namespace Squared.Render {
         public DefaultMaterialSet (ContentManager content) {
             Clear = new DelegateMaterial(
                 new NullMaterial(),
-                new Action<DeviceManager>[] { SetShaderVariables }, 
+                new Action<DeviceManager>[] { (dm) => ApplyShaderVariables() }, 
                 null
             );
 
@@ -150,7 +150,10 @@ namespace Squared.Render {
             set;
         }
 
-        protected void SetShaderVariables(DeviceManager deviceManager) {
+        // Call this method to apply any changes you've made to the three
+        //  viewport configuration properties above.
+        // Note that Clear batches automatically call this before clearing.
+        public void ApplyShaderVariables () {
             foreach (var m in AllMaterials) {
                 var em = m as IEffectMaterial;
 

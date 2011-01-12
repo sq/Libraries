@@ -56,5 +56,19 @@ namespace Squared.Task {
                 Queue.Enqueue(i.ToString());
             Assert.AreEqual(3, Queue.Count);
         }
+
+        [Test]
+        public void QueueDoesNotStoreEnqueuedValuesIntoDisposedWaitingFutures () {
+            var a = Queue.Dequeue();
+            var b = Queue.Dequeue();
+
+            a.Dispose();
+            Queue.Enqueue("test");
+
+            Assert.IsFalse(a.Completed);
+            Assert.IsTrue(a.Disposed);
+            Assert.AreEqual("test", b.Result);
+            Assert.AreEqual(0, Queue.Count);
+        }
     }
 }

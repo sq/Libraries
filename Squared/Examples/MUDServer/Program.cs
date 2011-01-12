@@ -28,7 +28,9 @@ namespace MUDServer {
         static IEnumerator<object> HandleNewClients () {
             while (true) {
                 IFuture f = Server.AcceptNewClient();
-                yield return f;
+                using (f)
+                    yield return f;
+
                 TelnetClient client = f.Result as TelnetClient;
                 Player player = new Player(client, World.PlayerStartLocation);
             }

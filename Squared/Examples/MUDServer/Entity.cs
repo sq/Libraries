@@ -137,7 +137,9 @@ namespace MUDServer {
         protected virtual IEnumerator<object> EventDispatchTask () {
             while (true) {
                 var f = GetNewEvent();
-                yield return f;
+                using (f)
+                    yield return f;
+
                 object evt = f.Result;
                 var type = Event.GetProp<EventType>("Type", evt);
 

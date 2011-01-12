@@ -40,16 +40,22 @@ namespace Squared.Task {
         public void Enqueue (T value) {
             Future<T> wf = null;
 
+            while (true)
             lock (_Lock) {
                 if (_WaitingFutures.Count > 0) {
                     wf = _WaitingFutures.Dequeue();
+
+                    try {
+                        wf.Complete(value);
+                        if (wf.Completed)
+                            return;
+                    } catch (FutureDisposedException) {
+                    }
                 } else {
                     _Queue.Enqueue(value);
                     return;
                 }
             }
-
-            wf.Complete(value);
         }
 
         public void EnqueueMultiple (T[] values) {

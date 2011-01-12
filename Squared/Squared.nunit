@@ -1,9 +1,9 @@
 ﻿<NUnitProject>
   <Settings activeconfig="Debug" />
   <Config name="Debug" binpathtype="Auto">
-    <assembly path="TaskLib\TaskLibTests\bin\Debug\TaskLibTests.dll" />
+    <assembly path="TaskLib\TaskLibTests\bin\x86\Debug\TaskLibTests.dll" />
     <assembly path="Examples\MUDServer\MUDServerTests\bin\Debug\MUDServerTests.dll" />
-    <assembly path="Util\UtilTests\bin\Debug\UtilTests.dll" />
+    <assembly path="Util\UtilTests\bin\x86\Debug\UtilTests.dll" />
   </Config>
   <Config name="Release" binpathtype="Auto" />
 </NUnitProject>

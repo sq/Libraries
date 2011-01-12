@@ -973,7 +973,9 @@ namespace Squared.Task {
                 yield return new WaitForNextStep();
 
                 IFuture response = _Messages.Dequeue();
-                yield return response;
+                using (response)
+                    yield return response;
+
                 state = (int)response.Result;
             }
         }

@@ -211,8 +211,8 @@ namespace RenderStressTest {
 
     public struct Orb {
         public const float PixelsPerSecond = 30f;
-        public const float MinSize = 1.75f;
-        public const float MaxSize = 9.0f;
+        public const float MinSize = 2f;
+        public const float MaxSize = 10f;
         public const int Brightness = 70;
 
         public Vector2 LastPosition, NextPosition;

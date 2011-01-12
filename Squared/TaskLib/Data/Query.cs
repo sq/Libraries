@@ -225,6 +225,21 @@ namespace Squared.Task.Data {
             return InternalExecuteQuery(parameters, queryFunc, true);
         }
 
+        public Future<string[]> GetColumnNames (params object[] parameters) {
+            Func<IFuture, string[]> queryFunc = (f) => {
+                var names = new List<string>();
+                _Manager.SetActiveQueryObject(this);
+
+                using (var reader = _Command.ExecuteReader())
+                for (int i = 0; i < reader.FieldCount; i++)
+                    names.Add(reader.GetName(i));
+
+                return names.ToArray();
+            };
+
+            return InternalExecuteQuery(parameters, queryFunc, false);
+        }
+
         public TaskEnumerator<IDataRecord> Execute (params object[] parameters) {
             var fReader = this.ExecuteReader(parameters);
 
