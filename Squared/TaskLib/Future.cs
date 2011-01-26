@@ -659,6 +659,19 @@ namespace Squared.Task {
         }
 
 #if !XBOX
+        public static IFuture Bind<T> (this IFuture future, Expression<Func<T>> target) {
+            var member = BoundMember.New(target);
+
+            future.RegisterOnComplete((_) => {
+                Exception error;
+                object result;
+                if (future.GetResult(out result, out error))
+                    ((IBoundMember)member).Value = result;
+            });
+
+            return future;
+        }
+
         public static Future<T> Bind<T> (this Future<T> future, Expression<Func<T>> target) {
             var member = BoundMember.New(target);
 
