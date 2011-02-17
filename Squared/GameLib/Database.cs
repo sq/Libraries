@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using CS_SQLite3;
 using Squared.Game.Serialization;
 using System.Xml.Serialization;
 using System.IO;
 
 #if XBOX360
-using CS_SQLite3.XNA;
 #else
+using Community.CsharpSqlite.SQLiteClient;
 using System.Data;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -17,13 +16,15 @@ using Squared.Util;
 #endif
 
 namespace Squared.Game.Graph {
+    // TODO
+#if FALSE
     public class SQLiteGraphWriter : IGraphWriter, IDisposable {
         public class NodeWriteContext : WriteContext {
             public long NodeID;
             public readonly SQLiteGraphWriter GraphWriter;
-            public readonly SQLiteVdbe Statement;
+            protected SqliteCommand Statement;
 
-            public NodeWriteContext (SQLiteGraphWriter gw, SQLiteVdbe statement, long nodeID) 
+            public NodeWriteContext (SQLiteGraphWriter gw, SqliteCommand statement, long nodeID) 
                 : base (gw.Context) {
                 GraphWriter = gw;
                 NodeID = nodeID;
@@ -542,4 +543,5 @@ namespace Squared.Game.Graph {
             return (INode)_Nodes[_RootNodeID];
         }
     }
+#endif
 }

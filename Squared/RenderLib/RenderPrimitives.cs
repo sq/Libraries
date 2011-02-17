@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework;
 using Squared.Game;
 using System.Reflection;
 using Squared.Util;
+using System.Diagnostics;
 
 namespace Squared.Render.Internal {
     public struct VertexBuffer<T> : IDisposable
@@ -233,6 +234,18 @@ namespace Squared.Render {
         new public void Add (ref PrimitiveDrawCall<T> item) {
             if (item.Vertices == null)
                 return;
+
+#if VALIDATE
+            var indexCount = item.PrimitiveType.ComputeVertexCount(item.PrimitiveCount);
+            Debug.Assert(
+                item.Indices.Length >= item.IndexOffset + indexCount
+            );
+
+            for (int i = 0; i < indexCount; i++) {
+                Debug.Assert(item.Indices[i + item.IndexOffset] >= 0);
+                Debug.Assert(item.Indices[i + item.IndexOffset] < item.VertexCount);
+            }
+#endif
 
             int count = _DrawCalls.Count;
             while (count > 0) {

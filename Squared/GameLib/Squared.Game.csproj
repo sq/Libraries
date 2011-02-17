@@ -119,6 +119,7 @@
     <Compile Include="GameExtensionMethods.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="Graph.cs" />
+    <Compile Include="Input.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SafeGamerServicesComponent.cs" />
     <Compile Include="Serialization.cs" />

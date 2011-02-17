@@ -208,12 +208,12 @@ namespace Squared.Render {
             if (Count > 0) {
                 GeometryDrawCall<T> dc;
 
-                var vb = new Internal.VertexBuffer<GeometryVertex>(VertexAllocator, VertexCount);
-                var outputVb = InnerBatch.CreateBuffer(VertexCount);
-                var ib = new Internal.IndexBuffer(IndexAllocator, IndexCount);
-                int vertexOffset = 0, indexOffset = 0;
-
                 foreach (var kvp in Lists) {
+                    var vb = new Internal.VertexBuffer<GeometryVertex>(VertexAllocator, VertexCount);
+                    var outputVb = InnerBatch.CreateBuffer(VertexCount);
+                    var ib = new Internal.IndexBuffer(IndexAllocator, IndexCount);
+                    int vertexOffset = 0, indexOffset = 0;
+
                     var l = kvp.Value;
                     var c = l.Count;
 
@@ -453,7 +453,7 @@ namespace Squared.Render {
         }
 
         protected static int ComputeRingPoints (ref Vector2 radius) {
-            return (int)Math.Ceiling(Math.Abs(radius.X + radius.Y) / 4) + 6;
+            return (int)Math.Ceiling(Math.Abs(radius.X + radius.Y) / 3.75f) + 8;
         }
 
         public void AddFilledRing (Vector2 center, Vector2 innerRadius, Vector2 outerRadius, Color innerColor, Color outerColor) {

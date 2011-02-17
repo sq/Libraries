@@ -163,11 +163,6 @@
       <Project>{BE3F46D8-C55A-4AC4-BCA7-D5CF9F3668E6}</Project>
       <Name>Squared.Util_360</Name>
     </ProjectReference>
-    <ProjectReference Include="..\XNASQLite\XnaSQLite360.csproj">
-      <Project>{C2ED340E-BF18-43FB-84CA-4DE873F30BDF}</Project>
-      <Name>XnaSQLite360</Name>
-      <Private>False</Private>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\Microsoft.Xna.GameStudio.targets" />
