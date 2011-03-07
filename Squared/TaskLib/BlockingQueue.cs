@@ -58,7 +58,7 @@ namespace Squared.Task {
             }
         }
 
-        public void EnqueueMultiple (T[] values) {
+        public void EnqueueMultiple (IEnumerable<T> values) {
             foreach (var value in values)
                 Enqueue(value);
         }
