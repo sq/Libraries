@@ -17,6 +17,25 @@ namespace Squared.Task {
             }
         }
 
+        public int DequeueMultiple (IList<T> output, int maximum) {
+            for (int i = 0; i < maximum; i++) {
+                lock (_Lock) {
+                    if (_Queue.Count == 0)
+                        return i;
+
+                    output.Add(_Queue.Dequeue());
+                }
+            }
+
+            return maximum;
+        }
+
+        public T[] DequeueMultiple (int maximum) {
+            var result = new List<T>(maximum);
+            DequeueMultiple(result, maximum);
+            return result.ToArray();
+        }
+
         public T[] DequeueAll () {
             lock (_Lock) {
                 T[] result = new T[_Queue.Count];

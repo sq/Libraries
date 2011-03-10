@@ -274,7 +274,7 @@ namespace Squared.Task {
     /// <summary>
     /// Schedules a task to run to completion.
     /// </summary>
-    public class RunToCompletion<T> : ISchedulable {
+    public class RunToCompletion<T> : ISchedulable, IDisposable {
         IEnumerator<object> _Task;
         SchedulableGeneratorThunk _Thunk;
         TaskExecutionPolicy _ExecutionPolicy;
@@ -299,7 +299,17 @@ namespace Squared.Task {
 
         void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             _CompletionSignal = future;
+            future.RegisterOnDispose((_) => {
+                _Future.Dispose();
+            });
             scheduler.Start(_Future, _Thunk, _ExecutionPolicy);
+        }
+
+        public void Dispose () {
+            if (_Future != null)
+                _Future.Dispose();
+            if (_CompletionSignal != null)
+                _CompletionSignal.Dispose();
         }
 
         public void AssertSucceeded () {
