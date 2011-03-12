@@ -515,6 +515,11 @@ namespace Squared.Task.IO {
             var f = new Future<int>();
             var readData = ReadMoreData();
             readData.RegisterOnComplete((_) => {
+                if (IsDisposed) {
+                    f.Dispose();
+                    return;
+                }
+
                 var error = _.Error;
                 if (error != null) {
                     f.Fail(error);
@@ -617,6 +622,11 @@ namespace Squared.Task.IO {
             if (!GetCurrentCharacter(out result)) {
                 var decodeMoreChars = DecodeMoreData();
                 decodeMoreChars.RegisterOnComplete((_) => {
+                    if (IsDisposed) {
+                        f.Dispose();
+                        return;
+                    }
+
                     var error = _.Error;
                     if (error != null) {
                         ClearPendingOperation(f);
