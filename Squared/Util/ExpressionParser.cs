@@ -10,6 +10,23 @@ namespace Squared.Util.RegexExtensions {
             match = regex.Match(input);
             return (match != null) && (match.Success);
         }
+
+        public static bool TryMatch (
+            this Regex regex, string input,
+            int start, out Match match
+        ) {
+            match = regex.Match(input, start);
+            return (match != null) && (match.Success);
+        }
+
+        public static bool TryMatch (
+            this Regex regex, string input, 
+            int start, int length, 
+            out Match match
+        ) {
+            match = regex.Match(input, start, length);
+            return (match != null) && (match.Success);
+        }
     }
 }
 

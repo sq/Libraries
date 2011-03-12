@@ -58,7 +58,15 @@ namespace Squared.Task {
         }
 
         public int CompareTo (SleepItem rhs) {
-            return Until.CompareTo(rhs.Until);
+            if (Future == null) {
+                if (rhs.Future == null)
+                    return 0;
+                else
+                    return 1;
+            } else if (rhs.Future == null)
+                return -1;
+            else
+                return Until.CompareTo(rhs.Until);
         }
     }
 

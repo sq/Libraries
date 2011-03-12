@@ -6,46 +6,61 @@ using System.Collections;
 using System.Threading;
 
 namespace Squared.Util {
-    public static class HeapQueue<T> where T : IComparable<T> {
-        public delegate int ComparisonFunction (T lhs, T rhs);
-
-        public static ComparisonFunction DefaultComparer {
-            get {
-                return (lhs, rhs) => (lhs.CompareTo(rhs));
-            }
-        }
-
-        public static void SiftDown (T[] buffer, int startPosition, int endPosition, ComparisonFunction comparer) {
+    public static class HeapQueue<T> {
+        public static void SiftDown (T[] buffer, int startPosition, int endPosition, Comparison<T> comparer) {
             T newItem = buffer[endPosition];
+            int newItemPos = endPosition;
+
             while (endPosition > startPosition) {
                 int sourcePosition = (endPosition - 1) >> 1;
                 T sourceItem = buffer[sourcePosition];
+
                 if (comparer(sourceItem, newItem) <= 0)
                     break;
+
+                buffer[sourcePosition] = default(T);
                 buffer[endPosition] = sourceItem;
+
                 endPosition = sourcePosition;
             }
+
+            if (comparer(buffer[newItemPos], newItem) == 0)
+                buffer[newItemPos] = default(T);
+
             buffer[endPosition] = newItem;
         }
 
-        public static void SiftUp (T[] buffer, int position, int endPosition, ComparisonFunction comparer) {
+        public static void SiftUp (T[] buffer, int position, int endPosition, Comparison<T> comparer) {
             int startPosition = position;
             T newItem = buffer[position];
+            int newItemPos = position;
+
             int childPosition = 2 * position + 1;
             int rightPosition;
+
             while (childPosition < endPosition) {
                 rightPosition = childPosition + 1;
-                if ((rightPosition < endPosition) && (comparer(buffer[rightPosition], buffer[childPosition]) <= 0))
+                if ((rightPosition < endPosition) && (
+                    comparer(buffer[rightPosition], buffer[childPosition]) <= 0
+                ))
                     childPosition = rightPosition;
+
                 buffer[position] = buffer[childPosition];
+                buffer[childPosition] = default(T);
+
                 position = childPosition;
                 childPosition = 2 * position + 1;
             }
+
+            if (comparer(buffer[newItemPos], newItem) == 0)
+                buffer[newItemPos] = default(T);
+
             buffer[position] = newItem;
+
             SiftDown(buffer, startPosition, position, comparer);
         }
 
-        public static void Heapify (T[] buffer, int count, ComparisonFunction comparer) {
+        public static void Heapify (T[] buffer, int count, Comparison<T> comparer) {
             var positions = Enumerable.Range(0, count / 2).Reverse();
             foreach (int i in positions)
                 SiftUp(buffer, i, count, comparer);
@@ -60,19 +75,19 @@ namespace Squared.Util {
         private int _Count = 0;
         private object _SyncRoot = new object();
 
-        public HeapQueue<T>.ComparisonFunction Comparer;
+        public readonly Comparison<T> Comparer;
 
         public PriorityQueue ()
             : this (DefaultSize) {
         }
 
         public PriorityQueue (int capacity) {
-            Comparer = HeapQueue<T>.DefaultComparer;
+            Comparer = Comparer<T>.Default.Compare;
             _Buffer = new T[capacity];
         }
 
         public PriorityQueue (IEnumerable<T> contents) {
-            Comparer = HeapQueue<T>.DefaultComparer;
+            Comparer = Comparer<T>.Default.Compare;
             _Buffer = contents.ToArray();
             _Count = _Buffer.Length;
             HeapQueue<T>.Heapify(_Buffer, _Count, Comparer);
@@ -117,6 +132,7 @@ namespace Squared.Util {
             T result = _Buffer[0];
             if (_Count > 0) {
                 _Buffer[0] = _Buffer[_Count];
+                _Buffer[_Count] = default(T);
                 HeapQueue<T>.SiftUp(_Buffer, 0, _Count, Comparer);
             }
 
@@ -135,6 +151,7 @@ namespace Squared.Util {
 
         public void Clear () {
             _Count = 0;
+            Array.Clear(_Buffer, 0, _Buffer.Length);
         }
 
         public IEnumerator<T> GetEnumerator () {

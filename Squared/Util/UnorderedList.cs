@@ -154,8 +154,7 @@ namespace Squared.Util {
         public void Clear () {
             _Count = 0;
 
-            for (int i = 0; i < _Items.Length; i++)
-                _Items[i] = default(T);
+            Array.Clear(_Items, 0, _Items.Length);
         }
 
         public T[] GetBuffer () {
