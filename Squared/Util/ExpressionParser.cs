@@ -32,7 +32,6 @@ namespace Squared.Util.RegexExtensions {
     public static class Extensions {
         public static bool TryMatch (this Regex regex, string input, out Match match) {
             match = regex.Match(input);
-            RegexLeak.Fix(regex);
             return (match != null) && (match.Success);
         }
 
@@ -41,7 +40,6 @@ namespace Squared.Util.RegexExtensions {
             int start, out Match match
         ) {
             match = regex.Match(input, start);
-            RegexLeak.Fix(regex);
             return (match != null) && (match.Success);
         }
 
@@ -51,7 +49,6 @@ namespace Squared.Util.RegexExtensions {
             out Match match
         ) {
             match = regex.Match(input, start, length);
-            RegexLeak.Fix(regex);
             return (match != null) && (match.Success);
         }
     }
