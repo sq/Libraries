@@ -113,6 +113,8 @@ namespace Squared.Task {
                 }
             }
 
+            _WakePrevious = null;
+
             return false;
         }
 
@@ -132,6 +134,7 @@ namespace Squared.Task {
 
         void OnErrorChecked () {
             _ErrorChecked = true;
+            _WakePrevious = null;
         }
 
         void ScheduleNextStep (Object value) {
