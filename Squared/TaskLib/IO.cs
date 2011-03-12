@@ -136,6 +136,30 @@ namespace Squared.Task.IO {
                 return _Stream as FileStream;
             }
         }
+
+        public Future<byte[]> ReadToEnd () {
+            var length = (int)(BaseStream.Length - BaseStream.Position);
+            var bytes = new byte[length];
+            var result = new Future<byte[]>();
+
+            var f = Read(bytes, 0, length);
+
+            f.RegisterOnComplete(
+                (_) => {
+                    int bytesRead;
+                    Exception error;
+
+                    f.GetResult(out bytesRead, out error);
+
+                    if ((error == null) && (bytesRead == bytes.Length))
+                        result.SetResult(bytes, null);
+                    else
+                        result.SetResult(null, error);
+                }
+            );
+
+            return result;
+        }
     }
 
     public class StreamDataAdapter : IAsyncDataSource, IAsyncDataWriter {
@@ -289,6 +313,11 @@ namespace Squared.Task.IO {
             }
 
             private void _OnDecodeComplete (IFuture f) {
+                if (Parent.IsDisposed) {
+                    Result.Dispose();
+                    return;
+                }
+
                 var e = f.Error;
                 if (e != null) {
                     Result.Fail(e);
@@ -340,6 +369,11 @@ namespace Squared.Task.IO {
             }
 
             private void _OnDecodeComplete (IFuture f) {
+                if (Parent.IsDisposed) {
+                    Result.Dispose();
+                    return;
+                }
+
                 var e = f.Error;
                 if (e != null) {
                     Buffer.Dispose();
@@ -396,6 +430,11 @@ namespace Squared.Task.IO {
             }
 
             void _OnDecodeComplete (IFuture f) {
+                if (Parent.IsDisposed) {
+                    Result.Dispose();
+                    return;
+                }
+
                 var e = f.Error;
                 if (e != null) {
                     Buffer.Dispose();
@@ -456,6 +495,7 @@ namespace Squared.Task.IO {
                 _DataSource.Dispose();
                 _DataSource = null;
             }
+
             _Encoding = null;
             _Decoder = null;
             _InputBuffer = null;
@@ -545,6 +585,13 @@ namespace Squared.Task.IO {
                 return buffer.ToString();
             else
                 return null;
+        }
+
+        public bool IsDisposed {
+            get {
+                return (_Encoding == null) || (_Decoder == null) ||
+                    (_DecodedBuffer == null) || (_InputBuffer == null);
+            }
         }
 
         public bool EndOfStream {
@@ -671,6 +718,11 @@ namespace Squared.Task.IO {
             }
 
             private void _FlushOnComplete (IFuture f) {
+                if (Parent.IsDisposed) {
+                    Result.Dispose();
+                    return;
+                }
+
                 var e = f.Error;
                 if (e != null)
                     Result.Fail(e);
@@ -835,6 +887,13 @@ namespace Squared.Task.IO {
                 chars[i * 2 + 1] = NewLine;
             }
             return Write(chars);
+        }
+
+        public bool IsDisposed {
+            get {
+                return (_Encoder == null) || (_Encoding == null) ||
+                    (_WriteBuffer == null) || (_SendBuffer == null);
+            }
         }
     }
 }
