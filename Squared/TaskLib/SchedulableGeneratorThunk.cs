@@ -105,15 +105,19 @@ namespace Squared.Task {
         }
 
         bool CheckForDiscardedError () {
-            if ((!_WakeDiscardingResult) && (_WakePrevious != null)) {
-                bool shouldRethrow = !_ErrorChecked;
-                if (shouldRethrow && _WakePrevious.Failed) {
+            if (_ErrorChecked)
+                return false;
+
+            if (_WakePrevious == null)
+                return false;
+
+            if (!_WakeDiscardingResult) {
+                if (_WakePrevious.Failed) {
                     Abort(_WakePrevious.Error);
+                    _WakePrevious = null;
                     return true;
                 }
             }
-
-            _WakePrevious = null;
 
             return false;
         }
@@ -134,7 +138,6 @@ namespace Squared.Task {
 
         void OnErrorChecked () {
             _ErrorChecked = true;
-            _WakePrevious = null;
         }
 
         void ScheduleNextStep (Object value) {
