@@ -81,6 +81,16 @@ namespace Squared.Util {
             : this (DefaultSize) {
         }
 
+        public PriorityQueue (Comparison<T> comparer) {
+            Comparer = comparer;
+            _Buffer = new T[DefaultSize];
+        }
+
+        public PriorityQueue (Comparison<T> comparer, int capacity) {
+            Comparer = comparer;
+            _Buffer = new T[capacity];
+        }
+
         public PriorityQueue (int capacity) {
             Comparer = Comparer<T>.Default.Compare;
             _Buffer = new T[capacity];

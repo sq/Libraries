@@ -241,17 +241,17 @@ namespace Squared.Task {
     }
 
     public class TaskUserControl : UserControl, ITaskOwner {
-        public readonly TaskScheduler Scheduler;
+        protected TaskScheduler _Scheduler = null;
         protected OwnedFutureSet OwnedFutures = new OwnedFutureSet();
 
-        internal TaskUserControl ()
+        public TaskUserControl ()
             : base() {
-            Scheduler = null;
+            _Scheduler = null;
         }
 
         public TaskUserControl (TaskScheduler scheduler)
             : base() {
-            Scheduler = scheduler;
+            _Scheduler = scheduler;
         }
 
         public IFuture Start (ISchedulable schedulable) {
@@ -264,6 +264,18 @@ namespace Squared.Task {
             var f = Scheduler.Start(task, TaskExecutionPolicy.RunAsBackgroundTask);
             OwnedFutures.Add(f);
             return f;
+        }
+
+        public TaskScheduler Scheduler {
+            get {
+                return _Scheduler;
+            }
+            set {
+                if (_Scheduler == null)
+                    _Scheduler = value;
+                else
+                    throw new InvalidOperationException("Already has a scheduler set");
+            }
         }
 
         protected override void Dispose (bool disposing) {

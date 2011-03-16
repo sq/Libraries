@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<testProject xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.gallio.org/">
+  <testPackage shadowCopy="false" debug="false">
+    <files>
+      <file>TaskLib\TaskLibTests\bin\Debug\TaskLibTests.dll</file>
+      <file>Util\UtilTests\bin\Debug\UtilTests.dll</file>
+    </files>
+    <hintDirectories />
+    <excludedFrameworkIds />
+    <properties />
+  </testPackage>
+  <testFilters>
+    <testFilter filterName="LastRun" filterExpr="" />
+    <testFilter filterName="AutoSave" filterExpr="" />
+  </testFilters>
+  <extensionSpecifications />
+  <reportDirectory>..\..\..\..\AppData\Roaming\Gallio\Icarus\Reports</reportDirectory>
+  <reportNameFormat>test-report-{0}-{1}</reportNameFormat>
+</testProject>

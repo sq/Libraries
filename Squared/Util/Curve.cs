@@ -222,12 +222,15 @@ namespace Squared.Util {
         }
 
         public static Interpolator<T> GetByName (string name) {
+            var types = new Type[] {
+                typeof(InterpolatorSource<T>), typeof(int), typeof(float)
+            };
             Type myType = typeof(Interpolators<T>);
             Type resultType = typeof(Interpolator<T>);
-            MethodInfo mi = myType.GetMethod(name);
-            MethodInfo defaultMethod = myType.GetMethod("Null");
-            return Delegate.CreateDelegate(resultType, null, mi ?? defaultMethod)
-                as Interpolator<T>;
+            MethodInfo mi = myType.GetMethod(name, types);
+            if (mi == null)
+                mi = myType.GetMethod("Null", types);
+            return Delegate.CreateDelegate(resultType, null, mi) as Interpolator<T>;
         }
 
         public static Interpolator<T> Default {

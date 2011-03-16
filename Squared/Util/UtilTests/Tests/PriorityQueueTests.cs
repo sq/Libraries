@@ -33,8 +33,9 @@ namespace Squared.Util {
 
         [Test]
         public void CustomComparer () {
-            var pq = new PriorityQueue<int>();
-            pq.Comparer = (lhs, rhs) => (10 - lhs).CompareTo(10 - rhs);
+            var pq = new PriorityQueue<int>(
+                (lhs, rhs) => (10 - lhs).CompareTo(10 - rhs)
+            );
             pq.Enqueue(5);
             pq.Enqueue(3);
             pq.Enqueue(10);
