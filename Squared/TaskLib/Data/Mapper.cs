@@ -138,7 +138,7 @@ namespace Squared.Task.Data.Mapper {
     }
 
     public class Mapper<T> 
-        where T : class, new() {
+        where T : new() {
 
         protected delegate void Setter<U> (T target, U newValue);
 
@@ -311,8 +311,11 @@ namespace Squared.Task.Data.Mapper {
             }
         }
 
-        public static object[] GetColumnValues (T instance) {
-            object[] result = new object[_Columns.Count];
+        public static int GetColumnValues (object instance, object[] result) {
+            if (result == null)
+                throw new ArgumentNullException("result");
+            if (result.Length < _Columns.Count)
+                throw new ArgumentException("Provided array too small to hold column values.", "result");
 
             for (int i = 0; i < _Columns.Count; i++) {
                 var col = _Columns[i];
@@ -321,6 +324,14 @@ namespace Squared.Task.Data.Mapper {
                 else if (col.Field != null)
                     result[i] = col.Field.GetValue(instance);
             }
+
+            return _Columns.Count;
+        }
+
+        public static object[] GetColumnValues (object instance) {
+            object[] result = new object[_Columns.Count];
+
+            GetColumnValues(instance, result);
 
             return result;
         }
@@ -346,6 +357,62 @@ namespace Squared.Task.Data.Mapper {
                 while (Read(out item))
                     yield return item;
             }
+        }
+
+        public class PreparedInsert : IDisposable {
+            public readonly ConnectionWrapper Connection;
+            public readonly Query Query;
+            public readonly string Verb;
+            public readonly string Table;
+
+            public readonly string[] Columns;
+
+            internal PreparedInsert (ConnectionWrapper connection, string tableName, string verb, string[] extraColumns) {
+                Connection = connection;
+                Verb = verb;
+                Table = tableName;
+
+                var typeColumns = ColumnNames;
+
+                Columns = new string[typeColumns.Length + extraColumns.Length];
+
+                Array.Copy(typeColumns, Columns, typeColumns.Length);
+                Array.Copy(extraColumns, 0, Columns, typeColumns.Length, extraColumns.Length);
+
+                var sql = BuildSQL();
+                Query = Connection.BuildQuery(sql);
+            }
+
+            protected string BuildSQL () {
+                var columnNames = String.Join(", ", Columns);
+                var questionMarks = String.Join(", ", Enumerable.Repeat("?", Columns.Length).ToArray());
+
+                return String.Format(
+                    "{0} INTO {1} ({2}) VALUES ({3})",
+                    Verb, Table, columnNames, questionMarks
+                );
+            }
+
+            public Future<int> Insert (object instance, params object[] extraValues) {
+                object[] arguments = new object[Columns.Length];
+
+                int i = GetColumnValues(instance, arguments);
+
+                if ((extraValues != null) && (extraValues.Length > 0))
+                    Array.Copy(extraValues, 0, arguments, i, extraValues.Length);
+
+                return Query.ExecuteNonQuery(arguments);
+            }
+
+            public void Dispose () {
+                Query.Dispose();
+            }
+        }
+
+        public static PreparedInsert PrepareInsert (ConnectionWrapper connection, string tableName, string verb = "INSERT", string[] extraColumns = null) {
+            return new PreparedInsert(
+                connection, tableName, verb, extraColumns
+            );
         }
     }
 }
