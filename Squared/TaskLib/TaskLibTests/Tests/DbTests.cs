@@ -590,6 +590,30 @@ namespace Squared.Task.Data {
                 Assert.AreEqual(null, items[1].Foo);
             }
         }
+
+        [Test]
+        public void TestPreparedInsert () {
+            var value = new ExplicitlyMappedClass { 
+                Bar = 1, Foo = 2 
+            };
+
+            // Foo is a numeric column, so prepared inserts will use Foo as a default column name
+            // But Bar has a column name explicitly set to B
+            Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Test (Foo INTEGER, B INTEGER)"));
+
+            using (var pi = Mapper<ExplicitlyMappedClass>.PrepareInsert(Wrapper, "Test"))
+                Scheduler.WaitFor(pi.Insert(value));
+
+            using (var q = Wrapper.BuildQuery("SELECT Foo, B FROM Test"))
+            using (var e = q.Execute<ExplicitlyMappedClass>()) {
+                var items = (ExplicitlyMappedClass[])Scheduler.WaitFor(e.GetArray());
+
+                Assert.AreEqual(1, items.Length);
+
+                Assert.AreEqual(1, items[0].Bar);
+                Assert.AreEqual(2, items[0].Foo);
+            }
+        }
     }
 
     [TestFixture]

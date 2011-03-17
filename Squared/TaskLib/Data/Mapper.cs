@@ -373,11 +373,15 @@ namespace Squared.Task.Data.Mapper {
                 Table = tableName;
 
                 var typeColumns = ColumnNames;
+                int numExtraColumns = 0;
+                if (extraColumns != null)
+                    numExtraColumns = extraColumns.Length;
 
-                Columns = new string[typeColumns.Length + extraColumns.Length];
+                Columns = new string[typeColumns.Length + numExtraColumns];
 
                 Array.Copy(typeColumns, Columns, typeColumns.Length);
-                Array.Copy(extraColumns, 0, Columns, typeColumns.Length, extraColumns.Length);
+                if (numExtraColumns > 0)
+                    Array.Copy(extraColumns, 0, Columns, typeColumns.Length, extraColumns.Length);
 
                 var sql = BuildSQL();
                 Query = Connection.BuildQuery(sql);
