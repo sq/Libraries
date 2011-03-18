@@ -161,6 +161,7 @@ namespace Squared.Task.Data {
                 }
 
                 newWorkItemEvent.WaitOne();
+                newWorkItemEvent.Reset();
             }
         }
 
