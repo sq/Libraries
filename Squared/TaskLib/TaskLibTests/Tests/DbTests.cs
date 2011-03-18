@@ -7,33 +7,100 @@ using System.Data.Common;
 using Squared.Task.Data.Extensions;
 using Squared.Task.Data.Mapper;
 using System.Linq;
-
-// Requires System.Data.SQLite
-#if SQLITE
 using System.Data.SQLite;
 using Squared.Util;
+
 namespace Squared.Task.Data {
-    [TestFixture]
-    public class MemoryDbTests {
-        SQLiteConnection Connection;
+    // Put common code between DiskDb/MemoryDb in here, along with performance tests
+    //  that we want to run against both impls. No need to run general characterization
+    //  or unit tests against both, since the only difference is that one of them is
+    //  backed by memory instead of disk (i.e., same sqlite impl, same behavior).
+    public class GenericDbTests {
+        public SQLiteConnection Connection;
 
-        [SetUp]
-        public void SetUp () {
-            Connection = new SQLiteConnection("Data Source=:memory:");
-            Connection.Open();
-        }
-
-        internal void DoQuery (string sql) {
+        public void DoQuery (string sql) {
             var cmd = Connection.CreateCommand();
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
             cmd.Dispose();
         }
 
+        static IEnumerator<object> SequentialInsertTask (ConnectionWrapper cw, Query query, int numInsertions) {
+            for (int i = 0; i < numInsertions; i++)
+                yield return query.ExecuteNonQuery(i, i * 2);
+        }
+
+        static IEnumerator<object> TransactionalSequentialInsertTask (ConnectionWrapper cw, Query query, int numInsertions) {
+            using (var xact = cw.CreateTransaction()) {
+                yield return xact;
+
+                for (int i = 0; i < numInsertions; i++)
+                    yield return query.ExecuteNonQuery(i, i*2);
+
+                yield return xact.Commit();
+            }
+        }
+
+        [Test]
+        public void TestSequentialInsertPerformanceWithThreadSafeJobQueue () {
+            InsertBenchmark(5000, 75000, JobQueue.ThreadSafe, SequentialInsertTask);
+        }
+
+        [Test]
+        public void TestSequentialInsertPerformanceWithWindowsMessageJobQueue () {
+            InsertBenchmark(500, 2000, JobQueue.WindowsMessageBased, SequentialInsertTask);
+        }
+
+        [Test]
+        public void TestTransactionalInsertPerformanceWithThreadSafeJobQueue () {
+            InsertBenchmark(5000, 75000, JobQueue.ThreadSafe, TransactionalSequentialInsertTask);
+        }
+
+        [Test]
+        public void TestTransactionalInsertPerformanceWithWindowsMessageJobQueue () {
+            InsertBenchmark(500, 2000, JobQueue.WindowsMessageBased, TransactionalSequentialInsertTask);
+        }
+
+        public void InsertBenchmark (int warmupLength, int numInsertions, Func<IJobQueue> jobQueueFactory, Func<ConnectionWrapper, Query, int, IEnumerator<object>> insertTask) {
+            DoQuery("CREATE TABLE Test (A INTEGER NOT NULL, B INTEGER NOT NULL)");
+
+            var jobQueue = jobQueueFactory();
+            var wjq = jobQueue as WindowsMessageJobQueue;
+
+            using (var scheduler = new TaskScheduler(() => jobQueue))
+            using (var cw = new ConnectionWrapper(scheduler, Connection))
+            using (var query = cw.BuildQuery("INSERT INTO Test (A, B) VALUES (?, ?)")) {
+                scheduler.WaitFor(insertTask(cw, query, warmupLength));
+                DoQuery("DELETE FROM Test");
+
+                var e = insertTask(cw, query, numInsertions);
+                long timeStart = Time.Ticks;
+
+                scheduler.WaitFor(e);
+
+                long elapsed = Time.Ticks - timeStart;
+                var elapsedSeconds = (decimal)elapsed / Time.SecondInTicks;
+
+                Console.WriteLine(
+                    "Inserted {0} row(s) in {1:00.000} second(s) at ~{2:000000.00} rows/sec.",
+                    numInsertions, elapsedSeconds, numInsertions / elapsedSeconds
+                );
+            }
+        }
+
         [TearDown]
-        public void TearDown () {
+        public virtual void TearDown () {
             Connection.Dispose();
             Connection = null;
+        }
+    }
+
+    [TestFixture]
+    public class MemoryDbTests : GenericDbTests {
+        [SetUp]
+        public void SetUp () {
+            Connection = new SQLiteConnection("Data Source=:memory:");
+            Connection.Open();
         }
 
         [Test]
@@ -314,27 +381,14 @@ namespace Squared.Task.Data {
     }
 
     [TestFixture]
-    public class DiskDbTests {
-        SQLiteConnection Connection;
-
+    public class DiskDbTests : GenericDbTests {
         [SetUp]
         public void SetUp () {
             string filename = System.IO.Path.GetTempFileName();
             Connection = new SQLiteConnection(String.Format("Data Source={0}", filename));
             Connection.Open();
-        }
-
-        internal void DoQuery (string sql) {
-            var cmd = Connection.CreateCommand();
-            cmd.CommandText = sql;
-            cmd.ExecuteNonQuery();
-            cmd.Dispose();
-        }
-
-        [TearDown]
-        public void TearDown () {
-            Connection.Dispose();
-            Connection = null;
+            DoQuery("PRAGMA journal_mode=MEMORY");
+            DoQuery("PRAGMA synchronous=OFF");
         }
 
         [Test]
@@ -745,4 +799,3 @@ namespace Squared.Task.Data {
         }
     }
 }
-#endif

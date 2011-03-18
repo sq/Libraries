@@ -116,7 +116,7 @@ namespace Squared.Task {
             if (!future.Completed)
                 Application.DoEvents();
             if (!future.Completed)
-                Thread.Sleep(1);
+                Thread.Sleep(0);
 
             return future.Completed;
         }
