@@ -152,8 +152,12 @@ namespace Squared.Task.Data {
                 PendingQuery item;
                 while ((_ActiveQuery == null) && _QueryQueue.Dequeue(out item)) {
                     NotifyQueryBegan(item.Future);
-                    lock (this)
-                        item.ExecuteFunc();
+                    try {
+                        lock (this)
+                            item.ExecuteFunc();
+                    } catch (Exception ex) {
+                        item.Future.SetResult(null, ex);
+                    }
                 }
 
                 newWorkItemEvent.WaitOne();

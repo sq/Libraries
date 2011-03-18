@@ -60,6 +60,8 @@ namespace Squared.Task.Data {
     }
 
     public class Query : IDisposable {
+        protected int _NumberOfOutstandingQueries = 0;
+
         public struct ParameterCollection : IEnumerable<IDataParameter> {
             public readonly Query Query;
 
@@ -164,12 +166,14 @@ namespace Squared.Task.Data {
             var m = _Manager;
 
             OnDispose od = (_) => {
+                Interlocked.Decrement(ref _NumberOfOutstandingQueries);
                 m.NotifyQueryCompleted(f);
             };
             f.RegisterOnDispose(od);
 
             if (suspendCompletion) {
                 OnComplete oc = (_) => {
+                    Interlocked.Decrement(ref _NumberOfOutstandingQueries);
                     if (_.Failed)
                         m.NotifyQueryCompleted(f);
                 };
@@ -177,12 +181,14 @@ namespace Squared.Task.Data {
                 f.RegisterOnComplete(oc);
             } else {
                 OnComplete oc = (_) => {
+                    Interlocked.Decrement(ref _NumberOfOutstandingQueries);
                     m.NotifyQueryCompleted(f);
                 };
 
                 f.RegisterOnComplete(oc);
             }
 
+            Interlocked.Increment(ref _NumberOfOutstandingQueries);
             Action ef = GetExecuteFunc(parameters, queryFunc, f);
             m.EnqueueQuery(f, ef);
 
@@ -197,7 +203,10 @@ namespace Squared.Task.Data {
         public Future<int> ExecuteNonQuery (params object[] parameters) {
             Func<IFuture, int> queryFunc = (f) => {
                 _Manager.SetActiveQueryObject(this);
-                return _Command.ExecuteNonQuery();
+                if (_Command != null)
+                    return _Command.ExecuteNonQuery();
+                else
+                    throw new ObjectDisposedException("query");
             };
             return InternalExecuteQuery(parameters, queryFunc, false);
         }
@@ -434,11 +443,13 @@ namespace Squared.Task.Data {
         }
 
         public void Dispose () {
+            if (_NumberOfOutstandingQueries > 0)
+                throw new InvalidOperationException("You cannot dispose a query while it is currently executing.");
+
             if (_Command != null) {
                 _Command.Dispose();
                 _Command = null;
             }
-            _Manager = null;
         }
     }
 }
