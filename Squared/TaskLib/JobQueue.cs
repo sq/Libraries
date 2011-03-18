@@ -36,9 +36,22 @@ namespace Squared.Task {
         }
     }
 
+    /// <summary>
+    /// Invoked to notify the owner of the job queue that its maximum step duration has been exceeded.
+    /// The default behavior when no handler has been provided for a thread safe job queue is to throw (because by default there is no maximum step duration for a thread safe job queue).
+    /// The default behavior when no handler has been provided for a windows message job queue is to abort the step.
+    /// </summary>
+    /// <returns>Returns true to continue the step operation. Returns false to abort the step.</returns>
+    public delegate bool MaxStepDurationExceededHandler (long elapsedTicks);
+
     public sealed class ThreadSafeJobQueue : IJobQueue {
+        public const int StepDurationCheckInterval = 1000;
+        public static readonly long? DefaultMaxStepDuration = null;
+
+        public readonly long? MaxStepDuration;
+        public event MaxStepDurationExceededHandler MaxStepDurationExceeded;
+
         public const double DefaultWaitTimeout = 1.0;
-        public readonly long MaxStepDuration = 0;
 
         private bool _Disposed = false;
 
@@ -48,16 +61,16 @@ namespace Squared.Task {
         private AtomicQueue<Action> _Queue = new AtomicQueue<Action>();
 
         public ThreadSafeJobQueue ()
-            : this(0) {
+            : this(DefaultMaxStepDuration) {
         }
 
-        public ThreadSafeJobQueue (long maxStepDuration) {
+        public ThreadSafeJobQueue (long? maxStepDuration) {
             MaxStepDuration = maxStepDuration;
         }
 
         public void Step () {
             long stepStarted = 0;
-            if (MaxStepDuration > 0)
+            if (MaxStepDuration.HasValue)
                 stepStarted = Time.Ticks;
 
             int i = 0;
@@ -67,12 +80,21 @@ namespace Squared.Task {
                     item();
                     i++;
 
-                    if ((MaxStepDuration > 0) && ((i % 1000) == 0)) {
-                        if ((Time.Ticks - stepStarted) > MaxStepDuration)
-                            throw new InfiniteStepException(MaxStepDuration);
+                    if ((MaxStepDuration.HasValue) && ((i % StepDurationCheckInterval) == 0)) {
+                        var elapsedTicks = (Time.Ticks - stepStarted);
+                        if (elapsedTicks > MaxStepDuration.Value)
+                            if (!OnMaxStepDurationExceeded(elapsedTicks))
+                                return;
                     }
                 }
             } while (item != null);
+        }
+
+        protected bool OnMaxStepDurationExceeded (long elapsedTicks) {
+            if (MaxStepDurationExceeded != null)
+                return MaxStepDurationExceeded(elapsedTicks);
+            else
+                throw new InfiniteStepException(elapsedTicks);
         }
 
         public bool WaitForFuture (IFuture future) {

@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Security;
 using Squared.Util.Event;
+using Squared.Util;
 
 namespace Squared.Task {
     public static partial class JobQueue {
@@ -26,10 +27,21 @@ namespace Squared.Task {
         private int WM_RUN_WORK_ITEM;
         private const int WS_EX_NOACTIVATE = 0x08000000;
 
-        private Queue<Action> _Queue = new Queue<Action>();
+        private AtomicQueue<Action> _Queue = new AtomicQueue<Action>();
+        private int StepIsPending = 0;
         private int ExecutionDepth = 0;
 
+        public const int StepDurationCheckInterval = 500;
+        public static readonly long? DefaultMaxStepDuration = Squared.Util.Time.SecondInTicks / 100;
+
+        public readonly long? MaxStepDuration;
+        public event MaxStepDurationExceededHandler MaxStepDurationExceeded;
+
         public WindowsMessageJobQueue ()
+            : this(DefaultMaxStepDuration) {
+        }
+
+        public WindowsMessageJobQueue (long? maxStepDuration)
             : base() {
             WM_RUN_WORK_ITEM = RegisterWindowMessage("Squared.TaskLib.RunWorkItem");
             var cp = new CreateParams {
@@ -43,72 +55,81 @@ namespace Squared.Task {
                 Parent = new IntPtr(-3)
             };
             CreateHandle(cp);
+
+            MaxStepDuration = maxStepDuration;
         }
 
         protected override void WndProc (ref Message m) {
             if (m.Msg == WM_RUN_WORK_ITEM) {
-                SingleStep();
+                InternalStep(MaxStepDuration);
             } else {
                 base.WndProc(ref m);
             }
         }
 
         public void QueueWorkItem (Action item) {
-            lock (_Queue)
-                _Queue.Enqueue(item);
-            PostMessage(Handle, WM_RUN_WORK_ITEM, IntPtr.Zero, IntPtr.Zero);
+            _Queue.Enqueue(item);
+            MarkPendingStep();
         }
 
-        public void Clear () {
-            lock (_Queue)
-                _Queue.Clear();
+        protected void MarkPendingStep () {
+            if (Interlocked.CompareExchange(ref StepIsPending, 1, 0) == 0)
+                PostMessage(Handle, WM_RUN_WORK_ITEM, IntPtr.Zero, IntPtr.Zero);
         }
 
-        internal void SingleStep () {
+        protected bool OnMaxStepDurationExceeded (long elapsedTicks) {
+            if (MaxStepDurationExceeded != null)
+                return MaxStepDurationExceeded(elapsedTicks);
+            else
+                return false;
+        }
+
+        protected void InternalStep (long? maxStepDuration) {
+            StepIsPending = 0;
+
+            long stepStarted = 0;
+            if (maxStepDuration.HasValue)
+                stepStarted = Time.Ticks;
+
+            int i = 0;
             Action item = null;
-            lock (_Queue) {
-                if (_Queue.Count == 0)
-                    return;
-                item = _Queue.Dequeue();
-            }
-            if (item != null) {
-                try {
-                    int depth = Interlocked.Increment(ref ExecutionDepth);
-                    item();
-                } finally {
-                    Interlocked.Decrement(ref ExecutionDepth);
-                }
-            }
-        }
-
-        public bool WaitForFuture (IFuture future) {
-            while (!future.Completed) {
-                Action item = null;
-                lock (_Queue)
-                    if (_Queue.Count > 0)
-                        item = _Queue.Dequeue();
-
+            while (_Queue.Dequeue(out item)) {
                 if (item != null)
                     item();
-                else {
-                    Application.DoEvents();
-                    Thread.Sleep(10);
-                    return false;
+
+                i++;
+
+                if ((maxStepDuration.HasValue) && ((i % StepDurationCheckInterval) == 0)) {
+                    var elapsedTicks = (Time.Ticks - stepStarted);
+                    if (elapsedTicks > maxStepDuration.Value) {
+                        if (!OnMaxStepDurationExceeded(elapsedTicks))
+                            return;
+
+                        MarkPendingStep();
+                    }
                 }
             }
+        }
 
-            return true;
+        // Flush the message queue, then sleep for a moment if the future is still not completed.
+        public bool WaitForFuture (IFuture future) {
+            if (!future.Completed)
+                Application.DoEvents();
+            if (!future.Completed)
+                Thread.Sleep(1);
+
+            return future.Completed;
         }
 
         public void Step () {
             try {
-                int depth = Interlocked.Increment(ref ExecutionDepth);
+                int depth = ++ExecutionDepth;
                 if (depth > 1)
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException("A manual step is already in progress for this job queue");
 
                 Application.DoEvents();
             } finally {
-                Interlocked.Decrement(ref ExecutionDepth);
+                ExecutionDepth--;
             }
         }
 

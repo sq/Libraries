@@ -155,19 +155,29 @@ namespace Squared.Util {
             );
         }
 
+        protected void AssertCloseTimestamps (DateTime lhs, DateTime rhs) {
+            var delta = (rhs - lhs).Ticks;
+            if (Math.Abs(delta) >= Time.SecondInTicks)
+                Assert.Fail(
+                    "Expected timestamps to be roughly the same, but {0} != {1}", 
+                    lhs.ToString("o"), 
+                    rhs.ToString("o")
+                );
+        }
+
         [Test]
         public void EnumDirectoryEntriesTimestamps () {
             DataPath += @"dirs\";
 
             var entries = Squared.Util.IO.EnumDirectoryEntries(DataPath, "*.*", true, (_) => true);
             foreach (var entry in entries) {
-                Assert.AreEqual(
-                    DateTime.FromFileTimeUtc(entry.Created).ToString("g"),
-                    System.IO.File.GetCreationTimeUtc(entry.Name).ToString("g")
+                AssertCloseTimestamps(
+                    DateTime.FromFileTimeUtc(entry.Created),
+                    System.IO.File.GetCreationTimeUtc(entry.Name)
                 );
-                Assert.AreEqual(
-                    DateTime.FromFileTimeUtc(entry.LastWritten).ToString("g"),
-                    System.IO.File.GetLastWriteTimeUtc(entry.Name).ToString("g")
+                AssertCloseTimestamps(
+                    DateTime.FromFileTimeUtc(entry.LastWritten),
+                    System.IO.File.GetLastWriteTimeUtc(entry.Name)
                 );
             }
         }

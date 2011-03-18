@@ -405,7 +405,6 @@ namespace Squared.Task {
         public Exception Error {
             get {
                 int state = _State;
-                Thread.MemoryBarrier();
                 if (state == State_CompletedWithValue) {
                     return null;
                 } else if (state == State_CompletedWithError) {
@@ -419,7 +418,6 @@ namespace Squared.Task {
         public T Result {
             get {
                 int state = _State;
-                Thread.MemoryBarrier();
                 if (state == State_CompletedWithValue) {
                     return _Result;
                 } else if (state == State_CompletedWithError) {

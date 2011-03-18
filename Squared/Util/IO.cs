@@ -450,6 +450,7 @@ namespace Squared.Util {
             var globs = (from p in patterns select GlobToRegex(p)).ToArray();
             var findData = new WIN32_FIND_DATA();
             var searchPaths = new Queue<string>();
+            var entry = new DirectoryEntry();
             searchPaths.Enqueue("");
 
             while (searchPaths.Count != 0) {
@@ -493,15 +494,14 @@ namespace Squared.Util {
                             }
 
                             if (globMatch) {
-                                yield return new DirectoryEntry {
-                                    Name = buffer.ToString(),
-                                    Attributes = findData.dwFileAttributes,
-                                    Size = findData.dwFileSizeLow + (findData.dwFileSizeHigh * ((ulong)(UInt32.MaxValue) + 1)),
-                                    Created = findData.ftCreationTime,
-                                    LastAccessed = findData.ftLastAccessTime,
-                                    LastWritten = findData.ftLastWriteTime,
-                                    IsDirectory = isDirectory
-                                };
+                                entry.Name = buffer.ToString();
+                                entry.Attributes = findData.dwFileAttributes;
+                                entry.Size = findData.dwFileSizeLow + (findData.dwFileSizeHigh * ((ulong)(UInt32.MaxValue) + 1));
+                                entry.Created = findData.ftCreationTime;
+                                entry.LastAccessed = findData.ftLastAccessTime;
+                                entry.LastWritten = findData.ftLastWriteTime;
+                                entry.IsDirectory = isDirectory;
+                                yield return entry;
                             }
                         }
                     }

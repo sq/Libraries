@@ -41,13 +41,12 @@ namespace Squared.Util {
             }
 
             _Tail.Next = node;
-            Thread.MemoryBarrier();
             _Tail = node;
 
-            Interlocked.Increment(ref _Count);
-
-            _ProducerLock = 0;
             Thread.MemoryBarrier();
+            
+            _ProducerLock = 0;
+            Interlocked.Increment(ref _Count);
         }
 
         public void Enqueue (T value) {
@@ -65,28 +64,28 @@ namespace Squared.Util {
             bool success = false;
 
             var head = _Head;
-            Thread.MemoryBarrier();
             var next = head.Next;
             Thread.MemoryBarrier();
+
             if (next != null) {
+                _Head = next;
                 Thread.MemoryBarrier();
                 head.Next = null;
                 head.Value = default(T);
-                Thread.MemoryBarrier();
-                _Head = next;
-                Interlocked.Decrement(ref _Count);
 
                 deadNode = head;
                 result = next;
                 success = true;
+
+                Interlocked.Decrement(ref _Count);
             } else {
                 result = null;
                 deadNode = null;
             }
 
             Thread.MemoryBarrier();
+
             _ConsumerLock = 0;
-            Thread.MemoryBarrier();
 
             return success;
         }

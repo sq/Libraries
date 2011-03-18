@@ -104,6 +104,9 @@ namespace Squared.Task.Data {
         }
 
         internal void ValidateParameters (object[] parameters) {
+            if (_Manager == null)
+                throw new ObjectDisposedException("query");
+
             if (parameters.Length != _Command.Parameters.Count) {
                 string errorString = String.Format("Got {0} parameter(s), expected {1}.", parameters.Length, _Command.Parameters.Count);
                 throw new InvalidOperationException(errorString);
@@ -119,6 +122,9 @@ namespace Squared.Task.Data {
         }
 
         internal void BindParameters (object[] parameters) {
+            if (_Manager == null)
+                throw new ObjectDisposedException("query");
+
             for (int i = 0; i < parameters.Length; i++) {
                 var value = parameters[i];
                 if (value is NamedParam) {
@@ -133,6 +139,9 @@ namespace Squared.Task.Data {
         }
 
         private Action GetExecuteFunc<T> (object[] parameters, Func<IFuture, T> queryFunc, Future<T> future) {
+            if (_Manager == null)
+                throw new ObjectDisposedException("query");
+
             WaitCallback wrapper = (_) => {
                 try {
                     BindParameters(parameters);
@@ -149,8 +158,8 @@ namespace Squared.Task.Data {
         }
 
         private Future<T> InternalExecuteQuery<T> (object[] parameters, Func<IFuture, T> queryFunc, bool suspendCompletion) {
-            if (_Manager.Closed || _Manager == null)
-                return null;
+            if (_Manager == null || _Manager.Closed)
+                throw new ObjectDisposedException("query");
 
             ValidateParameters(parameters);
             var f = new Future<T>();
@@ -221,6 +230,14 @@ namespace Squared.Task.Data {
             Func<IFuture, QueryDataReader> queryFunc = (f) => {
                 _Manager.SetActiveQueryObject(this);
                 return new QueryDataReader(this, _Command.ExecuteReader(), f);
+            };
+            return InternalExecuteQuery(parameters, queryFunc, true);
+        }
+
+        public Future<QueryDataReader> ExecuteReader (CommandBehavior behavior, params object[] parameters) {
+            Func<IFuture, QueryDataReader> queryFunc = (f) => {
+                _Manager.SetActiveQueryObject(this);
+                return new QueryDataReader(this, _Command.ExecuteReader(behavior), f);
             };
             return InternalExecuteQuery(parameters, queryFunc, true);
         }

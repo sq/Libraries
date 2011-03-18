@@ -47,22 +47,34 @@ namespace Squared.Task {
             Assert.AreEqual(10, future.Result);
         }
 
-        IEnumerator<object> TaskLongLivedWorkerStepWaiter (int[] buf) {
-            for (int i = 0; i < 250000; i++) {
+        IEnumerator<object> TaskLongLivedWorker (int[] buf, int numYields) {
+            var yieldInstance = new Yield();
+
+            for (int i = 0; i < numYields; i++) {
                 buf[0] = buf[0] + 1;
-                yield return new WaitForNextStep();
+                yield return yieldInstance;
+            }
+        }
+
+        IEnumerator<object> TaskLongLivedWorkerStepWaiter (int[] buf, int numSteps) {
+            var waitInstance = new WaitForNextStep();
+
+            for (int i = 0; i < numSteps; i++) {
+                buf[0] = buf[0] + 1;
+                yield return waitInstance;
             }
         }
 
         [Test]
         public void StepPerformanceTest () {
+            int numSteps = 5000;
             var buf = new int[1];
 
-            var f = Scheduler.Start(TaskLongLivedWorkerStepWaiter(buf));
+            var f = Scheduler.Start(TaskLongLivedWorkerStepWaiter(buf, numSteps));
             while (Scheduler.HasPendingTasks)
                 Scheduler.Step();
 
-            Assert.AreEqual(250000, buf[0]);
+            Assert.AreEqual(numSteps, buf[0]);
             buf[0] = 0;
 
             GC.Collect();
@@ -70,14 +82,41 @@ namespace Squared.Task {
 
             long timeStart = Time.Ticks;
 
-            f = Scheduler.Start(TaskLongLivedWorkerStepWaiter(buf));
+            f = Scheduler.Start(TaskLongLivedWorkerStepWaiter(buf, numSteps));
             while (Scheduler.HasPendingTasks)
                 Scheduler.Step();
 
             long timeEnd = Time.Ticks;
             TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
-            Assert.AreEqual(250000, buf[0]);
+            Assert.AreEqual(numSteps, buf[0]);
             Console.WriteLine("Took {0:N2} secs for {1} steps. {2:N1} steps/sec", elapsed.TotalSeconds, buf[0], 1.0 * buf[0] / elapsed.TotalSeconds);
+        }
+
+        [Test]
+        public void WorkItemPerformanceTest () {
+            int numYields = 250000;
+            var buf = new int[1];
+
+            var f = Scheduler.Start(TaskLongLivedWorker(buf, numYields));
+            while (Scheduler.HasPendingTasks)
+                Scheduler.Step();
+
+            Assert.AreEqual(numYields, buf[0]);
+            buf[0] = 0;
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
+            long timeStart = Time.Ticks;
+
+            f = Scheduler.Start(TaskLongLivedWorker(buf, numYields));
+            while (Scheduler.HasPendingTasks)
+                Scheduler.Step();
+
+            long timeEnd = Time.Ticks;
+            TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
+            Assert.AreEqual(numYields, buf[0]);
+            Console.WriteLine("Took {0:N2} secs for {1} yields. {2:N1} yields/sec", elapsed.TotalSeconds, buf[0], 1.0 * buf[0] / elapsed.TotalSeconds);
         }
     }
 
