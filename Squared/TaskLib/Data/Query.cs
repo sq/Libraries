@@ -144,7 +144,7 @@ namespace Squared.Task.Data {
             if (_Manager == null)
                 throw new ObjectDisposedException("query");
 
-            WaitCallback wrapper = (_) => {
+            return () => {
                 try {
                     BindParameters(parameters);
                     T result = queryFunc(future);
@@ -153,10 +153,6 @@ namespace Squared.Task.Data {
                     future.Fail(e);
                 }
             };
-            Action ef = () => {
-                ThreadPool.QueueUserWorkItem(wrapper);
-            };
-            return ef;
         }
 
         private Future<T> InternalExecuteQuery<T> (object[] parameters, Func<IFuture, T> queryFunc, bool suspendCompletion) {

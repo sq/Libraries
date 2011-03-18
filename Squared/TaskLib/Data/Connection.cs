@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Data;
 using System.Threading;
 using System.Linq.Expressions;
+using Squared.Util;
 
 namespace Squared.Task.Data {
     public class ConnectionDisposedException : Exception {
@@ -15,9 +16,14 @@ namespace Squared.Task.Data {
     }
 
     public class ConnectionWrapper : IDisposable {
-        struct WaitingQuery {
-            public IFuture Future;
-            public Action ExecuteFunc;
+        protected struct PendingQuery {
+            public readonly Action ExecuteFunc;
+            public readonly IFuture Future;
+
+            public PendingQuery (Action executeFunc, IFuture future) {
+                Future = future;
+                ExecuteFunc = executeFunc;
+            }
         }
 
         static readonly Regex
@@ -31,10 +37,13 @@ namespace Squared.Task.Data {
         readonly bool _OwnsConnection = false;
         IFuture _ActiveQuery = null;
         Query _ActiveQueryObject = null;
-        protected readonly Query _BeginTransaction, _CommitTransaction, _RollbackTransaction, _BeginTransactionExclusive;
+        protected readonly Query _BeginTransaction, _CommitTransaction, 
+            _RollbackTransaction, _BeginTransactionExclusive;
         int _TransactionDepth = 0;
         bool _TransactionFailed = false;
-        readonly Queue<WaitingQuery> _WaitingQueries = new Queue<WaitingQuery>();
+
+        protected readonly AtomicQueue<PendingQuery> _QueryQueue = new AtomicQueue<PendingQuery>();
+        protected Internal.WorkerThread<AtomicQueue<PendingQuery>> _QueryThread;
 
         public ConnectionWrapper (TaskScheduler scheduler, IDbConnection connection)
             : this(scheduler, connection, false) {
@@ -126,51 +135,57 @@ namespace Squared.Task.Data {
         }
 
         internal void EnqueueQuery (IFuture future, Action executeFunc) {
-            if (_Closing)
-                return;
+            lock (this)
+            if (!_Closing) {
+                _QueryQueue.Enqueue(new PendingQuery(executeFunc, future));
 
-            var wq = new WaitingQuery {
-                Future = future,
-                ExecuteFunc = executeFunc
-            };
-            lock (this) {
-                if (_ActiveQuery == null)
-                    IssueQuery(wq);
-                else
-                    _WaitingQueries.Enqueue(wq);
+                WakeQueryThread();
+
+                return;
             }
+
+            future.SetResult(null, new ConnectionDisposedException());
+        }
+
+        protected void QueryThreadFunc (AtomicQueue<PendingQuery> workItems, ManualResetEvent newWorkItemEvent) {
+            while (true) {
+                PendingQuery item;
+                while ((_ActiveQuery == null) && _QueryQueue.Dequeue(out item)) {
+                    NotifyQueryBegan(item.Future);
+                    lock (this)
+                        item.ExecuteFunc();
+                }
+
+                newWorkItemEvent.WaitOne();
+            }
+        }
+
+        internal void WakeQueryThread () {
+            if (_QueryThread == null)
+                _QueryThread = new Internal.WorkerThread<AtomicQueue<PendingQuery>>(QueryThreadFunc, ThreadPriority.Normal);
+
+            _QueryThread.Wake();
         }
 
         internal void SetActiveQueryObject (Query obj) {
             _ActiveQueryObject = obj;
         }
 
-        private void IssueQuery (WaitingQuery waitingQuery) {
-            if (_ActiveQuery != null)
-                throw new InvalidOperationException("IssueQuery invoked while a query was still active");
-
-            _ActiveQueryObject = null;
-            _ActiveQuery = waitingQuery.Future;
-            waitingQuery.ExecuteFunc();
+        internal void NotifyQueryBegan (IFuture future) {
+            var previousQuery = Interlocked.Exchange(ref _ActiveQuery, future);
+            if (previousQuery != null)
+                throw new InvalidOperationException("NotifyQueryBegan invoked while a query was still active");
         }
 
         internal void NotifyQueryCompleted (IFuture future) {
-            lock (this) {
-                if (_ActiveQuery != future) {
-                    /*
-                    if (!_Closing)
-                        throw new InvalidOperationException("NotifyQueryCompleted invoked by a query that was not active");
-                     */
-                } else {
-                    _ActiveQuery = null;
-                    _ActiveQueryObject = null;
-                }
-
-                if (_WaitingQueries.Count > 0) {
-                    var wq = _WaitingQueries.Dequeue();
-                    IssueQuery(wq);
-                }
+            var aq = Interlocked.Exchange(ref _ActiveQuery, null);
+            if (aq != future) {
+                if (!_Closing)
+                    throw new InvalidOperationException("NotifyQueryCompleted invoked by a query that was not active");
             }
+
+            _ActiveQueryObject = null;
+            WakeQueryThread();
         }
 
         public Future<object> ExecuteScalar (string sql, params object[] parameters) {
@@ -253,44 +268,38 @@ namespace Squared.Task.Data {
         }
 
         public IEnumerator<object> Dispose () {
-            lock (this) {
+            lock (this)
                 _Closing = true;
 
-                if (_Connection != null) {
-                    while (_ActiveQuery != null) {
-                        if (_ActiveQuery.Completed) {
-                            break;
-                        } else {
-                            System.Diagnostics.Debug.WriteLine(String.Format("ConnectionWrapper waiting for enqueued query {0}", _ActiveQuery));
-                        }
-                        Monitor.Exit(this);
-                        yield return new Yield();
-                        Monitor.Enter(this);
+            if (_Connection != null) {
+                var exc = new ConnectionDisposedException();
+                PendingQuery query;
+                while (_QueryQueue.Dequeue(out query)) {
+                    try {
+                        query.Future.SetResult(null, exc);
+                    } catch (Exception ex) {
+                        System.Diagnostics.Debug.WriteLine(
+                            String.Format("Unhandled exception in connection teardown: {0}", ex)
+                        );
                     }
+                }
 
-                    while (_TransactionDepth > 0) {
-                        System.Diagnostics.Debug.WriteLine("ConnectionWrapper.Dispose rolling back active transaction");
-                        Monitor.Exit(this);
-                        yield return RollbackTransaction();
-                        Monitor.Enter(this);
-                    }
+                while (_TransactionDepth > 0) {
+                    System.Diagnostics.Debug.WriteLine("ConnectionWrapper.Dispose rolling back active transaction");
 
-                    while (_WaitingQueries.Count > 0) {
-                        try {
-                            _WaitingQueries.Dequeue().Future.SetResult(null, new ConnectionDisposedException());
-                        } catch (Exception ex) {
-                            System.Diagnostics.Debug.WriteLine(String.Format("Unhandled exception in connection teardown: {0}", ex));
-                        }
-                    }
+                    yield return RollbackTransaction();
+                }
 
+                lock (this) {
                     if (_OwnsConnection)
                         _Connection.Close();
 
                     _Connection = null;
                 }
-
-                _Scheduler = null;
             }
+
+            _QueryThread.Dispose();
+            _Scheduler = null;
         }
 
         void IDisposable.Dispose () {

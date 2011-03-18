@@ -147,11 +147,11 @@ namespace Squared.Task {
 
         private IJobQueue _JobQueue = null;
         private AtomicQueue<Action> _StepListeners = new AtomicQueue<Action>();
-        private WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
+        private Internal.WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
 
         public TaskScheduler (Func<IJobQueue> JobQueueFactory) {
             _JobQueue = JobQueueFactory();
-            _SleepWorker = new WorkerThread<PriorityQueue<SleepItem>>(SleepWorkerThreadFunc, ThreadPriority.AboveNormal);
+            _SleepWorker = new Internal.WorkerThread<PriorityQueue<SleepItem>>(SleepWorkerThreadFunc, ThreadPriority.AboveNormal);
         }
 
         public TaskScheduler ()

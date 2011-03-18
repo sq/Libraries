@@ -15,7 +15,7 @@ namespace Squared.Task.Data {
     //  that we want to run against both impls. No need to run general characterization
     //  or unit tests against both, since the only difference is that one of them is
     //  backed by memory instead of disk (i.e., same sqlite impl, same behavior).
-    public class GenericDbTests {
+    public abstract class GenericDbTests {
         public SQLiteConnection Connection;
 
         public void DoQuery (string sql) {
@@ -48,7 +48,7 @@ namespace Squared.Task.Data {
 
         [Test]
         public void TestSequentialInsertPerformanceWithWindowsMessageJobQueue () {
-            InsertBenchmark(500, 2000, JobQueue.WindowsMessageBased, SequentialInsertTask);
+            InsertBenchmark(500, 20000, JobQueue.WindowsMessageBased, SequentialInsertTask);
         }
 
         [Test]
@@ -58,7 +58,7 @@ namespace Squared.Task.Data {
 
         [Test]
         public void TestTransactionalInsertPerformanceWithWindowsMessageJobQueue () {
-            InsertBenchmark(500, 2000, JobQueue.WindowsMessageBased, TransactionalSequentialInsertTask);
+            InsertBenchmark(500, 20000, JobQueue.WindowsMessageBased, TransactionalSequentialInsertTask);
         }
 
         public void InsertBenchmark (int warmupLength, int numInsertions, Func<IJobQueue> jobQueueFactory, Func<ConnectionWrapper, Query, int, IEnumerator<object>> insertTask) {
