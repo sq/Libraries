@@ -55,10 +55,10 @@ namespace Squared.Task {
 
         private bool _Disposed = false;
 
-        private AutoResetEvent _WaiterSignal = new AutoResetEvent(false);
+        private readonly AutoResetEvent _WaiterSignal = new AutoResetEvent(false);
         private int _WaiterCount = 0;
 
-        private AtomicQueue<Action> _Queue = new AtomicQueue<Action>();
+        private readonly AtomicQueue<Action> _Queue = new AtomicQueue<Action>();
 
         public ThreadSafeJobQueue ()
             : this(DefaultMaxStepDuration) {

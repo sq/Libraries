@@ -23,8 +23,8 @@ namespace Squared.Task.IO {
     public class SocketDataAdapter : IAsyncDataSource, IAsyncDataWriter {
         public bool ThrowOnDisconnect = true, ThrowOnFullSendBuffer = true;
         Socket _Socket;
-        bool _OwnsSocket;
-        AsyncCallback _ReadCallback, _WriteCallback;
+        readonly bool _OwnsSocket;
+        readonly AsyncCallback _ReadCallback, _WriteCallback;
 
         public SocketDataAdapter (Socket socket)
             : this(socket, true) {

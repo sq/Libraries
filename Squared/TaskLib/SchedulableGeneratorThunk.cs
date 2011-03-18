@@ -14,8 +14,8 @@ namespace Squared.Task {
         bool _WakeDiscardingResult = false;
         bool _ErrorChecked = false;
         TaskScheduler _Scheduler;
-        Action _Step, _QueueStep, _OnErrorChecked;
-        OnComplete _QueueStepOnComplete;
+        readonly Action _Step, _QueueStep, _OnErrorChecked;
+        readonly OnComplete _QueueStepOnComplete;
 
         public override string ToString () {
             return String.Format("<Task {0} waiting on {1}>", _Task, WakeCondition);
@@ -29,11 +29,15 @@ namespace Squared.Task {
             _Step = Step;
         }
 
-        internal void CompleteWithResult (object result) {
+        internal void CompleteWithResult (ITaskResult result) {
             if (CheckForDiscardedError())
                 return;
 
-            _Future.Complete(result);
+            if (result != null)
+                _Future.Complete(result.Value);
+            else
+                _Future.Complete(null);
+
             Dispose();
         }
 
@@ -145,7 +149,7 @@ namespace Squared.Task {
 
             NextValue nv;
             IFuture f;
-            Result r;
+            ITaskResult r;
             IEnumerator<object> e;
 
             if (value == null) {
@@ -167,8 +171,8 @@ namespace Squared.Task {
             } else if ((f = (value as IFuture)) != null) {
                 SetWakeCondition(f, false);
                 f.RegisterOnComplete(_QueueStepOnComplete);
-            } else if ((r = (value as Result)) != null) {
-                CompleteWithResult(r.Value);
+            } else if ((r = (value as ITaskResult)) != null) {
+                CompleteWithResult(r);
             } else if ((e = (value as IEnumerator<object>)) != null) {
                 ScheduleNextStepForSchedulable(new SchedulableGeneratorThunk(e));
             } else {

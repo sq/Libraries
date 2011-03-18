@@ -8,27 +8,27 @@ namespace Squared.Task {
     public class FutureTests {
         [Test]
         public void FuturesNotCompleteByDefault () {
-            var f = new Future();
+            var f = new Future<object>();
             Assert.IsFalse(f.Completed);
         }
 
         [Test]
         public void CanCompleteFuture () {
-            var f = new Future();
+            var f = new Future<object>();
             f.Complete();
             Assert.IsTrue(f.Completed);
         }
 
         [Test]
         public void CanGetResult () {
-            var f = new Future();
+            var f = new Future<object>();
             f.Complete(5);
             Assert.AreEqual(5, f.Result);
         }
 
         [Test]
         public void GettingResultThrowsExceptionIfFutureValueIsException () {
-            var f = new Future();
+            var f = new Future<object>();
             f.Fail(new Exception("test"));
             try {
                 var _ = f.Result;
@@ -40,21 +40,21 @@ namespace Squared.Task {
 
         [Test]
         public void FailedIsFalseIfFutureHasValue () {
-            var f = new Future();
+            var f = new Future<object>();
             f.Complete(5);
             Assert.IsFalse(f.Failed);
         }
 
         [Test]
         public void FailedIsTrueIfFutureValueIsException () {
-            var f = new Future();
+            var f = new Future<object>();
             f.Fail(new Exception("test"));
             Assert.IsTrue(f.Failed);
         }
 
         [Test]
         public void TestGetResultMethodNeverThrows () {
-            var f = new Future();
+            var f = new Future<object>();
             object result;
             Exception error;
 
@@ -64,7 +64,7 @@ namespace Squared.Task {
             Assert.IsTrue(f.GetResult(out result, out error));
             Assert.AreEqual(5, result);
 
-            f = new Future();
+            f = new Future<object>();
 
             f.SetResult(null, new Exception("earth-shattering kaboom"));
             Assert.IsTrue(f.GetResult(out result, out error));
@@ -73,7 +73,7 @@ namespace Squared.Task {
 
         [Test]
         public void InvokesOnCompletesWhenCompleted () {
-            var f = new Future();
+            var f = new Future<object>();
             object completeResult = null;
             f.RegisterOnComplete((_) => { completeResult = _.Error ?? _.Result; });
             f.Complete(5);
@@ -82,7 +82,7 @@ namespace Squared.Task {
 
         [Test]
         public void InvokesOnCompletesWhenFailed () {
-            var f = new Future();
+            var f = new Future<object>();
             object completeResult = null;
             f.RegisterOnComplete((_) => { completeResult = _.Error ?? _.Result; });
             f.Fail(new Exception("test"));
@@ -91,7 +91,7 @@ namespace Squared.Task {
 
         [Test]
         public void ThrowsIfCompletedTwice () {
-            var f = new Future();
+            var f = new Future<object>();
             try {
                 f.Complete(5);
                 f.Complete(10);
@@ -102,7 +102,7 @@ namespace Squared.Task {
 
         [Test]
         public void IfOnCompleteRegisteredAfterAlreadyCompletedCalledAnyway () {
-            var f = new Future();
+            var f = new Future<object>();
             object completeResult = null;
             f.Complete(5);
             f.RegisterOnComplete((_) => { completeResult = _.Error ?? _.Result; });
@@ -111,7 +111,7 @@ namespace Squared.Task {
 
         [Test]
         public void ThrowsIfResultAccessedWhileIncomplete () {
-            var f = new Future();
+            var f = new Future<object>();
             try {
                 var _ = f.Result;
                 Assert.Fail();
@@ -121,15 +121,15 @@ namespace Squared.Task {
 
         [Test]
         public void CanCompleteWithNull () {
-            var f = new Future();
+            var f = new Future<object>();
             f.Complete();
             Assert.AreEqual(null, f.Result);
         }
 
         [Test]
         public void CanBindFutureToOtherFuture () {
-            var a = new Future();
-            var b = new Future();
+            var a = new Future<object>();
+            var b = new Future<object>();
             b.Bind(a);
             a.Complete(5);
             Assert.AreEqual(5, b.Result);
@@ -137,7 +137,7 @@ namespace Squared.Task {
 
         [Test]
         public void CannotBeCompletedIfDisposedFirst () {
-            var f = new Future();
+            var f = new Future<object>();
             f.Dispose();
             Assert.IsTrue(f.Disposed);
             f.Complete(5);
@@ -147,7 +147,7 @@ namespace Squared.Task {
 
         [Test]
         public void IfCompletedDisposeHasNoEffect () {
-            var f = new Future();
+            var f = new Future<object>();
             f.Complete(5);
             f.Dispose();
             Assert.AreEqual(5, f.Result);
@@ -158,7 +158,7 @@ namespace Squared.Task {
         public void DisposingFutureInvokesOnDisposeHandlers () {
             bool[] invoked = new bool[1];
             
-            var f = new Future();
+            var f = new Future<object>();
             f.RegisterOnDispose((_) => {
                 invoked[0] = true;
             });
@@ -171,7 +171,7 @@ namespace Squared.Task {
         public void CollectingFutureDoesNotInvokeOnDisposeHandlers () {
             bool[] invoked = new bool[1];
 
-            var f = new Future();
+            var f = new Future<object>();
             f.RegisterOnDispose((_) => {
                 invoked[0] = true;
             });
@@ -184,7 +184,7 @@ namespace Squared.Task {
 
         [Test]
         public void FutureWrapsExceptionIfOnCompleteHandlerThrows () {
-            var f = new Future();
+            var f = new Future<object>();
             f.RegisterOnComplete((_) => {
                 throw new Exception("pancakes");
             });
@@ -200,7 +200,7 @@ namespace Squared.Task {
 
         [Test]
         public void FutureWrapsExceptionIfOnDisposeHandlerThrows () {
-            var f = new Future();
+            var f = new Future<object>();
             f.RegisterOnDispose((_) => {
                 throw new Exception("pancakes");
             });

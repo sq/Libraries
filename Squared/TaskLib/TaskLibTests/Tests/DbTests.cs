@@ -346,10 +346,10 @@ namespace Squared.Task.Data {
 
             using (var scheduler = new TaskScheduler())
             using (var qm = new ConnectionWrapper(scheduler, Connection)) {
-                var f = qm.Clone();
-                using (var dupe = (ConnectionWrapper)scheduler.WaitFor(f)) {
+                var fClone = qm.Clone();
+                using (var dupe = scheduler.WaitFor(fClone)) {
                     var q = dupe.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
-                    f = q.ExecuteScalar(5);
+                    var f = q.ExecuteScalar(5);
                     var result = scheduler.WaitFor(f);
                     Assert.AreEqual(result, 1);
                 }
@@ -368,16 +368,16 @@ namespace Squared.Task.Data {
                 var q = qm.BuildQuery("SELECT * FROM Test");
                 var iter = q.Execute();
                 var iterF = scheduler.Start(iter.Fetch());
-                var f = qm.Clone();
+                var fClone = qm.Clone();
 
-                Assert.IsFalse(f.Completed);
+                Assert.IsFalse(fClone.Completed);
 
                 iter.Dispose();
                 iterF.Dispose();
-                scheduler.WaitFor(f);
-                using (var dupe = (ConnectionWrapper)f.Result) {
+                scheduler.WaitFor(fClone);
+                using (var dupe = fClone.Result) {
                     q = dupe.BuildQuery("SELECT COUNT(value) FROM Test WHERE value = ?");
-                    f = q.ExecuteScalar(5);
+                    var f = q.ExecuteScalar(5);
                     var result = scheduler.WaitFor(f);
                     Assert.AreEqual(result, 1);
                 }

@@ -8,8 +8,8 @@ using System.Data;
 namespace Squared.Task.Data {
     namespace Extensions {
         public static class DbExtensionMethods {
-            public static Future AsyncExecuteScalar (this IDbCommand cmd) {
-                var f = new Future();
+            public static IFuture AsyncExecuteScalar (this IDbCommand cmd) {
+                var f = new Future<object>();
                 ThreadPool.QueueUserWorkItem(
                     (WaitCallback)(
                         (state) => {

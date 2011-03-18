@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
-using System.Runtime.InteropServices;
-using System.Reflection;
 using System.Linq;
 
 #if !XBOX
@@ -110,7 +108,7 @@ namespace Squared.Task {
     }
 
     internal class DynamicRunInThreadThunk : RunInThreadThunk {
-        public readonly Future Future = new Future();
+        public readonly IFuture Future = new Future<object>();
         public object[] Arguments;
         public Delegate WorkItem;
 
@@ -158,23 +156,6 @@ namespace Squared.Task {
         public static readonly NoneType None = new NoneType();
     }
 
-    public class Future : Future<object> {
-        public Future () 
-            : base() {
-        }
-
-        public Future (object value)
-            : base(value) {
-        }
-
-        public static IFuture New<T> () {
-            if (typeof(T).Equals(typeof(object)))
-                return new Future();
-            else
-                return new Future<T>();
-        }
-    }
-
     public class SignalFuture : Future<NoneType> {
         public SignalFuture ()
             : base() {
@@ -185,14 +166,126 @@ namespace Squared.Task {
         }
     }
 
+    public static class Future {
+        public static Future<T> New<T> () {
+            return new Future<T>();
+        }
+
+        public static Future<T> New<T> (T value) {
+            return new Future<T>(value);
+        }
+
+        public static Future<IFuture> WaitForFirst (IEnumerable<IFuture> futures) {
+            return WaitForFirst(futures.ToArray());
+        }
+
+        public static Future<IFuture> WaitForFirst (params IFuture[] futures) {
+            return WaitForX(futures, futures.Length);
+        }
+
+        public static IFuture WaitForAll (IEnumerable<IFuture> futures) {
+            return WaitForAll(futures.ToArray());
+        }
+
+        public static IFuture WaitForAll (params IFuture[] futures) {
+            return WaitForX(futures, 1);
+        }
+
+        public static Future<U> RunInThread<U> (Func<U> workItem) {
+            var thunk = new FuncRunInThreadThunk<U> {
+                WorkItem = workItem,
+            };
+            ThreadPool.QueueUserWorkItem(FutureHelpers.RunInThreadHelper, thunk);
+            return thunk.Future;
+        }
+
+        public static SignalFuture RunInThread (Action workItem) {
+            var thunk = new ActionRunInThreadThunk {
+                WorkItem = workItem,
+            };
+            ThreadPool.QueueUserWorkItem(FutureHelpers.RunInThreadHelper, thunk);
+            return thunk.Future;
+        }
+
+        public static IFuture RunInThread (Delegate workItem, params object[] arguments) {
+            var thunk = new DynamicRunInThreadThunk {
+                WorkItem = workItem,
+                Arguments = arguments
+            };
+            ThreadPool.QueueUserWorkItem(FutureHelpers.RunInThreadHelper, thunk);
+            return thunk.Future;
+        }
+
+        private class WaitHandler {
+            public Future<IFuture> Composite;
+            public readonly List<IFuture> State = new List<IFuture>();
+            public int Trigger;
+
+            public void OnComplete (IFuture f) {
+                bool completed = false;
+                lock (State) {
+                    if (State.Count == Trigger) {
+                        completed = true;
+                        State.Clear();
+                    } else {
+                        State.Remove(f);
+                    }
+                }
+
+                if (completed)
+                    Composite.Complete(f);
+            }
+
+            public void OnDispose (IFuture f) {
+                bool completed = false;
+                lock (State) {
+                    if (State.Count == Trigger) {
+                        completed = true;
+                        State.Clear();
+                    } else {
+                        State.Remove(f);
+                    }
+                }
+
+                if (completed)
+                    Composite.Dispose();
+            }
+        }
+
+        private static Future<IFuture> WaitForX (IEnumerable<IFuture> futures, int x) {
+            if (futures == null)
+                throw new ArgumentException("Must specify at least one future to wait on", "futures");
+
+            var f = new Future<IFuture>();
+            var h = new WaitHandler();
+            h.Composite = f;
+            h.State.AddRange(futures);
+            h.Trigger = x;
+            OnComplete oc = h.OnComplete;
+            OnDispose od = h.OnDispose;
+
+            if (h.State.Count == 0)
+                throw new ArgumentException("Must specify at least one future to wait on", "futures");
+
+            foreach (IFuture _ in futures) {
+                _.RegisterOnComplete(oc);
+                _.RegisterOnDispose(od);
+            }
+
+            return f;
+        }
+    }
+
     public class Future<T> : IDisposable, IFuture {
+        public static readonly Future<T> Default;
+
+        private static readonly int ProcessorCount;        
+
         private const int State_Empty = 0;
         private const int State_Indeterminate = 1;
         private const int State_CompletedWithValue = 2;
         private const int State_CompletedWithError = 3;
         private const int State_Disposed = 4;
-
-        private static readonly int ProcessorCount;
 
         private int _State = State_Empty;
         private OnComplete _OnComplete = null;
@@ -236,6 +329,7 @@ namespace Squared.Task {
 
         static Future () {
             ProcessorCount = Environment.ProcessorCount;
+            Default = new Future<T>(default(T));
         }
 
         private static void SpinWait (int iterationCount) {
@@ -541,106 +635,6 @@ namespace Squared.Task {
             result = default(T);
             error = null;
             return false;
-        }
-
-        public static IFuture WaitForFirst (IEnumerable<IFuture> futures) {
-            return WaitForFirst(futures.ToArray());
-        }
-
-        public static IFuture WaitForFirst (params IFuture[] futures) {
-            return WaitForX(futures, futures.Length);
-        }
-
-        public static IFuture WaitForAll (IEnumerable<IFuture> futures) {
-            return WaitForAll(futures.ToArray());
-        }
-
-        public static IFuture WaitForAll (params IFuture[] futures) {
-            return WaitForX(futures, 1);
-        }
-
-        public static Future<U> RunInThread<U> (Func<U> workItem) {
-            var thunk = new FuncRunInThreadThunk<U> {
-                WorkItem = workItem,
-            };
-            ThreadPool.QueueUserWorkItem(FutureHelpers.RunInThreadHelper, thunk);
-            return thunk.Future;
-        }
-
-        public static SignalFuture RunInThread (Action workItem) {
-            var thunk = new ActionRunInThreadThunk {
-                WorkItem = workItem,
-            };
-            ThreadPool.QueueUserWorkItem(FutureHelpers.RunInThreadHelper, thunk);
-            return thunk.Future;
-        }
-
-        public static Future RunInThread (Delegate workItem, params object[] arguments) {
-            var thunk = new DynamicRunInThreadThunk {
-                WorkItem = workItem,
-                Arguments = arguments
-            };
-            ThreadPool.QueueUserWorkItem(FutureHelpers.RunInThreadHelper, thunk);
-            return thunk.Future;
-        }
-
-        private class WaitHandler {
-            public IFuture Composite;
-            public readonly List<IFuture> State = new List<IFuture>();
-            public int Trigger;
-
-            public void OnComplete (IFuture f) {
-                bool completed = false;
-                lock (State) {
-                    if (State.Count == Trigger) {
-                        completed = true;
-                        State.Clear();
-                    } else {
-                        State.Remove(f);
-                    }
-                }
-
-                if (completed)
-                    Composite.Complete(f);
-            }
-
-            public void OnDispose (IFuture f) {
-                bool completed = false;
-                lock (State) {
-                    if (State.Count == Trigger) {
-                        completed = true;
-                        State.Clear();
-                    } else {
-                        State.Remove(f);
-                    }
-                }
-
-                if (completed)
-                    Composite.Dispose();
-            }
-        }
-
-        private static IFuture WaitForX (IEnumerable<IFuture> futures, int x) {
-            if (futures == null)
-                throw new ArgumentException("Must specify at least one future to wait on", "futures");
-
-            Future f = new Future();
-            var h = new WaitHandler();
-            h.Composite = f;
-            h.State.AddRange(futures);
-            h.Trigger = x;
-            OnComplete oc = h.OnComplete;
-            OnDispose od = h.OnDispose;
-
-            if (h.State.Count == 0)
-                throw new ArgumentException("Must specify at least one future to wait on", "futures");
-
-            foreach (IFuture _ in futures) {
-                _.RegisterOnComplete(oc);
-                _.RegisterOnDispose(od);
-            }
-
-            return f;
         }
     }
     

@@ -48,7 +48,7 @@ namespace TelnetChatServer {
         static List<Message> Messages = new List<Message>();
         static List<Peer> Peers = new List<Peer>();
         static BlockingQueue<Message> NewMessages = new BlockingQueue<Message>();
-        static Future WaitingForMessages = null;
+        static IFuture WaitingForMessages = null;
         const int MaxMessagesToDispatch = 50;
         const int MaxMessagesToStore = 100;
         static int MessageIdBase = 0;
@@ -135,7 +135,7 @@ namespace TelnetChatServer {
                     }
                 } while (moreWork);
 
-                Future waitForNewMessage = new Future();
+                var waitForNewMessage = new Future<object>();
                 WaitingForMessages = waitForNewMessage;
                 waitList.Add(waitForNewMessage);
                 yield return Future.WaitForFirst(waitList);

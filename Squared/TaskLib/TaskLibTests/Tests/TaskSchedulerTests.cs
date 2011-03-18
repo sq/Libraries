@@ -18,7 +18,7 @@ namespace Squared.Task {
     [Ignore]
     public class BasicJobQueueTests {
         protected TaskScheduler Scheduler;
-        protected Future TestFuture;
+        protected IFuture TestFuture;
 
         protected IEnumerator<object> TaskReturn5 () {
             yield return new Result(5);
@@ -38,7 +38,7 @@ namespace Squared.Task {
 
         [Test]
         public void YieldOnFutureTest () {
-            this.TestFuture = new Future();
+            this.TestFuture = new Future<object>();
             var future = Scheduler.Start(TaskReturnValueOfFuture());
             Scheduler.Step();
             Assert.IsFalse(future.Completed);
@@ -137,7 +137,7 @@ namespace Squared.Task {
 
         [Test]
         public void MultipleYieldersOnFutureTest () {
-            this.TestFuture = new Future();
+            this.TestFuture = new Future<object>();
             var futures = new List<IFuture>();
             for (int i = 0; i < 10; i++)
                 futures.Add(Scheduler.Start(TaskReturnValueOfFuture()));
@@ -177,7 +177,7 @@ namespace Squared.Task {
 
         [Test]
         public void RecursiveYieldTest () {
-            this.TestFuture = new Future();
+            this.TestFuture = new Future<object>();
             var future = Scheduler.Start(TaskReturnValueOfYieldedTask());
             Scheduler.Step();
             TestFuture.Complete(10);
@@ -217,7 +217,7 @@ namespace Squared.Task {
         }
 
         IEnumerator<object> TaskLongLivedWorker (int[] buf) {
-            var cf = new Future(null);
+            var cf = new Future<object>(null);
             for (int i = 0; i < 1000000; i++) {
                 buf[0] = buf[0] + 1;
                 yield return cf;
@@ -634,12 +634,12 @@ namespace Squared.Task {
             yield return childTask();
         }
 
-        IEnumerator<object> YieldAndIgnore (Future f) {
+        IEnumerator<object> YieldAndIgnore (IFuture f) {
             yield return f;
             yield return new Result(true);
         }
 
-        IEnumerator<object> YieldAndCheck (Future f) {
+        IEnumerator<object> YieldAndCheck (IFuture f) {
             yield return f;
             yield return new Result(!f.Failed);
         }
@@ -657,7 +657,7 @@ namespace Squared.Task {
 
         [Test]
         public void ChildFutureFailuresAbortTasksIfIgnored () {
-            var failed = new Future();
+            var failed = new Future<object>();
             failed.Fail(new Exception("pancakes"));
 
             var f = Scheduler.Start(YieldAndIgnore(failed), TaskExecutionPolicy.RunWhileFutureLives);
@@ -671,22 +671,22 @@ namespace Squared.Task {
 
         [Test]
         public void ChildFutureFailuresDoNotAbortTasksIfHandled () {
-            var failed = new Future();
+            var failed = new Future<object>();
             failed.Fail(new Exception("pancakes"));
 
             var f = Scheduler.Start(YieldAndCheck(failed), TaskExecutionPolicy.RunWhileFutureLives);
             Assert.AreEqual(false, Scheduler.WaitFor(f));
         }
 
-        IEnumerator<object> UseRunExtension (IEnumerator<object> task, Future[] output) {
-            Future temp;
+        IEnumerator<object> UseRunExtension (IEnumerator<object> task, IFuture[] output) {
+            IFuture temp;
             yield return task.Run(out temp);
             output[0] = temp;
         }
 
         [Test]
         public void RunExtensionStoresFuture () {
-            Future[] f = new Future[1];
+            IFuture[] f = new IFuture[1];
             var _ = Scheduler.Start(UseRunExtension(CrashyTask(), f), TaskExecutionPolicy.RunWhileFutureLives);
             Scheduler.WaitFor(_);
             Assert.AreEqual("pancakes", f[0].Error.Message);

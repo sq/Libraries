@@ -486,7 +486,7 @@ namespace Squared.Task.IO {
 
             StreamA.Write(buf, 0, buf.Length);
 
-            var f = new Future();
+            var f = new Future<object>();
 
             ThreadPool.QueueUserWorkItem((_) => {
                 try {

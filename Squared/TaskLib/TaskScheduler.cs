@@ -14,11 +14,76 @@ namespace Squared.Task {
         Default = RunWhileFutureLives
     }
 
-    public class Result {
-        public object Value;
+    public interface ITaskResult {
+        object Value {
+            get;
+        }
+        void CompleteFuture (IFuture f);
+    }
+
+    public class Result : ITaskResult {
+        private readonly object _Value;
 
         public Result (object value) {
-            Value = value;
+            _Value = value;
+        }
+
+        public object Value {
+            get {
+                return _Value;
+            }
+        }
+
+        public void CompleteFuture (IFuture future) {
+            future.Complete(_Value);
+        }
+
+        public static Result New (object value) {
+            return new Result(value);
+        }
+
+        public static TaskResult<T> New<T> (T value) {
+            return new TaskResult<T>(value);
+        }
+
+        public static TaskResult<T> New<T> (ref T value) {
+            return new TaskResult<T>(ref value);
+        }
+    }
+
+    public class TaskResult<T> : ITaskResult {
+        private readonly T _Value;
+
+        public TaskResult (T value) {
+            _Value = value;
+        }
+
+        public TaskResult (ref T value) {
+            _Value = value;
+        }
+
+        public void CompleteFuture (Future<T> future) {
+            future.Complete(_Value);
+        }
+
+        void ITaskResult.CompleteFuture (IFuture future) {
+            var stronglyTyped = future as Future<T>;
+            if (stronglyTyped != null)
+                CompleteFuture(stronglyTyped);
+            else
+                future.Complete(_Value);
+        }
+
+        object ITaskResult.Value {
+            get {
+                return _Value;
+            }
+        }
+
+        T Value {
+            get {
+                return _Value;
+            }
         }
     }
 
@@ -130,7 +195,7 @@ namespace Squared.Task {
         }
 
         public IFuture Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
-            var future = new Future();
+            var future = new Future<object>();
             Start(future, task, executionPolicy);
             return future;
         }

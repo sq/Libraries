@@ -87,7 +87,7 @@ namespace Squared.Task.Data {
                     else
                         return _BeginTransaction.ExecuteNonQuery();
                 } else
-                    return new Future(null);
+                    return Future<object>.Default;
             }
         }
 
@@ -101,7 +101,7 @@ namespace Squared.Task.Data {
                     else
                         return _CommitTransaction.ExecuteNonQuery();
                 } else if (_TransactionDepth > 0)
-                    return new Future(null);
+                    return Future<object>.Default;
                 else {
                     _TransactionDepth = 0;
                     throw new InvalidOperationException("No transaction active");
@@ -117,7 +117,7 @@ namespace Squared.Task.Data {
                     return _RollbackTransaction.ExecuteNonQuery();
                 else if (_TransactionDepth > 0) {
                     _TransactionFailed = true;
-                    return new Future(null);
+                    return Future<object>.Default;
                 } else {
                     _TransactionDepth = 0;
                     throw new InvalidOperationException("No transaction active");
@@ -304,11 +304,11 @@ namespace Squared.Task.Data {
             }
         }
 
-        public IFuture Clone () {
+        public Future<ConnectionWrapper> Clone () {
             return Clone(null);
         }
 
-        public IFuture Clone (string extraConnectionParameters) {
+        public virtual Future<ConnectionWrapper> Clone (string extraConnectionParameters) {
             var newConnectionString = _Connection.ConnectionString;
             if (extraConnectionParameters != null)
                 newConnectionString = newConnectionString + ";" + extraConnectionParameters;
@@ -317,7 +317,7 @@ namespace Squared.Task.Data {
             newConnection.GetType().GetProperty("ConnectionString").SetValue(newConnection, newConnectionString, null);
             var openMethod = newConnection.GetType().GetMethod("Open");
 
-            var f = new Future();
+            var f = new Future<ConnectionWrapper>();
             f.RegisterOnComplete((_) => {
                 NotifyQueryCompleted(f);
             });

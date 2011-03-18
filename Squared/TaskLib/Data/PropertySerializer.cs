@@ -9,7 +9,7 @@ using System.Data;
 namespace Squared.Task.Data {
     public class PropertySerializer : IDisposable {
         public Func<IBoundMember, string> GetMemberName;
-        public List<IBoundMember> Bindings = new List<IBoundMember>();
+        public readonly List<IBoundMember> Bindings = new List<IBoundMember>();
         public readonly Query WriteValue;
         public readonly Query ReadValue;
 

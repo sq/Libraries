@@ -1,20 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using Squared.Util;
 using Squared.Util.Event;
 using System.Collections;
 
 #if !XBOX
-using System.Linq;
 using System.Linq.Expressions;
 #endif
 
 namespace Squared.Task {
     public static class EnumeratorExtensionMethods {
         internal struct Disposer : IDisposable {
-            object Obj;
+            readonly object Obj;
 
             public Disposer (object obj) {
                 Obj = obj;
@@ -32,7 +30,7 @@ namespace Squared.Task {
                 var nv = new NextValue(null);
 
                 WaitCallback moveNext = (state) => {
-                    var f = (IFuture)state;
+                    var f = (Future<bool>)state;
                     try {
                         while (buffer.Count < blockSize) {
                             if (enumerator.MoveNext()) {
@@ -45,20 +43,20 @@ namespace Squared.Task {
 
                         f.SetResult(false, null);
                     } catch (Exception e) {
-                        f.SetResult(null, e);
+                        f.SetResult(false, e);
                     }
                 };
 
                 while (true) {
                     buffer.Clear();
-                    var f = new Future();
+                    var f = new Future<bool>();
                     ThreadPool.QueueUserWorkItem(moveNext, f);
                     yield return f;
 
                     nv.Value = buffer;
                     yield return nv;
 
-                    bool atEnd = (bool)f.Result;
+                    bool atEnd = f.Result;
                     if (atEnd)
                         yield break;
                 }
@@ -71,7 +69,7 @@ namespace Squared.Task {
             return rtc;
         }
 
-        public static RunToCompletion Run (this IEnumerator<object> task, out Future future) {
+        public static RunToCompletion Run (this IEnumerator<object> task, out IFuture future) {
             var rtc = new RunToCompletion(task, TaskExecutionPolicy.RunWhileFutureLives);
             future = rtc.Future;
             return rtc;
@@ -79,7 +77,7 @@ namespace Squared.Task {
 
 #if !XBOX
         public static StoreResult<T> Bind<T> (this IEnumerator<object> task, Expression<Func<T>> target) {
-            var sr = new StoreResult<T>(task, target, TaskExecutionPolicy.RunWhileFutureLives);
+            var sr = new StoreResult<T>(task, target);
             return sr;
         }
 #endif
@@ -90,21 +88,20 @@ namespace Squared.Task {
     /// Schedules a task to run to completion and store its result into a target field or property.
     /// </summary>
     public class StoreResult<T> : ISchedulable {
-        IEnumerator<object> _Task;
-        SchedulableGeneratorThunk _Thunk;
-        TaskExecutionPolicy _ExecutionPolicy;
-        Future<T> _Future;
+        readonly IEnumerator<object> _Task;
+        readonly SchedulableGeneratorThunk _Thunk;
+        readonly TaskExecutionPolicy _ExecutionPolicy;
+        readonly Future<T> _Future;
         IFuture _CompletionSignal;
 
-        public StoreResult (IEnumerator<object> task, Expression<Func<T>> target)
-            : this(task, target, TaskExecutionPolicy.RunWhileFutureLives) {
-        }
-
-        public StoreResult (IEnumerator<object> task, Expression<Func<T>> target, TaskExecutionPolicy executionPolicy) {
+        public StoreResult (
+            IEnumerator<object> task, Expression<Func<T>> target, 
+            TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.RunWhileFutureLives
+        ) {
             _Task = task;
             _Thunk = new SchedulableGeneratorThunk(_Task);
             _ExecutionPolicy = executionPolicy;
-            _Future = (Future<T>)Squared.Task.Future.New<T>();
+            _Future = Squared.Task.Future.New<T>();
             _Future.Bind(target);
             _Future.RegisterOnComplete(Completed);
         }
@@ -173,8 +170,9 @@ namespace Squared.Task {
     /// Completes when the specified future completes, or when (timeout) seconds have elapsed, whichever comes first.
     /// </summary>
     public class WaitWithTimeout : ISchedulable {
-        IFuture _Future, _TaskFuture, _SleepFuture;
-        double _Timeout;
+        readonly IFuture _Future;
+        IFuture _TaskFuture, _SleepFuture;
+        readonly double _Timeout;
 
         public WaitWithTimeout (IFuture future, double timeout) {
             _Future = future;
@@ -264,9 +262,9 @@ namespace Squared.Task {
             : base(task, executionPolicy) {
         }
 
-        new public Future Future {
+        new public IFuture Future {
             get {
-                return (Future)base.Future;
+                return base.Future;
             }
         }
     }

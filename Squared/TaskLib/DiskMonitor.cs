@@ -7,8 +7,8 @@ using System.Text.RegularExpressions;
 
 namespace Squared.Task.IO {
     public class DiskMonitor : IDisposable {
-        private Queue<string> _ChangedFiles = new Queue<string>();
-        private Queue<string> _DeletedFiles = new Queue<string>();
+        private readonly Queue<string> _ChangedFiles = new Queue<string>();
+        private readonly Queue<string> _DeletedFiles = new Queue<string>();
         private FileSystemWatcher[] _Watchers;
         private Regex[] _Filters;
         private Regex[] _Exclusions;
