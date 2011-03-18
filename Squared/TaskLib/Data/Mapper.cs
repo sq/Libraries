@@ -137,7 +137,7 @@ namespace Squared.Task.Data.Mapper {
     public class Mapper<T> 
         where T : new() {
 
-        protected delegate void Setter<U> (T target, U newValue);
+        protected delegate void Setter<in U> (T target, U newValue);
 
         protected interface ISetHelper {
             void Set (T item);

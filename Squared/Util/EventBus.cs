@@ -103,7 +103,7 @@ namespace Squared.Util.Event {
     }
 
     public delegate void EventSubscriber (EventInfo e);
-    public delegate void TypedEventSubscriber<T> (EventInfo e, T arguments) where T : class;
+    public delegate void TypedEventSubscriber<in T> (EventInfo e, T arguments) where T : class;
 
     public class EventSubscriberList : List<EventSubscriber> {
     }

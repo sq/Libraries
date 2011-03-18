@@ -286,7 +286,7 @@ namespace Squared.Task {
         public RunToCompletion (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
             _Task = task;
             _Thunk = new SchedulableGeneratorThunk(_Task);
-            _Future = (Future<T>)Squared.Task.Future.New<T>();
+            _Future = Squared.Task.Future.New<T>();
             _Future.RegisterOnComplete(Completed);
             _ExecutionPolicy = executionPolicy;
         }
@@ -322,7 +322,7 @@ namespace Squared.Task {
 
         public T Result {
             get {
-                return (T)_Future.Result;
+                return _Future.Result;
             }
         }
     }

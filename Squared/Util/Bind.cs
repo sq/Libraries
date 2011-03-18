@@ -223,7 +223,7 @@ namespace Squared.Util.Bind {
 
         object IBoundMember.Value {
             get {
-                return (object)this.Value;
+                return this.Value;
             }
             set {
                 if (value is T)

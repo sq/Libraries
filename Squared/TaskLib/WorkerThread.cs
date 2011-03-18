@@ -36,7 +36,7 @@ namespace System.Threading {
 #endif
 
 namespace Squared.Task {
-    delegate void WorkerThreadFunc<T> (T workItems, ManualResetEvent newWorkItemEvent);
+    delegate void WorkerThreadFunc<in T> (T workItems, ManualResetEvent newWorkItemEvent);
 
     internal class WorkerThread<Container> : IDisposable
         where Container : new() {

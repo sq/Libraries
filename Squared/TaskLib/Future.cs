@@ -628,7 +628,7 @@ namespace Squared.Task {
             } else if (state == State_CompletedWithError) {
                 OnErrorCheck();
                 result = default(T);
-                error = (Exception)_Error;
+                error = _Error;
                 return true;
             }
 
