@@ -343,7 +343,7 @@ namespace Squared.Util {
             }
 
             var info = new SHFILEINFO();
-            uint fileAttributes = FILE_ATTRIBUTE_NORMAL;
+            const uint fileAttributes = FILE_ATTRIBUTE_NORMAL;
             uint flags = SHGFI_ICON | (large ? SHGFI_LARGEICON : SHGFI_SMALLICON);
             try {
                 if (!System.IO.File.Exists(path) && !System.IO.Directory.Exists(path))

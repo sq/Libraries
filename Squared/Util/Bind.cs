@@ -70,7 +70,7 @@ namespace Squared.Util.Bind {
         }
 
         public static IBoundMember New (object obj, MemberInfo member) {
-            Type type = null;
+            Type type;
             var prop = member as PropertyInfo;
             var field = member as FieldInfo;
 

@@ -14,7 +14,7 @@ namespace Squared.Task.IO {
         private Regex[] _Exclusions;
         private bool _Monitoring = false;
 
-        public DiskMonitor (string[] folders, string[] filters, string[] exclusions) {
+        public DiskMonitor (IEnumerable<string> folders, IEnumerable<string> filters, IEnumerable<string> exclusions) {
             _Watchers = (from f in folders select CreateWatcher(f)).ToArray();
             _Filters = (from f in filters select Util.IO.GlobToRegex(f)).ToArray();
             _Exclusions = (from e in exclusions select
@@ -35,16 +35,20 @@ namespace Squared.Task.IO {
 
         private FileSystemWatcher CreateWatcher (string folder) {
             folder = System.IO.Path.GetFullPath(folder);
-            var result = new FileSystemWatcher(folder);
-            result.InternalBufferSize = 32 * 1024;
-            result.IncludeSubdirectories = true;
-            result.Filter = "*";
-            result.NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite;
-            result.Changed += new FileSystemEventHandler(file_Changed);
-            result.Created += new FileSystemEventHandler(file_Changed);
-            result.Deleted += new FileSystemEventHandler(file_Deleted);
-            result.Renamed += new RenamedEventHandler(file_Renamed);
-            result.Error += new ErrorEventHandler(BufferOverflowed);
+
+            var result = new FileSystemWatcher(folder) {
+                InternalBufferSize = 32*1024,
+                IncludeSubdirectories = true,
+                Filter = "*",
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite
+            };
+
+            result.Changed += file_Changed;
+            result.Created += file_Changed;
+            result.Deleted += file_Deleted;
+            result.Renamed += file_Renamed;
+            result.Error += BufferOverflowed;
+
             return result;
         }
 
@@ -67,7 +71,7 @@ namespace Squared.Task.IO {
             }
         }
 
-        void BufferOverflowed (object sender, ErrorEventArgs e) {
+        static void BufferOverflowed (object sender, ErrorEventArgs e) {
             System.Diagnostics.Debug.WriteLine("File system monitoring buffer overflow");
         }
 
@@ -87,7 +91,7 @@ namespace Squared.Task.IO {
 
         public IEnumerable<string> GetChangedFiles () {
             while (true) {
-                string item = null;
+                string item;
                 lock (_ChangedFiles) {
                     if (_ChangedFiles.Count > 0)
                         item = _ChangedFiles.Dequeue();
@@ -121,7 +125,7 @@ namespace Squared.Task.IO {
 
         public IEnumerable<string> GetDeletedFiles () {
             while (true) {
-                string item = null;
+                string item;
                 lock (_DeletedFiles) {
                     if (_DeletedFiles.Count > 0)
                         item = _DeletedFiles.Dequeue();

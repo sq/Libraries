@@ -8,9 +8,9 @@ using System.Linq.Expressions;
 #endif
 
 namespace Squared.Util {
-    public delegate T InterpolatorSource<T> (int index) where T : struct;
+    public delegate T InterpolatorSource<out T> (int index) where T : struct;
     public delegate T Interpolator<T> (InterpolatorSource<T> data, int dataOffset, float positionInWindow) where T : struct;
-    public delegate T BoundInterpolatorSource<T, U> (ref U obj, int index) where T : struct;
+    public delegate T BoundInterpolatorSource<out T, U> (ref U obj, int index) where T : struct;
     public delegate T BoundInterpolator<T, U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) where T : struct;
 
     internal static class PrimitiveOperators {

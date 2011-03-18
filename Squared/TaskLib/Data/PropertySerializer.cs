@@ -63,7 +63,7 @@ namespace Squared.Task.Data {
             GetMemberName = getMemberName;
         }
 
-        public string GetDefaultMemberName (IBoundMember member) {
+        public static string GetDefaultMemberName (IBoundMember member) {
             return member.Name;
         }
 

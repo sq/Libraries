@@ -221,10 +221,7 @@ namespace Squared.Util.Event {
         private Dictionary<EventFilter, EventSubscriberList> _Subscribers =
             new Dictionary<EventFilter, EventSubscriberList>(new EventFilterComparer());
 
-        public EventBus () {
-        }
-
-        private void CreateFilter (object source, string type, out EventFilter filter, bool weak) {
+        private static void CreateFilter (object source, string type, out EventFilter filter, bool weak) {
             filter = new EventFilter(source ?? AnySource, type ?? AnyType, weak);
         }
 

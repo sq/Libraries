@@ -233,13 +233,8 @@ namespace Squared.Task {
             _SleepWorker.Wake();
         }
 
-        public Clock CreateClock (double tickInterval) {
-            Clock result = new Clock(this, tickInterval);
-            return result;
-        }
-
         internal void BeforeStep () {
-            Action item = null;
+            Action item;
 
             while (true) {
                 if (_StepListeners.Dequeue(out item))

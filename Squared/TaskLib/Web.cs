@@ -54,8 +54,6 @@ namespace Squared.Task {
             if (fResponse.Failed)
                 throw new RequestFailedException(fResponse.Error);
 
-            string responseText = null;
-
             using (var response = fResponse.Result) {
                 var fResponseStream = Future.RunInThread(
                     () => response.GetResponseStream()
@@ -63,9 +61,10 @@ namespace Squared.Task {
                 yield return fResponseStream;
 
                 Encoding encoding = AsyncTextReader.DefaultEncoding;
-                if ((response.CharacterSet != null) && (response.CharacterSet.Length > 0))
+                if (!string.IsNullOrEmpty(response.CharacterSet))
                     encoding = Encoding.GetEncoding(response.CharacterSet);
 
+                string responseText;
                 using (var stream = fResponseStream.Result)
                 using (var adapter = new AsyncTextReader(new StreamDataAdapter(stream, false), encoding)) {
                     var fText = adapter.ReadToEnd();
@@ -125,8 +124,6 @@ namespace Squared.Task {
         }
 
         public static NameValueCollection ParseRequestBody (this HttpListenerContext context) {
-            NameValueCollection result = null;
-
             byte[] bytes;
             using (var ms = new MemoryStream())
             using (var stream = context.Request.InputStream) {
@@ -151,7 +148,7 @@ namespace Squared.Task {
                 new Type[0], null
             );
 
-            result = (NameValueCollection)constructor.Invoke(new object[0]);
+            NameValueCollection result = (NameValueCollection)constructor.Invoke(new object[0]);
             type.InvokeMember(
                 "FillFromEncodedBytes",
                 BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.InvokeMethod,

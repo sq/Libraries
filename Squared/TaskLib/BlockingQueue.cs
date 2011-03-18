@@ -5,9 +5,9 @@ using System.Threading;
 
 namespace Squared.Task {
     public class BlockingQueue<T> {
-        private object _Lock = new object();
-        private Queue<Future<T>> _WaitingFutures = new Queue<Future<T>>();
-        private Queue<T> _Queue = new Queue<T>();
+        private readonly object _Lock = new object();
+        private readonly Queue<Future<T>> _WaitingFutures = new Queue<Future<T>>();
+        private readonly Queue<T> _Queue = new Queue<T>();
 
         public int Count {
             get {
@@ -57,7 +57,7 @@ namespace Squared.Task {
         }
 
         public void Enqueue (T value) {
-            Future<T> wf = null;
+            Future<T> wf;
 
             while (true)
             lock (_Lock) {

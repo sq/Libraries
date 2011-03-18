@@ -10,9 +10,6 @@ using System.Reflection.Emit;
 namespace Squared.Task.Data.Mapper {
     public class MapperAttribute : Attribute {
         public bool Explicit = false;
-
-        public MapperAttribute () {
-        }
     }
 
     public class ColumnAttribute : Attribute {
@@ -74,7 +71,7 @@ namespace Squared.Task.Data.Mapper {
             }
         }
 
-        static Dictionary<Type, Delegate> Getters = new Dictionary<Type, Delegate>();
+        static readonly Dictionary<Type, Delegate> Getters = new Dictionary<Type, Delegate>();
 
         static DataRecordHelper () {
             var t = typeof(IDataRecord);
@@ -170,7 +167,7 @@ namespace Squared.Task.Data.Mapper {
                 return Squared.Util.Bind.BoundMember.MakeFieldSetter<Setter<U>>(null, field);
             }
 
-            static U ObjectGetter (IDataReader reader, int ordinal) {
+            static U ObjectGetter (IDataRecord reader, int ordinal) {
                 return (U)reader.GetValue(ordinal);
             }
 
@@ -195,13 +192,12 @@ namespace Squared.Task.Data.Mapper {
             }
         }
 
-        static Func<T> _Constructor;
-        static object _Lock = new object();
-        static List<BoundColumn> _Columns = new List<BoundColumn>();
+        static readonly Func<T> _Constructor;
+        static readonly List<BoundColumn> _Columns = new List<BoundColumn>();
 
         public readonly IDataReader Reader;
 
-        protected ISetHelper[] Setters = null;
+        protected readonly ISetHelper[] Setters = null;
 
         static Mapper () {
             Expression<Func<T>> expr = (() => new T());
@@ -264,7 +260,6 @@ namespace Squared.Task.Data.Mapper {
             Reader = reader;
 
             var t = typeof(T);
-            var fieldCount = reader.FieldCount;
             var setterBaseType = typeof(Setter<>);
             var helperBaseType = typeof(SetHelper<>);
             var helperConstructorTypes = new Type[] { 
@@ -273,14 +268,12 @@ namespace Squared.Task.Data.Mapper {
             var setters = new List<ISetHelper>();
 
             foreach (var column in _Columns) {
-                string name = column.Name;
-                int ordinal = -1;
+                int ordinal;
 
                 if (column.Index.HasValue) {
                     ordinal = column.Index.Value;
-                    name = reader.GetName(ordinal);
                 } else {
-                    ordinal = reader.GetOrdinal(name);
+                    ordinal = reader.GetOrdinal(column.Name);
                 }
 
                 var memberType = column.Type;

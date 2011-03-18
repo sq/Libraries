@@ -59,7 +59,7 @@ namespace Squared.Task {
     }
 
     internal static class FutureHelpers {
-        public static WaitCallback RunInThreadHelper;
+        public static readonly WaitCallback RunInThreadHelper;
 
         static FutureHelpers () {
             RunInThreadHelper = _RunInThreadHelper;
@@ -83,7 +83,7 @@ namespace Squared.Task {
     }
 
     internal class ActionRunInThreadThunk : RunInThreadThunk {
-        public SignalFuture Future = new SignalFuture();
+        public readonly SignalFuture Future = new SignalFuture();
         public Action WorkItem;
 
         public override void Invoke () {
@@ -97,7 +97,7 @@ namespace Squared.Task {
     }
 
     internal class FuncRunInThreadThunk<T> : RunInThreadThunk {
-        public Future<T> Future = new Future<T>();
+        public readonly Future<T> Future = new Future<T>();
         public Func<T> WorkItem;
 
         public override void Invoke () {
@@ -110,7 +110,7 @@ namespace Squared.Task {
     }
 
     internal class DynamicRunInThreadThunk : RunInThreadThunk {
-        public Future Future = new Future();
+        public readonly Future Future = new Future();
         public object[] Arguments;
         public Delegate WorkItem;
 
@@ -155,7 +155,7 @@ namespace Squared.Task {
         private NoneType () {
         }
 
-        public static NoneType None = new NoneType();
+        public static readonly NoneType None = new NoneType();
     }
 
     public class Future : Future<object> {
@@ -192,7 +192,7 @@ namespace Squared.Task {
         private const int State_CompletedWithError = 3;
         private const int State_Disposed = 4;
 
-        private static int ProcessorCount;
+        private static readonly int ProcessorCount;
 
         private int _State = State_Empty;
         private OnComplete _OnComplete = null;
@@ -309,7 +309,7 @@ namespace Squared.Task {
         public void RegisterOnComplete (OnComplete handler) {
             OnComplete newOnComplete;
             int iterations = 1;
-            int state = 0;
+            int state;
 
             while (true) {
                 state = Interlocked.CompareExchange(ref _State, State_Indeterminate, State_Empty);
@@ -345,7 +345,7 @@ namespace Squared.Task {
         public void RegisterOnDispose (OnDispose handler) {
             OnDispose newOnDispose;
             int iterations = 1;
-            int state = 0;
+            int state;
 
             while (true) {
                 state = Interlocked.CompareExchange(ref _State, State_Indeterminate, State_Empty);
@@ -586,7 +586,7 @@ namespace Squared.Task {
 
         private class WaitHandler {
             public IFuture Composite;
-            public List<IFuture> State = new List<IFuture>();
+            public readonly List<IFuture> State = new List<IFuture>();
             public int Trigger;
 
             public void OnComplete (IFuture f) {
@@ -600,9 +600,8 @@ namespace Squared.Task {
                     }
                 }
 
-                if (completed) {
+                if (completed)
                     Composite.Complete(f);
-                }
             }
 
             public void OnDispose (IFuture f) {
@@ -621,8 +620,8 @@ namespace Squared.Task {
             }
         }
 
-        private static IFuture WaitForX (IFuture[] futures, int x) {
-            if ((futures == null) || (futures.Length == 0))
+        private static IFuture WaitForX (IEnumerable<IFuture> futures, int x) {
+            if (futures == null)
                 throw new ArgumentException("Must specify at least one future to wait on", "futures");
 
             Future f = new Future();
@@ -632,6 +631,9 @@ namespace Squared.Task {
             h.Trigger = x;
             OnComplete oc = h.OnComplete;
             OnDispose od = h.OnDispose;
+
+            if (h.State.Count == 0)
+                throw new ArgumentException("Must specify at least one future to wait on", "futures");
 
             foreach (IFuture _ in futures) {
                 _.RegisterOnComplete(oc);
@@ -684,7 +686,8 @@ namespace Squared.Task {
 #endif
 
         public static void AssertSucceeded (this IFuture future) {
-            var temp = future.Result;
+            if (future.Failed)
+                throw new FutureException("Operation was expected to succeed", future.Error);
         }
 
         public static void Complete (this IFuture future) {

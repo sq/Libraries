@@ -65,8 +65,8 @@ namespace Squared.Task.Data {
     }
 
     public class Transaction : IDisposable, ISchedulable {
-        private ConnectionWrapper _Wrapper;
-        private IFuture _Future;
+        private readonly ConnectionWrapper _Wrapper;
+        private readonly IFuture _Future;
         private bool _Active;
 
         public Transaction (ConnectionWrapper wrapper) {

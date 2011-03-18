@@ -74,7 +74,7 @@ namespace Squared.Task {
                 stepStarted = Time.Ticks;
 
             int i = 0;
-            Action item = null;
+            Action item;
             do {
                 if (_Queue.Dequeue(out item)) {
                     item();
@@ -90,7 +90,7 @@ namespace Squared.Task {
             } while (item != null);
         }
 
-        protected bool OnMaxStepDurationExceeded (long elapsedTicks) {
+        private bool OnMaxStepDurationExceeded (long elapsedTicks) {
             if (MaxStepDurationExceeded != null)
                 return MaxStepDurationExceeded(elapsedTicks);
             else
@@ -98,7 +98,7 @@ namespace Squared.Task {
         }
 
         public bool WaitForFuture (IFuture future) {
-            Action item = null;
+            Action item;
             while (!future.Completed) {
                 if (_Disposed)
                     throw new ObjectDisposedException("ThreadSafeJobQueue");

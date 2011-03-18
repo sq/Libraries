@@ -92,7 +92,7 @@ namespace Squared.Task {
                 stepStarted = Time.Ticks;
 
             int i = 0;
-            Action item = null;
+            Action item;
             while (_Queue.Dequeue(out item)) {
                 if (item != null)
                     item();

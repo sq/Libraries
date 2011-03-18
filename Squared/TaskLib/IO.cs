@@ -123,7 +123,7 @@ namespace Squared.Task.IO {
         public FileDataAdapter (string filename, FileMode mode, FileAccess access, FileShare share, int bufferSize)
             : base (
                 new FileStream(
-                    filename, mode, access, share, DefaultBufferSize 
+                    filename, mode, access, share, bufferSize
 #if !XBOX
                     , true
 #endif

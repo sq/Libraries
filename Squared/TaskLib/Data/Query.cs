@@ -117,6 +117,8 @@ namespace Squared.Task.Data {
                 if (value is NamedParam) {
                     var namedParam = (NamedParam)value;
                     var parameter = (IDbDataParameter)_Command.Parameters[namedParam.Name];
+                    if (parameter == null)
+                        throw new InvalidOperationException();
                 }
             }
         }
@@ -271,7 +273,7 @@ namespace Squared.Task.Data {
             return e;
         }
 
-        protected IEnumerator<object> ExecuteTask (Future<QueryDataReader> fReader) {
+        protected static IEnumerator<object> ExecuteTask (Future<QueryDataReader> fReader) {
             yield return fReader;
 
             using (var reader = fReader.Result) {
@@ -369,7 +371,7 @@ namespace Squared.Task.Data {
             return e;
         }
 
-        protected IEnumerator<object> ExecuteMapper<T> (Future<QueryDataReader> fReader)
+        protected static IEnumerator<object> ExecuteMapper<T> (Future<QueryDataReader> fReader)
             where T : class, new() {
             yield return fReader;
 
@@ -401,13 +403,13 @@ namespace Squared.Task.Data {
             return e;
         }
 
-        protected IEnumerator<T> CustomMapperWrapper<T> (IDataReader reader, Func<IDataReader, T> customMapper) {
+        protected static IEnumerator<T> CustomMapperWrapper<T> (IDataReader reader, Func<IDataReader, T> customMapper) {
             using (reader)
             while (reader.Read())
                 yield return customMapper(reader);
         }
 
-        protected IEnumerator<object> ExecuteCustomMapper<T> (Func<IDataReader, T> customMapper, Future<QueryDataReader> fReader) {
+        protected static IEnumerator<object> ExecuteCustomMapper<T> (Func<IDataReader, T> customMapper, Future<QueryDataReader> fReader) {
             yield return fReader;
 
             using (var reader = fReader.Result) {

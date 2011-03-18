@@ -470,7 +470,7 @@ namespace Squared.Task {
             : this(task, DefaultBufferSize) {
         }
 
-        protected virtual void Start () {
+        protected void Start () {
             _Thunk = new SchedulableGeneratorThunk(_Task);
             _Thunk.OnNextValue = OnNextValue;
 
@@ -569,10 +569,11 @@ namespace Squared.Task {
             } catch (InvalidCastException) {
                 result = default(T);
 
-                string valueString = "<?>";
+                string valueString;
                 try {
                     valueString = value.ToString();
                 } catch {
+                    valueString = "<?>";
                 }
 
                 string errorString = String.Format(
@@ -658,7 +659,7 @@ namespace Squared.Task {
             OnEarlyDispose = null;
 
             if (_ResumeFuture != null) {
-                int count = 0;
+                int count;
                 lock (_Buffer)
                     count = _Buffer.Count;
 
@@ -719,9 +720,6 @@ namespace Squared.Task {
 
     public class EventSink<T> : BlockingQueue<T>, IDisposable
         where T : EventArgs {
-
-        public EventSink () {
-        }
 
         public void OnEvent (object sender, T eventArgs) {
             this.Enqueue(eventArgs);

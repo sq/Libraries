@@ -20,7 +20,7 @@ namespace Squared.Task.Data {
             public Action ExecuteFunc;
         }
 
-        static Regex
+        static readonly Regex
             _NormalParameter = new Regex(@"(^|\s|[\(,=+-><])\?($|\s|[\),=+-><])", RegexOptions.Compiled),
             _NamedParameter = new Regex(@"(^|\s|[\(,=+-><])\@(?'name'[a-zA-Z0-9_]+)($|\s|[\),=+-><])", RegexOptions.Compiled);
 
@@ -28,13 +28,13 @@ namespace Squared.Task.Data {
         TaskScheduler _Scheduler;
 
         bool _Closing = false;
-        bool _OwnsConnection = false;
+        readonly bool _OwnsConnection = false;
         IFuture _ActiveQuery = null;
         Query _ActiveQueryObject = null;
-        Query _BeginTransaction, _CommitTransaction, _RollbackTransaction, _BeginTransactionExclusive;
+        protected readonly Query _BeginTransaction, _CommitTransaction, _RollbackTransaction, _BeginTransactionExclusive;
         int _TransactionDepth = 0;
         bool _TransactionFailed = false;
-        Queue<WaitingQuery> _WaitingQueries = new Queue<WaitingQuery>();
+        readonly Queue<WaitingQuery> _WaitingQueries = new Queue<WaitingQuery>();
 
         public ConnectionWrapper (TaskScheduler scheduler, IDbConnection connection)
             : this(scheduler, connection, false) {

@@ -118,7 +118,7 @@ namespace Squared.Task.IO {
             }
 
             try {
-                int bytesSent = _Socket.EndSend(ar);
+                _Socket.EndSend(ar);
                 f.Complete();
             } catch (FutureHandlerException) {
                 throw;

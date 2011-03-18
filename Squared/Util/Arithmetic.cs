@@ -418,7 +418,7 @@ namespace Squared.Util {
             }
 
             DynamicMethod newMethod = new DynamicMethod(
-                String.Format("CompiledExpression", t.Name),
+                String.Format("CompiledExpression<{0}>", t.Name),
                 returnType,
                 parameterTypes,
                 true

@@ -67,7 +67,6 @@ namespace Squared.Task {
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
-            IEnumerator<object> task = _Task;
             _Future = future;
             _Scheduler = scheduler;
             _Future.RegisterOnDispose(this.OnDisposed);
@@ -171,7 +170,7 @@ namespace Squared.Task {
             } else if ((r = (value as Result)) != null) {
                 CompleteWithResult(r.Value);
             } else if ((e = (value as IEnumerator<object>)) != null) {
-                ScheduleNextStepForSchedulable(new SchedulableGeneratorThunk(value as IEnumerator<object>));
+                ScheduleNextStepForSchedulable(new SchedulableGeneratorThunk(e));
             } else {
                 throw new TaskYieldedValueException(_Task);
             }
