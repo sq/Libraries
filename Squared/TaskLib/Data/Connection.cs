@@ -7,6 +7,7 @@ using System.Data;
 using System.Threading;
 using System.Linq.Expressions;
 using Squared.Util;
+using System.Collections.Concurrent;
 
 namespace Squared.Task.Data {
     public class ConnectionDisposedException : Exception {
@@ -42,8 +43,7 @@ namespace Squared.Task.Data {
         int _TransactionDepth = 0;
         bool _TransactionFailed = false;
 
-        protected readonly AtomicQueue<PendingQuery> _QueryQueue = new AtomicQueue<PendingQuery>();
-        protected Internal.WorkerThread<AtomicQueue<PendingQuery>> _QueryThread;
+        protected Internal.WorkerThread<ConcurrentQueue<PendingQuery>> _QueryThread;
 
         public ConnectionWrapper (TaskScheduler scheduler, IDbConnection connection)
             : this(scheduler, connection, false) {
@@ -137,9 +137,7 @@ namespace Squared.Task.Data {
         internal void EnqueueQuery (IFuture future, Action executeFunc) {
             lock (this)
             if (!_Closing) {
-                _QueryQueue.Enqueue(new PendingQuery(executeFunc, future));
-
-                WakeQueryThread();
+                QueueWorkItem(new PendingQuery(executeFunc, future));
 
                 return;
             }
@@ -147,10 +145,10 @@ namespace Squared.Task.Data {
             future.SetResult(null, new ConnectionDisposedException());
         }
 
-        protected void QueryThreadFunc (AtomicQueue<PendingQuery> workItems, ManualResetEvent newWorkItemEvent) {
+        protected void QueryThreadFunc (ConcurrentQueue<PendingQuery> workItems, ManualResetEvent newWorkItemEvent) {
             while (true) {
                 PendingQuery item;
-                while ((_ActiveQuery == null) && _QueryQueue.Dequeue(out item)) {
+                while ((_ActiveQuery == null) && workItems.TryDequeue(out item)) {
                     NotifyQueryBegan(item.Future);
                     try {
                         lock (this)
@@ -165,9 +163,11 @@ namespace Squared.Task.Data {
             }
         }
 
-        internal void WakeQueryThread () {
+        protected void QueueWorkItem (PendingQuery workItem) {
             if (_QueryThread == null)
-                _QueryThread = new Internal.WorkerThread<AtomicQueue<PendingQuery>>(QueryThreadFunc, ThreadPriority.Normal);
+                _QueryThread = new Internal.WorkerThread<ConcurrentQueue<PendingQuery>>(QueryThreadFunc, ThreadPriority.Normal);
+
+            _QueryThread.WorkItems.Enqueue(workItem);
 
             _QueryThread.Wake();
         }
@@ -190,7 +190,7 @@ namespace Squared.Task.Data {
             }
 
             _ActiveQueryObject = null;
-            WakeQueryThread();
+            _QueryThread.Wake();
         }
 
         public Future<object> ExecuteScalar (string sql, params object[] parameters) {
@@ -279,7 +279,7 @@ namespace Squared.Task.Data {
             if (_Connection != null) {
                 var exc = new ConnectionDisposedException();
                 PendingQuery query;
-                while (_QueryQueue.Dequeue(out query)) {
+                while ((_QueryThread != null) && _QueryThread.WorkItems.TryDequeue(out query)) {
                     try {
                         query.Future.SetResult(null, exc);
                     } catch (Exception ex) {

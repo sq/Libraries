@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using Squared.Util.Event;
 using Squared.Util;
+using System.Collections.Concurrent;
 
 namespace Squared.Task {
     public static partial class JobQueue {
@@ -27,7 +28,7 @@ namespace Squared.Task {
         private int WM_RUN_WORK_ITEM;
         private const int WS_EX_NOACTIVATE = 0x08000000;
 
-        private AtomicQueue<Action> _Queue = new AtomicQueue<Action>();
+        private ConcurrentQueue<Action> _Queue = new ConcurrentQueue<Action>();
         private int StepIsPending = 0;
         private int ExecutionDepth = 0;
 
@@ -93,7 +94,7 @@ namespace Squared.Task {
 
             int i = 0;
             Action item;
-            while (_Queue.Dequeue(out item)) {
+            while (_Queue.TryDequeue(out item)) {
                 if (item != null)
                     item();
 

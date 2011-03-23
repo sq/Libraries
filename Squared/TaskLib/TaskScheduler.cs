@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using Squared.Util;
+using System.Collections.Concurrent;
 
 namespace Squared.Task {
     public interface ISchedulable {
@@ -146,7 +147,7 @@ namespace Squared.Task {
         public BackgroundTaskErrorHandler ErrorHandler = null;
 
         private IJobQueue _JobQueue = null;
-        private AtomicQueue<Action> _StepListeners = new AtomicQueue<Action>();
+        private ConcurrentQueue<Action> _StepListeners = new ConcurrentQueue<Action>();
         private Internal.WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
 
         public TaskScheduler (Func<IJobQueue> JobQueueFactory) {
@@ -301,12 +302,8 @@ namespace Squared.Task {
         internal void BeforeStep () {
             Action item;
 
-            while (true) {
-                if (_StepListeners.Dequeue(out item))
-                    item();
-                else
-                    break;
-            }
+            while (_StepListeners.TryDequeue(out item))
+                item();
         }
 
         public void Step () {

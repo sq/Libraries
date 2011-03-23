@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Security;
 using Squared.Util;
+using System.Collections.Concurrent;
 
 namespace Squared.Task {
     public class InfiniteStepException : Exception {
@@ -58,7 +59,7 @@ namespace Squared.Task {
         private readonly AutoResetEvent _WaiterSignal = new AutoResetEvent(false);
         private int _WaiterCount = 0;
 
-        private readonly AtomicQueue<Action> _Queue = new AtomicQueue<Action>();
+        private readonly ConcurrentQueue<Action> _Queue = new ConcurrentQueue<Action>();
 
         public ThreadSafeJobQueue ()
             : this(DefaultMaxStepDuration) {
@@ -76,7 +77,7 @@ namespace Squared.Task {
             int i = 0;
             Action item;
             do {
-                if (_Queue.Dequeue(out item)) {
+                if (_Queue.TryDequeue(out item)) {
                     item();
                     i++;
 
@@ -103,7 +104,7 @@ namespace Squared.Task {
                 if (_Disposed)
                     throw new ObjectDisposedException("ThreadSafeJobQueue");
 
-                if (_Queue.Dequeue(out item))
+                if (_Queue.TryDequeue(out item))
                     item();
                 else {
                     Thread.Sleep(0);

@@ -106,7 +106,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\..\TaskLib\BlockingQueue.cs" />
-    <Compile Include="..\..\TaskLib\Clock.cs" />
     <Compile Include="..\..\TaskLib\Future.cs" />
     <Compile Include="..\..\TaskLib\IO.cs" />
     <Compile Include="..\..\TaskLib\JobQueue.cs" />
