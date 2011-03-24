@@ -17,6 +17,8 @@ namespace Squared.Task.Data {
     }
 
     public class ConnectionWrapper : IDisposable {
+        public static readonly int WorkerThreadTimeoutMs = 10000;
+
         protected struct PendingQuery {
             public readonly Action ExecuteFunc;
             public readonly IFuture Future;
@@ -148,6 +150,7 @@ namespace Squared.Task.Data {
         protected void QueryThreadFunc (ConcurrentQueue<PendingQuery> workItems, ManualResetEvent newWorkItemEvent) {
             while (true) {
                 PendingQuery item;
+
                 while ((_ActiveQuery == null) && workItems.TryDequeue(out item)) {
                     NotifyQueryBegan(item.Future);
                     try {
@@ -158,7 +161,9 @@ namespace Squared.Task.Data {
                     }
                 }
 
-                newWorkItemEvent.WaitOne();
+                if (!newWorkItemEvent.WaitOne(WorkerThreadTimeoutMs))
+                    return;
+
                 newWorkItemEvent.Reset();
             }
         }

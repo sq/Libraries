@@ -139,6 +139,8 @@ namespace Squared.Task {
     public delegate bool BackgroundTaskErrorHandler (Exception error);
 
     public class TaskScheduler : IDisposable {
+        public static int SleepThreadTimeoutMs = 10000;
+
         const long SleepFudgeFactor = 100;
         const long SleepSpinThreshold = 1000;
         const long MinimumSleepLength = 10000;
@@ -146,6 +148,7 @@ namespace Squared.Task {
 
         public BackgroundTaskErrorHandler ErrorHandler = null;
 
+        private bool _IsDisposed = false;
         private IJobQueue _JobQueue = null;
         private ConcurrentQueue<Action> _StepListeners = new ConcurrentQueue<Action>();
         private Internal.WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
@@ -164,6 +167,9 @@ namespace Squared.Task {
         }
 
         public bool WaitForWorkItems (double timeout) {
+            if (_IsDisposed)
+                throw new ObjectDisposedException("TaskScheduler");
+
             return _JobQueue.WaitForWorkItems(timeout);
         }
 
@@ -174,6 +180,9 @@ namespace Squared.Task {
         }
 
         public void OnTaskError (Exception exception) {
+            if (_IsDisposed)
+                throw new TaskException("Unhandled exception in background task", exception);
+
             this.QueueWorkItem(() => {
                 if (ErrorHandler != null)
                     if (ErrorHandler(exception))
@@ -214,10 +223,16 @@ namespace Squared.Task {
         }
 
         public void QueueWorkItem (Action workItem) {
+            if (_IsDisposed)
+                throw new ObjectDisposedException("TaskScheduler");
+
             _JobQueue.QueueWorkItem(workItem);
         }
 
         internal void AddStepListener (Action listener) {
+            if (_IsDisposed)
+                return;
+
             _StepListeners.Enqueue(listener);
         }
 
@@ -238,10 +253,12 @@ namespace Squared.Task {
                 } else {
                     Monitor.Exit(pendingSleeps);
 #if XBOX
-                    newSleepEvent.WaitOne(-1);
+                    if (!newSleepEvent.WaitOne(SleepThreadTimeoutMs))
 #else
-                    newSleepEvent.WaitOne(-1, false);
+                    if (!newSleepEvent.WaitOne(SleepThreadTimeoutMs))
 #endif
+                        return;
+
                     newSleepEvent.Reset();
                     continue;
                 }
@@ -286,6 +303,9 @@ namespace Squared.Task {
         }
 
         internal void QueueSleep (long completeWhen, IFuture future) {
+            if (_IsDisposed)
+                return;
+
             long now = Time.Ticks;
             if (now > completeWhen) {
                 future.Complete();
@@ -307,6 +327,9 @@ namespace Squared.Task {
         }
 
         public void Step () {
+            if (_IsDisposed)
+                return;
+
             BeforeStep();
 
             _JobQueue.Step();
@@ -323,6 +346,9 @@ namespace Squared.Task {
         }
 
         public T WaitFor<T> (Future<T> future) {
+            if (_IsDisposed)
+                throw new ObjectDisposedException("TaskScheduler");
+
             while (true) {
                 BeforeStep();
 
@@ -332,6 +358,9 @@ namespace Squared.Task {
         }
 
         public object WaitFor (IFuture future) {
+            if (_IsDisposed)
+                throw new ObjectDisposedException("TaskScheduler");
+
             while (true) {
                 BeforeStep();
 
@@ -346,9 +375,28 @@ namespace Squared.Task {
             }
         }
 
+        public bool IsDisposed {
+            get {
+                return _IsDisposed;
+            }
+        }
+
         public void Dispose () {
-            _JobQueue.Dispose();
+            if (_IsDisposed)
+                return;
+
+            _IsDisposed = true;
+            Thread.MemoryBarrier();
+
+            lock (_SleepWorker.WorkItems) {
+                while (_SleepWorker.WorkItems.Count > 0) {
+                    var item = _SleepWorker.WorkItems.Dequeue();
+                    item.Future.Dispose();
+                }
+            }
+                
             _SleepWorker.Dispose();
+            _JobQueue.Dispose();
         }
     }
 }

@@ -45,6 +45,7 @@ namespace Squared.Task.Internal {
         private ManualResetEvent _WakeEvent = new ManualResetEvent(false);
         private Container _WorkItems = new Container();
         private ThreadPriority _Priority;
+        private bool _IsDisposed = false;
 
         public WorkerThread (WorkerThreadFunc<Container> threadFunc, ThreadPriority priority) {
             _ThreadFunc = threadFunc;
@@ -58,39 +59,72 @@ namespace Squared.Task.Internal {
         }
 
         public void Wake () {
+            if (_IsDisposed)
+                return;
+
             if (_WakeEvent != null)
                 _WakeEvent.Set();
 
             if (_Thread == null) {
-                _Thread = new Thread(() => {
+                var newThread = new Thread(() => {
                     try {
-                        _ThreadFunc(_WorkItems, _WakeEvent);
+                        var wi = _WorkItems;
+                        var we = _WakeEvent;
+
+                        // If either of these fields are null, we've probably been disposed
+                        if ((wi != null) && (we != null))
+                            _ThreadFunc(wi, we);
 #if !XBOX
                     } catch (ThreadInterruptedException) {
 #endif
                     } catch (ThreadAbortException) {                        
                     }
+
+                    var me = Interlocked.Exchange(ref _Thread, null);
+                    if (me == Thread.CurrentThread)
+                        OnThreadTerminated(Thread.CurrentThread);
+
                 });
 #if !XBOX
-                _Thread.Priority = _Priority;
+                newThread.Priority = _Priority;
 #endif
-                _Thread.IsBackground = true;
-                _Thread.Name = String.Format("{0}_{1}", _ThreadFunc.Method.Name, this.GetHashCode());
-                _Thread.Start();
+                newThread.IsBackground = true;
+                newThread.Name = String.Format("{0}_{1}", _ThreadFunc.ToString(), this.GetHashCode());
+
+                if (Interlocked.CompareExchange(ref _Thread, newThread, null) == null)
+                    newThread.Start();
             }
         }
 
+        private void OnThreadTerminated (Thread theThread) {
+            if (_IsDisposed)
+                return;
+
+            var we = _WakeEvent;
+            if ((we != null) && we.WaitOne(1))
+                Wake();
+        }
+
         public void Dispose () {
-            if (_Thread != null) {
+            if (_IsDisposed)
+                return;
+
+            _IsDisposed = true;
+            Thread.MemoryBarrier();
+
+            var wakeEvent = Interlocked.Exchange(ref _WakeEvent, null);
+
+            var thread = Interlocked.Exchange(ref _Thread, null);
+            if (thread != null) {
 #if !XBOX
-                _Thread.Interrupt();
+                thread.Interrupt();
+#else
+                thread.Abort();
 #endif
-                _Thread.Join(10);
-                _Thread.Abort();
-                _Thread = null;
             }
 
-            _WakeEvent = null;
+            if (wakeEvent != null)
+                wakeEvent.Set();
         }
     }
 }
