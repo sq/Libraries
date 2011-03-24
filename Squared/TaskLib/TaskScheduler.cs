@@ -155,7 +155,9 @@ namespace Squared.Task {
 
         public TaskScheduler (Func<IJobQueue> JobQueueFactory) {
             _JobQueue = JobQueueFactory();
-            _SleepWorker = new Internal.WorkerThread<PriorityQueue<SleepItem>>(SleepWorkerThreadFunc, ThreadPriority.AboveNormal);
+            _SleepWorker = new Internal.WorkerThread<PriorityQueue<SleepItem>>(
+                SleepWorkerThreadFunc, ThreadPriority.AboveNormal, "TaskScheduler Sleep Provider"
+            );
         }
 
         public TaskScheduler ()

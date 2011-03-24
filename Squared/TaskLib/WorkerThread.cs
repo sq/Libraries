@@ -44,11 +44,20 @@ namespace Squared.Task.Internal {
         private Thread _Thread = null;
         private ManualResetEvent _WakeEvent = new ManualResetEvent(false);
         private Container _WorkItems = new Container();
-        private ThreadPriority _Priority;
+        private ThreadPriority? _Priority;
         private bool _IsDisposed = false;
+        private string _ThreadName;
 
-        public WorkerThread (WorkerThreadFunc<Container> threadFunc, ThreadPriority priority) {
+        public WorkerThread (WorkerThreadFunc<Container> threadFunc, ThreadPriority? priority = null, string threadName = null) {
             _ThreadFunc = threadFunc;
+
+            const int maxNameLength = 48;
+            var tfn = _ThreadFunc.GetType().ToString();
+            if (tfn.Length > maxNameLength)
+                tfn = tfn.Substring(tfn.Length - maxNameLength, maxNameLength);
+
+            _ThreadName = threadName ?? String.Format("{0} {1:X8}", tfn, this.GetHashCode());
+
             _Priority = priority;
         }
 
@@ -85,11 +94,14 @@ namespace Squared.Task.Internal {
                         OnThreadTerminated(Thread.CurrentThread);
 
                 });
+
 #if !XBOX
-                newThread.Priority = _Priority;
+                if (_Priority.HasValue)
+                    newThread.Priority = _Priority.Value;
 #endif
+
                 newThread.IsBackground = true;
-                newThread.Name = String.Format("{0}_{1}", _ThreadFunc.ToString(), this.GetHashCode());
+                newThread.Name = _ThreadName;
 
                 if (Interlocked.CompareExchange(ref _Thread, newThread, null) == null)
                     newThread.Start();

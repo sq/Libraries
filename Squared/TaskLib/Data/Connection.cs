@@ -170,7 +170,9 @@ namespace Squared.Task.Data {
 
         protected void QueueWorkItem (PendingQuery workItem) {
             if (_QueryThread == null)
-                _QueryThread = new Internal.WorkerThread<ConcurrentQueue<PendingQuery>>(QueryThreadFunc, ThreadPriority.Normal);
+                _QueryThread = new Internal.WorkerThread<ConcurrentQueue<PendingQuery>>(
+                    QueryThreadFunc, ThreadPriority.Normal, "Database Worker"
+                );
 
             _QueryThread.WorkItems.Enqueue(workItem);
 
