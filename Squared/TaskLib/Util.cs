@@ -795,7 +795,7 @@ namespace Squared.Task {
         }
     }
 
-    public class OwnedFutureSet : IDisposable {
+    public class OwnedFutureSet : IEnumerable<IFuture>, IDisposable {
         private class FutureComparer : IEqualityComparer<IFuture> {
             bool IEqualityComparer<IFuture>.Equals (IFuture x, IFuture y) {
                 return x == y;
@@ -854,6 +854,14 @@ namespace Squared.Task {
 #endif
 
             of.Clear();
+        }
+
+        IEnumerator<IFuture> IEnumerable<IFuture>.GetEnumerator () {
+            return _OwnedFutures.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return _OwnedFutures.GetEnumerator();
         }
     }
 }

@@ -67,6 +67,12 @@ namespace Squared.Task.Internal {
             }
         }
 
+        public Thread Thread {
+            get {
+                return _Thread;
+            }
+        }
+
         public void Wake () {
             if (_IsDisposed)
                 return;
