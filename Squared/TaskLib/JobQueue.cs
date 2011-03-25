@@ -106,10 +106,8 @@ namespace Squared.Task {
 
                 if (_Queue.TryDequeue(out item))
                     item();
-                else {
-                    Thread.Sleep(0);
+                else
                     return false;
-                }
             }
 
             return true;

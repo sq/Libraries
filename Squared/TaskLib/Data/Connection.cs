@@ -19,8 +19,8 @@ namespace Squared.Task.Data {
     public class ConnectionWrapper : IDisposable {
         public static readonly int WorkerThreadTimeoutMs = 10000;
 
-        protected struct PendingQuery {
-            public readonly Action ExecuteFunc;
+        protected class PendingQuery {
+            public Action ExecuteFunc;
             public readonly IFuture Future;
 
             public PendingQuery (Action executeFunc, IFuture future) {
@@ -159,6 +159,7 @@ namespace Squared.Task.Data {
                     } catch (Exception ex) {
                         item.Future.SetResult(null, ex);
                     }
+                    item.ExecuteFunc = null;
                 }
 
                 if (!newWorkItemEvent.WaitOne(WorkerThreadTimeoutMs))
