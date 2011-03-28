@@ -147,7 +147,7 @@ namespace Squared.Task.Data {
             future.SetResult(null, new ConnectionDisposedException());
         }
 
-        protected void QueryThreadFunc (ConcurrentQueue<PendingQuery> workItems, ManualResetEvent newWorkItemEvent) {
+        protected void QueryThreadFunc (ConcurrentQueue<PendingQuery> workItems, ManualResetEventSlim newWorkItemEvent) {
             while (true) {
                 PendingQuery item;
 
@@ -162,7 +162,7 @@ namespace Squared.Task.Data {
                     item.ExecuteFunc = null;
                 }
 
-                if (!newWorkItemEvent.WaitOne(WorkerThreadTimeoutMs))
+                if (!newWorkItemEvent.Wait(WorkerThreadTimeoutMs))
                     return;
 
                 newWorkItemEvent.Reset();

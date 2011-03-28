@@ -221,6 +221,15 @@ namespace Squared.Task {
             public readonly List<IFuture> State = new List<IFuture>();
             public int Trigger;
 
+            public void OnCompositeDispose (IFuture f) {
+                lock (State) {
+                    foreach (var future in State)
+                        future.Dispose();
+
+                    State.Clear();
+                }
+            }
+
             public void OnComplete (IFuture f) {
                 bool completed = false;
                 lock (State) {
@@ -258,14 +267,18 @@ namespace Squared.Task {
 
             var f = new Future<IFuture>();
             var h = new WaitHandler();
+
             h.Composite = f;
             h.State.AddRange(futures);
             h.Trigger = x;
+
             OnComplete oc = h.OnComplete;
             OnDispose od = h.OnDispose;
 
             if (h.State.Count == 0)
                 throw new ArgumentException("Must specify at least one future to wait on", "futures");
+
+            f.RegisterOnDispose(h.OnCompositeDispose);
 
             foreach (IFuture _ in futures) {
                 _.RegisterOnComplete(oc);
@@ -718,10 +731,10 @@ namespace Squared.Task {
         }
 
         /// <summary>
-        /// Creates a ManualResetEvent that will become set when this future is completed.
+        /// Creates a ManualResetEventSlim that will become set when this future is completed.
         /// </summary>
-        public static ManualResetEvent GetCompletionEvent (this IFuture future) {
-            ManualResetEvent evt = new ManualResetEvent(false);
+        public static ManualResetEventSlim GetCompletionEvent (this IFuture future) {
+            ManualResetEventSlim evt = new ManualResetEventSlim(false);
             OnComplete handler = (f) => evt.Set();
             future.RegisterOnComplete(handler);
             return evt;

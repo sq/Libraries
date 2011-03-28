@@ -103,6 +103,8 @@ namespace Squared.Task {
             while (!future.Completed) {
                 if (_Disposed)
                     throw new ObjectDisposedException("ThreadSafeJobQueue");
+                if (future.Disposed)
+                    throw new FutureDisposedException(future);
 
                 if (_Queue.TryDequeue(out item))
                     item();

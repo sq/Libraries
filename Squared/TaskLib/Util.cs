@@ -839,6 +839,12 @@ namespace Squared.Task {
             future.RegisterOnDispose(_OnDispose);
         }
 
+        public int Count {
+            get {
+                return _OwnedFutures.Count;
+            }
+        }
+
         public void Dispose () {
             var of = Interlocked.Exchange(ref _OwnedFutures, null);
 

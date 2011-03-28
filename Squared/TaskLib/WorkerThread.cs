@@ -36,13 +36,13 @@ namespace System.Threading {
 #endif
 
 namespace Squared.Task.Internal {
-    public delegate void WorkerThreadFunc<in T> (T workItems, ManualResetEvent newWorkItemEvent);
+    public delegate void WorkerThreadFunc<in T> (T workItems, ManualResetEventSlim newWorkItemEvent);
 
     public class WorkerThread<Container> : IDisposable
         where Container : new() {
         private WorkerThreadFunc<Container> _ThreadFunc;
         private Thread _Thread = null;
-        private ManualResetEvent _WakeEvent = new ManualResetEvent(false);
+        private ManualResetEventSlim _WakeEvent = new ManualResetEventSlim(false);
         private Container _WorkItems = new Container();
         private ThreadPriority? _Priority;
         private bool _IsDisposed = false;
@@ -119,7 +119,7 @@ namespace Squared.Task.Internal {
                 return;
 
             var we = _WakeEvent;
-            if ((we != null) && we.WaitOne(1))
+            if ((we != null) && we.Wait(1))
                 Wake();
         }
 

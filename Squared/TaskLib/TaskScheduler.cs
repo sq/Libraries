@@ -238,7 +238,7 @@ namespace Squared.Task {
             _StepListeners.Enqueue(listener);
         }
 
-        internal static void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, ManualResetEvent newSleepEvent) {
+        internal static void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, ManualResetEventSlim newSleepEvent) {
             while (true) {
                 long now = Time.Ticks;
 
@@ -254,11 +254,8 @@ namespace Squared.Task {
                     }
                 } else {
                     Monitor.Exit(pendingSleeps);
-#if XBOX
-                    if (!newSleepEvent.WaitOne(SleepThreadTimeoutMs))
-#else
-                    if (!newSleepEvent.WaitOne(SleepThreadTimeoutMs))
-#endif
+
+                    if (!newSleepEvent.Wait(SleepThreadTimeoutMs))
                         return;
 
                     newSleepEvent.Reset();
@@ -294,11 +291,7 @@ namespace Squared.Task {
 
                     if (newSleepEvent != null) {
                         newSleepEvent.Reset();
-#if XBOX
-                        newSleepEvent.WaitOne(msToSleep);
-#else
-                        newSleepEvent.WaitOne(msToSleep, false);
-#endif
+                        newSleepEvent.Wait(msToSleep);
                     }
                 }
             }

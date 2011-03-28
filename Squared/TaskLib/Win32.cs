@@ -119,6 +119,9 @@ namespace Squared.Task {
             if (!future.Completed)
                 Thread.Sleep(0);
 
+            if (future.Disposed)
+                throw new FutureDisposedException(future);
+
             return future.Completed;
         }
 
