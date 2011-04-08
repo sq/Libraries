@@ -1,19 +1,138 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using Squared.Task.Data.Mapper;
 using Squared.Util.Bind;
 using System.Linq.Expressions;
 using System.Data;
 
 namespace Squared.Task.Data {
-    public class PropertySerializer : IDisposable {
-        public Func<IBoundMember, string> GetMemberName;
+    public delegate IEnumerator<object> BoundMemberAdapterFunc (string name, IBoundMember member);
+
+    public class BoundMemberAdapter<T> {
+        public readonly Func<string, BoundMember<T>, IEnumerator<object>> Method;
+
+        public BoundMemberAdapter (
+            Func<string, BoundMember<T>, IEnumerator<object>> method
+        ) {
+            Method = method;
+        }
+
+        public IEnumerator<object> Invoke (string name, IBoundMember member) {
+            return Method(name, (BoundMember<T>)member);
+        }
+    }
+
+    public struct BoundMemberAdapters {
+        public readonly BoundMemberAdapterFunc Load, Save;
+
+        public BoundMemberAdapters (BoundMemberAdapterFunc load, BoundMemberAdapterFunc save) {
+            Load = load;
+            Save = save;
+        }
+    }
+
+    public abstract class PropertySerializerBase : IDisposable {
+        protected readonly Dictionary<Type, BoundMemberAdapters> AdapterCache = new Dictionary<Type, BoundMemberAdapters>();
+
         public readonly List<IBoundMember> Bindings = new List<IBoundMember>();
+
+        public Func<IBoundMember, string> GetMemberName;
+
+        public PropertySerializerBase (
+            Func<IBoundMember, string> getMemberName
+        ) {
+            GetMemberName = getMemberName;
+        }
+
+        public void Bind<T> (Expression<Func<T>> target) {
+            Bindings.Add(BoundMember.New(target));
+        }
+
+        public static string GetDefaultMemberName (IBoundMember member) {
+            return member.Name;
+        }
+
+        public IEnumerator<object> Save () {
+            foreach (var member in Bindings) {
+                var name = GetMemberName(member);
+                var adapters = GetAdapters(member.Type);
+                yield return adapters.Save(name, member);
+            }
+        }
+
+        public IEnumerator<object> Load () {
+            foreach (var member in Bindings) {
+                var name = GetMemberName(member);
+                var adapters = GetAdapters(member.Type);
+                yield return adapters.Load(name, member);
+            }
+        }
+
+        protected BoundMemberAdapters GetAdapters (Type type) {
+            BoundMemberAdapters result;
+            if (AdapterCache.TryGetValue(type, out result))
+                return result;
+
+            var bmaFuncType = typeof(BoundMemberAdapterFunc);
+
+            var adapterType = typeof(BoundMemberAdapter<>)
+                .MakeGenericType(type);
+
+            Func<string, Delegate> getHelperMethod = (string name) => {
+                var method = GetType().GetMethod(
+                    name, BindingFlags.Instance |
+                    BindingFlags.NonPublic |
+                    BindingFlags.FlattenHierarchy
+                ).MakeGenericMethod(type);
+
+                var delegateType = typeof(Func<,,>)
+                    .MakeGenericType(
+                        typeof(string), 
+                        typeof(BoundMember<>)
+                            .MakeGenericType(type), 
+                        typeof(IEnumerator<object>)
+                    );
+
+                return Delegate.CreateDelegate(delegateType, this, method, true);
+            };
+            
+            var loadAdapter = adapterType.GetConstructors()[0]
+                .Invoke(new object[] { getHelperMethod("LoadBinding") });
+
+            var saveAdapter = adapterType.GetConstructors()[0]
+                .Invoke(new object[] { getHelperMethod("SaveBinding") });
+
+            var invokeMethod = adapterType
+                .GetMethod("Invoke", 
+                    BindingFlags.Public | BindingFlags.Instance
+                );
+
+            result = new BoundMemberAdapters(
+                (BoundMemberAdapterFunc)Delegate.CreateDelegate(bmaFuncType, loadAdapter, invokeMethod, true),
+                (BoundMemberAdapterFunc)Delegate.CreateDelegate(bmaFuncType, saveAdapter, invokeMethod, true)
+            );
+            AdapterCache[type] = result;
+
+            return result;
+        }
+
+        protected abstract IEnumerator<object> LoadBinding<T> (string name, BoundMember<T> member);
+
+        protected abstract IEnumerator<object> SaveBinding<T> (string name, BoundMember<T> member);
+
+        public virtual void Dispose () {
+            Bindings.Clear();
+        }
+    }
+
+    public class DatabasePropertySerializer : PropertySerializerBase {
         public readonly Query WriteValue;
         public readonly Query ReadValue;
 
-        public PropertySerializer (
+        public DatabasePropertySerializer (
             ConnectionWrapper database, string tableName
         ) : this (
             database, tableName,
@@ -21,18 +140,17 @@ namespace Squared.Task.Data {
         ) {
         }
 
-        public PropertySerializer (
+        public DatabasePropertySerializer (
             ConnectionWrapper database, string tableName, 
             string nameColumn, string valueColumn
         ) : this (
             database, tableName,
             nameColumn, valueColumn,
-            null
+            GetDefaultMemberName
         ) {
-            GetMemberName = GetDefaultMemberName;
         }
 
-        public PropertySerializer (
+        public DatabasePropertySerializer (
             ConnectionWrapper database, string tableName, 
             string nameColumn, string valueColumn, 
             Func<IBoundMember, string> getMemberName
@@ -43,58 +161,40 @@ namespace Squared.Task.Data {
         ) {
         }
 
-        public PropertySerializer (
+        public DatabasePropertySerializer (
             Query writeValue, Query readValue
         ) : this (
-            writeValue, readValue, null
+            writeValue, readValue, GetDefaultMemberName
         ) {
-            GetMemberName = GetDefaultMemberName;
         }
 
-        public PropertySerializer (
+        public DatabasePropertySerializer (
             Query writeValue, Query readValue, 
             Func<IBoundMember, string> getMemberName
-        ) {
+        ) : base (getMemberName) {
             WriteValue = writeValue;
             writeValue.Parameters[0].DbType = DbType.String;
             writeValue.Parameters[1].DbType = DbType.Object;
             ReadValue = readValue;
             readValue.Parameters[0].DbType = DbType.String;
-            GetMemberName = getMemberName;
         }
 
-        public static string GetDefaultMemberName (IBoundMember member) {
-            return member.Name;
+        protected override IEnumerator<object> SaveBinding<T> (string name, BoundMember<T> member) {
+            yield return WriteValue.ExecuteNonQuery(name, member.Value);
         }
 
-        public void Bind<T> (Expression<Func<T>> target) {
-            Bindings.Add(BoundMember.New(target));
-        }
+        protected override IEnumerator<object> LoadBinding<T> (string name, BoundMember<T> member) {
+            var fReader = ReadValue.ExecuteReader(name);
+            yield return fReader;
 
-        public IEnumerator<object> Save () {
-            foreach (var member in Bindings) {
-                var name = GetMemberName(member);
-
-                yield return WriteValue.ExecuteNonQuery(name, member.Value);
+            using (var reader = fReader.Result) {
+                if (reader.Reader.Read())
+                    member.Value = DataRecordHelper.GetReadMethod<T>()
+                        (reader.Reader, 0);
             }
         }
 
-        public IEnumerator<object> Load () {
-            foreach (var member in Bindings) {
-                var name = GetMemberName(member);
-
-                var fResult = ReadValue.ExecuteReader(name);
-                yield return fResult;
-
-                using (var reader = fResult.Result) {
-                    if (reader.Reader.Read())
-                        member.Value = reader.Reader.GetValue(0);
-                }
-            }
-        }
-
-        public void Dispose () {
-            Bindings.Clear();
+        override public void Dispose () {
             WriteValue.Dispose();
             ReadValue.Dispose();
         }

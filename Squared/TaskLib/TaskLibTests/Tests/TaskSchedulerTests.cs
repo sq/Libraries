@@ -336,7 +336,7 @@ namespace Squared.Task {
             
             long timeStart = Time.Ticks;
             Scheduler.Step();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             long timeEnd = Time.Ticks;
 
             long elapsed = (long)Math.Round(TimeSpan.FromTicks(timeEnd - timeStart).TotalSeconds * timeScale);
@@ -353,15 +353,15 @@ namespace Squared.Task {
             long timeStart = Time.Ticks;
             Scheduler.Step();
 
-            a.GetCompletionEvent().WaitOne();
+            a.GetCompletionEvent().Wait();
             long elapsed = (long)Math.Round(TimeSpan.FromTicks(Time.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(1 * timeScale, elapsed);
 
-            b.GetCompletionEvent().WaitOne();
+            b.GetCompletionEvent().Wait();
             elapsed = (long)Math.Round(TimeSpan.FromTicks(Time.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(2 * timeScale, elapsed);
 
-            c.GetCompletionEvent().WaitOne();
+            c.GetCompletionEvent().Wait();
             elapsed = (long)Math.Round(TimeSpan.FromTicks(Time.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(4 * timeScale, elapsed);
         }
@@ -374,7 +374,7 @@ namespace Squared.Task {
             long timeStart = Time.Ticks;
 
             Scheduler.Step();
-            a.GetCompletionEvent().WaitOne();
+            a.GetCompletionEvent().Wait();
 
             long elapsed = (long)Math.Round(TimeSpan.FromTicks(Time.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(1 * timeScale, elapsed);
@@ -385,7 +385,7 @@ namespace Squared.Task {
             timeStart = Time.Ticks; 
 
             Scheduler.Step();
-            b.GetCompletionEvent().WaitOne();
+            b.GetCompletionEvent().Wait();
 
             elapsed = (long)Math.Round(TimeSpan.FromTicks(Time.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(2 * timeScale, elapsed);
@@ -396,7 +396,7 @@ namespace Squared.Task {
             timeStart = Time.Ticks; 
 
             Scheduler.Step();
-            c.GetCompletionEvent().WaitOne();
+            c.GetCompletionEvent().Wait();
 
             elapsed = (long)Math.Round(TimeSpan.FromTicks(Time.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(4 * timeScale, elapsed);
@@ -411,7 +411,7 @@ namespace Squared.Task {
             var f = Scheduler.Start(new SleepUntil(new DateTime(timeStart).AddSeconds(duration).Ticks));
 
             Scheduler.Step();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
 
             long elapsed = (long)Math.Round(TimeSpan.FromTicks(Time.Ticks - timeStart).TotalSeconds * timeScale);
             Assert.AreEqual(duration * timeScale, elapsed);
@@ -429,7 +429,7 @@ namespace Squared.Task {
             GC.Collect();
 
             long timeStart = Time.Ticks;
-            c.GetCompletionEvent().WaitOne();
+            c.GetCompletionEvent().Wait();
             Assert.AreEqual(b, c.Result);
             long timeEnd = Time.Ticks;
 

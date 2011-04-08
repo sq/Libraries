@@ -108,7 +108,7 @@ namespace Squared.Task.Data {
             var cmd = Connection.CreateCommand();
             cmd.CommandText = "SELECT 1";
             var f = cmd.AsyncExecuteScalar();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual(1, f.Result);
 
             cmd.Dispose();
@@ -119,11 +119,11 @@ namespace Squared.Task.Data {
             var cmd = Connection.CreateCommand();
             cmd.CommandText = "CREATE TEMPORARY TABLE Test (value int); INSERT INTO Test (value) VALUES (1)";
             IFuture f = cmd.AsyncExecuteNonQuery();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
 
             cmd.CommandText = "SELECT value FROM Test LIMIT 1";
             f = cmd.AsyncExecuteScalar();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual(1, f.Result);
 
             cmd.Dispose();
@@ -138,7 +138,7 @@ namespace Squared.Task.Data {
             var cmd = Connection.CreateCommand();
             cmd.CommandText = "SELECT value FROM Test";
             var f = cmd.AsyncExecuteReader();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
 
             var reader = (DbDataReader)f.Result;
             Assert.IsTrue(reader.Read());
@@ -710,7 +710,7 @@ namespace Squared.Task.Data {
             Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Data (name TEXT, value VARIANT)"));
 
             var props = new ClassWithProperties();
-            var serializer = new PropertySerializer(Wrapper, "Data");
+            var serializer = new DatabasePropertySerializer(Wrapper, "Data");
 
             serializer.Bind(() => props.A);
             serializer.Bind(() => props.B);
@@ -757,7 +757,7 @@ namespace Squared.Task.Data {
             Scheduler.WaitFor(Wrapper.ExecuteSQL("CREATE TEMPORARY TABLE Data (name TEXT, value VARIANT)"));
 
             var props = new ClassWithProperties();
-            var serializer = new PropertySerializer(Wrapper, "Data");
+            var serializer = new DatabasePropertySerializer(Wrapper, "Data");
 
             serializer.Bind(() => props.A);
             serializer.Bind(() => props.C);

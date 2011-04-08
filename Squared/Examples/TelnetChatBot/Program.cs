@@ -79,7 +79,7 @@ namespace TelnetChatBot {
             try {
                 Console.WriteLine("Connecting to server...");
                 var f = Network.ConnectTo("localhost", 1234);
-                f.GetCompletionEvent().WaitOne();
+                f.GetCompletionEvent().Wait();
                 Console.WriteLine("Connected.");
                 TcpClient client = f.Result as TcpClient;
                 client.Client.Blocking = false;

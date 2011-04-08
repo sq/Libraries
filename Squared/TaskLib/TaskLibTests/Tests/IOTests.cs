@@ -96,7 +96,7 @@ namespace Squared.Task.IO {
             Assert.AreEqual(0, stream._FlushCount);
 
             var f = adapter.Flush();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual(1, stream._FlushCount);
 
             adapter.Dispose();
@@ -133,7 +133,7 @@ namespace Squared.Task.IO {
 
             while (true) {
                 f = Reader.ReadLine();
-                f.GetCompletionEvent().WaitOne();
+                f.GetCompletionEvent().Wait();
                 var line = f.Result as string;
 
                 if (line == null)
@@ -163,23 +163,23 @@ namespace Squared.Task.IO {
             RewindStream();
 
             var f = Reader.ReadLine();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual("abcd", f.Result);
 
             f = Reader.ReadLine();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual("efgh", f.Result);
 
             f = Reader.ReadLine();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual("ijkl", f.Result);
 
             f = Reader.ReadLine();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual("", f.Result);
 
             f = Reader.ReadLine();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual(null, f.Result);
         }
 
@@ -200,7 +200,7 @@ namespace Squared.Task.IO {
             var readLines = new List<string>();
             for (int i = 0; i < lineCount; i++) {
                 var f = Reader.ReadLine();
-                f.GetCompletionEvent().WaitOne();
+                f.GetCompletionEvent().Wait();
                 string line = f.Result as string;
                 readLines.Add(line);
             }
@@ -214,11 +214,11 @@ namespace Squared.Task.IO {
             RewindStream();
 
             var f = Reader.ReadToEnd();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual("abcd\r\nefgh\0ijkl", f.Result);
 
             f = Reader.ReadToEnd();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual(null, f.Result);
         }
 
@@ -230,7 +230,7 @@ namespace Squared.Task.IO {
             RewindStream();
 
             var f = Reader.ReadToEnd();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual(testData, f.Result);
         }
 
@@ -243,17 +243,17 @@ namespace Squared.Task.IO {
 
             char[] buffer = new char[256];
             var f = Reader.Read(buffer, 0, 256);
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual(256, f.Result);
             Assert.AreEqual(testData.Substring(0, 256), new string(buffer, 0, 256));
 
             f = Reader.Read(buffer, 0, 256);
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual(64, f.Result);
             Assert.AreEqual(testData.Substring(256, 64), new string(buffer, 0, 64));
 
             f = Reader.Read(buffer, 0, 256);
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual(0, f.Result);
         }
 
@@ -265,27 +265,27 @@ namespace Squared.Task.IO {
             RewindStream();
 
             var f = Reader.Peek();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual('a', f.Result);
 
             f = Reader.Read();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual('a', f.Result);
 
             f = Reader.Peek();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual('b', f.Result);
 
             f = Reader.Read();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual('b', f.Result);
 
             f = Reader.Peek();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual(default(char), f.Result);
 
             f = Reader.Read();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
             Assert.AreEqual(default(char), f.Result);
         }
 
@@ -319,15 +319,15 @@ namespace Squared.Task.IO {
         [Test]
         public void WriteLineTest () {
             var f = Writer.WriteLine("test");
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
 
             f = Writer.WriteLine("foo");
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
 
             Assert.AreEqual(String.Empty, GetTestDataString());
 
             f = Writer.Flush();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
 
             Assert.AreEqual("test\r\nfoo\r\n", GetTestDataString());
         }
@@ -335,14 +335,14 @@ namespace Squared.Task.IO {
         [Test]
         public void AutoFlushTest () {
             var f = Writer.WriteLine("test");
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
 
             Assert.AreEqual(String.Empty, GetTestDataString());
 
             Writer.AutoFlush = true;
 
             f = Writer.WriteLine("foo");
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
 
             Assert.AreEqual("test\r\nfoo\r\n", GetTestDataString());
         }
@@ -350,15 +350,15 @@ namespace Squared.Task.IO {
         [Test]
         public void WriteStringTest () {
             var f = Writer.Write("test");
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
 
             f = Writer.Write("foo");
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
 
             Assert.AreEqual(String.Empty, GetTestDataString());
 
             f = Writer.Flush();
-            f.GetCompletionEvent().WaitOne();
+            f.GetCompletionEvent().Wait();
 
             Assert.AreEqual("testfoo", GetTestDataString());
         }
@@ -387,9 +387,9 @@ namespace Squared.Task.IO {
             Listener.Start();
             var fA = Listener.AcceptIncomingConnection();
             var fB = Network.ConnectTo("localhost", 1235);
-            fA.GetCompletionEvent().WaitOne();
+            fA.GetCompletionEvent().Wait();
             A = fA.Result as TcpClient;
-            fB.GetCompletionEvent().WaitOne();
+            fB.GetCompletionEvent().Wait();
             B = fB.Result as TcpClient;
             Listener.Stop();
             StreamA = A.GetStream();
