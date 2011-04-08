@@ -830,10 +830,14 @@ namespace Squared.Task {
         }
 
         public void Add (IFuture future) {
+            var of = _OwnedFutures;
+            if (of == null)
+                return;
+
 #if XBOX
-            _OwnedFutures.Add(future, 0);
+            of.Add(future, 0);
 #else
-            _OwnedFutures.Add(future);
+            of.Add(future);
 #endif
             future.RegisterOnComplete(_OnComplete);
             future.RegisterOnDispose(_OnDispose);
