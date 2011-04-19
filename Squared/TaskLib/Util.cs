@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Squared.Util;
 using Squared.Util.Event;
@@ -188,6 +189,79 @@ namespace Squared.Task {
                 else
                     future.Complete();
             });
+        }
+    }
+
+    public class WaitForAllException : Exception {
+        public readonly Exception[] Errors;
+
+        public WaitForAllException (Exception[] errors) 
+            : base ("One or more of the tasks being waited for failed.", errors[0]) {
+
+            Errors = errors;
+        }
+    }
+
+    /// <summary>
+    /// Completes when all of the specified schedulable objects have completed.
+    /// </summary>
+    public class WaitForAll : ISchedulable {
+        protected ISchedulable[] _Schedulables;
+        protected IFuture[] _Futures;
+
+        protected IFuture _WaitFuture;
+        protected IFuture _ResultFuture;
+
+        public WaitForAll (params object[] objects) {
+            ISchedulable s;
+            IFuture f;
+            IEnumerator<object> t;
+
+            _Schedulables = new ISchedulable[objects.Length];
+            _Futures = new IFuture[objects.Length];
+
+            for (int i = 0; i < objects.Length; i++) {
+                if ((s = objects[i] as ISchedulable) != null)
+                    _Schedulables[i] = s;
+                else if ((f = objects[i] as IFuture) != null)
+                    _Futures[i] = f;
+                else if ((t = objects[i] as IEnumerator<object>) != null)
+                    _Schedulables[i] = new SchedulableGeneratorThunk(t);
+                else
+                    throw new ArgumentException("WaitForAll arguments must be ISchedulable, IFuture or IEnumerator<object>", "objects");
+            }
+        }
+
+        void HandleDisposed (IFuture wait) {
+            foreach (var f in _Futures)
+                f.Dispose();
+        }
+
+        void HandleResult (IFuture wait) {
+            var errors = (from f in _Futures where f.Failed select f.Error).ToArray();
+
+            if (errors.Length == 0)
+                _ResultFuture.Complete();
+            else
+                _ResultFuture.Fail(new WaitForAllException(errors));
+        }
+
+        void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
+            if (_Schedulables == null)
+                throw new InvalidOperationException();
+
+            for (int i = 0; i < _Schedulables.Length; i++) {
+                var s = _Schedulables[i];
+                if (s != null)
+                    _Futures[i] = scheduler.Start(s, TaskExecutionPolicy.RunWhileFutureLives);
+            }
+
+            _Schedulables = null;
+            _ResultFuture = future;
+
+            _WaitFuture = Future.WaitForAll(_Futures);
+            _WaitFuture.RegisterOnComplete(HandleResult);
+            _WaitFuture.RegisterOnDispose(HandleDisposed);
         }
     }
 

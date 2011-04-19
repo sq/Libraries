@@ -745,6 +745,27 @@ namespace Squared.Task {
                 Assert.AreEqual(5, Scheduler.WaitFor(result));
             }
         }
+
+        [Test]
+        public void SchedulableWaitForAllTest () {
+            var a = TaskYieldValue();
+            var b = new WaitForNextStep();
+            var c = CrashyTask();
+
+            var f = Scheduler.Start(new WaitForAll(a, b, c));
+
+            Assert.IsFalse(f.Completed);
+
+            Scheduler.Step();
+
+            Assert.IsFalse(f.Completed);
+
+            Scheduler.Step();
+
+            Assert.IsTrue(f.Completed);
+            Assert.IsTrue(f.Failed);
+            Assert.IsInstanceOf<WaitForAllException>(f.Error);
+        }
     }
 
     [TestFixture]
