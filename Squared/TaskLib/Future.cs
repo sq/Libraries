@@ -311,7 +311,6 @@ namespace Squared.Task {
             int state = _State;
             var result = _Result;
             var error = _Error;
-            Thread.MemoryBarrier();
             string stateText = "??";
             switch (state) {
                 case State_Empty:
@@ -562,12 +561,10 @@ namespace Squared.Task {
                 SpinWait(iterations++);
             }
 
-            Thread.MemoryBarrier();
             int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
             _Result = result;
             _Error = error;
             OnComplete handler = _OnComplete;
-            Thread.MemoryBarrier();
             _OnDispose = null;
             _OnComplete = null;
 
@@ -594,7 +591,6 @@ namespace Squared.Task {
                 SpinWait(iterations++);
             }
 
-            Thread.MemoryBarrier();
             OnDispose handler = _OnDispose;
             _OnDispose = null;
             _OnComplete = null;
@@ -618,12 +614,12 @@ namespace Squared.Task {
         }
 
         public bool GetResult (out T result) {
-            int state = _State;
-
-            Thread.MemoryBarrier();
-            if (state == State_CompletedWithValue) {
-                result = _Result;
-                return true;
+            if (_State == State_CompletedWithValue) {
+                Thread.MemoryBarrier();
+                if (_State == State_CompletedWithValue) {
+                    result = _Result;
+                    return true;
+                }
             }
 
             result = default(T);
@@ -633,16 +629,23 @@ namespace Squared.Task {
         public bool GetResult (out T result, out Exception error) {
             int state = _State;
 
-            Thread.MemoryBarrier();
             if (state == State_CompletedWithValue) {
-                result = _Result;
-                error = null;
-                return true;
-            } else if (state == State_CompletedWithError) {
-                OnErrorCheck();
-                result = default(T);
-                error = _Error;
-                return true;
+                Thread.MemoryBarrier();
+                if (_State == State_CompletedWithValue) {
+                    result = _Result;
+                    error = null;
+                    return true;
+                }
+            }
+            
+            if (state == State_CompletedWithError) {
+                Thread.MemoryBarrier();
+                if (_State == State_CompletedWithError) {
+                    OnErrorCheck();
+                    result = default(T);
+                    error = _Error;
+                    return true;
+                }
             }
 
             result = default(T);

@@ -140,10 +140,8 @@ namespace Squared.Task {
             _Queue.Enqueue(item);
 
             Thread.MemoryBarrier();
-            if (_WaiterCount > 0) {
-                Thread.MemoryBarrier();
+            if (_WaiterCount > 0)
                 _WaiterSignal.Set();
-            }
         }
 
         public bool WaitForWorkItems (double timeout) {
