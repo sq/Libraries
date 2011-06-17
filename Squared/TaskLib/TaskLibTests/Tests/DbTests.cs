@@ -182,7 +182,7 @@ namespace Squared.Task.Data {
 
                 Assert.AreEqual(result, 2);
 
-                q = qm.BuildQuery("SELECT @parm1 - @parm2");
+                q = qm.BuildQuery("SELECT @parm1-@parm2");
 
                 f = q.ExecuteScalar(new NamedParam { N = "parm1", V = 1 }, new NamedParam { N = "parm2", V = 2 });
                 result = scheduler.WaitFor(f);
@@ -585,7 +585,7 @@ namespace Squared.Task.Data {
 
             int rowCount = 100;
 
-            using (var q = Wrapper.BuildQuery("INSERT INTO TEST (a, b) VALUES (?, ?)"))
+            using (var q = Wrapper.BuildQuery("INSERT INTO TEST (a, b) VALUES (?,?)"))
             for (int i = 0; i < rowCount; i++)
                 Scheduler.WaitFor(q.ExecuteNonQuery(i, i * 2));
 

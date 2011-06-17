@@ -30,8 +30,8 @@ namespace Squared.Task.Data {
         }
 
         static readonly Regex
-            _NormalParameter = new Regex(@"(^|\s|[\(,=+-><])\?($|\s|[\),=+-><])", RegexOptions.Compiled),
-            _NamedParameter = new Regex(@"(^|\s|[\(,=+-><])\@(?'name'[a-zA-Z0-9_]+)($|\s|[\),=+-><])", RegexOptions.Compiled);
+            _NormalParameter = new Regex("((\\'[^']*\\')|(\\\"[^\"]*\\\")|\\?)", RegexOptions.Compiled),
+            _NamedParameter = new Regex("((\\'[^']*\\')|(\\\"[^\"]*\\\")|\\@(?'name'[a-zA-Z0-9_]+))", RegexOptions.Compiled);
 
         IDbConnection _Connection;
         TaskScheduler _Scheduler;
