@@ -116,11 +116,7 @@ namespace Squared.Task.IO {
             ) {
         }
 
-        public FileDataAdapter (string filename, FileMode mode, FileAccess access, FileShare share) 
-            : this (filename, mode, access, share, DefaultBufferSize) {
-        }
-
-        public FileDataAdapter (string filename, FileMode mode, FileAccess access, FileShare share, int bufferSize)
+        public FileDataAdapter (string filename, FileMode mode, FileAccess access, FileShare share, int bufferSize = DefaultBufferSize)
             : base (
                 new FileStream(
                     filename, mode, access, share, bufferSize
@@ -168,11 +164,7 @@ namespace Squared.Task.IO {
         bool _EOF = false;
         AsyncCallback _ReadCallback, _WriteCallback;
 
-        public StreamDataAdapter (Stream stream)
-            : this(stream, true) {
-        }
-
-        public StreamDataAdapter (Stream stream, bool ownsStream) {
+        public StreamDataAdapter (Stream stream, bool ownsStream = true) {
             _Stream = stream;
             _OwnsStream = ownsStream;
             _ReadCallback = ReadCallback;
@@ -477,11 +469,7 @@ namespace Squared.Task.IO {
             : this(dataSource, DefaultEncoding) {
         }
 
-        public AsyncTextReader(IAsyncDataSource dataSource, Encoding encoding) 
-            : this(dataSource, encoding, DefaultBufferSize) {
-        }
-
-        public AsyncTextReader (IAsyncDataSource dataSource, Encoding encoding, int bufferSize) 
+        public AsyncTextReader (IAsyncDataSource dataSource, Encoding encoding, int bufferSize = DefaultBufferSize) 
             : base() {
             _DataSource = dataSource;
             _Encoding = encoding;
@@ -605,15 +593,11 @@ namespace Squared.Task.IO {
             }
         }
 
-        public Future<char> Read () {
-            return Read(true);
-        }
-
         public Future<char> Peek () {
             return Read(false);
         }
 
-        public Future<char> Read (bool advance) {
+        public Future<char> Read (bool advance = true) {
             var f = new Future<char>();
 
             SetPendingOperation(f);
@@ -808,11 +792,7 @@ namespace Squared.Task.IO {
             : this(dataWriter, DefaultEncoding) {
         }
 
-        public AsyncTextWriter (IAsyncDataWriter dataWriter, Encoding encoding)
-            : this(dataWriter, encoding, DefaultBufferSize) {
-        }
-
-        public AsyncTextWriter (IAsyncDataWriter dataWriter, Encoding encoding, int bufferSize)
+        public AsyncTextWriter (IAsyncDataWriter dataWriter, Encoding encoding, int bufferSize = DefaultBufferSize)
             : base() {
             _DataWriter = dataWriter;
             _Encoding = encoding;

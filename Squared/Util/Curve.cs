@@ -370,7 +370,7 @@ namespace Squared.Util {
             SetValueAtPosition(newEndPosition, newEndValue);
         }
 
-        public void SetValueAtPosition (float position, T value, Interpolator<T> interpolator) {
+        public void SetValueAtPosition (float position, T value, Interpolator<T> interpolator = null) {
             var oldIndex = IndexOfKey(position);
 
             var newItem = new Point {
@@ -387,10 +387,6 @@ namespace Squared.Util {
             }
         }
 
-        public void SetValueAtPosition (float position, T value) {
-            SetValueAtPosition(position, value, null);
-        }
-
         public T this[float position] {
             get {
                 return GetValueAtPosition(position);
@@ -400,11 +396,7 @@ namespace Squared.Util {
             }
         }
 
-        public void Add (float position, T value) {
-            SetValueAtPosition(position, value);
-        }
-
-        public void Add (float position, T value, Interpolator<T> interpolator) {
+        public void Add (float position, T value, Interpolator<T> interpolator = null) {
             SetValueAtPosition(position, value, interpolator);
         }
 

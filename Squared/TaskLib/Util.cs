@@ -273,11 +273,7 @@ namespace Squared.Task {
         TaskExecutionPolicy _ExecutionPolicy;
         IFuture _Future;
 
-        public Start (IEnumerator<object> task) 
-            : this(task, TaskExecutionPolicy.RunWhileFutureLives) {
-        }
-
-        public Start (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
+        public Start (IEnumerator<object> task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.RunWhileFutureLives) {
             _Task = task;
             _ExecutionPolicy = executionPolicy;
             _Future = null;
@@ -353,11 +349,7 @@ namespace Squared.Task {
         Future<T> _Future;
         IFuture _CompletionSignal;
 
-        public RunToCompletion (IEnumerator<object> task) 
-            : this(task, TaskExecutionPolicy.RunWhileFutureLives) {
-        }
-
-        public RunToCompletion (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
+        public RunToCompletion (IEnumerator<object> task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.RunWhileFutureLives) {
             _Task = task;
             _Thunk = new SchedulableGeneratorThunk(_Task);
             _Future = Squared.Task.Future.New<T>();

@@ -395,15 +395,7 @@ namespace Squared.Util {
             );
         }
 
-        public static IEnumerable<string> EnumDirectories (string path) {
-            return EnumDirectories(path, "*", false);
-        }
-
-        public static IEnumerable<string> EnumDirectories (string path, string searchPattern) {
-            return EnumDirectories(path, searchPattern, false);
-        }
-
-        public static IEnumerable<string> EnumDirectories (string path, string searchPattern, bool recursive) {
+        public static IEnumerable<string> EnumDirectories (string path, string searchPattern = "*", bool recursive = false) {
             return 
                 from de in 
                 EnumDirectoryEntries(
@@ -412,15 +404,7 @@ namespace Squared.Util {
                 select de.Name;
         }
 
-        public static IEnumerable<string> EnumFiles (string path) {
-            return EnumFiles(path, "*", false);
-        }
-
-        public static IEnumerable<string> EnumFiles (string path, string searchPattern) {
-            return EnumFiles(path, searchPattern, false);
-        }
-
-        public static IEnumerable<string> EnumFiles (string path, string searchPattern, bool recursive) {
+        public static IEnumerable<string> EnumFiles (string path, string searchPattern = "*", bool recursive = false) {
             return 
                 from de in 
                 EnumDirectoryEntries(

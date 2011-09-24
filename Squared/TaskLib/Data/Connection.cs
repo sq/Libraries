@@ -47,11 +47,7 @@ namespace Squared.Task.Data {
 
         protected Internal.WorkerThread<ConcurrentQueue<PendingQuery>> _QueryThread;
 
-        public ConnectionWrapper (TaskScheduler scheduler, IDbConnection connection)
-            : this(scheduler, connection, false) {
-        }
-
-        public ConnectionWrapper (TaskScheduler scheduler, IDbConnection connection, bool ownsConnection) {
+        public ConnectionWrapper (TaskScheduler scheduler, IDbConnection connection, bool ownsConnection = false) {
             _Scheduler = scheduler;
             _Connection = connection;
             _OwnsConnection = ownsConnection;
@@ -83,11 +79,7 @@ namespace Squared.Task.Data {
             }
         }
 
-        internal IFuture BeginTransaction () {
-            return BeginTransaction(false);
-        }
-
-        internal IFuture BeginTransaction (bool exclusive) {
+        internal IFuture BeginTransaction (bool exclusive = false) {
             lock (this) {
                 _TransactionDepth += 1;
 
@@ -326,11 +318,7 @@ namespace Squared.Task.Data {
             }
         }
 
-        public Future<ConnectionWrapper> Clone () {
-            return Clone(null);
-        }
-
-        public virtual Future<ConnectionWrapper> Clone (string extraConnectionParameters) {
+        public virtual Future<ConnectionWrapper> Clone (string extraConnectionParameters = null) {
             var newConnectionString = _Connection.ConnectionString;
             if (extraConnectionParameters != null)
                 newConnectionString = newConnectionString + ";" + extraConnectionParameters;

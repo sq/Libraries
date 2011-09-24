@@ -26,11 +26,7 @@ namespace Squared.Task.IO {
         readonly bool _OwnsSocket;
         readonly AsyncCallback _ReadCallback, _WriteCallback;
 
-        public SocketDataAdapter (Socket socket)
-            : this(socket, true) {
-        }
-
-        public SocketDataAdapter (Socket socket, bool ownsSocket) {
+        public SocketDataAdapter (Socket socket, bool ownsSocket = true) {
             _Socket = socket;
             _OwnsSocket = ownsSocket;
             _ReadCallback = ReadCallback;

@@ -133,16 +133,8 @@ namespace Squared.Task.Data {
         public readonly Query ReadValue;
 
         public DatabasePropertySerializer (
-            ConnectionWrapper database, string tableName
-        ) : this (
-            database, tableName,
-            "name", "value"
-        ) {
-        }
-
-        public DatabasePropertySerializer (
             ConnectionWrapper database, string tableName, 
-            string nameColumn, string valueColumn
+            string nameColumn = "name", string valueColumn = "value"
         ) : this (
             database, tableName,
             nameColumn, valueColumn,

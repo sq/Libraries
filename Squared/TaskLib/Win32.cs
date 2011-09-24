@@ -215,11 +215,7 @@ namespace Squared.Task {
             return f;
         }
 
-        new public SignalFuture Show () {
-            return this.Show(null);
-        }
-
-        new public SignalFuture Show (IWin32Window owner) {
+        new public SignalFuture Show (IWin32Window owner = null) {
             var f = new SignalFuture();
             FormClosedEventHandler del = (s, e) =>
                 f.Complete();

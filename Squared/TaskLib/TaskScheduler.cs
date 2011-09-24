@@ -164,11 +164,7 @@ namespace Squared.Task {
             : this(JobQueue.ThreadSafe) {
         }
 
-        public bool WaitForWorkItems () {
-            return WaitForWorkItems(0);
-        }
-
-        public bool WaitForWorkItems (double timeout) {
+        public bool WaitForWorkItems (double timeout = 0) {
             if (_IsDisposed)
                 throw new ObjectDisposedException("TaskScheduler");
 
@@ -206,22 +202,14 @@ namespace Squared.Task {
             }
         }
 
-        public IFuture Start (ISchedulable task, TaskExecutionPolicy executionPolicy) {
+        public IFuture Start (ISchedulable task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.Default) {
             var future = new Future<object>();
             Start(future, task, executionPolicy);
             return future;
         }
 
-        public IFuture Start (IEnumerator<object> task, TaskExecutionPolicy executionPolicy) {
+        public IFuture Start (IEnumerator<object> task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.Default) {
             return Start(new SchedulableGeneratorThunk(task), executionPolicy);
-        }
-
-        public IFuture Start (ISchedulable task) {
-            return Start(task, TaskExecutionPolicy.Default);
-        }
-
-        public IFuture Start (IEnumerator<object> task) {
-            return Start(task, TaskExecutionPolicy.Default);
         }
 
         public void QueueWorkItem (Action workItem) {
