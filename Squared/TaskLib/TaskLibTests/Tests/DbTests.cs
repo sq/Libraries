@@ -798,4 +798,103 @@ namespace Squared.Task.Data {
             );
         }
     }
+
+    [TestFixture]
+    public class NDexerTests {
+        [Test]
+        public void BuildQuery_GivenAQueryFromNDexer_RecognizesCorrectParametersCount () {
+            // arrange
+            var sql = @"INSERT OR REPLACE INTO FullText (SourceFiles_ID, FileText) VALUES (@p0, @p1);"
+                        + @"UPDATE FullText_content SET c1FileText = '' WHERE c0SourceFiles_ID = @p0";
+            const int ExpectedParameterCount = 2;
+            var connection = make_ConnectionWrapper();
+
+            // act
+            var query = connection.BuildQuery(sql);
+
+            // assert
+            Assert.AreEqual(ExpectedParameterCount, query.Parameters.Count);
+        }
+
+        [Test]
+        public void BuildQuery_GivenAQueryWithDoubleSingleQuote_DoesNotTreatItAsParameter () {
+            // arrange
+            var sql = @"SELECT * FROM Table WHERE Column1 = ''";
+            const int ExpectedParameterCount = 0;
+            var connection = make_ConnectionWrapper();
+
+            // act
+            var query = connection.BuildQuery(sql);
+
+            // assert
+            Assert.AreEqual(ExpectedParameterCount, query.Parameters.Count);
+        }
+
+        [Test]
+        public void BuildQuery_GivenAQueryWithSingleParameter_RecognizesCorrectParametersCount () {
+            // arrange
+            var sql = @"SELECT * FROM Table WHERE Column1 = @p0";
+            const int ExpectedParameterCount = 1;
+            var connection = make_ConnectionWrapper();
+
+            // act
+            var query = connection.BuildQuery(sql);
+
+            // assert
+            Assert.AreEqual(ExpectedParameterCount, query.Parameters.Count);
+        }
+
+        [Test]
+        public void BuildQuery_GivenAQueryWithTwoParameters_RecognizesCorrectParametersCount () {
+            // arrange
+            var sql = @"SELECT * FROM Table WHERE Column1 = @p0 AND Column2 = @p1";
+            const int ExpectedParameterCount = 2;
+            var connection = make_ConnectionWrapper();
+
+            // act
+            var query = connection.BuildQuery(sql);
+
+            // assert
+            Assert.AreEqual(ExpectedParameterCount, query.Parameters.Count);
+        }
+
+        [Test]
+        public void BuildQuery_GivenAQueryWithTwoParametersButOneParameterReferencedTwice_RecognizesCorrectParametersCount () {
+            // arrange
+            var sql = @"SELECT * FROM Table WHERE Column1 = @p0 AND Column2 = @p1 AND Column3 = @p0";
+            const int ExpectedParameterCount = 2;
+            var connection = make_ConnectionWrapper();
+
+            // act
+            var query = connection.BuildQuery(sql);
+
+            // assert
+            Assert.AreEqual(ExpectedParameterCount, query.Parameters.Count);
+        }
+
+        [Test]
+        public void BuildQuery_GivenAQueryWithTwoParametersAndADoubleSingleQuote_RecognizesCorrectParametersCount () {
+            // arrange
+            var sql = @"SELECT * FROM Table WHERE Column1 = @p0 AND Column2 = @p1 AND Column3 = ''";
+            const int ExpectedParameterCount = 2;
+            var connection = make_ConnectionWrapper();
+
+            // act
+            var query = connection.BuildQuery(sql);
+
+            // assert
+            Assert.AreEqual(ExpectedParameterCount, query.Parameters.Count);
+        }
+
+        private static ConnectionWrapper make_ConnectionWrapper () {
+            var scheduler = new TaskScheduler();
+            var filename = "file.txt";
+            string connectionString = String.Format("Data Source={0}", filename);
+            var nativeConnection = new SQLiteConnection(connectionString);
+            ////nativeConnection.Open();
+            var connection = new ConnectionWrapper(scheduler, nativeConnection);
+
+            return connection;
+        }
+    }
 }

@@ -30,7 +30,7 @@ namespace Squared.Task.Data {
         }
 
         static readonly Regex
-            _NormalParameter = new Regex("((\\'[^']*\\')|(\\\"[^\"]*\\\")|\\?)", RegexOptions.Compiled),
+            _NormalParameter = new Regex("((\\'[^']*\\')|(\\\"[^\"]*\\\")|(?'token'\\?))", RegexOptions.Compiled),
             _NamedParameter = new Regex("((\\'[^']*\\')|(\\\"[^\"]*\\\")|\\@(?'name'[a-zA-Z0-9_]+))", RegexOptions.Compiled);
 
         IDbConnection _Connection;
@@ -250,12 +250,21 @@ namespace Squared.Task.Data {
 
             cmd.CommandText = sql;
 
-            int numParameters = _NormalParameter.Matches(sql).Count;
+            int numParameters = 0;
+
             var parameterNames = new List<string>();
-            for (int i = 0; i < numParameters; i++) {
-                parameterNames.Add(String.Format("p{0}", i));
+
+            foreach (Match match in _NormalParameter.Matches(sql)) {
+                if (!match.Groups["token"].Success)
+                    continue;
+
+                parameterNames.Add(String.Format("p{0}", numParameters++));
             }
+
             foreach (Match match in _NamedParameter.Matches(sql)) {
+                if (!match.Groups["name"].Success)
+                    continue;
+
                 string name = match.Groups["name"].Value;
                 if (!parameterNames.Contains(name)) {
                     numParameters += 1;

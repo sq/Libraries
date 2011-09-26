@@ -123,6 +123,7 @@
     <Compile Include="RenderManager.cs" />
     <Compile Include="RenderPrimitives.cs" />
     <Compile Include="RenderText.cs" />
+    <Compile Include="ThreadedRenderCoordinator.cs" />
     <Compile Include="ThreadedRenderGame.cs" />
     <Compile Include="WorkerThread.cs" />
   </ItemGroup>
