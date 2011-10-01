@@ -358,6 +358,10 @@ namespace Squared.Render {
             : this(texture, position, new Bounds(Vector2.Zero, Vector2.One), Color.White, new Vector2(scale, scale)) {
         }
 
+        public BitmapDrawCall (Texture2D texture, Vector2 position, Vector2 scale)
+            : this(texture, position, new Bounds(Vector2.Zero, Vector2.One), Color.White, scale) {
+        }
+
         public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, float scale)
             : this(texture, position, textureRegion, color, new Vector2(scale, scale)) {
         }

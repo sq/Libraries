@@ -125,6 +125,7 @@
     <Compile Include="RenderText.cs" />
     <Compile Include="ThreadedRenderCoordinator.cs" />
     <Compile Include="ThreadedRenderGame.cs" />
+    <Compile Include="Evil.cs" />
     <Compile Include="WorkerThread.cs" />
   </ItemGroup>
   <ItemGroup>

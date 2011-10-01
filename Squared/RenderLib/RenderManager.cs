@@ -104,6 +104,13 @@ namespace Squared.Render {
             }
 
             CurrentEffect = null;
+
+            for (var i = 0; i < 4; i++) {
+                Device.Textures[i] = null;
+            }
+
+            Device.SetRenderTargets();
+            Device.SetVertexBuffers();
         }
     }
 
