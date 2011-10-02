@@ -92,6 +92,7 @@ namespace Squared.Render.Evil {
     }
 
     internal unsafe delegate int GetSurfaceLevelDelegate (void* pTexture, uint iLevel, void** pSurface);
+    internal unsafe delegate uint ReleaseDelegate (void* pObj);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT {
@@ -103,6 +104,10 @@ namespace Squared.Render.Evil {
 
     public static class TextureUtils {
         public static class VTables {
+            public static class IUnknown {
+                public const uint Release = 8;
+            }
+
             public static class IDirect3DTexture9 {
                 public const uint GetSurfaceLevel = 72;
             }
@@ -122,7 +127,7 @@ namespace Squared.Render.Evil {
             uint colorKey
         );
 
-        internal static _FieldInfo pComPtr;
+        internal static FieldInfo pComPtr;
 
         static TextureUtils () {
             pComPtr = typeof(Texture2D).GetField("pComPtr", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
@@ -167,6 +172,13 @@ namespace Squared.Render.Evil {
                 throw new COMException("GetSurfaceLevel failed", rv);
         }
 
+        public static unsafe uint Release (void* pObj) {
+            void* pRelease = AccessVTable(pObj, VTables.IUnknown.Release);
+            var release = (ReleaseDelegate)Marshal.GetDelegateForFunctionPointer(new IntPtr(pRelease), typeof(ReleaseDelegate));
+
+            return release(pObj);
+        }
+
         /// <summary>
         /// Copies pixels from an address in memory into a mip level of Texture2D, converting them from one format to another if necessary.
         /// </summary>
@@ -190,9 +202,14 @@ namespace Squared.Render.Evil {
             };
 
             void* pSurface = GetSurfaceLevel(texture, level);
-            var rv = D3DXLoadSurfaceFromMemory(pSurface, null, &rect, pData, pixelFormat, pitch, null, &rect, D3DX_FILTER.NONE, 0);
-            if (rv != 0)
-                throw new COMException("D3DXLoadSurfaceFromMemory failed", rv);
+
+            try {
+                var rv = D3DXLoadSurfaceFromMemory(pSurface, null, &rect, pData, pixelFormat, pitch, null, &rect, D3DX_FILTER.NONE, 0);
+                if (rv != 0)
+                    throw new COMException("D3DXLoadSurfaceFromMemory failed", rv);
+            } finally {
+                //Release(pSurface);
+            }
         }
     }
 }
