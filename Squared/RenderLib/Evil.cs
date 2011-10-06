@@ -104,10 +104,6 @@ namespace Squared.Render.Evil {
 
     public static class TextureUtils {
         public static class VTables {
-            public static class IUnknown {
-                public const uint Release = 8;
-            }
-
             public static class IDirect3DTexture9 {
                 public const uint GetSurfaceLevel = 72;
             }
@@ -172,13 +168,6 @@ namespace Squared.Render.Evil {
                 throw new COMException("GetSurfaceLevel failed", rv);
         }
 
-        public static unsafe uint Release (void* pObj) {
-            void* pRelease = AccessVTable(pObj, VTables.IUnknown.Release);
-            var release = (ReleaseDelegate)Marshal.GetDelegateForFunctionPointer(new IntPtr(pRelease), typeof(ReleaseDelegate));
-
-            return release(pObj);
-        }
-
         /// <summary>
         /// Copies pixels from an address in memory into a mip level of Texture2D, converting them from one format to another if necessary.
         /// </summary>
@@ -208,7 +197,7 @@ namespace Squared.Render.Evil {
                 if (rv != 0)
                     throw new COMException("D3DXLoadSurfaceFromMemory failed", rv);
             } finally {
-                //Release(pSurface);
+                Marshal.Release(new IntPtr(pSurface));
             }
         }
     }
