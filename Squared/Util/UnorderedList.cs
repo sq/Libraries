@@ -52,7 +52,7 @@ namespace Squared.Util {
 
             public bool MoveNext () {
                 _Index += 1;
-                return (_Index < _List._Count);
+                return (_Index < _Count);
             }
 
             public void Reset () {
@@ -61,6 +61,7 @@ namespace Squared.Util {
 
             public void RemoveCurrent () {
                 _List.RemoveAt(_Index + _Offset);
+                _Count -= 1;
                 _Index -= 1;
             }
         }

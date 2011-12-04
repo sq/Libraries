@@ -74,5 +74,22 @@ namespace Squared.Util {
                 l.ToArray()
             );
         }
+
+        [Test]
+        public void MutableEnumeratorRemoveCurrentAndGetNext () {
+            var l = new UnorderedList<int>();
+            l.Add(1);
+            l.Add(2);
+
+            int item;
+            using (var e = l.GetEnumerator())
+            while (e.GetNext(out item))
+                e.RemoveCurrent();
+
+            Assert.AreEqual(
+                new int[] { },
+                l.ToArray()
+            );
+        }
     }
 }
