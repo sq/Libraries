@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Internal;
 
@@ -83,7 +84,12 @@ namespace Squared.Render {
         }
 
         protected void DefaultEndDraw () {
-            Device.Present();
+            var viewport = Device.Viewport;
+            Device.Present(
+                new Rectangle(0, 0, viewport.Width, viewport.Height),
+                new Rectangle(0, 0, viewport.Width, viewport.Height),
+                IntPtr.Zero
+            );
         }
 
         // We must acquire both locks before resetting the device to avoid letting the reset happen during a paint or content load operation.
@@ -199,7 +205,7 @@ namespace Squared.Render {
             }
         }
 
-        protected GraphicsDevice Device {
+        public GraphicsDevice Device {
             get {
                 return Manager.DeviceManager.Device;
             }
