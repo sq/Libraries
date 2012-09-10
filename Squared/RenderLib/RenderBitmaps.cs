@@ -81,6 +81,8 @@ namespace Squared.Render {
             public int VertexCount;
         }
 
+        public SamplerState SamplerState;
+
         public static BitmapDrawCallComparer DrawCallComparer = new BitmapDrawCallComparer();
 
         public const int BitmapBatchSize = 256;
@@ -117,19 +119,21 @@ namespace Squared.Render {
             return result;
         }
 
-        public static BitmapBatch New (Frame frame, int layer, Material material) {
+        public static BitmapBatch New (Frame frame, int layer, Material material, SamplerState samplerState = null) {
             if (frame == null)
                 throw new ArgumentNullException("frame");
             if (material == null)
                 throw new ArgumentNullException("material");
 
             var result = frame.RenderManager.AllocateBatch<BitmapBatch>();
-            result.Initialize(frame, layer, material);
+            result.Initialize(frame, layer, material, samplerState);
             return result;
         }
 
-        public override void Initialize (Frame frame, int layer, Material material) {
+        public void Initialize (Frame frame, int layer, Material material, SamplerState samplerState = null) {
             base.Initialize(frame, layer, material);
+
+            SamplerState = samplerState ?? SamplerState.LinearClamp;
 
             _Allocator = frame.RenderManager.GetArrayAllocator<BitmapVertex>();
             _NativeBatches = _NativePool.Allocate();
@@ -218,8 +222,6 @@ namespace Squared.Render {
 
             using (manager.ApplyMaterial(Material)) {
                 TextureSet currentTexture = new TextureSet();
-                var paramTexture = manager.CurrentParameters["BitmapTexture"];
-                var paramTexture2 = manager.CurrentParameters["SecondTexture"];
                 var paramSize = manager.CurrentParameters["BitmapTextureSize"];
                 var paramTexel = manager.CurrentParameters["Texel"];
 
@@ -227,8 +229,11 @@ namespace Squared.Render {
                     if (nb.TextureSet != currentTexture) {
                         currentTexture = nb.TextureSet;
                         var tex1 = currentTexture.Texture1;
-                        paramTexture.SetValue(tex1);
-                        paramTexture2.SetValue(currentTexture.Texture2);
+
+                        device.Textures[0] = tex1;
+                        device.Textures[1] = currentTexture.Texture2;
+                        device.SamplerStates[0] = device.SamplerStates[1] = SamplerState;
+
                         var vSize = new Vector2(tex1.Width, tex1.Height);
                         paramSize.SetValue(vSize);
                         paramTexel.SetValue(new Vector2(1.0f / vSize.X, 1.0f / vSize.Y));

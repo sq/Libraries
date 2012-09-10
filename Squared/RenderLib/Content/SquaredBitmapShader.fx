@@ -4,29 +4,18 @@ shared float2 ViewportPosition;
 shared float4x4 ProjectionMatrix;
 
 uniform const float2 BitmapTextureSize;
-uniform const texture BitmapTexture;
 uniform const float2 Texel;
 
-uniform const texture SecondTexture;
+Texture2D BitmapTexture : register(t0);
 
-uniform const sampler TextureSampler = sampler_state {
+sampler TextureSampler : register(s0) {
     Texture = (BitmapTexture);
-    
-    MinFilter = Linear;
-    MagFilter = Linear;
-    MipFilter = Linear;
-    AddressU = Clamp;
-    AddressV = Clamp;
 };
 
-uniform const sampler TextureSampler2 = sampler_state {
+Texture2D SecondTexture : register(t1);
+
+sampler TextureSampler2 : register(s1) {
     Texture = (SecondTexture);
-    
-    MinFilter = Linear;
-    MagFilter = Linear;
-    MipFilter = Linear;
-    AddressU = Clamp;
-    AddressV = Clamp;
 };
 
 const float2 Corners[] = {
