@@ -267,7 +267,10 @@ namespace Squared.Render {
                     break;
 
                 _DrawCalls[count - 1] = new PrimitiveDrawCall<T>(
-                    lastCall.PrimitiveType, lastCall.Vertices, lastCall.VertexOffset, lastCall.VertexCount, lastCall.Indices, lastCall.IndexOffset, lastCall.PrimitiveCount
+                    lastCall.PrimitiveType, lastCall.Vertices, 
+                    lastCall.VertexOffset, lastCall.VertexCount + item.VertexCount, 
+                    null, 0, 
+                    lastCall.PrimitiveCount + item.PrimitiveCount
                 );
                 return;
             }

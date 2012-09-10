@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Text;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -91,7 +92,11 @@ namespace Squared.Render.Evil {
         SRGB                 = 0x00600000
     }
 
+    [SuppressUnmanagedCodeSecurity]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     internal unsafe delegate int GetSurfaceLevelDelegate (void* pTexture, uint iLevel, void** pSurface);
+    [SuppressUnmanagedCodeSecurity]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     internal unsafe delegate uint ReleaseDelegate (void* pObj);
 
     [StructLayout(LayoutKind.Sequential)]
@@ -110,6 +115,7 @@ namespace Squared.Render.Evil {
         }
 
         [DllImport("d3dx9_41.dll")]
+        [SuppressUnmanagedCodeSecurity]
         private static unsafe extern int D3DXLoadSurfaceFromMemory (
             void* pDestSurface,
             void* pDestPalette,
@@ -179,7 +185,7 @@ namespace Squared.Render.Evil {
         /// <param name="pitch">The number of bytes occupied by a single row of the pixel data (including padding at the end of rows).</param>
         /// <param name="pixelFormat">The format of the pixel data.</param>
         public static unsafe void SetData (
-            this Texture2D texture, int level, void* pData, 
+            this Texture2D texture, void* pSurface, void* pData, 
             int width, int height, uint pitch, 
             D3DFORMAT pixelFormat
         ) {
@@ -190,14 +196,29 @@ namespace Squared.Render.Evil {
                 Bottom = height
             };
 
-            void* pSurface = GetSurfaceLevel(texture, level);
+            SetData(texture, pSurface, pData, ref rect, pitch, ref rect, pixelFormat);
+        }
 
-            try {
-                var rv = D3DXLoadSurfaceFromMemory(pSurface, null, &rect, pData, pixelFormat, pitch, null, &rect, D3DX_FILTER.NONE, 0);
+        /// <summary>
+        /// Copies pixels from an address in memory into a mip level of Texture2D, converting them from one format to another if necessary.
+        /// </summary>
+        /// <param name="texture">The texture to copy to.</param>
+        /// <param name="level">The index into the texture's mip levels.</param>
+        /// <param name="pData">The address of the pixel data.</param>
+        /// <param name="destRect">The destination rectangle.</param>
+        /// <param name="pitch">The number of bytes occupied by a single row of the pixel data (including padding at the end of rows).</param>
+        /// <param name="sourceRect">The source rectangle.</param>
+        /// <param name="pixelFormat">The format of the pixel data.</param>
+        public static unsafe void SetData (
+            this Texture2D texture, void* pSurface, void* pData,
+            ref RECT destRect, uint pitch, ref RECT sourceRect,
+            D3DFORMAT pixelFormat
+        ) {
+            fixed (RECT* pDestRect = &destRect)
+            fixed (RECT* pSourceRect = &sourceRect) {
+                var rv = D3DXLoadSurfaceFromMemory(pSurface, null, pDestRect, pData, pixelFormat, pitch, null, pSourceRect, D3DX_FILTER.NONE, 0);
                 if (rv != 0)
                     throw new COMException("D3DXLoadSurfaceFromMemory failed", rv);
-            } finally {
-                Marshal.Release(new IntPtr(pSurface));
             }
         }
     }

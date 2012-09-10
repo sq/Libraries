@@ -47,7 +47,7 @@ namespace Squared.Render {
         public float Z;
         public Vector2 Vector0, Vector1, Vector2;
         public Color Color0, Color1, Color2, Color3;
-        public float Scalar0;
+        public float Scalar0, Scalar1;
     }
 
     public static class GeometryBatch {
@@ -448,7 +448,7 @@ namespace Squared.Render {
                 center, 
                 new Vector2(innerRadius, innerRadius), 
                 new Vector2(outerRadius, outerRadius), 
-                innerColor, outerColor
+                innerColor, outerColor, innerColor, outerColor
             );
         }
 
@@ -456,15 +456,19 @@ namespace Squared.Render {
             return (int)Math.Ceiling(Math.Abs(radius.X + radius.Y) / 3.75f) + 8;
         }
 
-        public void AddFilledRing (Vector2 center, Vector2 innerRadius, Vector2 outerRadius, Color innerColor, Color outerColor) {
+        public void AddFilledRing (Vector2 center, Vector2 innerRadius, Vector2 outerRadius, Color innerColorStart, Color outerColorStart, Color? innerColorEnd = null, Color? outerColorEnd = null, float startAngle = 0, float endAngle = (float)(Math.PI * 2)) {
             var dc = new GeometryDrawCall<T> {
                 Preparer = PrepareRing,
                 PrimitiveType = PrimitiveType.TriangleList,
                 Vector0 = center,
                 Vector1 = innerRadius,
                 Vector2 = outerRadius,
-                Color0 = innerColor,
-                Color1 = outerColor
+                Color0 = innerColorStart,
+                Color1 = outerColorStart,
+                Color2 = innerColorEnd.GetValueOrDefault(innerColorStart),
+                Color3 = outerColorEnd.GetValueOrDefault(outerColorStart),
+                Scalar0 = startAngle,
+                Scalar1 = endAngle
             };
 
             int numPoints = ComputeRingPoints(ref outerRadius);
@@ -481,9 +485,10 @@ namespace Squared.Render {
             var vw = vb.GetWriter(numPoints * vertexStride);
             var iw = ib.GetWriter((numPoints - 1) * indexStride, (short)vw.Offset);
 
-            float a = 0;
-            float step = (float)(Math.PI * 2.0 / (numPoints - 1));
+            float a = dc.Scalar0;
+            float step = (float)((dc.Scalar1 - dc.Scalar0) / (numPoints - 1));
             float cos, sin;
+            float colorA = 0, colorStep = 1.0f / (numPoints - 1);
             var vertexInner = new GeometryVertex(0, 0, dc.Z, dc.Color0);
             var vertexOuter = new GeometryVertex(0, 0, dc.Z, dc.Color1);
 
@@ -495,10 +500,12 @@ namespace Squared.Render {
 
                 vertexInner.Position.X = dc.Vector0.X + (float)(cos * dc.Vector1.X);
                 vertexInner.Position.Y = dc.Vector0.Y + (float)(sin * dc.Vector1.Y);
+                vertexInner.Color = Color.Lerp(dc.Color0, dc.Color2, colorA);
                 pVertices[j] = vertexInner;
 
                 vertexOuter.Position.X = dc.Vector0.X + (float)(cos * dc.Vector2.X);
                 vertexOuter.Position.Y = dc.Vector0.Y + (float)(sin * dc.Vector2.Y);
+                vertexOuter.Color = Color.Lerp(dc.Color1, dc.Color3, colorA);
                 pVertices[j + 1] = vertexOuter;
 
                 if (i == (numPoints - 1))
@@ -512,6 +519,7 @@ namespace Squared.Render {
                 pIndices[k + 5] = (short)(j + 3 + iw.IndexOffset);
 
                 a += step;
+                colorA += colorStep;
             }
         }
 

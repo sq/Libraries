@@ -47,12 +47,12 @@ namespace Squared.Render {
         }
 
         protected override void Initialize () {
-            base.Initialize();
-
             RenderManager = new RenderManager(GraphicsDevice);
             RenderCoordinator = new RenderCoordinator(
                 RenderManager, base.BeginDraw, base.EndDraw
             );
+
+            base.Initialize();
         }
 
         public abstract void Draw(GameTime gameTime, Frame frame);
