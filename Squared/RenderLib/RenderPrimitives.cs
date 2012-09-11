@@ -35,8 +35,11 @@ namespace Squared.Render.Internal {
             if (newCount >= Allocation.Buffer.Length)
                 throw new InvalidOperationException();
 
+            // FIXME: This shouldn't be needed!
+            Array.Clear(this.Allocation.Buffer, offset, capacity);
+
             Count = newCount;
-            return new VertexWriter<T>(this.Allocation.Buffer, offset, Count);
+            return new VertexWriter<T>(this.Allocation.Buffer, offset, capacity);
         }
 
         public void Dispose() {
@@ -155,8 +158,11 @@ namespace Squared.Render.Internal {
             if (newCount >= Allocation.Buffer.Length)
                 throw new InvalidOperationException();
 
+            // FIXME: This shouldn't be needed!
+            Array.Clear(this.Allocation.Buffer, offset, capacity);
+
             Count = newCount;
-            return new IndexWriter(this.Allocation.Buffer, offset, Count, indexOffset);
+            return new IndexWriter(this.Allocation.Buffer, offset, capacity, indexOffset);
         }
 
         public void Dispose() {

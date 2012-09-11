@@ -511,12 +511,12 @@ namespace Squared.Render {
                 if (i == (numPoints - 1))
                     break;
 
-                pIndices[k] = (short)(j + iw.IndexOffset);
-                pIndices[k + 1] = (short)(j + 1 + iw.IndexOffset);
-                pIndices[k + 2] = (short)(j + 3 + iw.IndexOffset);
-                pIndices[k + 3] = (short)(j + 2 + iw.IndexOffset);
-                pIndices[k + 4] = (short)(j + iw.IndexOffset);
-                pIndices[k + 5] = (short)(j + 3 + iw.IndexOffset);
+                pIndices[k] = (short)(j + vw.Offset);
+                pIndices[k + 1] = (short)(j + 1 + vw.Offset);
+                pIndices[k + 2] = (short)(j + 3 + vw.Offset);
+                pIndices[k + 3] = (short)(j + 2 + vw.Offset);
+                pIndices[k + 4] = (short)(j + vw.Offset);
+                pIndices[k + 5] = (short)(j + 3 + vw.Offset);
 
                 a += step;
                 colorA += colorStep;

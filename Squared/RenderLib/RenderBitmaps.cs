@@ -74,7 +74,12 @@ namespace Squared.Render {
         }
     }
 
-    public class BitmapBatch : ListBatch<BitmapDrawCall> {
+    public interface IBitmapBatch {
+        void Add (BitmapDrawCall item);
+        void Add (ref BitmapDrawCall item);
+    }
+
+    public class BitmapBatch : ListBatch<BitmapDrawCall>, IBitmapBatch {
         struct NativeBatch {
             public TextureSet TextureSet;
             public int VertexOffset;
