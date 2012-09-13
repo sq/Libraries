@@ -184,11 +184,13 @@ namespace Squared.Render {
                 count = info.Count;
             }
 
-            frame.PrepareSubset(start, count);
-
-            lock (info) {
-                info.Frame = null;
-                info.Start = info.Count = 0;
+            try {
+                frame.PrepareSubset(start, count);
+            } finally {
+                lock (info) {
+                    info.Frame = null;
+                    info.Start = info.Count = 0;
+                }
             }
         }
 
@@ -201,7 +203,7 @@ namespace Squared.Render {
 
                 lock (info) {
                     if (info.Frame != null)
-                        throw new InvalidOperationException();
+                        throw new InvalidOperationException("A render is already in progress");
 
                     info.Frame = frame;
                     info.Start = j;
@@ -333,7 +335,9 @@ namespace Squared.Render {
         private const int State_Initialized = 0;
         private const int State_Preparing = 1;
         private const int State_Prepared = 2;
-        private const int State_Disposed = 3;
+        private const int State_Drawing = 3;
+        private const int State_Drawn = 4;
+        private const int State_Disposed = 5;
 
         public static BatchComparer BatchComparer = new BatchComparer();
 
@@ -391,7 +395,7 @@ namespace Squared.Render {
         }
 
         public void Draw () {
-            if (State != State_Prepared)
+            if (Interlocked.Exchange(ref State, State_Drawing) != State_Prepared)
                 throw new InvalidOperationException();
 
             var dm = RenderManager.DeviceManager;
@@ -402,6 +406,9 @@ namespace Squared.Render {
                 Batches[i].Issue(dm);
 
             dm.Finish();
+
+            if (Interlocked.Exchange(ref State, State_Drawn) != State_Drawing)
+                throw new InvalidOperationException();
         }
 
         public void Dispose () {

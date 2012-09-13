@@ -453,7 +453,12 @@ namespace Squared.Render {
         }
 
         protected static int ComputeRingPoints (ref Vector2 radius) {
-            return (int)Math.Ceiling(Math.Abs(radius.X + radius.Y) / 3.75f) + 8;
+            var result = (int)Math.Ceiling(Math.Abs(radius.X + radius.Y) / 3.75f) + 8;
+            if (result < 8)
+                result = 8;
+            if (result > 1024)
+                result = 1024;
+            return result;
         }
 
         public void AddFilledRing (Vector2 center, Vector2 innerRadius, Vector2 outerRadius, Color innerColorStart, Color outerColorStart, Color? innerColorEnd = null, Color? outerColorEnd = null, float startAngle = 0, float endAngle = (float)(Math.PI * 2)) {

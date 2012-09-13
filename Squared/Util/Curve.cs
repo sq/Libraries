@@ -242,6 +242,9 @@ namespace Squared.Util {
 
     public class Curve<T> : IEnumerable<Curve<T>.Point>
         where T : struct {
+
+        public event EventHandler OnChanged;
+
         public Interpolator<T> Interpolator;
         private InterpolatorSource<T> _InterpolatorSource;
         private PointPositionComparer _PositionComparer = new PointPositionComparer();
@@ -352,6 +355,12 @@ namespace Squared.Util {
             }
         }
 
+        public void Clear () {
+            _Items.Clear();
+
+            FireChangedEvent();
+        }
+
         public void Clamp (float newStartPosition, float newEndPosition) {
             T newStartValue = GetValueAtPosition(newStartPosition);
             T newEndValue = GetValueAtPosition(newEndPosition);
@@ -366,11 +375,27 @@ namespace Squared.Util {
                 }
             }
 
-            SetValueAtPosition(newStartPosition, newStartValue);
-            SetValueAtPosition(newEndPosition, newEndValue);
+            SetValueAtPositionInternal(newStartPosition, newStartValue, null, false);
+            SetValueAtPositionInternal(newEndPosition, newEndValue, null, false);
+
+            FireChangedEvent();
+        }
+
+        public bool RemoveValueAtPosition (float position, float precision = 0.01f) {
+            var index = GetLowerIndexForPosition(position);
+            var item = _Items[index];
+            if (Math.Abs(item.Position - position) > precision)
+                return false;
+
+            _Items.RemoveAt(index);
+            return true;
         }
 
         public void SetValueAtPosition (float position, T value, Interpolator<T> interpolator = null) {
+            SetValueAtPositionInternal(position, value, interpolator, true);
+        }
+
+        private void SetValueAtPositionInternal (float position, T value, Interpolator<T> interpolator, bool dispatchEvent) {
             var oldIndex = IndexOfKey(position);
 
             var newItem = new Point {
@@ -385,6 +410,14 @@ namespace Squared.Util {
                 _Items.Add(newItem);
                 _Items.Sort(_PositionComparer);
             }
+
+            if (dispatchEvent)
+                FireChangedEvent();
+        }
+
+        private void FireChangedEvent () {
+            if (OnChanged != null)
+                OnChanged(this, EventArgs.Empty);
         }
 
         public T this[float position] {
