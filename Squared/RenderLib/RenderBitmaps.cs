@@ -77,6 +77,7 @@ namespace Squared.Render {
     public interface IBitmapBatch {
         void Add (BitmapDrawCall item);
         void Add (ref BitmapDrawCall item);
+        void Issue ();
     }
 
     public class BitmapBatch : ListBatch<BitmapDrawCall>, IBitmapBatch {
@@ -152,6 +153,10 @@ namespace Squared.Render {
             item.TextureID = item.Textures.GetHashCode();
 
             base.Add(ref item);
+        }
+
+        public void Issue () {
+            Dispose();
         }
 
         public unsafe override void Prepare () {

@@ -388,6 +388,11 @@ namespace Squared.Util {
                 return false;
 
             _Items.RemoveAt(index);
+
+            if (_Items.Count == 0)
+                _Items.Add(default(Point));
+
+            FireChangedEvent();
             return true;
         }
 
