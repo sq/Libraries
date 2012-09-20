@@ -120,7 +120,7 @@ namespace Squared.Util {
         }
 
         private static void CompileNativeExpressions () {
-#if !XBOX
+#if WINDOWS
             Arithmetic.CompileExpression(
                 (a, b, x) =>
                     a + ((b - a) * x),
@@ -243,12 +243,14 @@ namespace Squared.Util {
     public class Curve<T> : IEnumerable<Curve<T>.Point>
         where T : struct {
 
-        public event EventHandler OnChanged;
+        public event EventHandler Changed;
 
-        public Interpolator<T> Interpolator;
+        public Interpolator<T> DefaultInterpolator;
+
+        protected readonly List<Point> _Items = new List<Point>();
+
         private InterpolatorSource<T> _InterpolatorSource;
         private PointPositionComparer _PositionComparer = new PointPositionComparer();
-        protected List<Point> _Items = new List<Point>();
 
         public struct Point {
             public float Position;
@@ -263,7 +265,7 @@ namespace Squared.Util {
         }
 
         public Curve () {
-            Interpolator = Interpolators<T>.Default;
+            DefaultInterpolator = Interpolators<T>.Default;
             _InterpolatorSource = GetValueAtIndex;
         }
 
@@ -279,7 +281,7 @@ namespace Squared.Util {
             }
         }
 
-        protected int IndexOfKey (float position) {
+        protected int FindIndexOfPosition (float position) {
             return _Items.BinarySearch(new Point {
                 Position = position
             }, _PositionComparer);
@@ -297,7 +299,7 @@ namespace Squared.Util {
             } else if (position >= End) {
                 return count - 1;
             } else {
-                index = IndexOfKey(position);
+                index = FindIndexOfPosition(position);
                 if (index >= 0)
                     return index;
                 else
@@ -336,11 +338,11 @@ namespace Squared.Util {
             return _Items[index].Value;
         }
 
-        private T GetValueAtPosition (float position) {
+        protected T GetValueAtPosition (float position) {
             int index = GetLowerIndexForPosition(position);
             float lowerPosition = GetPositionAtIndex(index);
             float upperPosition = GetPositionAtIndex(index + 1);
-            Interpolator<T> interpolator = _Items[index].Interpolator ?? Interpolator;
+            Interpolator<T> interpolator = _Items[index].Interpolator ?? DefaultInterpolator;
             if (lowerPosition < upperPosition) {
                 float offset = (position - lowerPosition) / (upperPosition - lowerPosition);
 
@@ -358,7 +360,7 @@ namespace Squared.Util {
         public void Clear () {
             _Items.Clear();
 
-            FireChangedEvent();
+            OnChanged();
         }
 
         public void Clamp (float newStartPosition, float newEndPosition) {
@@ -378,7 +380,7 @@ namespace Squared.Util {
             SetValueAtPositionInternal(newStartPosition, newStartValue, null, false);
             SetValueAtPositionInternal(newEndPosition, newEndValue, null, false);
 
-            FireChangedEvent();
+            OnChanged();
         }
 
         public bool RemoveValueAtPosition (float position, float precision = 0.01f) {
@@ -392,7 +394,7 @@ namespace Squared.Util {
             if (_Items.Count == 0)
                 _Items.Add(default(Point));
 
-            FireChangedEvent();
+            OnChanged();
             return true;
         }
 
@@ -400,8 +402,8 @@ namespace Squared.Util {
             SetValueAtPositionInternal(position, value, interpolator, true);
         }
 
-        private void SetValueAtPositionInternal (float position, T value, Interpolator<T> interpolator, bool dispatchEvent) {
-            var oldIndex = IndexOfKey(position);
+        protected void SetValueAtPositionInternal (float position, T value, Interpolator<T> interpolator, bool dispatchEvent) {
+            var oldIndex = FindIndexOfPosition(position);
 
             var newItem = new Point {
                 Position = position,
@@ -417,12 +419,12 @@ namespace Squared.Util {
             }
 
             if (dispatchEvent)
-                FireChangedEvent();
+                OnChanged();
         }
 
-        private void FireChangedEvent () {
-            if (OnChanged != null)
-                OnChanged(this, EventArgs.Empty);
+        protected void OnChanged () {
+            if (Changed != null)
+                Changed(this, EventArgs.Empty);
         }
 
         public T this[float position] {

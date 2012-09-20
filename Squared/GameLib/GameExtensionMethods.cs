@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Microsoft.Xna.Framework;
+
+#if PSM
+	using Sce.PlayStation.Core;
+#else
+    using Microsoft.Xna.Framework;
+#endif
 
 namespace Squared.Game {
     public static class GameExtensionMethods {
@@ -38,5 +41,14 @@ namespace Squared.Game {
                 (sin * vector.X + cos * vector.Y)
             );
         }
+
+#if !PSM
+        public static float Dot (this Vector2 @this, ref Vector2 rhs) {
+            float result;
+            Vector2.Dot(ref @this, ref rhs, out result);
+            return result;
+        }
+#else
+#endif
     }
 }

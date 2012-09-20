@@ -97,7 +97,7 @@ namespace Squared.Util {
         [Test]
         public void NullInterpolation () {
             var c = new Curve<float>();
-            c.Interpolator = Interpolators<float>.Null;
+            c.DefaultInterpolator = Interpolators<float>.Null;
             c[0] = 5.0f;
             c[1] = 10.0f;
             AssertEqualFloat(5.0f, c[-0.2f]);
@@ -110,7 +110,7 @@ namespace Squared.Util {
         [Test]
         public void LinearInterpolation () {
             var c = new Curve<float>();
-            c.Interpolator = Interpolators<float>.Linear;
+            c.DefaultInterpolator = Interpolators<float>.Linear;
             c[0] = 5.0f;
             c[1] = 10.0f;
 
@@ -127,7 +127,7 @@ namespace Squared.Util {
         [Test]
         public void CosineInterpolation () {
             var c = new Curve<float>();
-            c.Interpolator = Interpolators<float>.Cosine;
+            c.DefaultInterpolator = Interpolators<float>.Cosine;
             c[0] = 5.0f;
             c[1] = 10.0f;
 
@@ -146,7 +146,7 @@ namespace Squared.Util {
         [Test]
         public void CubicInterpolation () {
             var c = new Curve<float>();
-            c.Interpolator = Interpolators<float>.Cubic;
+            c.DefaultInterpolator = Interpolators<float>.Cubic;
             c[-1] = 10.0f;
             c[0] = 5.0f;
             c[1] = 10.0f;
@@ -171,7 +171,7 @@ namespace Squared.Util {
         [Test]
         public void Clamp () {
             var c = new Curve<float>();
-            c.Interpolator = Interpolators<float>.Linear;
+            c.DefaultInterpolator = Interpolators<float>.Linear;
             c[0] = 1.0f;
             c[10] = 2.0f;
             c[20] = 3.0f;
@@ -249,7 +249,7 @@ namespace Squared.Util {
             curve[0.5f] = 1.0f;
             curve[1.0f] = 2.0f;
 
-            curve.Interpolator = Interpolators<float>.Linear;
+            curve.DefaultInterpolator = Interpolators<float>.Linear;
 
             long start = Time.Ticks;
             for (int i = 0; i < numIterations; i++) {
@@ -259,7 +259,7 @@ namespace Squared.Util {
             long end = Time.Ticks;
             Console.WriteLine("Execution time (linear interpolation): {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
 
-            curve.Interpolator = Interpolators<float>.Null;
+            curve.DefaultInterpolator = Interpolators<float>.Null;
 
             start = Time.Ticks;
             for (int i = 0; i < numIterations; i++) {

@@ -1,17 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Audio;
-using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.GamerServices;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Media;
-using Microsoft.Xna.Framework.Net;
-using Microsoft.Xna.Framework.Storage;
 using Squared.Util;
-using System.Diagnostics;
+
+#if PSM
+	using Sce.PlayStation.Core;
+#else
+    using Microsoft.Xna.Framework;
+#endif
 
 namespace Squared.Game {
     public class Vector2Comparer : IEqualityComparer<Vector2> {
@@ -620,8 +616,8 @@ namespace Squared.Game {
                     bool intersects = intervalA.Intersects(intervalB, Geometry.IntersectionEpsilon);
                     if (!intersects)
                         result.AreIntersecting = false;
-
-                    Vector2.Dot(ref axis, ref velocityA, out velocityProjection);
+					
+					velocityProjection = axis.Dot(ref velocityA);
 
                     newIntervalA = intervalA;
                     newIntervalA.Min += velocityProjection;
@@ -648,8 +644,8 @@ namespace Squared.Game {
                             continue;
                         if (Vector2.Dot(velocityA, newVelocity) < 0.0f)
                             newVelocity = Vector2.Zero;
-
-                        Vector2.Dot(ref axis, ref newVelocity, out velocityProjection);
+						
+						velocityProjection = axis.Dot(ref newVelocity);
                         newIntervalA.Min = (intervalA.Min + velocityProjection);
                         newIntervalA.Max = (intervalA.Max + velocityProjection);
                         intersectionDistance = newIntervalA.GetDistance(intervalB);
@@ -670,7 +666,7 @@ namespace Squared.Game {
         public static Vector2 ClosestPointOnLine (Vector2 sourcePoint, Vector2 lineStart, Vector2 lineEnd) {
             var lineDelta = lineEnd - lineStart;
             var u = (((sourcePoint.X - lineStart.X) * lineDelta.X) + ((sourcePoint.Y - lineStart.Y) * lineDelta.Y)) / lineDelta.LengthSquared();
-            return lineStart + (lineDelta * MathHelper.Clamp(u, 0.0f, 1.0f));
+            return lineStart + (lineDelta * Arithmetic.Clamp(u, 0.0f, 1.0f));
         }
     }
 }

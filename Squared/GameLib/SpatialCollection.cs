@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using SectorIndex = Squared.Util.Pair<int>;
-using Microsoft.Xna.Framework;
 using Squared.Util;
-using System.Threading;
+
+#if PSM
+	using Sce.PlayStation.Core;
+#else
+    using Microsoft.Xna.Framework;
+#endif
 
 namespace Squared.Game {
     public class IntPairComparer : IEqualityComparer<Pair<int>> {
