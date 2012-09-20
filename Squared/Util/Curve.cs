@@ -313,26 +313,31 @@ namespace Squared.Util {
             }
         }
 
-        public static HermiteSpline<T> CatmullRom (KeyValuePair<float, T>[] points) {
+        public void ConvertToCardinal (float tension) {
+            float tensionFactor = (1f / 2f) * (1f - tension);
+
+            for (int start = 1, end = _Items.Count - 2, i = start; i <= end; i++) {
+                var previous = _Items[i - 1];
+                var pt = _Items[i];
+                var next = _Items[i + 1];
+
+                var tangent = _Sub(next.Value, previous.Value);
+                pt.Data.Velocity = _Mul(tangent, tensionFactor);
+                _Items[i] = pt;
+            }
+        }
+
+        public static HermiteSpline<T> CatmullRom (IEnumerable<KeyValuePair<float, T>> points) {
             return Cardinal(points, 0);
         }
 
-        public static HermiteSpline<T> Cardinal (KeyValuePair<float, T>[] points, float tension) {
+        public static HermiteSpline<T> Cardinal (IEnumerable<KeyValuePair<float, T>> points, float tension) {
             var result = new HermiteSpline<T>();
 
-            result.Add(points[0].Key, points[0].Value, default(T));
-            float tensionFactor = (1f / 2f) * (1f - tension);
+            foreach (var pt in points)
+                result.Add(pt.Key, pt.Value, default(T));
 
-            for (int i = 1; i < points.Length - 1; i++) {
-                var previous = points[i - 1];
-                var pt = points[i];
-                var next = points[i + 1];
-
-                var tangent = _Sub(next.Value, previous.Value);
-                result.Add(pt.Key, pt.Value, _Mul(tangent, tensionFactor));
-            }
-
-            result.Add(points[points.Length - 1].Key, points[points.Length - 1].Value, default(T));
+            result.ConvertToCardinal(tension);
 
             return result;
         }
