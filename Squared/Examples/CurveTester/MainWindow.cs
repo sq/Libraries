@@ -113,6 +113,31 @@ namespace CurveTester {
                     pt.Value.X + pt.Data.Velocity.X, pt.Value.Y + pt.Data.Velocity.Y
                 );
             }
+
+            var mousePos = PointToClient(Cursor.Position);
+            var closestPosition = spline.Search(
+                (v) => (float)Math.Sqrt(
+                    Math.Pow(v.X - mousePos.X, 2) +
+                    Math.Pow(v.Y - mousePos.Y, 2)
+                )
+            );
+
+            if (closestPosition.HasValue) {
+                using (var closestPen = new Pen(Color.Green, 1.75f)) {
+                    var closestPoint = spline[closestPosition.Value];
+
+                    e.Graphics.DrawLine(
+                        closestPen, 
+                        mousePos.X, mousePos.Y, 
+                        closestPoint.X, closestPoint.Y
+                    );
+                    e.Graphics.DrawEllipse(
+                        closestPen, 
+                        closestPoint.X - 3f, closestPoint.Y - 3f,
+                        6f, 6f
+                    );
+                }
+            }
         }
 
         private void UpdateDrag (MouseButtons buttons) {

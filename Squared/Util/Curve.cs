@@ -12,6 +12,10 @@ namespace Squared.Util {
         where TValue : struct
         where TData : struct {
 
+        public const int DefaultSearchSubdivision = 32;
+        public const int DefaultMaxSearchRecursion = 7;
+        public const float DefaultSearchEpsilon = float.Epsilon * 5;
+
         public event EventHandler Changed;
 
         protected readonly List<Point> _Items = new List<Point>();
@@ -88,6 +92,100 @@ namespace Squared.Util {
             }
 
             return index;
+        }
+
+        /// <summary>
+        /// Searches the entire curve based on a heuristic.
+        /// </summary>
+        /// <param name="heuristic">A heuristic that measures how close a value is to the target value. This heuristic should return 0 if the target value is a match.</param>
+        /// <returns>The position the search ended at if it was successful.</returns>
+        public float? Search (Func<TValue, float> heuristic) {
+            return Search(heuristic, Start, End);
+        }
+
+        /// <summary>
+        /// Searches a region of the curve based on a heuristic.
+        /// </summary>
+        /// <param name="heuristic">A heuristic that measures how close a value is to the target value. This heuristic should return 0 if the target value is a match.</param>
+        /// <param name="low">The beginning of the search window.</param>
+        /// <param name="high">The end of the search window.</param>
+        /// <param name="subdivision">The number of sample points within the search window. A higher number of partitions will increase the likelihood that the best match will be found by the search, but increase the cost of the search.</param>
+        /// <param name="maxRecursion">The maximum level of recursion for the search. High values for this argument will increase the precision of the search but also increase its cost.</param>
+        /// <returns>The position the search ended at if it was successful.</returns>
+        public float? Search (
+            Func<TValue, float> heuristic, float low, float high, 
+            int? subdivision = null, int? maxRecursion = null,
+            float? epsilon = null
+        ) {
+            float? result = null;
+            float bestScore = float.MaxValue;
+
+            SearchInternal(
+                heuristic,
+                low, high,
+                subdivision.GetValueOrDefault(DefaultSearchSubdivision),
+                maxRecursion.GetValueOrDefault(DefaultMaxSearchRecursion),
+                epsilon.GetValueOrDefault(DefaultSearchEpsilon),
+                ref result, ref bestScore, 
+                0
+            );
+
+            return result;
+        }
+
+        protected void SearchInternal (
+            Func<TValue, float> heuristic, 
+            float low, float high, 
+            int subdivision, int maxRecursion,
+            float epsilon,
+            ref float? bestScoringPosition, ref float bestScore, 
+            int depth
+        ) {
+            if (subdivision < 2)
+                subdivision = 2;
+
+            if (high <= low)
+                return;
+
+            var actualSubdivision = subdivision;
+
+            if (depth == 0) {
+                actualSubdivision = Math.Min(1024, _Items.Count * 2);
+                actualSubdivision = Math.Max(actualSubdivision, subdivision);
+            }
+
+            bool improved = false;
+            float partitionSize = (high - low) / actualSubdivision, partitionSizeHalf = partitionSize * 0.5f;
+            if (Math.Abs(partitionSizeHalf) <= epsilon)
+                return;
+
+            for (int i = 0; i < actualSubdivision; i++) {
+                var samplePosition = low + (partitionSize * i) + partitionSizeHalf;
+                var score = heuristic(GetValueAtPosition(samplePosition));
+
+                if (score < bestScore) {
+                    bestScore = score;
+                    bestScoringPosition = samplePosition;
+                    improved = true;
+                }
+            }
+
+            if (depth >= maxRecursion)
+                return;
+
+            if (!improved)
+                return;
+
+            var newLow = Math.Max(low, bestScoringPosition.Value - partitionSizeHalf);
+            var newHigh = Math.Min(high, bestScoringPosition.Value + partitionSizeHalf);
+
+            SearchInternal(
+                heuristic,
+                newLow, newHigh,
+                subdivision, maxRecursion, epsilon,
+                ref bestScoringPosition, ref bestScore,
+                depth + 1
+            );
         }
 
         public float GetPositionAtIndex (int index) {

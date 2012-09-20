@@ -2,6 +2,7 @@
 *.cachefile
 *.suo
 *.user
+*.pidb
 _ReSharper.*
 /Squared/360/TaskLib360/bin
 /Squared/360/TaskLib360/obj
@@ -43,3 +44,9 @@ _ReSharper.*
 /Squared/Util/bin
 /Squared/Util/UtilTests/obj
 /Squared/Util/UtilTests/bin
+/Squared/Util/PSM/obj
+/Squared/Util/PSM/bin
+/Squared/GameLib/PSM/obj
+/Squared/GameLib/PSM/bin
+/Squared/Examples/CurveTester/obj
+/Squared/Examples/CurveTester/bin
