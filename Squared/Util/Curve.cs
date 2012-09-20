@@ -240,7 +240,7 @@ namespace Squared.Util {
         }
     }
 
-    public class HermiteCurve<T> : CurveBase<T, HermiteCurve<T>.PointData>
+    public class HermiteSpline<T> : CurveBase<T, HermiteSpline<T>.PointData>
         where T : struct {
 
         public struct PointData {
@@ -250,42 +250,53 @@ namespace Squared.Util {
         protected Interpolator<T> _Interpolator; 
         protected InterpolatorSource<T> _InterpolatorSource;
 
-        protected Arithmetic.BinaryOperatorMethod<T, T> _Add, _Sub;
-        protected Arithmetic.BinaryOperatorMethod<T, float> _Div; 
+        protected static Arithmetic.BinaryOperatorMethod<T, T> _Sub;
+        protected static Arithmetic.BinaryOperatorMethod<T, float> _Mul; 
 
-        public HermiteCurve () {
-            _Interpolator = Interpolators<T>.Cubic;
-            _InterpolatorSource = GetCubicInputForIndex;
-
-            _Add = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Add);
+        static HermiteSpline () {
             _Sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract);
-            _Div = Arithmetic.GetOperator<T, float>(Arithmetic.Operators.Divide);
+            _Mul = Arithmetic.GetOperator<T, float>(Arithmetic.Operators.Multiply);
+        }
+
+        public HermiteSpline () {
+            _Interpolator = Interpolators<T>.Hermite;
+            _InterpolatorSource = GetHermiteInputForIndex;
         }
 
         protected override T Interpolate (int index, float offset) {
-            return _Interpolator(_InterpolatorSource, index * 2, offset);
+            return _Interpolator(_InterpolatorSource, (index * 2), offset);
         }
 
-        private T GetCubicInputForIndex (int index) {
-            var maxIndex = _Items.Count - 1;
+        private T GetHermiteInputForIndex (int index) {
             int pairIndex = index / 4, itemInPair = index % 4;
+            if (pairIndex < 0)
+                pairIndex = 0;
             int aIndex = (pairIndex * 2), dIndex = aIndex + 1;
 
             switch (itemInPair) {
                 case 0: // A
                     return GetValueAtIndex(aIndex);
-                case 1: // B
-                    var A = GetValueAtIndex(aIndex);
-                    var U = GetDataAtIndex(aIndex).Velocity;
-                    return _Add(A, _Div(U, 3));
-                case 2: // C
-                    var D = GetValueAtIndex(dIndex);
-                    var V = GetDataAtIndex(dIndex).Velocity;
-                    return _Sub(D, _Div(V, 3));
-                default:
-                case 3: // D
+                case 1: // U
+                    return GetDataAtIndex(aIndex).Velocity;
+                case 2: // D
                     return GetValueAtIndex(dIndex);
+                default:
+                case 3: // V
+                    return GetDataAtIndex(dIndex).Velocity;
             }
+        }
+
+        public void GetValuesAtIndex (int index, out T value, out T velocity) {
+            value = GetValueAtIndex(index);
+            velocity = GetDataAtIndex(index).Velocity;
+        }
+
+        public bool GetValuesAtPosition (float position, out T value, out T velocity) {
+            int index = GetLowerIndexForPosition(position);
+            value = GetValueAtIndex(index);
+            velocity = GetDataAtIndex(index).Velocity;
+
+            return GetPositionAtIndex(index) == position;
         }
 
         public void SetValuesAtPosition (float position, T value, T velocity) {
@@ -300,6 +311,30 @@ namespace Squared.Util {
             get {
                 return GetValueAtPosition(position);
             }
+        }
+
+        public static HermiteSpline<T> CatmullRom (KeyValuePair<float, T>[] points) {
+            return Cardinal(points, 0);
+        }
+
+        public static HermiteSpline<T> Cardinal (KeyValuePair<float, T>[] points, float tension) {
+            var result = new HermiteSpline<T>();
+
+            result.Add(points[0].Key, points[0].Value, default(T));
+            float tensionFactor = (1f / 2f) * (1f - tension);
+
+            for (int i = 1; i < points.Length - 1; i++) {
+                var previous = points[i - 1];
+                var pt = points[i];
+                var next = points[i + 1];
+
+                var tangent = _Sub(next.Value, previous.Value);
+                result.Add(pt.Key, pt.Value, _Mul(tangent, tensionFactor));
+            }
+
+            result.Add(points[points.Length - 1].Key, points[points.Length - 1].Value, default(T));
+
+            return result;
         }
     }
 }

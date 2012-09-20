@@ -272,10 +272,10 @@ namespace Squared.Util {
     }
 
     [TestFixture]
-    public class HermiteCurveTests {
+    public class HermiteTests {
         [Test]
         public void SingleValue () {
-            var c = new HermiteCurve<double> {
+            var c = new HermiteSpline<double> {
                 {0, 5, 0}
             };
 
@@ -286,7 +286,7 @@ namespace Squared.Util {
 
         [Test]
         public void TwoValues () {
-            var c = new HermiteCurve<double> {
+            var c = new HermiteSpline<double> {
                 {0, 5, 0},
                 {1, 10, 0}
             };

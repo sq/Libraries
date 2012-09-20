@@ -17,11 +17,13 @@ namespace Squared.Util {
         public delegate T CosineFn (T a, T b, float x);
         public delegate T CubicPFn (T a, T b, T c, T d);
         public delegate T CubicRFn (T a, T b, T c, T d, T p, float x, float x2, float x3);
+        public delegate T HermiteFn (T a, T u, T d, T v, float t, float t2, float tSquared, float s, float s2, float sSquared);
 
         private static LinearFn _Linear = null;
         private static CosineFn _Cosine = null;
         private static CubicPFn _CubicP = null;
         private static CubicRFn _CubicR = null;
+        private static HermiteFn _Hermite = null;
 
         static Interpolators () {
             CompileFallbackExpressions();
@@ -65,6 +67,19 @@ namespace Squared.Util {
                         ),
                         b
                     )
+                );
+            };
+
+            _Hermite = (a, u, d, v, t, t2, tSquared, s, s2, sSquared) => {
+                return m_sub(
+                    m_add(
+                        m_add(
+                            m_mul_float(a, sSquared * (1 + t2)),
+                            m_mul_float(d, tSquared * (1 + s2))
+                        ),
+                        m_mul_float(u, sSquared * t)
+                    ),
+                    m_mul_float(v, s * tSquared)
                 );
             };
         }
@@ -134,6 +149,27 @@ namespace Squared.Util {
             return _CubicR(a, b, c, d, p, positionInWindow, x2, x3);
         }
 
+        public static T Hermite (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
+            if (positionInWindow < 0) {
+                var n = Math.Ceiling(Math.Abs(positionInWindow));
+                positionInWindow += (float)n;
+                dataOffset -= (int)n;
+            }
+
+            T a = data(dataOffset);
+            T u = data(dataOffset + 1);
+            T d = data(dataOffset + 2);
+            T v = data(dataOffset + 3);
+
+            var tSquared = positionInWindow * positionInWindow;
+            var t2 = positionInWindow * 2;
+            var s = 1 - positionInWindow;
+            var s2 = s * 2;
+            var sSquared = s * s;
+
+            return _Hermite(a, u, d, v, positionInWindow, t2, tSquared, s, s2, sSquared);
+        }
+
         public static T Null<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
             return data(ref obj, dataOffset);
         }
@@ -169,6 +205,27 @@ namespace Squared.Util {
             float x2 = positionInWindow * positionInWindow;
             float x3 = positionInWindow * x2;
             return _CubicR(a, b, c, d, p, positionInWindow, x2, x3);
+        }
+
+        public static T Hermite<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
+            if (positionInWindow < 0) {
+                var n = Math.Ceiling(Math.Abs(positionInWindow));
+                positionInWindow += (float)n;
+                dataOffset -= (int)n;
+            }
+
+            T a = data(ref obj, dataOffset);
+            T u = data(ref obj, dataOffset + 1);
+            T d = data(ref obj, dataOffset + 2);
+            T v = data(ref obj, dataOffset + 3);
+
+            var tSquared = positionInWindow * positionInWindow;
+            var t2 = positionInWindow * 2;
+            var s = 1 - positionInWindow;
+            var s2 = s * 2;
+            var sSquared = s * s;
+
+            return _Hermite(a, u, d, v, positionInWindow, t2, tSquared, s, s2, sSquared);
         }
 
         public static Interpolator<T> GetByName (string name) {
