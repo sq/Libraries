@@ -270,4 +270,31 @@ namespace Squared.Util {
             Console.WriteLine("Execution time (no interpolation): {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
         }
     }
+
+    [TestFixture]
+    public class HermiteCurveTests {
+        [Test]
+        public void SingleValue () {
+            var c = new HermiteCurve<double> {
+                {0, 5, 0}
+            };
+
+            Assert.AreEqual(5.0, c[-1]);
+            Assert.AreEqual(5.0, c[0]);
+            Assert.AreEqual(5.0, c[1]);
+        }
+
+        [Test]
+        public void TwoValues () {
+            var c = new HermiteCurve<double> {
+                {0, 5, 0},
+                {1, 10, 0}
+            };
+
+            Assert.AreEqual(5.0, c[-1]);
+            Assert.AreEqual(5.0, c[0]);
+            Assert.AreEqual(10.0, c[1]);
+            Assert.AreEqual(10.0, c[2]);
+        }
+    }
 }

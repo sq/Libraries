@@ -41,6 +41,9 @@
     <Compile Include="..\Arithmetic.cs">
       <Link>Arithmetic.cs</Link>
     </Compile>
+    <Compile Include="..\Interpolators.cs">
+      <Link>Interpolators.cs</Link>
+    </Compile>
     <Compile Include="..\Curve.cs">
       <Link>Curve.cs</Link>
     </Compile>

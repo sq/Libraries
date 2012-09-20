@@ -141,14 +141,18 @@ namespace Squared.Util {
                 Arithmetic.InvokeOperator(Arithmetic.Operators.Add, 2.0f, new ValueType(1.0f, 1.0f));
                 Assert.Fail("Did not throw");
             } catch (InvalidOperationException ex) {
+#if WINDOWS
                 Assert.IsTrue(ex.Message.Contains("GenerateOperatorIL failed"));
+#endif
             }
 
             try {
                 Arithmetic.InvokeOperator(Arithmetic.Operators.Add, 2.0m, 1);
                 Assert.Fail("Did not throw");
             } catch (InvalidOperationException ex) {
+#if WINDOWS
                 Assert.IsTrue(ex.Message.Contains("GenerateOperatorIL failed"));
+#endif
             }
         }
 
@@ -220,9 +224,9 @@ namespace Squared.Util {
             float numIterationsF = numIterations;
             float a = 0.0f, b = 1.0f, c;
 
-            var _add = Arithmetic.GetOperatorMethod<float, float>(Arithmetic.Operators.Add);
-            var _mul = Arithmetic.GetOperatorMethod<float, float>(Arithmetic.Operators.Multiply);
-            var _sub = Arithmetic.GetOperatorMethod<float, float>(Arithmetic.Operators.Subtract);
+            var _add = Arithmetic.GetOperator<float, float>(Arithmetic.Operators.Add);
+            var _mul = Arithmetic.GetOperator<float, float>(Arithmetic.Operators.Multiply);
+            var _sub = Arithmetic.GetOperator<float, float>(Arithmetic.Operators.Subtract);
             _add(0.0f, 0.0f);
             _mul(0.0f, 0.0f);
             _sub(0.0f, 0.0f);

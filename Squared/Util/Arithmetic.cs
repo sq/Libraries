@@ -9,41 +9,105 @@ using System.Linq.Expressions;
 #endif
 
 namespace Squared.Util {
-    public static class Arithmetic {
-#if !XBOX
-        #region Additional Func overloads
-        public delegate TResult Func<in T1, in T2, in T3, in T4, in T5, out TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5);
-        public delegate TResult Func<in T1, in T2, in T3, in T4, in T5, in T6, out TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6);
-        public delegate TResult Func<in T1, in T2, in T3, in T4, in T5, in T6, in T7, out TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7);
-        public delegate TResult Func<in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, out TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8);
-        #endregion
+#if WINDOWS
+    #region Additional Func overloads
+    public delegate TResult Func<in T1, in T2, in T3, in T4, in T5, out TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5);
+    public delegate TResult Func<in T1, in T2, in T3, in T4, in T5, in T6, out TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6);
+    public delegate TResult Func<in T1, in T2, in T3, in T4, in T5, in T6, in T7, out TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7);
+    public delegate TResult Func<in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, out TResult> (T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7, T8 arg8);
+    #endregion
+#endif
 
-        public enum Operators {
-            Add = ExpressionType.Add,
-            Subtract = ExpressionType.Subtract,
-            Multiply = ExpressionType.Multiply,
-            Divide = ExpressionType.Divide,
-            Modulo = ExpressionType.Modulo
+    internal static class PrimitiveOperators {
+        public static int op_Subtraction (int lhs, int rhs) {
+            return lhs - rhs;
         }
+
+        public static int op_Addition (int lhs, int rhs) {
+            return lhs + rhs;
+        }
+
+        public static int op_Multiply (int lhs, int rhs) {
+            return lhs * rhs;
+        }
+
+        public static int op_Division (int lhs, int rhs) {
+            return lhs / rhs;
+        }
+
+        public static int op_Modulus (int lhs, int rhs) {
+            return lhs % rhs;
+        }
+
+        public static float op_Subtraction (float lhs, float rhs) {
+            return lhs - rhs;
+        }
+
+        public static float op_Addition (float lhs, float rhs) {
+            return lhs + rhs;
+        }
+
+        public static float op_Multiply (float lhs, float rhs) {
+            return lhs * rhs;
+        }
+
+        public static float op_Division (float lhs, float rhs) {
+            return lhs / rhs;
+        }
+
+        public static float op_Modulus (float lhs, float rhs) {
+            return lhs % rhs;
+        }
+
+        public static double op_Subtraction (double lhs, double rhs) {
+            return lhs - rhs;
+        }
+
+        public static double op_Addition (double lhs, double rhs) {
+            return lhs + rhs;
+        }
+
+        public static double op_Multiply (double lhs, float rhs) {
+            return lhs * rhs;
+        }
+
+        public static double op_Division (double lhs, float rhs) {
+            return lhs / rhs;
+        }
+
+        public static double op_Modulus (double lhs, double rhs) {
+            return lhs % rhs;
+        }
+    }
+
+    public static class Arithmetic {
+        public enum Operators {
+            Add,
+            Subtract,
+            Multiply,
+            Divide,
+            Modulo,
+            Negate,
+            Equality
+        }
+
+        public delegate T UnaryOperatorMethod<T> (T value);
+        public delegate T BinaryOperatorMethod<T, in U> (T lhs, U rhs);
 
         internal struct OperatorInfo {
             public OpCode OpCode;
             public String MethodName;
-            public bool IsComparison;
+            public bool IsComparison, IsUnary;
         }
 
-        public delegate T OperatorMethod<T, in U> (T lhs, U rhs);
-
-        #region Internal constants
-
-        internal static Dictionary<ExpressionType, OperatorInfo> _OperatorInfo = new Dictionary<ExpressionType, OperatorInfo> {
-            { ExpressionType.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition" } },
-            { ExpressionType.Subtract, new OperatorInfo { OpCode = OpCodes.Sub, MethodName = "op_Subtraction" } },
-            { ExpressionType.Multiply, new OperatorInfo { OpCode = OpCodes.Mul, MethodName = "op_Multiply" } },
-            { ExpressionType.Divide, new OperatorInfo { OpCode = OpCodes.Div, MethodName = "op_Division" } },
-            { ExpressionType.Modulo, new OperatorInfo { OpCode = OpCodes.Rem, MethodName = "op_Modulus" } },
-            { ExpressionType.Negate, new OperatorInfo { OpCode = OpCodes.Neg, MethodName = "op_UnaryNegation" } },
-            { ExpressionType.Equal, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality", IsComparison = true } }
+        internal static Dictionary<Operators, OperatorInfo> _OperatorInfo = new Dictionary<Operators, OperatorInfo> {
+            { Operators.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition" } },
+            { Operators.Subtract, new OperatorInfo { OpCode = OpCodes.Sub, MethodName = "op_Subtraction" } },
+            { Operators.Multiply, new OperatorInfo { OpCode = OpCodes.Mul, MethodName = "op_Multiply" } },
+            { Operators.Divide, new OperatorInfo { OpCode = OpCodes.Div, MethodName = "op_Division" } },
+            { Operators.Modulo, new OperatorInfo { OpCode = OpCodes.Rem, MethodName = "op_Modulus" } },
+            { Operators.Negate, new OperatorInfo { OpCode = OpCodes.Neg, MethodName = "op_UnaryNegation", IsUnary = true } },
+            { Operators.Equality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality", IsComparison = true } }
         };
 
         internal static Dictionary<Type, int> _TypeRanking = new Dictionary<Type, int> {
@@ -57,32 +121,82 @@ namespace Squared.Util {
             { typeof(Double), 4 }
         };
 
-        #endregion
+#if WINDOWS
+        internal static Dictionary<ExpressionType, Operators> _ExpressionTypeToOperator = new Dictionary<ExpressionType, Operators> {
+            { ExpressionType.Add, Operators.Add },
+            { ExpressionType.Subtract, Operators.Subtract },
+            { ExpressionType.Multiply, Operators.Multiply },
+            { ExpressionType.Divide, Operators.Divide },
+            { ExpressionType.Modulo, Operators.Modulo },
+            { ExpressionType.Negate, Operators.Negate },
+            { ExpressionType.Equal, Operators.Equality },
+        };
+#endif
 
-        public static OperatorMethod<T, U> GetOperatorMethod<T, U> (Operators op) {
-            Type delegateType = typeof(OperatorMethod<T, U>);
-            Type lhsType = typeof(T);
-            Type rhsType = typeof(U);
+#if (WINDOWS || DYNAMICMETHOD) && (!NODYNAMICMETHOD)
+        private static TDelegate GetOperatorDelegate<TDelegate> (Operators op, Type[] argumentTypes)
+            where TDelegate : class
+        {
+            Type delegateType = typeof(TDelegate);
 
             DynamicMethod dm = new DynamicMethod(
-                _OperatorInfo[(ExpressionType)op].MethodName,
-                lhsType,
-                new Type[] { lhsType, rhsType },
+                _OperatorInfo[op].MethodName,
+                argumentTypes[0],
+                argumentTypes,
                 true
             );
-            ILGenerator ilGenerator = dm.GetILGenerator();
-            GenerateArithmeticIL(ilGenerator, lhsType, rhsType, op);
-            Delegate del = dm.CreateDelegate(delegateType);
 
-            return (OperatorMethod<T, U>)del;
+            ILGenerator ilGenerator = dm.GetILGenerator();
+            GenerateArithmeticIL(ilGenerator, argumentTypes, op);
+            object del = dm.CreateDelegate(delegateType);
+
+            return (TDelegate)del;
+        }
+#else
+        private static TDelegate GetOperatorDelegate<TDelegate> (Operators op, Type[] argumentTypes)
+            where TDelegate : class {
+            var name = _OperatorInfo[op].MethodName;
+            var methodInfo = argumentTypes[0].GetMethod(name, argumentTypes);
+
+            if ((methodInfo == null) && (argumentTypes.Length > 1))
+                methodInfo = argumentTypes[1].GetMethod(name, argumentTypes);
+
+            if (methodInfo == null)
+                methodInfo = typeof(PrimitiveOperators).GetMethod(name, argumentTypes);
+
+            if (methodInfo == null)
+                throw new InvalidOperationException(String.Format("No operator named {0} available for type {1}", name, argumentTypes[0].Name));
+
+            object del = Delegate.CreateDelegate(typeof(TDelegate), null, methodInfo);
+            return (TDelegate)del;
+        }
+#endif
+
+        public static UnaryOperatorMethod<T> GetOperator<T> (Operators op) {
+            if (!_OperatorInfo[op].IsUnary)
+                throw new InvalidOperationException("Operator is not unary");
+
+            return GetOperatorDelegate<UnaryOperatorMethod<T>>(op, new[] { typeof(T) });
+        }
+
+        public static BinaryOperatorMethod<T, U> GetOperator<T, U> (Operators op) {
+            if (_OperatorInfo[op].IsUnary)
+                throw new InvalidOperationException("Operator is not binary");
+
+            return GetOperatorDelegate<BinaryOperatorMethod<T, U>>(op, new[] { typeof(T), typeof(U) });
+        }
+
+        public static T InvokeOperator<T> (Operators op, T value) {
+            var method = GetOperator<T>(op);
+            T result = method(value);
+            return result;
         }
 
         public static T InvokeOperator<T, U> (Operators op, T lhs, U rhs) {
-            var method = GetOperatorMethod<T, U>(op);
+            var method = GetOperator<T, U>(op);
             T result = method(lhs, rhs);
             return result;
         }
-#endif
 
         public static T Clamp<T> (T value, T min, T max)
             where T : IComparable<T> {
@@ -174,7 +288,7 @@ namespace Squared.Util {
             );
         }
 
-#if !XBOX
+#if WINDOWS
         #region CompileExpression<T> overloads
 
         public static void CompileExpression<T> (Expression<Func<double>> expression, out T result)
@@ -281,17 +395,35 @@ namespace Squared.Util {
         internal static Type EmitExpressionNode (BinaryExpression expr, EmitState es) {
             Type typeLeft = EmitExpression(expr.Left, es);
             Type typeRight = EmitExpression(expr.Right, es);
-            if (!_OperatorInfo.ContainsKey(expr.NodeType))
-                throw new InvalidOperationException(String.Format("Binary operator {0} not supported in expressions", expr.NodeType));
 
-            GenerateOperatorIL(es.ILGenerator, typeLeft, typeRight, expr.NodeType);
+            var oi = GetOperatorInfo(expr.NodeType);
+
+            GenerateOperatorIL(es.ILGenerator, new [] { typeLeft, typeRight }, GetOperator(expr.NodeType));
 
             if (expr.Conversion != null)
                 return EmitExpression(expr.Conversion, es);
-            else if (_OperatorInfo[expr.NodeType].IsComparison)
+            else if (oi.IsComparison)
                 return typeof(Boolean);
             else
                 return typeLeft;
+        }
+
+        internal static Operators GetOperator (ExpressionType et) {
+            Operators op;
+
+            if (!_ExpressionTypeToOperator.TryGetValue(et, out op))
+                throw new InvalidOperationException(String.Format("Operator {0} not supported in expressions", et));
+
+            return op;
+        }
+
+        internal static OperatorInfo GetOperatorInfo (ExpressionType et) {
+            OperatorInfo oi;
+
+            if (!_OperatorInfo.TryGetValue(GetOperator(et), out oi))
+                throw new InvalidOperationException(String.Format("Operator {0} not supported in expressions", et));
+
+            return oi;
         }
 
         internal static Type EmitExpressionNode (UnaryExpression expr, EmitState es) {
@@ -301,11 +433,8 @@ namespace Squared.Util {
                 EmitConversion(t, es);
                 return t;
             } else {
-                if (!_OperatorInfo.ContainsKey(expr.NodeType))
-                    throw new InvalidOperationException(String.Format("Unary operator {0} not supported in expressions", expr.NodeType));
-
-                OperatorInfo op = _OperatorInfo[expr.NodeType];
-                es.ILGenerator.Emit(op.OpCode);
+                var oi = GetOperatorInfo(expr.NodeType);
+                es.ILGenerator.Emit(oi.OpCode);
                 return t;
             }
         }
@@ -441,11 +570,14 @@ namespace Squared.Util {
             result = newMethod.CreateDelegate(t) as T;
         }
 
-        internal static void GenerateArithmeticIL (ILGenerator ilGenerator, Type lhs, Type rhs, Operators op) {
-            ilGenerator.Emit(OpCodes.Ldarg_0);
-            ilGenerator.Emit(OpCodes.Ldarg_1);
+        internal static void GenerateArithmeticIL (ILGenerator ilGenerator, Type[] argumentTypes, Operators op) {
+            if (argumentTypes.Length >= 1)
+                ilGenerator.Emit(OpCodes.Ldarg_0);
+            
+            if (argumentTypes.Length >= 2)
+                ilGenerator.Emit(OpCodes.Ldarg_1);
 
-            GenerateOperatorIL(ilGenerator, lhs, rhs, (ExpressionType)op);
+            GenerateOperatorIL(ilGenerator, argumentTypes, op);
 
             ilGenerator.Emit(OpCodes.Ret);
         }
@@ -463,14 +595,20 @@ namespace Squared.Util {
             }
         }
 
-        internal static Type GenerateOperatorIL (ILGenerator ilGenerator, Type lhs, Type rhs, ExpressionType op) {
-            OperatorInfo opInfo = _OperatorInfo[op];
+        internal static Type GenerateOperatorIL (ILGenerator ilGenerator, Type[] argumentTypes, Operators op) {
+            var oi = _OperatorInfo[op];
+
+            var lhs = argumentTypes[0];
+            Type rhs = lhs;
+
+            if (argumentTypes.Length > 1)
+                rhs = argumentTypes[1];
 
             if (lhs.IsPrimitive && rhs.IsPrimitive) {
-                ilGenerator.Emit(opInfo.OpCode);
+                ilGenerator.Emit(oi.OpCode);
                 return GetPrimitiveResult(lhs, rhs);
             } else {
-                MethodInfo operatorMethod = lhs.GetMethod(opInfo.MethodName, new Type[] { lhs, rhs }, null);
+                MethodInfo operatorMethod = lhs.GetMethod(oi.MethodName, new Type[] { lhs, rhs }, null);
                 if (operatorMethod != null) {
                     ilGenerator.EmitCall(OpCodes.Call, operatorMethod, null);
                     return operatorMethod.ReturnType;

@@ -8,265 +8,27 @@ using System.Linq.Expressions;
 #endif
 
 namespace Squared.Util {
-    public delegate T InterpolatorSource<out T> (int index) where T : struct;
-    public delegate T Interpolator<T> (InterpolatorSource<T> data, int dataOffset, float positionInWindow) where T : struct;
-    public delegate T BoundInterpolatorSource<out T, U> (ref U obj, int index) where T : struct;
-    public delegate T BoundInterpolator<T, U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) where T : struct;
-
-    internal static class PrimitiveOperators {
-        public static float op_Subtraction (float lhs, float rhs) {
-            return lhs - rhs;
-        }
-
-        public static float op_Addition (float lhs, float rhs) {
-            return lhs + rhs;
-        }
-
-        public static float op_Multiply (float lhs, float rhs) {
-            return lhs * rhs;
-        }
-
-        public static double op_Subtraction (double lhs, double rhs) {
-            return lhs - rhs;
-        }
-
-        public static double op_Addition (double lhs, double rhs) {
-            return lhs + rhs;
-        }
-
-        public static double op_Multiply (double lhs, float rhs) {
-            return lhs * rhs;
-        }
-    }
-
-    public static class Interpolators<T> 
-        where T : struct {
-
-        delegate T LinearFn (T a, T b, float x);
-        delegate T CosineFn (T a, T b, float x);
-        delegate T CubicPFn (T a, T b, T c, T d);
-        delegate T CubicRFn (T a, T b, T c, T d, T p, float x, float x2, float x3);
-
-        delegate T AddFn (T a, T b);
-        delegate T SubFn (T a, T b);
-        delegate T MulFloatFn (T a, float b);
-
-        private static LinearFn _Linear = null;
-        private static CosineFn _Cosine = null;
-        private static CubicPFn _CubicP = null;
-        private static CubicRFn _CubicR = null;
-
-        static Interpolators () {
-            CompileFallbackExpressions();
-            CompileNativeExpressions();
-        }
-
-        private static U GetOperator<U> (string name, Type[] argumentTypes) 
-            where U : class {
-            var methodInfo = typeof(T).GetMethod(name, argumentTypes);
-
-            if (methodInfo == null)
-                methodInfo = typeof(PrimitiveOperators).GetMethod(name, argumentTypes);
-
-            if (methodInfo == null)
-                throw new InvalidOperationException(String.Format("No operator named {0} available for type {1}", name, typeof(T).Name));
-
-            var del = Delegate.CreateDelegate(typeof(U), null, methodInfo);
-            return del as U;
-        }
-
-        private static void CompileFallbackExpressions () {
-            Type t = typeof(T);
-            Type t_float = typeof(float);
-
-            var m_sub = GetOperator<SubFn>("op_Subtraction", new Type[] { t, t });
-            var m_add = GetOperator<AddFn>("op_Addition", new Type[] { t, t });
-            var m_mul_float = GetOperator<MulFloatFn>("op_Multiply", new Type[] { t, t_float });
-
-            _Linear = (a, b, x) => {
-                return m_add(a, m_mul_float(m_sub(b, a), x));
-            };
-
-            _Cosine = (a, b, x) => {
-                var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
-                return m_add(a, m_mul_float(m_sub(b, a), temp));
-            };
-
-            _CubicP = (a, b, c, d) => {
-                return m_sub(m_sub(d, c), m_sub(a, b));
-            };
-
-            _CubicR = (a, b, c, d, p, x, x2, x3) => {
-                return m_add(
-                    m_add(
-                        m_mul_float(p, x3),
-                        m_mul_float(
-                            m_sub(
-                                m_sub(a, b),
-                                p
-                            ),
-                            x2
-                        )
-                    ),
-                    m_add(
-                        m_mul_float(
-                            m_sub(c, a),
-                            x
-                        ),
-                        b
-                    )
-                );
-            };
-        }
-
-        private static void CompileNativeExpressions () {
-#if WINDOWS
-            Arithmetic.CompileExpression(
-                (a, b, x) =>
-                    a + ((b - a) * x),
-                out _Linear
-            );
-
-            Arithmetic.CompileExpression(
-                (a, b, x) =>
-                    a + ((b - a) * ((1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f)),
-                out _Cosine
-            );
-
-            Arithmetic.CompileExpression(
-                (a, b, c, d) =>
-                    (d - c) - (a - b),
-                out _CubicP
-            );
-
-            Arithmetic.CompileExpression(
-                (a, b, c, d, p, x, x2, x3) =>
-                    (p * x3) + ((a - b - p) * x2) + ((c - a) * x) + b,
-                out _CubicR
-            );
-#endif
-        }
-
-        public static T Null (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
-            return data(dataOffset);
-        }
-
-        public static T Linear (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
-            return _Linear(
-                data(dataOffset), 
-                data(dataOffset + 1), 
-                positionInWindow
-            );
-        }
-
-        public static T Cosine (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
-            return _Cosine(
-                data(dataOffset),
-                data(dataOffset + 1),
-                positionInWindow
-            );
-        }
-
-        public static T Cubic (InterpolatorSource<T> data, int dataOffset, float positionInWindow) {
-            if (positionInWindow < 0) {
-                var n = Math.Ceiling(Math.Abs(positionInWindow));
-                positionInWindow += (float)n;
-                dataOffset -= (int)n;
-            }
-
-            T a = data(dataOffset - 1);
-            T b = data(dataOffset);
-            T c = data(dataOffset + 1);
-            T d = data(dataOffset + 2);
-            T p = _CubicP(a, b, c, d);
-            float x2 = positionInWindow * positionInWindow;
-            float x3 = positionInWindow * x2;
-            return _CubicR(a, b, c, d, p, positionInWindow, x2, x3);
-        }
-
-        public static T Null<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
-            return data(ref obj, dataOffset);
-        }
-
-        public static T Linear<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
-            return _Linear(
-                data(ref obj, dataOffset),
-                data(ref obj, dataOffset + 1),
-                positionInWindow
-            );
-        }
-
-        public static T Cosine<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
-            return _Cosine(
-                data(ref obj, dataOffset),
-                data(ref obj, dataOffset + 1),
-                positionInWindow
-            );
-        }
-
-        public static T Cubic<U> (BoundInterpolatorSource<T, U> data, ref U obj, int dataOffset, float positionInWindow) {
-            if (positionInWindow < 0) {
-                var n = Math.Ceiling(Math.Abs(positionInWindow));
-                positionInWindow += (float)n;
-                dataOffset -= (int)n;
-            }
-
-            T a = data(ref obj, dataOffset - 1);
-            T b = data(ref obj, dataOffset);
-            T c = data(ref obj, dataOffset + 1);
-            T d = data(ref obj, dataOffset + 2);
-            T p = _CubicP(a, b, c, d);
-            float x2 = positionInWindow * positionInWindow;
-            float x3 = positionInWindow * x2;
-            return _CubicR(a, b, c, d, p, positionInWindow, x2, x3);
-        }
-
-        public static Interpolator<T> GetByName (string name) {
-            var types = new Type[] {
-                typeof(InterpolatorSource<T>), typeof(int), typeof(float)
-            };
-            Type myType = typeof(Interpolators<T>);
-            Type resultType = typeof(Interpolator<T>);
-            MethodInfo mi = myType.GetMethod(name, types);
-            if (mi == null)
-                mi = myType.GetMethod("Null", types);
-            return Delegate.CreateDelegate(resultType, null, mi) as Interpolator<T>;
-        }
-
-        public static Interpolator<T> Default {
-            get {
-                return Linear;
-            }
-        }
-    }
-
-    public class Curve<T> : IEnumerable<Curve<T>.Point>
-        where T : struct {
+    public abstract class CurveBase<TValue, TData> : IEnumerable<CurveBase<TValue, TData>.Point>
+        where TValue : struct
+        where TData : struct {
 
         public event EventHandler Changed;
 
-        public Interpolator<T> DefaultInterpolator;
-
         protected readonly List<Point> _Items = new List<Point>();
+        protected Interpolator<TValue> _DefaultInterpolator;
 
-        private InterpolatorSource<T> _InterpolatorSource;
         private PointPositionComparer _PositionComparer = new PointPositionComparer();
 
         public struct Point {
             public float Position;
-            public T Value;
-            public Interpolator<T> Interpolator;
+            public TValue Value;
+            public TData Data;
         }
 
         public class PointPositionComparer : IComparer<Point> {
             public int Compare (Point x, Point y) {
                 return x.Position.CompareTo(y.Position);
             }
-        }
-
-        public Curve () {
-            DefaultInterpolator = Interpolators<T>.Default;
-            _InterpolatorSource = GetValueAtIndex;
         }
 
         public float Start {
@@ -333,16 +95,23 @@ namespace Squared.Util {
             return _Items[index].Position;
         }
 
-        public T GetValueAtIndex (int index) {
+        public TData GetDataAtIndex (int index) {
+            index = Math.Min(Math.Max(0, index), _Items.Count - 1);
+            return _Items[index].Data;
+        }
+
+        public TValue GetValueAtIndex (int index) {
             index = Math.Min(Math.Max(0, index), _Items.Count - 1);
             return _Items[index].Value;
         }
 
-        protected T GetValueAtPosition (float position) {
+        protected abstract TValue Interpolate (int index, float offset);
+
+        protected TValue GetValueAtPosition (float position) {
             int index = GetLowerIndexForPosition(position);
             float lowerPosition = GetPositionAtIndex(index);
             float upperPosition = GetPositionAtIndex(index + 1);
-            Interpolator<T> interpolator = _Items[index].Interpolator ?? DefaultInterpolator;
+            
             if (lowerPosition < upperPosition) {
                 float offset = (position - lowerPosition) / (upperPosition - lowerPosition);
 
@@ -350,8 +119,8 @@ namespace Squared.Util {
                     offset = 0.0f;
                 else if (offset > 1.0f)
                     offset = 1.0f;
-                
-                return interpolator(_InterpolatorSource, index, offset);
+
+                return Interpolate(index, offset);
             } else {
                 return _Items[index].Value;
             }
@@ -364,8 +133,8 @@ namespace Squared.Util {
         }
 
         public void Clamp (float newStartPosition, float newEndPosition) {
-            T newStartValue = GetValueAtPosition(newStartPosition);
-            T newEndValue = GetValueAtPosition(newEndPosition);
+            TValue newStartValue = GetValueAtPosition(newStartPosition);
+            TValue newEndValue = GetValueAtPosition(newEndPosition);
 
             int i = 0;
             while (i < _Items.Count) {
@@ -377,13 +146,13 @@ namespace Squared.Util {
                 }
             }
 
-            SetValueAtPositionInternal(newStartPosition, newStartValue, null, false);
-            SetValueAtPositionInternal(newEndPosition, newEndValue, null, false);
+            SetValueAtPositionInternal(newStartPosition, newStartValue, default(TData), false);
+            SetValueAtPositionInternal(newEndPosition, newEndValue, default(TData), false);
 
             OnChanged();
         }
 
-        public bool RemoveValueAtPosition (float position, float precision = 0.01f) {
+        public bool RemoveAtPosition (float position, float precision = 0.01f) {
             var index = GetLowerIndexForPosition(position);
             var item = _Items[index];
             if (Math.Abs(item.Position - position) > precision)
@@ -398,17 +167,13 @@ namespace Squared.Util {
             return true;
         }
 
-        public void SetValueAtPosition (float position, T value, Interpolator<T> interpolator = null) {
-            SetValueAtPositionInternal(position, value, interpolator, true);
-        }
-
-        protected void SetValueAtPositionInternal (float position, T value, Interpolator<T> interpolator, bool dispatchEvent) {
+        protected void SetValueAtPositionInternal (float position, TValue value, TData data, bool dispatchEvent) {
             var oldIndex = FindIndexOfPosition(position);
 
             var newItem = new Point {
                 Position = position,
                 Value = value,
-                Interpolator = interpolator
+                Data = data
             };
 
             if (oldIndex >= 0) {
@@ -427,25 +192,114 @@ namespace Squared.Util {
                 Changed(this, EventArgs.Empty);
         }
 
-        public T this[float position] {
-            get {
-                return GetValueAtPosition(position);
-            }
-            set {
-                SetValueAtPosition(position, value);
-            }
-        }
-
-        public void Add (float position, T value, Interpolator<T> interpolator = null) {
-            SetValueAtPosition(position, value, interpolator);
-        }
-
-        public IEnumerator<Curve<T>.Point> GetEnumerator () {
+        public IEnumerator<Point> GetEnumerator () {
             return _Items.GetEnumerator();
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
             return _Items.GetEnumerator();
+        }
+    }
+
+    public class Curve<T> : CurveBase<T, Curve<T>.PointData>
+        where T : struct {
+
+        public struct PointData {
+            public Interpolator<T> Interpolator; 
+        }
+
+        public Interpolator<T> DefaultInterpolator;
+
+        protected InterpolatorSource<T> _InterpolatorSource;
+
+        public Curve () {
+            DefaultInterpolator = Interpolators<T>.Default;
+            _InterpolatorSource = GetValueAtIndex;
+        }
+
+        public void SetValueAtPosition (float position, T value, Interpolator<T> interpolator = null) {
+            SetValueAtPositionInternal(position, value, new PointData { Interpolator = interpolator }, true);
+        }
+
+        public void Add (float position, T value, Interpolator<T> interpolator = null) {
+            SetValueAtPositionInternal(position, value, new PointData { Interpolator = interpolator }, true);
+        }
+
+        protected override T Interpolate (int index, float offset) {
+            var interpolator = _Items[index].Data.Interpolator ?? DefaultInterpolator;
+            return interpolator(_InterpolatorSource, index, offset);
+        }
+
+        public T this[float position] {
+            get {
+                return GetValueAtPosition(position);
+            }
+            set {
+                SetValueAtPositionInternal(position, value, default(PointData), true);
+            }
+        }
+    }
+
+    public class HermiteCurve<T> : CurveBase<T, HermiteCurve<T>.PointData>
+        where T : struct {
+
+        public struct PointData {
+            public T Velocity;
+        }
+
+        protected Interpolator<T> _Interpolator; 
+        protected InterpolatorSource<T> _InterpolatorSource;
+
+        protected Arithmetic.BinaryOperatorMethod<T, T> _Add, _Sub;
+        protected Arithmetic.BinaryOperatorMethod<T, float> _Div; 
+
+        public HermiteCurve () {
+            _Interpolator = Interpolators<T>.Cubic;
+            _InterpolatorSource = GetCubicInputForIndex;
+
+            _Add = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Add);
+            _Sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract);
+            _Div = Arithmetic.GetOperator<T, float>(Arithmetic.Operators.Divide);
+        }
+
+        protected override T Interpolate (int index, float offset) {
+            return _Interpolator(_InterpolatorSource, index * 2, offset);
+        }
+
+        private T GetCubicInputForIndex (int index) {
+            var maxIndex = _Items.Count - 1;
+            int pairIndex = index / 4, itemInPair = index % 4;
+            int aIndex = (pairIndex * 2), dIndex = aIndex + 1;
+
+            switch (itemInPair) {
+                case 0: // A
+                    return GetValueAtIndex(aIndex);
+                case 1: // B
+                    var A = GetValueAtIndex(aIndex);
+                    var U = GetDataAtIndex(aIndex).Velocity;
+                    return _Add(A, _Div(U, 3));
+                case 2: // C
+                    var D = GetValueAtIndex(dIndex);
+                    var V = GetDataAtIndex(dIndex).Velocity;
+                    return _Sub(D, _Div(V, 3));
+                default:
+                case 3: // D
+                    return GetValueAtIndex(dIndex);
+            }
+        }
+
+        public void SetValuesAtPosition (float position, T value, T velocity) {
+            SetValueAtPositionInternal(position, value, new PointData { Velocity = velocity }, true);
+        }
+
+        public void Add (float position, T value, T velocity) {
+            SetValueAtPositionInternal(position, value, new PointData { Velocity = velocity }, true);
+        }
+
+        public T this[float position] {
+            get {
+                return GetValueAtPosition(position);
+            }
         }
     }
 }
