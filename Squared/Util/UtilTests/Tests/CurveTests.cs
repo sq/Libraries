@@ -239,35 +239,40 @@ namespace Squared.Util {
 
         [Test]
         public void PerformanceTest () {
-            int numIterations = 50000;
+            int numIterations = 250000;
             float[] r = new float[numIterations];
-            float numIterationsF = numIterations;
+            float numIterationsF = numIterations / 4f;
             Curve<float> curve = new Curve<float>();
-            float c;
+            float c, length, offset;
 
             curve[0.0f] = 0.0f;
             curve[0.5f] = 1.0f;
             curve[1.0f] = 2.0f;
+            curve[1.5f] = 1.0f;
+            curve[2.0f] = 0.0f;
 
             curve.DefaultInterpolator = Interpolators<float>.Linear;
 
+            offset = -0.5f;
+            length = 2.0f;
+
             long start = Time.Ticks;
             for (int i = 0; i < numIterations; i++) {
-                c = (i / numIterationsF);
+                c = ((i / numIterationsF) % (length)) + offset;
                 r[i] = curve[c];
             }
             long end = Time.Ticks;
-            Console.WriteLine("Execution time (linear interpolation): {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
+            Console.WriteLine("Linear interpolation: {0} ticks ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
 
             curve.DefaultInterpolator = Interpolators<float>.Null;
 
             start = Time.Ticks;
             for (int i = 0; i < numIterations; i++) {
-                c = (i / numIterationsF);
+                c = ((i / numIterationsF) % (length)) + offset;
                 r[i] = curve[c];
             }
             end = Time.Ticks;
-            Console.WriteLine("Execution time (no interpolation): {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
+            Console.WriteLine("No interpolation: {0} ticks ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
         }
     }
 

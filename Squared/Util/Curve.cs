@@ -28,6 +28,8 @@ namespace Squared.Util {
     {
         public event EventHandler Changed;
 
+        private int _CachedIndex = -1;
+
         protected readonly List<Point> _Items = new List<Point>();
         protected Interpolator<TValue> _DefaultInterpolator;
 
@@ -70,6 +72,11 @@ namespace Squared.Util {
             int index;
             int nextIndex;
 
+            if (_CachedIndex >= 0) {
+                if ((_Items[_CachedIndex].Position <= position) && (_Items[Math.Min(_CachedIndex, high)].Position >= position))
+                    return _CachedIndex;
+            }
+
             if (count < 1)
                 return 0;
 
@@ -83,25 +90,24 @@ namespace Squared.Util {
                 nextIndex = Math.Min(index + 1, count - 1);
 
                 if (low == high)
-                    return low;
+                    return _CachedIndex = low;
 
                 var indexItem = _Items[index];
-                var nextIndexItem = _Items[nextIndex];
 
                 if (indexItem.Position < position) {
-                    if ((nextIndex >= count) || (nextIndexItem.Position > position)) {
-                        return index;
+                    if ((nextIndex >= count) || (_Items[nextIndex].Position > position)) {
+                        return _CachedIndex = index;
                     } else {
                         low = index + 1;
                     }
                 } else if (indexItem.Position == position) {
-                    return index;
+                    return _CachedIndex = index;
                 } else {
                     high = index - 1;
                 }
             }
 
-            return count - 1;
+            return _CachedIndex = count - 1;
         }
         
         public float GetPositionAtIndex (int index) {
@@ -123,11 +129,11 @@ namespace Squared.Util {
 
         public TValue GetValueAtPosition (float position) {
             int index = GetLowerIndexForPosition(position);
-            float lowerPosition = GetPositionAtIndex(index);
-            float upperPosition = GetPositionAtIndex(index + 1);
+            var lowerItem = _Items[index];
+            var upperItem = _Items[Math.Min(index + 1, _Items.Count - 1)];
             
-            if (lowerPosition < upperPosition) {
-                float offset = (position - lowerPosition) / (upperPosition - lowerPosition);
+            if (lowerItem.Position < upperItem.Position) {
+                float offset = (position - lowerItem.Position) / (upperItem.Position - lowerItem.Position);
 
                 if (offset < 0.0f)
                     offset = 0.0f;
@@ -136,11 +142,12 @@ namespace Squared.Util {
 
                 return Interpolate(index, offset);
             } else {
-                return _Items[index].Value;
+                return lowerItem.Value;
             }
         }
 
         public void Clear () {
+            _CachedIndex = -1;
             _Items.Clear();
 
             OnChanged();
@@ -155,6 +162,7 @@ namespace Squared.Util {
                 float position = _Items[i].Position;
                 if ((position <= newStartPosition) || (position >= newEndPosition)) {
                     _Items.RemoveAt(i);
+                    _CachedIndex = -1;
                 } else {
                     i++;
                 }
@@ -167,6 +175,8 @@ namespace Squared.Util {
         }
 
         public bool RemoveAtPosition (float position, float precision = 0.01f) {
+            _CachedIndex = -1;
+
             var index = GetLowerIndexForPosition(position);
             var item = _Items[index];
             if (Math.Abs(item.Position - position) > precision)
@@ -195,6 +205,7 @@ namespace Squared.Util {
             } else {
                 _Items.Add(newItem);
                 _Items.Sort(_PositionComparer);
+                _CachedIndex = -1;
             }
 
             if (dispatchEvent)
