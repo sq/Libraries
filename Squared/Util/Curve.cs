@@ -9,14 +9,15 @@ using System.Linq.Expressions;
 #endif
 
 namespace Squared.Util {
-    public interface ICurve<TValue> : IEnumerable<KeyValuePair<float, TValue>>
-        where TValue : struct
-    {
+    public interface ICurve<TValue> where TValue : struct {
         int Count { get; }
         float Start { get; }
         float End { get; }
         TValue GetValueAtPosition (float position);
         TValue this[float position] {
+            get;
+        }
+        IEnumerable<KeyValuePair<float, TValue>> Points {
             get;
         }
     }
@@ -62,12 +63,6 @@ namespace Squared.Util {
             }
         }
 
-        protected int FindIndexOfPosition (float position) {
-            return _Items.BinarySearch(new Point {
-                Position = position
-            }, _PositionComparer);
-        }
-
         public int GetLowerIndexForPosition (float position) {
             int count = _Items.Count;
             int low = 0;
@@ -75,38 +70,38 @@ namespace Squared.Util {
             int index;
             int nextIndex;
 
-            if (position < Start) {
+            if (count < 1)
                 return 0;
-            } else if (position >= End) {
+
+            if (_Items[count - 1].Position < position)
                 return count - 1;
-            } else {
-                index = FindIndexOfPosition(position);
-                if (index >= 0)
-                    return index;
-                else
-                    index = low;
-            }
+            else if (_Items[0].Position > position)
+                return 0;
 
             while (low <= high) {
                 index = (low + high) / 2;
                 nextIndex = Math.Min(index + 1, count - 1);
-                float key = _Items[index].Position;
+
                 if (low == high)
-                    break;
-                if (key < position) {
-                    if ((nextIndex >= count) || (_Items[nextIndex].Position > position)) {
-                        break;
+                    return low;
+
+                var indexItem = _Items[index];
+                var nextIndexItem = _Items[nextIndex];
+
+                if (indexItem.Position < position) {
+                    if ((nextIndex >= count) || (nextIndexItem.Position > position)) {
+                        return index;
                     } else {
                         low = index + 1;
                     }
-                } else if (key == position) {
-                    break;
+                } else if (indexItem.Position == position) {
+                    return index;
                 } else {
                     high = index - 1;
                 }
             }
 
-            return index;
+            return count - 1;
         }
         
         public float GetPositionAtIndex (int index) {
@@ -187,7 +182,7 @@ namespace Squared.Util {
         }
 
         protected void SetValueAtPositionInternal (float position, TValue value, TData data, bool dispatchEvent) {
-            var oldIndex = FindIndexOfPosition(position);
+            var oldIndex = GetLowerIndexForPosition(position);
 
             var newItem = new Point {
                 Position = position,
@@ -195,7 +190,7 @@ namespace Squared.Util {
                 Data = data
             };
 
-            if (oldIndex >= 0) {
+            if ((oldIndex < _Items.Count) && (_Items[oldIndex].Position == position)) {
                 _Items[oldIndex] = newItem;
             } else {
                 _Items.Add(newItem);
@@ -215,9 +210,11 @@ namespace Squared.Util {
             return _Items.GetEnumerator();
         }
 
-        IEnumerator<KeyValuePair<float, TValue>> IEnumerable<KeyValuePair<float, TValue>>.GetEnumerator () {
-            foreach (var item in _Items)
-                yield return new KeyValuePair<float, TValue>(item.Position, item.Value);
+        public IEnumerable<KeyValuePair<float, TValue>> Points {
+            get {
+                foreach (var item in _Items)
+                    yield return new KeyValuePair<float, TValue>(item.Position, item.Value);
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator () {
@@ -407,6 +404,8 @@ namespace Squared.Util {
         }
     }
 
+    public delegate float CurveSearchHeuristic<in T> (float position, T value) where T : struct;
+
     public static class CurveExtensions {
         public const int DefaultSearchSubdivision = 32;
         public const int DefaultMaxSearchRecursion = 7;
@@ -419,7 +418,7 @@ namespace Squared.Util {
         /// <returns>The position the search ended at if it was successful.</returns>
         public static float? Search<TValue> (
             this ICurve<TValue> curve, 
-            Func<TValue, float> heuristic
+            CurveSearchHeuristic<TValue> heuristic
         )
             where TValue : struct
         {
@@ -437,7 +436,7 @@ namespace Squared.Util {
         /// <returns>The position the search ended at if it was successful.</returns>
         public static float? Search<TValue> (
             this ICurve<TValue> curve,
-            Func<TValue, float> heuristic, float low, float high,
+            CurveSearchHeuristic<TValue> heuristic, float low, float high,
             int? subdivision = null, int? maxRecursion = null,
             float? epsilon = null
         )
@@ -462,7 +461,7 @@ namespace Squared.Util {
 
         private static void SearchInternal<TValue> (
             this ICurve<TValue> curve,
-            Func<TValue, float> heuristic,
+            CurveSearchHeuristic<TValue> heuristic,
             float low, float high,
             int subdivision, int maxRecursion,
             float epsilon,
@@ -491,7 +490,7 @@ namespace Squared.Util {
 
             for (int i = 0; i < actualSubdivision; i++) {
                 var samplePosition = low + (partitionSize * i) + partitionSizeHalf;
-                var score = heuristic(curve.GetValueAtPosition(samplePosition));
+                var score = heuristic(samplePosition, curve.GetValueAtPosition(samplePosition));
 
                 if (score < bestScore) {
                     bestScore = score;

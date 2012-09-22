@@ -73,7 +73,7 @@ namespace CurveTester {
             }
 
             using (var controlPointPen = new Pen(color, 1.75f))
-            foreach (var pt in spline) {
+            foreach (var pt in spline.Points) {
                 g.DrawEllipse(
                     controlPointPen,
                     pt.Value.X - 3f, pt.Value.Y - 3f,
@@ -93,7 +93,7 @@ namespace CurveTester {
                 default:
                 case 0:
                 case 1:
-                    var curve = new Curve<Vector2>(Spline);
+                    var curve = new Curve<Vector2>(Spline.Points);
                     curve.DefaultInterpolator = Interpolators<Vector2>.Linear;
 
                     if (CurveMode.SelectedIndex == 1)
@@ -106,12 +106,12 @@ namespace CurveTester {
                     break;
                 case 3:
                     spline = hermite = HermiteSpline<Vector2>.CatmullRom(
-                        Spline
+                        Spline.Points
                     );
                     break;
                 case 4:
                     spline = hermite = HermiteSpline<Vector2>.Cardinal(
-                        Spline,
+                        Spline.Points,
                         Tension.Value / 100f
                     );
                     break;
@@ -130,7 +130,7 @@ namespace CurveTester {
 
             var mousePos = PointToClient(Cursor.Position);
             var closestPosition = spline.Search(
-                (v) => (float)Math.Sqrt(
+                (p, v) => (float)Math.Sqrt(
                     Math.Pow(v.X - mousePos.X, 2) +
                     Math.Pow(v.Y - mousePos.Y, 2)
                 )
