@@ -305,12 +305,12 @@ namespace Squared.Util {
         }
 
         private T GetHermiteInputForIndex (int index) {
-            int pairIndex = index / 4, itemInPair = index % 4;
-            if (pairIndex < 0)
-                pairIndex = 0;
-            int aIndex = (pairIndex * 2), dIndex = aIndex + 1;
+            int quadIndex = index / 4, itemInQuad = index % 4;
+            if (quadIndex < 0)
+                quadIndex = 0;
+            int aIndex = (quadIndex * 2), dIndex = aIndex + 1;
 
-            switch (itemInPair) {
+            switch (itemInQuad) {
                 case 0: // A
                     return GetValueAtIndex(aIndex);
                 case 1: // U
@@ -323,7 +323,8 @@ namespace Squared.Util {
             }
         }
 
-        public void GetValuesAtIndex (int index, out T value, out T velocity) {
+        public void GetValuesAtIndex (int index, out float position, out T value, out T velocity) {
+            position = GetPositionAtIndex(index);
             value = GetValueAtIndex(index);
             velocity = GetDataAtIndex(index).Velocity;
         }
@@ -371,6 +372,38 @@ namespace Squared.Util {
             result.ConvertToCardinal(tension);
 
             return result;
+        }
+    }
+
+    public static class CurveUtil {
+        private static class Operators<T> {
+            public static Arithmetic.BinaryOperatorMethod<T, T> Add, Sub;
+            public static Arithmetic.BinaryOperatorMethod<T, float> Mul;
+
+            static Operators () {
+                Add = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Add);
+                Sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract);
+                Mul = Arithmetic.GetOperator<T, float>(Arithmetic.Operators.Multiply);
+            }
+        }
+
+        public static void CubicToHermite<T> (
+            ref T a, ref T b,
+            ref T c, ref T d,
+            out T u, out T v
+        ) {
+            u = Operators<T>.Mul(Operators<T>.Sub(b, a), 3f);
+            v = Operators<T>.Mul(Operators<T>.Sub(d, c), 3f);
+        }
+
+        public static void HermiteToCubic<T> (
+            ref T a, ref T u,
+            ref T d, ref T v,
+            out T b, out T c
+        ) {
+            var multiplier = 1f / 3f;
+            b = Operators<T>.Add(a, Operators<T>.Mul(u, multiplier));
+            c = Operators<T>.Sub(d, Operators<T>.Mul(v, multiplier));
         }
     }
 
@@ -484,6 +517,119 @@ namespace Squared.Util {
                 ref bestScoringPosition, ref bestScore,
                 depth + 1
             );
+        }
+
+        /// <summary>
+        /// Splits a hermite spline at a position. 
+        /// Note that this may produce more than two output splines in order to eliminate discontinuities.
+        /// </summary>
+        /// <param name="splitPosition">The position at which to split the spline.</param>
+        public static HermiteSpline<T>[] Split<T> (
+            this HermiteSpline<T> spline,
+            float splitPosition
+        )
+            where T : struct {
+            var resultList = new List<HermiteSpline<T>>(4);
+
+            spline.SplitInto(splitPosition, resultList);
+
+            return resultList.ToArray();
+        }
+
+        /// <summary>
+        /// Splits a hermite spline at a position. 
+        /// Note that this may produce more than two output splines in order to eliminate discontinuities.
+        /// </summary>
+        /// <param name="splitPosition">The position at which to split the spline.</param>
+        /// <param name="output">The list that will receive the new splines created by the split (up to 4).</param>
+        public static void SplitInto<T> (
+            this HermiteSpline<T> spline,
+            float splitPosition,
+            List<HermiteSpline<T>> output
+        )
+            where T : struct {
+
+            if ((splitPosition <= spline.Start) || (splitPosition >= spline.End)) {
+                output.Add(spline);
+                return;
+            }
+
+            int count = spline.Count;
+            int splitFirstPoint = spline.GetLowerIndexForPosition(splitPosition), splitSecondPoint = splitFirstPoint + 1;
+
+            HermiteSpline<T> temp;
+
+            if (splitFirstPoint > 0) {
+                float position;
+                T value, velocity;
+
+                output.Add(temp = new HermiteSpline<T>());
+                for (int i = 0, end = splitFirstPoint; i <= end; i++) {
+                    spline.GetValuesAtIndex(i, out position, out value, out velocity);
+                    temp.Add(position, value, velocity);
+                }
+            }
+
+            float firstPosition = spline.GetPositionAtIndex(splitFirstPoint), secondPosition = spline.GetPositionAtIndex(splitSecondPoint);
+            float splitLocalPosition = (splitPosition - firstPosition) / (secondPosition - firstPosition);
+
+            T a = spline.GetValueAtIndex(splitFirstPoint), d = spline.GetValueAtIndex(splitSecondPoint);
+            T u = spline.GetDataAtIndex(splitFirstPoint).Velocity, v = spline.GetDataAtIndex(splitSecondPoint).Velocity;
+            T b, c;
+
+            CurveUtil.HermiteToCubic(ref a, ref u, ref d, ref v, out b, out c);
+
+            var ab = Arithmetic.Lerp(a, b, splitLocalPosition);
+            var bc = Arithmetic.Lerp(b, c, splitLocalPosition);
+            var cd = Arithmetic.Lerp(c, d, splitLocalPosition);
+
+            var ab_bc = Arithmetic.Lerp(ab, bc, splitLocalPosition);
+            var bc_cd = Arithmetic.Lerp(bc, cd, splitLocalPosition);
+
+            var midpoint = Arithmetic.Lerp(ab_bc, bc_cd, splitLocalPosition);
+
+            T newA, newB, newC, newD, newU, newV;
+
+            newA = a;
+            newB = ab;
+            newC = ab_bc;
+            newD = midpoint;
+
+            CurveUtil.CubicToHermite(ref newA, ref newB, ref newC, ref newD, out newU, out newV);
+
+            output.Add(temp = new HermiteSpline<T>());
+            temp.Add(
+                firstPosition, newA, newU
+            );
+            temp.Add(
+                splitPosition, newD, newV
+            );
+
+            newA = midpoint;
+            newB = bc_cd;
+            newC = cd;
+            newD = d;
+
+            CurveUtil.CubicToHermite(ref newA, ref newB, ref newC, ref newD, out newU, out newV);
+
+            output.Add(temp = new HermiteSpline<T>());
+            temp.Add(
+                splitPosition, newA, newU
+            );
+            temp.Add(
+                secondPosition, newD, newV
+            );
+
+            if (splitSecondPoint < (count - 1)) {
+                float position;
+                T value, velocity;
+
+                output.Add(temp = new HermiteSpline<T>());
+                for (int i = splitSecondPoint, end = count - 1; i <= end; i++) {
+                    spline.GetValuesAtIndex(i, out position, out value, out velocity);
+                    temp.Add(position, value, velocity);
+                }
+            }
         }
     }
 }

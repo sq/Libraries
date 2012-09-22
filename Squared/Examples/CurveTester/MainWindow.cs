@@ -58,6 +58,30 @@ namespace CurveTester {
                 return null;
         }
 
+        private void DrawSpline (ICurve<Vector2> spline, Graphics g, Color color) {
+            using (var linePen = new Pen(color, 1f))
+            using (var path = new GraphicsPath()) {
+                var previous = spline[spline.Start];
+
+                for (float step = 0.01f, t = spline.Start + step; t <= spline.End; t += step) {
+                    var current = spline[t];
+                    path.AddLine(previous.X, previous.Y, current.X, current.Y);
+                    previous = current;
+                }
+
+                g.DrawPath(linePen, path);
+            }
+
+            using (var controlPointPen = new Pen(color, 1.75f))
+            foreach (var pt in spline) {
+                g.DrawEllipse(
+                    controlPointPen,
+                    pt.Value.X - 3f, pt.Value.Y - 3f,
+                    6f, 6f
+                );
+            }
+        }
+
         protected override void OnPaint (PaintEventArgs e) {
             e.Graphics.Clear(BackColor);
             e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
@@ -93,32 +117,7 @@ namespace CurveTester {
                     break;
             }
 
-            using (var linePen = new Pen(ForeColor, 1f))
-            using (var path = new GraphicsPath()) {
-                var previous = spline[spline.Start];
-
-                for (float step = 0.01f, t = spline.Start + step; t <= spline.End; t += step) {
-                    var current = spline[t];
-                    path.AddLine(previous.X, previous.Y, current.X, current.Y);
-                    previous = current;
-                }
-
-                e.Graphics.DrawPath(linePen, path);
-            }
-
-            var activePosition = GetPositionUnderMouse();
-
-            using (var inactivePen = new Pen(Color.Gray, 2f))
-            using (var activePen = new Pen(Color.White, 2f))
             using (var arrowPen = new Pen(Color.Blue, 2f)) {
-                foreach (var pt in spline) {
-                    e.Graphics.DrawEllipse(
-                        pt.Key == activePosition.GetValueOrDefault(-32f) ? activePen : inactivePen,
-                        pt.Value.X - 3f, pt.Value.Y - 3f,
-                        6f, 6f
-                    );
-                }
-
                 if (hermite != null)
                 foreach (var pt in hermite) {
                     e.Graphics.DrawLine(
@@ -130,13 +129,20 @@ namespace CurveTester {
             }
 
             var mousePos = PointToClient(Cursor.Position);
-
             var closestPosition = spline.Search(
                 (v) => (float)Math.Sqrt(
                     Math.Pow(v.X - mousePos.X, 2) +
                     Math.Pow(v.Y - mousePos.Y, 2)
                 )
             );
+
+            if ((hermite != null) && closestPosition.HasValue) {
+                foreach (var split in hermite.Split(closestPosition.Value)) {
+                    DrawSpline(split, e.Graphics, Color.Yellow);
+                }
+            } else {
+                DrawSpline(spline, e.Graphics, Color.White);
+            }
 
             if (closestPosition.HasValue) {
                 using (var closestPen = new Pen(Color.Green, 1.75f)) {
