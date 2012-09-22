@@ -37,25 +37,26 @@
             this.CurveMode.ForeColor = System.Drawing.Color.White;
             this.CurveMode.FormattingEnabled = true;
             this.CurveMode.Items.AddRange(new object[] {
+            "Linear",
+            "Cubic",
             "Hermite",
             "Catmull-Rom",
             "Cardinal"});
-            this.CurveMode.Location = new System.Drawing.Point(12, 276);
+            this.CurveMode.Location = new System.Drawing.Point(12, 526);
             this.CurveMode.Name = "CurveMode";
-            this.CurveMode.Size = new System.Drawing.Size(200, 24);
+            this.CurveMode.Size = new System.Drawing.Size(150, 24);
             this.CurveMode.TabIndex = 0;
             this.CurveMode.SelectedIndexChanged += new System.EventHandler(this.CurveMode_SelectedIndexChanged);
             // 
             // Tension
             // 
-            this.Tension.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+            this.Tension.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.Tension.AutoSize = false;
             this.Tension.LargeChange = 10;
-            this.Tension.Location = new System.Drawing.Point(218, 276);
+            this.Tension.Location = new System.Drawing.Point(168, 526);
             this.Tension.Maximum = 100;
             this.Tension.Name = "Tension";
-            this.Tension.Size = new System.Drawing.Size(169, 24);
+            this.Tension.Size = new System.Drawing.Size(150, 24);
             this.Tension.TabIndex = 1;
             this.Tension.TickFrequency = 10;
             this.Tension.TickStyle = System.Windows.Forms.TickStyle.None;
@@ -65,7 +66,7 @@
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.BackColor = System.Drawing.Color.Black;
-            this.ClientSize = new System.Drawing.Size(399, 312);
+            this.ClientSize = new System.Drawing.Size(584, 562);
             this.Controls.Add(this.Tension);
             this.Controls.Add(this.CurveMode);
             this.Font = new System.Drawing.Font("Tahoma", 10F);

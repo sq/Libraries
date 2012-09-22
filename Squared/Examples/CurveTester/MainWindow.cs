@@ -31,7 +31,7 @@ namespace CurveTester {
 
             InitializeComponent();
 
-            CurveMode.SelectedIndex = 0;
+            CurveMode.SelectedIndex = 2;
         }
 
         protected float? GetPositionUnderMouse (float threshold = 8) {
@@ -62,21 +62,32 @@ namespace CurveTester {
             e.Graphics.Clear(BackColor);
             e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
 
-            HermiteSpline<Vector2> spline = null;
+            ICurve<Vector2> spline = null;
+            HermiteSpline<Vector2> hermite = null;
             
             switch (CurveMode.SelectedIndex) {
                 default:
                 case 0:
-                    spline = Spline;
-                    break;
                 case 1:
-                    spline = HermiteSpline<Vector2>.CatmullRom(
-                        (from pt in Spline select new KeyValuePair<float, Vector2>(pt.Position, pt.Value)).ToArray()
-                    );
+                    var curve = new Curve<Vector2>(Spline);
+                    curve.DefaultInterpolator = Interpolators<Vector2>.Linear;
+
+                    if (CurveMode.SelectedIndex == 1)
+                        curve.DefaultInterpolator = Interpolators<Vector2>.Cubic;
+                        
+                    spline = curve;
                     break;
                 case 2:
-                    spline = HermiteSpline<Vector2>.Cardinal(
-                        (from pt in Spline select new KeyValuePair<float, Vector2>(pt.Position, pt.Value)).ToArray(),
+                    spline = hermite = Spline;
+                    break;
+                case 3:
+                    spline = hermite = HermiteSpline<Vector2>.CatmullRom(
+                        Spline
+                    );
+                    break;
+                case 4:
+                    spline = hermite = HermiteSpline<Vector2>.Cardinal(
+                        Spline,
                         Tension.Value / 100f
                     );
                     break;
@@ -99,22 +110,27 @@ namespace CurveTester {
 
             using (var inactivePen = new Pen(Color.Gray, 2f))
             using (var activePen = new Pen(Color.White, 2f))
-            using (var arrowPen = new Pen(Color.Blue, 2f))
-            foreach (var pt in spline) {
-                e.Graphics.DrawEllipse(
-                    pt.Position == activePosition.GetValueOrDefault(-32f) ? activePen : inactivePen,
-                    pt.Value.X - 3f, pt.Value.Y - 3f, 
-                    6f, 6f
-                );
+            using (var arrowPen = new Pen(Color.Blue, 2f)) {
+                foreach (var pt in spline) {
+                    e.Graphics.DrawEllipse(
+                        pt.Key == activePosition.GetValueOrDefault(-32f) ? activePen : inactivePen,
+                        pt.Value.X - 3f, pt.Value.Y - 3f,
+                        6f, 6f
+                    );
+                }
 
-                e.Graphics.DrawLine(
-                    arrowPen,
-                    pt.Value.X, pt.Value.Y,
-                    pt.Value.X + pt.Data.Velocity.X, pt.Value.Y + pt.Data.Velocity.Y
-                );
+                if (hermite != null)
+                foreach (var pt in hermite) {
+                    e.Graphics.DrawLine(
+                        arrowPen,
+                        pt.Value.X, pt.Value.Y,
+                        pt.Value.X + pt.Data.Velocity.X, pt.Value.Y + pt.Data.Velocity.Y
+                    );
+                }
             }
 
             var mousePos = PointToClient(Cursor.Position);
+
             var closestPosition = spline.Search(
                 (v) => (float)Math.Sqrt(
                     Math.Pow(v.X - mousePos.X, 2) +
@@ -216,10 +232,14 @@ namespace CurveTester {
         private void CurveMode_SelectedIndexChanged (object sender, EventArgs e) {
             Invalidate();
 
-            Tension.Enabled = (CurveMode.SelectedIndex == 2);
+            Tension.Enabled = (CurveMode.SelectedIndex == 4);
         }
 
         private void Tension_ValueChanged (object sender, EventArgs e) {
+            Invalidate();
+        }
+
+        private void CursorMode_SelectedIndexChanged (object sender, EventArgs e) {
             Invalidate();
         }
     }

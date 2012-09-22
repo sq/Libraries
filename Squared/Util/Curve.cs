@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,14 +9,22 @@ using System.Linq.Expressions;
 #endif
 
 namespace Squared.Util {
-    public abstract class CurveBase<TValue, TData> : IEnumerable<CurveBase<TValue, TData>.Point>
+    public interface ICurve<TValue> : IEnumerable<KeyValuePair<float, TValue>>
         where TValue : struct
-        where TData : struct {
+    {
+        int Count { get; }
+        float Start { get; }
+        float End { get; }
+        TValue GetValueAtPosition (float position);
+        TValue this[float position] {
+            get;
+        }
+    }
 
-        public const int DefaultSearchSubdivision = 32;
-        public const int DefaultMaxSearchRecursion = 7;
-        public const float DefaultSearchEpsilon = float.Epsilon * 5;
-
+    public abstract class CurveBase<TValue, TData> : IEnumerable<CurveBase<TValue, TData>.Point>, ICurve<TValue> 
+        where TValue : struct
+        where TData : struct 
+    {
         public event EventHandler Changed;
 
         protected readonly List<Point> _Items = new List<Point>();
@@ -44,6 +53,12 @@ namespace Squared.Util {
         public float End {
             get {
                 return _Items[_Items.Count - 1].Position;
+            }
+        }
+
+        public int Count {
+            get {
+                return _Items.Count;
             }
         }
 
@@ -93,101 +108,7 @@ namespace Squared.Util {
 
             return index;
         }
-
-        /// <summary>
-        /// Searches the entire curve based on a heuristic.
-        /// </summary>
-        /// <param name="heuristic">A heuristic that measures how close a value is to the target value. This heuristic should return 0 if the target value is a match.</param>
-        /// <returns>The position the search ended at if it was successful.</returns>
-        public float? Search (Func<TValue, float> heuristic) {
-            return Search(heuristic, Start, End);
-        }
-
-        /// <summary>
-        /// Searches a region of the curve based on a heuristic.
-        /// </summary>
-        /// <param name="heuristic">A heuristic that measures how close a value is to the target value. This heuristic should return 0 if the target value is a match.</param>
-        /// <param name="low">The beginning of the search window.</param>
-        /// <param name="high">The end of the search window.</param>
-        /// <param name="subdivision">The number of sample points within the search window. A higher number of partitions will increase the likelihood that the best match will be found by the search, but increase the cost of the search.</param>
-        /// <param name="maxRecursion">The maximum level of recursion for the search. High values for this argument will increase the precision of the search but also increase its cost.</param>
-        /// <returns>The position the search ended at if it was successful.</returns>
-        public float? Search (
-            Func<TValue, float> heuristic, float low, float high, 
-            int? subdivision = null, int? maxRecursion = null,
-            float? epsilon = null
-        ) {
-            float? result = null;
-            float bestScore = float.MaxValue;
-
-            SearchInternal(
-                heuristic,
-                low, high,
-                subdivision.GetValueOrDefault(DefaultSearchSubdivision),
-                maxRecursion.GetValueOrDefault(DefaultMaxSearchRecursion),
-                epsilon.GetValueOrDefault(DefaultSearchEpsilon),
-                ref result, ref bestScore, 
-                0
-            );
-
-            return result;
-        }
-
-        protected void SearchInternal (
-            Func<TValue, float> heuristic, 
-            float low, float high, 
-            int subdivision, int maxRecursion,
-            float epsilon,
-            ref float? bestScoringPosition, ref float bestScore, 
-            int depth
-        ) {
-            if (subdivision < 2)
-                subdivision = 2;
-
-            if (high <= low)
-                return;
-
-            var actualSubdivision = subdivision;
-
-            if (depth == 0) {
-                actualSubdivision = Math.Min(1024, _Items.Count * 2);
-                actualSubdivision = Math.Max(actualSubdivision, subdivision);
-            }
-
-            bool improved = false;
-            float partitionSize = (high - low) / actualSubdivision, partitionSizeHalf = partitionSize * 0.5f;
-            if (Math.Abs(partitionSizeHalf) <= epsilon)
-                return;
-
-            for (int i = 0; i < actualSubdivision; i++) {
-                var samplePosition = low + (partitionSize * i) + partitionSizeHalf;
-                var score = heuristic(GetValueAtPosition(samplePosition));
-
-                if (score < bestScore) {
-                    bestScore = score;
-                    bestScoringPosition = samplePosition;
-                    improved = true;
-                }
-            }
-
-            if (depth >= maxRecursion)
-                return;
-
-            if (!improved)
-                return;
-
-            var newLow = Math.Max(low, bestScoringPosition.Value - partitionSizeHalf);
-            var newHigh = Math.Min(high, bestScoringPosition.Value + partitionSizeHalf);
-
-            SearchInternal(
-                heuristic,
-                newLow, newHigh,
-                subdivision, maxRecursion, epsilon,
-                ref bestScoringPosition, ref bestScore,
-                depth + 1
-            );
-        }
-
+        
         public float GetPositionAtIndex (int index) {
             index = Math.Min(Math.Max(0, index), _Items.Count - 1);
             return _Items[index].Position;
@@ -205,7 +126,7 @@ namespace Squared.Util {
 
         protected abstract TValue Interpolate (int index, float offset);
 
-        protected TValue GetValueAtPosition (float position) {
+        public TValue GetValueAtPosition (float position) {
             int index = GetLowerIndexForPosition(position);
             float lowerPosition = GetPositionAtIndex(index);
             float upperPosition = GetPositionAtIndex(index + 1);
@@ -294,8 +215,19 @@ namespace Squared.Util {
             return _Items.GetEnumerator();
         }
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
+        IEnumerator<KeyValuePair<float, TValue>> IEnumerable<KeyValuePair<float, TValue>>.GetEnumerator () {
+            foreach (var item in _Items)
+                yield return new KeyValuePair<float, TValue>(item.Position, item.Value);
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
             return _Items.GetEnumerator();
+        }
+
+        public TValue this[float position] {
+            get {
+                return GetValueAtPosition(position);
+            }
         }
     }
 
@@ -315,6 +247,13 @@ namespace Squared.Util {
             _InterpolatorSource = GetValueAtIndex;
         }
 
+        public Curve (IEnumerable<KeyValuePair<float, T>> points) 
+            : this () {
+
+            foreach (var kvp in points)
+                Add(kvp.Key, kvp.Value);
+        }
+
         public void SetValueAtPosition (float position, T value, Interpolator<T> interpolator = null) {
             SetValueAtPositionInternal(position, value, new PointData { Interpolator = interpolator }, true);
         }
@@ -328,7 +267,7 @@ namespace Squared.Util {
             return interpolator(_InterpolatorSource, index, offset);
         }
 
-        public T this[float position] {
+        new public T this[float position] {
             get {
                 return GetValueAtPosition(position);
             }
@@ -405,12 +344,6 @@ namespace Squared.Util {
             SetValueAtPositionInternal(position, value, new PointData { Velocity = velocity }, true);
         }
 
-        public T this[float position] {
-            get {
-                return GetValueAtPosition(position);
-            }
-        }
-
         public void ConvertToCardinal (float tension) {
             float tensionFactor = (1f / 2f) * (1f - tension);
 
@@ -438,6 +371,119 @@ namespace Squared.Util {
             result.ConvertToCardinal(tension);
 
             return result;
+        }
+    }
+
+    public static class CurveExtensions {
+        public const int DefaultSearchSubdivision = 32;
+        public const int DefaultMaxSearchRecursion = 7;
+        public const float DefaultSearchEpsilon = float.Epsilon * 5;
+
+        /// <summary>
+        /// Searches the entire curve based on a heuristic.
+        /// </summary>
+        /// <param name="heuristic">A heuristic that measures how close a value is to the target value. This heuristic should return 0 if the target value is a match.</param>
+        /// <returns>The position the search ended at if it was successful.</returns>
+        public static float? Search<TValue> (
+            this ICurve<TValue> curve, 
+            Func<TValue, float> heuristic
+        )
+            where TValue : struct
+        {
+            return Search(curve, heuristic, curve.Start, curve.End);
+        }
+
+        /// <summary>
+        /// Searches a region of the curve based on a heuristic.
+        /// </summary>
+        /// <param name="heuristic">A heuristic that measures how close a value is to the target value. This heuristic should return 0 if the target value is a match.</param>
+        /// <param name="low">The beginning of the search window.</param>
+        /// <param name="high">The end of the search window.</param>
+        /// <param name="subdivision">The number of sample points within the search window. A higher number of partitions will increase the likelihood that the best match will be found by the search, but increase the cost of the search.</param>
+        /// <param name="maxRecursion">The maximum level of recursion for the search. High values for this argument will increase the precision of the search but also increase its cost.</param>
+        /// <returns>The position the search ended at if it was successful.</returns>
+        public static float? Search<TValue> (
+            this ICurve<TValue> curve,
+            Func<TValue, float> heuristic, float low, float high,
+            int? subdivision = null, int? maxRecursion = null,
+            float? epsilon = null
+        )
+            where TValue : struct
+        {
+            float? result = null;
+            float bestScore = float.MaxValue;
+
+            SearchInternal(
+                curve,
+                heuristic,
+                low, high,
+                subdivision.GetValueOrDefault(DefaultSearchSubdivision),
+                maxRecursion.GetValueOrDefault(DefaultMaxSearchRecursion),
+                epsilon.GetValueOrDefault(DefaultSearchEpsilon),
+                ref result, ref bestScore,
+                0
+            );
+
+            return result;
+        }
+
+        private static void SearchInternal<TValue> (
+            this ICurve<TValue> curve,
+            Func<TValue, float> heuristic,
+            float low, float high,
+            int subdivision, int maxRecursion,
+            float epsilon,
+            ref float? bestScoringPosition, ref float bestScore,
+            int depth
+        ) 
+            where TValue : struct
+        {
+            if (subdivision < 2)
+                subdivision = 2;
+
+            if (high <= low)
+                return;
+
+            var actualSubdivision = subdivision;
+
+            if (depth == 0) {
+                actualSubdivision = Math.Min(1024, curve.Count * 2);
+                actualSubdivision = Math.Max(actualSubdivision, subdivision);
+            }
+
+            bool improved = false;
+            float partitionSize = (high - low) / actualSubdivision, partitionSizeHalf = partitionSize * 0.5f;
+            if (Math.Abs(partitionSizeHalf) <= epsilon)
+                return;
+
+            for (int i = 0; i < actualSubdivision; i++) {
+                var samplePosition = low + (partitionSize * i) + partitionSizeHalf;
+                var score = heuristic(curve.GetValueAtPosition(samplePosition));
+
+                if (score < bestScore) {
+                    bestScore = score;
+                    bestScoringPosition = samplePosition;
+                    improved = true;
+                }
+            }
+
+            if (depth >= maxRecursion)
+                return;
+
+            if (!improved)
+                return;
+
+            var newLow = Math.Max(low, bestScoringPosition.Value - partitionSizeHalf);
+            var newHigh = Math.Min(high, bestScoringPosition.Value + partitionSizeHalf);
+
+            SearchInternal(
+                curve,
+                heuristic,
+                newLow, newHigh,
+                subdivision, maxRecursion, epsilon,
+                ref bestScoringPosition, ref bestScore,
+                depth + 1
+            );
         }
     }
 }
