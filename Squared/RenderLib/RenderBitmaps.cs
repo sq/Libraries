@@ -77,6 +77,7 @@ namespace Squared.Render {
     public interface IBitmapBatch {
         void Add (BitmapDrawCall item);
         void Add (ref BitmapDrawCall item);
+        void AddRange (IEnumerable<BitmapDrawCall> items);
         void Issue ();
     }
 
@@ -153,6 +154,18 @@ namespace Squared.Render {
             item.TextureID = item.Textures.GetHashCode();
 
             base.Add(ref item);
+        }
+
+        public void AddRange (IEnumerable<BitmapDrawCall> items) {
+            using (var e = items.GetEnumerator())
+            while (e.MoveNext()) {
+                var item = e.Current;
+                if (!item.IsValid)
+                    continue;
+
+                item.TextureID = item.Textures.GetHashCode();
+                base.Add(ref item);
+            }
         }
 
         public void Issue () {
@@ -477,6 +490,12 @@ namespace Squared.Render {
             set {
                 Textures = new TextureSet(value.Texture);
                 TextureRegion = value.TextureRegion;
+            }
+        }
+
+        public bool IsValid {
+            get {
+                return (Textures.Texture1 != null);
             }
         }
     }

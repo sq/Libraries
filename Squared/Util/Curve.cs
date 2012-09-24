@@ -26,9 +26,36 @@ namespace Squared.Util {
         where TValue : struct
         where TData : struct 
     {
-        public event EventHandler Changed;
+        public struct Window {
+            public readonly CurveBase<TValue, TData> Curve;
+            public readonly int FirstIndex, LastIndex;
 
-        private int _CachedIndex = -1;
+            public float Start {
+                get {
+                    return Curve.GetPositionAtIndex(FirstIndex);
+                }
+            }
+
+            public float End {
+                get {
+                    return Curve.GetPositionAtIndex(LastIndex);
+                }
+            }
+
+            public TValue this[float position] {
+                get {
+                    return Curve.GetValueAtPosition(position, FirstIndex, LastIndex);
+                }
+            }
+
+            internal Window (CurveBase<TValue, TData> curve, int firstIndex, int lastIndex) {
+                Curve = curve;
+                FirstIndex = firstIndex;
+                LastIndex = lastIndex;
+            }
+        }
+
+        public event EventHandler Changed;
 
         protected readonly List<Point> _Items = new List<Point>();
         protected Interpolator<TValue> _DefaultInterpolator;
@@ -66,48 +93,53 @@ namespace Squared.Util {
         }
 
         public int GetLowerIndexForPosition (float position) {
+            return GetLowerIndexForPosition(position, 0, _Items.Count - 1);
+        }
+
+        protected int GetLowerIndexForPosition (float position, int firstIndex, int lastIndex) {
             int count = _Items.Count;
-            int low = 0;
-            int high = count - 1;
+
+            if (firstIndex < 0)
+                firstIndex = 0;
+            if (lastIndex >= count)
+                lastIndex = count - 1;
+
+            int low = firstIndex;
+            int high = lastIndex;
             int index;
             int nextIndex;
 
-            if (_CachedIndex >= 0) {
-                if ((_Items[_CachedIndex].Position <= position) && (_Items[Math.Min(_CachedIndex, high)].Position >= position))
-                    return _CachedIndex;
-            }
-
             if (count < 1)
-                return 0;
+                return firstIndex;
 
-            if (_Items[count - 1].Position < position)
-                return count - 1;
-            else if (_Items[0].Position > position)
-                return 0;
+            if (_Items[lastIndex].Position < position)
+                return lastIndex;
+            else if (_Items[firstIndex].Position > position)
+                return firstIndex;
 
             while (low <= high) {
                 index = (low + high) / 2;
                 nextIndex = Math.Min(index + 1, count - 1);
 
                 if (low == high)
-                    return _CachedIndex = low;
+                    return low;
 
                 var indexItem = _Items[index];
 
                 if (indexItem.Position < position) {
                     if ((nextIndex >= count) || (_Items[nextIndex].Position > position)) {
-                        return _CachedIndex = index;
+                        return index;
                     } else {
                         low = index + 1;
                     }
                 } else if (indexItem.Position == position) {
-                    return _CachedIndex = index;
+                    return index;
                 } else {
                     high = index - 1;
                 }
             }
 
-            return _CachedIndex = count - 1;
+            return count - 1;
         }
         
         public float GetPositionAtIndex (int index) {
@@ -128,7 +160,11 @@ namespace Squared.Util {
         protected abstract TValue Interpolate (int index, float offset);
 
         public TValue GetValueAtPosition (float position) {
-            int index = GetLowerIndexForPosition(position);
+            return GetValueAtPosition(position, 0, _Items.Count - 1);
+        }
+
+        protected TValue GetValueAtPosition (float position, int firstIndex, int lastIndex) {
+            int index = GetLowerIndexForPosition(position, firstIndex, lastIndex);
             var lowerItem = _Items[index];
             var upperItem = _Items[Math.Min(index + 1, _Items.Count - 1)];
             
@@ -147,7 +183,6 @@ namespace Squared.Util {
         }
 
         public void Clear () {
-            _CachedIndex = -1;
             _Items.Clear();
 
             OnChanged();
@@ -162,7 +197,6 @@ namespace Squared.Util {
                 float position = _Items[i].Position;
                 if ((position <= newStartPosition) || (position >= newEndPosition)) {
                     _Items.RemoveAt(i);
-                    _CachedIndex = -1;
                 } else {
                     i++;
                 }
@@ -175,8 +209,6 @@ namespace Squared.Util {
         }
 
         public bool RemoveAtPosition (float position, float precision = 0.01f) {
-            _CachedIndex = -1;
-
             var index = GetLowerIndexForPosition(position);
             var item = _Items[index];
             if (Math.Abs(item.Position - position) > precision)
@@ -205,7 +237,6 @@ namespace Squared.Util {
             } else {
                 _Items.Add(newItem);
                 _Items.Sort(_PositionComparer);
-                _CachedIndex = -1;
             }
 
             if (dispatchEvent)
@@ -236,6 +267,14 @@ namespace Squared.Util {
             get {
                 return GetValueAtPosition(position);
             }
+        }
+
+        public Window GetWindow (float lowPosition, float highPosition) {
+            return new Window(
+                this, 
+                GetLowerIndexForPosition(lowPosition), 
+                GetLowerIndexForPosition(highPosition) + 1
+            );
         }
     }
 
