@@ -29,22 +29,16 @@ namespace Squared.Util {
         public struct Window {
             public readonly CurveBase<TValue, TData> Curve;
             public readonly int FirstIndex, LastIndex;
-
-            public float Start {
-                get {
-                    return Curve.GetPositionAtIndex(FirstIndex);
-                }
-            }
-
-            public float End {
-                get {
-                    return Curve.GetPositionAtIndex(LastIndex);
-                }
-            }
+            public readonly float Start, End;
 
             public TValue this[float position] {
                 get {
-                    return Curve.GetValueAtPosition(position, FirstIndex, LastIndex);
+                    if (position <= Start)
+                        return Curve.GetValueAtIndex(FirstIndex);
+                    else if (position >= End)
+                        return Curve.GetValueAtIndex(LastIndex);
+                    else
+                        return Curve.GetValueAtPosition(position, FirstIndex, LastIndex);
                 }
             }
 
@@ -52,6 +46,8 @@ namespace Squared.Util {
                 Curve = curve;
                 FirstIndex = firstIndex;
                 LastIndex = lastIndex;
+                Start = Curve.GetPositionAtIndex(firstIndex);
+                End = Curve.GetPositionAtIndex(lastIndex);
             }
         }
 
@@ -97,12 +93,15 @@ namespace Squared.Util {
         }
 
         protected int GetLowerIndexForPosition (float position, int firstIndex, int lastIndex) {
-            int count = _Items.Count;
+            int count = _Items.Count, max = count - 1;
 
             if (firstIndex < 0)
                 firstIndex = 0;
             if (lastIndex >= count)
-                lastIndex = count - 1;
+                lastIndex = max;
+
+            if (firstIndex >= lastIndex)
+                return firstIndex;
 
             int low = firstIndex;
             int high = lastIndex;
@@ -118,16 +117,16 @@ namespace Squared.Util {
                 return firstIndex;
 
             while (low <= high) {
-                index = (low + high) / 2;
-                nextIndex = Math.Min(index + 1, count - 1);
-
                 if (low == high)
                     return low;
+
+                index = (low + high) / 2;
+                nextIndex = (index >= max) ? max : index + 1;
 
                 var indexItem = _Items[index];
 
                 if (indexItem.Position < position) {
-                    if ((nextIndex >= count) || (_Items[nextIndex].Position > position)) {
+                    if (_Items[nextIndex].Position > position) {
                         return index;
                     } else {
                         low = index + 1;
@@ -143,44 +142,43 @@ namespace Squared.Util {
         }
         
         public float GetPositionAtIndex (int index) {
-            index = Math.Min(Math.Max(0, index), _Items.Count - 1);
+            var max = _Items.Count - 1;
+            index = (index < 0)
+                ? 0
+                : ((index > max)
+                    ? max
+                    : index);
+
             return _Items[index].Position;
         }
 
         public TData GetDataAtIndex (int index) {
-            index = Math.Min(Math.Max(0, index), _Items.Count - 1);
+            var max = _Items.Count - 1;
+            index = (index < 0)
+                ? 0
+                : ((index > max)
+                    ? max
+                    : index);
+
             return _Items[index].Data;
         }
 
         public TValue GetValueAtIndex (int index) {
-            index = Math.Min(Math.Max(0, index), _Items.Count - 1);
+            var max = _Items.Count - 1;
+            index = (index < 0)
+                ? 0
+                : ((index > max)
+                    ? max
+                    : index);
+
             return _Items[index].Value;
         }
-
-        protected abstract TValue Interpolate (int index, float offset);
 
         public TValue GetValueAtPosition (float position) {
             return GetValueAtPosition(position, 0, _Items.Count - 1);
         }
 
-        protected TValue GetValueAtPosition (float position, int firstIndex, int lastIndex) {
-            int index = GetLowerIndexForPosition(position, firstIndex, lastIndex);
-            var lowerItem = _Items[index];
-            var upperItem = _Items[Math.Min(index + 1, _Items.Count - 1)];
-            
-            if (lowerItem.Position < upperItem.Position) {
-                float offset = (position - lowerItem.Position) / (upperItem.Position - lowerItem.Position);
-
-                if (offset < 0.0f)
-                    offset = 0.0f;
-                else if (offset > 1.0f)
-                    offset = 1.0f;
-
-                return Interpolate(index, offset);
-            } else {
-                return lowerItem.Value;
-            }
-        }
+        protected abstract TValue GetValueAtPosition (float position, int firstIndex, int lastIndex);
 
         public void Clear () {
             _Items.Clear();
@@ -270,10 +268,17 @@ namespace Squared.Util {
         }
 
         public Window GetWindow (float lowPosition, float highPosition) {
-            return new Window(
-                this, 
-                GetLowerIndexForPosition(lowPosition), 
+            return GetWindow(
+                GetLowerIndexForPosition(lowPosition),
                 GetLowerIndexForPosition(highPosition) + 1
+            );
+        }
+
+        public Window GetWindow (int firstIndex, int lastIndex) {
+            return new Window(
+                this,
+                firstIndex,
+                lastIndex
             );
         }
     }
@@ -309,9 +314,26 @@ namespace Squared.Util {
             SetValueAtPositionInternal(position, value, new PointData { Interpolator = interpolator }, true);
         }
 
-        protected override T Interpolate (int index, float offset) {
-            var interpolator = _Items[index].Data.Interpolator ?? DefaultInterpolator;
-            return interpolator(_InterpolatorSource, index, offset);
+        protected override T GetValueAtPosition (float position, int firstIndex, int lastIndex) {
+            int index = GetLowerIndexForPosition(position, firstIndex, lastIndex);
+
+            var lowerItem = _Items[index];
+            var upperItem = _Items[(index == lastIndex) ? lastIndex : index + 1];
+
+            var rangeSize = upperItem.Position - lowerItem.Position;
+            if (rangeSize > 0) {
+                float offset = (position - lowerItem.Position) / rangeSize;
+
+                if (offset < 0.0f)
+                    offset = 0.0f;
+                else if (offset > 1.0f)
+                    offset = 1.0f;
+
+                var interpolator = _Items[index].Data.Interpolator ?? DefaultInterpolator;
+                return interpolator(_InterpolatorSource, index, offset);
+            } else {
+                return lowerItem.Value;
+            }
         }
 
         new public T this[float position] {
@@ -347,8 +369,23 @@ namespace Squared.Util {
             _InterpolatorSource = GetHermiteInputForIndex;
         }
 
-        protected override T Interpolate (int index, float offset) {
-            return _Interpolator(_InterpolatorSource, (index * 2), offset);
+        protected override T GetValueAtPosition (float position, int firstIndex, int lastIndex) {
+            int index = GetLowerIndexForPosition(position, firstIndex, lastIndex);
+            var lowerItem = _Items[index];
+            var upperItem = _Items[Math.Min(index + 1, _Items.Count - 1)];
+
+            if (lowerItem.Position < upperItem.Position) {
+                float offset = (position - lowerItem.Position) / (upperItem.Position - lowerItem.Position);
+
+                if (offset < 0.0f)
+                    offset = 0.0f;
+                else if (offset > 1.0f)
+                    offset = 1.0f;
+
+                return _Interpolator(_InterpolatorSource, (index * 2), offset);
+            } else {
+                return lowerItem.Value;
+            }
         }
 
         private T GetHermiteInputForIndex (int index) {
