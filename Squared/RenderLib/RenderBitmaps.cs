@@ -67,7 +67,13 @@ namespace Squared.Render {
 
     public sealed class BitmapDrawCallComparer : IComparer<BitmapDrawCall> {
         public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
-            var result = (int)(x.SortKey - y.SortKey);
+            var result = (x.SortKey > y.SortKey)
+                ? 1
+                : (
+                    (x.SortKey < y.SortKey)
+                    ? -1
+                    : 0
+                );
             if (result == 0)
                 result = (int)(x.TextureID - y.TextureID);
             return result;
@@ -362,7 +368,7 @@ namespace Squared.Render {
         public Vector2 Origin;
         public float Rotation;
         public Color MultiplyColor, AddColor;
-        public int SortKey;
+        public float SortKey;
 
         internal int TextureID;
 
