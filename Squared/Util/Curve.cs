@@ -17,8 +17,18 @@ namespace Squared.Util {
         TValue this[float position] {
             get;
         }
-        IEnumerable<KeyValuePair<float, TValue>> Points {
+        IEnumerable<CurvePoint<TValue>> Points {
             get;
+        }
+    }
+
+    public struct CurvePoint<TValue> {
+        public float Position;
+        public TValue Value;
+
+        public CurvePoint (float position, TValue value) {
+            Position = position;
+            Value = value;
         }
     }
 
@@ -250,10 +260,13 @@ namespace Squared.Util {
             return _Items.GetEnumerator();
         }
 
-        public IEnumerable<KeyValuePair<float, TValue>> Points {
+        public IEnumerable<CurvePoint<TValue>> Points {
             get {
                 foreach (var item in _Items)
-                    yield return new KeyValuePair<float, TValue>(item.Position, item.Value);
+                    yield return new CurvePoint<TValue> {
+                        Position = item.Position, 
+                        Value = item.Value
+                    };
             }
         }
 
@@ -299,11 +312,11 @@ namespace Squared.Util {
             _InterpolatorSource = GetValueAtIndex;
         }
 
-        public Curve (IEnumerable<KeyValuePair<float, T>> points) 
+        public Curve (IEnumerable<CurvePoint<T>> points) 
             : this () {
 
             foreach (var kvp in points)
-                Add(kvp.Key, kvp.Value);
+                Add(kvp.Position, kvp.Value);
         }
 
         public void SetValueAtPosition (float position, T value, Interpolator<T> interpolator = null) {
@@ -443,15 +456,15 @@ namespace Squared.Util {
             }
         }
 
-        public static HermiteSpline<T> CatmullRom (IEnumerable<KeyValuePair<float, T>> points) {
+        public static HermiteSpline<T> CatmullRom (IEnumerable<CurvePoint<T>> points) {
             return Cardinal(points, 0);
         }
 
-        public static HermiteSpline<T> Cardinal (IEnumerable<KeyValuePair<float, T>> points, float tension) {
+        public static HermiteSpline<T> Cardinal (IEnumerable<CurvePoint<T>> points, float tension) {
             var result = new HermiteSpline<T>();
 
             foreach (var pt in points)
-                result.Add(pt.Key, pt.Value, default(T));
+                result.Add(pt.Position, pt.Value, default(T));
 
             result.ConvertToCardinal(tension);
 
