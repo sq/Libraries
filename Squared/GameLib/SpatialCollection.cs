@@ -294,6 +294,23 @@ namespace Squared.Game {
                 _SeenListCache[i] = new Dictionary<ItemInfo, bool>(_ItemInfoComparer);
         }
 
+        public Bounds Extent {
+            get;
+            private set;
+        }
+
+        public void CropBounds (ref Bounds bounds) {
+            var extent = Extent;
+            bounds.TopLeft = new Vector2(
+                Math.Max(bounds.TopLeft.X, extent.TopLeft.X),
+                Math.Max(bounds.TopLeft.Y, extent.TopLeft.Y)
+            );
+            bounds.BottomRight = new Vector2(
+                Math.Min(bounds.BottomRight.X, extent.BottomRight.X),
+                Math.Min(bounds.BottomRight.Y, extent.BottomRight.Y)
+            );
+        }
+
         public SectorIndex GetIndexFromPoint (Vector2 point) {
             return new SectorIndex((int)Math.Floor(point.X / _Subdivision), (int)Math.Floor(point.Y / _Subdivision));
         }
@@ -308,6 +325,31 @@ namespace Squared.Game {
                     sector = _FreeList[_FreeList.Count - 1];
                     _FreeList.RemoveAt(_FreeList.Count - 1);
                     sector.Index = index;
+                }
+
+                var sectorTopLeft = new Vector2(
+                    index.First * _Subdivision,
+                    index.Second * _Subdivision
+                );
+                var sectorBottomRight = new Vector2(
+                    sectorTopLeft.X + _Subdivision,
+                    sectorTopLeft.Y + _Subdivision
+                );
+
+                if (_Sectors.Count == 0) {
+                    Extent = new Bounds(sectorTopLeft, sectorBottomRight);
+                } else {
+                    var currentExtent = Extent;
+                    Extent = new Bounds(
+                        new Vector2(
+                            Math.Min(currentExtent.TopLeft.X, sectorTopLeft.X),
+                            Math.Min(currentExtent.TopLeft.Y, sectorTopLeft.Y)
+                        ),
+                        new Vector2(
+                            Math.Max(currentExtent.BottomRight.X, sectorBottomRight.X),
+                            Math.Max(currentExtent.BottomRight.Y, sectorBottomRight.Y)
+                        )
+                    );
                 }
 
                 _Sectors[index] = sector;
@@ -351,10 +393,20 @@ namespace Squared.Game {
             }
         }
 
+        public void RemoveMany (T[] items) {
+            foreach (var item in items)
+                Remove(item);
+        }
+
+        public bool Contains (T item) {
+            return _Items.ContainsKey(item);
+        }
+
         public void Clear () {
             _Items.Clear();
             _Sectors.Clear();
             _FreeList.Clear();
+            Extent = new Bounds(Vector2.Zero, Vector2.Zero);
         }
 
         public void UpdateItemBounds (T item) {
@@ -386,10 +438,14 @@ namespace Squared.Game {
         }
 
         public ItemBoundsEnumerator GetItemsFromBounds (Bounds bounds) {
+            CropBounds(ref bounds);
+
             return new ItemBoundsEnumerator(this, bounds, false);
         }
 
         public ItemBoundsEnumerator GetItemsFromBounds (Bounds bounds, bool allowDuplicates) {
+            CropBounds(ref bounds);
+
             return new ItemBoundsEnumerator(this, bounds, allowDuplicates);
         }
 

@@ -635,9 +635,11 @@ namespace Squared.Render {
 
     public class ClearBatch : Batch {
         public Color ClearColor;
+        public float ClearZ;
 
-        public void Initialize (Frame frame, int layer, Color clearColor, Material material) {
+        public void Initialize (Frame frame, int layer, Color clearColor, Material material, float clearZ) {
             base.Initialize(frame, layer, material);
+            ClearZ = clearZ;
             ClearColor = clearColor;
         }
 
@@ -647,20 +649,30 @@ namespace Squared.Render {
         public override void Issue (DeviceManager manager) {
             using (manager.ApplyMaterial(Material)) {
                 var clearOptions = ClearOptions.Target;
+                var rtbs = manager.Device.GetRenderTargets();
+                if ((rtbs != null) && (rtbs.Length > 0)) {
+                    var rt = (RenderTarget2D)rtbs[0].RenderTarget;
+
+                    if (rt.DepthStencilFormat != DepthFormat.None)
+                        clearOptions |= ClearOptions.DepthBuffer;
+                } else {
+                    if (manager.Device.PresentationParameters.DepthStencilFormat != DepthFormat.None)
+                        clearOptions |= ClearOptions.DepthBuffer;
+                }
 
                 manager.Device.Clear(
                     clearOptions,
-                    ClearColor, 0.0f, 0
+                    ClearColor, ClearZ, 0
                 );
             }
         }
 
-        public static void AddNew (Frame frame, int layer, Color clearColor, Material material) {
+        public static void AddNew (Frame frame, int layer, Color clearColor, Material material, float clearZ = 0) {
             if (frame == null)
                 throw new ArgumentNullException("frame");
 
             var result = frame.RenderManager.AllocateBatch<ClearBatch>();
-            result.Initialize(frame, layer, clearColor, material);
+            result.Initialize(frame, layer, clearColor, material, clearZ);
             result.Dispose();
         }
     }

@@ -76,7 +76,7 @@ inline void OutputRegions(
 }
 
 void ScreenSpaceVertexShader(
-    in float2 position : POSITION0, // x, y
+    in float3 position : POSITION0, // x, y
     in float4 texRgn : POSITION1, // x1, y1, x2, y2
     in float4 scaleOrigin : POSITION2, // scalex, scaley, originx, originy
     in float rotation : POSITION3,
@@ -95,12 +95,12 @@ void ScreenSpaceVertexShader(
     
     position.xy += rotatedCorner;
     
-    result = mul(float4(position.xy, 0, 1), ProjectionMatrix);
+    result = mul(float4(position.xy, position.z, 1), ProjectionMatrix);
     OutputRegions(texRgn, texTL, texBR);
 }
 
 void WorldSpaceVertexShader(
-    in float2 position : POSITION0, // x, y
+    in float3 position : POSITION0, // x, y
     in float4 texRgn : POSITION1, // x1, y1, x2, y2
     in float4 scaleOrigin : POSITION2, // scalex, scaley, originx, originy
     in float rotation : POSITION3,
@@ -119,7 +119,7 @@ void WorldSpaceVertexShader(
     
     position.xy += rotatedCorner - ViewportPosition;
     
-    result = mul(float4(position.xy * ViewportScale, 0, 1), ProjectionMatrix);
+    result = mul(float4(position.xy * ViewportScale, position.z, 1), ProjectionMatrix);
     OutputRegions(texRgn, texTL, texBR);
 }
 
@@ -134,8 +134,12 @@ void BasicPixelShader(
 	texCoord = clamp(texCoord, texTL, texBR);
 	addColor.rgb *= addColor.a;
 	addColor.a = 0;
+
 	result = multiplyColor * tex2D(TextureSampler, texCoord);
 	result += (addColor * result.a);
+
+    if (result.a < (1 / 255))
+        discard;
 }
 
 technique WorldSpaceBitmapTechnique

@@ -10,27 +10,17 @@ using Squared.Util;
 using System.Reflection;
 
 namespace Squared.Render {
-    [StructLayout(LayoutKind.Explicit)]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct BitmapVertex : IVertexType {
-        [FieldOffset(0)]
-        public Vector2 Position;
-        [FieldOffset(8)]
+        public Vector3 Position;
         public Vector2 TextureTopLeft;
-        [FieldOffset(16)]
         public Vector2 TextureBottomRight;
-        [FieldOffset(24)]
         public Vector2 Scale;
-        [FieldOffset(32)]
         public Vector2 Origin;
-        [FieldOffset(40)]
         public float Rotation;
-        [FieldOffset(44)]
         public Color MultiplyColor;
-        [FieldOffset(48)]
         public Color AddColor;
-        [FieldOffset(52)]
         public short Corner;
-        [FieldOffset(54)]
         public short Unused;
 
         public static readonly VertexElement[] Elements;
@@ -43,18 +33,18 @@ namespace Squared.Render {
         unsafe static BitmapVertex () {
             Elements = new VertexElement[] {
                 new VertexElement( 0, 
-                    VertexElementFormat.Vector2, VertexElementUsage.Position, 0 ),
-                new VertexElement( (short)(sizeof(Vector2)), 
+                    VertexElementFormat.Vector3, VertexElementUsage.Position, 0 ),
+                new VertexElement( (short)(sizeof(Vector3)), 
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 1 ),
-                new VertexElement( (short)(sizeof(Vector2) + sizeof(Vector4)), 
+                new VertexElement( (short)(sizeof(Vector3) + sizeof(Vector4)), 
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 2 ),
-                new VertexElement( (short)(sizeof(Vector2) + sizeof(Vector4) * 2), 
+                new VertexElement( (short)(sizeof(Vector3) + sizeof(Vector4) * 2), 
                     VertexElementFormat.Single, VertexElementUsage.Position, 3 ),
-                new VertexElement( (short)(sizeof(Vector2) + sizeof(Vector4) * 2 + sizeof(float)), 
+                new VertexElement( (short)(sizeof(Vector3) + sizeof(Vector4) * 2 + sizeof(float)), 
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
-                new VertexElement( (short)(sizeof(Vector2) + sizeof(Vector4) * 2 + sizeof(float) + sizeof(Color)), 
+                new VertexElement( (short)(sizeof(Vector3) + sizeof(Vector4) * 2 + sizeof(float) + sizeof(Color)), 
                     VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
-                new VertexElement( (short)(sizeof(Vector2) + sizeof(Vector4) * 2 + sizeof(float) + sizeof(Color) * 2), 
+                new VertexElement( (short)(sizeof(Vector3) + sizeof(Vector4) * 2 + sizeof(float) + sizeof(Color) * 2), 
                     VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 )
             };
             _VertexDeclaration = new VertexDeclaration(Elements);
@@ -80,10 +70,16 @@ namespace Squared.Render {
         }
     }
 
+    public sealed class BitmapDrawCallTextureComparer : IComparer<BitmapDrawCall> {
+        public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
+            return (int)(x.TextureID - y.TextureID);
+        }
+    }
+
     public interface IBitmapBatch {
         void Add (BitmapDrawCall item);
         void Add (ref BitmapDrawCall item);
-        void AddRange (IEnumerable<BitmapDrawCall> items);
+        void AddRange (BitmapDrawCall[] items);
         void Issue ();
     }
 
@@ -95,8 +91,10 @@ namespace Squared.Render {
         }
 
         public SamplerState SamplerState;
+        public bool UseZBuffer = false;
 
         public static BitmapDrawCallComparer DrawCallComparer = new BitmapDrawCallComparer();
+        public static BitmapDrawCallTextureComparer DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
 
         public const int BitmapBatchSize = 256;
 
@@ -150,6 +148,8 @@ namespace Squared.Render {
 
             _Allocator = frame.RenderManager.GetArrayAllocator<BitmapVertex>();
             _NativeBatches = _NativePool.Allocate();
+
+            UseZBuffer = false;
         }
 
         public void Add (BitmapDrawCall item) {
@@ -162,10 +162,9 @@ namespace Squared.Render {
             base.Add(ref item);
         }
 
-        public void AddRange (IEnumerable<BitmapDrawCall> items) {
-            using (var e = items.GetEnumerator())
-            while (e.MoveNext()) {
-                var item = e.Current;
+        public void AddRange (BitmapDrawCall[] items) {
+            for (int i = 0, l = items.Length; i < l; i++) {
+                var item = items[i];
                 if (!item.IsValid)
                     continue;
 
@@ -182,7 +181,10 @@ namespace Squared.Render {
             if (_DrawCalls.Count == 0)
                 return;
 
-            _DrawCalls.Sort(DrawCallComparer);
+            if (UseZBuffer)
+                _DrawCalls.Sort(DrawCallTextureComparer);
+            else
+                _DrawCalls.Sort(DrawCallComparer);
 
             var count = _DrawCalls.Count;
             int vertCount = 0, vertOffset = 0, bufferSize = count * 4;
@@ -213,7 +215,7 @@ namespace Squared.Render {
                 if (call.Textures != currentTextures)
                     currentTextures = call.Textures;
 
-                vertex.Position = call.Position;
+                vertex.Position = new Vector3(call.Position, UseZBuffer ? call.SortKey : 0);
                 vertex.TextureTopLeft = call.TextureRegion.TopLeft;
                 vertex.TextureBottomRight = call.TextureRegion.BottomRight;
                 vertex.MultiplyColor = call.MultiplyColor;
