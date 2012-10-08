@@ -60,6 +60,7 @@ namespace RenderStressTest {
 
         public Game () {
             Graphics = new GraphicsDeviceManager(this);
+            Graphics.PreferredDepthStencilFormat = DepthFormat.None;
             Graphics.PreferredBackBufferWidth = Width;
             Graphics.PreferredBackBufferHeight = Height;
             Graphics.PreferMultiSampling = false;
