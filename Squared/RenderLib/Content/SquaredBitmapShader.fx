@@ -138,7 +138,8 @@ void BasicPixelShader(
 	result = multiplyColor * tex2D(TextureSampler, texCoord);
 	result += (addColor * result.a);
 
-    if (result.a < (1 / 255))
+    const float discardThreshold = (1.0 / 255.0);
+    if (result.a < discardThreshold)
         discard;
 }
 

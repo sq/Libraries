@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
@@ -130,18 +131,18 @@ namespace Squared.Render {
             return result;
         }
 
-        public static BitmapBatch New (Frame frame, int layer, Material material, SamplerState samplerState = null) {
+        public static BitmapBatch New (Frame frame, int layer, Material material, SamplerState samplerState = null, bool useZBuffer = false) {
             if (frame == null)
                 throw new ArgumentNullException("frame");
             if (material == null)
                 throw new ArgumentNullException("material");
 
             var result = frame.RenderManager.AllocateBatch<BitmapBatch>();
-            result.Initialize(frame, layer, material, samplerState);
+            result.Initialize(frame, layer, material, samplerState, useZBuffer);
             return result;
         }
 
-        public void Initialize (Frame frame, int layer, Material material, SamplerState samplerState = null) {
+        public void Initialize (Frame frame, int layer, Material material, SamplerState samplerState = null, bool useZBuffer = false) {
             base.Initialize(frame, layer, material);
 
             SamplerState = samplerState ?? SamplerState.LinearClamp;
@@ -149,7 +150,7 @@ namespace Squared.Render {
             _Allocator = frame.RenderManager.GetArrayAllocator<BitmapVertex>();
             _NativeBatches = _NativePool.Allocate();
 
-            UseZBuffer = false;
+            UseZBuffer = useZBuffer;
         }
 
         public void Add (BitmapDrawCall item) {
@@ -269,6 +270,12 @@ namespace Squared.Render {
                         paramSize.SetValue(vSize);
                         paramTexel.SetValue(new Vector2(1.0f / vSize.X, 1.0f / vSize.Y));
                         manager.CurrentEffect.CurrentTechnique.Passes[0].Apply();
+                    }
+
+                    if (UseZBuffer && false) {
+                        var dss = device.DepthStencilState;
+                        if (dss.DepthBufferEnable == false)
+                            Debugger.Break();
                     }
 
                     device.DrawUserIndexedPrimitives(
