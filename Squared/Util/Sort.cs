@@ -315,46 +315,46 @@ namespace Squared.Util {
                         // left merge
                         CopyFromData(storage, curr, A);
                         tIndex i = 0;
-                        tIndex j = curr + A;
+                        tIndex j = Offset + curr + A;
 
-                        for (tIndex k = curr, limit = curr + A + B; k < limit; k++) {
+                        for (tIndex k = Offset + curr, limit = Offset + curr + A + B; k < limit; k++) {
                             if ((i < A) && (j < limit)) {
-                                T itemJ = Data[Offset + j], itemStorage = storage[i];
+                                T itemJ = Data[j], itemStorage = storage[i];
 
                                 if (Comparer.Compare(itemStorage, itemJ) <= 0) {
                                     i++;
-                                    Data[Offset + k] = itemStorage;
+                                    Data[k] = itemStorage;
                                 } else {
                                     j++;
-                                    Data[Offset + k] = itemJ;
+                                    Data[k] = itemJ;
                                 }
                             } else if (i < A) {
-                                Data[Offset + k] = storage[i++];
+                                Data[k] = storage[i++];
                             } else {
-                                Data[Offset + k] = Data[Offset + (j++)];
+                                Data[k] = Data[(j++)];
                             }
                         }
                     } else {
                         // right merge
                         CopyFromData(storage, curr + A, B);
                         tIndex i = B - 1;
-                        tIndex j = curr + A - 1;
+                        tIndex j = Offset + curr + A - 1;
 
-                        for (tIndex k = curr + A + B - 1; k >= curr; k--) {
+                        for (tIndex k = Offset + curr + A + B - 1, limit = Offset + curr; k >= limit; k--) {
                             if ((i >= 0) && (j >= curr)) {
-                                T itemJ = Data[Offset + j], itemStorage = storage[i];
+                                T itemJ = Data[j], itemStorage = storage[i];
 
                                 if (Comparer.Compare(itemJ, itemStorage) > 0) {
                                     j--;
-                                    Data[Offset + k] = itemJ;
+                                    Data[k] = itemJ;
                                 } else {
                                     i--;
-                                    Data[Offset + k] = itemStorage;
+                                    Data[k] = itemStorage;
                                 }
                             } else if (i >= 0) {
-                                Data[Offset + k] = storage[i--];
+                                Data[k] = storage[i--];
                             } else {
-                                Data[Offset + k] = Data[Offset + (j--)];
+                                Data[k] = Data[(j--)];
                             }
                         }
                     }
