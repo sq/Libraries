@@ -59,5 +59,8 @@
     <Compile Include="..\Buffer.cs">
       <Link>Buffer.cs</Link>
     </Compile>
+    <Compile Include="..\Sort.cs">
+      <Link>Sort.cs</Link>
+    </Compile>
   </ItemGroup>
 </Project>
