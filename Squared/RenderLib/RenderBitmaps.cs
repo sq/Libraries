@@ -450,6 +450,18 @@ namespace Squared.Render {
             TextureRegion = newBounds;
         }
 
+        public Texture2D Texture {
+            get {
+                if (Textures.Texture2 == null)
+                    return Textures.Texture1;
+                else
+                    throw new InvalidOperationException("DrawCall has multiple textures");
+            }
+            set {
+                Textures = new TextureSet(value);
+            }
+        }
+
         public float ScaleF {
             get {
                 return (Scale.X + Scale.Y) / 2.0f;
