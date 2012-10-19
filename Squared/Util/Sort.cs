@@ -30,7 +30,7 @@ namespace Squared.Util {
 
             if ((_count < 0) || (_offset + _count > data.Length))
                 throw new ArgumentException("count");
-            if ((_offset < 0) || (_offset >= data.Length))
+            if ((_offset < 0) || (_offset > data.Length))
                 throw new ArgumentException("offset");
 
             var impl = new TimsortImpl<T>(data, _offset, _count, comparer);
@@ -186,12 +186,11 @@ namespace Squared.Util {
                 }
             }
 
-            public void BinaryInsertionSort(tCount size) {
-                BinaryInsertionSortStart(0, 1, size);
-            }
-
             public tCount CountRun (tIndex start, tCount size) {
                 tIndex curr;
+
+                if ((start > size) || (size <= 0))
+                    return 0;
 
                 if ((size - start) == 1)
                     return 1;
@@ -318,12 +317,16 @@ namespace Squared.Util {
                         tIndex i = 0;
                         tIndex j = curr + A;
 
-                        for (tIndex k = curr; k < curr + A + B; k++) {
-                            if ((i < A) && (j < curr + A + B)) {
-                                if (Comparer.Compare(storage[i], Data[Offset + j]) <= 0) {
-                                    Data[Offset + k] = storage[i++];
+                        for (tIndex k = curr, limit = curr + A + B; k < limit; k++) {
+                            if ((i < A) && (j < limit)) {
+                                T itemJ = Data[Offset + j], itemStorage = storage[i];
+
+                                if (Comparer.Compare(itemStorage, itemJ) <= 0) {
+                                    i++;
+                                    Data[Offset + k] = itemStorage;
                                 } else {
-                                    Data[Offset + k] = Data[Offset + (j++)];
+                                    j++;
+                                    Data[Offset + k] = itemJ;
                                 }
                             } else if (i < A) {
                                 Data[Offset + k] = storage[i++];
@@ -339,10 +342,14 @@ namespace Squared.Util {
 
                         for (tIndex k = curr + A + B - 1; k >= curr; k--) {
                             if ((i >= 0) && (j >= curr)) {
-                                if (Comparer.Compare(Data[Offset + j], storage[i]) > 0) {
-                                    Data[Offset + k] = Data[Offset + (j--)];
+                                T itemJ = Data[Offset + j], itemStorage = storage[i];
+
+                                if (Comparer.Compare(itemJ, itemStorage) > 0) {
+                                    j--;
+                                    Data[Offset + k] = itemJ;
                                 } else {
-                                    Data[Offset + k] = storage[i--];
+                                    i--;
+                                    Data[Offset + k] = itemStorage;
                                 }
                             } else if (i >= 0) {
                                 Data[Offset + k] = storage[i--];
