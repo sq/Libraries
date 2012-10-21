@@ -4,8 +4,8 @@ using System.Threading;
 using System.IO;
 using System.Text;
 using System.Diagnostics;
-using System.Linq;
 using Squared.Util;
+using System.Linq;
 
 namespace Squared.Task.IO {
     public class OperationPendingException : InvalidOperationException {
@@ -82,7 +82,7 @@ namespace Squared.Task.IO {
 
         internal void ClearPendingOperation (IFuture f) {
             if (Interlocked.CompareExchange<IFuture>(ref _PendingOperation, null, f) != f)
-                throw new InvalidDataException();
+                throw new InvalidOperationException();
         }
 
         private void _OperationOnComplete (IFuture f) {

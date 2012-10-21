@@ -38,6 +38,8 @@ _ReSharper.*
 /Squared/RenderLib/Content/bin
 /Squared/TaskLib/obj
 /Squared/TaskLib/bin
+/Squared/TaskLib/PSM/obj
+/Squared/TaskLib/PSM/bin
 /Squared/TaskLib/TaskLibTests/obj
 /Squared/TaskLib/TaskLibTests/bin
 /Squared/Util/obj

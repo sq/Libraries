@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Linq;
 
-#if !XBOX
+#if WINDOWS || MONO
+using System.Linq;
 using System.Linq.Expressions;
 using Squared.Util.Bind;
 #endif
@@ -668,7 +669,7 @@ namespace Squared.Task {
             target.RegisterOnComplete(handler);
         }
 
-#if !XBOX
+#if WINDOWS || MONO
         public static IFuture Bind<T> (this IFuture future, Expression<Func<T>> target) {
             var member = BoundMember.New(target);
 

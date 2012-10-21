@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using Squared.Util;
 using Squared.Util.Event;
 using System.Collections;
+using System.Linq;
 
-#if !XBOX
+#if WINDOWS || MONO
 using System.Linq.Expressions;
 #endif
 
@@ -76,7 +76,7 @@ namespace Squared.Task {
             return rtc;
         }
 
-#if !XBOX
+#if WINDOWS || MONO
         public static StoreResult<T> Bind<T> (this IEnumerator<object> task, Expression<Func<T>> target) {
             var sr = new StoreResult<T>(task, target);
             return sr;
@@ -84,7 +84,7 @@ namespace Squared.Task {
 #endif
     }
 
-#if !XBOX
+#if WINDOWS || MONO
     /// <summary>
     /// Schedules a task to run to completion and store its result into a target field or property.
     /// </summary>

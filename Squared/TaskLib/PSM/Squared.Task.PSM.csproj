@@ -5,11 +5,11 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>10.0.0</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{F1D00A92-7921-40CD-BD53-F1D05D16325D}</ProjectGuid>
+    <ProjectGuid>{173ABDCA-7278-46FF-A300-D3BF8CCEF182}</ProjectGuid>
     <ProjectTypeGuids>{69878862-DA7D-4DC6-B0A1-50D8FAB4242F};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <OutputType>Library</OutputType>
-    <RootNamespace>Squared.Util</RootNamespace>
-    <AssemblyName>Squared.Util.PSM</AssemblyName>
+    <RootNamespace>Squared.Task</RootNamespace>
+    <AssemblyName>Squared.Task.PSM</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -32,37 +32,28 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Xml" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Xml" />
     <Reference Include="Sce.PlayStation.Core" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Sce\Sce.Psm.CSharp.targets" />
   <ItemGroup>
-    <Compile Include="..\Arithmetic.cs">
-      <Link>Arithmetic.cs</Link>
-    </Compile>
-    <Compile Include="..\Interpolators.cs">
-      <Link>Interpolators.cs</Link>
-    </Compile>
-    <Compile Include="..\Curve.cs">
-      <Link>Curve.cs</Link>
-    </Compile>
-    <Compile Include="..\EventBus.cs" />
-    <Compile Include="..\PriorityQueue.cs">
-      <Link>PriorityQueue.cs</Link>
-    </Compile>
-    <Compile Include="..\Tuples.cs">
-      <Link>Tuples.cs</Link>
-    </Compile>
-    <Compile Include="..\UnorderedList.cs">
-      <Link>UnorderedList.cs</Link>
-    </Compile>
-    <Compile Include="..\Buffer.cs">
-      <Link>Buffer.cs</Link>
-    </Compile>
-    <Compile Include="..\Sort.cs">
-      <Link>Sort.cs</Link>
-    </Compile>
-    <Compile Include="..\TimeProvider.cs" />
+    <Compile Include="..\BlockingQueue.cs" />
+    <Compile Include="..\Future.cs" />
+    <Compile Include="..\IO.cs" />
+    <Compile Include="..\JobQueue.cs" />
+    <Compile Include="..\Network.cs" />
+    <Compile Include="..\Properties\AssemblyInfo.cs" />
+    <Compile Include="..\SchedulableGeneratorThunk.cs" />
+    <Compile Include="..\Sockets.cs" />
+    <Compile Include="..\TaskScheduler.cs" />
+    <Compile Include="..\Util.cs" />
+    <Compile Include="..\WorkerThread.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Util\PSM\Squared.Util.PSM.csproj">
+      <Project>{F1D00A92-7921-40CD-BD53-F1D05D16325D}</Project>
+      <Name>Squared.Util.PSM</Name>
+    </ProjectReference>
   </ItemGroup>
 </Project>
