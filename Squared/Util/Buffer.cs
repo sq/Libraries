@@ -109,19 +109,19 @@ namespace Squared.Util {
         }
     }
 
-    public class CharacterBuffer : IDisposable {
+    public class GrowableBuffer<T> : IDisposable {
         public static int DefaultBufferSize = 1024;
 
-        private BufferPool<char>.Buffer _Buffer;
-        private char[] _Data;
-        private int _Length = 0;
+        protected BufferPool<T>.Buffer _Buffer;
+        protected T[] _Data;
+        protected int _Length = 0;
 
-        public CharacterBuffer () {
+        public GrowableBuffer () {
             ResizeBuffer(DefaultBufferSize);
         }
 
         private void ResizeBuffer (int size) {
-            BufferPool<char>.Buffer temp = BufferPool<char>.Allocate(size);
+            BufferPool<T>.Buffer temp = BufferPool<T>.Allocate(size);
 
             if (_Buffer.Data != null) {
                 Array.Copy(_Buffer.Data, temp.Data, _Length);
@@ -132,10 +132,12 @@ namespace Squared.Util {
             _Data = _Buffer.Data;
         }
 
-        public string DisposeAndGetContents () {
-            string result = ToString();
+        public void DisposeAndGetContents (T[] output, int offset, int count = -1) {
+            if (count <= -1)
+                count = _Length;
+            Array.Copy(_Data, 0, output, offset, count);
+
             Dispose();
-            return result;
         }
 
         public void Dispose () {
@@ -156,7 +158,7 @@ namespace Squared.Util {
                 ResizeBuffer(bufferSize);
         }
 
-        public void Append (char[] source, int offset, int count) {
+        public void Append (T[] source, int offset, int count) {
             int newLength = _Length + count;
             int bufferSize = _Data.Length;
 
@@ -170,12 +172,12 @@ namespace Squared.Util {
             _Length += count;
         }
 
-        public void Append (char character) {
+        public void Append (T item) {
             int bufferSize = _Data.Length;
             if (_Length == bufferSize)
                 ResizeBuffer(bufferSize * 2);
 
-            _Data[_Length] = character;
+            _Data[_Length] = item;
             _Length += 1;
         }
 
@@ -194,11 +196,7 @@ namespace Squared.Util {
             _Length = 0;
         }
 
-        public override string ToString () {
-            return new String(_Data, 0, _Length);
-        }
-
-        public char this[int index] {
+        public T this[int index] {
             get {
                 return _Data[index];
             }
@@ -217,6 +215,18 @@ namespace Squared.Util {
             get {
                 return _Length;
             }
+        }
+    }
+
+    public class CharacterBuffer : GrowableBuffer<char> {
+        new public string DisposeAndGetContents () {
+            string result = ToString();
+            Dispose();
+            return result;
+        }
+ 
+        public override string ToString () {
+            return new String(_Data, 0, _Length);
         }
     }
 }

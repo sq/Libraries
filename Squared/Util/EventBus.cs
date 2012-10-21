@@ -215,10 +215,10 @@ namespace Squared.Util.Event {
         public static readonly object AnySource = "<Any Source>";
         public static readonly string AnyType = "<Any Type>";
 
-        private Dictionary<string, EventCategoryToken> _Categories = 
+        protected readonly Dictionary<string, EventCategoryToken> _Categories = 
             new Dictionary<string, EventCategoryToken>();
 
-        private Dictionary<EventFilter, EventSubscriberList> _Subscribers =
+        protected readonly Dictionary<EventFilter, EventSubscriberList> _Subscribers =
             new Dictionary<EventFilter, EventSubscriberList>(new EventFilterComparer());
 
         private static void CreateFilter (object source, string type, out EventFilter filter, bool weak) {
@@ -280,12 +280,12 @@ namespace Squared.Util.Event {
             return false;
         }
 
-        public void Broadcast (object source, string type, object arguments) {
-            if (source == null)
-                throw new ArgumentNullException("source");
-            if (type == null)
-                throw new ArgumentNullException("type");
+        // Return false to suppress dispatch of the event to subscribers
+        protected virtual bool OnBroadcast (object source, string type, object arguments) {
+            return true;
+        }
 
+        protected void BroadcastToSubscribers (object source, string type, object arguments) {
             EventInfo info = null;
             EventSubscriberList subscribers;
             EventFilter filter;
@@ -306,20 +306,20 @@ namespace Squared.Util.Event {
                     case 0:
                     case 1:
                         sourceFilter = AnySource;
-                    break;
+                        break;
                     case 2:
                     case 3:
                         sourceFilter = categoryToken;
-                    break;
+                        break;
                     default:
                         sourceFilter = source;
-                    break;
+                        break;
                 }
 
                 if ((sourceFilter == null) || (typeFilter == null))
                     continue;
 
-                CreateFilter(                    
+                CreateFilter(
                     sourceFilter,
                     typeFilter,
                     out filter,
@@ -350,6 +350,18 @@ namespace Squared.Util.Event {
             }
         }
 
+        public void Broadcast (object source, string type, object arguments) {
+            if (source == null)
+                throw new ArgumentNullException("source");
+            if (type == null)
+                throw new ArgumentNullException("type");
+
+            if (!OnBroadcast(source, type, arguments))
+                return;
+
+            BroadcastToSubscribers(source, type, arguments);
+        }
+
         public int Compact () {
             int result = 0;
             var keys = new EventFilter[_Subscribers.Count];
@@ -369,7 +381,7 @@ namespace Squared.Util.Event {
             return new EventThunk(this, sender, type);
         }
 
-        public void Dispose () {
+        public virtual void Dispose () {
             _Subscribers.Clear();
         }
     }
