@@ -221,17 +221,17 @@ namespace Squared.Render {
         where T : struct, IVertexType {
 
         private ArrayPoolAllocator<T> _Allocator;
-        private Action<object> _MaterialSetup;
-        private object _MaterialSetupUserData;
+        private Action<DeviceManager, object> _BatchSetup;
+        private object _UserData;
 
-        public void Initialize (IBatchContainer container, int layer, Material material, Action<object> materialSetup, object materialSetupUserData) {
+        public void Initialize (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup, object userData) {
             base.Initialize(container, layer, material);
 
             if (_Allocator == null)
                 _Allocator = container.RenderManager.GetArrayAllocator<T>();
 
-            _MaterialSetup = materialSetup;
-            _MaterialSetupUserData = materialSetupUserData;
+            _BatchSetup = batchSetup;
+            _UserData = userData;
         }
 
         public Internal.VertexBuffer<T> CreateBuffer (int capacity) {
@@ -296,8 +296,8 @@ namespace Squared.Render {
             if (_DrawCalls.Count == 0)
                 return;
 
-            if (_MaterialSetup != null)
-                _MaterialSetup(_MaterialSetupUserData);
+            if (_BatchSetup != null)
+                _BatchSetup(manager, _UserData);
 
             using (manager.ApplyMaterial(Material)) {
                 var device = manager.Device;
@@ -316,14 +316,14 @@ namespace Squared.Render {
             }
         }
 
-        public static PrimitiveBatch<T> New (IBatchContainer container, int layer, Material material, Action<object> materialSetup = null, object materialSetupUserData = null) {
+        public static PrimitiveBatch<T> New (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup = null, object userData = null) {
             if (container == null)
                 throw new ArgumentNullException("container");
             if (material == null)
                 throw new ArgumentNullException("material");
 
             var result = container.RenderManager.AllocateBatch<PrimitiveBatch<T>>();
-            result.Initialize(container, layer, material, materialSetup, materialSetupUserData);
+            result.Initialize(container, layer, material, batchSetup, userData);
             return result;
         }
     }

@@ -839,9 +839,7 @@ namespace Squared.Render {
     }
 
     public class BatchGroup : ListBatch<Batch>, IBatchContainer {
-        public void Initialize (IBatchContainer container, int layer) {
-            base.Initialize(container, layer, null);
-        }
+        Action<DeviceManager> _Before, _After;
 
         public override void Prepare () {
             _DrawCalls.Sort(Frame.BatchComparer);
@@ -851,18 +849,33 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            foreach (var batch in _DrawCalls)
-                batch.Issue(manager);
+            if (_Before != null)
+                _Before(manager);
+
+            try {
+                foreach (var batch in _DrawCalls)
+                    batch.Issue(manager);
+            } finally {
+                if (_After != null)
+                    _After(manager);
+            }
         }
 
-        public static BatchGroup New (IBatchContainer container, int layer) {
+        public static BatchGroup New (IBatchContainer container, int layer, Action<DeviceManager> before = null, Action<DeviceManager> after = null) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
-            result.Initialize(container, layer);
+            result.Initialize(container, layer, before, after);
 
             return result;
+        }
+
+        public void Initialize (IBatchContainer container, int layer, Action<DeviceManager> before, Action<DeviceManager> after) {
+            base.Initialize(container, layer, null);
+
+            _Before = before;
+            _After = after;
         }
 
         RenderManager IBatchContainer.RenderManager {
