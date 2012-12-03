@@ -143,7 +143,7 @@ namespace Pong {
         }
 
         public override void Draw(GameTime gameTime, Frame frame) {
-            ClearBatch.AddNew(frame, 4, Color.Black, Materials.Clear);
+            ClearBatch.AddNew(frame, 4, Materials.Clear, clearColor: Color.Black);
 
             using (var gb = GeometryBatch<VertexPositionColor>.New(frame, 5, Materials.ScreenSpaceGeometry)) {
                 gb.AddGradientFilledQuad(
@@ -216,7 +216,7 @@ namespace Pong {
 
             if (FirstFrame) {
                 // If it's the first time we've rendered, we erase the trail buffer since it could contain anything
-                ClearBatch.AddNew(frame, 1, Color.Black, Materials.Clear);
+                ClearBatch.AddNew(frame, 1, Materials.Clear, clearColor: Color.Black);
                 FirstFrame = false;
             } else {
                 // Otherwise, we fade out the contents of the trail buffer
