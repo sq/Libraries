@@ -394,6 +394,111 @@ namespace Squared.Render {
         }
     }
 
+    public class NativeBatch : ListBatch<NativeDrawCall> {
+        private Action<DeviceManager, object> _BatchSetup;
+        private object _UserData;
+
+        public void Initialize (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup, object userData) {
+            base.Initialize(container, layer, material);
+
+            _BatchSetup = batchSetup;
+            _UserData = userData;
+        }
+
+        public void Add (NativeDrawCall item) {
+            Add(ref item);
+        }
+
+        new public void Add (ref NativeDrawCall item) {
+            base.Add(ref item);
+        }
+
+        public override void Prepare () {
+        }
+
+        public override void Issue (DeviceManager manager) {
+            if (_DrawCalls.Count == 0)
+                return;
+
+            if (_BatchSetup != null)
+                _BatchSetup(manager, _UserData);
+
+            using (manager.ApplyMaterial(Material)) {
+                var device = manager.Device;
+
+                foreach (var call in _DrawCalls) {
+                    device.SetVertexBuffer(call.VertexBuffer, call.VertexOffset);
+                    device.Indices = call.IndexBuffer;
+
+                    if (call.IndexBuffer != null)
+                        device.DrawIndexedPrimitives(call.PrimitiveType, call.BaseVertex, call.MinVertexIndex, call.NumVertices, call.StartIndex, call.PrimitiveCount);
+                    else
+                        device.DrawPrimitives(call.PrimitiveType, call.StartVertex, call.PrimitiveCount);
+
+                }
+
+                device.SetVertexBuffer(null);
+                device.Indices = null;
+            }
+        }
+
+        public static NativeBatch New (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup = null, object userData = null) {
+            if (container == null)
+                throw new ArgumentNullException("container");
+            if (material == null)
+                throw new ArgumentNullException("material");
+
+            var result = container.RenderManager.AllocateBatch<NativeBatch>();
+            result.Initialize(container, layer, material, batchSetup, userData);
+            return result;
+        }
+    }
+
+    public struct NativeDrawCall {
+        public readonly PrimitiveType PrimitiveType;
+        public readonly VertexBuffer VertexBuffer;
+        public readonly IndexBuffer IndexBuffer;
+
+        public readonly int VertexOffset;
+        public readonly int BaseVertex;
+        public readonly int MinVertexIndex;
+        public readonly int NumVertices;
+        public readonly int StartIndex;
+        public readonly int StartVertex;
+        public readonly int PrimitiveCount;
+
+        public NativeDrawCall (PrimitiveType primitiveType, VertexBuffer vertexBuffer, int vertexOffset, IndexBuffer indexBuffer, int baseVertex, int minVertexIndex, int numVertices, int startIndex, int primitiveCount) {
+            if (vertexBuffer == null)
+                throw new ArgumentNullException("vertexBuffer");
+
+            PrimitiveType = primitiveType;
+            VertexBuffer = vertexBuffer;
+            VertexOffset = vertexOffset;
+            IndexBuffer = indexBuffer;
+            BaseVertex = baseVertex;
+            MinVertexIndex = minVertexIndex;
+            NumVertices = numVertices;
+            StartIndex = startIndex;
+            PrimitiveCount = primitiveCount;
+
+            StartVertex = 0;
+        }
+
+        public NativeDrawCall (PrimitiveType primitiveType, VertexBuffer vertexBuffer, int vertexOffset, int startVertex, int primitiveCount) {
+            if (vertexBuffer == null)
+                throw new ArgumentNullException("vertexBuffer");
+
+            PrimitiveType = primitiveType;
+            VertexBuffer = vertexBuffer;
+            VertexOffset = vertexOffset;
+            StartVertex = startVertex;
+            PrimitiveCount = primitiveCount;
+
+            IndexBuffer = null;
+            BaseVertex = MinVertexIndex = NumVertices = StartIndex = 0;
+        }
+    }
+
     public static class Primitives {
         public static void FilledArc (PrimitiveBatch<VertexPositionColor> batch, Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, Color startColor, Color endColor) {
             FilledArc(batch, center, new Vector2(innerRadius, innerRadius), new Vector2(outerRadius, outerRadius), startAngle, endAngle, startColor, endColor);
