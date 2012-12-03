@@ -24,8 +24,8 @@ namespace Squared.Render {
             _FontTexture = typeof(SpriteFont).GetField("textureValue", BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
-        public void Initialize (Frame frame, int layer, Material material, SpriteBatch spriteBatch, SpriteFont font, Matrix? transformMatrix) {
-            base.Initialize(frame, layer, material);
+        public void Initialize (IBatchContainer container, int layer, Material material, SpriteBatch spriteBatch, SpriteFont font, Matrix? transformMatrix) {
+            base.Initialize(container, layer, material);
             SpriteBatch = spriteBatch;
             Font = font;
             TransformMatrix = transformMatrix;
@@ -146,18 +146,14 @@ namespace Squared.Render {
             base.Add(ref sdc);
         }
 
-        public static StringBatch New (Frame frame, int layer, Material material, SpriteBatch spriteBatch, SpriteFont font) {
-            return New(frame, layer, material, spriteBatch, font, null);
-        }
-
-        public static StringBatch New (Frame frame, int layer, Material material, SpriteBatch spriteBatch, SpriteFont font, Matrix? transformMatrix) {
-            if (frame == null)
-                throw new ArgumentNullException("frame");
+        public static StringBatch New (IBatchContainer container, int layer, Material material, SpriteBatch spriteBatch, SpriteFont font, Matrix? transformMatrix = null) {
+            if (container == null)
+                throw new ArgumentNullException("container");
             if (material == null)
                 throw new ArgumentNullException("material");
 
-            var result = frame.RenderManager.AllocateBatch<StringBatch>();
-            result.Initialize(frame, layer, material, spriteBatch, font, transformMatrix);
+            var result = container.RenderManager.AllocateBatch<StringBatch>();
+            result.Initialize(container, layer, material, spriteBatch, font, transformMatrix);
             return result;
         }
     }

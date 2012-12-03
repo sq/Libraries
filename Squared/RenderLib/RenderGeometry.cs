@@ -157,18 +157,18 @@ namespace Squared.Render {
         internal ArrayPoolAllocator<short> IndexAllocator;
         internal int VertexCount = 0, IndexCount = 0, Count = 0;
 
-        public override void Initialize (Frame frame, int layer, Material material) {
+        public override void Initialize (IBatchContainer container, int layer, Material material) {
             if (_VertexBuilder == null)
                 throw new InvalidOperationException("You must set a VertexBuilder for this vertex type before creating GeometryBatches");
 
-            base.Initialize(frame, layer, material);
+            base.Initialize(container, layer, material);
 
-            InnerBatch = PrimitiveBatch<T>.New(frame, layer, material);
+            InnerBatch = PrimitiveBatch<T>.New(container, layer, material);
 
             if (VertexAllocator == null)
-                VertexAllocator = frame.RenderManager.GetArrayAllocator<GeometryVertex>();
+                VertexAllocator = container.RenderManager.GetArrayAllocator<GeometryVertex>();
             if (IndexAllocator == null)
-                IndexAllocator = frame.RenderManager.GetArrayAllocator<short>();
+                IndexAllocator = container.RenderManager.GetArrayAllocator<short>();
 
             Count = VertexCount = IndexCount = 0;
         }
@@ -254,14 +254,14 @@ namespace Squared.Render {
             base.ReleaseResources();
         }
 
-        public static GeometryBatch<T> New (Frame frame, int layer, Material material) {
-            if (frame == null)
-                throw new ArgumentNullException("frame");
+        public static GeometryBatch<T> New (IBatchContainer container, int layer, Material material) {
+            if (container == null)
+                throw new ArgumentNullException("container");
             if (material == null)
                 throw new ArgumentNullException("material");
 
-            var result = frame.RenderManager.AllocateBatch<GeometryBatch<T>>();
-            result.Initialize(frame, layer, material);
+            var result = container.RenderManager.AllocateBatch<GeometryBatch<T>>();
+            result.Initialize(container, layer, material);
             return result;
         }
 

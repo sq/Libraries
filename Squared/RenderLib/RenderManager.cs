@@ -44,6 +44,11 @@ namespace Squared.Render {
         }
     }
 
+    public interface IBatchContainer {
+        void Add (Batch batch);
+        RenderManager RenderManager { get; }
+    }
+
     public sealed class DeviceManager {
         public struct ActiveMaterial : IDisposable {
             public readonly DeviceManager DeviceManager;
@@ -331,7 +336,7 @@ namespace Squared.Render {
     }
 
     // Thread-safe
-    public sealed class Frame : IDisposable {
+    public sealed class Frame : IDisposable, IBatchContainer {
         private const int State_Initialized = 0;
         private const int State_Preparing = 1;
         private const int State_Prepared = 2;
@@ -355,6 +360,12 @@ namespace Squared.Render {
         // If you allocate a frame manually instead of using the pool, you'll need to initialize it
         //  yourself using Initialize (below).
         public Frame () {
+        }
+
+        RenderManager IBatchContainer.RenderManager {
+            get {
+                return RenderManager;
+            }
         }
 
         internal void Initialize (RenderManager renderManager, int index) {
@@ -427,21 +438,22 @@ namespace Squared.Render {
     }
 
     public abstract class Batch : IDisposable {
-        internal Frame Frame;
-        internal int Layer;
-        internal Material Material;
+        public IBatchContainer Container;
+        public int Layer;
+        public Material Material;
+
         internal int Index;
         internal bool Released;
         internal IBatchPool Pool;
 
         protected static int _BatchCount = 0;
 
-        public virtual void Initialize (Frame frame, int layer, Material material) {
+        public virtual void Initialize (IBatchContainer container, int layer, Material material) {
             if ((material != null) && (material.IsDisposed))
                 throw new ObjectDisposedException("material");
 
             Released = false;
-            Frame = frame;
+            Container = container;
             Layer = layer;
             Material = material;
 
@@ -467,7 +479,7 @@ namespace Squared.Render {
         // In the render framework, disposing a batch marks it as 'ready to render'.
         // Yes, this is terrible. But using(batch) is too good to pass up!
         public virtual void Dispose () {
-            Frame.Add(this);
+            Container.Add(this);
         }
     }
 
@@ -609,8 +621,8 @@ namespace Squared.Render {
             256, 128, 1024
         );
 
-        public override void Initialize (Frame frame, int layer, Material material) {
-            base.Initialize(frame, layer, material);
+        public override void Initialize (IBatchContainer container, int layer, Material material) {
+            base.Initialize(container, layer, material);
 
             _DrawCalls = _ListPool.Allocate();
         }
@@ -634,13 +646,15 @@ namespace Squared.Render {
     }
 
     public class ClearBatch : Batch {
-        public Color ClearColor;
-        public float ClearZ;
+        public Color? ClearColor;
+        public float? ClearZ;
+        public int? ClearStencil;
 
-        public void Initialize (Frame frame, int layer, Color clearColor, Material material, float clearZ) {
-            base.Initialize(frame, layer, material);
-            ClearZ = clearZ;
+        public void Initialize (IBatchContainer container, int layer, Material material, Color? clearColor, float? clearZ, int? clearStencil) {
+            base.Initialize(container, layer, material);
             ClearColor = clearColor;
+            ClearZ = clearZ;
+            ClearStencil = clearStencil;
         }
 
         public override void Prepare () {
@@ -648,31 +662,28 @@ namespace Squared.Render {
 
         public override void Issue (DeviceManager manager) {
             using (manager.ApplyMaterial(Material)) {
-                var clearOptions = ClearOptions.Target;
-                var rtbs = manager.Device.GetRenderTargets();
-                if ((rtbs != null) && (rtbs.Length > 0)) {
-                    var rt = (RenderTarget2D)rtbs[0].RenderTarget;
+                var clearOptions = default(ClearOptions);
 
-                    if (rt.DepthStencilFormat != DepthFormat.None)
-                        clearOptions |= ClearOptions.DepthBuffer;
-                } else {
-                    if (manager.Device.PresentationParameters.DepthStencilFormat != DepthFormat.None)
-                        clearOptions |= ClearOptions.DepthBuffer;
-                }
+                if (ClearColor.HasValue)
+                    clearOptions |= ClearOptions.Target;
+                if (ClearZ.HasValue)
+                    clearOptions |= ClearOptions.DepthBuffer;
+                if (ClearStencil.HasValue)
+                    clearOptions |= ClearOptions.Stencil;
 
                 manager.Device.Clear(
                     clearOptions,
-                    ClearColor, ClearZ, 0
+                    ClearColor.GetValueOrDefault(Color.Black), ClearZ.GetValueOrDefault(0), ClearStencil.GetValueOrDefault(0)
                 );
             }
         }
 
-        public static void AddNew (Frame frame, int layer, Color clearColor, Material material, float clearZ = 0) {
-            if (frame == null)
-                throw new ArgumentNullException("frame");
+        public static void AddNew (IBatchContainer container, int layer, Material material, Color? clearColor = null, float? clearZ = null, int? clearStencil = null) {
+            if (container == null)
+                throw new ArgumentNullException("container");
 
-            var result = frame.RenderManager.AllocateBatch<ClearBatch>();
-            result.Initialize(frame, layer, clearColor, material, clearZ);
+            var result = container.RenderManager.AllocateBatch<ClearBatch>();
+            result.Initialize(container, layer, material, clearColor, clearZ, clearStencil);
             result.Dispose();
         }
     }
@@ -680,8 +691,8 @@ namespace Squared.Render {
     public class SetRenderTargetBatch : Batch {
         public RenderTarget2D RenderTarget;
 
-        public void Initialize (Frame frame, int layer, RenderTarget2D renderTarget) {
-            base.Initialize(frame, layer, null);
+        public void Initialize (IBatchContainer container, int layer, RenderTarget2D renderTarget) {
+            base.Initialize(container, layer, null);
             RenderTarget = renderTarget;
         }
 
@@ -692,12 +703,12 @@ namespace Squared.Render {
             manager.Device.SetRenderTarget(RenderTarget);
         }
 
-        public static void AddNew (Frame frame, int layer, RenderTarget2D renderTarget) {
-            if (frame == null)
+        public static void AddNew (IBatchContainer container, int layer, RenderTarget2D renderTarget) {
+            if (container == null)
                 throw new ArgumentNullException("frame");
 
-            var result = frame.RenderManager.AllocateBatch<SetRenderTargetBatch>();
-            result.Initialize(frame, layer, renderTarget);
+            var result = container.RenderManager.AllocateBatch<SetRenderTargetBatch>();
+            result.Initialize(container, layer, renderTarget);
             result.Dispose();
         }
     }
@@ -824,6 +835,51 @@ namespace Squared.Render {
                     }
                 }
             }
+        }
+    }
+
+    public class BatchGroup : ListBatch<Batch>, IBatchContainer {
+        public void Initialize (IBatchContainer container, int layer) {
+            base.Initialize(container, layer, null);
+        }
+
+        public override void Prepare () {
+            _DrawCalls.Sort(Frame.BatchComparer);
+
+            foreach (var batch in _DrawCalls)
+                batch.Prepare();
+        }
+
+        public override void Issue (DeviceManager manager) {
+            foreach (var batch in _DrawCalls)
+                batch.Issue(manager);
+        }
+
+        public static BatchGroup New (IBatchContainer container, int layer) {
+            if (container == null)
+                throw new ArgumentNullException("container");
+
+            var result = container.RenderManager.AllocateBatch<BatchGroup>();
+            result.Initialize(container, layer);
+
+            return result;
+        }
+
+        RenderManager IBatchContainer.RenderManager {
+            get {
+                return Container.RenderManager;
+            }
+        }
+
+        public void Add (Batch batch) {
+            _DrawCalls.Add(batch);
+        }
+
+        public override void ReleaseResources () {
+            foreach (var batch in _DrawCalls)
+                batch.ReleaseResources();
+
+            base.ReleaseResources();
         }
     }
 }

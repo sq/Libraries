@@ -131,23 +131,23 @@ namespace Squared.Render {
             return result;
         }
 
-        public static BitmapBatch New (Frame frame, int layer, Material material, SamplerState samplerState = null, bool useZBuffer = false) {
-            if (frame == null)
-                throw new ArgumentNullException("frame");
+        public static BitmapBatch New (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, bool useZBuffer = false) {
+            if (container == null)
+                throw new ArgumentNullException("container");
             if (material == null)
                 throw new ArgumentNullException("material");
 
-            var result = frame.RenderManager.AllocateBatch<BitmapBatch>();
-            result.Initialize(frame, layer, material, samplerState, useZBuffer);
+            var result = container.RenderManager.AllocateBatch<BitmapBatch>();
+            result.Initialize(container, layer, material, samplerState, useZBuffer);
             return result;
         }
 
-        public void Initialize (Frame frame, int layer, Material material, SamplerState samplerState = null, bool useZBuffer = false) {
-            base.Initialize(frame, layer, material);
+        public void Initialize (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, bool useZBuffer = false) {
+            base.Initialize(container, layer, material);
 
             SamplerState = samplerState ?? SamplerState.LinearClamp;
 
-            _Allocator = frame.RenderManager.GetArrayAllocator<BitmapVertex>();
+            _Allocator = container.RenderManager.GetArrayAllocator<BitmapVertex>();
             _NativeBatches = _NativePool.Allocate();
 
             UseZBuffer = useZBuffer;

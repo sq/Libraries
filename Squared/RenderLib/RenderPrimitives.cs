@@ -121,7 +121,7 @@ namespace Squared.Render.Internal {
 
         public PrimitiveDrawCall<T> GetDrawCallTriangleFan (Batch batch) {
             int primCount = Count - 2;
-            var ibuf = batch.Frame.RenderManager.GetArrayAllocator<short>().Allocate(primCount * 3);
+            var ibuf = batch.Container.RenderManager.GetArrayAllocator<short>().Allocate(primCount * 3);
             var indices = ibuf.Buffer;
 
             for (int i = 2, j = 0; i < Count; i++, j += 3) {
@@ -222,11 +222,11 @@ namespace Squared.Render {
 
         private ArrayPoolAllocator<T> _Allocator;
 
-        public override void Initialize (Frame frame, int layer, Material material) {
-            base.Initialize(frame, layer, material);
+        public override void Initialize (IBatchContainer container, int layer, Material material) {
+            base.Initialize(container, layer, material);
 
             if (_Allocator == null)
-                _Allocator = frame.RenderManager.GetArrayAllocator<T>();
+                _Allocator = container.RenderManager.GetArrayAllocator<T>();
         }
 
         public Internal.VertexBuffer<T> CreateBuffer (int capacity) {
@@ -308,14 +308,14 @@ namespace Squared.Render {
             }
         }
 
-        public static PrimitiveBatch<T> New (Frame frame, int layer, Material material) {
-            if (frame == null)
-                throw new ArgumentNullException("frame");
+        public static PrimitiveBatch<T> New (IBatchContainer container, int layer, Material material) {
+            if (container == null)
+                throw new ArgumentNullException("container");
             if (material == null)
                 throw new ArgumentNullException("material");
 
-            var result = frame.RenderManager.AllocateBatch<PrimitiveBatch<T>>();
-            result.Initialize(frame, layer, material);
+            var result = container.RenderManager.AllocateBatch<PrimitiveBatch<T>>();
+            result.Initialize(container, layer, material);
             return result;
         }
     }

@@ -33,6 +33,7 @@ namespace Squared.Render {
     }
 
     public abstract class MaterialSetBase : IDisposable {
+        protected List<Material> ExtraMaterials = new List<Material>();
         protected FieldInfo[] MaterialFields;
         protected FieldInfo[] MaterialDictionaryFields;
 
@@ -89,7 +90,18 @@ namespace Squared.Render {
                         if (material != null)
                             yield return material;
                 }
+
+                foreach (var material in ExtraMaterials)
+                    yield return material;
             }
+        }
+
+        public void Add (Material extraMaterial) {
+            ExtraMaterials.Add(extraMaterial);
+        }
+
+        public bool Remove (Material extraMaterial) {
+            return ExtraMaterials.Remove(extraMaterial);
         }
 
         public void Dispose () {
