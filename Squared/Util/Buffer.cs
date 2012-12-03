@@ -77,6 +77,11 @@ namespace Squared.Util {
         }
 
         public static Buffer Allocate (int size) {
+            if (size > MaxBufferSize) {
+                T[] result = new T[size];
+                return new Buffer(result);
+            }
+
             lock (Pool) {
                 for (int i = Pool.Count - 1; i >= 0; i--) {
                     var item = Pool[i];
