@@ -157,7 +157,7 @@ namespace ThreadedPlatformer {
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
-            ClearBatch.AddNew(frame, -1, Color.CornflowerBlue, materials.Clear);
+            ClearBatch.AddNew(frame, -1, materials.Clear, clearColor: Color.CornflowerBlue);
 
             level.Draw(gameTime, frame, materials);
 

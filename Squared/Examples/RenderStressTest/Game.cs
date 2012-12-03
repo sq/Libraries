@@ -160,7 +160,7 @@ namespace RenderStressTest {
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
-            ClearBatch.AddNew(frame, 0, Color.Black, Materials.Clear);
+            ClearBatch.AddNew(frame, 0, Materials.Clear, clearColor: Color.Black);
 
             ParallelDrawer.UserData.Now = (float)Time.Seconds;
             ParallelDrawer.UserData.Frame = frame;
