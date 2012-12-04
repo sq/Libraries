@@ -839,7 +839,8 @@ namespace Squared.Render {
     }
 
     public class BatchGroup : ListBatch<Batch>, IBatchContainer {
-        Action<DeviceManager> _Before, _After;
+        Action<DeviceManager, object> _Before, _After;
+        private object _UserData;
 
         public override void Prepare () {
             _DrawCalls.Sort(Frame.BatchComparer);
@@ -850,32 +851,33 @@ namespace Squared.Render {
 
         public override void Issue (DeviceManager manager) {
             if (_Before != null)
-                _Before(manager);
+                _Before(manager, _UserData);
 
             try {
                 foreach (var batch in _DrawCalls)
                     batch.Issue(manager);
             } finally {
                 if (_After != null)
-                    _After(manager);
+                    _After(manager, _UserData);
             }
         }
 
-        public static BatchGroup New (IBatchContainer container, int layer, Action<DeviceManager> before = null, Action<DeviceManager> after = null) {
+        public static BatchGroup New (IBatchContainer container, int layer, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
-            result.Initialize(container, layer, before, after);
+            result.Initialize(container, layer, before, after, userData);
 
             return result;
         }
 
-        public void Initialize (IBatchContainer container, int layer, Action<DeviceManager> before, Action<DeviceManager> after) {
+        public void Initialize (IBatchContainer container, int layer, Action<DeviceManager, object> before, Action<DeviceManager, object> after, object userData) {
             base.Initialize(container, layer, null);
 
             _Before = before;
             _After = after;
+            _UserData = userData;
         }
 
         RenderManager IBatchContainer.RenderManager {
