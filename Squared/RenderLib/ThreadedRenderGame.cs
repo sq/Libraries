@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
@@ -33,6 +34,14 @@ namespace Squared.Render {
             }
         }
 
+        public FrameTiming PreviousFrameTiming {
+            get;
+            private set;
+        }
+
+        private readonly Stopwatch Stopwatch = new Stopwatch();
+        private FrameTiming NextFrameTiming;
+
         public MultithreadedGame()
             : base() {
 #if XBOX
@@ -58,15 +67,44 @@ namespace Squared.Render {
         public abstract void Draw(GameTime gameTime, Frame frame);
 
         protected override bool BeginDraw() {
-            return RenderCoordinator.BeginDraw();
+            Stopwatch.Reset();
+            Stopwatch.Start();
+
+            try {
+                return RenderCoordinator.BeginDraw();
+            } finally {
+                Stopwatch.Stop();
+                NextFrameTiming.BeginDraw = Stopwatch.Elapsed;
+            }
         }
 
         sealed protected override void Draw(GameTime gameTime) {
-            Draw(gameTime, RenderCoordinator.Frame);
+            Stopwatch.Reset();
+            Stopwatch.Start();
+
+            try {
+                Draw(gameTime, RenderCoordinator.Frame);
+            } finally {
+                Stopwatch.Stop();
+                NextFrameTiming.Draw = Stopwatch.Elapsed;
+            }
         }
 
         protected override void EndDraw() {
-            RenderCoordinator.EndDraw();
+            Stopwatch.Reset();
+            Stopwatch.Start();
+
+            try {
+                RenderCoordinator.EndDraw();
+            } finally {
+                Stopwatch.Stop();
+                NextFrameTiming.EndDraw = Stopwatch.Elapsed;
+                PreviousFrameTiming = NextFrameTiming;
+            }
         }
+    }
+
+    public struct FrameTiming {
+        public TimeSpan BeginDraw, Draw, EndDraw;
     }
 }
