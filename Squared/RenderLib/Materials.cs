@@ -122,23 +122,26 @@ namespace Squared.Render {
                 null
             );
 
+            var bitmapShader = content.Load<Effect>("SquaredBitmapShader");
+            var geometryShader = content.Load<Effect>("SquaredGeometryShader");
+
             ScreenSpaceBitmap = new EffectMaterial(
-                content.Load<Effect>("SquaredBitmapShader"), 
+                bitmapShader,
                 "ScreenSpaceBitmapTechnique"
             );
 
             WorldSpaceBitmap = new EffectMaterial(
-                content.Load<Effect>("SquaredBitmapShader"),
+                bitmapShader,
                 "WorldSpaceBitmapTechnique"
             );
 
             ScreenSpaceGeometry = new EffectMaterial(
-                content.Load<Effect>("SquaredGeometryShader"),
+                geometryShader,
                 "ScreenSpaceUntextured"
             );
 
             WorldSpaceGeometry = new EffectMaterial(
-                content.Load<Effect>("SquaredGeometryShader"),
+                geometryShader,
                 "WorldSpaceUntextured"
             );
 
@@ -180,6 +183,35 @@ namespace Squared.Render {
                 e.Parameters["ViewportPosition"].SetValue(ViewportPosition);
                 e.Parameters["ProjectionMatrix"].SetValue(ProjectionMatrix);
             }
+        }
+    }
+
+    public class GaussianBlurMaterialSet {
+        public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
+        public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
+
+        public GaussianBlurMaterialSet (MaterialSetBase parent, ContentManager content) {
+            var blurShader = content.Load<Effect>("GaussianBlur");
+
+            parent.Add(ScreenSpaceHorizontalGaussianBlur5Tap = new EffectMaterial(
+                blurShader,
+                "ScreenSpaceHorizontalGaussianBlur5Tap"
+            ));
+
+            parent.Add(ScreenSpaceVerticalGaussianBlur5Tap = new EffectMaterial(
+                blurShader,
+                "ScreenSpaceVerticalGaussianBlur5Tap"
+            ));
+
+            parent.Add(WorldSpaceHorizontalGaussianBlur5Tap = new EffectMaterial(
+                blurShader,
+                "WorldSpaceHorizontalGaussianBlur5Tap"
+            ));
+
+            parent.Add(WorldSpaceVerticalGaussianBlur5Tap = new EffectMaterial(
+                blurShader,
+                "WorldSpaceVerticalGaussianBlur5Tap"
+            ));
         }
     }
 
