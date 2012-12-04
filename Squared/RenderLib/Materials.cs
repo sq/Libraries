@@ -186,6 +186,25 @@ namespace Squared.Render {
         }
     }
 
+    public class LightmapMaterialSet {
+        public Material ScreenSpaceLightmappedBitmap;
+        public Material WorldSpaceLightmappedBitmap;
+
+        public LightmapMaterialSet (MaterialSetBase parent, ContentManager content) {
+            var lightmapShader = content.Load<Effect>("Lightmap");
+
+            parent.Add(ScreenSpaceLightmappedBitmap = new EffectMaterial(
+                lightmapShader,
+                "ScreenSpaceLightmappedBitmap"
+            ));
+
+            parent.Add(WorldSpaceLightmappedBitmap = new EffectMaterial(
+                lightmapShader,
+                "WorldSpaceLightmappedBitmap"
+            ));
+        }
+    }
+
     public class GaussianBlurMaterialSet {
         public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
         public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
