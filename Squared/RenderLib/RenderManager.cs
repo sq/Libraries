@@ -72,6 +72,8 @@ namespace Squared.Render {
             }
         }
 
+        private readonly Stack<RenderTargetBinding[]> RenderTargetStack = new Stack<RenderTargetBinding[]>();
+
         public readonly GraphicsDevice Device;
         private Effect ParameterEffect;
         private Material CurrentMaterial;
@@ -84,6 +86,15 @@ namespace Squared.Render {
 
         public void SetParameterEffect (Effect effect) {
             ParameterEffect = effect;
+        }
+
+        public void PushRenderTarget (RenderTarget2D newRenderTarget) {
+            RenderTargetStack.Push(Device.GetRenderTargets());
+            Device.SetRenderTarget(newRenderTarget);
+        }
+
+        public void PopRenderTarget () {
+            Device.SetRenderTargets(RenderTargetStack.Pop());
         }
 
         public EffectParameterCollection SharedParameters {
@@ -703,6 +714,7 @@ namespace Squared.Render {
             manager.Device.SetRenderTarget(RenderTarget);
         }
 
+        [Obsolete("Use BatchGroup.ForRenderTarget instead.")]
         public static void AddNew (IBatchContainer container, int layer, RenderTarget2D renderTarget) {
             if (container == null)
                 throw new ArgumentNullException("frame");
@@ -860,6 +872,24 @@ namespace Squared.Render {
                 if (_After != null)
                     _After(manager, _UserData);
             }
+        }
+
+        private void SetRenderTargetCallback (DeviceManager dm, object userData) {
+            dm.PushRenderTarget((RenderTarget2D)userData);
+        }
+
+        private void RestoreRenderTargetCallback (DeviceManager dm, object userData) {
+            dm.PopRenderTarget();
+        }
+
+        public static BatchGroup ForRenderTarget (IBatchContainer container, int layer, RenderTarget2D renderTarget) {
+            if (container == null)
+                throw new ArgumentNullException("container");
+
+            var result = container.RenderManager.AllocateBatch<BatchGroup>();
+            result.Initialize(container, layer, result.SetRenderTargetCallback, result.RestoreRenderTargetCallback, renderTarget);
+
+            return result;
         }
 
         public static BatchGroup New (IBatchContainer container, int layer, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null) {
