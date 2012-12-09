@@ -157,7 +157,7 @@ namespace Squared.Render {
         internal ArrayPoolAllocator<short> IndexAllocator;
         internal int VertexCount = 0, IndexCount = 0, Count = 0;
 
-        public override void Initialize (IBatchContainer container, int layer, Material material) {
+        new public void Initialize (IBatchContainer container, int layer, Material material) {
             if (_VertexBuilder == null)
                 throw new InvalidOperationException("You must set a VertexBuilder for this vertex type before creating GeometryBatches");
 
@@ -262,6 +262,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<GeometryBatch<T>>();
             result.Initialize(container, layer, material);
+            result.CaptureStack(0);
             return result;
         }
 

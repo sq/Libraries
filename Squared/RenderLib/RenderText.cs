@@ -154,6 +154,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<StringBatch>();
             result.Initialize(container, layer, material, spriteBatch, font, transformMatrix);
+            result.CaptureStack(0);
             return result;
         }
     }

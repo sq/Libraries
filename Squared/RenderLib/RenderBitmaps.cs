@@ -139,6 +139,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<BitmapBatch>();
             result.Initialize(container, layer, material, samplerState, useZBuffer);
+            result.CaptureStack(0);
             return result;
         }
 

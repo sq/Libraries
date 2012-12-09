@@ -324,6 +324,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<PrimitiveBatch<T>>();
             result.Initialize(container, layer, material, batchSetup, userData);
+            result.CaptureStack(0);
             return result;
         }
     }
@@ -450,6 +451,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<NativeBatch>();
             result.Initialize(container, layer, material, batchSetup, userData);
+            result.CaptureStack(0);
             return result;
         }
     }

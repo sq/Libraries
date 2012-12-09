@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Squared.Util;
@@ -425,7 +426,7 @@ namespace Squared.Render {
 
             int c = Batches.Count;
             for (int i = 0; i < c; i++)
-                Batches[i].Issue(dm);
+                Batches[i].IssueAndWrapExceptions(dm);
 
             dm.Finish();
 
@@ -449,6 +450,9 @@ namespace Squared.Render {
     }
 
     public abstract class Batch : IDisposable {
+        public static bool CaptureStackTraces = false;
+
+        public StackTrace StackTrace;
         public IBatchContainer Container;
         public int Layer;
         public Material Material;
@@ -459,16 +463,22 @@ namespace Squared.Render {
 
         protected static int _BatchCount = 0;
 
-        public virtual void Initialize (IBatchContainer container, int layer, Material material) {
+        protected void Initialize (IBatchContainer container, int layer, Material material) {
             if ((material != null) && (material.IsDisposed))
                 throw new ObjectDisposedException("material");
 
+            StackTrace = null;
             Released = false;
             Container = container;
             Layer = layer;
             Material = material;
 
             Index = Interlocked.Increment(ref _BatchCount);
+        }
+
+        public void CaptureStack (int extraFramesToSkip) {
+            if (CaptureStackTraces)
+                StackTrace = new StackTrace(2 + extraFramesToSkip, true);
         }
 
         // This is where you should do any computation necessary to prepare a batch for rendering.
@@ -632,7 +642,7 @@ namespace Squared.Render {
             256, 128, 1024
         );
 
-        public override void Initialize (IBatchContainer container, int layer, Material material) {
+        new protected void Initialize (IBatchContainer container, int layer, Material material) {
             base.Initialize(container, layer, material);
 
             _DrawCalls = _ListPool.Allocate();
@@ -695,6 +705,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<ClearBatch>();
             result.Initialize(container, layer, material, clearColor, clearZ, clearStencil);
+            result.CaptureStack(0);
             result.Dispose();
         }
     }
@@ -721,6 +732,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<SetRenderTargetBatch>();
             result.Initialize(container, layer, renderTarget);
+            result.CaptureStack(0);
             result.Dispose();
         }
     }
@@ -867,7 +879,7 @@ namespace Squared.Render {
 
             try {
                 foreach (var batch in _DrawCalls)
-                    batch.Issue(manager);
+                    batch.IssueAndWrapExceptions(manager);
             } finally {
                 if (_After != null)
                     _After(manager, _UserData);
@@ -888,6 +900,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
             result.Initialize(container, layer, result.SetRenderTargetCallback, result.RestoreRenderTargetCallback, renderTarget);
+            result.CaptureStack(0);
 
             return result;
         }
@@ -898,6 +911,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
             result.Initialize(container, layer, before, after, userData);
+            result.CaptureStack(0);
 
             return result;
         }
@@ -925,6 +939,41 @@ namespace Squared.Render {
                 batch.ReleaseResources();
 
             base.ReleaseResources();
+        }
+    }
+
+    public class BatchIssueFailedException : Exception {
+        public readonly Batch Batch;
+
+        public BatchIssueFailedException (Batch batch, Exception innerException) 
+            : base (FormatMessage(batch, innerException), innerException) {
+
+            Batch = batch;
+        }
+
+        public static string FormatMessage (Batch batch, Exception innerException) {
+            if (batch.StackTrace != null)
+                return String.Format(
+                    "Failed to issue batch of type '{0}'. Stack trace at time of batch creation:{1}{2}", 
+                    batch.GetType().Name,
+                    Environment.NewLine, 
+                    batch.StackTrace
+                );
+            else
+                return String.Format(
+                    "Failed to issue batch of type '{0}'. Set Batch.CaptureStackTraces to true to enable stack trace captures.",
+                    batch.GetType().Name
+                );
+        }
+    }
+
+    public static class BatchExtensions {
+        public static void IssueAndWrapExceptions (this Batch batch, DeviceManager manager) {
+            try {
+                batch.Issue(manager);
+            } catch (Exception exc) {
+                throw new BatchIssueFailedException(batch, exc);
+            }
         }
     }
 }
