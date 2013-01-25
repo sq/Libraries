@@ -67,6 +67,7 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="BatchCombiner.cs" />
     <Compile Include="Materials.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RenderBitmaps.cs" />

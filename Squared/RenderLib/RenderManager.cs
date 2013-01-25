@@ -331,6 +331,15 @@ namespace Squared.Render {
 
     public sealed class BatchComparer : IComparer<Batch> {
         public int Compare (Batch x, Batch y) {
+            if (x == null) {
+                if (y == null)
+                    return 0;
+                else
+                    return -1;
+            } else if (y == null) {
+                return 1;
+            }
+
             int result = x.Layer - y.Layer;
             if (result == 0) {
                 int mx = 0, my = 0;
@@ -399,6 +408,7 @@ namespace Squared.Render {
             if (Interlocked.Exchange(ref State, State_Preparing) != State_Initialized)
                 throw new InvalidOperationException();
 
+            BatchCombiner.CombineBatches(Batches);
             Batches.Sort(BatchComparer);
 
             if (parallel)
@@ -413,8 +423,11 @@ namespace Squared.Render {
         internal void PrepareSubset (int start, int count) {
             int end = start + count;
 
-            for (int i = start; i < end; i++)
-                Batches[i].Prepare();
+            for (int i = start; i < end; i++) {
+                var batch = Batches[i];
+                if (batch != null)
+                    batch.Prepare();
+            }
         }
 
         public void Draw () {
@@ -425,8 +438,11 @@ namespace Squared.Render {
             var device = dm.Device;
 
             int c = Batches.Count;
-            for (int i = 0; i < c; i++)
-                Batches[i].IssueAndWrapExceptions(dm);
+            for (int i = 0; i < c; i++) {
+                var batch = Batches[i];
+                if (batch != null)
+                    batch.IssueAndWrapExceptions(dm);
+            }
 
             dm.Finish();
 
@@ -438,8 +454,11 @@ namespace Squared.Render {
             if (State == State_Disposed)
                 return;
 
-            for (int i = 0; i < Batches.Count; i++)
-                Batches[i].ReleaseResources();
+            for (int i = 0; i < Batches.Count; i++) {
+                var batch = Batches[i];
+                if (batch != null)
+                    batch.ReleaseResources();
+            }
 
             _ListPool.Release(ref Batches);
 
@@ -907,10 +926,12 @@ namespace Squared.Render {
         private object _UserData;
 
         public override void Prepare () {
+            BatchCombiner.CombineBatches(_DrawCalls);
             _DrawCalls.Sort(Frame.BatchComparer);
 
             foreach (var batch in _DrawCalls)
-                batch.Prepare();
+                if (batch != null)
+                    batch.Prepare();
         }
 
         public override void Issue (DeviceManager manager) {
@@ -919,7 +940,8 @@ namespace Squared.Render {
 
             try {
                 foreach (var batch in _DrawCalls)
-                    batch.IssueAndWrapExceptions(manager);
+                    if (batch != null)
+                        batch.IssueAndWrapExceptions(manager);
             } finally {
                 if (_After != null)
                     _After(manager, _UserData);
@@ -976,7 +998,8 @@ namespace Squared.Render {
 
         protected override void OnReleaseResources () {
             foreach (var batch in _DrawCalls)
-                batch.ReleaseResources();
+                if (batch != null)
+                    batch.ReleaseResources();
 
             _DrawCalls.Clear();
 

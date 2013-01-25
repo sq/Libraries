@@ -85,6 +85,42 @@ namespace Squared.Render {
     }
 
     public class BitmapBatch : ListBatch<BitmapDrawCall>, IBitmapBatch {
+        class BitmapBatchCombiner : IBatchCombiner {
+            public bool CanCombine (Batch lhs, Batch rhs) {
+                if ((lhs == null) || (rhs == null))
+                    return false;
+
+                BitmapBatch bblhs = lhs as BitmapBatch, bbrhs = rhs as BitmapBatch;
+
+                if ((bblhs == null) || (bbrhs == null))
+                    return false;
+
+                if (bblhs.Material.MaterialID != bbrhs.Material.MaterialID)
+                    return false;
+
+                if (bblhs.Layer != bbrhs.Layer)
+                    return false;
+
+                if (bblhs.UseZBuffer != bbrhs.UseZBuffer)
+                    return false;
+
+                if (bblhs.SamplerState != bbrhs.SamplerState)
+                    return false;
+
+                return true;
+            }
+
+            public Batch Combine (Batch lhs, Batch rhs) {
+                var bblhs = (BitmapBatch)lhs;
+                var bbrhs = (BitmapBatch)rhs;
+
+                bblhs._DrawCalls.AddRange(bbrhs._DrawCalls);
+                bbrhs._DrawCalls.Clear();
+
+                return lhs;
+            }
+        }
+
         struct NativeBatch {
             public TextureSet TextureSet;
             public int VertexOffset;
@@ -111,6 +147,8 @@ namespace Squared.Render {
 
         static BitmapBatch () {
             _IndexBatch = GenerateIndices(BitmapBatchSize * 6);
+
+            BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
         }
 
         protected static unsafe short[] GenerateIndices (int numIndices) {
