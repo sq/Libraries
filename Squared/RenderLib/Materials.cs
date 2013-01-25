@@ -278,26 +278,6 @@ namespace Squared.Render {
                 return _IsDisposed;
             }
         }
-
-        public static Action<DeviceManager> MakeDelegate (RasterizerState state) {
-            return (dm) => { dm.Device.RasterizerState = state; };
-        }
-
-        public static Action<DeviceManager> MakeDelegate (DepthStencilState state) {
-            return (dm) => { dm.Device.DepthStencilState = state; };
-        }
-
-        public static Action<DeviceManager> MakeDelegate (BlendState state) {
-            return (dm) => { dm.Device.BlendState = state; };
-        }
-
-        public static Action<DeviceManager> MakeDelegate (RasterizerState rasterState, DepthStencilState depthState, BlendState blendState) {
-            return (dm) => { 
-                dm.Device.RasterizerState = rasterState;
-                dm.Device.DepthStencilState = depthState;
-                dm.Device.BlendState = blendState;
-            };
-        }
     }
 
     public class EffectMaterial : Material, IEffectMaterial {
