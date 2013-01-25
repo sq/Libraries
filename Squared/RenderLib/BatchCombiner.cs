@@ -19,10 +19,18 @@ namespace Squared.Render {
             var xType = x.GetType();
             var yType = y.GetType();
 
+            int layerResult = x.Layer.CompareTo(y.Layer);
+
             if (xType == yType)
-                return 0;
-            else
-                return xType.GetHashCode().CompareTo(yType.GetHashCode());
+                return layerResult;
+            else {
+                int typeResult = xType.GetHashCode().CompareTo(yType.GetHashCode());
+
+                if (typeResult == 0)
+                    return layerResult;
+                else
+                    return typeResult;
+            }
         }
     }
 
@@ -62,7 +70,7 @@ namespace Squared.Render {
                 }
                 bType = b.GetType();
 
-                if (aType != bType) {
+                if ((aType != bType) || (a.Layer != b.Layer)) {
                     i = j;
                     j = i + 1;
                 } else {
@@ -80,6 +88,9 @@ namespace Squared.Render {
                     j += 1;
                 }
             }
+
+            if (false && (eliminatedCount > 0))
+                Console.WriteLine("Eliminated {0:0000} of {1:0000} batch(es)", eliminatedCount, batches.Count);
 
             return eliminatedCount;
         }
