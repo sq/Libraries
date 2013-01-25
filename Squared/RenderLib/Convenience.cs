@@ -98,7 +98,7 @@ namespace Squared.Render.Convenience {
         public readonly bool UseZBuffer;
         public readonly bool AutoIncrementSortKey;
 
-        private int NextSortKey;
+        private float NextSortKey;
 
         public BitmapRenderer (
             IBatchContainer container, 

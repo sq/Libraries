@@ -46,9 +46,20 @@ namespace Squared.Render {
 
             while ((i < l) && (j < l)) {
                 a = batches[i];
+
+                if (a == null) {
+                    i += 1;
+                    j = i + 1;
+                    continue;
+                }
                 aType = a.GetType();
 
                 b = batches[j];
+
+                if (b == null) {
+                    j += 1;
+                    continue;
+                }
                 bType = b.GetType();
 
                 if (aType != bType) {
@@ -61,16 +72,12 @@ namespace Squared.Render {
                         if (combined = combiner.CanCombine(a, b)) {
                             batches[i] = batches[j] = null;
                             batches[i] = combiner.Combine(a, b);
-                        }
-
-                        if (combined)
+                            eliminatedCount += 1;
                             break;
+                        }
                     }
 
-                    if (!combined)
-                        j += 1;
-                    else
-                        eliminatedCount += 1;
+                    j += 1;
                 }
             }
 

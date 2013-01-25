@@ -107,6 +107,12 @@ namespace Squared.Render {
                 if (bblhs.SamplerState != bbrhs.SamplerState)
                     return false;
 
+                if (!bblhs.ReleaseAfterDraw)
+                    return false;
+
+                if (!bbrhs.ReleaseAfterDraw)
+                    return false;
+
                 return true;
             }
 
@@ -314,10 +320,10 @@ namespace Squared.Render {
                         manager.CurrentEffect.CurrentTechnique.Passes[0].Apply();
                     }
 
-                    if (UseZBuffer && false) {
+                    if (UseZBuffer) {
                         var dss = device.DepthStencilState;
                         if (dss.DepthBufferEnable == false)
-                            Debugger.Break();
+                            throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
                     }
 
                     device.DrawUserIndexedPrimitives(

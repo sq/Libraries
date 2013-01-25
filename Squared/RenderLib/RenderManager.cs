@@ -400,8 +400,14 @@ namespace Squared.Render {
             if (State != State_Initialized)
                 throw new InvalidOperationException();
 
-            lock (Batches)
+            lock (Batches) {
+#if DEBUG
+                if (Batches.Contains(batch))
+                    throw new InvalidOperationException("Batch already added to this frame");
+#endif
+
                 Batches.Add(batch);
+            }
         }
 
         public void Prepare (bool parallel) {
@@ -714,7 +720,11 @@ namespace Squared.Render {
             _DrawCalls = _ListPool.Allocate();
         }
 
+        protected virtual void BeforeAdd (ref T item) {
+        }
+
         protected void Add (ref T item) {
+            BeforeAdd(ref item);
             _DrawCalls.Add(item);
         }
 
@@ -925,6 +935,13 @@ namespace Squared.Render {
         Action<DeviceManager, object> _Before, _After;
         private object _UserData;
 
+        protected override void BeforeAdd (ref Batch batch) {
+#if DEBUG
+            if (_DrawCalls.Contains(batch))
+                throw new InvalidOperationException("Group already contains this batch.");
+#endif
+        }
+
         public override void Prepare () {
             BatchCombiner.CombineBatches(_DrawCalls);
             _DrawCalls.Sort(Frame.BatchComparer);
@@ -993,7 +1010,7 @@ namespace Squared.Render {
         }
 
         public void Add (Batch batch) {
-            _DrawCalls.Add(batch);
+            base.Add(ref batch);
         }
 
         protected override void OnReleaseResources () {
