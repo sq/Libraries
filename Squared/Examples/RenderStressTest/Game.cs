@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 using Squared.Render;
+using Squared.Render.Convenience;
 using Squared.Util;
 using System.Threading;
 
@@ -106,13 +107,7 @@ namespace RenderStressTest {
             };
 
             // Attach a blend state setter to the geometry material so that we get alpha blending
-            Materials.WorldSpaceGeometry = new DelegateMaterial(
-                Materials.WorldSpaceGeometry, 
-                new Action<DeviceManager>[] { 
-                    Material.MakeDelegate(BlendState.AlphaBlend)
-                },
-                new Action<DeviceManager>[0]
-            );
+            Materials.WorldSpaceGeometry = Materials.WorldSpaceGeometry.SetStates(blendState: BlendState.AlphaBlend);
         }
 
         protected override void UnloadContent () {

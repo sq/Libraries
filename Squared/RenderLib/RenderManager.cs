@@ -458,6 +458,7 @@ namespace Squared.Render {
         public Material Material;
 
         internal int Index;
+        internal bool ReleaseAfterDraw;
         internal bool Released;
         internal IBatchPool Pool;
 
@@ -469,11 +470,28 @@ namespace Squared.Render {
 
             StackTrace = null;
             Released = false;
+            ReleaseAfterDraw = false;
             Container = container;
             Layer = layer;
             Material = material;
 
             Index = Interlocked.Increment(ref _BatchCount);
+
+            container.Add(this);
+        }
+
+        /// <summary>
+        /// Adds a previously-constructed batch to a new frame/container.
+        /// Use this if you already created a batch in a previous frame and wish to use it again.
+        /// </summary>
+        public void Reuse (IBatchContainer newContainer, int? newLayer = null) {
+            if (Released)
+                throw new ObjectDisposedException("batch");
+
+            Container = newContainer;
+
+            if (newLayer.HasValue)
+                Layer = newLayer.Value;
         }
 
         public void CaptureStack (int extraFramesToSkip) {
@@ -488,19 +506,48 @@ namespace Squared.Render {
         // This is where you send commands to the video card to render your batch.
         public abstract void Issue (DeviceManager manager);
 
-        public virtual void ReleaseResources () {
+        protected virtual void OnReleaseResources () {
+            Released = true;
+
+            if (Pool != null) {
+                Pool.Release(this);
+                Pool = null;
+            }
+
+            StackTrace = null;
+            Container = null;
+            Material = null;
+            Index = -1;
+        }
+
+        public void ReleaseResources () {
             if (Released)
                 throw new ObjectDisposedException("Batch");
 
-            Released = true;
-            if (Pool != null)
-                Pool.Release(this);
+            if (!ReleaseAfterDraw)
+                return;
+
+            OnReleaseResources();
         }
 
-        // In the render framework, disposing a batch marks it as 'ready to render'.
-        // Yes, this is terrible. But using(batch) is too good to pass up!
+        /// <summary>
+        /// Notifies the render manager that it should release the batch once the current frame is done drawing.
+        /// You may opt to avoid calling this method in order to reuse a batch across multiple frames.
+        /// </summary>
         public virtual void Dispose () {
-            Container.Add(this);
+            ReleaseAfterDraw = true;
+        }
+
+        public bool IsReusable {
+            get {
+                return !ReleaseAfterDraw;
+            }
+        }
+
+        public bool IsReleased {
+            get {
+                return Released;
+            }
         }
     }
 
@@ -652,17 +699,10 @@ namespace Squared.Render {
             _DrawCalls.Add(item);
         }
 
-        public override void Dispose () {
-            if (_DrawCalls.Count > 0)
-                base.Dispose();
-            else
-                ReleaseResources();
-        }
-
-        public override void ReleaseResources() {
-            base.ReleaseResources();
-
+        protected override void OnReleaseResources() {
             _ListPool.Release(ref _DrawCalls);
+
+            base.OnReleaseResources();
         }
     }
 
@@ -934,11 +974,13 @@ namespace Squared.Render {
             _DrawCalls.Add(batch);
         }
 
-        public override void ReleaseResources () {
+        protected override void OnReleaseResources () {
             foreach (var batch in _DrawCalls)
                 batch.ReleaseResources();
 
-            base.ReleaseResources();
+            _DrawCalls.Clear();
+
+            base.OnReleaseResources();
         }
     }
 

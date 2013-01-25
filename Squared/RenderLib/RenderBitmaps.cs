@@ -249,7 +249,10 @@ namespace Squared.Render {
                 return;
 
             if (_Prepared == false)
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("Not prepared");
+
+            if (_NativeBuffer == null)
+                throw new InvalidOperationException("Already issued");
 
             var device = manager.Device;
 
@@ -287,15 +290,18 @@ namespace Squared.Render {
                     );
                 }
             }
-        }
-
-        public override void ReleaseResources () {
-            _Prepared = false;
 
             _NativeBuffer = null;
+        }
+
+        protected override void OnReleaseResources () {
+            _Prepared = false;
+            _NativeBuffer = null;
+
+            _NativeBatches.Clear();
             _NativePool.Release(ref _NativeBatches);
 
-            base.ReleaseResources();
+            base.OnReleaseResources();
         }
     }
 

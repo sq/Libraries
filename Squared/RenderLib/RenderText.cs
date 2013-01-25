@@ -129,13 +129,13 @@ namespace Squared.Render {
             return Font.MeasureString(drawCall.Text) * drawCall.Scale;
         }
 
-        public override void ReleaseResources () {
-            base.ReleaseResources();
-
+        protected override void OnReleaseResources () {
             SpriteBatch = null;
             Font = null;
             TransformMatrix = null;
             ScissorRect = null;
+
+            base.OnReleaseResources();
         }
 
         public void Add (StringDrawCall sdc) {

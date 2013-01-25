@@ -235,11 +235,7 @@ namespace Squared.Render {
             InnerBatch.Issue(manager);
         }
 
-        public override void Dispose () {
-            base.Dispose();
-        }
-
-        public override void ReleaseResources () {
+        protected override void OnReleaseResources () {
             if (InnerBatch != null)
                 InnerBatch.ReleaseResources();
 
@@ -251,7 +247,7 @@ namespace Squared.Render {
             Lists.Clear();
 
             InnerBatch = null;
-            base.ReleaseResources();
+            base.OnReleaseResources();
         }
 
         public static GeometryBatch<T> New (IBatchContainer container, int layer, Material material) {
