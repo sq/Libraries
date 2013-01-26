@@ -275,6 +275,23 @@ namespace Squared.Game {
         }
     }
 
+    public class BoundedObjectWithParentList : BoundedObject, ISpatialCollectionChild {
+        public readonly List<WeakReference> Parents = new List<WeakReference>();
+
+        public BoundedObjectWithParentList (Vector2 tl, Vector2 br)
+            : base (tl, br) {
+        }
+
+        public void AddedToCollection (WeakReference collection) {
+            Parents.Add(collection);
+        }
+
+        public void RemovedFromCollection (WeakReference collection) {
+            if (!Parents.Remove(collection))
+                throw new InvalidOperationException();
+        }
+    }
+
     [TestFixture]
     public class SpatialCollectionTests {
         public SpatialCollection<BoundedObject> Collection;
@@ -343,6 +360,54 @@ namespace Squared.Game {
             e3.Dispose();
             e2.Dispose();
             e1.Dispose();
+        }
+
+        [Test]
+        public void NotifyAddRemoveTest () {
+            var a = new BoundedObjectWithParentList(new Vector2(0, 0), new Vector2(15, 15));
+            var b = new BoundedObjectWithParentList(new Vector2(8, 8), new Vector2(23, 23));
+
+            Assert.AreEqual(0, a.Parents.Count);
+            Assert.AreEqual(0, b.Parents.Count);
+
+            Collection.Add(a);
+            Collection.Add(b);
+
+            Assert.AreEqual(1, a.Parents.Count);
+            Assert.AreEqual(1, b.Parents.Count);
+
+            Assert.AreEqual(Collection, a.Parents[0].Target);
+            Assert.AreEqual(Collection, b.Parents[0].Target);
+
+            Collection.Remove(a);
+
+            Assert.AreEqual(0, a.Parents.Count);
+            Assert.AreEqual(1, b.Parents.Count);
+
+            Collection.Remove(b);
+
+            Assert.AreEqual(0, a.Parents.Count);
+            Assert.AreEqual(0, b.Parents.Count);
+        }
+
+        [Test]
+        public void ClearNotifiesRemovalTest () {
+            var a = new BoundedObjectWithParentList(new Vector2(0, 0), new Vector2(15, 15));
+            var b = new BoundedObjectWithParentList(new Vector2(8, 8), new Vector2(23, 23));
+
+            Assert.AreEqual(0, a.Parents.Count);
+            Assert.AreEqual(0, b.Parents.Count);
+
+            Collection.Add(a);
+            Collection.Add(b);
+
+            Assert.AreEqual(1, a.Parents.Count);
+            Assert.AreEqual(1, b.Parents.Count);
+
+            Collection.Clear();
+
+            Assert.AreEqual(0, a.Parents.Count);
+            Assert.AreEqual(0, b.Parents.Count);
         }
     }
 }

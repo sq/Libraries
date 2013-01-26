@@ -10,6 +10,11 @@ using Squared.Util;
 #endif
 
 namespace Squared.Game {
+    public interface ISpatialCollectionChild {
+        void AddedToCollection (WeakReference collection);
+        void RemovedFromCollection (WeakReference collection);
+    }
+
     public class IntPairComparer : IEqualityComparer<Pair<int>> {
         public bool Equals (Pair<int> x, Pair<int> y) {
             return (x.First == y.First) && (x.Second == y.Second);
@@ -34,6 +39,8 @@ namespace Squared.Game {
     
     public class SpatialCollection<T> : IEnumerable<T>
         where T : class, IHasBounds {
+
+        private WeakReference WeakSelf;
 
         public class Sector : HashSet<ItemInfo> {
             public SectorIndex Index;
@@ -371,6 +378,13 @@ namespace Squared.Game {
             return sector;
         }
 
+        private WeakReference GetWeakSelf () {
+            if (WeakSelf == null)
+                WeakSelf = new WeakReference(this, false);
+
+            return WeakSelf;
+        }
+
         public void Add (T item) {
             var info = new ItemInfo(item, this);
             _Items.Add(item, info);
@@ -378,6 +392,10 @@ namespace Squared.Game {
             using (var e = new GetSectorsFromBoundsEnumerator(this, info.Bounds, true))
             while (e.MoveNext())
                 e.Current.Add(info);
+
+            var ichild = item as ISpatialCollectionChild;
+            if (ichild != null)
+                ichild.AddedToCollection(GetWeakSelf());
         }
 
         public void AddRange (IEnumerable<T> items) {
@@ -385,11 +403,13 @@ namespace Squared.Game {
                 Add(item);
         }
 
-        internal void InternalRemove (ItemInfo item, SectorIndex topLeft, SectorIndex bottomRight) {
+        internal bool InternalRemove (ItemInfo item, SectorIndex topLeft, SectorIndex bottomRight) {
+            bool removed = false;
+
             using (var e = new GetSectorsFromBoundsEnumerator(this, topLeft, bottomRight, false))
             while (e.MoveNext()) {
                 var sector = e.Current;
-                sector.Remove(item);
+                removed |= sector.Remove(item);
 
                 if (sector.Count == 0) {
                     if (_FreeList.Count < MaxFreeListSize)
@@ -398,6 +418,14 @@ namespace Squared.Game {
                     _Sectors.Remove(sector.Index);
                 }
             }
+
+            if (removed) {
+                var ichild = item.Item as ISpatialCollectionChild;
+                if (ichild != null)
+                    ichild.RemovedFromCollection(GetWeakSelf());
+            }
+
+            return removed;
         }
 
         public bool Remove (T item) {
@@ -421,6 +449,12 @@ namespace Squared.Game {
         }
 
         public void Clear () {
+            foreach (var ii in _Items.Values) {
+                var ichild = ii.Item as ISpatialCollectionChild;
+                if (ichild != null)
+                    ichild.RemovedFromCollection(GetWeakSelf());
+            }
+
             _Items.Clear();
             _Sectors.Clear();
             _FreeList.Clear();
