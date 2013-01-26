@@ -145,7 +145,7 @@ namespace Squared.Render {
 
         private ArrayPoolAllocator<BitmapVertex> _Allocator;
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
-            256, 16, 128
+            2048, 16, 128
         );
         private BitmapVertex[] _NativeBuffer = null;
         private List<NativeBatch> _NativeBatches = null;
@@ -193,7 +193,6 @@ namespace Squared.Render {
             SamplerState = samplerState ?? SamplerState.LinearClamp;
 
             _Allocator = container.RenderManager.GetArrayAllocator<BitmapVertex>();
-            _NativeBatches = _NativePool.Allocate();
 
             UseZBuffer = useZBuffer;
         }
@@ -226,6 +225,9 @@ namespace Squared.Render {
         public unsafe override void Prepare () {
             if (_DrawCalls.Count == 0)
                 return;
+
+            if (_NativeBatches == null)
+                _NativeBatches = _NativePool.Allocate();
 
             if (UseZBuffer)
                 _DrawCalls.Sort(DrawCallTextureComparer);
@@ -342,7 +344,6 @@ namespace Squared.Render {
             _Prepared = false;
             _NativeBuffer = null;
 
-            _NativeBatches.Clear();
             _NativePool.Release(ref _NativeBatches);
 
             base.OnReleaseResources();
