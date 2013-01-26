@@ -403,7 +403,7 @@ namespace Squared.Game {
                 Add(item);
         }
 
-        internal bool InternalRemove (ItemInfo item, SectorIndex topLeft, SectorIndex bottomRight) {
+        internal bool InternalRemove (ItemInfo item, SectorIndex topLeft, SectorIndex bottomRight, bool notifyRemoval) {
             bool removed = false;
 
             using (var e = new GetSectorsFromBoundsEnumerator(this, topLeft, bottomRight, false))
@@ -419,7 +419,7 @@ namespace Squared.Game {
                 }
             }
 
-            if (removed) {
+            if (notifyRemoval) {
                 var ichild = item.Item as ISpatialCollectionChild;
                 if (ichild != null)
                     ichild.RemovedFromCollection(GetWeakSelf());
@@ -431,7 +431,7 @@ namespace Squared.Game {
         public bool Remove (T item) {
             ItemInfo info;
             if (_Items.TryGetValue(item, out info)) {
-                InternalRemove(info, info.TopLeft, info.BottomRight);
+                InternalRemove(info, info.TopLeft, info.BottomRight, true);
                 _Items.Remove(item);
                 return true;
             } else {
@@ -477,7 +477,7 @@ namespace Squared.Game {
                     (oldBottomRight.Second == info.BottomRight.Second))
                     return;
 
-                InternalRemove(info, oldTopLeft, oldBottomRight);
+                InternalRemove(info, oldTopLeft, oldBottomRight, false);
 
                 using (var e = new GetSectorsFromBoundsEnumerator(this, info.TopLeft, info.BottomRight, true))
                 while (e.MoveNext())

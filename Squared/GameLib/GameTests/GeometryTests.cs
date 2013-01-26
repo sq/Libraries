@@ -391,6 +391,24 @@ namespace Squared.Game {
         }
 
         [Test]
+        public void UpdateItemBoundsDoesNotCallAddRemoveNotificationMethods () {
+            var c2 = new SpatialCollection<BoundedObject>();
+            var c3 = new SpatialCollection<BoundedObject>();
+            var a = new BoundedObjectWithParentList(new Vector2(0, 0), new Vector2(15, 15));
+
+            Collection.Add(a);
+            c2.Add(a);
+            c3.Add(a);
+
+            a.Bounds = a.Bounds.Translate(Vector2.One * 128f);
+
+            foreach (var collection in a.Parents) {
+                var strongCollection = (SpatialCollection<BoundedObject>)collection.Target;
+                strongCollection.UpdateItemBounds(a);
+            }
+        }
+
+        [Test]
         public void ClearNotifiesRemovalTest () {
             var a = new BoundedObjectWithParentList(new Vector2(0, 0), new Vector2(15, 15));
             var b = new BoundedObjectWithParentList(new Vector2(8, 8), new Vector2(23, 23));
