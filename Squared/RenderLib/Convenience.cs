@@ -191,6 +191,28 @@ namespace Squared.Render.Convenience {
             Draw(ref drawCall, layer: layer, material: material, samplerState: samplerState);
         }
 
+        public void Draw (
+            Texture2D texture, Rectangle destRectangle,
+            Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
+            float rotation = 0, float originX = 0, float originY = 0,
+            bool mirrorX = false, bool mirrorY = false, int sortKey = 0,
+            int? layer = null, Material material = null, SamplerState samplerState = null
+        ) {
+            var drawCall = new BitmapDrawCall(texture, new Vector2(destRectangle.X, destRectangle.Y));
+            if (sourceRectangle.HasValue)
+                drawCall.TextureRegion = texture.BoundsFromRectangle(sourceRectangle.Value);
+            drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(drawCall.MultiplyColor);
+            drawCall.AddColor = addColor;
+            drawCall.Rotation = rotation;
+            drawCall.Scale = new Vector2(destRectangle.Width / (float)texture.Width, destRectangle.Height / (float)texture.Height); 
+            drawCall.Origin = new Vector2(originX, originY);
+            if (mirrorX || mirrorY)
+                drawCall.Mirror(mirrorX, mirrorY);
+            drawCall.SortKey = sortKey;
+
+            Draw(ref drawCall, layer: layer, material: material, samplerState: samplerState);
+        }
+
         private BitmapBatch GetBatch (int layer, Material material, SamplerState samplerState) {
             if (
                 (PreviousBatch != null) &&
