@@ -752,6 +752,9 @@ namespace Squared.Render {
             ClearColor = clearColor;
             ClearZ = clearZ;
             ClearStencil = clearStencil;
+
+            if (!(clearColor.HasValue || clearZ.HasValue || clearStencil.HasValue))
+                throw new ArgumentException("You must specify at least one of clearColor, clearZ and clearStencil.");
         }
 
         public override void Prepare () {
