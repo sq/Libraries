@@ -199,12 +199,16 @@ namespace Squared.Render.Convenience {
             int? layer = null, Material material = null, SamplerState samplerState = null
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(destRectangle.X, destRectangle.Y));
-            if (sourceRectangle.HasValue)
-                drawCall.TextureRegion = texture.BoundsFromRectangle(sourceRectangle.Value);
+            if (sourceRectangle.HasValue) {
+                var sr = sourceRectangle.Value;
+                drawCall.TextureRegion = texture.BoundsFromRectangle(ref sr);
+                drawCall.Scale = new Vector2(destRectangle.Width / (float)sr.Width, destRectangle.Height / (float)sr.Height);
+            } else {
+                drawCall.Scale = new Vector2(destRectangle.Width / (float)texture.Width, destRectangle.Height / (float)texture.Height);
+            }
             drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(drawCall.MultiplyColor);
             drawCall.AddColor = addColor;
             drawCall.Rotation = rotation;
-            drawCall.Scale = new Vector2(destRectangle.Width / (float)texture.Width, destRectangle.Height / (float)texture.Height); 
             drawCall.Origin = new Vector2(originX, originY);
             if (mirrorX || mirrorY)
                 drawCall.Mirror(mirrorX, mirrorY);
