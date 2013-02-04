@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Game;
 
 namespace Squared.Render.Convenience {
     public static class RenderStates {
@@ -143,6 +145,50 @@ namespace Squared.Render.Convenience {
                 samplerState ?? SamplerState
             ))
                 batch.Add(ref drawCall);
+        }
+
+        public void Draw (
+            Texture2D texture, Vector2 position,
+            Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
+            float rotation = 0, Vector2? scale = null, Vector2 origin = default(Vector2),
+            bool mirrorX = false, bool mirrorY = false, int sortKey = 0,
+            int? layer = null, Material material = null, SamplerState samplerState = null
+        ) {
+            var drawCall = new BitmapDrawCall(texture, position);
+            if (sourceRectangle.HasValue)
+                drawCall.TextureRegion = texture.BoundsFromRectangle(sourceRectangle.Value);
+            drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(drawCall.MultiplyColor);
+            drawCall.AddColor = addColor;
+            drawCall.Rotation = rotation;
+            drawCall.Scale = scale.GetValueOrDefault(Vector2.One);
+            drawCall.Origin = origin;
+            if (mirrorX || mirrorY)
+                drawCall.Mirror(mirrorX, mirrorY);
+            drawCall.SortKey = sortKey;
+
+            Draw(ref drawCall, layer: layer, material: material, samplerState: samplerState);
+        }
+
+        public void Draw (
+            Texture2D texture, float x, float y,
+            Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
+            float rotation = 0, float scaleX = 1, float scaleY = 1, float originX = 0, float originY = 0,
+            bool mirrorX = false, bool mirrorY = false, int sortKey = 0,
+            int? layer = null, Material material = null, SamplerState samplerState = null
+        ) {
+            var drawCall = new BitmapDrawCall(texture, new Vector2(x, y));
+            if (sourceRectangle.HasValue)
+                drawCall.TextureRegion = texture.BoundsFromRectangle(sourceRectangle.Value);
+            drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(drawCall.MultiplyColor);
+            drawCall.AddColor = addColor;
+            drawCall.Rotation = rotation;
+            drawCall.Scale = new Vector2(scaleX, scaleY);
+            drawCall.Origin = new Vector2(originX, originY);
+            if (mirrorX || mirrorY)
+                drawCall.Mirror(mirrorX, mirrorY);
+            drawCall.SortKey = sortKey;
+
+            Draw(ref drawCall, layer: layer, material: material, samplerState: samplerState);
         }
 
         private BitmapBatch GetBatch (int layer, Material material, SamplerState samplerState) {
