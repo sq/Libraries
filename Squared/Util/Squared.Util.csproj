@@ -102,7 +102,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Arithmetic.cs" />
-    <Compile Include="AtomicQueue.cs" />
     <Compile Include="Bind.cs" />
     <Compile Include="Buffer.cs" />
     <Compile Include="Curve.cs" />

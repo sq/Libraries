@@ -22,8 +22,7 @@ void LightmappedPixelShader(
 	result += (addColor * result.a);
 
     const float discardThreshold = (1.0 / 255.0);
-    if (result.a < discardThreshold)
-        discard;
+    clip(result.a - discardThreshold);
 }
 
 technique ScreenSpaceLightmappedBitmap

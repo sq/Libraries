@@ -15,7 +15,7 @@ namespace Squared.Util.RegexExtensions {
             Field_runnerref = typeof(Regex).GetField("runnerref", BindingFlags.Instance | BindingFlags.NonPublic);
             var xref = typeof(Regex).Assembly.GetType("System.Text.RegularExpressions.ExclusiveReference", true);
             Field_ref = xref.GetField("_ref", BindingFlags.Instance | BindingFlags.NonPublic);
-            Field_runtext = typeof(RegexRunner).GetField("runtext", BindingFlags.Instance | BindingFlags.NonPublic);
+            Field_runtext = Field_ref.FieldType.GetField("runtext", BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
         /// <summary>

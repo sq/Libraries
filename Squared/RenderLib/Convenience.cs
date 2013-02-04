@@ -99,6 +99,7 @@ namespace Squared.Render.Convenience {
         public readonly bool AutoIncrementSortKey;
 
         private float NextSortKey;
+        private BitmapBatch PreviousBatch;
 
         public BitmapRenderer (
             IBatchContainer container, 
@@ -118,6 +119,7 @@ namespace Squared.Render.Convenience {
             UseZBuffer = useZBuffer;
             AutoIncrementSortKey = autoIncrementSortKey;
             NextSortKey = 0;
+            PreviousBatch = null;
         }
 
         public void Draw (BitmapDrawCall drawCall, int? layer = null, Material material = null, SamplerState samplerState = null) {
@@ -133,14 +135,24 @@ namespace Squared.Render.Convenience {
                 NextSortKey += 1;
             }
 
-            using (var batch = BitmapBatch.New(
-                Container, 
+            using (var batch = GetBatch( 
                 layer.GetValueOrDefault(DefaultLayer), 
                 material ?? DefaultMaterial, 
-                samplerState ?? DefaultSamplerState,
-                UseZBuffer
+                samplerState ?? DefaultSamplerState
             ))
                 batch.Add(ref drawCall);
+        }
+
+        private BitmapBatch GetBatch (int layer, Material material, SamplerState samplerState) {
+            if (
+                (PreviousBatch != null) &&
+                (PreviousBatch.Layer == layer) &&
+                (PreviousBatch.Material == material) &&
+                (PreviousBatch.SamplerState == samplerState)
+            )
+                return PreviousBatch;
+
+            return PreviousBatch = BitmapBatch.New(Container, layer, material, samplerState, UseZBuffer);
         }
     }
 }

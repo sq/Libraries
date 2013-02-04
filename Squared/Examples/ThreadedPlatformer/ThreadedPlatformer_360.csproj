@@ -147,10 +147,6 @@
       <Project>{79D3EA69-8C39-4A76-B9A6-8D7F443097E0}</Project>
       <Name>Squared.Game_360</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\RenderLib\Squared.Render_360.csproj">
-      <Project>{3969B1DF-5853-4273-A437-820DE54C5D9D}</Project>
-      <Name>Squared.Render_360</Name>
-    </ProjectReference>
     <ProjectReference Include="HighResolutionContent\ThreadedPlatformerHighResolutionContent.contentproj">
       <Project>{1A22ED3E-5B8D-4F8A-A708-D56202F3A4B1}</Project>
       <Name>ThreadedPlatformerHighResolutionContent %28Content%29</Name>

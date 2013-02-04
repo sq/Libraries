@@ -72,10 +72,6 @@
       <Project>{BE3F46D8-C55A-4AC4-BCA7-D5CF9F3668E6}</Project>
       <Name>Squared.Util_360</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\RenderLib\Squared.Render_360.csproj">
-      <Project>{3969B1DF-5853-4273-A437-820DE54C5D9D}</Project>
-      <Name>Squared.Render_360</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.0,Profile=Client">

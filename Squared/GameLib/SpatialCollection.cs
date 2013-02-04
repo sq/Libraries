@@ -24,18 +24,6 @@ namespace Squared.Game {
             return obj.First + (obj.Second << 16);
         }
     }
-
-    public class ReferenceComparer<T> : IEqualityComparer<T>
-        where T : class {
-
-        public bool Equals (T x, T y) {
-            return (x == y);
-        }
-
-        public int GetHashCode (T obj) {
-            return obj.GetHashCode();
-        }
-    }
     
     public class SpatialCollection<T> : IEnumerable<T>
         where T : class, IHasBounds {
