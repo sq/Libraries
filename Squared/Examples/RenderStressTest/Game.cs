@@ -100,7 +100,7 @@ namespace RenderStressTest {
         protected override void LoadContent () {
             // Load the default materials provided with the rendering library
             //  and provide a projection matrix
-            Materials = new DefaultMaterialSet(Content) {
+            Materials = new DefaultMaterialSet(Services) {
                 ProjectionMatrix = Matrix.CreateOrthographicOffCenter(
                     0.0f, Width, Height, 0.0f, -1.0f, 1.0f
                 )

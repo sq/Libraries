@@ -5,6 +5,7 @@ using System.Collections.Generic;
 	using Sce.PlayStation.Core;
 #else
     using Microsoft.Xna.Framework;
+    using Microsoft.Xna.Framework.Graphics;
 #endif
 
 namespace Squared.Game {
@@ -60,7 +61,18 @@ namespace Squared.Game {
             Vector2.Dot(ref @this, ref rhs, out result);
             return result;
         }
-#else
 #endif
+
+        public static Bounds BoundsFromRectangle (this Texture2D @this, ref Rectangle rectangle) {
+            float fw = @this.Width;
+            float fh = @this.Height;
+            var tl = new Vector2(rectangle.Left / fw, rectangle.Top / fh);
+            var br = new Vector2(rectangle.Right / fw, rectangle.Bottom / fh);
+            return new Bounds(tl, br);
+        }
+
+        public static Bounds BoundsFromRectangle (this Texture2D @this, Rectangle rectangle) {
+            return @this.BoundsFromRectangle(ref rectangle);
+        }
     }
 }

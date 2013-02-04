@@ -104,26 +104,33 @@ namespace Squared.Render {
             return ExtraMaterials.Remove(extraMaterial);
         }
 
-        public void Dispose () {
+        public virtual void Dispose () {
             foreach (var material in AllMaterials)
                 material.Dispose();
         }
     }
 
     public class DefaultMaterialSet : MaterialSetBase {
+        public readonly ResourceContentManager BuiltInShaders;
+
         public Material ScreenSpaceBitmap, WorldSpaceBitmap;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
+        public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
+        public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
+        public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
         public Material Clear;
 
-        public DefaultMaterialSet (ContentManager content) {
+        public DefaultMaterialSet (IServiceProvider serviceProvider) {
+            BuiltInShaders = new ResourceContentManager(serviceProvider, Shaders.ResourceManager);
+
             Clear = new DelegateMaterial(
                 new NullMaterial(),
                 new Action<DeviceManager>[] { (dm) => ApplyShaderVariables() }, 
                 null
             );
 
-            var bitmapShader = content.Load<Effect>("SquaredBitmapShader");
-            var geometryShader = content.Load<Effect>("SquaredGeometryShader");
+            var bitmapShader = BuiltInShaders.Load<Effect>("SquaredBitmapShader");
+            var geometryShader = BuiltInShaders.Load<Effect>("SquaredGeometryShader");
 
             ScreenSpaceBitmap = new EffectMaterial(
                 bitmapShader,
@@ -143,6 +150,40 @@ namespace Squared.Render {
             WorldSpaceGeometry = new EffectMaterial(
                 geometryShader,
                 "WorldSpaceUntextured"
+            );
+
+            var lightmapShader = BuiltInShaders.Load<Effect>("Lightmap");
+
+            ScreenSpaceLightmappedBitmap = new EffectMaterial(
+                lightmapShader,
+                "ScreenSpaceLightmappedBitmap"
+            );
+
+            WorldSpaceLightmappedBitmap = new EffectMaterial(
+                lightmapShader,
+                "WorldSpaceLightmappedBitmap"
+            );
+
+            var blurShader = BuiltInShaders.Load<Effect>("GaussianBlur");
+
+            ScreenSpaceHorizontalGaussianBlur5Tap = new EffectMaterial(
+                blurShader,
+                "ScreenSpaceHorizontalGaussianBlur5Tap"
+            );
+
+            ScreenSpaceVerticalGaussianBlur5Tap = new EffectMaterial(
+                blurShader,
+                "ScreenSpaceVerticalGaussianBlur5Tap"
+            );
+
+            WorldSpaceHorizontalGaussianBlur5Tap = new EffectMaterial(
+                blurShader,
+                "WorldSpaceHorizontalGaussianBlur5Tap"
+            );
+
+            WorldSpaceVerticalGaussianBlur5Tap = new EffectMaterial(
+                blurShader,
+                "WorldSpaceVerticalGaussianBlur5Tap"
             );
 
             ViewportScale = Vector2.One;
@@ -184,53 +225,11 @@ namespace Squared.Render {
                 e.Parameters["ProjectionMatrix"].SetValue(ProjectionMatrix);
             }
         }
-    }
 
-    public class LightmapMaterialSet {
-        public Material ScreenSpaceLightmappedBitmap;
-        public Material WorldSpaceLightmappedBitmap;
+        public override void Dispose () {
+            base.Dispose();
 
-        public LightmapMaterialSet (MaterialSetBase parent, ContentManager content) {
-            var lightmapShader = content.Load<Effect>("Lightmap");
-
-            parent.Add(ScreenSpaceLightmappedBitmap = new EffectMaterial(
-                lightmapShader,
-                "ScreenSpaceLightmappedBitmap"
-            ));
-
-            parent.Add(WorldSpaceLightmappedBitmap = new EffectMaterial(
-                lightmapShader,
-                "WorldSpaceLightmappedBitmap"
-            ));
-        }
-    }
-
-    public class GaussianBlurMaterialSet {
-        public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
-        public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
-
-        public GaussianBlurMaterialSet (MaterialSetBase parent, ContentManager content) {
-            var blurShader = content.Load<Effect>("GaussianBlur");
-
-            parent.Add(ScreenSpaceHorizontalGaussianBlur5Tap = new EffectMaterial(
-                blurShader,
-                "ScreenSpaceHorizontalGaussianBlur5Tap"
-            ));
-
-            parent.Add(ScreenSpaceVerticalGaussianBlur5Tap = new EffectMaterial(
-                blurShader,
-                "ScreenSpaceVerticalGaussianBlur5Tap"
-            ));
-
-            parent.Add(WorldSpaceHorizontalGaussianBlur5Tap = new EffectMaterial(
-                blurShader,
-                "WorldSpaceHorizontalGaussianBlur5Tap"
-            ));
-
-            parent.Add(WorldSpaceVerticalGaussianBlur5Tap = new EffectMaterial(
-                blurShader,
-                "WorldSpaceVerticalGaussianBlur5Tap"
-            ));
+            BuiltInShaders.Dispose();
         }
     }
 
