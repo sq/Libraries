@@ -52,3 +52,5 @@ _ReSharper.*
 /Squared/GameLib/PSM/bin
 /Squared/Examples/CurveTester/obj
 /Squared/Examples/CurveTester/bin
+/Squared/DummyContentContainer/obj
+/Squared/DummyContentContainer/bin
