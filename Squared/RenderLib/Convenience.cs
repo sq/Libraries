@@ -90,22 +90,22 @@ namespace Squared.Render.Convenience {
     }
 
     public struct BitmapRenderer {
-        public readonly IBatchContainer Container;
+        public IBatchContainer Container;
 
-        public readonly int DefaultLayer;
-        public readonly Material DefaultMaterial;
-        public readonly SamplerState DefaultSamplerState;
-        public readonly bool UseZBuffer;
-        public readonly bool AutoIncrementSortKey;
+        public int Layer;
+        public Material Material;
+        public SamplerState SamplerState;
+        public bool UseZBuffer;
+        public bool AutoIncrementSortKey;
 
         private float NextSortKey;
         private BitmapBatch PreviousBatch;
 
         public BitmapRenderer (
             IBatchContainer container, 
-            int defaultLayer = 0, 
-            Material defaultMaterial = null, 
-            SamplerState defaultSamplerState = null, 
+            int layer = 0, 
+            Material material = null, 
+            SamplerState samplerState = null, 
             bool useZBuffer = false,
             bool autoIncrementSortKey = false
         ) {
@@ -113,9 +113,9 @@ namespace Squared.Render.Convenience {
                 throw new ArgumentNullException("container");
 
             Container = container;
-            DefaultLayer = defaultLayer;
-            DefaultMaterial = defaultMaterial;
-            DefaultSamplerState = defaultSamplerState;
+            Layer = layer;
+            Material = material;
+            SamplerState = samplerState;
             UseZBuffer = useZBuffer;
             AutoIncrementSortKey = autoIncrementSortKey;
             NextSortKey = 0;
@@ -129,6 +129,8 @@ namespace Squared.Render.Convenience {
         public void Draw (ref BitmapDrawCall drawCall, int? layer = null, Material material = null, SamplerState samplerState = null) {
             if (Container == null)
                 throw new InvalidOperationException("You cannot use the argumentless BitmapRenderer constructor.");
+            else if (Container.IsDisposed)
+                throw new ObjectDisposedException("The container this BitmapRenderer is drawing into has been disposed.");
 
             if (AutoIncrementSortKey) {
                 drawCall.SortKey = NextSortKey;
@@ -136,9 +138,9 @@ namespace Squared.Render.Convenience {
             }
 
             using (var batch = GetBatch( 
-                layer.GetValueOrDefault(DefaultLayer), 
-                material ?? DefaultMaterial, 
-                samplerState ?? DefaultSamplerState
+                layer.GetValueOrDefault(Layer), 
+                material ?? Material, 
+                samplerState ?? SamplerState
             ))
                 batch.Add(ref drawCall);
         }
@@ -146,9 +148,11 @@ namespace Squared.Render.Convenience {
         private BitmapBatch GetBatch (int layer, Material material, SamplerState samplerState) {
             if (
                 (PreviousBatch != null) &&
+                (PreviousBatch.Container == Container) &&
                 (PreviousBatch.Layer == layer) &&
                 (PreviousBatch.Material == material) &&
-                (PreviousBatch.SamplerState == samplerState)
+                (PreviousBatch.SamplerState == samplerState) &&                
+                (PreviousBatch.UseZBuffer == UseZBuffer)
             )
                 return PreviousBatch;
 

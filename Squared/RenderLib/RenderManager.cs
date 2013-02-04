@@ -48,6 +48,7 @@ namespace Squared.Render {
     public interface IBatchContainer {
         void Add (Batch batch);
         RenderManager RenderManager { get; }
+        bool IsDisposed { get; }
     }
 
     public sealed class DeviceManager {
@@ -471,6 +472,12 @@ namespace Squared.Render {
             RenderManager.ReleaseFrame(this);
 
             State = State_Disposed;
+        }
+
+        public bool IsDisposed {
+            get {
+                return State == State_Disposed;
+            }
         }
     }
 
@@ -1006,6 +1013,12 @@ namespace Squared.Render {
         RenderManager IBatchContainer.RenderManager {
             get {
                 return Container.RenderManager;
+            }
+        }
+
+        public bool IsDisposed {
+            get {
+                return _DrawCalls == null;
             }
         }
 
