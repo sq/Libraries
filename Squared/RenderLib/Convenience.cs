@@ -303,7 +303,7 @@ namespace Squared.Render.Convenience {
 
         public void DrawString (
             SpriteFont font, string text,
-            Vector2 position, Color? color = null, float scale = 1, float sortKey = 0,
+            Vector2 position, Color? color = null, float scale = 1, float? sortKey = null,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null
@@ -323,11 +323,18 @@ namespace Squared.Render.Convenience {
             var drawCall = new BitmapDrawCall(
                 privateFields.Texture, default(Vector2), default(Bounds), color.GetValueOrDefault(Color.White), scale
             );
-            drawCall.SortKey = sortKey;
+
+            if (sortKey.HasValue) {
+                drawCall.SortKey = sortKey.Value;
+            } else if (AutoIncrementSortKey) {
+                drawCall.SortKey = NextSortKey;
+                NextSortKey += 1;
+            }
 
             float rectScaleX = 1f / privateFields.Texture.Width;
             float rectScaleY = 1f / privateFields.Texture.Height;
 
+            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState))
             for (int i = 0, l = text.Length; i < l; i++) {
                 var ch = text[i];
 
@@ -375,11 +382,7 @@ namespace Squared.Render.Convenience {
                         position.Y + (cropRect.Y + characterOffset.Y) * scale
                     );
 
-                    Draw(
-                        ref drawCall,
-                        layer: layer, worldSpace: worldSpace,
-                        blendState: blendState, samplerState: samplerState
-                    );
+                    batch.Add(ref drawCall);
 
                     characterLimit--;
                 } else {
