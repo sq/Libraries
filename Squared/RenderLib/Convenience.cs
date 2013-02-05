@@ -163,6 +163,24 @@ namespace Squared.Render.Convenience {
         }
 
 
+        /// <summary>
+        /// Adds a clear batch. Note that this will *always* advance the layer unless you specify a layer index explicitly.
+        /// </summary>
+        public void Clear (
+            int? layer = null,
+            Color? color = null,
+            float? z = null,
+            int? stencil = null
+        ) {
+            int _layer = layer.GetValueOrDefault(Layer);
+
+            ClearBatch.AddNew(Container, _layer, Materials.Clear, color, z, stencil);
+
+            if (!layer.HasValue)
+                Layer += 1;
+        }
+
+
         public void Draw (
             BitmapDrawCall drawCall, 
             int? layer = null, bool? worldSpace = null,
