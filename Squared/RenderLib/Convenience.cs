@@ -162,6 +162,16 @@ namespace Squared.Render.Convenience {
             return result;
         }
 
+        public ImperativeRenderer ForRenderTarget (RenderTarget2D renderTarget) {
+            var result = this;
+            result.Container = BatchGroup.ForRenderTarget(Container, Layer, renderTarget);
+            result.Layer = 0;
+
+            Layer += 1;
+
+            return result;
+        }
+
 
         /// <summary>
         /// Adds a clear batch. Note that this will *always* advance the layer unless you specify a layer index explicitly.
