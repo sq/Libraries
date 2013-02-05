@@ -142,9 +142,9 @@ namespace Squared.Render.Convenience {
         }
 
 
-        public ImperativeRenderer MakeSubgroup (bool nextLayer = true) {
+        public ImperativeRenderer MakeSubgroup (bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null) {
             var result = this;
-            result.Container = BatchGroup.New(Container, Layer);
+            result.Container = BatchGroup.New(Container, Layer, before: before, after: after, userData: userData);
             result.Layer = 0;
 
             if (nextLayer)
