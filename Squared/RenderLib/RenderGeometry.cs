@@ -233,6 +233,8 @@ namespace Squared.Render {
 
         public override void Issue (DeviceManager manager) {
             InnerBatch.Issue(manager);
+
+            base.Issue(manager);
         }
 
         protected override void OnReleaseResources () {

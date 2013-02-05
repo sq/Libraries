@@ -511,7 +511,6 @@ namespace Squared.Render {
             StackTrace = null;
             Released = false;
             ReleaseAfterDraw = false;
-            Container = container;
             Layer = layer;
             Material = material;
 
@@ -528,10 +527,10 @@ namespace Squared.Render {
             if (Released)
                 throw new ObjectDisposedException("batch");
 
-            Container = newContainer;
-
             if (newLayer.HasValue)
                 Layer = newLayer.Value;
+
+            newContainer.Add(this);
         }
 
         public void CaptureStack (int extraFramesToSkip) {
@@ -544,7 +543,9 @@ namespace Squared.Render {
         public abstract void Prepare ();
 
         // This is where you send commands to the video card to render your batch.
-        public abstract void Issue (DeviceManager manager);
+        public virtual void Issue (DeviceManager manager) {
+            Container = null;
+        }
 
         protected virtual void OnReleaseResources () {
             Released = true;
@@ -604,11 +605,7 @@ namespace Squared.Render {
             _DrawCalls = _ListPool.Allocate();
         }
 
-        protected virtual void BeforeAdd (ref T item) {
-        }
-
         protected void Add (ref T item) {
-            BeforeAdd(ref item);
             _DrawCalls.Add(item);
         }
 
@@ -653,6 +650,8 @@ namespace Squared.Render {
                     ClearColor.GetValueOrDefault(Color.Black), ClearZ.GetValueOrDefault(0), ClearStencil.GetValueOrDefault(0)
                 );
             }
+
+            base.Issue(manager);
         }
 
         public static void AddNew (IBatchContainer container, int layer, Material material, Color? clearColor = null, float? clearZ = null, int? clearStencil = null) {
@@ -679,6 +678,8 @@ namespace Squared.Render {
 
         public override void Issue (DeviceManager manager) {
             manager.Device.SetRenderTarget(RenderTarget);
+
+            base.Issue(manager);
         }
 
         [Obsolete("Use BatchGroup.ForRenderTarget instead.")]
@@ -697,13 +698,6 @@ namespace Squared.Render {
         Action<DeviceManager, object> _Before, _After;
         private object _UserData;
 
-        protected override void BeforeAdd (ref Batch batch) {
-#if DEBUG
-            if (_DrawCalls.Contains(batch))
-                throw new InvalidOperationException("Group already contains this batch.");
-#endif
-        }
-
         public override void Prepare () {
             BatchCombiner.CombineBatches(_DrawCalls);
             _DrawCalls.Sort(Frame.BatchComparer);
@@ -718,12 +712,15 @@ namespace Squared.Render {
                 _Before(manager, _UserData);
 
             try {
-                foreach (var batch in _DrawCalls)
+                foreach (var batch in _DrawCalls) {
                     if (batch != null)
                         batch.IssueAndWrapExceptions(manager);
+                }
             } finally {
                 if (_After != null)
                     _After(manager, _UserData);
+
+                base.Issue(manager);
             }
         }
 
@@ -778,6 +775,10 @@ namespace Squared.Render {
         }
 
         public void Add (Batch batch) {
+            if (batch.Container != null)
+                throw new InvalidOperationException("This batch is already in another container.");
+
+            batch.Container = this;
             base.Add(ref batch);
         }
 

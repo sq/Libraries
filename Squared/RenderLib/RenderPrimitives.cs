@@ -314,6 +314,8 @@ namespace Squared.Render {
                     }
                 }
             }
+
+            base.Issue(manager);
         }
 
         public static PrimitiveBatch<T> New (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup = null, object userData = null) {
@@ -441,6 +443,8 @@ namespace Squared.Render {
                 device.SetVertexBuffer(null);
                 device.Indices = null;
             }
+
+            base.Issue(manager);
         }
 
         public static NativeBatch New (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup = null, object userData = null) {

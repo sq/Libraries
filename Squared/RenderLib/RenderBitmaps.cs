@@ -338,6 +338,7 @@ namespace Squared.Render {
             }
 
             _NativeBuffer = null;
+            base.Issue(manager);
         }
 
         protected override void OnReleaseResources () {

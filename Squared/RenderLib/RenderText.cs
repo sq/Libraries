@@ -122,6 +122,8 @@ namespace Squared.Render {
 
             if (ScissorRect.HasValue)
                 manager.Device.ScissorRectangle = oldRect;
+
+            base.Issue(manager);
         }
 
         public Vector2 Measure (ref StringDrawCall drawCall) {
