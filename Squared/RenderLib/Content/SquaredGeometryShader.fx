@@ -1,7 +1,4 @@
-shared float2 ViewportPosition;
-shared float2 ViewportScale;
-
-shared float4x4 ProjectionMatrix;
+#include "Common.fxh"
 
 shared texture BasicTexture;
 
@@ -18,7 +15,7 @@ void ScreenSpaceVertexShader(
     inout float4 color : COLOR0,
     out float4 result : POSITION0
 ) {
-    result = mul(float4(position.xy, 0, 1), ProjectionMatrix);
+    result = TransformPosition(float4(position.xy, 0, 1));
 }
 
 void WorldSpaceVertexShader(
@@ -28,7 +25,7 @@ void WorldSpaceVertexShader(
 ) {
     position -= ViewportPosition;
     position *= ViewportScale;
-    result = mul(float4(position.xy, 0, 1), ProjectionMatrix);
+    result = TransformPosition(float4(position.xy, 0, 1));
 }
 
 void ScreenSpaceTexturedVertexShader(
@@ -37,7 +34,7 @@ void ScreenSpaceTexturedVertexShader(
     inout float2 texCoord : TEXCOORD0,
     out float4 result : POSITION0
 ) {
-    result = mul(float4(position.xy, 0, 1), ProjectionMatrix);
+    result = TransformPosition(float4(position.xy, 0, 1));
 }
 
 void WorldSpaceTexturedVertexShader(
@@ -48,7 +45,7 @@ void WorldSpaceTexturedVertexShader(
 ) {
     position -= ViewportPosition;
     position *= ViewportScale;
-    result = mul(float4(position.xy, 0, 1), ProjectionMatrix);
+    result = TransformPosition(float4(position.xy, 0, 1));
 }
 
 void VertexColorPixelShader(

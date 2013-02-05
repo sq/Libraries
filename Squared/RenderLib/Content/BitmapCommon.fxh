@@ -1,8 +1,4 @@
-shared float2 ViewportScale;
-shared float2 ViewportPosition;
-
-shared float4x4 ProjectionMatrix;
-shared float4x4 ModelViewMatrix;
+#include "Common.fxh"
 
 uniform const float2 BitmapTextureSize;
 uniform const float2 Texel;
@@ -74,10 +70,6 @@ inline void OutputRegions(
     float2 halfTexel = Texel * 0.5f;
     texTL = min(texRgn.xy, texRgn.zw) + halfTexel;
     texBR = max(texRgn.xy, texRgn.zw) - halfTexel;
-}
-
-float4 TransformPosition (float4 position) {
-    return mul(mul(position, ModelViewMatrix), ProjectionMatrix);
 }
 
 void ScreenSpaceVertexShader(
