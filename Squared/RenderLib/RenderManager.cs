@@ -1018,15 +1018,15 @@ namespace Squared.Render {
         public void Initialize (IBatchContainer container, int layer, Action<DeviceManager, object> before, Action<DeviceManager, object> after, object userData) {
             base.Initialize(container, layer, null);
 
+            RenderManager = container.RenderManager;
             _Before = before;
             _After = after;
             _UserData = userData;
         }
 
-        RenderManager IBatchContainer.RenderManager {
-            get {
-                return Container.RenderManager;
-            }
+        public RenderManager RenderManager {
+            get;
+            private set;
         }
 
         public bool IsDisposed {
