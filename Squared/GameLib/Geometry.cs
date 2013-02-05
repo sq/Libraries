@@ -62,10 +62,10 @@ namespace Squared.Game {
             }
         }
 
-        public Bounds (Rectangle rectangle)
+        public Bounds (Rectangle rectangle, float scaleX = 1, float scaleY = 1)
             : this(
-                new Vector2(rectangle.Left, rectangle.Top),
-                new Vector2(rectangle.Right, rectangle.Bottom)
+                new Vector2(rectangle.Left * scaleX, rectangle.Top * scaleY),
+                new Vector2(rectangle.Right * scaleX, rectangle.Bottom * scaleY)
             )
         {
         }

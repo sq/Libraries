@@ -1,17 +1,16 @@
-﻿#pragma warning disable 0420 // a reference to a volatile field will not be treated as volatile
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Squared.Render.Evil;
 using Squared.Util;
-using System.Threading;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Microsoft.Xna.Framework;
 using System.Reflection;
 
 namespace Squared.Render {
+    [Obsolete("Use ImperativeRenderer.DrawString instead.")]
     public class StringBatch : ListBatch<StringDrawCall> {
         protected static FieldInfo _FontTexture;
 

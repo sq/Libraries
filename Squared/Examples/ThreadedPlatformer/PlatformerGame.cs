@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Storage;
 using Microsoft.Xna.Framework.Media;
 using Squared.Render;
+using Squared.Render.Convenience;
 
 namespace ThreadedPlatformer {
     /// <summary>
@@ -182,41 +183,34 @@ namespace ThreadedPlatformer {
                 timeColor = Color.Red;
             }
 
-            using (var bb = BitmapBatch.New(frame, 100, materials.ScreenSpaceBitmap))
-            using (var sb = StringBatch.New(frame, 100, materials.ScreenSpaceBitmap, spriteBatch, this.hudFont)) {
-                var sdc = new StringDrawCall(
-                    timeString, hudLocation, timeColor
-                );
+            var renderer = new ImperativeRenderer(frame, materials, 100, blendState: BlendState.AlphaBlend);
 
-                sb.Add(sdc.Shadow(Color.Black, 1.0f));
-                sb.Add(sdc);
+            renderer.DrawString(hudFont, timeString, hudLocation, timeColor, sortKey: 1);
+            renderer.DrawString(hudFont, timeString, hudLocation + Vector2.One, Color.Black, sortKey: 0);
 
-                // Draw score
-                float timeHeight = hudFont.MeasureString(timeString).Y;
-                sdc.Text = "SCORE: " + level.Score.ToString();
-                sdc.Position += new Vector2(0.0f, timeHeight * 1.2f);
-                sdc.Color = Color.Yellow;
+            var timeHeight = hudFont.MeasureString(timeString).Y;
+            hudLocation.Y = (float)Math.Floor(hudLocation.Y + (timeHeight * 1.2f));
 
-                sb.Add(sdc.Shadow(Color.Black, 1.0f));
-                sb.Add(sdc);
+            var scoreText = "SCORE: " + level.Score;
+            renderer.DrawString(hudFont, scoreText, hudLocation, Color.Yellow, sortKey: 1);
+            renderer.DrawString(hudFont, scoreText, hudLocation + Vector2.One, Color.Black, sortKey: 0);
 
-                // Determine the status overlay message to show.
-                Texture2D status = null;
-                if (level.TimeRemaining == TimeSpan.Zero) {
-                    if (level.ReachedExit) {
-                        status = winOverlay;
-                    } else {
-                        status = loseOverlay;
-                    }
-                } else if (!level.Player.IsAlive) {
-                    status = diedOverlay;
+            // Determine the status overlay message to show.
+            Texture2D status = null;
+            if (level.TimeRemaining == TimeSpan.Zero) {
+                if (level.ReachedExit) {
+                    status = winOverlay;
+                } else {
+                    status = loseOverlay;
                 }
+            } else if (!level.Player.IsAlive) {
+                status = diedOverlay;
+            }
 
-                if (status != null) {
-                    // Draw status message.
-                    Vector2 statusSize = new Vector2(status.Width, status.Height);
-                    bb.Add(new BitmapDrawCall(status, center - statusSize / 2));
-                }
+            if (status != null) {
+                // Draw status message.
+                Vector2 statusSize = new Vector2(status.Width, status.Height);
+                renderer.Draw(status, center - statusSize / 2);
             }
         }
     }

@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Render.Evil;
 
 namespace Squared.Render.Convenience {
     public static class RenderStates {
@@ -293,6 +294,96 @@ namespace Squared.Render.Convenience {
             drawCall.SortKey = sortKey;
 
             Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState);
+        }
+
+
+        public void DrawString (
+            SpriteFont font, string text,
+            Vector2 position, Color? color = null, float scale = 1, float sortKey = 0,
+            int characterSkipCount = 0, int characterLimit = int.MaxValue,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null, SamplerState samplerState = null
+        ) {
+            var spacing = font.Spacing;
+            var lineSpacing = font.LineSpacing;
+            FontUtils.FontFields privateFields;
+            font.GetPrivateFields(out privateFields);
+
+            var characterOffset = Vector2.Zero;
+
+            var defaultCharacter = font.DefaultCharacter;
+            int defaultCharacterIndex = -1;
+            if (defaultCharacter.HasValue)
+                defaultCharacterIndex = privateFields.Characters.BinarySearch(defaultCharacter.Value);
+
+            var drawCall = new BitmapDrawCall(
+                privateFields.Texture, default(Vector2), default(Bounds), color.GetValueOrDefault(Color.White), scale
+            );
+            drawCall.SortKey = sortKey;
+
+            float rectScaleX = 1f / privateFields.Texture.Width;
+            float rectScaleY = 1f / privateFields.Texture.Height;
+
+            for (int i = 0, l = text.Length; i < l; i++) {
+                var ch = text[i];
+
+                var lineBreak = false;
+                if (ch == '\r') {
+                    if (((i + 1) < l) && (text[i + 1] == '\n'))
+                        i += 1;
+
+                    lineBreak = true;
+                } else if (ch == '\n') {
+                    lineBreak = true;
+                }
+
+                if (lineBreak) {
+                    characterOffset.X = 0;
+                    characterOffset.Y += lineSpacing;
+                }
+
+                characterOffset.X += spacing;
+
+                var charIndex = privateFields.Characters.BinarySearch(ch);
+                if (charIndex < 0)
+                    charIndex = defaultCharacterIndex;
+
+                if (charIndex < 0)
+                    continue;
+
+                var kerning = privateFields.Kerning[charIndex];
+                var leftSideBearing = kerning.X;
+                var glyphWidth = kerning.Y;
+                var rightSideBearing = kerning.Z;
+
+                characterOffset.X += leftSideBearing * scale;
+
+                if (characterSkipCount <= 0) {
+                    if (characterLimit <= 0)
+                        break;
+
+                    var glyphRect = privateFields.GlyphRectangles[charIndex];
+                    var cropRect = privateFields.CropRectangles[charIndex];
+
+                    drawCall.TextureRegion = privateFields.Texture.BoundsFromRectangle(ref glyphRect);
+                    drawCall.Position = new Vector2(
+                        position.X + (cropRect.X + characterOffset.X) * scale,
+                        position.Y + (cropRect.Y + characterOffset.Y) * scale
+                    );
+
+                    Draw(
+                        ref drawCall,
+                        layer: layer, worldSpace: worldSpace,
+                        blendState: blendState, samplerState: samplerState
+                    );
+
+                    characterLimit--;
+                } else {
+                    characterSkipCount--;
+                }
+
+                characterOffset.X += (glyphWidth + rightSideBearing) * scale;
+            }
         }
 
 

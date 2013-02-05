@@ -66,8 +66,9 @@ namespace Squared.Game {
         public static Bounds BoundsFromRectangle (this Texture2D @this, ref Rectangle rectangle) {
             float fw = @this.Width;
             float fh = @this.Height;
-            var tl = new Vector2(rectangle.Left / fw, rectangle.Top / fh);
-            var br = new Vector2(rectangle.Right / fw, rectangle.Bottom / fh);
+            float xScale = 1f / fw, yScale = 1f / fh;
+            var tl = new Vector2(rectangle.Left * xScale, rectangle.Top * yScale);
+            var br = new Vector2(tl.X + (rectangle.Width * xScale), tl.Y + (rectangle.Height * yScale));
             return new Bounds(tl, br);
         }
 

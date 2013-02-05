@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Squared.Render.Evil {
@@ -129,7 +130,7 @@ namespace Squared.Render.Evil {
             uint colorKey
         );
 
-        internal static FieldInfo pComPtr;
+        internal static readonly FieldInfo pComPtr;
 
         static TextureUtils () {
             pComPtr = typeof(Texture2D).GetField("pComPtr", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
@@ -220,6 +221,41 @@ namespace Squared.Render.Evil {
                 if (rv != 0)
                     throw new COMException("D3DXLoadSurfaceFromMemory failed", rv);
             }
+        }
+    }
+
+    public static class FontUtils {
+        public struct FontFields {
+            public Texture2D Texture;
+            public List<Rectangle> GlyphRectangles;
+            public List<Rectangle> CropRectangles;
+            public List<char> Characters;
+            public List<Vector3> Kerning;
+        }
+
+        internal static readonly FieldInfo textureValue, glyphData, croppingData, kerning, characterMap;
+
+        static FontUtils () {
+            var tSpriteFont = typeof(SpriteFont);
+            textureValue = GetPrivateField(tSpriteFont, "textureValue");
+            glyphData = GetPrivateField(tSpriteFont, "glyphData");
+            croppingData = GetPrivateField(tSpriteFont, "croppingData");
+            kerning = GetPrivateField(tSpriteFont, "kerning");
+            characterMap = GetPrivateField(tSpriteFont, "characterMap");
+        }
+
+        private static FieldInfo GetPrivateField (Type type, string fieldName) {
+            return type.GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        }
+
+        public static void GetPrivateFields (this SpriteFont font, out FontFields result) {
+            result = new FontFields {
+                Texture = (Texture2D)textureValue.GetValue(font),
+                GlyphRectangles = (List<Rectangle>)glyphData.GetValue(font),
+                CropRectangles = (List<Rectangle>)croppingData.GetValue(font),
+                Characters = (List<char>)characterMap.GetValue(font),
+                Kerning = (List<Vector3>)kerning.GetValue(font)
+            };
         }
     }
 }
