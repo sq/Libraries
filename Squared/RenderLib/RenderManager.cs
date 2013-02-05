@@ -480,7 +480,7 @@ namespace Squared.Render {
     }
 
     public abstract class Batch : IDisposable {
-        private static Dictionary<Type, int> TypeIds = new Dictionary<Type, int>();
+        private static Dictionary<Type, int> TypeIds = new Dictionary<Type, int>(new ReferenceComparer<Type>());
 
         public static bool CaptureStackTraces = false;
 
@@ -548,12 +548,11 @@ namespace Squared.Render {
         }
 
         protected virtual void OnReleaseResources () {
-            Released = true;
+            if (Released)
+                return;
 
-            if (Pool != null) {
-                Pool.Release(this);
-                Pool = null;
-            }
+            Released = true;
+            Pool.Release(this);
 
             StackTrace = null;
             Container = null;

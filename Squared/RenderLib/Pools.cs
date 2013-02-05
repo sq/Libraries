@@ -11,12 +11,11 @@ namespace Squared.Render {
 
     public class BatchPool<T> : BaseObjectPool<T>, IBatchPool
         where T : Batch, new() {
-        private UnorderedList<T> _Pool = new UnorderedList<T>();
 
         public readonly Func<IBatchPool, T> Allocator;
 
-        public BatchPool (Func<IBatchPool, T> allocator)
-            : this(512) {
+        public BatchPool (Func<IBatchPool, T> allocator, int poolCapacity = BaseObjectPool<T>.DefaultCapacity)
+            : this(poolCapacity) {
             Allocator = allocator;
         }
 
@@ -36,7 +35,9 @@ namespace Squared.Render {
     public class FramePool : BaseObjectPool<Frame> {
         public readonly RenderManager RenderManager;
 
-        public FramePool (RenderManager renderManager) {
+        public FramePool (RenderManager renderManager)
+            : base(4) 
+        {
             RenderManager = renderManager;
         }
 
@@ -54,16 +55,19 @@ namespace Squared.Render {
     public abstract class BaseObjectPool<T>
         where T : class, new() {
 
-        private UnorderedList<T> _Pool = new UnorderedList<T>();
+        private UnorderedList<T> _Pool;
 
-        public readonly int PoolCapacity;
+        public const int DefaultCapacity = 512;
+
+        public int PoolCapacity;
 
         public BaseObjectPool ()
-            : this(512) {
+            : this(DefaultCapacity) {
         }
 
         public BaseObjectPool (int poolCapacity) {
             PoolCapacity = poolCapacity;
+            _Pool = new UnorderedList<T>(Math.Max(poolCapacity / 2, 64));
         }
 
         public virtual T Allocate () {

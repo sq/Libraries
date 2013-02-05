@@ -145,7 +145,9 @@ namespace Squared.Render.Convenience {
 
         public ImperativeRenderer MakeSubgroup (bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null) {
             var result = this;
-            result.Container = BatchGroup.New(Container, Layer, before: before, after: after, userData: userData);
+            var group = BatchGroup.New(Container, Layer, before: before, after: after, userData: userData);
+            group.Dispose();
+            result.Container = group;
             result.Layer = 0;
 
             if (nextLayer)
@@ -165,7 +167,9 @@ namespace Squared.Render.Convenience {
 
         public ImperativeRenderer ForRenderTarget (RenderTarget2D renderTarget) {
             var result = this;
-            result.Container = BatchGroup.ForRenderTarget(Container, Layer, renderTarget);
+            var group = BatchGroup.ForRenderTarget(Container, Layer, renderTarget);
+            group.Dispose();
+            result.Container = group;
             result.Layer = 0;
 
             Layer += 1;
@@ -452,18 +456,19 @@ namespace Squared.Render.Convenience {
                 blendState: blendState ?? BlendState
             );
             var pbb = PreviousBatch as BitmapBatch;
+            var actualLayer = layer.GetValueOrDefault(Layer);
 
             if (
                 (pbb != null) &&
                 (pbb.Container == Container) &&
-                (pbb.Layer == layer) &&
+                (pbb.Layer == actualLayer) &&
                 (pbb.Material == material) &&
                 (pbb.SamplerState == (samplerState ?? SamplerState)) &&
                 (pbb.UseZBuffer == UseZBuffer)
             )
                 return pbb;
 
-            var result = BitmapBatch.New(Container, layer.GetValueOrDefault(Layer), material, samplerState ?? SamplerState, UseZBuffer);
+            var result = BitmapBatch.New(Container, actualLayer, material, samplerState ?? SamplerState, UseZBuffer);
             PreviousBatch = result;
 
             if (AutoIncrementLayer && !layer.HasValue)
@@ -485,16 +490,17 @@ namespace Squared.Render.Convenience {
                 blendState: blendState ?? BlendState
             );
             var pgb = PreviousBatch as GeometryBatch<T>;
+            var actualLayer = layer.GetValueOrDefault(Layer);
 
             if (
                 (pgb != null) &&
                 (pgb.Container == Container) &&
-                (pgb.Layer == layer) &&
+                (pgb.Layer == actualLayer) &&
                 (pgb.Material == material)
             )
                 return pgb;
 
-            var result = GeometryBatch<T>.New(Container, layer.GetValueOrDefault(Layer), material);
+            var result = GeometryBatch<T>.New(Container, actualLayer, material);
             PreviousBatch = result;
 
             if (AutoIncrementLayer && !layer.HasValue)
