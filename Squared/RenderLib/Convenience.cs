@@ -155,6 +155,7 @@ namespace Squared.Render.Convenience {
 
         public ImperativeRenderer Clone (bool nextLayer = true) {
             var result = this;
+
             if (nextLayer)
                 Layer += 1;
 
@@ -162,26 +163,33 @@ namespace Squared.Render.Convenience {
         }
 
 
-        public void Draw (BitmapDrawCall drawCall, int? layer = null, bool? worldSpace = null) {
-            Draw(ref drawCall, layer, worldSpace);
+        public void Draw (
+            BitmapDrawCall drawCall, 
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null, SamplerState samplerState = null
+        ) {
+            Draw(ref drawCall, layer, worldSpace, blendState, samplerState);
         }
 
-        public void Draw (ref BitmapDrawCall drawCall, int? layer = null, bool? worldSpace = null) {
+        public void Draw (
+            ref BitmapDrawCall drawCall, 
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null, SamplerState samplerState = null
+        ) {
             if (Container == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
             else if (Container.IsDisposed)
                 throw new ObjectDisposedException("The container this ImperativeRenderer is drawing into has been disposed.");
-
-            if (AutoIncrementLayer && !layer.HasValue) {
-                Layer += 1;
-            }
 
             if (AutoIncrementSortKey) {
                 drawCall.SortKey = NextSortKey;
                 NextSortKey += 1;
             }
 
-            using (var batch = GetBitmapBatch(layer.GetValueOrDefault(Layer), worldSpace.GetValueOrDefault(WorldSpace)))
+            using (var batch = GetBitmapBatch(
+                layer, worldSpace,
+                blendState, samplerState
+            ))
                 batch.Add(ref drawCall);
         }
 
@@ -191,12 +199,13 @@ namespace Squared.Render.Convenience {
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, Vector2? scale = null, Vector2 origin = default(Vector2),
             bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
-            int? layer = null, bool? worldSpace = null
+            int? layer = null, bool? worldSpace = null, 
+            BlendState blendState = null, SamplerState samplerState = null
         ) {
             var drawCall = new BitmapDrawCall(texture, position);
             if (sourceRectangle.HasValue)
                 drawCall.TextureRegion = texture.BoundsFromRectangle(sourceRectangle.Value);
-            drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(drawCall.MultiplyColor);
+            drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(Color.White);
             drawCall.AddColor = addColor;
             drawCall.Rotation = rotation;
             drawCall.Scale = scale.GetValueOrDefault(Vector2.One);
@@ -205,7 +214,7 @@ namespace Squared.Render.Convenience {
                 drawCall.Mirror(mirrorX, mirrorY);
             drawCall.SortKey = sortKey;
 
-            Draw(ref drawCall, layer: layer, worldSpace: worldSpace);
+            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState);
         }
 
         public void Draw (
@@ -213,12 +222,13 @@ namespace Squared.Render.Convenience {
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, float scaleX = 1, float scaleY = 1, float originX = 0, float originY = 0,
             bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
-            int? layer = null, bool? worldSpace = null
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null, SamplerState samplerState = null
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(x, y));
             if (sourceRectangle.HasValue)
                 drawCall.TextureRegion = texture.BoundsFromRectangle(sourceRectangle.Value);
-            drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(drawCall.MultiplyColor);
+            drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(Color.White);
             drawCall.AddColor = addColor;
             drawCall.Rotation = rotation;
             drawCall.Scale = new Vector2(scaleX, scaleY);
@@ -227,7 +237,7 @@ namespace Squared.Render.Convenience {
                 drawCall.Mirror(mirrorX, mirrorY);
             drawCall.SortKey = sortKey;
 
-            Draw(ref drawCall, layer: layer, worldSpace: worldSpace);
+            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState);
         }
 
         public void Draw (
@@ -235,7 +245,8 @@ namespace Squared.Render.Convenience {
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, float originX = 0, float originY = 0,
             bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
-            int? layer = null, bool? worldSpace = null
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null, SamplerState samplerState = null
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(destRectangle.X, destRectangle.Y));
             if (sourceRectangle.HasValue) {
@@ -245,7 +256,7 @@ namespace Squared.Render.Convenience {
             } else {
                 drawCall.Scale = new Vector2(destRectangle.Width / (float)texture.Width, destRectangle.Height / (float)texture.Height);
             }
-            drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(drawCall.MultiplyColor);
+            drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(Color.White);
             drawCall.AddColor = addColor;
             drawCall.Rotation = rotation;
             drawCall.Origin = new Vector2(originX, originY);
@@ -253,74 +264,73 @@ namespace Squared.Render.Convenience {
                 drawCall.Mirror(mirrorX, mirrorY);
             drawCall.SortKey = sortKey;
 
-            Draw(ref drawCall, layer: layer, worldSpace: worldSpace);
+            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState);
         }
 
 
         public void FillRectangle (
             Rectangle rectangle, Color fillColor,
-            int? layer = null, bool? worldSpace = null
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
         ) {
-            FillRectangle(new Bounds(rectangle), fillColor, layer, worldSpace);
+            FillRectangle(new Bounds(rectangle), fillColor, layer, worldSpace, blendState);
         }
 
         public void FillRectangle (
             Bounds bounds, Color fillColor,
-            int? layer = null, bool? worldSpace = null
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
         ) {
-            if (AutoIncrementLayer && !layer.HasValue)
-                Layer += 1;
-
-            using (var gb = GetGeometryBatch<VertexPositionColor>(layer.GetValueOrDefault(Layer), worldSpace.GetValueOrDefault(WorldSpace)))
+            using (var gb = GetGeometryBatch<VertexPositionColor>(layer, worldSpace, blendState))
                 gb.AddFilledQuad(bounds, fillColor);
         }
 
         public void OutlineRectangle (
             Rectangle rectangle, Color outlineColor,
-            int? layer = null, bool? worldSpace = null
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
         ) {
-            OutlineRectangle(new Bounds(rectangle), outlineColor, layer, worldSpace);
+            OutlineRectangle(new Bounds(rectangle), outlineColor, layer, worldSpace, blendState);
         }
 
         public void OutlineRectangle (
             Bounds bounds, Color outlineColor,
-            int? layer = null, bool? worldSpace = null
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
         ) {
-            if (AutoIncrementLayer && !layer.HasValue)
-                Layer += 1;
-
-            using (var gb = GetGeometryBatch<VertexPositionColor>(layer.GetValueOrDefault(Layer), worldSpace.GetValueOrDefault(WorldSpace)))
+            using (var gb = GetGeometryBatch<VertexPositionColor>(layer, worldSpace, blendState))
                 gb.AddOutlinedQuad(bounds, outlineColor);
         }
 
         public void DrawLine (
             Vector2 start, Vector2 end, Color lineColor,
-            int? layer = null, bool? worldSpace = null
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
         ) {
-            DrawLine(start, end, lineColor, lineColor, layer, worldSpace);
+            DrawLine(start, end, lineColor, lineColor, layer, worldSpace, blendState);
         }
 
         public void DrawLine (
             Vector2 start, Vector2 end, Color firstColor, Color secondColor,
-            int? layer = null, bool? worldSpace = null
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
         ) {
-            if (AutoIncrementLayer && !layer.HasValue)
-                Layer += 1;
-
-            using (var gb = GetGeometryBatch<VertexPositionColor>(layer.GetValueOrDefault(Layer), worldSpace.GetValueOrDefault(WorldSpace)))
+            using (var gb = GetGeometryBatch<VertexPositionColor>(
+                layer, worldSpace, blendState
+            ))
                 gb.AddLine(start, end, firstColor, secondColor);
         }
 
 
-        private BitmapBatch GetBitmapBatch (int layer, bool worldSpace) {
+        private BitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
             var material = Materials.GetBitmapMaterial(
-                worldSpace,
+                worldSpace.GetValueOrDefault(WorldSpace),
                 rasterizerState: RasterizerState,
                 depthStencilState: DepthStencilState,
-                blendState: BlendState
+                blendState: blendState ?? BlendState
             );
             var pbb = PreviousBatch as BitmapBatch;
 
@@ -329,27 +339,31 @@ namespace Squared.Render.Convenience {
                 (pbb.Container == Container) &&
                 (pbb.Layer == layer) &&
                 (pbb.Material == material) &&
-                (pbb.SamplerState == SamplerState) &&
+                (pbb.SamplerState == (samplerState ?? SamplerState)) &&
                 (pbb.UseZBuffer == UseZBuffer)
             )
                 return pbb;
 
-            var result = BitmapBatch.New(Container, layer, material, SamplerState, UseZBuffer);
+            var result = BitmapBatch.New(Container, layer.GetValueOrDefault(Layer), material, samplerState ?? SamplerState, UseZBuffer);
             PreviousBatch = result;
+
+            if (AutoIncrementLayer && !layer.HasValue)
+                Layer += 1;
+
             return result;
         }
 
-        private GeometryBatch<T> GetGeometryBatch<T> (int layer, bool worldSpace) 
+        private GeometryBatch<T> GetGeometryBatch<T> (int? layer, bool? worldSpace, BlendState blendState) 
             where T : struct, IVertexType {
 
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
             var material = Materials.GetGeometryMaterial(
-                worldSpace,
+                worldSpace.GetValueOrDefault(WorldSpace),
                 rasterizerState: RasterizerState,
                 depthStencilState: DepthStencilState,
-                blendState: BlendState
+                blendState: blendState ?? BlendState
             );
             var pgb = PreviousBatch as GeometryBatch<T>;
 
@@ -361,8 +375,12 @@ namespace Squared.Render.Convenience {
             )
                 return pgb;
 
-            var result = GeometryBatch<T>.New(Container, layer, material);
+            var result = GeometryBatch<T>.New(Container, layer.GetValueOrDefault(Layer), material);
             PreviousBatch = result;
+
+            if (AutoIncrementLayer && !layer.HasValue)
+                Layer += 1;
+
             return result;
         }
     }
