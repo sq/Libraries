@@ -16,21 +16,11 @@ namespace Squared.Render {
             else if (y == null)
                 return 1;
 
-            var xType = x.GetType();
-            var yType = y.GetType();
-
-            int layerResult = x.Layer.CompareTo(y.Layer);
-
-            if (xType == yType)
-                return layerResult;
-            else {
-                int typeResult = xType.GetHashCode().CompareTo(yType.GetHashCode());
-
-                if (typeResult == 0)
-                    return layerResult;
-                else
-                    return typeResult;
-            }
+            var typeResult = x.TypeId.CompareTo(y.TypeId);
+            if (typeResult == 0)
+                return x.Layer.CompareTo(y.Layer);
+            else
+                return typeResult;
         }
     }
 

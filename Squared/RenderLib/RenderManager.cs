@@ -482,7 +482,11 @@ namespace Squared.Render {
     }
 
     public abstract class Batch : IDisposable {
+        private static Dictionary<Type, int> TypeIds = new Dictionary<Type, int>();
+
         public static bool CaptureStackTraces = false;
+
+        public readonly int TypeId;
 
         public StackTrace StackTrace;
         public IBatchContainer Container;
@@ -495,6 +499,12 @@ namespace Squared.Render {
         internal IBatchPool Pool;
 
         protected static int _BatchCount = 0;
+
+        protected Batch () {
+            var thisType = GetType();
+            if (!TypeIds.TryGetValue(thisType, out TypeId))
+                TypeIds.Add(thisType, TypeId = TypeIds.Count);
+        }
 
         protected void Initialize (IBatchContainer container, int layer, Material material) {
             if ((material != null) && (material.IsDisposed))
