@@ -2,6 +2,7 @@ shared float2 ViewportScale;
 shared float2 ViewportPosition;
 
 shared float4x4 ProjectionMatrix;
+shared float4x4 ModelViewMatrix;
 
 uniform const float2 BitmapTextureSize;
 uniform const float2 Texel;
@@ -75,6 +76,10 @@ inline void OutputRegions(
     texBR = max(texRgn.xy, texRgn.zw) - halfTexel;
 }
 
+float4 TransformPosition (float4 position) {
+    return mul(mul(position, ModelViewMatrix), ProjectionMatrix);
+}
+
 void ScreenSpaceVertexShader(
     in float3 position : POSITION0, // x, y
     in float4 texRgn : POSITION1, // x1, y1, x2, y2
@@ -95,7 +100,7 @@ void ScreenSpaceVertexShader(
     
     position.xy += rotatedCorner;
     
-    result = mul(float4(position.xy, position.z, 1), ProjectionMatrix);
+    result = TransformPosition(float4(position.xy, position.z, 1));
     OutputRegions(texRgn, texTL, texBR);
 }
 
@@ -119,6 +124,6 @@ void WorldSpaceVertexShader(
     
     position.xy += rotatedCorner - ViewportPosition;
     
-    result = mul(float4(position.xy * ViewportScale, position.z, 1), ProjectionMatrix);
+    result = TransformPosition(float4(position.xy * ViewportScale, position.z, 1));
     OutputRegions(texRgn, texTL, texBR);
 }

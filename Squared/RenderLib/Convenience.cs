@@ -78,81 +78,120 @@ namespace Squared.Render.Convenience {
         public static DelegateMaterial SetStates (
             this Material inner, 
             RasterizerState rasterizerState = null,
-            DepthStencilState depthState = null,
+            DepthStencilState depthStencilState = null,
             BlendState blendState = null
         ) {
             return new DelegateMaterial(
                 inner,
                 new [] {
-                    MakeDelegate(rasterizerState, depthState, blendState)
+                    MakeDelegate(rasterizerState, depthStencilState, blendState)
                 },
                 new Action<DeviceManager>[0]
             );
         }
     }
 
-    public struct BitmapRenderer {
+    public struct ImperativeRenderer {
         public IBatchContainer Container;
+        public DefaultMaterialSet Materials;
 
         public int Layer;
-        public Material Material;
+        public DepthStencilState DepthStencilState;
+        public RasterizerState RasterizerState;
+        public BlendState BlendState;
         public SamplerState SamplerState;
+        public bool WorldSpace;
         public bool UseZBuffer;
+        public bool AutoIncrementLayer;
         public bool AutoIncrementSortKey;
 
         private float NextSortKey;
-        private BitmapBatch PreviousBatch;
+        private Batch PreviousBatch;
 
-        public BitmapRenderer (
-            IBatchContainer container, 
+        public ImperativeRenderer (
+            IBatchContainer container,
+            DefaultMaterialSet materials,
             int layer = 0, 
-            Material material = null, 
-            SamplerState samplerState = null, 
+            RasterizerState rasterizerState = null,
+            DepthStencilState depthStencilState = null,
+            BlendState blendState = null,
+            SamplerState samplerState = null,
+            bool worldSpace = true,
             bool useZBuffer = false,
-            bool autoIncrementSortKey = false
+            bool autoIncrementSortKey = false,
+            bool autoIncrementLayer = false
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
+            if (materials == null)
+                throw new ArgumentNullException("materials");
 
             Container = container;
+            Materials = materials;
             Layer = layer;
-            Material = material;
+            RasterizerState = rasterizerState;
+            DepthStencilState = depthStencilState;
+            BlendState = blendState;
             SamplerState = samplerState;
             UseZBuffer = useZBuffer;
+            WorldSpace = worldSpace;
             AutoIncrementSortKey = autoIncrementSortKey;
+            AutoIncrementLayer = autoIncrementLayer;
             NextSortKey = 0;
             PreviousBatch = null;
         }
 
-        public void Draw (BitmapDrawCall drawCall, int? layer = null, Material material = null, SamplerState samplerState = null) {
-            Draw(ref drawCall, layer, material, samplerState);
+
+        public ImperativeRenderer MakeSubgroup (bool nextLayer = true) {
+            var result = this;
+            result.Container = BatchGroup.New(Container, Layer);
+            result.Layer = 0;
+
+            if (nextLayer)
+                Layer += 1;
+
+            return result;
         }
 
-        public void Draw (ref BitmapDrawCall drawCall, int? layer = null, Material material = null, SamplerState samplerState = null) {
+        public ImperativeRenderer Clone (bool nextLayer = true) {
+            var result = this;
+            if (nextLayer)
+                Layer += 1;
+
+            return result;
+        }
+
+
+        public void Draw (BitmapDrawCall drawCall, int? layer = null, bool? worldSpace = null) {
+            Draw(ref drawCall, layer, worldSpace);
+        }
+
+        public void Draw (ref BitmapDrawCall drawCall, int? layer = null, bool? worldSpace = null) {
             if (Container == null)
-                throw new InvalidOperationException("You cannot use the argumentless BitmapRenderer constructor.");
+                throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
             else if (Container.IsDisposed)
-                throw new ObjectDisposedException("The container this BitmapRenderer is drawing into has been disposed.");
+                throw new ObjectDisposedException("The container this ImperativeRenderer is drawing into has been disposed.");
+
+            if (AutoIncrementLayer && !layer.HasValue) {
+                Layer += 1;
+            }
 
             if (AutoIncrementSortKey) {
                 drawCall.SortKey = NextSortKey;
                 NextSortKey += 1;
             }
 
-            using (var batch = GetBatch( 
-                layer.GetValueOrDefault(Layer), 
-                material ?? Material, 
-                samplerState ?? SamplerState
-            ))
+            using (var batch = GetBitmapBatch(layer.GetValueOrDefault(Layer), worldSpace.GetValueOrDefault(WorldSpace)))
                 batch.Add(ref drawCall);
         }
+
 
         public void Draw (
             Texture2D texture, Vector2 position,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, Vector2? scale = null, Vector2 origin = default(Vector2),
-            bool mirrorX = false, bool mirrorY = false, int sortKey = 0,
-            int? layer = null, Material material = null, SamplerState samplerState = null
+            bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
+            int? layer = null, bool? worldSpace = null
         ) {
             var drawCall = new BitmapDrawCall(texture, position);
             if (sourceRectangle.HasValue)
@@ -166,15 +205,15 @@ namespace Squared.Render.Convenience {
                 drawCall.Mirror(mirrorX, mirrorY);
             drawCall.SortKey = sortKey;
 
-            Draw(ref drawCall, layer: layer, material: material, samplerState: samplerState);
+            Draw(ref drawCall, layer: layer, worldSpace: worldSpace);
         }
 
         public void Draw (
             Texture2D texture, float x, float y,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, float scaleX = 1, float scaleY = 1, float originX = 0, float originY = 0,
-            bool mirrorX = false, bool mirrorY = false, int sortKey = 0,
-            int? layer = null, Material material = null, SamplerState samplerState = null
+            bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
+            int? layer = null, bool? worldSpace = null
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(x, y));
             if (sourceRectangle.HasValue)
@@ -188,15 +227,15 @@ namespace Squared.Render.Convenience {
                 drawCall.Mirror(mirrorX, mirrorY);
             drawCall.SortKey = sortKey;
 
-            Draw(ref drawCall, layer: layer, material: material, samplerState: samplerState);
+            Draw(ref drawCall, layer: layer, worldSpace: worldSpace);
         }
 
         public void Draw (
             Texture2D texture, Rectangle destRectangle,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, float originX = 0, float originY = 0,
-            bool mirrorX = false, bool mirrorY = false, int sortKey = 0,
-            int? layer = null, Material material = null, SamplerState samplerState = null
+            bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
+            int? layer = null, bool? worldSpace = null
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(destRectangle.X, destRectangle.Y));
             if (sourceRectangle.HasValue) {
@@ -214,21 +253,117 @@ namespace Squared.Render.Convenience {
                 drawCall.Mirror(mirrorX, mirrorY);
             drawCall.SortKey = sortKey;
 
-            Draw(ref drawCall, layer: layer, material: material, samplerState: samplerState);
+            Draw(ref drawCall, layer: layer, worldSpace: worldSpace);
         }
 
-        private BitmapBatch GetBatch (int layer, Material material, SamplerState samplerState) {
-            if (
-                (PreviousBatch != null) &&
-                (PreviousBatch.Container == Container) &&
-                (PreviousBatch.Layer == layer) &&
-                (PreviousBatch.Material == material) &&
-                (PreviousBatch.SamplerState == samplerState) &&                
-                (PreviousBatch.UseZBuffer == UseZBuffer)
-            )
-                return PreviousBatch;
 
-            return PreviousBatch = BitmapBatch.New(Container, layer, material, samplerState, UseZBuffer);
+        public void FillRectangle (
+            Rectangle rectangle, Color fillColor,
+            int? layer = null, bool? worldSpace = null
+        ) {
+            FillRectangle(new Bounds(rectangle), fillColor, layer, worldSpace);
+        }
+
+        public void FillRectangle (
+            Bounds bounds, Color fillColor,
+            int? layer = null, bool? worldSpace = null
+        ) {
+            if (AutoIncrementLayer && !layer.HasValue)
+                Layer += 1;
+
+            using (var gb = GetGeometryBatch<VertexPositionColor>(layer.GetValueOrDefault(Layer), worldSpace.GetValueOrDefault(WorldSpace)))
+                gb.AddFilledQuad(bounds, fillColor);
+        }
+
+        public void OutlineRectangle (
+            Rectangle rectangle, Color outlineColor,
+            int? layer = null, bool? worldSpace = null
+        ) {
+            OutlineRectangle(new Bounds(rectangle), outlineColor, layer, worldSpace);
+        }
+
+        public void OutlineRectangle (
+            Bounds bounds, Color outlineColor,
+            int? layer = null, bool? worldSpace = null
+        ) {
+            if (AutoIncrementLayer && !layer.HasValue)
+                Layer += 1;
+
+            using (var gb = GetGeometryBatch<VertexPositionColor>(layer.GetValueOrDefault(Layer), worldSpace.GetValueOrDefault(WorldSpace)))
+                gb.AddOutlinedQuad(bounds, outlineColor);
+        }
+
+        public void DrawLine (
+            Vector2 start, Vector2 end, Color lineColor,
+            int? layer = null, bool? worldSpace = null
+        ) {
+            DrawLine(start, end, lineColor, lineColor, layer, worldSpace);
+        }
+
+        public void DrawLine (
+            Vector2 start, Vector2 end, Color firstColor, Color secondColor,
+            int? layer = null, bool? worldSpace = null
+        ) {
+            if (AutoIncrementLayer && !layer.HasValue)
+                Layer += 1;
+
+            using (var gb = GetGeometryBatch<VertexPositionColor>(layer.GetValueOrDefault(Layer), worldSpace.GetValueOrDefault(WorldSpace)))
+                gb.AddLine(start, end, firstColor, secondColor);
+        }
+
+
+        private BitmapBatch GetBitmapBatch (int layer, bool worldSpace) {
+            if (Materials == null)
+                throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
+
+            var material = Materials.GetBitmapMaterial(
+                worldSpace,
+                rasterizerState: RasterizerState,
+                depthStencilState: DepthStencilState,
+                blendState: BlendState
+            );
+            var pbb = PreviousBatch as BitmapBatch;
+
+            if (
+                (pbb != null) &&
+                (pbb.Container == Container) &&
+                (pbb.Layer == layer) &&
+                (pbb.Material == material) &&
+                (pbb.SamplerState == SamplerState) &&
+                (pbb.UseZBuffer == UseZBuffer)
+            )
+                return pbb;
+
+            var result = BitmapBatch.New(Container, layer, material, SamplerState, UseZBuffer);
+            PreviousBatch = result;
+            return result;
+        }
+
+        private GeometryBatch<T> GetGeometryBatch<T> (int layer, bool worldSpace) 
+            where T : struct, IVertexType {
+
+            if (Materials == null)
+                throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
+
+            var material = Materials.GetGeometryMaterial(
+                worldSpace,
+                rasterizerState: RasterizerState,
+                depthStencilState: DepthStencilState,
+                blendState: BlendState
+            );
+            var pgb = PreviousBatch as GeometryBatch<T>;
+
+            if (
+                (pgb != null) &&
+                (pgb.Container == Container) &&
+                (pgb.Layer == layer) &&
+                (pgb.Material == material)
+            )
+                return pgb;
+
+            var result = GeometryBatch<T>.New(Container, layer, material);
+            PreviousBatch = result;
+            return result;
         }
     }
 }

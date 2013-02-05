@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using System.Threading;
 using Microsoft.Xna.Framework.Content;
 using System.Reflection;
+using Squared.Render.Convenience;
 
 namespace Squared.Render {
     public interface IEffectMaterial {
@@ -110,8 +111,82 @@ namespace Squared.Render {
         }
     }
 
+    public struct ViewTransform {
+        public Vector2 Scale, Position;
+        public Matrix Projection, ModelView;
+
+        public static readonly ViewTransform Default = new ViewTransform {
+            Scale = Vector2.One,
+            Position = Vector2.Zero,
+            Projection = Matrix.Identity,
+            ModelView = Matrix.Identity
+        };
+
+        public static ViewTransform CreateOrthographic (Viewport viewport) {
+            return new ViewTransform {
+                Scale = Vector2.One,
+                Position = Vector2.Zero,
+                Projection = Matrix.CreateOrthographicOffCenter(viewport.X, viewport.Width, viewport.Height, viewport.Y, viewport.MinDepth, viewport.MaxDepth),
+                ModelView = Matrix.Identity
+            };
+        }
+
+        public static ViewTransform CreateOrthographic (int screenWidth, int screenHeight, float zNearPlane = 0, float zFarPlane = 1) {
+            return new ViewTransform {
+                Scale = Vector2.One,
+                Position = Vector2.Zero,
+                Projection = Matrix.CreateOrthographicOffCenter(0, screenWidth, screenHeight, 0, zNearPlane, zFarPlane),
+                ModelView = Matrix.Identity
+            };
+        }
+    }
+
     public class DefaultMaterialSet : MaterialSetBase {
+        protected struct MaterialCacheKey {
+            public readonly Material Material;
+            public readonly RasterizerState RasterizerState;
+            public readonly DepthStencilState DepthStencilState;
+            public readonly BlendState BlendState;
+
+            public MaterialCacheKey (Material material, RasterizerState rasterizerState, DepthStencilState depthStencilState, BlendState blendState) {
+                Material = material;
+                RasterizerState = rasterizerState;
+                DepthStencilState = depthStencilState;
+                BlendState = blendState;
+            }
+
+            private static int HashNullable<T> (T o) where T : class {
+                if (o == null)
+                    return 0;
+                else
+                    return o.GetHashCode();
+            }
+
+            public bool Equals (MaterialCacheKey rhs) {
+                return (Material == rhs.Material) &&
+                    (RasterizerState == rhs.RasterizerState) &&
+                    (DepthStencilState == rhs.DepthStencilState) &&
+                    (BlendState == rhs.BlendState);
+            }
+
+            public override bool Equals (object obj) {
+                if (obj is MaterialCacheKey)
+                    return Equals((MaterialCacheKey)obj);
+                else
+                    return base.Equals(obj);
+            }
+
+            public override int GetHashCode () {
+                return Material.GetHashCode() ^
+                    HashNullable(RasterizerState) ^
+                    HashNullable(DepthStencilState) ^
+                    HashNullable(BlendState);
+            }
+        }
+
         public readonly ResourceContentManager BuiltInShaders;
+
+        protected readonly Dictionary<MaterialCacheKey, Material> MaterialCache = new Dictionary<MaterialCacheKey, Material>();
 
         public Material ScreenSpaceBitmap, WorldSpaceBitmap;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
@@ -119,6 +194,8 @@ namespace Squared.Render {
         public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
         public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
         public Material Clear;
+
+        public ViewTransform ViewTransform;
 
         public DefaultMaterialSet (IServiceProvider serviceProvider) {
             BuiltInShaders = new ResourceContentManager(serviceProvider, Shaders.ResourceManager);
@@ -186,30 +263,58 @@ namespace Squared.Render {
                 "WorldSpaceVerticalGaussianBlur5Tap"
             );
 
-            ViewportScale = Vector2.One;
-            ViewportPosition = Vector2.Zero;
-            ProjectionMatrix = Matrix.Identity;
+            ViewTransform = ViewTransform.Default;
         }
 
         public Vector2 ViewportScale {
-            get;
-            set;
+            get {
+                return ViewTransform.Scale;
+            }
+            set {
+                ViewTransform.Scale = value;
+            }
         }
 
         public Vector2 ViewportPosition {
-            get;
-            set;
+            get {
+                return ViewTransform.Position;
+            }
+            set {
+                ViewTransform.Position = value;
+            }
         }
 
         public Matrix ProjectionMatrix {
-            get;
-            set;
+            get {
+                return ViewTransform.Projection;
+            }
+            set {
+                ViewTransform.Projection = value;
+            }
         }
 
-        // Call this method to apply any changes you've made to the three
-        //  viewport configuration properties above.
-        // Note that Clear batches automatically call this before clearing.
+        public Matrix ModelViewMatrix {
+            get {
+                return ViewTransform.ModelView;
+            }
+            set {
+                ViewTransform.ModelView = value;
+            }
+        }
+
+        /// <summary>
+        /// Sets the view transform of all material(s) owned by this material set to the ViewTransform field's current value.
+        /// Clear batches automatically call this function for you.
+        /// </summary>
         public void ApplyShaderVariables () {
+            ApplyViewTransform(ref ViewTransform);
+        }
+
+        /// <summary>
+        /// Manually sets the view transform of all material(s) owned by this material set without changing the ViewTransform field.
+        /// </summary>
+        /// <param name="viewTransform">The view transform to apply.</param>
+        public void ApplyViewTransform (ref ViewTransform viewTransform) {
             foreach (var m in AllMaterials) {
                 var em = m as IEffectMaterial;
 
@@ -220,16 +325,62 @@ namespace Squared.Render {
                 if (e == null)
                     continue;
 
-                e.Parameters["ViewportScale"].SetValue(ViewportScale);
-                e.Parameters["ViewportPosition"].SetValue(ViewportPosition);
-                e.Parameters["ProjectionMatrix"].SetValue(ProjectionMatrix);
+                e.Parameters["ViewportScale"].SetValue(viewTransform.Scale);
+                e.Parameters["ViewportPosition"].SetValue(viewTransform.Position);
+                e.Parameters["ProjectionMatrix"].SetValue(viewTransform.Projection);
+                e.Parameters["ModelViewMatrix"].SetValue(viewTransform.ModelView);
             }
+        }
+
+        /// <summary>
+        /// Returns a new version of a given material with rasterizer, depth/stencil, and blend state(s) optionally applied to it. This new version is cached.
+        /// If no states are provided, the base material is returned.
+        /// </summary>
+        /// <param name="baseMaterial">The base material.</param>
+        /// <param name="rasterizerState">The new rasterizer state, or null.</param>
+        /// <param name="depthStencilState">The new depth/stencil state, or null.</param>
+        /// <param name="blendState">The new blend state, or null.</param>
+        /// <returns>The material with state(s) applied.</returns>
+        public Material Get (Material baseMaterial, RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null) {
+            if (
+                (rasterizerState == null) &&
+                (depthStencilState == null) &&
+                (blendState == null)
+            )
+                return baseMaterial;
+
+            var key = new MaterialCacheKey(baseMaterial, rasterizerState, depthStencilState, blendState);
+            Material result;
+            if (!MaterialCache.TryGetValue(key, out result)) {
+                result = baseMaterial.SetStates(rasterizerState, depthStencilState, blendState);
+                MaterialCache.Add(key, result);
+            }
+            return result;
+        }
+
+        public Material GetBitmapMaterial (bool worldSpace, RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null) {
+            return Get(
+                worldSpace ? WorldSpaceBitmap : ScreenSpaceBitmap,
+                rasterizerState: rasterizerState,
+                depthStencilState: depthStencilState,
+                blendState: blendState
+            );
+        }
+
+        public Material GetGeometryMaterial (bool worldSpace, RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null) {
+            return Get(
+                worldSpace ? WorldSpaceGeometry : ScreenSpaceGeometry,
+                rasterizerState: rasterizerState,
+                depthStencilState: depthStencilState,
+                blendState: blendState
+            );
         }
 
         public override void Dispose () {
             base.Dispose();
 
             BuiltInShaders.Dispose();
+            MaterialCache.Clear();
         }
     }
 

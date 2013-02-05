@@ -62,6 +62,14 @@ namespace Squared.Game {
             }
         }
 
+        public Bounds (Rectangle rectangle)
+            : this(
+                new Vector2(rectangle.Left, rectangle.Top),
+                new Vector2(rectangle.Right, rectangle.Bottom)
+            )
+        {
+        }
+
         public Bounds (Vector2 a, Vector2 b) {
             TopLeft = new Vector2(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y));
             BottomRight = new Vector2(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y));
