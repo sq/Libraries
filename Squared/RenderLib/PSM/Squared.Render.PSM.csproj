@@ -70,12 +70,18 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedShaderProgram Include="shaders\SquaredBitmapShader.fcg" />
-    <EmbeddedShaderProgram Include="shaders\SquaredBitmapShader.vcg" />
-    <EmbeddedShaderProgram Include="shaders\SquaredGeometryShader.fcg" />
-    <EmbeddedShaderProgram Include="shaders\SquaredGeometryShader.vcg" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="shaders\Common.cgh" />
+    <None Include="shaders\VertexCommon.cgh" />
+    <None Include="shaders\Bitmap.vcgh" />
+    <None Include="shaders\Bitmap.fcgh" />
+    <None Include="shaders\Geometry.vcgh" />
+    <None Include="shaders\Geometry.fcgh" />
+    <EmbeddedShaderProgram Include="shaders\WorldSpaceBitmap.fcg" />
+    <EmbeddedShaderProgram Include="shaders\WorldSpaceBitmap.vcg" />
+    <EmbeddedShaderProgram Include="shaders\ScreenSpaceBitmap.fcg" />
+    <EmbeddedShaderProgram Include="shaders\ScreenSpaceBitmap.vcg" />
+    <EmbeddedShaderProgram Include="shaders\WorldSpaceGeometry.fcg" />
+    <EmbeddedShaderProgram Include="shaders\WorldSpaceGeometry.vcg" />
+    <EmbeddedShaderProgram Include="shaders\ScreenSpaceGeometry.fcg" />
+    <EmbeddedShaderProgram Include="shaders\ScreenSpaceGeometry.vcg" />
   </ItemGroup>
 </Project>

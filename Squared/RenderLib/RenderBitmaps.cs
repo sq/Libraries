@@ -191,7 +191,7 @@ namespace Squared.Render {
 #if PSM
             PSMBufferGenerator<BitmapVertex>.VertexFormat = new [] {
               VertexFormat.Float3, VertexFormat.Float4, VertexFormat.Float4,
-              VertexFormat.UByte4N, VertexFormat.UByte4N, VertexFormat.Float, VertexFormat.Float
+              VertexFormat.Float, VertexFormat.UByte4N, VertexFormat.UByte4N, VertexFormat.Float
             };
 #endif
         }
@@ -315,17 +315,17 @@ namespace Squared.Render {
 #if !PSM
                 pIndices[indexWritePosition + 0] = (short)(indexBase + 0);
                 pIndices[indexWritePosition + 1] = (short)(indexBase + 1);
-                pIndices[indexWritePosition + 2] = (short)(indexBase + 3);
-                pIndices[indexWritePosition + 3] = (short)(indexBase + 1);
+                pIndices[indexWritePosition + 2] = (short)(indexBase + 2);
+                pIndices[indexWritePosition + 3] = (short)(indexBase + 0);
                 pIndices[indexWritePosition + 4] = (short)(indexBase + 2);
                 pIndices[indexWritePosition + 5] = (short)(indexBase + 3);
 #else
                 buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 0] = (ushort)(indexBase + 0);
                 buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 1] = (ushort)(indexBase + 1);
                 buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 2] = (ushort)(indexBase + 2);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 3] = (ushort)(indexBase + 3);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 3] = (ushort)(indexBase + 0);
                 buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 4] = (ushort)(indexBase + 2);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 5] = (ushort)(indexBase + 1);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 5] = (ushort)(indexBase + 3);
 #endif
 
                 indexWritePosition += 6;
@@ -358,24 +358,6 @@ namespace Squared.Render {
             _Prepared = true;
         }
             
-        #if PSM
-        private static void ApplySamplerState (SamplerState state, Sce.PlayStation.Core.Graphics.Texture2D texture) {
-            texture.SetFilter(
-                state.Filter == TextureFilter.Point
-                    ? Sce.PlayStation.Core.Graphics.TextureFilterMode.Nearest
-                    : Sce.PlayStation.Core.Graphics.TextureFilterMode.Linear
-            );
-            texture.SetWrap(
-                state.AddressU == TextureAddressMode.Clamp
-                    ? Sce.PlayStation.Core.Graphics.TextureWrapMode.ClampToEdge
-                    : Sce.PlayStation.Core.Graphics.TextureWrapMode.Repeat,
-                state.AddressV == TextureAddressMode.Clamp
-                    ? Sce.PlayStation.Core.Graphics.TextureWrapMode.ClampToEdge
-                    : Sce.PlayStation.Core.Graphics.TextureWrapMode.Repeat
-            );
-        }
-        #endif            
-
         public override void Issue (DeviceManager manager) {
             if (_DrawCalls.Count == 0)
                 return;
@@ -406,26 +388,14 @@ namespace Squared.Render {
                         currentTexture = nb.TextureSet;
                         var tex1 = currentTexture.Texture1;
 
-#if PSM
-                        ApplySamplerState(SamplerState, tex1._texture2D);
-                        device._graphics.SetTexture(0, tex1._texture2D);
-                            
-                        if (currentTexture.Texture2 != null) {
-                            ApplySamplerState(SamplerState, currentTexture.Texture2._texture2D);
-                            device._graphics.SetTexture(1, currentTexture.Texture2._texture2D);
-                        } else
-                            device._graphics.SetTexture(1, null);
-                            
-                        // FIXME: SamplerState
-#else
                         device.Textures[0] = tex1;
                         device.Textures[1] = currentTexture.Texture2;
                         device.SamplerStates[0] = device.SamplerStates[1] = SamplerState;
-#endif
 
                         var vSize = new Vector2(tex1.Width, tex1.Height);
                         paramSize.SetValue(vSize);
                         paramHalfTexel.SetValue(new Vector2(1.0f / vSize.X, 1.0f / vSize.Y) * 0.5f);
+                            
                         manager.CurrentEffect.CurrentTechnique.Passes[0].Apply();
                     }
 
@@ -436,6 +406,11 @@ namespace Squared.Render {
                     }
       
 #if PSM
+                    // MonoGame and PSM are both retarded.
+                    device.ApplyState(false);
+                    device.Textures.SetTextures(device);
+                    device.SamplerStates.SetSamplers(device);
+                        
                     device._graphics.DrawArrays(
                         Sce.PlayStation.Core.Graphics.DrawMode.Triangles,
                         nb.IndexOffset, (nb.VertexCount / 4) * 6

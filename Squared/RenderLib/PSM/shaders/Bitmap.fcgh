@@ -9,12 +9,17 @@ void main(
     in float2 texBR : TEXCOORD2,
     out float4 result : COLOR
 ) {
+	result = multiplyColorOut;
+	return;
+
 	float2 texCoord = clamp(texCoordOut, texTL, texBR);
 	
 	addColorOut.rgb *= addColorOut.a;
 	addColorOut.a = 0;
 	
 	float4 texColor = tex2D(BitmapTexture, texCoord);
+	result = texColor + 0.25;
+	return;
 	
 	result = multiplyColorOut * texColor;
 	result += (addColorOut * result.a);

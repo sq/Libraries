@@ -1,4 +1,4 @@
-#include "Common.cgh"
+#include "VertexCommon.cgh"
 
 void main(
 	in uniform float4x4 ProjectionMatrix,
@@ -10,6 +10,11 @@ void main(
     out float4 transformedPosition : POSITION,
     out float4 colorOut : COLOR0
 ) {   
+#ifdef WORLD_SPACE
+  position.xy -= ViewportPosition;
+  position.xy *= ViewportScale;
+#endif
+
     transformedPosition = TransformPosition(ProjectionMatrix, ModelViewMatrix, float4(position.xy, 0, 1));
     colorOut = color;
 }

@@ -83,7 +83,10 @@ namespace Squared.Render.Internal {
         }
 
         public void Dispose () {
+#if !PSM
             Thread.Abort();
+#endif
+            
             _WakeSignal.Set();
 
             Thread.Join();

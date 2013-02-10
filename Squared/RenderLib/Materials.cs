@@ -210,9 +210,16 @@ namespace Squared.Render {
                 null
             );
 
+   
+#if PSM
+            ScreenSpaceBitmap = new EffectMaterial(BuiltInShaders.Load<Effect>("ScreenSpaceBitmap"));
+            WorldSpaceBitmap = new EffectMaterial(BuiltInShaders.Load<Effect>("WorldSpaceBitmap"));
+            ScreenSpaceGeometry = new EffectMaterial(BuiltInShaders.Load<Effect>("ScreenSpaceGeometry"));
+            WorldSpaceGeometry = new EffectMaterial(BuiltInShaders.Load<Effect>("WorldSpaceGeometry"));
+#else
             var bitmapShader = BuiltInShaders.Load<Effect>("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load<Effect>("SquaredGeometryShader");
-
+            
             ScreenSpaceBitmap = new EffectMaterial(
                 bitmapShader,
                 "ScreenSpaceBitmapTechnique"
@@ -232,6 +239,7 @@ namespace Squared.Render {
                 geometryShader,
                 "WorldSpaceUntextured"
             );
+#endif
             
 #if !PSM
             var lightmapShader = BuiltInShaders.Load<Effect>("Lightmap");
