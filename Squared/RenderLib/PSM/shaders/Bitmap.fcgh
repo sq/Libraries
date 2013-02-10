@@ -1,5 +1,6 @@
 void main( 
 	uniform sampler2D BitmapTexture : TEXUNIT0,
+	uniform float2 HalfTexel,
     in float4 transformedPosition : POSITION,
     in float4 transformedPosition2 : TEXCOORD3,
     in float2 texCoordOut : TEXCOORD0,
@@ -9,7 +10,8 @@ void main(
     in float2 texBR : TEXCOORD2,
     out float4 result : COLOR
 ) {
-	float2 texCoord = clamp(texCoordOut, texTL, texBR);
+	// Half-texel offset necessary because GL, or Sony herpaderp, or whatever
+	float2 texCoord = clamp(texCoordOut - HalfTexel, texTL, texBR);
 	
 	float4 texColor = tex2D(BitmapTexture, texCoord);
 	

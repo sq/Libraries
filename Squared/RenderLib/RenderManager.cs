@@ -91,20 +91,12 @@ namespace Squared.Render {
         }
 
         public void PushRenderTarget (RenderTarget2D newRenderTarget) {
-#if PSM
-            // FIXME
-#else
             RenderTargetStack.Push(Device.GetRenderTargets());
             Device.SetRenderTarget(newRenderTarget);
-#endif
         }
 
         public void PopRenderTarget () {
-#if PSM
-            // FIXME
-#else
             Device.SetRenderTargets(RenderTargetStack.Pop());
-#endif
         }
 
         public EffectParameterCollection SharedParameters {

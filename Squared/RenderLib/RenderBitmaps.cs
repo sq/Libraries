@@ -292,6 +292,13 @@ namespace Squared.Render {
 #endif
             for (int i = 0; i < count; i++) {
                 var call = _DrawCalls[i];
+                    
+#if PSM
+                // HACK: PSM render targets have an inverted Y axis, so if the bitmap being drawn is a render target,
+                //   flip it vertically.
+                if (call.Textures.Texture1 is RenderTarget2D)
+                    call.Mirror(false, true);
+#endif
 
                 bool flush = (call.Textures != currentTextures) || (vertCount >= blockSizeLimit);
 
@@ -626,6 +633,21 @@ namespace Squared.Render {
             }
             set {
                 Scale = new Vector2(value, value);
+            }
+        }
+
+        public Rectangle TextureRectangle {
+            get {
+                // WARNING: Loss of precision!
+                return new Rectangle(
+                    (int)Math.Floor(TextureRegion.TopLeft.X * Texture.Width),
+                    (int)Math.Floor(TextureRegion.TopLeft.Y * Texture.Height),
+                    (int)Math.Ceiling(TextureRegion.Size.X * Texture.Width),
+                    (int)Math.Ceiling(TextureRegion.Size.Y * Texture.Height)
+                );
+            }
+            set {
+                TextureRegion = Texture.BoundsFromRectangle(ref value);
             }
         }
 
