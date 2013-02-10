@@ -128,7 +128,7 @@ namespace Squared.Render {
             }
 
             Device.SetRenderTargets();
-            Device.SetVertexBuffers();
+            Device.SetVertexBuffer(null);
         }
     }
 

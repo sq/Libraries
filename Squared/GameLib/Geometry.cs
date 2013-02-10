@@ -2,12 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Squared.Util;
-
-#if PSM
-	using Sce.PlayStation.Core;
-#else
-    using Microsoft.Xna.Framework;
-#endif
+using Microsoft.Xna.Framework;
 
 namespace Squared.Game {
     public class Vector2Comparer : IEqualityComparer<Vector2> {

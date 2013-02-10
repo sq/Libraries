@@ -183,8 +183,8 @@ namespace Squared.Render {
                     HashNullable(BlendState);
             }
         }
-
-        public readonly ResourceContentManager BuiltInShaders;
+		
+        public readonly ContentManager BuiltInShaders;
 
         protected readonly Dictionary<MaterialCacheKey, Material> MaterialCache = new Dictionary<MaterialCacheKey, Material>();
 
@@ -198,7 +198,11 @@ namespace Squared.Render {
         public ViewTransform ViewTransform;
 
         public DefaultMaterialSet (IServiceProvider serviceProvider) {
+#if !PSM
             BuiltInShaders = new ResourceContentManager(serviceProvider, Shaders.ResourceManager);
+#else
+			BuiltInShaders = new ContentManager(serviceProvider);
+#endif
 
             Clear = new DelegateMaterial(
                 new NullMaterial(),

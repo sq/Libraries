@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Squared.Render.Evil {
+#if WINDOWS
     public enum D3DFORMAT : uint {
         UNKNOWN              =  0,
 
@@ -223,6 +224,7 @@ namespace Squared.Render.Evil {
             }
         }
     }
+#endif
 
     public static class FontUtils {
         public struct FontFields {

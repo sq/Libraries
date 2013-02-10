@@ -124,9 +124,13 @@ namespace Squared.Render {
             PrepareOutlinedQuad = _PrepareOutlinedQuad;
             PrepareQuadBorder = _PrepareQuadBorder;
             PrepareLine = _PrepareLine;
+			
+#if !PSM
             PrepareRing = _PrepareRing;
+#endif
         }
-
+		
+#if !PSM
         static unsafe void VertexPositionColorBuilder (GeometryVertex[] source, VertexPositionColor[] dest, int offset, int count) {
             int end = offset + count;
             if (offset < 0)
@@ -141,6 +145,20 @@ namespace Squared.Render {
                 pDest[i].Color = pSource[i].Color;
             }
         }
+#else
+        static void VertexPositionColorBuilder (GeometryVertex[] source, VertexPositionColor[] dest, int offset, int count) {
+            int end = offset + count;
+            if (offset < 0)
+                throw new InvalidOperationException();
+            if ((end >= dest.Length) || (end >= source.Length))
+                throw new InvalidOperationException();
+
+            for (int i = 0; i < count; i++) {
+                dest[i + offset].Position = source[i].Position;
+                dest[i + offset].Color = source[i].Color;
+            }
+        }
+#endif
 
         #endregion
 
@@ -441,7 +459,8 @@ namespace Squared.Render {
 
             iw.Write(LineIndices);
         }
-
+		
+#if !PSM
         public void AddFilledRing (Vector2 center, float innerRadius, float outerRadius, Color innerColor, Color outerColor) {
             AddFilledRing(
                 center, 
@@ -526,6 +545,7 @@ namespace Squared.Render {
                 colorA += colorStep;
             }
         }
+#endif
 
         #endregion
     }

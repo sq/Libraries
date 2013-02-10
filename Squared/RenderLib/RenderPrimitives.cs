@@ -413,6 +413,10 @@ namespace Squared.Render {
         }
 
         new public void Add (ref NativeDrawCall item) {
+#if PSM
+			if (item.VertexOffset != 0)
+				throw new InvalidOperationException("VertexOffset not supported on PlayStation Mobile");
+#endif
             base.Add(ref item);
         }
 
@@ -430,7 +434,11 @@ namespace Squared.Render {
                 var device = manager.Device;
 
                 foreach (var call in _DrawCalls) {
+#if PSM
+                    device.SetVertexBuffer(call.VertexBuffer);
+#else
                     device.SetVertexBuffer(call.VertexBuffer, call.VertexOffset);
+#endif
                     device.Indices = call.IndexBuffer;
 
                     if (call.IndexBuffer != null)

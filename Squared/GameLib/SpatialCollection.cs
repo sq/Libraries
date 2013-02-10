@@ -2,12 +2,7 @@
 using System.Collections.Generic;
 using SectorIndex = Squared.Util.Pair<int>;
 using Squared.Util;
-
-#if PSM
-	using Sce.PlayStation.Core;
-#else
-    using Microsoft.Xna.Framework;
-#endif
+using Microsoft.Xna.Framework;
 
 namespace Squared.Game {
     public interface ISpatialCollectionChild {

@@ -1,12 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-
-#if PSM
-	using Sce.PlayStation.Core;
-#else
-    using Microsoft.Xna.Framework;
-    using Microsoft.Xna.Framework.Graphics;
-#endif
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace Squared.Game {
     public class ReferenceComparer<T> : IEqualityComparer<T>
@@ -55,13 +50,11 @@ namespace Squared.Game {
             );
         }
 
-#if !PSM
         public static float Dot (this Vector2 @this, ref Vector2 rhs) {
             float result;
             Vector2.Dot(ref @this, ref rhs, out result);
             return result;
         }
-#endif
 
         public static Bounds BoundsFromRectangle (this Texture2D @this, ref Rectangle rectangle) {
             float fw = @this.Width;

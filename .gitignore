@@ -54,3 +54,5 @@ _ReSharper.*
 /Squared/Examples/CurveTester/bin
 /Squared/DummyContentContainer/obj
 /Squared/DummyContentContainer/bin
+/Squared/RenderLib/PSM/obj
+/Squared/RenderLib/PSM/bin

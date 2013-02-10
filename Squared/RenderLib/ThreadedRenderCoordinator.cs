@@ -233,4 +233,9 @@ namespace Squared.Render {
             _DrawThread.Dispose();
         }
     }
+	
+#if PSM
+	class DeviceLostException : Exception {
+	}
+#endif
 }

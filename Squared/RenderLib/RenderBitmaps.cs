@@ -27,25 +27,30 @@ namespace Squared.Render {
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
 
-        public unsafe static int SizeInBytes {
-            get { return sizeof(BitmapVertex); }
-        }
+        public static readonly int SizeInBytes;
 
-        unsafe static BitmapVertex () {
+        static BitmapVertex () {
+			SizeInBytes = Marshal.SizeOf(typeof(BitmapVertex));
+			
+			short sizeF = (short)Marshal.SizeOf(typeof(float));
+			short sizeColor = (short)Marshal.SizeOf(typeof(Color));
+			short sizeV3 = (short)Marshal.SizeOf(typeof(Vector3));
+			short sizeV4 = (short)Marshal.SizeOf(typeof(Vector4));
+			
             Elements = new VertexElement[] {
                 new VertexElement( 0, 
                     VertexElementFormat.Vector3, VertexElementUsage.Position, 0 ),
-                new VertexElement( (short)(sizeof(Vector3)), 
+                new VertexElement( sizeV3, 
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 1 ),
-                new VertexElement( (short)(sizeof(Vector3) + sizeof(Vector4)), 
+                new VertexElement( sizeV3 + sizeV4, 
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 2 ),
-                new VertexElement( (short)(sizeof(Vector3) + sizeof(Vector4) * 2), 
+                new VertexElement( sizeV3 + sizeV4 * 2, 
                     VertexElementFormat.Single, VertexElementUsage.Position, 3 ),
-                new VertexElement( (short)(sizeof(Vector3) + sizeof(Vector4) * 2 + sizeof(float)), 
+                new VertexElement( sizeV3 + sizeV4 * 2 + sizeF, 
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
-                new VertexElement( (short)(sizeof(Vector3) + sizeof(Vector4) * 2 + sizeof(float) + sizeof(Color)), 
+                new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor, 
                     VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
-                new VertexElement( (short)(sizeof(Vector3) + sizeof(Vector4) * 2 + sizeof(float) + sizeof(Color) * 2), 
+                new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor * 2, 
                     VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 )
             };
             _VertexDeclaration = new VertexDeclaration(Elements);
@@ -157,20 +162,19 @@ namespace Squared.Render {
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
         }
 
-        protected static unsafe short[] GenerateIndices (int numIndices) {
+        protected static short[] GenerateIndices (int numIndices) {
             int numQuads = numIndices / 6;
             int numVertices = numQuads * 4;
             short[] result = new short[numIndices];
 
-            fixed (short* p = &result[0])
-                for (short i = 0, j = 0; i < numVertices; i += 4, j += 6) {
-                    p[j] = i;
-                    p[j + 1] = (short)(i + 1);
-                    p[j + 2] = (short)(i + 3);
-                    p[j + 3] = (short)(i + 1);
-                    p[j + 4] = (short)(i + 2);
-                    p[j + 5] = (short)(i + 3);
-                }
+            for (short i = 0, j = 0; i < numVertices; i += 4, j += 6) {
+                result[j] = i;
+                result[j + 1] = (short)(i + 1);
+                result[j + 2] = (short)(i + 3);
+                result[j + 3] = (short)(i + 1);
+                result[j + 4] = (short)(i + 2);
+                result[j + 5] = (short)(i + 3);
+            }
 
             return result;
         }
@@ -221,8 +225,12 @@ namespace Squared.Render {
         public void Issue () {
             Dispose();
         }
-
+		
+#if PSM
+        public override void Prepare () {
+#else
         public unsafe override void Prepare () {
+#endif
             if (_DrawCalls.Count == 0)
                 return;
 
@@ -243,7 +251,9 @@ namespace Squared.Render {
             TextureSet currentTextures = new TextureSet();
             BitmapVertex vertex = new BitmapVertex();
 
+#if !PSM
             fixed (BitmapVertex* d = &buffer[0])
+#endif
             for (int i = 0; i < count; i++) {
                 var call = _DrawCalls[i];
 
@@ -274,7 +284,11 @@ namespace Squared.Render {
 
                 for (short j = 0; j < 4; j++, v++) {
                     vertex.Unused = vertex.Corner = j;
+#if !PSM
                     d[v] = vertex;
+#else
+					buffer[v] = vertex;
+#endif
                 }
 
                 vertCount += 4;
