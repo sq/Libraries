@@ -228,12 +228,28 @@ namespace Squared.Render {
         }
 
         public void AddRange (BitmapDrawCall[] items) {
-            for (int i = 0, l = items.Length; i < l; i++) {
-                var item = items[i];
+            AddRange(items, 0, items.Length, null);
+        }
+
+        public void AddRange (
+            BitmapDrawCall[] items, int firstIndex, int count, 
+            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, float? sortKey = null
+        ) {
+            for (int i = 0; i < count; i++) {
+                var item = items[i + firstIndex];
                 if (!item.IsValid)
                     continue;
 
                 item.TextureID = item.Textures.GetHashCode();
+                if (offset.HasValue)
+                    item.Position += offset.Value;
+                if (multiplyColor.HasValue)
+                    item.MultiplyColor = multiplyColor.Value;
+                if (addColor.HasValue)
+                    item.AddColor = addColor.Value;
+                if (sortKey.HasValue)
+                    item.SortKey = sortKey.Value;
+
                 base.Add(ref item);
             }
         }

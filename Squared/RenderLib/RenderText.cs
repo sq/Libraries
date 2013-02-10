@@ -10,6 +10,93 @@ using Microsoft.Xna.Framework;
 using System.Reflection;
 
 namespace Squared.Render {
+    public static class SpriteFontExtensions {
+        public static ArraySegment<BitmapDrawCall> LayoutString (
+            this SpriteFont font, string text, ArraySegment<BitmapDrawCall> buffer,
+            Vector2? position = null, Color? color = null, float scale = 1, float sortKey = 0,
+            int characterSkipCount = 0, int characterLimit = int.MaxValue
+        ) {
+            if (text == null)
+                throw new ArgumentNullException("text");
+            if (buffer.Count < text.Length)
+                throw new ArgumentException("buffer too small", "buffer");
+
+            var spacing = font.Spacing;
+            var lineSpacing = font.LineSpacing;
+            var glyphSource = font.GetGlyphSource();
+
+            var actualPosition = position.GetValueOrDefault(Vector2.Zero);
+            var characterOffset = Vector2.Zero;
+
+            var drawCall = new BitmapDrawCall(
+                glyphSource.Texture, default(Vector2), default(Bounds), color.GetValueOrDefault(Color.White), scale
+            );
+            drawCall.SortKey = sortKey;
+
+            float rectScaleX = 1f / glyphSource.Texture.Width;
+            float rectScaleY = 1f / glyphSource.Texture.Height;
+
+            int bufferWritePosition = buffer.Offset;
+            int drawCallsWritten = 0;
+
+            for (int i = 0, l = text.Length; i < l; i++) {
+                var ch = text[i];
+
+                var lineBreak = false;
+                if (ch == '\r') {
+                    if (((i + 1) < l) && (text[i + 1] == '\n'))
+                        i += 1;
+
+                    lineBreak = true;
+                } else if (ch == '\n') {
+                    lineBreak = true;
+                }
+
+                if (lineBreak) {
+                    characterOffset.X = 0;
+                    characterOffset.Y += lineSpacing;
+                }
+
+                Glyph glyph;
+                if (!glyphSource.GetGlyph(ch, out glyph)) {
+                    characterSkipCount--;
+                    characterLimit--;
+                    continue;
+                }
+
+                characterOffset.X += spacing;
+
+                characterOffset.X += glyph.LeftSideBearing * scale;
+
+                if (characterSkipCount <= 0) {
+                    if (characterLimit <= 0)
+                        break;
+
+                    drawCall.TextureRegion = glyphSource.Texture.BoundsFromRectangle(ref glyph.BoundsInTexture);
+                    drawCall.Position = new Vector2(
+                        actualPosition.X + (glyph.Cropping.X + characterOffset.X) * scale,
+                        actualPosition.Y + (glyph.Cropping.Y + characterOffset.Y) * scale
+                    );
+
+                    buffer.Array[bufferWritePosition] = drawCall;
+
+                    bufferWritePosition += 1;
+                    drawCallsWritten += 1;
+
+                    characterLimit--;
+                } else {
+                    characterSkipCount--;
+                }
+
+                characterOffset.X += (glyph.Width + glyph.RightSideBearing) * scale;
+            }
+
+            return new ArraySegment<BitmapDrawCall>(
+                buffer.Array, buffer.Offset, drawCallsWritten
+            );
+        }
+    }
+
     [Obsolete("Use ImperativeRenderer.DrawString instead.")]
     public class StringBatch : ListBatch<StringDrawCall> {
         protected static FieldInfo _FontTexture;

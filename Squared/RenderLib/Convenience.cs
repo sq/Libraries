@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.Render.Evil;
+using Squared.Util;
 
 namespace Squared.Render.Convenience {
     public static class RenderStates {
@@ -300,6 +301,18 @@ namespace Squared.Render.Convenience {
             Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState);
         }
 
+        public void DrawMultiple (
+            ArraySegment<BitmapDrawCall> drawCalls,
+            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, float? sortKey = null,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null, SamplerState samplerState = null
+        ) {
+            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState))
+                batch.AddRange(
+                    drawCalls.Array, drawCalls.Offset, drawCalls.Count,
+                    offset: offset, multiplyColor: multiplyColor, addColor: addColor, sortKey: sortKey
+                );
+        }
 
         public void DrawString (
             SpriteFont font, string text,
@@ -308,93 +321,17 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null
         ) {
-            // FIXME
-#if PSM
-            return;
-#endif
-            
-            var spacing = font.Spacing;
-            var lineSpacing = font.LineSpacing;
-            FontUtils.FontFields privateFields;
-            font.GetPrivateFields(out privateFields);
+            using (var buffer = BufferPool<BitmapDrawCall>.Allocate(text.Length)) {
+                var layout = font.LayoutString(
+                    text, new ArraySegment<BitmapDrawCall>(buffer.Data),
+                    position, color, scale, sortKey.GetValueOrDefault(NextSortKey),
+                    characterSkipCount, characterLimit
+                );
 
-            var characterOffset = Vector2.Zero;
-
-            var defaultCharacter = font.DefaultCharacter;
-            int defaultCharacterIndex = -1;
-            if (defaultCharacter.HasValue)
-                defaultCharacterIndex = privateFields.Characters.BinarySearch(defaultCharacter.Value);
-
-            var drawCall = new BitmapDrawCall(
-                privateFields.Texture, default(Vector2), default(Bounds), color.GetValueOrDefault(Color.White), scale
-            );
-
-            if (sortKey.HasValue) {
-                drawCall.SortKey = sortKey.Value;
-            } else if (AutoIncrementSortKey) {
-                drawCall.SortKey = NextSortKey;
-                NextSortKey += 1;
-            }
-
-            float rectScaleX = 1f / privateFields.Texture.Width;
-            float rectScaleY = 1f / privateFields.Texture.Height;
-
-            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState))
-            for (int i = 0, l = text.Length; i < l; i++) {
-                var ch = text[i];
-
-                var lineBreak = false;
-                if (ch == '\r') {
-                    if (((i + 1) < l) && (text[i + 1] == '\n'))
-                        i += 1;
-
-                    lineBreak = true;
-                } else if (ch == '\n') {
-                    lineBreak = true;
-                }
-
-                if (lineBreak) {
-                    characterOffset.X = 0;
-                    characterOffset.Y += lineSpacing;
-                }
-
-                characterOffset.X += spacing;
-
-                var charIndex = privateFields.Characters.BinarySearch(ch);
-                if (charIndex < 0)
-                    charIndex = defaultCharacterIndex;
-
-                if (charIndex < 0)
-                    continue;
-
-                var kerning = privateFields.Kerning[charIndex];
-                var leftSideBearing = kerning.X;
-                var glyphWidth = kerning.Y;
-                var rightSideBearing = kerning.Z;
-
-                characterOffset.X += leftSideBearing * scale;
-
-                if (characterSkipCount <= 0) {
-                    if (characterLimit <= 0)
-                        break;
-
-                    var glyphRect = privateFields.GlyphRectangles[charIndex];
-                    var cropRect = privateFields.CropRectangles[charIndex];
-
-                    drawCall.TextureRegion = privateFields.Texture.BoundsFromRectangle(ref glyphRect);
-                    drawCall.Position = new Vector2(
-                        position.X + (cropRect.X + characterOffset.X) * scale,
-                        position.Y + (cropRect.Y + characterOffset.Y) * scale
-                    );
-
-                    batch.Add(ref drawCall);
-
-                    characterLimit--;
-                } else {
-                    characterSkipCount--;
-                }
-
-                characterOffset.X += (glyphWidth + rightSideBearing) * scale;
+                DrawMultiple(
+                    layout,
+                    layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState
+                );
             }
         }
 
