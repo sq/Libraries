@@ -106,11 +106,10 @@ namespace Squared.Render {
         }
     }
 
-    public interface IBitmapBatch {
+    public interface IBitmapBatch : IDisposable {
         void Add (BitmapDrawCall item);
         void Add (ref BitmapDrawCall item);
         void AddRange (BitmapDrawCall[] items);
-        void Issue ();
     }
 
     public class BitmapBatch : ListBatch<BitmapDrawCall>, IBitmapBatch {
@@ -169,7 +168,7 @@ namespace Squared.Render {
         public static BitmapDrawCallComparer DrawCallComparer = new BitmapDrawCallComparer();
         public static BitmapDrawCallTextureComparer DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
 
-        public const int BitmapBatchSize = 256;
+        public const int BitmapBatchSize = 1024;
 
         private ArrayPoolAllocator<BitmapVertex> _Allocator;
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
@@ -238,10 +237,6 @@ namespace Squared.Render {
                 base.Add(ref item);
             }
         }
-
-        public void Issue () {
-            Dispose();
-        }
         
 #if PSM
         public override void Prepare () {
@@ -264,7 +259,6 @@ namespace Squared.Render {
             int indexCount = 0, indexOffset = 0, indexSize = count * 6;
             int blockSizeLimit = BitmapBatchSize * 4;
             int vertexWritePosition = 0, indexWritePosition = 0;
-            int indexBase = 0;
 
             TextureSet currentTextures = new TextureSet();
             BitmapVertex vertex = new BitmapVertex();
@@ -297,7 +291,6 @@ namespace Squared.Render {
                     vertCount = 0;
                     indexOffset += indexCount;
                     indexCount = 0;
-                    indexBase = 0;
                 }
 
                 if (call.Textures != currentTextures)
@@ -311,6 +304,8 @@ namespace Squared.Render {
                 vertex.Scale = call.Scale;
                 vertex.Origin = call.Origin;
                 vertex.Rotation = call.Rotation;
+
+                int indexBase = buffers.Vertices.Offset + vertexWritePosition;
 
 #if !PSM
                 pIndices[indexWritePosition + 0] = (short)(indexBase + 0);
@@ -343,7 +338,6 @@ namespace Squared.Render {
                 vertexWritePosition += 4;
 
                 vertCount += 4;
-                indexBase += 4;
                 indexCount += 6;
             }
 
@@ -417,7 +411,7 @@ namespace Squared.Render {
                     );
 #else
                     device.DrawIndexedPrimitives(
-                        PrimitiveType.TriangleList, nb.VertexOffset, 0, nb.VertexCount, nb.IndexOffset,
+                        PrimitiveType.TriangleList, 0, nb.VertexOffset, nb.VertexCount, nb.IndexOffset,
                         nb.VertexCount / 2
                     );
 #endif

@@ -18,14 +18,14 @@ void main(
 	addColorOut.a = 0;
 	
 	float4 texColor = tex2D(BitmapTexture, texCoord);
-	result = texColor + 0.25;
-	return;
-	
+		
 	result = multiplyColorOut * texColor;
 	result += (addColorOut * result.a);
 	
+	#ifdef ALPHA_TEST
 	// Alpha test
 	const float discardThreshold = 1.0 / 255.0;
 	if (result.a < discardThreshold)
 		discard;
+	#endif
 }

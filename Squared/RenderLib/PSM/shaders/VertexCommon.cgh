@@ -17,22 +17,14 @@ inline float2 ComputeCorner(
     in float2 regionSize
 ) {
 	// Can't use an array here because of Vita shader bug
-	float2 corner;
-	
-	// PSM shader compiler seems to fuck up floating point compares as well
-	if (cornerIndex > 1.5) {
-		if (cornerIndex < 2.5)
-			corner = float2(1, 1);
-		else
-			corner = float2(0, 1);
-	} else {
-		if (cornerIndex < 0.5)
-			corner = float2(0, 0);
-		else
-			corner = float2(1, 0);
-	}
-	
-    return corner * regionSize;
+	if (cornerIndex == 0)
+		return float2(0, 0);
+	else if (cornerIndex == 1)
+		return float2(regionSize.x, 0);
+	else if (cornerIndex == 2)
+		return regionSize;
+	else
+		return float2(0, regionSize.y);
 }
 
 inline float2 ComputeTexCoord(

@@ -47,15 +47,4 @@ void main(
 	
 	multiplyColorOut = multiplyColor;
 	addColorOut = addColor;
-
-	if (cornerIndex == 0)
-		multiplyColorOut = float4(1, 0, 0, 1);
-	else if (cornerIndex == 1)
-		multiplyColorOut = float4(0, 1, 0, 1);
-	else if (cornerIndex == 2)
-		multiplyColorOut = float4(0, 0, 1, 1);
-	else if (cornerIndex == 3)
-		multiplyColorOut = float4(1, 1, 0, 1);
-	else
-		multiplyColorOut = float4(1, 1, 1, 1);
 }
