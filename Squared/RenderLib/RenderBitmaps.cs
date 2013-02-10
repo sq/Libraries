@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
 using Squared.Game;
+using Squared.Render.Internal;
 using Squared.Util;
 using System.Reflection;
 
@@ -138,6 +140,7 @@ namespace Squared.Render {
 
         struct NativeBatch {
             public TextureSet TextureSet;
+            public int IndexOffset;
             public int VertexOffset;
             public int VertexCount;
         }
@@ -150,37 +153,17 @@ namespace Squared.Render {
 
         public const int BitmapBatchSize = 256;
 
-        private static short[] _IndexBatch;
-
         private ArrayPoolAllocator<BitmapVertex> _Allocator;
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
             2048, 16, 128
         );
-        private BitmapVertex[] _NativeBuffer = null;
         private List<NativeBatch> _NativeBatches = null;
         private volatile bool _Prepared = false;
 
+        private XNABufferGenerator<BitmapVertex> _BufferGenerator = null;
+
         static BitmapBatch () {
-            _IndexBatch = GenerateIndices(BitmapBatchSize * 6);
-
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
-        }
-
-        protected static short[] GenerateIndices (int numIndices) {
-            int numQuads = numIndices / 6;
-            int numVertices = numQuads * 4;
-            short[] result = new short[numIndices];
-
-            for (short i = 0, j = 0; i < numVertices; i += 4, j += 6) {
-                result[j] = i;
-                result[j + 1] = (short)(i + 1);
-                result[j + 2] = (short)(i + 3);
-                result[j + 3] = (short)(i + 1);
-                result[j + 4] = (short)(i + 2);
-                result[j + 5] = (short)(i + 3);
-            }
-
-            return result;
         }
 
         public static BitmapBatch New (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, bool useZBuffer = false) {
@@ -248,15 +231,20 @@ namespace Squared.Render {
 
             var count = _DrawCalls.Count;
             int vertCount = 0, vertOffset = 0, bufferSize = count * 4;
+            int indexCount = 0, indexOffset = 0, indexSize = count * 6;
             int blockSizeLimit = BitmapBatchSize * 4;
-            var buffer = _NativeBuffer = _Allocator.Allocate(bufferSize).Buffer;
-            int v = 0;
+            int vertexWritePosition = 0, indexWritePosition = 0;
+            int indexBase = 0;
 
             TextureSet currentTextures = new TextureSet();
             BitmapVertex vertex = new BitmapVertex();
 
+            _BufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<BitmapVertex>>();
+            var buffers = _BufferGenerator.Allocate(bufferSize, indexSize);
+
 #if !PSM
-            fixed (BitmapVertex* d = &buffer[0])
+            fixed (BitmapVertex* pVertices = &buffers.Vertices.Array[buffers.Vertices.Offset])
+            fixed (short* pIndices = &buffers.Indices.Array[buffers.Indices.Offset])
 #endif
             for (int i = 0; i < count; i++) {
                 var call = _DrawCalls[i];
@@ -266,12 +254,16 @@ namespace Squared.Render {
                 if (flush && (vertCount > 0)) {
                     _NativeBatches.Add(new NativeBatch { 
                         TextureSet = currentTextures, 
+                        IndexOffset = indexOffset + buffers.Indices.Offset,
                         VertexCount = vertCount,
-                        VertexOffset = vertOffset,
+                        VertexOffset = vertOffset + buffers.Vertices.Offset,
                     });
 
                     vertOffset += vertCount;
                     vertCount = 0;
+                    indexOffset += indexCount;
+                    indexCount = 0;
+                    indexBase = 0;
                 }
 
                 if (call.Textures != currentTextures)
@@ -286,23 +278,46 @@ namespace Squared.Render {
                 vertex.Origin = call.Origin;
                 vertex.Rotation = call.Rotation;
 
-                for (short j = 0; j < 4; j++, v++) {
+#if !PSM
+                pIndices[indexWritePosition + 0] = (short)(indexBase + 0);
+                pIndices[indexWritePosition + 1] = (short)(indexBase + 1);
+                pIndices[indexWritePosition + 2] = (short)(indexBase + 3);
+                pIndices[indexWritePosition + 3] = (short)(indexBase + 1);
+                pIndices[indexWritePosition + 4] = (short)(indexBase + 2);
+                pIndices[indexWritePosition + 5] = (short)(indexBase + 3);
+#else
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 0] = (short)(indexBase + 0);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 1] = (short)(indexBase + 1);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 2] = (short)(indexBase + 3);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 3] = (short)(indexBase + 1);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 4] = (short)(indexBase + 2);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 5] = (short)(indexBase + 3);
+#endif
+
+                indexWritePosition += 6;
+
+                for (short j = 0; j < 4; j++) {
                     vertex.Unused = vertex.Corner = j;
 #if !PSM
-                    d[v] = vertex;
+                    pVertices[vertexWritePosition + j] = vertex;
 #else
-                    buffer[v] = vertex;
+                    buffers.Vertices.Array[buffers.Vertices.Offset + vertexWritePosition + j] = vertex;
 #endif
                 }
 
+                vertexWritePosition += 4;
+
                 vertCount += 4;
+                indexBase += 4;
+                indexCount += 6;
             }
 
-            if (vertCount > 0)
+            if ((vertCount > 0) || (indexCount > 0))
                 _NativeBatches.Add(new NativeBatch {
                     TextureSet = currentTextures,
+                    IndexOffset = indexOffset + buffers.Indices.Offset,
                     VertexCount = vertCount,
-                    VertexOffset = vertOffset,
+                    VertexOffset = vertOffset + buffers.Vertices.Offset,
                 });
 
             _Prepared = true;
@@ -315,12 +330,16 @@ namespace Squared.Render {
             if (_Prepared == false)
                 throw new InvalidOperationException("Not prepared");
 
-            if (_NativeBuffer == null)
+            if (_BufferGenerator == null)
                 throw new InvalidOperationException("Already issued");
 
             var device = manager.Device;
+            var buffers = _BufferGenerator.GetBuffer();
 
             using (manager.ApplyMaterial(Material)) {
+                device.Indices = buffers.Indices;
+                device.SetVertexBuffer(buffers.Vertices);
+
                 TextureSet currentTexture = new TextureSet();
                 var paramSize = manager.CurrentParameters["BitmapTextureSize"];
                 var paramHalfTexel = manager.CurrentParameters["HalfTexel"];
@@ -346,22 +365,24 @@ namespace Squared.Render {
                             throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
                     }
 
-                    device.DrawUserIndexedPrimitives(
-                        PrimitiveType.TriangleList, _NativeBuffer, 
-                        nb.VertexOffset, nb.VertexCount, 
-                        _IndexBatch, 0, 
+                    device.DrawIndexedPrimitives(
+                        PrimitiveType.TriangleList, nb.VertexOffset, 0, nb.VertexCount, nb.IndexOffset,
                         nb.VertexCount / 2
                     );
                 }
+
+                device.Indices = null;
+                device.SetVertexBuffer(null);
             }
 
-            _NativeBuffer = null;
+            _BufferGenerator = null;
+
             base.Issue(manager);
         }
 
         protected override void OnReleaseResources () {
             _Prepared = false;
-            _NativeBuffer = null;
+            _BufferGenerator = null;
 
             _NativePool.Release(ref _NativeBatches);
 

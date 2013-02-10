@@ -91,12 +91,20 @@ namespace Squared.Render {
         }
 
         public void PushRenderTarget (RenderTarget2D newRenderTarget) {
+#if PSM
+            // FIXME
+#else
             RenderTargetStack.Push(Device.GetRenderTargets());
             Device.SetRenderTarget(newRenderTarget);
+#endif
         }
 
         public void PopRenderTarget () {
+#if PSM
+            // FIXME
+#else
             Device.SetRenderTargets(RenderTargetStack.Pop());
+#endif
         }
 
         public EffectParameterCollection SharedParameters {
@@ -146,6 +154,8 @@ namespace Squared.Render {
             new Dictionary<Type, IArrayPoolAllocator>(new ReferenceComparer<Type>());
         private Dictionary<Type, IBatchPool> _BatchAllocators =
             new Dictionary<Type, IBatchPool>(new ReferenceComparer<Type>());
+        private Dictionary<Type, IBufferGenerator> _BufferGenerators =
+            new Dictionary<Type, IBufferGenerator>(new ReferenceComparer<Type>());
         private FramePool _FrameAllocator;
 
         private WorkerThreadInfo[] _WorkerInfo;
@@ -275,6 +285,22 @@ namespace Squared.Render {
                     allocator.Step();
         }
 
+        public T GetBufferGenerator<T> ()
+            where T : IBufferGenerator {
+            var t = typeof(T);
+
+            IBufferGenerator result = null;
+            lock (_BufferGenerators) {
+                if (_BufferGenerators.TryGetValue(t, out result))
+                    return (T)result;
+
+                result = (IBufferGenerator)Activator.CreateInstance(t, DeviceManager.Device);
+                _BufferGenerators.Add(t, result);
+
+                return (T)result;
+            }
+        }
+
         public ArrayPoolAllocator<T> GetArrayAllocator<T> () {
             var t = typeof(T);
             IArrayPoolAllocator o;
@@ -325,6 +351,12 @@ namespace Squared.Render {
             }
 
             return allocator.Allocate();
+        }
+
+        internal void ResetBufferGenerators () {
+            lock (_BufferGenerators)
+                foreach (var generator in _BufferGenerators.Values)
+                    generator.Reset();
         }
     }
 
@@ -406,6 +438,7 @@ namespace Squared.Render {
 #endif
 
                 Batches.Add(batch);
+                batch.Container = this;
             }
         }
 

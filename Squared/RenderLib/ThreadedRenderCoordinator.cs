@@ -129,6 +129,8 @@ namespace Squared.Render {
         protected virtual void PrepareNextFrame () {
             var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
+            Manager.ResetBufferGenerators();
+
             newFrame.Prepare(EnableThreading);
 
             if (EnableThreading)
