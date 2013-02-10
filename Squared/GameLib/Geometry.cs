@@ -631,8 +631,8 @@ namespace Squared.Game {
                     bool intersects = intervalA.Intersects(intervalB, Geometry.IntersectionEpsilon);
                     if (!intersects)
                         result.AreIntersecting = false;
-					
-					velocityProjection = axis.Dot(ref velocityA);
+                    
+                    velocityProjection = axis.Dot(ref velocityA);
 
                     newIntervalA = intervalA;
                     newIntervalA.Min += velocityProjection;
@@ -659,8 +659,8 @@ namespace Squared.Game {
                             continue;
                         if (Vector2.Dot(velocityA, newVelocity) < 0.0f)
                             newVelocity = Vector2.Zero;
-						
-						velocityProjection = axis.Dot(ref newVelocity);
+                        
+                        velocityProjection = axis.Dot(ref newVelocity);
                         newIntervalA.Min = (intervalA.Min + velocityProjection);
                         newIntervalA.Max = (intervalA.Max + velocityProjection);
                         intersectionDistance = newIntervalA.GetDistance(intervalB);

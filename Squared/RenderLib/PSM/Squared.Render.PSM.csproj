@@ -52,6 +52,7 @@
     <Compile Include="..\ThreadedRenderGame.cs" />
     <Compile Include="..\Evil.cs" />
     <Compile Include="..\WorkerThread.cs" />
+    <Compile Include="PSM.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\monogame\MonoGame.Framework\MonoGame.Framework.PSMobile.csproj">
@@ -66,5 +67,14 @@
       <Project>{F1D00A92-7921-40CD-BD53-F1D05D16325D}</Project>
       <Name>Squared.Util.PSM</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedShaderProgram Include="shaders\SquaredBitmapShader.fcg" />
+    <EmbeddedShaderProgram Include="shaders\SquaredBitmapShader.vcg" />
+    <EmbeddedShaderProgram Include="shaders\SquaredGeometryShader.fcg" />
+    <EmbeddedShaderProgram Include="shaders\SquaredGeometryShader.vcg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\Common.cgh" />
   </ItemGroup>
 </Project>

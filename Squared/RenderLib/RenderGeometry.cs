@@ -124,12 +124,12 @@ namespace Squared.Render {
             PrepareOutlinedQuad = _PrepareOutlinedQuad;
             PrepareQuadBorder = _PrepareQuadBorder;
             PrepareLine = _PrepareLine;
-			
+            
 #if !PSM
             PrepareRing = _PrepareRing;
 #endif
         }
-		
+        
 #if !PSM
         static unsafe void VertexPositionColorBuilder (GeometryVertex[] source, VertexPositionColor[] dest, int offset, int count) {
             int end = offset + count;
@@ -459,7 +459,7 @@ namespace Squared.Render {
 
             iw.Write(LineIndices);
         }
-		
+        
 #if !PSM
         public void AddFilledRing (Vector2 center, float innerRadius, float outerRadius, Color innerColor, Color outerColor) {
             AddFilledRing(

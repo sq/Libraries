@@ -1,0 +1,26 @@
+void main( 
+	uniform sampler2D BitmapTexture : TEXUNIT0,
+    in float4 transformedPosition : POSITION,
+    in float4 transformedPosition2 : TEXCOORD3,
+    in float2 texCoordOut : TEXCOORD0,
+    in float4 multiplyColorOut : COLOR0,
+    in float4 addColorOut : COLOR1,
+    in float2 texTL : TEXCOORD1,
+    in float2 texBR : TEXCOORD2,
+    out float4 result : COLOR
+) {
+	float2 texCoord = clamp(texCoordOut, texTL, texBR);
+	
+	addColorOut.rgb *= addColorOut.a;
+	addColorOut.a = 0;
+	
+	float4 texColor = tex2D(BitmapTexture, texCoord);
+	
+	result = multiplyColorOut * texColor;
+	result += (addColorOut * result.a);
+	
+	// Alpha test
+	const float discardThreshold = 1.0 / 255.0;
+	if (result.a < discardThreshold)
+		discard;
+}

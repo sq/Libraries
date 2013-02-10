@@ -53,7 +53,7 @@ void HorizontalGaussianBlur5TapPixelShader(
     out float4 result : COLOR0
 ) {
     result = GaussianBlur5TapPixelShaderCore(
-        float2(Texel.x, 0),
+        float2(HalfTexel.x * 2, 0),
         multiplyColor,
         addColor,
         texCoord,
@@ -71,7 +71,7 @@ void VerticalGaussianBlur5TapPixelShader(
     out float4 result : COLOR0
 ) {
     result = GaussianBlur5TapPixelShaderCore(
-        float2(0, Texel.y),
+        float2(0, HalfTexel.y * 2),
         multiplyColor,
         addColor,
         texCoord,

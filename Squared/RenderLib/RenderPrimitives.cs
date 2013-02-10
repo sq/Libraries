@@ -414,8 +414,8 @@ namespace Squared.Render {
 
         new public void Add (ref NativeDrawCall item) {
 #if PSM
-			if (item.VertexOffset != 0)
-				throw new InvalidOperationException("VertexOffset not supported on PlayStation Mobile");
+            if (item.VertexOffset != 0)
+                throw new InvalidOperationException("VertexOffset not supported on PlayStation Mobile");
 #endif
             base.Add(ref item);
         }

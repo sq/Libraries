@@ -308,6 +308,11 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null
         ) {
+            // FIXME
+#if PSM
+            return;
+#endif
+            
             var spacing = font.Spacing;
             var lineSpacing = font.LineSpacing;
             FontUtils.FontFields privateFields;

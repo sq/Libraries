@@ -111,7 +111,7 @@ namespace Squared.Render {
 
         public bool BeginDraw () {
             if (Interlocked.Increment(ref _DrawDepth) > 1)
-                if (EnableThreading)
+                if (DoThreadedIssue)
                     _DrawThread.WaitForPendingWork();
 
             if (_Running) {
@@ -139,23 +139,33 @@ namespace Squared.Render {
             if (oldFrame != null)
                 oldFrame.Dispose();
         }
+        
+        protected bool DoThreadedIssue { 
+            get {
+#if PSM
+                return false;
+#else
+                return EnableThreading;
+#endif
+            }
+        }
 
         public void EndDraw () {
             PrepareNextFrame();
-
+            
             if (_Running) {
                 lock (UseResourceLock)
                     if (!_SyncBeginDraw())
                         return;
-
-                if (EnableThreading) {
+                
+                if (DoThreadedIssue) {
                     _DrawThread.RequestWork();
                 } else {
                     ThreadedDraw(_DrawThread);
                 }
 
                 if (_DeviceLost) {
-                    if (EnableThreading)
+                    if (DoThreadedIssue)
                         _DrawThread.WaitForPendingWork();
 
                     _DeviceLost = IsDeviceLost;
@@ -233,9 +243,9 @@ namespace Squared.Render {
             _DrawThread.Dispose();
         }
     }
-	
+    
 #if PSM
-	class DeviceLostException : Exception {
-	}
+    class DeviceLostException : Exception {
+    }
 #endif
 }

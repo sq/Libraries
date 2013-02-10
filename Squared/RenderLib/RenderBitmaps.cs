@@ -27,16 +27,20 @@ namespace Squared.Render {
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
 
-        public static readonly int SizeInBytes;
-
         static BitmapVertex () {
-			SizeInBytes = Marshal.SizeOf(typeof(BitmapVertex));
-			
-			short sizeF = (short)Marshal.SizeOf(typeof(float));
-			short sizeColor = (short)Marshal.SizeOf(typeof(Color));
-			short sizeV3 = (short)Marshal.SizeOf(typeof(Vector3));
-			short sizeV4 = (short)Marshal.SizeOf(typeof(Vector4));
-			
+#if PSM
+            // fuck sony
+            short sizeF = 4;
+            short sizeColor = 4;
+            short sizeV3 = (short)(sizeF * 3);
+            short sizeV4 = (short)(sizeF * 4);
+#else
+            short sizeF = (short)Marshal.SizeOf(typeof(float));
+            short sizeColor = (short)Marshal.SizeOf(typeof(Color));
+            short sizeV3 = (short)Marshal.SizeOf(typeof(Vector3));
+            short sizeV4 = (short)Marshal.SizeOf(typeof(Vector4));
+#endif
+            
             Elements = new VertexElement[] {
                 new VertexElement( 0, 
                     VertexElementFormat.Vector3, VertexElementUsage.Position, 0 ),
@@ -225,7 +229,7 @@ namespace Squared.Render {
         public void Issue () {
             Dispose();
         }
-		
+        
 #if PSM
         public override void Prepare () {
 #else
@@ -287,7 +291,7 @@ namespace Squared.Render {
 #if !PSM
                     d[v] = vertex;
 #else
-					buffer[v] = vertex;
+                    buffer[v] = vertex;
 #endif
                 }
 
@@ -319,7 +323,7 @@ namespace Squared.Render {
             using (manager.ApplyMaterial(Material)) {
                 TextureSet currentTexture = new TextureSet();
                 var paramSize = manager.CurrentParameters["BitmapTextureSize"];
-                var paramTexel = manager.CurrentParameters["Texel"];
+                var paramHalfTexel = manager.CurrentParameters["HalfTexel"];
 
                 foreach (var nb in _NativeBatches) {
                     if (nb.TextureSet != currentTexture) {
@@ -332,7 +336,7 @@ namespace Squared.Render {
 
                         var vSize = new Vector2(tex1.Width, tex1.Height);
                         paramSize.SetValue(vSize);
-                        paramTexel.SetValue(new Vector2(1.0f / vSize.X, 1.0f / vSize.Y));
+                        paramHalfTexel.SetValue(new Vector2(1.0f / vSize.X, 1.0f / vSize.Y) * 0.5f);
                         manager.CurrentEffect.CurrentTechnique.Passes[0].Apply();
                     }
 

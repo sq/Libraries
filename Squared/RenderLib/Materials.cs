@@ -183,7 +183,7 @@ namespace Squared.Render {
                     HashNullable(BlendState);
             }
         }
-		
+        
         public readonly ContentManager BuiltInShaders;
 
         protected readonly Dictionary<MaterialCacheKey, Material> MaterialCache = new Dictionary<MaterialCacheKey, Material>();
@@ -201,7 +201,7 @@ namespace Squared.Render {
 #if !PSM
             BuiltInShaders = new ResourceContentManager(serviceProvider, Shaders.ResourceManager);
 #else
-			BuiltInShaders = new ContentManager(serviceProvider);
+            BuiltInShaders = new Squared.Render.PSM.PSMShaderManager(serviceProvider);
 #endif
 
             Clear = new DelegateMaterial(
@@ -232,7 +232,8 @@ namespace Squared.Render {
                 geometryShader,
                 "WorldSpaceUntextured"
             );
-
+            
+#if !PSM
             var lightmapShader = BuiltInShaders.Load<Effect>("Lightmap");
 
             ScreenSpaceLightmappedBitmap = new EffectMaterial(
@@ -266,6 +267,7 @@ namespace Squared.Render {
                 blurShader,
                 "WorldSpaceVerticalGaussianBlur5Tap"
             );
+#endif
 
             ViewTransform = ViewTransform.Default;
         }
@@ -442,7 +444,17 @@ namespace Squared.Render {
 
             if (techniqueName != null) {
                 Effect = effect.Clone();
-                Effect.CurrentTechnique = Effect.Techniques[techniqueName];
+                var technique = Effect.Techniques[techniqueName];
+                
+                if (technique != null)
+                    Effect.CurrentTechnique = technique;
+                else {
+#if PSM
+                    // HACK: fuck sony
+#else
+                    throw new ArgumentException("techniqueName");
+#endif
+                }
             } else {
                 Effect = effect;
             }

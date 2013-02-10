@@ -1,7 +1,7 @@
 #include "Common.fxh"
 
 uniform const float2 BitmapTextureSize;
-uniform const float2 Texel;
+uniform const float2 HalfTexel;
 
 Texture2D BitmapTexture : register(t0);
 
@@ -41,7 +41,7 @@ inline float2 ComputeTexCoord(
     in float2 corner,
     in float4 texRgn : POSITION1
 ) {
-    return (texRgn.xy + corner) + (Texel * 0.5);
+    return (texRgn.xy + corner) + HalfTexel;
 }
 
 inline float2 ComputeRotatedCorner(
@@ -59,7 +59,7 @@ inline float2 ComputeRotatedCorner(
     return float2(
 		(sinCos.y * corner.x) - (sinCos.x * corner.y),
 		(sinCos.x * corner.x) + (sinCos.y * corner.y)
-	) - (Texel * 0.5);
+	) - HalfTexel;
 }
 
 inline void OutputRegions(
@@ -67,9 +67,8 @@ inline void OutputRegions(
     out float2 texTL : TEXCOORD1,
     out float2 texBR : TEXCOORD2
 ) {
-    float2 halfTexel = Texel * 0.5f;
-    texTL = min(texRgn.xy, texRgn.zw) + halfTexel;
-    texBR = max(texRgn.xy, texRgn.zw) - halfTexel;
+    texTL = min(texRgn.xy, texRgn.zw) + HalfTexel;
+    texBR = max(texRgn.xy, texRgn.zw) - HalfTexel;
 }
 
 void ScreenSpaceVertexShader(
