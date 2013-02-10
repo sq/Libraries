@@ -13,7 +13,6 @@ namespace Squared.Render.Internal {
     public class WorkerThread : IDisposable {
         public readonly Thread Thread;
         public readonly Action<WorkerThread> Function;
-        public readonly int ProcessorAffinity;
 
         public volatile object Tag = null;
 
@@ -26,8 +25,7 @@ namespace Squared.Render.Internal {
         private readonly ManualResetEventSlim _CompletedSignal = new ManualResetEventSlim(false);
         private readonly ManualResetEventSlim _StartedSignal = new ManualResetEventSlim(false);
 
-        public WorkerThread (Action<WorkerThread> function, int processorAffinity) {
-            ProcessorAffinity = processorAffinity;
+        public WorkerThread (Action<WorkerThread> function) {
             Function = function;
 
             Thread = new Thread(WorkerFn);
@@ -58,27 +56,6 @@ namespace Squared.Render.Internal {
         }
 
         private void WorkerFn () {
-#if XBOX
-            int masked;
-            switch (ProcessorAffinity % 4) {
-                default:
-                    masked = 1;
-                    break;
-                case 1:
-                    masked = 3;
-                    break;
-                case 2:
-                    masked = 4;
-                    break;
-                case 3:
-                    masked = 5;
-                    break;
-            }
-            Thread.CurrentThread.SetProcessorAffinity(masked);
-#else
-            // No way to do this on PC :(
-#endif
-
             Interlocked.Increment(ref _ThreadWaiting);
             while (true) {
                 if (Interlocked.Exchange(ref _ThreadRunning, 1) == 0)

@@ -11,9 +11,9 @@ void main(
     in float4 textureRegion : TEXCOORD0, // x1, y1, x2, y2
     in float4 scaleOrigin : TEXCOORD1, // scalex, scaley, originx, originy
     in float rotation : TEXCOORD2,
-    in float cornerIndex : BLENDINDICES, // 0-3
     in float4 multiplyColor : COLOR0,
     in float4 addColor : COLOR1,
+    in float cornerIndex : BLENDINDICES, // 0-3
     out float4 transformedPosition : POSITION,
     out float4 transformedPosition2 : TEXCOORD3,
     out float2 texCoordOut : TEXCOORD0,

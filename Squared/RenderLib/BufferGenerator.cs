@@ -5,6 +5,10 @@ using System.Text;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Util;
 
+#if PSM
+using Sce.PlayStation.Core.Graphics;
+#endif
+
 namespace Squared.Render.Internal {
     public interface IBufferGenerator : IDisposable {
         void Reset ();
@@ -133,6 +137,37 @@ namespace Squared.Render.Internal {
     }
 
 #if PSM
+    public class PSMBufferGenerator<TVertex> : BufferGenerator<Sce.PlayStation.Core.Graphics.VertexBuffer, TVertex, ushort> 
+        where TVertex : struct {
+        
+        public static VertexFormat[] VertexFormat = null;
+
+        public PSMBufferGenerator (GraphicsDevice graphicsDevice)
+            : base(graphicsDevice) {
+            
+            if (VertexFormat == null)
+                throw new InvalidOperationException("Please set PSMBufferGenerator<TVertex>.VertexFormat first.");
+        }
+
+        protected override void FlushToBuffer () {
+            if (
+                (_Buffer != null) &&
+                (
+                    (_Buffer.VertexCount < _VertexArray.Length) ||
+                    (_Buffer.IndexCount < _IndexArray.Length)
+                )
+            ) {
+                _Buffer.Dispose();
+                _Buffer = null;
+            }
+
+            if (_Buffer == null)
+                _Buffer = new Sce.PlayStation.Core.Graphics.VertexBuffer(_VertexArray.Length, _IndexArray.Length, VertexFormat);
+
+            _Buffer.SetVertices(_VertexArray, 0, 0, _VertexCount);
+            _Buffer.SetIndices(_IndexArray, 0, 0, _IndexCount);
+        }
+    }
 #else
     public class XNABufferPair<TVertex> : IDisposable
         where TVertex : struct 

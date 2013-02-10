@@ -12,8 +12,16 @@ using Squared.Render.Internal;
 using Squared.Util;
 using System.Reflection;
 
-namespace Squared.Render {
+#if PSM
+using VertexFormat = Sce.PlayStation.Core.Graphics.VertexFormat;
+#endif
+
+namespace Squared.Render {    
+#if PSM
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+#else
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
+#endif
     public struct BitmapVertex : IVertexType {
         public Vector3 Position;
         public Vector2 TextureTopLeft;
@@ -23,8 +31,13 @@ namespace Squared.Render {
         public float Rotation;
         public Color MultiplyColor;
         public Color AddColor;
+        
+#if PSM
+        public float Corner;
+#else
         public short Corner;
         public short Unused;
+#endif
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -56,8 +69,13 @@ namespace Squared.Render {
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
                 new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor, 
                     VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
+#if PSM
+                new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor * 2, 
+                    VertexElementFormat.Single, VertexElementUsage.BlendIndices, 0 )
+#else
                 new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor * 2, 
                     VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 )
+#endif
             };
             _VertexDeclaration = new VertexDeclaration(Elements);
         }
@@ -159,11 +177,23 @@ namespace Squared.Render {
         );
         private List<NativeBatch> _NativeBatches = null;
         private volatile bool _Prepared = false;
-
+  
+#if PSM
+        private static readonly float[] FloatCorners = new [] { 0f, 1f, 2f, 3f };
+        private PSMBufferGenerator<BitmapVertex> _BufferGenerator = null;
+#else
         private XNABufferGenerator<BitmapVertex> _BufferGenerator = null;
+#endif
 
         static BitmapBatch () {
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
+            
+#if PSM
+            PSMBufferGenerator<BitmapVertex>.VertexFormat = new [] {
+              VertexFormat.Float3, VertexFormat.Float4, VertexFormat.Float4,
+              VertexFormat.UByte4N, VertexFormat.UByte4N, VertexFormat.Float, VertexFormat.Float
+            };
+#endif
         }
 
         public static BitmapBatch New (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, bool useZBuffer = false) {
@@ -239,7 +269,11 @@ namespace Squared.Render {
             TextureSet currentTextures = new TextureSet();
             BitmapVertex vertex = new BitmapVertex();
 
+#if PSM                
+            _BufferGenerator = Container.RenderManager.GetBufferGenerator<PSMBufferGenerator<BitmapVertex>>();
+#else
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<BitmapVertex>>();
+#endif
             var buffers = _BufferGenerator.Allocate(bufferSize, indexSize);
 
 #if !PSM
@@ -286,21 +320,22 @@ namespace Squared.Render {
                 pIndices[indexWritePosition + 4] = (short)(indexBase + 2);
                 pIndices[indexWritePosition + 5] = (short)(indexBase + 3);
 #else
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 0] = (short)(indexBase + 0);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 1] = (short)(indexBase + 1);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 2] = (short)(indexBase + 3);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 3] = (short)(indexBase + 1);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 4] = (short)(indexBase + 2);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 5] = (short)(indexBase + 3);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 0] = (ushort)(indexBase + 0);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 1] = (ushort)(indexBase + 1);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 2] = (ushort)(indexBase + 2);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 3] = (ushort)(indexBase + 3);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 4] = (ushort)(indexBase + 2);
+                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 5] = (ushort)(indexBase + 1);
 #endif
 
                 indexWritePosition += 6;
 
                 for (short j = 0; j < 4; j++) {
-                    vertex.Unused = vertex.Corner = j;
 #if !PSM
+                    vertex.Unused = vertex.Corner = j;
                     pVertices[vertexWritePosition + j] = vertex;
 #else
+                    vertex.Corner = FloatCorners[j];
                     buffers.Vertices.Array[buffers.Vertices.Offset + vertexWritePosition + j] = vertex;
 #endif
                 }
@@ -322,6 +357,24 @@ namespace Squared.Render {
 
             _Prepared = true;
         }
+            
+        #if PSM
+        private static void ApplySamplerState (SamplerState state, Sce.PlayStation.Core.Graphics.Texture2D texture) {
+            texture.SetFilter(
+                state.Filter == TextureFilter.Point
+                    ? Sce.PlayStation.Core.Graphics.TextureFilterMode.Nearest
+                    : Sce.PlayStation.Core.Graphics.TextureFilterMode.Linear
+            );
+            texture.SetWrap(
+                state.AddressU == TextureAddressMode.Clamp
+                    ? Sce.PlayStation.Core.Graphics.TextureWrapMode.ClampToEdge
+                    : Sce.PlayStation.Core.Graphics.TextureWrapMode.Repeat,
+                state.AddressV == TextureAddressMode.Clamp
+                    ? Sce.PlayStation.Core.Graphics.TextureWrapMode.ClampToEdge
+                    : Sce.PlayStation.Core.Graphics.TextureWrapMode.Repeat
+            );
+        }
+        #endif            
 
         public override void Issue (DeviceManager manager) {
             if (_DrawCalls.Count == 0)
@@ -337,8 +390,12 @@ namespace Squared.Render {
             var buffers = _BufferGenerator.GetBuffer();
 
             using (manager.ApplyMaterial(Material)) {
+#if PSM
+                device._graphics.SetVertexBuffer(0, buffers);
+#else
                 device.Indices = buffers.Indices;
                 device.SetVertexBuffer(buffers.Vertices);
+#endif
 
                 TextureSet currentTexture = new TextureSet();
                 var paramSize = manager.CurrentParameters["BitmapTextureSize"];
@@ -349,9 +406,22 @@ namespace Squared.Render {
                         currentTexture = nb.TextureSet;
                         var tex1 = currentTexture.Texture1;
 
+#if PSM
+                        ApplySamplerState(SamplerState, tex1._texture2D);
+                        device._graphics.SetTexture(0, tex1._texture2D);
+                            
+                        if (currentTexture.Texture2 != null) {
+                            ApplySamplerState(SamplerState, currentTexture.Texture2._texture2D);
+                            device._graphics.SetTexture(1, currentTexture.Texture2._texture2D);
+                        } else
+                            device._graphics.SetTexture(1, null);
+                            
+                        // FIXME: SamplerState
+#else
                         device.Textures[0] = tex1;
                         device.Textures[1] = currentTexture.Texture2;
                         device.SamplerStates[0] = device.SamplerStates[1] = SamplerState;
+#endif
 
                         var vSize = new Vector2(tex1.Width, tex1.Height);
                         paramSize.SetValue(vSize);
@@ -364,15 +434,26 @@ namespace Squared.Render {
                         if (dss.DepthBufferEnable == false)
                             throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
                     }
-
+      
+#if PSM
+                    device._graphics.DrawArrays(
+                        Sce.PlayStation.Core.Graphics.DrawMode.Triangles,
+                        nb.IndexOffset, (nb.VertexCount / 4) * 6
+                    );
+#else
                     device.DrawIndexedPrimitives(
                         PrimitiveType.TriangleList, nb.VertexOffset, 0, nb.VertexCount, nb.IndexOffset,
                         nb.VertexCount / 2
                     );
+#endif
                 }
 
+#if PSM
+                device._graphics.SetVertexBuffer(0, null);
+#else
                 device.Indices = null;
                 device.SetVertexBuffer(null);
+#endif
             }
 
             _BufferGenerator = null;

@@ -70,7 +70,7 @@ namespace Squared.Render {
         }
 
         private void CoreInitialize () {
-            _DrawThread = new WorkerThread(ThreadedDraw, 3);
+            _DrawThread = new WorkerThread(ThreadedDraw);
 
             Device.DeviceResetting += OnDeviceResetting;
             Device.DeviceReset += OnDeviceReset;

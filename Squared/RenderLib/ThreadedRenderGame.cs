@@ -44,9 +44,6 @@ namespace Squared.Render {
 
         public MultithreadedGame()
             : base() {
-#if XBOX
-            Thread.CurrentThread.SetProcessorAffinity(1);
-#endif
         }
 
         protected override void Dispose (bool disposing) {

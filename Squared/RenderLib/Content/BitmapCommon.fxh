@@ -76,9 +76,9 @@ void ScreenSpaceVertexShader(
     in float4 texRgn : POSITION1, // x1, y1, x2, y2
     in float4 scaleOrigin : POSITION2, // scalex, scaley, originx, originy
     in float rotation : POSITION3,
-    in int2 cornerIndex : BLENDINDICES0, // 0-3
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
+    in int2 cornerIndex : BLENDINDICES0, // 0-3
     out float2 texCoord : TEXCOORD0,
     out float4 result : POSITION0,
     out float2 texTL : TEXCOORD1,
@@ -100,9 +100,9 @@ void WorldSpaceVertexShader(
     in float4 texRgn : POSITION1, // x1, y1, x2, y2
     in float4 scaleOrigin : POSITION2, // scalex, scaley, originx, originy
     in float rotation : POSITION3,
-    in int2 cornerIndex : BLENDINDICES0, // 0-3
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
+    in int2 cornerIndex : BLENDINDICES0, // 0-3
     out float2 texCoord : TEXCOORD0,
     out float4 result : POSITION0,
     out float2 texTL : TEXCOORD1,

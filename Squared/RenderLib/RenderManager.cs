@@ -159,34 +159,18 @@ namespace Squared.Render {
         private FramePool _FrameAllocator;
 
         private WorkerThreadInfo[] _WorkerInfo;
-#if XBOX
-        private WorkerThread[] _WorkerThreads;
-#else
         private Action[] _WorkerDelegates;
-#endif
 
         public RenderManager (GraphicsDevice device) {
             DeviceManager = new DeviceManager(device);
             _FrameAllocator = new FramePool(this);
 
             int threadCount = Math.Max(2, Math.Min(8, Environment.ProcessorCount));
-#if XBOX
-            // XNA reserves two hardware threads for its own purposes
-            threadCount -= 2;
-#endif
 
             _WorkerInfo = new WorkerThreadInfo[threadCount];
             for (int i = 0; i < threadCount; i++)
                 _WorkerInfo[i] = new WorkerThreadInfo();
 
-#if XBOX
-            _WorkerThreads = new WorkerThread[threadCount];
-
-            for (int i = 0; i < _WorkerThreads.Length; i++) {
-                _WorkerThreads[i] = new WorkerThread(WorkerThreadFunc, i);
-                _WorkerThreads[i].Tag = _WorkerInfo[i];
-            }
-#else
             _WorkerDelegates = new Action[threadCount];
 
             for (int i = 0; i < threadCount; i++) {
@@ -195,15 +179,9 @@ namespace Squared.Render {
                 _WorkerDelegates[i] = () =>
                     WorkerThreadFunc(_WorkerInfo[j]);
             }
-#endif
         }
-
-#if XBOX
-        private void WorkerThreadFunc (WorkerThread thread) {
-            var info = thread.Tag as WorkerThreadInfo;
-#else
+        
         private void WorkerThreadFunc (WorkerThreadInfo info) {
-#endif
             Frame frame;
             int start, count;
             lock (info) {
@@ -238,31 +216,14 @@ namespace Squared.Render {
                     info.Count = Math.Min(chunkSize, batchCount - j);
                 }
 
-#if XBOX
-                _WorkerThreads[i].RequestWork();
-#endif
             }
 
-#if XBOX
-            for (int i = 0; i < _WorkerThreads.Length; i++) {
-                var wt = _WorkerThreads[i];
-
-                wt.WaitForPendingWork();
-
-                var info = wt.Tag as WorkerThreadInfo;
-                lock (info) {
-                    if (info.Frame != null)
-                        throw new InvalidOperationException();
-                }
-            }
-#else
             System.Threading.Tasks.Parallel.Invoke(
                 new System.Threading.Tasks.ParallelOptions {
                     MaxDegreeOfParallelism = _WorkerInfo.Length
                 },
                 _WorkerDelegates
             );
-#endif
         }
 
         internal int PickFrameIndex () {
