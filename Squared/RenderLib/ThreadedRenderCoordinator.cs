@@ -23,6 +23,10 @@ namespace Squared.Render {
         /// You must acquire this lock before rendering or resetting the device.
         /// </summary>
         public object UseResourceLock = new object();
+        /// <summary>
+        /// This lock is held during frame preparation.
+        /// </summary>
+        public object PrepareLock = new object();
 
         private bool _Running = true;
         private Frame _FrameBeingPrepared = null;
@@ -123,15 +127,20 @@ namespace Squared.Render {
             }
         }
 
+        protected void PrepareFrame (Frame frame) {
+            Manager.ResetBufferGenerators();
+
+            lock (PrepareLock)
+                frame.Prepare(EnableThreading);
+        }
+
         /// <summary>
         /// Finishes preparing the current Frame and readies it to be sent to the graphics device for rendering.
         /// </summary>
-        protected virtual void PrepareNextFrame () {
+        protected void PrepareNextFrame () {
             var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
-            Manager.ResetBufferGenerators();
-
-            newFrame.Prepare(EnableThreading);
+            PrepareFrame(newFrame);
 
             if (EnableThreading)
                 _DrawThread.WaitForPendingWork();
@@ -177,20 +186,24 @@ namespace Squared.Render {
             }
         }
 
-        protected void RenderFrameToDraw () {
-            var frameToDraw = Interlocked.Exchange(ref _FrameBeingDrawn, null);
-
+        protected void RenderFrame (Frame frame) {
             lock (UseResourceLock)
-                if (frameToDraw != null) {
-                    using (frameToDraw) {
+                if (frame != null) {
+                    using (frame) {
                         _DeviceLost |= IsDeviceLost;
 
                         if (!_DeviceLost)
-                            frameToDraw.Draw();
+                            frame.Draw();
                     }
                 }
 
             _DeviceLost |= IsDeviceLost;
+        }
+
+        protected void RenderFrameToDraw () {
+            var frameToDraw = Interlocked.Exchange(ref _FrameBeingDrawn, null);
+
+            RenderFrame(frameToDraw);
         }
 
         protected void ThreadedDraw (WorkerThread thread) {
@@ -214,6 +227,33 @@ namespace Squared.Render {
                     return false;
 
                 return device.GraphicsDeviceStatus != GraphicsDeviceStatus.Normal;
+            }
+        }
+
+        /// <summary>
+        /// Synchronously renders a complete frame to the specified render target.
+        /// Automatically sets up the device's viewport and the view transform of your materials and restores them afterwards.
+        /// </summary>
+        public void SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
+            using (var frame = Manager.CreateFrame()) {
+                ClearBatch.AddNew(frame, int.MinValue, materials.Clear, clearColor: Color.Transparent);
+
+                drawBehavior(frame);
+
+                PrepareFrame(frame);
+
+                var oldRenderTargets = Device.GetRenderTargets();
+                var oldViewport = Device.Viewport;
+                try {
+                    Device.SetRenderTarget(renderTarget);
+                    Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
+                    materials.PushViewTransform(ViewTransform.CreateOrthographic(Device.Viewport));
+
+                    RenderFrame(frame);
+                } finally {
+                    Device.SetRenderTargets(oldRenderTargets);
+                    materials.PopViewTransform();
+                }
             }
         }
 

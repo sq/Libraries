@@ -195,7 +195,7 @@ namespace Squared.Render {
         public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
         public Material Clear;
 
-        public ViewTransform ViewTransform;
+        protected readonly Stack<ViewTransform> ViewTransformStack = new Stack<ViewTransform>();
 
         public DefaultMaterialSet (IServiceProvider serviceProvider) {
 #if !PSM
@@ -277,7 +277,17 @@ namespace Squared.Render {
             );
 #endif
 
-            ViewTransform = ViewTransform.Default;
+            ViewTransformStack.Push(ViewTransform.Default);
+        }
+
+        public ViewTransform ViewTransform {
+            get {
+                return ViewTransformStack.Peek();
+            }
+            set {
+                ViewTransformStack.Pop();
+                ViewTransformStack.Push(value);
+            }
         }
 
         public Vector2 ViewportScale {
@@ -285,7 +295,9 @@ namespace Squared.Render {
                 return ViewTransform.Scale;
             }
             set {
-                ViewTransform.Scale = value;
+                var vt = ViewTransformStack.Peek();
+                vt.Scale = value;
+                ViewTransform = vt;
             }
         }
 
@@ -294,7 +306,9 @@ namespace Squared.Render {
                 return ViewTransform.Position;
             }
             set {
-                ViewTransform.Position = value;
+                var vt = ViewTransformStack.Peek();
+                vt.Position = value;
+                ViewTransform = vt;
             }
         }
 
@@ -303,7 +317,9 @@ namespace Squared.Render {
                 return ViewTransform.Projection;
             }
             set {
-                ViewTransform.Projection = value;
+                var vt = ViewTransformStack.Peek();
+                vt.Projection = value;
+                ViewTransform = vt;
             }
         }
 
@@ -312,8 +328,22 @@ namespace Squared.Render {
                 return ViewTransform.ModelView;
             }
             set {
-                ViewTransform.ModelView = value;
+                var vt = ViewTransformStack.Peek();
+                vt.ModelView = value;
+                ViewTransform = vt;
             }
+        }
+
+        public void PushViewTransform (ViewTransform viewTransform) {
+            ViewTransformStack.Push(viewTransform);
+        }
+
+        public void PushViewTransform (ref ViewTransform viewTransform) {
+            ViewTransformStack.Push(viewTransform);
+        }
+
+        public ViewTransform PopViewTransform () {
+            return ViewTransformStack.Pop();
         }
 
         /// <summary>
@@ -321,7 +351,8 @@ namespace Squared.Render {
         /// Clear batches automatically call this function for you.
         /// </summary>
         public void ApplyShaderVariables () {
-            ApplyViewTransform(ref ViewTransform);
+            var vt = ViewTransform;
+            ApplyViewTransform(ref vt);
         }
 
         /// <summary>

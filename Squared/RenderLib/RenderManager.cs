@@ -324,7 +324,7 @@ namespace Squared.Render {
                 return 1;
             }
 
-            int result = x.Layer - y.Layer;
+            int result = x.Layer.CompareTo(y.Layer);
             if (result == 0) {
                 int mx = 0, my = 0;
 
@@ -333,7 +333,7 @@ namespace Squared.Render {
                 if (y.Material != null)
                     my = y.Material.MaterialID;
 
-                result = mx - my;
+                result = mx.CompareTo(my);
             }
 
             return result;
