@@ -349,7 +349,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
-            using (var gb = GetGeometryBatch<VertexPositionColor>(layer, worldSpace, blendState))
+            using (var gb = GetGeometryBatch(layer, worldSpace, blendState))
                 gb.AddFilledQuad(bounds, fillColor);
         }
 
@@ -366,7 +366,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
-            using (var gb = GetGeometryBatch<VertexPositionColor>(layer, worldSpace, blendState))
+            using (var gb = GetGeometryBatch(layer, worldSpace, blendState))
                 gb.AddOutlinedQuad(bounds, outlineColor);
         }
 
@@ -383,7 +383,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
-            using (var gb = GetGeometryBatch<VertexPositionColor>(
+            using (var gb = GetGeometryBatch(
                 layer, worldSpace, blendState
             ))
                 gb.AddLine(start, end, firstColor, secondColor);
@@ -394,7 +394,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
-            using (var gb = GetGeometryBatch<VertexPositionColor>(
+            using (var gb = GetGeometryBatch(
                 layer, worldSpace, blendState
             ))
                 gb.AddLine(position, position + Vector2.One, color, color);
@@ -433,9 +433,7 @@ namespace Squared.Render.Convenience {
             return result;
         }
 
-        private GeometryBatch<T> GetGeometryBatch<T> (int? layer, bool? worldSpace, BlendState blendState) 
-            where T : struct, IVertexType {
-
+        private GeometryBatch GetGeometryBatch (int? layer, bool? worldSpace, BlendState blendState) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
@@ -445,7 +443,7 @@ namespace Squared.Render.Convenience {
                 depthStencilState: DepthStencilState,
                 blendState: blendState ?? BlendState
             );
-            var pgb = PreviousBatch as GeometryBatch<T>;
+            var pgb = PreviousBatch as GeometryBatch;
             var actualLayer = layer.GetValueOrDefault(Layer);
 
             if (
@@ -456,7 +454,7 @@ namespace Squared.Render.Convenience {
             )
                 return pgb;
 
-            var result = GeometryBatch<T>.New(Container, actualLayer, material);
+            var result = GeometryBatch.New(Container, actualLayer, material);
             PreviousBatch = result;
 
             if (AutoIncrementLayer && !layer.HasValue)
