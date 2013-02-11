@@ -46,6 +46,7 @@ namespace Squared.Render {
             public int VertexOffset;
             public int VertexCount;
             public int IndexOffset;
+            public int IndexCount;
             public int PrimitiveCount;
         }
 
@@ -99,29 +100,11 @@ namespace Squared.Render {
             
 #if !PSM
             PrepareRing = _PrepareRing;
-#endif
-        }
-        
-        static unsafe void VertexPositionColorBuilder (GeometryVertex[] source, int sourceOffset, VertexPositionColor[] dest, int destOffset, int count) {
-            int endSource = sourceOffset + count;
-            int endDest = destOffset + count;
-            if ((sourceOffset < 0) || (destOffset < 0))
-                throw new InvalidOperationException();
-            if ((endDest >= dest.Length) || (endSource >= source.Length))
-                throw new InvalidOperationException();
-
-#if PSM
-            for (int i = 0; i < count; i++) {
-                dest[i + destOffset].Position = source[i + sourceOffset].Position;
-                dest[i + destOffset].Color = source[i + sourceOffset].Color;
-            }
 #else
-            fixed (GeometryVertex* pSource = &source[sourceOffset])
-            fixed (VertexPositionColor* pDest = &dest[destOffset])
-            for (int i = 0; i < count; i++) {
-                pDest[i].Position = pSource[i].Position;
-                pDest[i].Color = pSource[i].Color;
-            }
+            PSMBufferGenerator<VertexPositionColor>.VertexFormat = new Sce.PlayStation.Core.Graphics.VertexFormat[] {
+                Sce.PlayStation.Core.Graphics.VertexFormat.Float3, 
+                Sce.PlayStation.Core.Graphics.VertexFormat.UByte4N
+            };
 #endif
         }
 
@@ -189,6 +172,7 @@ namespace Squared.Render {
                 VertexOffset = vertexOffset,
                 VertexCount = vertexCount,
                 IndexOffset = indexOffset,
+                IndexCount = indexCount,
                 PrimitiveCount = primCount
             });
 
@@ -237,14 +221,27 @@ namespace Squared.Render {
             using (manager.ApplyMaterial(Material))
             try {
                 var buffers = _BufferGenerator.GetBuffer();
+                
+#if PSM
+                var g = manager.Device._graphics;
+                g.SetVertexBuffer(0, buffers);
+                
+                foreach (var da in _DrawArguments)
+                    g.DrawArrays(PSSHelper.ToDrawMode(da.PrimitiveType), da.IndexOffset, da.IndexCount, 1);
+#else
                 manager.Device.SetVertexBuffer(buffers.Vertices);
                 manager.Device.Indices = buffers.Indices;
-
+                
                 foreach (var da in _DrawArguments)
                     manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
+#endif
             } finally {
+#if PSM
+                manager.Device._graphics.SetVertexBuffer(0, null);
+#else
                 manager.Device.SetVertexBuffer(null);
                 manager.Device.Indices = null;
+#endif
             }
 
             _DrawArgumentsListPool.Release(ref _DrawArguments);
