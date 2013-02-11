@@ -11,7 +11,7 @@ void main(
     out float4 result : COLOR
 ) {
 	// Half-texel offset necessary because GL, or Sony herpaderp, or whatever
-	float2 texCoord = clamp(texCoordOut - HalfTexel, texTL, texBR);
+	float2 texCoord = clamp(texCoordOut, texTL, texBR);
 	
 	float4 texColor = tex2D(BitmapTexture, texCoord);
 	

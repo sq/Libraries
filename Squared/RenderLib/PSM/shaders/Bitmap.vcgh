@@ -31,14 +31,14 @@ void main(
     
   texCoordOut = ComputeTexCoord(
     HalfTexel, (int)cornerIndex, corner, textureRegion
-  );
+  ) - HalfTexel;
   position.xy += rotatedCorner;
   
 #ifdef WORLD_SPACE
   position.xy -= ViewportPosition;
   position.xy *= ViewportScale;
 #endif
-  
+
   transformedPosition = TransformPosition(ProjectionMatrix, ModelViewMatrix, float4(position.xy, position.z, 1));
   transformedPosition2 = transformedPosition;
   OutputRegions(
