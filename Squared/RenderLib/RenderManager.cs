@@ -808,6 +808,11 @@ namespace Squared.Render {
             try {
                 batch.Issue(manager);
             } catch (Exception exc) {
+#if DEBUG
+                if (Debugger.IsAttached)
+                    Debugger.Break();
+#endif
+                
                 throw new BatchIssueFailedException(batch, exc);
             }
         }
