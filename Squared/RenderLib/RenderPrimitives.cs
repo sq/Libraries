@@ -11,13 +11,6 @@ using Squared.Util;
 using System.Diagnostics;
 
 namespace Squared.Render.Internal {
-    public static class VertexWriterExtensions {
-        public static void Write (this VertexWriter<VertexPositionColor> vw, float x, float y, float z, Color color) {
-            var vpc = new VertexPositionColor(new Vector3(x, y, z), color);
-            vw.Write(ref vpc);
-        }
-    }
-
     public struct VertexBuffer<T> : IDisposable
         where T : struct {
 

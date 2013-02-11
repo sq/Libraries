@@ -279,6 +279,10 @@ namespace Squared.Render {
 
         #region Primitives
 
+        private static VertexPositionColor MakeVertex (float x, float y, float z, Color c) {
+            return new VertexPositionColor(new Vector3(x, y, z), c);
+        }
+
         public void AddOutlinedQuad (Bounds bounds, Color outlineColor) {
             AddOutlinedQuad(bounds.TopLeft, bounds.BottomRight, outlineColor);
         }
@@ -299,10 +303,10 @@ namespace Squared.Render {
             var vw = vb.GetWriter(4);
             var iw = ib.GetWriter(OutlinedQuadIndices.Length, ref vw);
 
-            vw.Write(dc.Vector0.X, dc.Vector0.Y, dc.Z, dc.Color0);
-            vw.Write(dc.Vector1.X, dc.Vector0.Y, dc.Z, dc.Color0);
-            vw.Write(dc.Vector0.X, dc.Vector1.Y, dc.Z, dc.Color0);
-            vw.Write(dc.Vector1.X, dc.Vector1.Y, dc.Z, dc.Color0);
+            vw.Write(MakeVertex(dc.Vector0.X, dc.Vector0.Y, dc.Z, dc.Color0));
+            vw.Write(MakeVertex(dc.Vector1.X, dc.Vector0.Y, dc.Z, dc.Color0));
+            vw.Write(MakeVertex(dc.Vector0.X, dc.Vector1.Y, dc.Z, dc.Color0));
+            vw.Write(MakeVertex(dc.Vector1.X, dc.Vector1.Y, dc.Z, dc.Color0));
 
             iw.Write(OutlinedQuadIndices);
         }
@@ -327,10 +331,10 @@ namespace Squared.Render {
             var vw = vb.GetWriter(4);
             var iw = ib.GetWriter(QuadIndices.Length, ref vw);
 
-            vw.Write(dc.Vector0.X, dc.Vector0.Y, dc.Z, dc.Color0);
-            vw.Write(dc.Vector1.X, dc.Vector0.Y, dc.Z, dc.Color0);
-            vw.Write(dc.Vector0.X, dc.Vector1.Y, dc.Z, dc.Color0);
-            vw.Write(dc.Vector1.X, dc.Vector1.Y, dc.Z, dc.Color0);
+            vw.Write(MakeVertex(dc.Vector0.X, dc.Vector0.Y, dc.Z, dc.Color0));
+            vw.Write(MakeVertex(dc.Vector1.X, dc.Vector0.Y, dc.Z, dc.Color0));
+            vw.Write(MakeVertex(dc.Vector0.X, dc.Vector1.Y, dc.Z, dc.Color0));
+            vw.Write(MakeVertex(dc.Vector1.X, dc.Vector1.Y, dc.Z, dc.Color0));
 
             iw.Write(QuadIndices);
         }
@@ -358,10 +362,10 @@ namespace Squared.Render {
             var vw = vb.GetWriter(4);
             var iw = ib.GetWriter(QuadIndices.Length, ref vw);
 
-            vw.Write(dc.Vector0.X, dc.Vector0.Y, dc.Z, dc.Color0);
-            vw.Write(dc.Vector1.X, dc.Vector0.Y, dc.Z, dc.Color1);
-            vw.Write(dc.Vector0.X, dc.Vector1.Y, dc.Z, dc.Color2);
-            vw.Write(dc.Vector1.X, dc.Vector1.Y, dc.Z, dc.Color3);
+            vw.Write(MakeVertex(dc.Vector0.X, dc.Vector0.Y, dc.Z, dc.Color0));
+            vw.Write(MakeVertex(dc.Vector1.X, dc.Vector0.Y, dc.Z, dc.Color1));
+            vw.Write(MakeVertex(dc.Vector0.X, dc.Vector1.Y, dc.Z, dc.Color2));
+            vw.Write(MakeVertex(dc.Vector1.X, dc.Vector1.Y, dc.Z, dc.Color3));
 
             iw.Write(QuadIndices);
         }
@@ -447,8 +451,8 @@ namespace Squared.Render {
             var vw = vb.GetWriter(2);
             var iw = ib.GetWriter(LineIndices.Length, ref vw);
 
-            vw.Write(dc.Vector0.X, dc.Vector0.Y, dc.Z, dc.Color0);
-            vw.Write(dc.Vector1.X, dc.Vector1.Y, dc.Z, dc.Color1);
+            vw.Write(MakeVertex(dc.Vector0.X, dc.Vector0.Y, dc.Z, dc.Color0));
+            vw.Write(MakeVertex(dc.Vector1.X, dc.Vector1.Y, dc.Z, dc.Color1));
 
             iw.Write(LineIndices);
         }
