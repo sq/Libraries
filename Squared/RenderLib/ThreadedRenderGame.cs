@@ -57,6 +57,7 @@ namespace Squared.Render {
             RenderCoordinator = new RenderCoordinator(
                 RenderManager, base.BeginDraw, base.EndDraw
             );
+            RenderCoordinator.EnableThreading = _UseThreadedDraw;
 
             base.Initialize();
         }
