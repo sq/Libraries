@@ -39,6 +39,8 @@ namespace Squared.Render {
             int bufferWritePosition = buffer.Offset;
             int drawCallsWritten = 0;
 
+            bool firstCharacterOfLine = true;
+
             for (int i = 0, l = text.Length; i < l; i++) {
                 var ch = text[i];
 
@@ -55,6 +57,7 @@ namespace Squared.Render {
                 if (lineBreak) {
                     characterOffset.X = 0;
                     characterOffset.Y += lineSpacing;
+                    firstCharacterOfLine = true;
                 }
 
                 Glyph glyph;
@@ -67,6 +70,11 @@ namespace Squared.Render {
                 characterOffset.X += spacing;
 
                 characterOffset.X += glyph.LeftSideBearing * scale;
+
+                if (firstCharacterOfLine) {
+                    characterOffset.X = Math.Max(characterOffset.X, 0);
+                    firstCharacterOfLine = false;
+                }
 
                 if (characterSkipCount <= 0) {
                     if (characterLimit <= 0)
