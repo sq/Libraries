@@ -389,6 +389,17 @@ namespace Squared.Render.Convenience {
                 gb.AddLine(start, end, firstColor, secondColor);
         }
 
+        public void DrawPoint (
+            Vector2 position, Color color,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var gb = GetGeometryBatch<VertexPositionColor>(
+                layer, worldSpace, blendState
+            ))
+                gb.AddLine(position, position + Vector2.One, color, color);
+        }
+
 
         private BitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState) {
             if (Materials == null)
