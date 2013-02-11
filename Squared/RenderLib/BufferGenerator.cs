@@ -161,6 +161,9 @@ namespace Squared.Render.Internal {
                 _Buffer = null;
             }
 
+            if (_VertexArray.Length >= UInt16.MaxValue)
+                throw new InvalidOperationException("Too many vertices");
+
             if (_Buffer == null)
                 _Buffer = new Sce.PlayStation.Core.Graphics.VertexBuffer(_VertexArray.Length, _IndexArray.Length, VertexFormat);
 
@@ -176,6 +179,9 @@ namespace Squared.Render.Internal {
         public readonly Microsoft.Xna.Framework.Graphics.IndexBuffer Indices;
 
         public XNABufferPair (GraphicsDevice graphicsDevice, int vertexCount, int indexCount) {
+            if (vertexCount >= UInt16.MaxValue)
+                throw new InvalidOperationException("Too many vertices");
+
             Vertices = new VertexBuffer(graphicsDevice, typeof(TVertex), vertexCount, BufferUsage.WriteOnly); 
             Indices = new Microsoft.Xna.Framework.Graphics.IndexBuffer(graphicsDevice, IndexElementSize.SixteenBits, indexCount, BufferUsage.WriteOnly);
         }
@@ -186,7 +192,7 @@ namespace Squared.Render.Internal {
         }
     }
 
-    public class XNABufferGenerator<TVertex> : BufferGenerator<XNABufferPair<TVertex>, TVertex, short> 
+    public class XNABufferGenerator<TVertex> : BufferGenerator<XNABufferPair<TVertex>, TVertex, ushort> 
         where TVertex : struct {
 
         public XNABufferGenerator (GraphicsDevice graphicsDevice)

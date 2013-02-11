@@ -91,10 +91,10 @@ namespace Squared.Render.Internal {
     }
 
     public struct IndexBuffer : IDisposable {
-        public readonly ArraySegment<short> Storage;
+        public readonly ArraySegment<ushort> Storage;
         public int Count;
 
-        public IndexBuffer(ArraySegment<short> storage) {
+        public IndexBuffer(ArraySegment<ushort> storage) {
             Storage = storage;
             Count = 0;
         }
@@ -107,12 +107,12 @@ namespace Squared.Render.Internal {
             if (newCount > Storage.Count)
                 throw new InvalidOperationException();
 
-            var newSegment = new ArraySegment<short>(Storage.Array, Storage.Offset + offset, capacity);
+            var newSegment = new ArraySegment<ushort>(Storage.Array, Storage.Offset + offset, capacity);
             // FIXME: This shouldn't be needed!
             Array.Clear(newSegment.Array, newSegment.Offset, newSegment.Count);
 
             Count = newCount;
-            return new IndexWriter(newSegment, (short)vertexWriter.Storage.Offset);
+            return new IndexWriter(newSegment, vertexWriter.Storage.Offset);
         }
 
         public void Dispose() {
@@ -121,43 +121,43 @@ namespace Squared.Render.Internal {
     }
 
     public struct IndexWriter {
-        public readonly ArraySegment<short> Storage;
-        public readonly short IndexOffset;
+        public readonly ArraySegment<ushort> Storage;
+        public readonly int IndexOffset;
         public int Count;
 
-        public IndexWriter (ArraySegment<short> storage, short indexOffset) {
+        public IndexWriter (ArraySegment<ushort> storage, int indexOffset) {
             Storage = storage;
             IndexOffset = indexOffset;
             Count = 0;
         }
 
-        public void Write (short newIndex) {
+        public void Write (ushort newIndex) {
             if (Count >= Storage.Count)
                 throw new InvalidOperationException();
 
-            Storage.Array[Storage.Offset + Count] = (short)(newIndex + IndexOffset);
+            Storage.Array[Storage.Offset + Count] = (ushort)(newIndex + IndexOffset);
             Count += 1;
         }
 
-        public void Write (short[] newIndices) {
+        public void Write (ushort[] newIndices) {
             int l = newIndices.Length;
             if (Count + l - 1 >= Storage.Count)
                 throw new InvalidOperationException();
 
             for (int i = 0; i < l; i++)
-                Storage.Array[Storage.Offset + Count + i] = (short)(newIndices[i] + IndexOffset);
+                Storage.Array[Storage.Offset + Count + i] = (ushort)(newIndices[i] + IndexOffset);
 
             Count += l;
         }
 
-        public void Write (int index, short newIndex) {
+        public void Write (int index, ushort newIndex) {
             if (index >= Storage.Count)
                 throw new InvalidOperationException();
 
             Count = Math.Max(Count, index + 1);
             index += Storage.Offset;
 
-            Storage.Array[index] = (short)(newIndex + IndexOffset);
+            Storage.Array[index] = (ushort)(newIndex + IndexOffset);
         }
     }
 }

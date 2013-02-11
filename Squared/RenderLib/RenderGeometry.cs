@@ -53,7 +53,7 @@ namespace Squared.Render {
 
         // 0   1   2   3
         // tl, tr, bl, br
-        internal static readonly short[] OutlinedQuadIndices = new short[] { 
+        internal static readonly ushort[] OutlinedQuadIndices = new ushort[] { 
             0, 1,
             1, 3,
             3, 2,
@@ -62,14 +62,14 @@ namespace Squared.Render {
 
         // 0   1   2   3
         // tl, tr, bl, br
-        internal static readonly short[] QuadIndices = new short[] { 
+        internal static readonly ushort[] QuadIndices = new ushort[] { 
             0, 1, 3, 
             0, 3, 2 
         };
 
         // 0        1        2        3        4        5        6        7
         // tlInner, tlOuter, trInner, trOuter, brInner, brOuter, blInner, blOuter
-        internal static readonly short[] QuadBorderIndices = new short[] { 
+        internal static readonly ushort[] QuadBorderIndices = new ushort[] { 
             1, 3, 0,
             3, 2, 0,
             3, 5, 2,
@@ -80,7 +80,7 @@ namespace Squared.Render {
             1, 6, 7
         };
 
-        internal static readonly short[] LineIndices = new short[] {
+        internal static readonly ushort[] LineIndices = new ushort[] {
             0, 1
         };
 
@@ -513,7 +513,7 @@ namespace Squared.Render {
             var vertexOuter = new GeometryVertex(new Vector3(0, 0, dc.Z), dc.Color1);
 
             fixed (GeometryVertex * pVertices = &vw.Storage.Array[vw.Storage.Offset])
-            fixed (short * pIndices = &iw.Storage.Array[iw.Storage.Offset])
+            fixed (ushort * pIndices = &iw.Storage.Array[iw.Storage.Offset])
             for (int i = 0, j = 0, k = 0; i < numPoints; i++, j += vertexStride, k += indexStride) {
                 cos = (float)Math.Cos(a);
                 sin = (float)Math.Sin(a);
@@ -531,12 +531,12 @@ namespace Squared.Render {
                 if (i == (numPoints - 1))
                     break;
 
-                pIndices[k] = (short)(j + vw.Storage.Offset);
-                pIndices[k + 1] = (short)(j + 1 + vw.Storage.Offset);
-                pIndices[k + 2] = (short)(j + 3 + vw.Storage.Offset);
-                pIndices[k + 3] = (short)(j + 2 + vw.Storage.Offset);
-                pIndices[k + 4] = (short)(j + vw.Storage.Offset);
-                pIndices[k + 5] = (short)(j + 3 + vw.Storage.Offset);
+                pIndices[k]     = (ushort)(j + vw.Storage.Offset);
+                pIndices[k + 1] = (ushort)(j + 1 + vw.Storage.Offset);
+                pIndices[k + 2] = (ushort)(j + 3 + vw.Storage.Offset);
+                pIndices[k + 3] = (ushort)(j + 2 + vw.Storage.Offset);
+                pIndices[k + 4] = (ushort)(j + vw.Storage.Offset);
+                pIndices[k + 5] = (ushort)(j + 3 + vw.Storage.Offset);
 
                 a += step;
                 colorA += colorStep;

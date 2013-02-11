@@ -288,7 +288,7 @@ namespace Squared.Render {
 
 #if !PSM
             fixed (BitmapVertex* pVertices = &buffers.Vertices.Array[buffers.Vertices.Offset])
-            fixed (short* pIndices = &buffers.Indices.Array[buffers.Indices.Offset])
+            fixed (ushort* pIndices = &buffers.Indices.Array[buffers.Indices.Offset])
 #endif
             for (int i = 0; i < count; i++) {
                 var call = _DrawCalls[i];
@@ -331,12 +331,12 @@ namespace Squared.Render {
                 int indexBase = buffers.Vertices.Offset + vertexWritePosition;
 
 #if !PSM
-                pIndices[indexWritePosition + 0] = (short)(indexBase + 0);
-                pIndices[indexWritePosition + 1] = (short)(indexBase + 1);
-                pIndices[indexWritePosition + 2] = (short)(indexBase + 2);
-                pIndices[indexWritePosition + 3] = (short)(indexBase + 0);
-                pIndices[indexWritePosition + 4] = (short)(indexBase + 2);
-                pIndices[indexWritePosition + 5] = (short)(indexBase + 3);
+                pIndices[indexWritePosition + 0] = (ushort)(indexBase + 0);
+                pIndices[indexWritePosition + 1] = (ushort)(indexBase + 1);
+                pIndices[indexWritePosition + 2] = (ushort)(indexBase + 2);
+                pIndices[indexWritePosition + 3] = (ushort)(indexBase + 0);
+                pIndices[indexWritePosition + 4] = (ushort)(indexBase + 2);
+                pIndices[indexWritePosition + 5] = (ushort)(indexBase + 3);
 #else
                 buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 0] = (ushort)(indexBase + 0);
                 buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 1] = (ushort)(indexBase + 1);
