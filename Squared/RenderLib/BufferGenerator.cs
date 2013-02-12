@@ -175,15 +175,15 @@ namespace Squared.Render.Internal {
     public class XNABufferPair<TVertex> : IDisposable
         where TVertex : struct 
     {
-        public readonly VertexBuffer Vertices;
-        public readonly Microsoft.Xna.Framework.Graphics.IndexBuffer Indices;
+        public readonly DynamicVertexBuffer Vertices;
+        public readonly DynamicIndexBuffer Indices;
 
         public XNABufferPair (GraphicsDevice graphicsDevice, int vertexCount, int indexCount) {
             if (vertexCount >= UInt16.MaxValue)
                 throw new InvalidOperationException("Too many vertices");
 
-            Vertices = new VertexBuffer(graphicsDevice, typeof(TVertex), vertexCount, BufferUsage.WriteOnly); 
-            Indices = new Microsoft.Xna.Framework.Graphics.IndexBuffer(graphicsDevice, IndexElementSize.SixteenBits, indexCount, BufferUsage.WriteOnly);
+            Vertices = new DynamicVertexBuffer(graphicsDevice, typeof(TVertex), vertexCount, BufferUsage.WriteOnly);
+            Indices = new DynamicIndexBuffer(graphicsDevice, IndexElementSize.SixteenBits, indexCount, BufferUsage.WriteOnly);
         }
 
         public void Dispose () {

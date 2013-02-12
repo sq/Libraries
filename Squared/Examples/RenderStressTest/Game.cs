@@ -166,12 +166,12 @@ namespace RenderStressTest {
         private void ParallelPrepareOrbs (int partitionIndex, int partitionCount, DrawArgs args) {
             Orb orb;
             int i = 0;
-            GeometryBatch<VertexPositionColor> batch = null;
+            GeometryBatch batch = null;
 
             using (var e = Orbs.GetParallelEnumerator(partitionIndex, partitionCount))
             while (e.GetNext(out orb)) {
                 if (batch == null)
-                    batch = GeometryBatch<VertexPositionColor>.New(args.Frame, 1, Materials.WorldSpaceGeometry);
+                    batch = GeometryBatch.New(args.Frame, 1, Materials.WorldSpaceGeometry);
 
                 // Compute the position of this orb at the current time
                 var position = Orb.Interpolator(

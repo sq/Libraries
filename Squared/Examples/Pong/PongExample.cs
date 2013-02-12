@@ -145,7 +145,7 @@ namespace Pong {
         public override void Draw(GameTime gameTime, Frame frame) {
             ClearBatch.AddNew(frame, 4, Materials.Clear, clearColor: Color.Black);
 
-            using (var gb = GeometryBatch<VertexPositionColor>.New(frame, 5, Materials.ScreenSpaceGeometry)) {
+            using (var gb = GeometryBatch.New(frame, 5, Materials.ScreenSpaceGeometry)) {
                 gb.AddGradientFilledQuad(
                     Vector2.Zero, new Vector2(Graphics.PreferredBackBufferWidth, Graphics.PreferredBackBufferHeight),
                     Color.DarkSlateGray, Color.DarkSlateGray,
@@ -153,7 +153,7 @@ namespace Pong {
                 );
             }
 
-            using (var gb = GeometryBatch<VertexPositionColor>.New(frame, 6, Materials.ScreenSpaceGeometry)) {
+            using (var gb = GeometryBatch.New(frame, 6, Materials.ScreenSpaceGeometry)) {
                 var alphaBlack = new Color(0, 0, 0, 192);
                 var alphaBlack2 = new Color(0, 0, 0, 64);
 
@@ -172,8 +172,8 @@ namespace Pong {
             }
 
             // Render the paddles and ball to both the framebuffer and the trail buffer (note the different layer values)
-            using (var gb = GeometryBatch<VertexPositionColor>.New(frame, 8, Materials.ScreenSpaceGeometry))
-            using (var trailBatch = GeometryBatch<VertexPositionColor>.New(frame, 2, Materials.ScreenSpaceGeometry)) {
+            using (var gb = GeometryBatch.New(frame, 8, Materials.ScreenSpaceGeometry))
+            using (var trailBatch = GeometryBatch.New(frame, 2, Materials.ScreenSpaceGeometry)) {
                 foreach (var paddle in Paddles) {
                     gb.AddFilledQuad(
                         paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.White
@@ -220,7 +220,7 @@ namespace Pong {
                 FirstFrame = false;
             } else {
                 // Otherwise, we fade out the contents of the trail buffer
-                using (var gb = GeometryBatch<VertexPositionColor>.New(frame, 1, Materials.SubtractiveGeometry)) {
+                using (var gb = GeometryBatch.New(frame, 1, Materials.SubtractiveGeometry)) {
                     gb.AddFilledQuad(
                         new Bounds(Vector2.Zero, new Vector2(Graphics.PreferredBackBufferWidth, Graphics.PreferredBackBufferHeight)), 
                         new Color(12, 12, 12)
