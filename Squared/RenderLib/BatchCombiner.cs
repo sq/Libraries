@@ -26,7 +26,7 @@ namespace Squared.Render {
     }
 
     public static class BatchCombiner {
-        public static readonly IComparer<Batch> BatchTypeSorter = new BatchTypeSorter();
+        public static readonly Comparison<Batch> BatchTypeSorter = new BatchTypeSorter().Compare;
         public static readonly List<IBatchCombiner> Combiners = new List<IBatchCombiner>();
 
         /// <summary>

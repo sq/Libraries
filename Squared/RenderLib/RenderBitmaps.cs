@@ -171,8 +171,8 @@ namespace Squared.Render {
         public SamplerState SamplerState;
         public bool UseZBuffer = false;
 
-        public static BitmapDrawCallComparer DrawCallComparer = new BitmapDrawCallComparer();
-        public static BitmapDrawCallTextureComparer DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
+        public static Comparison<BitmapDrawCall> DrawCallComparer = new BitmapDrawCallComparer().Compare;
+        public static Comparison<BitmapDrawCall> DrawCallTextureComparer = new BitmapDrawCallTextureComparer().Compare;
 
         public const int BitmapBatchSize = 1024;
 

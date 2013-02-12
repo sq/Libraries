@@ -174,6 +174,10 @@ namespace Squared.Util {
             return result;
         }
 
+        public void Timsort (Comparison<T> comparison = null) {
+            Sort.Timsort(_Items, 0, _Count, comparison);
+        }
+
         public void Timsort (IComparer<T> comparer = null) {
             Sort.Timsort(_Items, 0, _Count, comparer);
         }

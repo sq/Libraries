@@ -368,7 +368,7 @@ namespace Squared.Render {
         private const int State_Drawn = 4;
         private const int State_Disposed = 5;
 
-        public static BatchComparer BatchComparer = new BatchComparer();
+        public static Comparison<Batch> BatchComparer = new BatchComparer().Compare;
 
         private static ListPool<Batch> _ListPool = new ListPool<Batch>(
             16, 256, 4096

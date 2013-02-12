@@ -50,7 +50,7 @@ namespace Squared.Render {
             public int PrimitiveCount;
         }
 
-        internal static GeometryDrawCallSorter _DrawCallSorter;
+        internal static Comparison<GeometryDrawCall> _DrawCallSorter = new GeometryDrawCallSorter().Compare;
 
         // 0   1   2   3
         // tl, tr, bl, br
@@ -90,8 +90,6 @@ namespace Squared.Render {
             PrepareQuadBorder, PrepareLine, PrepareRing;
 
         static GeometryBatch () {
-            _DrawCallSorter = new GeometryDrawCallSorter();
-
             PrepareQuad = _PrepareQuad;
             PrepareGradientQuad = _PrepareGradientQuad;
             PrepareOutlinedQuad = _PrepareOutlinedQuad;
