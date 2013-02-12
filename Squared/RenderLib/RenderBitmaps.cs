@@ -148,8 +148,13 @@ namespace Squared.Render {
                 var bblhs = (BitmapBatch)lhs;
                 var bbrhs = (BitmapBatch)rhs;
 
-                bblhs._DrawCalls.AddRange(bbrhs._DrawCalls);
-                bbrhs._DrawCalls.Clear();
+                var drawCallsLhs = bblhs._DrawCalls;
+                var drawCallsRhs = bbrhs._DrawCalls;
+
+                for (int i = 0, l = drawCallsRhs.Count; i < l; i++)
+                    drawCallsLhs.Add(drawCallsRhs[i]);
+
+                drawCallsRhs.Clear();
 
                 return lhs;
             }

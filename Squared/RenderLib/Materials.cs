@@ -162,7 +162,7 @@ namespace Squared.Render {
                     return o.GetHashCode();
             }
 
-            public bool Equals (MaterialCacheKey rhs) {
+            public bool Equals (ref MaterialCacheKey rhs) {
                 return (Material == rhs.Material) &&
                     (RasterizerState == rhs.RasterizerState) &&
                     (DepthStencilState == rhs.DepthStencilState) &&
@@ -170,9 +170,10 @@ namespace Squared.Render {
             }
 
             public override bool Equals (object obj) {
-                if (obj is MaterialCacheKey)
-                    return Equals((MaterialCacheKey)obj);
-                else
+                if (obj is MaterialCacheKey) {
+                    var mck = (MaterialCacheKey)obj;
+                    return Equals(ref mck);
+                } else
                     return base.Equals(obj);
             }
 
@@ -183,10 +184,22 @@ namespace Squared.Render {
                     HashNullable(BlendState);
             }
         }
+
+        protected class MaterialCacheKeyComparer : IEqualityComparer<MaterialCacheKey> {
+            public bool Equals (MaterialCacheKey x, MaterialCacheKey y) {
+                return x.Equals(ref y);
+            }
+
+            public int GetHashCode (MaterialCacheKey obj) {
+                return obj.GetHashCode();
+            }
+        }
         
         public readonly ContentManager BuiltInShaders;
 
-        protected readonly Dictionary<MaterialCacheKey, Material> MaterialCache = new Dictionary<MaterialCacheKey, Material>();
+        protected readonly Dictionary<MaterialCacheKey, Material> MaterialCache = new Dictionary<MaterialCacheKey, Material>(
+            new MaterialCacheKeyComparer()
+        );
 
         public Material ScreenSpaceBitmap, WorldSpaceBitmap;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
