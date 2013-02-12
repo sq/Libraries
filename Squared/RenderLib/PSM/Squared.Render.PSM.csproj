@@ -75,13 +75,24 @@
     <None Include="shaders\Bitmap.fcgh" />
     <None Include="shaders\Geometry.vcgh" />
     <None Include="shaders\Geometry.fcgh" />
-    <EmbeddedShaderProgram Include="shaders\WorldSpaceBitmap.fcg" />
-    <EmbeddedShaderProgram Include="shaders\WorldSpaceBitmap.vcg" />
-    <EmbeddedShaderProgram Include="shaders\ScreenSpaceBitmap.fcg" />
-    <EmbeddedShaderProgram Include="shaders\ScreenSpaceBitmap.vcg" />
-    <EmbeddedShaderProgram Include="shaders\WorldSpaceGeometry.fcg" />
-    <EmbeddedShaderProgram Include="shaders\WorldSpaceGeometry.vcg" />
-    <EmbeddedShaderProgram Include="shaders\ScreenSpaceGeometry.fcg" />
-    <EmbeddedShaderProgram Include="shaders\ScreenSpaceGeometry.vcg" />
+    <None Include="shaders\WorldSpaceBitmap.fcg" />
+    <None Include="shaders\WorldSpaceBitmap.vcg" />
+    <None Include="shaders\ScreenSpaceBitmap.fcg" />
+    <None Include="shaders\ScreenSpaceBitmap.vcg" />
+    <None Include="shaders\WorldSpaceGeometry.fcg" />
+    <None Include="shaders\WorldSpaceGeometry.vcg" />
+    <None Include="shaders\ScreenSpaceGeometry.fcg" />
+    <None Include="shaders\ScreenSpaceGeometry.vcg" />
+    <EmbeddedShaderProgram Include="generated\shaders\WorldSpaceBitmap.fcg" />
+    <EmbeddedShaderProgram Include="generated\shaders\WorldSpaceBitmap.vcg" />
+    <EmbeddedShaderProgram Include="generated\shaders\ScreenSpaceBitmap.fcg" />
+    <EmbeddedShaderProgram Include="generated\shaders\ScreenSpaceBitmap.vcg" />
+    <EmbeddedShaderProgram Include="generated\shaders\WorldSpaceGeometry.fcg" />
+    <EmbeddedShaderProgram Include="generated\shaders\WorldSpaceGeometry.vcg" />
+    <EmbeddedShaderProgram Include="generated\shaders\ScreenSpaceGeometry.fcg" />
+    <EmbeddedShaderProgram Include="generated\shaders\ScreenSpaceGeometry.vcg" />
   </ItemGroup>
+  <PropertyGroup>
+    <PreBuildEvent>$(ProjectDir)\generate_shaders.bat</PreBuildEvent>
+  </PropertyGroup>
 </Project>
