@@ -401,7 +401,7 @@ namespace Squared.Render.Convenience {
         }
 
 
-        private BitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState) {
+        public BitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
@@ -433,7 +433,7 @@ namespace Squared.Render.Convenience {
             return result;
         }
 
-        private GeometryBatch GetGeometryBatch (int? layer, bool? worldSpace, BlendState blendState) {
+        public GeometryBatch GetGeometryBatch (int? layer, bool? worldSpace, BlendState blendState) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
