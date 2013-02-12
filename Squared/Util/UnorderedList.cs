@@ -107,7 +107,12 @@ namespace Squared.Util {
         }
 
         public void Add (T item) {
-            Add(ref item);
+            int newCount = _Count + 1;
+            if (newCount >= _Items.Length)
+                GrowBuffer();
+
+            _Items[newCount - 1] = item;
+            _Count = newCount;
         }
 
         public void Add (ref T item) {
@@ -159,9 +164,8 @@ namespace Squared.Util {
         }
 
         public void Clear () {
+            Array.Clear(_Items, 0, _Count);
             _Count = 0;
-
-            Array.Clear(_Items, 0, _Items.Length);
         }
 
         public T[] GetBuffer () {
