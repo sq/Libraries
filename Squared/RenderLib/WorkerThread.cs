@@ -25,6 +25,8 @@ namespace Squared.Render.Internal {
         private readonly ManualResetEventSlim _CompletedSignal = new ManualResetEventSlim(false);
         private readonly ManualResetEventSlim _StartedSignal = new ManualResetEventSlim(false);
 
+        private volatile bool _Disposed = false;
+
         public WorkerThread (Action<WorkerThread> function) {
             Function = function;
 
@@ -57,12 +59,14 @@ namespace Squared.Render.Internal {
 
         private void WorkerFn () {
             Interlocked.Increment(ref _ThreadWaiting);
-            while (true) {
+            while (!_Disposed) {
                 if (Interlocked.Exchange(ref _ThreadRunning, 1) == 0)
                     _StartedSignal.Set();
 
                 _WakeSignal.WaitOne();
                 Interlocked.Decrement(ref _ThreadWaiting);
+                if (_Disposed)
+                    break;
 
                 while (_PendingWork > 0) {
                     try {
@@ -83,14 +87,9 @@ namespace Squared.Render.Internal {
         }
 
         public void Dispose () {
-#if !PSM
-            Thread.Abort();
-#endif
-            
+            _Disposed = true;
             _WakeSignal.Set();
-
             Thread.Join();
-
             _CompletedSignal.Set();
         }
     }
