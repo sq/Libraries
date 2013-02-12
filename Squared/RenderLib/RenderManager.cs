@@ -613,8 +613,12 @@ namespace Squared.Render {
             _DrawCalls = _ListPool.Allocate();
         }
 
-        protected void Add (ref T item) {
+        protected void Add (T item) {
             _DrawCalls.Add(item);
+        }
+
+        protected void Add (ref T item) {
+            _DrawCalls.Add(ref item);
         }
 
         protected override void OnReleaseResources() {

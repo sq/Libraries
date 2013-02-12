@@ -224,13 +224,15 @@ namespace Squared.Render {
         }
 
         public void Add (BitmapDrawCall item) {
-            Add(ref item);
+            item.TextureID = item.Textures.GetHashCode();
+
+            _DrawCalls.Add(item);
         }
 
         new public void Add (ref BitmapDrawCall item) {
             item.TextureID = item.Textures.GetHashCode();
 
-            base.Add(ref item);
+            _DrawCalls.Add(ref item);
         }
 
         public void AddRange (BitmapDrawCall[] items) {
@@ -256,7 +258,7 @@ namespace Squared.Render {
                 if (sortKey.HasValue)
                     item.SortKey = sortKey.Value;
 
-                base.Add(ref item);
+                _DrawCalls.Add(ref item);
             }
         }
         
@@ -471,6 +473,7 @@ namespace Squared.Render {
     }
 
     public struct TextureSet {
+
         public Texture2D Texture1, Texture2;
 
         public TextureSet (Texture2D texture1) {
