@@ -41,7 +41,7 @@ inline float2 ComputeTexCoord(
     in float2 corner,
     in float4 texRgn : POSITION1
 ) {
-    return (texRgn.xy + corner) + HalfTexel;
+    return (texRgn.xy + corner);
 }
 
 inline float2 ComputeRotatedCorner(
@@ -59,7 +59,7 @@ inline float2 ComputeRotatedCorner(
     return float2(
 		(sinCos.y * corner.x) - (sinCos.x * corner.y),
 		(sinCos.x * corner.x) + (sinCos.y * corner.y)
-	) - HalfTexel;
+	) - 0.5;
 }
 
 inline void OutputRegions(
@@ -67,8 +67,8 @@ inline void OutputRegions(
     out float2 texTL : TEXCOORD1,
     out float2 texBR : TEXCOORD2
 ) {
-    texTL = min(texRgn.xy, texRgn.zw) + HalfTexel;
-    texBR = max(texRgn.xy, texRgn.zw) - HalfTexel;
+    texTL = min(texRgn.xy, texRgn.zw);
+    texBR = max(texRgn.xy, texRgn.zw);
 }
 
 void ScreenSpaceVertexShader(
