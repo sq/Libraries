@@ -1,0 +1,89 @@
+# 1 "shaders/VertexCommon.cgh"
+float4 TransformPosition (
+	in float4x4 ModelViewMatrix,
+	in float4x4 ProjectionMatrix,
+	float4 position
+) {
+    return mul(mul(position, ModelViewMatrix), ProjectionMatrix);
+}
+
+inline float2 ComputeRegionSize(
+	in float4 textureRegion
+) {
+	return textureRegion.zw - textureRegion.xy;
+}
+
+inline float2 ComputeCorner(
+    in float cornerIndex,
+    in float2 regionSize
+) {
+	
+	if (cornerIndex == 0)
+		return float2(0, 0);
+	else if (cornerIndex == 1)
+		return float2(regionSize.x, 0);
+	else if (cornerIndex == 2)
+		return regionSize;
+	else
+		return float2(0, regionSize.y);
+}
+
+inline float2 ComputeTexCoord(
+	in uniform float2 halfTexel,
+    in float cornerIndex,
+    in float2 corner,
+    in float4 textureRegion
+) {
+    return (textureRegion.xy + corner) + halfTexel;
+}
+
+inline float2 ComputeRotatedCorner(
+	in uniform float2 halfTexel,
+	in uniform float2 bitmapTextureSize,
+	in float2 corner,
+    in float4 textureRegion,
+    in float4 scaleOrigin, 
+    in float rotation
+) {
+	corner = abs(corner);
+    corner -= (scaleOrigin.zw * abs(textureRegion.zw - textureRegion.xy));
+    float2 sinCos, rotatedCorner;
+    corner *= scaleOrigin.xy;
+    corner *= bitmapTextureSize;
+    sincos(rotation, sinCos.x, sinCos.y);
+    return float2(
+		(sinCos.y * corner.x) - (sinCos.x * corner.y),
+		(sinCos.x * corner.x) + (sinCos.y * corner.y)
+	) - halfTexel;
+}
+
+inline void OutputRegions(
+	in uniform float2 halfTexel,
+    in float4 textureRegion,
+    out float2 texTL,
+    out float2 texBR
+) {
+    texTL = min(textureRegion.xy, textureRegion.zw) + halfTexel;
+    texBR = max(textureRegion.xy, textureRegion.zw) - halfTexel;
+}
+# 3 "shaders/Geometry.vcgh"
+void main(
+	in uniform float4x4 ProjectionMatrix,
+	in uniform float4x4 ModelViewMatrix,
+	in uniform float2 ViewportScale,
+	in uniform float2 ViewportPosition,
+    in float2 position : POSITION, 
+    in float4 color : COLOR0,
+    out float4 transformedPosition : POSITION,
+    out float4 colorOut : COLOR0
+) {   
+	
+
+
+
+
+	position.xy += 0.5;
+
+    transformedPosition = TransformPosition(ProjectionMatrix, ModelViewMatrix, float4(position.xy, 0, 1));
+    colorOut = color;
+}

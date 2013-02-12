@@ -1,3 +1,4 @@
+# 1 "shaders/Bitmap.fcgh"
 void main( 
 	uniform sampler2D BitmapTexture : TEXUNIT0,
 	uniform float2 HalfTexel,
@@ -20,10 +21,4 @@ void main(
 	result = multiplyColorOut * texColor;
 	result += (addColorOut * result.a);
 	
-	#ifdef ALPHA_TEST
-	// Alpha test
-	const float discardThreshold = 1.0 / 255.0;
-	if (result.a < discardThreshold)
-		discard;
-	#endif
-}
+	}

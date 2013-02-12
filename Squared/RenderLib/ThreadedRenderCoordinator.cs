@@ -74,7 +74,9 @@ namespace Squared.Render {
         }
 
         private void CoreInitialize () {
+#if !PSM
             _DrawThread = new WorkerThread(ThreadedDraw);
+#endif
 
             Device.DeviceResetting += OnDeviceResetting;
             Device.DeviceReset += OnDeviceReset;
@@ -131,7 +133,7 @@ namespace Squared.Render {
             Manager.ResetBufferGenerators();
 
             lock (PrepareLock)
-                frame.Prepare(EnableThreading);
+                frame.Prepare(DoThreadedPrepare);
         }
 
         /// <summary>
@@ -149,6 +151,16 @@ namespace Squared.Render {
 
             if (oldFrame != null)
                 oldFrame.Dispose();
+        }
+        
+        protected bool DoThreadedPrepare {
+            get {
+#if PSM
+                return false;
+#else
+                return EnableThreading;
+#endif
+            }
         }
         
         protected bool DoThreadedIssue { 
@@ -278,11 +290,14 @@ namespace Squared.Render {
 
         public void Dispose () {
             _Running = false;
+   
+            if (_DrawThread != null) {
+                if (EnableThreading)
+                    _DrawThread.WaitForPendingWork();
 
-            if (EnableThreading)
-                _DrawThread.WaitForPendingWork();
-
-            _DrawThread.Dispose();
+                _DrawThread.Dispose();
+                _DrawThread = null;
+            }
         }
     }
     

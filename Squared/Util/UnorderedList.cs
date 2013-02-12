@@ -152,6 +152,12 @@ namespace Squared.Util {
             }
         }
 
+        public int Capacity {
+            get {
+                return _Items.Length;
+            }
+        }
+
         public void Clear () {
             _Count = 0;
 
@@ -166,6 +172,10 @@ namespace Squared.Util {
             var result = new T[_Count];
             Array.Copy(_Items, result, _Count);
             return result;
+        }
+
+        public void Timsort (IComparer<T> comparer = null) {
+            Sort.Timsort(_Items, 0, _Count, comparer);
         }
     }
 }

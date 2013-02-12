@@ -196,9 +196,10 @@ namespace Squared.Render {
             }
 #endif
 
+            var _drawCalls = _DrawCalls.GetBuffer();
             int count = _DrawCalls.Count;
             while (count > 0) {
-                PrimitiveDrawCall<T> lastCall = _DrawCalls[count - 1];
+                PrimitiveDrawCall<T> lastCall = _drawCalls[count - 1];
 
                 // Attempt to combine
                 if (lastCall.PrimitiveType != item.PrimitiveType)
@@ -215,7 +216,7 @@ namespace Squared.Render {
                 if ((lastCall.Indices ?? item.Indices) != null)
                     break;
 
-                _DrawCalls[count - 1] = new PrimitiveDrawCall<T>(
+                _drawCalls[count - 1] = new PrimitiveDrawCall<T>(
                     lastCall.PrimitiveType, lastCall.Vertices, 
                     lastCall.VertexOffset, lastCall.VertexCount + item.VertexCount, 
                     null, 0, 

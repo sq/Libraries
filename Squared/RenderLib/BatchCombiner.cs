@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Squared.Util;
 
 namespace Squared.Render {
     public interface IBatchCombiner {
@@ -34,16 +35,18 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="batches">The list of batches to perform a combination pass over.</param>
         /// <returns>The number of batches eliminated.</returns>
-        public static int CombineBatches (List<Batch> batches) {
-            batches.Sort(BatchTypeSorter);
+        public static int CombineBatches (UnorderedList<Batch> batches) {
+            batches.Timsort(BatchTypeSorter);
 
             int i = 0, j = i + 1, l = batches.Count, eliminatedCount = 0;
 
             Batch a, b;
             Type aType, bType;
 
+            var _batches = batches.GetBuffer();
+
             while ((i < l) && (j < l)) {
-                a = batches[i];
+                a = _batches[i];
 
                 if (a == null) {
                     i += 1;
@@ -52,7 +55,7 @@ namespace Squared.Render {
                 }
                 aType = a.GetType();
 
-                b = batches[j];
+                b = _batches[j];
 
                 if (b == null) {
                     j += 1;
@@ -68,11 +71,11 @@ namespace Squared.Render {
 
                     foreach (var combiner in Combiners) {
                         if (combined = combiner.CanCombine(a, b)) {
-                            batches[i] = batches[j] = null;
-                            batches[i] = combiner.Combine(a, b);
-                            batches[i].Container = a.Container;
+                            _batches[i] = _batches[j] = null;
+                            _batches[i] = combiner.Combine(a, b);
+                            _batches[i].Container = a.Container;
 
-                            if ((a != batches[i]) && (a.ReleaseAfterDraw))
+                            if ((a != _batches[i]) && (a.ReleaseAfterDraw))
                                 a.ReleaseResources();
                             if (b.ReleaseAfterDraw)
                                 b.ReleaseResources();

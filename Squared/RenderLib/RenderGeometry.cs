@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.Render.Internal;
-
+using Squared.Util;
 using GeometryVertex = Microsoft.Xna.Framework.Graphics.VertexPositionColor;
 
 namespace Squared.Render {
@@ -120,14 +120,14 @@ namespace Squared.Render {
             256, 128, 2048
         );
 
-        internal Dictionary<PrimitiveType, List<GeometryDrawCall>> Lists = new Dictionary<PrimitiveType, List<GeometryDrawCall>>();
+        internal Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>> Lists = new Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>>();
 
 #if PSM
         private PSMBufferGenerator<GeometryVertex> _BufferGenerator = null;
 #else
         private XNABufferGenerator<GeometryVertex> _BufferGenerator = null;
 #endif
-        internal List<DrawArguments> _DrawArguments; 
+        internal UnorderedList<DrawArguments> _DrawArguments; 
 
         internal ArrayPoolAllocator<GeometryVertex> VertexAllocator;
         internal ArrayPoolAllocator<short> IndexAllocator;
@@ -149,7 +149,7 @@ namespace Squared.Render {
             VertexCount += vertexCount;
             IndexCount += indexCount;
 
-            List<GeometryDrawCall> list;
+            UnorderedList<GeometryDrawCall> list;
             if (!Lists.TryGetValue(drawCall.PrimitiveType, out list))
                 list = Lists[drawCall.PrimitiveType] = _ListPool.Allocate();
 
@@ -200,12 +200,13 @@ namespace Squared.Render {
                     var l = kvp.Value;
                     var c = l.Count;
 
-                    l.Sort(_DrawCallSorter);
+                    l.Timsort(_DrawCallSorter);
 
                     int vertexCount = vb.Count, indexCount = ib.Count;
 
+                    var _l = l.GetBuffer();
                     for (int i = 0; i < c; i++) {
-                        var dc = l[i];
+                        var dc = _l[i];
                         dc.Preparer(ref vb, ref ib, ref dc);
                     }
 
