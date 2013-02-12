@@ -7,6 +7,7 @@ using Squared.Util;
 namespace Squared.Render {
     public interface IBatchPool {
         void Release (Batch batch);
+        void SetCapacity (int newCapacity);
     }
 
     public class BatchPool<T> : BaseObjectPool<T>, IBatchPool
@@ -29,6 +30,10 @@ namespace Squared.Render {
 
         void IBatchPool.Release (Batch batch) {
             Release((T)batch);
+        }
+
+        public void SetCapacity (int newCapacity) {
+            PoolCapacity = newCapacity;
         }
     }
 

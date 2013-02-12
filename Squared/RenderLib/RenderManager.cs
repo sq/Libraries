@@ -242,6 +242,20 @@ namespace Squared.Render {
                     allocator.Step();
         }
 
+        public bool TrySetPoolCapacity<T> (int newCapacity)
+            where T : Batch {
+
+            var t = typeof(T);
+            IBatchPool p;
+            lock (_BatchAllocators)
+                if (_BatchAllocators.TryGetValue(t, out p)) {
+                    p.SetCapacity(newCapacity);
+                    return true;
+                }
+
+            return false;
+        }
+
         public T GetBufferGenerator<T> ()
             where T : IBufferGenerator {
             var t = typeof(T);
