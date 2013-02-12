@@ -66,7 +66,8 @@ namespace Squared.Render {
 
                     deviceManager.CurrentMaterial = material;
 
-                    material.Begin(deviceManager);
+                    if (material != null)
+                        material.Begin(deviceManager);
                 }
             }
 
