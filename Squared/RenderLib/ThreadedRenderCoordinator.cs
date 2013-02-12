@@ -133,7 +133,7 @@ namespace Squared.Render {
             Manager.ResetBufferGenerators();
 
             lock (PrepareLock)
-                frame.Prepare(EnableThreading);
+                frame.Prepare(DoThreadedPrepare);
         }
 
         /// <summary>
@@ -151,6 +151,16 @@ namespace Squared.Render {
 
             if (oldFrame != null)
                 oldFrame.Dispose();
+        }
+        
+        protected bool DoThreadedPrepare {
+            get {
+#if PSM
+                return false;
+#else
+                return EnableThreading;
+#endif
+            }
         }
         
         protected bool DoThreadedIssue { 

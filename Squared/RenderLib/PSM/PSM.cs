@@ -28,11 +28,7 @@ namespace Squared.Render.PSM {
 				
 				stream.CopyTo(ms);
                 
-                Console.Write("Loading shader '{0}'... ", assetName);
-                
 				var result = new Effect(gds.GraphicsDevice, ms.GetBuffer());
-                
-                Console.WriteLine("loaded.");
                 
                 var shaderObject = result.CurrentTechnique.Passes[0]._shaderProgram;
                 

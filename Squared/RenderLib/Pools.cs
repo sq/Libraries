@@ -100,7 +100,7 @@ namespace Squared.Render {
     }
 
     public class ListPool<T> {
-        private UnorderedList<List<T>> _Pool = new UnorderedList<List<T>>();
+        private UnorderedList<UnorderedList<T>> _Pool = new UnorderedList<UnorderedList<T>>();
 
         public readonly int PoolCapacity;
         public readonly int InitialItemCapacity;
@@ -112,19 +112,19 @@ namespace Squared.Render {
             MaxItemCapacity = maxItemCapacity;
         }
 
-        public List<T> Allocate () {
-            List<T> result = null;
+        public UnorderedList<T> Allocate () {
+            UnorderedList<T> result = null;
 
             lock (_Pool)
                 _Pool.TryPopFront(out result);
 
             if (result == null)
-                result = new List<T>(InitialItemCapacity);
+                result = new UnorderedList<T>(InitialItemCapacity);
 
             return result;
         }
 
-        public void Release (ref List<T> _list) {
+        public void Release (ref UnorderedList<T> _list) {
             var list = _list;
             _list = null;
 

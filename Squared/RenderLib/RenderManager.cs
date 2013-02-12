@@ -377,7 +377,7 @@ namespace Squared.Render {
         public RenderManager RenderManager;
         public int Index;
 
-        public List<Batch> Batches;
+        public UnorderedList<Batch> Batches;
 
         volatile int State = State_Disposed;
 
@@ -419,7 +419,7 @@ namespace Squared.Render {
                 throw new InvalidOperationException();
 
             BatchCombiner.CombineBatches(Batches);
-            Batches.Sort(BatchComparer);
+            Batches.Timsort(BatchComparer);
 
             if (parallel)
                 RenderManager.ParallelPrepare(this);
@@ -433,10 +433,12 @@ namespace Squared.Render {
         internal void PrepareSubset (int start, int count) {
             int end = start + count;
 
+            var _batches = Batches.GetBuffer();
             for (int i = start; i < end; i++) {
-                var batch = Batches[i];
-                if (batch != null)
+                var batch = _batches[i];
+                if (batch != null) {
                     batch.Prepare();
+                }
             }
         }
 
@@ -448,8 +450,9 @@ namespace Squared.Render {
             var device = dm.Device;
 
             int c = Batches.Count;
+            var _batches = Batches.GetBuffer();
             for (int i = 0; i < c; i++) {
-                var batch = Batches[i];
+                var batch = _batches[i];
                 if (batch != null)
                     batch.IssueAndWrapExceptions(dm);
             }
@@ -464,8 +467,9 @@ namespace Squared.Render {
             if (State == State_Disposed)
                 return;
 
+            var _batches = Batches.GetBuffer();
             for (int i = 0; i < Batches.Count; i++) {
-                var batch = Batches[i];
+                var batch = _batches[i];
                 if (batch != null)
                     batch.ReleaseResources();
             }
@@ -597,7 +601,7 @@ namespace Squared.Render {
     }
 
     public abstract class ListBatch<T> : Batch {
-        protected List<T> _DrawCalls;
+        protected UnorderedList<T> _DrawCalls;
 
         private static ListPool<T> _ListPool = new ListPool<T>(
             2048, 128, 1024
@@ -704,11 +708,14 @@ namespace Squared.Render {
 
         public override void Prepare () {
             BatchCombiner.CombineBatches(_DrawCalls);
-            _DrawCalls.Sort(Frame.BatchComparer);
 
-            foreach (var batch in _DrawCalls)
-                if (batch != null)
+            _DrawCalls.Timsort(Frame.BatchComparer);
+
+            foreach (var batch in _DrawCalls) {
+                if (batch != null) {
                     batch.Prepare();
+                }
+            }
         }
 
         public override void Issue (DeviceManager manager) {

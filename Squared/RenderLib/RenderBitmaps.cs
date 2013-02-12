@@ -150,9 +150,10 @@ namespace Squared.Render {
 
                 var drawCallsLhs = bblhs._DrawCalls;
                 var drawCallsRhs = bbrhs._DrawCalls;
+                var drawCallsRhsBuffer = drawCallsRhs.GetBuffer();
 
                 for (int i = 0, l = drawCallsRhs.Count; i < l; i++)
-                    drawCallsLhs.Add(drawCallsRhs[i]);
+                    drawCallsLhs.Add(drawCallsRhsBuffer[i]);
 
                 drawCallsRhs.Clear();
 
@@ -179,7 +180,7 @@ namespace Squared.Render {
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
             2048, 16, 128
         );
-        private List<NativeBatch> _NativeBatches = null;
+        private UnorderedList<NativeBatch> _NativeBatches = null;
         private volatile bool _Prepared = false;
   
 #if PSM
@@ -271,16 +272,16 @@ namespace Squared.Render {
                 _NativeBatches = _NativePool.Allocate();
 
             if (UseZBuffer)
-                _DrawCalls.Sort(DrawCallTextureComparer);
+                _DrawCalls.Timsort(DrawCallTextureComparer);
             else
-                _DrawCalls.Sort(DrawCallComparer);
+                _DrawCalls.Timsort(DrawCallComparer);
 
             var count = _DrawCalls.Count;
             int vertCount = 0, vertOffset = 0, bufferSize = count * 4;
             int indexCount = 0, indexOffset = 0, indexSize = count * 6;
             int blockSizeLimit = BitmapBatchSize * 4;
             int vertexWritePosition = 0, indexWritePosition = 0;
-
+                
             TextureSet currentTextures = new TextureSet();
             BitmapVertex vertex = new BitmapVertex();
 
@@ -290,13 +291,14 @@ namespace Squared.Render {
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<BitmapVertex>>();
 #endif
             var buffers = _BufferGenerator.Allocate(bufferSize, indexSize);
-
+            var _drawCalls = _DrawCalls.GetBuffer();
+                
 #if !PSM
             fixed (BitmapVertex* pVertices = &buffers.Vertices.Array[buffers.Vertices.Offset])
             fixed (ushort* pIndices = &buffers.Indices.Array[buffers.Indices.Offset])
 #endif
             for (int i = 0; i < count; i++) {
-                var call = _DrawCalls[i];
+                var call = _drawCalls[i];
                     
 #if PSM
                 // HACK: PSM render targets have an inverted Y axis, so if the bitmap being drawn is a render target,
