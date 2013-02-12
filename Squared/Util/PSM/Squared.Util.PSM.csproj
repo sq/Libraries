@@ -60,6 +60,7 @@
     <Compile Include="..\Buffer.cs">
       <Link>Buffer.cs</Link>
     </Compile>
+    <Compile Include="..\TimSort4NET\ArrayTimSort.cs" />
     <Compile Include="..\Sort.cs">
       <Link>Sort.cs</Link>
     </Compile>
