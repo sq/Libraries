@@ -248,6 +248,8 @@ namespace Squared.Render {
         /// </summary>
         public void SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
             using (var frame = Manager.CreateFrame()) {
+                materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
+
                 ClearBatch.AddNew(frame, int.MinValue, materials.Clear, clearColor: Color.Transparent);
 
                 drawBehavior(frame);
@@ -259,7 +261,6 @@ namespace Squared.Render {
                 try {
                     Device.SetRenderTarget(renderTarget);
                     Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
-                    materials.PushViewTransform(ViewTransform.CreateOrthographic(Device.Viewport));
 
                     RenderFrame(frame);
                 } finally {
