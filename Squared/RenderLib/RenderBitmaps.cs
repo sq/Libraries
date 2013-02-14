@@ -294,7 +294,9 @@ namespace Squared.Render {
 #endif
             var buffers = _BufferGenerator.Allocate(bufferSize, indexSize);
             var _drawCalls = _DrawCalls.GetBuffer();
-                
+
+            int indexBase = buffers.Vertices.Offset;
+
 #if !PSM
             fixed (BitmapVertex* pVertices = &buffers.Vertices.Array[buffers.Vertices.Offset])
             fixed (ushort* pIndices = &buffers.Indices.Array[buffers.Indices.Offset])
@@ -309,7 +311,8 @@ namespace Squared.Render {
                     call.Mirror(false, true);
 #endif
 
-                bool flush = (call.Textures != currentTextures) || (vertCount >= blockSizeLimit);
+                bool texturesEqual = call.Textures.Equals(ref currentTextures);
+                bool flush = !texturesEqual || (vertCount >= blockSizeLimit);
 
                 if (flush && (vertCount > 0)) {
                     _NativeBatches.Add(new NativeBatch { 
@@ -325,8 +328,7 @@ namespace Squared.Render {
                     indexCount = 0;
                 }
 
-                if (call.Textures != currentTextures)
-                    currentTextures = call.Textures;
+                currentTextures = call.Textures;
 
                 vertex.Position = new Vector3(call.Position, UseZBuffer ? call.SortKey : 0);
                 vertex.TextureTopLeft = call.TextureRegion.TopLeft;
@@ -336,8 +338,6 @@ namespace Squared.Render {
                 vertex.Scale = call.Scale;
                 vertex.Origin = call.Origin;
                 vertex.Rotation = call.Rotation;
-
-                int indexBase = buffers.Vertices.Offset + vertexWritePosition;
 
 #if !PSM
                 pIndices[indexWritePosition + 0] = (ushort)(indexBase + 0);
@@ -368,6 +368,7 @@ namespace Squared.Render {
                 }
 
                 vertexWritePosition += 4;
+                indexBase += 4;
 
                 vertCount += 4;
                 indexCount += 6;
@@ -509,10 +510,14 @@ namespace Squared.Render {
             return new TextureSet(texture1);
         }
 
+        public bool Equals (ref TextureSet rhs) {
+            return (Texture1 == rhs.Texture1) && (Texture2 == rhs.Texture2);
+        }
+
         public override bool Equals (object obj) {
             if (obj is TextureSet) {
                 var rhs = (TextureSet)obj;
-                return this == rhs;
+                return this.Equals(ref rhs);
             } else {
                 return base.Equals(obj);
             }
