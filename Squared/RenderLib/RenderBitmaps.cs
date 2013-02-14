@@ -95,14 +95,14 @@ namespace Squared.Render {
                     : 0
                 );
             if (result == 0)
-                result = (int)(x.TextureID - y.TextureID);
+                result = (int)(x.Textures.HashCode - y.Textures.HashCode);
             return result;
         }
     }
 
     public sealed class BitmapDrawCallTextureComparer : IComparer<BitmapDrawCall> {
         public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
-            return (int)(x.TextureID - y.TextureID);
+            return (int)(x.Textures.HashCode - y.Textures.HashCode);
         }
     }
 
@@ -223,15 +223,16 @@ namespace Squared.Render {
             UseZBuffer = useZBuffer;
         }
 
-        public void Add (BitmapDrawCall item) {
-            item.TextureID = item.Textures.GetHashCode();
+        public ArraySegment<BitmapDrawCall> ReserveRange (int count) {
+            _DrawCalls.EnsureCapacity(count);
+            return new ArraySegment<BitmapDrawCall>(_DrawCalls.GetBuffer(), _DrawCalls.Count, count);
+        }
 
+        public void Add (BitmapDrawCall item) {
             _DrawCalls.Add(item);
         }
 
         new public void Add (ref BitmapDrawCall item) {
-            item.TextureID = item.Textures.GetHashCode();
-
             _DrawCalls.Add(ref item);
         }
 
@@ -248,7 +249,6 @@ namespace Squared.Render {
                 if (!item.IsValid)
                     continue;
 
-                item.TextureID = item.Textures.GetHashCode();
                 if (offset.HasValue)
                     item.Position += offset.Value;
                 if (multiplyColor.HasValue)
@@ -474,17 +474,19 @@ namespace Squared.Render {
     }
 
     public struct TextureSet {
-
-        public Texture2D Texture1, Texture2;
+        public readonly Texture2D Texture1, Texture2;
+        public readonly int HashCode;
 
         public TextureSet (Texture2D texture1) {
             Texture1 = texture1;
             Texture2 = null;
+            HashCode = texture1.GetHashCode();
         }
 
         public TextureSet (Texture2D texture1, Texture2D texture2) {
             Texture1 = texture1;
             Texture2 = texture2;
+            HashCode = texture1.GetHashCode() ^ texture2.GetHashCode();
         }
 
         public Texture2D this[int index] {
@@ -496,14 +498,6 @@ namespace Squared.Render {
                 else
                     throw new InvalidOperationException();
             }
-            set {
-                if (index == 0)
-                    Texture1 = value;
-                else if (index == 1)
-                    Texture2 = value;
-                else
-                    throw new InvalidOperationException();
-            }
         }
 
         public static implicit operator TextureSet (Texture2D texture1) {
@@ -511,7 +505,7 @@ namespace Squared.Render {
         }
 
         public bool Equals (ref TextureSet rhs) {
-            return (Texture1 == rhs.Texture1) && (Texture2 == rhs.Texture2);
+            return (HashCode == rhs.HashCode) && (Texture1 == rhs.Texture1) && (Texture2 == rhs.Texture2);
         }
 
         public override bool Equals (object obj) {
@@ -524,7 +518,7 @@ namespace Squared.Render {
         }
 
         public static bool operator == (TextureSet lhs, TextureSet rhs) {
-            return (lhs.Texture1 == rhs.Texture1) && (lhs.Texture2 == rhs.Texture2);
+            return (lhs.HashCode == rhs.HashCode) && (lhs.Texture1 == rhs.Texture1) && (lhs.Texture2 == rhs.Texture2);
         }
 
         public static bool operator != (TextureSet lhs, TextureSet rhs) {
@@ -532,10 +526,7 @@ namespace Squared.Render {
         }
 
         public override int GetHashCode () {
-            if (Texture2 != null)
-                return Texture1.GetHashCode() ^ Texture2.GetHashCode();
-            else
-                return Texture1.GetHashCode();
+            return HashCode;
         }
     }
 
@@ -558,8 +549,6 @@ namespace Squared.Render {
         public float Rotation;
         public Color MultiplyColor, AddColor;
         public float SortKey;
-
-        internal int TextureID;
 
         public BitmapDrawCall (Texture2D texture, Vector2 position) 
             : this (texture, position, new Bounds(Vector2.Zero, Vector2.One)) {
@@ -611,7 +600,6 @@ namespace Squared.Render {
             Rotation = rotation;
 
             SortKey = 0;
-            TextureID = 0;
         }
 
         public void Mirror (bool x, bool y) {

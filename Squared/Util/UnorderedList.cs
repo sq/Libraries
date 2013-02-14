@@ -106,6 +106,16 @@ namespace Squared.Util {
             Array.Copy(oldItems, _Items, _Count);
         }
 
+        public void EnsureCapacity (int capacity) {
+            var newCapacity = 1 << (int)Math.Ceiling(Math.Log(capacity, 2));
+            if (_Items.Length >= newCapacity)
+                return;
+
+            var oldItems = _Items;
+            _Items = new T[newCapacity];
+            Array.Copy(oldItems, _Items, _Count);
+        }
+
         public void Add (T item) {
             int newCount = _Count + 1;
             if (newCount >= _Items.Length)
