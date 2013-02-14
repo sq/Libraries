@@ -23,8 +23,8 @@ technique WorldSpaceBitmapTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 WorldSpaceVertexShader();
-        pixelShader = compile ps_2_0 BasicPixelShader();
+        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        pixelShader = compile ps_3_0 BasicPixelShader();
     }
 }
 
@@ -32,7 +32,7 @@ technique ScreenSpaceBitmapTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 ScreenSpaceVertexShader();
-        pixelShader = compile ps_2_0 BasicPixelShader();
+        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        pixelShader = compile ps_3_0 BasicPixelShader();
     }
 }

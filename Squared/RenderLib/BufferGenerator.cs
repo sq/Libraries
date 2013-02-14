@@ -177,18 +177,27 @@ namespace Squared.Render.Internal {
     {
         public readonly DynamicVertexBuffer Vertices;
         public readonly DynamicIndexBuffer Indices;
+        public readonly int VertexCount, IndexCount;
 
         public XNABufferPair (GraphicsDevice graphicsDevice, int vertexCount, int indexCount) {
             if (vertexCount >= UInt16.MaxValue)
                 throw new InvalidOperationException("Too many vertices");
 
             Vertices = new DynamicVertexBuffer(graphicsDevice, typeof(TVertex), vertexCount, BufferUsage.WriteOnly);
-            Indices = new DynamicIndexBuffer(graphicsDevice, IndexElementSize.SixteenBits, indexCount, BufferUsage.WriteOnly);
+            if (indexCount > 0)
+                Indices = new DynamicIndexBuffer(graphicsDevice, IndexElementSize.SixteenBits, indexCount, BufferUsage.WriteOnly);
+            else
+                Indices = null;
+
+            VertexCount = vertexCount;
+            IndexCount = indexCount;
         }
 
         public void Dispose () {
             Vertices.Dispose();
-            Indices.Dispose();
+
+            if (Indices != null)
+                Indices.Dispose();
         }
     }
 
@@ -203,8 +212,8 @@ namespace Squared.Render.Internal {
             if (
                 (_Buffer != null) &&
                 (
-                    (_Buffer.Vertices.VertexCount < _VertexArray.Length) ||
-                    (_Buffer.Indices.IndexCount < _IndexArray.Length)
+                    (_Buffer.VertexCount < _VertexArray.Length) ||
+                    (_Buffer.IndexCount < _IndexArray.Length)
                 )
             ) {
                 _Buffer.Dispose();
@@ -215,7 +224,9 @@ namespace Squared.Render.Internal {
                 _Buffer = new XNABufferPair<TVertex>(GraphicsDevice, _VertexArray.Length, _IndexArray.Length);
 
             _Buffer.Vertices.SetData(_VertexArray, 0, _VertexCount);
-            _Buffer.Indices.SetData(_IndexArray, 0, _IndexCount);
+
+            if (_IndexCount > 0)
+                _Buffer.Indices.SetData(_IndexArray, 0, _IndexCount);
         }
     }
 #endif

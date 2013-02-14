@@ -29,8 +29,8 @@ technique ScreenSpaceLightmappedBitmap
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 ScreenSpaceVertexShader();
-        pixelShader = compile ps_2_0 LightmappedPixelShader();
+        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        pixelShader = compile ps_3_0 LightmappedPixelShader();
     }
 }
 
@@ -38,7 +38,7 @@ technique WorldSpaceLightmappedBitmap
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 WorldSpaceVertexShader();
-        pixelShader = compile ps_2_0 LightmappedPixelShader();
+        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        pixelShader = compile ps_3_0 LightmappedPixelShader();
     }
 }

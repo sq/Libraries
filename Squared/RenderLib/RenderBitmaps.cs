@@ -17,11 +17,7 @@ using VertexFormat = Sce.PlayStation.Core.Graphics.VertexFormat;
 #endif
 
 namespace Squared.Render {    
-#if PSM
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
-#else
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-#endif
     public struct BitmapVertex : IVertexType {
         public Vector3 Position;
         public Vector2 TextureTopLeft;
@@ -31,13 +27,6 @@ namespace Squared.Render {
         public float Rotation;
         public Color MultiplyColor;
         public Color AddColor;
-        
-#if PSM
-        public float Corner;
-#else
-        public short Corner;
-        public short Unused;
-#endif
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -68,14 +57,7 @@ namespace Squared.Render {
                 new VertexElement( sizeV3 + sizeV4 * 2 + sizeF, 
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
                 new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor, 
-                    VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
-#if PSM
-                new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor * 2, 
-                    VertexElementFormat.Single, VertexElementUsage.BlendIndices, 0 )
-#else
-                new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor * 2, 
-                    VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 )
-#endif
+                    VertexElementFormat.Color, VertexElementUsage.Color, 1 )
             };
             _VertexDeclaration = new VertexDeclaration(Elements);
         }
@@ -83,6 +65,30 @@ namespace Squared.Render {
         public VertexDeclaration VertexDeclaration {
             get { return _VertexDeclaration; }
         }
+    }
+
+    public struct BitmapCornerVertex : IVertexType {
+        public float Corner;
+
+        public static readonly VertexElement[] Elements;
+        static readonly VertexDeclaration _VertexDeclaration;
+
+        public BitmapCornerVertex (float corner) {
+            Corner = corner;
+        }
+
+        static BitmapCornerVertex () {
+            Elements = new VertexElement[] {
+                new VertexElement( 0, 
+                    VertexElementFormat.Single, VertexElementUsage.BlendIndices, 0 
+                ),
+            };
+            _VertexDeclaration = new VertexDeclaration(Elements);
+        }
+
+        public VertexDeclaration VertexDeclaration {
+            get { return _VertexDeclaration; }
+        }    
     }
 
     public sealed class BitmapDrawCallComparer : IComparer<BitmapDrawCall> {
@@ -166,6 +172,8 @@ namespace Squared.Render {
             public int IndexOffset;
             public int VertexOffset;
             public int VertexCount;
+            public int PrimitiveCount;
+            public int InstanceCount;
         }
 
         public SamplerState SamplerState;
@@ -182,12 +190,15 @@ namespace Squared.Render {
         );
         private UnorderedList<NativeBatch> _NativeBatches = null;
         private volatile bool _Prepared = false;
-  
+
+        private static readonly float[] FloatCorners = new[] { 0f, 1f, 2f, 3f };
+
 #if PSM
-        private static readonly float[] FloatCorners = new [] { 0f, 1f, 2f, 3f };
         private PSMBufferGenerator<BitmapVertex> _BufferGenerator = null;
+        private PSMBufferGenerator<BitmapCornerVertex> _CornerBufferGenerator = null;
 #else
         private XNABufferGenerator<BitmapVertex> _BufferGenerator = null;
+        private XNABufferGenerator<BitmapCornerVertex> _CornerBufferGenerator = null;
 #endif
 
         static BitmapBatch () {
@@ -279,27 +290,38 @@ namespace Squared.Render {
                 _DrawCalls.Timsort(DrawCallComparer);
 
             var count = _DrawCalls.Count;
-            int vertCount = 0, vertOffset = 0, bufferSize = count * 4;
-            int indexCount = 0, indexOffset = 0, indexSize = count * 6;
-            int blockSizeLimit = BitmapBatchSize * 4;
-            int vertexWritePosition = 0, indexWritePosition = 0;
+            int vertCount = 0, vertOffset = 0, bufferSize = count;
+            int blockSizeLimit = BitmapBatchSize;
+            int vertexWritePosition = 0;
                 
             TextureSet currentTextures = new TextureSet();
             BitmapVertex vertex = new BitmapVertex();
 
 #if PSM                
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<PSMBufferGenerator<BitmapVertex>>();
+            _CornerBufferGenerator = Container.RenderManager.GetBufferGenerator<PSMBufferGenerator<BitmapCornerVertex>>();
 #else
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<BitmapVertex>>();
+            _CornerBufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<BitmapCornerVertex>>();
 #endif
-            var buffers = _BufferGenerator.Allocate(bufferSize, indexSize);
+            var buffers = _BufferGenerator.Allocate(bufferSize, 0);
             var _drawCalls = _DrawCalls.GetBuffer();
 
-            int indexBase = buffers.Vertices.Offset;
+            var cornerBuffers = _CornerBufferGenerator.Allocate(4, 6);
+
+            // Generate the corner vertices/indices.
+            for (var i = 0; i < 4; i++)
+                cornerBuffers.Vertices.Array[cornerBuffers.Vertices.Offset + i] = new BitmapCornerVertex(FloatCorners[i]);
+
+            cornerBuffers.Indices.Array[cornerBuffers.Indices.Offset + 0] = 0;
+            cornerBuffers.Indices.Array[cornerBuffers.Indices.Offset + 1] = 1;
+            cornerBuffers.Indices.Array[cornerBuffers.Indices.Offset + 2] = 2;
+            cornerBuffers.Indices.Array[cornerBuffers.Indices.Offset + 3] = 0;
+            cornerBuffers.Indices.Array[cornerBuffers.Indices.Offset + 4] = 2;
+            cornerBuffers.Indices.Array[cornerBuffers.Indices.Offset + 5] = 3;
 
 #if !PSM
             fixed (BitmapVertex* pVertices = &buffers.Vertices.Array[buffers.Vertices.Offset])
-            fixed (ushort* pIndices = &buffers.Indices.Array[buffers.Indices.Offset])
 #endif
             for (int i = 0; i < count; i++) {
                 var call = _drawCalls[i];
@@ -317,15 +339,13 @@ namespace Squared.Render {
                 if (flush && (vertCount > 0)) {
                     _NativeBatches.Add(new NativeBatch { 
                         TextureSet = currentTextures, 
-                        IndexOffset = indexOffset + buffers.Indices.Offset,
+                        IndexOffset = cornerBuffers.Indices.Offset,
                         VertexCount = vertCount,
-                        VertexOffset = vertOffset + buffers.Vertices.Offset,
+                        VertexOffset = vertOffset + buffers.Vertices.Offset
                     });
 
                     vertOffset += vertCount;
                     vertCount = 0;
-                    indexOffset += indexCount;
-                    indexCount = 0;
                 }
 
                 currentTextures = call.Textures;
@@ -340,44 +360,19 @@ namespace Squared.Render {
                 vertex.Rotation = call.Rotation;
 
 #if !PSM
-                pIndices[indexWritePosition + 0] = (ushort)(indexBase + 0);
-                pIndices[indexWritePosition + 1] = (ushort)(indexBase + 1);
-                pIndices[indexWritePosition + 2] = (ushort)(indexBase + 2);
-                pIndices[indexWritePosition + 3] = (ushort)(indexBase + 0);
-                pIndices[indexWritePosition + 4] = (ushort)(indexBase + 2);
-                pIndices[indexWritePosition + 5] = (ushort)(indexBase + 3);
+                pVertices[vertexWritePosition] = vertex;
 #else
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 0] = (ushort)(indexBase + 0);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 1] = (ushort)(indexBase + 1);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 2] = (ushort)(indexBase + 2);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 3] = (ushort)(indexBase + 0);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 4] = (ushort)(indexBase + 2);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 5] = (ushort)(indexBase + 3);
+                buffers.Vertices.Array[buffers.Vertices.Offset + vertexWritePosition] = vertex;
 #endif
 
-                indexWritePosition += 6;
-
-                for (short j = 0; j < 4; j++) {
-#if !PSM
-                    vertex.Unused = vertex.Corner = j;
-                    pVertices[vertexWritePosition + j] = vertex;
-#else
-                    vertex.Corner = FloatCorners[j];
-                    buffers.Vertices.Array[buffers.Vertices.Offset + vertexWritePosition + j] = vertex;
-#endif
-                }
-
-                vertexWritePosition += 4;
-                indexBase += 4;
-
-                vertCount += 4;
-                indexCount += 6;
+                vertexWritePosition += 1;
+                vertCount += 1;
             }
 
-            if ((vertCount > 0) || (indexCount > 0))
+            if (vertCount > 0)
                 _NativeBatches.Add(new NativeBatch {
                     TextureSet = currentTextures,
-                    IndexOffset = indexOffset + buffers.Indices.Offset,
+                    IndexOffset = cornerBuffers.Indices.Offset,
                     VertexCount = vertCount,
                     VertexOffset = vertOffset + buffers.Vertices.Offset,
                 });
@@ -397,13 +392,21 @@ namespace Squared.Render {
 
             var device = manager.Device;
             var buffers = _BufferGenerator.GetBuffer();
+            var cornerBuffers = _CornerBufferGenerator.GetBuffer();
+
+            var bindings = new VertexBufferBinding[] { 
+                new VertexBufferBinding(cornerBuffers.Vertices, 0),
+                // MSDN says vertexOffset is in bytes but it is in vertices. :|
+                new VertexBufferBinding(buffers.Vertices, 0, 1)
+            };
 
             using (manager.ApplyMaterial(Material)) {
 #if PSM
-                device._graphics.SetVertexBuffer(0, buffers);
+                // FIXME
+                device._graphics.SetVertexBuffer(0, cornerBuffers);
+                device._graphics.SetVertexBuffer(1, buffers);
 #else
-                device.Indices = buffers.Indices;
-                device.SetVertexBuffer(buffers.Vertices);
+                device.Indices = cornerBuffers.Indices;
 #endif
 
                 TextureSet currentTexture = new TextureSet();
@@ -440,12 +443,15 @@ namespace Squared.Render {
                         
                     device._graphics.DrawArrays(
                         Sce.PlayStation.Core.Graphics.DrawMode.Triangles,
-                        nb.IndexOffset, (nb.VertexCount / 4) * 6
+                        nb.IndexOffset, nb.VertexCount * 6
                     );
 #else
-                    device.DrawIndexedPrimitives(
-                        PrimitiveType.TriangleList, 0, nb.VertexOffset, nb.VertexCount, nb.IndexOffset,
-                        nb.VertexCount / 2
+                    bindings[1] = new VertexBufferBinding(buffers.Vertices, nb.VertexOffset, 1);
+                    device.SetVertexBuffers(bindings);
+                    
+                    device.DrawInstancedPrimitives(
+                        PrimitiveType.TriangleList, 0, 0, 4, 0,
+                        2, nb.VertexCount
                     );
 #endif
                 }
@@ -459,6 +465,7 @@ namespace Squared.Render {
             }
 
             _BufferGenerator = null;
+            _CornerBufferGenerator = null;
 
             base.Issue(manager);
         }
@@ -466,6 +473,7 @@ namespace Squared.Render {
         protected override void OnReleaseResources () {
             _Prepared = false;
             _BufferGenerator = null;
+            _CornerBufferGenerator = null;
 
             _NativePool.Release(ref _NativeBatches);
 
