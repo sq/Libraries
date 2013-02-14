@@ -119,15 +119,15 @@
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
   <data name="GaussianBlur" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\DummyContentContainer\bin\x86\Debug\RenderLibContent\GaussianBlur.xnb;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>..\DummyContentContainer\bin\RenderLibContent\GaussianBlur.xnb;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="Lightmap" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\DummyContentContainer\bin\x86\Debug\RenderLibContent\Lightmap.xnb;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>..\DummyContentContainer\bin\RenderLibContent\Lightmap.xnb;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="SquaredBitmapShader" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\DummyContentContainer\bin\x86\Debug\RenderLibContent\SquaredBitmapShader.xnb;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>..\DummyContentContainer\bin\RenderLibContent\SquaredBitmapShader.xnb;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="SquaredGeometryShader" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\DummyContentContainer\bin\x86\Debug\RenderLibContent\SquaredGeometryShader.xnb;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>..\DummyContentContainer\bin\RenderLibContent\SquaredGeometryShader.xnb;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
 </root>
