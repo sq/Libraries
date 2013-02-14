@@ -150,6 +150,24 @@ namespace Squared.Util {
             _Count = newCount;
         }
 
+        public void RemoveRange (int index, int count) {
+            if (count <= 0)
+                return;
+            if ((index < 0) || (index >= _Count))
+                throw new IndexOutOfRangeException();
+            if ((index + count) > _Count)
+                throw new ArgumentOutOfRangeException("count");
+
+            var replacementCount = Math.Min(count, _Count - (index + count));
+
+            if (replacementCount > 0)
+                Array.Copy(_Items, index + count, _Items, index, replacementCount);
+
+            Array.Clear(_Items, index + replacementCount, count);
+
+            _Count -= count;
+        }
+
         public bool TryPopFront (out T result) {
             if (_Count == 0) {
                 result = default(T);
@@ -194,6 +212,14 @@ namespace Squared.Util {
 
         public void Timsort (IComparer<T> comparer = null) {
             Sort.Timsort(_Items, 0, _Count, comparer);
+        }
+
+        public ArraySegment<T> ReserveSpace (int count) {
+            var newCount = _Count + count;
+            EnsureCapacity(newCount);
+            var oldCount = _Count;
+            _Count = newCount;
+            return new ArraySegment<T>(_Items, oldCount, count);
         }
     }
 }

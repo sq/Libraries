@@ -223,9 +223,8 @@ namespace Squared.Render {
             UseZBuffer = useZBuffer;
         }
 
-        public ArraySegment<BitmapDrawCall> ReserveRange (int count) {
-            _DrawCalls.EnsureCapacity(count);
-            return new ArraySegment<BitmapDrawCall>(_DrawCalls.GetBuffer(), _DrawCalls.Count, count);
+        public ArraySegment<BitmapDrawCall> ReserveSpace (int count) {
+            return _DrawCalls.ReserveSpace(count);
         }
 
         public void Add (BitmapDrawCall item) {
@@ -470,6 +469,10 @@ namespace Squared.Render {
             _NativePool.Release(ref _NativeBatches);
 
             base.OnReleaseResources();
+        }
+
+        public void RemoveRange (int index, int count) {
+            _DrawCalls.RemoveRange(index, count);
         }
     }
 
