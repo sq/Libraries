@@ -69,7 +69,7 @@ namespace Squared.Render {
 
                 characterOffset.X += spacing;
 
-                characterOffset.X += glyph.LeftSideBearing * scale;
+                characterOffset.X += glyph.LeftSideBearing;
 
                 if (firstCharacterOfLine) {
                     characterOffset.X = Math.Max(characterOffset.X, 0);
@@ -96,7 +96,7 @@ namespace Squared.Render {
                     characterSkipCount--;
                 }
 
-                characterOffset.X += (glyph.Width + glyph.RightSideBearing) * scale;
+                characterOffset.X += (glyph.Width + glyph.RightSideBearing);
             }
 
             return new ArraySegment<BitmapDrawCall>(
