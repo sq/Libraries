@@ -59,7 +59,7 @@ inline float2 ComputeRotatedCorner(
     return float2(
 		(sinCos.y * corner.x) - (sinCos.x * corner.y),
 		(sinCos.x * corner.x) + (sinCos.y * corner.y)
-	) - 0.5;
+	);
 }
 
 inline void OutputRegions(
@@ -91,7 +91,7 @@ void ScreenSpaceVertexShader(
     
     position.xy += rotatedCorner;
     
-    result = TransformPosition(float4(position.xy, position.z, 1));
+    result = TransformPosition(float4(position.xy, position.z, 1), 0.5);
     OutputRegions(texRgn, texTL, texBR);
 }
 
@@ -115,6 +115,6 @@ void WorldSpaceVertexShader(
     
     position.xy += rotatedCorner - ViewportPosition;
     
-    result = TransformPosition(float4(position.xy * ViewportScale, position.z, 1));
+    result = TransformPosition(float4(position.xy * ViewportScale, position.z, 1), 0.5);
     OutputRegions(texRgn, texTL, texBR);
 }

@@ -15,7 +15,7 @@ void ScreenSpaceVertexShader(
     inout float4 color : COLOR0,
     out float4 result : POSITION0
 ) {
-    result = TransformPosition(float4(position.xy, 0, 1));
+    result = TransformPosition(float4(position.xy, 0, 1), 0);
 }
 
 void WorldSpaceVertexShader(
@@ -25,27 +25,7 @@ void WorldSpaceVertexShader(
 ) {
     position -= ViewportPosition;
     position *= ViewportScale;
-    result = TransformPosition(float4(position.xy, 0, 1));
-}
-
-void ScreenSpaceTexturedVertexShader(
-    in float2 position : POSITION0, // x, y
-    inout float4 color : COLOR0,
-    inout float2 texCoord : TEXCOORD0,
-    out float4 result : POSITION0
-) {
-    result = TransformPosition(float4(position.xy, 0, 1));
-}
-
-void WorldSpaceTexturedVertexShader(
-    in float2 position : POSITION0, // x, y
-    inout float4 color : COLOR0,
-    inout float2 texCoord : TEXCOORD0,
-    out float4 result : POSITION0
-) {
-    position -= ViewportPosition;
-    position *= ViewportScale;
-    result = TransformPosition(float4(position.xy, 0, 1));
+    result = TransformPosition(float4(position.xy, 0, 1), 0);
 }
 
 void VertexColorPixelShader(
@@ -75,23 +55,5 @@ technique WorldSpaceUntextured
     {
         vertexShader = compile vs_1_1 WorldSpaceVertexShader();
         pixelShader = compile ps_2_0 VertexColorPixelShader();
-    }
-}
-
-technique ScreenSpaceTextured
-{
-    pass P0
-    {
-        vertexShader = compile vs_1_1 ScreenSpaceTexturedVertexShader();
-        pixelShader = compile ps_2_0 TexturedPixelShader();
-    }
-}
-
-technique WorldSpaceTextured
-{
-    pass P0
-    {
-        vertexShader = compile vs_1_1 WorldSpaceTexturedVertexShader();
-        pixelShader = compile ps_2_0 TexturedPixelShader();
     }
 }

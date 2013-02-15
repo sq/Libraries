@@ -166,9 +166,9 @@ namespace Squared.Render.Convenience {
             return result;
         }
 
-        public ImperativeRenderer ForRenderTarget (RenderTarget2D renderTarget) {
+        public ImperativeRenderer ForRenderTarget (RenderTarget2D renderTarget, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null) {
             var result = this;
-            var group = BatchGroup.ForRenderTarget(Container, Layer, renderTarget);
+            var group = BatchGroup.ForRenderTarget(Container, Layer, renderTarget, before, after, userData);
             group.Dispose();
             result.Container = group;
             result.Layer = 0;

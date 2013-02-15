@@ -290,7 +290,14 @@ namespace Squared.Render {
             );
 #endif
 
-            ViewTransformStack.Push(ViewTransform.Default);
+            var gds = serviceProvider.GetService(typeof(IGraphicsDeviceService)) as IGraphicsDeviceService;
+            if (gds != null)
+                ViewTransformStack.Push(ViewTransform.CreateOrthographic(
+                    gds.GraphicsDevice.PresentationParameters.BackBufferWidth,
+                    gds.GraphicsDevice.PresentationParameters.BackBufferHeight
+                ));
+            else
+                ViewTransformStack.Push(ViewTransform.Default);
         }
 
         public ViewTransform ViewTransform {
@@ -347,16 +354,29 @@ namespace Squared.Render {
             }
         }
 
+        /// <summary>
+        /// Immediately changes the view transform of the material set, without waiting for a clear.
+        /// </summary>
         public void PushViewTransform (ViewTransform viewTransform) {
             ViewTransformStack.Push(viewTransform);
+            ApplyViewTransform(ref viewTransform);
         }
 
+        /// <summary>
+        /// Immediately changes the view transform of the material set, without waiting for a clear.
+        /// </summary>
         public void PushViewTransform (ref ViewTransform viewTransform) {
             ViewTransformStack.Push(viewTransform);
+            ApplyViewTransform(ref viewTransform);
         }
 
+        /// <summary>
+        /// Immediately restores the previous view transform of the material set, without waiting for a clear.
+        /// </summary>
         public ViewTransform PopViewTransform () {
-            return ViewTransformStack.Pop();
+            var result = ViewTransformStack.Pop();
+            ApplyShaderVariables();
+            return result;
         }
 
         /// <summary>

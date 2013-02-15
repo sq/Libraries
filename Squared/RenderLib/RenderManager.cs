@@ -76,6 +76,7 @@ namespace Squared.Render {
         }
 
         private readonly Stack<RenderTargetBinding[]> RenderTargetStack = new Stack<RenderTargetBinding[]>();
+        private readonly Stack<Viewport> ViewportStack = new Stack<Viewport>();
 
         public readonly GraphicsDevice Device;
         private Effect ParameterEffect;
@@ -93,11 +94,14 @@ namespace Squared.Render {
 
         public void PushRenderTarget (RenderTarget2D newRenderTarget) {
             RenderTargetStack.Push(Device.GetRenderTargets());
+            ViewportStack.Push(Device.Viewport);
             Device.SetRenderTarget(newRenderTarget);
+            Device.Viewport = new Viewport(0, 0, newRenderTarget.Width, newRenderTarget.Height);
         }
 
         public void PopRenderTarget () {
             Device.SetRenderTargets(RenderTargetStack.Pop());
+            Device.Viewport = ViewportStack.Pop();
         }
 
         public EffectParameterCollection SharedParameters {
@@ -707,6 +711,13 @@ namespace Squared.Render {
     }
 
     public class BatchGroup : ListBatch<Batch>, IBatchContainer {
+        private class SetRenderTargetData {
+            public RenderTarget2D RenderTarget;
+            public Action<DeviceManager, object> Before;
+            public Action<DeviceManager, object> After;
+            public object UserData;
+        }
+
         Action<DeviceManager, object> _Before, _After;
         private object _UserData;
 
@@ -740,19 +751,31 @@ namespace Squared.Render {
         }
 
         private void SetRenderTargetCallback (DeviceManager dm, object userData) {
-            dm.PushRenderTarget((RenderTarget2D)userData);
+            var data = (SetRenderTargetData)userData;
+            dm.PushRenderTarget(data.RenderTarget);
+            if (data.Before != null)
+                data.Before(dm, data.UserData);
         }
 
         private void RestoreRenderTargetCallback (DeviceManager dm, object userData) {
+            var data = (SetRenderTargetData)userData;
             dm.PopRenderTarget();
+            if (data.After != null)
+                data.After(dm, data.UserData);
         }
 
-        public static BatchGroup ForRenderTarget (IBatchContainer container, int layer, RenderTarget2D renderTarget) {
+        public static BatchGroup ForRenderTarget (IBatchContainer container, int layer, RenderTarget2D renderTarget, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
-            result.Initialize(container, layer, result.SetRenderTargetCallback, result.RestoreRenderTargetCallback, renderTarget);
+            var data = new SetRenderTargetData {
+                RenderTarget = renderTarget,
+                Before = before,
+                After = after,
+                UserData = userData
+            };
+            result.Initialize(container, layer, result.SetRenderTargetCallback, result.RestoreRenderTargetCallback, data);
             result.CaptureStack(0);
 
             return result;

@@ -266,6 +266,7 @@ namespace Squared.Render {
                 } finally {
                     Device.SetRenderTargets(oldRenderTargets);
                     materials.PopViewTransform();
+                    Device.Viewport = oldViewport;
                 }
             }
         }
