@@ -1,4 +1,5 @@
 @echo Generating shaders...
+@rmdir /s/q generated
 @mkdir generated
 @mkdir generated\shaders
 @for %%f IN (shaders\*.fcg) DO tcc.exe -E %%f -o generated\%%f
