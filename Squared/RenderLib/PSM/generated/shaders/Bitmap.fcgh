@@ -11,9 +11,7 @@ void main(
     in float2 texBR : TEXCOORD2,
     out float4 result : COLOR
 ) {
-	float2 texCoord = clamp(texCoordOut, texTL, texBR);
-	
-	float4 texColor = tex2D(BitmapTexture, texCoord);
+	float4 texColor = tex2D(BitmapTexture, texCoordOut);
 	
 	addColorOut.rgb *= addColorOut.a;
 	addColorOut.a = 0;

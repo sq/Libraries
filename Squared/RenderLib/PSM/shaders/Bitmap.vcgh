@@ -41,9 +41,6 @@ void main(
 
   transformedPosition = TransformPosition(ProjectionMatrix, ModelViewMatrix, float4(position.xy, position.z, 1));
   transformedPosition2 = transformedPosition;
-  OutputRegions(
-    HalfTexel, textureRegion, texTL, texBR
-	);
 	
 	multiplyColorOut = multiplyColor;
 	addColorOut = addColor;

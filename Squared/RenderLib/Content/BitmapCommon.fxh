@@ -41,7 +41,9 @@ inline float2 ComputeTexCoord(
     in float2 corner,
     in float4 texRgn : POSITION1
 ) {
-    return (texRgn.xy + corner);
+    float2 texTL = min(texRgn.xy, texRgn.zw);
+    float2 texBR = max(texRgn.xy, texRgn.zw);
+    return clamp(texRgn.xy + corner, texTL, texBR);
 }
 
 inline float2 ComputeRotatedCorner(
@@ -62,15 +64,6 @@ inline float2 ComputeRotatedCorner(
 	);
 }
 
-inline void OutputRegions(
-    in float4 texRgn : POSITION1,
-    out float2 texTL : TEXCOORD1,
-    out float2 texBR : TEXCOORD2
-) {
-    texTL = min(texRgn.xy, texRgn.zw);
-    texBR = max(texRgn.xy, texRgn.zw);
-}
-
 void ScreenSpaceVertexShader(
     in float3 position : POSITION0, // x, y
     in float4 texRgn : POSITION1, // x1, y1, x2, y2
@@ -80,9 +73,7 @@ void ScreenSpaceVertexShader(
     inout float4 addColor : COLOR1,
     in int2 cornerIndex : BLENDINDICES0, // 0-3
     out float2 texCoord : TEXCOORD0,
-    out float4 result : POSITION0,
-    out float2 texTL : TEXCOORD1,
-    out float2 texBR : TEXCOORD2
+    out float4 result : POSITION0
 ) {
 	float2 regionSize = ComputeRegionSize(texRgn);
 	float2 corner = ComputeCorner(cornerIndex, regionSize);
@@ -92,7 +83,6 @@ void ScreenSpaceVertexShader(
     position.xy += rotatedCorner;
     
     result = TransformPosition(float4(position.xy, position.z, 1), 0.5);
-    OutputRegions(texRgn, texTL, texBR);
 }
 
 void WorldSpaceVertexShader(
@@ -104,9 +94,7 @@ void WorldSpaceVertexShader(
     inout float4 addColor : COLOR1,
     in int2 cornerIndex : BLENDINDICES0, // 0-3
     out float2 texCoord : TEXCOORD0,
-    out float4 result : POSITION0,
-    out float2 texTL : TEXCOORD1,
-    out float2 texBR : TEXCOORD2
+    out float4 result : POSITION0
 ) {
 	float2 regionSize = ComputeRegionSize(texRgn);
 	float2 corner = ComputeCorner(cornerIndex, regionSize);
@@ -116,5 +104,4 @@ void WorldSpaceVertexShader(
     position.xy += rotatedCorner - ViewportPosition;
     
     result = TransformPosition(float4(position.xy * ViewportScale, position.z, 1), 0.5);
-    OutputRegions(texRgn, texTL, texBR);
 }

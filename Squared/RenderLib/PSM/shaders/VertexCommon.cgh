@@ -33,7 +33,10 @@ inline float2 ComputeTexCoord(
     in float2 corner,
     in float4 textureRegion
 ) {
-    return (textureRegion.xy + corner) + halfTexel;
+    float2 texTL = min(textureRegion.xy, textureRegion.zw) - halfTexel;
+    float2 texBR = max(textureRegion.xy, textureRegion.zw) + halfTexel;
+    
+    return clamp((textureRegion.xy + corner) + halfTexel, texTL, texBR);
 }
 
 inline float2 ComputeRotatedCorner(
@@ -54,14 +57,4 @@ inline float2 ComputeRotatedCorner(
 		(sinCos.y * corner.x) - (sinCos.x * corner.y),
 		(sinCos.x * corner.x) + (sinCos.y * corner.y)
 	) - halfTexel;
-}
-
-inline void OutputRegions(
-	in uniform float2 halfTexel,
-    in float4 textureRegion,
-    out float2 texTL,
-    out float2 texBR
-) {
-    texTL = min(textureRegion.xy, textureRegion.zw) + halfTexel;
-    texBR = max(textureRegion.xy, textureRegion.zw) - halfTexel;
 }
