@@ -217,30 +217,32 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            using (manager.ApplyMaterial(Material))
-            try {
-                var buffers = _BufferGenerator.GetBuffer();
+            if (Count > 0) {
+                using (manager.ApplyMaterial(Material))
+                try {
+                    var buffers = _BufferGenerator.GetBuffer();
                 
-#if PSM
-                var g = manager.Device._graphics;
+    #if PSM
+                                    var g = manager.Device._graphics;
                 g.SetVertexBuffer(0, buffers);
                 
                 foreach (var da in _DrawArguments)
                     g.DrawArrays(PSSHelper.ToDrawMode(da.PrimitiveType), da.IndexOffset, da.IndexCount, 1);
-#else
-                manager.Device.SetVertexBuffer(buffers.Vertices);
-                manager.Device.Indices = buffers.Indices;
+    #else
+                    manager.Device.SetVertexBuffer(buffers.Vertices);
+                    manager.Device.Indices = buffers.Indices;
                 
-                foreach (var da in _DrawArguments)
-                    manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
-#endif
-            } finally {
-#if PSM
-                manager.Device._graphics.SetVertexBuffer(0, null);
-#else
-                manager.Device.SetVertexBuffer(null);
-                manager.Device.Indices = null;
-#endif
+                    foreach (var da in _DrawArguments)
+                        manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
+    #endif
+                } finally {
+    #if PSM
+                    manager.Device._graphics.SetVertexBuffer(0, null);
+    #else
+                    manager.Device.SetVertexBuffer(null);
+                    manager.Device.Indices = null;
+    #endif
+                }
             }
 
             _DrawArgumentsListPool.Release(ref _DrawArguments);

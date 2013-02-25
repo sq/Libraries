@@ -12,13 +12,20 @@ using System.Reflection;
 namespace Squared.Render {
     public static class SpriteFontExtensions {
         public static ArraySegment<BitmapDrawCall> LayoutString (
-            this SpriteFont font, string text, ArraySegment<BitmapDrawCall> buffer,
+            this SpriteFont font, string text, ArraySegment<BitmapDrawCall>? buffer,
             Vector2? position = null, Color? color = null, float scale = 1, float sortKey = 0,
             int characterSkipCount = 0, int characterLimit = int.MaxValue
         ) {
             if (text == null)
                 throw new ArgumentNullException("text");
-            if (buffer.Count < text.Length)
+
+            ArraySegment<BitmapDrawCall> _buffer;
+            if (buffer.HasValue)
+                _buffer = buffer.Value;
+            else
+                _buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[text.Length]);
+
+            if (_buffer.Count < text.Length)
                 throw new ArgumentException("buffer too small", "buffer");
 
             var spacing = font.Spacing;
@@ -36,7 +43,7 @@ namespace Squared.Render {
             float rectScaleX = 1f / glyphSource.Texture.Width;
             float rectScaleY = 1f / glyphSource.Texture.Height;
 
-            int bufferWritePosition = buffer.Offset;
+            int bufferWritePosition = _buffer.Offset;
             int drawCallsWritten = 0;
 
             bool firstCharacterOfLine = true;
@@ -86,7 +93,7 @@ namespace Squared.Render {
                         actualPosition.Y + (glyph.Cropping.Y + characterOffset.Y) * scale
                     );
 
-                    buffer.Array[bufferWritePosition] = drawCall;
+                    _buffer.Array[bufferWritePosition] = drawCall;
 
                     bufferWritePosition += 1;
                     drawCallsWritten += 1;
@@ -100,7 +107,7 @@ namespace Squared.Render {
             }
 
             return new ArraySegment<BitmapDrawCall>(
-                buffer.Array, buffer.Offset, drawCallsWritten
+                _buffer.Array, _buffer.Offset, drawCallsWritten
             );
         }
     }
