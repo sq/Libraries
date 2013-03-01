@@ -56,3 +56,7 @@ _ReSharper.*
 /Squared/DummyContentContainer/bin
 /Squared/RenderLib/PSM/obj
 /Squared/RenderLib/PSM/bin
+/Squared/RenderPrecisionTest/RenderPrecisionTest/obj
+/Squared/RenderPrecisionTest/RenderPrecisionTest/bin
+/Squared/RenderPrecisionTest/RenderPrecisionTestContent/obj
+/Squared/RenderPrecisionTest/RenderPrecisionTestContent/bin
