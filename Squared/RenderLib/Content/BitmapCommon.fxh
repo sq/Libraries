@@ -39,10 +39,12 @@ inline float2 ComputeCorner(
 inline float2 ComputeTexCoord(
     in int2 cornerIndex : BLENDINDICES0,
     in float2 corner,
-    in float4 texRgn : POSITION1
+    in float4 texRgn : POSITION1,
+    out float2 texTL : TEXCOORD1,
+    out float2 texBR : TEXCOORD2
 ) {
-    float2 texTL = min(texRgn.xy, texRgn.zw);
-    float2 texBR = max(texRgn.xy, texRgn.zw);
+    texTL = min(texRgn.xy, texRgn.zw);
+    texBR = max(texRgn.xy, texRgn.zw);
     return clamp(texRgn.xy + corner, texTL, texBR);
 }
 
@@ -73,15 +75,17 @@ void ScreenSpaceVertexShader(
     inout float4 addColor : COLOR1,
     in int2 cornerIndex : BLENDINDICES0, // 0-3
     out float2 texCoord : TEXCOORD0,
+    out float2 texTL : TEXCOORD1,
+    out float2 texBR : TEXCOORD2,
     out float4 result : POSITION0
 ) {
 	float2 regionSize = ComputeRegionSize(texRgn);
 	float2 corner = ComputeCorner(cornerIndex, regionSize);
-    texCoord = ComputeTexCoord(cornerIndex, corner, texRgn);
+    texCoord = ComputeTexCoord(cornerIndex, corner, texRgn, texTL, texBR);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn, scaleOrigin, rotation);
     
     position.xy += rotatedCorner;
-    
+
     result = TransformPosition(float4(position.xy, position.z, 1), 0.5);
 }
 
@@ -94,11 +98,13 @@ void WorldSpaceVertexShader(
     inout float4 addColor : COLOR1,
     in int2 cornerIndex : BLENDINDICES0, // 0-3
     out float2 texCoord : TEXCOORD0,
+    out float2 texTL : TEXCOORD1,
+    out float2 texBR : TEXCOORD2,
     out float4 result : POSITION0
 ) {
 	float2 regionSize = ComputeRegionSize(texRgn);
 	float2 corner = ComputeCorner(cornerIndex, regionSize);
-    texCoord = ComputeTexCoord(cornerIndex, corner, texRgn);
+    texCoord = ComputeTexCoord(cornerIndex, corner, texRgn, texTL, texBR);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn, scaleOrigin, rotation);
     
     position.xy += rotatedCorner - ViewportPosition;
