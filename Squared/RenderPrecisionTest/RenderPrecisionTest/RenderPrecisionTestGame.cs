@@ -15,6 +15,7 @@ namespace RenderPrecisionTest {
     public class RenderPrecisionTestGame : MultithreadedGame {
         public static readonly Color ClearColor = new Color(24, 96, 220, 255);
 
+        RenderTarget2D RenderTarget;
         Texture2D TestTexture;
 
         DefaultMaterialSet Materials;
@@ -22,11 +23,14 @@ namespace RenderPrecisionTest {
 
         public RenderPrecisionTestGame () {
             Graphics = new GraphicsDeviceManager(this);
+            Graphics.PreferredBackBufferWidth = 1280;
+            Graphics.PreferredBackBufferHeight = 960;
             Content.RootDirectory = "Content";
         }
 
         protected override void Initialize () {
             Materials = new DefaultMaterialSet(Services);
+            RenderTarget = new RenderTarget2D(Graphics.GraphicsDevice, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height, false, SurfaceFormat.Color, DepthFormat.None);
 
             base.Initialize();
         }
@@ -46,15 +50,21 @@ namespace RenderPrecisionTest {
             var ir = new ImperativeRenderer(frame, Materials);
             ir.AutoIncrementLayer = true;
 
+            var rt = ir.ForRenderTarget(RenderTarget);
+            {
+                rt.Clear(color: ClearColor);
+
+                DrawRow(ref rt, 16f, 16f, SamplerState.PointClamp);
+                DrawRow(ref rt, 16.5f, 16 + 64f, SamplerState.PointClamp);
+                DrawRow(ref rt, 16f, (16 + 128) + 0.5f, SamplerState.PointClamp);
+
+                DrawRow(ref rt, 16f, 16 + 192f, SamplerState.LinearClamp);
+                DrawRow(ref rt, 16.5f, 16 + 256f, SamplerState.LinearClamp);
+                DrawRow(ref rt, 16f, (16 + 320) + 0.5f, SamplerState.LinearClamp);
+            }
+
             ir.Clear(color: ClearColor);
-
-            DrawRow(ref ir, 16f, 16f, SamplerState.PointClamp);
-            DrawRow(ref ir, 16.5f, 16 + 64f, SamplerState.PointClamp);
-            DrawRow(ref ir, 16f, (16 + 128) + 0.5f, SamplerState.PointClamp);
-
-            DrawRow(ref ir, 16f, 16 + 192f, SamplerState.LinearClamp);
-            DrawRow(ref ir, 16.5f, 16 + 256f, SamplerState.LinearClamp);
-            DrawRow(ref ir, 16f, (16 + 320) + 0.5f, SamplerState.LinearClamp);
+            ir.Draw(RenderTarget, 0, 0, scaleX: 2f, scaleY: 2f, samplerState: SamplerState.PointClamp);
         }
 
         private void DrawRow (ref ImperativeRenderer ir, float x, float y, SamplerState samplerState) {
@@ -65,7 +75,7 @@ namespace RenderPrecisionTest {
             ir.Draw(TestTexture, x, y, sourceRect, scaleX: 2f, scaleY: 2f, samplerState: samplerState);
             x += 96f;
 
-            for (float r = 0.1f; r < Math.PI / 2f; r += 0.1f) {
+            for (float r = 0.1f; r < Math.PI / 2f; r += 0.2f) {
                 ir.Draw(TestTexture, x, y, sourceRect, rotation: r, samplerState: samplerState);
 
                 x += 64f;
