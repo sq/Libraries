@@ -123,6 +123,9 @@ namespace Squared.Render {
                 if ((bblhs == null) || (bbrhs == null))
                     return false;
 
+                if (bblhs.IsReusable || bbrhs.IsReusable)
+                    return false;
+
                 if (bblhs.Material.MaterialID != bbrhs.Material.MaterialID)
                     return false;
 
