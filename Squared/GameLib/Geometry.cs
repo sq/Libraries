@@ -176,6 +176,24 @@ namespace Squared.Game {
                 BottomRight = BottomRight * scale
             };
         }
+
+        public bool Intersection (ref Bounds lhs, ref Bounds rhs, out Bounds result) {
+            var x1 = Math.Max(lhs.TopLeft.X, rhs.TopLeft.X);
+            var y1 = Math.Max(lhs.TopLeft.Y, rhs.TopLeft.Y);
+            var x2 = Math.Min(lhs.BottomRight.X, rhs.BottomRight.X);
+            var y2 = Math.Min(lhs.BottomRight.Y, rhs.BottomRight.Y);
+
+            if (x2 >= x1 && y2 >= y1) {
+                result = new Bounds(
+                    new Vector2(x1, y1),
+                    new Vector2(x2, y2)
+                );
+                return true;
+            }
+
+            result = default(Bounds);
+            return false;
+        }
     }
 
     public class Polygon : IEnumerable<Vector2>, IHasBounds {
