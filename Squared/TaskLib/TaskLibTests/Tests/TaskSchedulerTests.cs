@@ -766,6 +766,27 @@ namespace Squared.Task {
             Assert.IsTrue(f.Failed);
             Assert.IsInstanceOf<WaitForAllException>(f.Error);
         }
+
+        private IEnumerator<object> WaitThenReturn (IFuture f) {
+            yield return f;
+
+            yield return new Result(5);
+        }
+
+        [Test]
+        public void DisposingFutureTaskIsWaitingOnWakesTask () {
+            var fWaitTarget = Scheduler.Start(InfiniteTask());
+            var fWaiter = Scheduler.Start(WaitThenReturn(fWaitTarget));
+
+            Scheduler.Step();
+
+            fWaitTarget.Dispose();
+
+            Scheduler.Step();
+
+            Assert.AreEqual(5, fWaiter.Result);
+            Assert.IsFalse(Scheduler.HasPendingTasks);
+        }
     }
 
     [TestFixture]
