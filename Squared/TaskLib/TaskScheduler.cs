@@ -374,7 +374,15 @@ namespace Squared.Task {
             lock (_SleepWorker.WorkItems) {
                 while (_SleepWorker.WorkItems.Count > 0) {
                     var item = _SleepWorker.WorkItems.Dequeue();
-                    item.Future.Dispose();
+
+                    try {
+                        item.Future.Dispose();
+                    } catch (FutureHandlerException fhe) {
+                        // FIXME: Maybe we should introduce two levels of disposed state, and in the first level,
+                        //  queueing work items silently fails?
+                        if (!(fhe.InnerException is ObjectDisposedException))
+                            throw;
+                    }
                 }
             }
                 
