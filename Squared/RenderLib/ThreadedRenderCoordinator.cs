@@ -74,9 +74,7 @@ namespace Squared.Render {
         }
 
         private void CoreInitialize () {
-#if !PSM
             _DrawThread = new WorkerThread(ThreadedDraw);
-#endif
 
             Device.DeviceResetting += OnDeviceResetting;
             Device.DeviceReset += OnDeviceReset;
@@ -155,11 +153,7 @@ namespace Squared.Render {
         
         protected bool DoThreadedPrepare {
             get {
-#if PSM
-                return false;
-#else
                 return EnableThreading;
-#endif
             }
         }
         

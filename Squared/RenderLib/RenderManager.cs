@@ -198,10 +198,6 @@ namespace Squared.Render {
         }
 
         internal void ParallelPrepare (Frame frame) {
-#if PSM
-            throw new NotSupportedException("Sony's threading implementation is busted.");
-#endif
-            
             int batchCount = frame.Batches.Count;
             int chunkSize = (int)Math.Ceiling((float)batchCount / _WorkerInfo.Length);
 
