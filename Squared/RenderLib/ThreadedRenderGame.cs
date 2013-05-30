@@ -49,7 +49,8 @@ namespace Squared.Render {
         }
 
         protected override void Dispose (bool disposing) {
-            RenderCoordinator.Dispose();
+            if (RenderCoordinator != null)
+                RenderCoordinator.Dispose();
 
             base.Dispose(disposing);
         }
