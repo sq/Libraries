@@ -134,6 +134,18 @@ namespace Squared.Util {
             _Count = newCount;
         }
 
+        public void AddRange (T[] items) {
+            int newCount = _Count + items.Length;
+            if (newCount >= _Items.Length)
+                GrowBuffer();
+
+            int insertOffset = newCount - items.Length;
+            for (var i = 0; i < items.Length; i++)
+                _Items[insertOffset + i] = items[i];
+
+            _Count = newCount;
+        }
+
         public void RemoveAt (int index) {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();

@@ -1,5 +1,8 @@
 ﻿#pragma warning disable 0420 // a reference to a volatile field will not be treated as volatile
 
+// Uncomment this to make Frame.Add faster in debug builds
+#define PARANOID
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -408,7 +411,7 @@ namespace Squared.Render {
                 throw new InvalidOperationException();
 
             lock (Batches) {
-#if DEBUG
+#if DEBUG && PARANOID
                 if (Batches.Contains(batch))
                     throw new InvalidOperationException("Batch already added to this frame");
 #endif

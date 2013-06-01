@@ -593,7 +593,9 @@ namespace Squared.Render {
         }
 
         public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin, float rotation) {
-            if (texture.IsDisposed)
+            if (texture == null)
+                throw new ArgumentNullException("texture");
+            else if (texture.IsDisposed)
                 throw new ObjectDisposedException("texture");
 
             Textures = new TextureSet(texture);
