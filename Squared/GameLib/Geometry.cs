@@ -194,6 +194,12 @@ namespace Squared.Game {
             result = default(Bounds);
             return false;
         }
+
+        public static Bounds FromPositionAndSize (Vector2 position, Vector2 size) {
+            return new Bounds(
+                position, position + size
+            );
+        }
     }
 
     public class Polygon : IEnumerable<Vector2>, IHasBounds {

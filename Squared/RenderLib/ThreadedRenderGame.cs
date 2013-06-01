@@ -44,10 +44,13 @@ namespace Squared.Render {
 
         public MultithreadedGame()
             : base() {
+
+            UseThreadedDraw = true;
         }
 
         protected override void Dispose (bool disposing) {
-            RenderCoordinator.Dispose();
+            if (RenderCoordinator != null)
+                RenderCoordinator.Dispose();
 
             base.Dispose(disposing);
         }

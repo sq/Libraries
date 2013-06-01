@@ -10,11 +10,44 @@ using Microsoft.Xna.Framework;
 using System.Reflection;
 
 namespace Squared.Render {
+    public struct StringLayout {
+        public readonly Vector2 Position;
+        public readonly Vector2 Size;
+        public readonly Bounds FirstCharacterBounds;
+        public readonly Bounds LastCharacterBounds;
+        public readonly ArraySegment<BitmapDrawCall> DrawCalls;
+
+        public StringLayout (Vector2 position, Vector2 size, Bounds firstCharacter, Bounds lastCharacter, ArraySegment<BitmapDrawCall> drawCalls) {
+            Position = position;
+            Size = size;
+            FirstCharacterBounds = firstCharacter;
+            LastCharacterBounds = lastCharacter;
+            DrawCalls = drawCalls;
+        }
+
+        public int Count {
+            get {
+                return DrawCalls.Count;
+            }
+        }
+
+        public ArraySegment<BitmapDrawCall> Slice (int skip, int count) {
+            return new ArraySegment<BitmapDrawCall>(
+                DrawCalls.Array, DrawCalls.Offset + skip, Math.Max(Math.Min(count, DrawCalls.Count - skip), 0)
+            );
+        }
+
+        public static implicit operator ArraySegment<BitmapDrawCall> (StringLayout layout) {
+            return layout.DrawCalls;
+        }
+    }
+
     public static class SpriteFontExtensions {
-        public static ArraySegment<BitmapDrawCall> LayoutString (
+        public static StringLayout LayoutString (
             this SpriteFont font, string text, ArraySegment<BitmapDrawCall>? buffer,
             Vector2? position = null, Color? color = null, float scale = 1, float sortKey = 0,
-            int characterSkipCount = 0, int characterLimit = int.MaxValue
+            int characterSkipCount = 0, int characterLimit = int.MaxValue,
+            float xOffsetOfFirstLine = 0, float? lineBreakAtX = null
         ) {
             if (text == null)
                 throw new ArgumentNullException("text");
@@ -33,7 +66,10 @@ namespace Squared.Render {
             var glyphSource = font.GetGlyphSource();
 
             var actualPosition = position.GetValueOrDefault(Vector2.Zero);
-            var characterOffset = Vector2.Zero;
+            var characterOffset = new Vector2(xOffsetOfFirstLine, 0);
+            var totalSize = Vector2.Zero;
+
+            Bounds firstCharacterBounds = default(Bounds), lastCharacterBounds = default(Bounds);
 
             var drawCall = new BitmapDrawCall(
                 glyphSource.Texture, default(Vector2), default(Bounds), color.GetValueOrDefault(Color.White), scale
@@ -46,6 +82,7 @@ namespace Squared.Render {
             int bufferWritePosition = _buffer.Offset;
             int drawCallsWritten = 0;
 
+            bool firstCharacterEver = true;
             bool firstCharacterOfLine = true;
 
             for (int i = 0, l = text.Length; i < l; i++) {
@@ -61,20 +98,42 @@ namespace Squared.Render {
                     lineBreak = true;
                 }
 
+                bool deadGlyph;
+
+                Glyph glyph;
+                deadGlyph = !glyphSource.GetGlyph(ch, out glyph);
+
+                if (!deadGlyph) {
+                    var x = characterOffset.X + glyph.LeftSideBearing + glyph.RightSideBearing + glyph.Width + spacing;
+                    if (x >= lineBreakAtX)
+                        lineBreak = true;
+                }
+
                 if (lineBreak) {
                     characterOffset.X = 0;
                     characterOffset.Y += lineSpacing;
                     firstCharacterOfLine = true;
                 }
 
-                Glyph glyph;
-                if (!glyphSource.GetGlyph(ch, out glyph)) {
+                if (deadGlyph) {
                     characterSkipCount--;
                     characterLimit--;
                     continue;
                 }
 
                 characterOffset.X += spacing;
+
+                lastCharacterBounds = Bounds.FromPositionAndSize(
+                    characterOffset, new Vector2(
+                        glyph.LeftSideBearing + glyph.Width + glyph.RightSideBearing,
+                        font.LineSpacing
+                    )
+                );
+
+                if (firstCharacterEver) {
+                    firstCharacterBounds = lastCharacterBounds;
+                    firstCharacterEver = false;
+                }
 
                 characterOffset.X += glyph.LeftSideBearing;
 
@@ -104,10 +163,17 @@ namespace Squared.Render {
                 }
 
                 characterOffset.X += (glyph.Width + glyph.RightSideBearing);
+
+                totalSize.X = Math.Max(totalSize.X, characterOffset.X);
+                totalSize.Y = Math.Max(totalSize.Y, characterOffset.Y + font.LineSpacing);
             }
 
-            return new ArraySegment<BitmapDrawCall>(
-                _buffer.Array, _buffer.Offset, drawCallsWritten
+            return new StringLayout(
+                position.GetValueOrDefault(), totalSize, 
+                firstCharacterBounds, lastCharacterBounds,
+                new ArraySegment<BitmapDrawCall>(
+                    _buffer.Array, _buffer.Offset, drawCallsWritten
+                )
             );
         }
     }

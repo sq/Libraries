@@ -74,9 +74,7 @@ namespace Squared.Render {
         }
 
         private void CoreInitialize () {
-#if !PSM
             _DrawThread = new WorkerThread(ThreadedDraw);
-#endif
 
             Device.DeviceResetting += OnDeviceResetting;
             Device.DeviceReset += OnDeviceReset;
@@ -155,11 +153,7 @@ namespace Squared.Render {
         
         protected bool DoThreadedPrepare {
             get {
-#if PSM
-                return false;
-#else
                 return EnableThreading;
-#endif
             }
         }
         
@@ -198,8 +192,11 @@ namespace Squared.Render {
             }
         }
 
-        protected void RenderFrame (Frame frame) {
-            lock (UseResourceLock)
+        protected void RenderFrame (Frame frame, bool acquireLock) {
+            if (acquireLock)
+                Monitor.Enter(UseResourceLock);
+
+            try {
                 if (frame != null) {
                     using (frame) {
                         _DeviceLost |= IsDeviceLost;
@@ -208,6 +205,10 @@ namespace Squared.Render {
                             frame.Draw();
                     }
                 }
+            } finally {
+                if (acquireLock)
+                    Monitor.Exit(UseResourceLock);
+            }
 
             _DeviceLost |= IsDeviceLost;
         }
@@ -215,7 +216,7 @@ namespace Squared.Render {
         protected void RenderFrameToDraw () {
             var frameToDraw = Interlocked.Exchange(ref _FrameBeingDrawn, null);
 
-            RenderFrame(frameToDraw);
+            RenderFrame(frameToDraw, true);
         }
 
         protected void ThreadedDraw (WorkerThread thread) {
@@ -248,25 +249,27 @@ namespace Squared.Render {
         /// </summary>
         public void SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
             using (var frame = Manager.CreateFrame()) {
-                materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
+                lock (UseResourceLock) {
+                    materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
 
-                ClearBatch.AddNew(frame, int.MinValue, materials.Clear, clearColor: Color.Transparent);
+                    ClearBatch.AddNew(frame, int.MinValue, materials.Clear, clearColor: Color.Transparent);
 
-                drawBehavior(frame);
+                    drawBehavior(frame);
 
-                PrepareFrame(frame);
+                    PrepareFrame(frame);
 
-                var oldRenderTargets = Device.GetRenderTargets();
-                var oldViewport = Device.Viewport;
-                try {
-                    Device.SetRenderTarget(renderTarget);
-                    Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
+                    var oldRenderTargets = Device.GetRenderTargets();
+                    var oldViewport = Device.Viewport;
+                    try {
+                        Device.SetRenderTarget(renderTarget);
+                        Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
 
-                    RenderFrame(frame);
-                } finally {
-                    Device.SetRenderTargets(oldRenderTargets);
-                    materials.PopViewTransform();
-                    Device.Viewport = oldViewport;
+                        RenderFrame(frame, false);
+                    } finally {
+                        Device.SetRenderTargets(oldRenderTargets);
+                        materials.PopViewTransform();
+                        Device.Viewport = oldViewport;
+                    }
                 }
             }
         }

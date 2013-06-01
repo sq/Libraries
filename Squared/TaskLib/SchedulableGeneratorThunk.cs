@@ -16,6 +16,7 @@ namespace Squared.Task {
         TaskScheduler _Scheduler;
         readonly Action _Step, _QueueStep, _OnErrorChecked;
         readonly OnComplete _QueueStepOnComplete;
+        readonly OnDispose _QueueStepOnDispose;
 
         public override string ToString () {
             return String.Format("<Task {0} waiting on {1}>", _Task, WakeCondition);
@@ -25,6 +26,7 @@ namespace Squared.Task {
             _Task = task;
             _QueueStep = QueueStep;
             _QueueStepOnComplete = QueueStepOnComplete;
+            _QueueStepOnDispose = QueueStepOnDispose;
             _OnErrorChecked = OnErrorChecked;
             _Step = Step;
         }
@@ -91,6 +93,15 @@ namespace Squared.Task {
             _Scheduler.QueueWorkItem(_Step);
         }
 
+        void QueueStepOnDispose (IFuture f) {
+            if (WakeCondition != null) {
+                _WakePrevious = WakeCondition;
+                WakeCondition = null;
+            }
+
+            _Scheduler.QueueWorkItem(_Step);
+        }
+
         void QueueStep () {
             _Scheduler.QueueWorkItem(_Step);
         }
@@ -102,8 +113,7 @@ namespace Squared.Task {
                 QueueStep();
             } else {
                 var temp = _Scheduler.Start(value, TaskExecutionPolicy.RunWhileFutureLives);
-                SetWakeCondition(temp, true);
-                temp.RegisterOnComplete(_QueueStepOnComplete);
+                SetWakeConditionAndSubscribe(temp, true);
             }
         }
 
@@ -139,6 +149,12 @@ namespace Squared.Task {
             }
         }
 
+        void SetWakeConditionAndSubscribe (IFuture f, bool discardingResult) {
+            SetWakeCondition(f, discardingResult);
+            f.RegisterOnComplete(_QueueStepOnComplete);
+            f.RegisterOnDispose(_QueueStepOnDispose);
+        }
+
         void OnErrorChecked () {
             _ErrorChecked = true;
         }
@@ -163,14 +179,12 @@ namespace Squared.Task {
                     f = null;
 
                 if (f != null) {
-                    SetWakeCondition(f, true);
-                    f.RegisterOnComplete(_QueueStepOnComplete);
+                    SetWakeConditionAndSubscribe(f, true);
                 } else {
                     QueueStep();
                 }
             } else if ((f = (value as IFuture)) != null) {
-                SetWakeCondition(f, false);
-                f.RegisterOnComplete(_QueueStepOnComplete);
+                SetWakeConditionAndSubscribe(f, false);
             } else if ((r = (value as ITaskResult)) != null) {
                 CompleteWithResult(r);
             } else if ((e = (value as IEnumerator<object>)) != null) {

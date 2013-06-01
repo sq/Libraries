@@ -250,28 +250,28 @@ namespace Squared.Util {
             }
         }
 
-        public static float Pulse (float value, float min, float max) {
+        public static float Pulse (float value) {
             value = value % 1.0f;
-            float a;
-            if (value >= 0.5f) {
-                a = (value - 0.5f) / 0.5f;
-                return Lerp(max, min, a);
-            } else {
-                a = value / 0.5f;
-                return Lerp(min, max, a);
-            }
+            if (value > 0.5f)
+                return (value - 0.5f) / 0.5f;
+            else
+                return 1f - (value / 0.5f);
+        }
+
+        public static float Pulse (float value, float min, float max) {
+            float a = Pulse(value);
+            return Lerp(min, max, a);
         }
 
         public static float PulseExp (float value, float min, float max) {
-            value = value % 1.0f;
-            float a;
-            if (value >= 0.5f) {
-                a = (value - 0.5f) / 0.5f;
-                return Lerp(max, min, a * a);
-            } else {
-                a = value / 0.5f;
-                return Lerp(min, max, a * a);
-            }
+            float a = Pulse(value);
+            return Lerp(min, max, a * a);
+        }
+
+        public static float PulseSine (float value, float min, float max) {
+            float a = Pulse(value);
+            const double multiplier = Math.PI / 2;
+            return Lerp(min, max, (float)Math.Sin(a * multiplier));
         }
 
         private static class LerpSource<T> where T : struct {
