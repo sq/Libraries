@@ -34,7 +34,7 @@ namespace Squared.Render.Internal {
             Array.Clear(newStorage.Array, newStorage.Offset, newStorage.Count);
 
             Count = newCount;
-            return new VertexWriter<T>(newStorage);
+            return new VertexWriter<T>(newStorage, offset);
         }
 
         public void Dispose() {
@@ -46,10 +46,12 @@ namespace Squared.Render.Internal {
         where T : struct {
 
         public readonly ArraySegment<T> Storage;
+        public int IndexOffset;
         public int Count;
 
-        public VertexWriter(ArraySegment<T> storage) {
+        public VertexWriter(ArraySegment<T> storage, int indexOffset) {
             Storage = storage;
+            IndexOffset = indexOffset;
             Count = 0;
         }
 
@@ -112,7 +114,7 @@ namespace Squared.Render.Internal {
             Array.Clear(newSegment.Array, newSegment.Offset, newSegment.Count);
 
             Count = newCount;
-            return new IndexWriter(newSegment, vertexWriter.Storage.Offset);
+            return new IndexWriter(newSegment, vertexWriter.IndexOffset);
         }
 
         public void Dispose() {

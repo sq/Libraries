@@ -130,6 +130,7 @@ namespace Squared.Render {
         internal ArrayPoolAllocator<GeometryVertex> VertexAllocator;
         internal ArrayPoolAllocator<short> IndexAllocator;
         internal int VertexCount = 0, IndexCount = 0, Count = 0;
+        internal ISoftwareBuffer _SoftwareBuffer;
 
         new public void Initialize (IBatchContainer container, int layer, Material material) {
             base.Initialize(container, layer, material);
@@ -187,12 +188,12 @@ namespace Squared.Render {
 #endif
 
                 _DrawArguments = _DrawArgumentsListPool.Allocate();
+                var swb = _BufferGenerator.Allocate(VertexCount, IndexCount, true);
+                _SoftwareBuffer = swb;
 
-                var buffers = _BufferGenerator.Allocate(VertexCount, IndexCount);
-
-                var vb = new Internal.VertexBuffer<GeometryVertex>(buffers.Vertices);
-                var ib = new Internal.IndexBuffer(buffers.Indices);
-                int vertexOffset = buffers.Vertices.Offset, indexOffset = buffers.Indices.Offset;
+                var vb = new Internal.VertexBuffer<GeometryVertex>(swb.Vertices);
+                var ib = new Internal.IndexBuffer(swb.Indices);
+                int vertexOffset = 0, indexOffset = 0;
 
                 foreach (var kvp in Lists) {
                     var l = kvp.Value;
@@ -217,43 +218,25 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            throw new NotImplementedException();
-
-            /*
-
             if (Count > 0) {
-                using (manager.ApplyMaterial(Material))
-                try {
-                    var buffers = _BufferGenerator.GetBuffer();
-                
-    #if PSM
-                                    var g = manager.Device._graphics;
-                g.SetVertexBuffer(0, buffers);
-                
-                foreach (var da in _DrawArguments)
-                    g.DrawArrays(PSSHelper.ToDrawMode(da.PrimitiveType), da.IndexOffset, da.IndexCount, 1);
+                _BufferGenerator.Flush();
+
+                using (manager.ApplyMaterial(Material)) {
+                    _SoftwareBuffer.HardwareBuffer.SetActive(manager.Device);
+    #if PSM                
+                    foreach (var da in _DrawArguments)
+                        g.DrawArrays(PSSHelper.ToDrawMode(da.PrimitiveType), da.IndexOffset, da.IndexCount, 1);
     #else
-                    manager.Device.SetVertexBuffer(buffers.Vertices);
-                    manager.Device.Indices = buffers.Indices;
-                
                     foreach (var da in _DrawArguments)
                         manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
     #endif
-                } finally {
-    #if PSM
-                    manager.Device._graphics.SetVertexBuffer(0, null);
-    #else
-                    manager.Device.SetVertexBuffer(null);
-                    manager.Device.Indices = null;
-    #endif
+                    _SoftwareBuffer.HardwareBuffer.SetInactive(manager.Device);
                 }
             }
 
             _DrawArgumentsListPool.Release(ref _DrawArguments);
 
             base.Issue(manager);
-            
-            */
         }
 
         protected override void OnReleaseResources () {
@@ -535,12 +518,12 @@ namespace Squared.Render {
                 if (i == (numPoints - 1))
                     break;
 
-                pIndices[k]     = (ushort)(j + vw.Storage.Offset);
-                pIndices[k + 1] = (ushort)(j + 1 + vw.Storage.Offset);
-                pIndices[k + 2] = (ushort)(j + 3 + vw.Storage.Offset);
-                pIndices[k + 3] = (ushort)(j + 2 + vw.Storage.Offset);
-                pIndices[k + 4] = (ushort)(j + vw.Storage.Offset);
-                pIndices[k + 5] = (ushort)(j + 3 + vw.Storage.Offset);
+                pIndices[k]     = (ushort)(j +     vw.IndexOffset);
+                pIndices[k + 1] = (ushort)(j + 1 + vw.IndexOffset);
+                pIndices[k + 2] = (ushort)(j + 3 + vw.IndexOffset);
+                pIndices[k + 3] = (ushort)(j + 2 + vw.IndexOffset);
+                pIndices[k + 4] = (ushort)(j +     vw.IndexOffset);
+                pIndices[k + 5] = (ushort)(j + 3 + vw.IndexOffset);
 
                 a += step;
                 colorA += colorStep;

@@ -33,6 +33,24 @@ namespace Squared.Render.Internal {
         where TVertex : struct
         where TIndex : struct
     {
+        protected class HardwareBufferEntry {
+            public readonly int Index;
+            public readonly int VertexOffset;
+            public readonly int IndexOffset;
+
+            public int SoftwareBufferCount;
+            public int VertexCount;
+            public int IndexCount;
+
+            public THardwareBuffer HardwareBuffer;
+
+            public HardwareBufferEntry (int index, int vertexOffset, int indexOffset) {
+                Index = index;
+                VertexOffset = vertexOffset;
+                IndexOffset = indexOffset;
+            }
+        }
+
         public class SoftwareBuffer : ISoftwareBuffer {
             public readonly BufferGenerator<THardwareBuffer, TVertex, TIndex> BufferGenerator;
 
@@ -85,13 +103,10 @@ namespace Squared.Render.Internal {
 
         protected readonly UnorderedList<SoftwareBuffer> _SoftwareBuffers = new UnorderedList<SoftwareBuffer>();
         protected readonly UnorderedList<THardwareBuffer> _UnusedHardwareBuffers = new UnorderedList<THardwareBuffer>();
-        protected readonly List<THardwareBuffer> _UsedHardwareBuffers = new List<THardwareBuffer>();
+        protected readonly Dictionary<int, HardwareBufferEntry> _UsedHardwareBuffers = new Dictionary<int, HardwareBufferEntry>();
         protected readonly UnorderedList<PendingCopy> _PendingCopies = new UnorderedList<PendingCopy>();
 
-        protected int _FillingHardwareBufferIndex = 0;
-        protected readonly UnorderedList<SoftwareBuffer> _FillingHardwareBufferSoftwareBuffers = new UnorderedList<SoftwareBuffer>();
-        protected int _FillingHardwareBufferVertexCount = 0;
-        protected int _FillingHardwareBufferIndexCount = 0;
+        protected HardwareBufferEntry _FillingHardwareBufferEntry = null;
 
         protected int _VertexCount = 0, _IndexCount = 0;
         protected TVertex[] _VertexArray;
@@ -136,8 +151,7 @@ namespace Squared.Render.Internal {
 
         public void Reset () {
             lock (this) {
-                _FillingHardwareBufferIndex = 0;
-                ResetFillingHardwareBuffer();
+                _FillingHardwareBufferEntry = null;
 
                 // Any buffers that remain unused (either from being too small, or being unnecessary now)
                 //  should be disposed.
@@ -146,18 +160,24 @@ namespace Squared.Render.Internal {
                 _UnusedHardwareBuffers.Clear();
 
                 // Return any buffers that were used this frame to the unused state.
-                foreach (var hb in _UsedHardwareBuffers)
-                    _UnusedHardwareBuffers.Add(hb);
+                foreach (var hb in _UsedHardwareBuffers.Values)
+                    _UnusedHardwareBuffers.Add(hb.HardwareBuffer);
                 _UsedHardwareBuffers.Clear();
-
-                _SoftwareBuffers.Clear();
 
                 _FlushedToBuffers = false;
                 _VertexCount = _IndexCount = 0;
             }
         }
 
-        public SoftwareBuffer Allocate (int vertexCount, int indexCount) {
+        /// <summary>
+        /// Allocates a software vertex/index buffer pair that you can write vertices and indices into. 
+        /// Once this generator is flushed, it will have an associated hardware buffer containing your vertex/index data.
+        /// </summary>
+        /// <param name="vertexCount">The number of vertices.</param>
+        /// <param name="indexCount">The number of indices.</param>
+        /// <param name="forceExclusiveBuffer">Forces a unique hardware vertex/index buffer pair to be created for this allocation. This allows you to ignore the hardware vertex/index offsets.</param>
+        /// <returns>A software buffer.</returns>
+        public SoftwareBuffer Allocate (int vertexCount, int indexCount, bool forceExclusiveBuffer = false) {
             if (vertexCount > MaxVerticesPerHardwareBuffer)
                 throw new ArgumentOutOfRangeException("vertexCount", vertexCount, "Maximum vertex count on this platform is " + MaxVerticesPerHardwareBuffer);
 
@@ -205,32 +225,32 @@ namespace Squared.Render.Internal {
                 }
 
                 if (
-                    ((_FillingHardwareBufferVertexCount + vertexCount) > MaxVerticesPerHardwareBuffer) ||
-                    (_FillingHardwareBufferSoftwareBuffers.Count >= MaxSoftwareBuffersPerHardwareBuffer)
+                    (_FillingHardwareBufferEntry == null) ||
+                    ((_FillingHardwareBufferEntry.VertexCount + vertexCount) > MaxVerticesPerHardwareBuffer) ||
+                    (_FillingHardwareBufferEntry.SoftwareBufferCount >= MaxSoftwareBuffersPerHardwareBuffer) ||
+                    forceExclusiveBuffer
                 ) {
-                    _FillingHardwareBufferIndex += 1;
-                    ResetFillingHardwareBuffer();
+                    var index = _UsedHardwareBuffers.Count;
+
+                    _UsedHardwareBuffers.Add(
+                        index,
+                        _FillingHardwareBufferEntry = new HardwareBufferEntry(index, vertexOffset, indexOffset)
+                    );
                 }
 
                 var swb = new SoftwareBuffer(
                     this,
                     new ArraySegment<TVertex>(_VertexArray, vertexOffset, vertexCount),
                     new ArraySegment<TIndex>(_IndexArray, indexOffset, indexCount),
-                    _FillingHardwareBufferIndex, _FillingHardwareBufferVertexCount, _FillingHardwareBufferIndexCount
+                    _FillingHardwareBufferEntry.Index, _FillingHardwareBufferEntry.VertexCount, _FillingHardwareBufferEntry.IndexCount
                 );
 
-                _FillingHardwareBufferVertexCount += vertexCount;
-                _FillingHardwareBufferIndexCount += indexCount;
+                _FillingHardwareBufferEntry.VertexCount += vertexCount;
+                _FillingHardwareBufferEntry.IndexCount += indexCount;
+                _FillingHardwareBufferEntry.SoftwareBufferCount += 1;
 
-                _SoftwareBuffers.Add(ref swb);
                 return swb;
             }
-        }
-
-        protected void ResetFillingHardwareBuffer () {
-            _FillingHardwareBufferSoftwareBuffers.Clear();
-            _FillingHardwareBufferVertexCount = 0;
-            _FillingHardwareBufferIndexCount = 0;
         }
 
         protected THardwareBuffer AllocateSuitablySizedHardwareBuffer (int vertexCount, int indexCount) {
@@ -245,55 +265,29 @@ namespace Squared.Render.Internal {
                     // This buffer is large enough, so return it.
                     e.RemoveCurrent();
 
-                    _UsedHardwareBuffers.Add(buffer);
                     return buffer;
                 }
             }
 
             // We didn't find a suitably large buffer.
             buffer = AllocateHardwareBuffer(vertexCount, indexCount);
-            _UsedHardwareBuffers.Add(buffer);
             return buffer;
         }
 
         protected void FlushToBuffers () {
-            // FIXME: This will break if software buffers are not allocated contiguously...
-            int currentHardwareBufferIndex = 0;
-            int minVertexOffset = int.MaxValue;
-            int minIndexOffset = int.MaxValue;
-            int vertexCount = 0;
-            int indexCount = 0;
+            foreach (var kvp in _UsedHardwareBuffers) {
+                var index = kvp.Key;
+                var hwbe = kvp.Value;
 
-            THardwareBuffer hwb;
+                if (hwbe.VertexCount <= 0)
+                    continue;
+                var hwb = AllocateSuitablySizedHardwareBuffer(hwbe.VertexCount, hwbe.IndexCount);
+                hwbe.HardwareBuffer = hwb;
 
-            foreach (var swb in _SoftwareBuffers) {
-                if (swb.HardwareBufferIndex != currentHardwareBufferIndex) {
-                    if (vertexCount > 0) {
-                        hwb = AllocateSuitablySizedHardwareBuffer(vertexCount, indexCount);
-                        FillHardwareBuffer(
-                            hwb,
-                            new ArraySegment<TVertex>(_VertexArray, minVertexOffset, vertexCount),
-                            new ArraySegment<TIndex>(_IndexArray, minIndexOffset, indexCount)
-                        );
-                    }
-
-                    currentHardwareBufferIndex = swb.HardwareBufferIndex;
-                    minVertexOffset = minIndexOffset = int.MaxValue;
-                    vertexCount = indexCount = 0;
-                }
-
-                minVertexOffset = Math.Min(minVertexOffset, swb.Vertices.Offset);
-                minIndexOffset = Math.Min(minIndexOffset, swb.Indices.Offset);
-                vertexCount += swb.Vertices.Count;
-                indexCount += swb.Indices.Count;
-            }
-
-            if (vertexCount > 0) {
-                hwb = AllocateSuitablySizedHardwareBuffer(vertexCount, indexCount);
                 FillHardwareBuffer(
                     hwb,
-                    new ArraySegment<TVertex>(_VertexArray, minVertexOffset, vertexCount),
-                    new ArraySegment<TIndex>(_IndexArray, minIndexOffset, indexCount)
+                    new ArraySegment<TVertex>(_VertexArray, hwbe.VertexOffset, hwbe.VertexCount),
+                    new ArraySegment<TIndex>(_IndexArray, hwbe.IndexOffset, hwbe.IndexCount)
                 );
             }
         }
@@ -315,7 +309,7 @@ namespace Squared.Render.Internal {
         }
 
         internal THardwareBuffer GetHardwareBufferByIndex (int index) {
-            return _UsedHardwareBuffers[index];
+            return _UsedHardwareBuffers[index].HardwareBuffer;
         }
     }
 
