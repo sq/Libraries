@@ -25,7 +25,8 @@ namespace Pong {
             Graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
 
-            UseThreadedDraw = true;
+            UseThreadedDraw = false;
+
             Graphics.SynchronizeWithVerticalRetrace = true;
             Graphics.PreferMultiSampling = true;
 
@@ -223,7 +224,7 @@ namespace Pong {
                 using (var gb = GeometryBatch.New(frame, 1, Materials.SubtractiveGeometry)) {
                     gb.AddFilledQuad(
                         new Bounds(Vector2.Zero, new Vector2(Graphics.PreferredBackBufferWidth, Graphics.PreferredBackBufferHeight)), 
-                        new Color(12, 12, 12)
+                        new Color(12, 12, 12, 0)
                     );
                 }
             }
