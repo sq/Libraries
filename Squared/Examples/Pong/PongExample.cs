@@ -174,12 +174,13 @@ namespace Pong {
 
             // Render the paddles and ball to both the framebuffer and the trail buffer (note the different layer values)
             using (var gb = GeometryBatch.New(frame, 8, Materials.ScreenSpaceGeometry))
+            using (var gb2 = GeometryBatch.New(frame, 9, Materials.ScreenSpaceGeometry))
             using (var trailBatch = GeometryBatch.New(frame, 2, Materials.ScreenSpaceGeometry)) {
                 foreach (var paddle in Paddles) {
                     gb.AddFilledQuad(
                         paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.White
                     );
-                    gb.AddQuadBorder(
+                    gb2.AddQuadBorder(
                         paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.Black, Color.Black, 2.25f
                     );
 
@@ -189,13 +190,13 @@ namespace Pong {
                 }
 
                 gb.AddFilledRing(Ball.Position, 0.0f, Ball.Radius, Color.White, Color.White);
-                gb.AddFilledRing(Ball.Position, Ball.Radius, Ball.Radius + 2.0f, Color.Black, Color.Black);
+                gb2.AddFilledRing(Ball.Position, Ball.Radius, Ball.Radius + 2.0f, Color.Black, Color.Black);
 
                 trailBatch.AddFilledRing(Ball.Position, 0.0f, Ball.Radius, Color.White, Color.White);
             }
 
             // Render the score values using a stringbatch (unfortunately this uses spritebatch to render spritefonts :( )
-            using (var sb = StringBatch.New(frame, 9, Materials.ScreenSpaceBitmap, SpriteBatch, Font)) {
+            using (var sb = StringBatch.New(frame, 10, Materials.ScreenSpaceBitmap, SpriteBatch, Font)) {
                 var drawCall = new StringDrawCall(
                     String.Format("Player 1: {0:00}", Scores[0]),
                     new Vector2(16, 16),
