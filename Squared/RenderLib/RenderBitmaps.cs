@@ -402,10 +402,9 @@ namespace Squared.Render {
             if (_NativeBatches == null)
                 _NativeBatches = _NativePool.Allocate();
 
-            if (UseZBuffer)
-                _DrawCalls.Timsort(DrawCallTextureComparer);
-            else
-                _DrawCalls.Timsort(DrawCallComparer);
+            Comparison<BitmapDrawCall> sorter =
+                UseZBuffer ? DrawCallTextureComparer : DrawCallComparer;
+            _DrawCalls.Timsort(sorter);
 
             var count = _DrawCalls.Count;
 

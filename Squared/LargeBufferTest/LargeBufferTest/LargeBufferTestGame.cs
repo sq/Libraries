@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -51,41 +52,45 @@ namespace LargeBufferTest {
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
-            var ir = new ImperativeRenderer(frame, Materials);
-
-            ir.Clear(color: ClearColor);
-            ir.Layer += 1;
+            ClearBatch.AddNew(frame, -1, Materials.Clear, clearColor: ClearColor);
 
             const int width = 1280;
             const int height = 720;
 
-            using (var bb = ir.GetBitmapBatch(null, null, null, null)) {
-                var drawCalls = bb.ReserveSpace(width * height); 
+            var options = new ParallelOptions {
+//                MaxDegreeOfParallelism = 1
+            };
+            int layer = 0;
+            Parallel.For(
+                0, height, options,
+                // One batch per worker thread
+                () => 
+                    BitmapBatch.New(
+                        frame, 
+                        // Suppress batch combining
+                        Interlocked.Increment(ref layer), 
+                        Materials.ScreenSpaceBitmap
+                    ),
+                (y, loopState, bb) => {
+                    var drawCall = new BitmapDrawCall(WhitePixel, new Vector2(0, y));
+                    float fx = 0;
+                    var range = bb.ReserveSpace(width);
+                    var array = range.Array;
+                    var offset = range.Offset;
 
-                var array = drawCalls.Array;
-                var offset = drawCalls.Offset;
+                    for (int x = 0; x < width; x++, fx++) {
+                        drawCall.Texture = ((x % 2) == 0) ? WhitePixel : GrayPixel;
+                        drawCall.Position.X = fx;
+                        drawCall.MultiplyColor = new Color(255, x % 255, y % 255);
 
-                var options = new ParallelOptions {
-//                    MaxDegreeOfParallelism = 1
-                };
-                Parallel.For(
-                    0, height, options,
-                    (y) => {
-                        var drawCall = new BitmapDrawCall(WhitePixel, new Vector2(0, y));
-
-                        int rowstart = (y * width);
-                        float fx = 0;
-
-                        for (int x = 0; x < width; x++, fx++) {
-                            drawCall.Texture = ((x % 2) == 0) ? WhitePixel : GrayPixel;
-                            drawCall.Position.X = fx;
-                            drawCall.MultiplyColor = new Color(255, x % 255, y % 255);
-
-                            array[offset + rowstart + x] = drawCall;
-                        }
+                        array[offset + x] = drawCall;
                     }
-                );
-            }
+
+                    return bb;
+                },
+                (bb) => 
+                    bb.Dispose()
+            );
         }
     }
 }
