@@ -188,7 +188,7 @@ namespace Squared.Render {
         public static Comparison<BitmapDrawCall> DrawCallComparer = new BitmapDrawCallComparer().Compare;
         public static Comparison<BitmapDrawCall> DrawCallTextureComparer = new BitmapDrawCallTextureComparer().Compare;
 
-        public const int NativeBatchSize = 1024;
+        public const int NativeBatchSize = Int16.MaxValue / 8;
 
         private ArrayPoolAllocator<BitmapVertex> _Allocator;
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
@@ -196,6 +196,11 @@ namespace Squared.Render {
         );
         private UnorderedList<NativeBatch> _NativeBatches = null;
         private volatile bool _Prepared = false;
+
+        private static readonly ushort[] QuadIndices = new ushort[] {
+            0, 1, 2,
+            0, 2, 3
+        };
   
 #if PSM
         private static readonly float[] FloatCorners = new [] { 0f, 1f, 2f, 3f };
@@ -276,10 +281,11 @@ namespace Squared.Render {
         }
 
 #if PSM
-        private void PrepareNativeBatch (BitmapDrawCall[] drawCalls, ref int drawCallsPrepared, int count) {
+        private void FillOneSoftwareBuffer (BitmapDrawCall[] drawCalls, ref int drawCallsPrepared, int count) {
 #else
-        private unsafe void PrepareNativeBatch (BitmapDrawCall[] drawCalls, ref int drawCallsPrepared, int count) {
+        private unsafe void FillOneSoftwareBuffer (BitmapDrawCall[] drawCalls, ref int drawCallsPrepared, int count) {
 #endif
+            int totalVertCount = 0;
             int vertCount = 0, vertOffset = 0;
             int indexCount = 0, indexOffset = 0;
             int nativeBatchSizeLimit = NativeBatchSize * 4;
@@ -294,13 +300,21 @@ namespace Squared.Render {
             int nativeBatchSize = Math.Min(nativeBatchSizeLimit, remainingVertices);
             var softwareBuffer = _BufferGenerator.Allocate(nativeBatchSize, (nativeBatchSize / 4) * 6);
 
-            var indexBase = softwareBuffer.HardwareVertexOffset;
+            ushort indexBase = (ushort)softwareBuffer.HardwareVertexOffset;
+
+            float zBufferFactor = UseZBuffer ? 1.0f : 0.0f;
 
 #if !PSM
             fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset])
             fixed (ushort* pIndices = &softwareBuffer.Indices.Array[softwareBuffer.Indices.Offset])
+#else
+            var indexArray = softwareBuffer.Indices.Array;
+            var indexArrayOffset = softwareBuffer.Indices.Offset;
 #endif
                 for (int i = drawCallsPrepared; i < count; i++) {
+                    if (totalVertCount >= nativeBatchSizeLimit)
+                        break;
+
                     var call = drawCalls[i];
 
 #if PSM
@@ -311,16 +325,31 @@ namespace Squared.Render {
 #endif
 
                     bool texturesEqual = call.Textures.Equals(ref currentTextures);
-                    bool flush = !texturesEqual || (vertCount >= nativeBatchSizeLimit);
 
-                    if (flush && (vertCount > 0))
-                        break;
+                    if (!texturesEqual) {
+                        if (vertCount > 0) {
+                            _NativeBatches.Add(new NativeBatch(
+                                softwareBuffer, currentTextures,
+                                indexOffset,
+                                vertOffset,
+                                vertCount
+                            ));
 
-                    currentTextures = call.Textures;
+                            indexOffset += indexCount;
+                            vertOffset += vertCount;
+                            indexCount = 0;
+                            vertCount = 0;
+                        }
 
-                    vertex.Position = new Vector3(call.Position, UseZBuffer ? call.SortKey : 0);
-                    vertex.TextureTopLeft = call.TextureRegion.TopLeft;
-                    vertex.TextureBottomRight = call.TextureRegion.BottomRight;
+                        currentTextures = call.Textures;
+                    }
+
+                    vertex.Position.X = call.Position.X;
+                    vertex.Position.Y = call.Position.Y;
+                    vertex.Position.Z = call.SortKey * zBufferFactor;
+                    var tr = call.TextureRegion;
+                    vertex.TextureTopLeft = tr.TopLeft;
+                    vertex.TextureBottomRight = tr.BottomRight;
                     vertex.MultiplyColor = call.MultiplyColor;
                     vertex.AddColor = call.AddColor;
                     vertex.Scale = call.Scale;
@@ -328,19 +357,11 @@ namespace Squared.Render {
                     vertex.Rotation = call.Rotation;
 
 #if !PSM
-                    pIndices[indexWritePosition + 0] = (ushort)(indexBase + 0);
-                    pIndices[indexWritePosition + 1] = (ushort)(indexBase + 1);
-                    pIndices[indexWritePosition + 2] = (ushort)(indexBase + 2);
-                    pIndices[indexWritePosition + 3] = (ushort)(indexBase + 0);
-                    pIndices[indexWritePosition + 4] = (ushort)(indexBase + 2);
-                    pIndices[indexWritePosition + 5] = (ushort)(indexBase + 3);
+                    for (var j = 0; j < 6; j++)
+                        pIndices[indexWritePosition + j] = (ushort)(indexBase + QuadIndices[j]);
 #else
-                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 0] = (ushort)(indexBase + 0);
-                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 1] = (ushort)(indexBase + 1);
-                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 2] = (ushort)(indexBase + 2);
-                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 3] = (ushort)(indexBase + 0);
-                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 4] = (ushort)(indexBase + 2);
-                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 5] = (ushort)(indexBase + 3);
+                    for (var j = 0; j < 6; j++)
+                        indexArray[indexArrayOffset + indexWritePosition + j] = (ushort)(indexBase + QuadIndices[j]);
 #endif
 
                     indexWritePosition += 6;
@@ -358,6 +379,7 @@ namespace Squared.Render {
                     vertexWritePosition += 4;
                     indexBase += 4;
 
+                    totalVertCount += 4;
                     vertCount += 4;
                     indexCount += 6;
 
@@ -397,7 +419,7 @@ namespace Squared.Render {
             int drawCallsPrepared = 0;
 
             while (drawCallsPrepared < count)
-                PrepareNativeBatch(_drawCalls, ref drawCallsPrepared, count);
+                FillOneSoftwareBuffer(_drawCalls, ref drawCallsPrepared, count);
 
             _Prepared = true;
         }
