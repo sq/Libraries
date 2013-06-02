@@ -217,6 +217,10 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
+            throw new NotImplementedException();
+
+            /*
+
             if (Count > 0) {
                 using (manager.ApplyMaterial(Material))
                 try {
@@ -248,6 +252,8 @@ namespace Squared.Render {
             _DrawArgumentsListPool.Release(ref _DrawArguments);
 
             base.Issue(manager);
+            
+            */
         }
 
         protected override void OnReleaseResources () {

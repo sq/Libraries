@@ -25,6 +25,8 @@ namespace LargeBufferTest {
             Graphics.PreferredBackBufferWidth = 1280;
             Graphics.PreferredBackBufferHeight = 720;
             Content.RootDirectory = "Content";
+
+            UseThreadedDraw = false;
         }
 
         protected override void Initialize () {
@@ -34,7 +36,6 @@ namespace LargeBufferTest {
         }
 
         protected override void LoadContent () {
-
             WhitePixel = new Texture2D(GraphicsDevice, 1, 1);
             WhitePixel.SetData(new Color[] { Color.White });
         }
@@ -55,9 +56,10 @@ namespace LargeBufferTest {
             int width = 1280;
             int height = 720;
 
-            for (var y = 0; y < height; y++)
+            for (var y = 0; y < height; y++) {
                 for (var x = 0; x < width; x++)
                     ir.Draw(WhitePixel, x, y, multiplyColor: new Color(255, x % 255, y % 255));
+            }
         }
     }
 }

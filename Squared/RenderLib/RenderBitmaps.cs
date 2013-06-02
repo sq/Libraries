@@ -165,10 +165,21 @@ namespace Squared.Render {
         }
 
         struct NativeBatch {
-            public TextureSet TextureSet;
-            public int IndexOffset;
-            public int VertexOffset;
-            public int VertexCount;
+            public readonly ISoftwareBuffer SoftwareBuffer;
+            public readonly TextureSet TextureSet;
+
+            public readonly int LocalIndexOffset;
+            public readonly int LocalVertexOffset;
+            public readonly int VertexCount;
+
+            public NativeBatch (ISoftwareBuffer softwareBuffer, TextureSet textureSet, int localIndexOffset, int localVertexOffset, int vertexCount) {
+                SoftwareBuffer = softwareBuffer;
+                TextureSet = textureSet;
+
+                LocalIndexOffset = localIndexOffset;
+                LocalVertexOffset = localVertexOffset;
+                VertexCount = vertexCount;
+            }
         }
 
         public SamplerState SamplerState;
@@ -177,7 +188,7 @@ namespace Squared.Render {
         public static Comparison<BitmapDrawCall> DrawCallComparer = new BitmapDrawCallComparer().Compare;
         public static Comparison<BitmapDrawCall> DrawCallTextureComparer = new BitmapDrawCallTextureComparer().Compare;
 
-        public const int BitmapBatchSize = 1024;
+        public const int NativeBatchSize = 1024;
 
         private ArrayPoolAllocator<BitmapVertex> _Allocator;
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
@@ -263,12 +274,106 @@ namespace Squared.Render {
                 _DrawCalls.Add(ref item);
             }
         }
-        
+
 #if PSM
-        public override void Prepare () {
+        private void PrepareNativeBatch (BitmapDrawCall[] drawCalls, ref int drawCallsPrepared, int count) {
 #else
-        public unsafe override void Prepare () {
+        private unsafe void PrepareNativeBatch (BitmapDrawCall[] drawCalls, ref int drawCallsPrepared, int count) {
 #endif
+            int vertCount = 0, vertOffset = 0;
+            int indexCount = 0, indexOffset = 0;
+            int nativeBatchSizeLimit = NativeBatchSize * 4;
+            int vertexWritePosition = 0, indexWritePosition = 0;
+
+            TextureSet currentTextures = new TextureSet();
+            BitmapVertex vertex = new BitmapVertex();
+
+            var remainingDrawCalls = (count - drawCallsPrepared);
+            var remainingVertices = remainingDrawCalls * 4;
+
+            int nativeBatchSize = Math.Min(nativeBatchSizeLimit, remainingVertices);
+            var softwareBuffer = _BufferGenerator.Allocate(nativeBatchSize, (nativeBatchSize / 4) * 6);
+
+            var indexBase = softwareBuffer.HardwareVertexOffset;
+
+#if !PSM
+            fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset])
+            fixed (ushort* pIndices = &softwareBuffer.Indices.Array[softwareBuffer.Indices.Offset])
+#endif
+                for (int i = drawCallsPrepared; i < count; i++) {
+                    var call = drawCalls[i];
+
+#if PSM
+                // HACK: PSM render targets have an inverted Y axis, so if the bitmap being drawn is a render target,
+                //   flip it vertically.
+                if (call.Textures.Texture1 is RenderTarget2D)
+                    call.Mirror(false, true);
+#endif
+
+                    bool texturesEqual = call.Textures.Equals(ref currentTextures);
+                    bool flush = !texturesEqual || (vertCount >= nativeBatchSizeLimit);
+
+                    if (flush && (vertCount > 0))
+                        break;
+
+                    currentTextures = call.Textures;
+
+                    vertex.Position = new Vector3(call.Position, UseZBuffer ? call.SortKey : 0);
+                    vertex.TextureTopLeft = call.TextureRegion.TopLeft;
+                    vertex.TextureBottomRight = call.TextureRegion.BottomRight;
+                    vertex.MultiplyColor = call.MultiplyColor;
+                    vertex.AddColor = call.AddColor;
+                    vertex.Scale = call.Scale;
+                    vertex.Origin = call.Origin;
+                    vertex.Rotation = call.Rotation;
+
+#if !PSM
+                    pIndices[indexWritePosition + 0] = (ushort)(indexBase + 0);
+                    pIndices[indexWritePosition + 1] = (ushort)(indexBase + 1);
+                    pIndices[indexWritePosition + 2] = (ushort)(indexBase + 2);
+                    pIndices[indexWritePosition + 3] = (ushort)(indexBase + 0);
+                    pIndices[indexWritePosition + 4] = (ushort)(indexBase + 2);
+                    pIndices[indexWritePosition + 5] = (ushort)(indexBase + 3);
+#else
+                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 0] = (ushort)(indexBase + 0);
+                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 1] = (ushort)(indexBase + 1);
+                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 2] = (ushort)(indexBase + 2);
+                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 3] = (ushort)(indexBase + 0);
+                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 4] = (ushort)(indexBase + 2);
+                    buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 5] = (ushort)(indexBase + 3);
+#endif
+
+                    indexWritePosition += 6;
+
+                    for (short j = 0; j < 4; j++) {
+#if !PSM
+                        vertex.Unused = vertex.Corner = j;
+                        pVertices[vertexWritePosition + j] = vertex;
+#else
+                        vertex.Corner = FloatCorners[j];
+                        buffers.Vertices.Array[buffers.Vertices.Offset + vertexWritePosition + j] = vertex;
+#endif
+                    }
+
+                    vertexWritePosition += 4;
+                    indexBase += 4;
+
+                    vertCount += 4;
+                    indexCount += 6;
+
+                    drawCallsPrepared += 1;
+                }
+
+            if (vertCount > 0)
+                _NativeBatches.Add(new NativeBatch(
+                    softwareBuffer, currentTextures,
+                    indexOffset,
+                    vertOffset,
+                    vertCount
+                ));
+        }
+        
+        public override void Prepare () {
             if (_DrawCalls.Count == 0)
                 return;
 
@@ -281,108 +386,18 @@ namespace Squared.Render {
                 _DrawCalls.Timsort(DrawCallComparer);
 
             var count = _DrawCalls.Count;
-            int vertCount = 0, vertOffset = 0, bufferSize = count * 4;
-            int indexCount = 0, indexOffset = 0, indexSize = count * 6;
-            int blockSizeLimit = BitmapBatchSize * 4;
-            int vertexWritePosition = 0, indexWritePosition = 0;
-                
-            TextureSet currentTextures = new TextureSet();
-            BitmapVertex vertex = new BitmapVertex();
 
 #if PSM                
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<PSMBufferGenerator<BitmapVertex>>();
 #else
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<BitmapVertex>>();
 #endif
-            var buffers = _BufferGenerator.Allocate(bufferSize, indexSize);
+
             var _drawCalls = _DrawCalls.GetBuffer();
+            int drawCallsPrepared = 0;
 
-            int indexBase = buffers.Vertices.Offset;
-
-#if !PSM
-            fixed (BitmapVertex* pVertices = &buffers.Vertices.Array[buffers.Vertices.Offset])
-            fixed (ushort* pIndices = &buffers.Indices.Array[buffers.Indices.Offset])
-#endif
-            for (int i = 0; i < count; i++) {
-                var call = _drawCalls[i];
-                    
-#if PSM
-                // HACK: PSM render targets have an inverted Y axis, so if the bitmap being drawn is a render target,
-                //   flip it vertically.
-                if (call.Textures.Texture1 is RenderTarget2D)
-                    call.Mirror(false, true);
-#endif
-
-                bool texturesEqual = call.Textures.Equals(ref currentTextures);
-                bool flush = !texturesEqual || (vertCount >= blockSizeLimit);
-
-                if (flush && (vertCount > 0)) {
-                    _NativeBatches.Add(new NativeBatch { 
-                        TextureSet = currentTextures, 
-                        IndexOffset = indexOffset + buffers.Indices.Offset,
-                        VertexCount = vertCount,
-                        VertexOffset = vertOffset + buffers.Vertices.Offset,
-                    });
-
-                    vertOffset += vertCount;
-                    vertCount = 0;
-                    indexOffset += indexCount;
-                    indexCount = 0;
-                }
-
-                currentTextures = call.Textures;
-
-                vertex.Position = new Vector3(call.Position, UseZBuffer ? call.SortKey : 0);
-                vertex.TextureTopLeft = call.TextureRegion.TopLeft;
-                vertex.TextureBottomRight = call.TextureRegion.BottomRight;
-                vertex.MultiplyColor = call.MultiplyColor;
-                vertex.AddColor = call.AddColor;
-                vertex.Scale = call.Scale;
-                vertex.Origin = call.Origin;
-                vertex.Rotation = call.Rotation;
-
-#if !PSM
-                pIndices[indexWritePosition + 0] = (ushort)(indexBase + 0);
-                pIndices[indexWritePosition + 1] = (ushort)(indexBase + 1);
-                pIndices[indexWritePosition + 2] = (ushort)(indexBase + 2);
-                pIndices[indexWritePosition + 3] = (ushort)(indexBase + 0);
-                pIndices[indexWritePosition + 4] = (ushort)(indexBase + 2);
-                pIndices[indexWritePosition + 5] = (ushort)(indexBase + 3);
-#else
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 0] = (ushort)(indexBase + 0);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 1] = (ushort)(indexBase + 1);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 2] = (ushort)(indexBase + 2);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 3] = (ushort)(indexBase + 0);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 4] = (ushort)(indexBase + 2);
-                buffers.Indices.Array[buffers.Indices.Offset + indexWritePosition + 5] = (ushort)(indexBase + 3);
-#endif
-
-                indexWritePosition += 6;
-
-                for (short j = 0; j < 4; j++) {
-#if !PSM
-                    vertex.Unused = vertex.Corner = j;
-                    pVertices[vertexWritePosition + j] = vertex;
-#else
-                    vertex.Corner = FloatCorners[j];
-                    buffers.Vertices.Array[buffers.Vertices.Offset + vertexWritePosition + j] = vertex;
-#endif
-                }
-
-                vertexWritePosition += 4;
-                indexBase += 4;
-
-                vertCount += 4;
-                indexCount += 6;
-            }
-
-            if ((vertCount > 0) || (indexCount > 0))
-                _NativeBatches.Add(new NativeBatch {
-                    TextureSet = currentTextures,
-                    IndexOffset = indexOffset + buffers.Indices.Offset,
-                    VertexCount = vertCount,
-                    VertexOffset = vertOffset + buffers.Vertices.Offset,
-                });
+            while (drawCallsPrepared < count)
+                PrepareNativeBatch(_drawCalls, ref drawCallsPrepared, count);
 
             _Prepared = true;
         }
@@ -398,16 +413,12 @@ namespace Squared.Render {
                 throw new InvalidOperationException("Already issued");
 
             var device = manager.Device;
-            var buffers = _BufferGenerator.GetBuffer();
+
+            _BufferGenerator.Flush();
+
+            IHardwareBuffer previousHardwareBuffer = null;
 
             using (manager.ApplyMaterial(Material)) {
-#if PSM
-                device._graphics.SetVertexBuffer(0, buffers);
-#else
-                device.Indices = buffers.Indices;
-                device.SetVertexBuffer(buffers.Vertices);
-#endif
-
                 TextureSet currentTexture = new TextureSet();
                 var paramSize = manager.CurrentParameters["BitmapTextureSize"];
                 var paramHalfTexel = manager.CurrentParameters["HalfTexel"];
@@ -433,6 +444,16 @@ namespace Squared.Render {
                         if (dss.DepthBufferEnable == false)
                             throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
                     }
+
+                    var swb = nb.SoftwareBuffer;
+                    var hwb = swb.HardwareBuffer;
+                    if (previousHardwareBuffer != hwb) {
+                        if (previousHardwareBuffer != null)
+                            previousHardwareBuffer.SetInactive(device);
+
+                        hwb.SetActive(device);
+                        previousHardwareBuffer = hwb;
+                    }
       
 #if PSM
                     // MonoGame and PSM are both retarded.
@@ -446,18 +467,17 @@ namespace Squared.Render {
                     );
 #else
                     device.DrawIndexedPrimitives(
-                        PrimitiveType.TriangleList, 0, nb.VertexOffset, nb.VertexCount, nb.IndexOffset,
+                        PrimitiveType.TriangleList, 0, 
+                        swb.HardwareVertexOffset + nb.LocalVertexOffset, 
+                        nb.VertexCount, 
+                        swb.HardwareIndexOffset + nb.LocalIndexOffset,
                         nb.VertexCount / 2
                     );
 #endif
                 }
 
-#if PSM
-                device._graphics.SetVertexBuffer(0, null);
-#else
-                device.Indices = null;
-                device.SetVertexBuffer(null);
-#endif
+                if (previousHardwareBuffer != null)
+                    previousHardwareBuffer.SetInactive(device);
             }
 
             _BufferGenerator = null;
