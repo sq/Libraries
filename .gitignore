@@ -60,3 +60,5 @@ _ReSharper.*
 /Squared/RenderPrecisionTest/RenderPrecisionTest/bin
 /Squared/RenderPrecisionTest/RenderPrecisionTestContent/obj
 /Squared/RenderPrecisionTest/RenderPrecisionTestContent/bin
+/Squared/LargeBufferTest/LargeBufferTest/obj
+/Squared/LargeBufferTest/LargeBufferTest/bin
