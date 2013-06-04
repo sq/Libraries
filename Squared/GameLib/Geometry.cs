@@ -75,7 +75,17 @@ namespace Squared.Game {
                 (point.X <= BottomRight.X) && (point.Y <= BottomRight.Y);
         }
 
+        public bool Contains (ref Vector2 point) {
+            return (point.X >= TopLeft.X) && (point.Y >= TopLeft.Y) &&
+                (point.X <= BottomRight.X) && (point.Y <= BottomRight.Y);
+        }
+
         public bool Contains (Bounds other) {
+            return (other.TopLeft.X >= TopLeft.X) && (other.TopLeft.Y >= TopLeft.Y) &&
+                (other.BottomRight.X <= BottomRight.X) && (other.BottomRight.Y <= BottomRight.Y);
+        }
+
+        public bool Contains (ref Bounds other) {
             return (other.TopLeft.X >= TopLeft.X) && (other.TopLeft.Y >= TopLeft.Y) &&
                 (other.BottomRight.X <= BottomRight.X) && (other.BottomRight.Y <= BottomRight.Y);
         }
