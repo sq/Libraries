@@ -536,27 +536,31 @@ namespace Squared.Game {
         }
 
         internal Dictionary<SpatialCollection<T>.ItemInfo, bool> GetSeenList () {
-            if (_NumCachedSeenLists > 0) {
-                _NumCachedSeenLists -= 1;
-                var result = _SeenListCache[_NumCachedSeenLists];
-                _SeenListCache[_NumCachedSeenLists] = null;
-                return result;
-            } else {
-                return new Dictionary<SpatialCollection<T>.ItemInfo, bool>(new ItemInfoComparer());
+            lock (_SeenListCache) {
+                if (_NumCachedSeenLists > 0) {
+                    _NumCachedSeenLists -= 1;
+                    var result = _SeenListCache[_NumCachedSeenLists];
+                    _SeenListCache[_NumCachedSeenLists] = null;
+                    return result;
+                } else {
+                    return new Dictionary<SpatialCollection<T>.ItemInfo, bool>(new ItemInfoComparer());
+                }
             }
         }
 
         internal void DisposeSeenList (ref Dictionary<SpatialCollection<T>.ItemInfo, bool> seenList) {
-            if (seenList == null)
-                return;
+            lock (_SeenListCache) {
+                if (seenList == null)
+                    return;
 
-            if (_NumCachedSeenLists < _SeenListCache.Length) {
-                seenList.Clear();
-                _SeenListCache[_NumCachedSeenLists] = seenList;
-                _NumCachedSeenLists += 1;
+                if (_NumCachedSeenLists < _SeenListCache.Length) {
+                    seenList.Clear();
+                    _SeenListCache[_NumCachedSeenLists] = seenList;
+                    _NumCachedSeenLists += 1;
+                }
+
+                seenList = null;
             }
-
-            seenList = null;
         }
 
         public SpatialPartition<Sector>.GetSectorsFromBoundsEnumerator GetSectorsFromBounds (Bounds bounds) {
