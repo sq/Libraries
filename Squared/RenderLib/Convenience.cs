@@ -19,6 +19,34 @@ namespace Squared.Render.Convenience {
             ColorSourceBlend = Blend.One
         };
 
+        public static readonly BlendState SubtractiveBlendNonPremultiplied = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.ReverseSubtract,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.SourceAlpha
+        };
+
+        public static readonly BlendState AdditiveBlend = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.One
+        };
+
+        public static readonly BlendState AdditiveBlendNonPremultiplied = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.SourceAlpha
+        };
+
+
         public static readonly BlendState MaxBlend = new BlendState {
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
