@@ -1,4 +1,4 @@
-#include "Common.fxh"
+#include "GeometryCommon.fxh"
 
 shared texture BasicTexture;
 
