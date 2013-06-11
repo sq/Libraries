@@ -532,6 +532,39 @@ namespace Squared.Game {
             return true;
         }
 
+        public static bool DoLinesIntersect (Vector2 startA, Vector2 endA, Vector2 startB, Vector2 endB) {
+            var lengthAX = endA.X - startA.X;
+            var lengthAY = endA.Y - startA.Y;
+            var lengthBX = endB.X - startB.X;
+            var lengthBY = endB.Y - startB.Y;
+            var xDelta = (startA.X - startB.X);
+            var yDelta = (startA.Y - startB.Y);
+
+            float q = yDelta * lengthBX - xDelta * lengthBY;
+            float d = lengthAX * lengthBY - lengthAY * lengthBX;
+
+            if (d == 0.0f)
+                return false;
+
+            {
+                d = 1 / d;
+                float r = q * d;
+
+                if (r < 0.0f || r > 1.0f)
+                    return false;
+
+                {
+                    var q2 = yDelta * lengthAX - xDelta * lengthAY;
+                    float s = q2 * d;
+
+                    if (s < 0.0f || s > 1.0f)
+                        return false;
+                }
+
+                return true;
+            }
+        }
+
         /// <param name="distanceAlongA">The distance along 'A' at which the intersection occurs (0.0 - 1.0)</param>
         public static bool DoLinesIntersect (Vector2 startA, Vector2 endA, Vector2 startB, Vector2 endB, out float distanceAlongA) {
             distanceAlongA = 0f;
