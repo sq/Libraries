@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using SectorIndex = Squared.Util.Pair<int>;
 using Squared.Util;
 using Microsoft.Xna.Framework;
@@ -245,7 +246,7 @@ namespace Squared.Game {
                 _SectorEnumerator = default(HashSet<ItemInfo>.Enumerator);
                 _AllowDuplicates = allowDuplicates;
                 if (!allowDuplicates)
-                    _SeenList = collection.GetSeenList();
+                    _SeenList = SpatialCollection<T>.GetSeenList();
                 else
                     _SeenList = null;
             }
@@ -258,7 +259,7 @@ namespace Squared.Game {
                 _SectorEnumerator = default(HashSet<ItemInfo>.Enumerator);
                 _AllowDuplicates = allowDuplicates;
                 if (!allowDuplicates)
-                    _SeenList = collection.GetSeenList();
+                    _SeenList = SpatialCollection<T>.GetSeenList();
                 else
                     _SeenList = null;
             }
@@ -280,7 +281,7 @@ namespace Squared.Game {
             }
 
             public void Dispose () {
-                _Collection.DisposeSeenList(ref _SeenList);
+                SpatialCollection<T>.DisposeSeenList(ref _SeenList);
                 _Sectors.Dispose();
                 _Sector = null;
             }
@@ -380,8 +381,11 @@ namespace Squared.Game {
         internal ItemInfoComparer _ItemInfoComparer = new ItemInfoComparer();
         internal SpatialPartition<Sector> _Partition;
         internal Dictionary<T, ItemInfo> _Items = new Dictionary<T, ItemInfo>(new ReferenceComparer<T>());
-        internal Dictionary<ItemInfo, bool>[] _SeenListCache = new Dictionary<ItemInfo, bool>[4];
-        internal int _NumCachedSeenLists = 4;
+
+        internal const int _NumCachedSeenLists = 4;
+        internal static readonly ThreadLocal<UnorderedList<Dictionary<ItemInfo, bool>>> _SeenListCache = new ThreadLocal<UnorderedList<Dictionary<ItemInfo, bool>>>(
+            () => new UnorderedList<Dictionary<ItemInfo, bool>>(_NumCachedSeenLists)
+        );
 
         public SpatialCollection ()
             : this(DefaultSubdivision) {
@@ -389,9 +393,6 @@ namespace Squared.Game {
 
         public SpatialCollection (float subdivision) {
             _Partition = new SpatialPartition<Sector>(subdivision, (index) => new Sector(index, _ItemInfoComparer));
-
-            for (int i = 0; i < _NumCachedSeenLists; i++)
-                _SeenListCache[i] = new Dictionary<ItemInfo, bool>(_ItemInfoComparer);
         }
 
         public Sector this[SectorIndex sectorIndex] {
@@ -535,31 +536,22 @@ namespace Squared.Game {
             return _Items.Keys.GetEnumerator();
         }
 
-        internal Dictionary<SpatialCollection<T>.ItemInfo, bool> GetSeenList () {
-            lock (_SeenListCache) {
-                if (_NumCachedSeenLists > 0) {
-                    _NumCachedSeenLists -= 1;
-                    var result = _SeenListCache[_NumCachedSeenLists];
-                    _SeenListCache[_NumCachedSeenLists] = null;
-                    return result;
-                } else {
-                    return new Dictionary<SpatialCollection<T>.ItemInfo, bool>(new ItemInfoComparer());
-                }
-            }
+        internal static Dictionary<SpatialCollection<T>.ItemInfo, bool> GetSeenList () {
+            var slc = _SeenListCache.Value;
+            Dictionary<SpatialCollection<T>.ItemInfo, bool> result;
+
+            if (!slc.TryPopFront(out result))
+                result = new Dictionary<SpatialCollection<T>.ItemInfo, bool>(new ItemInfoComparer());
+
+            return result;
         }
 
-        internal void DisposeSeenList (ref Dictionary<SpatialCollection<T>.ItemInfo, bool> seenList) {
-            lock (_SeenListCache) {
-                if (seenList == null)
-                    return;
+        internal static void DisposeSeenList (ref Dictionary<SpatialCollection<T>.ItemInfo, bool> seenList) {
+            var slc = _SeenListCache.Value;
 
-                if (_NumCachedSeenLists < _SeenListCache.Length) {
-                    seenList.Clear();
-                    _SeenListCache[_NumCachedSeenLists] = seenList;
-                    _NumCachedSeenLists += 1;
-                }
-
-                seenList = null;
+            if (slc.Count < _NumCachedSeenLists) {
+                seenList.Clear();
+                slc.Add(seenList);
             }
         }
 
