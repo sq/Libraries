@@ -27,9 +27,30 @@ namespace Squared.Game {
     public class SpatialPartition<TSector> : IEnumerable<TSector>
         where TSector : class, ISpatialPartitionSector
     {
+        public readonly SectorsEnumerable Sectors;
         internal readonly Func<SectorIndex, TSector> _SectorCreator;
         internal readonly float _Subdivision;
         internal readonly Dictionary<SectorIndex, TSector> _Sectors;
+
+        public struct SectorsEnumerable : IEnumerable<TSector> {
+            public readonly SpatialPartition<TSector> Partition;
+
+            public SectorsEnumerable (SpatialPartition<TSector> partition) {
+                Partition = partition;
+            }
+
+            public GetSectorsFromBoundsEnumerator GetEnumerator () {
+                return Partition.GetSectorsFromBounds(Partition.Extent, false);
+            }
+
+            IEnumerator<TSector> IEnumerable<TSector>.GetEnumerator () {
+                return Partition.GetSectorsFromBounds(Partition.Extent, false);
+            }
+
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
+                return Partition.GetSectorsFromBounds(Partition.Extent, false);
+            }
+        }
 
         public struct GetSectorsFromBoundsEnumerator : IEnumerator<TSector> {
             SectorIndex tl, br, item;
@@ -104,6 +125,7 @@ namespace Squared.Game {
             _Subdivision = subdivision;
             _Sectors = new Dictionary<Pair<int>, TSector>(new IntPairComparer());
             _SectorCreator = sectorCreator;
+            Sectors = new SectorsEnumerable(this);
         }
 
         public TSector this[SectorIndex sectorIndex] {
@@ -557,6 +579,12 @@ namespace Squared.Game {
 
         public SpatialPartition<Sector>.GetSectorsFromBoundsEnumerator GetSectorsFromBounds (Bounds bounds) {
             return _Partition.GetSectorsFromBounds(bounds, false);
+        }
+
+        public SpatialPartition<Sector>.SectorsEnumerable Sectors {
+            get {
+                return _Partition.Sectors;
+            }
         }
     }
 }
