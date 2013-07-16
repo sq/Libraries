@@ -224,7 +224,7 @@ namespace Squared.Util {
     }
 
     public class CharacterBuffer : GrowableBuffer<char> {
-        new public string DisposeAndGetContents () {
+        public string DisposeAndGetContents () {
             string result = ToString();
             Dispose();
             return result;
