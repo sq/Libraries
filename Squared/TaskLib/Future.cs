@@ -4,7 +4,6 @@ using System.Threading;
 using System.Linq;
 
 #if WINDOWS || MONO
-using System.Linq;
 using System.Linq.Expressions;
 using Squared.Util.Bind;
 #endif
