@@ -138,6 +138,9 @@ namespace Squared.Render {
                 if (bblhs.SamplerState != bbrhs.SamplerState)
                     return false;
 
+                if (bblhs.SamplerState2 != bbrhs.SamplerState2)
+                    return false;
+
                 if (!bblhs.ReleaseAfterDraw)
                     return false;
 
@@ -183,6 +186,7 @@ namespace Squared.Render {
         }
 
         public SamplerState SamplerState;
+        public SamplerState SamplerState2;
         public bool UseZBuffer = false;
 
         public static Comparison<BitmapDrawCall> DrawCallComparer = new BitmapDrawCallComparer().Compare;
@@ -220,22 +224,23 @@ namespace Squared.Render {
 #endif
         }
 
-        public static BitmapBatch New (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, bool useZBuffer = false) {
+        public static BitmapBatch New (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, bool useZBuffer = false) {
             if (container == null)
                 throw new ArgumentNullException("container");
             if (material == null)
                 throw new ArgumentNullException("material");
 
             var result = container.RenderManager.AllocateBatch<BitmapBatch>();
-            result.Initialize(container, layer, material, samplerState, useZBuffer);
+            result.Initialize(container, layer, material, samplerState, samplerState2, useZBuffer);
             result.CaptureStack(0);
             return result;
         }
 
-        public void Initialize (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, bool useZBuffer = false) {
+        public void Initialize (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, bool useZBuffer = false) {
             base.Initialize(container, layer, material);
 
             SamplerState = samplerState ?? SamplerState.LinearClamp;
+            SamplerState2 = samplerState2 ?? SamplerState.LinearClamp;
 
             _Allocator = container.RenderManager.GetArrayAllocator<BitmapVertex>();
 
@@ -451,7 +456,8 @@ namespace Squared.Render {
 
                         device.Textures[0] = tex1;
                         device.Textures[1] = currentTexture.Texture2;
-                        device.SamplerStates[0] = device.SamplerStates[1] = SamplerState;
+                        device.SamplerStates[0] = SamplerState;
+                        device.SamplerStates[1] = SamplerState2;
 
                         var vSize = new Vector2(tex1.Width, tex1.Height);
                         paramSize.SetValue(vSize);

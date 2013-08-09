@@ -451,13 +451,16 @@ namespace Squared.Render.Convenience {
                 (pbb.Material == material) &&
                 (
                     (desiredSamplerState == null) || 
-                    (pbb.SamplerState == desiredSamplerState)
+                    (
+                        (pbb.SamplerState == desiredSamplerState) &&
+                        (pbb.SamplerState2 == desiredSamplerState)
+                    )
                 ) &&
                 (pbb.UseZBuffer == UseZBuffer)
             )
                 return pbb;
 
-            var result = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, UseZBuffer);
+            var result = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, UseZBuffer);
             PreviousBatch = result;
 
             if (AutoIncrementLayer && !layer.HasValue)
