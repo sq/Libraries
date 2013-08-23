@@ -22,7 +22,7 @@ namespace Squared.Render.Internal {
         private volatile Exception _PendingError = null;
 
         private readonly AutoResetEvent _WakeSignal = new AutoResetEvent(false);
-        private readonly ManualResetEventSlim _CompletedSignal = new ManualResetEventSlim(false);
+        private readonly ManualResetEventSlim _CompletedSignal = new ManualResetEventSlim(true);
         private readonly ManualResetEventSlim _StartedSignal = new ManualResetEventSlim(false);
 
         private volatile bool _Disposed = false;
@@ -36,13 +36,13 @@ namespace Squared.Render.Internal {
         }
 
         public void RequestWork () {
+            if (_ThreadRunning == 0)
+                _StartedSignal.Wait();
+
             if (_ThreadWaiting == 0)
                 WaitForPendingWork();
 
             Interlocked.Increment(ref _PendingWork);
-
-            if (_ThreadRunning == 0)
-                _StartedSignal.Wait();
 
             _CompletedSignal.Reset();
             _WakeSignal.Set();
@@ -53,8 +53,7 @@ namespace Squared.Render.Internal {
             if (pe != null)
                 throw pe;
 
-            while ((_ThreadWaiting == 0) || (_PendingWork != 0))
-                _CompletedSignal.Wait();
+            _CompletedSignal.Wait();
         }
 
         private void WorkerFn () {

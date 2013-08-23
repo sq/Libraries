@@ -19,6 +19,34 @@ namespace Squared.Render.Convenience {
             ColorSourceBlend = Blend.One
         };
 
+        public static readonly BlendState SubtractiveBlendNonPremultiplied = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.ReverseSubtract,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.SourceAlpha
+        };
+
+        public static readonly BlendState AdditiveBlend = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.One
+        };
+
+        public static readonly BlendState AdditiveBlendNonPremultiplied = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.SourceAlpha
+        };
+
+
         public static readonly BlendState MaxBlend = new BlendState {
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
@@ -423,13 +451,16 @@ namespace Squared.Render.Convenience {
                 (pbb.Material == material) &&
                 (
                     (desiredSamplerState == null) || 
-                    (pbb.SamplerState == desiredSamplerState)
+                    (
+                        (pbb.SamplerState == desiredSamplerState) &&
+                        (pbb.SamplerState2 == desiredSamplerState)
+                    )
                 ) &&
                 (pbb.UseZBuffer == UseZBuffer)
             )
                 return pbb;
 
-            var result = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, UseZBuffer);
+            var result = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, UseZBuffer);
             PreviousBatch = result;
 
             if (AutoIncrementLayer && !layer.HasValue)
