@@ -259,7 +259,7 @@ namespace Squared.Render.Internal {
             using (var e = _UnusedHardwareBuffers.GetEnumerator())
             while (e.GetNext(out buffer)) {
                 if (
-                    (buffer.VertexCount >= vertexCount) ||
+                    (buffer.VertexCount >= vertexCount) &&
                     (buffer.IndexCount >= indexCount)
                 ) {
                     // This buffer is large enough, so return it.

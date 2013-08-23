@@ -108,8 +108,8 @@
       <Importer>EffectImporter</Importer>
       <Processor>EffectProcessor</Processor>
     </Compile>
-    <None Include="Common.fxh">
-      <Name>Common</Name>
+    <None Include="GeometryCommon.fxh">
+      <Name>GeometryCommon</Name>
       <Importer>EffectImporter</Importer>
       <Processor>EffectProcessor</Processor>
     </None>

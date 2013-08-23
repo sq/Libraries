@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using SectorIndex = Squared.Util.Pair<int>;
 using Squared.Util;
 using Microsoft.Xna.Framework;
@@ -19,55 +20,61 @@ namespace Squared.Game {
             return obj.First + (obj.Second << 16);
         }
     }
-    
-    public class SpatialCollection<T> : IEnumerable<T>
-        where T : class, IHasBounds {
 
-        private WeakReference WeakSelf;
+    public interface ISpatialPartitionSector {
+    }
 
-        public class Sector : HashSet<ItemInfo> {
-            public SectorIndex Index;
+    public class SpatialPartition<TSector> : IEnumerable<TSector>
+        where TSector : class, ISpatialPartitionSector
+    {
+        public readonly SectorsEnumerable Sectors;
+        internal readonly Func<SectorIndex, TSector> _SectorCreator;
+        internal readonly float _Subdivision;
+        internal readonly Dictionary<SectorIndex, TSector> _Sectors;
 
-            public Sector (IEqualityComparer<ItemInfo> comparer)
-                : base(comparer) {
+        public struct SectorsEnumerable : IEnumerable<TSector> {
+            public readonly SpatialPartition<TSector> Partition;
+
+            public SectorsEnumerable (SpatialPartition<TSector> partition) {
+                Partition = partition;
             }
 
-            public Sector (SectorIndex index, IEqualityComparer<ItemInfo> comparer) 
-                : base (comparer) {
-                Index = index;
+            public GetSectorsFromBoundsEnumerator GetEnumerator () {
+                return Partition.GetSectorsFromBounds(Partition.Extent, false);
             }
 
-            public IEnumerable<T> Items {
-                get {
-                    foreach (var itemInfo in this)
-                        yield return itemInfo.Item;
-                }
+            IEnumerator<TSector> IEnumerable<TSector>.GetEnumerator () {
+                return Partition.GetSectorsFromBounds(Partition.Extent, false);
+            }
+
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
+                return Partition.GetSectorsFromBounds(Partition.Extent, false);
             }
         }
 
-        public struct GetSectorsFromBoundsEnumerator : IEnumerator<Sector> {
+        public struct GetSectorsFromBoundsEnumerator : IEnumerator<TSector> {
             SectorIndex tl, br, item;
-            Sector current;
+            TSector current;
             int x, y;
-            SpatialCollection<T> collection;
+            SpatialPartition<TSector> sectors;
             bool create;
 
-            internal GetSectorsFromBoundsEnumerator (SpatialCollection<T> collection, SectorIndex tl_, SectorIndex br_, bool create) {
+            internal GetSectorsFromBoundsEnumerator (SpatialPartition<TSector> sectors, SectorIndex tl_, SectorIndex br_, bool create) {
                 tl = tl_;
                 br = br_;
                 item = new SectorIndex();
                 this.create = create;
-                this.collection = collection;
+                this.sectors = sectors;
                 x = tl_.First - 1;
                 y = tl_.Second;
                 current = null;
             }
 
-            internal GetSectorsFromBoundsEnumerator (SpatialCollection<T> collection, Bounds bounds, bool create) 
-                : this (collection, collection.GetIndexFromPoint(bounds.TopLeft), collection.GetIndexFromPoint(bounds.BottomRight), create) {
+            internal GetSectorsFromBoundsEnumerator (SpatialPartition<TSector> sectors, Bounds bounds, bool create)
+                : this(sectors, sectors.GetIndexFromPoint(bounds.TopLeft), sectors.GetIndexFromPoint(bounds.BottomRight), create) {
             }
 
-            public Sector Current {
+            public TSector Current {
                 get { return current; }
             }
 
@@ -78,7 +85,7 @@ namespace Squared.Game {
                 get { return current; }
             }
 
-            public bool GetNext (out Sector value) {
+            public bool GetNext (out TSector value) {
                 var result = MoveNext();
                 value = current;
                 return result;
@@ -101,10 +108,7 @@ namespace Squared.Game {
                     item.First = x;
                     item.Second = y;
 
-                    if (create)
-                        current = collection.GetSectorFromIndex(item);
-                    else
-                        collection._Sectors.TryGetValue(item, out current);
+                    current = sectors.GetSectorFromIndex(item, create);
                 }
 
                 return true;
@@ -117,8 +121,138 @@ namespace Squared.Game {
             }
         }
 
+        public SpatialPartition (float subdivision, Func<SectorIndex, TSector> sectorCreator) {
+            _Subdivision = subdivision;
+            _Sectors = new Dictionary<Pair<int>, TSector>(new IntPairComparer());
+            _SectorCreator = sectorCreator;
+            Sectors = new SectorsEnumerable(this);
+        }
+
+        public TSector this[SectorIndex sectorIndex] {
+            get {
+                return _Sectors[sectorIndex];
+            }
+        }
+
+        public SectorIndex GetIndexFromPoint (Vector2 point) {
+            return new SectorIndex((int)Math.Floor(point.X / _Subdivision), (int)Math.Floor(point.Y / _Subdivision));
+        }
+
+        public TSector GetSectorFromIndex (SectorIndex index, bool create) {
+            TSector sector = null;
+
+            if (!_Sectors.TryGetValue(index, out sector)) {
+                if (!create)
+                    return null;
+
+                sector = _SectorCreator(index);
+                var sectorBounds = GetSectorBounds(index);
+
+                if (_Sectors.Count == 0) {
+                    Extent = sectorBounds;
+                } else {
+                    var currentExtent = Extent;
+                    Extent = new Bounds(
+                        new Vector2(
+                            Math.Min(currentExtent.TopLeft.X, sectorBounds.TopLeft.X),
+                            Math.Min(currentExtent.TopLeft.Y, sectorBounds.TopLeft.Y)
+                        ),
+                        new Vector2(
+                            Math.Max(currentExtent.BottomRight.X, sectorBounds.BottomRight.X),
+                            Math.Max(currentExtent.BottomRight.Y, sectorBounds.BottomRight.Y)
+                        )
+                    );
+                }
+
+                _Sectors[index] = sector;
+            }
+
+            return sector;
+        }
+
+        public Bounds Extent {
+            get;
+            private set;
+        }
+
+        public void CropBounds (ref Bounds bounds) {
+            var extent = Extent;
+            bounds.TopLeft = new Vector2(
+                Math.Max(bounds.TopLeft.X, extent.TopLeft.X),
+                Math.Max(bounds.TopLeft.Y, extent.TopLeft.Y)
+            );
+            bounds.BottomRight = new Vector2(
+                Math.Min(bounds.BottomRight.X, extent.BottomRight.X),
+                Math.Min(bounds.BottomRight.Y, extent.BottomRight.Y)
+            );
+        }
+
+        public GetSectorsFromBoundsEnumerator GetSectorsFromBounds (Bounds bounds, bool create) {
+            return new GetSectorsFromBoundsEnumerator(this, bounds, create);
+        }
+
+        public GetSectorsFromBoundsEnumerator GetSectorsFromBounds (SectorIndex topLeft, SectorIndex bottomRight, bool create) {
+            return new GetSectorsFromBoundsEnumerator(this, topLeft, bottomRight, create);
+        }
+
+        public IEnumerator<TSector> GetEnumerator () {
+            return _Sectors.Values.GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
+            return _Sectors.Values.GetEnumerator();
+        }
+
+        public void Clear () {
+            _Sectors.Clear();
+            Extent = new Bounds(Vector2.Zero, Vector2.Zero);
+        }
+
+        public void RemoveAt (SectorIndex index) {
+            _Sectors.Remove(index);
+        }
+
+        public Bounds GetSectorBounds (SectorIndex index) {
+            var sectorTopLeft = new Vector2(
+                index.First * _Subdivision,
+                index.Second * _Subdivision
+            );
+            var sectorBottomRight = new Vector2(
+                sectorTopLeft.X + _Subdivision,
+                sectorTopLeft.Y + _Subdivision
+            );
+
+            return new Bounds(sectorTopLeft, sectorBottomRight);
+        }
+    }
+    
+    public class SpatialCollection<T> : IEnumerable<T>
+        where T : class, IHasBounds {
+
+        private WeakReference WeakSelf;
+
+        public class Sector : HashSet<ItemInfo>, ISpatialPartitionSector {
+            public SectorIndex Index;
+
+            public Sector (IEqualityComparer<ItemInfo> comparer)
+                : base(comparer) {
+            }
+
+            public Sector (SectorIndex index, IEqualityComparer<ItemInfo> comparer) 
+                : base (comparer) {
+                Index = index;
+            }
+
+            public IEnumerable<T> Items {
+                get {
+                    foreach (var itemInfo in this)
+                        yield return itemInfo.Item;
+                }
+            }
+        }
+
         public struct ItemBoundsEnumerator : IEnumerator<ItemInfo>, IEnumerable<ItemInfo> {
-            GetSectorsFromBoundsEnumerator _Sectors;
+            SpatialPartition<Sector>.GetSectorsFromBoundsEnumerator _Sectors;
             Sector _Sector;
             HashSet<ItemInfo>.Enumerator _SectorEnumerator;
             ItemInfo _Current;
@@ -128,26 +262,26 @@ namespace Squared.Game {
 
             public ItemBoundsEnumerator (SpatialCollection<T> collection, Bounds bounds, bool allowDuplicates) {
                 _Collection = collection;
-                _Sectors = new SpatialCollection<T>.GetSectorsFromBoundsEnumerator(collection, bounds, false);
+                _Sectors = new SpatialPartition<Sector>.GetSectorsFromBoundsEnumerator(collection._Partition, bounds, false);
                 _Sector = null;
                 _Current = null;
                 _SectorEnumerator = default(HashSet<ItemInfo>.Enumerator);
                 _AllowDuplicates = allowDuplicates;
                 if (!allowDuplicates)
-                    _SeenList = collection.GetSeenList();
+                    _SeenList = SpatialCollection<T>.GetSeenList();
                 else
                     _SeenList = null;
             }
 
             public ItemBoundsEnumerator (SpatialCollection<T> collection, SectorIndex tl, SectorIndex br, bool allowDuplicates) {
                 _Collection = collection;
-                _Sectors = new SpatialCollection<T>.GetSectorsFromBoundsEnumerator(collection, tl, br, false);
+                _Sectors = new SpatialPartition<Sector>.GetSectorsFromBoundsEnumerator(collection._Partition, tl, br, false);
                 _Sector = null;
                 _Current = null;
                 _SectorEnumerator = default(HashSet<ItemInfo>.Enumerator);
                 _AllowDuplicates = allowDuplicates;
                 if (!allowDuplicates)
-                    _SeenList = collection.GetSeenList();
+                    _SeenList = SpatialCollection<T>.GetSeenList();
                 else
                     _SeenList = null;
             }
@@ -169,7 +303,7 @@ namespace Squared.Game {
             }
 
             public void Dispose () {
-                _Collection.DisposeSeenList(ref _SeenList);
+                SpatialCollection<T>.DisposeSeenList(ref _SeenList);
                 _Sectors.Dispose();
                 _Sector = null;
             }
@@ -244,8 +378,8 @@ namespace Squared.Game {
             internal ItemInfo (T item, SpatialCollection<T> parent) {
                 Item = item;
                 Bounds = item.Bounds;
-                TopLeft = parent.GetIndexFromPoint(Bounds.TopLeft);
-                BottomRight = parent.GetIndexFromPoint(Bounds.BottomRight);
+                TopLeft = parent._Partition.GetIndexFromPoint(Bounds.TopLeft);
+                BottomRight = parent._Partition.GetIndexFromPoint(Bounds.BottomRight);
                 HashCode = item.GetHashCode();
             }
 
@@ -265,100 +399,28 @@ namespace Squared.Game {
         }
 
         public const float DefaultSubdivision = 512.0f;
-        public const int InitialFreeListSize = 8;
-        public const int MaxFreeListSize = 32;
 
         internal ItemInfoComparer _ItemInfoComparer = new ItemInfoComparer();
-        internal float _Subdivision;
+        internal SpatialPartition<Sector> _Partition;
         internal Dictionary<T, ItemInfo> _Items = new Dictionary<T, ItemInfo>(new ReferenceComparer<T>());
-        internal Dictionary<SectorIndex, Sector> _Sectors;
-        internal List<Sector> _FreeList = new List<Sector>();
-        internal Dictionary<ItemInfo, bool>[] _SeenListCache = new Dictionary<ItemInfo, bool>[4];
-        internal int _NumCachedSeenLists = 4;
+
+        internal const int _NumCachedSeenLists = 4;
+        internal static readonly ThreadLocal<UnorderedList<Dictionary<ItemInfo, bool>>> _SeenListCache = new ThreadLocal<UnorderedList<Dictionary<ItemInfo, bool>>>(
+            () => new UnorderedList<Dictionary<ItemInfo, bool>>(_NumCachedSeenLists)
+        );
 
         public SpatialCollection ()
             : this(DefaultSubdivision) {
         }
 
         public SpatialCollection (float subdivision) {
-            _Subdivision = subdivision;
-            _Sectors = new Dictionary<Squared.Util.Pair<int>, Sector>(new IntPairComparer());
-
-            for (int i = 0; i < InitialFreeListSize; i++)
-                _FreeList.Add(new Sector(_ItemInfoComparer));
-
-            for (int i = 0; i < _NumCachedSeenLists; i++)
-                _SeenListCache[i] = new Dictionary<ItemInfo, bool>(_ItemInfoComparer);
+            _Partition = new SpatialPartition<Sector>(subdivision, (index) => new Sector(index, _ItemInfoComparer));
         }
 
         public Sector this[SectorIndex sectorIndex] {
             get {
-                return _Sectors[sectorIndex];
+                return _Partition[sectorIndex];
             }
-        }
-
-        public Bounds Extent {
-            get;
-            private set;
-        }
-
-        public void CropBounds (ref Bounds bounds) {
-            var extent = Extent;
-            bounds.TopLeft = new Vector2(
-                Math.Max(bounds.TopLeft.X, extent.TopLeft.X),
-                Math.Max(bounds.TopLeft.Y, extent.TopLeft.Y)
-            );
-            bounds.BottomRight = new Vector2(
-                Math.Min(bounds.BottomRight.X, extent.BottomRight.X),
-                Math.Min(bounds.BottomRight.Y, extent.BottomRight.Y)
-            );
-        }
-
-        public SectorIndex GetIndexFromPoint (Vector2 point) {
-            return new SectorIndex((int)Math.Floor(point.X / _Subdivision), (int)Math.Floor(point.Y / _Subdivision));
-        }
-
-        internal Sector GetSectorFromIndex (SectorIndex index) {
-            Sector sector = null;
-
-            if (!_Sectors.TryGetValue(index, out sector)) {
-                if (_FreeList.Count == 0) {
-                    sector = new Sector(index, _ItemInfoComparer);
-                } else {
-                    sector = _FreeList[_FreeList.Count - 1];
-                    _FreeList.RemoveAt(_FreeList.Count - 1);
-                    sector.Index = index;
-                }
-
-                var sectorTopLeft = new Vector2(
-                    index.First * _Subdivision,
-                    index.Second * _Subdivision
-                );
-                var sectorBottomRight = new Vector2(
-                    sectorTopLeft.X + _Subdivision,
-                    sectorTopLeft.Y + _Subdivision
-                );
-
-                if (_Sectors.Count == 0) {
-                    Extent = new Bounds(sectorTopLeft, sectorBottomRight);
-                } else {
-                    var currentExtent = Extent;
-                    Extent = new Bounds(
-                        new Vector2(
-                            Math.Min(currentExtent.TopLeft.X, sectorTopLeft.X),
-                            Math.Min(currentExtent.TopLeft.Y, sectorTopLeft.Y)
-                        ),
-                        new Vector2(
-                            Math.Max(currentExtent.BottomRight.X, sectorBottomRight.X),
-                            Math.Max(currentExtent.BottomRight.Y, sectorBottomRight.Y)
-                        )
-                    );
-                }
-
-                _Sectors[index] = sector;
-            }
-
-            return sector;
         }
 
         private WeakReference GetWeakSelf () {
@@ -372,7 +434,7 @@ namespace Squared.Game {
             var info = new ItemInfo(item, this);
             _Items.Add(item, info);
 
-            using (var e = new GetSectorsFromBoundsEnumerator(this, info.Bounds, true))
+            using (var e = _Partition.GetSectorsFromBounds(info.Bounds, true))
             while (e.MoveNext())
                 e.Current.Add(info);
 
@@ -389,17 +451,13 @@ namespace Squared.Game {
         internal bool InternalRemove (ItemInfo item, SectorIndex topLeft, SectorIndex bottomRight, bool notifyRemoval) {
             bool removed = false;
 
-            using (var e = new GetSectorsFromBoundsEnumerator(this, topLeft, bottomRight, false))
+            using (var e = _Partition.GetSectorsFromBounds(topLeft, bottomRight, false))
             while (e.MoveNext()) {
                 var sector = e.Current;
                 removed |= sector.Remove(item);
 
-                if (sector.Count == 0) {
-                    if (_FreeList.Count < MaxFreeListSize)
-                        _FreeList.Add(sector);
-
-                    _Sectors.Remove(sector.Index);
-                }
+                if (sector.Count == 0)
+                    _Partition.RemoveAt(sector.Index);
             }
 
             if (notifyRemoval) {
@@ -439,9 +497,7 @@ namespace Squared.Game {
             }
 
             _Items.Clear();
-            _Sectors.Clear();
-            _FreeList.Clear();
-            Extent = new Bounds(Vector2.Zero, Vector2.Zero);
+            _Partition.Clear();
         }
 
         public void UpdateItemBounds (T item) {
@@ -451,8 +507,8 @@ namespace Squared.Game {
                 var oldTopLeft = info.TopLeft;
                 var oldBottomRight = info.BottomRight;
                 info.Bounds = item.Bounds;
-                info.TopLeft = GetIndexFromPoint(info.Bounds.TopLeft);
-                info.BottomRight = GetIndexFromPoint(info.Bounds.BottomRight);
+                info.TopLeft = _Partition.GetIndexFromPoint(info.Bounds.TopLeft);
+                info.BottomRight = _Partition.GetIndexFromPoint(info.Bounds.BottomRight);
 
                 if ((oldTopLeft.First == info.TopLeft.First) &&
                     (oldTopLeft.Second == info.TopLeft.Second) && 
@@ -462,7 +518,7 @@ namespace Squared.Game {
 
                 InternalRemove(info, oldTopLeft, oldBottomRight, false);
 
-                using (var e = new GetSectorsFromBoundsEnumerator(this, info.TopLeft, info.BottomRight, true))
+                using (var e = _Partition.GetSectorsFromBounds(info.TopLeft, info.BottomRight, true))
                 while (e.MoveNext())
                     e.Current.Add(info);
             }
@@ -473,19 +529,15 @@ namespace Squared.Game {
         }
 
         public ItemBoundsEnumerator GetItemsFromBounds (Bounds bounds) {
-            CropBounds(ref bounds);
+            _Partition.CropBounds(ref bounds);
 
             return new ItemBoundsEnumerator(this, bounds, false);
         }
 
         public ItemBoundsEnumerator GetItemsFromBounds (Bounds bounds, bool allowDuplicates) {
-            CropBounds(ref bounds);
+            _Partition.CropBounds(ref bounds);
 
             return new ItemBoundsEnumerator(this, bounds, allowDuplicates);
-        }
-
-        public GetSectorsFromBoundsEnumerator GetSectorsFromBounds (Bounds bounds) {
-            return new GetSectorsFromBoundsEnumerator(this, bounds, false);
         }
 
         public int Count {
@@ -506,28 +558,33 @@ namespace Squared.Game {
             return _Items.Keys.GetEnumerator();
         }
 
-        internal Dictionary<SpatialCollection<T>.ItemInfo, bool> GetSeenList () {
-            if (_NumCachedSeenLists > 0) {
-                _NumCachedSeenLists -= 1;
-                var result = _SeenListCache[_NumCachedSeenLists];
-                _SeenListCache[_NumCachedSeenLists] = null;
-                return result;
-            } else {
-                return new Dictionary<SpatialCollection<T>.ItemInfo, bool>(new ItemInfoComparer());
+        internal static Dictionary<SpatialCollection<T>.ItemInfo, bool> GetSeenList () {
+            var slc = _SeenListCache.Value;
+            Dictionary<SpatialCollection<T>.ItemInfo, bool> result;
+
+            if (!slc.TryPopFront(out result))
+                result = new Dictionary<SpatialCollection<T>.ItemInfo, bool>(new ItemInfoComparer());
+
+            return result;
+        }
+
+        internal static void DisposeSeenList (ref Dictionary<SpatialCollection<T>.ItemInfo, bool> seenList) {
+            var slc = _SeenListCache.Value;
+
+            if (slc.Count < _NumCachedSeenLists) {
+                seenList.Clear();
+                slc.Add(seenList);
             }
         }
 
-        internal void DisposeSeenList (ref Dictionary<SpatialCollection<T>.ItemInfo, bool> seenList) {
-            if (seenList == null)
-                return;
+        public SpatialPartition<Sector>.GetSectorsFromBoundsEnumerator GetSectorsFromBounds (Bounds bounds) {
+            return _Partition.GetSectorsFromBounds(bounds, false);
+        }
 
-            if (_NumCachedSeenLists < _SeenListCache.Length) {
-                seenList.Clear();
-                _SeenListCache[_NumCachedSeenLists] = seenList;
-                _NumCachedSeenLists += 1;
+        public SpatialPartition<Sector>.SectorsEnumerable Sectors {
+            get {
+                return _Partition.Sectors;
             }
-
-            seenList = null;
         }
     }
 }

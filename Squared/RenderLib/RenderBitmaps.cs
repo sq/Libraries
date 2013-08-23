@@ -456,7 +456,8 @@ namespace Squared.Render {
 
                         device.Textures[0] = tex1;
                         device.Textures[1] = currentTexture.Texture2;
-                        device.SamplerStates[0] = device.SamplerStates[1] = SamplerState;
+                        device.SamplerStates[0] = SamplerState;
+                        device.SamplerStates[1] = SamplerState2;
 
                         var vSize = new Vector2(tex1.Width, tex1.Height);
                         paramSize.SetValue(vSize);

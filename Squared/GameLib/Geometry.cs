@@ -75,7 +75,17 @@ namespace Squared.Game {
                 (point.X <= BottomRight.X) && (point.Y <= BottomRight.Y);
         }
 
+        public bool Contains (ref Vector2 point) {
+            return (point.X >= TopLeft.X) && (point.Y >= TopLeft.Y) &&
+                (point.X <= BottomRight.X) && (point.Y <= BottomRight.Y);
+        }
+
         public bool Contains (Bounds other) {
+            return (other.TopLeft.X >= TopLeft.X) && (other.TopLeft.Y >= TopLeft.Y) &&
+                (other.BottomRight.X <= BottomRight.X) && (other.BottomRight.Y <= BottomRight.Y);
+        }
+
+        public bool Contains (ref Bounds other) {
             return (other.TopLeft.X >= TopLeft.X) && (other.TopLeft.Y >= TopLeft.Y) &&
                 (other.BottomRight.X <= BottomRight.X) && (other.BottomRight.Y <= BottomRight.Y);
         }
@@ -522,29 +532,74 @@ namespace Squared.Game {
             return true;
         }
 
+        public static bool DoLinesIntersect (Vector2 startA, Vector2 endA, Vector2 startB, Vector2 endB) {
+            var lengthAX = endA.X - startA.X;
+            var lengthAY = endA.Y - startA.Y;
+            var lengthBX = endB.X - startB.X;
+            var lengthBY = endB.Y - startB.Y;
+            var xDelta = (startA.X - startB.X);
+            var yDelta = (startA.Y - startB.Y);
+
+            float q = yDelta * lengthBX - xDelta * lengthBY;
+            float d = lengthAX * lengthBY - lengthAY * lengthBX;
+
+            if (d == 0.0f)
+                return false;
+
+            {
+                d = 1 / d;
+                float r = q * d;
+
+                if (r < 0.0f || r > 1.0f)
+                    return false;
+
+                {
+                    var q2 = yDelta * lengthAX - xDelta * lengthAY;
+                    float s = q2 * d;
+
+                    if (s < 0.0f || s > 1.0f)
+                        return false;
+                }
+
+                return true;
+            }
+        }
+
         /// <param name="distanceAlongA">The distance along 'A' at which the intersection occurs (0.0 - 1.0)</param>
         public static bool DoLinesIntersect (Vector2 startA, Vector2 endA, Vector2 startB, Vector2 endB, out float distanceAlongA) {
             distanceAlongA = 0f;
 
-            var lengthA = endA - startA;
+            var lengthAX = endA.X - startA.X;
+            var lengthAY = endA.Y - startA.Y;
+            var lengthBX = endB.X - startB.X;
+            var lengthBY = endB.Y - startB.Y;
+            var xDelta = (startA.X - startB.X);
+            var yDelta = (startA.Y - startB.Y);
 
-            float q = (startA.Y - startB.Y) * (endB.X - startB.X) - (startA.X - startB.X) * (endB.Y - startB.Y);
-            float d = lengthA.X * (endB.Y - startB.Y) - lengthA.Y * (endB.X - startB.X);
+            float q = yDelta * lengthBX - xDelta * lengthBY;
+            float d = lengthAX * lengthBY - lengthAY * lengthBX;
 
-            if (d == 0.0f) return false;
+            if (d == 0.0f)
+                return false;
 
-            d = 1 / d;
-            float r = q * d;
+            {
+                d = 1 / d;
+                float r = q * d;
 
-            if (r < 0.0f || r > 1.0f) return false;
+                if (r < 0.0f || r > 1.0f)
+                    return false;
 
-            q = (startA.Y - startB.Y) * lengthA.X - (startA.X - startB.X) * lengthA.Y;
-            float s = q * d;
+                {
+                    var q2 = yDelta * lengthAX - xDelta * lengthAY;
+                    float s = q2 * d;
 
-            if (s < 0.0f || s > 1.0f) return false;
+                    if (s < 0.0f || s > 1.0f)
+                        return false;
+                }
 
-            distanceAlongA = r;
-            return true;
+                distanceAlongA = r;
+                return true;
+            }
         }
 
         public static bool DoLinesIntersect (Vector2 startA, Vector2 endA, Vector2 startB, Vector2 endB, out Vector2 intersection) {
