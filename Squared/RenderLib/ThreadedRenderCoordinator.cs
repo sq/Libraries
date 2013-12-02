@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -36,6 +37,9 @@ namespace Squared.Render {
         private readonly Action _SyncEndDraw;
 
         private WorkerThread _DrawThread;
+        public readonly Stopwatch
+            WorkStopwatch = new Stopwatch(),
+            WaitStopwatch = new Stopwatch();
 
         // Used to detect re-entrant painting (usually means that an
         //  exception was thrown on the render thread)
@@ -107,16 +111,29 @@ namespace Squared.Render {
             Monitor.Exit(CreateResourceLock);
         }
 
+        private void WaitForPendingWork () {
+            var working = WorkStopwatch.IsRunning;
+            if (working)
+                WorkStopwatch.Stop();
+
+            WaitStopwatch.Start();
+            _DrawThread.WaitForPendingWork();
+            WaitStopwatch.Stop();
+
+            if (working)
+                WorkStopwatch.Start();
+        }
+
         public void WaitForActiveDraw () {
             if (_DrawDepth > 0)
                 if (EnableThreading)
-                    _DrawThread.WaitForPendingWork();
+                    WaitForPendingWork();
         }
 
         public bool BeginDraw () {
             if (Interlocked.Increment(ref _DrawDepth) > 1)
                 if (DoThreadedIssue)
-                    _DrawThread.WaitForPendingWork();
+                    WaitForPendingWork();
 
             if (_Running) {
                 _FrameBeingPrepared = Manager.CreateFrame();
@@ -143,7 +160,7 @@ namespace Squared.Render {
             PrepareFrame(newFrame);
 
             if (EnableThreading)
-                _DrawThread.WaitForPendingWork();
+                WaitForPendingWork();
 
             var oldFrame = Interlocked.Exchange(ref _FrameBeingDrawn, newFrame);
 
@@ -183,7 +200,7 @@ namespace Squared.Render {
 
                 if (_DeviceLost) {
                     if (DoThreadedIssue)
-                        _DrawThread.WaitForPendingWork();
+                        WaitForPendingWork();
 
                     _DeviceLost = IsDeviceLost;
                 }
@@ -298,7 +315,7 @@ namespace Squared.Render {
    
             if (_DrawThread != null) {
                 if (EnableThreading)
-                    _DrawThread.WaitForPendingWork();
+                    WaitForPendingWork();
 
                 _DrawThread.Dispose();
                 _DrawThread = null;

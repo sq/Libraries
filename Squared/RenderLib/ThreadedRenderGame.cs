@@ -39,7 +39,6 @@ namespace Squared.Render {
             private set;
         }
 
-        private readonly Stopwatch Stopwatch = new Stopwatch();
         private FrameTiming NextFrameTiming;
 
         public MultithreadedGame()
@@ -72,44 +71,45 @@ namespace Squared.Render {
         public abstract void Draw(GameTime gameTime, Frame frame);
 
         protected override bool BeginDraw() {
-            Stopwatch.Reset();
-            Stopwatch.Start();
+            RenderCoordinator.WorkStopwatch.Restart();
 
             try {
                 return RenderCoordinator.BeginDraw();
             } finally {
-                Stopwatch.Stop();
-                NextFrameTiming.BeginDraw = Stopwatch.Elapsed;
+                RenderCoordinator.WorkStopwatch.Stop();
+                NextFrameTiming.BeginDraw = RenderCoordinator.WorkStopwatch.Elapsed;
             }
         }
 
         sealed protected override void Draw(GameTime gameTime) {
-            Stopwatch.Reset();
-            Stopwatch.Start();
+            RenderCoordinator.WorkStopwatch.Restart();
 
             try {
                 Draw(gameTime, RenderCoordinator.Frame);
             } finally {
-                Stopwatch.Stop();
-                NextFrameTiming.Draw = Stopwatch.Elapsed;
+                RenderCoordinator.WorkStopwatch.Stop();
+                NextFrameTiming.Draw = RenderCoordinator.WorkStopwatch.Elapsed;
             }
         }
 
         protected override void EndDraw() {
-            Stopwatch.Reset();
-            Stopwatch.Start();
+            RenderCoordinator.WorkStopwatch.Restart();
 
             try {
                 RenderCoordinator.EndDraw();
             } finally {
-                Stopwatch.Stop();
-                NextFrameTiming.EndDraw = Stopwatch.Elapsed;
+                RenderCoordinator.WorkStopwatch.Stop();
+
+                NextFrameTiming.EndDraw = RenderCoordinator.WorkStopwatch.Elapsed;
+                NextFrameTiming.Wait = RenderCoordinator.WaitStopwatch.Elapsed;
                 PreviousFrameTiming = NextFrameTiming;
+
+                RenderCoordinator.WaitStopwatch.Reset();
             }
         }
     }
 
     public struct FrameTiming {
-        public TimeSpan BeginDraw, Draw, EndDraw;
+        public TimeSpan Wait, BeginDraw, Draw, EndDraw;
     }
 }
