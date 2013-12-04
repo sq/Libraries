@@ -35,6 +35,7 @@ namespace Squared.Render {
 
         private readonly Func<bool> _SyncBeginDraw;
         private readonly Action _SyncEndDraw;
+        private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
 
         private WorkerThread _DrawThread;
         public readonly Stopwatch
@@ -207,6 +208,8 @@ namespace Squared.Render {
             } else {
                 Interlocked.Decrement(ref _DrawDepth);
             }
+
+            FlushPendingDisposes();
         }
 
         protected void RenderFrame (Frame frame, bool acquireLock) {
@@ -320,6 +323,23 @@ namespace Squared.Render {
                 _DrawThread.Dispose();
                 _DrawThread = null;
             }
+        }
+
+        private void FlushPendingDisposes () {
+            lock (_PendingDisposes) {
+                foreach (var pd in _PendingDisposes)
+                    pd.Dispose();
+
+                _PendingDisposes.Clear();
+            }
+        }
+
+        public void DisposeResource (IDisposable resource) {
+            if (resource == null)
+                return;
+
+            lock (_PendingDisposes)
+                _PendingDisposes.Add(resource);
         }
     }
     
