@@ -323,15 +323,24 @@ namespace Squared.Render {
                 _DrawThread.Dispose();
                 _DrawThread = null;
             }
+
+            FlushPendingDisposes();
         }
 
         private void FlushPendingDisposes () {
-            lock (_PendingDisposes) {
-                foreach (var pd in _PendingDisposes)
-                    pd.Dispose();
+            IDisposable[] pds = null;
 
+            lock (_PendingDisposes) {
+                if (_PendingDisposes.Count == 0)
+                    return;
+
+                // Prevents a deadlock from recursion
+                pds = _PendingDisposes.ToArray();
                 _PendingDisposes.Clear();
             }
+
+            foreach (var pd in pds)
+                pd.Dispose();
         }
 
         public void DisposeResource (IDisposable resource) {
