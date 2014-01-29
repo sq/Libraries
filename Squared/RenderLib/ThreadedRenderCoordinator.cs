@@ -95,9 +95,12 @@ namespace Squared.Render {
         protected void DefaultEndDraw () {
             var viewport = Device.Viewport;
             Device.Present(
+#if !SDL2
+                // TODO: Check if we _really_ have to implement this for MG-SDL2 -flibit
                 new Rectangle(0, 0, viewport.Width, viewport.Height),
                 new Rectangle(0, 0, viewport.Width, viewport.Height),
                 IntPtr.Zero
+#endif
             );
         }
 
@@ -158,7 +161,8 @@ namespace Squared.Render {
         protected void PrepareNextFrame () {
             var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
-            PrepareFrame(newFrame);
+            if (newFrame != null)
+                PrepareFrame(newFrame);
 
             if (EnableThreading)
                 WaitForPendingWork();
@@ -236,7 +240,8 @@ namespace Squared.Render {
         protected void RenderFrameToDraw () {
             var frameToDraw = Interlocked.Exchange(ref _FrameBeingDrawn, null);
 
-            RenderFrame(frameToDraw, true);
+            if (frameToDraw != null)
+                RenderFrame(frameToDraw, true);
         }
 
         protected void ThreadedDraw (WorkerThread thread) {

@@ -99,7 +99,7 @@ namespace Squared.Render.Evil {
     internal unsafe delegate int GetSurfaceLevelDelegate (void* pTexture, uint iLevel, void** pSurface);
     [SuppressUnmanagedCodeSecurity]
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    internal unsafe delegate uint ReleaseDelegate (void* pObj);
+    internal unsafe delegate int GetDisplayModeDelegate (void* pDevice, int iSwapChain, out D3DDISPLAYMODE pMode);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT {
@@ -107,6 +107,25 @@ namespace Squared.Render.Evil {
         public int Top;
         public int Right;
         public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct D3DDISPLAYMODE {
+        public uint Width, Height, RefreshRate;
+        public uint Format;
+    }
+
+    public static class COMUtils {
+        /// <summary>
+        /// Returns a function pointer from an interface's VTable.
+        /// </summary>
+        /// <param name="pInterface">The interface.</param>
+        /// <param name="offsetInBytes">The offset into the VTable (in bytes).</param>
+        /// <returns>The function pointer retrieved from the VTable.</returns>
+        public static unsafe void* AccessVTable (void* pInterface, uint offsetInBytes) {
+            void* pVTable = (*(void**)pInterface);
+            return *((void**)((ulong)pVTable + offsetInBytes));
+        }
     }
 
     public static class TextureUtils {
@@ -147,17 +166,6 @@ namespace Squared.Render.Evil {
         }
 
         /// <summary>
-        /// Returns a function pointer from an interface's VTable.
-        /// </summary>
-        /// <param name="pInterface">The interface.</param>
-        /// <param name="offsetInBytes">The offset into the VTable (in bytes).</param>
-        /// <returns>The function pointer retrieved from the VTable.</returns>
-        public static unsafe void* AccessVTable (void* pInterface, uint offsetInBytes) {
-            void* pVTable = (*(void**)pInterface);
-            return *((void**)((ulong)pVTable + offsetInBytes));
-        }
-
-        /// <summary>
         /// Retrieves a pointer to the IDirect3DSurface9 for one of the specified texture's mip levels.
         /// </summary>
         /// <param name="texture">The texture to retrieve a mip level from.</param>
@@ -165,7 +173,7 @@ namespace Squared.Render.Evil {
         /// <returns>A pointer to the mip level's surface.</returns>
         public static unsafe void* GetSurfaceLevel (this Texture2D texture, int level) {
             void* pTexture = texture.GetIDirect3DTexture9();
-            void* pGetSurfaceLevel = AccessVTable(pTexture, VTables.IDirect3DTexture9.GetSurfaceLevel);
+            void* pGetSurfaceLevel = COMUtils.AccessVTable(pTexture, VTables.IDirect3DTexture9.GetSurfaceLevel);
             void* pSurface;
 
             var getSurfaceLevel = (GetSurfaceLevelDelegate)Marshal.GetDelegateForFunctionPointer(new IntPtr(pGetSurfaceLevel), typeof(GetSurfaceLevelDelegate));
@@ -355,5 +363,37 @@ namespace Squared.Render.Evil {
         public float RightSideBearing;
         public float Width;
         public float WidthIncludingBearings;
+    }
+
+    public static class GraphicsDeviceUtils {
+        public static class VTables {
+            public static class IDirect3DDevice9 {
+                public const uint GetDisplayMode = 32;
+            }
+        }
+
+        internal static readonly FieldInfo pComPtr;
+
+        static GraphicsDeviceUtils () {
+            pComPtr = typeof(GraphicsDevice).GetField("pComPtr", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        }
+
+        public static unsafe void* GetIDirect3DDevice9 (this GraphicsDevice device) {
+            return Pointer.Unbox(pComPtr.GetValue(device));
+        }
+
+        public static unsafe uint GetRefreshRate (this GraphicsDevice device) {
+            void* pDevice = GetIDirect3DDevice9(device);
+            void* pGetDisplayMode = COMUtils.AccessVTable(pDevice, VTables.IDirect3DDevice9.GetDisplayMode);
+
+            var getDisplayMode = (GetDisplayModeDelegate)Marshal.GetDelegateForFunctionPointer(new IntPtr(pGetDisplayMode), typeof(GetDisplayModeDelegate));
+            D3DDISPLAYMODE displayMode;
+
+            var rv = getDisplayMode(pDevice, 0, out displayMode);
+            if (rv == 0)
+                return displayMode.RefreshRate;
+            else
+                throw new COMException("GetDisplayMode failed", rv);
+        }
     }
 }
