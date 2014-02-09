@@ -19,9 +19,21 @@ namespace Squared.Util {
 
         public class BitmapDrawCallComparer : IComparer<BitmapDrawCall> {            
             public int Compare(BitmapDrawCall x, BitmapDrawCall y) {
-                var result = x.SortKey.CompareTo(y.SortKey);
+                var result = (x.SortKey > y.SortKey)
+                    ? 1
+                    : (
+                        (x.SortKey < y.SortKey)
+                        ? -1
+                        : 0
+                    );
                 if (result == 0)
-                    result = x.TextureID.CompareTo(y.TextureID);
+                    result = (x.TextureID > y.TextureID)
+                    ? 1
+                    : (
+                        (x.TextureID < y.TextureID)
+                        ? -1
+                        : 0
+                    );
                 return result;
             }
         }
@@ -457,6 +469,140 @@ namespace Squared.Util {
                 new BitmapDrawCall { TextureID=62468121, SortKey=0 },
                 new BitmapDrawCall { TextureID=62468121, SortKey=0 },
                 new BitmapDrawCall { TextureID=62468121, SortKey=0 }
+            };
+
+            AssertSortsCorrectly(drawCalls, new BitmapDrawCallComparer());
+        }
+
+        [Test]
+        public void SortsParticularDrawCallSequence2 () {
+            var drawCalls = new[] {
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1112338688, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1112338688, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1112338688, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1112338688, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = 817334784, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
+                new BitmapDrawCall { TextureID = -1693165824, SortKey = 0 },
             };
 
             AssertSortsCorrectly(drawCalls, new BitmapDrawCallComparer());

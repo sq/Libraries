@@ -95,14 +95,26 @@ namespace Squared.Render {
                     : 0
                 );
             if (result == 0)
-                result = (int)(x.Textures.HashCode - y.Textures.HashCode);
+                result = (x.Textures.HashCode > y.Textures.HashCode)
+                ? 1
+                : (
+                    (x.Textures.HashCode < y.Textures.HashCode)
+                    ? -1
+                    : 0
+                );
             return result;
         }
     }
 
     public sealed class BitmapDrawCallTextureComparer : IComparer<BitmapDrawCall> {
         public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
-            return (int)(x.Textures.HashCode - y.Textures.HashCode);
+            return (x.Textures.HashCode > y.Textures.HashCode)
+                ? 1
+                : (
+                    (x.Textures.HashCode < y.Textures.HashCode)
+                    ? -1
+                    : 0
+                );
         }
     }
 
