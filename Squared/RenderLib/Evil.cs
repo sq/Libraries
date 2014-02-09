@@ -328,11 +328,20 @@ namespace Squared.Render.Evil {
 
         static FontUtils () {
             var tSpriteFont = typeof(SpriteFont);
+#if SDL2
+            // Careful with them reflections there! -flibit
+            textureValue = GetPrivateField(tSpriteFont, "_texture");
+            glyphData = GetPrivateField(tSpriteFont, "_glyphBounds");
+            croppingData = GetPrivateField(tSpriteFont, "_cropping");
+            kerning = GetPrivateField(tSpriteFont, "_kerning");
+            characterMap = GetPrivateField(tSpriteFont, "_characterMap");
+#else
             textureValue = GetPrivateField(tSpriteFont, "textureValue");
             glyphData = GetPrivateField(tSpriteFont, "glyphData");
             croppingData = GetPrivateField(tSpriteFont, "croppingData");
             kerning = GetPrivateField(tSpriteFont, "kerning");
             characterMap = GetPrivateField(tSpriteFont, "characterMap");
+#endif
         }
 
         private static FieldInfo GetPrivateField (Type type, string fieldName) {
@@ -365,6 +374,7 @@ namespace Squared.Render.Evil {
         public float WidthIncludingBearings;
     }
 
+#if WINDOWS
     public static class GraphicsDeviceUtils {
         public static class VTables {
             public static class IDirect3DDevice9 {
@@ -396,4 +406,5 @@ namespace Squared.Render.Evil {
                 throw new COMException("GetDisplayMode failed", rv);
         }
     }
+#endif
 }

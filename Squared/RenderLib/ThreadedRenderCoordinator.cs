@@ -78,6 +78,15 @@ namespace Squared.Render {
             CoreInitialize();
         }
 
+        public ThreadPriority ThreadPriority {
+            get {
+                return _DrawThread.Thread.Priority;
+            }
+            set {
+                _DrawThread.Thread.Priority = value;
+            }
+        }
+
         private void CoreInitialize () {
             _DrawThread = new WorkerThread(ThreadedDraw);
 
@@ -182,6 +191,8 @@ namespace Squared.Render {
         protected bool DoThreadedIssue { 
             get {
 #if PSM
+                return false;
+#elif SDL2
                 return false;
 #else
                 return EnableThreading;
