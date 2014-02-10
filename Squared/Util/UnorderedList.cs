@@ -72,7 +72,7 @@ namespace Squared.Util {
         }
 
         public UnorderedList (int size) {
-            _Items = new T[size];
+            _Items = new T[Math.Max(DefaultSize, size)];
             _Count = 0;
         }
 
@@ -100,12 +100,6 @@ namespace Squared.Util {
             return new Enumerator(this, 0, _Count);
         }
 
-        private void GrowBuffer () {
-            var oldItems = _Items;
-            _Items = new T[oldItems.Length * 2];
-            Array.Copy(oldItems, _Items, _Count);
-        }
-
         public void EnsureCapacity (int capacity) {
             if (_Items.Length >= capacity)
                 return;
@@ -118,8 +112,7 @@ namespace Squared.Util {
 
         public void Add (T item) {
             int newCount = _Count + 1;
-            if (newCount >= _Items.Length)
-                GrowBuffer();
+            EnsureCapacity(newCount);
 
             _Items[newCount - 1] = item;
             _Count = newCount;
@@ -127,8 +120,7 @@ namespace Squared.Util {
 
         public void Add (ref T item) {
             int newCount = _Count + 1;
-            if (newCount >= _Items.Length)
-                GrowBuffer();
+            EnsureCapacity(newCount);
 
             _Items[newCount - 1] = item;
             _Count = newCount;
@@ -136,8 +128,7 @@ namespace Squared.Util {
 
         public void AddRange (T[] items) {
             int newCount = _Count + items.Length;
-            if (newCount >= _Items.Length)
-                GrowBuffer();
+            EnsureCapacity(newCount);
 
             int insertOffset = newCount - items.Length;
             for (var i = 0; i < items.Length; i++)
