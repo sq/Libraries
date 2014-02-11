@@ -371,7 +371,7 @@ namespace Squared.Render {
         private const int State_Drawn = 4;
         private const int State_Disposed = 5;
 
-        public static Comparison<Batch> BatchComparer = new BatchComparer().Compare;
+        public static IComparer<Batch> BatchComparer = new BatchComparer();
 
         private static ListPool<Batch> _ListPool = new ListPool<Batch>(
             16, 256, 4096
@@ -422,7 +422,12 @@ namespace Squared.Render {
                 throw new InvalidOperationException();
 
             BatchCombiner.CombineBatches(Batches);
+
+#if PSM
             Batches.Timsort(BatchComparer);
+#else
+            Batches.Sort(BatchComparer);
+#endif
 
             if (parallel)
                 RenderManager.ParallelPrepare(this);
@@ -723,7 +728,11 @@ namespace Squared.Render {
         public override void Prepare () {
             BatchCombiner.CombineBatches(_DrawCalls);
 
+#if PSM
             _DrawCalls.Timsort(Frame.BatchComparer);
+#else
+            _DrawCalls.Sort(Frame.BatchComparer);
+#endif
 
             foreach (var batch in _DrawCalls) {
                 if (batch != null) {

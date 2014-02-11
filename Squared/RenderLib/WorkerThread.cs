@@ -32,7 +32,20 @@ namespace Squared.Render.Internal {
 
             Thread = new Thread(WorkerFn);
             Thread.IsBackground = true;
+#if SDL2
+            // :trollface: -flibit
+            if (function.Method.Name.Equals("ThreadedDraw"))
+            {
+                return;
+            }
+            else
+            {
+                System.Console.WriteLine("WorkerThread used with " + function.Method.Name);
+                throw new Exception("This is used for something?! -flibit");
+            }
+#else
             Thread.Start();
+#endif
         }
 
         public void RequestWork () {
@@ -88,6 +101,10 @@ namespace Squared.Render.Internal {
         public void Dispose () {
             _Disposed = true;
             _WakeSignal.Set();
+#if SDL2
+            // :trollface part 2 electric nothreadsaboo: -flibit
+            if (Thread.IsAlive)
+#endif
             Thread.Join();
             _CompletedSignal.Set();
         }

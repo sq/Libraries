@@ -44,7 +44,12 @@ namespace Squared.Render {
         public MultithreadedGame()
             : base() {
 
+#if SDL2
+            // Again, I say: NOPE. -flibit
+            UseThreadedDraw = false;
+#else
             UseThreadedDraw = true;
+#endif
         }
 
         protected override void Dispose (bool disposing) {

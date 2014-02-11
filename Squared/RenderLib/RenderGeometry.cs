@@ -51,7 +51,7 @@ namespace Squared.Render {
             public int PrimitiveCount;
         }
 
-        internal static Comparison<GeometryDrawCall> _DrawCallSorter = new GeometryDrawCallSorter().Compare;
+        internal static IComparer<GeometryDrawCall> _DrawCallSorter = new GeometryDrawCallSorter();
 
         // 0   1   2   3
         // tl, tr, bl, br
@@ -205,7 +205,11 @@ namespace Squared.Render {
                     var l = kvp.Value;
                     var c = l.Count;
 
+#if PSM
                     l.Timsort(_DrawCallSorter);
+#else
+                    l.Sort(_DrawCallSorter);
+#endif
 
                     int vertexCount = vb.Count, indexCount = ib.Count;
 

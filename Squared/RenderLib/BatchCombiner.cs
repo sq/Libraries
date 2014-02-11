@@ -26,7 +26,7 @@ namespace Squared.Render {
     }
 
     public static class BatchCombiner {
-        public static readonly Comparison<Batch> BatchTypeSorter = new BatchTypeSorter().Compare;
+        public static readonly IComparer<Batch> BatchTypeSorter = new BatchTypeSorter();
         public static readonly List<IBatchCombiner> Combiners = new List<IBatchCombiner>();
 
         /// <summary>
@@ -36,7 +36,11 @@ namespace Squared.Render {
         /// <param name="batches">The list of batches to perform a combination pass over.</param>
         /// <returns>The number of batches eliminated.</returns>
         public static int CombineBatches (UnorderedList<Batch> batches) {
+#if PSM
             batches.Timsort(BatchTypeSorter);
+#else
+            batches.Sort(BatchTypeSorter);
+#endif
 
             int i = 0, j = i + 1, l = batches.Count, eliminatedCount = 0;
 

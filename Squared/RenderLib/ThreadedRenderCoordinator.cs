@@ -192,8 +192,6 @@ namespace Squared.Render {
             get {
 #if PSM
                 return false;
-#elif SDL2
-                return false;
 #else
                 return EnableThreading;
 #endif

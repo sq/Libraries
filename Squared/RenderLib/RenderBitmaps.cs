@@ -201,8 +201,8 @@ namespace Squared.Render {
         public SamplerState SamplerState2;
         public bool UseZBuffer = false;
 
-        public static Comparison<BitmapDrawCall> DrawCallComparer = new BitmapDrawCallComparer().Compare;
-        public static Comparison<BitmapDrawCall> DrawCallTextureComparer = new BitmapDrawCallTextureComparer().Compare;
+        public static IComparer<BitmapDrawCall> DrawCallComparer = new BitmapDrawCallComparer();
+        public static IComparer<BitmapDrawCall> DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
 
         public const int NativeBatchSize = Int16.MaxValue / 8;
 
@@ -419,9 +419,14 @@ namespace Squared.Render {
             if (_NativeBatches == null)
                 _NativeBatches = _NativePool.Allocate();
 
-            Comparison<BitmapDrawCall> sorter =
+            var sorter =
                 UseZBuffer ? DrawCallTextureComparer : DrawCallComparer;
+
+#if PSM
             _DrawCalls.Timsort(sorter);
+#else
+            _DrawCalls.Sort(sorter);
+#endif
 
             var count = _DrawCalls.Count;
 
@@ -473,7 +478,10 @@ namespace Squared.Render {
 
                         var vSize = new Vector2(tex1.Width, tex1.Height);
                         paramSize.SetValue(vSize);
+#if !SDL2
+                        // This is only ever used by Blur, which is never used -flibit
                         paramHalfTexel.SetValue(new Vector2(1.0f / vSize.X, 1.0f / vSize.Y) * 0.5f);
+#endif
                             
                         manager.CurrentEffect.CurrentTechnique.Passes[0].Apply();
                     }
