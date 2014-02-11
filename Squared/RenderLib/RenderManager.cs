@@ -758,14 +758,18 @@ namespace Squared.Render {
             }
         }
 
-        private void SetRenderTargetCallback (DeviceManager dm, object userData) {
+        private static readonly Action<DeviceManager, object> SetRenderTargetCallback = _SetRenderTargetCallback;
+
+        private static void _SetRenderTargetCallback (DeviceManager dm, object userData) {
             var data = (SetRenderTargetData)userData;
             dm.PushRenderTarget(data.RenderTarget);
             if (data.Before != null)
                 data.Before(dm, data.UserData);
         }
 
-        private void RestoreRenderTargetCallback (DeviceManager dm, object userData) {
+        private static readonly Action<DeviceManager, object> RestoreRenderTargetCallback = _RestoreRenderTargetCallback;
+
+        private static void _RestoreRenderTargetCallback (DeviceManager dm, object userData) {
             var data = (SetRenderTargetData)userData;
             dm.PopRenderTarget();
             if (data.After != null)
@@ -783,7 +787,7 @@ namespace Squared.Render {
                 After = after,
                 UserData = userData
             };
-            result.Initialize(container, layer, result.SetRenderTargetCallback, result.RestoreRenderTargetCallback, data);
+            result.Initialize(container, layer, SetRenderTargetCallback, RestoreRenderTargetCallback, data);
             result.CaptureStack(0);
 
             return result;
