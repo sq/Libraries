@@ -1,4 +1,6 @@
-﻿using System;
+﻿#if SystemData
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -113,3 +115,5 @@ namespace Squared.Task.Data {
         }
     }
 }
+
+#endif

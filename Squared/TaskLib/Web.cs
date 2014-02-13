@@ -123,6 +123,7 @@ namespace Squared.Task {
             return f;
         }
 
+#if SystemWeb
         public static NameValueCollection ParseRequestBody (this HttpListenerContext context) {
             byte[] bytes;
             using (var ms = new MemoryStream())
@@ -157,6 +158,7 @@ namespace Squared.Task {
                 
             return result;
         }
+#endif
 
         public static AsyncTextReader GetRequestReader (this HttpListenerContext context) {
             var encoding = context.Request.ContentEncoding ?? Encoding.UTF8;

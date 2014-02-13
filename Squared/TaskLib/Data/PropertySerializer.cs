@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Squared.Task.Data.Mapper;
 using Squared.Util.Bind;
 using System.Linq.Expressions;
+
+#if SystemData
 using System.Data;
+using Squared.Task.Data.Mapper;
+#endif
 
 namespace Squared.Task.Data {
     public delegate IEnumerator<object> BoundMemberAdapterFunc (string name, IBoundMember member);
@@ -128,6 +131,8 @@ namespace Squared.Task.Data {
         }
     }
 
+#if SystemData
+
     public class DatabasePropertySerializer : PropertySerializerBase {
         public readonly Query WriteValue;
         public readonly Query ReadValue;
@@ -191,4 +196,6 @@ namespace Squared.Task.Data {
             ReadValue.Dispose();
         }
     }
+
+#endif
 }
