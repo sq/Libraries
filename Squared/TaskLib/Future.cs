@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Linq;
 
-#if WINDOWS || MONO
+#if !XBOX
 using System.Linq.Expressions;
 using Squared.Util.Bind;
 #endif
@@ -286,6 +287,78 @@ namespace Squared.Task {
             }
 
             return f;
+        }
+
+        private class WaitForSingleEventThunk {
+            public readonly Squared.Util.Bind.BoundMember<EventHandler> Event;
+            public readonly SignalFuture Future = new SignalFuture();
+            private readonly EventHandler Handler;
+
+            public WaitForSingleEventThunk (Squared.Util.Bind.BoundMember<EventHandler> evt) {
+                Event = evt;
+                Handler = OnEvent;
+
+                Event.Add(Handler);
+                Future.RegisterOnDispose(OnDispose);
+            }
+
+            public void OnEvent (object sender, EventArgs args) {
+                OnDispose(Future);
+                Future.Complete();
+            }
+
+            public void OnDispose (IFuture future) {
+                Event.Remove(Handler);
+            }
+        }
+
+        private class WaitForSingleEventThunk<TEventArgs>
+            where TEventArgs : System.EventArgs {
+
+            public readonly Squared.Util.Bind.BoundMember<EventHandler<TEventArgs>> Event;
+            public readonly Future<TEventArgs> Future = new Future<TEventArgs>();
+            private readonly EventHandler<TEventArgs> Handler;
+
+            public WaitForSingleEventThunk (Squared.Util.Bind.BoundMember<EventHandler<TEventArgs>> evt) {
+                Event = evt;
+                Handler = OnEvent;
+
+                Event.Add(Handler);
+                Future.RegisterOnDispose(OnDispose);
+            }
+
+            public void OnEvent (object sender, TEventArgs args) {
+                OnDispose(Future);
+                Future.SetResult(args, null);
+            }
+
+            public void OnDispose (IFuture future) {
+                Event.Remove(Handler);
+            }
+        }
+
+        public static Future<TEventArgs> WaitForSingleEvent<TEventArgs>
+            (Squared.Util.Bind.BoundMember<EventHandler<TEventArgs>> evt)
+            where TEventArgs : System.EventArgs 
+        {
+            return (new WaitForSingleEventThunk<TEventArgs>(evt)).Future;
+        }
+
+        public static SignalFuture WaitForSingleEvent(Squared.Util.Bind.BoundMember<EventHandler> evt) {
+            return (new WaitForSingleEventThunk(evt)).Future;
+        }
+
+        public static Future<TEventArgs> WaitForSingleEvent<TEventArgs>
+            (Expression<Action<EventHandler<TEventArgs>>> evt)
+            where TEventArgs : System.EventArgs {
+
+            var bm = Squared.Util.Bind.BoundMember.New(evt);
+            return WaitForSingleEvent(bm);
+        }
+
+        public static SignalFuture WaitForSingleEvent (Expression<Action<EventHandler>> evt) {
+            var bm = Squared.Util.Bind.BoundMember.New(evt);
+            return WaitForSingleEvent(bm);
         }
     }
 
@@ -668,7 +741,7 @@ namespace Squared.Task {
             target.RegisterOnComplete(handler);
         }
 
-#if WINDOWS || MONO
+#if !XBOX
         public static IFuture Bind<T> (this IFuture future, Expression<Func<T>> target) {
             var member = BoundMember.New(target);
 

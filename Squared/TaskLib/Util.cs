@@ -6,7 +6,7 @@ using Squared.Util.Event;
 using System.Collections;
 using System.Linq;
 
-#if WINDOWS || MONO
+#if !XBOX
 using System.Linq.Expressions;
 #endif
 
@@ -76,7 +76,7 @@ namespace Squared.Task {
             return rtc;
         }
 
-#if WINDOWS || MONO
+#if !XBOX
         public static StoreResult<T> Bind<T> (this IEnumerator<object> task, Expression<Func<T>> target) {
             var sr = new StoreResult<T>(task, target);
             return sr;
@@ -84,7 +84,7 @@ namespace Squared.Task {
 #endif
     }
 
-#if WINDOWS || MONO
+#if !XBOX
     /// <summary>
     /// Schedules a task to run to completion and store its result into a target field or property.
     /// </summary>
@@ -785,6 +785,8 @@ namespace Squared.Task {
     public class EventSink<T> : BlockingQueue<T>, IDisposable
         where T : EventArgs {
 
+        public event Action OnDispose;
+
         public void OnEvent (object sender, T eventArgs) {
             this.Enqueue(eventArgs);
         }
@@ -794,6 +796,8 @@ namespace Squared.Task {
         }
 
         public void Dispose () {
+            if (OnDispose != null)
+                OnDispose();
         }
     }
 

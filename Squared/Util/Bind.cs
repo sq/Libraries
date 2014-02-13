@@ -69,32 +69,52 @@ namespace Squared.Util.Bind {
             } 
         }
 
-        public static IBoundMember New (object obj, MemberInfo member) {
+        private static object NewInner (object obj, MemberInfo member) {
             Type type;
             var prop = member as PropertyInfo;
             var field = member as FieldInfo;
+            var evt = member as EventInfo;
 
             if (prop != null) {
                 type = prop.PropertyType;
             } else if (field != null) {
                 type = field.FieldType;
+            } else if (evt != null) {
+                type = evt.EventHandlerType;
             } else {
-                throw new ArgumentException("Must specify a property or field.", "member");
+                throw new ArgumentException("Must specify a property, field or event.", "member");
             }
 
             var boundType = typeof(BoundMember<>).MakeGenericType(type);
-            if (prop != null) {
-                return Activator.CreateInstance(boundType, obj, prop) as IBoundMember;
-            } else {
-                return Activator.CreateInstance(boundType, obj, field) as IBoundMember;
-            }
+            return Activator.CreateInstance(
+                boundType, obj,
+                (object)prop ?? (object)evt ?? (object)field
+            );
+        }
+
+        public static BoundMember<T> New<T> (object obj, MemberInfo member) {
+            return NewInner(obj, member) as BoundMember<T>;
+        }
+
+        public static IBoundMember New (object obj, MemberInfo member) {
+            return NewInner(obj, member) as IBoundMember;
+        }
+
+        const BindingFlags GetAllFlags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static;
+
+        public static IBoundMember New (Type t, string memberName, BindingFlags? bindingAttr = null) {
+            return NewInner(null, t.GetMember(memberName, bindingAttr.GetValueOrDefault(GetAllFlags)).First()) as IBoundMember;
+        }
+
+        public static BoundMember<T> New<T> (Type t, string memberName, BindingFlags? bindingAttr = null) {
+            return NewInner(null, t.GetMember(memberName, bindingAttr.GetValueOrDefault(GetAllFlags)).First()) as BoundMember<T>;
         }
 
         public static BoundMember<T> New<T> (Expression<Func<T>> target) {
             var member = target.Body as MemberExpression;
 
             if (member == null)
-                throw new ArgumentException("Target must be an expression that points to a field or property", "target");
+                throw new ArgumentException("Target must be an expression that points to a field, property or event", "target");
 
             var obj = ResolveTarget(member.Expression);
 
@@ -103,8 +123,35 @@ namespace Squared.Util.Bind {
                     return new BoundMember<T>(obj, (PropertyInfo)member.Member);
                 case MemberTypes.Field:
                     return new BoundMember<T>(obj, (FieldInfo)member.Member);
+                case MemberTypes.Event:
+                    return new BoundMember<T>(obj, (EventInfo)member.Member);
                 default:
-                    throw new ArgumentException("Target member must be a field or property", "target");
+                    throw new ArgumentException("Target member must be a field, property or event", "target");
+            }
+        }
+
+        public static BoundMember<T> New<T> (Expression<Action<T>> target) {
+            var be = target.Body as System.Linq.Expressions.BinaryExpression;
+
+            if (be == null)
+                throw new ArgumentException("Target must be a binary mutation expression on a field, property or event", "target");
+
+            var member = be.Left as MemberExpression;
+
+            if (member == null)
+                throw new ArgumentException("Target must be a binary mutation expression on a field, property or event", "target");
+
+            var obj = ResolveTarget(member.Expression);
+
+            switch (member.Member.MemberType) {
+                case MemberTypes.Property:
+                    return new BoundMember<T>(obj, (PropertyInfo)member.Member);
+                case MemberTypes.Field:
+                    return new BoundMember<T>(obj, (FieldInfo)member.Member);
+                case MemberTypes.Event:
+                    return new BoundMember<T>(obj, (EventInfo)member.Member);
+                default:
+                    throw new ArgumentException("Target member must be a field, property or event", "target");
             }
         }
 #endif
@@ -156,9 +203,11 @@ namespace Squared.Util.Bind {
 
         protected readonly Func<T> Get;
         protected readonly Action<T> Set;
+        public readonly Action<T> Add;
+        public readonly Action<T> Remove;
 
         protected BoundMember (object target, string name) {
-            if (target.GetType().IsValueType)
+            if ((target != null) && target.GetType().IsValueType)
                 throw new InvalidOperationException("Cannot bind to a member of a value type");
 
             Target = target;
@@ -178,6 +227,18 @@ namespace Squared.Util.Bind {
                 Set = null;
             else
                 Set = BoundMember.MakeFieldSetter<Action<T>>(target, field);
+
+            Add = Remove = null;
+        }
+
+        public BoundMember (object target, EventInfo evt)
+            : this(target, evt.Name) {
+
+            Get = null; 
+            Set = null;
+
+            Add = (Action<T>)Delegate.CreateDelegate(typeof(Action<T>), target, evt.GetAddMethod(true), true);
+            Remove = (Action<T>)Delegate.CreateDelegate(typeof(Action<T>), target, evt.GetRemoveMethod(true), true);
         }
 
         public BoundMember (object target, PropertyInfo property) 
@@ -192,6 +253,8 @@ namespace Squared.Util.Bind {
                 Set = null;
             else
                 Set = (Action<T>)Delegate.CreateDelegate(typeof(Action<T>), target, property.GetSetMethod(true), true);
+
+            Add = Remove = null;
         }
 
         public T Value {

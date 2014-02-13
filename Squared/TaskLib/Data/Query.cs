@@ -7,6 +7,7 @@ using System.Text;
 using System.Data;
 using System.Threading;
 using System.Linq.Expressions;
+using Squared.Task;
 
 namespace Squared.Task.Data {
     [Mapper.Mapper]
