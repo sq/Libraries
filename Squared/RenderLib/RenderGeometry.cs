@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
@@ -50,7 +51,7 @@ namespace Squared.Render {
             public int PrimitiveCount;
         }
 
-        internal static Comparison<GeometryDrawCall> _DrawCallSorter = new GeometryDrawCallSorter().Compare;
+        internal static IComparer<GeometryDrawCall> _DrawCallSorter = new GeometryDrawCallSorter();
 
         // 0   1   2   3
         // tl, tr, bl, br
@@ -132,6 +133,8 @@ namespace Squared.Render {
         internal int VertexCount = 0, IndexCount = 0, Count = 0;
         internal ISoftwareBuffer _SoftwareBuffer;
 
+        const int MaxVertexCount = 65535;
+
         new public void Initialize (IBatchContainer container, int layer, Material material) {
             base.Initialize(container, layer, material);
 
@@ -147,6 +150,9 @@ namespace Squared.Render {
             Count += 1;
             VertexCount += vertexCount;
             IndexCount += indexCount;
+
+            if (VertexCount >= MaxVertexCount)
+                throw new InternalBufferOverflowException("This GeometryBatch contains too many primitives. Split your primitives into multiple batches.");
 
             UnorderedList<GeometryDrawCall> list;
             if (!Lists.TryGetValue(drawCall.PrimitiveType, out list))
@@ -199,7 +205,11 @@ namespace Squared.Render {
                     var l = kvp.Value;
                     var c = l.Count;
 
+#if PSM
                     l.Timsort(_DrawCallSorter);
+#else
+                    l.Sort(_DrawCallSorter);
+#endif
 
                     int vertexCount = vb.Count, indexCount = ib.Count;
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -34,8 +35,12 @@ namespace Squared.Render {
 
         private readonly Func<bool> _SyncBeginDraw;
         private readonly Action _SyncEndDraw;
+        private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
 
         private WorkerThread _DrawThread;
+        public readonly Stopwatch
+            WorkStopwatch = new Stopwatch(),
+            WaitStopwatch = new Stopwatch();
 
         // Used to detect re-entrant painting (usually means that an
         //  exception was thrown on the render thread)
@@ -73,6 +78,15 @@ namespace Squared.Render {
             CoreInitialize();
         }
 
+        public ThreadPriority ThreadPriority {
+            get {
+                return _DrawThread.Thread.Priority;
+            }
+            set {
+                _DrawThread.Thread.Priority = value;
+            }
+        }
+
         private void CoreInitialize () {
             _DrawThread = new WorkerThread(ThreadedDraw);
 
@@ -90,9 +104,12 @@ namespace Squared.Render {
         protected void DefaultEndDraw () {
             var viewport = Device.Viewport;
             Device.Present(
+#if !SDL2
+                // TODO: Check if we _really_ have to implement this for MG-SDL2 -flibit
                 new Rectangle(0, 0, viewport.Width, viewport.Height),
                 new Rectangle(0, 0, viewport.Width, viewport.Height),
                 IntPtr.Zero
+#endif
             );
         }
 
@@ -107,16 +124,29 @@ namespace Squared.Render {
             Monitor.Exit(CreateResourceLock);
         }
 
+        private void WaitForPendingWork () {
+            var working = WorkStopwatch.IsRunning;
+            if (working)
+                WorkStopwatch.Stop();
+
+            WaitStopwatch.Start();
+            _DrawThread.WaitForPendingWork();
+            WaitStopwatch.Stop();
+
+            if (working)
+                WorkStopwatch.Start();
+        }
+
         public void WaitForActiveDraw () {
             if (_DrawDepth > 0)
                 if (EnableThreading)
-                    _DrawThread.WaitForPendingWork();
+                    WaitForPendingWork();
         }
 
         public bool BeginDraw () {
             if (Interlocked.Increment(ref _DrawDepth) > 1)
                 if (DoThreadedIssue)
-                    _DrawThread.WaitForPendingWork();
+                    WaitForPendingWork();
 
             if (_Running) {
                 _FrameBeingPrepared = Manager.CreateFrame();
@@ -140,10 +170,11 @@ namespace Squared.Render {
         protected void PrepareNextFrame () {
             var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
-            PrepareFrame(newFrame);
+            if (newFrame != null)
+                PrepareFrame(newFrame);
 
             if (EnableThreading)
-                _DrawThread.WaitForPendingWork();
+                WaitForPendingWork();
 
             var oldFrame = Interlocked.Exchange(ref _FrameBeingDrawn, newFrame);
 
@@ -183,13 +214,15 @@ namespace Squared.Render {
 
                 if (_DeviceLost) {
                     if (DoThreadedIssue)
-                        _DrawThread.WaitForPendingWork();
+                        WaitForPendingWork();
 
                     _DeviceLost = IsDeviceLost;
                 }
             } else {
                 Interlocked.Decrement(ref _DrawDepth);
             }
+
+            FlushPendingDisposes();
         }
 
         protected void RenderFrame (Frame frame, bool acquireLock) {
@@ -216,7 +249,8 @@ namespace Squared.Render {
         protected void RenderFrameToDraw () {
             var frameToDraw = Interlocked.Exchange(ref _FrameBeingDrawn, null);
 
-            RenderFrame(frameToDraw, true);
+            if (frameToDraw != null)
+                RenderFrame(frameToDraw, true);
         }
 
         protected void ThreadedDraw (WorkerThread thread) {
@@ -298,11 +332,37 @@ namespace Squared.Render {
    
             if (_DrawThread != null) {
                 if (EnableThreading)
-                    _DrawThread.WaitForPendingWork();
+                    WaitForPendingWork();
 
                 _DrawThread.Dispose();
                 _DrawThread = null;
             }
+
+            FlushPendingDisposes();
+        }
+
+        private void FlushPendingDisposes () {
+            IDisposable[] pds = null;
+
+            lock (_PendingDisposes) {
+                if (_PendingDisposes.Count == 0)
+                    return;
+
+                // Prevents a deadlock from recursion
+                pds = _PendingDisposes.ToArray();
+                _PendingDisposes.Clear();
+            }
+
+            foreach (var pd in pds)
+                pd.Dispose();
+        }
+
+        public void DisposeResource (IDisposable resource) {
+            if (resource == null)
+                return;
+
+            lock (_PendingDisposes)
+                _PendingDisposes.Add(resource);
         }
     }
     

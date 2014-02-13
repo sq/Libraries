@@ -34,66 +34,77 @@ namespace Squared.Render {
     }
 
     public abstract class MaterialSetBase : IDisposable {
-        protected List<Material> ExtraMaterials = new List<Material>();
-        protected FieldInfo[] MaterialFields;
-        protected FieldInfo[] MaterialDictionaryFields;
+        protected readonly List<Material> ExtraMaterials = new List<Material>();
+
+        public readonly Func<Material>[] AllMaterialFields;
+        public readonly Func<IEnumerable<Material>>[] AllMaterialSequences;
 
         public MaterialSetBase() 
             : base() {
 
-            BuildFieldList();
+            BuildMaterialSets(out AllMaterialFields, out AllMaterialSequences);
         }
 
-        protected void BuildFieldList () {
-            var fields = new List<FieldInfo>();
-            var dictFields = new List<FieldInfo>();
+        protected void BuildMaterialSets (out Func<Material>[] materialFields, out Func<IEnumerable<Material>>[] materialSequences) {
+            var sequences = new List<Func<IEnumerable<Material>>>();
+            var fields = new List<Func<Material>>();
 
             var tMaterial = typeof(Material);
             var tMaterialDictionary = typeof(MaterialDictionary<>);
 
+            sequences.Add(() => this.ExtraMaterials);
+
             foreach (var field in this.GetType().GetFields()) {
+                var f = field;
+
                 if (field.FieldType == tMaterial ||
                     tMaterial.IsAssignableFrom(field.FieldType) ||
                     field.FieldType.IsSubclassOf(tMaterial)
                 ) {
-                    fields.Add(field);
+                    fields.Add(
+                        () => f.GetValue(this) as Material
+                    );
                 } else if (field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == tMaterialDictionary) {
-                    dictFields.Add(field);
+                    var dictType = field.FieldType;
+                    var valuesProperty = dictType.GetProperty("Values");
+
+                    sequences.Add(
+                        () => {
+                            var dict = f.GetValue(this);
+                            if (dict == null)
+                                return null;
+
+                            // Generics, bluhhhhh
+                            var values = valuesProperty.GetValue(dict, null)
+                                as IEnumerable<Material>;
+
+                            return values;
+                        }
+                    );
                 }
             }
 
-            MaterialFields = fields.ToArray();
-            MaterialDictionaryFields = dictFields.ToArray();
+            materialFields = fields.ToArray();
+            materialSequences = sequences.ToArray();
         }
 
         public IEnumerable<Material> AllMaterials {
             get {
-                foreach (var field in MaterialFields) {
-                    var material = field.GetValue(this) as Material;
+                foreach (var field in AllMaterialFields) {
+                    var material = field();
                     if (material != null)
                         yield return material;
                 }
 
-                foreach (var dictField in MaterialDictionaryFields) {
-                    var dict = dictField.GetValue(this);
-                    if (dict == null)
+                foreach (var sequence in AllMaterialSequences) {
+                    var seq = sequence();
+                    if (seq == null)
                         continue;
 
-                    // Generics, bluhhhhh
-                    var values = dict.GetType().
-                        GetProperty("Values").GetValue(dict, null) 
-                        as IEnumerable<Material>;
-
-                    if (values == null)
-                        continue;
-
-                    foreach (var material in values)
+                    foreach (var material in seq)
                         if (material != null)
                             yield return material;
                 }
-
-                foreach (var material in ExtraMaterials)
-                    yield return material;
             }
         }
 
@@ -204,14 +215,18 @@ namespace Squared.Render {
         public Material ScreenSpaceBitmap, WorldSpaceBitmap;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
+#if !SDL2
         public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
         public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
+#endif
         public Material Clear;
 
         protected readonly Stack<ViewTransform> ViewTransformStack = new Stack<ViewTransform>();
 
         public DefaultMaterialSet (IServiceProvider serviceProvider) {
-#if !PSM
+#if SDL2
+            BuiltInShaders = new ContentManager(serviceProvider, "Content/SquaredRender");
+#elif !PSM
             BuiltInShaders = new ResourceContentManager(serviceProvider, Shaders.ResourceManager);
 #else
             BuiltInShaders = new Squared.Render.PSM.PSMShaderManager(serviceProvider);
@@ -229,6 +244,26 @@ namespace Squared.Render {
             WorldSpaceBitmap = new EffectMaterial(BuiltInShaders.Load<Effect>("WorldSpaceBitmap"));
             ScreenSpaceGeometry = new EffectMaterial(BuiltInShaders.Load<Effect>("ScreenSpaceGeometry"));
             WorldSpaceGeometry = new EffectMaterial(BuiltInShaders.Load<Effect>("WorldSpaceGeometry"));
+#elif SDL2
+            ScreenSpaceBitmap = new EffectMaterial(
+                BuiltInShaders.Load<Effect>("ScreenSpaceBitmapTechnique"),
+                "ScreenSpaceBitmapTechnique"
+            );
+
+            WorldSpaceBitmap = new EffectMaterial(
+                BuiltInShaders.Load<Effect>("WorldSpaceBitmapTechnique"),
+                "WorldSpaceBitmapTechnique"
+            );
+
+            ScreenSpaceGeometry = new EffectMaterial(
+                BuiltInShaders.Load<Effect>("ScreenSpaceUntextured"),
+                "ScreenSpaceUntextured"
+            );
+
+            WorldSpaceGeometry = new EffectMaterial(
+                BuiltInShaders.Load<Effect>("WorldSpaceUntextured"),
+                "WorldSpaceUntextured"
+            );
 #else
             var bitmapShader = BuiltInShaders.Load<Effect>("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load<Effect>("SquaredGeometryShader");
@@ -254,7 +289,17 @@ namespace Squared.Render {
             );
 #endif
             
-#if !PSM
+#if SDL2
+            ScreenSpaceLightmappedBitmap = new EffectMaterial(
+                BuiltInShaders.Load<Effect>("ScreenSpaceLightmappedBitmap"),
+                "ScreenSpaceLightmappedBitmap"
+            );
+
+            WorldSpaceLightmappedBitmap = new EffectMaterial(
+                BuiltInShaders.Load<Effect>("WorldSpaceLightmappedBitmap"),
+                "WorldSpaceLightmappedBitmap"
+            );
+#elif !PSM
             var lightmapShader = BuiltInShaders.Load<Effect>("Lightmap");
 
             ScreenSpaceLightmappedBitmap = new EffectMaterial(
@@ -388,25 +433,50 @@ namespace Squared.Render {
             ApplyViewTransform(ref vt);
         }
 
+        private void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
+            var em = m as IEffectMaterial;
+
+            if (em == null)
+                return;
+
+            var e = em.Effect;
+            if (e == null)
+                return;
+
+#if SDL2
+                if (e.Parameters["ViewportScale"] != null && e.Parameters["ViewportPosition"] != null)
+                {
+                    // Only WorldSpace has these parameters -flibit
+                    e.Parameters["ViewportScale"].SetValue(viewTransform.Scale);
+                    e.Parameters["ViewportPosition"].SetValue(viewTransform.Position);
+                }
+#else
+            e.Parameters["ViewportScale"].SetValue(viewTransform.Scale);
+            e.Parameters["ViewportPosition"].SetValue(viewTransform.Position);
+#endif
+            e.Parameters["ProjectionMatrix"].SetValue(viewTransform.Projection);
+            e.Parameters["ModelViewMatrix"].SetValue(viewTransform.ModelView);
+        }
+
         /// <summary>
         /// Manually sets the view transform of all material(s) owned by this material set without changing the ViewTransform field.
         /// </summary>
         /// <param name="viewTransform">The view transform to apply.</param>
         public void ApplyViewTransform (ref ViewTransform viewTransform) {
-            foreach (var m in AllMaterials) {
-                var em = m as IEffectMaterial;
+            foreach (var field in AllMaterialFields) {
+                var material = field();
 
-                if (em == null)
+                ApplyViewTransformToMaterial(material, ref viewTransform);
+            }
+
+            foreach (var sequence in AllMaterialSequences) {
+                var seq = sequence();
+                if (seq == null)
                     continue;
 
-                var e = em.Effect;
-                if (e == null)
-                    continue;
-
-                e.Parameters["ViewportScale"].SetValue(viewTransform.Scale);
-                e.Parameters["ViewportPosition"].SetValue(viewTransform.Position);
-                e.Parameters["ProjectionMatrix"].SetValue(viewTransform.Projection);
-                e.Parameters["ModelViewMatrix"].SetValue(viewTransform.ModelView);
+                foreach (var material in seq) {
+                    ApplyViewTransformToMaterial(material, ref viewTransform);
+                }
             }
         }
 

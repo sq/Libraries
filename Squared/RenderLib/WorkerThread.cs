@@ -22,7 +22,7 @@ namespace Squared.Render.Internal {
         private volatile Exception _PendingError = null;
 
         private readonly AutoResetEvent _WakeSignal = new AutoResetEvent(false);
-        private readonly ManualResetEventSlim _CompletedSignal = new ManualResetEventSlim(false);
+        private readonly ManualResetEventSlim _CompletedSignal = new ManualResetEventSlim(true);
         private readonly ManualResetEventSlim _StartedSignal = new ManualResetEventSlim(false);
 
         private volatile bool _Disposed = false;
@@ -32,17 +32,30 @@ namespace Squared.Render.Internal {
 
             Thread = new Thread(WorkerFn);
             Thread.IsBackground = true;
+#if SDL2
+            // :trollface: -flibit
+            if (function.Method.Name.Equals("ThreadedDraw"))
+            {
+                return;
+            }
+            else
+            {
+                System.Console.WriteLine("WorkerThread used with " + function.Method.Name);
+                throw new Exception("This is used for something?! -flibit");
+            }
+#else
             Thread.Start();
+#endif
         }
 
         public void RequestWork () {
+            if (_ThreadRunning == 0)
+                _StartedSignal.Wait();
+
             if (_ThreadWaiting == 0)
                 WaitForPendingWork();
 
             Interlocked.Increment(ref _PendingWork);
-
-            if (_ThreadRunning == 0)
-                _StartedSignal.Wait();
 
             _CompletedSignal.Reset();
             _WakeSignal.Set();
@@ -53,8 +66,7 @@ namespace Squared.Render.Internal {
             if (pe != null)
                 throw pe;
 
-            while ((_ThreadWaiting == 0) || (_PendingWork != 0))
-                _CompletedSignal.Wait();
+            _CompletedSignal.Wait();
         }
 
         private void WorkerFn () {
@@ -89,6 +101,10 @@ namespace Squared.Render.Internal {
         public void Dispose () {
             _Disposed = true;
             _WakeSignal.Set();
+#if SDL2
+            // :trollface part 2 electric nothreadsaboo: -flibit
+            if (Thread.IsAlive)
+#endif
             Thread.Join();
             _CompletedSignal.Set();
         }

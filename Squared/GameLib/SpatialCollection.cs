@@ -586,5 +586,18 @@ namespace Squared.Game {
                 return _Partition.Sectors;
             }
         }
+
+        public void CopyTo (T[] buffer, int offset = 0, int count = int.MaxValue) {
+            if (count > _Items.Count)
+                count = _Items.Count;
+
+            foreach (var item in _Items.Keys) {
+                if (count == 0)
+                    break;
+
+                buffer[offset++] = item;
+                count--;
+            }
+        }
     }
 }

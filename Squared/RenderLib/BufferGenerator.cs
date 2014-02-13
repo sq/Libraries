@@ -155,13 +155,20 @@ namespace Squared.Render.Internal {
 
                 // Any buffers that remain unused (either from being too small, or being unnecessary now)
                 //  should be disposed.
-                foreach (var hb in _UnusedHardwareBuffers)
-                    hb.Dispose();
+                foreach (var hb in _UnusedHardwareBuffers) {
+                    // HACK
+                    if (hb != null)
+                        hb.Dispose();
+                }
                 _UnusedHardwareBuffers.Clear();
 
                 // Return any buffers that were used this frame to the unused state.
-                foreach (var hb in _UsedHardwareBuffers.Values)
-                    _UnusedHardwareBuffers.Add(hb.HardwareBuffer);
+                foreach (var hb in _UsedHardwareBuffers.Values) {
+                    // HACK
+                    if (hb.HardwareBuffer != null)
+                        _UnusedHardwareBuffers.Add(hb.HardwareBuffer);
+                }
+
                 _UsedHardwareBuffers.Clear();
 
                 _FlushedToBuffers = false;
