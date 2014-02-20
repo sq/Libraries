@@ -71,7 +71,8 @@ namespace Squared.Render.Convenience {
             AlphaSourceBlend = Blend.Zero,
             ColorBlendFunction = BlendFunction.Add,
             ColorDestinationBlend = Blend.One,
-            ColorSourceBlend = Blend.Zero
+            ColorSourceBlend = Blend.Zero,
+            ColorWriteChannels = ColorWriteChannels.None
         };
 
         public static readonly RasterizerState ScissorOnly = new RasterizerState {
