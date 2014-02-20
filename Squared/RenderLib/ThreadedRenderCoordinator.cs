@@ -230,6 +230,10 @@ namespace Squared.Render {
                 Monitor.Enter(UseResourceLock);
 
             try {
+                // In D3D builds, this checks to see whether PIX is attached right now
+                //  so that if it's not, we don't waste cpu time/gc pressure on trace messages
+                Tracing.RenderTrace.BeforeFrame();
+
                 if (frame != null) {
                     using (frame) {
                         _DeviceLost |= IsDeviceLost;

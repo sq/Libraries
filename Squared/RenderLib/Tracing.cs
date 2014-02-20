@@ -137,16 +137,33 @@ namespace Squared.Render.Tracing {
 
     public static class RenderTrace {
         private static volatile int TracingBroken = 0;
+        private static volatile bool Cached_IsCurrentlyProfiled = false;
+
+        private static bool EnableTracing {
+            get {
+#if SDL2
+                return (TracingBroken == 0);
+#else
+                return (TracingBroken == 0) && (Cached_IsCurrentlyProfiled);
+#endif
+            }
+        }
+
+        public static void BeforeFrame () {
+#if !SDL2
+            Cached_IsCurrentlyProfiled = D3D9.IsCurrentlyProfiled;
+#endif
+        }
 
         public static void Marker (IBatchContainer container, int layer, string format, params object[] values) {
-            if (TracingBroken != 0)
+            if (!EnableTracing)
                 return;
 
             Marker(container, layer, String.Format(format, values));
         }
 
         public static void Marker (IBatchContainer container, int layer, string name) {
-            if (TracingBroken != 0)
+            if (!EnableTracing)
                 return;
 
             var batch = new MarkerBatch(layer, name);
@@ -154,14 +171,14 @@ namespace Squared.Render.Tracing {
         }
 
         public static void ImmediateMarker (string format, params object[] values) {
-            if (TracingBroken != 0)
+            if (!EnableTracing)
                 return;
 
             ImmediateMarker(String.Format(format, values));
         }
 
         public static void ImmediateMarker (string name) {
-            if (TracingBroken != 0)
+            if (!EnableTracing)
                 return;
 
             try {
