@@ -49,12 +49,6 @@ namespace Squared.Render {
             short sizeColor = 4;
             short sizeV3 = (short)(sizeF * 3);
             short sizeV4 = (short)(sizeF * 4);
-#else
-            short sizeF = (short)Marshal.SizeOf(typeof(float));
-            short sizeColor = (short)Marshal.SizeOf(typeof(Color));
-            short sizeV3 = (short)Marshal.SizeOf(typeof(Vector3));
-            short sizeV4 = (short)Marshal.SizeOf(typeof(Vector4));
-#endif
             
             Elements = new VertexElement[] {
                 new VertexElement( 0, 
@@ -69,14 +63,32 @@ namespace Squared.Render {
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
                 new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor, 
                     VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
-#if PSM
                 new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor * 2, 
                     VertexElementFormat.Single, VertexElementUsage.BlendIndices, 0 )
-#else
-                new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor * 2, 
-                    VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 )
-#endif
             };
+#else
+            var tThis = typeof(BitmapVertex);
+
+            Elements = new VertexElement[] {
+                new VertexElement( Marshal.OffsetOf(tThis, "Position").ToInt32(), 
+                    VertexElementFormat.Vector3, VertexElementUsage.Position, 0 ),
+                // TextureRegion
+                new VertexElement( Marshal.OffsetOf(tThis, "TextureTopLeft").ToInt32(), 
+                    VertexElementFormat.Vector4, VertexElementUsage.Position, 1 ),
+                // ScaleOrigin
+                new VertexElement( Marshal.OffsetOf(tThis, "Scale").ToInt32(), 
+                    VertexElementFormat.Vector4, VertexElementUsage.Position, 2 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "Rotation").ToInt32(), 
+                    VertexElementFormat.Single, VertexElementUsage.Position, 3 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "MultiplyColor").ToInt32(), 
+                    VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "AddColor").ToInt32(), 
+                    VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "Corner").ToInt32(), 
+                    VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 )
+            };
+#endif
+
             _VertexDeclaration = new VertexDeclaration(Elements);
         }
 
