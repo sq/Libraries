@@ -135,6 +135,7 @@
     <Compile Include="ThreadedRenderGame.cs" />
     <Compile Include="Evil.cs" />
     <Compile Include="BufferGenerator.cs" />
+    <Compile Include="Tracing.cs" />
     <Compile Include="WorkerThread.cs" />
   </ItemGroup>
   <ItemGroup>

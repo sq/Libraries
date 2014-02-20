@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>10.0.0</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{4B24FAB3-C67D-4909-8100-9E74B54AC807}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Squared.Task</RootNamespace>
+    <AssemblyName>Squared.Task</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;SDL2;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <DebugType>none</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <ConsolePause>false</ConsolePause>
+    <DefineConstants>SDL2;</DefineConstants>
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Compile Include="BlockingQueue.cs" />
+    <Compile Include="DiskMonitor.cs" />
+    <Compile Include="Future.cs" />
+    <Compile Include="IO.cs" />
+    <Compile Include="JobQueue.cs" />
+    <Compile Include="Network.cs" />
+    <Compile Include="SchedulableGeneratorThunk.cs" />
+    <Compile Include="Sockets.cs" />
+    <Compile Include="TaskScheduler.cs" />
+    <Compile Include="Util.cs" />
+    <Compile Include="Web.cs" />
+    <Compile Include="WorkerThread.cs" />
+    <Compile Include="Data\Connection.cs" />
+    <Compile Include="Data\Mapper.cs" />
+    <Compile Include="Data\Misc.cs" />
+    <Compile Include="Data\PropertySerializer.cs" />
+    <Compile Include="Data\Query.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Util\Squared.Util.SDL2.csproj">
+      <Project>{D3A95FBF-A1C5-45D0-839F-B155D7B10272}</Project>
+      <Name>Squared.Util.SDL2</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Win32.cs" />
+  </ItemGroup>
+</Project>

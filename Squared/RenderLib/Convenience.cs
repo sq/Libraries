@@ -65,6 +65,15 @@ namespace Squared.Render.Convenience {
             ColorSourceBlend = Blend.One
         };
 
+        public static readonly BlendState DrawNone = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.Zero,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.Zero
+        };
+
         public static readonly RasterizerState ScissorOnly = new RasterizerState {
             CullMode = CullMode.None,
             ScissorTestEnable = true

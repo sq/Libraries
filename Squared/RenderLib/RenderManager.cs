@@ -454,6 +454,8 @@ namespace Squared.Render {
             if (Interlocked.Exchange(ref State, State_Drawing) != State_Prepared)
                 throw new InvalidOperationException();
 
+            Tracing.RenderTrace.ImmediateMarker("Frame {0:0000} : Begin Draw", Index);
+
             var dm = RenderManager.DeviceManager;
             var device = dm.Device;
 
@@ -466,6 +468,8 @@ namespace Squared.Render {
             }
 
             dm.Finish();
+
+            Tracing.RenderTrace.ImmediateMarker("Frame {0:0000} : End Draw", Index);
 
             if (Interlocked.Exchange(ref State, State_Drawn) != State_Drawing)
                 throw new InvalidOperationException();

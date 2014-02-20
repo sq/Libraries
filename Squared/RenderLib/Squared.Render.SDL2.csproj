@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>10.0.0</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{140FFD8A-4ECD-4BBC-AE81-FCC21F9ED36A}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Squared.Render</RootNamespace>
+    <AssemblyName>Squared.Render</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;SDL2;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <ConsolePause>false</ConsolePause>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <ConsolePause>false</ConsolePause>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants>SDL2;</DefineConstants>
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Compile Include="BatchCombiner.cs" />
+    <Compile Include="BufferGenerator.cs" />
+    <Compile Include="Convenience.cs" />
+    <Compile Include="Evil.cs" />
+    <Compile Include="Materials.cs" />
+    <Compile Include="Pools.cs" />
+    <Compile Include="RenderBitmaps.cs" />
+    <Compile Include="RenderGeometry.cs" />
+    <Compile Include="RenderManager.cs" />
+    <Compile Include="RenderPrimitives.cs" />
+    <Compile Include="RenderText.cs" />
+    <Compile Include="ThreadedRenderCoordinator.cs" />
+    <Compile Include="ThreadedRenderGame.cs" />
+    <Compile Include="Tracing.cs" />
+    <Compile Include="WorkerThread.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\MonoGame\ThirdParty\SDL2#\SDL2-CS.csproj">
+      <Project>{85480198-8711-4355-830E-72FD794AD3F6}</Project>
+      <Name>SDL2-CS</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Util\Squared.Util.SDL2.csproj">
+      <Project>{D3A95FBF-A1C5-45D0-839F-B155D7B10272}</Project>
+      <Name>Squared.Util.SDL2</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\MonoGame\MonoGame.Framework\MonoGame.Framework.SDL2.csproj">
+      <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
+      <Name>MonoGame.Framework.SDL2</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\GameLib\Squared.Game.SDL2.csproj">
+      <Project>{B802D543-58A6-4FEA-B182-5BB21B79DFC6}</Project>
+      <Name>Squared.Game.SDL2</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders.resx" />
+    <None Include="Shaders.Designer.cs" />
+  </ItemGroup>
+</Project>
