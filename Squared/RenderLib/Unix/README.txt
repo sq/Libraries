@@ -1,0 +1,1 @@
+To be honest I'm not 100% how to use these, but this folder contains the Unix versions (i.e. MonoGame/FNA) of the shaders for Squared.Render and Illuminant. If you are trying to use S.R/Illuminant on Unix and can't figure this out, let me know.
