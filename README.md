@@ -25,4 +25,4 @@ Also has Linux/Mac support via the FNA MonoGame fork.
 Squared.Game
 ============
 
-Generic utility classes/APIs for XNA game development, including a robust SAT-based collision detection/resolution API.
+Generic utility classes/APIs for XNA game development, including a robust SAT-based collision detection/resolution API and a straightforward spatial partitioning container with efficient updates and iteration (grid-based, not tree-based)
