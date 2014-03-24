@@ -150,6 +150,8 @@ namespace Squared.Render {
         public readonly DeviceManager DeviceManager;
 
         private int _FrameCount = 0;
+        private Dictionary<Type, int> _PreferredPoolCapacities =
+            new Dictionary<Type, int>(new ReferenceComparer<Type>());
         private Dictionary<Type, IArrayPoolAllocator> _ArrayAllocators = 
             new Dictionary<Type, IArrayPoolAllocator>(new ReferenceComparer<Type>());
         private Dictionary<Type, IBatchPool> _BatchAllocators =
@@ -251,11 +253,14 @@ namespace Squared.Render {
 
             var t = typeof(T);
             IBatchPool p;
-            lock (_BatchAllocators)
+            lock (_BatchAllocators) {
+                _PreferredPoolCapacities[t] = newCapacity;
+
                 if (_BatchAllocators.TryGetValue(t, out p)) {
                     p.SetCapacity(newCapacity);
                     return true;
                 }
+            }
 
             return false;
         }
@@ -320,6 +325,10 @@ namespace Squared.Render {
                         _BatchAllocators[t] = allocator;
                     else
                         allocator = (BatchPool<T>)p;
+
+                    int desiredCapacity;
+                    if (_PreferredPoolCapacities.TryGetValue(t, out desiredCapacity))
+                        allocator.SetCapacity(desiredCapacity);
                 }
             } else {
                 allocator = (BatchPool<T>)p;
@@ -371,6 +380,8 @@ namespace Squared.Render {
         private const int State_Drawn = 4;
         private const int State_Disposed = 5;
 
+        private static readonly object PrepareLock = new object();
+
         public static IComparer<Batch> BatchComparer = new BatchComparer();
 
         private static ListPool<Batch> _ListPool = new ListPool<Batch>(
@@ -419,7 +430,7 @@ namespace Squared.Render {
 
         public void Prepare (bool parallel) {
             if (Interlocked.Exchange(ref State, State_Preparing) != State_Initialized)
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("Frame was not in initialized state when prepare operation began ");
 
             BatchCombiner.CombineBatches(Batches);
 
@@ -429,13 +440,21 @@ namespace Squared.Render {
             Batches.Sort(BatchComparer);
 #endif
 
-            if (parallel)
-                RenderManager.ParallelPrepare(this);
-            else
-                PrepareSubset(0, Batches.Count);
+            if (!Monitor.TryEnter(PrepareLock, 5000)) {
+                throw new InvalidOperationException("Spent more than five seconds waiting for a previous prepare operation.");
+            }
+
+            try {
+                if (parallel)
+                    RenderManager.ParallelPrepare(this);
+                else
+                    PrepareSubset(0, Batches.Count);
+            } finally {
+                Monitor.Exit(PrepareLock);
+            }
 
             if (Interlocked.Exchange(ref State, State_Prepared) != State_Preparing)
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("Frame was not in preparing state when prepare operation completed");
         }
 
         internal void PrepareSubset (int start, int count) {

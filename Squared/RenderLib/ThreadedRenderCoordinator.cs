@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
 using Microsoft.Xna.Framework;
@@ -130,7 +131,16 @@ namespace Squared.Render {
                 WorkStopwatch.Stop();
 
             WaitStopwatch.Start();
-            _DrawThread.WaitForPendingWork();
+            try {
+                _DrawThread.WaitForPendingWork();
+            } catch (DeviceLostException) {
+                _DeviceLost = true;
+            } catch (ObjectDisposedException) {
+                if (Device.IsDisposed)
+                    _Running = false;
+                else
+                    throw;
+            }
             WaitStopwatch.Stop();
 
             if (working)
@@ -266,6 +276,11 @@ namespace Squared.Render {
                 _DeviceLost |= IsDeviceLost;
             } catch (DeviceLostException) {
                 _DeviceLost = true;
+            } catch (ObjectDisposedException) {
+                if (Device.IsDisposed)
+                    _Running = false;
+                else
+                    throw;
             } finally {
                 Interlocked.Decrement(ref _DrawDepth);
             }
@@ -333,16 +348,18 @@ namespace Squared.Render {
 
         public void Dispose () {
             _Running = false;
-   
-            if (_DrawThread != null) {
-                if (EnableThreading)
-                    WaitForPendingWork();
 
-                _DrawThread.Dispose();
-                _DrawThread = null;
+            try {
+                if (_DrawThread != null) {
+                    _DrawThread.Dispose();
+                    _DrawThread = null;
+                }
+
+                FlushPendingDisposes();
+            } catch (ObjectDisposedException) {
+            } catch (DeviceLostException) {
+            } catch (DeviceNotResetException) {
             }
-
-            FlushPendingDisposes();
         }
 
         private void FlushPendingDisposes () {
@@ -357,8 +374,12 @@ namespace Squared.Render {
                 _PendingDisposes.Clear();
             }
 
-            foreach (var pd in pds)
-                pd.Dispose();
+            foreach (var pd in pds) {
+                try {
+                    pd.Dispose();
+                } catch (ObjectDisposedException) {
+                }
+            }
         }
 
         public void DisposeResource (IDisposable resource) {
