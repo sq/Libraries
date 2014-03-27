@@ -10,6 +10,157 @@ using Microsoft.Xna.Framework;
 using System.Reflection;
 
 namespace Squared.Render {
+    public class DynamicStringLayout {
+        private StringLayout? _CachedStringLayout;
+
+        private SpriteFont _Font;
+        private string _Text;
+        private Vector2 _Position = Vector2.Zero;
+        private Color _Color = Color.White;
+        private float _Scale = 1;
+        private float _SortKey = 0;
+        private int _CharacterSkipCount = 0;
+        private int _CharacterLimit = int.MaxValue;
+        private float _XOffsetOfFirstLine = 0;
+        private float? _LineBreakAtX = null;
+
+        public DynamicStringLayout (SpriteFont font, string text = "") {
+            _Font = font;
+            _Text = text;
+        }
+
+        private void InvalidatingNullableAssignment<T> (ref Nullable<T> destination, Nullable<T> newValue)
+            where T : struct, IEquatable<T> {
+            if (!destination.Equals(newValue)) {
+                destination = newValue;
+                _CachedStringLayout = null;
+            }
+        }
+
+        private void InvalidatingValueAssignment<T> (ref T destination, T newValue) 
+            where T : struct, IEquatable<T>
+        {
+            if (!destination.Equals(newValue)) {
+                destination = newValue;
+                _CachedStringLayout = null;
+            }
+        }
+
+        private void InvalidatingReferenceAssignment<T> (ref T destination, T newValue)
+            where T : class
+        {
+            if (destination != newValue) {
+                destination = newValue;
+                _CachedStringLayout = null;
+            }
+        }
+
+        public string Text {
+            get {
+                return _Text;
+            }
+            set {
+                InvalidatingReferenceAssignment(ref _Text, value);
+            }
+        }
+
+        public SpriteFont Font {
+            get {
+                return _Font;
+            }
+            set {
+                InvalidatingReferenceAssignment(ref _Font, value);
+            }
+        }
+
+        public Vector2 Position {
+            get {
+                return _Position;
+            }
+            set {
+                InvalidatingValueAssignment(ref _Position, value);
+            }
+        }
+
+        public Color Color {
+            get {
+                return _Color;
+            }
+            set {
+                InvalidatingValueAssignment(ref _Color, value);
+            }
+        }
+
+        public float Scale {
+            get {
+                return _Scale;
+            }
+            set {
+                InvalidatingValueAssignment(ref _Scale, value);
+            }
+        }
+
+        public float SortKey {
+            get {
+                return _SortKey;
+            }
+            set {
+                InvalidatingValueAssignment(ref _SortKey, value);
+            }
+        }
+
+        public int CharacterSkipCount {
+            get {
+                return _CharacterSkipCount;
+            }
+            set {
+                InvalidatingValueAssignment(ref _CharacterSkipCount, value);
+            }
+        }
+
+        public int CharacterLimit {
+            get {
+                return _CharacterLimit;
+            }
+            set {
+                InvalidatingValueAssignment(ref _CharacterLimit, value);
+            }
+        }
+
+        public float XOffsetOfFirstLine {
+            get {
+                return _XOffsetOfFirstLine;
+            }
+            set {
+                InvalidatingValueAssignment(ref _XOffsetOfFirstLine, value);
+            }
+        }
+
+        public float? LineBreakAtX {
+            get {
+                return _LineBreakAtX;
+            }
+            set {
+                InvalidatingNullableAssignment(ref _LineBreakAtX, value);
+            }
+        }
+
+        public StringLayout Get () {
+            if (!_CachedStringLayout.HasValue) {
+                // FIXME: Reuse a buffer.
+                _CachedStringLayout = Font.LayoutString(
+                    _Text, null, 
+                    _Position, _Color, 
+                    _Scale, _SortKey, 
+                    _CharacterSkipCount, _CharacterLimit, 
+                    _XOffsetOfFirstLine, _LineBreakAtX
+                );
+            }
+
+            return _CachedStringLayout.Value;
+        }
+    }
+
     public struct StringLayout {
         public readonly Vector2 Position;
         public readonly Vector2 Size;
