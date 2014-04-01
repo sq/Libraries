@@ -738,6 +738,14 @@ namespace Squared.Render {
     }
 
     public class BatchGroup : ListBatch<Batch>, IBatchContainer {
+        private class SetRenderTargetDataPool : BaseObjectPool<SetRenderTargetData> {
+            protected override SetRenderTargetData AllocateNew () {
+                return new SetRenderTargetData();
+            }
+        }
+
+        private static readonly SetRenderTargetDataPool _Pool = new SetRenderTargetDataPool();
+
         private class SetRenderTargetData {
             public RenderTarget2D RenderTarget;
             public Action<DeviceManager, object> Before;
@@ -804,12 +812,12 @@ namespace Squared.Render {
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
-            var data = new SetRenderTargetData {
-                RenderTarget = renderTarget,
-                Before = before,
-                After = after,
-                UserData = userData
-            };
+            var data = _Pool.Allocate();
+
+            data.RenderTarget = renderTarget;
+            data.Before = before;
+            data.After = after;
+            data.UserData = userData;
             result.Initialize(container, layer, SetRenderTargetCallback, RestoreRenderTargetCallback, data);
             result.CaptureStack(0);
 

@@ -137,6 +137,12 @@ namespace Squared.Util {
             _Count = newCount;
         }
 
+        public bool Contains (T item) {
+            var index = Array.IndexOf(_Items, item, 0, _Count);
+            return (index >= 0);
+        }
+
+        // FIXME: These really shouldn't be here
         public void RemoveAt (int index) {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();
@@ -207,6 +213,13 @@ namespace Squared.Util {
             var result = new T[_Count];
             Array.Copy(_Items, result, _Count);
             return result;
+        }
+
+        public void CopyTo (T[] buffer, int offset, int count) {
+            if (count > _Count)
+                count = _Count;
+
+            Array.Copy(_Items, 0, buffer, offset, count);
         }
 
         public void Sort (IComparer<T> comparer = null) {
