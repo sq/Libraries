@@ -635,7 +635,7 @@ namespace Squared.Render {
         protected UnorderedList<T> _DrawCalls;
 
         private static ListPool<T> _ListPool = new ListPool<T>(
-            2048, 128, 1024
+            2048, 128, 4096
         );
 
         new protected void Initialize (IBatchContainer container, int layer, Material material) {

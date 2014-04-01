@@ -10,7 +10,7 @@ using ComTypes = System.Runtime.InteropServices.ComTypes;
 using System.Drawing;
 #endif
 
-#if !WINDOWS
+#if !WINDOWS && !SDL2
 namespace System.IO {
     // Who would ever want to throw exceptions on the XBox? Apparently more people than they thought
     public sealed class InvalidDataException : SystemException {

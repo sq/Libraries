@@ -11,6 +11,7 @@ using System.Reflection;
 
 namespace Squared.Render {
     public class DynamicStringLayout {
+        private GrowableBuffer<BitmapDrawCall> _Buffer = new GrowableBuffer<BitmapDrawCall>(); 
         private StringLayout? _CachedStringLayout;
 
         private SpriteFont _Font;
@@ -147,9 +148,10 @@ namespace Squared.Render {
 
         public StringLayout Get () {
             if (!_CachedStringLayout.HasValue) {
-                // FIXME: Reuse a buffer.
+                _Buffer.EnsureCapacity(_Text.Length);
+
                 _CachedStringLayout = Font.LayoutString(
-                    _Text, null, 
+                    _Text, _Buffer.Buffer, 
                     _Position, _Color, 
                     _Scale, _SortKey, 
                     _CharacterSkipCount, _CharacterLimit, 

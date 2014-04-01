@@ -152,6 +152,12 @@ namespace Squared.Util {
             _Data = null;
         }
 
+        public void EnsureCapacity (int capacity) {
+            var delta = capacity - _Data.Length;
+            if (delta > 0)
+                Grow(delta);
+        }
+
         public void Grow (int extraCharactersNeeded) {
             int newLength = _Length + extraCharactersNeeded;
             int bufferSize = _Data.Length;
@@ -207,6 +213,18 @@ namespace Squared.Util {
             }
             set {
                 _Data[index] = value;
+            }
+        }
+
+        public ArraySegment<T> Buffer {
+            get {
+                return new ArraySegment<T>(_Data, 0, _Data.Length);
+            }
+        }
+
+        public ArraySegment<T> Data {
+            get {
+                return new ArraySegment<T>(_Data, 0, _Length);
             }
         }
 

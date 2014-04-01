@@ -213,6 +213,7 @@ namespace Squared.Render {
         );
 
         public Material ScreenSpaceBitmap, WorldSpaceBitmap;
+        public Material ScreenSpaceBitmapWithDiscard, WorldSpaceBitmapWithDiscard;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
 #if !SDL2
@@ -276,6 +277,16 @@ namespace Squared.Render {
             WorldSpaceBitmap = new EffectMaterial(
                 bitmapShader,
                 "WorldSpaceBitmapTechnique"
+            );
+
+            ScreenSpaceBitmapWithDiscard = new EffectMaterial(
+                bitmapShader,
+                "ScreenSpaceBitmapWithDiscardTechnique"
+            );
+
+            WorldSpaceBitmapWithDiscard = new EffectMaterial(
+                bitmapShader,
+                "WorldSpaceBitmapWithDiscardTechnique"
             );
 
             ScreenSpaceGeometry = new EffectMaterial(

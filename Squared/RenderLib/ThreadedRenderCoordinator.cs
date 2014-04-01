@@ -358,7 +358,9 @@ namespace Squared.Render {
                 FlushPendingDisposes();
             } catch (ObjectDisposedException) {
             } catch (DeviceLostException) {
+#if !SDL2
             } catch (DeviceNotResetException) {
+#endif
             }
         }
 

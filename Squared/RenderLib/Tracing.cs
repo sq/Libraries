@@ -139,7 +139,7 @@ namespace Squared.Render.Tracing {
         private static volatile int TracingBroken = 0;
         private static volatile bool Cached_IsCurrentlyProfiled = false;
 
-        private static bool EnableTracing {
+        public static bool EnableTracing {
             get {
 #if SDL2
                 return (TracingBroken == 0);
