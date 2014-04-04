@@ -540,8 +540,11 @@ namespace Squared.Render {
 
         protected Batch () {
             var thisType = GetType();
-            if (!TypeIds.TryGetValue(thisType, out TypeId))
-                TypeIds.Add(thisType, TypeId = TypeIds.Count);
+
+            lock (TypeIds) {
+                if (!TypeIds.TryGetValue(thisType, out TypeId))
+                    TypeIds.Add(thisType, TypeId = TypeIds.Count);
+            }
         }
 
         protected void Initialize (IBatchContainer container, int layer, Material material) {
