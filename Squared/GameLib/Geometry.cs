@@ -448,6 +448,22 @@ namespace Squared.Game {
             return result;
         }
 
+        public static Interval ProjectOntoAxis (Vector2 axis, Vector2 lineStart, Vector2 lineEnd) {
+            float d = Vector2.Dot(axis, lineStart);
+
+            Interval result = new Interval();
+            result.Min = result.Max = d;
+
+            d = Vector2.Dot(lineEnd, axis);
+
+            if (d < result.Min)
+                result.Min = d;
+            if (d > result.Max)
+                result.Max = d;
+
+            return result;
+        }
+
         public static void GetPolygonAxes (Vector2[] buffer, ref int bufferCount, Polygon polygon) {
             int length = polygon.Count;
             int numAxes = 0;
@@ -613,6 +629,19 @@ namespace Squared.Game {
             intersection = startA + (r * lengthA);
 
             return true;
+        }
+
+        public static bool DoesLineIntersectRectangle (Vector2 start, Vector2 end, Bounds rectangle) {
+            var lineProjectionX = ProjectOntoAxis(Vector2.UnitX, start, end);
+            var rectProjectionX = new Interval(rectangle.TopLeft.X, rectangle.BottomRight.X);
+
+            if (lineProjectionX.Intersects(rectProjectionX))
+                return true;
+
+            var lineProjectionY = ProjectOntoAxis(Vector2.UnitY, start, end);
+            var rectProjectionY = new Interval(rectangle.TopLeft.Y, rectangle.BottomRight.Y);
+
+            return lineProjectionY.Intersects(rectProjectionY);
         }
 
         public static float? LineIntersectPolygon (Vector2 start, Vector2 end, Polygon polygon) {

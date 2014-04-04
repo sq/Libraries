@@ -16,7 +16,33 @@ namespace Squared.Render {
         }
     }
 
-    public class MaterialDictionary<TKey> : Dictionary<TKey, Material>, IDisposable {
+    public interface IMaterialCollection {
+        void ForEachMaterial<T> (Action<Material, T> action, T userData);
+        void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData);
+    }
+
+    public delegate void RefMaterialAction<T> (Material material, ref T userData);
+
+    public class MaterialList : List<Material>, IMaterialCollection, IDisposable {
+        public void ForEachMaterial<T> (Action<Material, T> action, T userData) {
+            foreach (var material in this)
+                action(material, userData);
+        }
+
+        public void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData) {
+            foreach (var material in this)
+                action(material, ref userData);
+        }
+
+        public void Dispose () {
+            foreach (var material in this)
+                material.Dispose();
+
+            Clear();
+        }
+    }
+
+    public class MaterialDictionary<TKey> : Dictionary<TKey, Material>, IDisposable, IMaterialCollection {
         public MaterialDictionary () 
             : base() {
         }
@@ -26,33 +52,52 @@ namespace Squared.Render {
         }
 
         public void Dispose () {
-            foreach (var value in base.Values)
+            foreach (var value in Values)
                 value.Dispose();
 
             Clear();
         }
+
+        public void ForEachMaterial<T> (Action<Material, T> action, T userData) {
+            foreach (var material in Values)
+                action(material, userData);
+        }
+
+        public void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData) {
+            foreach (var material in Values)
+                action(material, ref userData);
+        }
     }
 
     public abstract class MaterialSetBase : IDisposable {
-        protected readonly List<Material> ExtraMaterials = new List<Material>();
+        protected readonly MaterialList ExtraMaterials = new MaterialList();
 
         public readonly Func<Material>[] AllMaterialFields;
         public readonly Func<IEnumerable<Material>>[] AllMaterialSequences;
+        public readonly Func<IMaterialCollection>[] AllMaterialCollections;
 
         public MaterialSetBase() 
             : base() {
 
-            BuildMaterialSets(out AllMaterialFields, out AllMaterialSequences);
+            BuildMaterialSets(out AllMaterialFields, out AllMaterialSequences, out AllMaterialCollections);
         }
 
-        protected void BuildMaterialSets (out Func<Material>[] materialFields, out Func<IEnumerable<Material>>[] materialSequences) {
+        protected void BuildMaterialSets (
+            out Func<Material>[] materialFields, 
+            out Func<IEnumerable<Material>>[] materialSequences,
+            out Func<IMaterialCollection>[] materialCollections 
+        ) {
             var sequences = new List<Func<IEnumerable<Material>>>();
             var fields = new List<Func<Material>>();
+            var collections = new List<Func<IMaterialCollection>>(); 
 
             var tMaterial = typeof(Material);
             var tMaterialDictionary = typeof(MaterialDictionary<>);
 
+            var tMaterialCollection = typeof(IMaterialCollection);
+
             sequences.Add(() => this.ExtraMaterials);
+            collections.Add(() => this.ExtraMaterials);
 
             foreach (var field in this.GetType().GetFields()) {
                 var f = field;
@@ -64,7 +109,10 @@ namespace Squared.Render {
                     fields.Add(
                         () => f.GetValue(this) as Material
                     );
-                } else if (field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == tMaterialDictionary) {
+                } else if (
+                    field.FieldType.IsGenericType && 
+                    field.FieldType.GetGenericTypeDefinition() == tMaterialDictionary
+                ) {
                     var dictType = field.FieldType;
                     var valuesProperty = dictType.GetProperty("Values");
 
@@ -81,11 +129,49 @@ namespace Squared.Render {
                             return values;
                         }
                     );
+                    collections.Add(() => (IMaterialCollection)f.GetValue(this));
+                } else if (
+                    tMaterialCollection.IsAssignableFrom(field.FieldType)
+                ) {
+                    collections.Add(() => (IMaterialCollection)f.GetValue(this));
                 }
             }
 
             materialFields = fields.ToArray();
             materialSequences = sequences.ToArray();
+            materialCollections = collections.ToArray();
+        }
+
+        public void ForEachMaterial<T> (Action<Material, T> action, T userData) {
+            foreach (var field in AllMaterialFields) {
+                var material = field();
+                if (material != null)
+                    action(material, userData);
+            }
+
+            foreach (var collection in AllMaterialCollections) {
+                var coll = collection();
+                if (coll == null)
+                    continue;
+
+                coll.ForEachMaterial(action, userData);
+            }
+        }
+
+        public void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData) {
+            foreach (var field in AllMaterialFields) {
+                var material = field();
+                if (material != null)
+                    action(material, ref userData);
+            }
+
+            foreach (var collection in AllMaterialCollections) {
+                var coll = collection();
+                if (coll == null)
+                    continue;
+
+                coll.ForEachMaterial(action, ref userData);
+            }
         }
 
         public IEnumerable<Material> AllMaterials {
@@ -208,7 +294,7 @@ namespace Squared.Render {
         
         public readonly ContentManager BuiltInShaders;
 
-        protected readonly Dictionary<MaterialCacheKey, Material> MaterialCache = new Dictionary<MaterialCacheKey, Material>(
+        protected readonly MaterialDictionary<MaterialCacheKey> MaterialCache = new MaterialDictionary<MaterialCacheKey>(
             new MaterialCacheKeyComparer()
         );
 
@@ -222,9 +308,12 @@ namespace Squared.Render {
 #endif
         public Material Clear;
 
+        protected readonly RefMaterialAction<ViewTransform> _ApplyViewTransformDelegate; 
         protected readonly Stack<ViewTransform> ViewTransformStack = new Stack<ViewTransform>();
 
         public DefaultMaterialSet (IServiceProvider serviceProvider) {
+            _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
+
 #if SDL2
             BuiltInShaders = new ContentManager(serviceProvider, "Content/SquaredRender");
 #elif !PSM
@@ -474,21 +563,7 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="viewTransform">The view transform to apply.</param>
         public void ApplyViewTransform (ref ViewTransform viewTransform) {
-            foreach (var field in AllMaterialFields) {
-                var material = field();
-
-                ApplyViewTransformToMaterial(material, ref viewTransform);
-            }
-
-            foreach (var sequence in AllMaterialSequences) {
-                var seq = sequence();
-                if (seq == null)
-                    continue;
-
-                foreach (var material in seq) {
-                    ApplyViewTransformToMaterial(material, ref viewTransform);
-                }
-            }
+            ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
         }
 
         /// <summary>

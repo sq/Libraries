@@ -58,7 +58,7 @@ namespace Squared.Render {
     }
 
     public abstract class BaseObjectPool<T>
-        where T : class, new() {
+        where T : class {
 
         private UnorderedList<T> _Pool;
 
