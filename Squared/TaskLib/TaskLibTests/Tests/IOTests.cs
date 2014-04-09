@@ -303,6 +303,21 @@ namespace Squared.Task.IO {
             } catch (OperationPendingException) {
             }
         }
+
+        [Test]
+        public void DisposeAndGetRemainingBytes () {
+            WriteTestData("abcd\r\nefgh\0ijkl");
+            RewindStream();
+
+            var fLine = Reader.ReadLine();
+            fLine.GetCompletionEvent().Wait();
+
+            Assert.AreEqual("abcd", fLine.Result);
+
+            var remainingBytes = Reader.DisposeAndGetRemainingBytes();
+
+            Assert.AreEqual("efgh\0ijkl", Encoding.ASCII.GetString(remainingBytes.Array, remainingBytes.Offset, remainingBytes.Count));
+        }
     }
 
     [TestFixture]

@@ -114,8 +114,15 @@ namespace Squared.Task.Http {
         private IEnumerator<object> RequestTask (ListenerContext context, Socket socket) {
             const int bufferSize = 8192;
 
+            Encoding headerEncoding;
+            try {
+                headerEncoding = Encoding.GetEncoding("ISO-8859-1");
+            } catch {
+                headerEncoding = Encoding.ASCII;
+            }
+
             using (var adapter = new SocketDataAdapter(socket))
-            using (var reader = new AsyncTextReader(adapter, Encoding.UTF8, bufferSize)) {
+            using (var reader = new AsyncTextReader(adapter, headerEncoding, bufferSize)) {
                 var headers = new RequestHeaders();
 
                 var fRequestLine = reader.ReadLine();

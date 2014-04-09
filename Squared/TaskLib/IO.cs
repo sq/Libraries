@@ -75,13 +75,19 @@ namespace Squared.Task.IO {
             }
         }
 
+        internal bool IsOperationPending {
+            get {
+                return (_PendingOperation != null);
+            }
+        }
+
         internal void SetPendingOperation (IFuture f) {
-            if (Interlocked.CompareExchange<IFuture>(ref _PendingOperation, f, null) != null)
+            if (Interlocked.CompareExchange(ref _PendingOperation, f, null) != null)
                 throw new OperationPendingException();
         }
 
         internal void ClearPendingOperation (IFuture f) {
-            if (Interlocked.CompareExchange<IFuture>(ref _PendingOperation, null, f) != f)
+            if (Interlocked.CompareExchange(ref _PendingOperation, null, f) != f)
                 throw new InvalidOperationException();
         }
 
@@ -456,6 +462,8 @@ namespace Squared.Task.IO {
 
         byte[] _InputBuffer;
         char[] _DecodedBuffer;
+        int _InputBufferCount = 0;
+        int _InputBufferOffset = 0;
         int _DecodedCharacterCount = 0;
         int _DecodedCharacterOffset = 0;
 
@@ -499,6 +507,31 @@ namespace Squared.Task.IO {
             return _DataSource.Read(_InputBuffer, 0, _BufferSize);
         }
 
+        private void DecodeBuffer (int bytesInBuffer) {
+            _DecodedCharacterOffset = 0;
+            _DecodedCharacterCount = 0;
+            _InputBufferOffset = 0;
+            _InputBufferCount = bytesInBuffer;
+
+            int characterWriteOffset = 0, characterWriteCapacity = _DecodedBuffer.Length;
+            bool completed = false;
+
+            while (!completed) {
+                int bytesUsed, charsUsed;
+                _Decoder.Convert(
+                    _InputBuffer, _InputBufferOffset, _InputBufferCount,
+                    _DecodedBuffer, characterWriteOffset, characterWriteCapacity,
+                    false, out bytesUsed, out charsUsed, out completed
+                );
+
+                _InputBufferOffset += bytesUsed;
+                _InputBufferCount -= bytesUsed;
+                characterWriteOffset += charsUsed;
+                characterWriteCapacity -= charsUsed;
+                _DecodedCharacterCount += charsUsed;
+            }
+        }
+
         private Future<int> DecodeMoreData () {
             var f = new Future<int>();
             var readData = ReadMoreData();
@@ -514,12 +547,11 @@ namespace Squared.Task.IO {
                     return;
                 }
 
-                int bytesRead = (int)(_.Result);
+                var bytesRead = (int)_.Result;
 
                 try {
-                    _DecodedCharacterOffset = 0;
-                    _DecodedCharacterCount = 0;
-                    _DecodedCharacterCount = _Decoder.GetChars(_InputBuffer, 0, bytesRead, _DecodedBuffer, 0);
+                    DecodeBuffer(bytesRead);
+                    
                     f.Complete(_DecodedCharacterCount);
                 } catch (FutureHandlerException) {
                     throw;
@@ -677,6 +709,38 @@ namespace Squared.Task.IO {
             };
 
             return thunk.Run();
+        }
+
+        public ArraySegment<byte> DisposeAndGetRemainingBytes () {
+            if (IsOperationPending)
+                throw new InvalidOperationException("Cannot be invoked while a read operation is pending.");
+
+            // FIXME: We're gonna choke on characters that span buffer boundaries. WELP.
+            _Decoder.Reset();
+
+            // HACK: We re-run the decode operation, but this time with a character limit
+            //  set to how many characters we've read. This lets us figure out exactly
+            //  how many bytes we used and how many are remaining.
+            var totalBytesInBuffer = _InputBufferOffset + _InputBufferCount;
+            int bytesUsed, charsUsed;
+            bool completed;
+            _Decoder.Convert(
+                _InputBuffer, 0, totalBytesInBuffer,
+                _DecodedBuffer, 0, _DecodedCharacterOffset, true,
+                out bytesUsed, out charsUsed, out completed
+            );
+
+            var bytesRemaining = totalBytesInBuffer - bytesUsed;
+            if (bytesRemaining < 0)
+                bytesRemaining = 0;
+
+            var result = new ArraySegment<byte>(
+                _InputBuffer, bytesUsed, bytesRemaining
+            );
+
+            Dispose();
+
+            return result;
         }
     }
 
