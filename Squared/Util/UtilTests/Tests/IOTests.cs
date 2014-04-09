@@ -47,8 +47,7 @@ namespace Squared.Util {
                 @"dirB\",
                 @"dirC\",
                 @"dirA\subdirA_A\",
-                @"dirA\subdirA_B\",
-                @"dirB\subdirB_A\"
+                @"dirA\subdirA_B\"
             };
             expected = (from x in expected select DataPath + x).ToArray();
 
