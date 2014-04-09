@@ -1,107 +1,39 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Squared.Task.IO;
 
 namespace Squared.Task.Http {
-    public class HttpServer : IDisposable {
-        public class EndPointList : IEnumerable<EndPoint> {
-            public readonly HttpServer Owner;
-            private readonly HashSet<EndPoint> EndPoints = new HashSet<EndPoint>();  
-
-            internal EndPointList (HttpServer owner) {
-                Owner = owner;
-            }
-
-            private void CheckInvariant () {
-                if ((Owner == null) || Owner.IsDisposed)
-                    throw new ObjectDisposedException("Owner");
-
-                if (Owner.IsListening)
-                    throw new InvalidOperationException("Endpoint list may not be modified while server is listening");
-            }
-
-            public void Add (EndPoint endPoint) {
-                CheckInvariant();
-
-                EndPoints.Add(endPoint);
-            }
-
-            public void Add (params EndPoint[] endPoints) {
-                CheckInvariant();
-
-                foreach (var ep in endPoints)
-                    EndPoints.Add(ep);
-            }
-
-            public bool Remove (EndPoint endPoint) {
-                CheckInvariant();
-
-                return EndPoints.Remove(endPoint);
-            }
-
-            public EndPoint[] ToArray () {
-                return EndPoints.ToArray();
-            }
-
-            public int Count {
-                get {
-                    return EndPoints.Count;
-                }
-            }
-
-            public IEnumerator<EndPoint> GetEnumerator () {
-                return EndPoints.GetEnumerator();
-            }
-
-            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
-                return EndPoints.GetEnumerator();
-            }
-        }
-
-        private class ListenerContext : IDisposable {
-            public readonly EndPoint[] EndPoints;
-            public readonly Socket[] Sockets;
-            public readonly SignalFuture Started = new SignalFuture();
-
-            public ListenerContext (IEnumerable<EndPoint> endPoints) {
-                EndPoints = endPoints.ToArray();
-                Sockets = new Socket[EndPoints.Length];
-            }
-
-            public void BindAll () {
-                for (var i = 0; i < EndPoints.Length; i++) {
-                    var endPoint = EndPoints[i];
-                    var socket = Sockets[i] = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.IP);
-                    socket.Bind(endPoint);
-                }
-            }
-
-            public void Dispose () {
-                for (var i = 0; i < Sockets.Length; i++) {
-                    if (Sockets[i] != null)
-                        Sockets[i].Dispose();
-
-                    Sockets[i] = null;
-                }
-
-                Started.Dispose();
-            }
-        }
-
+    public partial class HttpServer : IDisposable {
         public readonly TaskScheduler Scheduler;
         public readonly EndPointList EndPoints;
 
+        /// <summary>
+        /// Handles any errors not processed by the listener/request error handlers.
+        /// </summary>
+        public BackgroundTaskErrorHandler ErrorHandler;
+        /// <summary>
+        /// Handles errors that occur during socket listening.
+        /// </summary>
         public BackgroundTaskErrorHandler ListenerErrorHandler;
+        /// <summary>
+        /// Handles errors that occur during request processing.
+        /// </summary>
+        public BackgroundTaskErrorHandler RequestErrorHandler;
 
-        private IFuture _ActiveListener = null;
+        private IFuture ActiveListener = null;
+        private readonly BlockingQueue<Request> IncomingRequests = new BlockingQueue<Request>();
+
+        private readonly OnComplete RequestOnComplete;
 
         public HttpServer (TaskScheduler scheduler) {
             EndPoints = new EndPointList(this);
 
             Scheduler = scheduler;
+
+            RequestOnComplete = _RequestOnComplete;
         }
 
         public bool IsDisposed {
@@ -111,7 +43,7 @@ namespace Squared.Task.Http {
 
         public bool IsListening {
             get {
-                return (_ActiveListener != null) && !_ActiveListener.Completed;
+                return !IsDisposed && (ActiveListener != null) && !ActiveListener.Completed;
             }
         }
 
@@ -119,30 +51,87 @@ namespace Squared.Task.Http {
             if (IsListening)
                 throw new InvalidOperationException("Already listening");
 
-            var context = new ListenerContext(EndPoints.ToArray());
-            _ActiveListener = Scheduler.Start(ListenerTask(context));
+            var context = new ListenerContext(this);
+            ActiveListener = Scheduler.Start(ListenerTask(context));
+            ActiveListener.RegisterOnComplete((_) => {
+                if (_.Failed)
+                    OnListenerError(_.Error);
+            });
 
             return context.Started;
         }
 
+        internal void OnError (Exception exc) {
+            if (
+                (ErrorHandler == null) ||
+                !ErrorHandler(exc)
+            )
+                Scheduler.OnTaskError(exc);
+        }
+
+        internal void OnListenerError (Exception exc) {
+            if (
+                (ListenerErrorHandler == null) || 
+                !ListenerErrorHandler(exc)
+            )
+                OnError(new Exception("Error while listening for http requests", exc));
+        }
+
+        internal void OnRequestError (Exception exc) {
+            if (
+                (RequestErrorHandler == null) ||
+                !RequestErrorHandler(exc)
+            )
+                OnError(new Exception("Error while handling request", exc));
+        }
+
+        private void _RequestOnComplete (IFuture future) {
+            if (future.Failed)
+                OnRequestError(future.Error);
+        }
+
+        public Future<Request> AcceptRequest () {
+            return IncomingRequests.Dequeue();
+        }
+
         private IEnumerator<object> ListenerTask (ListenerContext context) {
             using (context) {
-                yield return Future.RunInThread(context.BindAll);
-
-                context.Started.Complete();
+                yield return Future.RunInThread(context.Start);
 
                 var wfns = new WaitForNextStep();
+                var acceptedConnections = new List<Socket>();
+                const int connectionsToAcceptPerStep = 4;
+                Future<Socket> acceptedConnection = null;
 
                 while (true) {
-                    yield return wfns;
+                    if (acceptedConnection != null) {
+                        if (acceptedConnection.Failed)
+                            OnListenerError(acceptedConnection.Error);
+                        else
+                            acceptedConnections.Add(acceptedConnection.Result);
+                    }
+
+                    context.IncomingConnections.DequeueMultiple(
+                        acceptedConnections, connectionsToAcceptPerStep
+                    );
+
+                    foreach (var ac in acceptedConnections) {
+                        var fRequest = Scheduler.Start(RequestTask(context, ac));
+                        fRequest.RegisterOnComplete(RequestOnComplete);
+                    }
+
+                    acceptedConnections.Clear();
+                    acceptedConnection = context.IncomingConnections.Dequeue();
+
+                    yield return acceptedConnection;
                 }
             }
         }
 
         public void StopListening () {
-            if (_ActiveListener != null) {
-                _ActiveListener.Dispose();
-                _ActiveListener = null;
+            if (ActiveListener != null) {
+                ActiveListener.Dispose();
+                ActiveListener = null;
             }
         }
 
@@ -150,10 +139,10 @@ namespace Squared.Task.Http {
             if (IsDisposed)
                 return;
 
-            IsDisposed = true;
-
             if (IsListening)
                 StopListening();
+
+            IsDisposed = true;
         }
     }
 }

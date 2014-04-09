@@ -136,6 +136,9 @@ namespace Squared.Task {
         }
     }
 
+    /// <summary>Responsible for filtering/handling errors.</summary>
+    /// <param name="error">The error.</param>
+    /// <returns>True if the error has been fully processed; false to allow the error to propagate up the stack and/or get rethrown on the main thread.</returns>
     public delegate bool BackgroundTaskErrorHandler (Exception error);
 
     public class TaskScheduler : IDisposable {
@@ -328,27 +331,49 @@ namespace Squared.Task {
             return WaitFor(f);
         }
 
-        public T WaitFor<T> (Future<T> future) {
+        public T WaitFor<T> (Future<T> future, double? timeout = null) {
             if (_IsDisposed)
                 throw new ObjectDisposedException("TaskScheduler");
+
+            DateTime started = default(DateTime);
+            if (timeout.HasValue)
+                started = DateTime.UtcNow;
 
             while (true) {
                 BeforeStep();
 
                 if (_JobQueue.WaitForFuture(future))
                     return future.Result;
+
+                if (timeout.HasValue) {
+                    var elapsed = DateTime.UtcNow - started;
+
+                    if (elapsed.TotalSeconds >= timeout)
+                        throw new TimeoutException();
+                }
             }
         }
 
-        public object WaitFor (IFuture future) {
+        public object WaitFor (IFuture future, double? timeout = null) {
             if (_IsDisposed)
                 throw new ObjectDisposedException("TaskScheduler");
+
+            DateTime started = default(DateTime);
+            if (timeout.HasValue)
+                started = DateTime.UtcNow;
 
             while (true) {
                 BeforeStep();
 
                 if (_JobQueue.WaitForFuture(future))
                     return future.Result;
+
+                if (timeout.HasValue) {
+                    var elapsed = DateTime.UtcNow - started;
+
+                    if (elapsed.TotalSeconds >= timeout)
+                        throw new TimeoutException();
+                }
             }
         }
 

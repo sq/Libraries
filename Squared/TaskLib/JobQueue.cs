@@ -14,9 +14,17 @@ namespace Squared.Task {
     }
 
     public interface IJobQueue : IDisposable {
+        /// <summary>Adds a work item to the end of the job queue.</summary>
         void QueueWorkItem (Action item);
+        /// <summary>Pumps the job queue, processing all the work items it contains.</summary>
         void Step ();
+        /// <summary>Pumps the job queue until it is out of work items or the future is completed, whichever comes first.</summary>
+        /// <param name="future">The future to wait for.</param>
+        /// <returns>True if the future was completed before pumping stopped, false otherwise.</returns>
         bool WaitForFuture (IFuture future);
+        /// <summary>Waits until a work item is added to the queue or the timeout elapses, whichever comes first.</summary>
+        /// <param name="timeout">The amount of time to wait (in seconds)</param>
+        /// <returns>True if a work item was added to the queue before the timeout, false otherwise.</returns>
         bool WaitForWorkItems (double timeout);
         int Count { get; }
     }
