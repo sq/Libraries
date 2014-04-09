@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Squared.Task.IO;
+using Squared.Util;
 
 namespace Squared.Task.Http {
     public partial class HttpServer {
@@ -144,6 +146,22 @@ namespace Squared.Task.Http {
                 return Scheduler.Start(SendResponseTask(responseText, responseEncoding));
             }
 
+            public IFuture SendResponse (ArraySegment<byte> response) {
+                if (ResponseSent)
+                    throw new InvalidOperationException("Response already sent");
+                ResponseSent = true;
+
+                return Scheduler.Start(SendResponseTask(response));
+            }
+
+            public IFuture SendResponse (Stream source, int? count = null) {
+                if (ResponseSent)
+                    throw new InvalidOperationException("Response already sent");
+                ResponseSent = true;
+
+                return Scheduler.Start(SendResponseTask(source, count));
+            }
+
             private IEnumerator<object> SendResponseTask (string text, Encoding encoding) {
                 var fEncodedBytes = Future.RunInThread(
                     () => encoding.GetBytes(text)
@@ -153,7 +171,13 @@ namespace Squared.Task.Http {
                 if (ContentType == null)
                     ContentType = "text/plain";
 
-                ContentLength = fEncodedBytes.Result.Length;
+                yield return SendResponseTask(
+                    new ArraySegment<byte>(fEncodedBytes.Result, 0, fEncodedBytes.Result.Length)
+                );
+            }
+
+            private IEnumerator<object> SendResponseTask (ArraySegment<byte> payload) {
+                ContentLength = payload.Count;
 
                 if (!HeadersSent) {
                     HeadersSent = true;
@@ -161,9 +185,37 @@ namespace Squared.Task.Http {
                 }
 
                 ResponseSent = true;
-                yield return Adapter.Write(fEncodedBytes.Result, 0, fEncodedBytes.Result.Length);
+                yield return Adapter.Write(payload.Array, payload.Offset, payload.Count);
+            }
 
-                // yield return Adapter.Write(ResponseEpilogue, 0, ResponseEpilogue.Length);
+            private IEnumerator<object> SendResponseTask (Stream source, int? count) {
+                var length = Math.Min(
+                    (int)source.Length, 
+                    count.GetValueOrDefault(int.MaxValue)
+                );
+                ContentLength = length;
+
+                if (!HeadersSent) {
+                    HeadersSent = true;
+                    yield return SendHeadersTask();
+                }
+
+                ResponseSent = true;
+
+                const int blockSize = 1024 * 128;
+                var bytesLeft = length;
+
+                using (var sda = new StreamDataAdapter(source, false))
+                using (var buffer = BufferPool<byte>.Allocate(blockSize))
+                while (bytesLeft > 0) {
+                    var readSize = Math.Min(blockSize, bytesLeft);
+                    var fBlock = sda.Read(buffer.Data, 0, blockSize);
+                    yield return fBlock;
+
+                    bytesLeft -= fBlock.Result;
+
+                    yield return Adapter.Write(buffer.Data, 0, fBlock.Result);
+                }
             }
 
             internal void SendAndDispose () {
