@@ -8,7 +8,7 @@ using System.Text;
 namespace Squared.Task.Http {
     public partial class HttpServer {
         private class ListenerContext : IDisposable {
-            public const int QueueSize = 8;
+            public const int QueueSize = 16;
 
             public readonly HttpServer Server;
             public readonly EndPoint[] EndPoints;

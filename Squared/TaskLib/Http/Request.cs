@@ -24,6 +24,8 @@ namespace Squared.Task.Http {
             public readonly RequestBody Body;
             public readonly Response Response;
 
+            private QueryStringCollection _QueryString = null;
+
             internal Request (
                 HttpServer server, SocketDataAdapter adapter, bool shouldKeepAlive,
                 RequestLine line, HeaderCollection headers, RequestBody body
@@ -44,6 +46,15 @@ namespace Squared.Task.Http {
             public bool IsDisposed {
                 get;
                 private set;
+            }
+
+            public QueryStringCollection QueryString {
+                get {
+                    if (_QueryString == null)
+                        _QueryString = new QueryStringCollection(Line.Uri.Query, true);
+
+                    return _QueryString;
+                }
             }
 
             public HttpServer Server {

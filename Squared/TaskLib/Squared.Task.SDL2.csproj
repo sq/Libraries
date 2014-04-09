@@ -36,6 +36,14 @@
     <Compile Include="BlockingQueue.cs" />
     <Compile Include="DiskMonitor.cs" />
     <Compile Include="Future.cs" />
+    <Compile Include="Http\Events.cs" />
+    <Compile Include="Http\Header.cs" />
+    <Compile Include="Http\AsyncDataAdapterShim.cs" />
+    <Compile Include="Http\Request.cs" />
+    <Compile Include="Http\EndPointList.cs" />
+    <Compile Include="Http\HttpServer.cs" />
+    <Compile Include="Http\ListenerContext.cs" />
+    <Compile Include="Http\Response.cs" />
     <Compile Include="IO.cs" />
     <Compile Include="JobQueue.cs" />
     <Compile Include="Network.cs" />
