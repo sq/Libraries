@@ -8,6 +8,7 @@ using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Text.RegularExpressions;
 using Squared.Task.IO;
+using Squared.Util;
 
 namespace Squared.Task.Http {
     public partial class HttpServer {
@@ -15,11 +16,16 @@ namespace Squared.Task.Http {
             public readonly HttpServer Server;
             public readonly RequestLine Line;
             public readonly RequestHeaders Headers;
+            public readonly RequestBody Body;
 
-            internal Request (HttpServer server, RequestLine line, RequestHeaders headers) {
+            internal Request (
+                HttpServer server, RequestLine line, 
+                RequestHeaders headers, RequestBody body
+            ) {
                 Server = server;
                 Line = line;
                 Headers = headers;
+                Body = body;
             }
 
             public override string ToString() {
@@ -111,9 +117,45 @@ namespace Squared.Task.Http {
             }
         }
 
-        private IEnumerator<object> RequestTask (ListenerContext context, Socket socket) {
-            const int bufferSize = 8192;
+        public class RequestBody {
+            private readonly GrowableBuffer<byte> Buffer;
+            public readonly long? ExpectedLength;
+            public readonly Future<byte[]> Bytes;
 
+            public RequestBody (ArraySegment<byte> prefillBytes, long? expectedLength) {
+                const int minBufferSize = 1024 * 16;
+                int bufferSize = Math.Max(prefillBytes.Count, minBufferSize);
+
+                Buffer = new GrowableBuffer<byte>(bufferSize);
+                Buffer.Append(prefillBytes.Array, prefillBytes.Offset, prefillBytes.Count);
+
+                ExpectedLength = expectedLength;
+                Bytes = new Future<byte[]>();
+            }
+
+            internal void Append (byte[] buffer, int offset, int count) {
+                Buffer.Append(buffer, offset, count);
+            }
+
+            internal void Failed (Exception error) {
+                Buffer.Dispose();
+                Bytes.SetResult(null, error);
+            }
+
+            internal void Finish () {
+                var contents = new byte[Buffer.Length];
+                Buffer.DisposeAndGetContents(contents, 0);
+                Bytes.SetResult(contents, null);
+            }
+        }
+
+        private IEnumerator<object> RequestTask (ListenerContext context, Socket socket) {
+            const int headerBufferSize = 1024 * 8;
+            const int bodyBufferSize = 1024 * 32;
+
+            // RFC2616:
+            // Words of *TEXT MAY contain characters from character sets other than ISO-8859-1 [22]
+            //  only when encoded according to the rules of RFC 2047 [14].
             Encoding headerEncoding;
             try {
                 headerEncoding = Encoding.GetEncoding("ISO-8859-1");
@@ -121,37 +163,101 @@ namespace Squared.Task.Http {
                 headerEncoding = Encoding.ASCII;
             }
 
-            using (var adapter = new SocketDataAdapter(socket))
-            using (var reader = new AsyncTextReader(adapter, headerEncoding, bufferSize)) {
-                var headers = new RequestHeaders();
+            Request request;
+            RequestBody body;
+            RequestHeaders headers;
+            long bodyBytesRead = 0;
+            long? expectedBodyLength = null;
 
-                var fRequestLine = reader.ReadLine();
-                yield return fRequestLine;
+            using (var adapter = new SocketDataAdapter(socket)) {
+                var reader = new AsyncTextReader(adapter, headerEncoding, headerBufferSize, false);
+                try {
+                    string requestLineText;
 
-                while (true) {
-                    var fHeaderLine = reader.ReadLine();
-                    yield return fHeaderLine;
+                    while (true) {
+                        var fRequestLine = reader.ReadLine();
+                        yield return fRequestLine;
 
-                    if (String.IsNullOrWhiteSpace(fHeaderLine.Result))
+                        requestLineText = fRequestLine.Result;
+
+                        // RFC2616: 
+                        // In the interest of robustness, servers SHOULD ignore any empty line(s) received where a 
+                        //  Request-Line is expected. In other words, if the server is reading the protocol stream 
+                        //   at the beginning of a message and receives a CRLF first, it should ignore the CRLF. 
+                        if ((requestLineText != null) && (requestLineText.Trim().Length == 0))
+                            continue;
+
+                        break;
+                    }
+
+                    headers = new RequestHeaders();
+                    while (true) {
+                        var fHeaderLine = reader.ReadLine();
+                        yield return fHeaderLine;
+
+                        if (String.IsNullOrWhiteSpace(fHeaderLine.Result))
+                            break;
+
+                        headers.Add(new Header(fHeaderLine.Result));
+                    }
+
+                    string hostName;
+                    if (headers.Contains("Host")) {
+                        hostName = String.Format("http://{0}", headers["Host"].Value);
+                    } else {
+                        var lep = (IPEndPoint)socket.LocalEndPoint;
+                        hostName = String.Format("http://{0}:{1}", lep.Address, lep.Port);
+                    }
+
+                    var remainingBytes = reader.DisposeAndGetRemainingBytes();
+                    bodyBytesRead += remainingBytes.Count;
+
+                    if (headers.Contains("Content-Length"))
+                        expectedBodyLength = long.Parse(headers["Content-Length"].Value);
+
+                    body = new RequestBody(remainingBytes, expectedBodyLength);
+
+                    request = new Request(
+                        this,
+                        new RequestLine(hostName, requestLineText),
+                        headers,
+                        body
+                    );
+
+                    IncomingRequests.Enqueue(request);
+                } finally {
+                    if (!reader.IsDisposed)
+                        reader.Dispose();
+                }
+
+                using (var bodyBuffer = BufferPool<byte>.Allocate(bodyBufferSize))
+                while (!expectedBodyLength.HasValue || (bodyBytesRead < expectedBodyLength.Value)) {
+                    long bytesToRead = bodyBufferSize;
+                    if (expectedBodyLength.HasValue)
+                        bytesToRead = Math.Min(expectedBodyLength.Value - bodyBytesRead, bodyBufferSize);
+
+                    if (bytesToRead <= 0)
                         break;
 
-                    headers.Add(new Header(fHeaderLine.Result));
+                    var fBytesRead = adapter.Read(bodyBuffer.Data, 0, (int)bytesToRead);
+                    yield return fBytesRead;
+
+                    if (fBytesRead.Failed) {
+                        if (fBytesRead.Error is SocketDisconnectedException)
+                            break;
+
+                        body.Failed(fBytesRead.Error);
+                        OnRequestError(fBytesRead.Error);
+                        yield break;
+                    }
+
+                    var bytesRead = fBytesRead.Result;
+
+                    bodyBytesRead += bytesRead;
+                    body.Append(bodyBuffer.Data, 0, bytesRead);
                 }
 
-                string hostName;
-                if (headers.Contains("Host")) {
-                    hostName = String.Format("http://{0}", headers["Host"].Value);
-                } else {
-                    var lep = (IPEndPoint)socket.LocalEndPoint;
-                    hostName = String.Format("http://{0}:{1}", lep.Address, lep.Port);
-                }
-
-                var request = new Request(
-                    this,
-                    new RequestLine(hostName, fRequestLine.Result),
-                    headers
-                );
-                IncomingRequests.Enqueue(request);
+                body.Finish();
             }
         }
     }

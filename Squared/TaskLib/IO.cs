@@ -454,6 +454,7 @@ namespace Squared.Task.IO {
         }
 
         IAsyncDataSource _DataSource;
+        bool _OwnsDataSource;
         Encoding _Encoding;
         Decoder _Decoder;
         int _BufferSize;
@@ -473,13 +474,16 @@ namespace Squared.Task.IO {
             }
         }
 
-        public AsyncTextReader (IAsyncDataSource dataSource)
-            : this(dataSource, DefaultEncoding) {
+        public AsyncTextReader (IAsyncDataSource dataSource, bool ownsDataSource = true)
+            : this(dataSource, DefaultEncoding, ownsDataSource: ownsDataSource) {
         }
 
-        public AsyncTextReader (IAsyncDataSource dataSource, Encoding encoding, int bufferSize = DefaultBufferSize) 
-            : base() {
+        public AsyncTextReader (
+            IAsyncDataSource dataSource, Encoding encoding, 
+            int bufferSize = DefaultBufferSize, bool ownsDataSource = true
+        ) {
             _DataSource = dataSource;
+            _OwnsDataSource = ownsDataSource;
             _Encoding = encoding;
             _Decoder = _Encoding.GetDecoder();
             _BufferSize = Math.Max(MinimumBufferSize, bufferSize);
@@ -488,7 +492,9 @@ namespace Squared.Task.IO {
 
         public void Dispose () {
             if (_DataSource != null) {
-                _DataSource.Dispose();
+                if (_OwnsDataSource)
+                    _DataSource.Dispose();
+
                 _DataSource = null;
             }
 
@@ -839,6 +845,7 @@ namespace Squared.Task.IO {
         char[] _NewLine;
         byte[] _NewLineBytes;
         IAsyncDataWriter _DataWriter;
+        bool _OwnsDataWriter;
         Encoding _Encoding;
         Encoder _Encoder;
 
@@ -852,13 +859,16 @@ namespace Squared.Task.IO {
             }
         }
 
-        public AsyncTextWriter (IAsyncDataWriter dataWriter)
-            : this(dataWriter, DefaultEncoding) {
+        public AsyncTextWriter (IAsyncDataWriter dataWriter, bool ownsDataWriter = true)
+            : this(dataWriter, DefaultEncoding, ownsDataWriter: ownsDataWriter) {
         }
 
-        public AsyncTextWriter (IAsyncDataWriter dataWriter, Encoding encoding, int bufferSize = DefaultBufferSize)
-            : base() {
+        public AsyncTextWriter (
+            IAsyncDataWriter dataWriter, Encoding encoding, 
+            int bufferSize = DefaultBufferSize, bool ownsDataWriter = true
+        ) {
             _DataWriter = dataWriter;
+            _OwnsDataWriter = ownsDataWriter;
             _Encoding = encoding;
             _Encoder = encoding.GetEncoder();
             _NewLine = DefaultNewLine;
@@ -875,7 +885,9 @@ namespace Squared.Task.IO {
                 Flush();
 
             if (_DataWriter != null) {
-                _DataWriter.Dispose();
+                if (_OwnsDataWriter)
+                    _DataWriter.Dispose();
+
                 _DataWriter = null;
             }
             _Encoding = null;

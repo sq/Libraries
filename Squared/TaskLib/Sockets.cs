@@ -33,13 +33,20 @@ namespace Squared.Task.IO {
             _WriteCallback = WriteCallback;
         }
 
+        public bool IsDisposed {
+            get {
+                return (_Socket == null);
+            }
+        }
+
         public void Dispose () {
             if (_OwnsSocket && (_Socket != null)) {
                 _Socket.Shutdown(SocketShutdown.Both);
                 _Socket.Close();
                 _Socket.Dispose();
-                _Socket = null;
             }
+
+            _Socket = null;
         }
 
         private void ReadCallback (IAsyncResult ar) {
@@ -69,6 +76,9 @@ namespace Squared.Task.IO {
         }
 
         public Future<int> Read (byte[] buffer, int offset, int count) {
+            if (IsDisposed)
+                throw new ObjectDisposedException("SocketDataAdapter");
+
             var f = new Future<int>();
             if (!_Socket.Connected) {
                 if (ThrowOnDisconnect)
@@ -125,6 +135,9 @@ namespace Squared.Task.IO {
         }
 
         public SignalFuture Write (byte[] buffer, int offset, int count) {
+            if (IsDisposed)
+                throw new ObjectDisposedException("SocketDataAdapter");
+
             var f = new SignalFuture();
             if (!_Socket.Connected) {
                 if (ThrowOnDisconnect)

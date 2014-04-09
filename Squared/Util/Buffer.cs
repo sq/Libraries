@@ -125,6 +125,10 @@ namespace Squared.Util {
             ResizeBuffer(DefaultBufferSize);
         }
 
+        public GrowableBuffer (int capacity) {
+            ResizeBuffer(capacity);
+        }
+
         private void ResizeBuffer (int size) {
             BufferPool<T>.Buffer temp = BufferPool<T>.Allocate(size);
 

@@ -130,6 +130,33 @@ namespace Squared.Task.Http {
             }
         }
 
+        [Test]
+        public void AcceptedRequestOffersBody () {
+            Server.EndPoints.Add(ListenPort1);
+            Scheduler.WaitFor(Server.StartListening());
+
+            var dataToUpload = new byte[1024 * 1024];
+            for (var i = 0; i < dataToUpload.Length; i++)
+                dataToUpload[i] = (byte)(i % 256);
+
+            using (var wc = new WebClient()) {
+                Future.RunInThread(
+                    () => wc.UploadData(Server1, dataToUpload)
+                );
+
+                var request = Scheduler.WaitFor(Server.AcceptRequest(), 3);
+                Console.WriteLine(request);
+
+                Assert.AreEqual("POST", request.Line.Method);
+                Assert.AreEqual("localhost", request.Line.Uri.Host);
+                Assert.AreEqual("/", request.Line.Uri.AbsolutePath);
+
+                var requestBody = Scheduler.WaitFor(request.Body.Bytes);
+                Assert.AreEqual(dataToUpload.Length, requestBody.Length);
+                Assert.AreEqual(dataToUpload, requestBody);
+            }
+        }
+
         [TearDown]
         public void TearDown () {
             if (Server != null)
