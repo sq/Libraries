@@ -93,7 +93,7 @@ namespace Squared.Render {
                 }
             }
 
-            if (false && (eliminatedCount > 0))
+            if (false && eliminatedCount > 0)
                 Console.WriteLine("Eliminated {0:0000} of {1:0000} batch(es)", eliminatedCount, batches.Count);
 
             return eliminatedCount;
