@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using Squared.Task;
 using Squared.Task.Http;
@@ -17,6 +18,17 @@ namespace HttpServerTest {
                     new IPEndPoint(IPAddress.Any, 10337)
                 }
             };
+
+            Server.SocketOpened += OnSocketOpened;
+            Server.SocketClosed += OnSocketClosed;
+        }
+
+        static void OnSocketOpened (object server, ConnectionEventArgs e) {
+            Console.WriteLine("{0} <- {1} open", e.LocalEndPoint, e.RemoteEndPoint);
+        }
+
+        static void OnSocketClosed (object server, ConnectionEventArgs e) {
+            Console.WriteLine("{0} <- {1} close", e.LocalEndPoint, e.RemoteEndPoint);
         }
 
         static void Main (string[] args) {
@@ -41,10 +53,17 @@ namespace HttpServerTest {
         }
 
         static IEnumerator<object> RequestTask (HttpServer.Request request) {
-            Console.WriteLine("Received request from {0} for {1}", request.RemoteEndPoint, request.Line.Uri);
+            Console.WriteLine("{0} <- {1} {2}", request.LocalEndPoint, request.RemoteEndPoint, request.Line.Uri);
 
-            using (request)
-                yield return request.Response.SendResponse("Hello world!");
+            using (request) {
+                if (request.Line.Uri.PathAndQuery == "/favicon.ico") {
+                    request.Response.StatusCode = 404;
+                    request.Response.StatusText = "File not found";
+                    yield return request.Response.SendHeaders();
+                } else {
+                    yield return request.Response.SendResponse("Hello world!");
+                }
+            }
         }
     }
 }

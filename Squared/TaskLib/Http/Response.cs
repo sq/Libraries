@@ -7,19 +7,30 @@ using Squared.Task.IO;
 namespace Squared.Task.Http {
     public partial class HttpServer {
         public class Response {
+            private static readonly byte[] ContinueMessageBytes;
+
             public static Encoding DefaultEncoding = Encoding.UTF8;
 
             public readonly HeaderCollection Headers = new HeaderCollection();
 
             private readonly Request Request;
-            private readonly SocketDataAdapter Adapter;
+            private readonly IAsyncDataWriter Adapter;
+
+            private AsyncDataAdapterShim _Shim = null;
 
             public int StatusCode = 200;
             public string StatusText = "OK";
 
-            internal Response (Request request, SocketDataAdapter adapter) {
+            private static readonly byte[] ResponseEpilogue = Encoding.ASCII.GetBytes("\r\n");
+
+            static Response () {
+            }
+
+            internal Response (Request request, IAsyncDataWriter adapter, bool keepAlive) {
                 Request = request;
                 Adapter = adapter;
+                KeepAlive = keepAlive;
+                ContentLength = 0;
             }
 
             public bool HeadersSent {
@@ -32,45 +43,43 @@ namespace Squared.Task.Http {
                 private set;
             }
 
-            private string GetHeader (string key) {
-                if (Headers.Contains(key))
-                    return Headers[key].Value;
-                else
-                    return null;
+            public bool EpilogueSent {
+                get;
+                private set;
             }
 
-            private void SetHeader (string key, string value) {
-                if (Headers.Contains(key))
-                    Headers.Remove(key);
-
-                if (value != null)
-                    Headers.Add(new Header(key, value));
-            }
-
-            public long? ContentLength {
+            public bool KeepAlive {
                 get {
-                    var lengthHeader = GetHeader("Content-Length");
-                    return
-                        (lengthHeader == null)
-                            ? null
-                            : (long?)long.Parse(lengthHeader);
+                    var state = (Headers.GetValue("Connection") ?? "").ToLowerInvariant();
+                    return (state == "keep-alive");
                 }
                 set {
-                    SetHeader(
+                    Headers.SetValue("Connection", value ? "keep-alive" : "close");
+                }
+            }
+
+            public long ContentLength {
+                get {
+                    var lengthHeader = Headers.GetValue("Content-Length");
+                    return
+                        (lengthHeader == null)
+                            ? 0
+                            : long.Parse(lengthHeader);
+                }
+                set {
+                    Headers.SetValue(
                         "Content-Length", 
-                        value.HasValue 
-                            ? value.Value.ToString()
-                            : null
+                        value.ToString()
                     );
                 }
             }
 
             public string ContentType {
                 get {
-                    return GetHeader("Content-Type");
+                    return Headers.GetValue("Content-Type");
                 }
                 set {
-                    SetHeader("Content-Type", value);
+                    Headers.SetValue("Content-Type", value);
                 }
             }
 
@@ -108,11 +117,18 @@ namespace Squared.Task.Http {
                 }
             }
 
+            private IAsyncDataWriter GetShim () {
+                if (_Shim == null)
+                    _Shim = new AsyncDataAdapterShim(null, Adapter);
+
+                return _Shim;
+            }
+
             public IAsyncDataWriter GetResponseWriter () {
                 if (!HeadersSent)
                     throw new InvalidOperationException("Headers must be sent first");
 
-                return Adapter;
+                return GetShim();
             }
 
             public IFuture SendResponse (
@@ -136,22 +152,23 @@ namespace Squared.Task.Http {
 
                 if (ContentType == null)
                     ContentType = "text/plain";
-                if (ContentLength == null)
-                    ContentLength = fEncodedBytes.Result.Length;
+
+                ContentLength = fEncodedBytes.Result.Length;
 
                 if (!HeadersSent) {
                     HeadersSent = true;
                     yield return SendHeadersTask();
                 }
 
+                ResponseSent = true;
                 yield return Adapter.Write(fEncodedBytes.Result, 0, fEncodedBytes.Result.Length);
 
-                Dispose();
+                // yield return Adapter.Write(ResponseEpilogue, 0, ResponseEpilogue.Length);
             }
 
-            private void Dispose () {
-                Adapter.Dispose();
-                Request.Dispose();
+            internal void SendAndDispose () {
+                if (!HeadersSent)
+                    SendHeaders();
             }
         }
     }

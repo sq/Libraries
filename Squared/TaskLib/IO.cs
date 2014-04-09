@@ -359,7 +359,9 @@ namespace Squared.Task.IO {
                     if (Parent.EndOfStream)
                         Parent._ExtraLine = true;
 
-                    Result.Complete(Buffer.DisposeAndGetContents());
+                    var resultString = Buffer.DisposeAndGetContents();
+
+                    Result.Complete(resultString);
                 } else {
                     var decodeMoreChars = Parent.DecodeMoreData();
                     decodeMoreChars.RegisterOnComplete(OnDecodeComplete);

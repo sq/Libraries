@@ -30,7 +30,7 @@ namespace Squared.Task.Http {
             public void BindAll () {
                 for (var i = 0; i < EndPoints.Length; i++) {
                     var endPoint = EndPoints[i];
-                    var socket = ListeningSockets[i] = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.IP);
+                    var socket = ListeningSockets[i] = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                     socket.Bind(endPoint);
                 }
             }

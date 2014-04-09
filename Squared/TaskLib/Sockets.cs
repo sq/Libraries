@@ -33,6 +33,12 @@ namespace Squared.Task.IO {
             _WriteCallback = WriteCallback;
         }
 
+        public Socket Socket {
+            get {
+                return _Socket;
+            }
+        }
+
         public bool IsDisposed {
             get {
                 return (_Socket == null);
@@ -41,8 +47,13 @@ namespace Squared.Task.IO {
 
         public void Dispose () {
             if (_OwnsSocket && (_Socket != null)) {
-                _Socket.Shutdown(SocketShutdown.Both);
-                _Socket.Close();
+                if (_Socket.Connected) {
+                    try {
+                        _Socket.Shutdown(SocketShutdown.Both);
+                        _Socket.Close();
+                    } catch (SocketException) {
+                    }
+                }
                 _Socket.Dispose();
             }
 
@@ -73,6 +84,10 @@ namespace Squared.Task.IO {
             } catch (Exception ex) {
                 f.Fail(ex);
             }
+        }
+
+        private void SockLog (string format, params object[] values) {
+            Console.WriteLine("SOCK {0:X4} {1}", this.GetHashCode(), String.Format(format, values));
         }
 
         public Future<int> Read (byte[] buffer, int offset, int count) {

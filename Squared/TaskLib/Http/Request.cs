@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Squared.Task.IO;
 using Squared.Util;
 
@@ -23,35 +24,31 @@ namespace Squared.Task.Http {
             public readonly RequestBody Body;
             public readonly Response Response;
 
-            private readonly SocketDataAdapter Adapter;
-
             internal Request (
-                HttpServer server, Socket socket, SocketDataAdapter adapter,
+                HttpServer server, SocketDataAdapter adapter, bool shouldKeepAlive,
                 RequestLine line, HeaderCollection headers, RequestBody body
             ) {
                 WeakServer = new WeakReference(server);
-                Adapter = adapter;
 
-                LocalEndPoint = socket.LocalEndPoint;
-                RemoteEndPoint = socket.RemoteEndPoint;
+                LocalEndPoint = adapter.Socket.LocalEndPoint;
+                RemoteEndPoint = adapter.Socket.RemoteEndPoint;
 
                 Line = line;
                 Headers = headers;
                 Body = body;
-                Response = new Response(this, Adapter);
+                Response = new Response(this, adapter, shouldKeepAlive);
 
                 server.OnRequestCreated(this);
+            }
+
+            public bool IsDisposed {
+                get;
+                private set;
             }
 
             public HttpServer Server {
                 get {
                     return (HttpServer)WeakServer.Target;
-                }
-            }
-
-            public IAsyncDataWriter ResponseWriter {
-                get {
-                    return Adapter;
                 }
             }
 
@@ -67,12 +64,13 @@ namespace Squared.Task.Http {
             }
 
             internal void Dispose (bool byServer) {
-                if (!Response.HeadersSent && !Adapter.IsDisposed && !byServer) {
-                    var fSend = Response.SendHeaders();
-                    fSend.RegisterOnComplete((_) => Adapter.Dispose());
-                } else {
-                    Adapter.Dispose();
-                }
+                if (IsDisposed)
+                    return;
+
+                IsDisposed = true;
+
+                if (!byServer)
+                    Response.SendAndDispose();
 
                 if (!byServer) {
                     var server = Server;
@@ -156,13 +154,15 @@ namespace Squared.Task.Http {
             }
         }
 
-        private IEnumerator<object> RequestTask (ListenerContext context, Socket socket) {
-            SocketDataAdapter adapter = null;
+        static readonly byte[] Continue100 = Encoding.ASCII.GetBytes("HTTP/1.1 100 Continue\r\n\r\n");
+
+        private IEnumerator<object> RequestTask (ListenerContext context, SocketDataAdapter adapter) {
             bool successful = false;
 
             try {
                 const int headerBufferSize = 1024 * 32;
                 const int bodyBufferSize = 1024 * 128;
+                const double requestLineTimeout = 5;
 
                 // RFC2616:
                 // Words of *TEXT MAY contain characters from character sets other than ISO-8859-1 [22]
@@ -180,91 +180,115 @@ namespace Squared.Task.Http {
                 long bodyBytesRead = 0;
                 long? expectedBodyLength = null;
 
-                adapter = new SocketDataAdapter(socket, true);
                 var reader = new AsyncTextReader(adapter, headerEncoding, headerBufferSize, false);
-                try {
-                    string requestLineText;
+                string requestLineText;
 
-                    while (true) {
-                        var fRequestLine = reader.ReadLine();
-                        yield return fRequestLine;
+                while (true) {
+                    var fRequestLine = reader.ReadLine();
+                    var fRequestOrTimeout = Scheduler.Start(new WaitWithTimeout(fRequestLine, requestLineTimeout));
 
-                        requestLineText = fRequestLine.Result;
+                    yield return fRequestOrTimeout;
 
-                        // RFC2616: 
-                        // In the interest of robustness, servers SHOULD ignore any empty line(s) received where a 
-                        //  Request-Line is expected. In other words, if the server is reading the protocol stream 
-                        //   at the beginning of a message and receives a CRLF first, it should ignore the CRLF. 
-                        if ((requestLineText != null) && (requestLineText.Trim().Length == 0))
-                            continue;
+                    if (fRequestOrTimeout.Failed) {
+                        if (!(fRequestOrTimeout.Error is TimeoutException))
+                            OnRequestError(fRequestOrTimeout.Error);
 
-                        break;
-                    }
-
-                    headers = new HeaderCollection();
-                    while (true) {
-                        var fHeaderLine = reader.ReadLine();
-                        yield return fHeaderLine;
-
-                        if (String.IsNullOrWhiteSpace(fHeaderLine.Result))
-                            break;
-
-                        headers.Add(new Header(fHeaderLine.Result));
-                    }
-
-                    string hostName;
-                    if (headers.Contains("Host")) {
-                        hostName = String.Format("http://{0}", headers["Host"].Value);
-                    } else {
-                        var lep = (IPEndPoint)socket.LocalEndPoint;
-                        hostName = String.Format("http://{0}:{1}", lep.Address, lep.Port);
-                    }
-
-                    var remainingBytes = reader.DisposeAndGetRemainingBytes();
-                    bodyBytesRead += remainingBytes.Count;
-
-                    if (headers.Contains("Content-Length"))
-                        expectedBodyLength = long.Parse(headers["Content-Length"].Value);
-
-                    body = new RequestBody(remainingBytes, expectedBodyLength);
-
-                    request = new Request(
-                        this, socket, adapter,
-                        new RequestLine(hostName, requestLineText),
-                        headers, body
-                    );
-
-                    IncomingRequests.Enqueue(request);
-                } finally {
-                    if (!reader.IsDisposed)
-                        reader.Dispose();
-                }
-
-                using (var bodyBuffer = BufferPool<byte>.Allocate(bodyBufferSize))
-                while (!expectedBodyLength.HasValue || (bodyBytesRead < expectedBodyLength.Value)) {
-                    long bytesToRead = bodyBufferSize;
-                    if (expectedBodyLength.HasValue)
-                        bytesToRead = Math.Min(expectedBodyLength.Value - bodyBytesRead, bodyBufferSize);
-
-                    if (bytesToRead <= 0)
-                        break;
-
-                    var fBytesRead = adapter.Read(bodyBuffer.Data, 0, (int)bytesToRead);
-                    yield return fBytesRead;
-
-                    if (fBytesRead.Failed) {
-                        if (fBytesRead.Error is SocketDisconnectedException)
-                            break;
-
-                        body.Failed(fBytesRead.Error);
-                        OnRequestError(fBytesRead.Error);
                         yield break;
                     }
 
-                    var bytesRead = fBytesRead.Result;
+                    if (fRequestLine.Failed) {
+                        if (!(fRequestLine.Error is SocketDisconnectedException))
+                            OnRequestError(fRequestLine.Error);
 
-                    bodyBytesRead += bytesRead;
-                    body.Append(bodyBuffer.Data, 0, bytesRead);
+                        yield break;
+                    }
+
+                    requestLineText = fRequestLine.Result;
+
+                    // RFC2616: 
+                    // In the interest of robustness, servers SHOULD ignore any empty line(s) received where a 
+                    //  Request-Line is expected. In other words, if the server is reading the protocol stream 
+                    //   at the beginning of a message and receives a CRLF first, it should ignore the CRLF. 
+                    if ((requestLineText != null) && (requestLineText.Trim().Length == 0))
+                        continue;
+
+                    break;
+                }
+
+                headers = new HeaderCollection();
+                while (true) {
+                    var fHeaderLine = reader.ReadLine();
+                    yield return fHeaderLine;
+
+                    if (String.IsNullOrWhiteSpace(fHeaderLine.Result))
+                        break;
+
+                    headers.Add(new Header(fHeaderLine.Result));
+                }
+
+                var expectHeader = (headers.GetValue("Expect") ?? "").ToLowerInvariant();
+                var expectsContinue = expectHeader.Contains("100-continue");
+
+                string hostName;
+                if (headers.Contains("Host")) {
+                    hostName = String.Format("http://{0}", headers["Host"].Value);
+                } else {
+                    var lep = (IPEndPoint)adapter.Socket.LocalEndPoint;
+                    hostName = String.Format("http://{0}:{1}", lep.Address, lep.Port);
+                }
+
+                var requestLine = new RequestLine(hostName, requestLineText);
+
+                var remainingBytes = reader.DisposeAndGetRemainingBytes();
+                bodyBytesRead += remainingBytes.Count;
+
+                var connectionHeader = (headers.GetValue("Connection") ?? "").ToLowerInvariant();
+                var shouldKeepAlive = 
+                    ((requestLine.Version == "1.1") || connectionHeader.Contains("keep-alive")) &&
+                    !connectionHeader.Contains("close");
+
+                if (headers.Contains("Content-Length"))
+                    expectedBodyLength = long.Parse(headers["Content-Length"].Value);
+
+                body = new RequestBody(remainingBytes, expectedBodyLength);
+
+                if (expectsContinue)
+                    yield return adapter.Write(Continue100, 0, Continue100.Length);
+
+                request = new Request(
+                    this, adapter, shouldKeepAlive,
+                    requestLine, headers, body
+                );
+
+                IncomingRequests.Enqueue(request);
+
+                // FIXME: I think it's technically accepted to send a body without a content-length, but
+                //  it seems to be impossible to make that work right.
+                if (expectedBodyLength.HasValue) {
+                    using (var bodyBuffer = BufferPool<byte>.Allocate(bodyBufferSize))
+                    while (bodyBytesRead < expectedBodyLength.Value) {
+                        long bytesToRead = Math.Min(expectedBodyLength.Value - bodyBytesRead, bodyBufferSize);
+
+                        if (bytesToRead <= 0)
+                            break;
+
+                        var fBytesRead = adapter.Read(bodyBuffer.Data, 0, (int)bytesToRead);
+                        yield return fBytesRead;
+
+                        if (fBytesRead.Failed) {
+                            if (fBytesRead.Error is SocketDisconnectedException)
+                                break;
+
+                            body.Failed(fBytesRead.Error);
+                            OnRequestError(fBytesRead.Error);
+                            yield break;
+                        }
+
+                        var bytesRead = fBytesRead.Result;
+
+                        bodyBytesRead += bytesRead;
+                        body.Append(bodyBuffer.Data, 0, bytesRead);
+                    }
                 }
 
                 body.Finish();

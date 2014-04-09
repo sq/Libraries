@@ -24,6 +24,9 @@ namespace Squared.Task.Http {
         /// </summary>
         public BackgroundTaskErrorHandler RequestErrorHandler;
 
+        public EventHandler<ConnectionEventArgs> SocketOpened;
+        public EventHandler<ConnectionEventArgs> SocketClosed;
+
         private IFuture ActiveListener = null;
         private readonly BlockingQueue<Request> IncomingRequests = new BlockingQueue<Request>();
         private readonly HashSet<Request> InFlightRequests = new HashSet<Request>(); 
@@ -131,8 +134,8 @@ namespace Squared.Task.Http {
                     );
 
                     foreach (var ac in acceptedConnections) {
-                        var fRequest = Scheduler.Start(RequestTask(context, ac));
-                        fRequest.RegisterOnComplete(RequestOnComplete);
+                        var fKeepAlive = Scheduler.Start(KeepAliveTask(context, ac));
+                        fKeepAlive.RegisterOnComplete(RequestOnComplete);
                     }
 
                     acceptedConnections.Clear();
@@ -140,6 +143,31 @@ namespace Squared.Task.Http {
 
                     yield return acceptedConnection;
                 }
+            }
+        }
+
+        private IEnumerator<object> KeepAliveTask (ListenerContext context, Socket socket) {
+            EndPoint localEp = socket.LocalEndPoint, remoteEp = socket.RemoteEndPoint;
+            var evtArgs = new ConnectionEventArgs(localEp, remoteEp);
+
+            if (SocketOpened != null)
+                SocketOpened(this, evtArgs);
+
+            try {
+                using (var adapter = new SocketDataAdapter(socket, true)) {
+                    while (!adapter.IsDisposed && adapter.Socket.Connected) {
+                        var fTask = Scheduler.Start(RequestTask(context, adapter));
+                        yield return fTask;
+
+                        if (fTask.Failed) {
+                            adapter.Dispose();
+                            yield break;
+                        }
+                    }
+                }
+            } finally {
+                if (SocketClosed != null)
+                    SocketClosed(this, evtArgs);
             }
         }
 

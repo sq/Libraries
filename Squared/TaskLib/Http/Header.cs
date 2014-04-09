@@ -17,6 +17,11 @@ namespace Squared.Task.Http {
             public readonly string Value;
 
             public Header (string name, string value) {
+                if (String.IsNullOrWhiteSpace(name))
+                    throw new ArgumentNullException("name");
+                if (value == null)
+                    throw new ArgumentNullException("value");
+
                 Name = name;
                 Value = value;
             }
@@ -38,6 +43,21 @@ namespace Squared.Task.Http {
         public class HeaderCollection : KeyedCollection<string, Header> {
             protected override string GetKeyForItem (Header item) {
                 return item.Name;
+            }
+
+            public string GetValue (string key) {
+                if (Contains(key))
+                    return this[key].Value;
+                else
+                    return null;
+            }
+
+            public void SetValue (string key, string value) {
+                if (Contains(key))
+                    Remove(key);
+
+                if (value != null)
+                    Add(new Header(key, value));
             }
 
             public bool TryGetValue (string key, out Header result) {
