@@ -11,19 +11,30 @@ using System.Linq;
 namespace Squared.Task.Http {
     [TestFixture]
     public class HttpTests {
-        static readonly IPEndPoint ListenPort1 = new IPEndPoint(IPAddress.Any, 12345);
-        static readonly IPEndPoint ListenPort2 = new IPEndPoint(IPAddress.Any, 12346);
-
-        const string Server1 = "http://localhost:12345/";
-        const string Server2 = "http://localhost:12346/";
+        IPEndPoint ListenPort;
+        string ServerUri;
 
         public TaskScheduler Scheduler;
         public HttpServer Server;
+
+        const int BasePort = 12300;
+        const int NumPorts = 99;
+        static int PortIndex = 0;
+
+        const double WebClientTimeout = 3;
 
         [SetUp]
         public void SetUp () {
             Scheduler = new TaskScheduler();
             Server = new HttpServer(Scheduler);
+
+            var port = BasePort + PortIndex;
+            PortIndex += 1;
+            if (PortIndex > NumPorts)
+                PortIndex = 0;
+
+            ListenPort = new IPEndPoint(IPAddress.Any, port);
+            ServerUri = String.Format("http://localhost:{0}/", port);
         }
 
         private static bool IsEndPointBound (EndPoint endPoint) {
@@ -62,19 +73,16 @@ namespace Squared.Task.Http {
         public void ServerBindsPortsWhileListeningAndUnbindsWhenStopped () {
             Assert.IsFalse(Server.IsListening);
 
-            Server.EndPoints.Add(ListenPort1);
-            Server.EndPoints.Add(ListenPort2);
+            Server.EndPoints.Add(ListenPort);
             Scheduler.WaitFor(Server.StartListening());
 
             Assert.IsTrue(Server.IsListening);
 
-            Assert.IsTrue(IsEndPointBound(ListenPort1));
-            Assert.IsTrue(IsEndPointBound(ListenPort2));
+            Assert.IsTrue(IsEndPointBound(ListenPort));
 
             Server.StopListening();
 
-            Assert.IsFalse(IsEndPointBound(ListenPort1));
-            Assert.IsFalse(IsEndPointBound(ListenPort2));
+            Assert.IsFalse(IsEndPointBound(ListenPort));
         }
 
         [Test]
@@ -82,16 +90,16 @@ namespace Squared.Task.Http {
             Scheduler.WaitFor(Server.StartListening());
 
             Assert.Throws<InvalidOperationException>(
-                () => Server.EndPoints.Add(ListenPort1)
+                () => Server.EndPoints.Add(ListenPort)
             );
             Assert.Throws<InvalidOperationException>(
-                () => Server.EndPoints.Remove(ListenPort1)
+                () => Server.EndPoints.Remove(ListenPort)
             );
         }
 
         [Test]
         public void AcceptRequestReturnsFutureThatCompletesWhenRequestIsAvailable () {
-            Server.EndPoints.Add(ListenPort1);
+            Server.EndPoints.Add(ListenPort);
             Scheduler.WaitFor(Server.StartListening());
 
             var fRequest = Server.AcceptRequest();
@@ -99,25 +107,37 @@ namespace Squared.Task.Http {
             Assert.IsFalse(fRequest.Completed);
 
             using (var wc = new WebClient()) {
-                Future.RunInThread(
-                    () => wc.DownloadData(Server1 + "test")
+                var fGet = Future.RunInThread(
+                    () => {
+                        var result = wc.DownloadData(ServerUri + "test");
+                        Console.WriteLine("Download complete");
+                        return result;
+                    }
                 );
 
                 var request = Scheduler.WaitFor(fRequest, 2);
                 Assert.IsNotNull(request);
 
                 Console.WriteLine(request);
+
+                request.Dispose();
+
+                Scheduler.WaitFor(fGet, WebClientTimeout);
             }
         }
 
         [Test]
         public void AcceptedRequestContainsParsedHeaders () {
-            Server.EndPoints.Add(ListenPort1);
+            Server.EndPoints.Add(ListenPort);
             Scheduler.WaitFor(Server.StartListening());
 
             using (var wc = new WebClient()) {
-                Future.RunInThread(
-                    () => wc.DownloadData(Server1 + "subdir/test?a=b&c=d")
+                var fGet = Future.RunInThread(
+                    () => {
+                        var result = wc.DownloadData(ServerUri + "subdir/test?a=b&c=d");
+                        Console.WriteLine("Download complete");
+                        return result;
+                    }
                 );
 
                 var request = Scheduler.WaitFor(Server.AcceptRequest(), 3);
@@ -127,12 +147,16 @@ namespace Squared.Task.Http {
                 Assert.AreEqual("localhost", request.Line.Uri.Host);
                 Assert.AreEqual("/subdir/test", request.Line.Uri.AbsolutePath);
                 Assert.AreEqual("?a=b&c=d", request.Line.Uri.Query);
+
+                request.Dispose();
+
+                Scheduler.WaitFor(fGet, WebClientTimeout);
             }
         }
 
         [Test]
         public void AcceptedRequestOffersBody () {
-            Server.EndPoints.Add(ListenPort1);
+            Server.EndPoints.Add(ListenPort);
             Scheduler.WaitFor(Server.StartListening());
 
             var dataToUpload = new byte[1024 * 1024];
@@ -140,8 +164,12 @@ namespace Squared.Task.Http {
                 dataToUpload[i] = (byte)(i % 256);
 
             using (var wc = new WebClient()) {
-                Future.RunInThread(
-                    () => wc.UploadData(Server1, dataToUpload)
+                var fPost = Future.RunInThread(
+                    () => {
+                        var result = wc.UploadData(ServerUri, dataToUpload);
+                        Console.WriteLine("Upload complete");
+                        return result;
+                    }
                 );
 
                 var request = Scheduler.WaitFor(Server.AcceptRequest(), 3);
@@ -154,6 +182,10 @@ namespace Squared.Task.Http {
                 var requestBody = Scheduler.WaitFor(request.Body.Bytes);
                 Assert.AreEqual(dataToUpload.Length, requestBody.Length);
                 Assert.AreEqual(dataToUpload, requestBody);
+
+                request.Dispose();
+
+                Scheduler.WaitFor(fPost, WebClientTimeout);
             }
         }
 

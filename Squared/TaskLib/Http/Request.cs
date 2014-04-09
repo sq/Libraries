@@ -12,20 +12,47 @@ using Squared.Util;
 
 namespace Squared.Task.Http {
     public partial class HttpServer {
-        public class Request {
-            public readonly HttpServer Server;
+        public class Request : IDisposable {
+            private readonly WeakReference WeakServer;
+
+            public readonly EndPoint LocalEndPoint;
+            public readonly EndPoint RemoteEndPoint;
+
             public readonly RequestLine Line;
-            public readonly RequestHeaders Headers;
+            public readonly HeaderCollection Headers;
             public readonly RequestBody Body;
+            public readonly Response Response;
+
+            private readonly SocketDataAdapter Adapter;
 
             internal Request (
-                HttpServer server, RequestLine line, 
-                RequestHeaders headers, RequestBody body
+                HttpServer server, Socket socket, SocketDataAdapter adapter,
+                RequestLine line, HeaderCollection headers, RequestBody body
             ) {
-                Server = server;
+                WeakServer = new WeakReference(server);
+                Adapter = adapter;
+
+                LocalEndPoint = socket.LocalEndPoint;
+                RemoteEndPoint = socket.RemoteEndPoint;
+
                 Line = line;
                 Headers = headers;
                 Body = body;
+                Response = new Response(this, Adapter);
+
+                server.OnRequestCreated(this);
+            }
+
+            public HttpServer Server {
+                get {
+                    return (HttpServer)WeakServer.Target;
+                }
+            }
+
+            public IAsyncDataWriter ResponseWriter {
+                get {
+                    return Adapter;
+                }
             }
 
             public override string ToString() {
@@ -38,21 +65,24 @@ namespace Squared.Task.Http {
 
                 return sb.ToString();
             }
-        }
 
-        public class RequestHeaders : KeyedCollection<string, Header> {
-            protected override string GetKeyForItem (Header item) {
-                return item.Name;
-            }
-
-            public bool TryGetValue (string key, out Header result) {
-                if (Contains(key)) {
-                    result = this[key];
-                    return true;
+            internal void Dispose (bool byServer) {
+                if (!Response.HeadersSent && !Adapter.IsDisposed && !byServer) {
+                    var fSend = Response.SendHeaders();
+                    fSend.RegisterOnComplete((_) => Adapter.Dispose());
+                } else {
+                    Adapter.Dispose();
                 }
 
-                result = default(Header);
-                return false;
+                if (!byServer) {
+                    var server = Server;
+                    if (server != null)
+                        server.OnRequestDisposed(this);
+                }
+            }
+
+            public void Dispose () {
+                Dispose(false);
             }
         }
 
@@ -94,29 +124,6 @@ namespace Squared.Task.Http {
             }
         }
 
-        public struct Header {
-            private static readonly Regex MyRegex = new Regex(
-                @"(?'name'[^:]+)(\s?):(\s?)(?'value'.+)",
-                RegexOptions.Compiled | RegexOptions.ExplicitCapture
-            );
-
-            public readonly string Name;
-            public readonly string Value;
-
-            public Header (string line) {
-                var m = MyRegex.Match(line);
-                if (!m.Success)
-                    throw new Exception("Invalid header format");
-
-                Name = m.Groups["name"].Value;
-                Value = m.Groups["value"].Value;
-            }
-
-            public override string ToString() {
-                return String.Format("{0}:{1}", Name, Value);
-            }
-        }
-
         public class RequestBody {
             private readonly GrowableBuffer<byte> Buffer;
             public readonly long? ExpectedLength;
@@ -150,26 +157,30 @@ namespace Squared.Task.Http {
         }
 
         private IEnumerator<object> RequestTask (ListenerContext context, Socket socket) {
-            const int headerBufferSize = 1024 * 8;
-            const int bodyBufferSize = 1024 * 32;
+            SocketDataAdapter adapter = null;
+            bool successful = false;
 
-            // RFC2616:
-            // Words of *TEXT MAY contain characters from character sets other than ISO-8859-1 [22]
-            //  only when encoded according to the rules of RFC 2047 [14].
-            Encoding headerEncoding;
             try {
-                headerEncoding = Encoding.GetEncoding("ISO-8859-1");
-            } catch {
-                headerEncoding = Encoding.ASCII;
-            }
+                const int headerBufferSize = 1024 * 32;
+                const int bodyBufferSize = 1024 * 128;
 
-            Request request;
-            RequestBody body;
-            RequestHeaders headers;
-            long bodyBytesRead = 0;
-            long? expectedBodyLength = null;
+                // RFC2616:
+                // Words of *TEXT MAY contain characters from character sets other than ISO-8859-1 [22]
+                //  only when encoded according to the rules of RFC 2047 [14].
+                Encoding headerEncoding;
+                try {
+                    headerEncoding = Encoding.GetEncoding("ISO-8859-1");
+                } catch {
+                    headerEncoding = Encoding.ASCII;
+                }
 
-            using (var adapter = new SocketDataAdapter(socket)) {
+                Request request;
+                RequestBody body;
+                HeaderCollection headers;
+                long bodyBytesRead = 0;
+                long? expectedBodyLength = null;
+
+                adapter = new SocketDataAdapter(socket, true);
                 var reader = new AsyncTextReader(adapter, headerEncoding, headerBufferSize, false);
                 try {
                     string requestLineText;
@@ -190,7 +201,7 @@ namespace Squared.Task.Http {
                         break;
                     }
 
-                    headers = new RequestHeaders();
+                    headers = new HeaderCollection();
                     while (true) {
                         var fHeaderLine = reader.ReadLine();
                         yield return fHeaderLine;
@@ -218,10 +229,9 @@ namespace Squared.Task.Http {
                     body = new RequestBody(remainingBytes, expectedBodyLength);
 
                     request = new Request(
-                        this,
+                        this, socket, adapter,
                         new RequestLine(hostName, requestLineText),
-                        headers,
-                        body
+                        headers, body
                     );
 
                     IncomingRequests.Enqueue(request);
@@ -258,6 +268,10 @@ namespace Squared.Task.Http {
                 }
 
                 body.Finish();
+                successful = true;
+            } finally {
+                if (!successful)
+                    adapter.Dispose();
             }
         }
     }

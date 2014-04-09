@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -25,6 +26,7 @@ namespace Squared.Task.Http {
 
         private IFuture ActiveListener = null;
         private readonly BlockingQueue<Request> IncomingRequests = new BlockingQueue<Request>();
+        private readonly HashSet<Request> InFlightRequests = new HashSet<Request>(); 
 
         private readonly OnComplete RequestOnComplete;
 
@@ -85,12 +87,25 @@ namespace Squared.Task.Http {
                 OnError(new Exception("Error while handling request", exc));
         }
 
+        private void OnRequestCreated (Request request) {
+            lock (InFlightRequests)
+                InFlightRequests.Add(request);
+        }
+
+        private void OnRequestDisposed (Request request) {
+            lock (InFlightRequests)
+                InFlightRequests.Remove(request);
+        }
+
         private void _RequestOnComplete (IFuture future) {
             if (future.Failed)
                 OnRequestError(future.Error);
         }
 
         public Future<Request> AcceptRequest () {
+            if (!IsListening)
+                throw new InvalidOperationException("Server is not listening");
+
             return IncomingRequests.Dequeue();
         }
 
@@ -141,6 +156,15 @@ namespace Squared.Task.Http {
 
             if (IsListening)
                 StopListening();
+
+            Request[] inFlightRequests;
+            lock (InFlightRequests) {
+                inFlightRequests = InFlightRequests.ToArray();
+                InFlightRequests.Clear();
+            }
+
+            foreach (var ifr in inFlightRequests)
+                ifr.Dispose();
 
             IsDisposed = true;
         }

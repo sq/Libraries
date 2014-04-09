@@ -50,6 +50,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderPrecisionTestContent"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LargeBufferTest", "LargeBufferTest\LargeBufferTest\LargeBufferTest.csproj", "{8500D1B4-4BD9-4ED2-A7E6-AA64CCF4C73F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HttpServerTest", "HttpServerTest\HttpServerTest.csproj", "{0B4E5FD7-63D7-455B-870E-28357E004304}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -179,6 +181,12 @@ Global
 		{8500D1B4-4BD9-4ED2-A7E6-AA64CCF4C73F}.Mono|x86.Build.0 = Release|x86
 		{8500D1B4-4BD9-4ED2-A7E6-AA64CCF4C73F}.Release|x86.ActiveCfg = Release|x86
 		{8500D1B4-4BD9-4ED2-A7E6-AA64CCF4C73F}.Release|x86.Build.0 = Release|x86
+		{0B4E5FD7-63D7-455B-870E-28357E004304}.Debug|x86.ActiveCfg = Debug|x86
+		{0B4E5FD7-63D7-455B-870E-28357E004304}.Debug|x86.Build.0 = Debug|x86
+		{0B4E5FD7-63D7-455B-870E-28357E004304}.Mono|x86.ActiveCfg = Release|x86
+		{0B4E5FD7-63D7-455B-870E-28357E004304}.Mono|x86.Build.0 = Release|x86
+		{0B4E5FD7-63D7-455B-870E-28357E004304}.Release|x86.ActiveCfg = Release|x86
+		{0B4E5FD7-63D7-455B-870E-28357E004304}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
