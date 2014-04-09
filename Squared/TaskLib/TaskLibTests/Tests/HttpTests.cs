@@ -189,6 +189,29 @@ namespace Squared.Task.Http {
             }
         }
 
+        [Test]
+        public void SendsResponseBodyText() {
+            Server.EndPoints.Add(ListenPort);
+            Scheduler.WaitFor(Server.StartListening());
+
+            using (var wc = new WebClient()) {
+                var fGet = Future.RunInThread(
+                    () => wc.DownloadString(ServerUri)
+                );
+
+                var request = Scheduler.WaitFor(Server.AcceptRequest(), 3);
+                Console.WriteLine(request);
+
+                var responseText = "Hello world";
+
+                Scheduler.WaitFor(request.Response.SendResponse(responseText));
+                request.Dispose();
+
+                var getResponse = Scheduler.WaitFor(fGet, WebClientTimeout);
+                Assert.AreEqual(responseText, getResponse);
+            }
+        }
+
         [TearDown]
         public void TearDown () {
             if (Server != null)
