@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Text.RegularExpressions;
 using Squared.Task.IO;
@@ -12,10 +14,39 @@ namespace Squared.Task.Http {
         public class Request {
             public readonly HttpServer Server;
             public readonly RequestLine Line;
+            public readonly RequestHeaders Headers;
 
-            internal Request (HttpServer server, RequestLine line) {
+            internal Request (HttpServer server, RequestLine line, RequestHeaders headers) {
                 Server = server;
                 Line = line;
+                Headers = headers;
+            }
+
+            public override string ToString() {
+                var sb = new StringBuilder();
+
+                sb.AppendLine(Line.ToString());
+
+                foreach (var header in Headers)
+                    sb.AppendLine(header.ToString());
+
+                return sb.ToString();
+            }
+        }
+
+        public class RequestHeaders : KeyedCollection<string, Header> {
+            protected override string GetKeyForItem (Header item) {
+                return item.Name;
+            }
+
+            public bool TryGetValue (string key, out Header result) {
+                if (Contains(key)) {
+                    result = this[key];
+                    return true;
+                }
+
+                result = default(Header);
+                return false;
             }
         }
 
@@ -30,18 +61,21 @@ namespace Squared.Task.Http {
             public readonly Uri Uri;
             public readonly string Version;
 
-            public RequestLine (string baseUri, string line) {
+            public RequestLine (string host, string line) {
                 var m = MyRegex.Match(line);
                 if (!m.Success)
-                    throw new Exception("Invalid format");
+                    throw new Exception("Invalid request line format");
 
                 Method = m.Groups["method"].Value.ToUpperInvariant();
                 UnparsedUri = m.Groups["uri"].Value;
 
-                if (UnparsedUri.StartsWith("/"))
-                    Uri = new Uri(new Uri(baseUri, UriKind.Absolute), UnparsedUri);
-                else
-                    Uri = new Uri(UnparsedUri, UriKind.Absolute);
+                Uri hostUri, uri;
+
+                if (!Uri.TryCreate(host, UriKind.Absolute, out hostUri))
+                    throw new Exception("Invalid host header");
+                
+                if (!Uri.TryCreate(hostUri, UnparsedUri, out Uri))
+                    throw new Exception("Invalid request URI");
 
                 var g = m.Groups["version"];
                 Version = g.Success
@@ -54,21 +88,62 @@ namespace Squared.Task.Http {
             }
         }
 
+        public struct Header {
+            private static readonly Regex MyRegex = new Regex(
+                @"(?'name'[^:]+)(\s?):(\s?)(?'value'.+)",
+                RegexOptions.Compiled | RegexOptions.ExplicitCapture
+            );
+
+            public readonly string Name;
+            public readonly string Value;
+
+            public Header (string line) {
+                var m = MyRegex.Match(line);
+                if (!m.Success)
+                    throw new Exception("Invalid header format");
+
+                Name = m.Groups["name"].Value;
+                Value = m.Groups["value"].Value;
+            }
+
+            public override string ToString() {
+                return String.Format("{0}:{1}", Name, Value);
+            }
+        }
+
         private IEnumerator<object> RequestTask (ListenerContext context, Socket socket) {
             const int bufferSize = 8192;
 
             using (var adapter = new SocketDataAdapter(socket))
             using (var reader = new AsyncTextReader(adapter, Encoding.UTF8, bufferSize)) {
+                var headers = new RequestHeaders();
+
                 var fRequestLine = reader.ReadLine();
                 yield return fRequestLine;
 
-                var lep = (IPEndPoint)socket.LocalEndPoint;
-                var requestLine = new RequestLine(
-                    String.Format("http://{0}:{1}/", lep.Address, lep.Port),
-                    fRequestLine.Result
-                );
+                while (true) {
+                    var fHeaderLine = reader.ReadLine();
+                    yield return fHeaderLine;
 
-                var request = new Request(this, requestLine);
+                    if (String.IsNullOrWhiteSpace(fHeaderLine.Result))
+                        break;
+
+                    headers.Add(new Header(fHeaderLine.Result));
+                }
+
+                string hostName;
+                if (headers.Contains("Host")) {
+                    hostName = String.Format("http://{0}", headers["Host"].Value);
+                } else {
+                    var lep = (IPEndPoint)socket.LocalEndPoint;
+                    hostName = String.Format("http://{0}:{1}", lep.Address, lep.Port);
+                }
+
+                var request = new Request(
+                    this,
+                    new RequestLine(hostName, fRequestLine.Result),
+                    headers
+                );
                 IncomingRequests.Enqueue(request);
             }
         }

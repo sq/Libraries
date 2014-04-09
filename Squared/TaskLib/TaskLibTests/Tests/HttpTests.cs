@@ -98,14 +98,36 @@ namespace Squared.Task.Http {
 
             Assert.IsFalse(fRequest.Completed);
 
-            var wc = new WebClient();
-            var fResponse = Future.RunInThread(
-                () => wc.DownloadData(Server1 + "test")
-            );
+            using (var wc = new WebClient()) {
+                Future.RunInThread(
+                    () => wc.DownloadData(Server1 + "test")
+                );
 
-            var request = Scheduler.WaitFor(fRequest, 2);
-            Assert.AreEqual("GET", request.Line.Method);
-            Assert.AreEqual("/test", request.Line.Uri.AbsolutePath);
+                var request = Scheduler.WaitFor(fRequest, 2);
+                Assert.IsNotNull(request);
+
+                Console.WriteLine(request);
+            }
+        }
+
+        [Test]
+        public void AcceptedRequestContainsParsedHeaders () {
+            Server.EndPoints.Add(ListenPort1);
+            Scheduler.WaitFor(Server.StartListening());
+
+            using (var wc = new WebClient()) {
+                Future.RunInThread(
+                    () => wc.DownloadData(Server1 + "subdir/test?a=b&c=d")
+                );
+
+                var request = Scheduler.WaitFor(Server.AcceptRequest(), 3);
+                Console.WriteLine(request);
+
+                Assert.AreEqual("GET", request.Line.Method);
+                Assert.AreEqual("localhost", request.Line.Uri.Host);
+                Assert.AreEqual("/subdir/test", request.Line.Uri.AbsolutePath);
+                Assert.AreEqual("?a=b&c=d", request.Line.Uri.Query);
+            }
         }
 
         [TearDown]
