@@ -112,6 +112,7 @@
     <Compile Include="Data\Query.cs" />
     <Compile Include="DiskMonitor.cs" />
     <Compile Include="Future.cs" />
+    <Compile Include="Http\HttpServer.cs" />
     <Compile Include="IO.cs" />
     <Compile Include="JobQueue.cs" />
     <Compile Include="Network.cs" />

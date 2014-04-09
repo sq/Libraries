@@ -112,6 +112,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Tests\HttpTests.cs" />
     <Compile Include="Tests\DbTests.cs" />
     <Compile Include="Tests\FutureTests.cs" />
     <Compile Include="Tests\IOTests.cs" />
