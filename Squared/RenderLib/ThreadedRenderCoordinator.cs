@@ -220,6 +220,9 @@ namespace Squared.Render {
                     _DrawThread.RequestWork();
                 } else {
                     ThreadedDraw(_DrawThread);
+
+                    if (!_DeviceLost)
+                        FlushPendingDisposes();
                 }
 
                 if (_DeviceLost) {
@@ -231,8 +234,6 @@ namespace Squared.Render {
             } else {
                 Interlocked.Decrement(ref _DrawDepth);
             }
-
-            FlushPendingDisposes();
         }
 
         protected void RenderFrame (Frame frame, bool acquireLock) {
@@ -364,16 +365,17 @@ namespace Squared.Render {
             }
         }
 
-        private void FlushPendingDisposes () {
+        // TODO: Move this
+        internal static void FlushDisposeList (List<IDisposable> list) {
             IDisposable[] pds = null;
 
-            lock (_PendingDisposes) {
-                if (_PendingDisposes.Count == 0)
+            lock (list) {
+                if (list.Count == 0)
                     return;
 
                 // Prevents a deadlock from recursion
-                pds = _PendingDisposes.ToArray();
-                _PendingDisposes.Clear();
+                pds = list.ToArray();
+                list.Clear();
             }
 
             foreach (var pd in pds) {
@@ -382,6 +384,12 @@ namespace Squared.Render {
                 } catch (ObjectDisposedException) {
                 }
             }
+        }
+
+        private void FlushPendingDisposes () {
+            FlushDisposeList(_PendingDisposes);
+
+            Manager.FlushPendingDisposes();
         }
 
         public void DisposeResource (IDisposable resource) {

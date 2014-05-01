@@ -150,14 +150,15 @@ namespace Squared.Render {
         public readonly DeviceManager DeviceManager;
 
         private int _FrameCount = 0;
-        private Dictionary<Type, int> _PreferredPoolCapacities =
+        private readonly Dictionary<Type, int> _PreferredPoolCapacities =
             new Dictionary<Type, int>(new ReferenceComparer<Type>());
-        private Dictionary<Type, IArrayPoolAllocator> _ArrayAllocators = 
+        private readonly Dictionary<Type, IArrayPoolAllocator> _ArrayAllocators = 
             new Dictionary<Type, IArrayPoolAllocator>(new ReferenceComparer<Type>());
-        private Dictionary<Type, IBatchPool> _BatchAllocators =
+        private readonly Dictionary<Type, IBatchPool> _BatchAllocators =
             new Dictionary<Type, IBatchPool>(new ReferenceComparer<Type>());
-        private Dictionary<Type, IBufferGenerator> _BufferGenerators =
+        private readonly Dictionary<Type, IBufferGenerator> _BufferGenerators =
             new Dictionary<Type, IBufferGenerator>(new ReferenceComparer<Type>());
+        private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
         private FramePool _FrameAllocator;
 
         private WorkerThreadInfo[] _WorkerInfo;
@@ -341,6 +342,18 @@ namespace Squared.Render {
             lock (_BufferGenerators)
                 foreach (var generator in _BufferGenerators.Values)
                     generator.Reset();
+        }
+
+        internal void FlushPendingDisposes () {
+            RenderCoordinator.FlushDisposeList(_PendingDisposes);
+        }
+
+        public void DisposeResource (IDisposable resource) {
+            if (resource == null)
+                return;
+
+            lock (_PendingDisposes)
+                _PendingDisposes.Add(resource);
         }
     }
 
