@@ -54,6 +54,14 @@ namespace Squared.Util {
         public override string ToString () {
             return String.Format("{{{0}, {1}}}", First, Second);
         }
+
+        public static bool operator == (Pair<T> lhs, Pair<T> rhs) {
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator != (Pair<T> lhs, Pair<T> rhs) {
+            return !lhs.Equals(rhs);
+        }
     }
 
     public struct Interval : IEquatable<Interval> {
