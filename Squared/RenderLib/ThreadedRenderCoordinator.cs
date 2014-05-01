@@ -220,10 +220,10 @@ namespace Squared.Render {
                     _DrawThread.RequestWork();
                 } else {
                     ThreadedDraw(_DrawThread);
-
-                    if (!_DeviceLost)
-                        FlushPendingDisposes();
                 }
+
+                if (!_DeviceLost)
+                    FlushPendingDisposes();
 
                 if (_DeviceLost) {
                     if (DoThreadedIssue)
