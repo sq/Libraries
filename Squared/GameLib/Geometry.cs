@@ -187,6 +187,13 @@ namespace Squared.Game {
             };
         }
 
+        public Bounds Scale (Vector2 scale) {
+            return new Bounds {
+                TopLeft = TopLeft * scale,
+                BottomRight = BottomRight * scale
+            };
+        }
+
         public bool Intersection (ref Bounds lhs, ref Bounds rhs, out Bounds result) {
             var x1 = Math.Max(lhs.TopLeft.X, rhs.TopLeft.X);
             var y1 = Math.Max(lhs.TopLeft.Y, rhs.TopLeft.Y);

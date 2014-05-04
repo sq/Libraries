@@ -486,7 +486,8 @@ namespace Squared.Render {
             if (Interlocked.Exchange(ref State, State_Drawing) != State_Prepared)
                 throw new InvalidOperationException();
 
-            Tracing.RenderTrace.ImmediateMarker("Frame {0:0000} : Begin Draw", Index);
+            if (Tracing.RenderTrace.EnableTracing)
+                Tracing.RenderTrace.ImmediateMarker("Frame {0:0000} : Begin Draw", Index);
 
             var dm = RenderManager.DeviceManager;
             var device = dm.Device;
@@ -501,7 +502,8 @@ namespace Squared.Render {
 
             dm.Finish();
 
-            Tracing.RenderTrace.ImmediateMarker("Frame {0:0000} : End Draw", Index);
+            if (Tracing.RenderTrace.EnableTracing)
+                Tracing.RenderTrace.ImmediateMarker("Frame {0:0000} : End Draw", Index);
 
             if (Interlocked.Exchange(ref State, State_Drawn) != State_Drawing)
                 throw new InvalidOperationException();
@@ -806,6 +808,9 @@ namespace Squared.Render {
 
         private static void _SetRenderTargetCallback (DeviceManager dm, object userData) {
             var data = (SetRenderTargetData)userData;
+            if (Tracing.RenderTrace.EnableTracing)
+                Tracing.RenderTrace.ImmediateMarker("Set   Render Target {0}", data.RenderTarget.GetHashCode());
+
             dm.PushRenderTarget(data.RenderTarget);
             if (data.Before != null)
                 data.Before(dm, data.UserData);
@@ -815,6 +820,9 @@ namespace Squared.Render {
 
         private static void _RestoreRenderTargetCallback (DeviceManager dm, object userData) {
             var data = (SetRenderTargetData)userData;
+            if (Tracing.RenderTrace.EnableTracing)
+                Tracing.RenderTrace.ImmediateMarker("Unset Render Target {0}", data.RenderTarget.GetHashCode());
+
             dm.PopRenderTarget();
             if (data.After != null)
                 data.After(dm, data.UserData);
