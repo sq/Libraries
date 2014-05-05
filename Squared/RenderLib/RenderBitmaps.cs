@@ -276,10 +276,16 @@ namespace Squared.Render {
         }
 
         public void Add (BitmapDrawCall item) {
+            if (!item.IsValid)
+                throw new InvalidOperationException("Invalid draw call");
+
             _DrawCalls.Add(item);
         }
 
         new public void Add (ref BitmapDrawCall item) {
+            if (!item.IsValid)
+                throw new InvalidOperationException("Invalid draw call");
+
             _DrawCalls.Add(ref item);
         }
 
@@ -792,7 +798,7 @@ namespace Squared.Render {
 
         public bool IsValid {
             get {
-                return (Textures.Texture1 != null);
+                return ((Textures.Texture1 != null) && !Textures.Texture1.IsDisposed);
             }
         }
     }

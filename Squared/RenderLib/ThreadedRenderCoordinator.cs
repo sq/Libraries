@@ -222,9 +222,6 @@ namespace Squared.Render {
                     ThreadedDraw(_DrawThread);
                 }
 
-                if (!_DeviceLost)
-                    FlushPendingDisposes();
-
                 if (_DeviceLost) {
                     if (DoThreadedIssue)
                         WaitForPendingWork();
@@ -273,6 +270,8 @@ namespace Squared.Render {
                 RenderFrameToDraw();
 
                 _SyncEndDraw();
+
+                FlushPendingDisposes();
 
                 _DeviceLost |= IsDeviceLost;
             } catch (DeviceLostException) {
