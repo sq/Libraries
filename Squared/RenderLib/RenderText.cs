@@ -184,6 +184,21 @@ namespace Squared.Render {
             }
         }
 
+        public BitmapDrawCall this[int index] {
+            get {
+                if ((index < 0) || (index >= Count))
+                    throw new ArgumentOutOfRangeException("index");
+
+                return DrawCalls.Array[DrawCalls.Offset + index];
+            }
+            set {
+                if ((index < 0) || (index >= Count))
+                    throw new ArgumentOutOfRangeException("index");
+
+                DrawCalls.Array[DrawCalls.Offset + index] = value;
+            }
+        }
+
         public ArraySegment<BitmapDrawCall> Slice (int skip, int count) {
             return new ArraySegment<BitmapDrawCall>(
                 DrawCalls.Array, DrawCalls.Offset + skip, Math.Max(Math.Min(count, DrawCalls.Count - skip), 0)
@@ -192,6 +207,73 @@ namespace Squared.Render {
 
         public static implicit operator ArraySegment<BitmapDrawCall> (StringLayout layout) {
             return layout.DrawCalls;
+        }
+
+        public StringLayout WordWrap (string text, float wrapAtX, ArraySegment<BitmapDrawCall>? buffer = null, float wrapIndentation = 0f) {
+            int? lastWordStartIndex = null, thisWordStartIndex = null;
+            int lastWordEndIndex = 0;
+            var lineHeight = Size.Y;
+            var newSize = new Vector2();
+
+            ArraySegment<BitmapDrawCall> _buffer;
+            if (buffer.HasValue)
+                _buffer = buffer.Value;
+            else
+                _buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[Count]);
+
+            Array.Copy(this.DrawCalls.Array, this.DrawCalls.Offset, _buffer.Array, _buffer.Offset, Count);
+
+            for (var i = 0; i < Count; i++) {
+                var ch = text[i];
+                var dc = _buffer.Array[_buffer.Offset + i];
+
+                var isWordChar = Char.IsLetterOrDigit(ch) || (ch == '\'');
+                if (!isWordChar) {
+                    if (thisWordStartIndex.HasValue) {
+                        lastWordStartIndex = thisWordStartIndex;
+                        lastWordEndIndex = i - 1;
+                        thisWordStartIndex = null;
+                    }
+                } else {
+                    if (!thisWordStartIndex.HasValue)
+                        thisWordStartIndex = i;
+                }
+
+                var needWrap = (dc.Position.X >= wrapAtX);
+                if (needWrap) {
+                    int fromOffset = i;
+                    if (lastWordStartIndex.HasValue)
+                        fromOffset = lastWordStartIndex.Value;
+                    else if (thisWordStartIndex.HasValue)
+                        fromOffset = thisWordStartIndex.Value;
+
+                    float xDelta = Position.X - _buffer.Array[_buffer.Offset + fromOffset].Position.X + wrapIndentation;
+                    for (var j = fromOffset; j < Count; j++) {
+                        var dc2 = _buffer.Array[_buffer.Offset + j];
+                        dc2.Position.X += xDelta;
+                        dc2.Position.Y += lineHeight;
+                        _buffer.Array[_buffer.Offset + j] = dc2;
+                    }
+                }
+            }
+
+            for (var i = 0; i < Count; i++) {
+                var dc = _buffer.Array[_buffer.Offset + i];
+                newSize.X = Math.Max(
+                    dc.Position.X + (dc.Texture.Width * dc.TextureRegion.Size.X) - Position.X, newSize.X
+                );
+                newSize.Y = Math.Max(
+                    dc.Position.Y + (dc.Texture.Height * dc.TextureRegion.Size.Y) - Position.Y, newSize.Y
+                );
+            }
+
+            return new StringLayout(
+                Position, newSize,
+                // FIXME
+                FirstCharacterBounds,
+                LastCharacterBounds,
+                _buffer
+            );
         }
     }
 
