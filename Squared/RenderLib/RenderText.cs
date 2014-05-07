@@ -24,6 +24,7 @@ namespace Squared.Render {
         private int _CharacterLimit = int.MaxValue;
         private float _XOffsetOfFirstLine = 0;
         private float? _LineBreakAtX = null;
+        private bool _WordWrap = false;
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _Font = font;
@@ -146,17 +147,43 @@ namespace Squared.Render {
             }
         }
 
+        public bool WordWrap {
+            get {
+                return _WordWrap;
+            }
+            set {
+                InvalidatingValueAssignment(ref _WordWrap, value);
+            }
+        }
+
         public StringLayout Get () {
+            if (_Text == null)
+                return new StringLayout();
+
             if (!_CachedStringLayout.HasValue) {
-                _Buffer.EnsureCapacity(_Text.Length);
+                int length = _Text.Length;
+
+                int capacity = length;
+                if (_WordWrap)
+                    capacity *= 2;
+
+                _Buffer.EnsureCapacity(capacity);
 
                 _CachedStringLayout = Font.LayoutString(
                     _Text, _Buffer.Buffer, 
                     _Position, _Color, 
                     _Scale, _SortKey, 
                     _CharacterSkipCount, _CharacterLimit, 
-                    _XOffsetOfFirstLine, _LineBreakAtX
+                    _XOffsetOfFirstLine, _WordWrap ? null : _LineBreakAtX
                 );
+
+                if (_WordWrap && _LineBreakAtX.HasValue) {
+                    _CachedStringLayout = _CachedStringLayout.Value.WordWrap(
+                        _Text, _LineBreakAtX.Value, new ArraySegment<BitmapDrawCall>(
+                            _Buffer.Buffer.Array, _Buffer.Buffer.Offset + length, length
+                        ), 0
+                    );
+                }
             }
 
             return _CachedStringLayout.Value;
