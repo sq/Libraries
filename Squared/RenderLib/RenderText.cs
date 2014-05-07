@@ -238,7 +238,9 @@ namespace Squared.Render {
 
         public StringLayout WordWrap (string text, float wrapAtX, ArraySegment<BitmapDrawCall>? buffer = null, float wrapIndentation = 0f) {
             int? lastWordStartIndex = null, thisWordStartIndex = null;
+            float thisWordWidth = 0;
             int lastWordEndIndex = 0;
+            float maxWordWidth = wrapAtX;
             var lineHeight = Size.Y;
             var newSize = new Vector2();
 
@@ -262,19 +264,26 @@ namespace Squared.Render {
                         thisWordStartIndex = null;
                     }
                 } else {
-                    if (!thisWordStartIndex.HasValue)
+                    if (!thisWordStartIndex.HasValue) {
                         thisWordStartIndex = i;
+                        thisWordWidth = 0f;
+                    }
+
+                    thisWordWidth += dc.TextureRegion.Size.X * dc.Texture.Width;
                 }
 
                 var needWrap = (dc.Position.X >= wrapAtX);
                 if (needWrap) {
                     int fromOffset = i;
-                    if (lastWordStartIndex.HasValue)
-                        fromOffset = lastWordStartIndex.Value;
-                    else if (thisWordStartIndex.HasValue)
+
+                    // Character wrap if we have no current word or the current word is too wide.
+                    if (thisWordStartIndex.HasValue && (thisWordWidth <= wrapAtX))
                         fromOffset = thisWordStartIndex.Value;
 
                     float xDelta = Position.X - _buffer.Array[_buffer.Offset + fromOffset].Position.X + wrapIndentation;
+                    // After we've done an indent, the maximum width is reduced.
+                    maxWordWidth = wrapAtX - wrapIndentation;
+
                     for (var j = fromOffset; j < Count; j++) {
                         var dc2 = _buffer.Array[_buffer.Offset + j];
                         dc2.Position.X += xDelta;
