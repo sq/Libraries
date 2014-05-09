@@ -52,6 +52,10 @@ namespace Squared.Util {
                 return _.Data;
             }
 
+            public static implicit operator ArraySegment<T> (Buffer _) {
+                return new ArraySegment<T>(_.Data, 0, _.Data.Length);
+            }
+
             public void Clear (int index, int length) {
                 Array.Clear(Data, index, length);
             }
