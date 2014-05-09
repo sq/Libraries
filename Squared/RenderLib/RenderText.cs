@@ -27,6 +27,7 @@ namespace Squared.Render {
         private float _XOffsetOfFirstLine = 0;
         private float? _LineBreakAtX = null;
         private bool _WordWrap = false;
+        private bool _AlignToPixels = false;
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _Font = font;
@@ -158,6 +159,15 @@ namespace Squared.Render {
             }
         }
 
+        public bool AlignToPixels {
+            get {
+                return _AlignToPixels;
+            }
+            set {
+                InvalidatingValueAssignment(ref _AlignToPixels, value);
+            }
+        }
+
         public Dictionary<char, KerningAdjustment> KerningAdjustments {
             get {
                 return _KerningAdjustments;
@@ -186,7 +196,7 @@ namespace Squared.Render {
                     _Scale, _SortKey, 
                     _CharacterSkipCount, _CharacterLimit, 
                     _XOffsetOfFirstLine, _WordWrap ? null : _LineBreakAtX,
-                    _KerningAdjustments
+                    _AlignToPixels, _KerningAdjustments
                 );
 
                 if (_WordWrap && _LineBreakAtX.HasValue) {
@@ -354,7 +364,8 @@ namespace Squared.Render {
             this SpriteFont font, string text, ArraySegment<BitmapDrawCall>? buffer,
             Vector2? position = null, Color? color = null, float scale = 1, float sortKey = 0,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
-            float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
+            float xOffsetOfFirstLine = 0, float? lineBreakAtX = null, 
+            bool alignToPixels = false,
             Dictionary<char, KerningAdjustment> kerningAdjustments = null 
         ) {
             if (text == null)
@@ -464,11 +475,16 @@ namespace Squared.Render {
                     if (characterLimit <= 0)
                         break;
 
-                    drawCall.TextureRegion = glyphSource.Texture.BoundsFromRectangle(ref glyph.BoundsInTexture);
-                    drawCall.Position = new Vector2(
+                    var glyphPosition = new Vector2(
                         actualPosition.X + (glyph.Cropping.X + characterOffset.X) * scale,
                         actualPosition.Y + (glyph.Cropping.Y + characterOffset.Y) * scale
                     );
+
+                    drawCall.TextureRegion = glyphSource.Texture.BoundsFromRectangle(ref glyph.BoundsInTexture);
+                    if (alignToPixels)
+                        drawCall.Position = glyphPosition.Floor();
+                    else
+                        drawCall.Position = glyphPosition;
 
                     _buffer.Array[bufferWritePosition] = drawCall;
 

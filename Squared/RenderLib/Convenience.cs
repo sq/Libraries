@@ -363,7 +363,7 @@ namespace Squared.Render.Convenience {
                 var layout = font.LayoutString(
                     text, new ArraySegment<BitmapDrawCall>(buffer.Data),
                     position, color, scale, sortKey.GetValueOrDefault(NextSortKey),
-                    characterSkipCount, characterLimit
+                    characterSkipCount, characterLimit, alignToPixels: true
                 );
 
                 DrawMultiple(
