@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Squared.Render.Evil;
 using Squared.Util;
@@ -14,6 +15,7 @@ namespace Squared.Render {
         private GrowableBuffer<BitmapDrawCall> _Buffer = new GrowableBuffer<BitmapDrawCall>(); 
         private StringLayout? _CachedStringLayout;
 
+        private Dictionary<char, KerningAdjustment> _KerningAdjustments; 
         private SpriteFont _Font;
         private string _Text;
         private Vector2 _Position = Vector2.Zero;
@@ -156,6 +158,15 @@ namespace Squared.Render {
             }
         }
 
+        public Dictionary<char, KerningAdjustment> KerningAdjustments {
+            get {
+                return _KerningAdjustments;
+            }
+            set {
+                InvalidatingReferenceAssignment(ref _KerningAdjustments, value);
+            }
+        }
+
         public StringLayout Get () {
             if (_Text == null)
                 return new StringLayout();
@@ -174,7 +185,8 @@ namespace Squared.Render {
                     _Position, _Color, 
                     _Scale, _SortKey, 
                     _CharacterSkipCount, _CharacterLimit, 
-                    _XOffsetOfFirstLine, _WordWrap ? null : _LineBreakAtX
+                    _XOffsetOfFirstLine, _WordWrap ? null : _LineBreakAtX,
+                    _KerningAdjustments
                 );
 
                 if (_WordWrap && _LineBreakAtX.HasValue) {
@@ -191,6 +203,9 @@ namespace Squared.Render {
     }
 
     public struct StringLayout {
+        private static readonly ConditionalWeakTable<SpriteFont, Dictionary<char, KerningAdjustment>> _DefaultKerningAdjustments =
+            new ConditionalWeakTable<SpriteFont, Dictionary<char, KerningAdjustment>>(); 
+
         public readonly Vector2 Position;
         public readonly Vector2 Size;
         public readonly Bounds FirstCharacterBounds;
@@ -311,6 +326,27 @@ namespace Squared.Render {
                 _buffer
             );
         }
+
+        public static Dictionary<char, KerningAdjustment> GetDefaultKerningAdjustments (SpriteFont font) {
+            Dictionary<char, KerningAdjustment> result;
+            _DefaultKerningAdjustments.TryGetValue(font, out result);
+            return result;
+        }
+
+        public static void SetDefaultKerningAdjustments (SpriteFont font, Dictionary<char, KerningAdjustment> adjustments) {
+            _DefaultKerningAdjustments.Remove(font);
+            _DefaultKerningAdjustments.Add(font, adjustments);
+        }
+    }
+
+    public struct KerningAdjustment {
+        public float LeftSideBearing, RightSideBearing, Width;
+
+        public KerningAdjustment (float leftSide = 0f, float rightSide = 0f, float width = 0f) {
+            LeftSideBearing = leftSide;
+            RightSideBearing = rightSide;
+            Width = width;
+        }
     }
 
     public static class SpriteFontExtensions {
@@ -318,7 +354,8 @@ namespace Squared.Render {
             this SpriteFont font, string text, ArraySegment<BitmapDrawCall>? buffer,
             Vector2? position = null, Color? color = null, float scale = 1, float sortKey = 0,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
-            float xOffsetOfFirstLine = 0, float? lineBreakAtX = null
+            float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
+            Dictionary<char, KerningAdjustment> kerningAdjustments = null 
         ) {
             if (text == null)
                 throw new ArgumentNullException("text");
@@ -331,6 +368,9 @@ namespace Squared.Render {
 
             if (_buffer.Count < text.Length)
                 throw new ArgumentException("buffer too small", "buffer");
+
+            if (kerningAdjustments == null)
+                kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
 
             var spacing = font.Spacing;
             var lineSpacing = font.LineSpacing;
@@ -373,6 +413,13 @@ namespace Squared.Render {
 
                 Glyph glyph;
                 deadGlyph = !glyphSource.GetGlyph(ch, out glyph);
+
+                KerningAdjustment kerningAdjustment;
+                if ((kerningAdjustments != null) && kerningAdjustments.TryGetValue(ch, out kerningAdjustment)) {
+                    glyph.LeftSideBearing += kerningAdjustment.LeftSideBearing;
+                    glyph.Width += kerningAdjustment.Width;
+                    glyph.RightSideBearing += kerningAdjustment.RightSideBearing;
+                }
 
                 if (!deadGlyph) {
                     var x = characterOffset.X + glyph.LeftSideBearing + glyph.RightSideBearing + glyph.Width + spacing;
