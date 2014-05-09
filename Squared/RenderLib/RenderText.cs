@@ -262,9 +262,8 @@ namespace Squared.Render {
         }
 
         public StringLayout WordWrap (string text, float wrapAtX, ArraySegment<BitmapDrawCall>? buffer = null, float wrapIndentation = 0f) {
-            int? lastWordStartIndex = null, thisWordStartIndex = null;
+            int? thisWordStartIndex = null;
             float thisWordWidth = 0;
-            int lastWordEndIndex = 0;
             float maxWordWidth = wrapAtX;
             var lineHeight = Size.Y;
             var newSize = new Vector2();
@@ -277,25 +276,14 @@ namespace Squared.Render {
 
             Array.Copy(this.DrawCalls.Array, this.DrawCalls.Offset, _buffer.Array, _buffer.Offset, Count);
 
+            var wasWordChar = false;
+
             for (var i = 0; i < Count; i++) {
                 var ch = text[i];
                 var dc = _buffer.Array[_buffer.Offset + i];
 
                 var isWordChar = Char.IsLetterOrDigit(ch) || (ch == '\'');
-                if (!isWordChar) {
-                    if (thisWordStartIndex.HasValue) {
-                        lastWordStartIndex = thisWordStartIndex;
-                        lastWordEndIndex = i - 1;
-                        thisWordStartIndex = null;
-                    }
-                } else {
-                    if (!thisWordStartIndex.HasValue) {
-                        thisWordStartIndex = i;
-                        thisWordWidth = 0f;
-                    }
-
-                    thisWordWidth += dc.TextureRegion.Size.X * dc.Texture.Width;
-                }
+                thisWordWidth += dc.TextureRegion.Size.X * dc.Texture.Width;
 
                 var needWrap = (dc.Position.X >= wrapAtX);
                 if (needWrap) {
@@ -307,6 +295,7 @@ namespace Squared.Render {
 
                     float xDelta = Position.X - _buffer.Array[_buffer.Offset + fromOffset].Position.X + wrapIndentation;
                     // After we've done an indent, the maximum width is reduced.
+                    // FIXME: Why is this unreferenced
                     maxWordWidth = wrapAtX - wrapIndentation;
 
                     for (var j = fromOffset; j < Count; j++) {
@@ -314,6 +303,16 @@ namespace Squared.Render {
                         dc2.Position.X += xDelta;
                         dc2.Position.Y += lineHeight;
                         _buffer.Array[_buffer.Offset + j] = dc2;
+                    }
+                }
+
+                if (!isWordChar) {
+                    if (thisWordStartIndex.HasValue)
+                        thisWordStartIndex = null;
+                } else {
+                    if (!thisWordStartIndex.HasValue) {
+                        thisWordStartIndex = i;
+                        thisWordWidth = 0f;
                     }
                 }
             }
