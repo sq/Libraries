@@ -240,6 +240,10 @@ namespace Squared.Util {
             return Delegate.CreateDelegate(resultType, null, mi) as Interpolator<T>;
         }
 
+        public static BoundInterpolator<T, U> GetBoundDefault<U>() {
+            return Linear<U>;
+        }
+
         public static Interpolator<T> Default {
             get {
                 return Linear;
