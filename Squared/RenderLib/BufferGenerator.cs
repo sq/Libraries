@@ -65,6 +65,7 @@ namespace Squared.Render.Internal {
 
         public class SoftwareBuffer : ISoftwareBuffer {
             public readonly BufferGenerator<THardwareBuffer, TVertex, TIndex> BufferGenerator;
+            internal bool IsValid = false;
 
             IHardwareBuffer ISoftwareBuffer.HardwareBuffer {
                 get {
@@ -110,6 +111,7 @@ namespace Squared.Render.Internal {
                 HardwareBufferIndex = hardwareBufferIndex;
                 HardwareVertexOffset = vertexOffset;
                 HardwareIndexOffset = indexOffset;
+                IsValid = true;
             }
         }
 
@@ -197,8 +199,10 @@ namespace Squared.Render.Internal {
 
                 _UsedHardwareBuffers.Clear();
 
-                foreach (var swb in _SoftwareBuffers)
+                foreach (var swb in _SoftwareBuffers) {
+                    swb.IsValid = false;
                     _SoftwareBufferPool.Release(swb);
+                }
 
                 _SoftwareBuffers.Clear();
 

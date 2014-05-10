@@ -53,14 +53,17 @@ namespace Squared.Render {
         }
 
         protected override void Dispose (bool disposing) {
-            if (RenderCoordinator != null) {
-                if (UseThreadedDraw)
-                    RenderCoordinator.WaitForActiveDraw();
-
+            if (RenderCoordinator != null)
                 RenderCoordinator.Dispose();
-            }
 
             base.Dispose(disposing);
+        }
+
+        protected override void EndRun() {
+            if (RenderCoordinator != null)
+                RenderCoordinator.Dispose();
+
+            base.EndRun();
         }
 
         protected override void Initialize () {

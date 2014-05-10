@@ -98,6 +98,8 @@ namespace Squared.Render {
         protected bool DefaultBeginDraw () {
             if (Device.GraphicsDeviceStatus == GraphicsDeviceStatus.Normal)
                 return true;
+            else if (!_Running)
+                return false;
 
             return false;
         }
@@ -266,6 +268,9 @@ namespace Squared.Render {
         }
 
         protected void ThreadedDraw (WorkerThread thread) {
+            if (!_Running)
+                return;
+
             try {
                 RenderFrameToDraw();
 
@@ -274,13 +279,20 @@ namespace Squared.Render {
                 FlushPendingDisposes();
 
                 _DeviceLost |= IsDeviceLost;
+            } catch (InvalidOperationException ioe) {
+                // XNA generates this on exit and we can't do anything about it
+                if (ioe.Message == "An unexpected error has occurred.") {
+                    ;
+                } else if (ioe is ObjectDisposedException) {
+                    if (Device.IsDisposed)
+                        _Running = false;
+                    else
+                        throw;
+                } else {
+                    throw;
+                }
             } catch (DeviceLostException) {
                 _DeviceLost = true;
-            } catch (ObjectDisposedException) {
-                if (Device.IsDisposed)
-                    _Running = false;
-                else
-                    throw;
             } finally {
                 Interlocked.Decrement(ref _DrawDepth);
             }
@@ -347,9 +359,16 @@ namespace Squared.Render {
         }
 
         public void Dispose () {
+            if (!_Running) {
+                FlushPendingDisposes();
+                return;
+            }
+
             _Running = false;
 
             try {
+                WaitForActiveDraw();
+
                 if (_DrawThread != null) {
                     _DrawThread.Dispose();
                     _DrawThread = null;

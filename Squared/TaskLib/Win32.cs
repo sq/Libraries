@@ -37,6 +37,7 @@ namespace Squared.Task {
 
         public readonly long? MaxStepDuration;
         public event MaxStepDurationExceededHandler MaxStepDurationExceeded;
+        public event UnhandledExceptionEventHandler UnhandledException;
 
         public WindowsMessageJobQueue ()
             : this(DefaultMaxStepDuration) {
@@ -95,8 +96,14 @@ namespace Squared.Task {
             int i = 0;
             Action item;
             while (_Queue.TryDequeue(out item)) {
-                if (item != null)
-                    item();
+                if (item != null) {
+                    try {
+                        item();
+                    } catch (Exception exc) {
+                        if (UnhandledException != null)
+                            UnhandledException(this, new UnhandledExceptionEventArgs(exc, false));
+                    }
+                } 
 
                 i++;
 
