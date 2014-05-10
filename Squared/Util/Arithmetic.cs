@@ -274,6 +274,29 @@ namespace Squared.Util {
             return Lerp(min, max, (float)Math.Sin(a * multiplier));
         }
 
+        // Input range: 0-2
+        // Output range: -max - max
+        public static float PulseCyclicExp (float value, float max) {
+            var valueCentered = Wrap(value, 0f, 2f);
+            if (valueCentered <= 1f) {
+                if (valueCentered >= 0.5f) {
+                    valueCentered = (0.5f - (valueCentered - 0.5f)) * 2f;
+                } else {
+                    valueCentered = valueCentered * 2f;
+                }
+            } else {
+                valueCentered -= 1f;
+                if (valueCentered >= 0.5f) {
+                    valueCentered = (0.5f - (valueCentered - 0.5f)) * -2f;
+                } else {
+                    valueCentered = valueCentered * -2f;
+                }
+            }
+
+            var valueExp = (valueCentered * valueCentered) * Math.Sign(valueCentered) * max;
+            return valueExp;
+        }
+
         private static class LerpSource<T> where T : struct {
             static InterpolatorSource<T> Source;
             static T[] Values;
