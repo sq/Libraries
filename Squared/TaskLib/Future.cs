@@ -163,7 +163,10 @@ namespace Squared.Task {
         }
 
         public SignalFuture (bool signaled) 
-            : base(signaled ? NoneType.None : null) {
+            : base() {
+
+            if (signaled)
+                base.SetResult(NoneType.None, null);
         }
     }
 
