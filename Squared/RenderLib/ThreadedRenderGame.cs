@@ -49,6 +49,8 @@ namespace Squared.Render {
             UseThreadedDraw = false;
 #else
             UseThreadedDraw = true;
+            if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
+                throw new InvalidOperationException("XNA only correctly supports single-thread apartments.");
 #endif
         }
 
