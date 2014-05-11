@@ -562,7 +562,7 @@ namespace Squared.Render.Internal {
         )
             : base(graphicsDevice, createResourceLock, useResourceLock, disposeResource) {
 
-            MaxSoftwareBuffersPerHardwareBuffer = 1;
+            MaxSoftwareBuffersPerHardwareBuffer = 256;
         }
 
         protected override XNABufferPair<TVertex> AllocateHardwareBuffer (int vertexCount, int indexCount) {
