@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
@@ -224,6 +225,9 @@ namespace Squared.Render {
 
                     MakeDrawArguments(kvp.Key, ref vb, ref ib, ref vertexOffset, ref indexOffset, vertexCount, indexCount);
                 }
+
+                int done = 0;
+                done = 1;
             }
         }
 
@@ -232,7 +236,11 @@ namespace Squared.Render {
                 _BufferGenerator.Flush();
 
                 using (manager.ApplyMaterial(Material)) {
-                    _SoftwareBuffer.HardwareBuffer.SetActive(manager.Device);
+                    var hwb = _SoftwareBuffer.HardwareBuffer;
+                    if (hwb == null)
+                        throw new ThreadStateException("Could not get a hardware buffer for this batch");
+
+                    hwb.SetActive(manager.Device);
     #if PSM                
                     foreach (var da in _DrawArguments)
                         g.DrawArrays(PSSHelper.ToDrawMode(da.PrimitiveType), da.IndexOffset, da.IndexCount, 1);
@@ -240,7 +248,7 @@ namespace Squared.Render {
                     foreach (var da in _DrawArguments)
                         manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
     #endif
-                    _SoftwareBuffer.HardwareBuffer.SetInactive(manager.Device);
+                    hwb.SetInactive(manager.Device);
                 }
             }
 
