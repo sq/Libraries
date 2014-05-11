@@ -31,6 +31,7 @@ namespace Squared.Render {
         public readonly object PrepareLock = new object();
 
         private bool _Running = true;
+        private bool _ActualEnableThreading = true;
         private Frame _FrameBeingPrepared = null;
         private Frame _FrameBeingDrawn = null;
 
@@ -156,14 +157,16 @@ namespace Squared.Render {
 
         public void WaitForActiveDraw () {
             if (_DrawDepth > 0)
-                if (EnableThreading)
+                if (_ActualEnableThreading)
                     WaitForPendingWork();
         }
 
         public bool BeginDraw () {
             if (Interlocked.Increment(ref _DrawDepth) > 1)
-                if (EnableThreading)
+                if (_ActualEnableThreading)
                     WaitForPendingWork();
+
+            _ActualEnableThreading = EnableThreading;
 
             if (_Running) {
                 _FrameBeingPrepared = Manager.CreateFrame();
@@ -220,7 +223,7 @@ namespace Squared.Render {
         
         protected bool DoThreadedPrepare {
             get {
-                return EnableThreading;
+                return _ActualEnableThreading;
             }
         }
         
@@ -229,7 +232,7 @@ namespace Squared.Render {
 #if PSM
                 return false;
 #else
-                return EnableThreading;
+                return _ActualEnableThreading;
 #endif
             }
         }

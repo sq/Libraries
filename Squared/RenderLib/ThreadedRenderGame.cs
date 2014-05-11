@@ -27,9 +27,6 @@ namespace Squared.Render {
                 return _UseThreadedDraw;
             }
             set {
-                if (RenderCoordinator != null)
-                    RenderCoordinator.EnableThreading = value;
-
                 _UseThreadedDraw = value;
             }
         }
@@ -116,6 +113,8 @@ namespace Squared.Render {
 
                 RenderCoordinator.WaitStopwatch.Reset();
             }
+
+            RenderCoordinator.EnableThreading = _UseThreadedDraw;
         }
     }
 
