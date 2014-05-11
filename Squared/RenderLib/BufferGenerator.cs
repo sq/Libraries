@@ -502,8 +502,9 @@ namespace Squared.Render.Internal {
         
         public readonly DynamicVertexBuffer Vertices;
         public readonly DynamicIndexBuffer Indices;
+        public readonly Action<IDisposable> DisposeResource;
 
-        public XNABufferPair (GraphicsDevice graphicsDevice, int vertexCount, int indexCount) {
+        public XNABufferPair (GraphicsDevice graphicsDevice, int vertexCount, int indexCount, Action<IDisposable> disposeResource) {
             if (vertexCount >= UInt16.MaxValue)
                 throw new ArgumentOutOfRangeException("vertexCount", vertexCount, "Vertex count must be less than UInt16.MaxValue");
 
@@ -513,6 +514,7 @@ namespace Squared.Render.Internal {
 
             VertexCount = vertexCount;
             IndexCount = indexCount;
+            DisposeResource = disposeResource;
         }
 
         public void SetInactive (GraphicsDevice device) {
@@ -526,8 +528,8 @@ namespace Squared.Render.Internal {
         }
 
         public void Dispose () {
-            Vertices.Dispose();
-            Indices.Dispose();
+            DisposeResource(Vertices);
+            DisposeResource(Indices);
         }
 
         public int Id {
@@ -564,7 +566,8 @@ namespace Squared.Render.Internal {
         }
 
         protected override XNABufferPair<TVertex> AllocateHardwareBuffer (int vertexCount, int indexCount) {
-            return new XNABufferPair<TVertex>(GraphicsDevice, vertexCount, indexCount);
+            lock (CreateResourceLock)
+                return new XNABufferPair<TVertex>(GraphicsDevice, vertexCount, indexCount, DisposeResource);
         }
 
         protected override void FillHardwareBuffer (
