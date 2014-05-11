@@ -332,7 +332,7 @@ namespace Squared.Render {
                 // FIXME
                 FirstCharacterBounds,
                 LastCharacterBounds,
-                _buffer
+                new ArraySegment<BitmapDrawCall>(_buffer.Array, _buffer.Offset, Count)
             );
         }
 
