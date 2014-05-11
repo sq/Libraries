@@ -26,7 +26,10 @@ namespace Squared.Task {
         /// <param name="timeout">The amount of time to wait (in seconds)</param>
         /// <returns>True if a work item was added to the queue before the timeout, false otherwise.</returns>
         bool WaitForWorkItems (double timeout);
+
         int Count { get; }
+
+        event UnhandledExceptionEventHandler UnhandledException;
     }
 
     public static partial class JobQueue {
@@ -59,6 +62,7 @@ namespace Squared.Task {
 
         public readonly long? MaxStepDuration;
         public event MaxStepDurationExceededHandler MaxStepDurationExceeded;
+        public event UnhandledExceptionEventHandler UnhandledException;
 
         public const double DefaultWaitTimeout = 1.0;
 
@@ -86,7 +90,15 @@ namespace Squared.Task {
             Action item;
             do {
                 if (_Queue.TryDequeue(out item)) {
-                    item();
+                    try {
+                        item();
+                    } catch (Exception exc) {
+                        if (UnhandledException != null)
+                            UnhandledException(this, new UnhandledExceptionEventArgs(exc, false));
+                        else
+                            throw;
+                    }
+
                     i++;
 
                     if ((MaxStepDuration.HasValue) && ((i % StepDurationCheckInterval) == 0)) {

@@ -102,6 +102,8 @@ namespace Squared.Task {
                     } catch (Exception exc) {
                         if (UnhandledException != null)
                             UnhandledException(this, new UnhandledExceptionEventArgs(exc, false));
+                        else
+                            throw;
                     }
                 } 
 
