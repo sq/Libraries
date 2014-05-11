@@ -20,15 +20,15 @@ namespace Squared.Render {
         /// <summary>
         /// You must acquire this lock before applying changes to the device, creating objects, or loading content.
         /// </summary>
-        public object CreateResourceLock = new object();
+        public readonly object CreateResourceLock;
         /// <summary>
         /// You must acquire this lock before rendering or resetting the device.
         /// </summary>
-        public object UseResourceLock = new object();
+        public readonly object UseResourceLock;
         /// <summary>
         /// This lock is held during frame preparation.
         /// </summary>
-        public object PrepareLock = new object();
+        public readonly object PrepareLock = new object();
 
         private bool _Running = true;
         private Frame _FrameBeingPrepared = null;
@@ -57,8 +57,13 @@ namespace Squared.Render {
         /// <param name="manager">The render manager responsible for creating frames and dispatching them to the graphics device.</param>
         /// <param name="synchronousBeginDraw">The function responsible for synchronously beginning a rendering operation. This will be invoked on the rendering thread.</param>
         /// <param name="synchronousEndDraw">The function responsible for synchronously ending a rendering operation and presenting it to the screen. This will be invoked on the rendering thread.</param>
-        public RenderCoordinator (RenderManager manager, Func<bool> synchronousBeginDraw, Action synchronousEndDraw) {
+        public RenderCoordinator (
+            RenderManager manager, 
+            Func<bool> synchronousBeginDraw, Action synchronousEndDraw
+        ) {
             Manager = manager;
+            UseResourceLock = manager.UseResourceLock;
+            CreateResourceLock = manager.CreateResourceLock;
 
             _SyncBeginDraw = synchronousBeginDraw;
             _SyncEndDraw = synchronousEndDraw;
@@ -70,8 +75,8 @@ namespace Squared.Render {
         /// Constructs a render coordinator. A render manager and synchronous draw methods are automatically provided for you.
         /// </summary>
         /// <param name="deviceService"></param>
-        public RenderCoordinator (IGraphicsDeviceService deviceService) {
-            Manager = new RenderManager(deviceService.GraphicsDevice);
+        public RenderCoordinator (IGraphicsDeviceService deviceService, Thread mainThread) {
+            Manager = new RenderManager(deviceService.GraphicsDevice, mainThread);
 
             _SyncBeginDraw = DefaultBeginDraw;
             _SyncEndDraw = DefaultEndDraw;
@@ -157,23 +162,43 @@ namespace Squared.Render {
 
         public bool BeginDraw () {
             if (Interlocked.Increment(ref _DrawDepth) > 1)
-                if (DoThreadedIssue)
+                if (EnableThreading)
                     WaitForPendingWork();
 
             if (_Running) {
                 _FrameBeingPrepared = Manager.CreateFrame();
 
-                return true;
+                if (DoThreadedIssue)
+                    return true;
+                else
+                    return _SyncBeginDraw();
             } else {
                 return false;
             }
         }
 
+        protected void CheckMainThread (bool allowThreading) {
+            if (allowThreading)
+                return;
+
+            if (Thread.CurrentThread != Manager.MainThread)
+                throw new ThreadStateException("Function running off main thread in single threaded mode");
+        }
+
         protected void PrepareFrame (Frame frame) {
             Manager.ResetBufferGenerators();
 
-            lock (PrepareLock)
+            if (DoThreadedPrepare)
+                Monitor.Enter(PrepareLock);
+
+            CheckMainThread(DoThreadedPrepare);
+
+            try {
                 frame.Prepare(DoThreadedPrepare);
+            } finally {
+                if (DoThreadedPrepare)
+                    Monitor.Exit(PrepareLock);
+            }
         }
 
         /// <summary>
@@ -185,8 +210,7 @@ namespace Squared.Render {
             if (newFrame != null)
                 PrepareFrame(newFrame);
 
-            if (EnableThreading)
-                WaitForPendingWork();
+            WaitForActiveDraw();
 
             var oldFrame = Interlocked.Exchange(ref _FrameBeingDrawn, newFrame);
 
@@ -214,19 +238,18 @@ namespace Squared.Render {
             PrepareNextFrame();
             
             if (_Running) {
-                lock (UseResourceLock)
-                    if (!_SyncBeginDraw())
-                        return;
-                
                 if (DoThreadedIssue) {
+                    lock (UseResourceLock)
+                        if (!_SyncBeginDraw())
+                            return;
+
                     _DrawThread.RequestWork();
                 } else {
                     ThreadedDraw(_DrawThread);
                 }
 
                 if (_DeviceLost) {
-                    if (DoThreadedIssue)
-                        WaitForPendingWork();
+                    WaitForActiveDraw();
 
                     _DeviceLost = IsDeviceLost;
                 }
@@ -270,6 +293,8 @@ namespace Squared.Render {
         protected void ThreadedDraw (WorkerThread thread) {
             if (!_Running)
                 return;
+
+            CheckMainThread(DoThreadedIssue);
 
             try {
                 RenderFrameToDraw();

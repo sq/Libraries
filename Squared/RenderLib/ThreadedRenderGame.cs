@@ -69,7 +69,7 @@ namespace Squared.Render {
         }
 
         protected override void Initialize () {
-            RenderManager = new RenderManager(GraphicsDevice);
+            RenderManager = new RenderManager(GraphicsDevice, Thread.CurrentThread);
             RenderCoordinator = new RenderCoordinator(
                 RenderManager, base.BeginDraw, base.EndDraw
             );

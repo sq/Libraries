@@ -148,6 +148,7 @@ namespace Squared.Render {
         }
 
         public readonly DeviceManager DeviceManager;
+        public readonly Thread MainThread;
 
         private int _FrameCount = 0;
         private readonly Dictionary<Type, int> _PreferredPoolCapacities =
@@ -163,8 +164,22 @@ namespace Squared.Render {
 
         private WorkerThreadInfo[] _WorkerInfo;
         private Action[] _WorkerDelegates;
+        private Action<IDisposable> _DisposeResource;
 
-        public RenderManager (GraphicsDevice device) {
+        /// <summary>
+        /// You must acquire this lock before applying changes to the device, creating objects, or loading content.
+        /// </summary>
+        public readonly object CreateResourceLock = new object();
+        /// <summary>
+        /// You must acquire this lock before rendering or resetting the device.
+        /// </summary>
+        public readonly object UseResourceLock = new object();
+
+        public RenderManager (GraphicsDevice device, Thread mainThread) {
+            if (mainThread == null)
+                throw new ArgumentNullException("mainThread");
+
+            MainThread = mainThread;
             DeviceManager = new DeviceManager(device);
             _FrameAllocator = new FramePool(this);
 
@@ -182,6 +197,8 @@ namespace Squared.Render {
                 _WorkerDelegates[i] = () =>
                     WorkerThreadFunc(_WorkerInfo[j]);
             }
+
+            _DisposeResource = DisposeResource;
         }
         
         private void WorkerThreadFunc (WorkerThreadInfo info) {
@@ -275,7 +292,12 @@ namespace Squared.Render {
                 if (_BufferGenerators.TryGetValue(t, out result))
                     return (T)result;
 
-                result = (IBufferGenerator)Activator.CreateInstance(t, DeviceManager.Device);
+                result = (IBufferGenerator)Activator.CreateInstance(
+                    t, 
+                    DeviceManager.Device, 
+                    CreateResourceLock, UseResourceLock,
+                    _DisposeResource
+                );
                 _BufferGenerators.Add(t, result);
 
                 return (T)result;

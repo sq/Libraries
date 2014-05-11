@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Util;
 
@@ -120,6 +121,7 @@ namespace Squared.Render.Internal {
             public int SourceIndex, DestinationIndex, Count;
 
             public void Execute () {
+                // FIXME: Acquire lock(s) here?
                 Array.Copy(Source, SourceIndex, Destination, DestinationIndex, Count);
             }
         }
@@ -130,12 +132,13 @@ namespace Squared.Render.Internal {
         protected readonly Dictionary<int, HardwareBufferEntry> _UsedHardwareBuffers = new Dictionary<int, HardwareBufferEntry>();
         protected readonly UnorderedList<PendingCopy> _PendingCopies = new UnorderedList<PendingCopy>();
 
+        protected object _FillingHardwareBufferLock = new object();
         protected HardwareBufferEntry _FillingHardwareBufferEntry = null;
 
-        protected int _VertexCount = 0, _IndexCount = 0;
+        protected volatile int _VertexCount = 0, _IndexCount = 0;
         protected TVertex[] _VertexArray;
         protected TIndex[] _IndexArray;
-        protected bool _FlushedToBuffers = false;
+        protected volatile int _FlushedToBuffers = 0;
 
         const int InitialArraySize = 4096;
 
@@ -147,30 +150,62 @@ namespace Squared.Render.Internal {
         protected int MaxSoftwareBuffersPerHardwareBuffer = 1;
 
         public readonly GraphicsDevice GraphicsDevice;
+        public readonly object CreateResourceLock;
+        public readonly object UseResourceLock;
+        public readonly Action<IDisposable> DisposeResource;
 
-        public BufferGenerator (GraphicsDevice graphicsDevice) {
+        public BufferGenerator (
+            GraphicsDevice graphicsDevice, 
+            object createResourceLock, object useResourceLock, 
+            Action<IDisposable> disposeResource
+        ) {
+            if (graphicsDevice == null)
+                throw new ArgumentNullException("graphicsDevice");
+            if (createResourceLock == null)
+                throw new ArgumentNullException("createResourceLock");
+            if (useResourceLock == null)
+                throw new ArgumentNullException("useResourceLock");
+            if (disposeResource == null)
+                throw new ArgumentNullException("disposeResource");
+
             _SoftwareBufferPool = new SoftwareBufferPool(this);
             GraphicsDevice = graphicsDevice;
+            CreateResourceLock = createResourceLock;
+            UseResourceLock = useResourceLock;
+            DisposeResource = disposeResource;
             _VertexArray = new TVertex[InitialArraySize];
             _IndexArray = new TIndex[InitialArraySize];
         }
 
         protected abstract THardwareBuffer AllocateHardwareBuffer (int vertexCount, int indexCount);
-        protected abstract void FillHardwareBuffer (THardwareBuffer buffer, ArraySegment<TVertex> vertices, ArraySegment<TIndex> indices);
+        protected abstract void FillHardwareBuffer (
+            THardwareBuffer buffer, 
+            object useResourceLock,
+            object vertexLock,
+            ArraySegment<TVertex> vertices, 
+            object indexLock,
+            ArraySegment<TIndex> indices
+        );
 
         public virtual void Dispose () {
-            foreach (var buffer in _UnusedHardwareBuffers)
-                buffer.Dispose();
+            lock (_UnusedHardwareBuffers) {
+                foreach (var buffer in _UnusedHardwareBuffers)
+                    buffer.Dispose();
 
-            _UnusedHardwareBuffers.Clear();
-            _PendingCopies.Clear();
+                _UnusedHardwareBuffers.Clear();
+            }
 
-            _VertexArray = null;
-            _IndexArray = null;
+            lock (_PendingCopies)
+                _PendingCopies.Clear();
+
+            lock (_VertexArray)
+                _VertexArray = null;
+            lock (_IndexArray)
+                _IndexArray = null;
 
             _VertexCount = _IndexCount = 0;
 
-            _FlushedToBuffers = false;
+            _FlushedToBuffers = 0;
         }
 
         protected virtual int PickNewArraySize (int previousSize, int requestedSize) {
@@ -178,36 +213,66 @@ namespace Squared.Render.Internal {
         }
 
         public void Reset () {
-            lock (this) {
+            lock (_FillingHardwareBufferLock)
                 _FillingHardwareBufferEntry = null;
 
-                // Any buffers that remain unused (either from being too small, or being unnecessary now)
-                //  should be disposed.
+            // Any buffers that remain unused (either from being too small, or being unnecessary now)
+            //  should be disposed.
+            lock (_UnusedHardwareBuffers) {
                 foreach (var hb in _UnusedHardwareBuffers) {
                     // HACK
                     if (hb != null)
-                        hb.Dispose();
+                        DisposeResource(hb);
                 }
                 _UnusedHardwareBuffers.Clear();
+            }
 
-                // Return any buffers that were used this frame to the unused state.
+            // Return any buffers that were used this frame to the unused state.
+            lock (_UsedHardwareBuffers) {
                 foreach (var hb in _UsedHardwareBuffers.Values) {
                     // HACK
-                    if (hb.HardwareBuffer != null)
-                        _UnusedHardwareBuffers.Add(hb.HardwareBuffer);
+                    if (hb.HardwareBuffer != null) {
+                        lock (_UnusedHardwareBuffers)
+                            _UnusedHardwareBuffers.Add(hb.HardwareBuffer);
+                    }
                 }
 
                 _UsedHardwareBuffers.Clear();
+            }
 
+            lock (_SoftwareBuffers) {
                 foreach (var swb in _SoftwareBuffers) {
                     swb.IsValid = false;
                     _SoftwareBufferPool.Release(swb);
                 }
 
                 _SoftwareBuffers.Clear();
+            }
 
-                _FlushedToBuffers = false;
-                _VertexCount = _IndexCount = 0;
+            _FlushedToBuffers = 0;
+            _VertexCount = _IndexCount = 0;
+        }
+
+        private void EnsureBufferCapacity<T> (ref T[] array, ref int count, int oldCount, int newCount) {
+            var oldArray = array;
+
+            lock (oldArray) {
+                if (newCount <= oldArray.Length)
+                    return;
+
+                var newSize = PickNewArraySize(oldArray.Length, newCount);
+                var newArray = new T[newSize];
+
+                lock (_PendingCopies)
+                    _PendingCopies.Add(new PendingCopy {
+                        Source = oldArray,
+                        SourceIndex = 0,
+                        Destination = newArray,
+                        DestinationIndex = 0,
+                        Count = oldCount
+                    });
+
+                array = newArray;
             }
         }
 
@@ -223,85 +288,70 @@ namespace Squared.Render.Internal {
             if (vertexCount > MaxVerticesPerHardwareBuffer)
                 throw new ArgumentOutOfRangeException("vertexCount", vertexCount, "Maximum vertex count on this platform is " + MaxVerticesPerHardwareBuffer);
 
-            if (_FlushedToBuffers)
+            if (_FlushedToBuffers != 0)
                 throw new InvalidOperationException("Already flushed");
 
-            lock (this) {
-                int vertexOffset = _VertexCount;
-                int indexOffset = _IndexCount;
-
-                _VertexCount += vertexCount;
-                _IndexCount += indexCount;
+            var newVertexCount = Interlocked.Add(ref _VertexCount, vertexCount);
+            int oldVertexCount = newVertexCount - vertexCount;
+            var newIndexCount = Interlocked.Add(ref _IndexCount, indexCount);
+            int oldIndexCount = newIndexCount - indexCount;
                 
-                // When we resize our internal array, we have to queue up copies from the old small array to the new large array.
-                // This is because while Allocate is thread-safe, consumers are allowed to write to their allocations without synchronization,
-                //  so we can't be sure that the old array has been filled yet.
-                // Flush() is responsible for doing all these copies to ensure that all vertex data eventually makes it into the large array
-                //  from which actual hardware buffer initialization occurs.
+            // When we resize our internal array, we have to queue up copies from the old small array to the new large array.
+            // This is because while Allocate is thread-safe, consumers are allowed to write to their allocations without synchronization,
+            //  so we can't be sure that the old array has been filled yet.
+            // Flush() is responsible for doing all these copies to ensure that all vertex data eventually makes it into the large array
+            //  from which actual hardware buffer initialization occurs.
 
-                if (_VertexCount > _VertexArray.Length) {
-                    var oldArray = _VertexArray;
-                    _VertexArray = new TVertex[PickNewArraySize(_VertexArray.Length, _VertexCount)];
+            SoftwareBuffer swb;
 
-                    // Thread safety :/
-                    _PendingCopies.Add(new PendingCopy {
-                        Source = oldArray,
-                        SourceIndex = 0,
-                        Destination = _VertexArray,
-                        DestinationIndex = 0,
-                        Count = vertexOffset
-                    });
-                }
-                if (_IndexCount > _IndexArray.Length) {
-                    var oldArray = _IndexArray;
-                    _IndexArray = new TIndex[PickNewArraySize(_IndexArray.Length, _IndexCount)];
+            EnsureBufferCapacity(ref _VertexArray, ref _VertexCount, oldVertexCount, newVertexCount);
+            EnsureBufferCapacity(ref _IndexArray, ref _IndexCount, oldIndexCount, newIndexCount);
 
-                    // Thread safety :/
-                    _PendingCopies.Add(new PendingCopy {
-                        Source = oldArray,
-                        SourceIndex = 0,
-                        Destination = _IndexArray,
-                        DestinationIndex = 0,
-                        Count = indexOffset
-                    });
-                }
+            HardwareBufferEntry hardwareBufferEntry;
 
+            lock (_FillingHardwareBufferLock) {
+                hardwareBufferEntry = _FillingHardwareBufferEntry;
                 if (
-                    (_FillingHardwareBufferEntry == null) ||
-                    ((_FillingHardwareBufferEntry.VertexCount + vertexCount) > MaxVerticesPerHardwareBuffer) ||
-                    (_FillingHardwareBufferEntry.SoftwareBufferCount >= MaxSoftwareBuffersPerHardwareBuffer) ||
+                    (hardwareBufferEntry == null) ||
+                    ((hardwareBufferEntry.VertexCount + vertexCount) > MaxVerticesPerHardwareBuffer) ||
+                    (hardwareBufferEntry.SoftwareBufferCount >= MaxSoftwareBuffersPerHardwareBuffer) ||
                     forceExclusiveBuffer
                 ) {
-                    var index = _UsedHardwareBuffers.Count;
+                    lock (_UsedHardwareBuffers) {
+                        var index = _UsedHardwareBuffers.Count;
 
-                    _UsedHardwareBuffers.Add(
-                        index,
-                        _FillingHardwareBufferEntry = new HardwareBufferEntry(index, vertexOffset, indexOffset)
-                    );
+                        _UsedHardwareBuffers.Add(
+                            index,
+                            _FillingHardwareBufferEntry = hardwareBufferEntry = 
+                                new HardwareBufferEntry(index, oldVertexCount, oldIndexCount)
+                        );
+                    }
                 }
+            }
 
-                var swb = _SoftwareBufferPool.Allocate();
-                swb.Initialize(                    
-                    new ArraySegment<TVertex>(_VertexArray, vertexOffset, vertexCount),
-                    new ArraySegment<TIndex>(_IndexArray, indexOffset, indexCount),
-                    _FillingHardwareBufferEntry.Index, 
-                    _FillingHardwareBufferEntry.VertexCount, 
-                    _FillingHardwareBufferEntry.IndexCount
-                );
+            var oldHwbVertexCount = Interlocked.Add(ref hardwareBufferEntry.VertexCount, vertexCount) - vertexCount;
+            var oldHwbIndexCount = Interlocked.Add(ref hardwareBufferEntry.IndexCount, indexCount) - indexCount;
+            Interlocked.Add(ref hardwareBufferEntry.SoftwareBufferCount, 1);
 
+            swb = _SoftwareBufferPool.Allocate();
+            swb.Initialize(
+                new ArraySegment<TVertex>(_VertexArray, oldHwbVertexCount, vertexCount),
+                new ArraySegment<TIndex>(_IndexArray, oldHwbIndexCount, indexCount),
+                hardwareBufferEntry.Index,
+                oldHwbVertexCount,
+                oldHwbIndexCount
+            );
+
+            lock (_SoftwareBuffers)
                 _SoftwareBuffers.Add(swb);
 
-                _FillingHardwareBufferEntry.VertexCount += vertexCount;
-                _FillingHardwareBufferEntry.IndexCount += indexCount;
-                _FillingHardwareBufferEntry.SoftwareBufferCount += 1;
-
-                return swb;
-            }
+            return swb;
         }
 
         protected THardwareBuffer AllocateSuitablySizedHardwareBuffer (int vertexCount, int indexCount) {
             THardwareBuffer buffer;
 
+            lock (_UnusedHardwareBuffers)
             using (var e = _UnusedHardwareBuffers.GetEnumerator())
             while (e.GetNext(out buffer)) {
                 if (
@@ -321,11 +371,16 @@ namespace Squared.Render.Internal {
                 indexCount = MinIndicesPerBuffer;
 
             // We didn't find a suitably large buffer.
-            buffer = AllocateHardwareBuffer(vertexCount, indexCount);
+            lock (CreateResourceLock)
+                buffer = AllocateHardwareBuffer(vertexCount, indexCount);
             return buffer;
         }
 
         protected void FlushToBuffers () {
+            var va = _VertexArray;
+            var ia = _IndexArray;
+
+            lock (_UsedHardwareBuffers)
             foreach (var kvp in _UsedHardwareBuffers) {
                 var index = kvp.Key;
                 var hwbe = kvp.Value;
@@ -335,28 +390,36 @@ namespace Squared.Render.Internal {
                 var hwb = AllocateSuitablySizedHardwareBuffer(hwbe.VertexCount, hwbe.IndexCount);
                 hwbe.HardwareBuffer = hwb;
 
+                ArraySegment<TVertex> vertexSegment;
+                ArraySegment<TIndex> indexSegment;
+
+                lock (va)
+                    vertexSegment = new ArraySegment<TVertex>(va, hwbe.VertexOffset, hwbe.VertexCount);
+                lock (ia)
+                    indexSegment = new ArraySegment<TIndex>(ia, hwbe.IndexOffset, hwbe.IndexCount);
+
                 FillHardwareBuffer(
-                    hwb,
-                    new ArraySegment<TVertex>(_VertexArray, hwbe.VertexOffset, hwbe.VertexCount),
-                    new ArraySegment<TIndex>(_IndexArray, hwbe.IndexOffset, hwbe.IndexCount)
+                    hwb, UseResourceLock,
+                    va, vertexSegment, 
+                    ia, indexSegment
                 );
             }
         }
 
         public void Flush () {
-            lock (this) {
-                if (_PendingCopies.Count > 0) {
-                    foreach (var pc in _PendingCopies)
-                        pc.Execute();
+            lock (_PendingCopies)
+            if (_PendingCopies.Count > 0) {
+                PendingCopy pc;
 
-                    _PendingCopies.Clear();
-                }
+                using (var e = _PendingCopies.GetEnumerator())
+                while (e.GetNext(out pc))
+                    pc.Execute();
 
-                if (!_FlushedToBuffers) {
-                    FlushToBuffers();
-                    _FlushedToBuffers = true;
-                }
+                _PendingCopies.Clear();
             }
+
+            if (Interlocked.Exchange(ref _FlushedToBuffers, 1) == 0)
+                FlushToBuffers();
         }
 
         internal THardwareBuffer GetHardwareBufferByIndex (int index) {
@@ -373,8 +436,8 @@ namespace Squared.Render.Internal {
         
         public static VertexFormat[] VertexFormat = null;
 
-        public PSMBufferGenerator (GraphicsDevice graphicsDevice)
-            : base(graphicsDevice) {
+        public XNABufferGenerator (GraphicsDevice graphicsDevice, object useResourceLock, Action<IDisposable> disposeResource)
+            : base(graphicsDevice, useResourceLock, disposeResource) {
             
             if (VertexFormat == null)
                 throw new InvalidOperationException("Please set PSMBufferGenerator<TVertex>.VertexFormat first.");
@@ -388,7 +451,7 @@ namespace Squared.Render.Internal {
                     (_Buffer.IndexCount < _IndexArray.Length)
                 )
             ) {
-                _Buffer.Dispose();
+                DisposeResource(_Buffer);
                 _Buffer = null;
             }
 
@@ -449,8 +512,12 @@ namespace Squared.Render.Internal {
     public class XNABufferGenerator<TVertex> : BufferGenerator<XNABufferPair<TVertex>, TVertex, ushort> 
         where TVertex : struct {
 
-        public XNABufferGenerator (GraphicsDevice graphicsDevice)
-            : base(graphicsDevice) {
+        public XNABufferGenerator (
+            GraphicsDevice graphicsDevice, 
+            object createResourceLock, object useResourceLock, 
+            Action<IDisposable> disposeResource
+        )
+            : base(graphicsDevice, createResourceLock, useResourceLock, disposeResource) {
 
             MaxSoftwareBuffersPerHardwareBuffer = 256;
         }
@@ -459,9 +526,20 @@ namespace Squared.Render.Internal {
             return new XNABufferPair<TVertex>(GraphicsDevice, vertexCount, indexCount);
         }
 
-        protected override void FillHardwareBuffer (XNABufferPair<TVertex> hardwareBuffer, ArraySegment<TVertex> vertices, ArraySegment<ushort> indices) {
-            hardwareBuffer.Vertices.SetData(vertices.Array, vertices.Offset, vertices.Count);
-            hardwareBuffer.Indices.SetData(indices.Array, indices.Offset, indices.Count);
+        protected override void FillHardwareBuffer (
+            XNABufferPair<TVertex> hardwareBuffer, object useResourceLock,
+            object vertexLock,
+            ArraySegment<TVertex> vertices,
+            object indexLock,
+            ArraySegment<ushort> indices
+        ) {
+            lock (useResourceLock)
+            lock (vertexLock)
+                hardwareBuffer.Vertices.SetData(vertices.Array, vertices.Offset, vertices.Count);
+
+            lock (useResourceLock)
+            lock (indexLock)
+                hardwareBuffer.Indices.SetData(indices.Array, indices.Offset, indices.Count);
         }
     }
 #endif
