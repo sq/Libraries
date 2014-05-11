@@ -189,14 +189,13 @@ namespace Squared.Render {
         }
 
         protected void PrepareFrame (Frame frame) {
-            Manager.ResetBufferGenerators();
-
             if (DoThreadedPrepare)
                 Monitor.Enter(PrepareLock);
 
             CheckMainThread(DoThreadedPrepare);
 
             try {
+                Manager.ResetBufferGenerators();
                 frame.Prepare(DoThreadedPrepare);
             } finally {
                 if (DoThreadedPrepare)
