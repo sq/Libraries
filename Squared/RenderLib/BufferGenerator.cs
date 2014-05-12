@@ -54,6 +54,8 @@ namespace Squared.Render.Internal {
         protected class HardwareBufferEntry {
             public readonly int VertexOffset;
             public readonly int IndexOffset;
+            public readonly int SourceVertexCount;
+            public readonly int SourceIndexCount;
 
             public int SoftwareBufferCount;
             public int VerticesUsed;
@@ -63,11 +65,14 @@ namespace Squared.Render.Internal {
 
             public HardwareBufferEntry (
                 THardwareBuffer buffer,
-                int vertexOffset, int indexOffset
+                int vertexOffset, int indexOffset,
+                int sourceVertexCount, int sourceIndexCount
             ) {
                 Buffer = buffer;
                 VertexOffset = vertexOffset;
                 IndexOffset = indexOffset;
+                SourceVertexCount = sourceVertexCount;
+                SourceIndexCount = sourceIndexCount;
                 VerticesUsed = IndicesUsed = 0;
             }
         }
@@ -311,7 +316,7 @@ namespace Squared.Render.Internal {
 
         private HardwareBufferEntry PrepareToFillBuffer (int vertexOffset, int indexOffset, int vertexCount, int indexCount) {
             var newBuffer = AllocateSuitablySizedHardwareBuffer(vertexCount, indexCount);
-            var entry = new HardwareBufferEntry(newBuffer, vertexOffset, indexOffset);
+            var entry = new HardwareBufferEntry(newBuffer, vertexOffset, indexOffset, vertexCount, indexCount);
 
             _UsedHardwareBuffers.Add(entry);
             _FillingHardwareBufferEntry = entry;
@@ -445,9 +450,9 @@ namespace Squared.Render.Internal {
                 ArraySegment<TIndex> indexSegment;
 
                 lock (va)
-                    vertexSegment = new ArraySegment<TVertex>(va, hwbe.VertexOffset, hwbe.Buffer.VertexCount);
+                    vertexSegment = new ArraySegment<TVertex>(va, hwbe.VertexOffset, hwbe.SourceVertexCount);
                 lock (ia)
-                    indexSegment = new ArraySegment<TIndex>(ia, hwbe.IndexOffset, hwbe.Buffer.IndexCount);
+                    indexSegment = new ArraySegment<TIndex>(ia, hwbe.IndexOffset, hwbe.SourceIndexCount);
 
                 FillHardwareBuffer(
                     hwbe.Buffer, UseResourceLock,
