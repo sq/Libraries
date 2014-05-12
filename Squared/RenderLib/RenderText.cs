@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -190,8 +191,15 @@ namespace Squared.Render {
 
                 _Buffer.EnsureCapacity(capacity);
 
+                ArraySegment<BitmapDrawCall>? seg1, seg2;
+
+                seg1 = _Buffer.Buffer;
+                seg2 = new ArraySegment<BitmapDrawCall>(
+                    _Buffer.Buffer.Array, _Buffer.Buffer.Offset + length, length
+                );
+
                 _CachedStringLayout = Font.LayoutString(
-                    _Text, _Buffer.Buffer, 
+                    _Text, seg1, 
                     _Position, _Color, 
                     _Scale, _SortKey, 
                     _CharacterSkipCount, _CharacterLimit, 
@@ -201,9 +209,7 @@ namespace Squared.Render {
 
                 if (_WordWrap && _LineBreakAtX.HasValue) {
                     _CachedStringLayout = _CachedStringLayout.Value.WordWrap(
-                        _Text, _LineBreakAtX.Value, new ArraySegment<BitmapDrawCall>(
-                            _Buffer.Buffer.Array, _Buffer.Buffer.Offset + length, length
-                        ), 0
+                        _Text, _LineBreakAtX.Value, seg2, 0
                     );
                 }
             }
@@ -327,12 +333,17 @@ namespace Squared.Render {
                 );
             }
 
+            var segment = new ArraySegment<BitmapDrawCall>(_buffer.Array, _buffer.Offset, Count);
+
+            if (segment.Count > text.Length)
+                throw new InvalidDataException();
+
             return new StringLayout(
                 Position, newSize,
                 // FIXME
                 FirstCharacterBounds,
                 LastCharacterBounds,
-                new ArraySegment<BitmapDrawCall>(_buffer.Array, _buffer.Offset, Count)
+                segment
             );
         }
 
@@ -501,12 +512,17 @@ namespace Squared.Render {
                 totalSize.Y = Math.Max(totalSize.Y, characterOffset.Y + font.LineSpacing);
             }
 
+            var segment = new ArraySegment<BitmapDrawCall>(
+                _buffer.Array, _buffer.Offset, drawCallsWritten
+            );
+
+            if (segment.Count > text.Length)
+                throw new InvalidDataException();
+
             return new StringLayout(
                 position.GetValueOrDefault(), totalSize, 
                 firstCharacterBounds, lastCharacterBounds,
-                new ArraySegment<BitmapDrawCall>(
-                    _buffer.Array, _buffer.Offset, drawCallsWritten
-                )
+                segment
             );
         }
     }

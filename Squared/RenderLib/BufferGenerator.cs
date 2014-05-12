@@ -540,7 +540,7 @@ namespace Squared.Render.Internal {
     public class XNABufferPair<TVertex> : IHardwareBuffer
         where TVertex : struct 
     {
-        internal volatile int _IsValid, _IsActive;
+        internal volatile int _IsValid = 0, _IsActive = 0;
 
         public readonly object InUseLock = new object();
 
@@ -596,11 +596,15 @@ namespace Squared.Render.Internal {
         }
 
         public void Dispose () {
+            if (_IsActive != 0)
+                throw new InvalidOperationException("Disposed buffer while in use");
+
             DisposeResource(Vertices);
             DisposeResource(Indices);
             Vertices = null;
             Indices = null;
             IsAllocated = false;
+            _IsValid = 0;
         }
 
         public int Age {
@@ -638,6 +642,8 @@ namespace Squared.Render.Internal {
 
             if (wasActive != 0)
                 throw new InvalidOperationException("Buffer in use");
+            else if (wasValid != 0)
+                throw new InvalidOperationException("Buffer validated twice");
         }
 
         void IHardwareBuffer.Invalidate () {
@@ -681,10 +687,6 @@ namespace Squared.Render.Internal {
                 hardwareBuffer.Vertices.SetData(vertices.Array, vertices.Offset, vertices.Count);
                 hardwareBuffer.Indices.SetData(indices.Array, indices.Offset, indices.Count);
             }
-
-            var wasValid = Interlocked.Exchange(ref hardwareBuffer._IsValid, 1);
-            if (wasValid != 0)
-                throw new ThreadStateException("Buffer uploaded twice without being invalidated");
         }
     }
 #endif

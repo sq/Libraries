@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
 using Squared.Game;
 using Squared.Render.Internal;
+using Squared.Render.Tracing;
 using Squared.Util;
 using System.Reflection;
 
@@ -278,7 +279,6 @@ namespace Squared.Render {
         }
 
         public ArraySegment<BitmapDrawCall> ReserveSpace (int count) {
-
             return _DrawCalls.ReserveSpace(count);
         }
 
@@ -428,6 +428,11 @@ namespace Squared.Render {
                     drawCallsPrepared += 1;
                 }
 
+            if (indexWritePosition > softwareBuffer.Indices.Count)
+                throw new InvalidOperationException("Wrote too many indices");
+            else if (vertexWritePosition > softwareBuffer.Vertices.Count)
+                throw new InvalidOperationException("Wrote too many vertices");
+
             if (vertCount > 0)
                 _NativeBatches.Add(new NativeBatch(
                     softwareBuffer, currentTextures,
@@ -491,6 +496,9 @@ namespace Squared.Render {
             var device = manager.Device;
 
             IHardwareBuffer previousHardwareBuffer = null;
+
+            // if (RenderTrace.EnableTracing)
+            //    RenderTrace.ImmediateMarker("BitmapBatch.Issue(layer={0}, count={1})", Layer, _DrawCalls.Count);
 
             using (manager.ApplyMaterial(Material)) {
                 TextureSet currentTexture = new TextureSet();
