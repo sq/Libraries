@@ -217,8 +217,8 @@ namespace Squared.Render {
         public static IComparer<BitmapDrawCall> DrawCallComparer = new BitmapDrawCallComparer();
         public static IComparer<BitmapDrawCall> DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
 
-        public const int NativeBatchSize = Int16.MaxValue / 8;
-        private const int NativeBatchCapacityLimit = 512;
+        public const int NativeBatchSize = 1024;
+        private const int NativeBatchCapacityLimit = 1024;
 
         private ArrayPoolAllocator<BitmapVertex> _Allocator;
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
@@ -286,7 +286,7 @@ namespace Squared.Render {
             if (!item.IsValid)
                 throw new InvalidOperationException("Invalid draw call");
 
-            _DrawCalls.Add(item);
+            _DrawCalls.Add(ref item);
         }
 
         new public void Add (ref BitmapDrawCall item) {
