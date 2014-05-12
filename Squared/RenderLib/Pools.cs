@@ -101,25 +101,45 @@ namespace Squared.Render {
 
     public class ListPool<T> {
         private UnorderedList<UnorderedList<T>> _Pool = new UnorderedList<UnorderedList<T>>();
+        private UnorderedList<UnorderedList<T>> _LargePool = new UnorderedList<UnorderedList<T>>();
 
         public readonly int PoolCapacity;
+        public readonly int LargePoolCapacity;
         public readonly int InitialItemCapacity;
         public readonly int MaxItemCapacity;
 
-        public ListPool (int poolCapacity, int initialItemCapacity, int maxItemCapacity) {
+        public ListPool (int poolCapacity, int largePoolCapacity, int initialItemCapacity, int maxItemCapacity) {
             PoolCapacity = poolCapacity;
+            LargePoolCapacity = largePoolCapacity;
             InitialItemCapacity = initialItemCapacity;
             MaxItemCapacity = maxItemCapacity;
         }
 
-        public UnorderedList<T> Allocate () {
+        public UnorderedList<T> Allocate (int? capacity) {
             UnorderedList<T> result = null;
 
-            lock (_Pool)
-                _Pool.TryPopFront(out result);
+            if (
+                (LargePoolCapacity > 0) &&
+                capacity.HasValue && 
+                (capacity.Value > MaxItemCapacity)
+            ) {
+                lock (_LargePool)
+                    _LargePool.TryPopFront(out result);
+            } else {
+                lock (_Pool)
+                    _Pool.TryPopFront(out result);
+
+                if (
+                    (LargePoolCapacity > 0) &&
+                    (result == null)
+                ) {
+                    lock (_LargePool)
+                        _LargePool.TryPopFront(out result);
+                }
+            }
 
             if (result == null)
-                result = new UnorderedList<T>(InitialItemCapacity);
+                result = new UnorderedList<T>(capacity.GetValueOrDefault(InitialItemCapacity));
 
             return result;
         }
@@ -133,11 +153,19 @@ namespace Squared.Render {
 
             list.Clear();
 
-            if (list.Capacity > MaxItemCapacity)
+            if (list.Capacity > MaxItemCapacity) {
+                lock (_LargePool) {
+                    if (_LargePool.Count >= LargePoolCapacity)
+                        return;
+
+                    _LargePool.Add(list);
+                }
+
                 return;
+            }
 
             lock (_Pool) {
-                if (_Pool.Count > PoolCapacity)
+                if (_Pool.Count >= PoolCapacity)
                     return;
 
                 _Pool.Add(list);
