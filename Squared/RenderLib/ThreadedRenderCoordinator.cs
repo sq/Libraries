@@ -241,6 +241,7 @@ namespace Squared.Render {
         
         protected bool DoThreadedPrepare {
             get {
+                // FIXME: With the old BufferGenerator, this caused random bitmapbatch corruption
                 return _ActualEnableThreading;
             }
         }
