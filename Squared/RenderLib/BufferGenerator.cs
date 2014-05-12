@@ -54,8 +54,8 @@ namespace Squared.Render.Internal {
         protected class HardwareBufferEntry {
             public readonly int VertexOffset;
             public readonly int IndexOffset;
-            public readonly int SourceVertexCount;
-            public readonly int SourceIndexCount;
+            public int SourceVertexCount;
+            public int SourceIndexCount;
 
             public int SoftwareBufferCount;
             public int VerticesUsed;
@@ -314,14 +314,30 @@ namespace Squared.Render.Internal {
             }
         }
 
-        private HardwareBufferEntry PrepareToFillBuffer (int vertexOffset, int indexOffset, int vertexCount, int indexCount) {
-            var newBuffer = AllocateSuitablySizedHardwareBuffer(vertexCount, indexCount);
-            var entry = new HardwareBufferEntry(newBuffer, vertexOffset, indexOffset, vertexCount, indexCount);
+        private HardwareBufferEntry PrepareToFillBuffer (
+            HardwareBufferEntry currentBufferEntry, 
+            int vertexOffset, int indexOffset, 
+            int additionalVertexCount, int additionalIndexCount,
+            bool forceExclusiveBuffer
+        ) {
+            var allocateNew = (currentBufferEntry == null) || 
+                forceExclusiveBuffer ||
+                CannotFitInBuffer(currentBufferEntry, additionalVertexCount, additionalIndexCount);
 
-            _UsedHardwareBuffers.Add(entry);
-            _FillingHardwareBufferEntry = entry;
+            if (allocateNew) {
+                var newBuffer = AllocateSuitablySizedHardwareBuffer(additionalVertexCount, additionalIndexCount);
+                var entry = new HardwareBufferEntry(newBuffer, vertexOffset, indexOffset, additionalVertexCount, additionalIndexCount);
 
-            return entry;
+                _UsedHardwareBuffers.Add(entry);
+                _FillingHardwareBufferEntry = entry;
+
+                return entry;
+            } else {
+                currentBufferEntry.SourceVertexCount += additionalVertexCount;
+                currentBufferEntry.SourceIndexCount += additionalIndexCount;
+
+                return currentBufferEntry;
+            }
         }
 
         private bool CannotFitInBuffer (HardwareBufferEntry hbe, int vertexCount, int indexCount) {
@@ -375,13 +391,13 @@ namespace Squared.Render.Internal {
             lock (_FillingHardwareBufferLock) {
                 hardwareBufferEntry = _FillingHardwareBufferEntry;
 
-                if (
-                    (hardwareBufferEntry == null) || forceExclusiveBuffer ||
-                    CannotFitInBuffer(hardwareBufferEntry, vertexCount, indexCount)
-                ) {
-                    lock (_UsedHardwareBuffers)
-                        hardwareBufferEntry = PrepareToFillBuffer(oldVertexCount, oldIndexCount, vertexCount, indexCount);
-                }
+                lock (_UsedHardwareBuffers)
+                    hardwareBufferEntry = PrepareToFillBuffer(
+                        hardwareBufferEntry,
+                        oldVertexCount, oldIndexCount, 
+                        vertexCount, indexCount, 
+                        forceExclusiveBuffer
+                    );
             }
 
             int oldHwbVerticesUsed, oldHwbIndicesUsed;
