@@ -38,6 +38,7 @@ namespace Squared.Render {
         private readonly Func<bool> _SyncBeginDraw;
         private readonly Action _SyncEndDraw;
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
+        private readonly ManualResetEventSlim _SynchronousDrawFinishedSignal = new ManualResetEventSlim(true);
 
         private WorkerThread _DrawThread;
         public readonly Stopwatch
@@ -46,7 +47,7 @@ namespace Squared.Render {
 
         // Used to detect re-entrant painting (usually means that an
         //  exception was thrown on the render thread)
-        private int _DrawDepth = 0;
+        private int _DrawIsActive = 0, _SynchronousDrawIsActive = 0;
 
         // Lost devices can cause things to go horribly wrong if we're 
         //  using multithreaded rendering
@@ -155,17 +156,38 @@ namespace Squared.Render {
                 WorkStopwatch.Start();
         }
 
-        public void WaitForActiveDraw () {
-            if (_DrawDepth > 0)
+        private bool WaitForActiveSynchronousDraw () {
+            _SynchronousDrawFinishedSignal.Wait();
+            return true;
+        }
+
+        private bool WaitForActiveDraws () {
+            return WaitForActiveDraw() &&
+                WaitForActiveSynchronousDraw();
+        }
+
+        public bool WaitForActiveDraw () {
+            while (_DrawIsActive != 0) {
                 if (_ActualEnableThreading)
                     WaitForPendingWork();
+                else
+                    return false;
+            }
+
+            return true;
         }
 
         public bool BeginDraw () {
-            if (Interlocked.Increment(ref _DrawDepth) > 1) {
+            WaitForActiveSynchronousDraw();
+
+            while (Interlocked.Exchange(ref _DrawIsActive, 1) != 0) {
                 if (_ActualEnableThreading)
                     WaitForPendingWork();
+                else
+                    return false;
             }
+
+            WaitForActiveSynchronousDraw();
 
             _ActualEnableThreading = EnableThreading;
 
@@ -208,8 +230,6 @@ namespace Squared.Render {
         /// Finishes preparing the current Frame and readies it to be sent to the graphics device for rendering.
         /// </summary>
         protected void PrepareNextFrame (Frame newFrame) {
-            WaitForActiveDraw();
-
             if (newFrame != null)
                 PrepareFrame(newFrame);
 
@@ -256,7 +276,7 @@ namespace Squared.Render {
                     _DeviceLost = IsDeviceLost;
                 }
             } else {
-                Interlocked.Decrement(ref _DrawDepth);
+                Interlocked.Exchange(ref _DrawIsActive, 0);
             }
         }
 
@@ -324,7 +344,7 @@ namespace Squared.Render {
             } catch (DeviceLostException) {
                 _DeviceLost = true;
             } finally {
-                Interlocked.Decrement(ref _DrawDepth);
+                Interlocked.Exchange(ref _DrawIsActive, 0);
             }
         }
 
@@ -343,38 +363,42 @@ namespace Squared.Render {
         /// Automatically sets up the device's viewport and the view transform of your materials and restores them afterwards.
         /// </summary>
         public void SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
-            if (Interlocked.Increment(ref _DrawDepth) > 1) {
-                if (_ActualEnableThreading)
-                    WaitForPendingWork();
-            }
+            WaitForActiveDraw();
+
+            var oldDrawIsActive = Interlocked.Exchange(ref _SynchronousDrawIsActive, 1);
+            if (oldDrawIsActive != 0)
+                throw new InvalidOperationException("A synchronous draw is already in progress");
+
+            _SynchronousDrawFinishedSignal.Reset();
+
+            WaitForActiveDraw();
 
             try {
                 using (var frame = Manager.CreateFrame()) {
-                    lock (UseResourceLock) {
-                        materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
+                    materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
 
-                        ClearBatch.AddNew(frame, int.MinValue, materials.Clear, clearColor: Color.Transparent);
+                    ClearBatch.AddNew(frame, int.MinValue, materials.Clear, clearColor: Color.Transparent);
 
-                        drawBehavior(frame);
+                    drawBehavior(frame);
 
-                        PrepareNextFrame(frame);
+                    PrepareNextFrame(frame);
 
-                        var oldRenderTargets = Device.GetRenderTargets();
-                        var oldViewport = Device.Viewport;
-                        try {
-                            Device.SetRenderTarget(renderTarget);
-                            Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
+                    var oldRenderTargets = Device.GetRenderTargets();
+                    var oldViewport = Device.Viewport;
+                    try {
+                        Device.SetRenderTarget(renderTarget);
+                        Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
 
-                            RenderFrameToDraw(false);
-                        } finally {
-                            Device.SetRenderTargets(oldRenderTargets);
-                            materials.PopViewTransform();
-                            Device.Viewport = oldViewport;
-                        }
+                        RenderFrameToDraw(false);
+                    } finally {
+                        Device.SetRenderTargets(oldRenderTargets);
+                        materials.PopViewTransform();
+                        Device.Viewport = oldViewport;
                     }
                 }
             } finally {
-                Interlocked.Decrement(ref _DrawDepth);
+                _SynchronousDrawFinishedSignal.Set();
+                Interlocked.Exchange(ref _SynchronousDrawIsActive, 0);
             }
         }
 
@@ -406,7 +430,7 @@ namespace Squared.Render {
             _Running = false;
 
             try {
-                WaitForActiveDraw();
+                WaitForActiveDraws();
 
                 if (_DrawThread != null) {
                     _DrawThread.Dispose();
