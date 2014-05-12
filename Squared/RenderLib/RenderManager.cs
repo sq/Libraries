@@ -431,7 +431,7 @@ namespace Squared.Render {
         public static IComparer<Batch> BatchComparer = new BatchComparer();
 
         private static ListPool<Batch> _ListPool = new ListPool<Batch>(
-            16, 256, 4096
+            16, 0, 256, 4096
         );
 
         public RenderManager RenderManager;
@@ -453,7 +453,7 @@ namespace Squared.Render {
         }
 
         internal void Initialize (RenderManager renderManager, int index) {
-            Batches = _ListPool.Allocate();
+            Batches = _ListPool.Allocate(null);
             RenderManager = renderManager;
             Index = index;
             State = State_Initialized;
@@ -680,16 +680,21 @@ namespace Squared.Render {
     }
 
     public abstract class ListBatch<T> : Batch {
+        public const int BatchCapacityLimit = 4096;
+
         protected UnorderedList<T> _DrawCalls;
 
         private static ListPool<T> _ListPool = new ListPool<T>(
-            2048, 128, 4096
+            2048, 16, 128, BatchCapacityLimit
         );
 
-        new protected void Initialize (IBatchContainer container, int layer, Material material) {
+        new protected void Initialize (
+            IBatchContainer container, int layer, Material material,
+            int? capacity = null
+        ) {
             base.Initialize(container, layer, material);
 
-            _DrawCalls = _ListPool.Allocate();
+            _DrawCalls = _ListPool.Allocate(capacity);
         }
 
         protected void Add (T item) {

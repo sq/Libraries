@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -162,6 +163,7 @@ namespace Squared.Render.Internal {
         protected HardwareBufferEntry _FillingHardwareBufferEntry = null;
 
         protected volatile int _VertexCount = 0, _IndexCount = 0;
+        protected object _CapacityLock = new object();
         protected TVertex[] _VertexArray;
         protected TIndex[] _IndexArray;
         protected volatile int _FlushedToBuffers = 0;
@@ -218,10 +220,8 @@ namespace Squared.Render.Internal {
             lock (_PendingCopies)
                 _PendingCopies.Clear();
 
-            lock (_VertexArray)
-                _VertexArray = null;
-            lock (_IndexArray)
-                _IndexArray = null;
+            _VertexArray = null;
+            _IndexArray = null;
 
             _VertexCount = _IndexCount = 0;
 
@@ -229,7 +229,11 @@ namespace Squared.Render.Internal {
         }
 
         protected virtual int PickNewArraySize (int previousSize, int requestedSize) {
-            return 1 << (int)Math.Ceiling(Math.Log(requestedSize, 2));
+            var newSize = 1 << (int)Math.Ceiling(Math.Log(requestedSize, 2));
+            if (newSize < requestedSize)
+                throw new InvalidDataException();
+
+            return newSize;
         }
 
         void IBufferGenerator.Reset () {
@@ -283,14 +287,20 @@ namespace Squared.Render.Internal {
             }
         }
 
-        private void EnsureBufferCapacity<T> (ref T[] array, ref int count, int oldCount, int newCount) {
-            var oldArray = array;
+        private T[] EnsureBufferCapacity<T> (
+            ref T[] array, ref int usedElementCount,
+            int elementsToAdd, out int oldElementCount
+        ) {
+            lock (_CapacityLock) {
+                int newElementCount = Interlocked.Add(ref usedElementCount, elementsToAdd);
+                oldElementCount = newElementCount - elementsToAdd;
 
-            lock (oldArray) {
-                if (newCount <= oldArray.Length)
-                    return;
+                var oldArray = array;
+                var oldArraySize = array.Length;
+                if (oldArraySize >= newElementCount)
+                    return array;
 
-                var newSize = PickNewArraySize(oldArray.Length, newCount);
+                var newSize = PickNewArraySize(oldArraySize, newElementCount);
                 var newArray = new T[newSize];
 
                 lock (_PendingCopies)
@@ -299,10 +309,10 @@ namespace Squared.Render.Internal {
                         SourceIndex = 0,
                         Destination = newArray,
                         DestinationIndex = 0,
-                        Count = oldCount
+                        Count = oldElementCount
                     });
 
-                array = newArray;
+                return array = newArray;
             }
         }
 
@@ -361,11 +371,6 @@ namespace Squared.Render.Internal {
 
             if (_FlushedToBuffers != 0)
                 throw new InvalidOperationException("Already flushed");
-
-            var newVertexCount = Interlocked.Add(ref _VertexCount, vertexCount);
-            int oldVertexCount = newVertexCount - vertexCount;
-            var newIndexCount = Interlocked.Add(ref _IndexCount, indexCount);
-            int oldIndexCount = newIndexCount - indexCount;
                 
             // When we resize our internal array, we have to queue up copies from the old small array to the new large array.
             // This is because while Allocate is thread-safe, consumers are allowed to write to their allocations without synchronization,
@@ -375,8 +380,13 @@ namespace Squared.Render.Internal {
 
             SoftwareBuffer swb;
 
-            EnsureBufferCapacity(ref _VertexArray, ref _VertexCount, oldVertexCount, newVertexCount);
-            EnsureBufferCapacity(ref _IndexArray, ref _IndexCount, oldIndexCount, newIndexCount);
+            int oldVertexCount, oldIndexCount;
+            var vertexArray = EnsureBufferCapacity(
+                ref _VertexArray, ref _VertexCount, vertexCount, out oldVertexCount
+            );
+            var indexArray = EnsureBufferCapacity(
+                ref _IndexArray, ref _IndexCount, indexCount, out oldIndexCount
+            );
 
             HardwareBufferEntry hardwareBufferEntry;
 
@@ -403,8 +413,8 @@ namespace Squared.Render.Internal {
 
             swb = _SoftwareBufferPool.Allocate();
             swb.Initialize(
-                new ArraySegment<TVertex>(_VertexArray, hardwareBufferEntry.VertexOffset + oldHwbVerticesUsed, vertexCount),
-                new ArraySegment<TIndex>(_IndexArray, hardwareBufferEntry.IndexOffset + oldHwbIndicesUsed, indexCount),
+                new ArraySegment<TVertex>(vertexArray, hardwareBufferEntry.VertexOffset + oldHwbVerticesUsed, vertexCount),
+                new ArraySegment<TIndex>(indexArray, hardwareBufferEntry.IndexOffset + oldHwbIndicesUsed, indexCount),
                 hardwareBufferEntry.Buffer,
                 oldHwbVerticesUsed,
                 oldHwbIndicesUsed

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
 using Squared.Game;
@@ -216,11 +217,12 @@ namespace Squared.Render {
         public static IComparer<BitmapDrawCall> DrawCallComparer = new BitmapDrawCallComparer();
         public static IComparer<BitmapDrawCall> DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
 
-        public const int NativeBatchSize = Int16.MaxValue / 8;
+        public const int NativeBatchSize = 1024;
+        private const int NativeBatchCapacityLimit = 1024;
 
         private ArrayPoolAllocator<BitmapVertex> _Allocator;
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
-            2048, 16, 128
+            256, 16, 64, NativeBatchCapacityLimit
         );
         private UnorderedList<NativeBatch> _NativeBatches = null;
         private volatile bool _Prepared = false;
@@ -260,8 +262,12 @@ namespace Squared.Render {
             return result;
         }
 
-        public void Initialize (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, bool useZBuffer = false) {
-            base.Initialize(container, layer, material);
+        public void Initialize (
+            IBatchContainer container, int layer, 
+            Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, 
+            bool useZBuffer = false, int? capacity = null
+        ) {
+            base.Initialize(container, layer, material, capacity);
 
             SamplerState = samplerState ?? SamplerState.LinearClamp;
             SamplerState2 = samplerState2 ?? SamplerState.LinearClamp;
@@ -272,6 +278,7 @@ namespace Squared.Render {
         }
 
         public ArraySegment<BitmapDrawCall> ReserveSpace (int count) {
+
             return _DrawCalls.ReserveSpace(count);
         }
 
@@ -279,7 +286,7 @@ namespace Squared.Render {
             if (!item.IsValid)
                 throw new InvalidOperationException("Invalid draw call");
 
-            _DrawCalls.Add(item);
+            _DrawCalls.Add(ref item);
         }
 
         new public void Add (ref BitmapDrawCall item) {
@@ -434,12 +441,20 @@ namespace Squared.Render {
             if (_DrawCalls.Count == 0)
                 return;
 
-            if (_NativeBatches == null)
-                _NativeBatches = _NativePool.Allocate();
+            if (_NativeBatches == null) {
+                // If the batch contains a lot of draw calls, try to make sure we allocate our native batch from the large pool.
+                int? nativeBatchCapacity = null;
+                if (_DrawCalls.Count >= BatchCapacityLimit)
+                    nativeBatchCapacity = Math.Min(NativeBatchCapacityLimit + 2, _DrawCalls.Count / 8);
+
+                _NativeBatches = _NativePool.Allocate(nativeBatchCapacity);
+            }
 
             var sorter =
                 UseZBuffer ? DrawCallTextureComparer : DrawCallComparer;
 
+            // FIXME: This sort takes a *TON* of time on large element sets with many identical elements.
+            // Use a merge sort, perhaps? Good worst-case time.
 #if PSM
             _DrawCalls.Timsort(sorter);
 #else

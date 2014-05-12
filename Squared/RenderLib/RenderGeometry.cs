@@ -113,11 +113,11 @@ namespace Squared.Render {
         #region Implementation
 
         private static readonly ListPool<GeometryDrawCall> _ListPool = new ListPool<GeometryDrawCall>(
-            256, 128, 2048
+            256, 4, 128, 1024
         );
 
         private static readonly ListPool<DrawArguments> _DrawArgumentsListPool = new ListPool<DrawArguments>(
-            256, 128, 2048
+            256, 4, 128, 1024
         );
 
         internal Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>> Lists = new Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>>();
@@ -157,7 +157,7 @@ namespace Squared.Render {
 
             UnorderedList<GeometryDrawCall> list;
             if (!Lists.TryGetValue(drawCall.PrimitiveType, out list))
-                list = Lists[drawCall.PrimitiveType] = _ListPool.Allocate();
+                list = Lists[drawCall.PrimitiveType] = _ListPool.Allocate(null);
 
             list.Add(drawCall);
         }
@@ -194,7 +194,7 @@ namespace Squared.Render {
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<GeometryVertex>>();
 #endif
 
-                _DrawArguments = _DrawArgumentsListPool.Allocate();
+                _DrawArguments = _DrawArgumentsListPool.Allocate(null);
                 var swb = _BufferGenerator.Allocate(VertexCount, IndexCount, true);
                 _SoftwareBuffer = swb;
 
