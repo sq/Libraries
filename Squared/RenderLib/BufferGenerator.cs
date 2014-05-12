@@ -20,10 +20,11 @@ namespace Squared.Render.Internal {
         void SetInactive (GraphicsDevice device);
         void SetActive (GraphicsDevice device);
         void Invalidate ();
+        void Validate ();
         int VertexCount { get; }
         int IndexCount { get; }
         int Id { get; }
-        bool IsValid { get; }
+        int Age { get; set; }
     }
 
     public interface ISoftwareBuffer {
@@ -53,8 +54,6 @@ namespace Squared.Render.Internal {
         protected class HardwareBufferEntry {
             public readonly int VertexOffset;
             public readonly int IndexOffset;
-            public readonly int VertexCount;
-            public readonly int IndexCount;
 
             public int SoftwareBufferCount;
             public int VerticesUsed;
@@ -64,14 +63,11 @@ namespace Squared.Render.Internal {
 
             public HardwareBufferEntry (
                 THardwareBuffer buffer,
-                int vertexOffset, int indexOffset,
-                int vertexCount, int indexCount
+                int vertexOffset, int indexOffset
             ) {
                 Buffer = buffer;
                 VertexOffset = vertexOffset;
                 IndexOffset = indexOffset;
-                VertexCount = vertexCount;
-                IndexCount = indexCount;
                 VerticesUsed = IndicesUsed = 0;
             }
         }
@@ -88,11 +84,6 @@ namespace Squared.Render.Internal {
             }
 
             public IHardwareBuffer HardwareBuffer {
-                get;
-                private set;
-            }
-
-            public int HardwareBufferId {
                 get;
                 private set;
             }
@@ -123,7 +114,6 @@ namespace Squared.Render.Internal {
             }
 
             public void Uninitialize () {
-                HardwareBufferId = -1;
                 IsValid = false;
             }
 
@@ -143,7 +133,7 @@ namespace Squared.Render.Internal {
             }
 
             public override string ToString() {
-                return String.Format("<Software Buffer #{0} ({1} - hwb #{2})>", Id, IsValid ? "valid" : "invalid", HardwareBufferId);
+                return String.Format("<Software Buffer #{0} ({1} - {2})>", Id, IsValid ? "valid" : "invalid", HardwareBuffer);
             }
         }
 
@@ -171,6 +161,8 @@ namespace Squared.Render.Internal {
         protected TIndex[] _IndexArray;
         protected volatile int _FlushedToBuffers = 0;
 
+        const int MaxBufferAge = 16;
+        const int MaxUnusedBuffers = 16;
         const int InitialArraySize = 4096;
 
         const int MinVerticesPerBuffer = 1024;
@@ -243,21 +235,31 @@ namespace Squared.Render.Internal {
             return 1 << (int)Math.Ceiling(Math.Log(requestedSize, 2));
         }
 
-        public void Reset () {
-            lock (_FillingHardwareBufferLock)
-                _FillingHardwareBufferEntry = null;
+        void IBufferGenerator.Reset () {
+            _FillingHardwareBufferEntry = null;
+            _FlushedToBuffers = 0;
+            _VertexCount = _IndexCount = 0;
 
             // Any buffers that remain unused (either from being too small, or being unnecessary now)
             //  should be disposed.
             lock (_UnusedHardwareBuffers) {
-                foreach (var hb in _UnusedHardwareBuffers) {
-                    hb.Invalidate();
-                    
-                    // HACK
-                    if (hb != null)
-                        DisposeResource(hb);
+                THardwareBuffer hb;
+                using (var e = _UnusedHardwareBuffers.GetEnumerator())
+                while (e.GetNext(out hb)) {
+                    hb.Age += 1;
+
+                    bool shouldKill = (hb.Age >= MaxBufferAge) ||
+                        ((_UnusedHardwareBuffers.Count > MaxUnusedBuffers) && (hb.Age > 1));
+
+                    if (shouldKill) {
+                        e.RemoveCurrent();
+                        hb.Invalidate();
+
+                        // HACK
+                        if (hb != null)
+                            DisposeResource(hb);
+                    }
                 }
-                _UnusedHardwareBuffers.Clear();
             }
 
             // Return any buffers that were used this frame to the unused state.
@@ -282,9 +284,6 @@ namespace Squared.Render.Internal {
 
                 _SoftwareBuffers.Clear();
             }
-
-            _FlushedToBuffers = 0;
-            _VertexCount = _IndexCount = 0;
         }
 
         private void EnsureBufferCapacity<T> (ref T[] array, ref int count, int oldCount, int newCount) {
@@ -312,12 +311,27 @@ namespace Squared.Render.Internal {
 
         private HardwareBufferEntry PrepareToFillBuffer (int vertexOffset, int indexOffset, int vertexCount, int indexCount) {
             var newBuffer = AllocateSuitablySizedHardwareBuffer(vertexCount, indexCount);
-            var entry = new HardwareBufferEntry(newBuffer, vertexOffset, indexOffset, vertexCount, indexCount);
+            var entry = new HardwareBufferEntry(newBuffer, vertexOffset, indexOffset);
 
             _UsedHardwareBuffers.Add(entry);
             _FillingHardwareBufferEntry = entry;
 
             return entry;
+        }
+
+        private bool CannotFitInBuffer (HardwareBufferEntry hbe, int vertexCount, int indexCount) {
+            lock (hbe) {
+                var currentUsed = hbe.VerticesUsed;
+                var newUsed = hbe.VerticesUsed + vertexCount;
+
+                if (newUsed >= hbe.Buffer.VertexCount)
+                    return true;
+
+                if (hbe.SoftwareBufferCount >= MaxSoftwareBuffersPerHardwareBuffer)
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -355,20 +369,24 @@ namespace Squared.Render.Internal {
 
             lock (_FillingHardwareBufferLock) {
                 hardwareBufferEntry = _FillingHardwareBufferEntry;
+
                 if (
-                    (hardwareBufferEntry == null) ||
-                    ((hardwareBufferEntry.VertexCount + vertexCount) > MaxVerticesPerHardwareBuffer) ||
-                    (hardwareBufferEntry.SoftwareBufferCount >= MaxSoftwareBuffersPerHardwareBuffer) ||
-                    forceExclusiveBuffer
+                    (hardwareBufferEntry == null) || forceExclusiveBuffer ||
+                    CannotFitInBuffer(hardwareBufferEntry, vertexCount, indexCount)
                 ) {
                     lock (_UsedHardwareBuffers)
                         hardwareBufferEntry = PrepareToFillBuffer(oldVertexCount, oldIndexCount, vertexCount, indexCount);
                 }
             }
 
-            var oldHwbVerticesUsed = Interlocked.Add(ref hardwareBufferEntry.VerticesUsed, vertexCount) - vertexCount;
-            var oldHwbIndicesUsed = Interlocked.Add(ref hardwareBufferEntry.IndicesUsed, indexCount) - indexCount;
-            Interlocked.Add(ref hardwareBufferEntry.SoftwareBufferCount, 1);
+            int oldHwbVerticesUsed, oldHwbIndicesUsed;
+
+            lock (hardwareBufferEntry) {
+                // Guess the interlocked isn't really needed...
+                oldHwbVerticesUsed = Interlocked.Add(ref hardwareBufferEntry.VerticesUsed, vertexCount) - vertexCount;
+                oldHwbIndicesUsed = Interlocked.Add(ref hardwareBufferEntry.IndicesUsed, indexCount) - indexCount;
+                Interlocked.Add(ref hardwareBufferEntry.SoftwareBufferCount, 1);
+            }
 
             swb = _SoftwareBufferPool.Allocate();
             swb.Initialize(
@@ -398,14 +416,17 @@ namespace Squared.Render.Internal {
                     // This buffer is large enough, so return it.
                     e.RemoveCurrent();
 
+                    buffer.Age = Arithmetic.Clamp(buffer.Age - 2, 0, MaxBufferAge);
                     return buffer;
                 }
             }
 
-            if (vertexCount < MinVerticesPerBuffer)
-                vertexCount = MinVerticesPerBuffer;
-            if (indexCount < MinIndicesPerBuffer)
-                indexCount = MinIndicesPerBuffer;
+            if (MaxSoftwareBuffersPerHardwareBuffer > 1) {
+                if (vertexCount < MinVerticesPerBuffer)
+                    vertexCount = MinVerticesPerBuffer;
+                if (indexCount < MinIndicesPerBuffer)
+                    indexCount = MinIndicesPerBuffer;
+            }
 
             // We didn't find a suitably large buffer.
             lock (CreateResourceLock)
@@ -424,32 +445,37 @@ namespace Squared.Render.Internal {
                 ArraySegment<TIndex> indexSegment;
 
                 lock (va)
-                    vertexSegment = new ArraySegment<TVertex>(va, hwbe.VertexOffset, hwbe.VertexCount);
+                    vertexSegment = new ArraySegment<TVertex>(va, hwbe.VertexOffset, hwbe.Buffer.VertexCount);
                 lock (ia)
-                    indexSegment = new ArraySegment<TIndex>(ia, hwbe.IndexOffset, hwbe.IndexCount);
+                    indexSegment = new ArraySegment<TIndex>(ia, hwbe.IndexOffset, hwbe.Buffer.IndexCount);
 
                 FillHardwareBuffer(
                     hwbe.Buffer, UseResourceLock,
                     va, vertexSegment, 
                     ia, indexSegment
                 );
+
+                hwbe.Buffer.Validate();
             }
         }
 
-        public void Flush () {
-            lock (_PendingCopies)
-            if (_PendingCopies.Count > 0) {
-                PendingCopy pc;
+        void IBufferGenerator.Flush () {
+            if (Interlocked.Exchange(ref _FlushedToBuffers, 1) == 0) {
+                lock (_PendingCopies)
+                if (_PendingCopies.Count > 0) {
+                    PendingCopy pc;
 
-                using (var e = _PendingCopies.GetEnumerator())
-                while (e.GetNext(out pc))
-                    pc.Execute();
+                    using (var e = _PendingCopies.GetEnumerator())
+                    while (e.GetNext(out pc))
+                        pc.Execute();
 
-                _PendingCopies.Clear();
-            }
+                    _PendingCopies.Clear();
+                }
 
-            if (Interlocked.Exchange(ref _FlushedToBuffers, 1) == 0)
                 FlushToBuffers();
+            } else {
+                throw new InvalidOperationException("Buffer generator flushed twice in a row");
+            }
         }
     }
 
@@ -495,7 +521,7 @@ namespace Squared.Render.Internal {
     public class XNABufferPair<TVertex> : IHardwareBuffer
         where TVertex : struct 
     {
-        internal volatile int _IsValid;
+        internal volatile int _IsValid, _IsActive;
 
         public readonly GraphicsDevice GraphicsDevice;
         public DynamicVertexBuffer Vertices;
@@ -518,6 +544,9 @@ namespace Squared.Render.Internal {
         }
 
         public void SetInactive (GraphicsDevice device) {
+            var wasActive = Interlocked.Exchange(ref _IsActive, 0);
+            if (wasActive != 1)
+                throw new InvalidOperationException("Buffer not active");
             if (_IsValid != 1)
                 throw new ThreadStateException("Buffer not valid");
 
@@ -526,6 +555,13 @@ namespace Squared.Render.Internal {
         }
 
         public void SetActive (GraphicsDevice device) {
+            var wasActive = Interlocked.Exchange(ref _IsActive, 1);
+            if (wasActive != 0)
+                throw new InvalidOperationException("Buffer already active");
+
+            if (_IsValid != 1)
+                throw new ThreadStateException("Buffer not valid");
+
             device.SetVertexBuffer(Vertices);
             device.Indices = Indices;
         }
@@ -541,7 +577,12 @@ namespace Squared.Render.Internal {
             DisposeResource(Indices);
             Vertices = null;
             Indices = null;
-            IsAllocated = true;
+            IsAllocated = false;
+        }
+
+        public int Age {
+            get;
+            set;
         }
 
         public bool IsAllocated {
@@ -568,14 +609,20 @@ namespace Squared.Render.Internal {
             return String.Format("XNABufferPair<{0}> #{1}", typeof(TVertex).Name, Id);
         }
 
-        void IHardwareBuffer.Invalidate () {
-            var wasValid = Interlocked.Exchange(ref _IsValid, 0);
+        void IHardwareBuffer.Validate () {
+            var wasActive = Interlocked.Exchange(ref _IsActive, 0);
+            var wasValid = Interlocked.Exchange(ref _IsValid, 1);
+
+            if (wasActive != 0)
+                throw new InvalidOperationException("Buffer in use");
         }
 
-        bool IHardwareBuffer.IsValid {
-            get {
-                return _IsValid == 1;
-            }
+        void IHardwareBuffer.Invalidate () {
+            var wasActive = Interlocked.Exchange(ref _IsActive, 0);
+            var wasValid = Interlocked.Exchange(ref _IsValid, 0);
+
+            if (wasActive != 0)
+                throw new InvalidOperationException("Buffer in use");
         }
     }
 
@@ -591,7 +638,7 @@ namespace Squared.Render.Internal {
         )
             : base(graphicsDevice, createResourceLock, useResourceLock, disposeResource) {
 
-            MaxSoftwareBuffersPerHardwareBuffer = 1;
+            MaxSoftwareBuffersPerHardwareBuffer = 512;
         }
 
         protected override XNABufferPair<TVertex> AllocateHardwareBuffer (int vertexCount, int indexCount) {

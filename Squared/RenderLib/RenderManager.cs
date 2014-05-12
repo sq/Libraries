@@ -150,6 +150,7 @@ namespace Squared.Render {
         public readonly DeviceManager DeviceManager;
         public readonly Thread MainThread;
 
+        private int _AllowCreatingNewGenerators = 1;
         private int _FrameCount = 0;
         private readonly Dictionary<Type, int> _PreferredPoolCapacities =
             new Dictionary<Type, int>(new ReferenceComparer<Type>());
@@ -292,6 +293,9 @@ namespace Squared.Render {
                 if (_BufferGenerators.TryGetValue(t, out result))
                     return (T)result;
 
+                if (_AllowCreatingNewGenerators != 1)
+                    throw new InvalidOperationException("Cannot create a buffer generator after the flush operation has occurred");
+
                 result = (IBufferGenerator)Activator.CreateInstance(
                     t, 
                     DeviceManager.Device, 
@@ -361,9 +365,19 @@ namespace Squared.Render {
         }
 
         internal void ResetBufferGenerators () {
+            _AllowCreatingNewGenerators = 1;
+
             lock (_BufferGenerators)
                 foreach (var generator in _BufferGenerators.Values)
                     generator.Reset();
+        }
+
+        internal void FlushBufferGenerators () {
+            _AllowCreatingNewGenerators = 0;
+
+            lock (_BufferGenerators)
+                foreach (var generator in _BufferGenerators.Values)
+                    generator.Flush();
         }
 
         internal void FlushPendingDisposes () {

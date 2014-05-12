@@ -233,8 +233,6 @@ namespace Squared.Render {
 
         public override void Issue (DeviceManager manager) {
             if (Count > 0) {
-                _BufferGenerator.Flush();
-
                 using (manager.ApplyMaterial(Material)) {
                     var hwb = _SoftwareBuffer.HardwareBuffer;
                     if (hwb == null)
@@ -253,6 +251,7 @@ namespace Squared.Render {
             }
 
             _DrawArgumentsListPool.Release(ref _DrawArguments);
+            _SoftwareBuffer = null;
 
             base.Issue(manager);
         }

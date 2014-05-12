@@ -475,8 +475,6 @@ namespace Squared.Render {
 
             var device = manager.Device;
 
-            _BufferGenerator.Flush();
-
             IHardwareBuffer previousHardwareBuffer = null;
 
             using (manager.ApplyMaterial(Material)) {

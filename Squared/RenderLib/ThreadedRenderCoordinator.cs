@@ -162,9 +162,10 @@ namespace Squared.Render {
         }
 
         public bool BeginDraw () {
-            if (Interlocked.Increment(ref _DrawDepth) > 1)
+            if (Interlocked.Increment(ref _DrawDepth) > 1) {
                 if (_ActualEnableThreading)
                     WaitForPendingWork();
+            }
 
             _ActualEnableThreading = EnableThreading;
 
@@ -206,13 +207,11 @@ namespace Squared.Render {
         /// <summary>
         /// Finishes preparing the current Frame and readies it to be sent to the graphics device for rendering.
         /// </summary>
-        protected void PrepareNextFrame () {
-            var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
+        protected void PrepareNextFrame (Frame newFrame) {
+            WaitForActiveDraw();
 
             if (newFrame != null)
                 PrepareFrame(newFrame);
-
-            WaitForActiveDraw();
 
             var oldFrame = Interlocked.Exchange(ref _FrameBeingDrawn, newFrame);
 
@@ -237,7 +236,8 @@ namespace Squared.Render {
         }
 
         public void EndDraw () {
-            PrepareNextFrame();
+            var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
+            PrepareNextFrame(newFrame);
             
             if (_Running) {
                 if (DoThreadedIssue) {
@@ -260,7 +260,7 @@ namespace Squared.Render {
             }
         }
 
-        protected void RenderFrame (Frame frame, bool acquireLock) {
+        private void RenderFrame (Frame frame, bool acquireLock) {
             if (acquireLock)
                 Monitor.Enter(UseResourceLock);
 
@@ -285,11 +285,18 @@ namespace Squared.Render {
             _DeviceLost |= IsDeviceLost;
         }
 
-        protected void RenderFrameToDraw () {
+        protected void RenderFrameToDraw (bool endDraw) {
+            Manager.FlushBufferGenerators();
+
             var frameToDraw = Interlocked.Exchange(ref _FrameBeingDrawn, null);
 
             if (frameToDraw != null)
                 RenderFrame(frameToDraw, true);
+
+            if (endDraw)
+                _SyncEndDraw();
+
+            FlushPendingDisposes();
         }
 
         protected void ThreadedDraw (WorkerThread thread) {
@@ -299,11 +306,7 @@ namespace Squared.Render {
             CheckMainThread(DoThreadedIssue);
 
             try {
-                RenderFrameToDraw();
-
-                _SyncEndDraw();
-
-                FlushPendingDisposes();
+                RenderFrameToDraw(true);
 
                 _DeviceLost |= IsDeviceLost;
             } catch (InvalidOperationException ioe) {
@@ -340,29 +343,38 @@ namespace Squared.Render {
         /// Automatically sets up the device's viewport and the view transform of your materials and restores them afterwards.
         /// </summary>
         public void SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
-            using (var frame = Manager.CreateFrame()) {
-                lock (UseResourceLock) {
-                    materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
+            if (Interlocked.Increment(ref _DrawDepth) > 1) {
+                if (_ActualEnableThreading)
+                    WaitForPendingWork();
+            }
 
-                    ClearBatch.AddNew(frame, int.MinValue, materials.Clear, clearColor: Color.Transparent);
+            try {
+                using (var frame = Manager.CreateFrame()) {
+                    lock (UseResourceLock) {
+                        materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
 
-                    drawBehavior(frame);
+                        ClearBatch.AddNew(frame, int.MinValue, materials.Clear, clearColor: Color.Transparent);
 
-                    PrepareFrame(frame);
+                        drawBehavior(frame);
 
-                    var oldRenderTargets = Device.GetRenderTargets();
-                    var oldViewport = Device.Viewport;
-                    try {
-                        Device.SetRenderTarget(renderTarget);
-                        Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
+                        PrepareNextFrame(frame);
 
-                        RenderFrame(frame, false);
-                    } finally {
-                        Device.SetRenderTargets(oldRenderTargets);
-                        materials.PopViewTransform();
-                        Device.Viewport = oldViewport;
+                        var oldRenderTargets = Device.GetRenderTargets();
+                        var oldViewport = Device.Viewport;
+                        try {
+                            Device.SetRenderTarget(renderTarget);
+                            Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
+
+                            RenderFrameToDraw(false);
+                        } finally {
+                            Device.SetRenderTargets(oldRenderTargets);
+                            materials.PopViewTransform();
+                            Device.Viewport = oldViewport;
+                        }
                     }
                 }
+            } finally {
+                Interlocked.Decrement(ref _DrawDepth);
             }
         }
 
