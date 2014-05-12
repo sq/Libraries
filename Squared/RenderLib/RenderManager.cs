@@ -583,6 +583,7 @@ namespace Squared.Render {
         internal bool ReleaseAfterDraw;
         internal bool Released;
         internal IBatchPool Pool;
+        internal bool IsCombined;
 
         protected static int _BatchCount = 0;
 
@@ -601,6 +602,7 @@ namespace Squared.Render {
             ReleaseAfterDraw = false;
             Layer = layer;
             Material = material;
+            IsCombined = false;
 
             Index = Interlocked.Increment(ref _BatchCount);
 
@@ -614,6 +616,8 @@ namespace Squared.Render {
         public void Reuse (IBatchContainer newContainer, int? newLayer = null) {
             if (Released)
                 throw new ObjectDisposedException("batch");
+            else if (IsCombined)
+                throw new InvalidOperationException("Batch was combined into another batch");
 
             if (newLayer.HasValue)
                 Layer = newLayer.Value;

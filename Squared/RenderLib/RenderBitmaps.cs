@@ -188,6 +188,7 @@ namespace Squared.Render {
                     drawCallsLhs.Add(drawCallsRhsBuffer[i]);
 
                 drawCallsRhs.Clear();
+                rhs.IsCombined = true;
 
                 return lhs;
             }
@@ -484,6 +485,9 @@ namespace Squared.Render {
         }
             
         public override void Issue (DeviceManager manager) {
+            if (IsCombined)
+                throw new InvalidOperationException("Batch was combined into another batch");
+
             if (_DrawCalls.Count == 0)
                 return;
 

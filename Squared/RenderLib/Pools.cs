@@ -140,6 +140,8 @@ namespace Squared.Render {
 
             if (result == null)
                 result = new UnorderedList<T>(capacity.GetValueOrDefault(InitialItemCapacity));
+            else
+                result.Clear();
 
             return result;
         }
@@ -150,8 +152,6 @@ namespace Squared.Render {
 
             if (list == null)
                 return;
-
-            list.Clear();
 
             if (list.Capacity > MaxItemCapacity) {
                 lock (_LargePool) {

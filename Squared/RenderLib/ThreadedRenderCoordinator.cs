@@ -290,12 +290,10 @@ namespace Squared.Render {
                 Tracing.RenderTrace.BeforeFrame();
 
                 if (frame != null) {
-                    using (frame) {
-                        _DeviceLost |= IsDeviceLost;
+                    _DeviceLost |= IsDeviceLost;
 
-                        if (!_DeviceLost)
-                            frame.Draw();
-                    }
+                    if (!_DeviceLost)
+                        frame.Draw();
                 }
             } finally {
                 if (acquireLock)
@@ -310,13 +308,15 @@ namespace Squared.Render {
 
             var frameToDraw = Interlocked.Exchange(ref _FrameBeingDrawn, null);
 
-            if (frameToDraw != null)
-                RenderFrame(frameToDraw, true);
+            using (frameToDraw) {
+                if (frameToDraw != null)
+                    RenderFrame(frameToDraw, true);
 
-            if (endDraw)
-                _SyncEndDraw();
+                if (endDraw)
+                    _SyncEndDraw();
 
-            FlushPendingDisposes();
+                FlushPendingDisposes();
+            }
         }
 
         protected void ThreadedDraw (WorkerThread thread) {
