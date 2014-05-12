@@ -35,10 +35,20 @@ namespace Squared.Task {
             if (CheckForDiscardedError())
                 return;
 
-            if (result != null)
+            if (_Future == null) {
+                if (result == null) {
+                    // Disposed without result
+                    return;
+                } else {
+                    // FIXME: is this right?
+                    // Disposed with result but nowhere to send it.
+                    return;
+                }
+            } else if (result != null) {
                 _Future.Complete(result.Value);
-            else
+            } else {
                 _Future.Complete(null);
+            }
 
             Dispose();
         }
@@ -46,6 +56,7 @@ namespace Squared.Task {
         internal void Abort (Exception ex) {
             if (_Future != null)
                 _Future.Fail(ex);
+
             Dispose();
         }
 
@@ -73,6 +84,9 @@ namespace Squared.Task {
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
+            if (future == null)
+                throw new ArgumentNullException("future");
+
             _Future = future;
             _Scheduler = scheduler;
             _Future.RegisterOnDispose(this.OnDisposed);

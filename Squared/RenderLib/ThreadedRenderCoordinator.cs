@@ -35,6 +35,8 @@ namespace Squared.Render {
         private Frame _FrameBeingPrepared = null;
         private Frame _FrameBeingDrawn = null;
 
+        internal bool SynchronousDrawsEnabled = true;
+
         private readonly Func<bool> _SyncBeginDraw;
         private readonly Action _SyncEndDraw;
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
@@ -364,6 +366,9 @@ namespace Squared.Render {
         /// Automatically sets up the device's viewport and the view transform of your materials and restores them afterwards.
         /// </summary>
         public void SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
+            if (!SynchronousDrawsEnabled)
+                throw new InvalidOperationException("Synchronous draws not available inside of Game.Draw");
+
             WaitForActiveDraw();
 
             var oldDrawIsActive = Interlocked.Exchange(ref _SynchronousDrawIsActive, 1);

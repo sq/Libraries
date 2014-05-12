@@ -92,8 +92,10 @@ namespace Squared.Render {
             RenderCoordinator.WorkStopwatch.Restart();
 
             try {
+                RenderCoordinator.SynchronousDrawsEnabled = false;
                 Draw(gameTime, RenderCoordinator.Frame);
             } finally {
+                RenderCoordinator.SynchronousDrawsEnabled = true;
                 RenderCoordinator.WorkStopwatch.Stop();
                 NextFrameTiming.Draw = RenderCoordinator.WorkStopwatch.Elapsed;
             }
