@@ -297,10 +297,7 @@ namespace Squared.Render {
                     throw new InvalidOperationException("Cannot create a buffer generator after the flush operation has occurred");
 
                 result = (IBufferGenerator)Activator.CreateInstance(
-                    t, 
-                    DeviceManager.Device, 
-                    CreateResourceLock, UseResourceLock,
-                    _DisposeResource
+                    t, DeviceManager.Device, CreateResourceLock, _DisposeResource
                 );
                 _BufferGenerators.Add(t, result);
 

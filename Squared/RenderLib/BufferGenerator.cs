@@ -179,27 +179,22 @@ namespace Squared.Render.Internal {
 
         public readonly GraphicsDevice GraphicsDevice;
         public readonly object CreateResourceLock;
-        public readonly object UseResourceLock;
         public readonly Action<IDisposable> DisposeResource;
 
         public BufferGenerator (
             GraphicsDevice graphicsDevice, 
-            object createResourceLock, object useResourceLock, 
-            Action<IDisposable> disposeResource
+            object createResourceLock, Action<IDisposable> disposeResource
         ) {
             if (graphicsDevice == null)
                 throw new ArgumentNullException("graphicsDevice");
             if (createResourceLock == null)
                 throw new ArgumentNullException("createResourceLock");
-            if (useResourceLock == null)
-                throw new ArgumentNullException("useResourceLock");
             if (disposeResource == null)
                 throw new ArgumentNullException("disposeResource");
 
             _SoftwareBufferPool = new SoftwareBufferPool(this);
             GraphicsDevice = graphicsDevice;
             CreateResourceLock = createResourceLock;
-            UseResourceLock = useResourceLock;
             DisposeResource = disposeResource;
             _VertexArray = new TVertex[InitialArraySize];
             _IndexArray = new TIndex[InitialArraySize];
@@ -208,10 +203,7 @@ namespace Squared.Render.Internal {
         protected abstract THardwareBuffer AllocateHardwareBuffer (int vertexCount, int indexCount);
         protected abstract void FillHardwareBuffer (
             THardwareBuffer buffer, 
-            object useResourceLock,
-            object vertexLock,
             ArraySegment<TVertex> vertices, 
-            object indexLock,
             ArraySegment<TIndex> indices
         );
 
@@ -465,15 +457,11 @@ namespace Squared.Render.Internal {
                 ArraySegment<TVertex> vertexSegment;
                 ArraySegment<TIndex> indexSegment;
 
-                lock (va)
-                    vertexSegment = new ArraySegment<TVertex>(va, hwbe.VertexOffset, hwbe.SourceVertexCount);
-                lock (ia)
-                    indexSegment = new ArraySegment<TIndex>(ia, hwbe.IndexOffset, hwbe.SourceIndexCount);
+                vertexSegment = new ArraySegment<TVertex>(va, hwbe.VertexOffset, hwbe.SourceVertexCount);
+                indexSegment = new ArraySegment<TIndex>(ia, hwbe.IndexOffset, hwbe.SourceIndexCount);
 
                 FillHardwareBuffer(
-                    hwbe.Buffer, UseResourceLock,
-                    va, vertexSegment, 
-                    ia, indexSegment
+                    hwbe.Buffer, vertexSegment, indexSegment
                 );
 
                 hwbe.Buffer.Validate();
@@ -544,6 +532,8 @@ namespace Squared.Render.Internal {
     {
         internal volatile int _IsValid, _IsActive;
 
+        public readonly object InUseLock = new object();
+
         public readonly GraphicsDevice GraphicsDevice;
         public DynamicVertexBuffer Vertices;
         public DynamicIndexBuffer Indices;
@@ -573,6 +563,7 @@ namespace Squared.Render.Internal {
 
             device.SetVertexBuffer(null);
             device.Indices = null;
+            Monitor.Exit(InUseLock);
         }
 
         public void SetActive (GraphicsDevice device) {
@@ -583,6 +574,7 @@ namespace Squared.Render.Internal {
             if (_IsValid != 1)
                 throw new ThreadStateException("Buffer not valid");
 
+            Monitor.Enter(InUseLock);
             device.SetVertexBuffer(Vertices);
             device.Indices = Indices;
         }
@@ -653,11 +645,9 @@ namespace Squared.Render.Internal {
         private static volatile int _NextBufferId = 0;
 
         public XNABufferGenerator (
-            GraphicsDevice graphicsDevice, 
-            object createResourceLock, object useResourceLock, 
-            Action<IDisposable> disposeResource
+            GraphicsDevice graphicsDevice, object createResourceLock, Action<IDisposable> disposeResource
         )
-            : base(graphicsDevice, createResourceLock, useResourceLock, disposeResource) {
+            : base(graphicsDevice, createResourceLock, disposeResource) {
 
             MaxSoftwareBuffersPerHardwareBuffer = 512;
         }
@@ -668,10 +658,8 @@ namespace Squared.Render.Internal {
         }
 
         protected override void FillHardwareBuffer (
-            XNABufferPair<TVertex> hardwareBuffer, object useResourceLock,
-            object vertexLock,
+            XNABufferPair<TVertex> hardwareBuffer, 
             ArraySegment<TVertex> vertices,
-            object indexLock,
             ArraySegment<ushort> indices
         ) {
             if (!hardwareBuffer.IsAllocated) {
@@ -679,13 +667,10 @@ namespace Squared.Render.Internal {
                     hardwareBuffer.Allocate();
             }
 
-            lock (useResourceLock)
-            lock (vertexLock)
+            lock (hardwareBuffer.InUseLock) {
                 hardwareBuffer.Vertices.SetData(vertices.Array, vertices.Offset, vertices.Count);
-
-            lock (useResourceLock)
-            lock (indexLock)
                 hardwareBuffer.Indices.SetData(indices.Array, indices.Offset, indices.Count);
+            }
 
             var wasValid = Interlocked.Exchange(ref hardwareBuffer._IsValid, 1);
             if (wasValid != 0)

@@ -158,6 +158,8 @@ namespace Squared.Task {
     }
 
     public class SignalFuture : Future<NoneType> {
+        public static readonly SignalFuture Signaled = new SignalFuture(true);
+
         public SignalFuture ()
             : base() {
         }

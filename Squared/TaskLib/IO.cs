@@ -912,7 +912,7 @@ namespace Squared.Task.IO {
                 int numBytes = _Encoder.GetBytes(_WriteBuffer, 0, numChars, _SendBuffer, 0, true);
                 return _DataWriter.Write(_SendBuffer, 0, numBytes);
             } else
-                return new SignalFuture(true);
+                return SignalFuture.Signaled;
         }
 
         public SignalFuture Flush () {
