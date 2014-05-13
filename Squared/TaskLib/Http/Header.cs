@@ -75,6 +75,9 @@ namespace Squared.Task.Http {
 
     public class QueryStringCollection : Dictionary<string, string> {
         public QueryStringCollection (string queryString, bool urlEncoded) {
+            if (queryString.Trim().Length == 0)
+                return;
+
             var pairs = queryString.Split('&');
 
             bool first = true;

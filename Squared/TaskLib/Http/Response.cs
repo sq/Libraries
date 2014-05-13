@@ -33,6 +33,7 @@ namespace Squared.Task.Http {
                 Adapter = adapter;
                 KeepAlive = keepAlive;
                 ContentLength = 0;
+                CacheControl = "no-cache";
             }
 
             public bool HeadersSent {
@@ -43,6 +44,15 @@ namespace Squared.Task.Http {
             public bool ResponseSent {
                 get;
                 private set;
+            }
+
+            public string CacheControl {
+                get {
+                    return Headers.GetValue("Cache-Control");
+                }
+                set {
+                    Headers.SetValue("Cache-Control", value);
+                }
             }
 
             public bool EpilogueSent {
