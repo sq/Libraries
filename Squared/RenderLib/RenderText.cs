@@ -28,7 +28,9 @@ namespace Squared.Render {
         private float _XOffsetOfFirstLine = 0;
         private float? _LineBreakAtX = null;
         private bool _WordWrap = false;
-        private bool _AlignToPixels = false;
+        private bool _CharacterWrap = true;
+        private float _WrapIndentation = 0f;
+        private bool _AlignToPixels = true;
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _Font = font;
@@ -160,6 +162,30 @@ namespace Squared.Render {
             }
         }
 
+        /// <summary>
+        /// NOTE: Only valid if WordWrap is also true
+        /// </summary>
+        public bool CharacterWrap {
+            get {
+                return _CharacterWrap;
+            }
+            set {
+                InvalidatingValueAssignment(ref _CharacterWrap, value);
+            }
+        }
+
+        /// <summary>
+        /// NOTE: Only valid if WordWrap is also true
+        /// </summary>
+        public float WrapIndentation {
+            get {
+                return _WrapIndentation;
+            }
+            set {
+                InvalidatingValueAssignment(ref _WrapIndentation, value);
+            }
+        }
+
         public bool AlignToPixels {
             get {
                 return _AlignToPixels;
@@ -209,7 +235,7 @@ namespace Squared.Render {
 
                 if (_WordWrap && _LineBreakAtX.HasValue) {
                     _CachedStringLayout = _CachedStringLayout.Value.WordWrap(
-                        _Text, _LineBreakAtX.Value, seg2, 0
+                        _Text, _LineBreakAtX.Value, seg2, WrapIndentation, characterWrap: CharacterWrap
                     );
                 }
             }
@@ -267,10 +293,11 @@ namespace Squared.Render {
             return layout.DrawCalls;
         }
 
-        public StringLayout WordWrap (string text, float wrapAtX, ArraySegment<BitmapDrawCall>? buffer = null, float wrapIndentation = 0f) {
+        public StringLayout WordWrap (string text, float wrapAtX, ArraySegment<BitmapDrawCall>? buffer = null, float wrapIndentation = 0f, bool characterWrap = true) {
             int? thisWordStartIndex = null;
+            int indexOfFirstCharInLine = 0;
+            float? previousCharacterX = null;
             float thisWordWidth = 0;
-            float maxWordWidth = wrapAtX;
             var lineHeight = Size.Y;
             var newSize = new Vector2();
 
@@ -282,33 +309,55 @@ namespace Squared.Render {
 
             Array.Copy(this.DrawCalls.Array, this.DrawCalls.Offset, _buffer.Array, _buffer.Offset, Count);
 
-            var wasWordChar = false;
-
             for (var i = 0; i < Count; i++) {
                 var ch = text[i];
                 var dc = _buffer.Array[_buffer.Offset + i];
 
+                // Detect line break
+                if (previousCharacterX.HasValue && (dc.Position.X <= previousCharacterX.Value))
+                    indexOfFirstCharInLine = i;
+
                 var isWordChar = Char.IsLetterOrDigit(ch) || (ch == '\'');
-                thisWordWidth += dc.TextureRegion.Size.X * dc.Texture.Width;
+                // Start out using texture width (not entirely accurate)
+                var thisCharWidth = dc.TextureRegion.Size.X * dc.Texture.Width;
+                // Then if we can, use the gap between this char and next char
+                if (i < (Count - 1)) {
+                    var nextDrawCall = _buffer.Array[_buffer.Offset + i + 1];
+                    // Make sure the next draw call wasn't wrapped
+                    if (nextDrawCall.Position.X > dc.Position.X)
+                        thisCharWidth = nextDrawCall.Position.X - dc.Position.X;
+                }
+                thisWordWidth += thisCharWidth;
 
                 var needWrap = (dc.Position.X >= wrapAtX);
                 if (needWrap) {
                     int fromOffset = i;
 
-                    // Character wrap if we have no current word or the current word is too wide.
-                    if (thisWordStartIndex.HasValue && (thisWordWidth <= wrapAtX))
+                    if (thisWordStartIndex.HasValue && (thisWordWidth <= (wrapAtX - wrapIndentation))) {
+                        // We have a current word and it's not too wide to fit on its own line.
                         fromOffset = thisWordStartIndex.Value;
+                    } else if (characterWrap) {
+                        // We can character wrap, so continue with a fromOffset of i
+                    } else {
+                        // Character wrap disallowed, so don't wrap. The user will probably scale the output layout.
+                        needWrap = false;
+                    }
 
-                    float xDelta = Position.X - _buffer.Array[_buffer.Offset + fromOffset].Position.X + wrapIndentation;
-                    // After we've done an indent, the maximum width is reduced.
-                    // FIXME: Why is this unreferenced
-                    maxWordWidth = wrapAtX - wrapIndentation;
+                    // We'd be wrapping the whole line, which is pointless.
+                    if (indexOfFirstCharInLine == fromOffset) {
+                        needWrap = false;
+                    }
 
-                    for (var j = fromOffset; j < Count; j++) {
-                        var dc2 = _buffer.Array[_buffer.Offset + j];
-                        dc2.Position.X += xDelta;
-                        dc2.Position.Y += lineHeight;
-                        _buffer.Array[_buffer.Offset + j] = dc2;
+                    if (needWrap) {
+                        float xDelta = Position.X - _buffer.Array[_buffer.Offset + fromOffset].Position.X + wrapIndentation;
+                        indexOfFirstCharInLine = fromOffset;
+
+                        for (var j = fromOffset; j < Count; j++) {
+                            var dc2 = _buffer.Array[_buffer.Offset + j];
+                            dc2.Position.X += xDelta;
+                            dc2.Position.Y += lineHeight;
+                            _buffer.Array[_buffer.Offset + j] = dc2;
+                        }
                     }
                 }
 
@@ -321,6 +370,8 @@ namespace Squared.Render {
                         thisWordWidth = 0f;
                     }
                 }
+
+                previousCharacterX = dc.Position.X;
             }
 
             for (var i = 0; i < Count; i++) {

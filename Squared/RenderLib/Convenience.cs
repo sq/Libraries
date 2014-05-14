@@ -343,12 +343,13 @@ namespace Squared.Render.Convenience {
             ArraySegment<BitmapDrawCall> drawCalls,
             Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, float? sortKey = null,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null
+            BlendState blendState = null, SamplerState samplerState = null, Vector2? scale = null
         ) {
             using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState))
                 batch.AddRange(
                     drawCalls.Array, drawCalls.Offset, drawCalls.Count,
-                    offset: offset, multiplyColor: multiplyColor, addColor: addColor, sortKey: sortKey
+                    offset: offset, multiplyColor: multiplyColor, addColor: addColor, sortKey: sortKey,
+                    scale: scale
                 );
         }
 

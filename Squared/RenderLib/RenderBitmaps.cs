@@ -303,13 +303,15 @@ namespace Squared.Render {
 
         public void AddRange (
             BitmapDrawCall[] items, int firstIndex, int count, 
-            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, float? sortKey = null
+            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, float? sortKey = null, Vector2? scale = null
         ) {
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];
                 if (!item.IsValid)
                     continue;
 
+                if (scale.HasValue)
+                    item.Position *= scale.Value;
                 if (offset.HasValue)
                     item.Position += offset.Value;
                 if (multiplyColor.HasValue)
@@ -318,6 +320,8 @@ namespace Squared.Render {
                     item.AddColor = addColor.Value;
                 if (sortKey.HasValue)
                     item.SortKey = sortKey.Value;
+                if (scale.HasValue)
+                    item.Scale = scale.Value;
 
                 _DrawCalls.Add(ref item);
             }
