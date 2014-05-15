@@ -16,6 +16,18 @@ namespace Squared.Util {
     public struct Pair<T> : IComparable<Pair<T>>, IEquatable<Pair<T>> 
         where T : IComparable<T> {
 
+        public class Comparer : IEqualityComparer<Pair<T>> {
+            public static readonly Comparer Instance = new Comparer();
+
+            public bool Equals (Pair<T> x, Pair<T> y) {
+                return x == y;
+            }
+
+            public int GetHashCode (Pair<T> obj) {
+                return obj.GetHashCode();
+            }
+        }
+
         public T First, Second;
 
         public Pair (T first, T second) {
@@ -150,6 +162,18 @@ namespace Squared.Util {
     public struct Triplet<T> : IComparable<Triplet<T>>, IEquatable<Triplet<T>>
         where T : IComparable<T> {
 
+        public class Comparer : IEqualityComparer<Triplet<T>> {
+            public static readonly Comparer Instance = new Comparer();
+
+            public bool Equals (Triplet<T> x, Triplet<T> y) {
+                return x == y;
+            }
+
+            public int GetHashCode (Triplet<T> obj) {
+                return obj.GetHashCode();
+            }
+        }
+
         public T First, Second, Third;
 
         public Triplet (T first, T second, T third) {
@@ -187,6 +211,14 @@ namespace Squared.Util {
                 return false;
 
             return true;
+        }
+
+        public static bool operator == (Triplet<T> lhs, Triplet<T> rhs) {
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator != (Triplet<T> lhs, Triplet<T> rhs) {
+            return !lhs.Equals(rhs);
         }
 
         public override int GetHashCode () {
