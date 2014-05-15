@@ -80,16 +80,18 @@ namespace Squared.Util {
             }
         }
 
-        public static Buffer Allocate (int size) {
-            if (size > MaxBufferSize) {
-                T[] result = new T[size];
+        public static Buffer Allocate (int? size = null) {
+            int _size = size.GetValueOrDefault(MaxBufferSize);
+
+            if (_size > MaxBufferSize) {
+                T[] result = new T[_size];
                 return new Buffer(result);
             }
 
             lock (Pool) {
                 for (int i = Pool.Count - 1; i >= 0; i--) {
                     var item = Pool[i];
-                    if (item.Length >= size) {
+                    if (item.Length >= _size) {
                         T[] result = item;
                         Pool.RemoveAt(i);
                         return new Buffer(result);
@@ -112,7 +114,7 @@ namespace Squared.Util {
             }
 
             {
-                T[] result = new T[size];
+                T[] result = new T[_size];
                 return new Buffer(result);
             }
         }

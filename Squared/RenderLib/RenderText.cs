@@ -13,7 +13,7 @@ using System.Reflection;
 
 namespace Squared.Render {
     public class DynamicStringLayout {
-        private GrowableBuffer<BitmapDrawCall> _Buffer = new GrowableBuffer<BitmapDrawCall>(); 
+        private ArraySegment<BitmapDrawCall> _Buffer; 
         private StringLayout? _CachedStringLayout;
 
         private Dictionary<char, KerningAdjustment> _KerningAdjustments; 
@@ -60,6 +60,15 @@ namespace Squared.Render {
             if (destination != newValue) {
                 destination = newValue;
                 _CachedStringLayout = null;
+            }
+        }
+
+        public ArraySegment<BitmapDrawCall> Buffer {
+            get {
+                return _Buffer;
+            }
+            set {
+                _Buffer = new ArraySegment<BitmapDrawCall>();
             }
         }
 
@@ -215,14 +224,27 @@ namespace Squared.Render {
                 if (_WordWrap)
                     capacity *= 2;
 
-                _Buffer.EnsureCapacity(capacity);
+                ArraySegment<BitmapDrawCall> seg1;
+                ArraySegment<BitmapDrawCall>? seg2 = null;
 
-                ArraySegment<BitmapDrawCall>? seg1, seg2;
+                if ((_Buffer.Array != null) && (_Buffer.Count < capacity))
+                    _Buffer = default(ArraySegment<BitmapDrawCall>);
 
-                seg1 = _Buffer.Buffer;
-                seg2 = new ArraySegment<BitmapDrawCall>(
-                    _Buffer.Buffer.Array, _Buffer.Buffer.Offset + length, length
-                );
+                if (_Buffer.Array == null) {
+                    var newCapacity = 1 << (int)Math.Ceiling(Math.Log(capacity, 2));
+                    var array = new BitmapDrawCall[newCapacity];
+                    _Buffer = new ArraySegment<BitmapDrawCall>(array);
+                }
+
+                if (_Buffer.Count < capacity)
+                    throw new InvalidOperationException("Buffer too small");
+
+                seg1 = _Buffer;
+                // FIXME: Insufficient space?
+                if (_WordWrap)
+                    seg2 = new ArraySegment<BitmapDrawCall>(
+                        _Buffer.Array, _Buffer.Offset + length, length
+                    );
 
                 _CachedStringLayout = Font.LayoutString(
                     _Text, seg1, 
