@@ -38,10 +38,10 @@ namespace Squared.Util {
         }
 
         public bool Equals (Pair<T> other) {
-            if (!First.Equals(other.First))
+            if (First.CompareTo(other.First) != 0)
                 return false;
 
-            if (!Second.Equals(other.Second))
+            if (Second.CompareTo(other.Second) != 0)
                 return false;
 
             return true;
@@ -177,13 +177,13 @@ namespace Squared.Util {
         }
 
         public bool Equals (Triplet<T> other) {
-            if (!First.Equals(other.First))
+            if (First.CompareTo(other.First) != 0)
                 return false;
 
-            if (!Second.Equals(other.Second))
+            if (Second.CompareTo(other.Second) != 0)
                 return false;
 
-            if (!Third.Equals(other.Third))
+            if (Third.CompareTo(other.Third) != 0)
                 return false;
 
             return true;
