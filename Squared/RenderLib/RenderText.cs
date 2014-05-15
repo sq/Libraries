@@ -30,7 +30,7 @@ namespace Squared.Render {
         private bool _WordWrap = false;
         private bool _CharacterWrap = true;
         private float _WrapIndentation = 0f;
-        private bool _AlignToPixels = true;
+        private bool _AlignToPixels = false;
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _Font = font;
