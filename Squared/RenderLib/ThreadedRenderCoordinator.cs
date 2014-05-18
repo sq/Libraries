@@ -267,8 +267,10 @@ namespace Squared.Render {
             if (_Running) {
                 if (DoThreadedIssue) {
                     lock (UseResourceLock)
-                        if (!_SyncBeginDraw())
-                            return;
+                    if (!_SyncBeginDraw()) {
+                        Interlocked.Exchange(ref _DrawIsActive, 0);
+                        return;
+                    }
 
                     _DrawThread.RequestWork();
                 } else {
@@ -325,12 +327,12 @@ namespace Squared.Render {
         }
 
         protected void ThreadedDraw (WorkerThread thread) {
-            if (!_Running)
-                return;
-
-            CheckMainThread(DoThreadedIssue);
-
             try {
+                if (!_Running)
+                    return;
+
+                CheckMainThread(DoThreadedIssue);
+
                 RenderFrameToDraw(true);
 
                 _DeviceLost |= IsDeviceLost;
