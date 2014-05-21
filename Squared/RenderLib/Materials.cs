@@ -14,6 +14,9 @@ namespace Squared.Render {
         Effect Effect {
             get;
         }
+        MaterialSetEffectParameters Parameters {
+            get;
+        }
     }
 
     public interface IMaterialCollection {
@@ -236,6 +239,13 @@ namespace Squared.Render {
                 ModelView = Matrix.Identity
             };
         }
+
+        public bool Equals (ref ViewTransform rhs) {
+            return (Scale == rhs.Scale) &&
+                (Position == rhs.Position) &&
+                (Projection == rhs.Projection) &&
+                (ModelView == rhs.ModelView);
+        }
     }
 
     public class DefaultMaterialSet : MaterialSetBase {
@@ -310,6 +320,8 @@ namespace Squared.Render {
 
         protected readonly RefMaterialAction<ViewTransform> _ApplyViewTransformDelegate; 
         protected readonly Stack<ViewTransform> ViewTransformStack = new Stack<ViewTransform>();
+
+        protected ViewTransform? CurrentlyAppliedViewTransform = null;
 
         public DefaultMaterialSet (IServiceProvider serviceProvider) {
             _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
@@ -529,7 +541,7 @@ namespace Squared.Render {
         /// Clear batches automatically call this function for you.
         /// </summary>
         public void ApplyShaderVariables () {
-            var vt = ViewTransform;
+            var vt = ViewTransformStack.Peek();
             ApplyViewTransform(ref vt);
         }
 
@@ -544,18 +556,19 @@ namespace Squared.Render {
                 return;
 
 #if SDL2
-                if (e.Parameters["ViewportScale"] != null && e.Parameters["ViewportPosition"] != null)
+                if (em.Parameters.ViewportScale != null && em.Parameters.ViewportPosition != null)
                 {
                     // Only WorldSpace has these parameters -flibit
-                    e.Parameters["ViewportScale"].SetValue(viewTransform.Scale);
-                    e.Parameters["ViewportPosition"].SetValue(viewTransform.Position);
+                    em.Parameters.ViewportScale.SetValue(viewTransform.Scale);
+                    em.Parameters.ViewportPosition.SetValue(viewTransform.Position);
                 }
 #else
-            e.Parameters["ViewportScale"].SetValue(viewTransform.Scale);
-            e.Parameters["ViewportPosition"].SetValue(viewTransform.Position);
+            em.Parameters.ViewportScale.SetValue(viewTransform.Scale);
+            em.Parameters.ViewportPosition.SetValue(viewTransform.Position);
 #endif
-            e.Parameters["ProjectionMatrix"].SetValue(viewTransform.Projection);
-            e.Parameters["ModelViewMatrix"].SetValue(viewTransform.ModelView);
+
+            em.Parameters.ProjectionMatrix.SetValue(viewTransform.Projection);
+            em.Parameters.ModelViewMatrix.SetValue(viewTransform.ModelView);
         }
 
         /// <summary>
@@ -563,6 +576,16 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="viewTransform">The view transform to apply.</param>
         public void ApplyViewTransform (ref ViewTransform viewTransform) {
+            if (
+                CurrentlyAppliedViewTransform.HasValue &&
+                CurrentlyAppliedViewTransform.Value.Equals(ref viewTransform)
+            ) {
+                // Already applied. Don't apply again.
+                return;
+            } else {
+                CurrentlyAppliedViewTransform = viewTransform;
+            }
+
             ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
         }
 
@@ -653,6 +676,9 @@ namespace Squared.Render {
         public virtual void End (DeviceManager deviceManager) {
         }
 
+        public virtual void Flush () {
+        }
+
         public virtual void Dispose () {
             _IsDisposed = true;
         }
@@ -666,6 +692,7 @@ namespace Squared.Render {
 
     public class EffectMaterial : Material, IEffectMaterial {
         public readonly Effect Effect;
+        public readonly MaterialSetEffectParameters Parameters;
 
         public EffectMaterial (Effect effect, string techniqueName)
             : base() {
@@ -686,6 +713,10 @@ namespace Squared.Render {
             } else {
                 Effect = effect;
             }
+
+            // FIXME: This should probably never be null.
+            if (Effect != null)
+                Parameters = new MaterialSetEffectParameters(Effect);
         }
 
         public EffectMaterial (Effect effect)
@@ -698,7 +729,10 @@ namespace Squared.Render {
             if (Effect.GraphicsDevice != deviceManager.Device)
                 throw new InvalidOperationException();
 
-            deviceManager.CurrentEffect = Effect;
+            Flush();
+        }
+
+        public override void Flush () {
             Effect.CurrentTechnique.Passes[0].Apply();
         }
 
@@ -712,6 +746,12 @@ namespace Squared.Render {
         Effect IEffectMaterial.Effect {
             get {
                 return Effect;
+            }
+        }
+
+        MaterialSetEffectParameters IEffectMaterial.Parameters {
+            get {
+                return Parameters;
             }
         }
 
@@ -769,6 +809,11 @@ namespace Squared.Render {
                 base.End(deviceManager);
         }
 
+        public override void Flush() {
+            BaseMaterial.Flush();
+            base.Flush();
+        }
+
         Effect IEffectMaterial.Effect {
             get {
                 var em = BaseMaterial as IEffectMaterial;
@@ -779,8 +824,33 @@ namespace Squared.Render {
             }
         }
 
+        MaterialSetEffectParameters IEffectMaterial.Parameters {
+            get {
+                var em = BaseMaterial as IEffectMaterial;
+                if (em != null)
+                    return em.Parameters;
+                else
+                    return null;
+            }
+        }
+
         Material IDerivedMaterial.BaseMaterial {
             get { return BaseMaterial; }
+        }
+    }
+
+    public class MaterialSetEffectParameters {
+        public readonly EffectParameter ViewportPosition, ViewportScale;
+        public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
+        public readonly EffectParameter BitmapTextureSize, HalfTexel;
+
+        public MaterialSetEffectParameters (Effect effect) {
+            ViewportPosition = effect.Parameters["ViewportPosition"];
+            ViewportScale = effect.Parameters["ViewportScale"];
+            ProjectionMatrix = effect.Parameters["ProjectionMatrix"];
+            ModelViewMatrix = effect.Parameters["ModelViewMatrix"];
+            BitmapTextureSize = effect.Parameters["BitmapTextureSize"];
+            HalfTexel = effect.Parameters["HalfTexel"];
         }
     }
 }

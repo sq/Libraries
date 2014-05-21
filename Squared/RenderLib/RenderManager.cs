@@ -82,17 +82,10 @@ namespace Squared.Render {
         private readonly Stack<Viewport> ViewportStack = new Stack<Viewport>();
 
         public readonly GraphicsDevice Device;
-        private Effect ParameterEffect;
-        private Material CurrentMaterial;
-        internal Effect CurrentEffect;
+        public Material CurrentMaterial { get; private set; }
 
         public DeviceManager (GraphicsDevice device) {
             Device = device;
-            CurrentEffect = null;
-        }
-
-        public void SetParameterEffect (Effect effect) {
-            ParameterEffect = effect;
         }
 
         public void PushRenderTarget (RenderTarget2D newRenderTarget) {
@@ -107,15 +100,13 @@ namespace Squared.Render {
             Device.Viewport = ViewportStack.Pop();
         }
 
-        public EffectParameterCollection SharedParameters {
+        public MaterialSetEffectParameters CurrentParameters {
             get {
-                return ParameterEffect.Parameters;
-            }
-        }
+                var em = CurrentMaterial as IEffectMaterial;
+                if (em != null)
+                    return em.Parameters;
 
-        public EffectParameterCollection CurrentParameters {
-            get {
-                return CurrentEffect.Parameters;
+                return null;
             }
         }
 
@@ -128,8 +119,6 @@ namespace Squared.Render {
                 CurrentMaterial.End(this);
                 CurrentMaterial = null;
             }
-
-            CurrentEffect = null;
 
             for (var i = 0; i < 4; i++) {
                 Device.Textures[i] = null;

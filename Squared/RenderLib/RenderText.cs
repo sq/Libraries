@@ -645,7 +645,7 @@ namespace Squared.Render {
 
             var m = manager.ApplyMaterial(Material);
             var fontTexture = _FontTexture.GetValue(Font) as Texture2D;
-            manager.CurrentParameters["BitmapTextureSize"].SetValue(new Vector2(
+            manager.CurrentParameters.BitmapTextureSize.SetValue(new Vector2(
                 fontTexture.Width, fontTexture.Height
             ));
             m.Dispose();

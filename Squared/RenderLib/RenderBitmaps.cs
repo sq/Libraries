@@ -510,8 +510,8 @@ namespace Squared.Render {
 
             using (manager.ApplyMaterial(Material)) {
                 TextureSet currentTexture = new TextureSet();
-                var paramSize = manager.CurrentParameters["BitmapTextureSize"];
-                var paramHalfTexel = manager.CurrentParameters["HalfTexel"];
+                var paramSize = manager.CurrentParameters.BitmapTextureSize;
+                var paramHalfTexel = manager.CurrentParameters.HalfTexel;
 
                 foreach (var nb in _NativeBatches) {
                     if (nb.TextureSet != currentTexture) {
@@ -529,8 +529,8 @@ namespace Squared.Render {
                         // This is only ever used by Blur, which is never used -flibit
                         paramHalfTexel.SetValue(new Vector2(1.0f / vSize.X, 1.0f / vSize.Y) * 0.5f);
 #endif
-                            
-                        manager.CurrentEffect.CurrentTechnique.Passes[0].Apply();
+
+                        manager.CurrentMaterial.Flush();
                     }
 
                     if (UseZBuffer) {
