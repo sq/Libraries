@@ -181,11 +181,10 @@ namespace Squared.Render {
 
         public bool BeginDraw () {
             WaitForActiveSynchronousDraw();
+            WaitForActiveDraw();
 
             if (Interlocked.Exchange(ref _DrawIsActive, 1) != 0)
                 return false;
-
-            WaitForActiveSynchronousDraw();
 
             _ActualEnableThreading = EnableThreading;
 
