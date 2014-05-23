@@ -857,6 +857,8 @@ namespace Squared.Render {
             dm.PopRenderTarget();
             if (data.After != null)
                 data.After(dm, data.UserData);
+
+            _Pool.Release(data);
         }
 
         public static BatchGroup ForRenderTarget (IBatchContainer container, int layer, RenderTarget2D renderTarget, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null) {
