@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
-using Squared.Render.Evil;
 using Squared.Util;
 
 namespace Squared.Render.Convenience {
@@ -200,6 +196,7 @@ namespace Squared.Render.Convenience {
         private struct CachedBatches {
             public const int Capacity = 4;
 
+            public int Count;
             public CachedBatch Batch0, Batch1, Batch2, Batch3;
 
             public bool TryGet<T> (
@@ -227,7 +224,7 @@ namespace Squared.Render.Convenience {
                     useZBuffer
                 );
 
-                for (var i = 0; i < Capacity; i++) {
+                for (var i = 0; i < Count; i++) {
                     GetItemAtIndex(i, out itemAtIndex);
 
                     if (itemAtIndex.HashCode != searchKey.HashCode)
@@ -248,9 +245,20 @@ namespace Squared.Render.Convenience {
                 // No-op
                 if (previousIndex == 0)
                     return;
+                else if (Count == 0) {
+                    SetItemAtIndex(0, ref item);
+                    Count += 1;
+                    return;
+                }
 
                 // Move items back to create space for the item at the front
-                int writePosition = Capacity - 1;
+                int writePosition;
+                if (Count == Capacity) {
+                    writePosition = Capacity - 1;
+                } else {
+                    writePosition = Count;
+                }
+
                 for (int i = writePosition - 1; i >= 0; i--) {
                     // If the item is being moved from its position to the front, make sure we don't also move it back
                     if (i == previousIndex)
@@ -263,6 +271,11 @@ namespace Squared.Render.Convenience {
                 }
 
                 SetItemAtIndex(0, ref item);
+
+                if (!previousIndex.HasValue) {
+                    if (Count < Capacity)
+                        Count += 1;
+                }
             }
 
             private void GetItemAtIndex(int index, out CachedBatch result) {

@@ -425,6 +425,7 @@ namespace Squared.Render {
 
         public RenderManager RenderManager;
         public int Index;
+        public int InitialBatchCount;
 
         public UnorderedList<Batch> Batches;
 
@@ -445,6 +446,7 @@ namespace Squared.Render {
             Batches = _ListPool.Allocate(null);
             RenderManager = renderManager;
             Index = index;
+            InitialBatchCount = Batch.LifetimeCount;
             State = State_Initialized;
         }
 
@@ -466,6 +468,11 @@ namespace Squared.Render {
         public void Prepare (bool parallel) {
             if (Interlocked.Exchange(ref State, State_Preparing) != State_Initialized)
                 throw new InvalidOperationException("Frame was not in initialized state when prepare operation began ");
+
+            if (false) {
+                var totalBatches = Batch.LifetimeCount - InitialBatchCount;
+                Console.WriteLine("Frame contains {0} batches", totalBatches);
+            }
 
             BatchCombiner.CombineBatches(Batches);
 
@@ -677,6 +684,12 @@ namespace Squared.Render {
 
         public override int GetHashCode() {
             return Index;
+        }
+
+        public static int LifetimeCount {
+            get {
+                return _BatchCount;
+            }
         }
     }
 
