@@ -132,6 +132,132 @@ namespace Squared.Render.Convenience {
     }
 
     public struct ImperativeRenderer {
+        private struct CachedBatch {
+            public Batch Batch;
+
+            public Type BatchType;
+            public IBatchContainer Container;
+            public int Layer;
+            public bool WorldSpace;
+            public BlendState BlendState;
+            public SamplerState SamplerState;
+            public bool UseZBuffer;
+            public RasterizerState RasterizerState;
+            public DepthStencilState DepthStencilState;
+
+            public bool KeysEqual (ref CachedBatch rhs) {
+                return (
+                    (BatchType == rhs.BatchType) &&
+                    (Container == rhs.Container) &&
+                    (Layer == rhs.Layer) &&
+                    (WorldSpace == rhs.WorldSpace) &&
+                    (BlendState == rhs.BlendState) &&
+                    (SamplerState == rhs.SamplerState) &&
+                    (UseZBuffer == rhs.UseZBuffer) &&
+                    (RasterizerState == rhs.RasterizerState) &&
+                    (DepthStencilState == rhs.DepthStencilState)
+                );
+            }
+        }
+
+        private struct CachedBatches {
+            public const int Capacity = 4;
+
+            public CachedBatch Batch0, Batch1, Batch2, Batch3;
+
+            public bool TryGet<T> (
+                out CachedBatch result,
+                IBatchContainer container, 
+                int layer, 
+                bool worldSpace, 
+                RasterizerState rasterizerState, 
+                DepthStencilState depthStencilState, 
+                BlendState blendState, 
+                SamplerState samplerState, 
+                bool useZBuffer
+            ) {
+                var searchKey = new CachedBatch {
+                    BatchType = typeof(T),
+                    Container = container,
+                    Layer = layer,
+                    WorldSpace = worldSpace,
+                    RasterizerState = rasterizerState,
+                    DepthStencilState = depthStencilState,
+                    BlendState = blendState,
+                    SamplerState = samplerState,
+                    UseZBuffer = useZBuffer
+                };
+
+                for (var i = 0; i < Capacity; i++) {
+                    var itemAtIndex = this[i];
+
+                    if (itemAtIndex.KeysEqual(ref searchKey)) {
+                        result = itemAtIndex;
+                        InsertAtFront(ref itemAtIndex, i);
+                        return (result.Batch != null);
+                    }
+                }
+
+                result = searchKey;
+                return false;
+            }
+
+            public void InsertAtFront (ref CachedBatch item, int? previousIndex) {
+                // No-op
+                if (previousIndex == 0)
+                    return;
+
+                // Move items back to create space for the item at the front
+                int writePosition = Capacity - 1;
+                for (int i = writePosition - 1; i >= 0; i--) {
+                    // If the item is being moved from its position to the front, make sure we don't also move it back
+                    if (i == previousIndex)
+                        continue;
+
+                    this[writePosition] = this[i];
+                    writePosition -= 1;
+                }
+
+                this[0] = item;
+            }
+
+            private CachedBatch this[int index] {
+                get {
+                    switch (index) {
+                        case 0:
+                            return Batch0;
+                        case 1:
+                            return Batch1;
+                        case 2:
+                            return Batch2;
+                        case 3:
+                            return Batch3;
+                        default:
+                            throw new ArgumentOutOfRangeException("index");
+                    }
+                }
+
+                set {
+                    switch (index) {
+                        case 0:
+                            Batch0 = value;
+                            break;
+                        case 1:
+                            Batch1 = value;
+                            break;
+                        case 2:
+                            Batch2 = value;
+                            break;
+                        case 3:
+                            Batch3 = value;
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException("index");
+                    }
+                }
+            }
+        }
+
         public IBatchContainer Container;
         public DefaultMaterialSet Materials;
 
@@ -146,7 +272,7 @@ namespace Squared.Render.Convenience {
         public bool AutoIncrementSortKey;
 
         private float NextSortKey;
-        private Batch PreviousBatch;
+        private CachedBatches Cache;
 
         public ImperativeRenderer (
             IBatchContainer container,
@@ -178,7 +304,7 @@ namespace Squared.Render.Convenience {
             AutoIncrementSortKey = autoIncrementSortKey;
             AutoIncrementLayer = autoIncrementLayer;
             NextSortKey = 0;
-            PreviousBatch = null;
+            Cache = new CachedBatches();
         }
 
 
@@ -444,70 +570,73 @@ namespace Squared.Render.Convenience {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
-            var material = Materials.GetBitmapMaterial(
-                worldSpace.GetValueOrDefault(WorldSpace),
-                rasterizerState: RasterizerState,
-                depthStencilState: DepthStencilState,
-                blendState: blendState ?? BlendState
-            );
-            var pbb = PreviousBatch as BitmapBatch;
             var actualLayer = layer.GetValueOrDefault(Layer);
-
+            var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
+            var desiredBlendState = blendState ?? BlendState;
             var desiredSamplerState = samplerState ?? SamplerState;
 
-            if (
-                (pbb != null) &&
-                (pbb.Container == Container) &&
-                (pbb.Layer == actualLayer) &&
-                (pbb.Material == material) &&
-                (
-                    (desiredSamplerState == null) || 
-                    (
-                        (pbb.SamplerState == desiredSamplerState) &&
-                        (pbb.SamplerState2 == desiredSamplerState)
-                    )
-                ) &&
-                (pbb.UseZBuffer == UseZBuffer)
-            )
-                return pbb;
+            CachedBatch cacheEntry;
+            if (!Cache.TryGet<BitmapBatch>(
+                out cacheEntry,
+                container: Container,
+                layer: actualLayer,
+                worldSpace: actualWorldSpace,
+                rasterizerState: RasterizerState,
+                depthStencilState: DepthStencilState,
+                blendState: desiredBlendState,
+                samplerState: desiredSamplerState,
+                useZBuffer: UseZBuffer
+            )) {
+                var material = Materials.GetBitmapMaterial(
+                    actualWorldSpace,
+                    RasterizerState, DepthStencilState, desiredBlendState
+                );
 
-            var result = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, UseZBuffer);
-            PreviousBatch = result;
+                cacheEntry.Batch = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, UseZBuffer);
+                Cache.InsertAtFront(ref cacheEntry, null);
+            }
 
             if (AutoIncrementLayer && !layer.HasValue)
                 Layer += 1;
 
-            return result;
+            return (BitmapBatch)cacheEntry.Batch;
         }
 
         public GeometryBatch GetGeometryBatch (int? layer, bool? worldSpace, BlendState blendState) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
-            var material = Materials.GetGeometryMaterial(
-                worldSpace.GetValueOrDefault(WorldSpace),
+            var actualLayer = layer.GetValueOrDefault(Layer);
+            var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
+            var desiredBlendState = blendState ?? BlendState;
+
+            CachedBatch cacheEntry;
+            if (!Cache.TryGet<GeometryBatch>(
+                out cacheEntry,
+                container: Container,
+                layer: actualLayer,
+                worldSpace: actualWorldSpace,
                 rasterizerState: RasterizerState,
                 depthStencilState: DepthStencilState,
-                blendState: blendState ?? BlendState
-            );
-            var pgb = PreviousBatch as GeometryBatch;
-            var actualLayer = layer.GetValueOrDefault(Layer);
+                blendState: desiredBlendState,
+                samplerState: null,
+                useZBuffer: UseZBuffer
+            )) {
+                var material = Materials.GetGeometryMaterial(
+                    actualWorldSpace,
+                    rasterizerState: RasterizerState,
+                    depthStencilState: DepthStencilState,
+                    blendState: desiredBlendState
+                );
 
-            if (
-                (pgb != null) &&
-                (pgb.Container == Container) &&
-                (pgb.Layer == actualLayer) &&
-                (pgb.Material == material)
-            )
-                return pgb;
-
-            var result = GeometryBatch.New(Container, actualLayer, material);
-            PreviousBatch = result;
+                cacheEntry.Batch = GeometryBatch.New(Container, actualLayer, material);
+                Cache.InsertAtFront(ref cacheEntry, null);
+            }
 
             if (AutoIncrementLayer && !layer.HasValue)
                 Layer += 1;
 
-            return result;
+            return (GeometryBatch)cacheEntry.Batch;
         }
     }
 }
