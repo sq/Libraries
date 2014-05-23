@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Odbc;
 using System.Linq;
+using System.Security.Policy;
 using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -135,15 +137,48 @@ namespace Squared.Render.Convenience {
         private struct CachedBatch {
             public Batch Batch;
 
-            public Type BatchType;
-            public IBatchContainer Container;
-            public int Layer;
-            public bool WorldSpace;
-            public BlendState BlendState;
-            public SamplerState SamplerState;
-            public bool UseZBuffer;
-            public RasterizerState RasterizerState;
-            public DepthStencilState DepthStencilState;
+            public readonly Type BatchType;
+            public readonly IBatchContainer Container;
+            public readonly int Layer;
+            public readonly bool WorldSpace;
+            public readonly BlendState BlendState;
+            public readonly SamplerState SamplerState;
+            public readonly bool UseZBuffer;
+            public readonly RasterizerState RasterizerState;
+            public readonly DepthStencilState DepthStencilState;
+            public readonly int HashCode;
+
+            public CachedBatch (
+                Type batchType,
+                IBatchContainer container,
+                int layer,
+                bool worldSpace,
+                RasterizerState rasterizerState,
+                DepthStencilState depthStencilState,
+                BlendState blendState,
+                SamplerState samplerState,
+                bool useZBuffer
+            ) {
+                Batch = null;
+                BatchType = batchType;
+                Container = container;
+                Layer = layer;
+                WorldSpace = worldSpace;
+                RasterizerState = rasterizerState;
+                DepthStencilState = depthStencilState;
+                BlendState = blendState;
+                SamplerState = samplerState;
+                UseZBuffer = useZBuffer;
+
+                HashCode = Container.GetHashCode() ^ 
+                    Layer.GetHashCode();
+
+                if (BlendState != null)
+                    HashCode ^= BlendState.GetHashCode();
+
+                if (SamplerState != null)
+                    HashCode ^= SamplerState.GetHashCode();
+            }
 
             public bool KeysEqual (ref CachedBatch rhs) {
                 return (
@@ -157,6 +192,10 @@ namespace Squared.Render.Convenience {
                     (RasterizerState == rhs.RasterizerState) &&
                     (DepthStencilState == rhs.DepthStencilState)
                 );
+            }
+
+            public override int GetHashCode() {
+                return HashCode;
             }
         }
 
@@ -176,20 +215,25 @@ namespace Squared.Render.Convenience {
                 SamplerState samplerState, 
                 bool useZBuffer
             ) {
-                var searchKey = new CachedBatch {
-                    BatchType = typeof(T),
-                    Container = container,
-                    Layer = layer,
-                    WorldSpace = worldSpace,
-                    RasterizerState = rasterizerState,
-                    DepthStencilState = depthStencilState,
-                    BlendState = blendState,
-                    SamplerState = samplerState,
-                    UseZBuffer = useZBuffer
-                };
+                CachedBatch itemAtIndex, searchKey;
+
+                searchKey = new CachedBatch(
+                    typeof(T),
+                    container,
+                    layer,
+                    worldSpace,
+                    rasterizerState,
+                    depthStencilState,
+                    blendState,
+                    samplerState,
+                    useZBuffer
+                );
 
                 for (var i = 0; i < Capacity; i++) {
-                    var itemAtIndex = this[i];
+                    GetItemAtIndex(i, out itemAtIndex);
+
+                    if (itemAtIndex.HashCode != searchKey.HashCode)
+                        continue;
 
                     if (itemAtIndex.KeysEqual(ref searchKey)) {
                         result = itemAtIndex;
@@ -214,46 +258,50 @@ namespace Squared.Render.Convenience {
                     if (i == previousIndex)
                         continue;
 
-                    this[writePosition] = this[i];
+                    CachedBatch temp;
+                    GetItemAtIndex(i, out temp);
+                    SetItemAtIndex(writePosition, ref temp);
                     writePosition -= 1;
                 }
 
-                this[0] = item;
+                SetItemAtIndex(0, ref item);
             }
 
-            private CachedBatch this[int index] {
-                get {
-                    switch (index) {
-                        case 0:
-                            return Batch0;
-                        case 1:
-                            return Batch1;
-                        case 2:
-                            return Batch2;
-                        case 3:
-                            return Batch3;
-                        default:
-                            throw new ArgumentOutOfRangeException("index");
-                    }
+            private void GetItemAtIndex(int index, out CachedBatch result) {
+                switch (index) {
+                    case 0:
+                        result = Batch0;
+                        break;
+                    case 1:
+                        result = Batch1;
+                        break;
+                    case 2:
+                        result = Batch2;
+                        break;
+                    case 3:
+                        result = Batch3;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException("index");
                 }
+            }
 
-                set {
-                    switch (index) {
-                        case 0:
-                            Batch0 = value;
-                            break;
-                        case 1:
-                            Batch1 = value;
-                            break;
-                        case 2:
-                            Batch2 = value;
-                            break;
-                        case 3:
-                            Batch3 = value;
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException("index");
-                    }
+            private void SetItemAtIndex (int index, ref CachedBatch value) {
+                switch (index) {
+                    case 0:
+                        Batch0 = value;
+                        break;
+                    case 1:
+                        Batch1 = value;
+                        break;
+                    case 2:
+                        Batch2 = value;
+                        break;
+                    case 3:
+                        Batch3 = value;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException("index");
                 }
             }
         }

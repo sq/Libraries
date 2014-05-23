@@ -554,6 +554,10 @@ namespace Squared.Render {
                 return State == State_Disposed;
             }
         }
+
+        public override int GetHashCode() {
+            return Index;
+        }
     }
 
     public abstract class Batch : IDisposable {
@@ -669,6 +673,10 @@ namespace Squared.Render {
             get {
                 return Released;
             }
+        }
+
+        public override int GetHashCode() {
+            return Index;
         }
     }
 
