@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Squared.Render;
 using Squared.Game;
+using Squared.Render.Convenience;
 
 namespace Pong {
     public class PongExample : MultithreadedGame {
@@ -146,7 +147,9 @@ namespace Pong {
         public override void Draw(GameTime gameTime, Frame frame) {
             ClearBatch.AddNew(frame, 4, Materials.Clear, clearColor: Color.Black);
 
-            using (var gb = GeometryBatch.New(frame, 5, Materials.ScreenSpaceGeometry)) {
+            var alphaGeometry = Materials.Get(Materials.ScreenSpaceGeometry, blendState: BlendState.AlphaBlend);
+
+            using (var gb = GeometryBatch.New(frame, 5, alphaGeometry)) {
                 gb.AddGradientFilledQuad(
                     Vector2.Zero, new Vector2(Graphics.PreferredBackBufferWidth, Graphics.PreferredBackBufferHeight),
                     Color.DarkSlateGray, Color.DarkSlateGray,
@@ -154,7 +157,7 @@ namespace Pong {
                 );
             }
 
-            using (var gb = GeometryBatch.New(frame, 6, Materials.ScreenSpaceGeometry)) {
+            using (var gb = GeometryBatch.New(frame, 6, alphaGeometry)) {
                 var alphaBlack = new Color(0, 0, 0, 192);
                 var alphaBlack2 = new Color(0, 0, 0, 64);
 
@@ -173,9 +176,9 @@ namespace Pong {
             }
 
             // Render the paddles and ball to both the framebuffer and the trail buffer (note the different layer values)
-            using (var gb = GeometryBatch.New(frame, 8, Materials.ScreenSpaceGeometry))
-            using (var gb2 = GeometryBatch.New(frame, 9, Materials.ScreenSpaceGeometry))
-            using (var trailBatch = GeometryBatch.New(frame, 2, Materials.ScreenSpaceGeometry)) {
+            using (var gb = GeometryBatch.New(frame, 8, alphaGeometry))
+            using (var gb2 = GeometryBatch.New(frame, 9, alphaGeometry))
+            using (var trailBatch = GeometryBatch.New(frame, 2, alphaGeometry)) {
                 foreach (var paddle in Paddles) {
                     gb.AddFilledQuad(
                         paddle.Bounds.TopLeft, paddle.Bounds.BottomRight, Color.White
@@ -196,21 +199,18 @@ namespace Pong {
             }
 
             // Render the score values using a stringbatch (unfortunately this uses spritebatch to render spritefonts :( )
-            using (var sb = StringBatch.New(frame, 10, Materials.ScreenSpaceBitmap, SpriteBatch, Font)) {
-                var drawCall = new StringDrawCall(
-                    String.Format("Player 1: {0:00}", Scores[0]),
-                    new Vector2(16, 16),
-                    Color.White
+            {
+                var ir = new ImperativeRenderer(frame, Materials, 10, blendState: BlendState.AlphaBlend);
+                ir.DrawString(
+                    Font, String.Format("Player 1: {0:00}", Scores[0]),
+                    new Vector2(16, 16)
                 );
 
-                sb.Add(drawCall.Shadow(Color.Black, 1));
-                sb.Add(drawCall);
-
-                drawCall.Text = String.Format("Player 2: {0:00}", Scores[1]);
-                drawCall.Position.X = Graphics.PreferredBackBufferWidth - 16 - sb.Measure(ref drawCall).X;
-
-                sb.Add(drawCall.Shadow(Color.Black, 1));
-                sb.Add(drawCall);
+                var player2Text = String.Format("Player 2: {0:00}", Scores[1]);
+                ir.DrawString(
+                    Font, player2Text,
+                    new Vector2(Graphics.PreferredBackBufferWidth - 16 - Font.MeasureString(player2Text).X, 16)
+                );
             }
 
             // The first stage of our frame involves selecting the trail buffer as our render target (note that it's layer 0)

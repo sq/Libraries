@@ -73,12 +73,19 @@ namespace Squared.Render {
         // 0        1        2        3        4        5        6        7
         // tlInner, tlOuter, trInner, trOuter, brInner, brOuter, blInner, blOuter
         internal static readonly ushort[] QuadBorderIndices = new ushort[] { 
-            1, 7, 0,
+            // left
+            1, 0, 7,
             0, 6, 7,
+
+            // right
             3, 5, 2,
             2, 5, 4,
+
+            // top
             1, 3, 0,
             3, 2, 0,
+
+            // bottom
             6, 4, 5,
             6, 5, 7
         };
