@@ -173,6 +173,9 @@ namespace Squared.Render.Text {
         }
 
         public AbstractString Text {
+            get {
+                return _Text;
+            }
             set {
                 InvalidatingValueAssignment(ref _Text, value);
             }
