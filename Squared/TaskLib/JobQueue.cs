@@ -14,8 +14,10 @@ namespace Squared.Task {
     }
 
     public interface IJobQueue : IDisposable {
-        /// <summary>Adds a work item to the end of the job queue.</summary>
+        /// <summary>Adds a work item to the end of the job queue for the current step.</summary>
         void QueueWorkItem (Action item);
+        /// <summary>Adds a work item to the end of the job queue for the next step.</summary>
+        void QueueWorkItemForNextStep (Action item);
         /// <summary>Pumps the job queue, processing all the work items it contains.</summary>
         void Step ();
         /// <summary>Pumps the job queue until it is out of work items or the future is completed, whichever comes first.</summary>
@@ -28,6 +30,7 @@ namespace Squared.Task {
         bool WaitForWorkItems (double timeout);
 
         int Count { get; }
+        int NextStepCount { get; }
 
         event UnhandledExceptionEventHandler UnhandledException;
     }
@@ -72,6 +75,7 @@ namespace Squared.Task {
         private int _WaiterCount = 0;
 
         private readonly ConcurrentQueue<Action> _Queue = new ConcurrentQueue<Action>();
+        private readonly ConcurrentQueue<Action> _NextStepQueue = new ConcurrentQueue<Action>();
 
         public ThreadSafeJobQueue ()
             : this(DefaultMaxStepDuration) {
@@ -109,6 +113,9 @@ namespace Squared.Task {
                     }
                 }
             } while (item != null);
+
+            while (_NextStepQueue.TryDequeue(out item))
+                _Queue.Enqueue(item);
         }
 
         private bool OnMaxStepDurationExceeded (long elapsedTicks) {
@@ -143,6 +150,12 @@ namespace Squared.Task {
             }
         }
 
+        public int NextStepCount {
+            get {
+                return _NextStepQueue.Count;
+            }
+        }
+
         public bool IsDisposed {
             get {
                 return _Disposed;
@@ -160,6 +173,17 @@ namespace Squared.Task {
                 throw new ObjectDisposedException("ThreadSafeJobQueue");
 
             _Queue.Enqueue(item);
+
+            Thread.MemoryBarrier();
+            if (_WaiterCount > 0)
+                _WaiterSignal.Set();
+        }
+
+        public void QueueWorkItemForNextStep (Action item) {
+            if (_Disposed)
+                throw new ObjectDisposedException("ThreadSafeJobQueue");
+
+            _NextStepQueue.Enqueue(item);
 
             Thread.MemoryBarrier();
             if (_WaiterCount > 0)

@@ -29,6 +29,7 @@ namespace Squared.Task {
         private const int WS_EX_NOACTIVATE = 0x08000000;
 
         private ConcurrentQueue<Action> _Queue = new ConcurrentQueue<Action>();
+        private ConcurrentQueue<Action> _NextStepQueue = new ConcurrentQueue<Action>();
         private int StepIsPending = 0;
         private int ExecutionDepth = 0;
 
@@ -74,6 +75,11 @@ namespace Squared.Task {
             MarkPendingStep();
         }
 
+        public void QueueWorkItemForNextStep (Action item) {
+            _NextStepQueue.Enqueue(item);
+            MarkPendingStep();
+        }
+
         protected void MarkPendingStep () {
             if (Interlocked.CompareExchange(ref StepIsPending, 1, 0) == 0)
                 PostMessage(Handle, WM_RUN_WORK_ITEM, IntPtr.Zero, IntPtr.Zero);
@@ -93,6 +99,8 @@ namespace Squared.Task {
             if (maxStepDuration.HasValue)
                 stepStarted = Time.Ticks;
 
+            bool markPending = false;
+
             int i = 0;
             Action item;
             while (_Queue.TryDequeue(out item)) {
@@ -111,14 +119,23 @@ namespace Squared.Task {
 
                 if ((maxStepDuration.HasValue) && ((i % StepDurationCheckInterval) == 0)) {
                     var elapsedTicks = (Time.Ticks - stepStarted);
-                    if (elapsedTicks > maxStepDuration.Value) {
-                        if (!OnMaxStepDurationExceeded(elapsedTicks))
-                            return;
 
-                        MarkPendingStep();
+                    if (elapsedTicks > maxStepDuration.Value) {
+                        if (!OnMaxStepDurationExceeded(elapsedTicks)) {
+                            markPending = true;
+                            break;
+                        }
                     }
                 }
             }
+
+            while (_NextStepQueue.TryDequeue(out item)) {
+                _Queue.Enqueue(item);
+                markPending = true;
+            }
+
+            if (markPending)
+                MarkPendingStep();
         }
 
         // Flush the message queue, then sleep for a moment if the future is still not completed.
@@ -152,8 +169,13 @@ namespace Squared.Task {
 
         public int Count {
             get {
-                lock (_Queue)
-                    return _Queue.Count;
+                return _Queue.Count;
+            }
+        }
+
+        public int NextStepCount {
+            get {
+                return _NextStepQueue.Count;
             }
         }
 

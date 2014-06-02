@@ -163,7 +163,7 @@ namespace Squared.Task {
     /// </summary>
     public class WaitForNextStep : ISchedulable {
         void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
-            scheduler.AddStepListener(future.Complete);
+            scheduler.QueueWorkItemForNextStep(future.Complete);
         }
     }
 

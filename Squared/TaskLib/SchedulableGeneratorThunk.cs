@@ -122,7 +122,7 @@ namespace Squared.Task {
 
         void ScheduleNextStepForSchedulable (ISchedulable value) {
             if (value is WaitForNextStep) {
-                _Scheduler.AddStepListener(_QueueStep);
+                _Scheduler.QueueWorkItemForNextStep(_QueueStep);
             } else if (value is Yield) {
                 QueueStep();
             } else {

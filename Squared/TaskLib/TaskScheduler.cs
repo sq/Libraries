@@ -153,7 +153,6 @@ namespace Squared.Task {
 
         private bool _IsDisposed = false;
         private IJobQueue _JobQueue = null;
-        private ConcurrentQueue<Action> _StepListeners = new ConcurrentQueue<Action>();
         private Internal.WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
 
         public TaskScheduler (Func<IJobQueue> JobQueueFactory) {
@@ -222,11 +221,11 @@ namespace Squared.Task {
             _JobQueue.QueueWorkItem(workItem);
         }
 
-        internal void AddStepListener (Action listener) {
+        public void QueueWorkItemForNextStep (Action workItem) {
             if (_IsDisposed)
-                return;
+                throw new ObjectDisposedException("TaskScheduler");
 
-            _StepListeners.Enqueue(listener);
+            _JobQueue.QueueWorkItemForNextStep(workItem);
         }
 
         internal static void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, ManualResetEventSlim newSleepEvent) {
@@ -305,18 +304,9 @@ namespace Squared.Task {
             _SleepWorker.Wake();
         }
 
-        internal void BeforeStep () {
-            Action item;
-
-            while (_StepListeners.TryDequeue(out item))
-                item();
-        }
-
         public void Step () {
             if (_IsDisposed)
                 return;
-
-            BeforeStep();
 
             _JobQueue.Step();
         }
@@ -340,8 +330,6 @@ namespace Squared.Task {
                 started = DateTime.UtcNow;
 
             while (true) {
-                BeforeStep();
-
                 if (_JobQueue.WaitForFuture(future))
                     return future.Result;
 
@@ -363,8 +351,6 @@ namespace Squared.Task {
                 started = DateTime.UtcNow;
 
             while (true) {
-                BeforeStep();
-
                 if (_JobQueue.WaitForFuture(future))
                     return future.Result;
 
@@ -379,7 +365,7 @@ namespace Squared.Task {
 
         public bool HasPendingTasks {
             get {
-                return (_StepListeners.Count > 0) || (_JobQueue.Count > 0);
+                return (_JobQueue.Count > 0) || (_JobQueue.NextStepCount > 0);
             }
         }
 
