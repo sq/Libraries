@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Render.Text;
 using Squared.Util;
 
 namespace Squared.Render.Convenience {

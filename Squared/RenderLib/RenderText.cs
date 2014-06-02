@@ -5,20 +5,120 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Squared.Render.Evil;
+using Squared.Render.Text;
 using Squared.Util;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Microsoft.Xna.Framework;
 using System.Reflection;
 
-namespace Squared.Render {
+namespace Squared.Render.Text {
+    public struct AbstractString : IEquatable<AbstractString> {
+        private readonly string String;
+        private readonly StringBuilder StringBuilder;
+        private readonly ArraySegment<char> ArraySegment;
+
+        public AbstractString (string text) {
+            String = text;
+            StringBuilder = null;
+            ArraySegment = default(ArraySegment<char>);
+        }
+
+        public AbstractString (StringBuilder stringBuilder) {
+            String = null;
+            StringBuilder = stringBuilder;
+            ArraySegment = default(ArraySegment<char>);
+        }
+
+        public AbstractString (char[] array) {
+            String = null;
+            StringBuilder = null;
+            ArraySegment = new ArraySegment<char>(array);
+        }
+
+        public AbstractString (ArraySegment<char> array) {
+            String = null;
+            StringBuilder = null;
+            ArraySegment = array;
+        }
+
+        public static implicit operator AbstractString (string text) {
+            return new AbstractString(text);
+        }
+
+        public static implicit operator AbstractString (StringBuilder stringBuilder) {
+            return new AbstractString(stringBuilder);
+        }
+
+        public static implicit operator AbstractString (char[] array) {
+            return new AbstractString(array);
+        }
+
+        public static implicit operator AbstractString (ArraySegment<char> array) {
+            return new AbstractString(array);
+        }
+
+        public bool Equals (AbstractString other) {
+            return (String == other.String) &&
+                (StringBuilder == other.StringBuilder) &&
+                (ArraySegment == other.ArraySegment);
+        }
+
+        public char this[int index] {
+            get {
+                if (String != null)
+                    return String[index];
+                else if (StringBuilder != null)
+                    return StringBuilder[index];
+                else if (ArraySegment.Array != null) {
+                    if ((index <= 0) || (index >= ArraySegment.Count))
+                        throw new ArgumentOutOfRangeException("index");
+
+                    return ArraySegment.Array[index + ArraySegment.Offset];
+                } else
+                    throw new NullReferenceException("This string contains no text");
+            }
+        }
+
+        public int Length {
+            get {
+                if (String != null)
+                    return String.Length;
+                else if (StringBuilder != null)
+                    return StringBuilder.Length;
+                else // Default fallback to 0 characters
+                    return ArraySegment.Count;
+            }
+        }
+
+        public bool IsNull {
+            get {
+                return
+                    (String == null) &&
+                    (StringBuilder == null) &&
+                    (ArraySegment.Array == null);
+            }
+        }
+
+        public override string ToString () {
+            if (String != null)
+                return String;
+            else if (StringBuilder != null)
+                return StringBuilder.ToString();
+            else if (ArraySegment.Array != null)
+                return new string(ArraySegment.Array, ArraySegment.Offset, ArraySegment.Count);
+            else
+                throw new NullReferenceException("This string contains no text");
+        }
+    }
+
     public class DynamicStringLayout {
         private ArraySegment<BitmapDrawCall> _Buffer; 
         private StringLayout? _CachedStringLayout;
 
         private Dictionary<char, KerningAdjustment> _KerningAdjustments; 
         private SpriteFont _Font;
-        private string _Text;
+        private AbstractString _Text;
         private Vector2 _Position = Vector2.Zero;
         private Color _Color = Color.White;
         private float _Scale = 1;
@@ -72,12 +172,9 @@ namespace Squared.Render {
             }
         }
 
-        public string Text {
-            get {
-                return _Text;
-            }
+        public AbstractString Text {
             set {
-                InvalidatingReferenceAssignment(ref _Text, value);
+                InvalidatingValueAssignment(ref _Text, value);
             }
         }
 
@@ -214,7 +311,7 @@ namespace Squared.Render {
         }
 
         public StringLayout Get () {
-            if (_Text == null)
+            if (_Text.IsNull)
                 return new StringLayout();
 
             if (!_CachedStringLayout.HasValue) {
@@ -315,7 +412,7 @@ namespace Squared.Render {
             return layout.DrawCalls;
         }
 
-        public StringLayout WordWrap (string text, float wrapAtX, ArraySegment<BitmapDrawCall>? buffer = null, float wrapIndentation = 0f, bool characterWrap = true) {
+        public StringLayout WordWrap (AbstractString text, float wrapAtX, ArraySegment<BitmapDrawCall>? buffer = null, float wrapIndentation = 0f, bool characterWrap = true) {
             int? thisWordStartIndex = null;
             int indexOfFirstCharInLine = 0;
             float? previousCharacterX = null;
@@ -441,17 +538,20 @@ namespace Squared.Render {
             Width = width;
         }
     }
+}
+
+namespace Squared.Render {
 
     public static class SpriteFontExtensions {
         public static StringLayout LayoutString (
-            this SpriteFont font, string text, ArraySegment<BitmapDrawCall>? buffer,
+            this SpriteFont font, AbstractString text, ArraySegment<BitmapDrawCall>? buffer = null,
             Vector2? position = null, Color? color = null, float scale = 1, float sortKey = 0,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
-            float xOffsetOfFirstLine = 0, float? lineBreakAtX = null, 
+            float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
             bool alignToPixels = false,
-            Dictionary<char, KerningAdjustment> kerningAdjustments = null 
+            Dictionary<char, KerningAdjustment> kerningAdjustments = null
         ) {
-            if (text == null)
+            if (text.IsNull)
                 throw new ArgumentNullException("text");
 
             ArraySegment<BitmapDrawCall> _buffer;
@@ -593,7 +693,7 @@ namespace Squared.Render {
                 throw new InvalidDataException();
 
             return new StringLayout(
-                position.GetValueOrDefault(), totalSize, 
+                position.GetValueOrDefault(), totalSize,
                 firstCharacterBounds, lastCharacterBounds,
                 segment
             );
