@@ -372,13 +372,15 @@ namespace Squared.Render.Text {
 
         public readonly Vector2 Position;
         public readonly Vector2 Size;
+        public readonly float LineHeight;
         public readonly Bounds FirstCharacterBounds;
         public readonly Bounds LastCharacterBounds;
         public readonly ArraySegment<BitmapDrawCall> DrawCalls;
 
-        public StringLayout (Vector2 position, Vector2 size, Bounds firstCharacter, Bounds lastCharacter, ArraySegment<BitmapDrawCall> drawCalls) {
+        public StringLayout (Vector2 position, Vector2 size, float lineHeight, Bounds firstCharacter, Bounds lastCharacter, ArraySegment<BitmapDrawCall> drawCalls) {
             Position = position;
             Size = size;
+            LineHeight = lineHeight;
             FirstCharacterBounds = firstCharacter;
             LastCharacterBounds = lastCharacter;
             DrawCalls = drawCalls;
@@ -420,7 +422,6 @@ namespace Squared.Render.Text {
             int indexOfFirstCharInLine = 0;
             float? previousCharacterX = null;
             float thisWordWidth = 0;
-            var lineHeight = Size.Y;
             var newSize = new Vector2();
 
             ArraySegment<BitmapDrawCall> _buffer;
@@ -451,7 +452,9 @@ namespace Squared.Render.Text {
                 }
                 thisWordWidth += thisCharWidth;
 
-                var needWrap = (dc.Position.X >= wrapAtX);
+                var needWrap = (dc.Position.X >= wrapAtX) &&
+                    !(ch == 10 || ch == 13 || ch == ' ');
+
                 if (needWrap) {
                     int fromOffset = i;
 
@@ -474,10 +477,19 @@ namespace Squared.Render.Text {
                         float xDelta = Position.X - _buffer.Array[_buffer.Offset + fromOffset].Position.X + wrapIndentation;
                         indexOfFirstCharInLine = fromOffset;
 
+                        float firstX = _buffer.Array[_buffer.Offset + fromOffset].Position.X;
+                        bool didBreakLine = false;
+
                         for (var j = fromOffset; j < Count; j++) {
                             var dc2 = _buffer.Array[_buffer.Offset + j];
-                            dc2.Position.X += xDelta;
-                            dc2.Position.Y += lineHeight;
+
+                            if ((dc2.Position.X <= firstX) && (j > fromOffset))
+                                didBreakLine = true;
+
+                            if (!didBreakLine)
+                                dc2.Position.X += xDelta;
+
+                            dc2.Position.Y += LineHeight;
                             _buffer.Array[_buffer.Offset + j] = dc2;
                         }
                     }
@@ -513,6 +525,7 @@ namespace Squared.Render.Text {
 
             return new StringLayout(
                 Position, newSize,
+                LineHeight,
                 // FIXME
                 FirstCharacterBounds,
                 LastCharacterBounds,
@@ -696,7 +709,7 @@ namespace Squared.Render {
                 throw new InvalidDataException();
 
             return new StringLayout(
-                position.GetValueOrDefault(), totalSize,
+                position.GetValueOrDefault(), totalSize, font.LineSpacing,
                 firstCharacterBounds, lastCharacterBounds,
                 segment
             );
