@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
@@ -697,6 +698,113 @@ namespace Squared.Render.Convenience {
                 Layer += 1;
 
             return (GeometryBatch)cacheEntry.Batch;
+        }
+    }
+
+    public class Atlas : IEnumerable<Atlas.Cell> {
+        public struct Cell {
+            public readonly Atlas Atlas;
+            public readonly int Index;
+            public readonly Bounds Bounds;
+            public readonly Rectangle Rectangle;
+
+            public Cell (Atlas atlas, int index, ref Bounds bounds, ref Rectangle rectangle) {
+                Atlas = atlas;
+                Index = index;
+                Bounds = bounds;
+                Rectangle = rectangle;
+            }
+        }
+
+        public readonly Texture2D Texture;
+        public readonly int CellWidth, CellHeight;
+        public readonly int MarginLeft, MarginTop, MarginRight, MarginBottom;
+        public readonly int WidthInCells, HeightInCells;
+
+        private readonly List<Cell> Cells = new List<Cell>();  
+
+        public Atlas (
+            Texture2D texture, int cellWidth, int cellHeight,
+            int marginLeft = 0, int marginTop = 0,
+            int marginRight = 0, int marginBottom = 0
+        ) {
+            Texture = texture;
+            CellWidth = cellWidth;
+            CellHeight = cellHeight;
+            MarginLeft = marginLeft;
+            MarginTop = marginTop;
+            MarginRight = marginRight;
+            MarginBottom = marginBottom;
+
+            if (texture == null)
+                throw new ArgumentNullException("texture");
+            if (cellWidth <= 0)
+                throw new ArgumentException("Must be positive", "cellWidth");
+            if (cellHeight <= 0)
+                throw new ArgumentException("Must be positive", "cellHeight");
+
+            WidthInCells = InteriorWidth / CellWidth;
+            HeightInCells = InteriorHeight / CellHeight;
+
+            GenerateCells();
+        }
+
+        private int InteriorWidth {
+            get {
+                return Texture.Width - (MarginLeft + MarginRight);
+            }
+        }
+
+        private int InteriorHeight {
+            get {
+                return Texture.Height - (MarginTop + MarginBottom);
+            }
+        }
+
+        public Cell this[int index] {
+            get {
+                return Cells[index];
+            }
+        }
+
+        public Cell this[int x, int y] {
+            get {
+                if ((x < 0) || (x >= WidthInCells))
+                    throw new ArgumentOutOfRangeException("x");
+                if ((y < 0) || (y >= HeightInCells))
+                    throw new ArgumentOutOfRangeException("y");
+
+                int index = (y * WidthInCells) + x;
+                return Cells[index];
+            }
+        }
+
+        private void GenerateCells () {
+            for (int y = 0, i = 0; y < HeightInCells; y++) {
+                for (int x = 0; x < WidthInCells; x++, i++) {
+                    var rectangle = new Rectangle(
+                        (CellWidth * x) + MarginLeft,
+                        (CellHeight * y) + MarginTop,
+                        CellWidth, CellHeight
+                    );
+                    var bounds = Texture.BoundsFromRectangle(ref rectangle);
+                    var cell = new Cell(this, i, ref bounds, ref rectangle);
+
+                    Cells.Add(cell);
+                }
+            }
+        }
+
+        public List<Cell>.Enumerator GetEnumerator () {
+            return Cells.GetEnumerator();
+        }
+
+        IEnumerator<Cell> IEnumerable<Cell>.GetEnumerator () {
+            return Cells.GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator () {
+            return Cells.GetEnumerator();
         }
     }
 }
