@@ -734,6 +734,51 @@ namespace Squared.Render.Convenience {
             }
         }
 
+        public struct SubRegion {
+            public readonly Atlas Atlas;
+            public readonly int Left, Top, Width, Height;
+
+            public SubRegion (Atlas atlas, int left, int top, int width, int height) {
+                Atlas = atlas;
+                Left = left;
+                Top = top;
+                Width = width;
+                Height = height;
+
+                if (width <= 0)
+                    throw new ArgumentOutOfRangeException("width");
+                if (height <= 0)
+                    throw new ArgumentOutOfRangeException("height");
+            }
+
+            public int Count {
+                get {
+                    return Width * Height;
+                }
+            }
+
+            public Cell this[int index] {
+                get {
+                    int x = index % Width;
+                    int y = index / Width;
+
+                    var offsetX = Left + x;
+                    var offsetY = Top + y;
+
+                    return Atlas[offsetX, offsetY];
+                }
+            }
+
+            public Cell this[int x, int y] {
+                get {
+                    var offsetX = Left + x;
+                    var offsetY = Top + y;
+
+                    return Atlas[offsetX, offsetY];
+                }
+            }
+        }
+
         public readonly Texture2D Texture;
         public readonly int CellWidth, CellHeight;
         public readonly int MarginLeft, MarginTop, MarginRight, MarginBottom;
@@ -757,9 +802,9 @@ namespace Squared.Render.Convenience {
             if (texture == null)
                 throw new ArgumentNullException("texture");
             if (cellWidth <= 0)
-                throw new ArgumentException("Must be positive", "cellWidth");
+                throw new ArgumentOutOfRangeException("cellWidth");
             if (cellHeight <= 0)
-                throw new ArgumentException("Must be positive", "cellHeight");
+                throw new ArgumentOutOfRangeException("cellHeight");
 
             WidthInCells = InteriorWidth / CellWidth;
             HeightInCells = InteriorHeight / CellHeight;
@@ -776,6 +821,12 @@ namespace Squared.Render.Convenience {
         private int InteriorHeight {
             get {
                 return Texture.Height - (MarginTop + MarginBottom);
+            }
+        }
+
+        public int Count {
+            get {
+                return WidthInCells * HeightInCells;
             }
         }
 
