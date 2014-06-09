@@ -714,6 +714,24 @@ namespace Squared.Render.Convenience {
                 Bounds = bounds;
                 Rectangle = rectangle;
             }
+
+            public Texture2D Texture {
+                get {
+                    return Atlas.Texture;
+                }
+            }
+
+            public static implicit operator Texture2D (Cell cell) {
+                return cell.Atlas.Texture;
+            }
+
+            public static implicit operator Rectangle (Cell cell) {
+                return cell.Rectangle;
+            }
+
+            public static implicit operator Bounds (Cell cell) {
+                return cell.Bounds;
+            }
         }
 
         public readonly Texture2D Texture;
