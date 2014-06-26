@@ -558,6 +558,8 @@ namespace Squared.Render.Convenience {
                     layout,
                     layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState
                 );
+
+                buffer.Clear();
             }
         }
 

@@ -346,6 +346,8 @@ namespace Squared.Util.Event {
                         if (info.IsConsumed)
                             return;
                     }
+
+                    b.Clear();
                 }
             }
         }

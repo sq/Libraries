@@ -4,10 +4,13 @@ using System.Threading;
 using System.Net;
 using Squared.Task.IO;
 using System.Text;
-using System.Web;
 using System.Collections.Specialized;
 using System.Reflection;
 using System.IO;
+
+#if SystemWeb
+using System.Web;
+#endif
 
 namespace Squared.Task {
     public static class Web {

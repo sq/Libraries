@@ -56,10 +56,16 @@ namespace Squared.Util {
                 return new ArraySegment<T>(_.Data, 0, _.Data.Length);
             }
 
+            public void Clear () {
+                Array.Clear(Data, 0, Data.Length);
+            }
+
             public void Clear (int index, int length) {
                 Array.Clear(Data, index, length);
             }
 
+            // FIXME: Maybe make this always clear the buffer,
+            //  or always clear if T contains any reference types (via reflection check)?
             public void Dispose () {
                 T[] data = Data;
                 Data = null;
