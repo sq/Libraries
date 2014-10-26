@@ -223,20 +223,22 @@ namespace Squared.Render {
         };
 
         public static ViewTransform CreateOrthographic (Viewport viewport) {
-            return new ViewTransform {
-                Scale = Vector2.One,
-                Position = Vector2.Zero,
-                Projection = Matrix.CreateOrthographicOffCenter(
-                    viewport.X + 0.0f, viewport.X + viewport.Width - 1f, viewport.Y + viewport.Height - 1f, viewport.Y + 0.0f, viewport.MinDepth, viewport.MaxDepth),
-                ModelView = Matrix.Identity
-            };
+            return CreateOrthographic(viewport.X, viewport.Y, viewport.Width, viewport.Height, viewport.MinDepth, viewport.MaxDepth);
         }
 
         public static ViewTransform CreateOrthographic (int screenWidth, int screenHeight, float zNearPlane = 0, float zFarPlane = 1) {
+            return CreateOrthographic(0, 0, screenWidth, screenHeight, zNearPlane, zFarPlane);
+        }
+
+        public static ViewTransform CreateOrthographic (int x, int y, int width, int height, float zNearPlane = 0, float zFarPlane = 1) {
+            float offsetX = -0.0f;
+            float offsetY = -0.0f;
+            float offsetX2 = offsetX;
+            float offsetY2 = offsetY;
             return new ViewTransform {
                 Scale = Vector2.One,
                 Position = Vector2.Zero,
-                Projection = Matrix.CreateOrthographicOffCenter(+0.0f, screenWidth - 1f, screenHeight - 1f, +0.0f, zNearPlane, zFarPlane),
+                Projection = Matrix.CreateOrthographicOffCenter(offsetX, width + offsetX2, height + offsetY2, offsetY, zNearPlane, zFarPlane),
                 ModelView = Matrix.Identity
             };
         }
