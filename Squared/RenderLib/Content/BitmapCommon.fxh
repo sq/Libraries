@@ -71,7 +71,7 @@ inline float2 ComputeRotatedCorner(
     float2 regionSize = abs(texRgn.zw - texRgn.xy);
 
 	corner = abs(corner);
-    corner -= (scaleOrigin.zw * regionSize);
+    corner -= (scaleOrigin.zw * (regionSize - (HalfTexel * 2)));
     float2 sinCos, rotatedCorner;
     corner *= scaleOrigin.xy;
     corner *= BitmapTextureSize;
