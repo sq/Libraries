@@ -54,9 +54,12 @@ inline float2 ComputeTexCoord(
     out float2 texTL : TEXCOORD1,
     out float2 texBR : TEXCOORD2
 ) {
+    float2 offset = HalfTexel;
     texTL = min(texRgn.xy, texRgn.zw);
     texBR = max(texRgn.xy, texRgn.zw);
-    return clamp(texRgn.xy + corner, texTL, texBR);
+    return clamp(
+        texRgn.xy + corner, texTL, texBR
+    );
 }
 
 inline float2 ComputeRotatedCorner(
@@ -65,8 +68,10 @@ inline float2 ComputeRotatedCorner(
     in float4 scaleOrigin : POSITION2, // scalex, scaley, originx, originy
     in float rotation : POSITION3
 ) {
+    float2 regionSize = abs(texRgn.zw - texRgn.xy);
+
 	corner = abs(corner);
-    corner -= (scaleOrigin.zw * abs(texRgn.zw - texRgn.xy));
+    corner -= (scaleOrigin.zw * regionSize);
     float2 sinCos, rotatedCorner;
     corner *= scaleOrigin.xy;
     corner *= BitmapTextureSize;

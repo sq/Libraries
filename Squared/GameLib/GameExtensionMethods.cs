@@ -64,8 +64,10 @@ namespace Squared.Game {
             float fw = @this.Width;
             float fh = @this.Height;
             float xScale = 1f / fw, yScale = 1f / fh;
-            var tl = new Vector2(rectangle.Left * xScale, rectangle.Top * yScale);
-            var br = new Vector2(tl.X + (rectangle.Width * xScale), tl.Y + (rectangle.Height * yScale));
+            float offsetX = xScale * 0.0f;
+            float offsetY = yScale * 0.0f;
+            var tl = new Vector2(rectangle.Left * xScale + offsetX, rectangle.Top * yScale + offsetX);
+            var br = new Vector2(tl.X + (rectangle.Width * xScale) + offsetX, tl.Y + (rectangle.Height * yScale) + offsetY);
             return new Bounds(tl, br);
         }
 

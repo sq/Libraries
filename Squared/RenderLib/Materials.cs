@@ -226,7 +226,8 @@ namespace Squared.Render {
             return new ViewTransform {
                 Scale = Vector2.One,
                 Position = Vector2.Zero,
-                Projection = Matrix.CreateOrthographicOffCenter(viewport.X, viewport.Width, viewport.Height, viewport.Y, viewport.MinDepth, viewport.MaxDepth),
+                Projection = Matrix.CreateOrthographicOffCenter(
+                    viewport.X + 0.0f, viewport.X + viewport.Width - 1f, viewport.Y + viewport.Height - 1f, viewport.Y + 0.0f, viewport.MinDepth, viewport.MaxDepth),
                 ModelView = Matrix.Identity
             };
         }
@@ -235,7 +236,7 @@ namespace Squared.Render {
             return new ViewTransform {
                 Scale = Vector2.One,
                 Position = Vector2.Zero,
-                Projection = Matrix.CreateOrthographicOffCenter(0, screenWidth, screenHeight, 0, zNearPlane, zFarPlane),
+                Projection = Matrix.CreateOrthographicOffCenter(+0.0f, screenWidth - 1f, screenHeight - 1f, +0.0f, zNearPlane, zFarPlane),
                 ModelView = Matrix.Identity
             };
         }
