@@ -60,14 +60,21 @@ namespace Squared.Game {
             return result;
         }
 
+        public static Bounds Bounds (this Texture2D @this) {
+            Rectangle r = new Rectangle(0, 0, @this.Width, @this.Height);
+            return BoundsFromRectangle(@this, ref r);
+        }
+
         public static Bounds BoundsFromRectangle (this Texture2D @this, ref Rectangle rectangle) {
-            float fw = @this.Width;
-            float fh = @this.Height;
+            float fw = @this.Width - 1;
+            float fh = @this.Height - 1;
+            float rw = rectangle.Width - 1;
+            float rh = rectangle.Height - 1;
             float xScale = 1f / fw, yScale = 1f / fh;
             float offsetX = xScale * 0.0f;
             float offsetY = yScale * 0.0f;
             var tl = new Vector2(rectangle.Left * xScale + offsetX, rectangle.Top * yScale + offsetX);
-            var br = new Vector2(tl.X + (rectangle.Width * xScale) + offsetX, tl.Y + (rectangle.Height * yScale) + offsetY);
+            var br = new Vector2(tl.X + (rw * xScale), tl.Y + (rh * yScale));
             return new Bounds(tl, br);
         }
 

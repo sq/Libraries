@@ -670,12 +670,12 @@ namespace Squared.Render {
         public Color MultiplyColor, AddColor;
         public float SortKey;
 
-        public BitmapDrawCall (Texture2D texture, Vector2 position) 
-            : this (texture, position, new Bounds(Vector2.Zero, Vector2.One)) {
+        public BitmapDrawCall (Texture2D texture, Vector2 position)
+            : this(texture, position, texture.Bounds()) {
         }
 
         public BitmapDrawCall (Texture2D texture, Vector2 position, Color color)
-            : this(texture, position, new Bounds(Vector2.Zero, Vector2.One), color) {
+            : this(texture, position, texture.Bounds(), color) {
         }
 
         public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion)
@@ -687,11 +687,11 @@ namespace Squared.Render {
         }
 
         public BitmapDrawCall (Texture2D texture, Vector2 position, float scale)
-            : this(texture, position, new Bounds(Vector2.Zero, Vector2.One), Color.White, new Vector2(scale, scale)) {
+            : this(texture, position, texture.Bounds(), Color.White, new Vector2(scale, scale)) {
         }
 
         public BitmapDrawCall (Texture2D texture, Vector2 position, Vector2 scale)
-            : this(texture, position, new Bounds(Vector2.Zero, Vector2.One), Color.White, scale) {
+            : this(texture, position, texture.Bounds(), Color.White, scale) {
         }
 
         public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, float scale)

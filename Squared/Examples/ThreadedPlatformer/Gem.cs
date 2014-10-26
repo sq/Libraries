@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Audio;
 using Squared.Render;
+using Squared.Game;
 
 namespace ThreadedPlatformer {
     /// <summary>
@@ -94,7 +95,7 @@ namespace ThreadedPlatformer {
         public void Draw (GameTime gameTime, BitmapBatch batch) {
             batch.Add(new BitmapDrawCall(
                 texture, Position,
-                new Squared.Game.Bounds(Vector2.Zero, Vector2.One),
+                texture.Bounds(),
                 Color, Vector2.One, origin
             )); 
         }
