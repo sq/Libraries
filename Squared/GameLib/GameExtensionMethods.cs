@@ -61,11 +61,17 @@ namespace Squared.Game {
         }
 
         public static Bounds Bounds (this Texture2D @this) {
+            if (@this == null)
+                return default(Bounds);
+
             Rectangle r = new Rectangle(0, 0, @this.Width, @this.Height);
             return BoundsFromRectangle(@this, ref r);
         }
 
         public static Bounds BoundsFromRectangle (this Texture2D @this, ref Rectangle rectangle) {
+            if (@this == null)
+                return default(Bounds);
+
             float fw = @this.Width;
             float fh = @this.Height;
             float rw = rectangle.Width;
