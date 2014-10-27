@@ -52,10 +52,9 @@ namespace Squared.Render.Internal {
             if (_ThreadRunning == 0)
                 _StartedSignal.Wait();
 
-            if (_ThreadWaiting == 0)
-                WaitForPendingWork();
+            WaitForPendingWork();
 
-            Interlocked.Increment(ref _PendingWork);
+            _PendingWork = 1;
 
             _CompletedSignal.Reset();
             _WakeSignal.Set();
@@ -70,17 +69,17 @@ namespace Squared.Render.Internal {
         }
 
         private void WorkerFn () {
-            Interlocked.Increment(ref _ThreadWaiting);
             while (!_Disposed) {
                 if (Interlocked.Exchange(ref _ThreadRunning, 1) == 0)
                     _StartedSignal.Set();
 
+                Interlocked.Increment(ref _ThreadWaiting);
                 _WakeSignal.WaitOne();
                 Interlocked.Decrement(ref _ThreadWaiting);
                 if (_Disposed)
                     break;
 
-                while (_PendingWork > 0) {
+                if (_PendingWork > 0) {
                     try {
                         Function(this);
                     } catch (Exception ex) {
@@ -93,8 +92,13 @@ namespace Squared.Render.Internal {
                     Interlocked.Decrement(ref _PendingWork);
                 }
 
-                Interlocked.Increment(ref _ThreadWaiting);
                 _CompletedSignal.Set();
+            }
+        }
+
+        public bool IsWorkPending {
+            get {
+                return (_ThreadWaiting == 0) || (_PendingWork != 0);
             }
         }
 

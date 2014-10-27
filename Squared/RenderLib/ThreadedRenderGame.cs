@@ -81,7 +81,8 @@ namespace Squared.Render {
             RenderCoordinator.WorkStopwatch.Restart();
 
             try {
-                return RenderCoordinator.BeginDraw();
+                var failed = RenderCoordinator.BeginDraw();
+                return failed;
             } finally {
                 RenderCoordinator.WorkStopwatch.Stop();
                 NextFrameTiming.BeginDraw = RenderCoordinator.WorkStopwatch.Elapsed;

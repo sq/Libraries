@@ -30,6 +30,9 @@ namespace Squared.Render {
         /// </summary>
         public readonly object PrepareLock = new object();
 
+        // Held during paint
+        private readonly object DrawLock = new object();
+
         private bool _Running = true;
         private bool _ActualEnableThreading = true;
         private Frame _FrameBeingPrepared = null;
@@ -49,7 +52,7 @@ namespace Squared.Render {
 
         // Used to detect re-entrant painting (usually means that an
         //  exception was thrown on the render thread)
-        private int _DrawIsActive = 0, _SynchronousDrawIsActive = 0;
+        private int _SynchronousDrawIsActive = 0;
 
         // Lost devices can cause things to go horribly wrong if we're 
         //  using multithreaded rendering
@@ -169,12 +172,11 @@ namespace Squared.Render {
         }
 
         public bool WaitForActiveDraw () {
-            while (_DrawIsActive != 0) {
-                if (_ActualEnableThreading)
+            if (_ActualEnableThreading) {
+                while (_DrawThread.IsWorkPending)
                     WaitForPendingWork();
-                else
-                    return false;
-            }
+            } else
+                return false;
 
             return true;
         }
@@ -182,9 +184,6 @@ namespace Squared.Render {
         public bool BeginDraw () {
             WaitForActiveSynchronousDraw();
             WaitForActiveDraw();
-
-            if (Interlocked.Exchange(ref _DrawIsActive, 1) != 0)
-                return false;
 
             _ActualEnableThreading = EnableThreading;
 
@@ -199,9 +198,6 @@ namespace Squared.Render {
             } else {
                 result = false;
             }
-
-            if (!result)
-                Interlocked.Exchange(ref _DrawIsActive, 0);
 
             return result;
         }
@@ -266,10 +262,8 @@ namespace Squared.Render {
             if (_Running) {
                 if (DoThreadedIssue) {
                     lock (UseResourceLock)
-                    if (!_SyncBeginDraw()) {
-                        Interlocked.Exchange(ref _DrawIsActive, 0);
+                    if (!_SyncBeginDraw())
                         return;
-                    }
 
                     _DrawThread.RequestWork();
                 } else {
@@ -281,8 +275,6 @@ namespace Squared.Render {
 
                     _DeviceLost = IsDeviceLost;
                 }
-            } else {
-                Interlocked.Exchange(ref _DrawIsActive, 0);
             }
         }
 
@@ -332,7 +324,8 @@ namespace Squared.Render {
 
                 CheckMainThread(DoThreadedIssue);
 
-                RenderFrameToDraw(true);
+                lock (DrawLock)
+                    RenderFrameToDraw(true);
 
                 _DeviceLost |= IsDeviceLost;
             } catch (InvalidOperationException ioe) {
@@ -349,8 +342,6 @@ namespace Squared.Render {
                 }
             } catch (DeviceLostException) {
                 _DeviceLost = true;
-            } finally {
-                Interlocked.Exchange(ref _DrawIsActive, 0);
             }
         }
 
