@@ -71,6 +71,7 @@ namespace Squared.Render {
                 RenderManager, base.BeginDraw, base.EndDraw
             );
             RenderCoordinator.EnableThreading = _UseThreadedDraw;
+            RenderCoordinator.DeviceReset += (s, e) => OnDeviceReset();
 
             base.Initialize();
         }
@@ -118,6 +119,9 @@ namespace Squared.Render {
             }
 
             RenderCoordinator.EnableThreading = _UseThreadedDraw;
+        }
+
+        protected virtual void OnDeviceReset () {
         }
     }
 

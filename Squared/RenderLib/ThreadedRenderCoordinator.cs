@@ -58,6 +58,8 @@ namespace Squared.Render {
         //  using multithreaded rendering
         private bool _DeviceLost = false;
 
+        public event EventHandler DeviceReset;
+
         /// <summary>
         /// Constructs a render coordinator.
         /// </summary>
@@ -137,6 +139,9 @@ namespace Squared.Render {
         protected void OnDeviceReset (object sender, EventArgs args) {
             Monitor.Exit(UseResourceLock);
             Monitor.Exit(CreateResourceLock);
+
+            if (DeviceReset != null)
+                DeviceReset(this, EventArgs.Empty);
         }
 
         private void WaitForPendingWork () {
