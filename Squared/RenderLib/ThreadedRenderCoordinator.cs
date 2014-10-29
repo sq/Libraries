@@ -60,6 +60,8 @@ namespace Squared.Render {
 
         public event EventHandler DeviceReset;
 
+        public bool IsDisposed { get; private set; }
+
         /// <summary>
         /// Constructs a render coordinator.
         /// </summary>
@@ -110,6 +112,9 @@ namespace Squared.Render {
         }
 
         protected bool DefaultBeginDraw () {
+            if (IsDisposed)
+                return false;
+
             if (Device.GraphicsDeviceStatus == GraphicsDeviceStatus.Normal)
                 return true;
             else if (!_Running)
@@ -119,6 +124,9 @@ namespace Squared.Render {
         }
 
         protected void DefaultEndDraw () {
+            if (IsDisposed)
+                return;
+
             var viewport = Device.Viewport;
             Device.Present(
 #if !SDL2
@@ -145,6 +153,9 @@ namespace Squared.Render {
         }
 
         private void WaitForPendingWork () {
+            if (IsDisposed)
+                return;
+
             var working = WorkStopwatch.IsRunning;
             if (working)
                 WorkStopwatch.Stop();
@@ -167,6 +178,9 @@ namespace Squared.Render {
         }
 
         private bool WaitForActiveSynchronousDraw () {
+            if (IsDisposed)
+                return false;
+
             _SynchronousDrawFinishedSignal.Wait();
             return true;
         }
@@ -187,6 +201,9 @@ namespace Squared.Render {
         }
 
         public bool BeginDraw () {
+            if (IsDisposed)
+                return false;
+
             WaitForActiveSynchronousDraw();
             WaitForActiveDraw();
 
@@ -261,6 +278,9 @@ namespace Squared.Render {
         }
 
         public void EndDraw () {
+            if (IsDisposed)
+                return;
+
             var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
             PrepareNextFrame(newFrame);
             
@@ -432,7 +452,11 @@ namespace Squared.Render {
                 return;
             }
 
+            if (IsDisposed)
+                return;
+
             _Running = false;
+            IsDisposed = true;
 
             try {
                 WaitForActiveDraws();

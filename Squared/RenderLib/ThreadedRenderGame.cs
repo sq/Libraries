@@ -8,6 +8,7 @@ using System.Threading;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Internal;
 using System.Reflection;
+using System.ComponentModel;
 
 namespace Squared.Render {
     public abstract class MultithreadedGame : Microsoft.Xna.Framework.Game {
@@ -65,6 +66,32 @@ namespace Squared.Render {
             base.EndRun();
         }
 
+        protected void OnFormClosing (object sender, CancelEventArgs e) {
+            if (RenderCoordinator != null)
+                RenderCoordinator.Dispose();            
+        }
+
+        // HACK: Hook the form Closing event so we can tear down our rendering state before our associated Win32
+        //  window is destroyed. This helps prevent a crash when the main thread destroys a window while a paint is active.
+        protected bool SetupCloseHook () {
+            var gw = Window;
+            
+            var gfField = gw.GetType().GetField("mainForm", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (gfField == null)
+                return false;
+
+            var gf = gfField.GetValue(gw);
+            if (gf == null)
+                return false;
+
+            var gfClosingEvent = gf.GetType().GetEvent("Closing");
+            if (gfClosingEvent == null)
+                return false;
+
+            gfClosingEvent.AddEventHandler(gf, (CancelEventHandler)OnFormClosing);
+            return true;
+        }
+
         protected override void Initialize () {
             RenderManager = new RenderManager(GraphicsDevice, Thread.CurrentThread);
             RenderCoordinator = new RenderCoordinator(
@@ -72,6 +99,8 @@ namespace Squared.Render {
             );
             RenderCoordinator.EnableThreading = _UseThreadedDraw;
             RenderCoordinator.DeviceReset += (s, e) => OnDeviceReset();
+
+            SetupCloseHook();
 
             base.Initialize();
         }
