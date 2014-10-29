@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Internal;
 using System.Reflection;
 using System.ComponentModel;
+using System.Collections.Concurrent;
 
 namespace Squared.Render {
     public abstract class MultithreadedGame : Microsoft.Xna.Framework.Game {
@@ -38,6 +39,7 @@ namespace Squared.Render {
         }
 
         private FrameTiming NextFrameTiming;
+        private readonly ConcurrentQueue<Action<GameTime>> BeforeDrawQueue = new ConcurrentQueue<Action<GameTime>>();
 
         public MultithreadedGame()
             : base() {
@@ -119,10 +121,30 @@ namespace Squared.Render {
             }
         }
 
+        protected virtual void OnBeforeDraw (GameTime gameTime) {
+            Action<GameTime> action;
+
+            while (BeforeDrawQueue.Count > 0) {
+                if (!BeforeDrawQueue.TryDequeue(out action))
+                    continue;
+
+                action(gameTime);
+            }
+        }
+
+        /// <summary>
+        /// Queues an operation to occur immediately before Game.Draw, after the 
+        ///  previous frame has finished. You can do SynchronousDrawToRenderTarget here.
+        /// </summary>
+        public void BeforeDraw (Action<GameTime> action) {
+            BeforeDrawQueue.Enqueue(action);
+        }
+
         sealed protected override void Draw(GameTime gameTime) {
             RenderCoordinator.WorkStopwatch.Restart();
 
             try {
+                OnBeforeDraw(gameTime);
                 RenderCoordinator.SynchronousDrawsEnabled = false;
                 Draw(gameTime, RenderCoordinator.Frame);
             } finally {
