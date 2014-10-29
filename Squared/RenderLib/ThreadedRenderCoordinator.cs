@@ -384,7 +384,9 @@ namespace Squared.Render {
         /// Synchronously renders a complete frame to the specified render target.
         /// Automatically sets up the device's viewport and the view transform of your materials and restores them afterwards.
         /// </summary>
-        public void SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
+        public bool SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
+            if (renderTarget.IsDisposed)
+                return false;
             if (!SynchronousDrawsEnabled)
                 throw new InvalidOperationException("Synchronous draws not available inside of Game.Draw");
 
@@ -421,6 +423,8 @@ namespace Squared.Render {
                         Device.Viewport = oldViewport;
                     }
                 }
+
+                return true;
             } finally {
                 _SynchronousDrawFinishedSignal.Set();
                 Interlocked.Exchange(ref _SynchronousDrawIsActive, 0);
