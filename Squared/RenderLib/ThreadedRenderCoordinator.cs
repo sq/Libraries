@@ -192,7 +192,7 @@ namespace Squared.Render {
 
         public bool WaitForActiveDraw () {
             if (_ActualEnableThreading) {
-                while (_DrawThread.IsWorkPending)
+                while ((_DrawThread != null) && _DrawThread.IsWorkPending)
                     WaitForPendingWork();
             } else
                 return false;
