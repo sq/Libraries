@@ -30,6 +30,9 @@ namespace Squared.Render {
         /// </summary>
         public readonly object PrepareLock = new object();
 
+        // Held during paint
+        private readonly object DrawLock = new object();
+
         private bool _Running = true;
         private bool _ActualEnableThreading = true;
         private Frame _FrameBeingPrepared = null;
@@ -49,11 +52,15 @@ namespace Squared.Render {
 
         // Used to detect re-entrant painting (usually means that an
         //  exception was thrown on the render thread)
-        private int _DrawIsActive = 0, _SynchronousDrawIsActive = 0;
+        private int _SynchronousDrawIsActive = 0;
 
         // Lost devices can cause things to go horribly wrong if we're 
         //  using multithreaded rendering
         private bool _DeviceLost = false;
+
+        public event EventHandler DeviceReset;
+
+        public bool IsDisposed { get; private set; }
 
         /// <summary>
         /// Constructs a render coordinator.
@@ -105,6 +112,9 @@ namespace Squared.Render {
         }
 
         protected bool DefaultBeginDraw () {
+            if (IsDisposed)
+                return false;
+
             if (Device.GraphicsDeviceStatus == GraphicsDeviceStatus.Normal)
                 return true;
             else if (!_Running)
@@ -114,6 +124,9 @@ namespace Squared.Render {
         }
 
         protected void DefaultEndDraw () {
+            if (IsDisposed)
+                return;
+
             var viewport = Device.Viewport;
             Device.Present(
 #if !SDL2
@@ -134,9 +147,15 @@ namespace Squared.Render {
         protected void OnDeviceReset (object sender, EventArgs args) {
             Monitor.Exit(UseResourceLock);
             Monitor.Exit(CreateResourceLock);
+
+            if (DeviceReset != null)
+                DeviceReset(this, EventArgs.Empty);
         }
 
         private void WaitForPendingWork () {
+            if (IsDisposed)
+                return;
+
             var working = WorkStopwatch.IsRunning;
             if (working)
                 WorkStopwatch.Stop();
@@ -159,6 +178,9 @@ namespace Squared.Render {
         }
 
         private bool WaitForActiveSynchronousDraw () {
+            if (IsDisposed)
+                return false;
+
             _SynchronousDrawFinishedSignal.Wait();
             return true;
         }
@@ -169,22 +191,21 @@ namespace Squared.Render {
         }
 
         public bool WaitForActiveDraw () {
-            while (_DrawIsActive != 0) {
-                if (_ActualEnableThreading)
+            if (_ActualEnableThreading) {
+                while ((_DrawThread != null) && _DrawThread.IsWorkPending)
                     WaitForPendingWork();
-                else
-                    return false;
-            }
+            } else
+                return false;
 
             return true;
         }
 
         public bool BeginDraw () {
+            if (IsDisposed)
+                return false;
+
             WaitForActiveSynchronousDraw();
             WaitForActiveDraw();
-
-            if (Interlocked.Exchange(ref _DrawIsActive, 1) != 0)
-                return false;
 
             _ActualEnableThreading = EnableThreading;
 
@@ -199,9 +220,6 @@ namespace Squared.Render {
             } else {
                 result = false;
             }
-
-            if (!result)
-                Interlocked.Exchange(ref _DrawIsActive, 0);
 
             return result;
         }
@@ -260,16 +278,17 @@ namespace Squared.Render {
         }
 
         public void EndDraw () {
+            if (IsDisposed)
+                return;
+
             var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
             PrepareNextFrame(newFrame);
             
             if (_Running) {
                 if (DoThreadedIssue) {
                     lock (UseResourceLock)
-                    if (!_SyncBeginDraw()) {
-                        Interlocked.Exchange(ref _DrawIsActive, 0);
+                    if (!_SyncBeginDraw())
                         return;
-                    }
 
                     _DrawThread.RequestWork();
                 } else {
@@ -281,8 +300,6 @@ namespace Squared.Render {
 
                     _DeviceLost = IsDeviceLost;
                 }
-            } else {
-                Interlocked.Exchange(ref _DrawIsActive, 0);
             }
         }
 
@@ -332,7 +349,8 @@ namespace Squared.Render {
 
                 CheckMainThread(DoThreadedIssue);
 
-                RenderFrameToDraw(true);
+                lock (DrawLock)
+                    RenderFrameToDraw(true);
 
                 _DeviceLost |= IsDeviceLost;
             } catch (InvalidOperationException ioe) {
@@ -349,8 +367,6 @@ namespace Squared.Render {
                 }
             } catch (DeviceLostException) {
                 _DeviceLost = true;
-            } finally {
-                Interlocked.Exchange(ref _DrawIsActive, 0);
             }
         }
 
@@ -368,7 +384,9 @@ namespace Squared.Render {
         /// Synchronously renders a complete frame to the specified render target.
         /// Automatically sets up the device's viewport and the view transform of your materials and restores them afterwards.
         /// </summary>
-        public void SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
+        public bool SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
+            if (renderTarget.IsDisposed)
+                return false;
             if (!SynchronousDrawsEnabled)
                 throw new InvalidOperationException("Synchronous draws not available inside of Game.Draw");
 
@@ -405,6 +423,8 @@ namespace Squared.Render {
                         Device.Viewport = oldViewport;
                     }
                 }
+
+                return true;
             } finally {
                 _SynchronousDrawFinishedSignal.Set();
                 Interlocked.Exchange(ref _SynchronousDrawIsActive, 0);
@@ -436,7 +456,11 @@ namespace Squared.Render {
                 return;
             }
 
+            if (IsDisposed)
+                return;
+
             _Running = false;
+            IsDisposed = true;
 
             try {
                 WaitForActiveDraws();

@@ -629,7 +629,9 @@ namespace Squared.Render.Internal {
             if (wasActive != 0)
                 throw new InvalidOperationException("Buffer in use");
             else if (wasValid != 0)
-                throw new InvalidOperationException("Buffer validated twice");
+                // FIXME: Happens sometimes on device reset?
+                // throw new InvalidOperationException("Buffer validated twice");
+                ;
         }
 
         void IHardwareBuffer.Invalidate () {
