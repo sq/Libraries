@@ -32,6 +32,12 @@ namespace Squared.Task {
         int Count { get; }
         int NextStepCount { get; }
 
+        /// <summary>
+        /// If true, it is safe to call Step, WaitForFuture and WaitForWorkItems on the current thread.
+        /// If false, you must not use those operations on this thread.
+        /// </summary>
+        bool CanPumpOnThisThread { get; }
+
         event UnhandledExceptionEventHandler UnhandledException;
     }
 
@@ -188,6 +194,12 @@ namespace Squared.Task {
             Thread.MemoryBarrier();
             if (_WaiterCount > 0)
                 _WaiterSignal.Set();
+        }
+
+        public bool CanPumpOnThisThread {
+            get {
+                return true;
+            }
         }
 
         public bool WaitForWorkItems (double timeout) {
