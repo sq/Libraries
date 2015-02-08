@@ -243,6 +243,15 @@ namespace Squared.Game {
             }
         }
 
+        public Bounds XY {
+            get {
+                return new Bounds(
+                    new Vector2(Minimum.X, Minimum.Y),
+                    new Vector2(Maximum.X, Maximum.Y)
+                );
+            }
+        }
+
         public Bounds3 (Vector3 a, Vector3 b) {
             Minimum = new Vector3(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y), Math.Min(a.Z, b.Z));
             Maximum = new Vector3(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y), Math.Max(a.Z, b.Z));
@@ -639,6 +648,22 @@ namespace Squared.Game {
             return result;
         }
 
+        public static Interval ProjectOntoAxis (Vector3 axis, Vector3 lineStart, Vector3 lineEnd) {
+            float d = Vector3.Dot(axis, lineStart);
+
+            Interval result = new Interval();
+            result.Min = result.Max = d;
+
+            d = Vector3.Dot(lineEnd, axis);
+
+            if (d < result.Min)
+                result.Min = d;
+            if (d > result.Max)
+                result.Max = d;
+
+            return result;
+        }
+
         public static void GetPolygonAxes (Vector2[] buffer, ref int bufferCount, Polygon polygon) {
             int length = polygon.Count;
             int numAxes = 0;
@@ -793,10 +818,56 @@ namespace Squared.Game {
             }
         }
 
+        private static float Norm2 (Vector3 v) {
+            return v.X * v.X + v.Y * v.Y + v.Z * v.Z;
+        }
+
+        public static bool DoLinesIntersect (Vector3 startA, Vector3 endA, Vector3 startB, Vector3 endB) {
+            float temp;
+            return DoLinesIntersect(startA, endA, startB, endB, out temp);
+        }
+
+        /// <param name="distanceAlongA">The distance along 'A' at which the intersection occurs (0.0 - 1.0)</param>
+        public static bool DoLinesIntersect (Vector3 startA, Vector3 endA, Vector3 startB, Vector3 endB, out float distanceAlongA) {
+            // FIXME: Is this correct?
+            distanceAlongA = 0f;
+
+            var da = endA - startA;
+            var db = endB - startB;
+            var dc = startB - startA;
+
+            if (Vector3.Dot(dc, Vector3.Cross(da, db)) != 0.0) {
+                // lines are not coplanar
+                distanceAlongA = float.NaN;
+                return false;
+            }
+
+            var s = Vector3.Dot(Vector3.Cross(dc, db), Vector3.Cross(da, db)) / Norm2(Vector3.Cross(da, db));
+            if (s >= 0.0 && s <= 1.0) {
+                distanceAlongA = s;
+                return true;
+            }
+
+            return false;
+        }
+
         public static bool DoLinesIntersect (Vector2 startA, Vector2 endA, Vector2 startB, Vector2 endB, out Vector2 intersection) {
             float r;
             if (!DoLinesIntersect(startA, endA, startB, endB, out r)) {
                 intersection = default(Vector2);
+                return false;
+            }
+
+            var lengthA = endA - startA;
+            intersection = startA + (r * lengthA);
+
+            return true;
+        }
+
+        public static bool DoLinesIntersect (Vector3 startA, Vector3 endA, Vector3 startB, Vector3 endB, out Vector3 intersection) {
+            float r;
+            if (!DoLinesIntersect(startA, endA, startB, endB, out r)) {
+                intersection = default(Vector3);
                 return false;
             }
 
@@ -817,6 +888,25 @@ namespace Squared.Game {
             var rectProjectionY = new Interval(rectangle.TopLeft.Y, rectangle.BottomRight.Y);
 
             return lineProjectionY.Intersects(rectProjectionY);
+        }
+
+        public static bool DoesLineIntersectCube (Vector3 start, Vector3 end, Bounds3 cube) {
+            var lineProjectionX = ProjectOntoAxis(Vector3.UnitX, start, end);
+            var rectProjectionX = new Interval(cube.Minimum.X, cube.Maximum.X);
+
+            if (lineProjectionX.Intersects(rectProjectionX))
+                return true;
+
+            var lineProjectionY = ProjectOntoAxis(Vector3.UnitY, start, end);
+            var rectProjectionY = new Interval(cube.Minimum.Y, cube.Maximum.Y);
+
+            if (lineProjectionY.Intersects(rectProjectionY))
+                return true;
+
+            var lineProjectionZ = ProjectOntoAxis(Vector3.UnitY, start, end);
+            var rectProjectionZ = new Interval(cube.Minimum.Z, cube.Maximum.Z);
+
+            return lineProjectionZ.Intersects(rectProjectionZ);
         }
 
         public static float? LineIntersectPolygon (Vector2 start, Vector2 end, Polygon polygon) {
