@@ -227,7 +227,8 @@ namespace Squared.Game {
             get {
                 return new Vector3(
                     Minimum.X + (Maximum.X - Minimum.X) * 0.5f,
-                    Minimum.Y + (Maximum.Y - Minimum.Y) * 0.5f
+                    Minimum.Y + (Maximum.Y - Minimum.Y) * 0.5f,
+                    Minimum.Z + (Maximum.Z - Minimum.Z) * 0.5f
                 );
             }
         }
@@ -236,87 +237,75 @@ namespace Squared.Game {
             get {
                 return new Vector3(
                     Maximum.X - Minimum.X,
-                    Maximum.Y - Minimum.Y
+                    Maximum.Y - Minimum.Y,
+                    Maximum.Z - Minimum.Z
                 );
             }
         }
 
-        public Bounds (Rectangle rectangle, float scaleX = 1, float scaleY = 1)
-            : this(
-                new Vector2(rectangle.Left * scaleX, rectangle.Top * scaleY),
-                new Vector2(rectangle.Right * scaleX, rectangle.Bottom * scaleY)
-            ) {
+        public Bounds3 (Vector3 a, Vector3 b) {
+            Minimum = new Vector3(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y), Math.Min(a.Z, b.Z));
+            Maximum = new Vector3(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y), Math.Max(a.Z, b.Z));
         }
 
-        public Bounds (Vector2 a, Vector2 b) {
-            Minimum = new Vector2(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y));
-            Maximum = new Vector2(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y));
+        public bool Contains (Vector3 point) {
+            return (point.X >= Minimum.X) && (point.Y >= Minimum.Y) && (point.Z >= Minimum.Z) &&
+                (point.X <= Maximum.X) && (point.Y <= Maximum.Y) && (point.Z <= Maximum.Z);
         }
 
-        public bool Contains (Vector2 point) {
-            return (point.X >= Minimum.X) && (point.Y >= Minimum.Y) &&
-                (point.X <= Maximum.X) && (point.Y <= Maximum.Y);
+        public bool Contains (ref Vector3 point) {
+            return (point.X >= Minimum.X) && (point.Y >= Minimum.Y) && (point.Z >= Minimum.Z) &&
+                (point.X <= Maximum.X) && (point.Y <= Maximum.Y) && (point.Z <= Maximum.Z);
         }
 
-        public bool Contains (ref Vector2 point) {
-            return (point.X >= Minimum.X) && (point.Y >= Minimum.Y) &&
-                (point.X <= Maximum.X) && (point.Y <= Maximum.Y);
+        public bool Contains (Bounds3 other) {
+            return (other.Minimum.X >= Minimum.X) && (other.Minimum.Y >= Minimum.Y) && (other.Minimum.Z >= Minimum.Z) &&
+                (other.Maximum.X <= Maximum.X) && (other.Maximum.Y <= Maximum.Y) && (other.Maximum.Z <= Maximum.Z);
         }
 
-        public bool Contains (Bounds other) {
-            return (other.Minimum.X >= Minimum.X) && (other.Minimum.Y >= Minimum.Y) &&
-                (other.Maximum.X <= Maximum.X) && (other.Maximum.Y <= Maximum.Y);
-        }
-
-        public bool Contains (ref Bounds other) {
-            return (other.Minimum.X >= Minimum.X) && (other.Minimum.Y >= Minimum.Y) &&
-                (other.Maximum.X <= Maximum.X) && (other.Maximum.Y <= Maximum.Y);
+        public bool Contains (ref Bounds3 other) {
+            return (other.Minimum.X >= Minimum.X) && (other.Minimum.Y >= Minimum.Y) && (other.Minimum.Z >= Minimum.Z) &&
+                (other.Maximum.X <= Maximum.X) && (other.Maximum.Y <= Maximum.Y) && (other.Maximum.Z <= Maximum.Z);
         }
 
         public override string ToString () {
-            return String.Format("{{{0}, {1}}} - {{{2}, {3}}}", Minimum.X, Minimum.Y, Maximum.X, Maximum.Y);
+            return String.Format(
+                "{{{0}, {1}, {2}}} - {{{3}, {4}, {5}}}", 
+                Minimum.X, Minimum.Y, Minimum.Z,
+                Maximum.X, Maximum.Y, Maximum.Z
+            );
         }
 
-        public Bounds ApplyVelocity (Vector2 velocity) {
-            var bounds = this;
-
-            if (velocity.X < 0)
-                bounds.Minimum.X += velocity.X;
-            else
-                bounds.Maximum.X += velocity.X;
-
-            if (velocity.Y < 0)
-                bounds.Minimum.Y += velocity.Y;
-            else
-                bounds.Maximum.Y += velocity.Y;
-
-            return bounds;
-        }
-
-        public bool Intersects (Bounds rhs) {
+        public bool Intersects (Bounds3 rhs) {
             return Intersect(ref this, ref rhs);
         }
 
-        public static bool Intersect (ref Bounds lhs, ref Bounds rhs) {
+        public static bool Intersect (ref Bounds3 lhs, ref Bounds3 rhs) {
             return (rhs.Minimum.X <= lhs.Maximum.X) &&
                    (lhs.Minimum.X <= rhs.Maximum.X) &&
                    (rhs.Minimum.Y <= lhs.Maximum.Y) &&
                    (lhs.Minimum.Y <= rhs.Maximum.Y);
         }
 
-        public static Bounds? FromIntersection (Bounds lhs, Bounds rhs) {
+        public static Bounds3? FromIntersection (Bounds3 lhs, Bounds3 rhs) {
             return FromIntersection(ref lhs, ref rhs);
         }
 
-        public static Bounds? FromIntersection (ref Bounds lhs, ref Bounds rhs) {
-            Vector2 tl = Vector2.Zero, br = Vector2.Zero;
-            tl.X = Math.Max(lhs.Minimum.X, rhs.Minimum.X);
-            tl.Y = Math.Max(lhs.Minimum.Y, rhs.Minimum.Y);
-            br.X = Math.Min(lhs.Maximum.X, rhs.Maximum.X);
-            br.Y = Math.Min(lhs.Maximum.Y, rhs.Maximum.Y);
+        public static Bounds3? FromIntersection (ref Bounds3 lhs, ref Bounds3 rhs) {
+            Vector3 a = Vector3.Zero, b = Vector3.Zero;
+            a.X = Math.Max(lhs.Minimum.X, rhs.Minimum.X);
+            a.Y = Math.Max(lhs.Minimum.Y, rhs.Minimum.Y);
+            a.Z = Math.Max(lhs.Minimum.Z, rhs.Minimum.Z);
+            b.X = Math.Min(lhs.Maximum.X, rhs.Maximum.X);
+            b.Y = Math.Min(lhs.Maximum.Y, rhs.Maximum.Y);
+            b.Z = Math.Min(lhs.Maximum.Z, rhs.Maximum.Z);
 
-            if ((br.X > tl.X) && (br.Y > tl.Y)) {
-                return new Bounds(tl, br);
+            if (
+                (b.X > a.X) && 
+                (b.Y > a.Y) &&
+                (b.Z > a.Z)
+            ) {
+                return new Bounds3(a, b);
             } else {
                 return null;
             }
