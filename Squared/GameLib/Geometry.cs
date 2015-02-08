@@ -219,6 +219,185 @@ namespace Squared.Game {
         }
     }
 
+    public struct Bounds3 {
+        public Vector3 Minimum;
+        public Vector3 Maximum;
+
+        public Vector3 Center {
+            get {
+                return new Vector3(
+                    Minimum.X + (Maximum.X - Minimum.X) * 0.5f,
+                    Minimum.Y + (Maximum.Y - Minimum.Y) * 0.5f
+                );
+            }
+        }
+
+        public Vector3 Size {
+            get {
+                return new Vector3(
+                    Maximum.X - Minimum.X,
+                    Maximum.Y - Minimum.Y
+                );
+            }
+        }
+
+        public Bounds (Rectangle rectangle, float scaleX = 1, float scaleY = 1)
+            : this(
+                new Vector2(rectangle.Left * scaleX, rectangle.Top * scaleY),
+                new Vector2(rectangle.Right * scaleX, rectangle.Bottom * scaleY)
+            ) {
+        }
+
+        public Bounds (Vector2 a, Vector2 b) {
+            Minimum = new Vector2(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y));
+            Maximum = new Vector2(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y));
+        }
+
+        public bool Contains (Vector2 point) {
+            return (point.X >= Minimum.X) && (point.Y >= Minimum.Y) &&
+                (point.X <= Maximum.X) && (point.Y <= Maximum.Y);
+        }
+
+        public bool Contains (ref Vector2 point) {
+            return (point.X >= Minimum.X) && (point.Y >= Minimum.Y) &&
+                (point.X <= Maximum.X) && (point.Y <= Maximum.Y);
+        }
+
+        public bool Contains (Bounds other) {
+            return (other.Minimum.X >= Minimum.X) && (other.Minimum.Y >= Minimum.Y) &&
+                (other.Maximum.X <= Maximum.X) && (other.Maximum.Y <= Maximum.Y);
+        }
+
+        public bool Contains (ref Bounds other) {
+            return (other.Minimum.X >= Minimum.X) && (other.Minimum.Y >= Minimum.Y) &&
+                (other.Maximum.X <= Maximum.X) && (other.Maximum.Y <= Maximum.Y);
+        }
+
+        public override string ToString () {
+            return String.Format("{{{0}, {1}}} - {{{2}, {3}}}", Minimum.X, Minimum.Y, Maximum.X, Maximum.Y);
+        }
+
+        public Bounds ApplyVelocity (Vector2 velocity) {
+            var bounds = this;
+
+            if (velocity.X < 0)
+                bounds.Minimum.X += velocity.X;
+            else
+                bounds.Maximum.X += velocity.X;
+
+            if (velocity.Y < 0)
+                bounds.Minimum.Y += velocity.Y;
+            else
+                bounds.Maximum.Y += velocity.Y;
+
+            return bounds;
+        }
+
+        public bool Intersects (Bounds rhs) {
+            return Intersect(ref this, ref rhs);
+        }
+
+        public static bool Intersect (ref Bounds lhs, ref Bounds rhs) {
+            return (rhs.Minimum.X <= lhs.Maximum.X) &&
+                   (lhs.Minimum.X <= rhs.Maximum.X) &&
+                   (rhs.Minimum.Y <= lhs.Maximum.Y) &&
+                   (lhs.Minimum.Y <= rhs.Maximum.Y);
+        }
+
+        public static Bounds? FromIntersection (Bounds lhs, Bounds rhs) {
+            return FromIntersection(ref lhs, ref rhs);
+        }
+
+        public static Bounds? FromIntersection (ref Bounds lhs, ref Bounds rhs) {
+            Vector2 tl = Vector2.Zero, br = Vector2.Zero;
+            tl.X = Math.Max(lhs.Minimum.X, rhs.Minimum.X);
+            tl.Y = Math.Max(lhs.Minimum.Y, rhs.Minimum.Y);
+            br.X = Math.Min(lhs.Maximum.X, rhs.Maximum.X);
+            br.Y = Math.Min(lhs.Maximum.Y, rhs.Maximum.Y);
+
+            if ((br.X > tl.X) && (br.Y > tl.Y)) {
+                return new Bounds(tl, br);
+            } else {
+                return null;
+            }
+        }
+
+        public static Bounds3 FromPoints (params Vector3[] points) {
+            float minX = float.MaxValue, minY = float.MaxValue, minZ = float.MaxValue;
+            float maxX = float.MinValue, maxY = float.MinValue, maxZ = float.MinValue;
+
+            foreach (var point in points) {
+                minX = Math.Min(minX, point.X);
+                minY = Math.Min(minY, point.Y);
+                minZ = Math.Min(minZ, point.Z);
+                maxX = Math.Max(maxX, point.X);
+                maxY = Math.Max(maxY, point.Y);
+                maxZ = Math.Max(maxZ, point.Z);
+            }
+
+            return new Bounds3 { 
+                Minimum = new Vector3(minX, minY, minZ), 
+                Maximum = new Vector3(maxX, maxY, maxZ) 
+            };
+        }
+
+        public Bounds3 Expand (float x, float y, float z = 0) {
+            return new Bounds3 {
+                Minimum = new Vector3(Minimum.X - x, Minimum.Y - y, Minimum.Z - z),
+                Maximum = new Vector3(Maximum.X + x, Maximum.Y + y, Maximum.Z + z)
+            };
+        }
+
+        public Bounds3 Translate (Vector3 velocity) {
+            return new Bounds3 {
+                Minimum = Minimum + velocity,
+                Maximum = Maximum + velocity
+            };
+        }
+
+        public static Bounds3 Uninitialized {
+            get {
+                return new Bounds3 { 
+                    Minimum = new Vector3(float.MaxValue), 
+                    Maximum = new Vector3(float.MinValue) 
+                };
+            }
+        }
+
+        public Bounds3 Scale (float scale) {
+            return new Bounds3 {
+                Minimum = Minimum * scale,
+                Maximum = Maximum * scale
+            };
+        }
+
+        public bool Intersection (ref Bounds3 lhs, ref Bounds3 rhs, out Bounds3 result) {
+            var x1 = Math.Max(lhs.Minimum.X, rhs.Minimum.X);
+            var y1 = Math.Max(lhs.Minimum.Y, rhs.Minimum.Y);
+            var z1 = Math.Max(lhs.Minimum.Z, rhs.Minimum.Z);
+            var x2 = Math.Min(lhs.Maximum.X, rhs.Maximum.X);
+            var y2 = Math.Min(lhs.Maximum.Y, rhs.Maximum.Y);
+            var z2 = Math.Max(lhs.Maximum.Z, rhs.Maximum.Z);
+
+            if (x2 >= x1 && y2 >= y1 && z2 >= z1) {
+                result = new Bounds3(
+                    new Vector3(x1, y1, z1),
+                    new Vector3(x2, y2, z2)
+                );
+                return true;
+            }
+
+            result = default(Bounds3);
+            return false;
+        }
+
+        public static Bounds3 FromPositionAndSize (Vector3 position, Vector3 size) {
+            return new Bounds3(
+                position, position + size
+            );
+        }
+    }
+
     public class Polygon : IEnumerable<Vector2>, IHasBounds {
         public struct Edge {
             public Vector2 Start, End;
