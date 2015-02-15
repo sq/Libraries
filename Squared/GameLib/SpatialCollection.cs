@@ -423,6 +423,11 @@ namespace Squared.Game {
             }
         }
 
+        public bool TryGetSector (SectorIndex sectorIndex, out Sector sector) {
+            sector = _Partition.GetSectorFromIndex(sectorIndex, false);
+            return (sector != null);
+        }
+
         private WeakReference GetWeakSelf () {
             if (WeakSelf == null)
                 WeakSelf = new WeakReference(this, false);

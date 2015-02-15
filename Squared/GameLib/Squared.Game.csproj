@@ -116,6 +116,7 @@
   <ItemGroup>
     <Compile Include="Animation.cs" />
     <Compile Include="GameExtensionMethods.cs" />
+    <Compile Include="Geometry3.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="Graph.cs" />
     <Compile Include="Input.cs" />
