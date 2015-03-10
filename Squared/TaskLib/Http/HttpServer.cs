@@ -26,6 +26,7 @@ namespace Squared.Task.Http {
 
         public EventHandler<ConnectionEventArgs> SocketOpened;
         public EventHandler<ConnectionEventArgs> SocketClosed;
+        public Action<string>                    Trace;
 
         private IFuture ActiveListener = null;
         private readonly BlockingQueue<Request> IncomingRequests = new BlockingQueue<Request>();
@@ -117,9 +118,9 @@ namespace Squared.Task.Http {
                 yield return Future.RunInThread(context.Start);
 
                 var wfns = new WaitForNextStep();
-                var acceptedConnections = new List<Socket>();
+                var acceptedConnections = new List<IncomingConnection>();
                 const int connectionsToAcceptPerStep = 4;
-                Future<Socket> acceptedConnection = null;
+                Future<IncomingConnection> acceptedConnection = null;
 
                 while (true) {
                     if (acceptedConnection != null) {
@@ -146,18 +147,25 @@ namespace Squared.Task.Http {
             }
         }
 
-        private IEnumerator<object> KeepAliveTask (ListenerContext context, Socket socket) {
+        private IEnumerator<object> KeepAliveTask (ListenerContext context, IncomingConnection incomingConnection) {
+            var socket = incomingConnection.Socket;
             EndPoint localEp = socket.LocalEndPoint, remoteEp = socket.RemoteEndPoint;
             var evtArgs = new ConnectionEventArgs(localEp, remoteEp);
 
+            var keepAliveStarted = DateTime.UtcNow;
+
             if (SocketOpened != null)
                 SocketOpened(this, evtArgs);
+
+            int requestCount = 0;
 
             try {
                 using (var adapter = new SocketDataAdapter(socket, true)) {
                     while (!adapter.IsDisposed && adapter.Socket.Connected) {
                         var fTask = Scheduler.Start(RequestTask(context, adapter));
                         yield return fTask;
+
+                        requestCount += 1;
 
                         if (fTask.Failed) {
                             adapter.Dispose();
@@ -166,8 +174,20 @@ namespace Squared.Task.Http {
                     }
                 }
             } finally {
+                var keepAliveEnded = DateTime.UtcNow;
+
                 if (SocketClosed != null)
                     SocketClosed(this, evtArgs);
+
+                if (Trace != null)
+                    Trace(
+                        String.Format(
+                            "KA_START {0:0000.0}ms  KA_LENGTH {1:00000.0}ms  {2} REQ(S)",
+                            (keepAliveStarted - incomingConnection.AcceptedWhenUTC).TotalMilliseconds,
+                            (keepAliveEnded - keepAliveStarted).TotalMilliseconds,
+                            requestCount
+                        )
+                    );
             }
         }
 

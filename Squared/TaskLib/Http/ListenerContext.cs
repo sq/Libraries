@@ -7,6 +7,16 @@ using System.Text;
 
 namespace Squared.Task.Http {
     public partial class HttpServer {
+        public struct IncomingConnection {
+            public readonly Socket Socket;
+            public readonly DateTime AcceptedWhenUTC;
+
+            public IncomingConnection (Socket socket) {
+                Socket = socket;
+                AcceptedWhenUTC = DateTime.UtcNow;
+            }
+        }
+
         private class ListenerContext : IDisposable {
             public const int QueueSize = 16;
 
@@ -14,7 +24,7 @@ namespace Squared.Task.Http {
             public readonly EndPoint[] EndPoints;
             public readonly Socket[] ListeningSockets;
 
-            public readonly BlockingQueue<Socket> IncomingConnections = new BlockingQueue<Socket>(); 
+            public readonly BlockingQueue<IncomingConnection> IncomingConnections = new BlockingQueue<IncomingConnection>(); 
             public readonly SignalFuture Started = new SignalFuture();
 
             private readonly AsyncCallback OnAcceptBegan;
@@ -53,7 +63,7 @@ namespace Squared.Task.Http {
 
                 try {
                     var socket = listeningSocket.EndAccept(ar);
-                    IncomingConnections.Enqueue(socket);
+                    IncomingConnections.Enqueue(new IncomingConnection(socket));
                 } catch (ObjectDisposedException) {
                     // This is fine. Don't try to accept again on this socket.
                     return;

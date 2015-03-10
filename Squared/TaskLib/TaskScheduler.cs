@@ -325,6 +325,17 @@ namespace Squared.Task {
             if (_IsDisposed)
                 throw new ObjectDisposedException("TaskScheduler");
 
+            if (!_JobQueue.CanPumpOnThisThread) {
+                var evt = future.GetCompletionEvent();
+                if (timeout.HasValue) {
+                    if (evt.Wait((int)(timeout * 1000)))
+                        return future.Result;
+                    else
+                        throw new TimeoutException();
+                } else
+                    evt.Wait();
+            }
+
             DateTime started = default(DateTime);
             if (timeout.HasValue)
                 started = DateTime.UtcNow;

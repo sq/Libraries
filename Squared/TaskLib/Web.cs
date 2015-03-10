@@ -111,6 +111,12 @@ namespace Squared.Task {
     }
 
     public static class WebExtensionMethods {
+        public static Future<Web.Response> IssueAsync (this HttpWebRequest request, TaskScheduler scheduler) {
+            var f = new Future<Web.Response>();
+            scheduler.Start(f, new SchedulableGeneratorThunk(Web.IssueRequest(request)), TaskExecutionPolicy.RunWhileFutureLives);
+            return f;
+        }
+
         public static Future<HttpListenerContext> GetContextAsync (this HttpListener listener) {
             var f = new Future<HttpListenerContext>();
             listener.BeginGetContext((ar) => {

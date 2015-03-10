@@ -45,6 +45,14 @@ namespace Squared.Game {
             return new Vector2((float)Math.Round(vector.X, decimals), (float)Math.Round(vector.Y, decimals));
         }
 
+        public static Vector3 Round (this Vector3 vector) {
+            return new Vector3((float)Math.Round(vector.X), (float)Math.Round(vector.Y), (float)Math.Round(vector.Z));
+        }
+
+        public static Vector3 Round (this Vector3 vector, int decimals) {
+            return new Vector3((float)Math.Round(vector.X, decimals), (float)Math.Round(vector.Y, decimals), (float)Math.Round(vector.Z, decimals));
+        }
+
         public static Vector2 Rotate (this Vector2 vector, float radians) {
             var cos = (float)Math.Cos(radians);
             var sin = (float)Math.Sin(radians);

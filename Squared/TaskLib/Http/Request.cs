@@ -14,6 +14,11 @@ using Squared.Util;
 namespace Squared.Task.Http {
     public partial class HttpServer {
         public class Request : IDisposable {
+            public struct TimingData {
+                public TimeSpan  Line, Headers, Queue;
+                public TimeSpan? Body;
+            }
+
             private readonly WeakReference WeakServer;
 
             public readonly EndPoint LocalEndPoint;
@@ -24,12 +29,17 @@ namespace Squared.Task.Http {
             public readonly RequestBody Body;
             public readonly Response Response;
 
+            public readonly DateTime QueuedWhenUTC;
+
+            public TimingData Timing;
+
             private QueryStringCollection _QueryString = null;
 
             internal Request (
                 HttpServer server, SocketDataAdapter adapter, bool shouldKeepAlive,
                 RequestLine line, HeaderCollection headers, RequestBody body
             ) {
+                QueuedWhenUTC = DateTime.UtcNow;
                 WeakServer = new WeakReference(server);
 
                 LocalEndPoint = adapter.Socket.LocalEndPoint;
@@ -168,6 +178,7 @@ namespace Squared.Task.Http {
         static readonly byte[] Continue100 = Encoding.ASCII.GetBytes("HTTP/1.1 100 Continue\r\n\r\n");
 
         private IEnumerator<object> RequestTask (ListenerContext context, SocketDataAdapter adapter) {
+            var startedWhen = DateTime.UtcNow;
             bool successful = false;
 
             try {
@@ -226,6 +237,8 @@ namespace Squared.Task.Http {
                     break;
                 }
 
+                var requestLineParsed = DateTime.UtcNow;
+
                 headers = new HeaderCollection();
                 while (true) {
                     var fHeaderLine = reader.ReadLine();
@@ -236,6 +249,8 @@ namespace Squared.Task.Http {
 
                     headers.Add(new Header(fHeaderLine.Result));
                 }
+
+                var headersParsed = DateTime.UtcNow;
 
                 var expectHeader = (headers.GetValue("Expect") ?? "").ToLowerInvariant();
                 var expectsContinue = expectHeader.Contains("100-continue");
@@ -273,6 +288,9 @@ namespace Squared.Task.Http {
 
                 IncomingRequests.Enqueue(request);
 
+                var requestEnqueued = DateTime.UtcNow;
+                DateTime? requestBodyRead = null;
+
                 // FIXME: I think it's technically accepted to send a body without a content-length, but
                 //  it seems to be impossible to make that work right.
                 if (expectedBodyLength.HasValue) {
@@ -300,10 +318,19 @@ namespace Squared.Task.Http {
                         bodyBytesRead += bytesRead;
                         body.Append(bodyBuffer.Data, 0, bytesRead);
                     }
+
+                    requestBodyRead = DateTime.UtcNow;
                 }
 
                 body.Finish();
                 successful = true;
+
+                request.Timing = new Request.TimingData {
+                    Line = (requestLineParsed - startedWhen),
+                    Headers = (headersParsed - requestLineParsed),
+                    Queue = (requestEnqueued - headersParsed),
+                    Body = (requestBodyRead - requestEnqueued)
+                };
             } finally {
                 if (!successful)
                     adapter.Dispose();

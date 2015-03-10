@@ -218,7 +218,6 @@ namespace Squared.Game {
             );
         }
     }
-
     public class Polygon : IEnumerable<Vector2>, IHasBounds {
         public struct Edge {
             public Vector2 Start, End;
@@ -331,7 +330,7 @@ namespace Squared.Game {
         }
     }
 
-    public static class Geometry {
+    public static partial class Geometry {
         public const int RoundingDecimals = 2;
         public const float IntersectionEpsilon = (float)0.001;
 

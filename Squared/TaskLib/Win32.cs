@@ -40,6 +40,8 @@ namespace Squared.Task {
         public event MaxStepDurationExceededHandler MaxStepDurationExceeded;
         public event UnhandledExceptionEventHandler UnhandledException;
 
+        public readonly Thread OwnerThread;
+
         public WindowsMessageJobQueue ()
             : this(DefaultMaxStepDuration) {
         }
@@ -60,6 +62,8 @@ namespace Squared.Task {
             CreateHandle(cp);
 
             MaxStepDuration = maxStepDuration;
+
+            OwnerThread = Thread.CurrentThread;
         }
 
         protected override void WndProc (ref Message m) {
@@ -136,6 +140,12 @@ namespace Squared.Task {
 
             if (markPending)
                 MarkPendingStep();
+        }
+
+        public bool CanPumpOnThisThread {
+            get {
+                return Thread.CurrentThread == OwnerThread;
+            }
         }
 
         // Flush the message queue, then sleep for a moment if the future is still not completed.

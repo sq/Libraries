@@ -43,6 +43,10 @@ namespace Squared.Task.Http {
     }
 
     public class HeaderCollection : KeyedCollection<string, Header> {
+        public HeaderCollection ()
+            : base(StringComparer.OrdinalIgnoreCase) {
+        }
+
         protected override string GetKeyForItem (Header item) {
             return item.Name;
         }
