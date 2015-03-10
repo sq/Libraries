@@ -100,6 +100,10 @@ namespace Squared.Util.Event {
             Arguments = arguments;
             _IsConsumed = false;
         }
+
+        public EventInfo Clone () {
+            return new EventInfo(Bus, Source, Category, CategoryName, Type, Arguments);
+        }
     }
 
     public delegate void EventSubscriber (EventInfo e);
