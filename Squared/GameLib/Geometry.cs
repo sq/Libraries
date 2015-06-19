@@ -312,9 +312,8 @@ namespace Squared.Game {
         }
 
         public Edge GetEdge (int i) {
-            int j = i + 1;
-            if (j >= _Vertices.Length)
-                j = 0;
+            i = Arithmetic.Wrap(i, 0, _Vertices.Length - 1);
+            int j = Arithmetic.Wrap(i + 1, 0, _Vertices.Length - 1);
 
             return new Edge { Start = _TranslatedVertices[i], End = _TranslatedVertices[j] };
         }
