@@ -84,8 +84,8 @@ technique WorldSpaceHorizontalGaussianBlur5Tap
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 WorldSpaceVertexShader();
-        pixelShader = compile ps_2_0 HorizontalGaussianBlur5TapPixelShader();
+        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        pixelShader = compile ps_3_0 HorizontalGaussianBlur5TapPixelShader();
     }
 }
 
@@ -93,8 +93,8 @@ technique ScreenSpaceHorizontalGaussianBlur5Tap
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 ScreenSpaceVertexShader();
-        pixelShader = compile ps_2_0 HorizontalGaussianBlur5TapPixelShader();
+        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        pixelShader = compile ps_3_0 HorizontalGaussianBlur5TapPixelShader();
     }
 }
 
@@ -102,8 +102,8 @@ technique WorldSpaceVerticalGaussianBlur5Tap
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 WorldSpaceVertexShader();
-        pixelShader = compile ps_2_0 VerticalGaussianBlur5TapPixelShader();
+        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        pixelShader = compile ps_3_0 VerticalGaussianBlur5TapPixelShader();
     }
 }
 
@@ -111,7 +111,7 @@ technique ScreenSpaceVerticalGaussianBlur5Tap
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 ScreenSpaceVertexShader();
-        pixelShader = compile ps_2_0 VerticalGaussianBlur5TapPixelShader();
+        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        pixelShader = compile ps_3_0 VerticalGaussianBlur5TapPixelShader();
     }
 }

@@ -37,15 +37,15 @@ void TexturedPixelShader(
     inout float4 color : COLOR0,
     in float2 texCoord : TEXCOORD0
 ) {
-    color *= tex2D(TextureSampler, texCoord);
+    color *= tex2Dgrad(TextureSampler, texCoord, 0, 0);
 }
 
 technique ScreenSpaceUntextured
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 ScreenSpaceVertexShader();
-        pixelShader = compile ps_2_0 VertexColorPixelShader();
+        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        pixelShader = compile ps_3_0 VertexColorPixelShader();
     }
 }
 
@@ -53,7 +53,7 @@ technique WorldSpaceUntextured
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 WorldSpaceVertexShader();
-        pixelShader = compile ps_2_0 VertexColorPixelShader();
+        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        pixelShader = compile ps_3_0 VertexColorPixelShader();
     }
 }

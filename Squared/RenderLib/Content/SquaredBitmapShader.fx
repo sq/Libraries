@@ -11,7 +11,7 @@ void BasicPixelShader(
 	addColor.rgb *= addColor.a;
 	addColor.a = 0;
 
-	result = multiplyColor * tex2D(TextureSampler, clamp(texCoord, texTL, texBR));
+	result = multiplyColor * tex2Dgrad(TextureSampler, clamp(texCoord, texTL, texBR), 0, 0);
 	result += (addColor * result.a);
 }
 
@@ -26,7 +26,7 @@ void BasicPixelShaderWithDiscard(
 	addColor.rgb *= addColor.a;
 	addColor.a = 0;
 
-	result = multiplyColor * tex2D(TextureSampler, clamp(texCoord, texTL, texBR));
+	result = multiplyColor * tex2Dgrad(TextureSampler, clamp(texCoord, texTL, texBR), 0, 0);
 	result += (addColor * result.a);
 
     const float discardThreshold = (1.0 / 255.0);
@@ -37,8 +37,8 @@ technique WorldSpaceBitmapTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 WorldSpaceVertexShader();
-        pixelShader = compile ps_2_0 BasicPixelShader();
+        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        pixelShader = compile ps_3_0 BasicPixelShader();
     }
 }
 
@@ -46,8 +46,8 @@ technique ScreenSpaceBitmapTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 ScreenSpaceVertexShader();
-        pixelShader = compile ps_2_0 BasicPixelShader();
+        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        pixelShader = compile ps_3_0 BasicPixelShader();
     }
 }
 
@@ -55,8 +55,8 @@ technique WorldSpaceBitmapWithDiscardTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 WorldSpaceVertexShader();
-        pixelShader = compile ps_2_0 BasicPixelShaderWithDiscard();
+        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        pixelShader = compile ps_3_0 BasicPixelShaderWithDiscard();
     }
 }
 
@@ -64,7 +64,7 @@ technique ScreenSpaceBitmapWithDiscardTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_1_1 ScreenSpaceVertexShader();
-        pixelShader = compile ps_2_0 BasicPixelShaderWithDiscard();
+        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        pixelShader = compile ps_3_0 BasicPixelShaderWithDiscard();
     }
 }
