@@ -226,7 +226,8 @@ namespace Squared.Game {
         private Vector2 _Position = new Vector2(0, 0);
         protected Vector2[] _Vertices;
         protected Vector2[] _TranslatedVertices;
-        protected bool _Dirty = true, _BoundsDirty = true;
+        protected bool _Dirty = true, _BoundsDirty = true, _SizeDirty = true;
+        protected Vector2 _Size;
         protected Bounds _Bounds;
         public readonly int Count;
         
@@ -268,8 +269,7 @@ namespace Squared.Game {
 
         public void SetVertex (int index, Vector2 newVertex) {
             _Vertices[index] = newVertex;
-            _Dirty = true;
-            _BoundsDirty = true;
+            _Dirty = _SizeDirty = _BoundsDirty = true;
         }
 
         internal Vector2[] GetRawVertices () {
@@ -281,6 +281,29 @@ namespace Squared.Game {
                 ClearDirtyFlag();
 
             return _TranslatedVertices;
+        }
+
+        public Vector2 Size {
+            get {
+                if (_SizeDirty) {
+                    float minX = float.MaxValue;
+                    float maxX = float.MinValue;
+                    float minY = float.MaxValue;
+                    float maxY = float.MinValue;
+
+                    foreach (var p in _Vertices) {
+                        minX = Math.Min(minX, p.X);
+                        maxX = Math.Max(maxX, p.X);
+                        minY = Math.Min(minY, p.Y);
+                        maxY = Math.Max(maxY, p.Y);
+                    }
+
+                    _Size = new Vector2(maxX - minX, maxY - minY);
+                    _SizeDirty = false;
+                }
+
+                return _Size;
+            }
         }
 
         public Bounds Bounds {
@@ -343,14 +366,44 @@ namespace Squared.Game {
 
         public static bool PointInPolygon (Vector2 pt, Polygon polygon) {
             int numIntersections = 0;
-            var rayEnd = pt + new Vector2(999999, 0);
-            Vector2 temp;
+            var rayStart = pt;
+            var rayEnd = new Vector2(pt.X + 99999, pt.Y);
+
+            float intersection;
             for (int i = 0; i < polygon.Count; i++) {
                 var edge = polygon.GetEdge(i);
-                if (DoLinesIntersect(pt, rayEnd, edge.Start, edge.End, out temp))
-                    numIntersections += 1;
+                var a = edge.Start;
+                var b = edge.End;
+
+                if (DoLinesIntersect(rayStart, rayEnd, a, b, out intersection)) {
+                    // If the ray crosses directly over a vertex, this can produce two
+                    //  intersections instead of one, which causes the point-in-polygon
+                    //  test to erroneously return true.
+                    if (
+                        (Math.Abs(a.Y - pt.Y) < IntersectionEpsilon) ||
+                        (Math.Abs(b.Y - pt.Y) < IntersectionEpsilon)
+                    ) {
+                        // By discarding intersections where the endpoint of the edge lies
+                        //  above the test point, we ensure that only one intersection is
+                        //  recorded.
+                        if (b.Y > pt.Y)
+                            numIntersections += 1;
+                    } else {
+                        numIntersections += 1;
+                    }
+                }
             }
-            return (numIntersections % 2) == 1;
+
+            var isInside = (numIntersections % 2) == 1;
+            if (isInside) {
+                var bounds = polygon.Bounds;
+
+                if (!bounds.Contains(pt))
+                    throw new InvalidOperationException();
+
+                return true;
+            } else
+                return false;
         }
 
         public static bool PointInTriangle (Vector2 pt, params Vector2[] triangle) {
