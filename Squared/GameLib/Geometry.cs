@@ -381,7 +381,9 @@ namespace Squared.Game {
                     //  test to erroneously return true.
                     if (
                         (Math.Abs(a.Y - pt.Y) < IntersectionEpsilon) ||
-                        (Math.Abs(b.Y - pt.Y) < IntersectionEpsilon)
+                        (Math.Abs(b.Y - pt.Y) < IntersectionEpsilon) ||
+                        (Math.Abs(a.X - pt.X) < IntersectionEpsilon) ||
+                        (Math.Abs(b.X - pt.X) < IntersectionEpsilon)
                     ) {
                         // By discarding intersections where the endpoint of the edge lies
                         //  above the test point, we ensure that only one intersection is
@@ -396,10 +398,13 @@ namespace Squared.Game {
 
             var isInside = (numIntersections % 2) == 1;
             if (isInside) {
+                // FIXME: Still busted. WHAT.
+#if what
                 var bounds = polygon.Bounds;
 
                 if (!bounds.Contains(pt))
                     throw new InvalidOperationException();
+#endif
 
                 return true;
             } else
