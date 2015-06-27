@@ -78,8 +78,11 @@ namespace Squared.Render {
             }
         }
 
+        private readonly Stack<BlendState>            BlendStateStack = new Stack<BlendState>();
+        private readonly Stack<DepthStencilState>     DepthStencilStateStack = new Stack<DepthStencilState>();
+        private readonly Stack<RasterizerState>       RasterizerStateStack = new Stack<RasterizerState>();
         private readonly Stack<RenderTargetBinding[]> RenderTargetStack = new Stack<RenderTargetBinding[]>();
-        private readonly Stack<Viewport> ViewportStack = new Stack<Viewport>();
+        private readonly Stack<Viewport>              ViewportStack = new Stack<Viewport>();
 
         public readonly GraphicsDevice Device;
         public Material CurrentMaterial { get; private set; }
@@ -88,7 +91,21 @@ namespace Squared.Render {
             Device = device;
         }
 
+        public void PushStates () {
+            BlendStateStack.Push(Device.BlendState);
+            DepthStencilStateStack.Push(Device.DepthStencilState);
+            RasterizerStateStack.Push(Device.RasterizerState);
+        }
+
+        public void PopStates () {
+            Device.RasterizerState = RasterizerStateStack.Pop();
+            Device.DepthStencilState = DepthStencilStateStack.Pop();
+            Device.BlendState = BlendStateStack.Pop();
+        }
+
         public void PushRenderTarget (RenderTarget2D newRenderTarget) {
+            PushStates();
+
             RenderTargetStack.Push(Device.GetRenderTargets());
             ViewportStack.Push(Device.Viewport);
             Device.SetRenderTarget(newRenderTarget);
@@ -96,6 +113,8 @@ namespace Squared.Render {
         }
 
         public void PopRenderTarget () {
+            PopStates();
+
             Device.SetRenderTargets(RenderTargetStack.Pop());
             Device.Viewport = ViewportStack.Pop();
         }
