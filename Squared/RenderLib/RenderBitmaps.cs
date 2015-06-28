@@ -513,15 +513,21 @@ namespace Squared.Render {
                 var paramSize = manager.CurrentParameters.BitmapTextureSize;
                 var paramHalfTexel = manager.CurrentParameters.HalfTexel;
 
+                var em = (IEffectMaterial)manager.CurrentMaterial;
+                var paramTexture1 = em.Effect.Parameters["BitmapTexture"];
+                var paramTexture2 = em.Effect.Parameters["SecondTexture"];
+
                 foreach (var nb in _NativeBatches) {
                     if (nb.TextureSet != currentTexture) {
                         currentTexture = nb.TextureSet;
                         var tex1 = currentTexture.Texture1;
 
-                        device.Textures[0] = tex1;
-                        device.Textures[1] = currentTexture.Texture2;
                         device.SamplerStates[0] = SamplerState;
                         device.SamplerStates[1] = SamplerState2;
+
+                        paramTexture1.SetValue(tex1);
+                        if (paramTexture2 != null)
+                            paramTexture2.SetValue(currentTexture.Texture2);
 
                         var vSize = new Vector2(tex1.Width, tex1.Height);
                         paramSize.SetValue(vSize);

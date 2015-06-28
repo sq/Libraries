@@ -142,6 +142,7 @@ namespace Squared.Render.Convenience {
             public readonly bool UseZBuffer;
             public readonly RasterizerState RasterizerState;
             public readonly DepthStencilState DepthStencilState;
+            public readonly Material CustomMaterial;
             public readonly int HashCode;
 
             public CachedBatch (
@@ -153,6 +154,7 @@ namespace Squared.Render.Convenience {
                 DepthStencilState depthStencilState,
                 BlendState blendState,
                 SamplerState samplerState,
+                Material customMaterial,
                 bool useZBuffer
             ) {
                 Batch = null;
@@ -164,6 +166,7 @@ namespace Squared.Render.Convenience {
                 DepthStencilState = depthStencilState;
                 BlendState = blendState;
                 SamplerState = samplerState;
+                CustomMaterial = customMaterial;
                 UseZBuffer = useZBuffer;
 
                 HashCode = Container.GetHashCode() ^ 
@@ -174,6 +177,9 @@ namespace Squared.Render.Convenience {
 
                 if (SamplerState != null)
                     HashCode ^= SamplerState.GetHashCode();
+
+                if (CustomMaterial != null)
+                    HashCode ^= CustomMaterial.GetHashCode();
             }
 
             public bool KeysEqual (ref CachedBatch rhs) {
@@ -186,7 +192,8 @@ namespace Squared.Render.Convenience {
                     (SamplerState == rhs.SamplerState) &&
                     (UseZBuffer == rhs.UseZBuffer) &&
                     (RasterizerState == rhs.RasterizerState) &&
-                    (DepthStencilState == rhs.DepthStencilState)
+                    (DepthStencilState == rhs.DepthStencilState) &&
+                    (CustomMaterial == rhs.CustomMaterial)
                 );
             }
 
@@ -210,6 +217,7 @@ namespace Squared.Render.Convenience {
                 DepthStencilState depthStencilState, 
                 BlendState blendState, 
                 SamplerState samplerState, 
+                Material customMaterial,
                 bool useZBuffer
             ) {
                 CachedBatch itemAtIndex, searchKey;
@@ -223,6 +231,7 @@ namespace Squared.Render.Convenience {
                     depthStencilState,
                     blendState,
                     samplerState,
+                    customMaterial,
                     useZBuffer
                 );
 
@@ -425,15 +434,17 @@ namespace Squared.Render.Convenience {
         public void Draw (
             BitmapDrawCall drawCall, 
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null
+            BlendState blendState = null, SamplerState samplerState = null,
+            Material material = null
         ) {
-            Draw(ref drawCall, layer, worldSpace, blendState, samplerState);
+            Draw(ref drawCall, layer, worldSpace, blendState, samplerState, material);
         }
 
         public void Draw (
             ref BitmapDrawCall drawCall, 
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null
+            BlendState blendState = null, SamplerState samplerState = null,
+            Material material = null
         ) {
             if (Container == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
@@ -447,7 +458,8 @@ namespace Squared.Render.Convenience {
 
             using (var batch = GetBitmapBatch(
                 layer, worldSpace,
-                blendState, samplerState
+                blendState, samplerState,
+                material
             ))
                 batch.Add(ref drawCall);
         }
@@ -459,7 +471,8 @@ namespace Squared.Render.Convenience {
             float rotation = 0, Vector2? scale = null, Vector2 origin = default(Vector2),
             bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
             int? layer = null, bool? worldSpace = null, 
-            BlendState blendState = null, SamplerState samplerState = null
+            BlendState blendState = null, SamplerState samplerState = null,
+            Material material = null
         ) {
             var drawCall = new BitmapDrawCall(texture, position);
             if (sourceRectangle.HasValue)
@@ -473,7 +486,7 @@ namespace Squared.Render.Convenience {
                 drawCall.Mirror(mirrorX, mirrorY);
             drawCall.SortKey = sortKey;
 
-            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState);
+            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState, material: material);
         }
 
         public void Draw (
@@ -482,7 +495,8 @@ namespace Squared.Render.Convenience {
             float rotation = 0, float scaleX = 1, float scaleY = 1, float originX = 0, float originY = 0,
             bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null
+            BlendState blendState = null, SamplerState samplerState = null,
+            Material material = null
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(x, y));
             if (sourceRectangle.HasValue)
@@ -505,7 +519,8 @@ namespace Squared.Render.Convenience {
             float rotation = 0, float originX = 0, float originY = 0,
             bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null
+            BlendState blendState = null, SamplerState samplerState = null,
+            Material material = null
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(destRectangle.X, destRectangle.Y));
             if (sourceRectangle.HasValue) {
@@ -523,16 +538,17 @@ namespace Squared.Render.Convenience {
                 drawCall.Mirror(mirrorX, mirrorY);
             drawCall.SortKey = sortKey;
 
-            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState);
+            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState, material: material);
         }
 
         public void DrawMultiple (
             ArraySegment<BitmapDrawCall> drawCalls,
             Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, float? sortKey = null,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null, Vector2? scale = null
+            BlendState blendState = null, SamplerState samplerState = null, Vector2? scale = null,
+            Material material = null
         ) {
-            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState))
+            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, material))
                 batch.AddRange(
                     drawCalls.Array, drawCalls.Offset, drawCalls.Count,
                     offset: offset, multiplyColor: multiplyColor, addColor: addColor, sortKey: sortKey,
@@ -629,7 +645,7 @@ namespace Squared.Render.Convenience {
         }
 
 
-        public BitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState) {
+        public BitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, Material customMaterial) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
@@ -648,12 +664,21 @@ namespace Squared.Render.Convenience {
                 depthStencilState: DepthStencilState,
                 blendState: desiredBlendState,
                 samplerState: desiredSamplerState,
+                customMaterial: customMaterial,
                 useZBuffer: UseZBuffer
             )) {
-                var material = Materials.GetBitmapMaterial(
-                    actualWorldSpace,
-                    RasterizerState, DepthStencilState, desiredBlendState
-                );
+                Material material;
+
+                if (customMaterial != null) {
+                    material = Materials.Get(
+                        customMaterial, RasterizerState, DepthStencilState, desiredBlendState
+                    );
+                } else {
+                    material = Materials.GetBitmapMaterial(
+                        actualWorldSpace,
+                        RasterizerState, DepthStencilState, desiredBlendState
+                    );
+                }
 
                 cacheEntry.Batch = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, UseZBuffer);
                 Cache.InsertAtFront(ref cacheEntry, null);
@@ -683,6 +708,7 @@ namespace Squared.Render.Convenience {
                 depthStencilState: DepthStencilState,
                 blendState: desiredBlendState,
                 samplerState: null,
+                customMaterial: null,
                 useZBuffer: UseZBuffer
             )) {
                 var material = Materials.GetGeometryMaterial(

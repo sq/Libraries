@@ -8,6 +8,7 @@ using System.Threading;
 using Microsoft.Xna.Framework.Content;
 using System.Reflection;
 using Squared.Render.Convenience;
+using Squared.Util;
 
 namespace Squared.Render {
     public interface IEffectMaterial {
@@ -306,6 +307,7 @@ namespace Squared.Render {
         }
         
         public readonly ContentManager BuiltInShaders;
+        public readonly ITimeProvider  TimeProvider;
 
         protected readonly MaterialDictionary<MaterialCacheKey> MaterialCache = new MaterialDictionary<MaterialCacheKey>(
             new MaterialCacheKeyComparer()
@@ -321,6 +323,7 @@ namespace Squared.Render {
 #endif
         public Material Clear;
 
+        protected readonly Action<Material, float> _ApplyTimeDelegate;
         protected readonly RefMaterialAction<ViewTransform> _ApplyViewTransformDelegate; 
         protected readonly Stack<ViewTransform> ViewTransformStack = new Stack<ViewTransform>();
 
@@ -328,6 +331,10 @@ namespace Squared.Render {
 
         public DefaultMaterialSet (IServiceProvider serviceProvider) {
             _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
+            _ApplyTimeDelegate          = ApplyTimeToMaterial;
+
+            TimeProvider = (ITimeProvider)serviceProvider.GetService(typeof(ITimeProvider))
+                ?? new DotNetTimeProvider();
 
 #if SDL2
             BuiltInShaders = new ContentManager(serviceProvider, "Content/SquaredRender");
@@ -541,14 +548,33 @@ namespace Squared.Render {
 
         /// <summary>
         /// Sets the view transform of all material(s) owned by this material set to the ViewTransform field's current value.
+        /// Also sets other parameters like Time.
         /// Clear batches automatically call this function for you.
         /// </summary>
         public void ApplyShaderVariables () {
             var vt = ViewTransformStack.Peek();
             ApplyViewTransform(ref vt);
+
+            float timeSeconds = (float)TimeProvider.Seconds;
+            ForEachMaterial(_ApplyTimeDelegate, timeSeconds);
         }
 
-        private void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
+        private static void ApplyTimeToMaterial (Material m, float time) {
+            var em = m as IEffectMaterial;
+
+            if (em == null)
+                return;
+
+            var e = em.Effect;
+            if (e == null)
+                return;
+
+            var p = em.Parameters.Time;
+            if (p != null)
+                p.SetValue(time);
+        }
+
+        private static void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
             var em = m as IEffectMaterial;
 
             if (em == null)
@@ -846,6 +872,7 @@ namespace Squared.Render {
         public readonly EffectParameter ViewportPosition, ViewportScale;
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
         public readonly EffectParameter BitmapTextureSize, HalfTexel;
+        public readonly EffectParameter Time;
 
         public MaterialSetEffectParameters (Effect effect) {
             ViewportPosition = effect.Parameters["ViewportPosition"];
@@ -854,6 +881,7 @@ namespace Squared.Render {
             ModelViewMatrix = effect.Parameters["ModelViewMatrix"];
             BitmapTextureSize = effect.Parameters["BitmapTextureSize"];
             HalfTexel = effect.Parameters["HalfTexel"];
+            Time = effect.Parameters["Time"];
         }
     }
 }
