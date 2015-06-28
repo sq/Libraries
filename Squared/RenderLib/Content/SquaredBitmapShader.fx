@@ -11,7 +11,7 @@ void BasicPixelShader(
 	addColor.rgb *= addColor.a;
 	addColor.a = 0;
 
-	result = multiplyColor * tex2Dgrad(TextureSampler, clamp(texCoord, texTL, texBR), 0, 0);
+	result = multiplyColor * tex2D(TextureSampler, clamp(texCoord, texTL, texBR));
 	result += (addColor * result.a);
 }
 
@@ -26,7 +26,7 @@ void BasicPixelShaderWithDiscard(
 	addColor.rgb *= addColor.a;
 	addColor.a = 0;
 
-	result = multiplyColor * tex2Dgrad(TextureSampler, clamp(texCoord, texTL, texBR), 0, 0);
+	result = multiplyColor * tex2D(TextureSampler, clamp(texCoord, texTL, texBR));
 	result += (addColor * result.a);
 
     const float discardThreshold = (1.0 / 255.0);
