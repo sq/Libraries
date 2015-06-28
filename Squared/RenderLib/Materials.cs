@@ -74,6 +74,7 @@ namespace Squared.Render {
     }
 
     public abstract class MaterialSetBase : IDisposable {
+        private   readonly object Lock = new object();
         protected readonly MaterialList ExtraMaterials = new MaterialList();
 
         public readonly Func<Material>[] AllMaterialFields;
@@ -147,34 +148,38 @@ namespace Squared.Render {
         }
 
         public void ForEachMaterial<T> (Action<Material, T> action, T userData) {
-            foreach (var field in AllMaterialFields) {
-                var material = field();
-                if (material != null)
-                    action(material, userData);
-            }
+            lock (Lock) {
+                foreach (var field in AllMaterialFields) {
+                    var material = field();
+                    if (material != null)
+                        action(material, userData);
+                }
 
-            foreach (var collection in AllMaterialCollections) {
-                var coll = collection();
-                if (coll == null)
-                    continue;
+                foreach (var collection in AllMaterialCollections) {
+                    var coll = collection();
+                    if (coll == null)
+                        continue;
 
-                coll.ForEachMaterial(action, userData);
+                    coll.ForEachMaterial(action, userData);
+                }
             }
         }
 
         public void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData) {
-            foreach (var field in AllMaterialFields) {
-                var material = field();
-                if (material != null)
-                    action(material, ref userData);
-            }
+            lock (Lock) {
+                foreach (var field in AllMaterialFields) {
+                    var material = field();
+                    if (material != null)
+                        action(material, ref userData);
+                }
 
-            foreach (var collection in AllMaterialCollections) {
-                var coll = collection();
-                if (coll == null)
-                    continue;
+                foreach (var collection in AllMaterialCollections) {
+                    var coll = collection();
+                    if (coll == null)
+                        continue;
 
-                coll.ForEachMaterial(action, ref userData);
+                    coll.ForEachMaterial(action, ref userData);
+                }
             }
         }
 
@@ -199,14 +204,17 @@ namespace Squared.Render {
         }
 
         public void Add (Material extraMaterial) {
-            ExtraMaterials.Add(extraMaterial);
+            lock (Lock)
+                ExtraMaterials.Add(extraMaterial);
         }
 
         public bool Remove (Material extraMaterial) {
-            return ExtraMaterials.Remove(extraMaterial);
+            lock (Lock)
+                return ExtraMaterials.Remove(extraMaterial);
         }
 
         public virtual void Dispose () {
+            lock (Lock)
             foreach (var material in AllMaterials)
                 material.Dispose();
         }
