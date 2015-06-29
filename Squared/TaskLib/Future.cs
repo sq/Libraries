@@ -225,13 +225,22 @@ namespace Squared.Task {
             public Future<IFuture> Composite;
             public readonly List<IFuture> State = new List<IFuture>();
             public int Trigger;
+            private bool Disposing = false;
 
             public void OnCompositeDispose (IFuture f) {
-                lock (State) {
+                if (Disposing)
+                    return;
+
+                lock (State)
+                try {
+                    Disposing = true;
+
                     foreach (var future in State)
                         future.Dispose();
 
                     State.Clear();
+                } finally {
+                    Disposing = false;
                 }
             }
 
