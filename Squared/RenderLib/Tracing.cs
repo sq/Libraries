@@ -141,7 +141,7 @@ namespace Squared.Render.Tracing {
 
         public static bool EnableTracing {
             get {
-#if SDL2
+#if SDL2 // StringMarkerGREMEDY -flibit
                 return (TracingBroken == 0);
 #else
                 return (TracingBroken == 0) && (Cached_IsCurrentlyProfiled);
@@ -150,7 +150,7 @@ namespace Squared.Render.Tracing {
         }
 
         public static void BeforeFrame () {
-#if !SDL2
+#if !SDL2 // StringMarkerGREMEDY -flibit
             Cached_IsCurrentlyProfiled = D3D9.IsCurrentlyProfiled;
 #endif
         }
@@ -182,9 +182,11 @@ namespace Squared.Render.Tracing {
                 return;
 
             try {
-#if SDL2
+#if SDL2 // StringMarkerGREMEDY -flibit
+                // FIXME: FNA SetStringMarkerEXT! -flibit
+                GetGLProcAddress();
                 var chars = Encoding.ASCII.GetBytes(name);
-                OpenTK.Graphics.OpenGL.GL.Gremedy.StringMarker(chars.Length, chars);
+                glStringMarkerGREMEDY(chars.Length, chars);
 #else
                 D3D9.SetMarker(0, name);
 #endif
@@ -193,5 +195,20 @@ namespace Squared.Render.Tracing {
                 TracingBroken = 1;
             }
         }
+
+#if SDL2 // StringMarkerGREMEDY -flibit
+        private delegate void StringMarkerGREMEDY(int len, byte[] strang);
+        private static StringMarkerGREMEDY glStringMarkerGREMEDY;
+        private static bool gotAddress = false;
+        private static void GetGLProcAddress()
+        {
+            if (gotAddress) return;
+            glStringMarkerGREMEDY = (StringMarkerGREMEDY) Marshal.GetDelegateForFunctionPointer(
+                SDL2.SDL.SDL_GL_GetProcAddress("glStringMarkerGREMEDY"),
+                typeof(StringMarkerGREMEDY)
+            );
+            gotAddress = true;
+        }
+#endif
     }
 }

@@ -56,21 +56,17 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\MonoGame\ThirdParty\SDL2#\SDL2-CS.csproj">
-      <Project>{85480198-8711-4355-830E-72FD794AD3F6}</Project>
-      <Name>SDL2-CS</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Util\Squared.Util.SDL2.csproj">
       <Project>{D3A95FBF-A1C5-45D0-839F-B155D7B10272}</Project>
       <Name>Squared.Util.SDL2</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\MonoGame\MonoGame.Framework\MonoGame.Framework.SDL2.csproj">
-      <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
-      <Name>MonoGame.Framework.SDL2</Name>
-    </ProjectReference>
     <ProjectReference Include="..\GameLib\Squared.Game.SDL2.csproj">
       <Project>{B802D543-58A6-4FEA-B182-5BB21B79DFC6}</Project>
       <Name>Squared.Game.SDL2</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\FNA\FNA.csproj">
+      <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
+      <Name>FNA</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

@@ -6,7 +6,12 @@ shared float4x4 ModelViewMatrix;
 
 float4 TransformPosition (float4 position, float offset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
+#ifdef FNA
+    // ... Except for OpenGL, who don't need no half pixels
+    float4 modelViewPos = mul(position, ModelViewMatrix);
+#else
     float4 modelViewPos = mul(position, ModelViewMatrix) - float4(offset, offset, 0, 0);
+#endif
     // Finally project after offsetting
     return mul(modelViewPos, ProjectionMatrix);
 }
@@ -54,7 +59,6 @@ inline float2 ComputeTexCoord(
     out float2 texTL : TEXCOORD1,
     out float2 texBR : TEXCOORD2
 ) {
-    float2 offset = HalfTexel;
     texTL = min(texRgn.xy, texRgn.zw);
     texBR = max(texRgn.xy, texRgn.zw);
     return clamp(

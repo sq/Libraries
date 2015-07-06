@@ -15,7 +15,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG;</DefineConstants>
+    <DefineConstants>DEBUG;SDL2;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x86</PlatformTarget>
@@ -29,6 +29,7 @@
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x86</PlatformTarget>
     <ConsolePause>false</ConsolePause>
+    <DefineConstants>SDL2;</DefineConstants>
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -44,13 +45,13 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\MonoGame\MonoGame.Framework\MonoGame.Framework.SDL2.csproj">
-      <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
-      <Name>MonoGame.Framework.SDL2</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Util\Squared.Util.SDL2.csproj">
       <Project>{D3A95FBF-A1C5-45D0-839F-B155D7B10272}</Project>
       <Name>Squared.Util.SDL2</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\FNA\FNA.csproj">
+      <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
+      <Name>FNA</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

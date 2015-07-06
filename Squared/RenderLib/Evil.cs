@@ -328,20 +328,11 @@ namespace Squared.Render.Evil {
 
         static FontUtils () {
             var tSpriteFont = typeof(SpriteFont);
-#if SDL2
-            // Careful with them reflections there! -flibit
-            textureValue = GetPrivateField(tSpriteFont, "_texture");
-            glyphData = GetPrivateField(tSpriteFont, "_glyphBounds");
-            croppingData = GetPrivateField(tSpriteFont, "_cropping");
-            kerning = GetPrivateField(tSpriteFont, "_kerning");
-            characterMap = GetPrivateField(tSpriteFont, "_characterMap");
-#else
             textureValue = GetPrivateField(tSpriteFont, "textureValue");
             glyphData = GetPrivateField(tSpriteFont, "glyphData");
             croppingData = GetPrivateField(tSpriteFont, "croppingData");
             kerning = GetPrivateField(tSpriteFont, "kerning");
             characterMap = GetPrivateField(tSpriteFont, "characterMap");
-#endif
         }
 
         private static FieldInfo GetPrivateField (Type type, string fieldName) {

@@ -44,7 +44,7 @@ namespace Squared.Render {
         public MultithreadedGame()
             : base() {
 
-#if SDL2
+#if SDL2 // Disable threading -flibit
             // Again, I say: NOPE. -flibit
             UseThreadedDraw = false;
 #else

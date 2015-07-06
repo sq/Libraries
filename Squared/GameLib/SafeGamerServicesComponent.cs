@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if !SDL2 // Remove this if you're using MonoGame.Net -flibit
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -458,3 +459,4 @@ namespace Squared.Game.GamerServices {
         }
     }
 }
+#endif // SDL2
