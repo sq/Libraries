@@ -34,7 +34,12 @@ namespace Squared.Render {
         private readonly object DrawLock = new object();
 
         private bool _Running = true;
+#if SDL2 // Disable threading -flibit
+        // 8 months later and I continue to say: NOPE. -flibit
+        private bool _ActualEnableThreading = false;
+#else
         private bool _ActualEnableThreading = true;
+#endif
         private Frame _FrameBeingPrepared = null;
         private Frame _FrameBeingDrawn = null;
 
@@ -129,8 +134,7 @@ namespace Squared.Render {
 
             var viewport = Device.Viewport;
             Device.Present(
-#if !SDL2
-                // TODO: Check if we _really_ have to implement this for MG-SDL2 -flibit
+#if !SDL2 // Ignore verbose Present() overload -flibit
                 new Rectangle(0, 0, viewport.Width, viewport.Height),
                 new Rectangle(0, 0, viewport.Width, viewport.Height),
                 IntPtr.Zero
@@ -473,9 +477,7 @@ namespace Squared.Render {
                 FlushPendingDisposes();
             } catch (ObjectDisposedException) {
             } catch (DeviceLostException) {
-#if !SDL2
             } catch (DeviceNotResetException) {
-#endif
             }
         }
 

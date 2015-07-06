@@ -377,10 +377,6 @@ namespace Squared.Render {
                 foreach (var call in _DrawCalls) {
 #if PSM
                     device.SetVertexBuffer(call.VertexBuffer);
-#elif SDL2
-                    // TODO: Check if we _really_ have to implement this for MG-SDL2 -flibit
-                    if (call.VertexOffset != 0) System.Console.WriteLine("OH GOD WHY");
-                    device.SetVertexBuffer(call.VertexBuffer);
 #else
                     device.SetVertexBuffer(call.VertexBuffer, call.VertexOffset);
 #endif

@@ -32,7 +32,7 @@ namespace Squared.Render.Internal {
 
             Thread = new Thread(WorkerFn);
             Thread.IsBackground = true;
-#if SDL2
+#if SDL2 // Workaround to ignore ThreadedDraw -flibit
             // :trollface: -flibit
             if (function.Method.Name.Equals("ThreadedDraw"))
             {
@@ -105,7 +105,7 @@ namespace Squared.Render.Internal {
         public void Dispose () {
             _Disposed = true;
             _WakeSignal.Set();
-#if SDL2
+#if SDL2 // Workaround to ignore ThreadedDraw -flibit
             // :trollface part 2 electric nothreadsaboo: -flibit
             if (Thread.IsAlive)
 #endif

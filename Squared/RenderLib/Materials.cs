@@ -325,10 +325,8 @@ namespace Squared.Render {
         public Material ScreenSpaceBitmapWithDiscard, WorldSpaceBitmapWithDiscard;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
-#if !SDL2
         public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
         public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
-#endif
         public Material Clear;
 
         protected readonly Action<Material, float> _ApplyTimeDelegate;
@@ -344,7 +342,7 @@ namespace Squared.Render {
             TimeProvider = (ITimeProvider)serviceProvider.GetService(typeof(ITimeProvider))
                 ?? new DotNetTimeProvider();
 
-#if SDL2
+#if SDL2 // `Content/SquaredRender/` folder -flibit
             BuiltInShaders = new ContentManager(serviceProvider, "Content/SquaredRender");
 #elif !PSM
             BuiltInShaders = new ResourceContentManager(serviceProvider, Shaders.ResourceManager);
@@ -364,26 +362,6 @@ namespace Squared.Render {
             WorldSpaceBitmap = new EffectMaterial(BuiltInShaders.Load<Effect>("WorldSpaceBitmap"));
             ScreenSpaceGeometry = new EffectMaterial(BuiltInShaders.Load<Effect>("ScreenSpaceGeometry"));
             WorldSpaceGeometry = new EffectMaterial(BuiltInShaders.Load<Effect>("WorldSpaceGeometry"));
-#elif SDL2
-            ScreenSpaceBitmap = new EffectMaterial(
-                BuiltInShaders.Load<Effect>("ScreenSpaceBitmapTechnique"),
-                "ScreenSpaceBitmapTechnique"
-            );
-
-            WorldSpaceBitmap = new EffectMaterial(
-                BuiltInShaders.Load<Effect>("WorldSpaceBitmapTechnique"),
-                "WorldSpaceBitmapTechnique"
-            );
-
-            ScreenSpaceGeometry = new EffectMaterial(
-                BuiltInShaders.Load<Effect>("ScreenSpaceUntextured"),
-                "ScreenSpaceUntextured"
-            );
-
-            WorldSpaceGeometry = new EffectMaterial(
-                BuiltInShaders.Load<Effect>("WorldSpaceUntextured"),
-                "WorldSpaceUntextured"
-            );
 #else
             var bitmapShader = BuiltInShaders.Load<Effect>("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load<Effect>("SquaredGeometryShader");
@@ -419,17 +397,7 @@ namespace Squared.Render {
             );
 #endif
             
-#if SDL2
-            ScreenSpaceLightmappedBitmap = new EffectMaterial(
-                BuiltInShaders.Load<Effect>("ScreenSpaceLightmappedBitmap"),
-                "ScreenSpaceLightmappedBitmap"
-            );
-
-            WorldSpaceLightmappedBitmap = new EffectMaterial(
-                BuiltInShaders.Load<Effect>("WorldSpaceLightmappedBitmap"),
-                "WorldSpaceLightmappedBitmap"
-            );
-#elif !PSM
+#if !PSM
             var lightmapShader = BuiltInShaders.Load<Effect>("Lightmap");
 
             ScreenSpaceLightmappedBitmap = new EffectMaterial(
@@ -592,17 +560,8 @@ namespace Squared.Render {
             if (e == null)
                 return;
 
-#if SDL2
-                if (em.Parameters.ViewportScale != null && em.Parameters.ViewportPosition != null)
-                {
-                    // Only WorldSpace has these parameters -flibit
-                    em.Parameters.ViewportScale.SetValue(viewTransform.Scale);
-                    em.Parameters.ViewportPosition.SetValue(viewTransform.Position);
-                }
-#else
             em.Parameters.ViewportScale.SetValue(viewTransform.Scale);
             em.Parameters.ViewportPosition.SetValue(viewTransform.Position);
-#endif
 
             em.Parameters.ProjectionMatrix.SetValue(viewTransform.Projection);
             em.Parameters.ModelViewMatrix.SetValue(viewTransform.ModelView);

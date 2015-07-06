@@ -531,10 +531,7 @@ namespace Squared.Render {
 
                         var vSize = new Vector2(tex1.Width, tex1.Height);
                         paramSize.SetValue(vSize);
-#if !SDL2
-                        // This is only ever used by Blur, which is never used -flibit
                         paramHalfTexel.SetValue(new Vector2(1.0f / vSize.X, 1.0f / vSize.Y) * 0.5f);
-#endif
 
                         manager.CurrentMaterial.Flush();
                     }
