@@ -228,6 +228,41 @@ namespace Squared.Util {
             return _Hermite(a, u, d, v, positionInWindow, t2, tSquared, s, s2, sSquared);
         }
 
+        private static T[] _TemporaryValues = new T[4];
+        private static int _NumTemporaryValues = 0;
+        private static InterpolatorSource<T> _TemporarySource;
+
+        private static T TemporarySource (int index) {
+            return _TemporaryValues[Arithmetic.Wrap(index, 0, _NumTemporaryValues - 1)];
+        }
+
+        public static T Interpolate (Interpolator<T> interpolator, T a, T b, float progress) {
+            if ((_TemporaryValues == null) || (_TemporaryValues.Length < 2))
+                _TemporaryValues = new T[2];
+            if (_TemporarySource == null)
+                _TemporarySource = TemporarySource;
+
+            _TemporaryValues[0] = a;
+            _TemporaryValues[1] = b;
+            _NumTemporaryValues = 2;
+
+            return interpolator(_TemporarySource, 0, progress);
+        }
+
+        public static T Interpolate (Interpolator<T> interpolator, T[] values, float progress) {
+            var previousValues = _TemporaryValues;
+            if (_TemporarySource == null)
+                _TemporarySource = TemporarySource;
+
+            try {
+                _TemporaryValues = values;
+                _NumTemporaryValues = values.Length;
+                return interpolator(_TemporarySource, 0, progress);
+            } finally {
+                _TemporaryValues = previousValues;
+            }
+        }
+
         public static Interpolator<T> GetByName (string name) {
             var types = new Type[] {
                 typeof(InterpolatorSource<T>), typeof(int), typeof(float)
@@ -248,6 +283,14 @@ namespace Squared.Util {
             get {
                 return Linear;
             }
+        }
+    }
+
+    public static class InterpolatorExtensions {
+        public static T Interpolate<T> (this Interpolator<T> interpolator, T a, T b, float progress) 
+            where T : struct
+        {
+            return Interpolators<T>.Interpolate(interpolator, a, b, progress);
         }
     }
 }
