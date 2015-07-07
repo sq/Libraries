@@ -788,6 +788,16 @@ namespace Squared.Render {
             }
         }
 
+        public void AdjustOrigin (Vector2 newOrigin) {
+            var newPosition = Position;
+
+            var textureSize = new Vector2(Texture.Width, Texture.Height) * TextureRegion.Size;
+            newPosition += ((newOrigin - Origin) * textureSize * Scale);
+
+            Position = newPosition;
+            Origin = newOrigin;
+        }
+
         public bool Crop (Bounds cropBounds) {
             var texSize = new Vector2(Textures.Texture1.Width, Textures.Texture1.Height);
             var texRgn = (TextureRegion.BottomRight - TextureRegion.TopLeft) * texSize * Scale;

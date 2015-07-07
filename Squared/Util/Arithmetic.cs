@@ -251,7 +251,8 @@ namespace Squared.Util {
         }
 
         public static float Pulse (float value) {
-            value = value % 1.0f;
+            value = Math.Abs(value % 1.0f);
+
             if (value > 0.5f)
                 return (value - 0.5f) / 0.5f;
             else
