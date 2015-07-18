@@ -4,6 +4,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 
+// FIXME: This whole file needs unit tests
+
 namespace Squared.Task {
     public static class FutureAwaitExtensionMethods {
         public struct FutureAwaiter<TResult> : INotifyCompletion {
@@ -132,6 +134,60 @@ namespace Squared.Task {
             }
         }
 
+        public struct SequenceAwaiter<T> : INotifyCompletion {
+            public readonly Future<T>[] Futures;
+            public readonly IFuture     Ready;
+
+            public SequenceAwaiter (ISchedulable<T>[] schedulables) {
+                Futures = new Future<T>[schedulables.Length];
+                if (Futures.Length == 0) {
+                    Ready = new SignalFuture(true);
+                    return;
+                }
+
+                var scheduler = TaskScheduler.Current;
+                if (scheduler == null)
+                    throw new InvalidOperationException("No implicitly active scheduler. Use 'await Scheduler.Start(x)'.");
+
+                for (var i = 0; i < Futures.Length; i++)
+                    Futures[i] = scheduler.Start(schedulables[i]);
+
+                Ready = Future.WaitForAll(Futures);
+            }
+
+            public SequenceAwaiter (Future<T>[] futures) {
+                Futures = futures;
+                if (Futures.Length == 0) {
+                    Ready = new SignalFuture(true);
+                    return;
+                }
+
+                var scheduler = TaskScheduler.Current;
+                if (scheduler == null)
+                    throw new InvalidOperationException("No implicitly active scheduler. Use 'await Scheduler.Start(x)'.");
+
+                Ready = Future.WaitForAll(futures);
+            }
+
+            public void OnCompleted (Action continuation) {
+                Ready.RegisterOnComplete((_) => continuation());
+            }
+
+            public bool IsCompleted {
+                get {
+                    return Ready.Completed;
+                }
+            }
+
+            public T[] GetResult () {
+                var result = new T[Futures.Length];
+                for (int i = 0; i < result.Length; i++)
+                    result[i] = Futures[i].Result;
+
+                return result;
+            }
+        }
+
         public static FutureAwaiter<T> GetAwaiter<T> (this Future<T> future) {
             return new FutureAwaiter<T>(future);
         }
@@ -160,6 +216,14 @@ namespace Squared.Task {
         public static ISchedulableAwaiter GetAwaiter (this IEnumerable<ISchedulable> schedulables) {
             var wfa = new WaitForAll(schedulables.ToArray());
             return new ISchedulableAwaiter(wfa);
+        }
+
+        public static SequenceAwaiter<T> GetAwaiter<T> (this IEnumerable<Future<T>> futures) {
+            return new SequenceAwaiter<T>(futures.ToArray());
+        }
+
+        public static SequenceAwaiter<T> GetAwaiter<T> (this IEnumerable<ISchedulable<T>> schedulables) {
+            return new SequenceAwaiter<T>(schedulables.ToArray());
         }
     }
 }
