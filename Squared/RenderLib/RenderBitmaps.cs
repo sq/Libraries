@@ -843,5 +843,11 @@ namespace Squared.Render {
                 return ((Textures.Texture1 != null) && !Textures.Texture1.IsDisposed);
             }
         }
+
+        public static BitmapDrawCall operator * (BitmapDrawCall dc, float opacity) {
+            dc.MultiplyColor *= opacity;
+            dc.AddColor *= opacity;
+            return dc;
+        }
     }
 }
