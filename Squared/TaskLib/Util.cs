@@ -249,6 +249,10 @@ namespace Squared.Task {
         void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
             if (_Schedulables == null)
                 throw new InvalidOperationException();
+            else if (_Schedulables.Length == 0) {
+                future.Complete();
+                return;
+            }
 
             for (int i = 0; i < _Schedulables.Length; i++) {
                 var s = _Schedulables[i];

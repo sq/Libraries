@@ -151,5 +151,15 @@ namespace Squared.Task {
         public static ISchedulableAwaiter<T> GetAwaiter<T> (this ISchedulable<T> schedulable) {
             return new ISchedulableAwaiter<T>(schedulable);
         }
+
+        public static ISchedulableAwaiter GetAwaiter (this IEnumerable<IFuture> futures) {
+            var wfa = new WaitForAll(futures.ToArray());
+            return new ISchedulableAwaiter(wfa);
+        }
+
+        public static ISchedulableAwaiter GetAwaiter (this IEnumerable<ISchedulable> schedulables) {
+            var wfa = new WaitForAll(schedulables.ToArray());
+            return new ISchedulableAwaiter(wfa);
+        }
     }
 }
