@@ -9,7 +9,7 @@ namespace Squared.Task {
         void Schedule (TaskScheduler scheduler, IFuture future);
     }
 
-    public interface ISchedulable<T> {
+    public interface ISchedulable<T> : ISchedulable {
         void Schedule (TaskScheduler scheduler, Future<T> future);
     }
 
