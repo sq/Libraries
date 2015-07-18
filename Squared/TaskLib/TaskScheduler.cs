@@ -9,6 +9,10 @@ namespace Squared.Task {
         void Schedule (TaskScheduler scheduler, IFuture future);
     }
 
+    public interface ISchedulable<T> {
+        void Schedule (TaskScheduler scheduler, Future<T> future);
+    }
+
     public enum TaskExecutionPolicy {
         RunWhileFutureLives,
         RunAsBackgroundTask,
@@ -142,6 +146,25 @@ namespace Squared.Task {
     public delegate bool BackgroundTaskErrorHandler (Exception error);
 
     public class TaskScheduler : IDisposable {
+        internal struct PushedActivity : IDisposable {
+            public readonly TaskScheduler Scheduler;
+            public readonly TaskScheduler Prior;
+
+            public PushedActivity (TaskScheduler scheduler) {
+                Scheduler = scheduler;
+
+                Prior = _Current.Value;
+                _Current.Value = scheduler;
+            }
+
+            public void Dispose () {
+                if (_Current.Value == Scheduler)
+                    _Current.Value = Prior;
+                else
+                    throw new ThreadStateException("Mismatched scheduler activity push");
+            }
+        }
+
         public static int SleepThreadTimeoutMs = 10000;
 
         const long SleepFudgeFactor = 100;
@@ -149,8 +172,10 @@ namespace Squared.Task {
         const long MinimumSleepLength = 10000;
         const long MaximumSleepLength = Time.SecondInTicks * 60;
 
-        public BackgroundTaskErrorHandler ErrorHandler = null;
+        private static readonly ThreadLocal<TaskScheduler> _Current = new ThreadLocal<TaskScheduler>();
 
+        public BackgroundTaskErrorHandler ErrorHandler = null;
+        
         private bool _IsDisposed = false;
         private IJobQueue _JobQueue = null;
         private Internal.WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
@@ -164,19 +189,34 @@ namespace Squared.Task {
 
         public TaskScheduler ()
             : this(JobQueue.ThreadSafe) {
+        }        
+
+        public static TaskScheduler Current {
+            get {
+                return _Current.Value;
+            }
+        }
+
+        internal PushedActivity IsActive {
+            get {
+                return new PushedActivity(this);
+            }
         }
 
         public bool WaitForWorkItems (double timeout = 0) {
             if (_IsDisposed)
                 throw new ObjectDisposedException("TaskScheduler");
-
-            return _JobQueue.WaitForWorkItems(timeout);
+            
+            using (IsActive)
+                return _JobQueue.WaitForWorkItems(timeout);
         }
 
         private void BackgroundTaskOnComplete (IFuture f) {
-            var e = f.Error;
-            if (e != null)
-                OnTaskError(e);
+            using (IsActive) {
+                var e = f.Error;
+                if (e != null)
+                    OnTaskError(e);
+            }
         }
 
         public void OnTaskError (Exception exception) {
@@ -193,7 +233,21 @@ namespace Squared.Task {
         }
 
         public void Start (IFuture future, ISchedulable task, TaskExecutionPolicy executionPolicy) {
-            task.Schedule(this, future);
+            using (IsActive)
+                task.Schedule(this, future);
+
+            switch (executionPolicy) {
+                case TaskExecutionPolicy.RunAsBackgroundTask:
+                    future.RegisterOnComplete(BackgroundTaskOnComplete);
+                break;
+                default:
+                break;
+            }
+        }
+
+        public void Start<T> (Future<T> future, ISchedulable<T> task, TaskExecutionPolicy executionPolicy) {
+            using (IsActive)
+                task.Schedule(this, future);
 
             switch (executionPolicy) {
                 case TaskExecutionPolicy.RunAsBackgroundTask:
@@ -206,6 +260,12 @@ namespace Squared.Task {
 
         public IFuture Start (ISchedulable task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.Default) {
             var future = new Future<object>();
+            Start(future, task, executionPolicy);
+            return future;
+        }
+
+        public Future<T> Start<T> (ISchedulable<T> task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.Default) {
+            var future = new Future<T>();
             Start(future, task, executionPolicy);
             return future;
         }
@@ -293,7 +353,9 @@ namespace Squared.Task {
 
             long now = Time.Ticks;
             if (now > completeWhen) {
-                future.Complete();
+                using (IsActive)
+                    future.Complete();
+
                 return;
             }
 
@@ -308,7 +370,8 @@ namespace Squared.Task {
             if (_IsDisposed)
                 return;
 
-            _JobQueue.Step();
+            using (IsActive)
+                _JobQueue.Step();
         }
 
         public object WaitFor (ISchedulable schedulable) {
@@ -340,6 +403,7 @@ namespace Squared.Task {
             if (timeout.HasValue)
                 started = DateTime.UtcNow;
 
+            using (IsActive)
             while (true) {
                 if (_JobQueue.WaitForFuture(future))
                     return future.Result;
@@ -361,6 +425,7 @@ namespace Squared.Task {
             if (timeout.HasValue)
                 started = DateTime.UtcNow;
 
+            using (IsActive)
             while (true) {
                 if (_JobQueue.WaitForFuture(future))
                     return future.Result;
@@ -393,6 +458,7 @@ namespace Squared.Task {
             _IsDisposed = true;
             Thread.MemoryBarrier();
 
+            using (IsActive)
             lock (_SleepWorker.WorkItems) {
                 while (_SleepWorker.WorkItems.Count > 0) {
                     var item = _SleepWorker.WorkItems.Dequeue();

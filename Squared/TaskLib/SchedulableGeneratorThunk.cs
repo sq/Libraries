@@ -131,6 +131,11 @@ namespace Squared.Task {
             }
         }
 
+        void ScheduleNextStepForCLRTask (System.Threading.Tasks.Task stt) {
+            var awaiter = stt.GetAwaiter();
+            awaiter.OnCompleted(_QueueStep);
+        }
+
         bool CheckForDiscardedError () {
             if (_ErrorChecked)
                 return false;
@@ -181,11 +186,15 @@ namespace Squared.Task {
             IFuture f;
             ITaskResult r;
             IEnumerator<object> e;
+            ISchedulable s;
+            System.Threading.Tasks.Task stt;
 
             if (value == null) {
                 QueueStep();
-            } else if (value is ISchedulable) {
-                ScheduleNextStepForSchedulable(value as ISchedulable);
+            } else if ((s = value as ISchedulable) != null) {
+                ScheduleNextStepForSchedulable(s);
+            } else if ((stt = value as System.Threading.Tasks.Task) != null) {
+                ScheduleNextStepForCLRTask(stt);
             } else if ((nv = (value as NextValue)) != null) {
                 if (OnNextValue != null)
                     f = OnNextValue(nv.Value);
@@ -217,6 +226,7 @@ namespace Squared.Task {
                 WakeCondition = null;
             }
 
+            using (_Scheduler.IsActive)
             try {
                 if (!_Task.MoveNext()) {
                     // Completed with no result
