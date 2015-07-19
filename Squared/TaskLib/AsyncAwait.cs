@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 
 // FIXME: This whole file needs unit tests
+
+using tTask = System.Threading.Tasks.Task;
 
 namespace Squared.Task {
     public static class FutureAwaitExtensionMethods {
@@ -257,7 +260,7 @@ namespace Squared.Task {
             return new IFutureAwaiter(f);
         }
 
-        public static SignalFuture GetFuture (this System.Threading.Tasks.Task task) {
+        public static SignalFuture GetFuture (this tTask task) {
             var result = new SignalFuture();
             BindFuture(task, result);
             return result;
@@ -269,7 +272,7 @@ namespace Squared.Task {
             return result;
         }
 
-        public static void BindFuture (this System.Threading.Tasks.Task task, IFuture future) {
+        public static void BindFuture (this tTask task, IFuture future) {
             task.GetAwaiter().OnCompleted(() => {
                 if (task.Exception != null)
                     future.SetResult(null, task.Exception);
@@ -277,7 +280,7 @@ namespace Squared.Task {
                     future.Complete();
             });
             future.RegisterOnDispose((_) => {
-                task.Dispose();
+                AwaitUtil.ForciblyCancel(task);
             });
         }
 
@@ -289,8 +292,23 @@ namespace Squared.Task {
                     future.SetResult(task.Result, task.Exception);
             });
             future.RegisterOnDispose((_) => {
-                task.Dispose();
+                AwaitUtil.ForciblyCancel(task);
             });
+        }
+    }
+
+    public static class AwaitUtil {
+        private static readonly MethodInfo InternalCancel;
+
+        static AwaitUtil () {
+            var tTask = typeof(tTask);
+            InternalCancel = tTask.GetMethod(
+                "InternalCancel", BindingFlags.Instance | BindingFlags.NonPublic
+            );
+        }
+
+        public static void ForciblyCancel (tTask task) {
+            InternalCancel.Invoke(task, new object[] { false });
         }
     }
 }

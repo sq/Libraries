@@ -11,7 +11,6 @@ namespace Squared.Task {
         IFuture _Future;
         public IFuture WakeCondition;
         IFuture _WakePrevious = null;
-        private IDisposable WakeDisposable = null;
         bool _WakeDiscardingResult = false;
         bool _ErrorChecked = false;
         TaskScheduler _Scheduler;
@@ -69,11 +68,6 @@ namespace Squared.Task {
                 WakeCondition = null;
             }
 
-            if (WakeDisposable != null) {
-                WakeDisposable.Dispose();
-                WakeDisposable = null;
-            }
-
             if (_Task != null) {
                 _Task.Dispose();
                 _Task = null;
@@ -123,7 +117,6 @@ namespace Squared.Task {
         }
 
         void QueueStep () {
-            WakeDisposable = null;
             _Scheduler.QueueWorkItem(_Step);
         }
 
@@ -139,7 +132,6 @@ namespace Squared.Task {
         }
 
         void ScheduleNextStepForCLRTask (System.Threading.Tasks.Task stt) {
-            WakeDisposable = stt;
             var awaiter = stt.GetAwaiter();
             awaiter.OnCompleted(_QueueStep);
         }
