@@ -144,8 +144,8 @@ namespace Squared.Render {
 
         // We must acquire both locks before resetting the device to avoid letting the reset happen during a paint or content load operation.
         protected void OnDeviceResetting (object sender, EventArgs args) {
-            Monitor.Enter(UseResourceLock);
             Monitor.Enter(CreateResourceLock);
+            Monitor.Enter(UseResourceLock);
         }
 
         protected void OnDeviceReset (object sender, EventArgs args) {

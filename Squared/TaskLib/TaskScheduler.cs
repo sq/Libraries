@@ -283,16 +283,6 @@ namespace Squared.Task {
             return Start(new SchedulableGeneratorThunk(task), executionPolicy);
         }
 
-        public IFuture Start (Func<System.Threading.Tasks.Task> task) {
-            var future = new SignalFuture();
-
-            _JobQueue.QueueWorkItem(() => {
-                task().BindFuture(future);
-            });
-
-            return future;
-        }
-
         public void QueueWorkItem (Action workItem) {
             if (_IsDisposed)
                 throw new ObjectDisposedException("TaskScheduler");

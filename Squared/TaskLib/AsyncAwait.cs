@@ -257,19 +257,39 @@ namespace Squared.Task {
             return new IFutureAwaiter(f);
         }
 
-        public static IFuture GetFuture (this System.Threading.Tasks.Task task) {
-            var result = new Future<object>();
+        public static SignalFuture GetFuture (this System.Threading.Tasks.Task task) {
+            var result = new SignalFuture();
+            BindFuture(task, result);
+            return result;
+        }
+
+        public static Future<T> GetFuture<T> (this System.Threading.Tasks.Task<T> task) {
+            var result = new Future<T>();
             BindFuture(task, result);
             return result;
         }
 
         public static void BindFuture (this System.Threading.Tasks.Task task, IFuture future) {
-            var awaiter = task.GetAwaiter();
-            awaiter.OnCompleted(() => {
+            task.GetAwaiter().OnCompleted(() => {
                 if (task.Exception != null)
                     future.SetResult(null, task.Exception);
                 else
                     future.Complete();
+            });
+            future.RegisterOnDispose((_) => {
+                task.Dispose();
+            });
+        }
+
+        public static void BindFuture<T> (this System.Threading.Tasks.Task<T> task, Future<T> future) {
+            task.GetAwaiter().OnCompleted(() => {
+                if (task.Exception != null)
+                    future.SetResult(default(T), task.Exception);
+                else
+                    future.SetResult(task.Result, task.Exception);
+            });
+            future.RegisterOnDispose((_) => {
+                task.Dispose();
             });
         }
     }
