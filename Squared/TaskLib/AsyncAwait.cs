@@ -333,8 +333,6 @@ namespace Squared.Task {
     }
 
     public static class TaskCancellation {
-        private delegate void Canceller (System.Threading.Tasks.Task task);
-
         private static readonly ConditionalWeakTable<System.Threading.Tasks.Task, Action> CancellerRegistry = new ConditionalWeakTable<tTask, Action>();
         private static readonly Stack<bool> CancellationStack = new Stack<bool>();
 
@@ -342,8 +340,9 @@ namespace Squared.Task {
             CancellationStack.Push(false);
         }
 
-        public static System.Threading.Tasks.Task RegisterCancellationTarget (Action resumeContinuation) {
-            var continuationWrapper = resumeContinuation.Target;
+        public static System.Threading.Tasks.Task GetTaskFromContinuation (Action continuation) {
+            // FIXME: Optimize this
+            var continuationWrapper = continuation.Target;
             var tCw = continuationWrapper.GetType();
             var fInvokeAction = tCw.GetField("m_invokeAction", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             var invokeAction = (Delegate)fInvokeAction.GetValue(continuationWrapper);
@@ -351,6 +350,11 @@ namespace Squared.Task {
             var tMb = methodBuilder.GetType();
             var fInnerTask = tMb.GetField("innerTask", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             var innerTask = (System.Threading.Tasks.Task)fInnerTask.GetValue(methodBuilder);
+            return innerTask;
+        }
+
+        public static System.Threading.Tasks.Task RegisterCancellationTarget (Action resumeContinuation) {
+            var innerTask = GetTaskFromContinuation(resumeContinuation);
 
             lock (CancellerRegistry)
                 CancellerRegistry.Add(innerTask, resumeContinuation);
@@ -372,6 +376,11 @@ namespace Squared.Task {
         }
 
         public static bool TryCancel (tTask task) {
+            if (task.IsCanceled)
+                return true;
+            else if (task.IsCompleted)
+                return false;
+
             Action canceller;
             lock (CancellerRegistry)
             if (!CancellerRegistry.TryGetValue(task, out canceller))
@@ -381,9 +390,6 @@ namespace Squared.Task {
                 CancellationStack.Push(true);
                 canceller();
                 return true;
-            } catch (Exception exc) {
-                Debugger.Break();
-                throw;
             } finally {
                 CancellationStack.Pop();
                 lock (CancellerRegistry)
