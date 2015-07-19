@@ -228,9 +228,7 @@ namespace Squared.Task {
             if (_Task == null)
                 return;
 
-            if (_AwaitingCLRTask != null) {
-                _AwaitingCLRTask = null;
-            }
+            _AwaitingCLRTask = null;
             if (WakeCondition != null) {
                 _WakePrevious = WakeCondition;
                 WakeCondition = null;

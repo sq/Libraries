@@ -24,8 +24,7 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                var s = Scheduler;
-                Future.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
+                Future.RegisterOnComplete(TaskCancellation.ConditionalResume(Scheduler, continuation));
             }
 
             public bool IsCompleted {
@@ -54,8 +53,7 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                var s = Scheduler;
-                Future.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
+                Future.RegisterOnComplete(TaskCancellation.ConditionalResume(Scheduler, continuation));
             }
 
             public bool IsCompleted {
@@ -84,8 +82,7 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                var s = Scheduler;
-                Future.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
+                Future.RegisterOnComplete(TaskCancellation.ConditionalResume(Scheduler, continuation));
             }
 
             public bool IsCompleted {
@@ -117,8 +114,7 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                var s = Scheduler;
-                Future.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
+                Future.RegisterOnComplete(TaskCancellation.ConditionalResume(Scheduler, continuation));
             }
 
             public bool IsCompleted {
@@ -150,8 +146,7 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                var s = Scheduler;
-                Future.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
+                Future.RegisterOnComplete(TaskCancellation.ConditionalResume(Scheduler, continuation));
             }
 
             public bool IsCompleted {
@@ -204,8 +199,7 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                var s = Scheduler;
-                Ready.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
+                Ready.RegisterOnComplete(TaskCancellation.ConditionalResume(Scheduler, continuation));
             }
 
             public bool IsCompleted {
@@ -319,6 +313,14 @@ namespace Squared.Task {
 
         public void OnCompleted (Action continuation) {
             Caller = TaskCancellation.RegisterCancellationTarget(continuation);
+
+            // HACK: In some cases a cancelled task will get resumed, which starts it over from the beginning.
+            // This hits us and we will get asked to schedule a resume, but we should ignore it so that the task
+            //  stays dead as it should.
+            if (Caller == null)
+                return;
+
+            continuation();
         }
 
         public bool IsCompleted {
@@ -328,12 +330,16 @@ namespace Squared.Task {
         }
 
         public System.Threading.Tasks.Task GetResult () {
+            TaskCancellation.ThrowIfCancelling(Caller);
+
             return Caller;
         }
     }
 
     public static class TaskCancellation {
+        private static object Token = new object();
         private static readonly ConditionalWeakTable<System.Threading.Tasks.Task, Action> CancellerRegistry = new ConditionalWeakTable<tTask, Action>();
+        private static readonly ConditionalWeakTable<System.Threading.Tasks.Task, object> CancelledRegistry = new ConditionalWeakTable<tTask, object>();
         private static readonly Stack<bool> CancellationStack = new Stack<bool>();
 
         static TaskCancellation () {
@@ -356,10 +362,12 @@ namespace Squared.Task {
         public static System.Threading.Tasks.Task RegisterCancellationTarget (Action resumeContinuation) {
             var innerTask = GetTaskFromContinuation(resumeContinuation);
 
+            object token;
+            if (CancelledRegistry.TryGetValue(innerTask, out token))
+                return null;
+
             lock (CancellerRegistry)
                 CancellerRegistry.Add(innerTask, resumeContinuation);
-
-            resumeContinuation();
 
             return innerTask;
         }
@@ -370,9 +378,34 @@ namespace Squared.Task {
             }
         }
 
-        public static void ThrowIfCancelling () {
+        public static Squared.Task.OnComplete ConditionalResume (TaskScheduler scheduler, Action resumeContinuation) {
+            return (future) => {
+                // HACK: If the task was cancelled while we were waiting, invoking the resume
+                //  continuation will end up executing the task again from the beginning... WTF
+                // The AllowExternalCancellation will drop the resume on the floor, though.
+                /*
+                var t = GetTaskFromContinuation(resumeContinuation);
+                if (t.IsCanceled)
+                    return;
+                 */
+
+                scheduler.QueueWorkItem(resumeContinuation);
+            };
+        }
+
+        public static void ThrowIfCancelling (tTask task = null) {
             if (Cancelling)
                 throw new OperationCanceledException("Externally cancelled");
+
+            if (task != null) {
+                object token;
+                if (CancelledRegistry.TryGetValue(task, out token)) {
+                    Console.WriteLine("Is task {0} cancelled? yes", task);
+                    throw new OperationCanceledException("Externally cancelled");
+                } else {
+                    Console.WriteLine("Is task {0} cancelled? no", task);
+                }
+            }
         }
 
         public static bool TryCancel (tTask task) {
@@ -381,12 +414,15 @@ namespace Squared.Task {
             else if (task.IsCompleted)
                 return false;
 
+            CancelledRegistry.Add(task, Token);
+
             Action canceller;
             lock (CancellerRegistry)
             if (!CancellerRegistry.TryGetValue(task, out canceller))
                 return false;
 
             try {
+                Console.WriteLine("Task {0} Cancelled", task);
                 CancellationStack.Push(true);
                 canceller();
                 return true;
