@@ -9,14 +9,20 @@ using System.Text;
 namespace Squared.Task {
     public static class FutureAwaitExtensionMethods {
         public struct FutureAwaiter<TResult> : INotifyCompletion {
+            public readonly TaskScheduler Scheduler;
             public readonly Future<TResult> Future;
 
             public FutureAwaiter (Future<TResult> future) {
+                Scheduler = TaskScheduler.Current;
+                if (Scheduler == null)
+                    throw new InvalidOperationException("No implicitly active scheduler. Use 'await Scheduler.Start(x)'.");
+
                 Future = future;
             }
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnComplete((_) => continuation());
+                var s = Scheduler;
+                Future.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
             }
 
             public bool IsCompleted {
@@ -31,14 +37,20 @@ namespace Squared.Task {
         }
 
         public struct IFutureAwaiter : INotifyCompletion {
+            public readonly TaskScheduler Scheduler;
             public readonly IFuture Future;
 
             public IFutureAwaiter (IFuture future) {
+                Scheduler = TaskScheduler.Current;
+                if (Scheduler == null)
+                    throw new InvalidOperationException("No implicitly active scheduler. Use 'await Scheduler.Start(x)'.");
+
                 Future = future;
             }
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnComplete((_) => continuation());
+                var s = Scheduler;
+                Future.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
             }
 
             public bool IsCompleted {
@@ -53,14 +65,20 @@ namespace Squared.Task {
         }
 
         public struct VoidFutureAwaiter : INotifyCompletion {
+            public readonly TaskScheduler Scheduler;
             public readonly Future<NoneType> Future;
 
             public VoidFutureAwaiter (Future<NoneType> future) {
+                Scheduler = TaskScheduler.Current;
+                if (Scheduler == null)
+                    throw new InvalidOperationException("No implicitly active scheduler. Use 'await Scheduler.Start(x)'.");
+
                 Future = future;
             }
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnComplete((_) => continuation());
+                var s = Scheduler;
+                Future.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
             }
 
             public bool IsCompleted {
@@ -90,7 +108,8 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnComplete((_) => continuation());
+                var s = Scheduler;
+                Future.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
             }
 
             public bool IsCompleted {
@@ -120,7 +139,8 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnComplete((_) => continuation());
+                var s = Scheduler;
+                Future.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
             }
 
             public bool IsCompleted {
@@ -135,42 +155,44 @@ namespace Squared.Task {
         }
 
         public struct SequenceAwaiter<T> : INotifyCompletion {
-            public readonly Future<T>[] Futures;
-            public readonly IFuture     Ready;
+            public readonly TaskScheduler Scheduler;
+            public readonly Future<T>[]   Futures;
+            public readonly IFuture       Ready;
 
             public SequenceAwaiter (ISchedulable<T>[] schedulables) {
+                Scheduler = TaskScheduler.Current;
+                if (Scheduler == null)
+                    throw new InvalidOperationException("No implicitly active scheduler. Use 'await Scheduler.Start(x)'.");
+
                 Futures = new Future<T>[schedulables.Length];
                 if (Futures.Length == 0) {
                     Ready = new SignalFuture(true);
                     return;
                 }
 
-                var scheduler = TaskScheduler.Current;
-                if (scheduler == null)
-                    throw new InvalidOperationException("No implicitly active scheduler. Use 'await Scheduler.Start(x)'.");
-
                 for (var i = 0; i < Futures.Length; i++)
-                    Futures[i] = scheduler.Start(schedulables[i]);
+                    Futures[i] = Scheduler.Start(schedulables[i]);
 
                 Ready = Future.WaitForAll(Futures);
             }
 
             public SequenceAwaiter (Future<T>[] futures) {
+                Scheduler = TaskScheduler.Current;
+                if (Scheduler == null)
+                    throw new InvalidOperationException("No implicitly active scheduler. Use 'await Scheduler.Start(x)'.");
+
                 Futures = futures;
                 if (Futures.Length == 0) {
                     Ready = new SignalFuture(true);
                     return;
                 }
 
-                var scheduler = TaskScheduler.Current;
-                if (scheduler == null)
-                    throw new InvalidOperationException("No implicitly active scheduler. Use 'await Scheduler.Start(x)'.");
-
                 Ready = Future.WaitForAll(futures);
             }
 
             public void OnCompleted (Action continuation) {
-                Ready.RegisterOnComplete((_) => continuation());
+                var s = Scheduler;
+                Ready.RegisterOnComplete((_) => s.QueueWorkItem(continuation));
             }
 
             public bool IsCompleted {
@@ -224,6 +246,21 @@ namespace Squared.Task {
 
         public static SequenceAwaiter<T> GetAwaiter<T> (this IEnumerable<ISchedulable<T>> schedulables) {
             return new SequenceAwaiter<T>(schedulables.ToArray());
+        }
+
+        public static IFutureAwaiter GetAwaiter (this IEnumerator<object> task) {
+            var scheduler = TaskScheduler.Current;
+            if (scheduler == null)
+                throw new InvalidOperationException("No active TaskScheduler");
+
+            var f = scheduler.Start(task, TaskExecutionPolicy.RunWhileFutureLives);
+            return new IFutureAwaiter(f);
+        }
+
+        public static IFuture GetFuture (this System.Threading.Tasks.Task task) {
+            var result = new Future<object>();
+            task.GetAwaiter().OnCompleted(result.Complete);
+            return result;
         }
     }
 }

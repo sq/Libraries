@@ -172,6 +172,7 @@ namespace Squared.Task {
         const long MinimumSleepLength = 10000;
         const long MaximumSleepLength = Time.SecondInTicks * 60;
 
+        private static readonly ThreadLocal<TaskScheduler> _Default = new ThreadLocal<TaskScheduler>();
         private static readonly ThreadLocal<TaskScheduler> _Current = new ThreadLocal<TaskScheduler>();
 
         public BackgroundTaskErrorHandler ErrorHandler = null;
@@ -185,6 +186,11 @@ namespace Squared.Task {
             _SleepWorker = new Internal.WorkerThread<PriorityQueue<SleepItem>>(
                 SleepWorkerThreadFunc, ThreadPriority.AboveNormal, "TaskScheduler Sleep Provider"
             );
+
+            if (!_Default.IsValueCreated)
+                _Default.Value = this;
+            else
+                _Default.Value = null;
         }
 
         public TaskScheduler ()
@@ -193,7 +199,10 @@ namespace Squared.Task {
 
         public static TaskScheduler Current {
             get {
-                return _Current.Value;
+                if (_Current.Value != null)
+                    return _Current.Value;
+                else
+                    return _Default.Value;
             }
         }
 
