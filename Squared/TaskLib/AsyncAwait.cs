@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
-
 // FIXME: This whole file needs unit tests
 
 using tTask = System.Threading.Tasks.Task;
@@ -35,6 +35,8 @@ namespace Squared.Task {
             }
 
             public TResult GetResult () {
+                TaskCancellation.ThrowIfCancelling();
+
                 return Future.Result;
             }
         }
@@ -63,6 +65,8 @@ namespace Squared.Task {
             }
 
             public object GetResult () {
+                TaskCancellation.ThrowIfCancelling();
+
                 return Future.Result;
             }
         }
@@ -91,6 +95,8 @@ namespace Squared.Task {
             }
 
             public void GetResult () {
+                TaskCancellation.ThrowIfCancelling();
+
                 var @void = Future.Result;
                 return;
             }
@@ -122,6 +128,8 @@ namespace Squared.Task {
             }
 
             public object GetResult () {
+                TaskCancellation.ThrowIfCancelling();
+
                 return Future.Result;
             }
         }
@@ -153,6 +161,8 @@ namespace Squared.Task {
             }
 
             public T GetResult () {
+                TaskCancellation.ThrowIfCancelling();
+
                 return Future.Result;
             }
         }
@@ -205,6 +215,8 @@ namespace Squared.Task {
             }
 
             public T[] GetResult () {
+                TaskCancellation.ThrowIfCancelling();
+
                 var result = new T[Futures.Length];
                 for (int i = 0; i < result.Length; i++)
                     result[i] = Futures[i].Result;
@@ -280,7 +292,7 @@ namespace Squared.Task {
                     future.Complete();
             });
             future.RegisterOnDispose((_) => {
-                AwaitUtil.ForciblyCancel(task);
+                TaskCancellation.TryCancel(task);
             });
         }
 
@@ -292,23 +304,91 @@ namespace Squared.Task {
                     future.SetResult(task.Result, task.Exception);
             });
             future.RegisterOnDispose((_) => {
-                AwaitUtil.ForciblyCancel(task);
+                TaskCancellation.TryCancel(task);
             });
         }
     }
 
-    public static class AwaitUtil {
-        private static readonly MethodInfo InternalCancel;
+    public struct ExternalCancellation : INotifyCompletion {
+        public static readonly ExternalCancellation Allow = new ExternalCancellation();
+        private System.Threading.Tasks.Task Caller;
 
-        static AwaitUtil () {
-            var tTask = typeof(tTask);
-            InternalCancel = tTask.GetMethod(
-                "InternalCancel", BindingFlags.Instance | BindingFlags.NonPublic
-            );
+        public ExternalCancellation GetAwaiter () {
+            return this;
         }
 
-        public static void ForciblyCancel (tTask task) {
-            InternalCancel.Invoke(task, new object[] { false });
+        public void OnCompleted (Action continuation) {
+            Caller = TaskCancellation.RegisterCancellationTarget(continuation);
+        }
+
+        public bool IsCompleted {
+            get {
+                return (Caller != null);
+            }
+        }
+
+        public System.Threading.Tasks.Task GetResult () {
+            return Caller;
+        }
+    }
+
+    public static class TaskCancellation {
+        private delegate void Canceller (System.Threading.Tasks.Task task);
+
+        private static readonly ConditionalWeakTable<System.Threading.Tasks.Task, Action> CancellerRegistry = new ConditionalWeakTable<tTask, Action>();
+        private static readonly Stack<bool> CancellationStack = new Stack<bool>();
+
+        static TaskCancellation () {
+            CancellationStack.Push(false);
+        }
+
+        public static System.Threading.Tasks.Task RegisterCancellationTarget (Action resumeContinuation) {
+            var continuationWrapper = resumeContinuation.Target;
+            var tCw = continuationWrapper.GetType();
+            var fInvokeAction = tCw.GetField("m_invokeAction", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            var invokeAction = (Delegate)fInvokeAction.GetValue(continuationWrapper);
+            var methodBuilder = invokeAction.Target;
+            var tMb = methodBuilder.GetType();
+            var fInnerTask = tMb.GetField("innerTask", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            var innerTask = (System.Threading.Tasks.Task)fInnerTask.GetValue(methodBuilder);
+
+            lock (CancellerRegistry)
+                CancellerRegistry.Add(innerTask, resumeContinuation);
+
+            resumeContinuation();
+
+            return innerTask;
+        }
+
+        public static bool Cancelling {
+            get {
+                return CancellationStack.Peek();
+            }
+        }
+
+        public static void ThrowIfCancelling () {
+            if (Cancelling)
+                throw new OperationCanceledException("Externally cancelled");
+        }
+
+        public static bool TryCancel (tTask task) {
+            Action canceller;
+            lock (CancellerRegistry)
+            if (!CancellerRegistry.TryGetValue(task, out canceller))
+                return false;
+
+            try {
+                CancellationStack.Push(true);
+                canceller();
+                return true;
+            } catch (Exception exc) {
+                Debugger.Break();
+                throw;
+            } finally {
+                CancellationStack.Pop();
+                lock (CancellerRegistry)
+                    CancellerRegistry.Remove(task);
+            }
         }
     }
 }
