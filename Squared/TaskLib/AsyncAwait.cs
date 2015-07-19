@@ -259,8 +259,18 @@ namespace Squared.Task {
 
         public static IFuture GetFuture (this System.Threading.Tasks.Task task) {
             var result = new Future<object>();
-            task.GetAwaiter().OnCompleted(result.Complete);
+            BindFuture(task, result);
             return result;
+        }
+
+        public static void BindFuture (this System.Threading.Tasks.Task task, IFuture future) {
+            var awaiter = task.GetAwaiter();
+            awaiter.OnCompleted(() => {
+                if (task.Exception != null)
+                    future.SetResult(null, task.Exception);
+                else
+                    future.Complete();
+            });
         }
     }
 }
