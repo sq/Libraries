@@ -554,25 +554,56 @@ namespace Squared.Render.Text {
             Width = width;
         }
     }
-}
 
-namespace Squared.Render {
+    public struct StringLayoutEngine {
+        // Parameters
+        public Vector2? position;
+        public Color? color;
+        public float scale;
+        public float sortKey;
+        public int characterSkipCount;
+        public int characterLimit;
+        public float xOffsetOfFirstLine;
+        public float? lineBreakAtX;
+        public bool alignToPixels;
 
-    public static class SpriteFontExtensions {
-        public static StringLayout LayoutString (
-            this SpriteFont font, AbstractString text, ArraySegment<BitmapDrawCall>? buffer = null,
-            Vector2? position = null, Color? color = null, float scale = 1, float sortKey = 0,
-            int characterSkipCount = 0, int characterLimit = int.MaxValue,
-            float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
-            bool alignToPixels = false,
+        // State
+        public Vector2 actualPosition, totalSize, characterOffset;
+        public Bounds  firstCharacterBounds, lastCharacterBounds;
+        public float   spacing, lineSpacing;
+        public bool    firstCharacterEver, firstCharacterOfLine;
+        public ArraySegment<BitmapDrawCall> remainingBuffer;
+
+        private bool IsInitialized;
+
+        public void Initialize () {
+            actualPosition = position.GetValueOrDefault(Vector2.Zero);
+            characterOffset = new Vector2(xOffsetOfFirstLine, 0);
+
+            firstCharacterEver = true;
+            firstCharacterOfLine = true;
+
+            IsInitialized = true;
+        }
+
+        public ArraySegment<BitmapDrawCall> AppendText (
+            SpriteFont font, AbstractString text, 
+            ArraySegment<BitmapDrawCall>? buffer = null,
             Dictionary<char, KerningAdjustment> kerningAdjustments = null
         ) {
+            if (!IsInitialized)
+                throw new InvalidOperationException("Call Initialize first");
+
+            if (font == null)
+                throw new ArgumentNullException("font");
             if (text.IsNull)
                 throw new ArgumentNullException("text");
 
             ArraySegment<BitmapDrawCall> _buffer;
             if (buffer.HasValue)
                 _buffer = buffer.Value;
+            else if ((remainingBuffer.Array != null) && (remainingBuffer.Count > 0))
+                _buffer = remainingBuffer;
             else
                 _buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[text.Length]);
 
@@ -582,15 +613,10 @@ namespace Squared.Render {
             if (kerningAdjustments == null)
                 kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
 
-            var spacing = font.Spacing;
-            var lineSpacing = font.LineSpacing;
+            spacing = font.Spacing;
+            lineSpacing = Math.Max(lineSpacing, font.LineSpacing);
+
             var glyphSource = font.GetGlyphSource();
-
-            var actualPosition = position.GetValueOrDefault(Vector2.Zero);
-            var characterOffset = new Vector2(xOffsetOfFirstLine, 0);
-            var totalSize = Vector2.Zero;
-
-            Bounds firstCharacterBounds = default(Bounds), lastCharacterBounds = default(Bounds);
 
             var drawCall = new BitmapDrawCall(
                 glyphSource.Texture, default(Vector2), default(Bounds), color.GetValueOrDefault(Color.White), scale
@@ -602,9 +628,6 @@ namespace Squared.Render {
 
             int bufferWritePosition = _buffer.Offset;
             int drawCallsWritten = 0;
-
-            bool firstCharacterEver = true;
-            bool firstCharacterOfLine = true;
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 var ch = text[i];
@@ -704,13 +727,50 @@ namespace Squared.Render {
             var segment = new ArraySegment<BitmapDrawCall>(
                 _buffer.Array, _buffer.Offset, drawCallsWritten
             );
+            remainingBuffer = new ArraySegment<BitmapDrawCall>(
+                _buffer.Array, _buffer.Offset + drawCallsWritten,
+                _buffer.Count - drawCallsWritten
+            );
 
             if (segment.Count > text.Length)
                 throw new InvalidDataException();
 
+            return segment;
+        }
+    }
+}
+
+namespace Squared.Render {
+    public static class SpriteFontExtensions {
+        public static StringLayout LayoutString (
+            this SpriteFont font, AbstractString text, ArraySegment<BitmapDrawCall>? buffer = null,
+            Vector2? position = null, Color? color = null, float scale = 1, float sortKey = 0,
+            int characterSkipCount = 0, int characterLimit = int.MaxValue,
+            float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
+            bool alignToPixels = false,
+            Dictionary<char, KerningAdjustment> kerningAdjustments = null
+        ) {
+            var state = new StringLayoutEngine {
+                position = position,
+                color = color,
+                scale = scale,
+                sortKey = sortKey,
+                characterSkipCount = characterSkipCount,
+                characterLimit = characterLimit,
+                xOffsetOfFirstLine = xOffsetOfFirstLine,
+                lineBreakAtX = lineBreakAtX,
+                alignToPixels = alignToPixels
+            };
+
+            state.Initialize();
+
+            var segment = state.AppendText(
+                font, text, buffer, kerningAdjustments
+            );
+
             return new StringLayout(
-                position.GetValueOrDefault(), totalSize, font.LineSpacing,
-                firstCharacterBounds, lastCharacterBounds,
+                position.GetValueOrDefault(), state.totalSize, font.LineSpacing,
+                state.firstCharacterBounds, state.lastCharacterBounds,
                 segment
             );
         }
