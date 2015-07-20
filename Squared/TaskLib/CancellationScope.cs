@@ -14,6 +14,7 @@ using Squared.Util;
 using tTask = System.Threading.Tasks.Task;
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 using TaskStatus = System.Threading.Tasks.TaskStatus;
+using System.Linq.Expressions;
 
 namespace Squared.Task {
     public class CancellationScope {
@@ -48,10 +49,10 @@ namespace Squared.Task {
             }
         }
 
-        public struct Awaiter : INotifyCompletion {
+        public struct CancellationScopeAwaiter : INotifyCompletion {
             public readonly CancellationScope Scope;
 
-            public Awaiter (CancellationScope scope)
+            public CancellationScopeAwaiter (CancellationScope scope)
                 : this()
             {
                 Scope = scope;
@@ -59,7 +60,7 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                CancellationUtil.UnpackContinuation(continuation, out Scope.Task, out Scope.Continuation);
+                CancellationUtil.UnpackContinuation(continuation, out Scope.Task);
 
                 CancellationScope existingScope;
                 if (CancellationScope.TryGet(Scope.Task, out existingScope)) {
@@ -95,7 +96,8 @@ namespace Squared.Task {
 
         private static readonly ConditionalWeakTable<tTask, CancellationScope> ScopeRegistry = new ConditionalWeakTable<tTask, CancellationScope>();
         private static int NextId;
-        
+
+        private static Future<CancellationScope> Reserved = null;
 
         public static CancellationScope Current {
             get {
@@ -114,6 +116,14 @@ namespace Squared.Task {
             return ScopeRegistry.TryGetValue(task, out result);
         }
 
+        public static Future<CancellationScope> Reserve () {
+            if (Reserved != null)
+                throw new Exception("Scope already reserved");
+
+            Reserved = new Future<CancellationScope>();
+            return Reserved;
+        }
+
 
         public readonly string Description;
         public readonly string FilePath;
@@ -122,7 +132,6 @@ namespace Squared.Task {
 
         private UnorderedList<CancellationScope> Children;
         private tTask                            Task;
-        private Action                           Continuation;
         private bool                             _IsCanceled;
 
         public CancellationScope (
@@ -139,13 +148,13 @@ namespace Squared.Task {
             LineNumber = lineNumber;
         }
 
-        public Awaiter GetAwaiter () {
+        public CancellationScopeAwaiter GetAwaiter () {
             ThrowIfCanceled();
 
             // Important to Push here instead of doing so during the OnComplete call.
             // This ensures we're pushed into the right local call context.
             Push();
-            return new Awaiter(this);
+            return new CancellationScopeAwaiter(this);
         }
 
         public CancellationScope Parent {
@@ -210,21 +219,6 @@ namespace Squared.Task {
                     return false;
             }
 
-            if (Task.IsCanceled)
-                return true;
-            else if (Task.IsCompleted)
-                return false;
-
-            if (Continuation == null)
-                return false;
-
-            if (!wasCanceled) {
-#if TRACING
-                Console.WriteLine("Advancing {0} to cancel it", Description);
-#endif
-                Continuation();
-            }
-
             return true;
         }
 
@@ -239,29 +233,53 @@ namespace Squared.Task {
     }
 
     internal static class CancellationUtil {
-        public static void UnpackContinuation (Action continuation, out tTask task, out Action resume) {
-            // FIXME: Optimize this
-            var continuationWrapper = continuation.Target;
-            var tCw = continuationWrapper.GetType();
+        delegate Action TTryGetStateMachineForDebugger (Action continuation);
+        delegate tTask  TExtractTaskFromStateMachine   (object stateMachine);
 
-            var fInvokeAction = tCw.GetField("m_invokeAction", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            var invokeAction = (Delegate)fInvokeAction.GetValue(continuationWrapper);
-            var methodBuilder = invokeAction.Target;
-            var tMb = methodBuilder.GetType();
-            var fInnerTask = tMb.GetField("innerTask", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            task = (System.Threading.Tasks.Task)fInnerTask.GetValue(methodBuilder);
+        static readonly TTryGetStateMachineForDebugger TryGetStateMachineForDebugger;
+        static readonly Dictionary<Type, TExtractTaskFromStateMachine> ExtractorCache = new Dictionary<Type, TExtractTaskFromStateMachine>();
 
-            /*
-            var fContinuation = tCw.GetField("m_continuation", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            var innerContinuation = (Delegate)fContinuation.GetValue(continuationWrapper);
-            var moveNextRunner = innerContinuation.Target;
-            var tRunner = moveNextRunner.GetType();
-            var fStateMachine = tRunner.GetField("m_stateMachine", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+        static CancellationUtil () {
+            var tMethodBuilderCore = System.Type.GetType("System.Runtime.CompilerServices.AsyncMethodBuilderCore", true);
+            var mi = tMethodBuilderCore.GetMethod("TryGetStateMachineForDebugger", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+            TryGetStateMachineForDebugger = (TTryGetStateMachineForDebugger)Delegate.CreateDelegate(
+                typeof(TTryGetStateMachineForDebugger), mi, true
+            );
+        }
 
-            stateMachine = (IAsyncStateMachine)fStateMachine.GetValue(moveNextRunner);
-             */
+        private static TExtractTaskFromStateMachine CreateExtractor (Type tMachine) {
+            var fBuilder = tMachine.GetField("<>t__builder", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var tBuilder = fBuilder.FieldType;
+            var pTask = tBuilder.GetProperty("Task", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
-            resume = continuation;
+            {
+                var pStateMachine = Expression.Parameter(typeof(object), "stateMachine");
+                var eCast = Expression.Convert(pStateMachine, tMachine);
+                var eBuilder = Expression.MakeMemberAccess(
+                    eCast, fBuilder
+                );
+                var eTask = Expression.MakeMemberAccess(
+                    eBuilder, pTask
+                );
+                var eLambda = Expression.Lambda<TExtractTaskFromStateMachine>(eTask, pStateMachine);
+                return eLambda.Compile();
+            }
+        }
+
+        public static void UnpackContinuation (Action continuation, out tTask task) {
+            var stateMachine = TryGetStateMachineForDebugger(continuation);
+            if (stateMachine == null)
+                throw new Exception("Could not extract state machine from continuation");
+
+            var machine = stateMachine.Target;
+            var tMachine = machine.GetType();
+            TExtractTaskFromStateMachine extractor;
+
+            lock (ExtractorCache)
+            if (!ExtractorCache.TryGetValue(tMachine, out extractor))
+                ExtractorCache.Add(tMachine, extractor = CreateExtractor(tMachine));
+
+            task = extractor(machine);
         }
     }
 }
