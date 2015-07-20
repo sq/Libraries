@@ -4,6 +4,8 @@ using System.Threading;
 using Squared.Util;
 using System.Collections.Concurrent;
 
+using CallContext = System.Runtime.Remoting.Messaging.CallContext;
+
 namespace Squared.Task {
     public interface ISchedulable {
         void Schedule (TaskScheduler scheduler, IFuture future);
@@ -153,14 +155,18 @@ namespace Squared.Task {
             public PushedActivity (TaskScheduler scheduler) {
                 Scheduler = scheduler;
 
-                Prior = _Current.Value;
-                _Current.Value = scheduler;
+                Prior = Current;
+                if (Prior != Scheduler)
+                    Current = scheduler;
             }
 
             public void Dispose () {
-                if (_Current.Value == Scheduler)
-                    _Current.Value = Prior;
-                else
+                var current = Current;
+
+                if (current == Scheduler) {
+                    if (Prior != Scheduler)
+                        Current = Prior;
+                } else
                     throw new ThreadStateException("Mismatched scheduler activity push");
             }
         }
@@ -173,7 +179,6 @@ namespace Squared.Task {
         const long MaximumSleepLength = Time.SecondInTicks * 60;
 
         private static readonly ThreadLocal<TaskScheduler> _Default = new ThreadLocal<TaskScheduler>();
-        private static readonly ThreadLocal<TaskScheduler> _Current = new ThreadLocal<TaskScheduler>();
 
         public BackgroundTaskErrorHandler ErrorHandler = null;
         
@@ -195,14 +200,19 @@ namespace Squared.Task {
 
         public TaskScheduler ()
             : this(JobQueue.ThreadSafe) {
-        }        
+        }
 
         public static TaskScheduler Current {
             get {
-                if (_Current.Value != null)
-                    return _Current.Value;
-                else
-                    return _Default.Value;
+                var result = (TaskScheduler)CallContext.LogicalGetData("TaskScheduler");
+                if (result == null)
+                    result = _Default.Value;
+
+                return result;
+            }
+
+            internal set {
+                CallContext.LogicalSetData("TaskScheduler", value);
             }
         }
 

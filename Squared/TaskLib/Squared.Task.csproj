@@ -112,6 +112,7 @@
   <ItemGroup>
     <Compile Include="AsyncAwait.cs" />
     <Compile Include="BlockingQueue.cs" />
+    <Compile Include="CancellationScope.cs" />
     <Compile Include="Data\Connection.cs" />
     <Compile Include="Data\Mapper.cs" />
     <Compile Include="Data\Misc.cs" />

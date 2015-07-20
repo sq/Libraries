@@ -65,7 +65,7 @@ namespace Squared.Task {
             _WakePrevious = null;
 
             if (_AwaitingCLRTask != null) {
-                TaskCancellation.TryCancel(_AwaitingCLRTask);
+                _AwaitingCLRTask.TryCancelScope();
                 _AwaitingCLRTask = null;
             }
 
