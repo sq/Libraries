@@ -1,15 +1,19 @@
-﻿using System;
+﻿#define TRACING
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Squared.Util;
+
 // FIXME: This whole file needs unit tests
 
 using tTask = System.Threading.Tasks.Task;
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
-using Squared.Util;
+using TaskStatus = System.Threading.Tasks.TaskStatus;
 
 namespace Squared.Task {
     public class CancellationScope {
@@ -55,24 +59,22 @@ namespace Squared.Task {
             }
 
             public void OnCompleted (Action continuation) {
-                tTask task;
-                IAsyncStateMachine stateMachine;
-
-                CancellationUtil.UnpackContinuation(continuation, out task, out stateMachine);
+                CancellationUtil.UnpackContinuation(continuation, out Scope.Task, out Scope.Continuation);
 
                 CancellationScope existingScope;
-                if (CancellationScope.TryGet(task, out existingScope)) {
+                if (CancellationScope.TryGet(Scope.Task, out existingScope)) {
                     // HACK: In some cases a cancelled task will get resumed, which starts it over from the beginning.
                     // This hits us and we will get asked to schedule a resume, but we should ignore it so that the task
                     //  stays dead as it should.
+
+#if TRACING
                     Console.WriteLine("Rejecting attempted resurrection of task {0}", existingScope);
+#endif
                     return;
                 }
 
-                CancellationScope.Set(task, Scope);
+                CancellationScope.Set(Scope.Task, Scope);
                 IsCompleted = true;
-
-                Scope.SetStateMachine(stateMachine);
 
                 continuation();
             }
@@ -118,8 +120,10 @@ namespace Squared.Task {
         public readonly int    LineNumber;
         public readonly int    Id;
 
-        private IAsyncStateMachine _StateMachine;
-        private bool               _IsCanceled;
+        private UnorderedList<CancellationScope> Children;
+        private tTask                            Task;
+        private Action                           Continuation;
+        private bool                             _IsCanceled;
 
         public CancellationScope (
             [CallerMemberName]
@@ -133,16 +137,6 @@ namespace Squared.Task {
             Description = description;
             FilePath = filePath;
             LineNumber = lineNumber;
-        }
-
-        private void SetStateMachine (IAsyncStateMachine stateMachine) {
-            if (this == Null)
-                throw new InvalidOperationException("Cannot set a state machine on the null scope");
-
-            if ((_StateMachine != null) && (_StateMachine != stateMachine))
-                throw new InvalidOperationException("Already have a state machine for this scope");
-
-            _StateMachine = stateMachine;
         }
 
         public Awaiter GetAwaiter () {
@@ -170,8 +164,20 @@ namespace Squared.Task {
             }
         }
 
+        private void AddChild (CancellationScope child) {
+            if (this == Null)
+                return;
+
+            if (Children == null)
+                Children = new UnorderedList<CancellationScope>();
+
+            Children.Add(child);
+        }
+
         public CancellationScope Push () {
             Parent = Current;
+            Parent.AddChild(this);
+
             CallContext.LogicalSetData("CancellationScope", this);
 
             return Parent;
@@ -181,39 +187,59 @@ namespace Squared.Task {
             if (this == Null)
                 return false;
 
-            if (_StateMachine == null)
-                return false;
+            if (Children != null) {
+                CancellationScope childScope;
+
+                using (var e = Children.GetEnumerator())
+                while (e.GetNext(out childScope))
+                    childScope.TryCancel();
+            }
 
             var wasCanceled = _IsCanceled;
             _IsCanceled = true;
 
-            if (!wasCanceled)
-                _StateMachine.MoveNext();
+            if (Task == null)
+                return false;
+
+            switch (Task.Status) {
+                case TaskStatus.Canceled:
+                case TaskStatus.Faulted:
+                    return true;
+
+                case TaskStatus.RanToCompletion:
+                    return false;
+            }
+
+            if (Task.IsCanceled)
+                return true;
+            else if (Task.IsCompleted)
+                return false;
+
+            if (Continuation == null)
+                return false;
+
+            if (!wasCanceled) {
+#if TRACING
+                Console.WriteLine("Advancing {0} to cancel it", Description);
+#endif
+                Continuation();
+            }
 
             return true;
         }
 
         public void ThrowIfCanceled () {
             if (IsCanceled)
-                throw new OperationCanceledException("This scope was cancelled");
-        }
-
-        private tTask ThrowIfCanceled (tTask task) {
-            ThrowIfCanceled();
-
-            return task;
+                throw new OperationCanceledException(ToString() + " cancelled");
         }
 
         public override string ToString () {
-            if (Description != null)
-                return String.Format("Scope #{0} '{1}'", Id, Description);
-            else
-                return String.Format("Scope #{0}", Id);
+            return String.Format("<scope #{0} {1}>", Id, Description);
         }
     }
 
     internal static class CancellationUtil {
-        public static void UnpackContinuation (Action continuation, out tTask task, out IAsyncStateMachine stateMachine) {
+        public static void UnpackContinuation (Action continuation, out tTask task, out Action resume) {
             // FIXME: Optimize this
             var continuationWrapper = continuation.Target;
             var tCw = continuationWrapper.GetType();
@@ -225,6 +251,7 @@ namespace Squared.Task {
             var fInnerTask = tMb.GetField("innerTask", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             task = (System.Threading.Tasks.Task)fInnerTask.GetValue(methodBuilder);
 
+            /*
             var fContinuation = tCw.GetField("m_continuation", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             var innerContinuation = (Delegate)fContinuation.GetValue(continuationWrapper);
             var moveNextRunner = innerContinuation.Target;
@@ -232,6 +259,9 @@ namespace Squared.Task {
             var fStateMachine = tRunner.GetField("m_stateMachine", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
 
             stateMachine = (IAsyncStateMachine)fStateMachine.GetValue(moveNextRunner);
+             */
+
+            resume = continuation;
         }
     }
 }
