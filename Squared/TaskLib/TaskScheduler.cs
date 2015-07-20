@@ -153,21 +153,50 @@ namespace Squared.Task {
     /// <returns>True if the error has been fully processed; false to allow the error to propagate up the stack and/or get rethrown on the main thread.</returns>
     public delegate bool BackgroundTaskErrorHandler (Exception error);
 
+    public class TaskSchedulerSynchronizationContext : SynchronizationContext {
+        public readonly TaskScheduler Scheduler;
+
+        public TaskSchedulerSynchronizationContext (TaskScheduler scheduler) {
+            Scheduler = scheduler;
+        }
+
+        public override void Post (SendOrPostCallback d, object state) {
+            Scheduler.QueueWorkItem(() => d(state));
+        }
+
+        public override void Send (SendOrPostCallback d, object state) {
+            // FIXME
+            d(state);
+        }
+    }
+
     public class TaskScheduler : IDisposable {
         internal struct PushedActivity : IDisposable {
+            public readonly SynchronizationContext PriorContext;
+
             public readonly TaskScheduler Scheduler;
             public readonly TaskScheduler Prior;
 
             public PushedActivity (TaskScheduler scheduler) {
                 Scheduler = scheduler;
 
+                PriorContext = SynchronizationContext.Current;
+
                 Prior = Current;
                 if (Prior != Scheduler)
                     Current = scheduler;
+
+                if (PriorContext != Scheduler._SynchronizationContext)
+                    SynchronizationContext.SetSynchronizationContext(Scheduler._SynchronizationContext);
             }
 
             public void Dispose () {
                 var current = Current;
+
+                if (SynchronizationContext.Current == Scheduler._SynchronizationContext) {
+                    if (PriorContext != Scheduler._SynchronizationContext)
+                        SynchronizationContext.SetSynchronizationContext(PriorContext);
+                }
 
                 if (current == Scheduler) {
                     if (Prior != Scheduler)
@@ -193,6 +222,7 @@ namespace Squared.Task {
         private Internal.WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
 
         public readonly ITimeProvider TimeProvider;
+        private readonly TaskSchedulerSynchronizationContext _SynchronizationContext;
 
         public TaskScheduler (Func<IJobQueue> JobQueueFactory, ITimeProvider timeProvider = null) {
             TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
@@ -201,6 +231,8 @@ namespace Squared.Task {
             _SleepWorker = new Internal.WorkerThread<PriorityQueue<SleepItem>>(
                 SleepWorkerThreadFunc, ThreadPriority.AboveNormal, "TaskScheduler Sleep Provider"
             );
+
+            _SynchronizationContext = new TaskSchedulerSynchronizationContext(this);
 
             if (!_Default.IsValueCreated)
                 _Default.Value = this;
