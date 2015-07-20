@@ -110,6 +110,8 @@ namespace Squared.Task {
     }
 
     struct SleepItem : IComparable<SleepItem> {
+        private static readonly long WarningLatency = TimeSpan.FromMilliseconds(2).Ticks;
+
         public long Until;
         public IFuture Future;
 
@@ -118,6 +120,10 @@ namespace Squared.Task {
             if (ticksLeft == 0) {
                 try {
                     Future.Complete();
+                    var latency = now - Until;
+                    if (latency > WarningLatency)
+                        Console.WriteLine("Sleep was delayed by {0:0000.0}ms", TimeSpan.FromTicks(latency).TotalMilliseconds);
+
                 } catch (FutureAlreadyHasResultException ex) {
                     if (ex.Future != Future)
                         throw;
@@ -186,7 +192,11 @@ namespace Squared.Task {
         private IJobQueue _JobQueue = null;
         private Internal.WorkerThread<PriorityQueue<SleepItem>> _SleepWorker;
 
-        public TaskScheduler (Func<IJobQueue> JobQueueFactory) {
+        public readonly ITimeProvider TimeProvider;
+
+        public TaskScheduler (Func<IJobQueue> JobQueueFactory, ITimeProvider timeProvider = null) {
+            TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
+
             _JobQueue = JobQueueFactory();
             _SleepWorker = new Internal.WorkerThread<PriorityQueue<SleepItem>>(
                 SleepWorkerThreadFunc, ThreadPriority.AboveNormal, "TaskScheduler Sleep Provider"
@@ -307,9 +317,9 @@ namespace Squared.Task {
             _JobQueue.QueueWorkItemForNextStep(workItem);
         }
 
-        internal static void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, ManualResetEventSlim newSleepEvent) {
+        internal void SleepWorkerThreadFunc (PriorityQueue<SleepItem> pendingSleeps, ManualResetEventSlim newSleepEvent) {
             while (true) {
-                long now = Time.Ticks;
+                long now = TimeProvider.Ticks;
 
                 SleepItem currentSleep;
                 Monitor.Enter(pendingSleeps);
@@ -333,14 +343,14 @@ namespace Squared.Task {
 
                 long sleepUntil = currentSleep.Until;
 
-                now = Time.Ticks;
+                now = TimeProvider.Ticks;
                 long timeToSleep = (sleepUntil - now) + SleepFudgeFactor;
 
 #if !XBOX
                 if (timeToSleep < SleepSpinThreshold) {
                     int iteration = 1;
 
-                    while (Time.Ticks < sleepUntil) {
+                    while (TimeProvider.Ticks < sleepUntil) {
                         Thread.SpinWait(20 * iteration);
                         iteration += 1;
                     }
@@ -370,7 +380,7 @@ namespace Squared.Task {
             if (_IsDisposed)
                 return;
 
-            long now = Time.Ticks;
+            long now = TimeProvider.Ticks;
             if (now > completeWhen) {
                 using (IsActive)
                     future.Complete();

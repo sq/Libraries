@@ -416,9 +416,14 @@ namespace Squared.Task {
     /// Waits for a specified amount of time (in seconds).
     /// </summary>
     public class Sleep : ISchedulable {
+        private readonly ITimeProvider DefaultTimeProvider;
+
+        long? _InitialNow;
         long _Duration;
 
         public Sleep (double duration) {
+            DefaultTimeProvider = TaskScheduler.Current.TimeProvider;
+            _InitialNow = DefaultTimeProvider.Ticks;
             _Duration = TimeSpan.FromSeconds(duration).Ticks;
         }
 
@@ -432,7 +437,20 @@ namespace Squared.Task {
         }
 
         void ISchedulable.Schedule (TaskScheduler scheduler, IFuture future) {
-            scheduler.QueueSleep(Time.Ticks + _Duration, future);
+            long until;
+
+            var timeProvider = scheduler.TimeProvider;
+            if (timeProvider != DefaultTimeProvider)
+                _InitialNow = null;
+
+            if (_InitialNow.HasValue) {
+                until = _InitialNow.Value + _Duration;
+                _InitialNow = null;
+            } else {
+                until = timeProvider.Ticks + _Duration;
+            }
+
+            scheduler.QueueSleep(until, future);
         }
     }
 
