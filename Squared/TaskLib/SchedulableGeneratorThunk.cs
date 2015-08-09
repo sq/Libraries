@@ -119,7 +119,8 @@ namespace Squared.Task {
                 WakeCondition = null;
             }
 
-            _Scheduler.QueueWorkItem(_Step);
+            if (!_Scheduler.IsDisposed)                
+                _Scheduler.QueueWorkItem(_Step);
         }
 
         void QueueStep () {
