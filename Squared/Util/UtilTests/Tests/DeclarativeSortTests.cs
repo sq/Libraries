@@ -8,12 +8,6 @@ using Squared.Util.DeclarativeSort;
 
 namespace Squared.Util {
     [TestFixture]
-    public class DeclarativeSortTests {
-        public DeclarativeSortTests () {
-        }
-    }
-
-    [TestFixture]
     public class TaggingTests {
         private readonly Tag A, B, C;
 
@@ -52,10 +46,74 @@ namespace Squared.Util {
 
         [Test]
         public void Contains () {
+            var a = (ITags)A;
+            Assert.IsTrue(a.Contains(A));
+            Assert.IsFalse(a.Contains(B));
+
             var ab = A + B;
             Assert.IsTrue(ab.Contains(A));
             Assert.IsTrue(ab.Contains(B));
             Assert.IsFalse(ab.Contains(C));
+
+            Assert.IsTrue (ab & A);
+            Assert.IsFalse(ab & C);
+
+            Assert.IsFalse(ab ^ A);
+            Assert.IsTrue (ab ^ C);
+        }
+    }
+
+    [TestFixture]
+    public class OrderingRuleTests {
+        private readonly Tag A, B, C;
+
+        public OrderingRuleTests () {
+            A = Tag.New("a");
+            B = Tag.New("b");
+            C = Tag.New("c");
+        }
+
+        [Test]
+        public void RulesAreUnique () {
+            var sorter = new Sorter {
+                A < B,
+                B < C
+            };
+
+            Assert.AreEqual(2, sorter.Orderings.Count);
+
+            sorter.Add(A < B);
+
+            Assert.AreEqual(2, sorter.Orderings.Count);
+        }
+
+        [Test]
+        public void CanCompareUsingOrderings () {
+            var rs = new TagOrderingCollection {
+                A < B,
+                B < C
+            };
+
+            Assert.AreEqual(0, rs.Compare(A, A));
+            Assert.AreEqual(0, rs.Compare(A, C));
+            Assert.AreEqual(0, rs.Compare(C, A));
+            Assert.AreEqual(-1, rs.Compare(A, B));
+            Assert.AreEqual(-1, rs.Compare(B, C));
+            Assert.AreEqual(1, rs.Compare(B, A));
+            Assert.AreEqual(1, rs.Compare(C, B));
+        }
+
+        [Test]
+        public void CompareAbortsOnContradiction () {
+            var rs = new TagOrderingCollection {
+                A < B,
+                A > C
+            };
+
+            Exception error;
+            var result = rs.Compare(A + B + C, A, out error);
+            Assert.IsTrue(error is ContradictoryOrderingException);
+            Assert.IsFalse(result.HasValue);
         }
     }
 }
