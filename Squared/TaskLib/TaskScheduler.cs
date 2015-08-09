@@ -120,10 +120,6 @@ namespace Squared.Task {
             if (ticksLeft == 0) {
                 try {
                     Future.Complete();
-                    var latency = now - Until;
-                    if (latency > WarningLatency)
-                        Console.WriteLine("Sleep was delayed by {0:0000.0}ms", TimeSpan.FromTicks(latency).TotalMilliseconds);
-
                 } catch (FutureAlreadyHasResultException ex) {
                     if (ex.Future != Future)
                         throw;

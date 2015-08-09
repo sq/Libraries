@@ -323,7 +323,7 @@ namespace Squared.Task {
         public void WaitForFutureTest () {
             var f = Scheduler.Start(SleepThenReturn5());
 
-            var result = Scheduler.WaitFor(f);
+            var result = Scheduler.WaitFor(f, 30);
 
             Assert.AreEqual(5, result);
         }
@@ -648,7 +648,7 @@ namespace Squared.Task {
         public void ChildTaskFailuresAbortTasks () {
             var f = Scheduler.Start(RunChildTaskThreeTimes(CrashyTask), TaskExecutionPolicy.RunWhileFutureLives);
             try {
-                Scheduler.WaitFor(f);
+                Scheduler.WaitFor(f, 5);
                 throw new Exception("WaitFor did not bubble an exception");
             } catch (FutureException fe) {
                 Assert.AreEqual("pancakes", fe.InnerException.Message);
@@ -662,7 +662,7 @@ namespace Squared.Task {
 
             var f = Scheduler.Start(YieldAndIgnore(failed), TaskExecutionPolicy.RunWhileFutureLives);
             try {
-                Scheduler.WaitFor(f);
+                Scheduler.WaitFor(f, 5);
                 throw new Exception("WaitFor did not bubble an exception");
             } catch (FutureException fe) {
                 Assert.AreEqual("pancakes", fe.InnerException.Message);
@@ -675,7 +675,7 @@ namespace Squared.Task {
             failed.Fail(new Exception("pancakes"));
 
             var f = Scheduler.Start(YieldAndCheck(failed), TaskExecutionPolicy.RunWhileFutureLives);
-            Assert.AreEqual(false, Scheduler.WaitFor(f));
+            Assert.AreEqual(false, Scheduler.WaitFor(f, 15));
         }
 
         IEnumerator<object> UseRunExtension (IEnumerator<object> task, IFuture[] output) {
@@ -688,7 +688,7 @@ namespace Squared.Task {
         public void RunExtensionStoresFuture () {
             IFuture[] f = new IFuture[1];
             var _ = Scheduler.Start(UseRunExtension(CrashyTask(), f), TaskExecutionPolicy.RunWhileFutureLives);
-            Scheduler.WaitFor(_);
+            Scheduler.WaitFor(_, 5);
             Assert.AreEqual("pancakes", f[0].Error.Message);
         }
 
@@ -702,7 +702,7 @@ namespace Squared.Task {
         public void BindTaskToVariableStoresResult () {
             object[] r = new object[1];
             var _ = Scheduler.Start(BindToChildTask(TaskReturn5(), r), TaskExecutionPolicy.RunWhileFutureLives);
-            Scheduler.WaitFor(_);
+            Scheduler.WaitFor(_, 5);
             Assert.AreEqual(5, r[0]);
         }
 
@@ -711,7 +711,7 @@ namespace Squared.Task {
             object[] r = new object[1];
             var _ = Scheduler.Start(BindToChildTask(CrashyTask(), r), TaskExecutionPolicy.RunWhileFutureLives);
             try {
-                Scheduler.WaitFor(_);
+                Scheduler.WaitFor(_, 5);
                 Assert.Fail("Exception was not raised");
             } catch (FutureException ex) {
                 Assert.AreEqual("pancakes", ex.InnerException.Message);
@@ -731,7 +731,7 @@ namespace Squared.Task {
                 var result = new Future<int>();
                 var theTask = Scheduler.Start(RunAsBackgroundTestTask(result));
                 try {
-                    Scheduler.WaitFor(theTask);
+                    Scheduler.WaitFor(theTask, 15);
                     Assert.AreEqual(5, result.Result);
                 } catch (TaskException) {
                 }
@@ -741,8 +741,8 @@ namespace Squared.Task {
                 var result = new Future<int>();
                 Scheduler.ErrorHandler = (e) => true;
                 var theTask = Scheduler.Start(RunAsBackgroundTestTask(result));
-                Assert.AreEqual(null, Scheduler.WaitFor(theTask));
-                Assert.AreEqual(5, Scheduler.WaitFor(result));
+                Assert.AreEqual(null, Scheduler.WaitFor(theTask, 15));
+                Assert.AreEqual(5, Scheduler.WaitFor(result, 15));
             }
         }
 
@@ -1130,16 +1130,9 @@ namespace Squared.Task {
                 Scheduler.WaitForWorkItems(1.0);
                 Scheduler.Step();
                 j += 1;
-                if ((j % 800) == 0) {
-                    Console.Out.WriteLine(".");
-                } else if ((j % 10) == 0) {
-                    Console.Out.Write(".");
-                }
             }
             long timeEnd = Time.Ticks;
             long elapsed = (timeEnd - timeStart);
-
-            Console.Out.WriteLine("");
 
             int totalEntitySteps = 0;
             foreach (var e in entities)
