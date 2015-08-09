@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 using RuleSet = System.Linq.Expressions.Expression<System.Func<bool>>;
@@ -30,10 +31,12 @@ namespace Squared.Util.DeclarativeSort {
         public class EqualityComparer : IEqualityComparer<Tag> {
             public static readonly EqualityComparer Instance = new EqualityComparer();
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             public bool Equals (Tag x, Tag y) {
                 return ReferenceEquals(x, y);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             public int GetHashCode (Tag tag) {
                 return tag.Id;
             }
@@ -62,6 +65,7 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         Tag ITags.this [int index] {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
                 if (index == 0)
                     return this;
@@ -71,22 +75,20 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         int ITags.Count {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
                 return 1;
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         bool ITags.Contains (ITags tags) {
-            bool result = false;
-
-            for (int i = 0, l = tags.Count; i < l; i++) {
-                if (tags[i] != this)
-                    return false;
-                else if (tags[i] == this)
-                    result = true;
-            }
-
-            return result;
+            if (tags == this)
+                return true;
+            if (tags.Count == 1)
+                return (this == tags[0]);
+            else
+                return false;
         }
 
         public override int GetHashCode () {
@@ -101,14 +103,17 @@ namespace Squared.Util.DeclarativeSort {
             return Name;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ITags operator + (Tag lhs, ITags rhs) {
             return TagSet.Transition(rhs, lhs);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ITags operator + (ITags lhs, Tag rhs) {
             return TagSet.Transition(lhs, rhs);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ITags operator + (Tag lhs, Tag rhs) {
             return TagSet.Transition(lhs, rhs);
         }
@@ -185,6 +190,11 @@ namespace Squared.Util.DeclarativeSort {
         public readonly int Id;
 
         private TagSet (Tag[] tags) {
+            if (tags == null)
+                throw new ArgumentNullException(nameof(tags));
+            if (tags.Length == 0)
+                throw new ArgumentOutOfRangeException(nameof(tags), "Must not be empty");
+
             Tags = (Tag[]) tags.Clone();
             foreach (var tag in tags)
                 HashSet.Add(tag);
@@ -194,19 +204,25 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public int Count {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
                 return Tags.Length;
             }
         }
 
         public Tag this [int index] {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)] 
             get {
                 return Tags[index];
             }
         }
 
         /// <returns>Whether this tagset contains all the tags in rhs.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public bool Contains (ITags rhs) {
+            if (rhs == this)
+                return true;
+
             for (int l = rhs.Count, i = 0; i < l; i++) {
                 if (!HashSet.Contains(rhs[i]))
                     return false;
@@ -244,6 +260,7 @@ namespace Squared.Util.DeclarativeSort {
 
         internal static readonly Dictionary<Tag[], TagSet> SetCache = new Dictionary<Tag[], TagSet>(new TagArrayComparer());
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         internal static ITags Transition (ITags lhs, Tag rhs) {
             ITags result;
 
@@ -254,27 +271,32 @@ namespace Squared.Util.DeclarativeSort {
             lock (lhs.TransitionCache)
                 existing = lhs.TransitionCache.TryGetValue(rhs, out result);
 
-            if (!existing) {
-                var newTags = new Tag[lhs.Count + 1];
+            if (existing)
+                return result;
+            else
+                return TransitionSlow(lhs, rhs);
+        }
 
-                for (var i = 0; i < newTags.Length - 1; i++) {
-                    var tag = lhs[i];
-                    if (tag == rhs)
-                        return lhs;
+        internal static ITags TransitionSlow (ITags lhs, Tag rhs) {
+            var newTags = new Tag[lhs.Count + 1];
 
-                    newTags[i] = tag;
-                }
+            for (var i = 0; i < newTags.Length - 1; i++) {
+                var tag = lhs[i];
+                if (tag == rhs)
+                    return lhs;
 
-                newTags[newTags.Length - 1] = rhs;
+                newTags[i] = tag;
+            }
+
+            newTags[newTags.Length - 1] = rhs;
                 
-                Array.Sort(newTags, Tag.Comparer.Instance);
+            Array.Sort(newTags, Tag.Comparer.Instance);
 
-                result = New(newTags);
+            var result = New(newTags);
                 
-                lock (lhs.TransitionCache) {
-                    if (!lhs.TransitionCache.ContainsKey(rhs))
-                        lhs.TransitionCache.Add(rhs, result);
-                }
+            lock (lhs.TransitionCache) {
+                if (!lhs.TransitionCache.ContainsKey(rhs))
+                    lhs.TransitionCache.Add(rhs, result);
             }
 
             return result;
@@ -290,6 +312,7 @@ namespace Squared.Util.DeclarativeSort {
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ITags New (ITags lhs, ITags rhs) {
             if (lhs == rhs)
                 return lhs;
@@ -297,24 +320,23 @@ namespace Squared.Util.DeclarativeSort {
             var lhsCount = lhs.Count;
             var rhsCount = rhs.Count;
 
-            if (lhsCount < 1)
-                throw new ArgumentOutOfRangeException("lhs.Count");
-
             ITags result = lhs[0];
 
-            for (var i = 1; i < lhsCount; i++)
+            for (int i = 1, l = lhs.Count; i < l; i++)
                 result = Transition(result, lhs[i]);
 
-            for (var i = 0; i < rhsCount; i++)
+            for (int i = 0, l = rhs.Count; i < l; i++)
                 result = Transition(result, rhs[i]);
 
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ITags operator + (TagSet lhs, ITags rhs) {
             return New(lhs, rhs);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ITags operator + (ITags lhs, TagSet rhs) {
             return New(lhs, rhs);
         }
@@ -336,6 +358,7 @@ namespace Squared.Util.DeclarativeSort {
             HashCode = Lower.GetHashCode() ^ (Higher.GetHashCode() << 2);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public int Compare (ITags lhs, ITags rhs) {
             if (lhs.Contains(Lower) && rhs.Contains(Higher))
                 return -1;
@@ -417,6 +440,7 @@ namespace Squared.Util.DeclarativeSort {
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public int Compare (ITags lhs, ITags rhs) {
             Exception error;
             var result = Compare(lhs, rhs, out error);
