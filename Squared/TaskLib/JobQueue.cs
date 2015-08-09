@@ -77,7 +77,7 @@ namespace Squared.Task {
 
         private bool _Disposed = false;
 
-        private readonly AutoResetEvent _WaiterSignal = new AutoResetEvent(false);
+        private readonly ManualResetEventSlim _WaiterSignal = new ManualResetEventSlim(false);
         private int _WaiterCount = 0;
 
         private readonly ConcurrentQueue<Action> _Queue = new ConcurrentQueue<Action>();
@@ -141,6 +141,8 @@ namespace Squared.Task {
 
                 if (_Queue.TryDequeue(out item))
                     item();
+                else if (_NextStepQueue.TryDequeue(out item))
+                    item();
                 else {
                     Thread.Sleep(0);
                     return false;
@@ -180,9 +182,7 @@ namespace Squared.Task {
 
             _Queue.Enqueue(item);
 
-            Thread.MemoryBarrier();
-            if (_WaiterCount > 0)
-                _WaiterSignal.Set();
+            _WaiterSignal.Set();
         }
 
         public void QueueWorkItemForNextStep (Action item) {
@@ -190,10 +190,7 @@ namespace Squared.Task {
                 throw new ObjectDisposedException("ThreadSafeJobQueue");
 
             _NextStepQueue.Enqueue(item);
-
-            Thread.MemoryBarrier();
-            if (_WaiterCount > 0)
-                _WaiterSignal.Set();
+            _WaiterSignal.Set();
         }
 
         public bool CanPumpOnThisThread {
@@ -220,15 +217,14 @@ namespace Squared.Task {
                     if (_Queue.Count > 0)
                         return true;
                     else {
-#if XBOX
-                        var result = _WaiterSignal.WaitOne(timeoutMs);
-#else
-                        var result =  _WaiterSignal.WaitOne(timeoutMs, false);
-#endif
-                        if (_Disposed)
+                        var result = _WaiterSignal.Wait(timeoutMs);
+
+                        if (_Disposed) {
                             return false;
-                        else
+                        } else {
+                            _WaiterSignal.Reset();
                             return result;
+                        }
                     }
                 } finally {
                     Interlocked.Decrement(ref _WaiterCount);
