@@ -4,14 +4,13 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using NUnit.Framework;
-using Squared.Util.DeclarativeSort;
 
-namespace Squared.Util {
+namespace Squared.Util.DeclarativeSort {
     [TestFixture]
-    public class TaggingTests {
+    public class DSTaggingTests {
         private readonly Tag A, B, C;
 
-        public TaggingTests () {
+        public DSTaggingTests () {
             A = Tag.New("a");
             B = Tag.New("b");
             C = Tag.New("c");
@@ -64,10 +63,10 @@ namespace Squared.Util {
     }
 
     [TestFixture]
-    public class OrderingRuleTests {
+    public class DSOrderingRuleTests {
         private readonly Tag A, B, C;
 
-        public OrderingRuleTests () {
+        public DSOrderingRuleTests () {
             A = Tag.New("a");
             B = Tag.New("b");
             C = Tag.New("c");
@@ -136,7 +135,7 @@ namespace Squared.Util {
     }
 
     [TestFixture]
-    public class AutoCreateTests {
+    public class DSAutoCreateTests {
         public static Tag A, B, C;
         public Tag D;
 
@@ -151,7 +150,7 @@ namespace Squared.Util {
             A = B = D = null;
             C = Tag.New("custom c");
 
-            Tag.AutoCreate<AutoCreateTests>();
+            Tag.AutoCreate<DSAutoCreateTests>();
             ValidateStaticInitialization();
 
             Assert.AreEqual(null, D);

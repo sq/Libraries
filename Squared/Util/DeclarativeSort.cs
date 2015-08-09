@@ -133,6 +133,8 @@ namespace Squared.Util.DeclarativeSort {
 
         public static Tag New (string name) {
             Tag result;
+
+            lock (TagCache)
             if (!TagCache.TryGetValue(name, out result))
                 TagCache.Add(name, result = new Tag(string.Intern(name)));
 
@@ -150,6 +152,7 @@ namespace Squared.Util.DeclarativeSort {
 
             var tTag = typeof(Tag);
 
+            lock (type)
             foreach (var f in type.GetFields(flags)) {
                 if (f.FieldType != tTag)
                     continue;
@@ -247,7 +250,11 @@ namespace Squared.Util.DeclarativeSort {
             if (rhs == lhs)
                 return lhs;
 
-            if (!lhs.TransitionCache.TryGetValue(rhs, out result)) {
+            bool existing;
+            lock (lhs.TransitionCache)
+                existing = lhs.TransitionCache.TryGetValue(rhs, out result);
+
+            if (!existing) {
                 var newTags = new Tag[lhs.Count + 1];
 
                 for (var i = 0; i < newTags.Length - 1; i++) {
@@ -259,12 +266,15 @@ namespace Squared.Util.DeclarativeSort {
                 }
 
                 newTags[newTags.Length - 1] = rhs;
-
+                
                 Array.Sort(newTags, Tag.Comparer.Instance);
 
                 result = New(newTags);
-
-                lhs.TransitionCache.Add(rhs, result);
+                
+                lock (lhs.TransitionCache) {
+                    if (!lhs.TransitionCache.ContainsKey(rhs))
+                        lhs.TransitionCache.Add(rhs, result);
+                }
             }
 
             return result;
@@ -273,6 +283,7 @@ namespace Squared.Util.DeclarativeSort {
         internal static TagSet New (Tag[] tags) {
             TagSet result;
 
+            lock (SetCache)
             if (!SetCache.TryGetValue(tags, out result))
                 SetCache.Add(tags, result = new TagSet(tags));
 
