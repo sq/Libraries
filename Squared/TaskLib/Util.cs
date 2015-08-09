@@ -422,7 +422,12 @@ namespace Squared.Task {
         long _Duration;
 
         public Sleep (double duration) {
-            DefaultTimeProvider = TaskScheduler.Current.TimeProvider;
+            var ts = TaskScheduler.Current;
+            if (ts != null)
+                DefaultTimeProvider = ts.TimeProvider;
+            else
+                DefaultTimeProvider = Time.DefaultTimeProvider;
+
             _InitialNow = DefaultTimeProvider.Ticks;
             _Duration = TimeSpan.FromSeconds(duration).Ticks;
         }
