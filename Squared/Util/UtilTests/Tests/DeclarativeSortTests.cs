@@ -114,6 +114,24 @@ namespace Squared.Util {
             var result = rs.Compare(A + B + C, A, out error);
             Assert.IsTrue(error is ContradictoryOrderingException);
             Assert.IsFalse(result.HasValue);
+            Console.WriteLine(error.Message);
+        }
+
+        [Test]
+        public void CompositeOrderings () {
+            var rs = new TagOrderingCollection {
+                {A + B, C + A}
+            };
+
+            Assert.AreEqual(0, rs.Compare(A, B));
+            Assert.AreEqual(0, rs.Compare(A + B, B));
+
+            Assert.AreEqual(-1, rs.Compare(A + B, C + A));
+            Assert.AreEqual(1, rs.Compare(C + A, A + B));
+
+            Assert.AreEqual(0, rs.Compare(A, A + B + C));
+            Assert.AreEqual(0, rs.Compare(B, A + B + C));
+            Assert.AreEqual(0, rs.Compare(C, A + B + C));
         }
     }
 }

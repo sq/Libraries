@@ -9,7 +9,7 @@ using RuleSet = System.Linq.Expressions.Expression<System.Func<bool>>;
 
 namespace Squared.Util.DeclarativeSort {
     public interface ITags {
-        bool Contains (Tag tag);
+        bool Contains (ITags tags);
         int Count { get; }
         Tag this [ int index ] { get; }
 
@@ -69,8 +69,17 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
-        bool ITags.Contains (Tag tag) {
-            return (tag == this);
+        bool ITags.Contains (ITags tags) {
+            bool result = false;
+
+            for (int i = 0, l = tags.Count; i < l; i++) {
+                if (tags[i] != this)
+                    return false;
+                else if (tags[i] == this)
+                    result = true;
+            }
+
+            return result;
         }
 
         public override int GetHashCode () {
@@ -124,58 +133,19 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public struct TagOrdering {
-        public readonly Tag Lower, Higher;
-
-        public TagOrdering (Tag lower, Tag higher) {
-            if (lower == null)
-                throw new ArgumentNullException(nameof(lower));
-            else if (higher == null)
-                throw new ArgumentNullException(nameof(higher));
-
-            Lower = lower;
-            Higher = higher;
-        }
-
-        public int Compare (ITags lhs, ITags rhs) {
-            if (lhs.Contains(Lower) && rhs.Contains(Higher))
-                return -1;
-
-            if (lhs.Contains(Higher) && rhs.Contains(Lower))
-                return 1;
-
-            return 0;
-        }
-
-        public override int GetHashCode () {
-            return Lower.Id ^ (Higher.Id << 8);
-        }
-
-        public bool Equals (TagOrdering rhs) {
-            return (Lower == rhs.Lower) && (Higher == rhs.Higher);
-        }
-
-        public override bool Equals (object rhs) {
-            if (rhs is TagOrdering)
-                return Equals((TagOrdering)rhs);
-            else
-                return false;
-        }
-
-        public override string ToString () {
-            return string.Format("{0} < {1}", Lower, Higher);
-        }
-    }
-
     public partial class TagSet : ITags {
         private static int NextId = 1;
 
         private readonly Tag[] Tags;
+        private readonly HashSet<Tag> HashSet = new HashSet<Tag>();
         public Dictionary<Tag, ITags> TransitionCache { get; private set; }
         public readonly int Id;
 
         private TagSet (Tag[] tags) {
             Tags = (Tag[]) tags.Clone();
+            foreach (var tag in tags)
+                HashSet.Add(tag);
+
             TransitionCache = new Dictionary<Tag, ITags>(Tag.EqualityComparer.Instance);
             Id = NextId++;
         }
@@ -192,12 +162,13 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
-        public bool Contains (Tag tag) {
-            for (var i = 0; i < Tags.Length; i++)
-                if (Tags[i] == tag)
-                    return true;
+        public bool Contains (ITags rhs) {
+            for (int l = rhs.Count, i = 0; i < l; i++) {
+                if (!HashSet.Contains(rhs[i]))
+                    return false;
+            }
 
-            return false;
+            return true;
         }
 
         public override int GetHashCode () {
@@ -209,7 +180,7 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public override string ToString () {
-            return string.Join<Tag>(", ", Tags);
+            return string.Format("<{0}>", string.Join<Tag>(", ", Tags));
         }
     }
 
@@ -297,23 +268,76 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
+    public struct TagOrdering {
+        public  readonly ITags Lower, Higher;
+        private readonly int   HashCode;
+
+        public TagOrdering (ITags lower, ITags higher) {
+            if (lower == null)
+                throw new ArgumentNullException(nameof(lower));
+            else if (higher == null)
+                throw new ArgumentNullException(nameof(higher));
+
+            Lower = lower;
+            Higher = higher;
+
+            HashCode = Lower.GetHashCode() ^ (Higher.GetHashCode() << 2);
+        }
+
+        public int Compare (ITags lhs, ITags rhs) {
+            if (lhs.Contains(Lower) && rhs.Contains(Higher))
+                return -1;
+
+            if (lhs.Contains(Higher) && rhs.Contains(Lower))
+                return 1;
+
+            return 0;
+        }
+
+        public override int GetHashCode () {
+            return HashCode;
+        }
+
+        public bool Equals (TagOrdering rhs) {
+            return (Lower == rhs.Lower) && (Higher == rhs.Higher);
+        }
+
+        public override bool Equals (object rhs) {
+            if (rhs is TagOrdering)
+                return Equals((TagOrdering)rhs);
+            else
+                return false;
+        }
+
+        public override string ToString () {
+            return string.Format("{0} < {1}", Lower, Higher);
+        }
+    }
+
     public class Group {
         public readonly string Name;
     }
 
     public class ContradictoryOrderingException : Exception {
         public readonly TagOrdering A, B;
+        public readonly ITags Left, Right;
 
-        public ContradictoryOrderingException (TagOrdering a, TagOrdering b) 
+        public ContradictoryOrderingException (TagOrdering a, TagOrdering b, ITags lhs, ITags rhs) 
             : base(
-                  string.Format("Orderings {0} and {1} are contradictory", a, b)
+                  string.Format("Orderings {0} and {1} are contradictory for {2}, {3}", a, b, lhs, rhs)
             ) {
             A = a;
             B = b;
+            Left = lhs;
+            Right = rhs;
         }
     }
 
     public class TagOrderingCollection : HashSet<TagOrdering> {
+        public void Add (ITags lower, ITags higher) {
+            Add(new TagOrdering(lower, higher));
+        }
+
         public int? Compare (ITags lhs, ITags rhs, out Exception error) {
             int result = 0;
             var lastOrdering = default(TagOrdering);
@@ -328,7 +352,7 @@ namespace Squared.Util.DeclarativeSort {
                     (Math.Sign(subResult) != Math.Sign(result))
                 ) {
                     error = new ContradictoryOrderingException(
-                        lastOrdering, ordering
+                        lastOrdering, ordering, lhs, rhs
                     );
                     return null;
                 } else {
