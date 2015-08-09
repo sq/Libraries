@@ -3,14 +3,21 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 
 using RuleSet = System.Linq.Expressions.Expression<System.Func<bool>>;
 
 namespace Squared.Util.DeclarativeSort {
     public interface ITags {
-        bool Contains (ITags tags);
+        /// <returns>Whether this tagset contains all the tags in rhs.</returns>
+        bool Contains (ITags rhs);
+
+        /// <summary>
+        /// The number of tags in this tagset.
+        /// </summary>
         int Count { get; }
+
         Tag this [ int index ] { get; }
 
         /// <summary>
@@ -131,6 +138,39 @@ namespace Squared.Util.DeclarativeSort {
 
             return result;
         }
+
+        /// <summary>
+        /// Finds all static Tag fields of type and ensures they are initialized.
+        /// If instance is provided, also initializes all non-static Tag fields of that instance.
+        /// </summary>
+        public static void AutoCreate (Type type, object instance = null) {
+            var flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+            if (instance != null)
+                flags |= BindingFlags.Instance;
+
+            var tTag = typeof(Tag);
+
+            foreach (var f in type.GetFields(flags)) {
+                if (f.FieldType != tTag)
+                    continue;
+
+                object lookupInstance = null;
+                if (!f.IsStatic)
+                    lookupInstance = instance;
+
+                var tag = f.GetValue(lookupInstance);
+                if (tag == null)
+                    f.SetValue(lookupInstance, New(f.Name));
+            }
+        }
+
+        /// <summary>
+        /// Finds all static Tag fields of type and ensures they are initialized.
+        /// If instance is provided, also initializes all non-static Tag fields of that instance.
+        /// </summary>
+        public static void AutoCreate<T> (T instance = default(T)) {
+            AutoCreate(typeof(T), instance);
+        }
     }
 
     public partial class TagSet : ITags {
@@ -162,6 +202,7 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
+        /// <returns>Whether this tagset contains all the tags in rhs.</returns>
         public bool Contains (ITags rhs) {
             for (int l = rhs.Count, i = 0; i < l; i++) {
                 if (!HashSet.Contains(rhs[i]))

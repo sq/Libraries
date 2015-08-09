@@ -134,4 +134,38 @@ namespace Squared.Util {
             Assert.AreEqual(0, rs.Compare(C, A + B + C));
         }
     }
+
+    [TestFixture]
+    public class AutoCreateTests {
+        public static Tag A, B, C;
+        public Tag D;
+
+        private void ValidateStaticInitialization () {
+            Assert.AreEqual("A", A.Name);
+            Assert.AreEqual("B", B.Name);
+            Assert.AreEqual("custom c", C.Name);
+        }
+
+        [Test]
+        public void AutoCreatesStaticTags () {
+            A = B = D = null;
+            C = Tag.New("custom c");
+
+            Tag.AutoCreate<AutoCreateTests>();
+            ValidateStaticInitialization();
+
+            Assert.AreEqual(null, D);
+        }
+
+        [Test]
+        public void AutoCreatesInstanceTags () {
+            A = B = D = null;
+            C = Tag.New("custom c");
+
+            Tag.AutoCreate(this);
+
+            ValidateStaticInitialization();
+            Assert.AreEqual("D", D.Name);
+        }
+    }
 }
