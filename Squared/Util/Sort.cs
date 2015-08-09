@@ -7,6 +7,18 @@ using tIndex = System.Int32;
 using tCount = System.Int32;
 
 namespace Squared.Util {
+    public class ReferenceComparer<T> : IEqualityComparer<T>
+        where T : class {
+
+        public bool Equals (T x, T y) {
+            return (x == y);
+        }
+
+        public int GetHashCode (T obj) {
+            return obj.GetHashCode();
+        }
+    }
+
     public static class Sort {
         public static void Timsort<T> (T[] data, int? offset = null, int? count = null, IComparer<T> comparer = null) {
             if (comparer == null)

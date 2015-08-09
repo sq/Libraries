@@ -4,18 +4,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Squared.Game {
-    public class ReferenceComparer<T> : IEqualityComparer<T>
-        where T : class {
-
-        public bool Equals (T x, T y) {
-            return (x == y);
-        }
-
-        public int GetHashCode (T obj) {
-            return obj.GetHashCode();
-        }
-    }
-
     public static class GameExtensionMethods {
         public static double NextDouble (this Random random, double min, double max) {
             return (random.NextDouble() * (max - min)) + min;
