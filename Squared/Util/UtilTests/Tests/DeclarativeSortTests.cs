@@ -23,29 +23,29 @@ namespace Squared.Util.DeclarativeSort {
 
         [Test]
         public void AddSelfIsNoOp () {
-            Assert.AreSame(A, A + A);
-            Assert.AreSame(A, A + A + A);
+            Assert.AreSame(A, (Tag)(A + A));
+            Assert.AreSame(A, (Tag)(A + A + A));
 
             var ab = A + B;
-            Assert.AreSame(ab, ab + (TagSet)ab);
-            Assert.AreSame(ab, ab + A);
+            Assert.AreSame((TagSet)ab, (TagSet)(ab + ab));
+            Assert.AreSame((TagSet)ab, (TagSet)(ab + A));
         }
 
         [Test]
         public void TagSetsAreInterned () {
             var ab = A + B;
-            Assert.AreSame(B + A, ab);
+            Assert.AreSame((TagSet)(B + A), (TagSet)ab);
         }
 
         [Test]
         public void RedundantAddIsNoOp () {
             var ab = A + B;
-            Assert.AreSame(B + A + B, ab);
+            Assert.AreSame((TagSet)(B + A + B), (TagSet)ab);
         }
 
         [Test]
         public void Contains () {
-            var a = (ITags)A;
+            var a = (Tags)A;
             Assert.IsTrue(a.Contains(A));
             Assert.IsFalse(a.Contains(B));
 
@@ -104,13 +104,14 @@ namespace Squared.Util.DeclarativeSort {
 
         [Test]
         public void CompareAbortsOnContradiction () {
+            // TODO: Abort at construction time
             var rs = new TagOrderingCollection {
                 A < B,
-                A > C
+                B < A
             };
 
             Exception error;
-            var result = rs.Compare(A + B + C, A, out error);
+            var result = rs.Compare(A, B, out error);
             Assert.IsTrue(error is ContradictoryOrderingException);
             Assert.IsFalse(result.HasValue);
             Console.WriteLine(error.Message);
@@ -119,7 +120,7 @@ namespace Squared.Util.DeclarativeSort {
         [Test]
         public void CompositeOrderings () {
             var rs = new TagOrderingCollection {
-                {A + B, C + A}
+                (A + B) < (C + A)
             };
 
             Assert.AreEqual(0, rs.Compare(A, B));
