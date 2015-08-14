@@ -23,24 +23,24 @@ namespace Squared.Util.DeclarativeSort {
 
         [Test]
         public void AddSelfIsNoOp () {
-            Assert.AreSame(A, (Tag)(A + A));
-            Assert.AreSame(A, (Tag)(A + A + A));
+            Assert.AreSame(A, (A + A).Object);
+            Assert.AreSame(A, (A + A + A).Object);
 
             var ab = A + B;
-            Assert.AreSame((TagSet)ab, (TagSet)(ab + ab));
-            Assert.AreSame((TagSet)ab, (TagSet)(ab + A));
+            Assert.AreSame(ab.Object, (ab + ab).Object);
+            Assert.AreSame(ab.Object, (ab + A).Object);
         }
 
         [Test]
         public void TagSetsAreInterned () {
             var ab = A + B;
-            Assert.AreSame((TagSet)(B + A), (TagSet)ab);
+            Assert.AreSame((B + A).Object, ab.Object);
         }
 
         [Test]
         public void RedundantAddIsNoOp () {
             var ab = A + B;
-            Assert.AreSame((TagSet)(B + A + B), (TagSet)ab);
+            Assert.AreSame((B + A + B).Object, ab.Object);
         }
 
         [Test]

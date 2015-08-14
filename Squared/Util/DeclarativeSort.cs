@@ -220,20 +220,10 @@ namespace Squared.Util.DeclarativeSort {
             return new Tags(tagSet);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
-        public static explicit operator Tag (Tags tags) {
-            if (tags.Tag == null)
-                throw new InvalidOperationException("Contains a TagSet");
-            else
-                return tags.Tag;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
-        public static explicit operator TagSet (Tags tags) {
-            if (tags.TagSet == null)
-                throw new InvalidOperationException("Contains a Tag");
-            else
-                return tags.TagSet;
+        public object Object {
+            get {
+                return (object)Tag ?? (object)TagSet;
+            }
         }
     }
 
@@ -279,7 +269,10 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public override bool Equals (object obj) {
-            return ReferenceEquals(this, obj);
+            if (obj is Tags)
+                return ReferenceEquals(this, ((Tags)obj).Object);
+            else
+                return ReferenceEquals(this, obj);
         }
 
         public override string ToString () {
@@ -356,7 +349,7 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public partial class TagSet {
+    public partial class TagSet : IEnumerable<Tag> {
         private static int NextId = 1;
 
         private readonly HashSet<Tag> HashSet = new HashSet<Tag>();
@@ -398,13 +391,21 @@ namespace Squared.Util.DeclarativeSort {
 
         public override bool Equals (object obj) {
             if (obj is Tags)
-                return (obj) == this;
+                return ReferenceEquals(this, ((Tags)obj).Object);
             else
                 return ReferenceEquals(this, obj);
         }
 
         public override string ToString () {
             return string.Format("<{0}>", string.Join<Tag>(", ", Tags));
+        }
+
+        IEnumerator<Tag> IEnumerable<Tag>.GetEnumerator () {
+            return ((IEnumerable<Tag>)Tags).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return Tags.GetEnumerator();
         }
     }
 
