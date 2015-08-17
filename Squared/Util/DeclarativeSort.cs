@@ -601,7 +601,7 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public class TagOrderingCollection : HashSet<TagOrdering> {
+    public class TagOrderingCollection : List<TagOrdering> {
         public int? Compare (Tags lhs, Tags rhs, out Exception error) {
             int result = 0;
             var lastOrdering = default(TagOrdering);

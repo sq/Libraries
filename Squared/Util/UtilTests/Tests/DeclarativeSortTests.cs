@@ -73,20 +73,6 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         [Test]
-        public void RulesAreUnique () {
-            var sorter = new Sorter {
-                A < B,
-                B < C
-            };
-
-            Assert.AreEqual(2, sorter.Orderings.Count);
-
-            sorter.Add(A < B);
-
-            Assert.AreEqual(2, sorter.Orderings.Count);
-        }
-
-        [Test]
         public void CanCompareUsingOrderings () {
             var rs = new TagOrderingCollection {
                 A < B,
