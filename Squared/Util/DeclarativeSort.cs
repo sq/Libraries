@@ -6,7 +6,18 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace Squared.Util.DeclarativeSort {
+    public interface IHasTags {
+        void GetTags (out Tags tags);
+    }
+
+    public interface IValueExtractor<TValue> {
+        bool GetTags                 (ref TValue value, out Tags tags);
+        bool GetAttribute<TAttribute>(ref TValue value, out TAttribute attribute);
+    }
+
     public struct Tags {
+        public static readonly Tags Null = default(Tags);
+
         private readonly Tag Tag;
         private readonly TagSet TagSet;
 
@@ -29,8 +40,10 @@ namespace Squared.Util.DeclarativeSort {
         public bool Contains (Tags tags) {
             if (TagSet != null)
                 return TagSet.Contains(tags);
-            else
+            else if (Tag != null)
                 return (tags.Count == 1) && (Tag == tags[0]);
+            else
+                return false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
@@ -86,8 +99,10 @@ namespace Squared.Util.DeclarativeSort {
             get {
                 if (TagSet != null)
                     return TagSet.Tags.Length;
-                else
+                else if (Tag != null)
                     return 1;
+                else
+                    return 0;
             }
         }
 
@@ -96,8 +111,10 @@ namespace Squared.Util.DeclarativeSort {
             get {
                 if (TagSet != null)
                     return TagSet.Tags[index];
-                else
+                else if (Tag != null)
                     return Tag;
+                else
+                    throw new IndexOutOfRangeException();
             }
         }
 
@@ -106,23 +123,30 @@ namespace Squared.Util.DeclarativeSort {
             get {
                 if (TagSet != null)
                     return TagSet.TransitionCache;
-                else
+                else if (Tag != null)
                     return Tag.TransitionCache;
+                else
+                    // FIXME
+                    throw new InvalidOperationException();
             }
         }
 
         public override int GetHashCode () {
             if (Tag != null)
                 return Tag.GetHashCode();
-            else
+            else if (TagSet != null)
                 return TagSet.GetHashCode();
+            else
+                return 0;
         }
 
         public override string ToString () {
             if (Tag != null)
                 return Tag.ToString();
-            else
+            else if (TagSet != null)
                 return TagSet.ToString();
+            else
+                return "<Null Tags>";
         }
 
         public static bool operator == (Tags lhs, Tags rhs) {
@@ -352,6 +376,7 @@ namespace Squared.Util.DeclarativeSort {
     public partial class TagSet : IEnumerable<Tag> {
         private static int NextId = 1;
 
+        private string _CachedToString;
         private readonly HashSet<Tag> HashSet = new HashSet<Tag>();
         internal readonly Tag[] Tags;
         internal Dictionary<Tag, Tags> TransitionCache { get; private set; }
@@ -397,7 +422,10 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public override string ToString () {
-            return string.Format("<{0}>", string.Join<Tag>(", ", Tags));
+            if (_CachedToString != null)
+                return _CachedToString;
+
+            return _CachedToString = string.Format("<{0}>", string.Join<Tag>(", ", Tags.OrderBy(t => t.ToString())));
         }
 
         IEnumerator<Tag> IEnumerable<Tag>.GetEnumerator () {
@@ -613,7 +641,86 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
+    public class NullValueExtractor<TValue> : IValueExtractor<TValue> {
+        public bool GetAttribute<TAttribute>(ref TValue value, out TAttribute attribute) {
+            attribute = default(TAttribute);
+            return false;
+        }
+
+        public bool GetTags (ref TValue value, out Tags tags) {
+            tags = default(Tags);
+            return false;
+        }
+    }
+
+    public class HasTagsValueExtractor<TValue> : IValueExtractor<TValue>
+        where TValue : IHasTags {
+
+        public bool GetAttribute<TAttribute>(ref TValue value, out TAttribute attribute) {
+            attribute = default(TAttribute);
+            return false;
+        }
+
+        public bool GetTags (ref TValue value, out Tags tags) {
+            value.GetTags(out tags);
+            return true;
+        }
+    }
+
+    public static class ValueExtractor<TValue> {
+        public static IValueExtractor<TValue> Default {
+            get;
+            private set;
+        }
+
+        static ValueExtractor () {
+            var t = typeof(TValue);
+            var tHasTags = typeof(IHasTags);
+
+            if (tHasTags.IsAssignableFrom(t)) {
+                var tExtractor = typeof(HasTagsValueExtractor<>).MakeGenericType(new[] { t });
+                Default = (IValueExtractor<TValue>)Activator.CreateInstance(tExtractor);
+            } else {
+                Default = new NullValueExtractor<TValue>();
+            }
+        }
+    }
+
     public class Sorter : IEnumerable<TagOrdering> {
+        private class ValueComparer<TValue> : IComparer<TValue> {
+            public readonly Sorter                  Sorter;
+            public readonly IValueExtractor<TValue> Extractor;
+            public readonly bool                    Ascending;
+
+            public ValueComparer (Sorter sorter, IValueExtractor<TValue> extractor, bool ascending) {
+                Sorter = sorter;
+                Extractor = extractor;
+                Ascending = ascending;
+            }
+
+            public int Compare (TValue lhs, TValue rhs) {
+                Tags lhsTags = default(Tags), rhsTags = default(Tags);
+
+                var tagsValid = Extractor.GetTags(ref lhs, out lhsTags) &&
+                                Extractor.GetTags(ref rhs, out rhsTags);
+
+                if (!tagsValid)
+                    return 0;
+
+                foreach (var rule in Sorter.Orderings) {
+                    var result = rule.Compare(lhsTags, rhsTags);
+
+                    if (result != 0) {
+                        return (Ascending)
+                                ? result
+                                : -result;
+                    }
+                }
+
+                return 0;
+            }
+        }
+
         public readonly TagOrderingCollection Orderings = new TagOrderingCollection();
 
         public void Add (TagOrdering ordering) {
@@ -623,6 +730,26 @@ namespace Squared.Util.DeclarativeSort {
         public void Add (params TagOrdering[] orderings) {
             foreach (var o in orderings)
                 Orderings.Add(o);
+        }
+
+        public void Sort<TValue> (TValue[] values, bool ascending = true) {
+            Sort(values, ValueExtractor<TValue>.Default, ascending: ascending);
+        }
+
+        public void Sort<TValue> (ArraySegment<TValue> values, bool ascending = true) {
+            Sort(values, ValueExtractor<TValue>.Default, ascending: ascending);
+        }
+
+        public void Sort<TValue> (TValue[] values, IValueExtractor<TValue> extractor, bool ascending = true) {
+            Sort(new ArraySegment<TValue>(values), extractor, ascending: ascending);
+        }
+
+        public void Sort<TValue> (ArraySegment<TValue> values, IValueExtractor<TValue> extractor, bool ascending = true) {
+            Array.Sort(
+                values.Array, values.Offset, values.Count,
+                // Heap allocation :-(
+                new ValueComparer<TValue>(this, extractor, ascending)
+            );
         }
 
         IEnumerator IEnumerable.GetEnumerator () {

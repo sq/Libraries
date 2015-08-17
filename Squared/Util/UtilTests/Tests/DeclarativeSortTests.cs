@@ -168,4 +168,66 @@ namespace Squared.Util.DeclarativeSort {
             Assert.AreEqual("D", D.Name);
         }
     }
+
+    public struct Taggable : IHasTags {
+        public readonly Tags Tags;
+
+        public Taggable (Tags tags) {
+            Tags = tags;
+        }
+
+        public void GetTags (out Tags tags) {
+            tags = Tags;
+        }
+
+        public static implicit operator Taggable (Tag tag) {
+            return new Taggable(tag);
+        }
+
+        public static implicit operator Taggable (Tags tags) {
+            return new Taggable(tags);
+        }
+
+        public override string ToString () {
+            return Tags.ToString();
+        }
+    }
+
+    [TestFixture]
+    public class DSValueSortingTests {
+        public Tag A, B, C, D;
+        public Sorter Sorter;
+
+        [TestFixtureSetUp]
+        public void SetUp () {
+            Tag.AutoCreate(this);
+
+            Sorter = new Sorter {
+                A < B,
+                B < C,
+                C < D
+            };
+        }
+
+        [Test]
+        public void SortsValuesImplementingInterface () {
+            var values = new Taggable[] {
+                A,
+                A + B,
+                A + C + B + D,
+                A + C,
+                A + D,
+                B,
+                B + C,                
+                C,
+                C + D,
+            };
+
+            Sorter.Sort(values, ascending: true);
+            Console.WriteLine(string.Join(", ", values));
+
+            Sorter.Sort(values, ascending: false);
+            Console.WriteLine(string.Join(", ", values));
+        }
+    }
 }
