@@ -222,6 +222,7 @@ namespace Squared.Util.DeclarativeSort {
                 );
             }
 
+            var preReverse = (Taggable[])values.Clone();
             Sorter.Sort(values, ascending: false);
             Console.WriteLine(string.Join(", ", values));
 
@@ -234,6 +235,8 @@ namespace Squared.Util.DeclarativeSort {
                     "Expected {0} >= {1}", lhs, rhs
                 );
             }
+
+            Assert.AreNotEqual(values, preReverse);
         }
     }
 }

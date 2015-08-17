@@ -85,8 +85,11 @@ namespace Squared.Util.DeclarativeSort {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public override bool Equals (object obj) {
+            if (obj == null)
+                return false;
+
             if (obj is Tags)
-                return Equals(obj);
+                return Equals((Tags)obj);
 
             var tag = obj as Tag;
             if (tag != null)
@@ -560,19 +563,13 @@ namespace Squared.Util.DeclarativeSort {
         public int Compare (Tags lhs, Tags rhs) {
             var lhsContainsLower  = lhs.Contains(Lower);
             var rhsContainsLower  = rhs.Contains(Lower);
+            if (lhsContainsLower && rhsContainsLower)
+                return 0;
 
             var lhsContainsHigher = lhs.Contains(Higher);
             var rhsContainsHigher = rhs.Contains(Higher);
-
-            if (lhsContainsLower || rhsContainsLower) {
-                if (lhsContainsHigher && rhsContainsHigher)
-                    return 0;
-            }
-
-            if (lhsContainsHigher || rhsContainsHigher) {
-                if (lhsContainsLower && rhsContainsLower)
-                    return 0;
-            }
+            if (lhsContainsHigher && rhsContainsHigher)
+                return 0;
 
             if (lhsContainsLower && rhsContainsHigher)
                 return -1;
