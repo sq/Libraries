@@ -2,12 +2,17 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace Squared.Util.DeclarativeSort {
     public interface IHasTags {
         void GetTags (out Tags tags);
+    }
+
+    public interface IHasAttribute<TAttribute> {
+        void GetAttribute (out TAttribute attribute);
     }
 
     public interface IValueExtractor<TValue> {
@@ -553,10 +558,26 @@ namespace Squared.Util.DeclarativeSort {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public int Compare (Tags lhs, Tags rhs) {
-            if (lhs.Contains(Lower) && rhs.Contains(Higher))
+            var lhsContainsLower  = lhs.Contains(Lower);
+            var rhsContainsLower  = rhs.Contains(Lower);
+
+            var lhsContainsHigher = lhs.Contains(Higher);
+            var rhsContainsHigher = rhs.Contains(Higher);
+
+            if (lhsContainsLower || rhsContainsLower) {
+                if (lhsContainsHigher && rhsContainsHigher)
+                    return 0;
+            }
+
+            if (lhsContainsHigher || rhsContainsHigher) {
+                if (lhsContainsLower && rhsContainsLower)
+                    return 0;
+            }
+
+            if (lhsContainsLower && rhsContainsHigher)
                 return -1;
 
-            if (lhs.Contains(Higher) && rhs.Contains(Lower))
+            if (lhsContainsHigher && rhsContainsLower)
                 return 1;
 
             return 0;
@@ -653,8 +674,40 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public class HasTagsValueExtractor<TValue> : IValueExtractor<TValue>
-        where TValue : IHasTags {
+    public class GenericValueExtractor<TValue> : IValueExtractor<TValue> {
+        delegate bool TagGetter                  (ref TValue value, out Tags tags);
+        delegate bool AttributeGetter<TAttribute>(ref TValue value, out TAttribute attribute);
+
+        private readonly TagGetter                  _GetTags;
+        private readonly Dictionary<Type, Delegate> _GetAttributeTable = new Dictionary<Type, Delegate>();
+
+        public GenericValueExtractor () {
+            var t        = typeof(TValue);
+            var tHasTags = typeof(IHasTags);
+            var flags    = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+
+            if (tHasTags.IsAssignableFrom(t)) {
+                var pValue = Expression.Parameter(t.MakeByRefType(), "value");
+                var pTags  = Expression.Parameter(typeof(Tags).MakeByRefType(), "tags");
+
+                var tagGetter = Expression.Lambda<TagGetter>(
+                    Expression.Block(
+                        Expression.Assign(pTags, Expression.Default(typeof(Tags))),
+                        Expression.Call(pValue, t.GetMethod("GetTags", flags), pTags),
+                        Expression.Constant(true, typeof(bool))
+                    ),
+                    pValue, pTags
+                );
+                _GetTags = tagGetter.Compile();
+            } else {
+                _GetTags = _NullGetTags;
+            }
+        }
+
+        private static bool _NullGetTags (ref TValue value, out Tags tags) {
+            tags = default(Tags);
+            return false;
+        }
 
         public bool GetAttribute<TAttribute>(ref TValue value, out TAttribute attribute) {
             attribute = default(TAttribute);
@@ -662,8 +715,7 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public bool GetTags (ref TValue value, out Tags tags) {
-            value.GetTags(out tags);
-            return true;
+            return _GetTags(ref value, out tags);
         }
     }
 
@@ -674,15 +726,8 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         static ValueExtractor () {
-            var t = typeof(TValue);
-            var tHasTags = typeof(IHasTags);
-
-            if (tHasTags.IsAssignableFrom(t)) {
-                var tExtractor = typeof(HasTagsValueExtractor<>).MakeGenericType(new[] { t });
-                Default = (IValueExtractor<TValue>)Activator.CreateInstance(tExtractor);
-            } else {
-                Default = new NullValueExtractor<TValue>();
-            }
+            // FIXME: Less-than-optimal performance
+            Default = new GenericValueExtractor<TValue>();
         }
     }
 
@@ -707,17 +752,10 @@ namespace Squared.Util.DeclarativeSort {
                 if (!tagsValid)
                     return 0;
 
-                foreach (var rule in Sorter.Orderings) {
-                    var result = rule.Compare(lhsTags, rhsTags);
-
-                    if (result != 0) {
-                        return (Ascending)
-                                ? result
-                                : -result;
-                    }
-                }
-
-                return 0;
+                var result = Sorter.Orderings.Compare(lhsTags, rhsTags);
+                return (Ascending)
+                    ? result
+                    : -result;
             }
         }
 

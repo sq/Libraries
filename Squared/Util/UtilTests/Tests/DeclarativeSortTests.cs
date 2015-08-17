@@ -200,20 +200,40 @@ namespace Squared.Util.DeclarativeSort {
             var values = new Taggable[] {
                 A,
                 A + B,
-                A + C + B + D,
-                A + C,
-                A + D,
+                A + B + C,
                 B,
-                B + C,                
+                B + C + D,
                 C,
                 C + D,
+                D
             };
+            int l = values.Length - 1;
 
             Sorter.Sort(values, ascending: true);
             Console.WriteLine(string.Join(", ", values));
 
+            for (var i = 0; i < l; i++) {
+                var lhs = values[i];
+                var rhs = values[i + 1];
+
+                Assert.IsFalse(
+                    Sorter.Orderings.Compare(lhs.Tags, rhs.Tags) > 0,
+                    "Expected {0} <= {1}", lhs, rhs
+                );
+            }
+
             Sorter.Sort(values, ascending: false);
             Console.WriteLine(string.Join(", ", values));
+
+            for (var i = 0; i < l; i++) {
+                var lhs = values[i];
+                var rhs = values[i + 1];
+
+                Assert.IsFalse(
+                    Sorter.Orderings.Compare(lhs.Tags, rhs.Tags) < 0,
+                    "Expected {0} >= {1}", lhs, rhs
+                );
+            }
         }
     }
 }
