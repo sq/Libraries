@@ -37,6 +37,11 @@ namespace Squared.Util.DeclarativeSort {
             TagSet = tagSet;
         }
 
+        public static Tags[] GetAllTags () {
+            lock (Registry)
+                return Registry.Values.ToArray();
+        }
+
         public bool Contains (Tags tags) {
             if (TagSet != null)
                 return TagSet.Contains(tags);
@@ -570,27 +575,6 @@ namespace Squared.Util.DeclarativeSort {
             HashCode = Lower.GetHashCode() ^ (Higher.GetHashCode() << 2);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
-        public int Compare (Tags lhs, Tags rhs) {
-            var lhsContainsLower  = lhs.Contains(Lower);
-            var rhsContainsLower  = rhs.Contains(Lower);
-            if (lhsContainsLower && rhsContainsLower)
-                return 0;
-
-            var lhsContainsHigher = lhs.Contains(Higher);
-            var rhsContainsHigher = rhs.Contains(Higher);
-            if (lhsContainsHigher && rhsContainsHigher)
-                return 0;
-
-            if (lhsContainsLower && rhsContainsHigher)
-                return -1;
-
-            if (lhsContainsHigher && rhsContainsLower)
-                return 1;
-
-            return 0;
-        }
-
         public override int GetHashCode () {
             return HashCode;
         }
@@ -633,7 +617,7 @@ namespace Squared.Util.DeclarativeSort {
         private int    CachedTagCount = 0;
         private int[]  SortKeys       = null;
 
-        internal int[] GetSortKeys () {
+        public int[] GetSortKeys () {
             lock (SortKeyLock) {
                 int tagCount;
                 lock (Tags.Registry)
@@ -674,7 +658,6 @@ namespace Squared.Util.DeclarativeSort {
                     // HACK: Break this cycle. The assumption is that for
                     //  any pair of tags where an ordering rule forms a cycle, we ignore the rule.
                     // FIXME: Does this produce valid results?
-                    state.Remove(id);
                     return false;
 
                     /*
@@ -712,6 +695,9 @@ namespace Squared.Util.DeclarativeSort {
             }
 
             // Assign this tag the next sort index.
+            if (result[id] != 0)
+                throw new Exception("Topological sort visited tag twice: " + value);
+
             result[id] = nextIndex++;
             state[id] = false;
             return true;
@@ -753,49 +739,79 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public class Sorter<TValue> : IEnumerable<TagOrdering> {
-        private class ValueComparer<TValue> : IComparer<TValue> {
+    public class Sorter<TValue> : IEnumerable<Sorter<TValue>.SortRule> {
+        public abstract class SortRule {
+        }
+
+        public class TagSortRule : SortRule {
+            public readonly Func<TValue, Tags>    GetTags;
+            public readonly TagOrderingCollection Orderings = new TagOrderingCollection();
+
+            public TagSortRule (Func<TValue, Tags> getTags) {
+                if (getTags == null)
+                    throw new ArgumentNullException("getTags");
+
+                GetTags = getTags;
+            }
+        }
+
+        private class ValueComparer : IComparer<TValue> {
             public readonly Sorter<TValue>          Sorter;
-            public readonly int[]                   TagSortKeys;
             public readonly bool                    Ascending;
 
-            public ValueComparer (Sorter<TValue> sorter, int[] tagSortKeys, bool ascending) {
+            private readonly int[][]              SortKeys;
+            private readonly Func<TValue, Tags>[] GetTags;
+
+            public ValueComparer (Sorter<TValue> sorter, bool ascending) {
                 Sorter = sorter;
-                TagSortKeys = tagSortKeys;
                 Ascending = ascending;
+
+                SortKeys = new int[Sorter.Rules.Count][];
+                GetTags  = new Func<TValue, Tags>[Sorter.Rules.Count];
+
+                for (var i = 0; i < Sorter.Rules.Count; i++) {
+                    SortKeys[i] = Sorter.Rules[i].Orderings.GetSortKeys();
+                    GetTags[i]  = Sorter.Rules[i].GetTags;
+                }
             }
 
             public int Compare (TValue lhs, TValue rhs) {
-                if (Sorter.GetTags == null)
-                    return 0;
+                for (var i = 0; i < SortKeys.Length; i++) {
+                    var gt = GetTags[i];
+                    var sk = SortKeys[i];
 
-                var lhsTags = Sorter.GetTags(lhs);
-                var rhsTags = Sorter.GetTags(rhs);
+                    var lhsTags = gt(lhs);
+                    var rhsTags = gt(rhs);
 
-                var lhsKey = TagSortKeys[lhsTags.Id];
-                var rhsKey = TagSortKeys[rhsTags.Id];
+                    var lhsKey = sk[lhsTags.Id];
+                    var rhsKey = sk[rhsTags.Id];
 
-                var result = lhsKey.CompareTo(rhsKey);
-                return (Ascending)
-                    ? result
-                    : -result;
+                    var result = lhsKey.CompareTo(rhsKey);
+                    if (result == 0)
+                        continue;
+
+                    return (Ascending)
+                        ? result
+                        : -result;
+                }
+
+                return 0;
             }
         }
 
-        public readonly TagOrderingCollection Orderings = new TagOrderingCollection();
-        public readonly Func<TValue, Tags>    GetTags;
+        private readonly List<TagSortRule> Rules = new List<TagSortRule>();
 
-        public Sorter (Func<TValue, Tags> getTags = null) {
-            GetTags = getTags;
+        public Sorter () {
         }
 
-        public void Add (TagOrdering ordering) {
-            Orderings.Add(ordering);
-        }
+        public TagSortRule Add (Func<TValue, Tags> getTags, params TagOrdering[] orderings) {
+            var result = new TagSortRule(getTags);
 
-        public void Add (params TagOrdering[] orderings) {
             foreach (var o in orderings)
-                Orderings.Add(o);
+                result.Orderings.Add(o);
+
+            Rules.Add(result);
+            return result;
         }
 
         public void Sort (TValue[] values, bool ascending = true) {
@@ -803,21 +819,34 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public void Sort (ArraySegment<TValue> values, bool ascending = true) {
-            var keys = Orderings.GetSortKeys();
-
             Array.Sort(
                 values.Array, values.Offset, values.Count,
                 // Heap allocation :-(
-                new ValueComparer<TValue>(this, keys, ascending)
+                new ValueComparer(this, ascending)
+            );
+        }
+
+        public void Sort<TTag> (TValue[] values, TTag[] tags, bool ascending = true) {
+            Sort(
+                new ArraySegment<TValue>(values), tags, 
+                ascending: ascending
+            );
+        }
+
+        public void Sort<TTag> (ArraySegment<TValue> values, TTag[] tags, bool ascending = true) {
+            Array.Sort(
+                values.Array, tags, values.Offset, values.Count,
+                // Heap allocation :-(
+                new ValueComparer(this, ascending)
             );
         }
 
         IEnumerator IEnumerable.GetEnumerator () {
-            return Orderings.GetEnumerator();
+            return Rules.GetEnumerator();
         }
 
-        IEnumerator<TagOrdering> IEnumerable<TagOrdering>.GetEnumerator () {
-            return Orderings.GetEnumerator();
+        public IEnumerator<SortRule> GetEnumerator () {
+            return Rules.GetEnumerator();
         }
     }
 }

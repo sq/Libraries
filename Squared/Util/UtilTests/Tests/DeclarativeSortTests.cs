@@ -183,10 +183,8 @@ namespace Squared.Util.DeclarativeSort {
         public void SetUp () {
             Tag.AutoCreate(this);
 
-            Sorter = new Sorter<Taggable> (t => t.Tags) {
-                A < B,
-                B < C,
-                C < D
+            Sorter = new Sorter<Taggable> {
+                { t => t.Tags, A < B, B < C, C < D }
             };
         }
 
