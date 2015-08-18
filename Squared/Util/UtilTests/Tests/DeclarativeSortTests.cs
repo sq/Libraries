@@ -182,13 +182,13 @@ namespace Squared.Util.DeclarativeSort {
     [TestFixture]
     public class DSValueSortingTests {
         public Tag A, B, C, D;
-        public Sorter Sorter;
+        public Sorter<Taggable> Sorter;
 
         [TestFixtureSetUp]
         public void SetUp () {
             Tag.AutoCreate(this);
 
-            Sorter = new Sorter {
+            Sorter = new Sorter<Taggable> (t => t.Tags) {
                 A < B,
                 B < C,
                 C < D

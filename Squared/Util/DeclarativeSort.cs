@@ -5,22 +5,17 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Squared.Util.DeclarativeSort {
     public interface IHasTags {
         void GetTags (out Tags tags);
     }
 
-    public interface IHasAttribute<TAttribute> {
-        void GetAttribute (out TAttribute attribute);
-    }
-
-    public interface IValueExtractor<TValue> {
-        bool GetTags                 (ref TValue value, out Tags tags);
-        bool GetAttribute<TAttribute>(ref TValue value, out TAttribute attribute);
-    }
-
     public struct Tags {
+        internal static int NextId = 1;
+        internal static readonly Dictionary<int, Tags> Registry = new Dictionary<int, Tags>();
+
         public static readonly Tags Null = default(Tags);
 
         private readonly Tag Tag;
@@ -283,7 +278,6 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
-        private static int NextId = 1;
         private static readonly Dictionary<string, Tag> TagCache = new Dictionary<string, Tag>();
 
         internal readonly Dictionary<Tag, Tags> TransitionCache = new Dictionary<Tag, Tags>(EqualityComparer.Instance);
@@ -293,7 +287,10 @@ namespace Squared.Util.DeclarativeSort {
 
         internal Tag (string name) {
             Name = name;
-            Id = NextId++;
+            Id = Interlocked.Increment(ref Tags.NextId);
+
+            lock (Tags.Registry)
+                Tags.Registry[Id] = new Tags(this);
         }
 
         public override int GetHashCode () {
@@ -382,8 +379,6 @@ namespace Squared.Util.DeclarativeSort {
     }
 
     public partial class TagSet : IEnumerable<Tag> {
-        private static int NextId = 1;
-
         private string _CachedToString;
         private readonly HashSet<Tag> HashSet = new HashSet<Tag>();
         internal readonly Tag[] Tags;
@@ -401,7 +396,11 @@ namespace Squared.Util.DeclarativeSort {
                 HashSet.Add(tag);
 
             TransitionCache = new Dictionary<Tag, Tags>(Tag.EqualityComparer.Instance);
-            Id = NextId++;
+
+            Id = Interlocked.Increment(ref DeclarativeSort.Tags.NextId);
+
+            lock (DeclarativeSort.Tags.Registry)
+                DeclarativeSort.Tags.Registry[Id] = new Tags(this);
         }
 
         /// <returns>Whether this tagset contains all the tags in rhs.</returns>
@@ -619,12 +618,90 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public class TagOrderingCollection : List<TagOrdering> {
+    public class TagOrderingCollection : IEnumerable<TagOrdering> {
+        private readonly List<TagOrdering> Orderings = new List<TagOrdering>();
+
+        private object SortKeyLock    = new object();
+        private int    CachedTagCount = 0;
+        private int[]  SortKeys       = null;
+
+        private void Invalidate () {
+            lock (SortKeyLock)
+                SortKeys = null;
+        }
+
+        private int[] GetSortKeys () {
+            lock (SortKeyLock) {
+                int tagCount;
+                lock (Tags.Registry)
+                    tagCount = Tags.Registry.Count;
+
+                if (CachedTagCount != tagCount)
+                    SortKeys = null;
+                else if (SortKeys != null)
+                    return SortKeys;
+
+                return SortKeys = GenerateSortKeys();
+            }
+        }
+
+        private int[] GenerateSortKeys () {
+            return null;
+        }
+
+        public static IList<T> Sort<T>(IEnumerable<T> source, Func<T, IEnumerable<T>> getDependencies)
+        {
+            var sorted = new List<T>();
+            var visited = new Dictionary<T, bool>();
+
+            foreach (var item in source)
+            {
+                Visit(item, getDependencies, sorted, visited);
+            }
+
+            return sorted;
+        }
+
+        public static void Visit<T>(T item, Func<T, IEnumerable<T>> getDependencies, List<T> sorted, Dictionary<T, bool> visited)
+        {
+            bool inProcess;
+            var alreadyVisited = visited.TryGetValue(item, out inProcess);
+
+            if (alreadyVisited)
+            {
+                if (inProcess)
+                {
+                    throw new ArgumentException("Cyclic dependency found.");
+                }
+            }
+            else
+            {
+                visited[item] = true;
+
+                var dependencies = getDependencies(item);
+                if (dependencies != null)
+                {
+                    foreach (var dependency in dependencies)
+                    {
+                        Visit(dependency, getDependencies, sorted, visited);
+                    }
+                }
+
+                visited[item] = false;
+                sorted.Add(item);
+            }
+        }
+
+        public void Add (TagOrdering ordering) {
+            Orderings.Add(ordering);
+            Invalidate();
+        }
+
         public int? Compare (Tags lhs, Tags rhs, out Exception error) {
             int result = 0;
             var lastOrdering = default(TagOrdering);
 
-            foreach (var ordering in this) {
+            foreach (var ordering in Orderings) {
                 var subResult = ordering.Compare(lhs, rhs);
 
                 if (subResult == 0)
@@ -657,94 +734,41 @@ namespace Squared.Util.DeclarativeSort {
             else
                 throw error;
         }
-    }
 
-    public class NullValueExtractor<TValue> : IValueExtractor<TValue> {
-        public bool GetAttribute<TAttribute>(ref TValue value, out TAttribute attribute) {
-            attribute = default(TAttribute);
-            return false;
+        public List<TagOrdering>.Enumerator GetEnumerator () {
+            return Orderings.GetEnumerator();
         }
 
-        public bool GetTags (ref TValue value, out Tags tags) {
-            tags = default(Tags);
-            return false;
-        }
-    }
-
-    public class GenericValueExtractor<TValue> : IValueExtractor<TValue> {
-        delegate bool TagGetter                  (ref TValue value, out Tags tags);
-        delegate bool AttributeGetter<TAttribute>(ref TValue value, out TAttribute attribute);
-
-        private readonly TagGetter                  _GetTags;
-        private readonly Dictionary<Type, Delegate> _GetAttributeTable = new Dictionary<Type, Delegate>();
-
-        public GenericValueExtractor () {
-            var t        = typeof(TValue);
-            var tHasTags = typeof(IHasTags);
-            var flags    = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-
-            if (tHasTags.IsAssignableFrom(t)) {
-                var pValue = Expression.Parameter(t.MakeByRefType(), "value");
-                var pTags  = Expression.Parameter(typeof(Tags).MakeByRefType(), "tags");
-
-                var tagGetter = Expression.Lambda<TagGetter>(
-                    Expression.Block(
-                        Expression.Assign(pTags, Expression.Default(typeof(Tags))),
-                        Expression.Call(pValue, t.GetMethod("GetTags", flags), pTags),
-                        Expression.Constant(true, typeof(bool))
-                    ),
-                    pValue, pTags
-                );
-                _GetTags = tagGetter.Compile();
-            } else {
-                _GetTags = _NullGetTags;
-            }
+        IEnumerator<TagOrdering> IEnumerable<TagOrdering>.GetEnumerator () {
+            return ((IEnumerable<TagOrdering>)Orderings).GetEnumerator();
         }
 
-        private static bool _NullGetTags (ref TValue value, out Tags tags) {
-            tags = default(Tags);
-            return false;
-        }
-
-        public bool GetAttribute<TAttribute>(ref TValue value, out TAttribute attribute) {
-            attribute = default(TAttribute);
-            return false;
-        }
-
-        public bool GetTags (ref TValue value, out Tags tags) {
-            return _GetTags(ref value, out tags);
+        IEnumerator IEnumerable.GetEnumerator () {
+            return ((IEnumerable<TagOrdering>)Orderings).GetEnumerator();
         }
     }
 
-    public static class ValueExtractor<TValue> {
-        public static IValueExtractor<TValue> Default {
-            get;
-            private set;
-        }
-
-        static ValueExtractor () {
-            // FIXME: Less-than-optimal performance
-            Default = new GenericValueExtractor<TValue>();
-        }
-    }
-
-    public class Sorter : IEnumerable<TagOrdering> {
+    public class Sorter<TValue> : IEnumerable<TagOrdering> {
         private class ValueComparer<TValue> : IComparer<TValue> {
-            public readonly Sorter                  Sorter;
-            public readonly IValueExtractor<TValue> Extractor;
+            public readonly Sorter<TValue>          Sorter;
             public readonly bool                    Ascending;
 
-            public ValueComparer (Sorter sorter, IValueExtractor<TValue> extractor, bool ascending) {
+            public ValueComparer (Sorter<TValue> sorter, bool ascending) {
                 Sorter = sorter;
-                Extractor = extractor;
                 Ascending = ascending;
             }
 
             public int Compare (TValue lhs, TValue rhs) {
+                bool tagsValid;
                 Tags lhsTags = default(Tags), rhsTags = default(Tags);
 
-                var tagsValid = Extractor.GetTags(ref lhs, out lhsTags) &&
-                                Extractor.GetTags(ref rhs, out rhsTags);
+                if (Sorter.GetTags != null) {
+                    tagsValid = true;
+                    lhsTags = Sorter.GetTags(lhs);
+                    rhsTags = Sorter.GetTags(rhs);
+                } else {
+                    tagsValid = false;
+                }
 
                 if (!tagsValid)
                     return 0;
@@ -757,6 +781,11 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public readonly TagOrderingCollection Orderings = new TagOrderingCollection();
+        public readonly Func<TValue, Tags>    GetTags;
+
+        public Sorter (Func<TValue, Tags> getTags = null) {
+            GetTags = getTags;
+        }
 
         public void Add (TagOrdering ordering) {
             Orderings.Add(ordering);
@@ -767,23 +796,15 @@ namespace Squared.Util.DeclarativeSort {
                 Orderings.Add(o);
         }
 
-        public void Sort<TValue> (TValue[] values, bool ascending = true) {
-            Sort(values, ValueExtractor<TValue>.Default, ascending: ascending);
+        public void Sort (TValue[] values, bool ascending = true) {
+            Sort(new ArraySegment<TValue>(values), ascending: ascending);
         }
 
-        public void Sort<TValue> (ArraySegment<TValue> values, bool ascending = true) {
-            Sort(values, ValueExtractor<TValue>.Default, ascending: ascending);
-        }
-
-        public void Sort<TValue> (TValue[] values, IValueExtractor<TValue> extractor, bool ascending = true) {
-            Sort(new ArraySegment<TValue>(values), extractor, ascending: ascending);
-        }
-
-        public void Sort<TValue> (ArraySegment<TValue> values, IValueExtractor<TValue> extractor, bool ascending = true) {
+        public void Sort (ArraySegment<TValue> values, bool ascending = true) {
             Array.Sort(
                 values.Array, values.Offset, values.Count,
                 // Heap allocation :-(
-                new ValueComparer<TValue>(this, extractor, ascending)
+                new ValueComparer<TValue>(this, ascending)
             );
         }
 
