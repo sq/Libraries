@@ -13,7 +13,7 @@ namespace Squared.Util.DeclarativeSort {
     }
 
     public struct Tags {
-        internal static int NextId = 1;
+        internal static int NextId = 0;
         internal static readonly Dictionary<int, Tags> Registry = new Dictionary<int, Tags>();
 
         public static readonly Tags Null = default(Tags);
@@ -104,6 +104,18 @@ namespace Squared.Util.DeclarativeSort {
                     return TagSet.Tags.Length;
                 else if (Tag != null)
                     return 1;
+                else
+                    return 0;
+            }
+        }
+
+        public int Id {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+            get {
+                if (TagSet != null)
+                    return TagSet.Id;
+                else if (Tag != null)
+                    return Tag.Id;
                 else
                     return 0;
             }
@@ -603,18 +615,14 @@ namespace Squared.Util.DeclarativeSort {
         public readonly string Name;
     }
 
-    public class ContradictoryOrderingException : Exception {
-        public readonly TagOrdering A, B;
-        public readonly Tags Left, Right;
+    public class OrderingCycleException : Exception {
+        public readonly Tags[] Tags;
 
-        public ContradictoryOrderingException (TagOrdering a, TagOrdering b, Tags lhs, Tags rhs) 
+        public OrderingCycleException (Tags[] tags) 
             : base(
-                  string.Format("Orderings {0} and {1} are contradictory for {2}, {3}", a, b, lhs, rhs)
+                  string.Format("This set of orderings forms a cycle over the tags {0}", string.Join(", ", tags))
             ) {
-            A = a;
-            B = b;
-            Left = lhs;
-            Right = rhs;
+            Tags = tags;
         }
     }
 
@@ -625,12 +633,7 @@ namespace Squared.Util.DeclarativeSort {
         private int    CachedTagCount = 0;
         private int[]  SortKeys       = null;
 
-        private void Invalidate () {
-            lock (SortKeyLock)
-                SortKeys = null;
-        }
-
-        private int[] GetSortKeys () {
+        internal int[] GetSortKeys () {
             lock (SortKeyLock) {
                 int tagCount;
                 lock (Tags.Registry)
@@ -641,98 +644,100 @@ namespace Squared.Util.DeclarativeSort {
                 else if (SortKeys != null)
                     return SortKeys;
 
-                return SortKeys = GenerateSortKeys();
+                CachedTagCount = tagCount;
+                return SortKeys = GenerateSortKeys(tagCount);
             }
         }
 
-        private int[] GenerateSortKeys () {
-            return null;
+        private int[] GenerateSortKeys (int count) {
+            // Tags.Null has an Id of 0, the first Tag/TagSet has an Id of 1
+            var result = new int[count + 1];
+
+            List<KeyValuePair<int, Tags>> registry;
+            var state = new Dictionary<int, bool>();
+
+            lock (Tags.Registry)
+                registry = Tags.Registry.ToList();
+
+            int nextIndex = 1;
+            foreach (var kvp in registry)
+                ToposortVisit(kvp.Key, kvp.Value, result, registry, state, ref nextIndex);
+
+            return result;
         }
 
-        public static IList<T> Sort<T>(IEnumerable<T> source, Func<T, IEnumerable<T>> getDependencies)
-        {
-            var sorted = new List<T>();
-            var visited = new Dictionary<T, bool>();
+        public bool ToposortVisit (int id, Tags value, int[] result, List<KeyValuePair<int, Tags>> registry, Dictionary<int, bool> state, ref int nextIndex) {
+            bool visiting;
 
-            foreach (var item in source)
-            {
-                Visit(item, getDependencies, sorted, visited);
+            if (state.TryGetValue(id, out visiting)) {
+                if (visiting) {
+                    // HACK: Break this cycle. The assumption is that for
+                    //  any pair of tags where an ordering rule forms a cycle, we ignore the rule.
+                    // FIXME: Does this produce valid results?
+                    state.Remove(id);
+                    return false;
+
+                    /*
+                    throw new OrderingCycleException(
+                        (from kvp in state where kvp.Value
+                         select Tags.Registry[kvp.Key]).ToArray()
+                    );
+                    */
+                } else
+                    return true;
             }
 
-            return sorted;
-        }
+            state[id] = true;
 
-        public static void Visit<T>(T item, Func<T, IEnumerable<T>> getDependencies, List<T> sorted, Dictionary<T, bool> visited)
-        {
-            bool inProcess;
-            var alreadyVisited = visited.TryGetValue(item, out inProcess);
+            // Find all orderings with a Higher predicate that affects this tag set.
+            foreach (var ordering in Orderings) {
+                if (!value.Contains(ordering.Higher))
+                    continue;
+                if (value.Contains(ordering.Lower))
+                    continue;
 
-            if (alreadyVisited)
-            {
-                if (inProcess)
-                {
-                    throw new ArgumentException("Cyclic dependency found.");
+                // Now find any tags that are affected by this ordering's Lower predicate.
+                // These tags are a dependency of the current tag given this set of orderings.
+                foreach (var kvp in registry) {
+                    if (kvp.Key == id)
+                        continue;
+
+                    if (!kvp.Value.Contains(ordering.Lower))
+                        continue;
+                    if (kvp.Value.Contains(ordering.Higher))
+                        continue;
+
+                    ToposortVisit(kvp.Key, kvp.Value, result, registry, state, ref nextIndex);
                 }
             }
-            else
-            {
-                visited[item] = true;
 
-                var dependencies = getDependencies(item);
-                if (dependencies != null)
-                {
-                    foreach (var dependency in dependencies)
-                    {
-                        Visit(dependency, getDependencies, sorted, visited);
-                    }
-                }
-
-                visited[item] = false;
-                sorted.Add(item);
-            }
+            // Assign this tag the next sort index.
+            result[id] = nextIndex++;
+            state[id] = false;
+            return true;
         }
 
         public void Add (TagOrdering ordering) {
-            Orderings.Add(ordering);
-            Invalidate();
+            lock (SortKeyLock) {
+                Orderings.Add(ordering);
+                SortKeys = null;
+            }
         }
 
-        public int? Compare (Tags lhs, Tags rhs, out Exception error) {
-            int result = 0;
-            var lastOrdering = default(TagOrdering);
-
-            foreach (var ordering in Orderings) {
-                var subResult = ordering.Compare(lhs, rhs);
-
-                if (subResult == 0)
-                    continue;
-                else if (
-                    (result != 0) &&
-                    (Math.Sign(subResult) != Math.Sign(result))
-                ) {
-                    error = new ContradictoryOrderingException(
-                        lastOrdering, ordering, lhs, rhs
-                    );
-                    return null;
-                } else {
-                    result = subResult;
-                    lastOrdering = ordering;
-                }
+        public void Clear () {
+            lock (SortKeyLock) {
+                Orderings.Clear();
+                SortKeys = null;
             }
-
-            error = null;
-            return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public int Compare (Tags lhs, Tags rhs) {
-            Exception error;
-            var result = Compare(lhs, rhs, out error);
+            if (lhs == rhs)
+                return 0;
 
-            if (result.HasValue)
-                return result.Value;
-            else
-                throw error;
+            var keys = GetSortKeys();
+            return keys[lhs.Id].CompareTo(keys[rhs.Id]);
         }
 
         public List<TagOrdering>.Enumerator GetEnumerator () {
@@ -751,29 +756,26 @@ namespace Squared.Util.DeclarativeSort {
     public class Sorter<TValue> : IEnumerable<TagOrdering> {
         private class ValueComparer<TValue> : IComparer<TValue> {
             public readonly Sorter<TValue>          Sorter;
+            public readonly int[]                   TagSortKeys;
             public readonly bool                    Ascending;
 
-            public ValueComparer (Sorter<TValue> sorter, bool ascending) {
+            public ValueComparer (Sorter<TValue> sorter, int[] tagSortKeys, bool ascending) {
                 Sorter = sorter;
+                TagSortKeys = tagSortKeys;
                 Ascending = ascending;
             }
 
             public int Compare (TValue lhs, TValue rhs) {
-                bool tagsValid;
-                Tags lhsTags = default(Tags), rhsTags = default(Tags);
-
-                if (Sorter.GetTags != null) {
-                    tagsValid = true;
-                    lhsTags = Sorter.GetTags(lhs);
-                    rhsTags = Sorter.GetTags(rhs);
-                } else {
-                    tagsValid = false;
-                }
-
-                if (!tagsValid)
+                if (Sorter.GetTags == null)
                     return 0;
 
-                var result = Sorter.Orderings.Compare(lhsTags, rhsTags);
+                var lhsTags = Sorter.GetTags(lhs);
+                var rhsTags = Sorter.GetTags(rhs);
+
+                var lhsKey = TagSortKeys[lhsTags.Id];
+                var rhsKey = TagSortKeys[rhsTags.Id];
+
+                var result = lhsKey.CompareTo(rhsKey);
                 return (Ascending)
                     ? result
                     : -result;
@@ -801,10 +803,12 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public void Sort (ArraySegment<TValue> values, bool ascending = true) {
+            var keys = Orderings.GetSortKeys();
+
             Array.Sort(
                 values.Array, values.Offset, values.Count,
                 // Heap allocation :-(
-                new ValueComparer<TValue>(this, ascending)
+                new ValueComparer<TValue>(this, keys, ascending)
             );
         }
 
