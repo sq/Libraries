@@ -6,6 +6,46 @@ using System.Text;
 using NUnit.Framework;
 
 namespace Squared.Util.DeclarativeSort {
+    public static class Util {
+        public static int? IndexOf<T> (T[] haystack, T[] needle, IComparer<T> comparer = null) {
+            if (comparer == null)
+                comparer = Comparer<T>.Default;
+
+            var maxI = haystack.Length - needle.Length;
+
+            for (int i = 0; i <= maxI; i++) {
+                // FIXME: Inefficient
+                for (int j = 0; j < needle.Length; j++) {
+                    if (comparer.Compare(haystack[i + j], needle[j]) != 0)
+                        break;
+
+                    if (j == needle.Length - 1)
+                        return i;
+                }
+            }
+
+            return null;
+        }
+
+        public static void AssertPrecedes<T> (T[] haystack, params T[][] orderedSequences) {
+            var positions = new int?[orderedSequences.Length];
+
+            for (int i = 0; i < orderedSequences.Length; i++) {
+                var seq = orderedSequences[i];
+                positions[i] = IndexOf(haystack, seq);
+                Assert.IsTrue(positions[i].HasValue, "sequence #{0} ({1}) not found in haystack", i, string.Join(", ", seq));
+            }
+
+            for (int i = 0; i < orderedSequences.Length - 1; i++)
+                Assert.Less(
+                    positions[i].Value, positions[i + 1].Value, 
+                    "sequence #{0} ({1})  does not precede #{2} ({3}) ", 
+                    i, string.Join(", ", orderedSequences[i]), 
+                    i + 1, string.Join(", ", orderedSequences[i + 1])
+                );
+        }
+    }
+
     [TestFixture]
     public class DSTaggingTests {
         private readonly Tag A, B, C;
@@ -150,15 +190,11 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public struct Taggable : IHasTags {
+    public struct Taggable {
         public readonly Tags Tags;
 
         public Taggable (Tags tags) {
             Tags = tags;
-        }
-
-        public void GetTags (out Tags tags) {
-            tags = Tags;
         }
 
         public static implicit operator Taggable (Tag tag) {
@@ -174,8 +210,30 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
+    public struct TaggableWithIndex : IComparable<TaggableWithIndex> {
+        public readonly Tags Tags;
+        public readonly int Index;
+
+        public TaggableWithIndex (Tags tags, int index) {
+            Tags = tags;
+            Index = index;
+        }
+
+        public override string ToString () {
+            return String.Format("<{0}, {1}>", Tags, Index);
+        }
+
+        public int CompareTo (TaggableWithIndex other) {
+            var result = Tags.Id.CompareTo(other.Tags.Id);
+            if (result == 0)
+                result = Index.CompareTo(other.Index);
+
+            return result;
+        }
+    } 
+
     [TestFixture]
-    public class DSValueSortingTests {
+    public class DSTagSortingTests {
         public Tag A, B, C, D;
         public Sorter<Taggable> Sorter;
 
@@ -189,7 +247,7 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         [Test]
-        public void SortsValuesImplementingInterface () {
+        public void SortsValues () {
             var values = new Taggable[] {
                 A,
                 A + B,
@@ -204,7 +262,6 @@ namespace Squared.Util.DeclarativeSort {
                 C + D,
                 D
             };
-            int l = values.Length - 1;
 
             Sorter.Sort(values, ascending: true);
             Console.WriteLine(string.Join(", ", values));
@@ -217,4 +274,65 @@ namespace Squared.Util.DeclarativeSort {
             Assert.AreEqual(expected, values);
         }
     }
-}
+
+    [TestFixture]
+    public class DSTagValueSortingTests {
+        public Tag A, B, C;
+        public Sorter<TaggableWithIndex> Sorter;
+
+        [TestFixtureSetUp]
+        public void SetUp () {
+            Tag.AutoCreate(this);
+
+            Sorter = new Sorter<TaggableWithIndex> {
+                { v => v.Tags, A < B, B < C },
+                { v => v.Index }
+            };
+        }
+
+        [Test]
+        public void SortsValues () {
+            var values = new TaggableWithIndex[] {
+                new TaggableWithIndex(B, 0),
+                new TaggableWithIndex(C, 7),
+                new TaggableWithIndex(A, 0),
+                new TaggableWithIndex(C, -1),
+                new TaggableWithIndex(A, 2),
+                new TaggableWithIndex(A + B, 0),
+                new TaggableWithIndex(A + B, 3),
+                new TaggableWithIndex(B, 2),
+                new TaggableWithIndex(C, 3),
+                new TaggableWithIndex(B, 1),
+                new TaggableWithIndex(A, 1),
+            };
+
+            Sorter.Sort(values, ascending: true);
+            Console.WriteLine(string.Join(", ", values));
+
+            Util.AssertPrecedes(values, new[] {
+                    new TaggableWithIndex(A, 0),
+                    new TaggableWithIndex(A, 1)
+                }, new[] {
+                    new TaggableWithIndex(B, 0),
+                    new TaggableWithIndex(B, 1)
+                }, new[] {
+                    new TaggableWithIndex(C, 3),
+                    new TaggableWithIndex(C, 7)
+                }
+            );
+
+            Util.AssertPrecedes(values,
+                // No explicit ordering for (A, A + B) or (B, A + B)
+                new [] {
+                    new TaggableWithIndex(A + B, 0),
+                    new TaggableWithIndex(A + B, 3)
+                }, new[] {
+                    new TaggableWithIndex(C, 3),
+                    new TaggableWithIndex(C, 7)
+                }
+            );
+
+            Sorter.Sort(values, ascending: false);
+            Console.WriteLine(string.Join(", ", values));
+        }
+    }}
