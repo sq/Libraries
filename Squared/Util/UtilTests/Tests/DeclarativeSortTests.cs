@@ -314,17 +314,6 @@ namespace Squared.Util.DeclarativeSort {
             };
 
             Sorter.Sort(values, ascending: true);
-
-            const int steps = 100000;
-
-            var started = Time.Ticks;
-            for (var i = 0; i < steps; i++) {
-                Array.Reverse(values);
-                Sorter.Sort(values, ascending: true);
-            }
-            var ended = Time.Ticks;
-            Console.WriteLine("{0} sort(s) took {1:0000.00}ms", steps, TimeSpan.FromTicks(ended - started).TotalMilliseconds);
-
             Console.WriteLine(string.Join(", ", values));
 
             Util.AssertPrecedes(values, new[] {
