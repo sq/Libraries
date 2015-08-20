@@ -111,6 +111,7 @@
   <ItemGroup>
     <Compile Include="Arithmetic.cs" />
     <Compile Include="DeclarativeSort.cs" />
+    <Compile Include="LambdaCompiler.cs" />
     <Compile Include="TimSort4NET\ArrayTimSort.cs" />
     <Compile Include="Bind.cs" />
     <Compile Include="Buffer.cs" />
