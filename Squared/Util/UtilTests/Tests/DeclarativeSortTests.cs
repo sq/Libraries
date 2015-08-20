@@ -130,21 +130,6 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         [Test]
-        [Ignore]
-        public void CompareAbortsOnContradiction () {
-            // FIXME
-            var rs = new TagOrderingCollection {
-                A < B,
-                B < A
-            };
-
-            Exception error;
-            Assert.Throws<OrderingCycleException>(
-                () => rs.Compare(A, B)
-            );
-        }
-
-        [Test]
         public void CompositeOrderings () {
             var rs = new TagOrderingCollection {
                 (A + B) < (C + A)

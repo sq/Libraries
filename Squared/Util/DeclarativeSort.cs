@@ -596,18 +596,9 @@ namespace Squared.Util.DeclarativeSort {
         public readonly string Name;
     }
 
-    public class OrderingCycleException : Exception {
-        public readonly Tags[] Tags;
-
-        public OrderingCycleException (Tags[] tags) 
-            : base(
-                  string.Format("This set of orderings forms a cycle over the tags {0}", string.Join(", ", tags))
-            ) {
-            Tags = tags;
-        }
-    }
-
     public class TagOrderingCollection : IEnumerable<TagOrdering> {
+        internal const bool Tracing = false;
+
         private readonly List<TagOrdering> Orderings = new List<TagOrdering>();
 
         private object SortKeyLock    = new object();
@@ -626,7 +617,10 @@ namespace Squared.Util.DeclarativeSort {
                     return SortKeys;
 
                 CachedTagCount = tagCount;
-                return SortKeys = GenerateSortKeys(tagCount);
+
+                SortKeys = GenerateSortKeys(tagCount);
+
+                return SortKeys;
             }
         }
 
@@ -704,8 +698,9 @@ namespace Squared.Util.DeclarativeSort {
                             result[from].Add(edge.Target);
                 }
 
-                foreach (var kvp in result)
-                    Console.WriteLine(kvp.Value);
+                if (Tracing)
+                    foreach (var kvp in result)
+                        Console.WriteLine(kvp.Value);
 
                 return result;
             }
@@ -763,13 +758,14 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
-        private Dictionary<Tags, DownwardEdges> GenerateEdges (List<TagOrdering> orderings, List<KeyValuePair<int, Tags>> registry) {
+        private Dictionary<Tags, DownwardEdges> GenerateEdges (List<TagOrdering> orderings) {
             var result = new EdgeGraph();
 
+            lock (Tags.Registry)
             foreach (var ordering in orderings) {
                 result.Connect(ordering.Higher, ordering.Lower);
 
-                foreach (var kvp in registry) {
+                foreach (var kvp in Tags.Registry) {
                     if (kvp.Value.Contains(ordering.Lower))
                         result.Connect(ordering.Higher, kvp.Value);
                     else if (kvp.Value.Contains(ordering.Higher))
@@ -784,34 +780,13 @@ namespace Squared.Util.DeclarativeSort {
             // Tags.Null has an Id of 0, the first Tag/TagSet has an Id of 1
             var result = new int[count + 1];
 
-            List<KeyValuePair<int, Tags>> registry;
             var state = new Dictionary<int, bool>();
 
-            /*
-            var orderings = Orderings.SelectMany(
-                o => {
-                    var composite = o.Lower + o.Higher;
-                    if ((composite == o.Lower) || (composite == o.Higher))
-                        return new[] { o };
-
-                    return new[] {
-                        o,
-                        (o.Lower < composite),
-                        (composite < o.Higher)
-                    };
-                }
-            ).OrderBy(
-                o => o.Lower.Count + o.Higher.Count
-            ).ToList();
-            */
             var orderings = Orderings.OrderBy(
                 o => o.Lower.Count + o.Higher.Count
             ).ToList();
 
-            lock (Tags.Registry)
-                registry = Tags.Registry.ToList();
-
-            var edges = GenerateEdges(orderings, registry);
+            var edges = GenerateEdges(orderings);
 
             int nextIndex = 1;
             foreach (var kvp in edges)
@@ -830,13 +805,6 @@ namespace Squared.Util.DeclarativeSort {
                     //  any pair of tags where an ordering rule forms a cycle, we ignore the rule.
                     // FIXME: Does this produce valid results?
                     return false;
-
-                    /*
-                    throw new OrderingCycleException(
-                        (from kvp in state where kvp.Value
-                         select Tags.Registry[kvp.Key]).ToArray()
-                    );
-                    */
                 } else
                     return true;
             }
@@ -847,19 +815,24 @@ namespace Squared.Util.DeclarativeSort {
 
             foreach (var edge in downwardEdges) {
                 var success = ToposortVisit(allEdges, edge.To, false, result, state, ref nextIndex);
+                
+                // If we found a cycle while climbing down from the top level, climb all the way back up.
                 if (!success && !isTopLevel) {
                     state.Remove(id);
                     return false;
                 }
             }
 
-            // Assign this tag the next sort index.
             if (result[id] != 0)
                 throw new Exception("Topological sort visited tag twice: " + tag);
 
-            Console.WriteLine("#{0} {1}", nextIndex, tag);
+            // Assign this tag the next sort index.
+            if (Tracing)
+                Console.WriteLine("#{0} {1}", nextIndex, tag);
+
             result[id] = nextIndex++;
             state[id] = false;
+
             return true;
         }
 
