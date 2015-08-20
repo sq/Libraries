@@ -190,7 +190,7 @@ namespace Squared.Util.DeclarativeSort {
         }
     }
 
-    public struct Taggable {
+    public struct Taggable : IComparable<Taggable> {
         public readonly Tags Tags;
 
         public Taggable (Tags tags) {
@@ -207,6 +207,10 @@ namespace Squared.Util.DeclarativeSort {
 
         public override string ToString () {
             return Tags.ToString();
+        }
+
+        public int CompareTo (Taggable other) {
+            return Tags.Id.CompareTo(other.Tags.Id);
         }
     }
 
@@ -247,31 +251,47 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         [Test]
-        public void SortsValues () {
+        public void SortsTags () {
             var values = new Taggable[] {
-                A,
-                A + B,
                 A + B + C,
-                A + B + C + D,
-                A + C,
-                A + C + D,
-                B,
-                B + D,
+                A,
                 B + C + D,
+                A + D,
+                A + B,
+                B,
+                D,
+                A + C,
+                B + D,
                 C,
+                A + B + C + D,
                 C + D,
-                D
+                A + C + D,
             };
 
             Sorter.Sort(values, ascending: true);
             Console.WriteLine(string.Join(", ", values));
 
-            var expected = (Taggable[])values.Clone();
-            Array.Reverse(expected);
+            Util.AssertPrecedes(values, 
+                new Taggable[] { A }, 
+                new Taggable[] { B }, 
+                new Taggable[] { C },
+                new Taggable[] { D }
+            );
 
-            Sorter.Sort(values, ascending: false);
-            Console.WriteLine(string.Join(", ", values));
-            Assert.AreEqual(expected, values);
+            Util.AssertPrecedes(values, 
+                new Taggable[] { A + B }, 
+                new Taggable[] { C }
+            );
+
+            Util.AssertPrecedes(values, 
+                new Taggable[] { A + B + C }, 
+                new Taggable[] { D }
+            );
+
+            Util.AssertPrecedes(values, 
+                new Taggable[] { A + B }, 
+                new Taggable[] { C + D }
+            );
         }
     }
 
@@ -331,8 +351,5 @@ namespace Squared.Util.DeclarativeSort {
                     new TaggableWithIndex(C, 7)
                 }
             );
-
-            Sorter.Sort(values, ascending: false);
-            Console.WriteLine(string.Join(", ", values));
         }
     }}

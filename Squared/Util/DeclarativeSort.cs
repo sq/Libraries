@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -629,6 +630,156 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
+        private struct DownwardEdge {
+            public readonly Tags From, To;
+
+            public DownwardEdge (Tags from, Tags to) {
+                From = from;
+                To = to;
+            }
+        }
+
+        private class DownwardEdges : List<DownwardEdge> {
+            public readonly Tags From;
+
+            public DownwardEdges (Tags from) {
+                From = from;
+            }
+
+            public void Add (Tags to) {
+                Add(new DownwardEdge(From, to));
+            }
+
+            public override string ToString () {
+                return string.Format(
+                    "{0} -> ({1})",  
+                    From, string.Join(", ", this.Select(de => de.To))
+                );
+            }
+        }
+
+        private class EdgeGraph : KeyedCollection<Tags, DirectedEdgeList> {
+            public EdgeGraph ()
+                : base () {
+            }
+
+            public EdgeGraph (IEqualityComparer<Tags> comparer)
+                : base (comparer) {
+            }
+
+            public DirectedEdgeList GetOrCreate (Tags key) {
+                DirectedEdgeList result;
+
+                if (!base.Contains(key)) {
+                    base.Add(result = new DirectedEdgeList(key));
+                } else {
+                    result = this[key];
+                }
+
+                return result;
+            }
+
+            public void Connect (Tags from, Tags to) {
+                if (from == to)
+                    return;
+
+                var fromList = GetOrCreate(from);
+                var toList = GetOrCreate(to);
+
+                fromList.Connect(to, 1);
+                toList.Connect(from, -1);
+            }
+
+            public Dictionary<Tags, DownwardEdges> Finalize () {
+                var result = new Dictionary<Tags, DownwardEdges>();
+
+                foreach (var tag in Tags.Registry.Values)
+                    result.Add(tag, new DownwardEdges(tag));
+
+                foreach (var item in this) {
+                    var from = item.Source;
+
+                    foreach (var edge in item)
+                        if (edge.Directionality >= 1)
+                            result[from].Add(edge.Target);
+                }
+
+                foreach (var kvp in result)
+                    Console.WriteLine(kvp.Value);
+
+                return result;
+            }
+
+            protected override Tags GetKeyForItem (DirectedEdgeList item) {
+                return item.Source;
+            }
+        }
+
+        private class DirectedEdgeList : KeyedCollection<Tags, DirectedEdgeList.DirectedEdge> {
+            public class DirectedEdge {
+                public readonly Tags Target;
+                public int           Directionality;
+
+                public DirectedEdge (Tags target) {
+                    Target = target;
+                    Directionality = 0;
+                }
+            }
+
+            public readonly Tags Source;
+
+            public DirectedEdgeList (Tags source) 
+                : base () {
+                Source = source;
+            }
+
+            public DirectedEdgeList (Tags source, IEqualityComparer<Tags> comparer)
+                : base (comparer) {
+                Source = source;
+            }
+
+            public void Connect (Tags target, int direction) {
+                if (target == Source)
+                    return;
+
+                var edge = GetValueOrDefault(target);
+                edge.Directionality += direction;
+            }
+
+            public DirectedEdge GetValueOrDefault (Tags key) {
+                DirectedEdge result;
+
+                if (base.Contains(key)) {
+                    result = this[key];
+                } else {
+                    this.Add(result = new DirectedEdge(key));
+                }
+
+                return result;
+            }
+
+            protected override Tags GetKeyForItem (DirectedEdge item) {
+                return item.Target;
+            }
+        }
+
+        private Dictionary<Tags, DownwardEdges> GenerateEdges (List<TagOrdering> orderings, List<KeyValuePair<int, Tags>> registry) {
+            var result = new EdgeGraph();
+
+            foreach (var ordering in orderings) {
+                result.Connect(ordering.Higher, ordering.Lower);
+
+                foreach (var kvp in registry) {
+                    if (kvp.Value.Contains(ordering.Lower))
+                        result.Connect(ordering.Higher, kvp.Value);
+                    else if (kvp.Value.Contains(ordering.Higher))
+                        result.Connect(kvp.Value, ordering.Lower);
+                }
+            }
+
+            return result.Finalize();
+        }
+
         private int[] GenerateSortKeys (int count) {
             // Tags.Null has an Id of 0, the first Tag/TagSet has an Id of 1
             var result = new int[count + 1];
@@ -636,19 +787,43 @@ namespace Squared.Util.DeclarativeSort {
             List<KeyValuePair<int, Tags>> registry;
             var state = new Dictionary<int, bool>();
 
+            /*
+            var orderings = Orderings.SelectMany(
+                o => {
+                    var composite = o.Lower + o.Higher;
+                    if ((composite == o.Lower) || (composite == o.Higher))
+                        return new[] { o };
+
+                    return new[] {
+                        o,
+                        (o.Lower < composite),
+                        (composite < o.Higher)
+                    };
+                }
+            ).OrderBy(
+                o => o.Lower.Count + o.Higher.Count
+            ).ToList();
+            */
+            var orderings = Orderings.OrderBy(
+                o => o.Lower.Count + o.Higher.Count
+            ).ToList();
+
             lock (Tags.Registry)
                 registry = Tags.Registry.ToList();
 
+            var edges = GenerateEdges(orderings, registry);
+
             int nextIndex = 1;
-            foreach (var kvp in registry)
-                ToposortVisit(kvp.Key, kvp.Value, result, registry, state, ref nextIndex);
+            foreach (var kvp in edges)
+                ToposortVisit(edges, kvp.Key, true, result, state, ref nextIndex);
 
             return result;
         }
 
-        public bool ToposortVisit (int id, Tags value, int[] result, List<KeyValuePair<int, Tags>> registry, Dictionary<int, bool> state, ref int nextIndex) {
-            bool visiting;
+        private static bool ToposortVisit (Dictionary<Tags, DownwardEdges> allEdges, Tags tag, bool isTopLevel, int[] result, Dictionary<int, bool> state, ref int nextIndex) {
+            var id = tag.Id;
 
+            bool visiting;
             if (state.TryGetValue(id, out visiting)) {
                 if (visiting) {
                     // HACK: Break this cycle. The assumption is that for
@@ -668,32 +843,21 @@ namespace Squared.Util.DeclarativeSort {
 
             state[id] = true;
 
-            // Find all orderings with a Higher predicate that affects this tag set.
-            foreach (var ordering in Orderings) {
-                if (!value.Contains(ordering.Higher))
-                    continue;
-                if (value.Contains(ordering.Lower))
-                    continue;
+            var downwardEdges = allEdges[tag];
 
-                // Now find any tags that are affected by this ordering's Lower predicate.
-                // These tags are a dependency of the current tag given this set of orderings.
-                foreach (var kvp in registry) {
-                    if (kvp.Key == id)
-                        continue;
-
-                    if (!kvp.Value.Contains(ordering.Lower))
-                        continue;
-                    if (kvp.Value.Contains(ordering.Higher))
-                        continue;
-
-                    ToposortVisit(kvp.Key, kvp.Value, result, registry, state, ref nextIndex);
+            foreach (var edge in downwardEdges) {
+                var success = ToposortVisit(allEdges, edge.To, false, result, state, ref nextIndex);
+                if (!success && !isTopLevel) {
+                    state.Remove(id);
+                    return false;
                 }
             }
 
             // Assign this tag the next sort index.
             if (result[id] != 0)
-                throw new Exception("Topological sort visited tag twice: " + value);
+                throw new Exception("Topological sort visited tag twice: " + tag);
 
+            Console.WriteLine("#{0} {1}", nextIndex, tag);
             result[id] = nextIndex++;
             state[id] = false;
             return true;
