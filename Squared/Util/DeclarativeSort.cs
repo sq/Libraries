@@ -16,6 +16,7 @@ namespace Squared.Util.DeclarativeSort {
 
         public static readonly Tags Null = default(Tags);
 
+        public readonly int Id;
         private readonly Tag Tag;
         private readonly TagSet TagSet;
 
@@ -25,6 +26,7 @@ namespace Squared.Util.DeclarativeSort {
 
             Tag = tag;
             TagSet = null;
+            Id = tag.Id;
         }
 
         public Tags (TagSet tagSet) {
@@ -33,6 +35,7 @@ namespace Squared.Util.DeclarativeSort {
 
             Tag = null;
             TagSet = tagSet;
+            Id = tagSet.Id;
         }
 
         public static Tags[] GetAllTags () {
@@ -107,18 +110,6 @@ namespace Squared.Util.DeclarativeSort {
                     return TagSet.Tags.Length;
                 else if (Tag != null)
                     return 1;
-                else
-                    return 0;
-            }
-        }
-
-        public int Id {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)] 
-            get {
-                if (TagSet != null)
-                    return TagSet.Id;
-                else if (Tag != null)
-                    return Tag.Id;
                 else
                     return 0;
             }
@@ -939,38 +930,59 @@ namespace Squared.Util.DeclarativeSort {
         public delegate int       ValueComparer             (ref TValue lhs, ref TValue rhs);
 
         public abstract class SortRule {
-            private ValueComparer Comparer;
-
             internal virtual void Prepare () {
-                Comparer = MakeComparer();
             }
 
-            protected abstract ValueComparer MakeComparer ();
-
-            public int Compare (ref TValue lhs, ref TValue rhs) {
-                return Comparer(ref lhs, ref rhs);
+            internal virtual Expression MakeCompareExpression (Expression lhs, Expression rhs) {
+                var tRule = GetType();
+                var mCompare = tRule.GetMethod("Compare", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                var eRule = Expression.Constant(this, tRule);
+                var invocation = Expression.Call(eRule, mCompare, lhs, rhs);
+                return invocation;
             }
+
+            public abstract int Compare (ref TValue lhs, ref TValue rhs);
         }
 
         public class PropertySortRule<TProperty> : SortRule {
             public readonly PropertyGetter<TProperty> GetProperty;
             public readonly IComparer<TProperty>      Comparer;
+            private readonly IComparer<TProperty>     RuntimeComparer;
             
             public PropertySortRule (PropertyGetter<TProperty> getProperty, IComparer<TProperty> comparer) {
                 if (getProperty == null)
                     throw new ArgumentNullException("getProperty");
-                if (comparer == null)
-                    throw new ArgumentNullException("comparer");
-
                 GetProperty = getProperty;
                 Comparer = comparer;
+                RuntimeComparer = Comparer ?? Comparer<TProperty>.Default;
             }
 
-            protected override ValueComparer MakeComparer () {
-                return _Compare;
+            internal override Expression MakeCompareExpression (Expression lhs, Expression rhs) {
+                var tProperty = typeof(TProperty);
+                var getProp = Expression.Constant(GetProperty, typeof(PropertyGetter<TProperty>));
+                var lhsProperty = Expression.Invoke(getProp, lhs);
+                var rhsProperty = Expression.Invoke(getProp, rhs);
+                
+                if (Comparer == null) {
+                    var compareTo = tProperty.GetMethod(
+                        "CompareTo", new [] { tProperty }
+                    );
+                    if (compareTo != null) {
+                        return Expression.Call(
+                            lhsProperty, compareTo, rhsProperty
+                        );
+                    }
+                }
+
+                var compare = RuntimeComparer.GetType().GetMethod("Compare", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+                return Expression.Call(
+                    Expression.Constant(Comparer),
+                    compare, lhsProperty, rhsProperty
+                );
             }
 
-            private int _Compare (ref TValue lhs, ref TValue rhs) {
+            public override int Compare (ref TValue lhs, ref TValue rhs) {
                 var lhsProperty = GetProperty(lhs);
                 var rhsProperty = GetProperty(rhs);
 
@@ -996,11 +1008,30 @@ namespace Squared.Util.DeclarativeSort {
                 SortKeys = Orderings.GetSortKeys();
             }
 
-            protected override ValueComparer MakeComparer () {
-                return _Compare;
+            internal override Expression MakeCompareExpression (Expression lhs, Expression rhs) {
+                var getTags = Expression.Constant(GetTags, typeof(TagGetter));
+                var lhsTags = Expression.Invoke(getTags, lhs);
+                var rhsTags = Expression.Invoke(getTags, rhs);
+
+                var sortKeys = Expression.Field(
+                    Expression.Constant(this), GetType().GetField("SortKeys", BindingFlags.Instance | BindingFlags.NonPublic)
+                );
+
+                var fId = typeof(Tags).GetField("Id", BindingFlags.Instance | BindingFlags.Public);
+                var lhsId = Expression.Field(lhsTags, fId);
+                var rhsId = Expression.Field(rhsTags, fId);
+
+                var lhsSortKey = Expression.ArrayIndex(sortKeys, lhsId);
+                var rhsSortKey = Expression.ArrayIndex(sortKeys, rhsId);
+
+                var compareTo = typeof(int).GetMethod("CompareTo", new[] { typeof(int) });
+
+                return Expression.Call(
+                    lhsSortKey, compareTo, rhsSortKey
+                );
             }
 
-            private int _Compare (ref TValue lhs, ref TValue rhs) {
+            public override int Compare (ref TValue lhs, ref TValue rhs) {
                 var lhsTags = GetTags(lhs);
                 var rhsTags = GetTags(rhs);
 
@@ -1012,6 +1043,9 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public class SorterComparer : IComparer<TValue> {
+            // JITs a sorter method on demand for better performance
+            public const bool EnableLCG = true;
+
             public  readonly Sorter<TValue> Sorter;
             public  readonly bool           Ascending;
             private readonly ValueComparer  Comparer;
@@ -1023,13 +1057,29 @@ namespace Squared.Util.DeclarativeSort {
                 foreach (var rule in Sorter.Rules)
                     rule.Prepare();
 
-                var started = Time.Ticks;
-                Comparer = MakeComparer();
-                var ended = Time.Ticks;
-                Console.WriteLine("Compiling comparer took {0:0000.00}ms", TimeSpan.FromTicks(ended - started).TotalMilliseconds);
+                if (EnableLCG) {
+                    var started = Time.Ticks;
+                    Comparer = MakeLCGComparer();
+                    var ended = Time.Ticks;
+                    Console.WriteLine("Compiling comparer took {0:0000.00}ms", TimeSpan.FromTicks(ended - started).TotalMilliseconds);
+                } else {
+                    Comparer = DelegateComparer;
+                }
             }
 
-            private ValueComparer MakeComparer () {
+            private int DelegateComparer (ref TValue lhs, ref TValue rhs) {
+                int result = 0;
+
+                foreach (var rule in Sorter.Rules) {
+                    result = rule.Compare(ref lhs, ref rhs);
+                    if (result != 0)
+                        break;
+                }
+
+                return result;
+            }
+
+            private ValueComparer MakeLCGComparer () {
                 var tValue = typeof(TValue);
                 var pLhs = Expression.Parameter(tValue.MakeByRefType(), "lhs");
                 var pRhs = Expression.Parameter(tValue.MakeByRefType(), "rhs");
@@ -1043,12 +1093,8 @@ namespace Squared.Util.DeclarativeSort {
                 var body = new List<Expression>();
 
                 foreach (var rule in Sorter.Rules) {
-                    var tRule = rule.GetType();
-                    var mCompare = tRule.GetMethod("Compare", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
-                    var eRule = Expression.Constant(rule, tRule);
-                    var invocation = Expression.Call(eRule, mCompare, pLhs, pRhs);
-                    var assignment = Expression.Assign(vResult, invocation);
+                    var compareResult = rule.MakeCompareExpression(pLhs, pRhs);
+                    var assignment = Expression.Assign(vResult, compareResult);
 
                     body.Add(assignment);
                     body.Add(branch);
@@ -1101,9 +1147,6 @@ namespace Squared.Util.DeclarativeSort {
         }
 
         public PropertySortRule<TProperty> Add<TProperty> (PropertyGetter<TProperty> getProperty, IComparer<TProperty> comparer = null) {
-            if (comparer == null)
-                comparer = Comparer<TProperty>.Default;
-
             var result = new PropertySortRule<TProperty>(getProperty, comparer);
             Rules.Add(result);
             return result;
