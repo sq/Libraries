@@ -599,31 +599,6 @@ namespace Squared.Util.DeclarativeSort {
     public class TagOrderingCollection : IEnumerable<TagOrdering> {
         internal const bool Tracing = false;
 
-        private readonly List<TagOrdering> Orderings = new List<TagOrdering>();
-
-        private object SortKeyLock    = new object();
-        private int    CachedTagCount = 0;
-        private int[]  SortKeys       = null;
-
-        public int[] GetSortKeys () {
-            lock (SortKeyLock) {
-                int tagCount;
-                lock (Tags.Registry)
-                    tagCount = Tags.Registry.Count;
-
-                if (CachedTagCount != tagCount)
-                    SortKeys = null;
-                else if (SortKeys != null)
-                    return SortKeys;
-
-                CachedTagCount = tagCount;
-
-                SortKeys = GenerateSortKeys(tagCount);
-
-                return SortKeys;
-            }
-        }
-
         private struct DownwardEdge {
             public readonly Tags From, To;
 
@@ -685,7 +660,7 @@ namespace Squared.Util.DeclarativeSort {
             }
 
             public Dictionary<Tags, DownwardEdges> Finalize () {
-                var result = new Dictionary<Tags, DownwardEdges>();
+                var result = new Dictionary<Tags, DownwardEdges>(Count);
 
                 foreach (var tag in Tags.Registry.Values)
                     result.Add(tag, new DownwardEdges(tag));
@@ -758,6 +733,31 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
+        private readonly List<TagOrdering> Orderings = new List<TagOrdering>();
+
+        private object SortKeyLock    = new object();
+        private int    CachedTagCount = 0;
+        private int[]  SortKeys       = null;
+
+        public int[] GetSortKeys () {
+            lock (SortKeyLock) {
+                int tagCount;
+                lock (Tags.Registry)
+                    tagCount = Tags.Registry.Count;
+
+                if (CachedTagCount != tagCount)
+                    SortKeys = null;
+                else if (SortKeys != null)
+                    return SortKeys;
+
+                CachedTagCount = tagCount;
+
+                SortKeys = GenerateSortKeys(tagCount);
+
+                return SortKeys;
+            }
+        }
+
         private Dictionary<Tags, DownwardEdges> GenerateEdges (List<TagOrdering> orderings) {
             var result = new EdgeGraph();
 
@@ -789,7 +789,7 @@ namespace Squared.Util.DeclarativeSort {
             var edges = GenerateEdges(orderings);
 
             int nextIndex = 1;
-            foreach (var kvp in edges)
+            foreach (var kvp in edges.OrderBy(kvp => kvp.Key.Count))
                 ToposortVisit(edges, kvp.Key, true, result, state, ref nextIndex);
 
             return result;
