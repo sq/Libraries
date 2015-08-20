@@ -597,9 +597,17 @@ namespace Squared.Util.DeclarativeSort {
     }
 
     public class TagOrderingCollection : IEnumerable<TagOrdering> {
-        internal const bool Tracing = false;
+        internal const bool Tracing = true;
 
         private struct DownwardEdge {
+            public class Comparer : IComparer<DownwardEdge> {
+                public static readonly Comparer Instance = new Comparer();
+
+                public int Compare (DownwardEdge lhs, DownwardEdge rhs) {
+                    return lhs.From.Count.CompareTo(rhs.From.Count);
+                }
+            }
+
             public readonly Tags From, To;
 
             public DownwardEdge (Tags from, Tags to) {
@@ -668,14 +676,36 @@ namespace Squared.Util.DeclarativeSort {
                 foreach (var item in this) {
                     var from = item.Source;
 
+                    // HACK: Only select downward edges that are not outweighed by upward edges.
+                    // Essentially, in cases where nodes have a mutual relationship, we
+                    //  want to make sure the upward dependencies aren't in excess of the
+                    //  downward dependencies.
+                    // This hack helps deal with cycles where it's 'obvious' which nodes
+                    //  are more important than others.
                     foreach (var edge in item)
                         if (edge.Directionality >= 1)
                             result[from].Add(edge.Target);
                 }
 
-                if (Tracing)
+                foreach (var tag in Tags.Registry.Values) {
+                    var items = result[tag];
+
+                    if (items.Count == 0) {
+                        // A node with no outward edges still needs to be included.
+                        // Otherwise, it may not get assigned an ordering value even
+                        //  though it participates in the sort order.
+                    } else {
+                        // HACK: Make sure least-complicated edges are visited first.
+                        // The ordering of these is most important.
+                        items.Sort(DownwardEdge.Comparer.Instance);
+                    }
+                }
+
+                if (Tracing) {
                     foreach (var kvp in result)
-                        Console.WriteLine(kvp.Value);
+                        if (kvp.Value.Count > 0)
+                            Console.WriteLine(kvp.Value);
+                }
 
                 return result;
             }
@@ -780,60 +810,90 @@ namespace Squared.Util.DeclarativeSort {
             // Tags.Null has an Id of 0, the first Tag/TagSet has an Id of 1
             var result = new int[count + 1];
 
-            var state = new Dictionary<int, bool>();
+            var edges = GenerateEdges(Orderings);
 
-            var orderings = Orderings.OrderBy(
-                o => o.Lower.Count + o.Higher.Count
-            ).ToList();
-
-            var edges = GenerateEdges(orderings);
+            // HACK: Visit the edges starting with 'most important' (singular) tagsets first.
+            // The ordering of these is most important to us.
+            var orderedEdges = edges.OrderBy(kvp => kvp.Key.Count).ToList();
 
             int nextIndex = 1;
-            foreach (var kvp in edges.OrderBy(kvp => kvp.Key.Count))
+
+            var state = new Dictionary<int, bool>();
+            foreach (var kvp in orderedEdges)
                 ToposortVisit(edges, kvp.Key, true, result, state, ref nextIndex);
+
+            Console.WriteLine(string.Join(", ", result));
 
             return result;
         }
 
-        private static bool ToposortVisit (Dictionary<Tags, DownwardEdges> allEdges, Tags tag, bool isTopLevel, int[] result, Dictionary<int, bool> state, ref int nextIndex) {
+        private static int Depth = 0;
+
+        private static Tags? ToposortVisit (Dictionary<Tags, DownwardEdges> allEdges, Tags tag, bool isTopLevel, int[] result, Dictionary<int, bool> state, ref int nextIndex) {
             var id = tag.Id;
 
             bool visiting;
             if (state.TryGetValue(id, out visiting)) {
                 if (visiting) {
-                    // HACK: Break this cycle. The assumption is that for
-                    //  any pair of tags where an ordering rule forms a cycle, we ignore the rule.
-                    // FIXME: Does this produce valid results?
-                    return false;
+                    if (Tracing)
+                        Console.WriteLine("{0}Cycle @{1}", new string('.', Depth + 1), tag);
+
+                    // HACK: Break this cycle.
+                    return tag;
                 } else
-                    return true;
+                    return null;
             }
 
+            if (Tracing)
+                Console.WriteLine("{0}{1}", new string('.', Depth), tag);
+
+            Depth++;
             state[id] = true;
 
-            var downwardEdges = allEdges[tag];
+            bool aborted = false;
+            DownwardEdges downwardEdges;
 
+            Tags? cycle = null;
+
+            if (allEdges.TryGetValue(tag, out downwardEdges))
             foreach (var edge in downwardEdges) {
-                var success = ToposortVisit(allEdges, edge.To, false, result, state, ref nextIndex);
+                cycle = ToposortVisit(allEdges, edge.To, false, result, state, ref nextIndex);
                 
-                // If we found a cycle while climbing down from the top level, climb all the way back up.
-                if (!success && !isTopLevel) {
-                    state.Remove(id);
-                    return false;
+                // We hit a cycle, so we bail out.
+                if (cycle.HasValue) {
+                    if (state[id] == true)
+                        state.Remove(id);
+
+                    Depth--;
+                    // We don't propagate the cycle, though.
+                    return null;
                 }
             }
 
-            if (result[id] != 0)
-                throw new Exception("Topological sort visited tag twice: " + tag);
+            Assign(tag, result, state, ref nextIndex);
+            Depth--;
 
-            // Assign this tag the next sort index.
-            if (Tracing)
-                Console.WriteLine("#{0} {1}", nextIndex, tag);
+            return cycle;
+        }
 
-            result[id] = nextIndex++;
-            state[id] = false;
+        private static bool Assign (Tags tag, int[] result, Dictionary<int, bool> state, ref int nextIndex) {
+            var id = tag.Id;
 
-            return true;
+            if (state[id] == true) {
+                if (result[id] != 0)
+                    throw new Exception("Topological sort visited tag twice: " + tag);
+
+                // Assign this tag the next sort index.
+                if (Tracing)
+                    Console.WriteLine("{0}#{1}: {2}", new string('.', Depth), nextIndex, tag);
+
+                result[id] = nextIndex++;
+                state[id] = false;
+
+                return true;
+            }
+
+            return false;
         }
 
         public void Add (TagOrdering ordering) {
