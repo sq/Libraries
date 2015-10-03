@@ -858,6 +858,20 @@ namespace Squared.Render.Convenience {
             GenerateCells();
         }
 
+        public static Atlas FromCount (
+            Texture2D texture, int countX, int countY,
+            int marginLeft = 0, int marginTop = 0,
+            int marginRight = 0, int marginBottom = 0
+        ) {
+            var w = texture.Width - (marginLeft + marginRight);
+            var h = texture.Height - (marginTop + marginTop);
+
+            return new Atlas(
+                texture, w / countX, h / countY,
+                marginLeft, marginTop, marginRight, marginBottom
+            );
+        }
+
         private int InteriorWidth {
             get {
                 return Texture.Width - (MarginLeft + MarginRight);
