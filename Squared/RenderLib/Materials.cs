@@ -344,10 +344,8 @@ namespace Squared.Render {
 
 #if SDL2 // `Content/SquaredRender/` folder -flibit
             BuiltInShaders = new ContentManager(serviceProvider, "Content/SquaredRender");
-#elif !PSM
-            BuiltInShaders = new ResourceContentManager(serviceProvider, Shaders.ResourceManager);
 #else
-            BuiltInShaders = new Squared.Render.PSM.PSMShaderManager(serviceProvider);
+            BuiltInShaders = new ResourceContentManager(serviceProvider, Shaders.ResourceManager);
 #endif
 
             Clear = new DelegateMaterial(
@@ -357,12 +355,6 @@ namespace Squared.Render {
             );
 
    
-#if PSM
-            ScreenSpaceBitmap = new EffectMaterial(BuiltInShaders.Load<Effect>("ScreenSpaceBitmap"));
-            WorldSpaceBitmap = new EffectMaterial(BuiltInShaders.Load<Effect>("WorldSpaceBitmap"));
-            ScreenSpaceGeometry = new EffectMaterial(BuiltInShaders.Load<Effect>("ScreenSpaceGeometry"));
-            WorldSpaceGeometry = new EffectMaterial(BuiltInShaders.Load<Effect>("WorldSpaceGeometry"));
-#else
             var bitmapShader = BuiltInShaders.Load<Effect>("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load<Effect>("SquaredGeometryShader");
             
@@ -395,9 +387,7 @@ namespace Squared.Render {
                 geometryShader,
                 "WorldSpaceUntextured"
             );
-#endif
             
-#if !PSM
             var lightmapShader = BuiltInShaders.Load<Effect>("Lightmap");
 
             ScreenSpaceLightmappedBitmap = new EffectMaterial(
@@ -431,7 +421,6 @@ namespace Squared.Render {
                 blurShader,
                 "WorldSpaceVerticalGaussianBlur5Tap"
             );
-#endif
 
             var gds = serviceProvider.GetService(typeof(IGraphicsDeviceService)) as IGraphicsDeviceService;
             if (gds != null)
@@ -700,11 +689,7 @@ namespace Squared.Render {
                 if (technique != null)
                     Effect.CurrentTechnique = technique;
                 else {
-#if PSM
-                    // HACK: fuck sony
-#else
                     throw new ArgumentException("techniqueName");
-#endif
                 }
             } else {
                 Effect = effect;

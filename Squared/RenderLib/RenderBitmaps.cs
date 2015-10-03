@@ -13,17 +13,12 @@ using Squared.Render.Internal;
 using Squared.Render.Tracing;
 using Squared.Util;
 using System.Reflection;
-
-#if PSM
-using VertexFormat = Sce.PlayStation.Core.Graphics.VertexFormat;
-#endif
+using Squared.Util.DeclarativeSort;
+using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace Squared.Render {    
-#if PSM
-    [StructLayout(LayoutKind.Sequential, Pack = 4)]
-#else
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-#endif
     public struct BitmapVertex : IVertexType {
         public Vector3 Position;
         public Vector2 TextureTopLeft;
@@ -34,41 +29,13 @@ namespace Squared.Render {
         public Color MultiplyColor;
         public Color AddColor;
         
-#if PSM
-        public float Corner;
-#else
         public short Corner;
         public short Unused;
-#endif
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
 
         static BitmapVertex () {
-#if PSM
-            // fuck sony
-            short sizeF = 4;
-            short sizeColor = 4;
-            short sizeV3 = (short)(sizeF * 3);
-            short sizeV4 = (short)(sizeF * 4);
-            
-            Elements = new VertexElement[] {
-                new VertexElement( 0, 
-                    VertexElementFormat.Vector3, VertexElementUsage.Position, 0 ),
-                new VertexElement( sizeV3, 
-                    VertexElementFormat.Vector4, VertexElementUsage.Position, 1 ),
-                new VertexElement( sizeV3 + sizeV4, 
-                    VertexElementFormat.Vector4, VertexElementUsage.Position, 2 ),
-                new VertexElement( sizeV3 + sizeV4 * 2, 
-                    VertexElementFormat.Single, VertexElementUsage.Position, 3 ),
-                new VertexElement( sizeV3 + sizeV4 * 2 + sizeF, 
-                    VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
-                new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor, 
-                    VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
-                new VertexElement( sizeV3 + sizeV4 * 2 + sizeF + sizeColor * 2, 
-                    VertexElementFormat.Single, VertexElementUsage.BlendIndices, 0 )
-            };
-#else
             var tThis = typeof(BitmapVertex);
 
             Elements = new VertexElement[] {
@@ -89,7 +56,6 @@ namespace Squared.Render {
                 new VertexElement( Marshal.OffsetOf(tThis, "Corner").ToInt32(), 
                     VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 )
             };
-#endif
 
             _VertexDeclaration = new VertexDeclaration(Elements);
         }
@@ -99,12 +65,34 @@ namespace Squared.Render {
         }
     }
 
-    public sealed class BitmapDrawCallComparer : IComparer<BitmapDrawCall> {
+    public sealed class BitmapDrawCallSorterComparer : IComparer<BitmapDrawCall> {
+        public Sorter<BitmapDrawCall>.SorterComparer Comparer;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
-            var result = (x.SortKey > y.SortKey)
+            var result = Comparer.Compare(x, y);
+
+            if (result == 0) {
+                result = (x.Textures.HashCode > y.Textures.HashCode)
                 ? 1
                 : (
-                    (x.SortKey < y.SortKey)
+                    (x.Textures.HashCode < y.Textures.HashCode)
+                    ? -1
+                    : 0
+                );
+            }
+
+            return result;
+        }
+    }
+
+    public sealed class BitmapDrawCallOrderAndTextureComparer : IComparer<BitmapDrawCall> {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
+            var result = (x.SortKey.Order > y.SortKey.Order)
+                ? 1
+                : (
+                    (x.SortKey.Order < y.SortKey.Order)
                     ? -1
                     : 0
                 );
@@ -121,6 +109,7 @@ namespace Squared.Render {
     }
 
     public sealed class BitmapDrawCallTextureComparer : IComparer<BitmapDrawCall> {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
             return (x.Textures.HashCode > y.Textures.HashCode)
                 ? 1
@@ -212,12 +201,28 @@ namespace Squared.Render {
             }
         }
 
+        /// <summary>
+        /// Specifies a declarative sorter that overrides the default sorting order for draw calls.
+        /// Note that draw calls are still sorted by texture in the event that you provide no ordering
+        ///  for a given pair of calls. 
+        /// </summary>
+        public Sorter<BitmapDrawCall> Sorter;
+
         public SamplerState SamplerState;
         public SamplerState SamplerState2;
+
+        /// <summary>
+        /// If set and no declarative sorter is provided, draw calls will only be sorted by texture,
+        ///  and the z-buffer will be relied on to provide sorting of individual draw calls.
+        /// </summary>
         public bool UseZBuffer = false;
 
-        public static IComparer<BitmapDrawCall> DrawCallComparer = new BitmapDrawCallComparer();
-        public static IComparer<BitmapDrawCall> DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
+        public static BitmapDrawCallOrderAndTextureComparer DrawCallComparer = new BitmapDrawCallOrderAndTextureComparer();
+        public static BitmapDrawCallTextureComparer DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
+
+        private static ThreadLocal<BitmapDrawCallSorterComparer> DrawCallSorterComparer = new ThreadLocal<BitmapDrawCallSorterComparer>(
+            () => new BitmapDrawCallSorterComparer()
+        );
 
         public const int NativeBatchSize = 1024;
         private const int NativeBatchCapacityLimit = 1024;
@@ -227,29 +232,27 @@ namespace Squared.Render {
             256, 16, 64, NativeBatchCapacityLimit
         );
         private UnorderedList<NativeBatch> _NativeBatches = null;
-        private volatile bool _Prepared = false;
+
+        private enum PrepareState : int {
+            Invalid,
+            NotPrepared,
+            Preparing,
+            Prepared,
+            Issuing,
+            Issued
+        }
+
+        private volatile int _State = (int)PrepareState.Invalid;
 
         private static readonly ushort[] QuadIndices = new ushort[] {
             0, 1, 2,
             0, 2, 3
         };
   
-#if PSM
-        private static readonly float[] FloatCorners = new [] { 0f, 1f, 2f, 3f };
-        private PSMBufferGenerator<BitmapVertex> _BufferGenerator = null;
-#else
         private XNABufferGenerator<BitmapVertex> _BufferGenerator = null;
-#endif
 
         static BitmapBatch () {
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
-            
-#if PSM
-            PSMBufferGenerator<BitmapVertex>.VertexFormat = new [] {
-              VertexFormat.Float3, VertexFormat.Float4, VertexFormat.Float4,
-              VertexFormat.Float, VertexFormat.UByte4N, VertexFormat.UByte4N, VertexFormat.Float
-            };
-#endif
         }
 
         public static BitmapBatch New (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, bool useZBuffer = false) {
@@ -277,12 +280,27 @@ namespace Squared.Render {
             _Allocator = container.RenderManager.GetArrayAllocator<BitmapVertex>();
 
             UseZBuffer = useZBuffer;
+
+            var prior = (PrepareState)Interlocked.Exchange(ref _State, (int)PrepareState.NotPrepared);
+            if ((prior == PrepareState.Issuing) || (prior == PrepareState.Preparing))
+                throw new ThreadStateException("This batch is currently in use");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void StateTransition (PrepareState from, PrepareState to) {
+            var prior = (PrepareState)Interlocked.Exchange(ref _State, (int)to);
+            if (prior != from)
+                throw new ThreadStateException(string.Format(
+                    "Expected to transition this batch from {0} to {1}, but state was {2}",
+                    from, to, prior
+                ));
         }
 
         public ArraySegment<BitmapDrawCall> ReserveSpace (int count) {
             return _DrawCalls.ReserveSpace(count);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (BitmapDrawCall item) {
             if (!item.IsValid)
                 throw new InvalidOperationException("Invalid draw call");
@@ -290,6 +308,7 @@ namespace Squared.Render {
             _DrawCalls.Add(ref item);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         new public void Add (ref BitmapDrawCall item) {
             if (!item.IsValid)
                 throw new InvalidOperationException("Invalid draw call");
@@ -297,13 +316,14 @@ namespace Squared.Render {
             _DrawCalls.Add(ref item);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (BitmapDrawCall[] items) {
             AddRange(items, 0, items.Length, null);
         }
 
         public void AddRange (
             BitmapDrawCall[] items, int firstIndex, int count, 
-            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, float? sortKey = null, Vector2? scale = null
+            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, BitmapSortKey? sortKey = null, Vector2? scale = null
         ) {
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];
@@ -327,11 +347,7 @@ namespace Squared.Render {
             }
         }
 
-#if PSM
-        private void FillOneSoftwareBuffer (BitmapDrawCall[] drawCalls, ref int drawCallsPrepared, int count) {
-#else
         private unsafe void FillOneSoftwareBuffer (BitmapDrawCall[] drawCalls, ref int drawCallsPrepared, int count) {
-#endif
             int totalVertCount = 0;
             int vertCount = 0, vertOffset = 0;
             int indexCount = 0, indexOffset = 0;
@@ -351,25 +367,13 @@ namespace Squared.Render {
 
             float zBufferFactor = UseZBuffer ? 1.0f : 0.0f;
 
-#if !PSM
             fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset])
             fixed (ushort* pIndices = &softwareBuffer.Indices.Array[softwareBuffer.Indices.Offset])
-#else
-            var indexArray = softwareBuffer.Indices.Array;
-            var indexArrayOffset = softwareBuffer.Indices.Offset;
-#endif
                 for (int i = drawCallsPrepared; i < count; i++) {
                     if (totalVertCount >= nativeBatchSizeLimit)
                         break;
 
                     var call = drawCalls[i];
-
-#if PSM
-                // HACK: PSM render targets have an inverted Y axis, so if the bitmap being drawn is a render target,
-                //   flip it vertically.
-                if (call.Textures.Texture1 is RenderTarget2D)
-                    call.Mirror(false, true);
-#endif
 
                     bool texturesEqual = call.Textures.Equals(ref currentTextures);
 
@@ -393,7 +397,7 @@ namespace Squared.Render {
 
                     vertex.Position.X = call.Position.X;
                     vertex.Position.Y = call.Position.Y;
-                    vertex.Position.Z = call.SortKey * zBufferFactor;
+                    vertex.Position.Z = call.SortKey.Order * zBufferFactor;
                     var tr = call.TextureRegion;
                     vertex.TextureTopLeft = tr.TopLeft;
                     vertex.TextureBottomRight = tr.BottomRight;
@@ -403,24 +407,14 @@ namespace Squared.Render {
                     vertex.Origin = call.Origin;
                     vertex.Rotation = call.Rotation;
 
-#if !PSM
                     for (var j = 0; j < 6; j++)
                         pIndices[indexWritePosition + j] = (ushort)(indexBase + QuadIndices[j]);
-#else
-                    for (var j = 0; j < 6; j++)
-                        indexArray[indexArrayOffset + indexWritePosition + j] = (ushort)(indexBase + QuadIndices[j]);
-#endif
 
                     indexWritePosition += 6;
 
                     for (short j = 0; j < 4; j++) {
-#if !PSM
                         vertex.Unused = vertex.Corner = j;
                         pVertices[vertexWritePosition + j] = vertex;
-#else
-                        vertex.Corner = FloatCorners[j];
-                        buffers.Vertices.Array[buffers.Vertices.Offset + vertexWritePosition + j] = vertex;
-#endif
                     }
 
                     vertexWritePosition += 4;
@@ -448,6 +442,12 @@ namespace Squared.Render {
         }
         
         public override void Prepare () {
+            var prior = (PrepareState)Interlocked.Exchange(ref _State, (int)PrepareState.Preparing);
+            if ((prior == PrepareState.Issuing) || (prior == PrepareState.Preparing))
+                throw new ThreadStateException("This batch is currently in use");
+            else if (prior == PrepareState.Invalid)
+                throw new ThreadStateException("This batch is not valid");
+
             if (_DrawCalls.Count == 0)
                 return;
 
@@ -460,24 +460,18 @@ namespace Squared.Render {
                 _NativeBatches = _NativePool.Allocate(nativeBatchCapacity);
             }
 
-            var sorter =
-                UseZBuffer ? DrawCallTextureComparer : DrawCallComparer;
-
-            // FIXME: This sort takes a *TON* of time on large element sets with many identical elements.
-            // Use a merge sort, perhaps? Good worst-case time.
-#if PSM
-            _DrawCalls.Timsort(sorter);
-#else
-            _DrawCalls.Sort(sorter);
-#endif
+            if (Sorter != null) {
+                var comparer = DrawCallSorterComparer.Value;
+                _DrawCalls.Sort();
+            } else if (UseZBuffer) {
+                _DrawCalls.Sort(DrawCallTextureComparer);
+            } else {
+                _DrawCalls.Sort(DrawCallComparer);
+            }
 
             var count = _DrawCalls.Count;
 
-#if PSM                
-            _BufferGenerator = Container.RenderManager.GetBufferGenerator<PSMBufferGenerator<BitmapVertex>>();
-#else
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<BitmapVertex>>();
-#endif
 
             var _drawCalls = _DrawCalls.GetBuffer();
             int drawCallsPrepared = 0;
@@ -485,18 +479,17 @@ namespace Squared.Render {
             while (drawCallsPrepared < count)
                 FillOneSoftwareBuffer(_drawCalls, ref drawCallsPrepared, count);
 
-            _Prepared = true;
+            StateTransition(PrepareState.Preparing, PrepareState.Prepared);
         }
             
         public override void Issue (DeviceManager manager) {
+            StateTransition(PrepareState.Prepared, PrepareState.Issuing);
+
             if (IsCombined)
                 throw new InvalidOperationException("Batch was combined into another batch");
 
             if (_DrawCalls.Count == 0)
                 return;
-
-            if (_Prepared == false)
-                throw new InvalidOperationException("Not prepared");
 
             if (_BufferGenerator == null)
                 throw new InvalidOperationException("Already issued");
@@ -552,17 +545,6 @@ namespace Squared.Render {
                         previousHardwareBuffer = hwb;
                     }
       
-#if PSM
-                    // MonoGame and PSM are both retarded.
-                    device.ApplyState(false);
-                    device.Textures.SetTextures(device);
-                    device.SamplerStates.SetSamplers(device);
-                        
-                    device._graphics.DrawArrays(
-                        Sce.PlayStation.Core.Graphics.DrawMode.Triangles,
-                        nb.IndexOffset, (nb.VertexCount / 4) * 6
-                    );
-#else
                     device.DrawIndexedPrimitives(
                         PrimitiveType.TriangleList, 0, 
                         swb.HardwareVertexOffset + nb.LocalVertexOffset, 
@@ -570,7 +552,6 @@ namespace Squared.Render {
                         swb.HardwareIndexOffset + nb.LocalIndexOffset,
                         nb.VertexCount / 2
                     );
-#endif
                 }
 
                 if (previousHardwareBuffer != null)
@@ -580,10 +561,12 @@ namespace Squared.Render {
             _BufferGenerator = null;
 
             base.Issue(manager);
+
+            StateTransition(PrepareState.Issuing, PrepareState.Issued);
         }
 
         protected override void OnReleaseResources () {
-            _Prepared = false;
+            _State = (int)PrepareState.Invalid;
             _BufferGenerator = null;
 
             _NativePool.Release(ref _NativeBatches);
@@ -591,6 +574,7 @@ namespace Squared.Render {
             base.OnReleaseResources();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveRange (int index, int count) {
             _DrawCalls.RemoveRange(index, count);
         }
@@ -600,12 +584,14 @@ namespace Squared.Render {
         public readonly Texture2D Texture1, Texture2;
         public readonly int HashCode;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1) {
             Texture1 = texture1;
             Texture2 = null;
             HashCode = texture1.GetHashCode();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1, Texture2D texture2) {
             Texture1 = texture1;
             Texture2 = texture2;
@@ -623,14 +609,17 @@ namespace Squared.Render {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator TextureSet (Texture2D texture1) {
             return new TextureSet(texture1);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (ref TextureSet rhs) {
             return (HashCode == rhs.HashCode) && (Texture1 == rhs.Texture1) && (Texture2 == rhs.Texture2);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override bool Equals (object obj) {
             if (obj is TextureSet) {
                 var rhs = (TextureSet)obj;
@@ -640,14 +629,17 @@ namespace Squared.Render {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator == (TextureSet lhs, TextureSet rhs) {
             return (lhs.HashCode == rhs.HashCode) && (lhs.Texture1 == rhs.Texture1) && (lhs.Texture2 == rhs.Texture2);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator != (TextureSet lhs, TextureSet rhs) {
             return (lhs.Texture1 != rhs.Texture1) || (lhs.Texture2 != rhs.Texture2);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
             return HashCode;
         }
@@ -657,54 +649,85 @@ namespace Squared.Render {
         public readonly Texture2D Texture;
         public readonly Bounds TextureRegion;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ImageReference (Texture2D texture, Bounds region) {
             Texture = texture;
             TextureRegion = region;
         }
     }
 
+    public struct BitmapSortKey {
+        public Tags  Tags;
+        public float Order;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public BitmapSortKey (Tags tags = default(Tags), float order = 0) {
+            Tags = tags;
+            Order = order;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator BitmapSortKey (Tags tags) {
+            return new BitmapSortKey(tags: tags);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator BitmapSortKey (float order) {
+            return new BitmapSortKey(order: order);
+        }
+    }
+
     public struct BitmapDrawCall {
         public TextureSet Textures;
         public Vector2 Position;
-        public Bounds TextureRegion;
         public Vector2 Scale;
         public Vector2 Origin;
-        public float Rotation;
-        public Color MultiplyColor, AddColor;
-        public float SortKey;
+        public Bounds  TextureRegion;
+        public float   Rotation;
+        public Color   MultiplyColor, AddColor;
+        public BitmapSortKey SortKey;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitmapDrawCall (Texture2D texture, Vector2 position)
             : this(texture, position, texture.Bounds()) {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitmapDrawCall (Texture2D texture, Vector2 position, Color color)
             : this(texture, position, texture.Bounds(), color) {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion)
             : this(texture, position, textureRegion, Color.White) {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color)
             : this(texture, position, textureRegion, color, Vector2.One) {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitmapDrawCall (Texture2D texture, Vector2 position, float scale)
             : this(texture, position, texture.Bounds(), Color.White, new Vector2(scale, scale)) {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitmapDrawCall (Texture2D texture, Vector2 position, Vector2 scale)
             : this(texture, position, texture.Bounds(), Color.White, scale) {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, float scale)
             : this(texture, position, textureRegion, color, new Vector2(scale, scale)) {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, Vector2 scale)
             : this(texture, position, textureRegion, color, scale, Vector2.Zero) {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin)
             : this(texture, position, textureRegion, color, scale, origin, 0.0f) {
         }
@@ -724,7 +747,7 @@ namespace Squared.Render {
             Origin = origin;
             Rotation = rotation;
 
-            SortKey = 0;
+            SortKey = default(BitmapSortKey);
         }
 
         public void Mirror (bool x, bool y) {
@@ -750,6 +773,7 @@ namespace Squared.Render {
                 else
                     throw new InvalidOperationException("DrawCall has multiple textures");
             }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 Textures = new TextureSet(value);
             }
@@ -759,8 +783,29 @@ namespace Squared.Render {
             get {
                 return (Scale.X + Scale.Y) / 2.0f;
             }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 Scale = new Vector2(value, value);
+            }
+        }
+
+        public Tags SortTags {
+            get {
+                return SortKey.Tags;
+            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set {
+                SortKey.Tags = value;
+            }
+        }
+
+        public float SortOrder {
+            get {
+                return SortKey.Order;
+            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set {
+                SortKey.Order = value;
             }
         }
 
@@ -774,6 +819,7 @@ namespace Squared.Render {
                     (int)Math.Ceiling(TextureRegion.Size.Y * Texture.Height)
                 );
             }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 TextureRegion = Texture.BoundsFromRectangle(ref value);
             }
@@ -783,6 +829,7 @@ namespace Squared.Render {
             get {
                 return MultiplyColor;
             }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 MultiplyColor = value;
             }
@@ -832,6 +879,7 @@ namespace Squared.Render {
             get {
                 return new ImageReference(Textures.Texture1, TextureRegion);
             }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 Textures = new TextureSet(value.Texture);
                 TextureRegion = value.TextureRegion;
@@ -839,11 +887,13 @@ namespace Squared.Render {
         }
 
         public bool IsValid {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return ((Textures.Texture1 != null) && !Textures.Texture1.IsDisposed);
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BitmapDrawCall operator * (BitmapDrawCall dc, float opacity) {
             dc.MultiplyColor *= opacity;
             dc.AddColor *= opacity;

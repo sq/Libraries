@@ -9,8 +9,6 @@ using Squared.Util;
 namespace Squared.Task.Http {
     public partial class HttpServer {
         public class Response {
-            private static readonly byte[] ContinueMessageBytes;
-
             public static Encoding DefaultEncoding = Encoding.UTF8;
 
             public readonly HeaderCollection Headers = new HeaderCollection();

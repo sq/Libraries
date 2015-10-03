@@ -7,10 +7,6 @@ using System.Threading;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Util;
 
-#if PSM
-using Sce.PlayStation.Core.Graphics;
-#endif
-
 namespace Squared.Render.Internal {
     public interface IBufferGenerator : IDisposable {
         void Reset();
@@ -484,45 +480,6 @@ namespace Squared.Render.Internal {
         }
     }
 
-#if PSM
-    public class PSMHardwareBuffer : IHardwareBuffer {
-    }
-
-    public class PSMBufferGenerator<TVertex> : BufferGenerator<Sce.PlayStation.Core.Graphics.VertexBuffer, TVertex, ushort> 
-        where TVertex : struct {
-        
-        public static VertexFormat[] VertexFormat = null;
-
-        public XNABufferGenerator (GraphicsDevice graphicsDevice, object useResourceLock, Action<IDisposable> disposeResource)
-            : base(graphicsDevice, useResourceLock, disposeResource) {
-            
-            if (VertexFormat == null)
-                throw new InvalidOperationException("Please set PSMBufferGenerator<TVertex>.VertexFormat first.");
-        }
-
-        protected override void FlushToBuffer () {
-            if (
-                (_Buffer != null) &&
-                (
-                    (_Buffer.VertexCount < _VertexArray.Length) ||
-                    (_Buffer.IndexCount < _IndexArray.Length)
-                )
-            ) {
-                DisposeResource(_Buffer);
-                _Buffer = null;
-            }
-
-            if (_VertexArray.Length >= UInt16.MaxValue)
-                throw new InvalidOperationException("Too many vertices");
-
-            if (_Buffer == null)
-                _Buffer = new Sce.PlayStation.Core.Graphics.VertexBuffer(_VertexArray.Length, _IndexArray.Length, VertexFormat);
-
-            _Buffer.SetVertices(_VertexArray, 0, 0, _VertexCount);
-            _Buffer.SetIndices(_IndexArray, 0, 0, _IndexCount);
-        }
-    }
-#else
     public class XNABufferPair<TVertex> : IHardwareBuffer
         where TVertex : struct 
     {
@@ -677,5 +634,4 @@ namespace Squared.Render.Internal {
             }
         }
     }
-#endif
 }

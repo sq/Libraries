@@ -273,11 +273,7 @@ namespace Squared.Render {
         
         protected bool DoThreadedIssue { 
             get {
-#if PSM
-                return false;
-#else
                 return _ActualEnableThreading;
-#endif
             }
         }
 
@@ -516,9 +512,4 @@ namespace Squared.Render {
                 _PendingDisposes.Add(resource);
         }
     }
-    
-#if PSM
-    class DeviceLostException : Exception {
-    }
-#endif
 }

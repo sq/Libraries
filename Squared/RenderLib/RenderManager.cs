@@ -495,11 +495,7 @@ namespace Squared.Render {
 
             BatchCombiner.CombineBatches(Batches);
 
-#if PSM
-            Batches.Timsort(BatchComparer);
-#else
             Batches.Sort(BatchComparer);
-#endif
 
             if (!Monitor.TryEnter(PrepareLock, 5000)) {
                 throw new InvalidOperationException("Spent more than five seconds waiting for a previous prepare operation.");
@@ -845,11 +841,7 @@ namespace Squared.Render {
         public override void Prepare () {
             BatchCombiner.CombineBatches(_DrawCalls);
 
-#if PSM
-            _DrawCalls.Timsort(Frame.BatchComparer);
-#else
             _DrawCalls.Sort(Frame.BatchComparer);
-#endif
 
             foreach (var batch in _DrawCalls) {
                 if (batch != null) {

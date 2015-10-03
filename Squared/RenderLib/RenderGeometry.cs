@@ -129,11 +129,7 @@ namespace Squared.Render {
 
         internal Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>> Lists = new Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>>();
 
-#if PSM
-        private PSMBufferGenerator<GeometryVertex> _BufferGenerator = null;
-#else
         private XNABufferGenerator<GeometryVertex> _BufferGenerator = null;
-#endif
         internal UnorderedList<DrawArguments> _DrawArguments; 
 
         internal ArrayPoolAllocator<GeometryVertex> VertexAllocator;
@@ -195,11 +191,7 @@ namespace Squared.Render {
 
         public override void Prepare () {
             if (Count > 0) {
-#if PSM                
-                _BufferGenerator = Container.RenderManager.GetBufferGenerator<PSMBufferGenerator<GeometryVertex>>();
-#else
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<GeometryVertex>>();
-#endif
 
                 _DrawArguments = _DrawArgumentsListPool.Allocate(null);
                 var swb = _BufferGenerator.Allocate(VertexCount, IndexCount, true);
@@ -213,11 +205,7 @@ namespace Squared.Render {
                     var l = kvp.Value;
                     var c = l.Count;
 
-#if PSM
-                    l.Timsort(_DrawCallSorter);
-#else
                     l.Sort(_DrawCallSorter);
-#endif
 
                     int vertexCount = vb.Count, indexCount = ib.Count;
 
@@ -246,13 +234,8 @@ namespace Squared.Render {
                         throw new ThreadStateException("Could not get a hardware buffer for this batch");
 
                     hwb.SetActive(manager.Device);
-    #if PSM                
-                    foreach (var da in _DrawArguments)
-                        g.DrawArrays(PSSHelper.ToDrawMode(da.PrimitiveType), da.IndexOffset, da.IndexCount, 1);
-    #else
                     foreach (var da in _DrawArguments)
                         manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
-    #endif
                     hwb.SetInactive(manager.Device);
                 }
             }

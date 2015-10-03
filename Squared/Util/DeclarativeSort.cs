@@ -788,9 +788,14 @@ namespace Squared.Util.DeclarativeSort {
                 result.Connect(ordering.Higher, ordering.Lower);
 
                 foreach (var kvp in Tags.Registry) {
-                    if (kvp.Value.Contains(ordering.Lower))
+                    var containsLower = kvp.Value.Contains(ordering.Lower);
+                    var containsHigher = kvp.Value.Contains(ordering.Higher);
+
+                    if (containsLower && containsHigher)
+                        continue;
+                    else if (containsLower)
                         result.Connect(ordering.Higher, kvp.Value);
-                    else if (kvp.Value.Contains(ordering.Higher))
+                    else if (containsHigher)
                         result.Connect(kvp.Value, ordering.Lower);
                 }
             }
@@ -1177,6 +1182,7 @@ namespace Squared.Util.DeclarativeSort {
                 return expr.Compile();
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]             
             public int Compare (TValue lhs, TValue rhs) {
                 return Comparer(ref lhs, ref rhs);
             }
@@ -1198,7 +1204,7 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
-        private SorterComparer GetComparer (bool ascending) {
+        public SorterComparer GetComparer (bool ascending) {
             lock (ComparerLock)
             if (ascending) {
                 if (AscendingSorter == null)

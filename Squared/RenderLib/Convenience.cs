@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.Render.Text;
 using Squared.Util;
+using Squared.Util.DeclarativeSort;
 
 namespace Squared.Render.Convenience {
     public static class RenderStates {
@@ -341,7 +342,9 @@ namespace Squared.Render.Convenience {
         public bool AutoIncrementLayer;
         public bool AutoIncrementSortKey;
 
-        private float NextSortKey;
+        public Sorter<BitmapDrawCall> DeclarativeSorter;
+
+        private BitmapSortKey NextSortKey;
         private CachedBatches Cache;
 
         public ImperativeRenderer (
@@ -355,7 +358,9 @@ namespace Squared.Render.Convenience {
             bool worldSpace = true,
             bool useZBuffer = false,
             bool autoIncrementSortKey = false,
-            bool autoIncrementLayer = false
+            bool autoIncrementLayer = false,
+            Sorter<BitmapDrawCall> declarativeSorter = null,
+            Tags tags = default(Tags)
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
@@ -373,10 +378,19 @@ namespace Squared.Render.Convenience {
             WorldSpace = worldSpace;
             AutoIncrementSortKey = autoIncrementSortKey;
             AutoIncrementLayer = autoIncrementLayer;
-            NextSortKey = 0;
+            NextSortKey = new BitmapSortKey(tags, 0);
             Cache = new CachedBatches();
+            DeclarativeSorter = declarativeSorter;
         }
 
+        public Tags DefaultTags {
+            get {
+                return NextSortKey.Tags;
+            }
+            set {
+                NextSortKey.Tags = value;
+            }
+        }
 
         public ImperativeRenderer MakeSubgroup (bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null) {
             var result = this;
@@ -451,11 +465,6 @@ namespace Squared.Render.Convenience {
             else if (Container.IsDisposed)
                 throw new ObjectDisposedException("The container this ImperativeRenderer is drawing into has been disposed.");
 
-            if (AutoIncrementSortKey) {
-                drawCall.SortKey = NextSortKey;
-                NextSortKey += 1;
-            }
-
             using (var batch = GetBitmapBatch(
                 layer, worldSpace,
                 blendState, samplerState,
@@ -469,7 +478,7 @@ namespace Squared.Render.Convenience {
             Texture2D texture, Vector2 position,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, Vector2? scale = null, Vector2 origin = default(Vector2),
-            bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
+            bool mirrorX = false, bool mirrorY = false, BitmapSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null, 
             BlendState blendState = null, SamplerState samplerState = null,
             Material material = null
@@ -484,7 +493,10 @@ namespace Squared.Render.Convenience {
             drawCall.Origin = origin;
             if (mirrorX || mirrorY)
                 drawCall.Mirror(mirrorX, mirrorY);
-            drawCall.SortKey = sortKey;
+
+            drawCall.SortKey = sortKey.GetValueOrDefault(NextSortKey);
+            if (AutoIncrementSortKey)
+                NextSortKey.Order += 1;
 
             Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState, material: material);
         }
@@ -493,7 +505,7 @@ namespace Squared.Render.Convenience {
             Texture2D texture, float x, float y,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, float scaleX = 1, float scaleY = 1, float originX = 0, float originY = 0,
-            bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
+            bool mirrorX = false, bool mirrorY = false, BitmapSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null,
             Material material = null
@@ -508,7 +520,10 @@ namespace Squared.Render.Convenience {
             drawCall.Origin = new Vector2(originX, originY);
             if (mirrorX || mirrorY)
                 drawCall.Mirror(mirrorX, mirrorY);
-            drawCall.SortKey = sortKey;
+
+            drawCall.SortKey = sortKey.GetValueOrDefault(NextSortKey);
+            if (AutoIncrementSortKey)
+                NextSortKey.Order += 1;
 
             Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState);
         }
@@ -517,7 +532,7 @@ namespace Squared.Render.Convenience {
             Texture2D texture, Rectangle destRectangle,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, float originX = 0, float originY = 0,
-            bool mirrorX = false, bool mirrorY = false, float sortKey = 0,
+            bool mirrorX = false, bool mirrorY = false, BitmapSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null,
             Material material = null
@@ -536,14 +551,17 @@ namespace Squared.Render.Convenience {
             drawCall.Origin = new Vector2(originX, originY);
             if (mirrorX || mirrorY)
                 drawCall.Mirror(mirrorX, mirrorY);
-            drawCall.SortKey = sortKey;
+
+            drawCall.SortKey = sortKey.GetValueOrDefault(NextSortKey);
+            if (AutoIncrementSortKey)
+                NextSortKey.Order += 1;
 
             Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState, material: material);
         }
 
         public void DrawMultiple (
             ArraySegment<BitmapDrawCall> drawCalls,
-            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, float? sortKey = null,
+            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, BitmapSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, Vector2? scale = null,
             Material material = null
@@ -558,7 +576,7 @@ namespace Squared.Render.Convenience {
 
         public void DrawString (
             SpriteFont font, string text,
-            Vector2 position, Color? color = null, float scale = 1, float? sortKey = null,
+            Vector2 position, Color? color = null, float scale = 1, BitmapSortKey? sortKey = null,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null

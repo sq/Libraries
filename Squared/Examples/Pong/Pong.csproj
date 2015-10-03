@@ -137,6 +137,10 @@
       <Project>{FE871F18-FD35-4124-AF8F-0021C9D4BA29}</Project>
       <Name>Squared.Render</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\Util\Squared.Util.csproj">
+      <Project>{d7f549cf-e0a6-491c-a78c-ecab590bb2a7}</Project>
+      <Name>Squared.Util</Name>
+    </ProjectReference>
     <ProjectReference Include="Content\PongContent.contentproj">
       <Project>{AED97792-E98A-4552-B315-6CAA67BCB904}</Project>
       <Name>PongContent %28Content%29</Name>

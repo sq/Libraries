@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable 0612
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
