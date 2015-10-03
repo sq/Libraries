@@ -236,15 +236,15 @@ namespace Squared.Render {
                 throw new ThreadStateException("Function running off main thread in single threaded mode");
         }
 
-        protected void PrepareFrame (Frame frame) {
+        protected void PrepareFrame (Frame frame, bool threaded) {
             if (DoThreadedPrepare)
                 Monitor.Enter(PrepareLock);
 
-            CheckMainThread(DoThreadedPrepare);
+            CheckMainThread(DoThreadedPrepare && threaded);
 
             try {
                 Manager.ResetBufferGenerators();
-                frame.Prepare(DoThreadedPrepare);
+                frame.Prepare(DoThreadedPrepare && threaded);
             } finally {
                 if (DoThreadedPrepare)
                     Monitor.Exit(PrepareLock);
@@ -254,9 +254,9 @@ namespace Squared.Render {
         /// <summary>
         /// Finishes preparing the current Frame and readies it to be sent to the graphics device for rendering.
         /// </summary>
-        protected void PrepareNextFrame (Frame newFrame) {
+        protected void PrepareNextFrame (Frame newFrame, bool threaded) {
             if (newFrame != null)
-                PrepareFrame(newFrame);
+                PrepareFrame(newFrame, threaded);
 
             var oldFrame = Interlocked.Exchange(ref _FrameBeingDrawn, newFrame);
 
@@ -282,7 +282,7 @@ namespace Squared.Render {
                 return;
 
             var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
-            PrepareNextFrame(newFrame);
+            PrepareNextFrame(newFrame, true);
             
             if (_Running) {
                 if (DoThreadedIssue) {
@@ -408,7 +408,7 @@ namespace Squared.Render {
 
                     drawBehavior(frame);
 
-                    PrepareNextFrame(frame);
+                    PrepareNextFrame(frame, false);
 
                     var oldRenderTargets = Device.GetRenderTargets();
                     var oldViewport = Device.Viewport;

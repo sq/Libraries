@@ -483,13 +483,13 @@ namespace Squared.Render {
         }
             
         public override void Issue (DeviceManager manager) {
+            if (_DrawCalls.Count == 0)
+                return;
+
             StateTransition(PrepareState.Prepared, PrepareState.Issuing);
 
             if (IsCombined)
                 throw new InvalidOperationException("Batch was combined into another batch");
-
-            if (_DrawCalls.Count == 0)
-                return;
 
             if (_BufferGenerator == null)
                 throw new InvalidOperationException("Already issued");
