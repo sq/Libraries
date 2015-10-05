@@ -106,7 +106,7 @@ void ScreenSpaceVertexShader(
     
     position.xy += rotatedCorner;
 
-    result = TransformPosition(float4(position.xy, position.z, 1), 0.5);
+    result = TransformPosition(float4(position.xy, position.z, 1), 0.0);
 }
 
 void WorldSpaceVertexShader(
@@ -129,5 +129,5 @@ void WorldSpaceVertexShader(
     
     position.xy += rotatedCorner - ViewportPosition;
     
-    result = TransformPosition(float4(position.xy * ViewportScale, position.z, 1), 0.5);
+    result = TransformPosition(float4(position.xy * ViewportScale, position.z, 1), 0.0);
 }
