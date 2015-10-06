@@ -698,7 +698,9 @@ namespace Squared.Render.Convenience {
                     );
                 }
 
-                cacheEntry.Batch = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, UseZBuffer);
+                var bb = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, UseZBuffer);
+                bb.Sorter = DeclarativeSorter;
+                cacheEntry.Batch = bb;
                 Cache.InsertAtFront(ref cacheEntry, null);
             }
 

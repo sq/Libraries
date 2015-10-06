@@ -1204,18 +1204,29 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
+        /// <summary>
+        /// Call this before sorting if it's possible there are any new tags.
+        /// </summary>
+        public void PrepareSort () {
+            foreach (var rule in Rules)
+                rule.Prepare();
+        }
+
         public SorterComparer GetComparer (bool ascending) {
-            lock (ComparerLock)
-            if (ascending) {
-                if (AscendingSorter == null)
-                    AscendingSorter = new SorterComparer(this, ascending);
+            lock (ComparerLock) {
+                PrepareSort();
 
-                return AscendingSorter;
-            } else {
-                if (DescendingSorter == null)
-                    DescendingSorter = new SorterComparer(this, ascending);
+                if (ascending) {
+                    if (AscendingSorter == null)
+                        AscendingSorter = new SorterComparer(this, ascending);
 
-                return DescendingSorter;
+                    return AscendingSorter;
+                } else {
+                    if (DescendingSorter == null)
+                        DescendingSorter = new SorterComparer(this, ascending);
+
+                    return DescendingSorter;
+                }
             }
         }
 

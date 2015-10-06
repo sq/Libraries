@@ -462,7 +462,8 @@ namespace Squared.Render {
 
             if (Sorter != null) {
                 var comparer = DrawCallSorterComparer.Value;
-                _DrawCalls.Sort();
+                comparer.Comparer = Sorter.GetComparer(true);
+                _DrawCalls.Sort(comparer);
             } else if (UseZBuffer) {
                 _DrawCalls.Sort(DrawCallTextureComparer);
             } else {
