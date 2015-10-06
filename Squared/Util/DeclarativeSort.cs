@@ -13,6 +13,7 @@ namespace Squared.Util.DeclarativeSort {
     public struct Tags {
         internal static int NextId = 0;
         internal static readonly Dictionary<int, Tags> Registry = new Dictionary<int, Tags>();
+        internal static readonly Dictionary<Tag, Tags> NullTransitionCache = new Dictionary<Tag, Tags>(Tag.EqualityComparer.Instance);
 
         public static readonly Tags Null = default(Tags);
 
@@ -135,8 +136,7 @@ namespace Squared.Util.DeclarativeSort {
                 else if (Tag != null)
                     return Tag.TransitionCache;
                 else
-                    // FIXME
-                    throw new InvalidOperationException();
+                    return NullTransitionCache;
             }
         }
 
@@ -353,7 +353,7 @@ namespace Squared.Util.DeclarativeSort {
         /// Finds all static Tag fields of type and ensures they are initialized.
         /// If instance is provided, also initializes all non-static Tag fields of that instance.
         /// </summary>
-        public static void AutoCreate (Type type, object instance = null) {
+        public static void AutoCreate (Type type, object instance) {
             var flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
             if (instance != null)
                 flags |= BindingFlags.Instance;
