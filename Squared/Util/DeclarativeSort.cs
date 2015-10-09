@@ -819,7 +819,8 @@ namespace Squared.Util.DeclarativeSort {
             foreach (var kvp in orderedEdges)
                 ToposortVisit(edges, kvp.Key, true, result, state, ref nextIndex);
 
-            Console.WriteLine(string.Join(", ", result));
+            if (Tracing)
+                Console.WriteLine(string.Join(", ", result));
 
             return result;
         }
