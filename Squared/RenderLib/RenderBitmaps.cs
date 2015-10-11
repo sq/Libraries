@@ -121,10 +121,14 @@ namespace Squared.Render {
         }
     }
 
-    public interface IBitmapBatch : IDisposable {
+    public interface IBitmapBatch : IBatch {
+        Sorter<BitmapDrawCall> Sorter {
+            get; set;
+        }
+
         void Add (BitmapDrawCall item);
         void Add (ref BitmapDrawCall item);
-        void AddRange (BitmapDrawCall[] items);
+        void AddRange (ArraySegment<BitmapDrawCall> items);
     }
 
     public class BitmapBatch : ListBatch<BitmapDrawCall>, IBitmapBatch {
@@ -206,7 +210,11 @@ namespace Squared.Render {
         /// Note that draw calls are still sorted by texture in the event that you provide no ordering
         ///  for a given pair of calls. 
         /// </summary>
-        public Sorter<BitmapDrawCall> Sorter;
+        public Sorter<BitmapDrawCall> Sorter {
+            get; set;
+        }
+
+        public bool DisableSorting = false;
 
         public SamplerState SamplerState;
         public SamplerState SamplerState2;
@@ -217,10 +225,10 @@ namespace Squared.Render {
         /// </summary>
         public bool UseZBuffer = false;
 
-        public static BitmapDrawCallOrderAndTextureComparer DrawCallComparer = new BitmapDrawCallOrderAndTextureComparer();
-        public static BitmapDrawCallTextureComparer DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
+        internal static BitmapDrawCallOrderAndTextureComparer DrawCallComparer = new BitmapDrawCallOrderAndTextureComparer();
+        internal static BitmapDrawCallTextureComparer DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
 
-        private static ThreadLocal<BitmapDrawCallSorterComparer> DrawCallSorterComparer = new ThreadLocal<BitmapDrawCallSorterComparer>(
+        internal static ThreadLocal<BitmapDrawCallSorterComparer> DrawCallSorterComparer = new ThreadLocal<BitmapDrawCallSorterComparer>(
             () => new BitmapDrawCallSorterComparer()
         );
 
@@ -272,7 +280,7 @@ namespace Squared.Render {
             Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, 
             bool useZBuffer = false, int? capacity = null
         ) {
-            base.Initialize(container, layer, material, capacity);
+            base.Initialize(container, layer, material, true, capacity);
 
             SamplerState = samplerState ?? SamplerState.LinearClamp;
             SamplerState2 = samplerState2 ?? SamplerState.LinearClamp;
@@ -317,14 +325,29 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddRange (BitmapDrawCall[] items) {
-            AddRange(items, 0, items.Length, null);
+        new public void Add (ref BitmapDrawCall item, Material material) {
+            if (!item.IsValid)
+                throw new InvalidOperationException("Invalid draw call");
+            if (material != null)
+                throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
+
+            _DrawCalls.Add(ref item);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddRange (ArraySegment<BitmapDrawCall> items) {
+            for (int i = 0; i < items.Count; i++)
+                _DrawCalls.Add(ref items.Array[i + items.Offset]);
         }
 
         public void AddRange (
             BitmapDrawCall[] items, int firstIndex, int count, 
-            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, BitmapSortKey? sortKey = null, Vector2? scale = null
+            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, 
+            BitmapSortKey? sortKey = null, Vector2? scale = null, Material material = null
         ) {
+            if (material != null)
+                throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
+
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];
                 if (!item.IsValid)
@@ -460,7 +483,8 @@ namespace Squared.Render {
                 _NativeBatches = _NativePool.Allocate(nativeBatchCapacity);
             }
 
-            if (Sorter != null) {
+            if (DisableSorting) {
+            } else if (Sorter != null) {
                 var comparer = DrawCallSorterComparer.Value;
                 comparer.Comparer = Sorter.GetComparer(true);
                 _DrawCalls.Sort(comparer);
@@ -578,6 +602,207 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveRange (int index, int count) {
             _DrawCalls.RemoveRange(index, count);
+        }
+    }
+
+    public struct MaterialBitmapDrawCall {
+        public readonly BitmapDrawCall DrawCall;
+        public readonly Material Material;
+        public readonly SamplerState SamplerState1, SamplerState2;
+
+        public MaterialBitmapDrawCall (
+            ref BitmapDrawCall drawCall, Material material, 
+            SamplerState samplerState1, SamplerState samplerState2
+        ) {
+            DrawCall = drawCall;
+            Material = material;
+            SamplerState1 = samplerState1;
+            SamplerState2 = samplerState2;
+        }
+    }
+
+    public class MultimaterialBitmapBatch : ListBatch<MaterialBitmapDrawCall>, IBitmapBatch {
+        internal class MultimaterialComparer : IComparer<MaterialBitmapDrawCall> {
+            public IComparer<BitmapDrawCall> DrawCallComparer;
+            public static readonly ReferenceComparer<Material> MaterialComparer = new ReferenceComparer<Material>();
+
+            public int Compare (MaterialBitmapDrawCall lhs, MaterialBitmapDrawCall rhs) {
+                var result = DrawCallComparer.Compare(lhs.DrawCall, rhs.DrawCall);
+
+                if (result == 0)
+                    result = lhs.Material.MaterialID.CompareTo(rhs.Material.MaterialID);
+
+                if (result == 0)
+                    result = lhs.DrawCall.Textures.HashCode.CompareTo(rhs.DrawCall.Textures.HashCode);
+
+                return result;
+            }
+        }
+
+        internal static ThreadLocal<MultimaterialComparer> Comparer = new ThreadLocal<MultimaterialComparer>(
+            () => new MultimaterialComparer()
+        );
+
+        /// <summary>
+        /// Specifies a declarative sorter that overrides the default sorting order for draw calls.
+        /// Note that draw calls are still sorted by texture in the event that you provide no ordering
+        ///  for a given pair of calls.
+        /// </summary>
+        public Sorter<BitmapDrawCall> Sorter {
+            get; set;
+        }
+
+        /// <summary>
+        /// If set and no declarative sorter is provided, draw calls will only be sorted by texture,
+        ///  and the z-buffer will be relied on to provide sorting of individual draw calls.
+        /// </summary>
+        public bool UseZBuffer = false;
+
+        private BatchGroup _Group;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add (BitmapDrawCall item) {
+            Add(item, Material, null, null);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        new public void Add (ref BitmapDrawCall item) {
+            Add(ref item, Material, null, null);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        new public void AddRange (ArraySegment<BitmapDrawCall> items) {
+            for (int i = 0; i < items.Count; i++)
+                Add(ref items.Array[i + items.Offset]);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add (BitmapDrawCall item, Material material, SamplerState samplerState1 = null, SamplerState samplerState2 = null) {
+            if (!item.IsValid)
+                throw new InvalidOperationException("Invalid draw call");
+
+            _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, material ?? Material, samplerState1, samplerState2));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add (ref BitmapDrawCall item, Material material, SamplerState samplerState1 = null, SamplerState samplerState2 = null) {
+            if (!item.IsValid)
+                throw new InvalidOperationException("Invalid draw call");
+
+            _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, material ?? Material, samplerState1, samplerState2));
+        }
+
+        public void AddRange (
+            BitmapDrawCall[] items, int firstIndex, int count, 
+            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, 
+            BitmapSortKey? sortKey = null, Vector2? scale = null, Material customMaterial = null,
+            SamplerState samplerState1 = null, SamplerState samplerState2 = null
+        ) {
+            for (int i = 0; i < count; i++) {
+                var item = items[i + firstIndex];
+                if (!item.IsValid)
+                    continue;
+
+                if (scale.HasValue)
+                    item.Position *= scale.Value;
+                if (offset.HasValue)
+                    item.Position += offset.Value;
+                if (multiplyColor.HasValue)
+                    item.MultiplyColor = multiplyColor.Value;
+                if (addColor.HasValue)
+                    item.AddColor = addColor.Value;
+                if (sortKey.HasValue)
+                    item.SortKey = sortKey.Value;
+                if (scale.HasValue)
+                    item.Scale = scale.Value;
+
+                _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, customMaterial ?? Material, samplerState1, samplerState2));
+            }
+        }
+
+        public static MultimaterialBitmapBatch New (
+            IBatchContainer container, int layer, Material material, 
+            bool useZBuffer = false, Sorter<BitmapDrawCall> sorter = null
+        ) {
+            if (container == null)
+                throw new ArgumentNullException("container");
+
+            var result = container.RenderManager.AllocateBatch<MultimaterialBitmapBatch>();
+            result.Initialize(container, layer, material, sorter, useZBuffer);
+            result.CaptureStack(0);            
+            return result;
+        }
+
+        new public void Initialize (
+            IBatchContainer container, int layer,             
+            Material material, Sorter<BitmapDrawCall> sorter,
+            bool useZBuffer, int? capacity = null
+        ) {
+            base.Initialize(container, layer, material, true, capacity);
+
+            Sorter = sorter;
+            UseZBuffer = useZBuffer;
+
+            _DrawCalls.Clear();
+
+            _Group = container.RenderManager.AllocateBatch<BatchGroup>();
+            _Group.Initialize(container, layer, null, null, null, false);
+            _Group.CaptureStack(0);
+        }
+
+        public override void Prepare () {
+            var drawCalls = _DrawCalls.GetBuffer();
+            var count = _DrawCalls.Count;
+
+            var comparer = Comparer.Value;
+            if (Sorter != null)
+                comparer.DrawCallComparer = Sorter.GetComparer(true);
+            else
+                comparer.DrawCallComparer = BitmapBatch.DrawCallComparer;
+
+            Array.Sort(
+                drawCalls, 0, count, comparer
+            );
+
+            BitmapBatch currentBatch = null;
+            int layerIndex = 0;
+
+            for (var i = 0; i < count; i++) {
+                var dc = drawCalls[i];
+                var material = dc.Material;
+                if (material == null)
+                    throw new Exception("Missing material for draw call");
+
+                if (
+                    (currentBatch == null) ||
+                    (currentBatch.Material != material) ||
+                    (currentBatch.SamplerState != dc.SamplerState1) ||
+                    (currentBatch.SamplerState2 != dc.SamplerState2)
+                ) {
+                    if (currentBatch != null)
+                        currentBatch.Dispose();
+
+                    currentBatch = BitmapBatch.New(
+                        _Group, layerIndex++, material, dc.SamplerState1, dc.SamplerState2, UseZBuffer
+                    );
+
+                    // We've already sorted the draw calls.
+                    currentBatch.DisableSorting = true;
+                }
+
+                currentBatch.Add(dc.DrawCall);
+            }
+
+            if (currentBatch != null)
+                currentBatch.Dispose();
+
+            _Group.Dispose();
+            _Group.Prepare();
+        }
+
+        public override void Issue (DeviceManager manager) {
+            using (manager.ApplyMaterial(Material))
+                _Group.Issue(manager);
         }
     }
 

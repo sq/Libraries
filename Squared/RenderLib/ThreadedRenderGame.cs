@@ -143,6 +143,8 @@ namespace Squared.Render {
         sealed protected override void Draw(GameTime gameTime) {
             RenderCoordinator.WorkStopwatch.Restart();
 
+            var priorIndex = Batch.LifetimeCount;
+
             try {
                 OnBeforeDraw(gameTime);
                 RenderCoordinator.SynchronousDrawsEnabled = false;
@@ -151,6 +153,7 @@ namespace Squared.Render {
                 RenderCoordinator.SynchronousDrawsEnabled = true;
                 RenderCoordinator.WorkStopwatch.Stop();
                 NextFrameTiming.Draw = RenderCoordinator.WorkStopwatch.Elapsed;
+                NextFrameTiming.BatchCount = (int)(Batch.LifetimeCount - priorIndex);
             }
         }
 
@@ -178,5 +181,6 @@ namespace Squared.Render {
 
     public struct FrameTiming {
         public TimeSpan Wait, BeginDraw, Draw, EndDraw;
+        public int BatchCount;
     }
 }

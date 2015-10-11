@@ -743,6 +743,10 @@ namespace Squared.Render {
              */
             base.Dispose();
         }
+
+        public override string ToString () {
+            return string.Format("EffectMaterial #{0} ({1}.{2})", base.MaterialID, Effect.Name, Effect.CurrentTechnique.Name);
+        }
     }
 
     public class DelegateMaterial : Material, IDerivedMaterial, IEffectMaterial {
@@ -817,6 +821,10 @@ namespace Squared.Render {
 
         Material IDerivedMaterial.BaseMaterial {
             get { return BaseMaterial; }
+        }
+
+        public override string ToString () {
+            return string.Format("DelegateMaterial #{0} ({1})", base.MaterialID, BaseMaterial);
         }
     }
 

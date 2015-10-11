@@ -132,7 +132,7 @@ namespace Squared.Render.Convenience {
 
     public struct ImperativeRenderer {
         private struct CachedBatch {
-            public Batch Batch;
+            public IBatch Batch;
 
             public readonly Type BatchType;
             public readonly IBatchContainer Container;
@@ -184,18 +184,31 @@ namespace Squared.Render.Convenience {
             }
 
             public bool KeysEqual (ref CachedBatch rhs) {
-                return (
+                var result = (
                     (BatchType == rhs.BatchType) &&
                     (Container == rhs.Container) &&
                     (Layer == rhs.Layer) &&
                     (WorldSpace == rhs.WorldSpace) &&
                     (BlendState == rhs.BlendState) &&
-                    (SamplerState == rhs.SamplerState) &&
                     (UseZBuffer == rhs.UseZBuffer) &&
                     (RasterizerState == rhs.RasterizerState) &&
                     (DepthStencilState == rhs.DepthStencilState) &&
                     (CustomMaterial == rhs.CustomMaterial)
                 );
+                return result;
+            }
+
+            public override bool Equals (object obj) {
+                if (obj is CachedBatch) {
+                    var cb = (CachedBatch)obj;
+                    return KeysEqual(ref cb);
+                }
+
+                return false;
+            }
+
+            public override string ToString () {
+                return string.Format("{0} (layer={1} material={2})", Batch, Layer, CustomMaterial);
             }
 
             public override int GetHashCode() {
@@ -211,6 +224,7 @@ namespace Squared.Render.Convenience {
 
             public bool TryGet<T> (
                 out CachedBatch result,
+                Type batchType,
                 IBatchContainer container, 
                 int layer, 
                 bool worldSpace, 
@@ -224,7 +238,7 @@ namespace Squared.Render.Convenience {
                 CachedBatch itemAtIndex, searchKey;
 
                 searchKey = new CachedBatch(
-                    typeof(T),
+                    batchType,
                     container,
                     layer,
                     worldSpace,
@@ -337,11 +351,36 @@ namespace Squared.Render.Convenience {
         public RasterizerState RasterizerState;
         public BlendState BlendState;
         public SamplerState SamplerState;
+
+        /// <summary>
+        /// Uses world-space coordinates.
+        /// </summary>
         public bool WorldSpace;
+
+        /// <summary>
+        /// Generates z coordinates so that the z buffer can be used to order draw calls.
+        /// </summary>
         public bool UseZBuffer;
+
+        /// <summary>
+        /// Increments the Layer after each drawing operation.
+        /// </summary>
         public bool AutoIncrementLayer;
+
+        /// <summary>
+        /// Increments the sorting key's order value after each drawing operation.
+        /// </summary>
         public bool AutoIncrementSortKey;
 
+        /// <summary>
+        /// If true, materials are last in the sort order instead of first.
+        /// This allows precise ordering of bitmaps by sort key, regardless of material.
+        /// </summary>
+        public bool LowPriorityMaterialOrdering;
+
+        /// <summary>
+        /// Specifies a custom set of declarative sorting rules used to order draw calls.
+        /// </summary>
         public Sorter<BitmapDrawCall> DeclarativeSorter;
 
         private BitmapSortKey NextSortKey;
@@ -359,6 +398,7 @@ namespace Squared.Render.Convenience {
             bool useZBuffer = false,
             bool autoIncrementSortKey = false,
             bool autoIncrementLayer = false,
+            bool lowPriorityMaterialOrdering = false,
             Sorter<BitmapDrawCall> declarativeSorter = null,
             Tags tags = default(Tags)
         ) {
@@ -380,6 +420,7 @@ namespace Squared.Render.Convenience {
             AutoIncrementLayer = autoIncrementLayer;
             NextSortKey = new BitmapSortKey(tags, 0);
             Cache = new CachedBatches();
+            LowPriorityMaterialOrdering = lowPriorityMaterialOrdering;
             DeclarativeSorter = declarativeSorter;
         }
 
@@ -398,6 +439,7 @@ namespace Squared.Render.Convenience {
             group.Dispose();
             result.Container = group;
             result.Layer = 0;
+            result.LowPriorityMaterialOrdering = LowPriorityMaterialOrdering;
 
             if (nextLayer)
                 Layer += 1;
@@ -467,10 +509,24 @@ namespace Squared.Render.Convenience {
 
             using (var batch = GetBitmapBatch(
                 layer, worldSpace,
-                blendState, samplerState,
-                material
-            ))
-                batch.Add(ref drawCall);
+                blendState, samplerState, material
+            )) {
+                if (LowPriorityMaterialOrdering) {
+                    if (blendState != null) {
+                        if (material != null)
+                            material = Materials.Get(material, RasterizerState, DepthStencilState, blendState ?? BlendState);
+                        else
+                            material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, RasterizerState, DepthStencilState, blendState ?? BlendState);
+                    }
+                }
+
+                if (LowPriorityMaterialOrdering) {
+                    var mmbb = (MultimaterialBitmapBatch)batch;
+                    mmbb.Add(ref drawCall, material, samplerState, samplerState);
+                } else {
+                    batch.Add(ref drawCall);
+                }
+            }
         }
 
 
@@ -566,12 +622,24 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, SamplerState samplerState = null, Vector2? scale = null,
             Material material = null
         ) {
-            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, material))
-                batch.AddRange(
-                    drawCalls.Array, drawCalls.Offset, drawCalls.Count,
-                    offset: offset, multiplyColor: multiplyColor, addColor: addColor, sortKey: sortKey,
-                    scale: scale
-                );
+            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, material)) {
+                if (LowPriorityMaterialOrdering) {
+                    var mmbb = (MultimaterialBitmapBatch)batch;
+                    mmbb.AddRange(
+                        drawCalls.Array, drawCalls.Offset, drawCalls.Count,
+                        offset: offset, multiplyColor: multiplyColor, addColor: addColor, sortKey: sortKey,
+                        scale: scale, customMaterial: material, 
+                        samplerState1: samplerState, samplerState2: samplerState
+                    );
+                } else {
+                    var bb = (BitmapBatch)batch;
+                    bb.AddRange(
+                        drawCalls.Array, drawCalls.Offset, drawCalls.Count,
+                        offset: offset, multiplyColor: multiplyColor, addColor: addColor, sortKey: sortKey,
+                        scale: scale
+                    );
+                }
+            }
         }
 
         public void DrawString (
@@ -663,7 +731,7 @@ namespace Squared.Render.Convenience {
         }
 
 
-        public BitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, Material customMaterial) {
+        public IBitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, Material customMaterial) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
@@ -672,9 +740,15 @@ namespace Squared.Render.Convenience {
             var desiredBlendState = blendState ?? BlendState;
             var desiredSamplerState = samplerState ?? SamplerState;
 
+            if (LowPriorityMaterialOrdering)
+                desiredSamplerState = null;
+
             CachedBatch cacheEntry;
-            if (!Cache.TryGet<BitmapBatch>(
+            if (!Cache.TryGet<IBitmapBatch>(
                 out cacheEntry,
+                LowPriorityMaterialOrdering
+                    ? typeof(MultimaterialBitmapBatch)
+                    : typeof(BitmapBatch),
                 container: Container,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,
@@ -698,7 +772,14 @@ namespace Squared.Render.Convenience {
                     );
                 }
 
-                var bb = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, UseZBuffer);
+                IBitmapBatch bb;
+                if (LowPriorityMaterialOrdering) {
+                    bb = MultimaterialBitmapBatch.New(Container, actualLayer, material, UseZBuffer);
+                    bb = bb;
+                } else {
+                    bb = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, UseZBuffer);
+                }
+
                 bb.Sorter = DeclarativeSorter;
                 cacheEntry.Batch = bb;
                 Cache.InsertAtFront(ref cacheEntry, null);
@@ -707,7 +788,7 @@ namespace Squared.Render.Convenience {
             if (AutoIncrementLayer && !layer.HasValue)
                 Layer += 1;
 
-            return (BitmapBatch)cacheEntry.Batch;
+            return (IBitmapBatch)cacheEntry.Batch;
         }
 
         public GeometryBatch GetGeometryBatch (int? layer, bool? worldSpace, BlendState blendState) {
@@ -721,6 +802,7 @@ namespace Squared.Render.Convenience {
             CachedBatch cacheEntry;
             if (!Cache.TryGet<GeometryBatch>(
                 out cacheEntry,
+                typeof(GeometryBatch),
                 container: Container,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,

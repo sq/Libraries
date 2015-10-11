@@ -172,7 +172,7 @@ namespace Squared.Render {
         private object _UserData;
 
         public void Initialize (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup, object userData) {
-            base.Initialize(container, layer, material);
+            base.Initialize(container, layer, material, true);
 
             _BatchSetup = batchSetup;
             _UserData = userData;
@@ -343,7 +343,7 @@ namespace Squared.Render {
         private object _UserData;
 
         public void Initialize (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup, object userData) {
-            base.Initialize(container, layer, material);
+            base.Initialize(container, layer, material, true);
 
             _BatchSetup = batchSetup;
             _UserData = userData;

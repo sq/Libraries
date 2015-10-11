@@ -436,7 +436,7 @@ namespace Squared.Render {
 
         private static readonly object PrepareLock = new object();
 
-        public static IComparer<Batch> BatchComparer = new BatchComparer();
+        public static BatchComparer BatchComparer = new BatchComparer();
 
         private static ListPool<Batch> _ListPool = new ListPool<Batch>(
             16, 0, 256, 4096
@@ -444,7 +444,7 @@ namespace Squared.Render {
 
         public RenderManager RenderManager;
         public int Index;
-        public int InitialBatchCount;
+        public long InitialBatchCount;
 
         public UnorderedList<Batch> Batches;
 
@@ -582,7 +582,10 @@ namespace Squared.Render {
         }
     }
 
-    public abstract class Batch : IDisposable {
+    public interface IBatch : IDisposable {
+    }
+
+    public abstract class Batch : IBatch {
         private static Dictionary<Type, int> TypeIds = new Dictionary<Type, int>(new ReferenceComparer<Type>());
 
         public static bool CaptureStackTraces = false;
@@ -594,13 +597,13 @@ namespace Squared.Render {
         public int Layer;
         public Material Material;
 
-        internal int Index;
+        internal long Index;
         internal bool ReleaseAfterDraw;
         internal bool Released;
         internal IBatchPool Pool;
         internal bool IsCombined;
 
-        protected static int _BatchCount = 0;
+        protected static long _BatchCount = 0;
 
         protected Batch () {
             var thisType = GetType();
@@ -608,7 +611,7 @@ namespace Squared.Render {
                 TypeIds.Add(thisType, TypeId = TypeIds.Count);
         }
 
-        protected void Initialize (IBatchContainer container, int layer, Material material) {
+        protected void Initialize (IBatchContainer container, int layer, Material material, bool addToContainer) {
             if ((material != null) && (material.IsDisposed))
                 throw new ObjectDisposedException("material");
 
@@ -621,7 +624,8 @@ namespace Squared.Render {
 
             Index = Interlocked.Increment(ref _BatchCount);
 
-            container.Add(this);
+            if (addToContainer)
+                container.Add(this);
         }
 
         /// <summary>
@@ -698,13 +702,17 @@ namespace Squared.Render {
         }
 
         public override int GetHashCode() {
-            return Index;
+            return (int)Index;
         }
 
-        public static int LifetimeCount {
+        public static long LifetimeCount {
             get {
                 return _BatchCount;
             }
+        }
+
+        public override string ToString () {
+            return string.Format("{0} #{1} material={2}", GetType().Name, Index, Material);
         }
     }
 
@@ -719,9 +727,9 @@ namespace Squared.Render {
 
         new protected void Initialize (
             IBatchContainer container, int layer, Material material,
-            int? capacity = null
+            bool addToContainer, int? capacity = null
         ) {
-            base.Initialize(container, layer, material);
+            base.Initialize(container, layer, material, addToContainer);
 
             _DrawCalls = _ListPool.Allocate(capacity);
         }
@@ -747,7 +755,7 @@ namespace Squared.Render {
         public int? ClearStencil;
 
         public void Initialize (IBatchContainer container, int layer, Material material, Color? clearColor, float? clearZ, int? clearStencil) {
-            base.Initialize(container, layer, material);
+            base.Initialize(container, layer, material, true);
             ClearColor = clearColor;
             ClearZ = clearZ;
             ClearStencil = clearStencil;
@@ -794,7 +802,7 @@ namespace Squared.Render {
         public RenderTarget2D RenderTarget;
 
         public void Initialize (IBatchContainer container, int layer, RenderTarget2D renderTarget) {
-            base.Initialize(container, layer, null);
+            base.Initialize(container, layer, null, true);
             RenderTarget = renderTarget;
         }
 
@@ -921,8 +929,8 @@ namespace Squared.Render {
             return result;
         }
 
-        public void Initialize (IBatchContainer container, int layer, Action<DeviceManager, object> before, Action<DeviceManager, object> after, object userData) {
-            base.Initialize(container, layer, null);
+        public void Initialize (IBatchContainer container, int layer, Action<DeviceManager, object> before, Action<DeviceManager, object> after, object userData, bool addToContainer = true) {
+            base.Initialize(container, layer, null, addToContainer);
 
             RenderManager = container.RenderManager;
             _Before = before;
