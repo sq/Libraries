@@ -46,6 +46,24 @@ namespace Squared.Render.Convenience {
         };
 
 
+        public static readonly BlendState MaxBlendValue = new BlendState {
+            AlphaBlendFunction = BlendFunction.Max,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Max,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.One
+        };
+
+        public static readonly BlendState MinBlendValue = new BlendState {
+            AlphaBlendFunction = BlendFunction.Min,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Min,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.One
+        };
+
         public static readonly BlendState MaxBlend = new BlendState {
             AlphaBlendFunction = BlendFunction.Add,
             AlphaDestinationBlend = Blend.One,
