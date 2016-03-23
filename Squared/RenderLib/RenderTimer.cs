@@ -109,7 +109,7 @@ namespace Squared.Render {
                         }
                     }
 
-                    Thread.Yield();
+                    Thread.Sleep(0);
                 } while (count > 0);
             } finally {
                 IsPolling = false;
