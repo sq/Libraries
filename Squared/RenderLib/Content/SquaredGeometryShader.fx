@@ -37,7 +37,7 @@ void TexturedPixelShader(
     inout float4 color : COLOR0,
     in float2 texCoord : TEXCOORD0
 ) {
-    color *= tex2Dgrad(TextureSampler, texCoord, 0, 0);
+    color *= tex2D(TextureSampler, texCoord);
 }
 
 technique ScreenSpaceUntextured

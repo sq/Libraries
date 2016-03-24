@@ -10,7 +10,7 @@ void LightmappedPixelShader(
 ) {
 	texCoord = clamp(texCoord, texTL, texBR);
 
-    float4 lightmapColor = tex2Dgrad(TextureSampler2, texCoord, 0, 0) * 2;
+    float4 lightmapColor = tex2D(TextureSampler2, texCoord) * 2;
     lightmapColor.a = 1;
 
 	addColor.rgb *= addColor.a;
@@ -18,7 +18,7 @@ void LightmappedPixelShader(
 
     multiplyColor = multiplyColor * lightmapColor;
 
-	result = multiplyColor * tex2Dgrad(TextureSampler, texCoord, 0, 0);
+	result = multiplyColor * tex2D(TextureSampler, texCoord);
 	result += (addColor * result.a);
 
     const float discardThreshold = (1.0 / 255.0);
