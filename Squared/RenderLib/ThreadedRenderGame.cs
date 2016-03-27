@@ -144,6 +144,7 @@ namespace Squared.Render {
             RenderCoordinator.WorkStopwatch.Restart();
 
             var priorIndex = Batch.LifetimeCount;
+            NextFrameTiming.PriorPrimitiveCount = NativeBatch.LifetimePrimitiveCount;
 
             try {
                 OnBeforeDraw(gameTime);
@@ -165,8 +166,12 @@ namespace Squared.Render {
             } finally {
                 RenderCoordinator.WorkStopwatch.Stop();
 
+                var lpc = NativeBatch.LifetimePrimitiveCount;
+                var ppc = NextFrameTiming.PriorPrimitiveCount;
+
                 NextFrameTiming.EndDraw = RenderCoordinator.WorkStopwatch.Elapsed;
                 NextFrameTiming.Wait = RenderCoordinator.WaitStopwatch.Elapsed;
+                NextFrameTiming.PrimitiveCount = (int)(lpc - ppc);
                 PreviousFrameTiming = NextFrameTiming;
 
                 RenderCoordinator.WaitStopwatch.Reset();
@@ -181,6 +186,8 @@ namespace Squared.Render {
 
     public struct FrameTiming {
         public TimeSpan Wait, BeginDraw, Draw, EndDraw;
-        public int BatchCount;
+        public int BatchCount, PrimitiveCount;
+
+        internal long PriorPrimitiveCount;
     }
 }

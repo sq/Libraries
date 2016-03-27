@@ -9,6 +9,7 @@ using Squared.Game;
 using System.Reflection;
 using Squared.Util;
 using System.Diagnostics;
+using System.Threading;
 
 namespace Squared.Render.Internal {
     public struct VertexBuffer<T> : IDisposable
@@ -231,6 +232,12 @@ namespace Squared.Render {
         }
 
         public override void Prepare () {
+            int primCount = 0;
+
+            foreach (var call in _DrawCalls)
+                primCount += call.PrimitiveCount;
+
+            NativeBatch.RecordPrimitives(primCount);
         }
 
         public override void Issue (DeviceManager manager) {
@@ -342,6 +349,8 @@ namespace Squared.Render {
         private Action<DeviceManager, object> _BatchSetup;
         private object _UserData;
 
+        private static long _PrimitiveCount = 0;
+
         public void Initialize (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup, object userData) {
             base.Initialize(container, layer, material, true);
 
@@ -358,6 +367,12 @@ namespace Squared.Render {
         }
 
         public override void Prepare () {
+            // FIXME: Why the hell do we have to record these in Prepare and not Issue? >:|
+            long primCount = 0;
+            foreach (var call in _DrawCalls)
+                primCount += call.PrimitiveCount;
+
+            RecordPrimitives(primCount);
         }
 
         public override void Issue (DeviceManager manager) {
@@ -378,7 +393,6 @@ namespace Squared.Render {
                         device.DrawIndexedPrimitives(call.PrimitiveType, call.BaseVertex, call.MinVertexIndex, call.NumVertices, call.StartIndex, call.PrimitiveCount);
                     else
                         device.DrawPrimitives(call.PrimitiveType, call.StartVertex, call.PrimitiveCount);
-
                 }
 
                 device.SetVertexBuffer(null);
@@ -398,6 +412,17 @@ namespace Squared.Render {
             result.Initialize(container, layer, material, batchSetup, userData);
             result.CaptureStack(0);
             return result;
+        }
+
+        public static void RecordPrimitives (long count) {
+            Interlocked.Add(ref _PrimitiveCount, count);
+        }
+
+        public static long LifetimePrimitiveCount {
+            get {
+                // HACK
+                return Interlocked.Add(ref _PrimitiveCount, 0);
+            }
         }
     }
 

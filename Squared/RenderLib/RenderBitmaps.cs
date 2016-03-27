@@ -474,6 +474,8 @@ namespace Squared.Render {
             if (_DrawCalls.Count == 0)
                 return;
 
+            Squared.Render.NativeBatch.RecordPrimitives(_DrawCalls.Count * 2);
+
             if (_NativeBatches == null) {
                 // If the batch contains a lot of draw calls, try to make sure we allocate our native batch from the large pool.
                 int? nativeBatchCapacity = null;
@@ -569,13 +571,15 @@ namespace Squared.Render {
                         hwb.SetActive(device);
                         previousHardwareBuffer = hwb;
                     }
-      
+
+                    var primitiveCount = nb.VertexCount / 2;
+                    
                     device.DrawIndexedPrimitives(
                         PrimitiveType.TriangleList, 0, 
                         swb.HardwareVertexOffset + nb.LocalVertexOffset, 
                         nb.VertexCount, 
                         swb.HardwareIndexOffset + nb.LocalIndexOffset,
-                        nb.VertexCount / 2
+                        primitiveCount
                     );
                 }
 

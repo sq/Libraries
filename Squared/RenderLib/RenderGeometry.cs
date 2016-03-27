@@ -168,13 +168,15 @@ namespace Squared.Render {
         protected void MakeDrawArguments (
             PrimitiveType primitiveType, 
             ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, 
-            ref int vertexOffset, ref int indexOffset,
+            ref int vertexOffset, ref int indexOffset, out int primCount,
             int vertexCount, int indexCount
         ) {
-            if ((vertexCount == 0) || (indexCount == 0))
+            if ((vertexCount == 0) || (indexCount == 0)) {
+                primCount = 0;
                 return;
+            }
 
-            int primCount = primitiveType.ComputePrimitiveCount(indexCount);
+            primCount = primitiveType.ComputePrimitiveCount(indexCount);
 
             _DrawArguments.Add(new DrawArguments {
                 PrimitiveType = primitiveType,
@@ -200,6 +202,7 @@ namespace Squared.Render {
                 var vb = new Internal.VertexBuffer<GeometryVertex>(swb.Vertices);
                 var ib = new Internal.IndexBuffer(swb.Indices);
                 int vertexOffset = 0, indexOffset = 0;
+                int totalPrimCount = 0;
 
                 foreach (var kvp in Lists) {
                     var l = kvp.Value;
@@ -218,11 +221,13 @@ namespace Squared.Render {
                     vertexCount = vb.Count - vertexCount;
                     indexCount = ib.Count - indexCount;
 
-                    MakeDrawArguments(kvp.Key, ref vb, ref ib, ref vertexOffset, ref indexOffset, vertexCount, indexCount);
+                    int primCount;
+                    MakeDrawArguments(kvp.Key, ref vb, ref ib, ref vertexOffset, ref indexOffset, out primCount, vertexCount, indexCount);
+
+                    totalPrimCount += primCount;
                 }
 
-                int done = 0;
-                done = 1;
+                NativeBatch.RecordPrimitives(totalPrimCount);
             }
         }
 
@@ -234,8 +239,9 @@ namespace Squared.Render {
                         throw new ThreadStateException("Could not get a hardware buffer for this batch");
 
                     hwb.SetActive(manager.Device);
-                    foreach (var da in _DrawArguments)
+                    foreach (var da in _DrawArguments) {
                         manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
+                    }
                     hwb.SetInactive(manager.Device);
                 }
             }
