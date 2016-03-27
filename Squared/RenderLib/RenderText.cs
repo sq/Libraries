@@ -702,16 +702,20 @@ namespace Squared.Render.Text {
                         actualPosition.Y + (glyph.Cropping.Y + characterOffset.Y) * scale
                     );
 
-                    drawCall.TextureRegion = glyphSource.Texture.BoundsFromRectangle(ref glyph.BoundsInTexture);
-                    if (alignToPixels)
-                        drawCall.Position = glyphPosition.Floor();
-                    else
-                        drawCall.Position = glyphPosition;
+                    bool characterInvisible = char.IsWhiteSpace(ch);
 
-                    _buffer.Array[bufferWritePosition] = drawCall;
+                    if (!characterInvisible) {
+                        drawCall.TextureRegion = glyphSource.Texture.BoundsFromRectangle(ref glyph.BoundsInTexture);
+                        if (alignToPixels)
+                            drawCall.Position = glyphPosition.Floor();
+                        else
+                            drawCall.Position = glyphPosition;
 
-                    bufferWritePosition += 1;
-                    drawCallsWritten += 1;
+                        _buffer.Array[bufferWritePosition] = drawCall;
+
+                        bufferWritePosition += 1;
+                        drawCallsWritten += 1;
+                    }
 
                     characterLimit--;
                 } else {
