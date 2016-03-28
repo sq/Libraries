@@ -76,10 +76,10 @@ namespace Squared.Game {
         }
 
         public bool Intersects (Bounds3 rhs) {
-            return Intersect(ref this, ref rhs);
+            return Intersects(ref this, ref rhs);
         }
 
-        public static bool Intersect (ref Bounds3 lhs, ref Bounds3 rhs) {
+        public static bool Intersects (ref Bounds3 lhs, ref Bounds3 rhs) {
             return (rhs.Minimum.X <= lhs.Maximum.X) &&
                    (lhs.Minimum.X <= rhs.Maximum.X) &&
                    (rhs.Minimum.Y <= lhs.Maximum.Y) &&
@@ -177,6 +177,20 @@ namespace Squared.Game {
 
             result = default(Bounds3);
             return false;
+        }
+
+        public static Bounds3 FromUnion (ref Bounds3 lhs, ref Bounds3 rhs) {
+            var x1 = Math.Min(lhs.Minimum.X, rhs.Minimum.X);
+            var y1 = Math.Min(lhs.Minimum.Y, rhs.Minimum.Y);
+            var z1 = Math.Min(lhs.Minimum.Z, rhs.Minimum.Z);
+            var x2 = Math.Max(lhs.Maximum.X, rhs.Maximum.X);
+            var y2 = Math.Max(lhs.Maximum.Y, rhs.Maximum.Y);
+            var z2 = Math.Max(lhs.Maximum.Z, rhs.Maximum.Z);
+
+            return new Bounds3(
+                new Vector3(x1, y1, z1),
+                new Vector3(x2, y2, z2)
+            );
         }
 
         public static Bounds3 FromPositionAndSize (Vector3 position, Vector3 size) {
