@@ -109,6 +109,7 @@ namespace Squared.Render {
             RenderTargetStack.Push(Device.GetRenderTargets());
             ViewportStack.Push(Device.Viewport);
             Device.SetRenderTarget(newRenderTarget);
+            RenderManager.ResetDeviceState(Device);
             Device.Viewport = new Viewport(0, 0, newRenderTarget.Width, newRenderTarget.Height);
         }
 
@@ -139,9 +140,7 @@ namespace Squared.Render {
                 CurrentMaterial = null;
             }
 
-            for (var i = 0; i < 4; i++) {
-                Device.Textures[i] = null;
-            }
+            RenderManager.ResetDeviceState(Device);
 
             Device.SetRenderTargets();
             Device.SetVertexBuffer(null);
@@ -209,7 +208,31 @@ namespace Squared.Render {
 
             _DisposeResource = DisposeResource;
         }
-        
+
+        /// <summary>
+        /// A device reset can leave a device in an intermediate state that will cause drawing operations to fail later.
+        /// We address this by resetting pieces of device state to known-good values at the beginning of every frame,
+        ///  and you can call this method to do so manually at any time.
+        /// </summary>
+        public static void ResetDeviceState (GraphicsDevice device) {
+            const int numStages = 8;
+            const int numVertexStages = 4;
+
+            for (int i = 0; i < numStages; i++) {
+                device.Textures[i] = null;
+                device.SamplerStates[i] = SamplerState.PointClamp;
+            }
+
+            for (int i = 0; i < numVertexStages; i++) {
+                device.VertexTextures[i] = null;
+                device.VertexSamplerStates[i] = SamplerState.PointClamp;
+            }
+
+            device.BlendState = BlendState.Opaque;
+            device.DepthStencilState = DepthStencilState.None;
+            device.RasterizerState = RasterizerState.CullNone;
+        }
+                
         private void WorkerThreadFunc (WorkerThreadInfo info) {
             Frame frame;
             int start, count;
@@ -811,6 +834,7 @@ namespace Squared.Render {
 
         public override void Issue (DeviceManager manager) {
             manager.Device.SetRenderTarget(RenderTarget);
+            RenderManager.ResetDeviceState(manager.Device);
 
             base.Issue(manager);
         }

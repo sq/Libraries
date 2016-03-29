@@ -120,9 +120,10 @@ namespace Squared.Render {
             if (IsDisposed)
                 return false;
 
-            if (Device.GraphicsDeviceStatus == GraphicsDeviceStatus.Normal)
+            if (Device.GraphicsDeviceStatus == GraphicsDeviceStatus.Normal) {
+                RenderManager.ResetDeviceState(Device);
                 return true;
-            else if (!_Running)
+            } else if (!_Running)
                 return false;
 
             return false;
@@ -414,6 +415,7 @@ namespace Squared.Render {
                     var oldViewport = Device.Viewport;
                     try {
                         Device.SetRenderTarget(renderTarget);
+                        RenderManager.ResetDeviceState(Device);
                         Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
 
                         RenderFrameToDraw(false);
