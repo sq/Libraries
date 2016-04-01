@@ -39,9 +39,9 @@ const float2 Corners[] = {
 };
 
 inline float2 ComputeRegionSize(
-	in float4 texRgn : POSITION1
+    in float4 texRgn : POSITION1
 ) {
-	return texRgn.zw - texRgn.xy;
+    return texRgn.zw - texRgn.xy;
 }
 
 inline float2 ComputeCorner(
@@ -67,23 +67,23 @@ inline float2 ComputeTexCoord(
 }
 
 inline float2 ComputeRotatedCorner(
-	in float2 corner,
+    in float2 corner,
     in float4 texRgn : POSITION1,
     in float4 scaleOrigin : POSITION2, // scalex, scaley, originx, originy
     in float rotation : POSITION3
 ) {
     float2 regionSize = abs(texRgn.zw - texRgn.xy);
 
-	corner = abs(corner);
+    corner = abs(corner);
     corner -= (scaleOrigin.zw * regionSize);
     float2 sinCos, rotatedCorner;
     corner *= scaleOrigin.xy;
     corner *= BitmapTextureSize;
     sincos(rotation, sinCos.x, sinCos.y);
     return float2(
-		(sinCos.y * corner.x) - (sinCos.x * corner.y),
-		(sinCos.x * corner.x) + (sinCos.y * corner.y)
-	);
+        (sinCos.y * corner.x) - (sinCos.x * corner.y),
+        (sinCos.x * corner.x) + (sinCos.y * corner.y)
+    );
 }
 
 void ScreenSpaceVertexShader(
@@ -99,8 +99,8 @@ void ScreenSpaceVertexShader(
     out float2 texBR : TEXCOORD2,
     out float4 result : POSITION0
 ) {
-	float2 regionSize = ComputeRegionSize(texRgn);
-	float2 corner = ComputeCorner(cornerIndex, regionSize);
+    float2 regionSize = ComputeRegionSize(texRgn);
+    float2 corner = ComputeCorner(cornerIndex, regionSize);
     texCoord = ComputeTexCoord(cornerIndex, corner, texRgn, texTL, texBR);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn, scaleOrigin, rotation);
     
@@ -122,8 +122,8 @@ void WorldSpaceVertexShader(
     out float2 texBR : TEXCOORD2,
     out float4 result : POSITION0
 ) {
-	float2 regionSize = ComputeRegionSize(texRgn);
-	float2 corner = ComputeCorner(cornerIndex, regionSize);
+    float2 regionSize = ComputeRegionSize(texRgn);
+    float2 corner = ComputeCorner(cornerIndex, regionSize);
     texCoord = ComputeTexCoord(cornerIndex, corner, texRgn, texTL, texBR);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn, scaleOrigin, rotation);
     
