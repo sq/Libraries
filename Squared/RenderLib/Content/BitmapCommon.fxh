@@ -31,7 +31,7 @@ sampler TextureSampler2 : register(s1) {
     Texture = (SecondTexture);
 };
 
-const float2 Corners[] = {
+static const float2 Corners[] = {
     {0, 0},
     {1, 0},
     {1, 1},
