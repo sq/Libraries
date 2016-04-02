@@ -510,6 +510,11 @@ namespace Squared.Render {
             if (resource == null)
                 return;
 
+            if (IsDisposed) {
+                resource.Dispose();
+                return;
+            }
+
             lock (_PendingDisposes)
                 _PendingDisposes.Add(resource);
         }
