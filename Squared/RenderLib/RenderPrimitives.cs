@@ -347,14 +347,21 @@ namespace Squared.Render {
 
     public class NativeBatch : ListBatch<NativeDrawCall> {
         private Action<DeviceManager, object> _BatchSetup;
+        private Action<DeviceManager, object> _BatchTeardown;
         private object _UserData;
 
         private static long _PrimitiveCount = 0;
 
-        public void Initialize (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup, object userData) {
+        public void Initialize (
+            IBatchContainer container, int layer, Material material, 
+            Action<DeviceManager, object> batchSetup, 
+            Action<DeviceManager, object> batchTeardown,
+            object userData
+        ) {
             base.Initialize(container, layer, material, true);
 
             _BatchSetup = batchSetup;
+            _BatchTeardown = batchTeardown;
             _UserData = userData;
         }
 
@@ -399,17 +406,25 @@ namespace Squared.Render {
                 device.Indices = null;
             }
 
+            if (_BatchTeardown != null)
+                _BatchTeardown(manager, _UserData);
+
             base.Issue(manager);
         }
 
-        public static NativeBatch New (IBatchContainer container, int layer, Material material, Action<DeviceManager, object> batchSetup = null, object userData = null) {
+        public static NativeBatch New (
+            IBatchContainer container, int layer, Material material, 
+            Action<DeviceManager, object> batchSetup = null, 
+            Action<DeviceManager, object> batchTeardown = null, 
+            object userData = null
+        ) {
             if (container == null)
                 throw new ArgumentNullException("container");
             if (material == null)
                 throw new ArgumentNullException("material");
 
             var result = container.RenderManager.AllocateBatch<NativeBatch>();
-            result.Initialize(container, layer, material, batchSetup, userData);
+            result.Initialize(container, layer, material, batchSetup, batchTeardown, userData);
             result.CaptureStack(0);
             return result;
         }
