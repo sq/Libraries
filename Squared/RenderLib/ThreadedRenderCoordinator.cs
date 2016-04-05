@@ -66,6 +66,7 @@ namespace Squared.Render {
         private bool _DeviceLost = false;
 
         private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
+        private readonly ConcurrentQueue<Action> AfterPresentQueue = new ConcurrentQueue<Action>();
 
         public event EventHandler DeviceReset;
 
@@ -110,6 +111,13 @@ namespace Squared.Render {
         /// </summary>
         public void BeforePresent (Action action) {
             BeforePresentQueue.Enqueue(action);
+        }
+
+        /// <summary>
+        /// Queues an operation to occur immediately after Present.
+        /// </summary>
+        public void AfterPresent (Action action) {
+            AfterPresentQueue.Enqueue(action);
         }
 
         public ThreadPriority ThreadPriority {
@@ -353,6 +361,16 @@ namespace Squared.Render {
             BeforePresentStopwatch.Stop();
         }
 
+        protected void RunAfterPresentHandlers () {
+            while (AfterPresentQueue.Count > 0) {
+                Action afterPresent;
+                if (!AfterPresentQueue.TryDequeue(out afterPresent))
+                    continue;
+
+                afterPresent();
+            }
+        }
+
         protected void RenderFrameToDraw (bool endDraw) {
             Manager.FlushBufferGenerators();
 
@@ -362,13 +380,16 @@ namespace Squared.Render {
                 if (frameToDraw != null)
                     RenderFrame(frameToDraw, true);
 
-                if (endDraw)
+                if (endDraw) {
                     RunBeforePresentHandlers();
-
-                if (endDraw)
                     _SyncEndDraw();
+                }
 
                 FlushPendingDisposes();
+
+                if (endDraw) {
+                    RunAfterPresentHandlers();
+                }
             }
         }
 
