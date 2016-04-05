@@ -140,7 +140,16 @@ namespace Squared.Render {
             BeforeDrawQueue.Enqueue(action);
         }
 
-        sealed protected override void Draw(GameTime gameTime) {
+        /// <summary>
+        /// Queues an operation to occur immediately before Present, after all drawing
+        ///  commands have been issued. This is an ideal time to perform tasks like
+        ///  texture read-back.
+        /// </summary>
+        public void BeforePresent (Action action) {
+            RenderCoordinator.BeforePresent(action);
+        }
+
+        sealed protected override void Draw (GameTime gameTime) {
             RenderCoordinator.WorkStopwatch.Restart();
 
             var priorIndex = Batch.LifetimeCount;
@@ -170,11 +179,13 @@ namespace Squared.Render {
                 var ppc = NextFrameTiming.PriorPrimitiveCount;
 
                 NextFrameTiming.EndDraw = RenderCoordinator.WorkStopwatch.Elapsed;
+                NextFrameTiming.BeforePresent = RenderCoordinator.BeforePresentStopwatch.Elapsed;
                 NextFrameTiming.Wait = RenderCoordinator.WaitStopwatch.Elapsed;
                 NextFrameTiming.PrimitiveCount = (int)(lpc - ppc);
                 PreviousFrameTiming = NextFrameTiming;
 
                 RenderCoordinator.WaitStopwatch.Reset();
+                RenderCoordinator.BeforePresentStopwatch.Reset();
             }
 
             RenderCoordinator.EnableThreading = _UseThreadedDraw;
@@ -185,7 +196,7 @@ namespace Squared.Render {
     }
 
     public struct FrameTiming {
-        public TimeSpan Wait, BeginDraw, Draw, EndDraw;
+        public TimeSpan Wait, BeginDraw, Draw, BeforePresent, EndDraw;
         public int BatchCount, PrimitiveCount;
 
         internal long PriorPrimitiveCount;

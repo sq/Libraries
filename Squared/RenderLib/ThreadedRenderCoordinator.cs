@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -53,7 +54,8 @@ namespace Squared.Render {
         private WorkerThread _DrawThread;
         public readonly Stopwatch
             WorkStopwatch = new Stopwatch(),
-            WaitStopwatch = new Stopwatch();
+            WaitStopwatch = new Stopwatch(),
+            BeforePresentStopwatch = new Stopwatch();
 
         // Used to detect re-entrant painting (usually means that an
         //  exception was thrown on the render thread)
@@ -62,6 +64,8 @@ namespace Squared.Render {
         // Lost devices can cause things to go horribly wrong if we're 
         //  using multithreaded rendering
         private bool _DeviceLost = false;
+
+        private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
 
         public event EventHandler DeviceReset;
 
@@ -98,6 +102,14 @@ namespace Squared.Render {
             _SyncEndDraw = DefaultEndDraw;
 
             CoreInitialize();
+        }
+
+        /// <summary>
+        /// Queues an operation to occur immediately before Present, after all drawing
+        ///  commands have been issued.
+        /// </summary>
+        public void BeforePresent (Action action) {
+            BeforePresentQueue.Enqueue(action);
         }
 
         public ThreadPriority ThreadPriority {
@@ -327,6 +339,20 @@ namespace Squared.Render {
             _DeviceLost |= IsDeviceLost;
         }
 
+        protected void RunBeforePresentHandlers () {
+            BeforePresentStopwatch.Start();
+
+            while (BeforePresentQueue.Count > 0) {
+                Action beforePresent;
+                if (!BeforePresentQueue.TryDequeue(out beforePresent))
+                    continue;
+
+                beforePresent();
+            }
+
+            BeforePresentStopwatch.Stop();
+        }
+
         protected void RenderFrameToDraw (bool endDraw) {
             Manager.FlushBufferGenerators();
 
@@ -335,6 +361,9 @@ namespace Squared.Render {
             using (frameToDraw) {
                 if (frameToDraw != null)
                     RenderFrame(frameToDraw, true);
+
+                if (endDraw)
+                    RunBeforePresentHandlers();
 
                 if (endDraw)
                     _SyncEndDraw();
