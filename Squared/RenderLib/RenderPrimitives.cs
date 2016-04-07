@@ -454,7 +454,23 @@ namespace Squared.Render {
         public readonly int StartVertex;
         public readonly int PrimitiveCount;
 
-        public NativeDrawCall (PrimitiveType primitiveType, VertexBuffer vertexBuffer, int vertexOffset, IndexBuffer indexBuffer, int baseVertex, int minVertexIndex, int numVertices, int startIndex, int primitiveCount) {
+        /// <summary>
+        /// This maps to a call to DrawIndexedPrimitives.
+        /// </summary>
+        /// <param name="primitiveType">Describes the type of primitive to render. PrimitiveType.PointList is not supported.</param>
+        /// <param name="vertexOffset">The offset (in vertices) from the beginning of the vertex buffer.</param>
+        /// <param name="baseVertex">Offset to add to each vertex index in the index buffer.</param>
+        /// <param name="minVertexIndex">Minimum vertex index for vertices used during the call. The minVertexIndex parameter and all of the indices in the index stream are relative to the baseVertex parameter.</param>
+        /// <param name="numVertices">Number of vertices used during the call. The first vertex is located at index: baseVertex + minVertexIndex.</param>
+        /// <param name="startIndex">Location in the index buffer at which to start reading vertices.</param>
+        /// <param name="primitiveCount">Number of primitives to render. The number of vertices used is a function of primitiveCount and primitiveType.</param>
+        public NativeDrawCall (
+            PrimitiveType primitiveType, 
+            VertexBuffer vertexBuffer, int vertexOffset, 
+            IndexBuffer indexBuffer, 
+            int baseVertex, int minVertexIndex, int numVertices, 
+            int startIndex, int primitiveCount
+        ) {
             if (vertexBuffer == null)
                 throw new ArgumentNullException("vertexBuffer");
 
