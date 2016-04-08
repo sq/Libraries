@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Collections;
+using System.Runtime.CompilerServices;
 
 namespace Squared.Util {
     public class UnorderedList<T> : IEnumerable<T> {
@@ -110,6 +111,7 @@ namespace Squared.Util {
             Array.Copy(oldItems, _Items, _Count);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (T item) {
             int newCount = _Count + 1;
             EnsureCapacity(newCount);
@@ -118,6 +120,7 @@ namespace Squared.Util {
             _Count = newCount;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (ref T item) {
             int newCount = _Count + 1;
             EnsureCapacity(newCount);
@@ -126,6 +129,7 @@ namespace Squared.Util {
             _Count = newCount;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (T[] items) {
             int newCount = _Count + items.Length;
             EnsureCapacity(newCount);
@@ -189,6 +193,7 @@ namespace Squared.Util {
         }
 
         public int Count {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return _Count;
             }
