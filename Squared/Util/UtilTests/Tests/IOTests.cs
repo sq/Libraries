@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using NUnit.Framework;
 
@@ -11,7 +13,8 @@ namespace Squared.Util {
 
         [SetUp]
         public void SetUp () {
-            DataPath = System.IO.Path.GetFullPath(System.IO.Directory.GetCurrentDirectory() + @"\..\..\data\");
+            var assemblyLocation = Assembly.GetExecutingAssembly().Location;
+            DataPath = Path.GetFullPath(Path.GetDirectoryName(assemblyLocation) + @"\..\..\data\");
         }
 
         [Test]
