@@ -4,8 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
-using System.Data;
-using System.Data.Common;
 using System.Threading;
 using System.Collections;
 using Squared.Util;
@@ -78,7 +76,7 @@ namespace Squared.Task {
                 Scheduler.WaitFor(iter.Fetch());
                 Assert.Fail("Fetch did not throw an InvalidCastException");
             } catch (FutureException fe) {
-                Assert.IsInstanceOfType(typeof(InvalidCastException), fe.InnerException);
+                Assert.IsInstanceOf<InvalidCastException>(fe.InnerException);
             }
 
             iter.Dispose();

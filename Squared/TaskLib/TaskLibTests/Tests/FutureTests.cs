@@ -196,7 +196,7 @@ namespace Squared.Task {
                 f.Complete(1);
                 Assert.Fail("Exception was swallowed");
             } catch (FutureHandlerException fhe) {
-                Assert.IsInstanceOfType(typeof(Exception), fhe.InnerException);
+                Assert.IsInstanceOf<Exception>(fhe.InnerException);
                 Assert.AreEqual("pancakes", fhe.InnerException.Message);
             }
         }
@@ -212,7 +212,7 @@ namespace Squared.Task {
                 f.Dispose();
                 Assert.Fail("Exception was swallowed");
             } catch (FutureHandlerException fhe) {
-                Assert.IsInstanceOfType(typeof(Exception), fhe.InnerException);
+                Assert.IsInstanceOf<Exception>(fhe.InnerException);
                 Assert.AreEqual("pancakes", fhe.InnerException.Message);
             }
         }

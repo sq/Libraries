@@ -18,7 +18,7 @@ namespace Squared.Task {
         public int Value;
     }
 
-    [Ignore]
+    [Ignore("Base class")]
     public class BasicJobQueueTests {
         protected TaskScheduler Scheduler;
         protected IFuture TestFuture;
@@ -215,7 +215,7 @@ namespace Squared.Task {
                 var _ = f.Result;
                 Assert.Fail("Did not raise a TaskYieldedValueException");
             } catch (FutureException fe) {
-                Assert.IsInstanceOfType(typeof(TaskYieldedValueException), fe.InnerException);
+                Assert.IsInstanceOf<TaskYieldedValueException>(fe.InnerException);
             }
         }
 
@@ -465,7 +465,7 @@ namespace Squared.Task {
                 var _ = b.Result;
                 Assert.Fail("TimeoutException was not raised");
             } catch (FutureException ex) {
-                Assert.IsInstanceOfType(typeof(TimeoutException), ex.InnerException);
+                Assert.IsInstanceOf<TimeoutException>(ex.InnerException);
             }
         }
 
