@@ -30,7 +30,8 @@ namespace Squared.Threading {
 
         private static void ThreadMain (object _self) {
             ManualResetEventSlim wakeEvent;
-            var weakSelf = ThreadMainSetup(ref _self, out wakeEvent);
+            ThreadGroup.Counter idleCounter;
+            var weakSelf = ThreadMainSetup(ref _self, out wakeEvent, out idleCounter);
 
             int queueIndex = 0;
 
@@ -40,26 +41,35 @@ namespace Squared.Threading {
             while (true) {
                 // HACK: We retain a strong reference to our GroupThread while we're running,
                 //  and if our owner GroupThread has been collected, we abort
-                if (!ThreadMainStep(weakSelf, ref queueIndex))
+                bool exhausted;
+                if (!ThreadMainStep(weakSelf, ref queueIndex, out exhausted))
                     break;
 
                 // The strong reference is released here so we can wait to be woken up
-                wakeEvent.Wait();
+                if (exhausted) {
+                    idleCounter.Add(1);
+                    if (wakeEvent.Wait(10))
+                        wakeEvent.Reset();
+                    idleCounter.Add(-1);
+                }
             }
         }
 
         private static WeakReference<GroupThread> ThreadMainSetup (
-            ref object _self, out ManualResetEventSlim wakeEvent
+            ref object _self, out ManualResetEventSlim wakeEvent,
+            out ThreadGroup.Counter idleCounter
         ) {
             var self = (GroupThread)_self;
             var weakSelf = new WeakReference<GroupThread>(self);
             wakeEvent = self.WakeEvent;
+            idleCounter = self.Owner.IdleThreadCounter;
             return weakSelf;
         }
 
-        private static bool ThreadMainStep (WeakReference<GroupThread> weakSelf, ref int queueIndex) {
+        private static bool ThreadMainStep (WeakReference<GroupThread> weakSelf, ref int queueIndex, out bool exhausted) {
             // We hold the strong reference at method scope so we can be sure it doesn't get held too long
             GroupThread strongSelf = null;
+            exhausted = false;
 
             // If our owner object has been collected, abort
             if (!weakSelf.TryGetTarget(out strongSelf))
@@ -83,7 +93,7 @@ namespace Squared.Threading {
             }
 
             if (queue != null)
-                queue.Step();
+                queue.Step(out exhausted);
 
             GC.KeepAlive(strongSelf);
             return true;

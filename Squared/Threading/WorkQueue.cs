@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Squared.Threading {
     public interface IWorkQueue {
         /// <returns>The number of work items handled.</returns>
-        int Step (int? maximumCount = null);
+        int Step (out bool exhausted, int? maximumCount = null);
     }
 
     public interface IWorkItem {
@@ -67,7 +67,13 @@ namespace Squared.Threading {
             }
         }
 
-        public int DefaultStepCount = 8;
+        /// <summary>
+        /// Configures the number of steps taken each time this queue is visited by a worker thread.
+        /// Low values increase the overhead of individual work items.
+        /// High values reduce the overhead of work items but increase the odds that all worker threads can get bogged down
+        ///  by a single queue.
+        /// </summary>
+        public int DefaultStepCount = 128;
 
         private readonly object Token = new object();
 
@@ -91,7 +97,7 @@ namespace Squared.Threading {
             return new Marker(this);
         }
 
-        public int Step (int? maximumCount = null) {
+        public int Step (out bool exhausted, int? maximumCount = null) {
             InternalWorkItem<T> item;
             int result = 0;
             int actualMaximumCount = maximumCount.GetValueOrDefault(DefaultStepCount);
@@ -112,6 +118,8 @@ namespace Squared.Threading {
                 lock (Token)
                     Monitor.PulseAll(Token);
             }
+
+            exhausted = Queue.IsEmpty;
 
             return result;
         }

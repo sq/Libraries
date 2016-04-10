@@ -7,6 +7,20 @@ using Squared.Util;
 
 namespace Squared.Threading {
     public class ThreadGroup : IDisposable {
+        public class Counter {
+            private volatile int _Value;
+
+            public void Add (int i) {
+                Interlocked.Add(ref _Value, i);
+            }
+
+            public int Value {
+                get {
+                    return _Value;
+                }
+            }
+        }
+
         public bool IsDisposed { get; private set; }
 
         public readonly int MinimumThreadCount;
@@ -21,8 +35,9 @@ namespace Squared.Threading {
 
         private readonly List<GroupThread> Threads = new List<GroupThread>();
 
-        private int IdleThreadCount = 0;
-        private int BusyStatesObserved = 0;
+        internal readonly Counter IdleThreadCounter = new Counter();
+
+        private  int BusyStatesObserved = 0;
 
         private const int NewThreadBusyThreshold = 4;
 
@@ -50,7 +65,7 @@ namespace Squared.Threading {
         {
             var queue = GetQueueForType<T>();
             queue.Enqueue(ref item, onComplete);
-            ConsiderNewThread();
+            NotifyQueuesChanged();
         }
 
         public void Enqueue<T> (ref T item, OnWorkItemComplete<T> onComplete = null)
@@ -58,13 +73,14 @@ namespace Squared.Threading {
         {
             var queue = GetQueueForType<T>();
             queue.Enqueue(ref item, onComplete);
-            ConsiderNewThread();
+            NotifyQueuesChanged();
         }
 
         /// <summary>
         /// You can use this to request a work queue for a given type of work item, then queue
         ///  multiple items cheaply. If you queue items directly, it's your responsibility to call
-        ///  ThreadGroup.ConsiderNewThread to ensure that new thread(s) are created to perform work.
+        ///  ThreadGroup.NotifyQueuesChanged to ensure that a sufficient number of threads are ready
+        ///  to perform work.
         /// </summary>
         public WorkQueue<T> GetQueueForType<T> ()
             where T : IWorkItem 
@@ -102,17 +118,30 @@ namespace Squared.Threading {
         }
 
         /// <summary>
+        /// Notifies the scheduler that new items have been added to the queues.
+        /// This ensures that any sleeping worker threads wake up, and that
+        ///  new threads are created if necessary
+        /// </summary>
+        public void NotifyQueuesChanged () {
+            ConsiderNewThread();
+
+            lock (Threads)
+            foreach (var thread in Threads)
+                thread.WakeEvent.Set();
+        }
+
+        /// <summary>
         /// Checks to see whether an additional worker thread is needed, and if so, creates one.
         /// If you've just enqueued many work items it's advised to invoke this once with assumeBusy: true.
         /// </summary>
         /// <param name="assumeBusy">If true, it is assumed that many tasks are waiting.</param>
         /// <returns>true if a thread was created.</returns>
-        public bool ConsiderNewThread (bool assumeBusy = false) {
+        private bool ConsiderNewThread (bool assumeBusy = false) {
             lock (Threads) {
                 if (Threads.Count >= MaximumThreadCount)
                     return false;
 
-                if (IdleThreadCount <= 0) {
+                if (IdleThreadCounter.Value <= 0) {
                     BusyStatesObserved++;
 
                     if (assumeBusy || (BusyStatesObserved > NewThreadBusyThreshold)) {

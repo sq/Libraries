@@ -68,6 +68,10 @@
       <Project>{eccb8787-0fc6-43b2-abd1-6cbb237916ec}</Project>
       <Name>Squared.Threading</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Util\Squared.Util.csproj">
+      <Project>{d7f549cf-e0a6-491c-a78c-ecab590bb2a7}</Project>
+      <Name>Squared.Util</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
