@@ -8,6 +8,7 @@ using Squared.Task.IO;
 using System.IO;
 using System.Diagnostics;
 using System.Threading;
+using Squared.Threading;
 
 namespace TelnetChatBot {
     public class DisconnectedException : Exception {

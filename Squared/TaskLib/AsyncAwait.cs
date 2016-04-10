@@ -12,6 +12,7 @@ using Squared.Util.Event;
 using tTask = System.Threading.Tasks.Task;
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 using EventInfo = Squared.Util.Event.EventInfo;
+using Squared.Threading;
 
 namespace Squared.Task {
     public static class FutureAwaitExtensionMethods {

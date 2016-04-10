@@ -8,6 +8,7 @@ using System.Security;
 using Squared.Util.Event;
 using Squared.Util;
 using System.Collections.Concurrent;
+using Squared.Threading;
 
 namespace Squared.Task {
     public static partial class JobQueue {

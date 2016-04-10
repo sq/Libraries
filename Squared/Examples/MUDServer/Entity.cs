@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Squared.Task;
+using Squared.Threading;
 
 namespace MUDServer {
     public delegate IEnumerator<object> EventHandler (EventType type, object evt);

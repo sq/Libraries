@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Net.Sockets;
+using Squared.Threading;
 
 namespace Squared.Task {
     public static class Network {

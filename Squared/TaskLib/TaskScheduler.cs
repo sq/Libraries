@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Squared.Util;
 using System.Collections.Concurrent;
+using Squared.Threading;
 
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 

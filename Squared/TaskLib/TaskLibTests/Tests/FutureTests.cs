@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Squared.Task;
 using NUnit.Framework;
+using Squared.Threading;
 
 namespace Squared.Task {
     [TestFixture]

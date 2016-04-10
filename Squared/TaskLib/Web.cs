@@ -7,6 +7,7 @@ using System.Text;
 using System.Collections.Specialized;
 using System.Reflection;
 using System.IO;
+using Squared.Threading;
 
 #if SystemWeb
 using System.Web;

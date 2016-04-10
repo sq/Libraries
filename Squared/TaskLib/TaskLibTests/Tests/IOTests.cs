@@ -7,6 +7,7 @@ using System.Threading;
 using System.Net.Sockets;
 using System.Net;
 using System.Linq;
+using Squared.Threading;
 
 namespace Squared.Task.IO {
     public class IOTests {
@@ -514,7 +515,7 @@ namespace Squared.Task.IO {
 
             Thread.Sleep(3000);
 
-            Assert.IsFalse(f.Completed);
+            Assert.IsFalse(f.Completed, "Expected a full send buffer to make write operation block");
 
             A.Close();
             B.Close();

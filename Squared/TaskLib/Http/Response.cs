@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using Squared.Task.IO;
 using Squared.Util;
+using Squared.Threading;
 
 namespace Squared.Task.Http {
     public partial class HttpServer {

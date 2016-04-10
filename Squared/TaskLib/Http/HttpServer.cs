@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Squared.Task.IO;
+using Squared.Threading;
 
 namespace Squared.Task.Http {
     public partial class HttpServer : IDisposable {

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Squared.Threading;
 
 namespace Squared.Task.Http {
     public partial class HttpServer {

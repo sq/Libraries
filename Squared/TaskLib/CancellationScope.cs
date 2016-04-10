@@ -15,6 +15,7 @@ using tTask = System.Threading.Tasks.Task;
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 using TaskStatus = System.Threading.Tasks.TaskStatus;
 using System.Linq.Expressions;
+using Squared.Threading;
 
 namespace Squared.Task {
     public class CancellationScope {
@@ -32,7 +33,7 @@ namespace Squared.Task {
                     throw new InvalidOperationException("No implicitly active TaskScheduler on this thread.");
             }
 
-            public Squared.Task.OnComplete OnComplete (Action continuation) {
+            public Squared.Threading.OnComplete OnComplete (Action continuation) {
                 if ((Continuation != null) && (Continuation != continuation))
                     throw new InvalidOperationException("Continuation already registered");
 

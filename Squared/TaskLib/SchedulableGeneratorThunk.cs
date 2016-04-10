@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using Squared.Util;
+using Squared.Threading;
 
 namespace Squared.Task {
     public class SchedulableGeneratorThunk : ISchedulable, IDisposable {

@@ -7,6 +7,7 @@ using System.Threading;
 using System.Net.Sockets;
 using System.Net;
 using System.Linq;
+using Squared.Threading;
 
 namespace Squared.Task.Http {
     [TestFixture]

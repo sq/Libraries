@@ -6,6 +6,7 @@ using Squared.Util.Event;
 using System.Collections;
 using System.Linq;
 using System.Linq.Expressions;
+using Squared.Threading;
 
 namespace Squared.Task {
     public static class EnumeratorExtensionMethods {
@@ -96,7 +97,7 @@ namespace Squared.Task {
             _Task = task;
             _Thunk = new SchedulableGeneratorThunk(_Task);
             _ExecutionPolicy = executionPolicy;
-            _Future = Squared.Task.Future.New<T>();
+            _Future = Future.New<T>();
             _Future.Bind(target);
             _Future.RegisterOnComplete(Completed);
         }
@@ -349,7 +350,7 @@ namespace Squared.Task {
         public RunToCompletion (IEnumerator<object> task, TaskExecutionPolicy executionPolicy = TaskExecutionPolicy.RunWhileFutureLives) {
             _Task = task;
             _Thunk = new SchedulableGeneratorThunk(_Task);
-            _Future = Squared.Task.Future.New<T>();
+            _Future = Threading.Future.New<T>();
             _Future.RegisterOnComplete(Completed);
             _ExecutionPolicy = executionPolicy;
         }
@@ -949,6 +950,12 @@ namespace Squared.Task {
 
         IEnumerator IEnumerable.GetEnumerator () {
             return _OwnedFutures.GetEnumerator();
+        }
+    }
+    
+    public static class FutureExtensionMethods {
+        public static WaitWithTimeout WaitWithTimeout (this IFuture future, double timeout) {
+            return new WaitWithTimeout(future, timeout);
         }
     }
 }

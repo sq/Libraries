@@ -5,6 +5,7 @@ using System.Threading;
 using System.Security;
 using Squared.Util;
 using System.Collections.Concurrent;
+using Squared.Threading;
 
 namespace Squared.Task {
     public class InfiniteStepException : Exception {

@@ -6,6 +6,7 @@ using System.IO;
 using System.Text;
 using System.Diagnostics;
 using Squared.Util;
+using Squared.Threading;
 
 namespace Squared.Task.IO {
     public class SocketDisconnectedException : IOException {

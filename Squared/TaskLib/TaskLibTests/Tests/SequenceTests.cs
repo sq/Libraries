@@ -9,6 +9,7 @@ using System.Data.Common;
 using System.Threading;
 using System.Collections;
 using Squared.Util;
+using Squared.Threading;
 
 namespace Squared.Task {
     [TestFixture]

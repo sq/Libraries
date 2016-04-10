@@ -9,6 +9,7 @@ using System.IO;
 using System.Threading;
 using System.Diagnostics;
 using Squared.Util;
+using Squared.Threading;
 
 namespace TelnetChatServer {
     public class DisconnectedException : Exception {

@@ -11,6 +11,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.IO;
 using System.Windows.Forms;
+using Squared.Threading;
 
 namespace Squared.Task {
     class ValueHolder {

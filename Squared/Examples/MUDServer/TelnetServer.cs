@@ -7,6 +7,7 @@ using Squared.Task;
 using Squared.Task.IO;
 using System.IO;
 using System.Net;
+using Squared.Threading;
 
 namespace MUDServer {
     public class TelnetClient : IDisposable {

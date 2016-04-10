@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Squared.Task.IO;
+using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.Task.Http {

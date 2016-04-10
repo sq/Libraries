@@ -6,6 +6,7 @@ using System.Text;
 using System.Diagnostics;
 using Squared.Util;
 using System.Linq;
+using Squared.Threading;
 
 namespace Squared.Task.IO {
     public class OperationPendingException : InvalidOperationException {

@@ -114,7 +114,6 @@
     <Compile Include="BlockingQueue.cs" />
     <Compile Include="CancellationScope.cs" />
     <Compile Include="DiskMonitor.cs" />
-    <Compile Include="Future.cs" />
     <Compile Include="Http\Events.cs" />
     <Compile Include="Http\Header.cs" />
     <Compile Include="Http\AsyncDataAdapterShim.cs" />
@@ -138,6 +137,10 @@
     <Compile Include="WorkerThread.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Threading\Squared.Threading.csproj">
+      <Project>{eccb8787-0fc6-43b2-abd1-6cbb237916ec}</Project>
+      <Name>Squared.Threading</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Util\Squared.Util.csproj">
       <Project>{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}</Project>
       <Name>Squared.Util</Name>

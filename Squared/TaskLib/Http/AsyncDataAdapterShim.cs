@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Squared.Task.IO;
+using Squared.Threading;
 
 namespace Squared.Task.Http {
     public class AsyncDataAdapterShim : IAsyncDataSource, IAsyncDataWriter, IDisposable {
