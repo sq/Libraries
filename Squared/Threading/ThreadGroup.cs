@@ -29,9 +29,11 @@ namespace Squared.Threading {
         // We keep a separate iterable copy of the queue list for thread spawning purposes
         private readonly List<IWorkQueue> QueueList = new List<IWorkQueue>();
 
-        private readonly List<GroupThread> Threads = new List<GroupThread>();
+        private int CurrentThreadCount;
+        private readonly UnorderedList<GroupThread> Threads = new UnorderedList<GroupThread>(256);
 
         private long LastTimeThreadWasIdle = long.MaxValue;
+        private bool CanMakeNewThreads, HasNoThreads;
 
         public ThreadGroup (
             int? minimumThreads = null,
@@ -47,6 +49,9 @@ namespace Squared.Threading {
             lock (Threads)
             while ((Count < MinimumThreadCount) && (Count < MaximumThreadCount))
                 SpawnThread();
+
+            HasNoThreads = (Count == 0);
+            CanMakeNewThreads = (Count < MaximumThreadCount);
         }
 
         public int Count {
@@ -129,9 +134,16 @@ namespace Squared.Threading {
         public void NotifyQueuesChanged (bool assumeBusy = false) {
             ConsiderNewThread(assumeBusy);
 
-            lock (Threads)
-            foreach (var thread in Threads)
-                thread.WakeEvent.Set();
+            // Skip locking 'Threads' here since it's expensive.
+            // This means we might fail to wake a brand new thread,
+            //  but that's fine.
+            var threads = Threads.GetBuffer();
+            for (int i = 0; i < CurrentThreadCount; i++) {
+                var thread = threads[i];
+
+                if (thread != null)
+                    thread.WakeEvent.Set();
+            }
         }
 
         /// <summary>
@@ -141,22 +153,24 @@ namespace Squared.Threading {
         /// <param name="assumeBusy">If true, it is assumed that many tasks are waiting.</param>
         /// <returns>true if a thread was created.</returns>
         private bool ConsiderNewThread (bool assumeBusy = false) {
-            lock (Threads) {
-                if (Threads.Count >= MaximumThreadCount)
-                    return false;
+            if (!CanMakeNewThreads)
+                return false;
 
-                var timeSinceLastIdle = TimeProvider.Ticks - Interlocked.Read(ref LastTimeThreadWasIdle);
-                var timeSinceLastIdleMs = TimeSpan.FromTicks(timeSinceLastIdle).TotalMilliseconds;
+            var timeSinceLastIdle = TimeProvider.Ticks - Interlocked.Read(ref LastTimeThreadWasIdle);
+            var timeSinceLastIdleMs = TimeSpan.FromTicks(timeSinceLastIdle).TotalMilliseconds;
 
-                if ((Threads.Count < 1) || (timeSinceLastIdleMs >= NewThreadBusyThresholdMs)) {
+            if (HasNoThreads || (timeSinceLastIdleMs >= NewThreadBusyThresholdMs)) {
+                lock (Threads) {
+                    SpawnThread();
+
                     if (NewThreadCreated != null)
                         NewThreadCreated(timeSinceLastIdleMs);
-                    SpawnThread();
+
                     return true;
                 }
-
-                return false;
             }
+
+            return false;
         }
 
         public void ForciblySpawnThread () {
@@ -170,11 +184,22 @@ namespace Squared.Threading {
                 newThread.RegisterQueue(queue);
         }
 
-        private GroupThread SpawnThread () {
+        private void SpawnThread () {
+            // Just in case thread state gets out of sync...
+            if (Threads.Count >= MaximumThreadCount)
+                return;
+
             Interlocked.Exchange(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
             var thread = new GroupThread(this);
             Threads.Add(thread);
-            return thread;
+
+            Thread.MemoryBarrier();
+
+            HasNoThreads = false;
+            CanMakeNewThreads = Threads.Count < MaximumThreadCount;
+            CurrentThreadCount = Threads.Count;
+
+            Thread.MemoryBarrier();
         }
 
         public void Dispose () {
