@@ -10,7 +10,7 @@ namespace Squared.Threading {
         public readonly Thread               Thread;
         public readonly ManualResetEventSlim WakeEvent;
 
-        private readonly List<IWorkQueue> Queues = new List<IWorkQueue>();
+        private readonly UnorderedList<IWorkQueue> Queues = new UnorderedList<IWorkQueue>();
 
         private const int IdleWaitDurationMs = 10;
 
@@ -41,17 +41,15 @@ namespace Squared.Threading {
             // If we did this in Dispose there'd be no clean way to deal with this.
             using (wakeEvent)
             while (true) {
-                bool exhausted;
+                bool moreWorkRemains;
                 // HACK: We retain a strong reference to our GroupThread while we're running,
                 //  and if our owner GroupThread has been collected, we abort
-                if (!ThreadMainStep(weakSelf, ref queueIndex, out exhausted))
+                if (!ThreadMainStep(weakSelf, ref queueIndex, out moreWorkRemains))
                     break;
                 // The strong reference is released here so we can wait to be woken up
 
-                // FIXME: If there is work waiting in a different queue, we probably don't want
-                //  to wait now? Not sure how to deal with this
-                if (exhausted) {
-                    // We only wait if the queue was exhausted by our last step operation
+                if (!moreWorkRemains) {
+                    // We only wait if no work remains
                     if (wakeEvent.Wait(IdleWaitDurationMs))
                         wakeEvent.Reset();
                 }
@@ -67,10 +65,10 @@ namespace Squared.Threading {
             return weakSelf;
         }
 
-        private static bool ThreadMainStep (WeakReference<GroupThread> weakSelf, ref int queueIndex, out bool exhausted) {
+        private static bool ThreadMainStep (WeakReference<GroupThread> weakSelf, ref int queueIndex, out bool moreWorkRemains) {
             // We hold the strong reference at method scope so we can be sure it doesn't get held too long
             GroupThread strongSelf = null;
-            exhausted = false;
+            moreWorkRemains = false;
 
             // If our owner object has been collected, abort
             if (!weakSelf.TryGetTarget(out strongSelf))
@@ -80,26 +78,35 @@ namespace Squared.Threading {
             if (strongSelf.IsDisposed)
                 return false;
 
-            int stepCount = 0;
-
-            IWorkQueue queue = null;
+            int queueCount;
+            IWorkQueue[] queues;
             lock (strongSelf.Queues) {
+                queueCount = strongSelf.Queues.Count;
+                queues = strongSelf.Queues.GetBuffer();
+            }
+
+            strongSelf.Owner.ThreadBeganWorking();
+
+            for (int i = 0; i < queueCount; i++) {
                 // We round-robin select a queue from our pool every tick and then step it
-                var queueCount = strongSelf.Queues.Count;
+                IWorkQueue queue = null;
+                if (queueIndex < queueCount)
+                    queue = queues[queueIndex];
 
-                if (queueCount > 0) {
-                    if (queueIndex < queueCount)
-                        queue = strongSelf.Queues[queueIndex];
+                queueIndex = (queueIndex + 1) % queueCount;
 
-                    queueIndex = (queueIndex + 1) % queueCount;
+                if (queue != null) {
+                    bool exhausted;
+                    int processedItemCount = queue.Step(out exhausted);
+
+                    // HACK: If we processed at least one item in this queue, but more items remain,
+                    //  make sure the caller knows not to go to sleep.
+                    if (processedItemCount > 0)
+                        moreWorkRemains |= !exhausted;
                 }
             }
 
-            if (queue != null) {
-                strongSelf.Owner.ThreadBeganWorking();
-                stepCount = queue.Step(out exhausted);
-                strongSelf.Owner.ThreadBecameIdle();
-            }
+            strongSelf.Owner.ThreadBecameIdle();
 
             GC.KeepAlive(strongSelf);
             return true;
