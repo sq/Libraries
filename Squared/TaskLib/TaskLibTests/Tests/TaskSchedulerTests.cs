@@ -262,14 +262,14 @@ namespace Squared.Task {
         public void LotsOfWorkersTest () {
             var buf = new int[1];
             var futures = new List<IFuture>();
-            for (int i = 0; i < 25; i++) {
+            for (int i = 0; i < 15; i++) {
                 futures.Add(Scheduler.Start(TaskLongLivedWorker(buf)));
             }
             long timeStart = Time.Ticks;
             Scheduler.Step();
             long timeEnd = Time.Ticks;
             TimeSpan elapsed = new TimeSpan(timeEnd - timeStart);
-            Assert.AreEqual(1000000 * 25, buf[0]);
+            Assert.AreEqual(1000000 * 15, buf[0]);
             Console.WriteLine("Took {0:N2} secs for {1} iterations. {2:N1} iterations/sec", elapsed.TotalSeconds, buf[0], 1.0 * buf[0] / elapsed.TotalSeconds);
         }
 

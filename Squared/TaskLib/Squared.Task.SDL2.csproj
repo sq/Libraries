@@ -59,11 +59,6 @@
     <Compile Include="Util.cs" />
     <Compile Include="Web.cs" />
     <Compile Include="WorkerThread.cs" />
-    <Compile Include="Data\Connection.cs" />
-    <Compile Include="Data\Mapper.cs" />
-    <Compile Include="Data\Misc.cs" />
-    <Compile Include="Data\PropertySerializer.cs" />
-    <Compile Include="Data\Query.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
