@@ -140,11 +140,8 @@ namespace Squared.Threading {
             if (result > 0)
                 Interlocked.Add(ref ItemsExecuted, result);
 
-            if (Monitor.TryEnter(Token, 10)) {
+            lock (Token)
                 Monitor.PulseAll(Token);
-                Monitor.Exit(Token);
-            } else
-                throw new ThreadStateException("Failed to acquire the worker queue lock after 10 milliseconds");
 
             exhausted = (result > 0) && (count <= 0);
 
