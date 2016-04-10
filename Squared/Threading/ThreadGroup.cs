@@ -23,6 +23,7 @@ namespace Squared.Threading {
 
         public bool IsDisposed { get; private set; }
 
+        public readonly bool CreateBackgroundThreads;
         public readonly int MinimumThreadCount;
         public readonly int MaximumThreadCount;
         
@@ -43,10 +44,12 @@ namespace Squared.Threading {
 
         public ThreadGroup (
             int? minimumThreads = null,
-            int? maximumThreads = null
+            int? maximumThreads = null,
+            bool createBackgroundThreads = false
         ) {
             MaximumThreadCount = maximumThreads.GetValueOrDefault(Environment.ProcessorCount + 1);
             MinimumThreadCount = Math.Min(minimumThreads.GetValueOrDefault(1), MaximumThreadCount);
+            CreateBackgroundThreads = createBackgroundThreads;
 
             lock (Threads)
             while ((Count < MinimumThreadCount) && (Count < MaximumThreadCount))

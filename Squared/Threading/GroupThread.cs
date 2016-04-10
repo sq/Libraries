@@ -18,7 +18,8 @@ namespace Squared.Threading {
             Owner = owner;
             WakeEvent = new ManualResetEventSlim(true);
             Thread = new Thread(ThreadMain);
-            Thread.Name = "Squared.Threading worker thread";
+            Thread.Name = string.Format("ThreadGroup {0} worker #{1}", owner.GetHashCode(), owner.Count);
+            Thread.IsBackground = owner.CreateBackgroundThreads;
             owner.RegisterQueuesForNewThread(this);
             Thread.Start(this);
         }

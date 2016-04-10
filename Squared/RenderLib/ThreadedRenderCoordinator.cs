@@ -511,6 +511,9 @@ namespace Squared.Render {
             if (IsDisposed)
                 return;
 
+            // HACK
+            Manager.PrepareManager.Group.Dispose();
+
             _Running = false;
             IsDisposed = true;
 

@@ -150,12 +150,6 @@ namespace Squared.Render {
 
     // Thread-safe
     public sealed class RenderManager {
-        class WorkerThreadInfo {
-            public volatile int Start, Count;
-            public volatile Frame Frame;
-            public volatile PrepareManager Manager;
-        }
-
         public readonly PrepareManager PrepareManager;
         public readonly ThreadGroup    ThreadGroup;
         public readonly DeviceManager  DeviceManager;
@@ -174,8 +168,6 @@ namespace Squared.Render {
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
         private FramePool _FrameAllocator;
 
-        private WorkerThreadInfo[] _WorkerInfo;
-        private Action[] _WorkerDelegates;
         private Action<IDisposable> _DisposeResource;
 
         /// <summary>
@@ -196,21 +188,6 @@ namespace Squared.Render {
             _FrameAllocator = new FramePool(this);
             ThreadGroup = new ThreadGroup(0);
             PrepareManager = new PrepareManager(ThreadGroup);
-
-            int threadCount = Math.Max(2, Math.Min(8, Environment.ProcessorCount));
-
-            _WorkerInfo = new WorkerThreadInfo[threadCount];
-            for (int i = 0; i < threadCount; i++)
-                _WorkerInfo[i] = new WorkerThreadInfo();
-
-            _WorkerDelegates = new Action[threadCount];
-
-            for (int i = 0; i < threadCount; i++) {
-                // Make a copy so that each delegate gets a different value
-                int j = i;
-                _WorkerDelegates[i] = () =>
-                    WorkerThreadFunc(_WorkerInfo[j]);
-            }
 
             _DisposeResource = DisposeResource;
         }
@@ -238,57 +215,19 @@ namespace Squared.Render {
             device.DepthStencilState = DepthStencilState.None;
             device.RasterizerState = RasterizerState.CullNone;
         }
-                
-        private void WorkerThreadFunc (WorkerThreadInfo info) {
-            Frame frame;
-            PrepareManager manager;
-            int start, count;
-            lock (info) {
-                manager = info.Manager;
-                frame = info.Frame;
-                start = info.Start;
-                count = info.Count;
-            }
 
-            try {
-                frame.PrepareSubset(manager, start, count);
-            } finally {
-                lock (info) {
-                    info.Frame = null;
-                    info.Start = info.Count = 0;
-                }
-            }
+        internal void SynchronousPrepareBatches (Frame frame) {
+            foreach (var batch in frame.Batches)
+                PrepareManager.PrepareSync(batch);
+
+            PrepareManager.Wait();
         }
 
-        internal void SynchronousPrepare (Frame frame) {
-            frame.PrepareSubset(PrepareManager, 0, frame.Batches.Count);
-        }
+        internal void ParallelPrepareBatches (Frame frame) {
+            foreach (var batch in frame.Batches)
+                PrepareManager.PrepareAsync(batch);
 
-        internal void ParallelPrepare (Frame frame) {
-            int batchCount = frame.Batches.Count;
-            int chunkSize = (int)Math.Ceiling((float)batchCount / _WorkerInfo.Length);
-
-            for (int i = 0, j = 0; i < _WorkerInfo.Length; i++, j += chunkSize) {
-                var info = _WorkerInfo[i];
-
-                lock (info) {
-                    if (info.Frame != null)
-                        throw new InvalidOperationException("A render is already in progress");
-
-                    info.Frame = frame;
-                    info.Manager = PrepareManager;
-                    info.Start = j;
-                    info.Count = Math.Min(chunkSize, batchCount - j);
-                }
-
-            }
-
-            System.Threading.Tasks.Parallel.Invoke(
-                new System.Threading.Tasks.ParallelOptions {
-                    MaxDegreeOfParallelism = _WorkerInfo.Length
-                },
-                _WorkerDelegates
-            );
+            PrepareManager.Wait();
         }
 
         internal int PickFrameIndex () {
@@ -539,25 +478,15 @@ namespace Squared.Render {
 
             try {
                 if (parallel)
-                    RenderManager.ParallelPrepare(this);
+                    RenderManager.ParallelPrepareBatches(this);
                 else
-                    RenderManager.SynchronousPrepare(this);
+                    RenderManager.SynchronousPrepareBatches(this);
             } finally {
                 Monitor.Exit(PrepareLock);
             }
 
             if (Interlocked.Exchange(ref State, State_Prepared) != State_Preparing)
                 throw new InvalidOperationException("Frame was not in preparing state when prepare operation completed");
-        }
-
-        internal void PrepareSubset (PrepareManager manager, int start, int count) {
-            int end = start + count;
-
-            var _batches = Batches.GetBuffer();
-            for (int i = start; i < end; i++) {
-                var batch = _batches[i];
-                manager.PrepareSync(batch);
-            }
         }
 
         public void Draw () {
@@ -617,7 +546,7 @@ namespace Squared.Render {
     }
 
     public class PrepareManager {
-        private struct Task : IWorkItem {
+        public struct Task : IWorkItem {
             public readonly PrepareManager Manager;
             public readonly IBatch Batch;
 
@@ -631,12 +560,20 @@ namespace Squared.Render {
             }
         };
 
-        private readonly ThreadGroup     Group;
+        public  readonly ThreadGroup     Group;
         private readonly WorkQueue<Task> Queue;
 
         public PrepareManager (ThreadGroup threadGroup) {
             Group = threadGroup;
             Queue = threadGroup.GetQueueForType<Task>();
+        }
+
+        public WorkQueue<Task>.Marker Mark () {
+            return Queue.Mark();
+        }
+
+        public void Wait () {
+            Queue.WaitUntilDrained();
         }
 
         public void PrepareAsync (IBatch batch) {
@@ -927,9 +864,8 @@ namespace Squared.Render {
 
             _DrawCalls.Sort(Frame.BatchComparer);
 
-            foreach (var batch in _DrawCalls) {
+            foreach (var batch in _DrawCalls)
                 manager.PrepareSync(batch);
-            }
         }
 
         public override void Issue (DeviceManager manager) {

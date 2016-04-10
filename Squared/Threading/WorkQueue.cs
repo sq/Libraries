@@ -40,29 +40,26 @@ namespace Squared.Threading {
     {
         public struct Marker {
             private readonly WorkQueue<T> Queue;
-            private readonly long Start;
+            public readonly long Executed, Enqueued;
 
             public Marker (WorkQueue<T> queue) {
                 Queue = queue;
-                Start = Interlocked.Read(ref Queue.ItemsExecuted);
-            }
-
-            public long ItemsExecuted {
-                get {
-                    return Interlocked.Read(ref Queue.ItemsExecuted) - Start;
-                }
+                Executed = Interlocked.Read(ref Queue.ItemsExecuted);
+                Enqueued = Interlocked.Read(ref Queue.ItemsEnqueued);
             }
 
             /// <summary>
-            /// Waits for a set number of items to be executed.
-            /// This will hang unless other threads step the queue.
+            /// Waits until all items enqueued at the marking point have been executed
             /// </summary>
-            public void Wait (int itemCount) {
-                var targetCount = Start + itemCount;
+            public void Wait () {
+                while (true) {
+                    lock (Queue.Token) {
+                        var executed = Interlocked.Read(ref Queue.ItemsExecuted);
+                        if (executed >= Enqueued)
+                            return;
 
-                while (ItemsExecuted < targetCount) {
-                    Monitor.Enter(Queue.Token);
-                    Monitor.Wait(Queue.Token);
+                        Monitor.Wait(Queue.Token);
+                    }
                 }
             }
         }
@@ -80,6 +77,7 @@ namespace Squared.Threading {
         private readonly ConcurrentQueue<InternalWorkItem<T>> Queue = 
             new ConcurrentQueue<InternalWorkItem<T>>();
 
+        private long ItemsEnqueued;
         private long ItemsExecuted;
 
         public WorkQueue () {
@@ -87,10 +85,12 @@ namespace Squared.Threading {
 
         public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null) {
             Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
+            Interlocked.Increment(ref ItemsEnqueued);
         }
 
         public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null) {
             Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
+            Interlocked.Increment(ref ItemsEnqueued);
         }
 
         public Marker Mark () {
@@ -113,15 +113,33 @@ namespace Squared.Threading {
 
                 result++;
             }
-            
-            if (result > 0) {
-                lock (Token)
-                    Monitor.PulseAll(Token);
-            }
+
+            if (Monitor.TryEnter(Token, 10)) {
+                Monitor.PulseAll(Token);
+                Monitor.Exit(Token);
+            } else
+                throw new ThreadStateException("Failed to acquire the worker queue lock after 10 milliseconds");
 
             exhausted = Queue.IsEmpty;
 
             return result;
+        }
+
+        public void WaitUntilDrained () {
+            var done = false;
+
+            while (!done) {
+                lock (Token) {
+                    done = 
+                        (Interlocked.Read(ref ItemsExecuted) >= Interlocked.Read(ref ItemsEnqueued)) &&
+                        Queue.IsEmpty;
+
+                    if (!done)
+                        Monitor.Wait(Token);
+                }
+
+                ;
+            }
         }
     }
 }
