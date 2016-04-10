@@ -374,7 +374,6 @@ namespace Squared.Task {
                 now = TimeProvider.Ticks;
                 long timeToSleep = (sleepUntil - now) + SleepFudgeFactor;
 
-#if !XBOX
                 if (timeToSleep < SleepSpinThreshold) {
                     int iteration = 1;
 
@@ -385,7 +384,6 @@ namespace Squared.Task {
 
                     timeToSleep = 0;
                 }
-#endif
 
                 if (timeToSleep > 0) {
                     if (timeToSleep > MaximumSleepLength)

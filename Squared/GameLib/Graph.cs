@@ -37,7 +37,6 @@ namespace Squared.Game.Graph {
         }
     }
 
-#if !XBOX
     // Whoops, we removed a bunch of core classes and APIs without updating the documentation.
     // Sorry, our bad. - Microsoft
 
@@ -122,7 +121,6 @@ namespace Squared.Game.Graph {
             return BuildGraph(graph, nodes);
         }
     }
-#endif
 
     public class XmlGraphWriter : IGraphWriter {
         private XmlWriter _Writer;
@@ -255,7 +253,6 @@ namespace Squared.Game.Graph {
             writer.EndWrite();
         }
 
-#if !XBOX
         public static INode ReadGraph (this XmlReader reader) {
             return ReadGraph(reader, SerializationExtensions.DefaultTypeResolver);
         }
@@ -264,6 +261,5 @@ namespace Squared.Game.Graph {
             var greader = new XmlGraphReader(reader, typeResolver);
             return greader.Read();
         }
-#endif
     }
 }

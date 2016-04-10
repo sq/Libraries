@@ -1,7 +1,6 @@
 using System;
 
 namespace LargeBufferTest {
-#if WINDOWS || XBOX
     static class Program
     {
         /// <summary>
@@ -16,6 +15,5 @@ namespace LargeBufferTest {
             }
         }
     }
-#endif
 }
 

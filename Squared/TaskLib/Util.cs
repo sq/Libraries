@@ -5,10 +5,7 @@ using Squared.Util;
 using Squared.Util.Event;
 using System.Collections;
 using System.Linq;
-
-#if !XBOX
 using System.Linq.Expressions;
-#endif
 
 namespace Squared.Task {
     public static class EnumeratorExtensionMethods {
@@ -76,15 +73,12 @@ namespace Squared.Task {
             return rtc;
         }
 
-#if !XBOX
         public static StoreResult<T> Bind<T> (this IEnumerator<object> task, Expression<Func<T>> target) {
             var sr = new StoreResult<T>(task, target);
             return sr;
         }
-#endif
     }
 
-#if !XBOX
     /// <summary>
     /// Schedules a task to run to completion and store its result into a target field or property.
     /// </summary>
@@ -119,7 +113,6 @@ namespace Squared.Task {
             scheduler.Start(_Future, _Thunk, _ExecutionPolicy);
         }
     }
-#endif
 
     /// <summary>
     /// Allows you to emulate a try { } finally block inside of a task, via using () { }.
@@ -903,11 +896,7 @@ namespace Squared.Task {
             }
         }
 
-#if XBOX
-        private Dictionary<IFuture, byte> _OwnedFutures = new Dictionary<IFuture, byte>(new FutureComparer());
-#else
         private HashSet<IFuture> _OwnedFutures = new HashSet<IFuture>(new FutureComparer());
-#endif
         private OnComplete _OnComplete;
         private OnDispose _OnDispose;
 
@@ -931,11 +920,7 @@ namespace Squared.Task {
             if (of == null)
                 return;
 
-#if XBOX
-            of.Add(future, 0);
-#else
             of.Add(future);
-#endif
             future.RegisterOnComplete(_OnComplete);
             future.RegisterOnDispose(_OnDispose);
         }
@@ -952,13 +937,8 @@ namespace Squared.Task {
             if (of == null)
                 return;
 
-#if XBOX
-            foreach (var f in of.Keys)
-                f.Dispose();
-#else
             foreach (var f in of)
                 f.Dispose();
-#endif
 
             of.Clear();
         }

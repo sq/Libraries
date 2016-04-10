@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Reflection;
-#if !XBOX
 using System.Reflection.Emit;
 using System.Linq.Expressions;
-#endif
 
 namespace Squared.Util {
 #if WINDOWS
@@ -95,15 +93,12 @@ namespace Squared.Util {
         public delegate T BinaryOperatorMethod<T, in U> (T lhs, U rhs);
 
         internal struct OperatorInfo {
-#if !XBOX
             public OpCode OpCode;
-#endif
             public String MethodName;
             public bool IsComparison, IsUnary;
         }
 
         internal static Dictionary<Operators, OperatorInfo> _OperatorInfo = new Dictionary<Operators, OperatorInfo> {
-#if !XBOX
             { Operators.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition" } },
             { Operators.Subtract, new OperatorInfo { OpCode = OpCodes.Sub, MethodName = "op_Subtraction" } },
             { Operators.Multiply, new OperatorInfo { OpCode = OpCodes.Mul, MethodName = "op_Multiply" } },
@@ -111,15 +106,6 @@ namespace Squared.Util {
             { Operators.Modulo, new OperatorInfo { OpCode = OpCodes.Rem, MethodName = "op_Modulus" } },
             { Operators.Negate, new OperatorInfo { OpCode = OpCodes.Neg, MethodName = "op_UnaryNegation", IsUnary = true } },
             { Operators.Equality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality", IsComparison = true } }
-#else
-            { Operators.Add, new OperatorInfo { MethodName = "op_Addition" } },
-            { Operators.Subtract, new OperatorInfo { MethodName = "op_Subtraction" } },
-            { Operators.Multiply, new OperatorInfo { MethodName = "op_Multiply" } },
-            { Operators.Divide, new OperatorInfo { MethodName = "op_Division" } },
-            { Operators.Modulo, new OperatorInfo { MethodName = "op_Modulus" } },
-            { Operators.Negate, new OperatorInfo { MethodName = "op_UnaryNegation", IsUnary = true } },
-            { Operators.Equality, new OperatorInfo { MethodName = "op_Equality", IsComparison = true } }
-#endif
         };
 
         internal static Dictionary<Type, int> _TypeRanking = new Dictionary<Type, int> {

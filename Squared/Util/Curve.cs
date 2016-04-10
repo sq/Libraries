@@ -4,9 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Reflection;
-#if !XBOX
 using System.Linq.Expressions;
-#endif
 
 namespace Squared.Util {
     public interface ICurve<TValue> where TValue : struct {

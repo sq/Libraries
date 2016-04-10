@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Reflection;
-#if !XBOX
 using System.Linq.Expressions;
 using System.Reflection.Emit;
-#endif
 
 namespace Squared.Util.Bind {
     public interface IBoundMember {
@@ -33,7 +31,6 @@ namespace Squared.Util.Bind {
     }
 
     public static class BoundMember {
-#if !XBOX
         private static object ResolveTarget (Expression expr) {
             switch (expr.NodeType) {
                 case ExpressionType.Convert:
@@ -154,7 +151,6 @@ namespace Squared.Util.Bind {
                     throw new ArgumentException("Target member must be a field, property or event", "target");
             }
         }
-#endif
 
         public static TDelegate MakeFieldSetter<TDelegate> (object target, FieldInfo field)
             where TDelegate : class {

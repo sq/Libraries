@@ -36,10 +36,6 @@ namespace Squared.Util {
         }
 
         static Time () {
-#if XBOX
-            // XNA
-            DefaultTimeProvider = new XBoxTimeProvider();
-#else
             if (Type.GetType("Mono.Runtime") != null) {
                 // Mono
                 DefaultTimeProvider = new DotNetTimeProvider();
@@ -47,7 +43,6 @@ namespace Squared.Util {
                 // MS CLR
                 DefaultTimeProvider = new Win32TimeProvider();
             }
-#endif
         }
     }
 
@@ -85,43 +80,6 @@ namespace Squared.Util {
         }
     }
 
-#if XBOX
-    public class XBoxTimeProvider : ITimeProvider {
-        private decimal _Frequency;
-        private long _Offset;
-
-        public XBoxTimeProvider () {
-            _Frequency = Stopwatch.Frequency;
-
-            _Offset = Stopwatch.GetTimestamp();
-        }
-
-        public long Ticks {
-            get {
-                long temp;
-                temp = Stopwatch.GetTimestamp();
-                temp -= _Offset;
-                decimal ticks = temp;
-                ticks /= _Frequency;
-                ticks *= Time.SecondInTicks;
-                return (long)ticks;
-            }
-        }
-
-        public double Seconds {
-            get {
-                long temp;
-                temp = Stopwatch.GetTimestamp();
-                temp -= _Offset;
-                decimal ticks = temp;
-                ticks /= _Frequency;
-                return (double)ticks;
-            }
-        }
-    }
-#endif
-
-#if !XBOX
     public class Win32TimeProvider : ITimeProvider {
         [DllImport("Kernel32.dll")]
         [SuppressUnmanagedCodeSecurity()]
@@ -183,7 +141,6 @@ namespace Squared.Util {
             }
         }
     }
-#endif
 
     public class MockTimeProvider : ITimeProvider {
         public long CurrentTime = 0;

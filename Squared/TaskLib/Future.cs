@@ -2,11 +2,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Linq;
-
-#if !XBOX
 using System.Linq.Expressions;
 using Squared.Util.Bind;
-#endif
 
 namespace Squared.Task {
     public delegate void OnComplete(IFuture future);
@@ -113,11 +110,7 @@ namespace Squared.Task {
         public Delegate WorkItem;
 
         public override void Invoke () {
-#if XBOX
-            Future.Complete(WorkItem.Method.Invoke(WorkItem.Target, Arguments));
-#else
             Future.Complete(WorkItem.DynamicInvoke(Arguments));
-#endif
         }
 
         public override void Fail (Exception ex) {
@@ -431,13 +424,9 @@ namespace Squared.Task {
         }
 
         private static void SpinWait (int iterationCount) {
-#if !XBOX
             if ((iterationCount < 5) && (ProcessorCount > 1)) {
                 Thread.SpinWait(7 * iterationCount);
             } else if (iterationCount < 7) {
-#else
-            if (iterationCount < 3) {
-#endif
                 Thread.Sleep(0);
             } else {
                 Thread.Sleep(1);
@@ -754,7 +743,6 @@ namespace Squared.Task {
             target.RegisterOnComplete(handler);
         }
 
-#if !XBOX
         public static IFuture Bind<T> (this IFuture future, Expression<Func<T>> target) {
             var member = BoundMember.New(target);
 
@@ -779,7 +767,6 @@ namespace Squared.Task {
             
             return future;
         }
-#endif
 
         public static void AssertSucceeded (this IFuture future) {
             if (future.Failed)

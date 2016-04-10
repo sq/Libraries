@@ -3,38 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
-#if XBOX
-namespace System.Threading {
-    public enum ThreadPriority {
-        // Summary:
-        //     The System.Threading.Thread can be scheduled after threads with any other
-        //     priority.
-        Lowest = 0,
-        //
-        // Summary:
-        //     The System.Threading.Thread can be scheduled after threads with Normal priority
-        //     and before those with Lowest priority.
-        BelowNormal = 1,
-        //
-        // Summary:
-        //     The System.Threading.Thread can be scheduled after threads with AboveNormal
-        //     priority and before those with BelowNormal priority. Threads have Normal
-        //     priority by default.
-        Normal = 2,
-        //
-        // Summary:
-        //     The System.Threading.Thread can be scheduled after threads with Highest priority
-        //     and before those with Normal priority.
-        AboveNormal = 3,
-        //
-        // Summary:
-        //     The System.Threading.Thread can be scheduled before threads with any other
-        //     priority.
-        Highest = 4,
-    }
-}
-#endif
-
 namespace Squared.Task.Internal {
     public delegate void WorkerThreadFunc<in T> (T workItems, ManualResetEventSlim newWorkItemEvent);
 
@@ -89,9 +57,7 @@ namespace Squared.Task.Internal {
                         // If either of these fields are null, we've probably been disposed
                         if ((wi != null) && (we != null))
                             _ThreadFunc(wi, we);
-#if !XBOX
                     } catch (ThreadInterruptedException) {
-#endif
                     } catch (ThreadAbortException) {                        
                     }
 
@@ -101,10 +67,8 @@ namespace Squared.Task.Internal {
 
                 });
 
-#if !XBOX
                 if (_Priority.HasValue)
                     newThread.Priority = _Priority.Value;
-#endif
 
                 newThread.IsBackground = true;
                 newThread.Name = _ThreadName;
@@ -134,11 +98,7 @@ namespace Squared.Task.Internal {
 
             var thread = Interlocked.Exchange(ref _Thread, null);
             if (thread != null) {
-#if !XBOX
                 thread.Interrupt();
-#else
-                thread.Abort();
-#endif
             }
 
             if (wakeEvent != null)

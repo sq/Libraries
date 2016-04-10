@@ -12,22 +12,14 @@ using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Util;
 using System.Threading;
-
-#if !XBOX
 using System.Threading.Tasks;
-#endif
 
 namespace RenderStressTest {
     public class Game : MultithreadedGame {
         public const int Width = 1280;
         public const int Height = 720;
 
-#if XBOX
-        // Floating-point computation is pretty slow on the XBox 360. :(
-        public const int NumberOfOrbs = 8192;
-#else
         public const int NumberOfOrbs = 32768;
-#endif
 
         // The number of spheres to pack into a single GPU draw batch.
         public const int BatchSize = 256;
@@ -70,10 +62,6 @@ namespace RenderStressTest {
             UseThreadedDraw = ThreadedPaint;
             IsFixedTimeStep = false;
             Content.RootDirectory = "Content";
-
-#if XBOX
-            Components.Add(new KiloWatt.Runtime.Support.ThreadPoolComponent(this));
-#endif
 
             ParallelUpdater = new ParallelInvoker<UpdateArgs>(
                 this, ParallelUpdateOrbs, ThreadedUpdate
