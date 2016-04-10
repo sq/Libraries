@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,6 +27,7 @@ namespace Squared.Threading {
         public readonly OnWorkItemComplete<T> OnComplete;
         public          T                     Data;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal InternalWorkItem (WorkQueue<T> queue, ref T data, OnWorkItemComplete<T> onComplete) {
             Queue = queue;
             Data = data;
@@ -42,6 +44,7 @@ namespace Squared.Threading {
             private readonly WorkQueue<T> Queue;
             public readonly long Executed, Enqueued;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public Marker (WorkQueue<T> queue) {
                 Queue = queue;
                 Executed = Interlocked.Read(ref Queue.ItemsExecuted);
@@ -83,16 +86,19 @@ namespace Squared.Threading {
         public WorkQueue () {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null) {
             Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
             Interlocked.Increment(ref ItemsEnqueued);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null) {
             Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
             Interlocked.Increment(ref ItemsEnqueued);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Marker Mark () {
             return new Marker(this);
         }
@@ -109,10 +115,12 @@ namespace Squared.Threading {
                 item.Data.Execute();
                 if (item.OnComplete != null)
                     item.OnComplete(ref item.Data);
-                Interlocked.Increment(ref ItemsExecuted);
 
                 result++;
             }
+
+            if (result > 0)
+                Interlocked.Add(ref ItemsExecuted, result);
 
             if (Monitor.TryEnter(Token, 10)) {
                 Monitor.PulseAll(Token);
