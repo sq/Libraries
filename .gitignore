@@ -69,5 +69,7 @@ _ReSharper.*
 /Squared/packages
 /Squared/Threading/obj
 /Squared/Threading/bin
+/Squared/ThreadingTests/obj
+/Squared/ThreadingTests/bin
 *.psess
 *.vspx
