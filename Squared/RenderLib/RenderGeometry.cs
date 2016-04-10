@@ -52,7 +52,7 @@ namespace Squared.Render {
             public int PrimitiveCount;
         }
 
-        internal static IComparer<GeometryDrawCall> _DrawCallSorter = new GeometryDrawCallSorter();
+        internal static GeometryDrawCallSorter _DrawCallSorter = new GeometryDrawCallSorter();
 
         // 0   1   2   3
         // tl, tr, bl, br
