@@ -65,9 +65,11 @@ namespace Squared.Util {
             return result;
         }
 
-        private void AssertSortsCorrectly<T> (T[] theSequence, IComparer<T> comparer) {
+        private void AssertSortsCorrectly<T, TComparer> (T[] theSequence, TComparer comparer)
+            where TComparer: IComparer<T>
+        {
             var BCLCopy = (T[])theSequence.Clone();
-            var TimsortCopy = (T[])theSequence.Clone();
+            var SorterCopy = (T[])theSequence.Clone();
 
             var stopwatch = new Stopwatch();
 
@@ -80,18 +82,18 @@ namespace Squared.Util {
 
             stopwatch.Reset();
             stopwatch.Start();
-            Sort.Timsort(TimsortCopy, comparer: comparer);
+            Sort.FastCLRSort(SorterCopy, comparer);
             stopwatch.Stop();
 
             var TimsortElapsed = stopwatch.Elapsed.TotalMilliseconds;
 
             if (BCLCopy.Length > 1) {
                 for (var i = 1; i < BCLCopy.Length; i++) {
-                    if (comparer.Compare(TimsortCopy[i - 1], TimsortCopy[i]) > 0) {
+                    if (comparer.Compare(SorterCopy[i - 1], SorterCopy[i]) > 0) {
                         Assert.Fail(
                             "Timsorted sequence is unsorted at index {0}.\r\n{1}: {2}\r\n{3}: {4}",
                             i, i - 1,
-                            TimsortCopy[i - 1], i, TimsortCopy[i]
+                            SorterCopy[i - 1], i, SorterCopy[i]
                         );
                     }
                 }
