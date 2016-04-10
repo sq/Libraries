@@ -464,7 +464,7 @@ namespace Squared.Render {
                 ));
         }
         
-        public override void Prepare () {
+        public override void Prepare (PrepareManager manager) {
             var prior = (PrepareState)Interlocked.Exchange(ref _State, (int)PrepareState.Preparing);
             if ((prior == PrepareState.Issuing) || (prior == PrepareState.Preparing))
                 throw new ThreadStateException("This batch is currently in use");
@@ -754,7 +754,7 @@ namespace Squared.Render {
             _Group.CaptureStack(0);
         }
 
-        public override void Prepare () {
+        public override void Prepare (PrepareManager manager) {
             var drawCalls = _DrawCalls.GetBuffer();
             var count = _DrawCalls.Count;
 
@@ -801,7 +801,7 @@ namespace Squared.Render {
                 currentBatch.Dispose();
 
             _Group.Dispose();
-            _Group.Prepare();
+            manager.PrepareSync(_Group);
         }
 
         public override void Issue (DeviceManager manager) {

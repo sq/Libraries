@@ -231,7 +231,7 @@ namespace Squared.Render {
             base.Add(ref item);
         }
 
-        public override void Prepare () {
+        public override void Prepare (PrepareManager manager) {
             int primCount = 0;
 
             foreach (var call in _DrawCalls)
@@ -373,7 +373,7 @@ namespace Squared.Render {
             base.Add(ref item);
         }
 
-        public override void Prepare () {
+        public override void Prepare (PrepareManager manager) {
             // FIXME: Why the hell do we have to record these in Prepare and not Issue? >:|
             long primCount = 0;
             foreach (var call in _DrawCalls)

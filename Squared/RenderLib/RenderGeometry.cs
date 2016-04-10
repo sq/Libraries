@@ -191,7 +191,7 @@ namespace Squared.Render {
             indexOffset += indexCount;
         }
 
-        public override void Prepare () {
+        public override void Prepare (PrepareManager manager) {
             if (Count > 0) {
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<GeometryVertex>>();
 

@@ -191,6 +191,10 @@
       <Project>{36463AEE-E309-43A6-BCFA-A69944390AF0}</Project>
       <Name>Squared.Game</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Threading\Squared.Threading.csproj">
+      <Project>{eccb8787-0fc6-43b2-abd1-6cbb237916ec}</Project>
+      <Name>Squared.Threading</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Util\Squared.Util.csproj">
       <Project>{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}</Project>
       <Name>Squared.Util</Name>

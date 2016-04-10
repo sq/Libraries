@@ -14,6 +14,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Microsoft.Xna.Framework;
 using Squared.Render.Internal;
+using Squared.Threading;
 
 namespace Squared.Render {
     public static class RenderExtensionMethods {
@@ -152,10 +153,13 @@ namespace Squared.Render {
         class WorkerThreadInfo {
             public volatile int Start, Count;
             public volatile Frame Frame;
+            public volatile PrepareManager Manager;
         }
 
-        public readonly DeviceManager DeviceManager;
-        public readonly Thread MainThread;
+        public readonly PrepareManager PrepareManager;
+        public readonly ThreadGroup    ThreadGroup;
+        public readonly DeviceManager  DeviceManager;
+        public readonly Thread         MainThread;
 
         private int _AllowCreatingNewGenerators = 1;
         private int _FrameCount = 0;
@@ -190,6 +194,8 @@ namespace Squared.Render {
             MainThread = mainThread;
             DeviceManager = new DeviceManager(device);
             _FrameAllocator = new FramePool(this);
+            ThreadGroup = new ThreadGroup(0);
+            PrepareManager = new PrepareManager(ThreadGroup);
 
             int threadCount = Math.Max(2, Math.Min(8, Environment.ProcessorCount));
 
@@ -235,21 +241,27 @@ namespace Squared.Render {
                 
         private void WorkerThreadFunc (WorkerThreadInfo info) {
             Frame frame;
+            PrepareManager manager;
             int start, count;
             lock (info) {
+                manager = info.Manager;
                 frame = info.Frame;
                 start = info.Start;
                 count = info.Count;
             }
 
             try {
-                frame.PrepareSubset(start, count);
+                frame.PrepareSubset(manager, start, count);
             } finally {
                 lock (info) {
                     info.Frame = null;
                     info.Start = info.Count = 0;
                 }
             }
+        }
+
+        internal void SynchronousPrepare (Frame frame) {
+            frame.PrepareSubset(PrepareManager, 0, frame.Batches.Count);
         }
 
         internal void ParallelPrepare (Frame frame) {
@@ -264,6 +276,7 @@ namespace Squared.Render {
                         throw new InvalidOperationException("A render is already in progress");
 
                     info.Frame = frame;
+                    info.Manager = PrepareManager;
                     info.Start = j;
                     info.Count = Math.Min(chunkSize, batchCount - j);
                 }
@@ -528,7 +541,7 @@ namespace Squared.Render {
                 if (parallel)
                     RenderManager.ParallelPrepare(this);
                 else
-                    PrepareSubset(0, Batches.Count);
+                    RenderManager.SynchronousPrepare(this);
             } finally {
                 Monitor.Exit(PrepareLock);
             }
@@ -537,15 +550,13 @@ namespace Squared.Render {
                 throw new InvalidOperationException("Frame was not in preparing state when prepare operation completed");
         }
 
-        internal void PrepareSubset (int start, int count) {
+        internal void PrepareSubset (PrepareManager manager, int start, int count) {
             int end = start + count;
 
             var _batches = Batches.GetBuffer();
             for (int i = start; i < end; i++) {
                 var batch = _batches[i];
-                if (batch != null) {
-                    batch.Prepare();
-                }
+                manager.PrepareSync(batch);
             }
         }
 
@@ -605,7 +616,48 @@ namespace Squared.Render {
         }
     }
 
+    public class PrepareManager {
+        private struct Task : IWorkItem {
+            public readonly PrepareManager Manager;
+            public readonly IBatch Batch;
+
+            public Task (PrepareManager manager, IBatch batch) {
+                Manager = manager;
+                Batch = batch;
+            }
+
+            public void Execute () {
+                Batch.Prepare(Manager);
+            }
+        };
+
+        private readonly ThreadGroup     Group;
+        private readonly WorkQueue<Task> Queue;
+
+        public PrepareManager (ThreadGroup threadGroup) {
+            Group = threadGroup;
+            Queue = threadGroup.GetQueueForType<Task>();
+        }
+
+        public void PrepareAsync (IBatch batch) {
+            if (batch == null)
+                return;
+
+            Queue.Enqueue(new Task(this, batch));
+            // FIXME: Is this too often?
+            Group.NotifyQueuesChanged();
+        }
+
+        public void PrepareSync (IBatch batch) {
+            if (batch == null)
+                return;
+
+            batch.Prepare(this);
+        }
+    }
+
     public interface IBatch : IDisposable {
+        void Prepare (PrepareManager manager);
     }
 
     public abstract class Batch : IBatch {
@@ -674,7 +726,7 @@ namespace Squared.Render {
 
         // This is where you should do any computation necessary to prepare a batch for rendering.
         // Examples: State sorting, computing vertices.
-        public abstract void Prepare ();
+        public abstract void Prepare (PrepareManager manager);
 
         // This is where you send commands to the video card to render your batch.
         public virtual void Issue (DeviceManager manager) {
@@ -787,7 +839,7 @@ namespace Squared.Render {
                 throw new ArgumentException("You must specify at least one of clearColor, clearZ and clearStencil.");
         }
 
-        public override void Prepare () {
+        public override void Prepare (PrepareManager manager) {
         }
 
         public override void Issue (DeviceManager manager) {
@@ -829,7 +881,7 @@ namespace Squared.Render {
             RenderTarget = renderTarget;
         }
 
-        public override void Prepare () {
+        public override void Prepare (PrepareManager manager) {
         }
 
         public override void Issue (DeviceManager manager) {
@@ -870,15 +922,13 @@ namespace Squared.Render {
         Action<DeviceManager, object> _Before, _After;
         private object _UserData;
 
-        public override void Prepare () {
+        public override void Prepare (PrepareManager manager) {
             BatchCombiner.CombineBatches(_DrawCalls);
 
             _DrawCalls.Sort(Frame.BatchComparer);
 
             foreach (var batch in _DrawCalls) {
-                if (batch != null) {
-                    batch.Prepare();
-                }
+                manager.PrepareSync(batch);
             }
         }
 
