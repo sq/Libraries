@@ -78,8 +78,7 @@ namespace Squared.Threading {
 
         private readonly object Token = new object();
 
-        private readonly ConcurrentQueue<InternalWorkItem<T>> Queue = 
-            new ConcurrentQueue<InternalWorkItem<T>>();
+        private readonly Queue<InternalWorkItem<T>> Queue = new Queue<InternalWorkItem<T>>();
 
         private long ItemsEnqueued;
         private long ItemsExecuted;
@@ -89,14 +88,25 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null) {
-            Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
+            lock (Queue)
+                Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
             Interlocked.Increment(ref ItemsEnqueued);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null) {
-            Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
+            lock (Queue)
+                Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
             Interlocked.Increment(ref ItemsEnqueued);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnqueueMany (ArraySegment<T> data) {
+            lock (Queue) {
+                for (var i = 0; i < data.Count; i++)
+                    Queue.Enqueue(new InternalWorkItem<T>(this, ref data.Array[data.Offset + i], null));
+            }
+            Interlocked.Add(ref ItemsEnqueued, data.Count);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -105,17 +115,24 @@ namespace Squared.Threading {
         }
 
         public int Step (out bool exhausted, int? maximumCount = null) {
-            InternalWorkItem<T> item;
-            int result = 0;
+            int result = 0, count = 0;
             int actualMaximumCount = maximumCount.GetValueOrDefault(DefaultStepCount);
 
+            lock (Queue)
             while (
-                (result < actualMaximumCount) &&
-                Queue.TryDequeue(out item)
+                ((count = Queue.Count) > 0) &&
+                (result < actualMaximumCount)
             ) {
-                item.Data.Execute();
-                if (item.OnComplete != null)
-                    item.OnComplete(ref item.Data);
+                var item = Queue.Dequeue();
+
+                Monitor.Exit(Queue);
+                try {
+                    item.Data.Execute();
+                    if (item.OnComplete != null)
+                        item.OnComplete(ref item.Data);
+                } finally {
+                    Monitor.Enter(Queue);
+                }
 
                 result++;
             }
@@ -129,7 +146,7 @@ namespace Squared.Threading {
             } else
                 throw new ThreadStateException("Failed to acquire the worker queue lock after 10 milliseconds");
 
-            exhausted = (result > 0) && Queue.IsEmpty;
+            exhausted = (result > 0) && (count <= 0);
 
             return result;
         }
@@ -138,16 +155,18 @@ namespace Squared.Threading {
             var done = false;
 
             while (!done) {
+                int count;
                 lock (Token) {
+                    lock (Queue)
+                        count = Queue.Count;
+
                     done = 
                         (Interlocked.Read(ref ItemsExecuted) >= Interlocked.Read(ref ItemsEnqueued)) &&
-                        Queue.IsEmpty;
+                        (count == 0);
 
                     if (!done)                        
                         Monitor.Wait(Token);
                 }
-
-                ;
             }
         }
     }
