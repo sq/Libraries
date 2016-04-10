@@ -489,11 +489,11 @@ namespace Squared.Render {
             } else if (Sorter != null) {
                 var comparer = DrawCallSorterComparer.Value;
                 comparer.Comparer = Sorter.GetComparer(true);
-                _DrawCalls.Sort(comparer);
+                _DrawCalls.FastCLRSort(comparer);
             } else if (UseZBuffer) {
-                _DrawCalls.Sort(DrawCallTextureComparer);
+                _DrawCalls.FastCLRSort(DrawCallTextureComparer);
             } else {
-                _DrawCalls.Sort(DrawCallComparer);
+                _DrawCalls.FastCLRSort(DrawCallComparer);
             }
 
             var count = _DrawCalls.Count;
@@ -764,8 +764,8 @@ namespace Squared.Render {
             else
                 comparer.DrawCallComparer = BitmapBatch.DrawCallComparer;
 
-            Array.Sort(
-                drawCalls, 0, count, comparer
+            Sort.FastCLRSort(
+                drawCalls, comparer, 0, count
             );
 
             BitmapBatch currentBatch = null;

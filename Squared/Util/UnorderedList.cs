@@ -231,12 +231,10 @@ namespace Squared.Util {
             Array.Sort(_Items, 0, _Count, comparer);
         }
 
-        public void Timsort (Comparison<T> comparison = null) {
-            Squared.Util.Sort.Timsort(_Items, 0, _Count, comparison);
-        }
-
-        public void Timsort (IComparer<T> comparer = null) {
-            Squared.Util.Sort.Timsort(_Items, 0, _Count, comparer);
+        public void FastCLRSort<TComparer> (TComparer comparer)
+            where TComparer : IComparer<T>
+        {
+            Util.Sort.FastCLRSort(_Items, comparer, 0, _Count);
         }
 
         public ArraySegment<T> ReserveSpace (int count) {
