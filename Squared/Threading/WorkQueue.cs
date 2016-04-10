@@ -88,25 +88,25 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null) {
+            Interlocked.Increment(ref ItemsEnqueued);
             lock (Queue)
                 Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
-            Interlocked.Increment(ref ItemsEnqueued);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null) {
+            Interlocked.Increment(ref ItemsEnqueued);
             lock (Queue)
                 Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
-            Interlocked.Increment(ref ItemsEnqueued);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnqueueMany (ArraySegment<T> data) {
+            Interlocked.Add(ref ItemsEnqueued, data.Count);
             lock (Queue) {
                 for (var i = 0; i < data.Count; i++)
                     Queue.Enqueue(new InternalWorkItem<T>(this, ref data.Array[data.Offset + i], null));
             }
-            Interlocked.Add(ref ItemsEnqueued, data.Count);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
