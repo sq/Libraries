@@ -30,7 +30,7 @@ namespace RenderStressTest {
         public const bool ThreadedPaint = true;
 
         // Set to true to use quads instead of filled rings (looks uglier, runs faster)
-        public const bool UseQuads = false;
+        public const bool UseQuads = true;
 
         DefaultMaterialSet Materials;
         GraphicsDeviceManager Graphics;

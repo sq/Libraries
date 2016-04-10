@@ -208,7 +208,7 @@ namespace Squared.Render {
                     var l = kvp.Value;
                     var c = l.Count;
 
-                    l.Sort(_DrawCallSorter);
+                    l.FastCLRSort(_DrawCallSorter);
 
                     int vertexCount = vb.Count, indexCount = ib.Count;
 

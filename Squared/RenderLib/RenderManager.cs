@@ -876,7 +876,7 @@ namespace Squared.Render {
         public override void Prepare (PrepareManager manager) {
             BatchCombiner.CombineBatches(_DrawCalls);
 
-            _DrawCalls.Sort(Frame.BatchComparer);
+            _DrawCalls.FastCLRSort(Frame.BatchComparer);
 
             foreach (var batch in _DrawCalls)
                 manager.PrepareAsync(batch);
