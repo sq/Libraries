@@ -10,6 +10,7 @@ using Squared.Render.Internal;
 using System.Reflection;
 using System.ComponentModel;
 using System.Collections.Concurrent;
+using Squared.Threading;
 
 namespace Squared.Render {
     public abstract class MultithreadedGame : Microsoft.Xna.Framework.Game {
@@ -23,14 +24,10 @@ namespace Squared.Render {
             protected set;
         }
 
-        private bool _UseThreadedDraw;
-        protected bool UseThreadedDraw {
-            get {
-                return _UseThreadedDraw;
-            }
-            set {
-                _UseThreadedDraw = value;
-            }
+        public readonly ThreadGroup ThreadGroup;
+
+        public bool UseThreadedDraw {
+            get; protected set;
         }
 
         public FrameTiming PreviousFrameTiming {
@@ -44,6 +41,10 @@ namespace Squared.Render {
         public MultithreadedGame()
             : base() {
 
+            ThreadGroup = new ThreadGroup(1, 5) {
+                NewThreadBusyThresholdMs = 2.0f
+            };
+
 #if SDL2 // Disable threading -flibit
             // Again, I say: NOPE. -flibit
             UseThreadedDraw = false;
@@ -54,23 +55,28 @@ namespace Squared.Render {
 #endif
         }
 
-        protected override void Dispose (bool disposing) {
+        private void InternalDispose () {
             if (RenderCoordinator != null)
                 RenderCoordinator.Dispose();
+
+            if (ThreadGroup != null)
+                ThreadGroup.Dispose();
+        }
+
+        protected override void Dispose (bool disposing) {
+            InternalDispose();
 
             base.Dispose(disposing);
         }
 
         protected override void EndRun() {
-            if (RenderCoordinator != null)
-                RenderCoordinator.Dispose();
+            InternalDispose();   
 
             base.EndRun();
         }
 
         protected void OnFormClosing (object sender, CancelEventArgs e) {
-            if (RenderCoordinator != null)
-                RenderCoordinator.Dispose();            
+            InternalDispose();   
         }
 
         // HACK: Hook the form Closing event so we can tear down our rendering state before our associated Win32
@@ -95,11 +101,11 @@ namespace Squared.Render {
         }
 
         protected override void Initialize () {
-            RenderManager = new RenderManager(GraphicsDevice, Thread.CurrentThread);
+            RenderManager = new RenderManager(GraphicsDevice, Thread.CurrentThread, ThreadGroup);
             RenderCoordinator = new RenderCoordinator(
                 RenderManager, base.BeginDraw, base.EndDraw
             );
-            RenderCoordinator.EnableThreading = _UseThreadedDraw;
+            RenderCoordinator.EnableThreading = UseThreadedDraw;
             RenderCoordinator.DeviceReset += (s, e) => OnDeviceReset();
 
             SetupCloseHook();
@@ -188,7 +194,7 @@ namespace Squared.Render {
                 RenderCoordinator.BeforePresentStopwatch.Reset();
             }
 
-            RenderCoordinator.EnableThreading = _UseThreadedDraw;
+            RenderCoordinator.EnableThreading = UseThreadedDraw;
         }
 
         protected virtual void OnDeviceReset () {

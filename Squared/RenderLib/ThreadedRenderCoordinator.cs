@@ -9,9 +9,22 @@ using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Internal;
+using Squared.Threading;
 
 namespace Squared.Render {
     public class RenderCoordinator : IDisposable {
+        struct DrawTask : IWorkItem {
+            public readonly Action Callback;
+
+            public DrawTask (Action callback) {
+                Callback = callback;
+            }
+
+            public void Execute () {
+                Callback();
+            }
+        }
+
         public readonly RenderManager Manager;
 
         /// <summary>
@@ -51,7 +64,6 @@ namespace Squared.Render {
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
         private readonly ManualResetEventSlim _SynchronousDrawFinishedSignal = new ManualResetEventSlim(true);
 
-        private WorkerThread _DrawThread;
         public readonly Stopwatch
             WorkStopwatch = new Stopwatch(),
             WaitStopwatch = new Stopwatch(),
@@ -68,6 +80,9 @@ namespace Squared.Render {
         private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> AfterPresentQueue = new ConcurrentQueue<Action>();
 
+        public readonly ThreadGroup ThreadGroup;
+        private readonly WorkQueue<DrawTask> DrawQueue;
+
         public event EventHandler DeviceReset;
 
         public bool IsDisposed { get; private set; }
@@ -83,11 +98,14 @@ namespace Squared.Render {
             Func<bool> synchronousBeginDraw, Action synchronousEndDraw
         ) {
             Manager = manager;
+            ThreadGroup = manager.ThreadGroup;
             UseResourceLock = manager.UseResourceLock;
             CreateResourceLock = manager.CreateResourceLock;
 
             _SyncBeginDraw = synchronousBeginDraw;
             _SyncEndDraw = synchronousEndDraw;
+
+            DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
             CoreInitialize();
         }
@@ -96,11 +114,14 @@ namespace Squared.Render {
         /// Constructs a render coordinator. A render manager and synchronous draw methods are automatically provided for you.
         /// </summary>
         /// <param name="deviceService"></param>
-        public RenderCoordinator (IGraphicsDeviceService deviceService, Thread mainThread) {
-            Manager = new RenderManager(deviceService.GraphicsDevice, mainThread);
+        public RenderCoordinator (IGraphicsDeviceService deviceService, Thread mainThread, ThreadGroup threadGroup) {
+            ThreadGroup = threadGroup;
+            Manager = new RenderManager(deviceService.GraphicsDevice, mainThread, ThreadGroup);
 
             _SyncBeginDraw = DefaultBeginDraw;
             _SyncEndDraw = DefaultEndDraw;
+
+            DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
             CoreInitialize();
         }
@@ -120,18 +141,7 @@ namespace Squared.Render {
             AfterPresentQueue.Enqueue(action);
         }
 
-        public ThreadPriority ThreadPriority {
-            get {
-                return _DrawThread.Thread.Priority;
-            }
-            set {
-                _DrawThread.Thread.Priority = value;
-            }
-        }
-
         private void CoreInitialize () {
-            _DrawThread = new WorkerThread(ThreadedDraw);
-
             Device.DeviceResetting += OnDeviceResetting;
             Device.DeviceReset += OnDeviceReset;
         }
@@ -187,7 +197,7 @@ namespace Squared.Render {
 
             WaitStopwatch.Start();
             try {
-                _DrawThread.WaitForPendingWork();
+                DrawQueue.WaitUntilDrained();
             } catch (DeviceLostException) {
                 _DeviceLost = true;
             } catch (ObjectDisposedException) {
@@ -217,8 +227,7 @@ namespace Squared.Render {
 
         public bool WaitForActiveDraw () {
             if (_ActualEnableThreading) {
-                while ((_DrawThread != null) && _DrawThread.IsWorkPending)
-                    WaitForPendingWork();
+                DrawQueue.WaitUntilDrained();
             } else
                 return false;
 
@@ -311,9 +320,10 @@ namespace Squared.Render {
                     if (!_SyncBeginDraw())
                         return;
 
-                    _DrawThread.RequestWork();
+                    DrawQueue.Enqueue(new DrawTask(ThreadedDraw));
+                    ThreadGroup.NotifyQueuesChanged();
                 } else {
-                    ThreadedDraw(_DrawThread);
+                    ThreadedDraw();
                 }
 
                 if (_DeviceLost) {
@@ -393,7 +403,7 @@ namespace Squared.Render {
             }
         }
 
-        protected void ThreadedDraw (WorkerThread thread) {
+        protected void ThreadedDraw () {
             try {
                 if (!_Running)
                     return;
@@ -519,11 +529,6 @@ namespace Squared.Render {
 
             try {
                 WaitForActiveDraws();
-
-                if (_DrawThread != null) {
-                    _DrawThread.Dispose();
-                    _DrawThread = null;
-                }
 
                 FlushPendingDisposes();
             } catch (ObjectDisposedException) {

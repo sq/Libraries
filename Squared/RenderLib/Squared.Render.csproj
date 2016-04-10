@@ -135,7 +135,6 @@
     <Compile Include="Evil.cs" />
     <Compile Include="BufferGenerator.cs" />
     <Compile Include="Tracing.cs" />
-    <Compile Include="WorkerThread.cs" />
   </ItemGroup>
   <ItemGroup>
     <NestedContentProject Include="Content\Content.contentproj">

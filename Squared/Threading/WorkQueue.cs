@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 
 namespace Squared.Threading {
     public interface IWorkQueue {
+        /// <param name="exhausted">Is set to true if the Step operation caused the queue to become empty.</param>
         /// <returns>The number of work items handled.</returns>
         int Step (out bool exhausted, int? maximumCount = null);
     }
@@ -128,7 +129,7 @@ namespace Squared.Threading {
             } else
                 throw new ThreadStateException("Failed to acquire the worker queue lock after 10 milliseconds");
 
-            exhausted = Queue.IsEmpty;
+            exhausted = (result > 0) && Queue.IsEmpty;
 
             return result;
         }

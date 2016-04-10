@@ -179,16 +179,14 @@ namespace Squared.Render {
         /// </summary>
         public readonly object UseResourceLock = new object();
 
-        public RenderManager (GraphicsDevice device, Thread mainThread) {
+        public RenderManager (GraphicsDevice device, Thread mainThread, ThreadGroup threadGroup) {
             if (mainThread == null)
                 throw new ArgumentNullException("mainThread");
 
             MainThread = mainThread;
             DeviceManager = new DeviceManager(device);
             _FrameAllocator = new FramePool(this);
-            ThreadGroup = new ThreadGroup(1, 4) {
-                NewThreadBusyThresholdMs = 3.0f
-            };
+            ThreadGroup = threadGroup;
             PrepareManager = new PrepareManager(ThreadGroup);
 
             _DisposeResource = DisposeResource;

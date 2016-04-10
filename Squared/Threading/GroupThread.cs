@@ -12,6 +12,8 @@ namespace Squared.Threading {
 
         private readonly List<IWorkQueue> Queues = new List<IWorkQueue>();
 
+        private const int IdleWaitDurationMs = 10;
+
         public bool IsDisposed { get; private set; }
 
         public GroupThread (ThreadGroup owner) {
@@ -46,9 +48,11 @@ namespace Squared.Threading {
                     break;
                 // The strong reference is released here so we can wait to be woken up
 
+                // FIXME: If there is work waiting in a different queue, we probably don't want
+                //  to wait now? Not sure how to deal with this
                 if (exhausted) {
                     // We only wait if the queue was exhausted by our last step operation
-                    if (wakeEvent.Wait(10))
+                    if (wakeEvent.Wait(IdleWaitDurationMs))
                         wakeEvent.Reset();
                 }
             }
@@ -76,6 +80,8 @@ namespace Squared.Threading {
             if (strongSelf.IsDisposed)
                 return false;
 
+            int stepCount = 0;
+
             IWorkQueue queue = null;
             lock (strongSelf.Queues) {
                 // We round-robin select a queue from our pool every tick and then step it
@@ -91,10 +97,9 @@ namespace Squared.Threading {
 
             if (queue != null) {
                 strongSelf.Owner.ThreadBeganWorking();
-                queue.Step(out exhausted);
+                stepCount = queue.Step(out exhausted);
+                strongSelf.Owner.ThreadBecameIdle();
             }
-
-            strongSelf.Owner.ThreadBecameIdle();
 
             GC.KeepAlive(strongSelf);
             return true;
