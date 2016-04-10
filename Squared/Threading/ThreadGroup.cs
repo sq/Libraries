@@ -7,22 +7,17 @@ using Squared.Util;
 
 namespace Squared.Threading {
     public class ThreadGroup : IDisposable {
-        public class Counter {
-            private volatile int _Value;
-
-            public void Add (int i) {
-                Interlocked.Add(ref _Value, i);
-            }
-
-            public int Value {
-                get {
-                    return _Value;
-                }
-            }
-        }
-
         public bool IsDisposed { get; private set; }
 
+        public event Action<double> NewThreadCreated;
+
+        /// <summary>
+        /// If all worker threads are busy for this long (in milliseconds),
+        ///  a new thread will be spawned if possible
+        /// </summary>
+        public float    NewThreadBusyThresholdMs = 5;
+
+        public readonly ITimeProvider TimeProvider;
         public readonly bool CreateBackgroundThreads;
         public readonly int MinimumThreadCount;
         public readonly int MaximumThreadCount;
@@ -36,20 +31,18 @@ namespace Squared.Threading {
 
         private readonly List<GroupThread> Threads = new List<GroupThread>();
 
-        internal readonly Counter IdleThreadCounter = new Counter();
-
-        private  int BusyStatesObserved = 0;
-
-        private const int NewThreadBusyThreshold = 4;
+        private long LastTimeThreadWasIdle = long.MaxValue;
 
         public ThreadGroup (
             int? minimumThreads = null,
             int? maximumThreads = null,
-            bool createBackgroundThreads = false
+            bool createBackgroundThreads = false,
+            ITimeProvider timeProvider = null
         ) {
             MaximumThreadCount = maximumThreads.GetValueOrDefault(Environment.ProcessorCount + 1);
             MinimumThreadCount = Math.Min(minimumThreads.GetValueOrDefault(1), MaximumThreadCount);
             CreateBackgroundThreads = createBackgroundThreads;
+            TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
 
             lock (Threads)
             while ((Count < MinimumThreadCount) && (Count < MaximumThreadCount))
@@ -77,6 +70,14 @@ namespace Squared.Threading {
             var queue = GetQueueForType<T>();
             queue.Enqueue(ref item, onComplete);
             NotifyQueuesChanged();
+        }
+
+        internal void ThreadBecameIdle () {
+            Interlocked.Exchange(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
+        }
+
+        internal void ThreadBeganWorking () {
+            Interlocked.Exchange(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
         }
 
         /// <summary>
@@ -125,8 +126,8 @@ namespace Squared.Threading {
         /// This ensures that any sleeping worker threads wake up, and that
         ///  new threads are created if necessary
         /// </summary>
-        public void NotifyQueuesChanged () {
-            ConsiderNewThread();
+        public void NotifyQueuesChanged (bool assumeBusy = false) {
+            ConsiderNewThread(assumeBusy);
 
             lock (Threads)
             foreach (var thread in Threads)
@@ -144,14 +145,14 @@ namespace Squared.Threading {
                 if (Threads.Count >= MaximumThreadCount)
                     return false;
 
-                if (IdleThreadCounter.Value <= 0) {
-                    BusyStatesObserved++;
+                var timeSinceLastIdle = TimeProvider.Ticks - Interlocked.Read(ref LastTimeThreadWasIdle);
+                var timeSinceLastIdleMs = TimeSpan.FromTicks(timeSinceLastIdle).TotalMilliseconds;
 
-                    if (assumeBusy || (BusyStatesObserved > NewThreadBusyThreshold)) {
-                        BusyStatesObserved = 0;
-                        SpawnThread();
-                        return true;
-                    }
+                if ((Threads.Count < 1) || (timeSinceLastIdleMs >= NewThreadBusyThresholdMs)) {
+                    if (NewThreadCreated != null)
+                        NewThreadCreated(timeSinceLastIdleMs);
+                    SpawnThread();
+                    return true;
                 }
 
                 return false;
@@ -170,6 +171,7 @@ namespace Squared.Threading {
         }
 
         private GroupThread SpawnThread () {
+            Interlocked.Exchange(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
             var thread = new GroupThread(this);
             Threads.Add(thread);
             return thread;

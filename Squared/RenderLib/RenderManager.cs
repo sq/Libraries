@@ -186,7 +186,9 @@ namespace Squared.Render {
             MainThread = mainThread;
             DeviceManager = new DeviceManager(device);
             _FrameAllocator = new FramePool(this);
-            ThreadGroup = new ThreadGroup(0);
+            ThreadGroup = new ThreadGroup(1, 4) {
+                NewThreadBusyThresholdMs = 3.0f
+            };
             PrepareManager = new PrepareManager(ThreadGroup);
 
             _DisposeResource = DisposeResource;
@@ -563,6 +565,8 @@ namespace Squared.Render {
         public  readonly ThreadGroup     Group;
         private readonly WorkQueue<Task> Queue;
 
+        static readonly ThreadLocal<bool> ForceSync = new ThreadLocal<bool>(() => false);
+
         public PrepareManager (ThreadGroup threadGroup) {
             Group = threadGroup;
             Queue = threadGroup.GetQueueForType<Task>();
@@ -573,12 +577,18 @@ namespace Squared.Render {
         }
 
         public void Wait () {
+            Group.NotifyQueuesChanged(true);
             Queue.WaitUntilDrained();
         }
 
         public void PrepareAsync (IBatch batch) {
             if (batch == null)
                 return;
+
+            if (ForceSync.Value) {
+                PrepareSync(batch);
+                return;
+            }
 
             Queue.Enqueue(new Task(this, batch));
             // FIXME: Is this too often?
@@ -589,7 +599,13 @@ namespace Squared.Render {
             if (batch == null)
                 return;
 
-            batch.Prepare(this);
+            var wasSync = ForceSync.Value;
+            try {
+                ForceSync.Value = true;
+                batch.Prepare(this);
+            } finally {
+                ForceSync.Value = wasSync;
+            }
         }
     }
 
@@ -865,7 +881,7 @@ namespace Squared.Render {
             _DrawCalls.Sort(Frame.BatchComparer);
 
             foreach (var batch in _DrawCalls)
-                manager.PrepareSync(batch);
+                manager.PrepareAsync(batch);
         }
 
         public override void Issue (DeviceManager manager) {

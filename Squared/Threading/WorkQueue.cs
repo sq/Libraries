@@ -134,7 +134,7 @@ namespace Squared.Threading {
                         (Interlocked.Read(ref ItemsExecuted) >= Interlocked.Read(ref ItemsEnqueued)) &&
                         Queue.IsEmpty;
 
-                    if (!done)
+                    if (!done)                        
                         Monitor.Wait(Token);
                 }
 

@@ -801,7 +801,7 @@ namespace Squared.Render {
                 currentBatch.Dispose();
 
             _Group.Dispose();
-            manager.PrepareSync(_Group);
+            manager.PrepareAsync(_Group);
         }
 
         public override void Issue (DeviceManager manager) {
