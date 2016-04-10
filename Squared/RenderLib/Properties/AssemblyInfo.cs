@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Squared Interactive")]
 [assembly: AssemblyProduct("Fracture")]
-[assembly: AssemblyCopyright("Copyright © Kevin Gadd 2010")]
+[assembly: AssemblyCopyright("Copyright © Katelyn Gadd 2010")]
 
 // Setting ComVisible to false makes the types in this assembly not visible 
 // to COM components.  If you need to access a type in this assembly from 

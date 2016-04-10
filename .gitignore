@@ -67,5 +67,7 @@ _ReSharper.*
 /Squared/HttpServerTest/bin
 /Squared/HttpServerTest/obj
 /Squared/packages
+/Squared/Threading/obj
+/Squared/Threading/bin
 *.psess
 *.vspx
