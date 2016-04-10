@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Squared.Threading {
     public interface IWorkQueue {
         /// <returns>The number of work items handled.</returns>
-        int Step (int maximumCount);
+        int Step (int? maximumCount = null);
     }
 
     public interface IWorkItem {
@@ -67,6 +67,8 @@ namespace Squared.Threading {
             }
         }
 
+        public int DefaultStepCount = 8;
+
         private readonly object Token = new object();
 
         private readonly ConcurrentQueue<InternalWorkItem<T>> Queue = 
@@ -89,12 +91,13 @@ namespace Squared.Threading {
             return new Marker(this);
         }
 
-        public int Step (int maximumCount) {
+        public int Step (int? maximumCount = null) {
             InternalWorkItem<T> item;
             int result = 0;
+            int actualMaximumCount = maximumCount.GetValueOrDefault(DefaultStepCount);
 
             while (
-                (result < maximumCount) &&
+                (result < actualMaximumCount) &&
                 Queue.TryDequeue(out item)
             ) {
                 item.Data.Execute();

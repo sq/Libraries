@@ -14,6 +14,15 @@ namespace Squared.Threading {
         }
     }
 
+    public class SleepyWorkItem : IWorkItem {
+        public bool Ran;
+
+        public void Execute () {
+            System.Threading.Thread.Sleep(200);
+            Ran = true;
+        }
+    }
+
     [TestFixture]
     public class ThreadGroupTests {
         [Test]
@@ -27,7 +36,7 @@ namespace Squared.Threading {
 
         [Test]
         public void ManuallyStep () {
-            using (var group = new ThreadGroup(minimumThreads: 0)) {
+            using (var group = new ThreadGroup(0, 0)) {
                 var queue = group.GetQueueForType<TestWorkItem>();
 
                 var item = new TestWorkItem();
@@ -42,7 +51,7 @@ namespace Squared.Threading {
 
         [Test]
         public void WaitForMarker () {
-            using (var group = new ThreadGroup(minimumThreads: 0)) {
+            using (var group = new ThreadGroup(0, 0)) {
                 var queue = group.GetQueueForType<TestWorkItem>();
 
                 var item = new TestWorkItem();
@@ -62,6 +71,72 @@ namespace Squared.Threading {
                 marker.Wait(1);
 
                 Assert.IsTrue(item.Ran);
+            }
+        }
+
+        [Test]
+        public void ForciblySpawnThread () {
+            using (var group = new ThreadGroup(0, 0)) {
+                var queue = group.GetQueueForType<TestWorkItem>();
+
+                var item = new TestWorkItem();
+                Assert.IsFalse(item.Ran);
+
+                var marker = queue.Mark();
+                queue.Enqueue(item);
+
+                Assert.AreEqual(0, group.Count);
+                Assert.IsFalse(item.Ran);
+
+                group.ForciblySpawnThread();
+                Assert.AreEqual(1, group.Count);
+
+                marker.Wait(1);
+
+                Assert.IsTrue(item.Ran);
+            }
+        }
+
+        [Test]
+        public void AutoSpawnThread () {
+            using (var group = new ThreadGroup(0, 1)) {
+                var queue = group.GetQueueForType<TestWorkItem>();
+
+                var item = new TestWorkItem();
+                Assert.IsFalse(item.Ran);
+
+                var marker = queue.Mark();
+                queue.Enqueue(item);
+
+                Assert.AreEqual(0, group.Count);
+                Assert.IsFalse(item.Ran);
+
+                group.ConsiderNewThread(true);
+                Assert.AreEqual(1, group.Count);
+
+                marker.Wait(1);
+
+                Assert.IsTrue(item.Ran);
+            }
+        }
+
+        [Test]
+        public void AutoSpawnMoreThreads () {
+            using (var group = new ThreadGroup(0, 2)) {
+                var queue = group.GetQueueForType<SleepyWorkItem>();
+
+                var marker = queue.Mark();
+                queue.Enqueue(new SleepyWorkItem());
+                group.ConsiderNewThread(true);
+
+                Assert.GreaterOrEqual(1, group.Count);
+
+                queue.Enqueue(new SleepyWorkItem());
+                group.ConsiderNewThread(true);
+
+                Assert.GreaterOrEqual(2, group.Count);
+
+                marker.Wait(2);
             }
         }
     }
