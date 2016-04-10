@@ -66,8 +66,8 @@ namespace Squared.Threading {
                 var item = new TestWorkItem();
                 Assert.IsFalse(item.Ran);
 
-                var marker = queue.Mark();
                 queue.Enqueue(item);
+                var marker = queue.Mark();
 
                 Assert.IsFalse(item.Ran);
 
@@ -80,7 +80,7 @@ namespace Squared.Threading {
                     Assert.IsTrue(exhausted);
                 });
 
-                marker.Wait(1);
+                marker.Wait();
 
                 Assert.IsTrue(item.Ran);
             }
@@ -94,8 +94,8 @@ namespace Squared.Threading {
                 var item = new TestWorkItem();
                 Assert.IsFalse(item.Ran);
 
-                var marker = queue.Mark();
                 queue.Enqueue(item);
+                var marker = queue.Mark();
 
                 Assert.AreEqual(0, group.Count);
                 Assert.IsFalse(item.Ran);
@@ -103,7 +103,7 @@ namespace Squared.Threading {
                 group.ForciblySpawnThread();
                 Assert.AreEqual(1, group.Count);
 
-                marker.Wait(1);
+                marker.Wait();
 
                 Assert.IsTrue(item.Ran);
             }
@@ -117,8 +117,8 @@ namespace Squared.Threading {
                 var item = new TestWorkItem();
                 Assert.IsFalse(item.Ran);
 
-                var marker = queue.Mark();
                 queue.Enqueue(item);
+                var marker = queue.Mark();
 
                 Assert.AreEqual(0, group.Count);
                 Assert.IsFalse(item.Ran);
@@ -126,7 +126,7 @@ namespace Squared.Threading {
                 group.NotifyQueuesChanged();
                 Assert.AreEqual(1, group.Count);
 
-                marker.Wait(1);
+                marker.Wait();
 
                 Assert.IsTrue(item.Ran);
             }
@@ -137,7 +137,6 @@ namespace Squared.Threading {
             using (var group = new ThreadGroup(0, 2)) {
                 var queue = group.GetQueueForType<SleepyWorkItem>();
 
-                var marker = queue.Mark();
                 queue.Enqueue(new SleepyWorkItem());
                 group.NotifyQueuesChanged();
 
@@ -145,10 +144,11 @@ namespace Squared.Threading {
 
                 queue.Enqueue(new SleepyWorkItem());
                 group.NotifyQueuesChanged();
+                var marker = queue.Mark();
 
                 Assert.GreaterOrEqual(2, group.Count);
 
-                marker.Wait(2);
+                marker.Wait();
             }
         }
 
@@ -161,7 +161,6 @@ namespace Squared.Threading {
                 var queue = group.GetQueueForType<VoidWorkItem>();
                 queue.DefaultStepCount = 1024;
 
-                var marker = queue.Mark();
                 var item = new VoidWorkItem();
 
                 var beforeEnqueue = timeProvider.Ticks;
@@ -171,7 +170,8 @@ namespace Squared.Threading {
                 var afterEnqueue = timeProvider.Ticks;
 
                 var beforeWait = timeProvider.Ticks;
-                marker.Wait(count);
+                var marker = queue.Mark();
+                marker.Wait();
 
                 var afterWait = timeProvider.Ticks;
 
@@ -193,7 +193,6 @@ namespace Squared.Threading {
                 var queue = group.GetQueueForType<VoidWorkItem>();
                 queue.DefaultStepCount = 1024;
 
-                var marker = queue.Mark();
                 var item = new VoidWorkItem();
 
                 var beforeEnqueue = timeProvider.Ticks;
@@ -208,7 +207,8 @@ namespace Squared.Threading {
                 var afterEnqueue = timeProvider.Ticks;
 
                 var beforeWait = timeProvider.Ticks;
-                marker.Wait(count);
+                var marker = queue.Mark();
+                marker.Wait();
 
                 var afterWait = timeProvider.Ticks;
 
