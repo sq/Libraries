@@ -90,6 +90,13 @@ namespace Squared.Render {
             );
         }
 
+        public Material Clone () {
+            return new Material(
+                Effect, null,
+                BeginHandlers, EndHandlers
+            );
+        }
+
         public ID3DXEffect COMEffect {
             get {
                 if (Thread.CurrentThread != OwningThread)

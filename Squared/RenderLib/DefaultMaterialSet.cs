@@ -336,7 +336,7 @@ namespace Squared.Render {
                 p.SetValue(time);
         }
 
-        private void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
+        public void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
             if (m.Effect == null)
                 return;
 
