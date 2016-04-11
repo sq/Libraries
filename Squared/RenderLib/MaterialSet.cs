@@ -119,6 +119,7 @@ namespace Squared.Render {
         // Making a dictionary larger increases performance
         private const int BindingDictionaryCapacity = 4096;
 
+        private readonly ReaderWriterLockSlim UniformBindingLock = new ReaderWriterLockSlim();
         private readonly Dictionary<UniformBindingKey, IUniformBinding> UniformBindings = 
             new Dictionary<UniformBindingKey, IUniformBinding>(
                 BindingDictionaryCapacity, new UniformBindingKey.EqualityComparer()
@@ -246,24 +247,26 @@ namespace Squared.Render {
             }
         }
 
-        public UniformBinding<T> GetUniformBinding<T> (Material material, string uniformName, bool createNew)
+        public UniformBinding<T> GetUniformBinding<T> (Material material, string uniformName)
             where T : struct 
         {
             var effect = material.Effect;
             var key = new UniformBindingKey(effect, uniformName, typeof(T));
 
-            lock (UniformBindings) {
+            UniformBindingLock.EnterUpgradeableReadLock();
+            try {
                 IUniformBinding existing;
                 if (UniformBindings.TryGetValue(key, out existing))
                     return existing.Cast<T>();
 
-                if (createNew) {
-                    var result = UniformBinding<T>.TryCreate(effect, uniformName);
-                    UniformBindings.Add(key, result);
-                    return result;
-                } else {
-                    throw new KeyNotFoundException("No uniform binding found");
-                }
+                UniformBindingLock.EnterWriteLock();
+                var result = UniformBinding<T>.TryCreate(effect, uniformName);
+                UniformBindings.Add(key, result);
+                UniformBindingLock.ExitWriteLock();
+
+                return result;
+            } finally {
+                UniformBindingLock.ExitUpgradeableReadLock();
             }
         }
 

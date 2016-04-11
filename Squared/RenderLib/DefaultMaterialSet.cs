@@ -331,7 +331,7 @@ namespace Squared.Render {
             if (m.Effect == null)
                 return;
 
-            var ub = GetUniformBinding<ViewTransform>(m, "Viewport", true);
+            var ub = GetUniformBinding<ViewTransform>(m, "Viewport");
             if (ub == null)
                 return;
 

@@ -216,15 +216,13 @@ namespace Squared.Render {
         }
 
         internal void SynchronousPrepareBatches (Frame frame) {
-            foreach (var batch in frame.Batches)
-                PrepareManager.PrepareSync(batch);
+            PrepareManager.PrepareMany(frame.Batches, false);
 
             PrepareManager.Wait();
         }
 
         internal void ParallelPrepareBatches (Frame frame) {
-            foreach (var batch in frame.Batches)
-                PrepareManager.PrepareAsync(batch);
+            PrepareManager.PrepareMany(frame.Batches, true);
 
             PrepareManager.Wait();
         }
@@ -547,7 +545,8 @@ namespace Squared.Render {
     public class PrepareManager {
         public struct Task : IWorkItem {
             public readonly PrepareManager Manager;
-            public readonly IBatch Batch;
+
+            public IBatch Batch;
 
             public Task (PrepareManager manager, IBatch batch) {
                 Manager = manager;
@@ -576,6 +575,33 @@ namespace Squared.Render {
         public void Wait () {
             Group.NotifyQueuesChanged(true);
             Queue.WaitUntilDrained();
+        }
+
+        public void PrepareMany<T> (T batches, bool async)
+            where T : IEnumerable<IBatch>
+        {
+            if (ForceSync.Value)
+                async = false;
+
+            const int blockSize = 256;
+            using (var buffer = BufferPool<Task>.Allocate(blockSize)) {
+                int j = 0;
+
+                var task = new Task(this, null);
+                foreach (var batch in batches) {
+                    task.Batch = batch;
+                    buffer.Data[j++] = task;
+
+                    if (j == blockSize) {
+                        Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j));
+                        j = 0;
+                    }
+                }
+
+                Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j));
+            }
+
+            Group.NotifyQueuesChanged();
         }
 
         public void PrepareAsync (IBatch batch) {
@@ -877,8 +903,7 @@ namespace Squared.Render {
 
             _DrawCalls.FastCLRSort(Frame.BatchComparer);
 
-            foreach (var batch in _DrawCalls)
-                manager.PrepareAsync(batch);
+            manager.PrepareMany(_DrawCalls, true);
         }
 
         public override void Issue (DeviceManager manager) {
