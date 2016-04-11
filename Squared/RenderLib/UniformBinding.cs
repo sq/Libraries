@@ -9,20 +9,25 @@ using Squared.Render.Evil;
 
 namespace Squared.Render {
     public interface IUniformBinding : IDisposable {
-        string Name { get; }
+        Type   Type   { get; }
+        string Name   { get; }
         Effect Effect { get; }
     }
 
-    public unsafe class UniformBinding<T> : IUniformBinding {
+    public unsafe class UniformBinding<T> : IUniformBinding 
+        where T : struct
+    {
         public class BindingMember {
-            public readonly string Name;
-            public readonly uint   Offset;
-            public readonly uint   Size;
+            public   readonly string Name;
+            public   readonly uint   Offset;
+            public   readonly uint   Size;
+            internal readonly void*  Handle;
 
-            public BindingMember (string name, uint offset, uint size) {
+            internal BindingMember (string name, uint offset, uint size, void* handle) {
                 Name = name;
                 Offset = offset;
                 Size = size;
+                Handle = handle;
             }
         }
 
@@ -139,7 +144,7 @@ namespace Squared.Render {
                         }
 
                         Results.Add(new BindingMember(
-                            parameterName, uniformOffset, parameterDesc.SizeBytes
+                            parameterName, uniformOffset, parameterDesc.SizeBytes, hParameter
                         ));
 
                         return;
@@ -158,7 +163,7 @@ namespace Squared.Render {
                             ParameterError(ref parameterDesc, parameterName, "No matching public field");
 
                         Results.Add(new BindingMember(
-                            parameterName, uniformOffset, parameterDesc.SizeBytes
+                            parameterName, uniformOffset, parameterDesc.SizeBytes, hParameter
                         ));
 
                         return;
@@ -174,17 +179,21 @@ namespace Squared.Render {
         private readonly ID3DXEffect         pEffect;
         private readonly void*               hParameter;
         private readonly D3DXPARAMETER_DESC  ParameterDesc;
+
+        private T      LatestValue;
+        private bool   ValueIsDirty, HasStoredValue;
         
-        public bool IsDisposed { get; private set; }
-        public Effect Effect { get; private set; }
-        public string Name { get; private set; }
+        public  bool   IsDisposed { get; private set; }
+        public  Effect Effect     { get; private set; }
+        public  string Name       { get; private set; }
+        public  Type   Type       { get; private set; }
 
         /// <summary>
         /// Bind all uniforms of the effect as a single structure of type T.
         /// </summary>
         public UniformBinding (Effect effect) {
-            var t = typeof(T);
-            if (!IsStructure(t))
+            Type = typeof(T);
+            if (!IsStructure(Type))
                 throw new InvalidOperationException(
                     "An effect's entire uniform collection can only be bound to a structure."
                 );
@@ -192,7 +201,7 @@ namespace Squared.Render {
             pEffect = effect.GetID3DXEffect();
 
             var state = new BindingCheckState(pEffect, Members, effect.CurrentTechnique.Name, null);
-            state.CheckMemberBindings(null, t);
+            state.CheckMemberBindings(null, Type);
             state.Finish();
         }
 
@@ -200,7 +209,7 @@ namespace Squared.Render {
         /// Bind a single named uniform of the effect as type T.
         /// </summary>
         public UniformBinding (Effect effect, string uniformName) {
-            var t = typeof(T);
+            Type = typeof(T);
             pEffect = effect.GetID3DXEffect();
             hParameter = pEffect.GetParameterByName(null, uniformName);
             pEffect.GetParameterDesc(hParameter, out ParameterDesc);
@@ -208,15 +217,68 @@ namespace Squared.Render {
             var state = new BindingCheckState(pEffect, Members, effect.CurrentTechnique.Name, uniformName);
 
             if (ParameterDesc.StructMembers > 0) {
-                if (!IsStructure(t))
-                    throw new InvalidOperationException("This parameter is a structure so it may only be bound to a structure.");
+                if (!IsStructure(Type))
+                    throw new InvalidOperationException("This uniform is a structure so it may only be bound to a structure.");
 
-                state.CheckMemberBindings(hParameter, t);
+                state.CheckMemberBindings(hParameter, Type);
             } else {
-                state.CheckMemberBinding(hParameter, ref ParameterDesc, uniformName, t, 0);
+                state.CheckMemberBinding(hParameter, ref ParameterDesc, uniformName, Type, 0);
             }
 
             state.Finish();
+        }
+
+        private bool DoValuesMatch (ref T oldValue, ref T newValue) {
+            return false;
+        }
+
+        public void SetValue (T value) {
+            if (
+                !HasStoredValue || 
+                !DoValuesMatch(ref LatestValue, ref value)
+            ) {
+                LatestValue = value;
+                ValueIsDirty = true;
+                HasStoredValue = true;
+            }
+        }
+
+        public void SetValue (ref T value) {
+            if (
+                !HasStoredValue || 
+                !DoValuesMatch(ref LatestValue, ref value)
+            ) {
+                LatestValue = value;
+                ValueIsDirty = true;
+                HasStoredValue = true;
+            }
+        }
+
+        public T? GetValue () {
+            if (!HasStoredValue)
+                return null;
+
+            return LatestValue;
+        }
+
+        public void Flush () {
+            if (!ValueIsDirty)
+                return;
+
+            // FIXME: Slow as hell
+            var gch = GCHandle.Alloc(LatestValue, GCHandleType.Pinned);
+            try {
+                var pValue = gch.AddrOfPinnedObject();
+
+                foreach (var member in Members) {
+                    var pMember = pValue + (int)member.Offset;
+                    pEffect.SetRawValue(member.Handle, pMember.ToPointer(), member.Offset, member.Size);
+                }
+            } finally {
+                gch.Free();
+            }
+
+            ValueIsDirty = false;
         }
 
         private static bool IsStructure (Type type) {
