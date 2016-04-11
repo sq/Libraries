@@ -263,6 +263,9 @@ namespace Squared.Render {
                 if (UniformBindings.TryGetValue(key, out existing))
                     return existing.Cast<T>();
 
+                if (OwningThread != Thread.CurrentThread)
+                    throw new InvalidOperationException("Uniform bindings must be allocated on the thread that owns the MaterialSet.");
+
                 var result = UniformBinding<T>.TryCreate(effect, material.COMEffect, uniformName);
                 UniformBindings.Add(key, result);
                 return result;
