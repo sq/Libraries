@@ -41,7 +41,7 @@ namespace Squared.Render {
         public MultithreadedGame()
             : base() {
 
-            ThreadGroup = new ThreadGroup(1, 5) {
+            ThreadGroup = new ThreadGroup(1, 5, comThreadingModel: ApartmentState.MTA) {
                 NewThreadBusyThresholdMs = 2.0f
             };
 
@@ -50,8 +50,18 @@ namespace Squared.Render {
             UseThreadedDraw = false;
 #else
             UseThreadedDraw = true;
-            if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
-                throw new InvalidOperationException("XNA only correctly supports single-thread apartments.");
+            if (Thread.CurrentThread.GetApartmentState() != ApartmentState.MTA) {
+                throw new InvalidOperationException(
+                    "An MTA apartment is required. Without it, uniform bindings will break. See source for detailed explanation."
+                );
+                // Okay, so.
+                // COM interop in .NET is a nightmare and doesn't work correctly in the presence of STA apartments and threads.
+                // So we're totally screwed unless we start the game in an MTA apartment.
+                // Also! Because XNA Song shells out to Windows Media Player, and Windows Media Player is total garbage,
+                //  playing Songs in an MTA apartment tends to pretty reliably hang your game forever.
+                // Maybe the key is to make all Song API calls from an STA thread? I have no idea.
+                // Burn everything to the ground.
+            }
 #endif
         }
 

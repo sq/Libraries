@@ -224,6 +224,11 @@ namespace Squared.Render {
                 ));
             else
                 ViewTransformStack.Push(ViewTransform.Default);
+
+            // Pre-allocate the uniform bindings for our materials on the main thread.
+            ForEachMaterial<object>((material, _) => {
+                GetUniformBinding<ViewTransform>(material, "Viewport");
+            }, null);
         }
 
         public ViewTransform ViewTransform {

@@ -124,9 +124,12 @@ namespace Squared.Render {
                 BindingDictionaryCapacity, new UniformBindingKey.EqualityComparer()
             );
 
+        public readonly Thread OwningThread;
+
         public MaterialSetBase() 
             : base() {
 
+            OwningThread = Thread.CurrentThread;
             BuildMaterialSets(out AllMaterialFields, out AllMaterialSequences, out AllMaterialCollections);
         }
 
@@ -250,6 +253,9 @@ namespace Squared.Render {
             where T : struct 
         {
             var effect = material.Effect;
+            if (effect == null)
+                return null;
+
             var key = new UniformBindingKey(effect, uniformName, typeof(T));
 
             lock (UniformBindings) {
@@ -257,7 +263,7 @@ namespace Squared.Render {
                 if (UniformBindings.TryGetValue(key, out existing))
                     return existing.Cast<T>();
 
-                var result = UniformBinding<T>.TryCreate(effect, uniformName);
+                var result = UniformBinding<T>.TryCreate(effect, material.COMEffect, uniformName);
                 UniformBindings.Add(key, result);
                 return result;
             }

@@ -53,9 +53,9 @@ namespace Squared.Render {
         }
 
         private readonly ID3DXEffect pEffect;
-        private readonly void*       hParameter;
-        private readonly Fixup[]     Fixups;
-        private readonly uint        UploadSize;
+        private readonly void*   hParameter;
+        private readonly Fixup[] Fixups;
+        private readonly uint    UploadSize;
 
         private readonly ValueContainer _ValueContainer = new ValueContainer();
         // The latest value is written into this buffer
@@ -80,6 +80,7 @@ namespace Squared.Render {
             this.hParameter = hParameter;
 
             var layout = new Layout(Type, pEffect, hParameter);
+
             Fixups = layout.Fixups;
             UploadSize = layout.UploadSize;
 
@@ -90,8 +91,12 @@ namespace Squared.Render {
             UniformBinding.Register(effect, this);
         }
 
-        public static UniformBinding<T> TryCreate (Effect effect, string uniformName) {
-            var pEffect = effect.GetID3DXEffect();
+        public static UniformBinding<T> TryCreate (Effect effect, ID3DXEffect pEffect, string uniformName) {
+            if (effect == null)
+                return null;
+            if (pEffect == null)
+                return null;
+
             var hParameter = pEffect.GetParameterByName(null, uniformName);
             if (hParameter == null)
                 return null;
@@ -175,6 +180,7 @@ namespace Squared.Render {
             IsDisposed = true;
             ScratchBuffer.Dispose();
             UploadBuffer.Dispose();
+
             Marshal.ReleaseComObject(pEffect);
         }
     }

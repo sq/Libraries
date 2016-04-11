@@ -21,6 +21,7 @@ namespace Squared.Threading {
         public readonly bool CreateBackgroundThreads;
         public readonly int MinimumThreadCount;
         public readonly int MaximumThreadCount;
+        public readonly ApartmentState COMThreadingModel;
         
         // A lock-free dictionary for looking up queues by work item type
         private readonly ConcurrentDictionary<Type, IWorkQueue> Queues = 
@@ -39,12 +40,14 @@ namespace Squared.Threading {
             int? minimumThreads = null,
             int? maximumThreads = null,
             bool createBackgroundThreads = false,
-            ITimeProvider timeProvider = null
+            ITimeProvider timeProvider = null,
+            ApartmentState comThreadingModel = ApartmentState.Unknown
         ) {
             MaximumThreadCount = maximumThreads.GetValueOrDefault(Environment.ProcessorCount + 1);
             MinimumThreadCount = Math.Min(minimumThreads.GetValueOrDefault(1), MaximumThreadCount);
             CreateBackgroundThreads = createBackgroundThreads;
             TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
+            COMThreadingModel = comThreadingModel;
 
             lock (Threads)
             while ((Count < MinimumThreadCount) && (Count < MaximumThreadCount))

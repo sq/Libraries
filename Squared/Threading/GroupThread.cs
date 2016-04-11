@@ -22,6 +22,8 @@ namespace Squared.Threading {
             Thread = new Thread(ThreadMain);
             Thread.Name = string.Format("ThreadGroup {0} worker #{1}", owner.GetHashCode(), owner.Count);
             Thread.IsBackground = owner.CreateBackgroundThreads;
+            if (owner.COMThreadingModel != ApartmentState.Unknown)
+                Thread.SetApartmentState(owner.COMThreadingModel);
             owner.RegisterQueuesForNewThread(this);
             Thread.Start(this);
         }
@@ -50,6 +52,7 @@ namespace Squared.Threading {
 
                 if (!moreWorkRemains) {
                     // We only wait if no work remains
+                    
                     if (wakeEvent.Wait(IdleWaitDurationMs))
                         wakeEvent.Reset();
                 }

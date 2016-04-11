@@ -9,11 +9,14 @@ using Microsoft.Xna.Framework.Content;
 using System.Reflection;
 using Squared.Render.Convenience;
 using Squared.Util;
+using Squared.Render.Evil;
 
 namespace Squared.Render {
     public class Material : IDisposable {
         public readonly Effect Effect;
         public readonly bool   OwnsEffect;
+
+        internal readonly ID3DXEffect COMEffect;
 
         public readonly DefaultMaterialSetEffectParameters  Parameters;
 
@@ -50,8 +53,12 @@ namespace Squared.Render {
             }
 
             // FIXME: This should probably never be null.
-            if (Effect != null)
+            if (Effect != null) {
                 Parameters = new DefaultMaterialSetEffectParameters(Effect);
+                COMEffect = Effect.GetID3DXEffect();
+            } else {
+                COMEffect = null;
+            }
 
             BeginHandlers = beginHandlers;
             EndHandlers   = endHandlers;

@@ -274,13 +274,6 @@ namespace Squared.Render.Evil {
             var typedObject = (ID3DXEffect)obj;
             return typedObject;
         }
-
-        public static unsafe ID3DXEffect GetID3DXEffect (this EffectTechnique effectTechnique) {
-            var unboxedPointer = Pointer.Unbox(technique_pComPtr.GetValue(effectTechnique));
-            var obj = Marshal.GetObjectForIUnknown(new IntPtr(unboxedPointer));
-            var typedObject = (ID3DXEffect)obj;
-            return typedObject;
-        }
     }
 #endif
 
