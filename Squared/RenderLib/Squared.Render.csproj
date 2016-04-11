@@ -118,6 +118,7 @@
     <Compile Include="BatchCombiner.cs" />
     <Compile Include="Convenience.cs" />
     <Compile Include="Materials.cs" />
+    <Compile Include="MaterialSet.cs" />
     <Compile Include="Pools.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RenderBitmaps.cs" />

@@ -121,7 +121,7 @@ namespace Squared.Render {
             Device.Viewport = ViewportStack.Pop();
         }
 
-        public MaterialSetEffectParameters CurrentParameters {
+        public DefaultMaterialSetEffectParameters CurrentParameters {
             get {
                 var em = CurrentMaterial as IEffectMaterial;
                 if (em != null)
