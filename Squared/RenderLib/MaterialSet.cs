@@ -72,28 +72,27 @@ namespace Squared.Render {
                 }
 
                 public int GetHashCode (UniformBindingKey obj) {
-                    return obj.GetHashCode();
+                    return obj.HashCode;
                 }
             }
 
-            public readonly Effect Effect;
-            public readonly string UniformName;
-            public readonly Type   Type;
+            public   readonly Effect Effect;
+            public   readonly string UniformName;
+            public   readonly Type   Type;
+            internal readonly int    HashCode;
 
             public UniformBindingKey (Effect effect, string uniformName, Type type) {
                 Effect = effect;
                 UniformName = uniformName;
                 Type = type;
+
+                HashCode = Type.GetHashCode() ^ 
+                    (Effect.GetHashCode() << 4) ^
+                    (UniformName.GetHashCode() << 8);
             }
 
             public override int GetHashCode () {
-                var result = Type.GetHashCode() ^ 
-                    (Effect.GetHashCode() << 4);
-
-                if (UniformName != null)
-                    result ^= (UniformName.GetHashCode() << 8);
-
-                return result;
+                return HashCode;
             }
 
             public bool Equals (UniformBindingKey rhs) {
