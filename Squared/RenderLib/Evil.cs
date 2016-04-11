@@ -280,28 +280,22 @@ namespace Squared.Render.Evil {
         void EndPass ();
         void End ();
 
-        /*
-            // Managing D3D Device
-            STDMETHOD(GetDevice)(THIS_ LPDIRECT3DDEVICE9* ppDevice) PURE;
-            STDMETHOD(OnLostDevice)(THIS) PURE;
-            STDMETHOD(OnResetDevice)(THIS) PURE;
+        void* GetDevice ();
+        void OnLostDevice ();
+        void OnResetDevice ();
 
-            // Logging device calls
-            STDMETHOD(SetStateManager)(THIS_ LPD3DXEFFECTSTATEMANAGER pManager) PURE;
-            STDMETHOD(GetStateManager)(THIS_ LPD3DXEFFECTSTATEMANAGER *ppManager) PURE;
+        void SetStateManager (void* pManager);
+        void* GetStateManager ();
 
-            // Parameter blocks
-            STDMETHOD(BeginParameterBlock)(THIS) PURE;
-            STDMETHOD_(D3DXHANDLE, EndParameterBlock)(THIS) PURE;
-            STDMETHOD(ApplyParameterBlock)(THIS_ D3DXHANDLE hParameterBlock) PURE;
-            STDMETHOD(DeleteParameterBlock)(THIS_ D3DXHANDLE hParameterBlock) PURE;
+        void BeginParameterBlock ();
+        [PreserveSig]
+        void* EndParameterBlock ();
+        void ApplyParameterBlock (void* hBlock);
+        void DeleteParameterBlock (void* hBlock);
 
-            // Cloning
-            STDMETHOD(CloneEffect)(THIS_ LPDIRECT3DDEVICE9 pDevice, LPD3DXEFFECT* ppEffect) PURE;
-    
-            // Fast path for setting variables directly in ID3DXEffect
-            STDMETHOD(SetRawValue)(THIS_ D3DXHANDLE hParameter, LPCVOID pData, UINT ByteOffset, UINT Bytes) PURE;
-        */
+        ID3DXEffect CloneEffect (void* pDevice);
+
+        void SetRawValue (void* hParameter, [In] void* pData, uint byteOffset, uint countBytes);
     }
 
     public static class EffectUtils {
