@@ -29,6 +29,9 @@ namespace Squared.Render {
         }
     }
 
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    unsafe delegate int SetRawDelegate (void* _this, void* a, void* b, uint c, uint d);
+
     public unsafe partial class UniformBinding<T> : IUniformBinding 
         where T : struct
     {
@@ -53,9 +56,10 @@ namespace Squared.Render {
         }
 
         private readonly ID3DXEffect pEffect;
-        private readonly void*   hParameter;
-        private readonly Fixup[] Fixups;
-        private readonly uint    UploadSize;
+        private readonly void*       pUnboxedEffect;
+        private readonly void*       hParameter;
+        private readonly Fixup[]     Fixups;
+        private readonly uint        UploadSize;
 
         private readonly ValueContainer _ValueContainer = new ValueContainer();
         // The latest value is written into this buffer
@@ -63,11 +67,13 @@ namespace Squared.Render {
         // And then transferred and mutated in this buffer before being sent to D3D
         private readonly SafeBuffer  UploadBuffer;
 
+        private readonly SetRawDelegate pSetRawValue;
+
         public  bool   IsDirty    { get; private set; }
         public  bool   IsDisposed { get; private set; }
         public  Effect Effect     { get; private set; }
         public  string Name       { get; private set; }
-        public  Type   Type       { get; private set; }        
+        public  Type   Type       { get; private set; }
 
         /// <summary>
         /// Bind a single named uniform of the effect as type T.
@@ -77,6 +83,7 @@ namespace Squared.Render {
 
             Effect = effect;
             this.pEffect = pEffect;
+            this.pUnboxedEffect = effect.GetUnboxedID3DXEffect();
             this.hParameter = hParameter;
 
             var layout = new Layout(Type, pEffect, hParameter);
@@ -87,6 +94,17 @@ namespace Squared.Render {
             ScratchBuffer = new Storage();
             UploadBuffer = new Storage();
             IsDirty = false;
+
+            var iface = typeof(ID3DXEffect);
+            var firstSlot = Marshal.GetStartComSlot(iface);
+
+            // HACK: Bypass totally broken remoting wrappers by directly pulling the method out of the vtable
+            const int SetRawValueSlot = 75;
+            var pComFunction = Evil.COMUtils.AccessVTable(
+                pUnboxedEffect, 
+                (uint)((SetRawValueSlot + firstSlot) * sizeof(void*))
+            );
+            pSetRawValue = Marshal.GetDelegateForFunctionPointer<SetRawDelegate>(new IntPtr(pComFunction));
 
             UniformBinding.Register(effect, this);
         }
@@ -164,7 +182,9 @@ namespace Squared.Render {
                 );
             }
 
-            pEffect.SetRawValue(hParameter, pUpload.ToPointer(), 0, UploadSize);
+            // HACK: Bypass the COM wrapper and invoke directly from the vtable.
+            pSetRawValue(pUnboxedEffect, hParameter, pUpload.ToPointer(), 0, UploadSize);
+            // pEffect.SetRawValue(hParameter, pUpload.ToPointer(), 0, UploadSize);
 
             IsDirty = false;
         }

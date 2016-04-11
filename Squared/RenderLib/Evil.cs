@@ -91,6 +91,7 @@ namespace Squared.Render.Evil {
     [Guid("F6CEB4B3-4E4C-40dd-B883-8D8DE5EA0CD5")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [SuppressUnmanagedCodeSecurity]
+    [ComImport]
     public unsafe interface ID3DXEffect {
         // HACK: ENORMOUS HACK: Apparently ID3DXEffect::QueryInterface doesn't support ID3DXBaseEffect. So...
 
@@ -268,8 +269,16 @@ namespace Squared.Render.Evil {
             technique_pComPtr = typeof(EffectTechnique).GetField("pComPtr", BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
+        public static object GetBoxedID3DXEffect (this Effect effect) {
+            return pComPtr.GetValue(effect);
+        }
+
+        public static unsafe void* GetUnboxedID3DXEffect (this Effect effect) {
+            return Pointer.Unbox(pComPtr.GetValue(effect));
+        }
+
         public static unsafe ID3DXEffect GetID3DXEffect (this Effect effect) {
-            var unboxedPointer = Pointer.Unbox(pComPtr.GetValue(effect));
+            var unboxedPointer = effect.GetUnboxedID3DXEffect();
             var obj = Marshal.GetObjectForIUnknown(new IntPtr(unboxedPointer));
             var typedObject = (ID3DXEffect)obj;
             return typedObject;
