@@ -14,6 +14,14 @@ namespace Squared.Render {
         Effect Effect { get; }
     }
 
+    public static class UniformBindingExtensions {
+        public static UniformBinding<T> Cast<T> (this IUniformBinding iub)
+            where T : struct
+        {
+            return (UniformBinding<T>)iub;
+        }
+    }
+
     public unsafe class UniformBinding<T> : IUniformBinding 
         where T : struct
     {

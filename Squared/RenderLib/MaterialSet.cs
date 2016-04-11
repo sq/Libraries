@@ -65,12 +65,62 @@ namespace Squared.Render {
     }
 
     public abstract class MaterialSetBase : IDisposable {
+        private struct UniformBindingKey {
+            public class EqualityComparer : IEqualityComparer<UniformBindingKey> {
+                public bool Equals (UniformBindingKey x, UniformBindingKey y) {
+                    return x.Equals(y);
+                }
+
+                public int GetHashCode (UniformBindingKey obj) {
+                    return obj.GetHashCode();
+                }
+            }
+
+            public readonly Effect Effect;
+            public readonly string UniformName;
+            public readonly Type   Type;
+
+            public UniformBindingKey (Effect effect, string uniformName, Type type) {
+                Effect = effect;
+                UniformName = uniformName;
+                Type = type;
+            }
+
+            public override int GetHashCode () {
+                var result = Type.GetHashCode() ^ 
+                    (Effect.GetHashCode() << 4);
+
+                if (UniformName != null)
+                    result ^= (UniformName.GetHashCode() << 8);
+
+                return result;
+            }
+
+            public bool Equals (UniformBindingKey rhs) {
+                return (Effect == rhs.Effect) &&
+                    (Type == rhs.Type) &&
+                    (UniformName == rhs.UniformName);
+            }
+
+            public override bool Equals (object obj) {
+                if (obj is UniformBindingKey)
+                    return Equals((UniformBindingKey)obj);
+                else
+                    return false;
+            }
+        }
+
         private   readonly object Lock = new object();
         protected readonly MaterialList ExtraMaterials = new MaterialList();
 
         public readonly Func<Material>[] AllMaterialFields;
         public readonly Func<IEnumerable<Material>>[] AllMaterialSequences;
         public readonly Func<IMaterialCollection>[] AllMaterialCollections;
+
+        private readonly Dictionary<UniformBindingKey, IUniformBinding> UniformBindings = 
+            new Dictionary<UniformBindingKey, IUniformBinding>(
+                new UniformBindingKey.EqualityComparer()
+            );
 
         public MaterialSetBase() 
             : base() {
@@ -190,6 +240,36 @@ namespace Squared.Render {
                     foreach (var material in seq)
                         if (material != null)
                             yield return material;
+                }
+            }
+        }
+
+        public UniformBinding<T> GetUniformBinding<T> (Material material, string uniformName, bool createNew)
+            where T : struct 
+        {
+            return GetUniformBinding<T>(material.Effect, uniformName, createNew);
+        }
+
+        public UniformBinding<T> GetUniformBinding<T> (Effect effect, string uniformName, bool createNew)
+            where T : struct 
+        {
+            lock (UniformBindings) {
+                var key = new UniformBindingKey(effect, uniformName, typeof(T));
+                IUniformBinding existing;
+                if (UniformBindings.TryGetValue(key, out existing))
+                    return existing.Cast<T>();
+
+                if (createNew) {
+                    UniformBinding<T> result;
+                    if (uniformName == null)
+                        result = new UniformBinding<T>(effect);
+                    else
+                        result = new UniformBinding<T>(effect, uniformName);
+
+                    UniformBindings.Add(key, result);
+                    return result;
+                } else {
+                    throw new KeyNotFoundException("No uniform binding found");
                 }
             }
         }

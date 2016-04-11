@@ -23,8 +23,8 @@ void WorldSpaceVertexShader(
     inout float4 color : COLOR0,
     out float4 result : POSITION0
 ) {
-    position -= ViewportPosition;
-    position *= ViewportScale;
+    position -= Viewport.Position;
+    position *= Viewport.Scale;
     result = TransformPosition(float4(position.xy, 0, 1), 0);
 }
 

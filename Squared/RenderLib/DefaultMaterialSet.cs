@@ -411,10 +411,13 @@ namespace Squared.Render {
         public readonly EffectParameter Time;
 
         public DefaultMaterialSetEffectParameters (Effect effect) {
-            ViewportPosition = effect.Parameters["ViewportPosition"];
-            ViewportScale = effect.Parameters["ViewportScale"];
-            ProjectionMatrix = effect.Parameters["ProjectionMatrix"];
-            ModelViewMatrix = effect.Parameters["ModelViewMatrix"];
+            var viewport = effect.Parameters["Viewport"];
+
+            ViewportPosition = viewport.StructureMembers["Position"];
+            ViewportScale = viewport.StructureMembers["Scale"];
+            ProjectionMatrix = viewport.StructureMembers["ProjectionMatrix"];
+            ModelViewMatrix = viewport.StructureMembers["ModelViewMatrix"];
+
             BitmapTextureSize = effect.Parameters["BitmapTextureSize"];
             HalfTexel = effect.Parameters["HalfTexel"];
             Time = effect.Parameters["Time"];
