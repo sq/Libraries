@@ -119,7 +119,6 @@ namespace Squared.Render {
         // Making a dictionary larger increases performance
         private const int BindingDictionaryCapacity = 4096;
 
-        private readonly ReaderWriterLockSlim UniformBindingLock = new ReaderWriterLockSlim();
         private readonly Dictionary<UniformBindingKey, IUniformBinding> UniformBindings = 
             new Dictionary<UniformBindingKey, IUniformBinding>(
                 BindingDictionaryCapacity, new UniformBindingKey.EqualityComparer()
@@ -253,20 +252,13 @@ namespace Squared.Render {
             var effect = material.Effect;
             var key = new UniformBindingKey(effect, uniformName, typeof(T));
 
-            UniformBindingLock.EnterUpgradeableReadLock();
-            try {
+            lock (UniformBindings) {
                 IUniformBinding existing;
                 if (UniformBindings.TryGetValue(key, out existing))
                     return existing.Cast<T>();
 
-                UniformBindingLock.EnterWriteLock();
                 var result = UniformBinding<T>.TryCreate(effect, uniformName);
-                UniformBindings.Add(key, result);
-                UniformBindingLock.ExitWriteLock();
-
                 return result;
-            } finally {
-                UniformBindingLock.ExitUpgradeableReadLock();
             }
         }
 

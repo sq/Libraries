@@ -183,39 +183,27 @@ namespace Squared.Render {
         // Making a dictionary larger increases performance
         private const int BindingDictionaryCapacity = 4096;
 
-        private static readonly ReaderWriterLockSlim Lock = new ReaderWriterLockSlim();
         private static readonly Dictionary<Effect, List<IUniformBinding>> Bindings =
             new Dictionary<Effect, List<IUniformBinding>>(new ReferenceComparer<Effect>());
 
         public static void FlushEffect (Effect effect) {
-            Lock.EnterReadLock();
-
-            try {
+            lock (Bindings) {
                 List<IUniformBinding> bindings;
                 if (!Bindings.TryGetValue(effect, out bindings))
                     return;
 
                 foreach (var binding in bindings)
                     binding.Flush();
-            } finally {
-                Lock.ExitReadLock();
             }
         }
 
         internal static void Register (Effect effect, IUniformBinding binding) {
-            var didWrite = false;
-            Lock.EnterUpgradeableReadLock();
-
-            try {
-                List<IUniformBinding> bindings;
-                if (!Bindings.TryGetValue(effect, out bindings)) {
-                    Lock.EnterWriteLock();
+            List<IUniformBinding> bindings;
+            lock (Bindings) {
+                if (!Bindings.TryGetValue(effect, out bindings))
                     Bindings[effect] = bindings = new List<IUniformBinding>();
-                    Lock.ExitWriteLock();
-                }
+
                 bindings.Add(binding);
-            } finally {
-                Lock.ExitUpgradeableReadLock();
             }
         }
     }
