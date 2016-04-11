@@ -32,6 +32,10 @@ namespace Squared.Render {
     public unsafe partial class UniformBinding<T> : IUniformBinding 
         where T : struct
     {
+        public class ValueContainer {
+            public T Current;
+        }
+
         public class Storage : SafeBuffer {
             public Storage () 
                 : base(true) 
@@ -53,6 +57,7 @@ namespace Squared.Render {
         private readonly Fixup[]     Fixups;
         private readonly uint        UploadSize;
 
+        private readonly ValueContainer _ValueContainer = new ValueContainer();
         // The latest value is written into this buffer
         private readonly SafeBuffer  ScratchBuffer;
         // And then transferred and mutated in this buffer before being sent to D3D
@@ -94,14 +99,14 @@ namespace Squared.Render {
             return new UniformBinding<T>(effect, pEffect, hParameter);
         }
 
-        public void SetValue (T value) {
-            ScratchBuffer.Write<T>(0, value);
-            IsDirty = true;
-        }
-
-        public void SetValue (ref T value) {
-            ScratchBuffer.Write<T>(0, value);
-            IsDirty = true;
+        /// <summary>
+        /// If you retain this you are a bad person and I'm ashamed of you! Don't do that!!!
+        /// </summary>
+        public ValueContainer Value {
+            get {
+                IsDirty = true;
+                return _ValueContainer;
+            }
         }
 
         private void InPlaceTranspose (float* pMatrix) {
@@ -133,6 +138,8 @@ namespace Squared.Render {
         public void Flush () {
             if (!IsDirty)
                 return;
+
+            ScratchBuffer.Write<T>(0, _ValueContainer.Current);
 
             var pScratch = ScratchBuffer.DangerousGetHandle();
             var pUpload  = UploadBuffer.DangerousGetHandle();

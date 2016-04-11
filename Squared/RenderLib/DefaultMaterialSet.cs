@@ -130,9 +130,7 @@ namespace Squared.Render {
 
         protected ViewTransform? CurrentlyAppliedViewTransform = null;
 
-        public readonly DeviceManager DeviceManager;
-
-        public DefaultMaterialSet (IServiceProvider serviceProvider, DeviceManager deviceManager) {
+        public DefaultMaterialSet (IServiceProvider serviceProvider) {
             _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
             _ApplyTimeDelegate          = ApplyTimeToMaterial;
 
@@ -226,8 +224,6 @@ namespace Squared.Render {
                 ));
             else
                 ViewTransformStack.Push(ViewTransform.Default);
-
-            DeviceManager = deviceManager;
         }
 
         public ViewTransform ViewTransform {
@@ -339,7 +335,7 @@ namespace Squared.Render {
             if (ub == null)
                 return;
 
-            ub.SetValue(ref viewTransform);
+            ub.Value.Current = viewTransform;
 
             // FIXME: WHY IS THIS NECESSARY?
             // m.Flush();
