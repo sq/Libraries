@@ -1,3 +1,4 @@
+#include "ViewTransformCommon.fxh"
 #include "BitmapCommon.fxh"
 
 uniform float TapOffset[3] = { 0.0, 1.3846153846, 3.2307692308 };
@@ -16,7 +17,7 @@ float4 tap(
     in float2 texTL : TEXCOORD1,
     in float2 texBR : TEXCOORD2
 ) {
-	return tex2Dbias(TapSampler, float4(clamp(texCoord, texTL, texBR), 0, MipOffset));
+    return tex2Dbias(TapSampler, float4(clamp(texCoord, texTL, texBR), 0, MipOffset));
 }
 
 float4 GaussianBlur5TapPixelShaderCore(
@@ -36,8 +37,8 @@ float4 GaussianBlur5TapPixelShaderCore(
         sum += tap(texCoord + offset2, texTL, texBR) * TapWeight[i];
     }
 
-	addColor.rgb *= addColor.a;
-	addColor.a = 0;
+    addColor.rgb *= addColor.a;
+    addColor.a = 0;
 
     float4 result = multiplyColor * sum;
     result += (addColor * result.a);

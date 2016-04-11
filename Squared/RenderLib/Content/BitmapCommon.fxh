@@ -1,5 +1,3 @@
-#include "ViewTransformCommon.fxh"
-
 float4 TransformPosition (float4 position, float offset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
 #ifdef FNA

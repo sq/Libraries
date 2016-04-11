@@ -1,3 +1,4 @@
+#include "ViewTransformCommon.fxh"
 #include "BitmapCommon.fxh"
 
 void BasicPixelShader(

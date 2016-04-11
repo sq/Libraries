@@ -1,8 +1,9 @@
+#include "ViewTransformCommon.fxh"
 #include "GeometryCommon.fxh"
 
-shared texture BasicTexture;
+uniform texture BasicTexture : register(t0);
 
-uniform const sampler TextureSampler = sampler_state {
+static const sampler TextureSampler = sampler_state {
     Texture = (BasicTexture);
     
     MinFilter = Linear;
