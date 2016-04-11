@@ -158,6 +158,11 @@ namespace ThreadedPlatformer {
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
+            // HACK: We never set the blend state explicitly anywhere (unlike what SpriteBatch did),
+            //  but it's sufficient to just set it once per frame here.
+            // Normally you would do this in batch setup, but this is fine.
+            graphics.GraphicsDevice.BlendState = BlendState.AlphaBlend;
+
             ClearBatch.AddNew(frame, -1, materials.Clear, clearColor: Color.CornflowerBlue);
 
             level.Draw(gameTime, frame, materials);
