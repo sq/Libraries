@@ -18,205 +18,110 @@ namespace Squared.Render {
             public readonly int ToOffset;
             public readonly int DataSize;
             public readonly int PaddingSize;
+            public readonly bool TransposeMatrix;
+
+            public Fixup (
+                int fromOffset, int toOffset, 
+                int dataSize,   int paddingSize, 
+                bool transposeMatrix
+            ) {
+                FromOffset  = fromOffset;
+                ToOffset    = toOffset;
+                DataSize    = dataSize;
+                PaddingSize = paddingSize;
+                TransposeMatrix = transposeMatrix;
+            }
         }
 
         public class Layout {
             public readonly Fixup[] Fixups;
+            public readonly uint UploadSize;
 
-            public Layout (Type managedType, ID3DXEffect effect, void* hParameter) {
-            }
-        }
+            private readonly ID3DXEffect Effect;
 
-        public enum BindingType {
-            Blittable,
-            // GPU format is column-major for some reason??
-            RowMajorMatrix
-        }
+            public Layout (Type type, ID3DXEffect effect, void* hParameter) {
+                Effect = effect;
 
-        public class BindingMember {
-            public   readonly string      Name;
-            public   readonly uint        Offset;
-            public   readonly uint        Size;
-            internal readonly void*       Handle;
-            public   readonly BindingType Type;
+                var fixups = new List<Fixup>();
+                uint uploadSize = 0;
 
-            internal BindingMember (
-                string name, uint offset, uint size, 
-                void* handle, BindingType type
-            ) {
-                Name = name;
-                Offset = offset;
-                Size = size;
-                Handle = handle;
-                Type = type;
-            }
-        }
+                FixupMembers(fixups, type, hParameter, 0, ref uploadSize);
 
-        private class BindingCheckState {
-            public readonly ID3DXEffect Effect;
-            public readonly List<string> Errors = new List<string>();
-            public readonly List<BindingMember> Results;
-
-            private readonly string CheckEffectName;
-            private readonly string CheckUniformName;
-
-            public uint NextUniformOffset = 0;
-
-            public BindingCheckState (
-                ID3DXEffect pEffect, List<BindingMember> results, 
-                string effectName, string uniformName
-            ) {
-                Effect = pEffect;
-                Results = results;
-                CheckEffectName = effectName;
-                CheckUniformName = uniformName;
+                Fixups = fixups.ToArray();
+                UploadSize = uploadSize;
             }
 
-            public void Finish () {
-                if (Errors.Count < 1)
-                    return;
+            private void FixupMembers (List<Fixup> fixups, Type type, void* hParameter, int sourceOffset, ref uint uploadSize) {
+                uploadSize = 0;
 
-                var sb = new StringBuilder();
-                sb.AppendFormat(
-                    "Uniform binding failed for {0}{1}{2}",
-                    CheckEffectName,
-                    (CheckUniformName != null)
-                        ? "." + CheckUniformName
-                        : "",
-                    Environment.NewLine
-                );
-                foreach (var error in Errors)
-                    sb.AppendLine(error);
-
-                Console.WriteLine(sb.ToString());
-                throw new Exception(sb.ToString());
-            }
-
-            public void CheckMemberBindings (
-                void* hEnclosingParameter, Type type
-            ) {
-                var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
-                // HACK: Just brute-force scan for parameters until it fails.
                 for (uint i = 0; i < 999; i++) {
-                    var hParameter = Effect.GetParameter(hEnclosingParameter, i);
-                    if (hParameter == null)
+                    var hMember = Effect.GetParameter(hParameter, i);
+                    if (hMember == null)
                         break;
 
-                    D3DXPARAMETER_DESC parameterDesc;
-                    Effect.GetParameterDesc(hParameter, out parameterDesc);
-                    var parameterName = Marshal.PtrToStringAnsi(new IntPtr(parameterDesc.Name));
-
-                    var field = type.GetField(parameterName, flags);
-                    if (field == null)
-                        field = type.GetField("_" + parameterName, flags);
-
-                    uint fieldOffset =
-                        (field == null)
-                            ? 0
-                            : (uint)Marshal.OffsetOf(type, field.Name).ToInt32();
-                    Type fieldType =
-                        (field == null)
-                            ? null
-                            : field.FieldType;
-
-                    CheckMemberBinding(hParameter, ref parameterDesc, parameterName, fieldType, fieldOffset);
+                    FixupMember(fixups, hMember, type, 0, ref uploadSize);
                 }
             }
 
-            private void ParameterError (ref D3DXPARAMETER_DESC parameterDesc, string parameterName, string message) {
-                Errors.Add(string.Format(
-                    "Error binding uniform {0} ({1} {2}): {3}",
-                    parameterName, parameterDesc.Class, parameterDesc.Type,
-                    message
-                ));
+            private FieldInfo FindField (Type type, string name) {
+                var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+                var result = type.GetField(name, flags);
+                if (result == null)
+                    result = type.GetField("_" + name, flags);
+                return result;
             }
 
-            private uint ComputeEffectiveSize (ref D3DXPARAMETER_DESC desc) {
+            private void FixupMember (
+                List<Fixup> fixups, void* hMember, 
+                Type type, int sourceOffset,
+                ref uint uploadSize
+            ) {
+                D3DXPARAMETER_DESC desc;
+                Effect.GetParameterDesc(hMember, out desc);
+
+                var offset = uploadSize;
+
+                var name = Marshal.PtrToStringAnsi(new IntPtr(desc.Name));
+                var field = FindField(type, name);
+                if (field == null)
+                    throw new Exception("No field found for " + name);
+
+                sourceOffset += Marshal.OffsetOf(type, field.Name).ToInt32();
+                // FIXME: Arrays
+                var valueSize = Marshal.SizeOf(field.FieldType);
+
                 switch (desc.Class) {
-                    // All scalars and vectors are rounded up to float4
+                    case D3DXPARAMETER_CLASS.MATRIX_COLUMNS:
+                    case D3DXPARAMETER_CLASS.MATRIX_ROWS:
+                        fixups.Add(new Fixup(
+                            sourceOffset, (int)offset, valueSize, (int)valueSize, 
+                            (desc.Class == D3DXPARAMETER_CLASS.MATRIX_ROWS)                            
+                        ));
+                        break;
+
                     case D3DXPARAMETER_CLASS.SCALAR:
                     case D3DXPARAMETER_CLASS.VECTOR:
-                        return 16 * desc.Rows;
-                    
-                    // All matrices are float4x4 in column-major order, which should be fine since XNA doesn't
-                    //  expose 3x3 matrices...
-                    case D3DXPARAMETER_CLASS.MATRIX_ROWS:
-                    case D3DXPARAMETER_CLASS.MATRIX_COLUMNS:
-                        return desc.SizeBytes;
+                        fixups.Add(new Fixup(
+                            sourceOffset, (int)offset, valueSize, (int)valueSize, 
+                            false
+                        ));
+                        break;
 
                     case D3DXPARAMETER_CLASS.STRUCT:
-                        throw new InvalidOperationException("Don't compute the size of a struct from the descriptor");
-                }
-
-                // FIXME
-                throw new NotImplementedException(desc.Class.ToString());
-            }
-
-            public void CheckMemberBinding (
-                void* hParameter, ref D3DXPARAMETER_DESC parameterDesc, string parameterName, Type type, uint fieldOffset
-            ) {
-                var uniformOffset = NextUniformOffset;
-
-                if (parameterDesc.Class == D3DXPARAMETER_CLASS.STRUCT) {
-                    if (type == null) {
-                        ParameterError(ref parameterDesc, parameterName, "No matching public field");
-                        return;
-                    } else if (uniformOffset != fieldOffset) {
-                        ParameterError(ref parameterDesc, parameterName, "Uniform offset " + uniformOffset + " != field offset " + fieldOffset);
-                        return;
-                    }
-
-                    // FIXME: Nested structs will have bad offsets
-                    CheckMemberBindings(hParameter, type);
-                    return;
-                }
-
-                var effectiveSize = ComputeEffectiveSize(ref parameterDesc);
-                NextUniformOffset += effectiveSize;
-
-                switch (parameterDesc.Class) {
-                    case D3DXPARAMETER_CLASS.SCALAR:
-                    case D3DXPARAMETER_CLASS.VECTOR:
-                    case D3DXPARAMETER_CLASS.MATRIX_COLUMNS:
-                    case D3DXPARAMETER_CLASS.MATRIX_ROWS:
-                        if (type == null) {
-                            ParameterError(ref parameterDesc, parameterName, "No matching public field");
-                            return;
-                        } else if (uniformOffset != fieldOffset) {
-                            ParameterError(ref parameterDesc, parameterName, "Uniform offset " + uniformOffset + " != field offset " + fieldOffset);
-                            return;
-                        }
-
-                        var managedSize = Marshal.SizeOf(type);
-                        if (effectiveSize < managedSize) {
-                            ParameterError(ref parameterDesc, parameterName, "Uniform size " + effectiveSize + " < field size " + managedSize);
-                            return;
-                        }
-
-                        if (parameterDesc.Class == D3DXPARAMETER_CLASS.SCALAR) {
-                            if (!type.IsPrimitive) {
-                                ParameterError(ref parameterDesc, parameterName, "Expected scalar");
-                                return;
-                            }
-                        }
-
-                        Results.Add(new BindingMember(
-                            parameterName, uniformOffset, effectiveSize, hParameter,
-                            parameterDesc.Class == D3DXPARAMETER_CLASS.MATRIX_ROWS
-                                ? BindingType.RowMajorMatrix
-                                : BindingType.Blittable
-                        ));
-
-                        return;
+                        FixupMembers(fixups, field.FieldType, hMember, sourceOffset, ref uploadSize);
+                        break;
 
                     case D3DXPARAMETER_CLASS.OBJECT:
-                        ParameterError(ref parameterDesc, parameterName, "Texture and sampler uniforms not supported");
-                        return;
+                        // FIXME: Texture2D?
+                        valueSize = 4;
+                        break;
 
                     default:
-                        throw new NotImplementedException(parameterDesc.Class.ToString());
+                        throw new NotImplementedException(desc.Class.ToString());
                 }
+
+                var paddedSize = ((valueSize + 15) / 16) * 16;
+                uploadSize += (uint)paddedSize;
             }
         }
     }

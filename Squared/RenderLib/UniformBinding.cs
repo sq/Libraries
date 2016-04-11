@@ -21,8 +21,6 @@ namespace Squared.Render {
             where T : struct
         {
             return (UniformBinding<T>)iub;
-
-            
         }
     }
 
@@ -48,6 +46,7 @@ namespace Squared.Render {
         private readonly ID3DXEffect pEffect;
         private readonly void*       hParameter;
         private readonly Fixup[]     Fixups;
+        private readonly uint        UploadSize;
 
         // The latest value is written into this buffer
         private readonly SafeBuffer  ScratchBuffer;
@@ -73,6 +72,7 @@ namespace Squared.Render {
 
             var layout = new Layout(Type, pEffect, hParameter);
             Fixups = layout.Fixups;
+            UploadSize = layout.UploadSize;
 
             ScratchBuffer = new Storage();
             UploadBuffer = new Storage();
@@ -124,14 +124,20 @@ namespace Squared.Render {
 
             // Fix-up matrices because the in-memory order is transposed :|
             foreach (var fixup in Fixups) {
+                var pSource = (pScratch + fixup.FromOffset);
+                var pDest = (pUpload + fixup.ToOffset);
+
+                if (fixup.TransposeMatrix)
+                    InPlaceTranspose((float*)pSource);
+
                 Buffer.MemoryCopy(
-                    (pScratch + fixup.SourceOffset).ToPointer(),
-                    (pUpload + fixup.DestinationOffset).ToPointer(),
-                    fixup.Count, fixup.Count
+                    pSource.ToPointer(),
+                    pDest.ToPointer(),
+                    fixup.DataSize, fixup.DataSize
                 );
             }
 
-            // pEffect.SetRawValue(hParameter, pBuffer.ToPointer(), 0, (uint)TotalSize);
+            pEffect.SetRawValue(hParameter, pUpload.ToPointer(), 0, UploadSize);
 
             ValueIsDirty = false;
         }

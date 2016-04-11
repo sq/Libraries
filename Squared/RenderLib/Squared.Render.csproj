@@ -138,6 +138,7 @@
     <Compile Include="BufferGenerator.cs" />
     <Compile Include="Tracing.cs" />
     <Compile Include="UniformBinding.cs" />
+    <Compile Include="UniformBindingLayout.cs" />
   </ItemGroup>
   <ItemGroup>
     <NestedContentProject Include="Content\Content.contentproj">

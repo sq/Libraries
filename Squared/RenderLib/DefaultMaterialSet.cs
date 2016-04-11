@@ -14,28 +14,10 @@ using System.Runtime.InteropServices;
 namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential)]
     public struct ViewTransform {
-        private Vector4 _Scale;
-        private Vector4 _Position;
-        public  Matrix Projection;
-        public  Matrix ModelView;
-
-        public Vector2 Scale {
-            get {
-                return new Vector2(_Scale.X, _Scale.Y);
-            }
-            set {
-                _Scale = new Vector4(value, 1, 1);
-            }
-        }
-
-        public Vector2 Position {
-            get {
-                return new Vector2(_Position.X, _Position.Y);
-            }
-            set {
-                _Position = new Vector4(value, 0, 0);
-            }
-        }
+        public Vector2 Scale;
+        public Vector2 Position;
+        public Matrix Projection;
+        public Matrix ModelView;
 
         public static readonly ViewTransform Default = new ViewTransform {
             Scale = Vector2.One,
