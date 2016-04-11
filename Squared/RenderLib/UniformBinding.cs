@@ -183,7 +183,8 @@ namespace Squared.Render {
             }
 
             // HACK: Bypass the COM wrapper and invoke directly from the vtable.
-            pSetRawValue(pUnboxedEffect, hParameter, pUpload.ToPointer(), 0, UploadSize);
+            var hr = pSetRawValue(pUnboxedEffect, hParameter, pUpload.ToPointer(), 0, UploadSize);
+            Marshal.ThrowExceptionForHR(hr);
             // pEffect.SetRawValue(hParameter, pUpload.ToPointer(), 0, UploadSize);
 
             IsDirty = false;
