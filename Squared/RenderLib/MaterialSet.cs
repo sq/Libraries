@@ -258,6 +258,7 @@ namespace Squared.Render {
                     return existing.Cast<T>();
 
                 var result = UniformBinding<T>.TryCreate(effect, uniformName);
+                UniformBindings.Add(key, result);
                 return result;
             }
         }
@@ -273,6 +274,12 @@ namespace Squared.Render {
         }
 
         public virtual void Dispose () {
+            lock (UniformBindings) {
+                foreach (var kvp in UniformBindings)
+                    kvp.Value.Dispose();
+                UniformBindings.Clear();
+            }
+
             lock (Lock)
             foreach (var material in AllMaterials)
                 material.Dispose();
