@@ -269,10 +269,6 @@ namespace Squared.Render.Evil {
             technique_pComPtr = typeof(EffectTechnique).GetField("pComPtr", BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
-        public static object GetBoxedID3DXEffect (this Effect effect) {
-            return pComPtr.GetValue(effect);
-        }
-
         public static unsafe void* GetUnboxedID3DXEffect (this Effect effect) {
             return Pointer.Unbox(pComPtr.GetValue(effect));
         }

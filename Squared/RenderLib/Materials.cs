@@ -16,7 +16,8 @@ namespace Squared.Render {
         public readonly Effect Effect;
         public readonly bool   OwnsEffect;
 
-        internal readonly ID3DXEffect COMEffect;
+        public readonly Thread OwningThread;
+        private readonly ID3DXEffect _COMEffect;
 
         public readonly DefaultMaterialSetEffectParameters  Parameters;
 
@@ -52,12 +53,14 @@ namespace Squared.Render {
                 Effect = effect;
             }
 
+            OwningThread = Thread.CurrentThread;
+
             // FIXME: This should probably never be null.
             if (Effect != null) {
                 Parameters = new DefaultMaterialSetEffectParameters(Effect);
-                COMEffect = Effect.GetID3DXEffect();
+                _COMEffect = Effect.GetID3DXEffect();
             } else {
-                COMEffect = null;
+                _COMEffect = null;
             }
 
             BeginHandlers = beginHandlers;
@@ -85,6 +88,15 @@ namespace Squared.Render {
                 Effect, null,
                 newBeginHandlers, newEndHandlers
             );
+        }
+
+        public ID3DXEffect COMEffect {
+            get {
+                if (Thread.CurrentThread != OwningThread)
+                    throw new InvalidOperationException("Using the ID3DXEffect from a different thread is not gonna work.");
+
+                return _COMEffect;
+            }
         }
 
         private void CheckDevice (DeviceManager deviceManager) {
