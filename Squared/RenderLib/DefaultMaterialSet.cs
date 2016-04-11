@@ -139,76 +139,75 @@ namespace Squared.Render {
             BuiltInShaders = new ResourceContentManager(serviceProvider, Shaders.ResourceManager);
 #endif
 
-            Clear = new DelegateMaterial(
-                new NullMaterial(),
-                new Action<DeviceManager>[] { (dm) => ApplyShaderVariables() }, 
-                null
+            Clear = new Material(
+                null, null, 
+                new Action<DeviceManager>[] { (dm) => ApplyShaderVariables() }
             );
 
    
             var bitmapShader = BuiltInShaders.Load<Effect>("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load<Effect>("SquaredGeometryShader");
             
-            ScreenSpaceBitmap = new EffectMaterial(
+            ScreenSpaceBitmap = new Material(
                 bitmapShader,
                 "ScreenSpaceBitmapTechnique"
             );
 
-            WorldSpaceBitmap = new EffectMaterial(
+            WorldSpaceBitmap = new Material(
                 bitmapShader,
                 "WorldSpaceBitmapTechnique"
             );
 
-            ScreenSpaceBitmapWithDiscard = new EffectMaterial(
+            ScreenSpaceBitmapWithDiscard = new Material(
                 bitmapShader,
                 "ScreenSpaceBitmapWithDiscardTechnique"
             );
 
-            WorldSpaceBitmapWithDiscard = new EffectMaterial(
+            WorldSpaceBitmapWithDiscard = new Material(
                 bitmapShader,
                 "WorldSpaceBitmapWithDiscardTechnique"
             );
 
-            ScreenSpaceGeometry = new EffectMaterial(
+            ScreenSpaceGeometry = new Material(
                 geometryShader,
                 "ScreenSpaceUntextured"
             );
 
-            WorldSpaceGeometry = new EffectMaterial(
+            WorldSpaceGeometry = new Material(
                 geometryShader,
                 "WorldSpaceUntextured"
             );
             
             var lightmapShader = BuiltInShaders.Load<Effect>("Lightmap");
 
-            ScreenSpaceLightmappedBitmap = new EffectMaterial(
+            ScreenSpaceLightmappedBitmap = new Material(
                 lightmapShader,
                 "ScreenSpaceLightmappedBitmap"
             );
 
-            WorldSpaceLightmappedBitmap = new EffectMaterial(
+            WorldSpaceLightmappedBitmap = new Material(
                 lightmapShader,
                 "WorldSpaceLightmappedBitmap"
             );
 
             var blurShader = BuiltInShaders.Load<Effect>("GaussianBlur");
 
-            ScreenSpaceHorizontalGaussianBlur5Tap = new EffectMaterial(
+            ScreenSpaceHorizontalGaussianBlur5Tap = new Material(
                 blurShader,
                 "ScreenSpaceHorizontalGaussianBlur5Tap"
             );
 
-            ScreenSpaceVerticalGaussianBlur5Tap = new EffectMaterial(
+            ScreenSpaceVerticalGaussianBlur5Tap = new Material(
                 blurShader,
                 "ScreenSpaceVerticalGaussianBlur5Tap"
             );
 
-            WorldSpaceHorizontalGaussianBlur5Tap = new EffectMaterial(
+            WorldSpaceHorizontalGaussianBlur5Tap = new Material(
                 blurShader,
                 "WorldSpaceHorizontalGaussianBlur5Tap"
             );
 
-            WorldSpaceVerticalGaussianBlur5Tap = new EffectMaterial(
+            WorldSpaceVerticalGaussianBlur5Tap = new Material(
                 blurShader,
                 "WorldSpaceVerticalGaussianBlur5Tap"
             );
@@ -316,35 +315,23 @@ namespace Squared.Render {
         }
 
         private static void ApplyTimeToMaterial (Material m, float time) {
-            var em = m as IEffectMaterial;
-
-            if (em == null)
+            if (m.Effect == null)
                 return;
 
-            var e = em.Effect;
-            if (e == null)
-                return;
-
-            var p = em.Parameters.Time;
+            var p = m.Parameters.Time;
             if (p != null)
                 p.SetValue(time);
         }
 
         private static void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
-            var em = m as IEffectMaterial;
-
-            if (em == null)
+            if (m.Effect == null)
                 return;
 
-            var e = em.Effect;
-            if (e == null)
-                return;
+            m.Parameters.ViewportScale.SetValue(viewTransform.Scale);
+            m.Parameters.ViewportPosition.SetValue(viewTransform.Position);
 
-            em.Parameters.ViewportScale.SetValue(viewTransform.Scale);
-            em.Parameters.ViewportPosition.SetValue(viewTransform.Position);
-
-            em.Parameters.ProjectionMatrix.SetValue(viewTransform.Projection);
-            em.Parameters.ModelViewMatrix.SetValue(viewTransform.ModelView);
+            m.Parameters.ProjectionMatrix.SetValue(viewTransform.Projection);
+            m.Parameters.ModelViewMatrix.SetValue(viewTransform.ModelView);
         }
 
         /// <summary>

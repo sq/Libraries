@@ -132,18 +132,16 @@ namespace Squared.Render.Convenience {
             };
         }
 
-        public static DelegateMaterial SetStates (
+        public static Material SetStates (
             this Material inner, 
             RasterizerState rasterizerState = null,
             DepthStencilState depthStencilState = null,
             BlendState blendState = null
         ) {
-            return new DelegateMaterial(
-                inner,
+            return inner.WrapWithHandlers(
                 new [] {
                     MakeDelegate(rasterizerState, depthStencilState, blendState)
-                },
-                new Action<DeviceManager>[0]
+                }
             );
         }
     }

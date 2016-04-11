@@ -11,45 +11,113 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.Render {
-    public interface IDerivedMaterial {
-        Material BaseMaterial { get; }
-    }
-
-    public class NullMaterial : Material {
-        public NullMaterial()
-            : base() {
-        }
-
-        public override void Begin(DeviceManager deviceManager) {
-        }
-
-        public override void End(DeviceManager deviceManager) {
-        }
-    }
-
     public class Material : IDisposable {
-        private static int _NextMaterialID;
+        public readonly Effect Effect;
+        public readonly bool OwnsEffect;
 
+        public readonly DefaultMaterialSetEffectParameters Parameters;
+
+        public readonly Action<DeviceManager>[] BeginHandlers;
+        public readonly Action<DeviceManager>[] EndHandlers;
+
+        private static int _NextMaterialID;
         public readonly int MaterialID;
 
         protected bool _IsDisposed;
 
-        public Material () {
+        private Material () {
             MaterialID = Interlocked.Increment(ref _NextMaterialID);
             
             _IsDisposed = false;
         }
 
-        public virtual void Begin (DeviceManager deviceManager) {
+        public Material (
+            Effect effect, string techniqueName = null, 
+            Action<DeviceManager>[] beginHandlers = null,
+            Action<DeviceManager>[] endHandlers = null
+        ) : this() {
+            if (techniqueName != null) {
+                Effect = effect.Clone();
+                var technique = Effect.Techniques[techniqueName];
+                
+                if (technique != null)
+                    Effect.CurrentTechnique = technique;
+                else {
+                    throw new ArgumentException("techniqueName");
+                }
+            } else {
+                Effect = effect;
+            }
+
+            // FIXME: This should probably never be null.
+            if (Effect != null)
+                Parameters = new DefaultMaterialSetEffectParameters(Effect);
+
+            BeginHandlers = beginHandlers;
+            EndHandlers   = endHandlers;
         }
 
-        public virtual void End (DeviceManager deviceManager) {
+        public Material WrapWithHandlers (
+            Action<DeviceManager>[] additionalBeginHandlers = null,
+            Action<DeviceManager>[] additionalEndHandlers = null
+        ) {
+            var newBeginHandlers = BeginHandlers;
+            var newEndHandlers = EndHandlers;
+
+            if (newBeginHandlers == null)
+                newBeginHandlers = additionalBeginHandlers;
+            else if (additionalBeginHandlers != null)
+                newBeginHandlers = Enumerable.Concat(BeginHandlers, additionalBeginHandlers).ToArray();
+
+            if (newEndHandlers == null)
+                newEndHandlers = additionalEndHandlers;
+            else if (additionalEndHandlers != null)
+                newEndHandlers = Enumerable.Concat(additionalEndHandlers, EndHandlers).ToArray();
+
+            return new Material(
+                Effect, null,
+                newBeginHandlers, newEndHandlers
+            );
+        }
+
+        private void CheckDevice (DeviceManager deviceManager) {
+            if (Effect == null)
+                return;
+
+            if (Effect.GraphicsDevice != deviceManager.Device)
+                throw new InvalidOperationException();
+        }
+
+        public virtual void Begin (DeviceManager deviceManager) {
+            CheckDevice(deviceManager);
+
+            Flush();
+
+            if (BeginHandlers != null)
+                foreach (var handler in BeginHandlers)
+                    handler(deviceManager);
         }
 
         public virtual void Flush () {
+            if (Effect != null)
+                Effect.CurrentTechnique.Passes[0].Apply();
+        }
+
+        public virtual void End (DeviceManager deviceManager) {
+            CheckDevice(deviceManager);
+
+            if (EndHandlers != null)
+                foreach (var handler in EndHandlers)
+                    handler(deviceManager);
         }
 
         public virtual void Dispose () {
+            if (_IsDisposed)
+                return;
+
+            if (OwnsEffect)
+                Effect.Dispose();
+
             _IsDisposed = true;
         }
 
@@ -58,84 +126,19 @@ namespace Squared.Render {
                 return _IsDisposed;
             }
         }
-    }
-
-    public class DelegateMaterial : Material, IDerivedMaterial, IEffectMaterial {
-        public readonly Material BaseMaterial;
-        public readonly Action<DeviceManager>[] BeginHandlers;
-        public readonly Action<DeviceManager>[] EndHandlers;
-
-        public DelegateMaterial (
-            Action<DeviceManager>[] beginHandlers,
-            Action<DeviceManager>[] endHandlers
-        )
-            : base() {
-            BeginHandlers = beginHandlers;
-            EndHandlers = endHandlers;
-        }
-
-        public DelegateMaterial (
-            Material baseMaterial,
-            Action<DeviceManager>[] beginHandlers,
-            Action<DeviceManager>[] endHandlers
-        )
-            : this(beginHandlers, endHandlers) {
-            BaseMaterial = baseMaterial;
-        }
-
-        public override void Begin (DeviceManager deviceManager) {
-            if (BaseMaterial != null)
-                BaseMaterial.Begin(deviceManager);
-            else
-                base.Begin(deviceManager);
-
-            if (BeginHandlers != null)
-                foreach (var handler in BeginHandlers)
-                    handler(deviceManager);
-        }
-
-        public override void End (DeviceManager deviceManager) {
-            if (EndHandlers != null)
-                foreach (var handler in EndHandlers)
-                    handler(deviceManager);
-
-            if (BaseMaterial != null)
-                BaseMaterial.End(deviceManager);
-            else
-                base.End(deviceManager);
-        }
-
-        public override void Flush() {
-            BaseMaterial.Flush();
-            base.Flush();
-        }
-
-        Effect IEffectMaterial.Effect {
-            get {
-                var em = BaseMaterial as IEffectMaterial;
-                if (em != null)
-                    return em.Effect;
-                else
-                    return null;
-            }
-        }
-
-        DefaultMaterialSetEffectParameters IEffectMaterial.Parameters {
-            get {
-                var em = BaseMaterial as IEffectMaterial;
-                if (em != null)
-                    return em.Parameters;
-                else
-                    return null;
-            }
-        }
-
-        Material IDerivedMaterial.BaseMaterial {
-            get { return BaseMaterial; }
-        }
 
         public override string ToString () {
-            return string.Format("DelegateMaterial #{0} ({1})", base.MaterialID, BaseMaterial);
+            if (Effect == null) {
+                return "NullEffect #" + MaterialID;
+            } else {
+                return string.Format(
+                    "{3} #{0} ({1}.{2})", 
+                    MaterialID, Effect.Name, Effect.CurrentTechnique.Name, 
+                    ((BeginHandlers == null) && (EndHandlers == null))
+                        ? "EffectMaterial"
+                        : "DelegateEffectMaterial"
+                );
+            }
         }
     }
 }

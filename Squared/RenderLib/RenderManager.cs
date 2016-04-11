@@ -123,11 +123,7 @@ namespace Squared.Render {
 
         public DefaultMaterialSetEffectParameters CurrentParameters {
             get {
-                var em = CurrentMaterial as IEffectMaterial;
-                if (em != null)
-                    return em.Parameters;
-
-                return null;
+                return CurrentMaterial.Parameters;
             }
         }
 

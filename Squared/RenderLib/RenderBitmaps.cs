@@ -533,9 +533,9 @@ namespace Squared.Render {
                 var paramSize = manager.CurrentParameters.BitmapTextureSize;
                 var paramHalfTexel = manager.CurrentParameters.HalfTexel;
 
-                var em = (IEffectMaterial)manager.CurrentMaterial;
-                var paramTexture1 = em.Effect.Parameters["BitmapTexture"];
-                var paramTexture2 = em.Effect.Parameters["SecondTexture"];
+                var m = manager.CurrentMaterial;
+                var paramTexture1 = m.Effect.Parameters["BitmapTexture"];
+                var paramTexture2 = m.Effect.Parameters["SecondTexture"];
 
                 foreach (var nb in _NativeBatches) {
                     if (nb.TextureSet != currentTexture) {
