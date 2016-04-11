@@ -247,14 +247,10 @@ namespace Squared.Render {
         public UniformBinding<T> GetUniformBinding<T> (Material material, string uniformName, bool createNew)
             where T : struct 
         {
-            return GetUniformBinding<T>(material.Effect, uniformName, createNew);
-        }
+            var effect = material.Effect;
+            var key = new UniformBindingKey(effect, uniformName, typeof(T));
 
-        public UniformBinding<T> GetUniformBinding<T> (Effect effect, string uniformName, bool createNew)
-            where T : struct 
-        {
             lock (UniformBindings) {
-                var key = new UniformBindingKey(effect, uniformName, typeof(T));
                 IUniformBinding existing;
                 if (UniformBindings.TryGetValue(key, out existing))
                     return existing.Cast<T>();

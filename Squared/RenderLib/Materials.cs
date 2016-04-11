@@ -13,9 +13,9 @@ using Squared.Util;
 namespace Squared.Render {
     public class Material : IDisposable {
         public readonly Effect Effect;
-        public readonly bool OwnsEffect;
+        public readonly bool   OwnsEffect;
 
-        public readonly DefaultMaterialSetEffectParameters Parameters;
+        public readonly DefaultMaterialSetEffectParameters  Parameters;
 
         public readonly Action<DeviceManager>[] BeginHandlers;
         public readonly Action<DeviceManager>[] EndHandlers;
@@ -99,8 +99,12 @@ namespace Squared.Render {
         }
 
         public virtual void Flush () {
-            if (Effect != null)
-                Effect.CurrentTechnique.Passes[0].Apply();
+            if (Effect != null) {
+                UniformBinding.FlushEffect(Effect);
+
+                var currentTechnique = Effect.CurrentTechnique;
+                currentTechnique.Passes[0].Apply();
+            }
         }
 
         public virtual void End (DeviceManager deviceManager) {

@@ -61,6 +61,7 @@
       <Name>SquaredBitmapShader</Name>
       <Importer>EffectImporter</Importer>
       <Processor>EffectProcessor</Processor>
+      <ProcessorParameters_DebugMode>Debug</ProcessorParameters_DebugMode>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -68,6 +69,7 @@
       <Name>SquaredGeometryShader</Name>
       <Importer>EffectImporter</Importer>
       <Processor>EffectProcessor</Processor>
+      <ProcessorParameters_DebugMode>Debug</ProcessorParameters_DebugMode>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -102,11 +104,13 @@
       <Name>GaussianBlur</Name>
       <Importer>EffectImporter</Importer>
       <Processor>EffectProcessor</Processor>
+      <ProcessorParameters_DebugMode>Debug</ProcessorParameters_DebugMode>
     </Compile>
     <Compile Include="Lightmap.fx">
       <Name>Lightmap</Name>
       <Importer>EffectImporter</Importer>
       <Processor>EffectProcessor</Processor>
+      <ProcessorParameters_DebugMode>Debug</ProcessorParameters_DebugMode>
     </Compile>
     <None Include="GeometryCommon.fxh">
       <Name>GeometryCommon</Name>

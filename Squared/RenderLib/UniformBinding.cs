@@ -4,16 +4,21 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Evil;
+using Squared.Util;
 
 namespace Squared.Render {
     public interface IUniformBinding : IDisposable {
-        Type   Type   { get; }
-        string Name   { get; }
-        Effect Effect { get; }
+        Type   Type    { get; }
+        string Name    { get; }
+        Effect Effect  { get; }
+        bool   IsDirty { get; }
+
+        void Flush ();
     }
 
     public static class UniformBindingExtensions {
@@ -53,8 +58,7 @@ namespace Squared.Render {
         // And then transferred and mutated in this buffer before being sent to D3D
         private readonly SafeBuffer  UploadBuffer;
 
-        private bool   ValueIsDirty;
-        
+        public  bool   IsDirty    { get; private set; }
         public  bool   IsDisposed { get; private set; }
         public  Effect Effect     { get; private set; }
         public  string Name       { get; private set; }
@@ -76,7 +80,9 @@ namespace Squared.Render {
 
             ScratchBuffer = new Storage();
             UploadBuffer = new Storage();
-            ValueIsDirty = false;
+            IsDirty = false;
+
+            UniformBinding.Register(effect, this);
         }
 
         public static UniformBinding<T> TryCreate (Effect effect, string uniformName) {
@@ -90,12 +96,12 @@ namespace Squared.Render {
 
         public void SetValue (T value) {
             ScratchBuffer.Write<T>(0, value);
-            ValueIsDirty = true;
+            IsDirty = true;
         }
 
         public void SetValue (ref T value) {
             ScratchBuffer.Write<T>(0, value);
-            ValueIsDirty = true;
+            IsDirty = true;
         }
 
         private void InPlaceTranspose (float* pMatrix) {
@@ -125,7 +131,7 @@ namespace Squared.Render {
         }
 
         public void Flush () {
-            if (!ValueIsDirty)
+            if (!IsDirty)
                 return;
 
             var pScratch = ScratchBuffer.DangerousGetHandle();
@@ -148,7 +154,7 @@ namespace Squared.Render {
 
             pEffect.SetRawValue(hParameter, pUpload.ToPointer(), 0, UploadSize);
 
-            ValueIsDirty = false;
+            IsDirty = false;
         }
 
         private static bool IsStructure (Type type) {
@@ -163,6 +169,41 @@ namespace Squared.Render {
             ScratchBuffer.Dispose();
             UploadBuffer.Dispose();
             Marshal.ReleaseComObject(pEffect);
+        }
+    }
+
+    public static class UniformBinding {
+        private static readonly ReaderWriterLock Lock = new ReaderWriterLock();
+        private static readonly Dictionary<Effect, List<IUniformBinding>> Bindings =
+            new Dictionary<Effect, List<IUniformBinding>>(new ReferenceComparer<Effect>());
+
+        public static void FlushEffect (Effect effect) {
+            Lock.AcquireReaderLock(-1);
+
+            try {
+                List<IUniformBinding> bindings;
+                if (!Bindings.TryGetValue(effect, out bindings))
+                    return;
+
+                foreach (var binding in bindings)
+                    binding.Flush();
+            } finally {
+                Lock.ReleaseReaderLock();
+            }
+        }
+
+        internal static void Register (Effect effect, IUniformBinding binding) {
+            Lock.AcquireWriterLock(-1);
+
+            try {
+                List<IUniformBinding> bindings;
+                if (!Bindings.TryGetValue(effect, out bindings)) {
+                    Bindings[effect] = bindings = new List<IUniformBinding>();
+                }
+                bindings.Add(binding);
+            } finally {
+                Lock.ReleaseWriterLock();
+            }
         }
     }
 }

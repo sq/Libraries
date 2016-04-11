@@ -573,7 +573,7 @@ namespace Squared.Render {
                     }
 
                     var primitiveCount = nb.VertexCount / 2;
-                    
+
                     device.DrawIndexedPrimitives(
                         PrimitiveType.TriangleList, 0, 
                         swb.HardwareVertexOffset + nb.LocalVertexOffset, 

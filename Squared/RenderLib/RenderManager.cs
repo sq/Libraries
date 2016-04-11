@@ -70,8 +70,11 @@ namespace Squared.Render {
 
                     deviceManager.CurrentMaterial = material;
 
-                    if (material != null)
+                    if (material != null) {
                         material.Begin(deviceManager);
+                    }
+                } else {
+                    material.Flush();
                 }
             }
 
