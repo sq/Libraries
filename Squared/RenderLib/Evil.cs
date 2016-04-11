@@ -128,191 +128,183 @@ namespace Squared.Render.Evil {
         }
     }
 
-    public static class EffectUtils {
-        public static class Guids {
-            // {017C18AC-103F-4417-8C51-6BF6EF1E56BE}
-            public static Guid ID3DXBaseEffect = new Guid(
-                0x17c18ac, 0x103f, 0x4417, 0x8c, 0x51, 0x6b, 0xf6, 0xef, 0x1e, 0x56, 0xbe
-            );
-            // {F6CEB4B3-4E4C-40dd-B883-8D8DE5EA0CD5}
-            public static Guid ID3DXEffect = new Guid(
-                0xf6ceb4b3, 0x4e4c, 0x40dd, 0xb8, 0x83, 0x8d, 0x8d, 0xe5, 0xea, 0xc, 0xd5
-            );
-        }
+    [Guid("F6CEB4B3-4E4C-40dd-B883-8D8DE5EA0CD5")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [SuppressUnmanagedCodeSecurity]
+    public unsafe interface ID3DXEffect {
+        // HACK: ENORMOUS HACK: Apparently ID3DXEffect::QueryInterface doesn't support ID3DXBaseEffect. So...
 
-        public class Invalid {
-            Invalid () {
-                throw new InvalidOperationException("This method is not exposed");
-            }
-        }
+        //
+        // ID3DXBaseEffect
+        //
 
-        [Guid("F6CEB4B3-4E4C-40dd-B883-8D8DE5EA0CD5")]
-        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-        public unsafe interface ID3DXEffect {
-            // HACK: ENORMOUS HACK: Apparently ID3DXEffect::QueryInterface doesn't support ID3DXBaseEffect. So...
+        void GetDesc (out void* pDesc);
+        void GetParameterDesc (void* hParameter, out void* pDesc);
+        void GetTechniqueDesc (void* hTechnique, out void* pDesc);
+        void GetPassDesc (void* hPass, out void* pDesc);
+        void GetFunctionDesc (void* hShader, out void* pDesc);
 
-            //
-            // ID3DXBaseEffect
-            //
+        [PreserveSig]
+        void* GetParameter (void* hParameter, uint index);
+        [PreserveSig]
+        void* GetParameterByName (
+            void* hParameter, 
+            [MarshalAs(UnmanagedType.LPStr), In]
+            string name
+        );
+        [PreserveSig]
+        void* GetParameterBySemantic (
+            void* hParameter, 
+            [MarshalAs(UnmanagedType.LPStr), In]
+            string name
+        );
+        [PreserveSig]
+        void* GetParameterElement (void* hParameter, uint index);
 
-            void GetDesc (out void* pDesc);
-            void GetParameterDesc (void* hParameter, out void* pDesc);
-            void GetTechniqueDesc (void* hTechnique, out void* pDesc);
-            void GetPassDesc (void* hPass, out void* pDesc);
-            void GetFunctionDesc (void* hShader, out void* pDesc);
+        [PreserveSig]
+        void* GetTechnique (uint index);
+        [PreserveSig]
+        void* GetTechniqueByName (
+            [MarshalAs(UnmanagedType.LPStr), In]
+            string name
+        );
 
-            [PreserveSig]
-            void* GetParameter (void* hParameter, uint index);
-            [PreserveSig]
-            void* GetParameterByName (
-                void* hParameter, 
-                [MarshalAs(UnmanagedType.LPStr)]
-                string name
-            );
-            [PreserveSig]
-            void* GetParameterBySemantic (
-                void* hParameter, 
-                [MarshalAs(UnmanagedType.LPStr)]
-                string name
-            );
-            [PreserveSig]
-            void* GetParameterElement (void* hParameter, uint index);
+        [PreserveSig]
+        void* GetPass (void* hTechnique, uint index);
+        [PreserveSig]
+        void* GetPassByName (
+            void* hTechnique, 
+            [MarshalAs(UnmanagedType.LPStr), In]
+            string name
+        );
 
-            [PreserveSig]
-            void* GetTechnique (uint index);
-            [PreserveSig]
-            void* GetTechniqueByName (
-                [MarshalAs(UnmanagedType.LPStr)]
-                string name
-            );
+        [PreserveSig]
+        void* GetFunction (uint index);
+        [PreserveSig]
+        void* GetFunctionByName (
+            [MarshalAs(UnmanagedType.LPStr), In]
+            string name
+        );
 
-            [PreserveSig]
-            void* GetPass (void* hTechnique, uint index);
-            [PreserveSig]
-            void* GetPassByName (
-                void* hTechnique, 
-                [MarshalAs(UnmanagedType.LPStr)]
-                string name
-            );
+        [PreserveSig]
+        void* GetAnnotation (void* hObject, uint index);
+        [PreserveSig]
+        void* GetAnnotationByName (
+            void* hObject, 
+            [MarshalAs(UnmanagedType.LPStr), In]
+            string name
+        );
 
-            [PreserveSig]
-            void* GetFunction (uint index);
-            [PreserveSig]
-            void* GetFunctionByName (
-                [MarshalAs(UnmanagedType.LPStr)]
-                string name
-            );
+        void SetValue (void* hParameter, void* pData, uint bytes);
+        int GetValue (void* hParameter, void* pData, uint bytes);
 
-            [PreserveSig]
-            void* GetAnnotation (void* hObject, uint index);
-            [PreserveSig]
-            void* GetAnnotationByName (
-                void* hObject, 
-                [MarshalAs(UnmanagedType.LPStr)]
-                string name
-            );
+        void SetBool (void* hParameter, int b);
+        int GetBool (void* hParameter);
 
-            void SetValue (void* hParameter, void* pData, uint bytes);
-            void GetValue (void* hParameter, void* pData, uint bytes);
+        void SetBoolArray (void* hParameter, int* pB, uint count);
+        void GetBoolArray (void* hParameter, int* pB, uint count);
 
-            void SetBool (void* hParameter, int b);
-            void GetBool (void* hParameter, out int b);
+        void SetInt (void* hParameter, int i);
+        int GetInt (void* hParameter);
 
-            void SetBoolArray (void* hParameter, int* pB, uint count);
-            void GetBoolArray (void* hParameter, int* pB, uint count);
+        void SetIntArray (void* hParameter, int* pI, uint count);
+        void GetIntArray (void* hParameter, int* pI, uint count);
 
-            void SetInt (void* hParameter, int i);
-            void GetInt (void* hParameter, out int i);
+        void SetFloat (void* hParameter, float f);
+        float GetFloat (void* hParameter);
 
-            void SetIntArray (void* hParameter, int* pI, uint count);
-            void GetIntArray (void* hParameter, int* pI, uint count);
+        void SetFloatArray (void* hParameter, float* pF, uint count);
+        void GetFloatArray (void* hParameter, float* pF, uint count);
 
-            void SetFloat (void* hParameter, float f);
-            void GetFloat (void* hParameter, out float f);
+        // FIXME: Is D3DXVector4 equivalent to Vector4?
+        void SetVector (void* hParameter, [In] ref Vector4 v);
+        void GetVector (void* hParameter, out Vector4 v);
 
-            void SetFloatArray (void* hParameter, float* pF, uint count);
-            void GetFloatArray (void* hParameter, float* pF, uint count);
+        void SetVectorArray (void* hParameter, Vector4* pV, uint count);
+        void GetVectorArray (void* hParameter, Vector4* pV, uint count);
 
-            /*
-            FIXME: Map these out
+        // FIXME: Is D3DXMatrix equivalent to Matrix?
+        void SetMatrix (void* hParameter, [In] ref Matrix v);
+        void GetMatrix (void* hParameter, out Matrix v);
 
-            // Get/Set Parameters
-            STDMETHOD(SetVector)(THIS_ D3DXHANDLE hParameter, CONST D3DXVECTOR4* pVector) PURE;
-            STDMETHOD(GetVector)(THIS_ D3DXHANDLE hParameter, D3DXVECTOR4* pVector) PURE;
-            STDMETHOD(SetVectorArray)(THIS_ D3DXHANDLE hParameter, CONST D3DXVECTOR4* pVector, UINT Count) PURE;
-            STDMETHOD(GetVectorArray)(THIS_ D3DXHANDLE hParameter, D3DXVECTOR4* pVector, UINT Count) PURE;
-            STDMETHOD(SetMatrix)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix) PURE;
-            STDMETHOD(GetMatrix)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX* pMatrix) PURE;
-            STDMETHOD(SetMatrixArray)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix, UINT Count) PURE;
-            STDMETHOD(GetMatrixArray)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX* pMatrix, UINT Count) PURE;
-            STDMETHOD(SetMatrixPointerArray)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX** ppMatrix, UINT Count) PURE;
-            STDMETHOD(GetMatrixPointerArray)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX** ppMatrix, UINT Count) PURE;
-            STDMETHOD(SetMatrixTranspose)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix) PURE;
-            STDMETHOD(GetMatrixTranspose)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX* pMatrix) PURE;
-            STDMETHOD(SetMatrixTransposeArray)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix, UINT Count) PURE;
-            STDMETHOD(GetMatrixTransposeArray)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX* pMatrix, UINT Count) PURE;
-            STDMETHOD(SetMatrixTransposePointerArray)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX** ppMatrix, UINT Count) PURE;
-            STDMETHOD(GetMatrixTransposePointerArray)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX** ppMatrix, UINT Count) PURE;
-            STDMETHOD(SetString)(THIS_ D3DXHANDLE hParameter, LPCSTR pString) PURE;
-            STDMETHOD(GetString)(THIS_ D3DXHANDLE hParameter, LPCSTR* ppString) PURE;
-            STDMETHOD(SetTexture)(THIS_ D3DXHANDLE hParameter, LPDIRECT3DBASETEXTURE9 pTexture) PURE;
-            STDMETHOD(GetTexture)(THIS_ D3DXHANDLE hParameter, LPDIRECT3DBASETEXTURE9 *ppTexture) PURE;
-            STDMETHOD(GetPixelShader)(THIS_ D3DXHANDLE hParameter, LPDIRECT3DPIXELSHADER9 *ppPShader) PURE;
-            STDMETHOD(GetVertexShader)(THIS_ D3DXHANDLE hParameter, LPDIRECT3DVERTEXSHADER9 *ppVShader) PURE;
+        void SetMatrixArray (void* hParameter, Matrix* pV, uint count);
+        void GetMatrixArray (void* hParameter, Matrix* pV, uint count);
 
-            //Set Range of an Array to pass to device
-            //Useful for sending only a subrange of an array down to the device
-            STDMETHOD(SetArrayRange)(THIS_ D3DXHANDLE hParameter, UINT uStart, UINT uEnd) PURE; 
-            */
+        void SetMatrixPointerArray (void* hParameter, [In] ref Matrix* pV, uint count);
+        void GetMatrixPointerArray (void* hParameter, out Matrix* pV, uint count);
 
-            int GetPool (out void* ppPool);
+        void SetMatrixTranspose (void* hParameter, [In] ref Matrix v);
+        void GetMatrixTranspose (void* hParameter, out Matrix v);
 
-            int SetTechnique (void* hTechnique);
-            void* GetCurrentTechnique ();
+        void SetMatrixTransposeArray (void* hParameter, Matrix* pV, uint count);
+        void GetMatrixTransposeArray (void* hParameter, Matrix* pV, uint count);
 
-            /*
+        void SetMatrixTransposePointerArray (void* hParameter, [In] ref Matrix* pV, uint count);
+        void GetMatrixTransposePointerArray (void* hParameter, out Matrix* pV, uint count);
 
-    // Selecting and setting a technique
-    STDMETHOD(ValidateTechnique)(THIS_ D3DXHANDLE hTechnique) PURE;
-    STDMETHOD(FindNextValidTechnique)(THIS_ D3DXHANDLE hTechnique, D3DXHANDLE *pTechnique) PURE;
-    STDMETHOD_(BOOL, IsParameterUsed)(THIS_ D3DXHANDLE hParameter, D3DXHANDLE hTechnique) PURE;
+        void SetString (
+            void* hParameter,
+            [MarshalAs(UnmanagedType.LPStr), In]
+            string pString
+        );
 
-    // Using current technique
-    // Begin           starts active technique
-    // BeginPass       begins a pass
-    // CommitChanges   updates changes to any set calls in the pass. This should be called before
-    //                 any DrawPrimitive call to d3d
-    // EndPass         ends a pass
-    // End             ends active technique
-    STDMETHOD(Begin)(THIS_ UINT *pPasses, DWORD Flags) PURE;
-    STDMETHOD(BeginPass)(THIS_ UINT Pass) PURE;
-    STDMETHOD(CommitChanges)(THIS) PURE;
-    STDMETHOD(EndPass)(THIS) PURE;
-    STDMETHOD(End)(THIS) PURE;
+        void GetString (
+            void* hParameter,
+            [MarshalAs(UnmanagedType.LPStr), Out]
+            StringBuilder ppString
+        );
 
-    // Managing D3D Device
-    STDMETHOD(GetDevice)(THIS_ LPDIRECT3DDEVICE9* ppDevice) PURE;
-    STDMETHOD(OnLostDevice)(THIS) PURE;
-    STDMETHOD(OnResetDevice)(THIS) PURE;
+        void SetTexture (void* hParameter, void* pTexture);
+        void* GetTexture (void* hParameter);
 
-    // Logging device calls
-    STDMETHOD(SetStateManager)(THIS_ LPD3DXEFFECTSTATEMANAGER pManager) PURE;
-    STDMETHOD(GetStateManager)(THIS_ LPD3DXEFFECTSTATEMANAGER *ppManager) PURE;
+        void* GetPixelShader (void* hParameter);
+        void* GetVertexShader (void* hParameter);
 
-    // Parameter blocks
-    STDMETHOD(BeginParameterBlock)(THIS) PURE;
-    STDMETHOD_(D3DXHANDLE, EndParameterBlock)(THIS) PURE;
-    STDMETHOD(ApplyParameterBlock)(THIS_ D3DXHANDLE hParameterBlock) PURE;
-    STDMETHOD(DeleteParameterBlock)(THIS_ D3DXHANDLE hParameterBlock) PURE;
+        void SetArrayRange (void* hParameter, uint uStart, uint uEnd);
 
-    // Cloning
-    STDMETHOD(CloneEffect)(THIS_ LPDIRECT3DDEVICE9 pDevice, LPD3DXEFFECT* ppEffect) PURE;
+        void* GetPool ();
+
+        void SetTechnique (void* hTechnique);
+        [PreserveSig]
+        void* GetCurrentTechnique ();
+
+        void ValidateTechnique (void* hTechnique);
+        void* FindNextValidTechnique (void* hTechnique);
+
+        [PreserveSig]
+        bool IsParameterUsed (void* hParameter, void* hTechnique);
+
+        void Begin (uint* pPasses, UInt32 flags);
+        void BeginPass (uint pass);
+        void CommitChanges ();
+        void EndPass ();
+        void End ();
+
+        /*
+            // Managing D3D Device
+            STDMETHOD(GetDevice)(THIS_ LPDIRECT3DDEVICE9* ppDevice) PURE;
+            STDMETHOD(OnLostDevice)(THIS) PURE;
+            STDMETHOD(OnResetDevice)(THIS) PURE;
+
+            // Logging device calls
+            STDMETHOD(SetStateManager)(THIS_ LPD3DXEFFECTSTATEMANAGER pManager) PURE;
+            STDMETHOD(GetStateManager)(THIS_ LPD3DXEFFECTSTATEMANAGER *ppManager) PURE;
+
+            // Parameter blocks
+            STDMETHOD(BeginParameterBlock)(THIS) PURE;
+            STDMETHOD_(D3DXHANDLE, EndParameterBlock)(THIS) PURE;
+            STDMETHOD(ApplyParameterBlock)(THIS_ D3DXHANDLE hParameterBlock) PURE;
+            STDMETHOD(DeleteParameterBlock)(THIS_ D3DXHANDLE hParameterBlock) PURE;
+
+            // Cloning
+            STDMETHOD(CloneEffect)(THIS_ LPDIRECT3DDEVICE9 pDevice, LPD3DXEFFECT* ppEffect) PURE;
     
-    // Fast path for setting variables directly in ID3DXEffect
-STDMETHOD(SetRawValue)(THIS_ D3DXHANDLE hParameter, LPCVOID pData, UINT ByteOffset, UINT Bytes) PURE;
-            */
-        }
+            // Fast path for setting variables directly in ID3DXEffect
+            STDMETHOD(SetRawValue)(THIS_ D3DXHANDLE hParameter, LPCVOID pData, UINT ByteOffset, UINT Bytes) PURE;
+        */
+    }
 
+    public static class EffectUtils {
         internal static readonly FieldInfo pComPtr, _handle;
 
         static EffectUtils () {
@@ -328,20 +320,8 @@ STDMETHOD(SetRawValue)(THIS_ D3DXHANDLE hParameter, LPCVOID pData, UINT ByteOffs
         }
 
         public static unsafe void* GetD3DXHandle (this EffectParameter parameter) {
-            return (void*)Pointer.Unbox(_handle.GetValue(parameter));
+            return Pointer.Unbox(_handle.GetValue(parameter));
         }
-
-        /*
-        /// <summary>
-        /// Make sure to use Marshal.Release when you're done!
-        /// </summary>
-        public static unsafe void* GetID3DXEffect (this EffectParameter parameter) {
-            var baseEffect = Pointer.Unbox(pEffect.GetValue(parameter));
-            IntPtr result;
-            var hr = Marshal.QueryInterface(new IntPtr(baseEffect), ref Guids.ID3DXEffectID3DXEffect, out result);
-            return result.ToPointer();
-        }
-        */
     }
 #endif
 
