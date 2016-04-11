@@ -14,29 +14,56 @@ namespace Squared.Render {
     }
 
     public unsafe class UniformBinding<T> : IUniformBinding {
+        public class BindingMember {
+            public readonly string Name;
+            public readonly uint   Offset;
+            public readonly uint   Size;
+
+            public BindingMember (string name, uint offset, uint size) {
+                Name = name;
+                Offset = offset;
+                Size = size;
+            }
+        }
+
         private class BindingCheckState {
             public readonly ID3DXEffect Effect;
             public readonly List<string> Errors = new List<string>();
+            public readonly List<BindingMember> Results;
+
+            private readonly string CheckEffectName;
+            private readonly string CheckUniformName;
 
             public uint NextUniformOffset = 0;
 
-            public BindingCheckState (ID3DXEffect pEffect) {
+            public BindingCheckState (
+                ID3DXEffect pEffect, List<BindingMember> results, 
+                string effectName, string uniformName
+            ) {
                 Effect = pEffect;
+                Results = results;
+                CheckEffectName = effectName;
+                CheckUniformName = uniformName;
             }
 
-            public bool Finish () {
+            public void Finish () {
                 if (Errors.Count < 1)
-                    return true;
+                    return;
 
                 var sb = new StringBuilder();
-                sb.AppendLine("Uniform binding failed:");
+                sb.AppendFormat(
+                    "Uniform binding failed for {0}{1}{2}",
+                    CheckEffectName,
+                    (CheckUniformName != null)
+                        ? "." + CheckUniformName
+                        : "",
+                    Environment.NewLine
+                );
                 foreach (var error in Errors)
                     sb.AppendLine(error);
 
                 Console.WriteLine(sb.ToString());
                 throw new Exception(sb.ToString());
-
-                return false;
             }
 
             public void CheckMemberBindings (
@@ -86,21 +113,34 @@ namespace Squared.Render {
                     case D3DXPARAMETER_CLASS.VECTOR:
                     case D3DXPARAMETER_CLASS.MATRIX_COLUMNS:
                     case D3DXPARAMETER_CLASS.MATRIX_ROWS:
-                        if (type == null)
+                        if (type == null) {
                             ParameterError(ref parameterDesc, parameterName, "No matching public field");
-                        if (uniformOffset != fieldOffset)
+                            return;
+                        } else if (uniformOffset != fieldOffset) {
                             ParameterError(ref parameterDesc, parameterName, "Uniform offset " + uniformOffset + " != field offset " + fieldOffset);
+                            return;
+                        }
 
                         var managedSize = Marshal.SizeOf(type);
-                        if (managedSize != parameterDesc.SizeBytes)
+                        if (managedSize != parameterDesc.SizeBytes) {
                             ParameterError(ref parameterDesc, parameterName, "Uniform size " + parameterDesc.SizeBytes + " != field size " + managedSize);
+                            return;
+                        }
 
                         if (parameterDesc.Class == D3DXPARAMETER_CLASS.STRUCT) {
                             CheckMemberBindings(hParameter, type);
+                            return;
+
                         } else if (parameterDesc.Class == D3DXPARAMETER_CLASS.SCALAR) {
-                            if (!type.IsPrimitive)
+                            if (!type.IsPrimitive) {
                                 ParameterError(ref parameterDesc, parameterName, "Expected scalar");
+                                return;
+                            }
                         }
+
+                        Results.Add(new BindingMember(
+                            parameterName, uniformOffset, parameterDesc.SizeBytes
+                        ));
 
                         return;
 
@@ -116,6 +156,11 @@ namespace Squared.Render {
 
                         if (type == null)
                             ParameterError(ref parameterDesc, parameterName, "No matching public field");
+
+                        Results.Add(new BindingMember(
+                            parameterName, uniformOffset, parameterDesc.SizeBytes
+                        ));
+
                         return;
 
                     default:
@@ -124,9 +169,11 @@ namespace Squared.Render {
             }
         }
 
-        private readonly ID3DXEffect        pEffect;
-        private readonly void*              hParameter;
-        private readonly D3DXPARAMETER_DESC ParameterDesc;
+        public  readonly List<BindingMember> Members = new List<BindingMember>();
+
+        private readonly ID3DXEffect         pEffect;
+        private readonly void*               hParameter;
+        private readonly D3DXPARAMETER_DESC  ParameterDesc;
         
         public bool IsDisposed { get; private set; }
         public Effect Effect { get; private set; }
@@ -144,7 +191,7 @@ namespace Squared.Render {
 
             pEffect = effect.GetID3DXEffect();
 
-            var state = new BindingCheckState(pEffect);
+            var state = new BindingCheckState(pEffect, Members, effect.CurrentTechnique.Name, null);
             state.CheckMemberBindings(null, t);
             state.Finish();
         }
@@ -158,7 +205,7 @@ namespace Squared.Render {
             hParameter = pEffect.GetParameterByName(null, uniformName);
             pEffect.GetParameterDesc(hParameter, out ParameterDesc);
 
-            var state = new BindingCheckState(pEffect);
+            var state = new BindingCheckState(pEffect, Members, effect.CurrentTechnique.Name, uniformName);
 
             if (ParameterDesc.StructMembers > 0) {
                 if (!IsStructure(t))

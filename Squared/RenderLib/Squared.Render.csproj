@@ -117,6 +117,7 @@
   <ItemGroup>
     <Compile Include="BatchCombiner.cs" />
     <Compile Include="Convenience.cs" />
+    <Compile Include="DefaultMaterialSet.cs" />
     <Compile Include="EffectMaterial.cs" />
     <Compile Include="Materials.cs" />
     <Compile Include="MaterialSet.cs" />
