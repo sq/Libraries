@@ -589,6 +589,9 @@ namespace Squared.Render {
 
                 var task = new Task(this, null);
                 foreach (var batch in batches) {
+                    if (batch == null)
+                        continue;
+
                     task.Batch = batch;
                     buffer.Data[j++] = task;
 
