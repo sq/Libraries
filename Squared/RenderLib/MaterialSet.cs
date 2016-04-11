@@ -116,9 +116,12 @@ namespace Squared.Render {
         public readonly Func<IEnumerable<Material>>[] AllMaterialSequences;
         public readonly Func<IMaterialCollection>[] AllMaterialCollections;
 
+        // Making a dictionary larger increases performance
+        private const int BindingDictionaryCapacity = 4096;
+
         private readonly Dictionary<UniformBindingKey, IUniformBinding> UniformBindings = 
             new Dictionary<UniformBindingKey, IUniformBinding>(
-                new UniformBindingKey.EqualityComparer()
+                BindingDictionaryCapacity, new UniformBindingKey.EqualityComparer()
             );
 
         public MaterialSetBase() 

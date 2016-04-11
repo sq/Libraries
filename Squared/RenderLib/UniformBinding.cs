@@ -180,6 +180,9 @@ namespace Squared.Render {
     }
 
     public static class UniformBinding {
+        // Making a dictionary larger increases performance
+        private const int BindingDictionaryCapacity = 4096;
+
         private static readonly ReaderWriterLock Lock = new ReaderWriterLock();
         private static readonly Dictionary<Effect, List<IUniformBinding>> Bindings =
             new Dictionary<Effect, List<IUniformBinding>>(new ReferenceComparer<Effect>());
