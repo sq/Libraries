@@ -332,6 +332,9 @@ namespace Squared.Render {
                 return;
 
             var ub = GetUniformBinding<ViewTransform>(m, "Viewport", true);
+            if (ub == null)
+                return;
+
             ub.SetValue(ref viewTransform);
             ub.Flush();
 
@@ -423,10 +426,12 @@ namespace Squared.Render {
         public DefaultMaterialSetEffectParameters (Effect effect) {
             var viewport = effect.Parameters["Viewport"];
 
-            ViewportPosition = viewport.StructureMembers["Position"];
-            ViewportScale = viewport.StructureMembers["Scale"];
-            ProjectionMatrix = viewport.StructureMembers["Projection"];
-            ModelViewMatrix = viewport.StructureMembers["ModelView"];
+            if (viewport != null) {
+                ViewportPosition = viewport.StructureMembers["Position"];
+                ViewportScale = viewport.StructureMembers["Scale"];
+                ProjectionMatrix = viewport.StructureMembers["Projection"];
+                ModelViewMatrix = viewport.StructureMembers["ModelView"];
+            }
 
             BitmapTextureSize = effect.Parameters["BitmapTextureSize"];
             HalfTexel = effect.Parameters["HalfTexel"];

@@ -260,8 +260,7 @@ namespace Squared.Render {
                     return existing.Cast<T>();
 
                 if (createNew) {
-                    var result = new UniformBinding<T>(effect, uniformName);
-
+                    var result = UniformBinding<T>.TryCreate(effect, uniformName);
                     UniformBindings.Add(key, result);
                     return result;
                 } else {

@@ -261,11 +261,11 @@ namespace Squared.Render.Evil {
     }
 
     public static class EffectUtils {
-        internal static readonly FieldInfo pComPtr, _handle;
+        internal static readonly FieldInfo pComPtr, technique_pComPtr;
 
         static EffectUtils () {
-            pComPtr = typeof(Effect).GetField("pComPtr", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            _handle = typeof(EffectParameter).GetField("_handle", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            pComPtr = typeof(Effect).GetField("pComPtr", BindingFlags.Instance | BindingFlags.NonPublic);
+            technique_pComPtr = typeof(EffectTechnique).GetField("pComPtr", BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
         public static unsafe ID3DXEffect GetID3DXEffect (this Effect effect) {
@@ -275,8 +275,11 @@ namespace Squared.Render.Evil {
             return typedObject;
         }
 
-        public static unsafe void* GetD3DXHandle (this EffectParameter parameter) {
-            return Pointer.Unbox(_handle.GetValue(parameter));
+        public static unsafe ID3DXEffect GetID3DXEffect (this EffectTechnique effectTechnique) {
+            var unboxedPointer = Pointer.Unbox(technique_pComPtr.GetValue(effectTechnique));
+            var obj = Marshal.GetObjectForIUnknown(new IntPtr(unboxedPointer));
+            var typedObject = (ID3DXEffect)obj;
+            return typedObject;
         }
     }
 #endif

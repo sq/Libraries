@@ -63,12 +63,12 @@ namespace Squared.Render {
         /// <summary>
         /// Bind a single named uniform of the effect as type T.
         /// </summary>
-        public UniformBinding (Effect effect, string uniformName) {
+        private UniformBinding (Effect effect, ID3DXEffect pEffect, void* hParameter) {
             Type = typeof(T);
 
             Effect = effect;
-            pEffect = effect.GetID3DXEffect();
-            hParameter = pEffect.GetParameterByName(null, uniformName);
+            this.pEffect = pEffect;
+            this.hParameter = hParameter;
 
             var layout = new Layout(Type, pEffect, hParameter);
             Fixups = layout.Fixups;
@@ -77,6 +77,15 @@ namespace Squared.Render {
             ScratchBuffer = new Storage();
             UploadBuffer = new Storage();
             ValueIsDirty = false;
+        }
+
+        public static UniformBinding<T> TryCreate (Effect effect, string uniformName) {
+            var pEffect = effect.GetID3DXEffect();
+            var hParameter = pEffect.GetParameterByName(null, uniformName);
+            if (hParameter == null)
+                return null;
+
+            return new UniformBinding<T>(effect, pEffect, hParameter);
         }
 
         public void SetValue (T value) {
