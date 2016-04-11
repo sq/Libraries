@@ -9,11 +9,33 @@ using Microsoft.Xna.Framework.Content;
 using System.Reflection;
 using Squared.Render.Convenience;
 using Squared.Util;
+using System.Runtime.InteropServices;
 
 namespace Squared.Render {
+    [StructLayout(LayoutKind.Sequential)]
     public struct ViewTransform {
-        public Vector2 Scale, Position;
-        public Matrix Projection, ModelView;
+        private Vector4 _Scale;
+        private Vector4 _Position;
+        public  Matrix Projection;
+        public  Matrix ModelView;
+
+        public Vector2 Scale {
+            get {
+                return new Vector2(_Scale.X, _Scale.Y);
+            }
+            set {
+                _Scale = new Vector4(value, 1, 1);
+            }
+        }
+
+        public Vector2 Position {
+            get {
+                return new Vector2(_Position.X, _Position.Y);
+            }
+            set {
+                _Position = new Vector4(value, 0, 0);
+            }
+        }
 
         public static readonly ViewTransform Default = new ViewTransform {
             Scale = Vector2.One,
@@ -323,15 +345,21 @@ namespace Squared.Render {
                 p.SetValue(time);
         }
 
-        private static void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
+        private void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
             if (m.Effect == null)
                 return;
 
+            var ub = GetUniformBinding<ViewTransform>(m, "Viewport", true);
+            ub.SetValue(ref viewTransform);
+            ub.Flush();
+
+            /*
             m.Parameters.ViewportScale.SetValue(viewTransform.Scale);
             m.Parameters.ViewportPosition.SetValue(viewTransform.Position);
 
             m.Parameters.ProjectionMatrix.SetValue(viewTransform.Projection);
             m.Parameters.ModelViewMatrix.SetValue(viewTransform.ModelView);
+            */
         }
 
         /// <summary>
@@ -415,8 +443,8 @@ namespace Squared.Render {
 
             ViewportPosition = viewport.StructureMembers["Position"];
             ViewportScale = viewport.StructureMembers["Scale"];
-            ProjectionMatrix = viewport.StructureMembers["ProjectionMatrix"];
-            ModelViewMatrix = viewport.StructureMembers["ModelViewMatrix"];
+            ProjectionMatrix = viewport.StructureMembers["Projection"];
+            ModelViewMatrix = viewport.StructureMembers["ModelView"];
 
             BitmapTextureSize = effect.Parameters["BitmapTextureSize"];
             HalfTexel = effect.Parameters["HalfTexel"];

@@ -4,12 +4,12 @@ float4 TransformPosition (float4 position, float offset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
 #ifdef FNA
     // ... Except for OpenGL, who don't need no half pixels
-    float4 modelViewPos = mul(position, Viewport.ModelViewMatrix);
+    float4 modelViewPos = mul(position, Viewport.ModelView);
 #else
-    float4 modelViewPos = mul(position, Viewport.ModelViewMatrix) - float4(offset, offset, 0, 0);
+    float4 modelViewPos = mul(position, Viewport.ModelView) - float4(offset, offset, 0, 0);
 #endif
     // Finally project after offsetting
-    return mul(modelViewPos, Viewport.ProjectionMatrix);
+    return mul(modelViewPos, Viewport.Projection);
 }
 
 uniform const float2 BitmapTextureSize;
@@ -123,7 +123,7 @@ void WorldSpaceVertexShader(
     texCoord = ComputeTexCoord(cornerIndex, corner, texRgn, texTL, texBR);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn, scaleOrigin, rotation);
     
-    position.xy += rotatedCorner - Viewport.Position;
+    position.xy += rotatedCorner - Viewport.Position.xy;
     
-    result = TransformPosition(float4(position.xy * Viewport.Scale, position.z, 1), 0.5);
+    result = TransformPosition(float4(position.xy * Viewport.Scale.xy, position.z, 1), 0.5);
 }

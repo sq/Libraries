@@ -176,15 +176,13 @@ namespace Squared.Render.Evil {
         void SetFloatArray (void* hParameter, float* pF, uint count);
         void GetFloatArray (void* hParameter, float* pF, uint count);
 
-        // FIXME: Is D3DXVector4 equivalent to Vector4?
         void SetVector (void* hParameter, [In] ref Vector4 v);
         void GetVector (void* hParameter, out Vector4 v);
 
         void SetVectorArray (void* hParameter, Vector4* pV, uint count);
         void GetVectorArray (void* hParameter, Vector4* pV, uint count);
 
-        // FIXME: Is D3DXMatrix equivalent to Matrix?
-        void SetMatrix (void* hParameter, [In] ref Matrix v);
+        void SetMatrix (void* hParameter, [In] Matrix* v);
         void GetMatrix (void* hParameter, out Matrix v);
 
         void SetMatrixArray (void* hParameter, Matrix* pV, uint count);
