@@ -633,4 +633,18 @@ namespace Squared.Render {
             Time = effect.Parameters["Time"];
         }
     }
+
+    public struct SquaredGeometryParameters {
+    }
+
+    public struct SquaredBitmapParameters {
+        public Vector2   ViewportScale;
+        public Vector2   ViewportPosition;
+        public Matrix    ProjectionMatrix;
+        public Matrix    ModelViewMatrix;
+        public Vector2   BitmapTextureSize;
+        public Vector2   HalfTexel;
+        public Texture2D BitmapTexture;
+        public Texture2D SecondTexture;
+    }
 }
