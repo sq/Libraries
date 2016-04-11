@@ -128,109 +128,220 @@ namespace Squared.Render.Evil {
         }
     }
 
-    public static class TextureUtils {
-        public static class VTables {
-            public static class IDirect3DTexture9 {
-                public const uint GetSurfaceLevel = 72;
+    public static class EffectUtils {
+        public static class Guids {
+            // {017C18AC-103F-4417-8C51-6BF6EF1E56BE}
+            public static Guid ID3DXBaseEffect = new Guid(
+                0x17c18ac, 0x103f, 0x4417, 0x8c, 0x51, 0x6b, 0xf6, 0xef, 0x1e, 0x56, 0xbe
+            );
+            // {F6CEB4B3-4E4C-40dd-B883-8D8DE5EA0CD5}
+            public static Guid ID3DXEffect = new Guid(
+                0xf6ceb4b3, 0x4e4c, 0x40dd, 0xb8, 0x83, 0x8d, 0x8d, 0xe5, 0xea, 0xc, 0xd5
+            );
+        }
+
+        public class Invalid {
+            Invalid () {
+                throw new InvalidOperationException("This method is not exposed");
             }
         }
 
-        [DllImport("d3dx9_41.dll")]
-        [SuppressUnmanagedCodeSecurity]
-        private static unsafe extern int D3DXLoadSurfaceFromMemory (
-            void* pDestSurface,
-            void* pDestPalette,
-            RECT* pDestRect,
-            void* pSrcMemory,
-            D3DFORMAT srcFormat,
-            uint srcPitch,
-            void* pSrcPalette,
-            RECT* pSrcRect,
-            D3DX_FILTER filter,
-            uint colorKey
-        );
+        [Guid("F6CEB4B3-4E4C-40dd-B883-8D8DE5EA0CD5")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        public unsafe interface ID3DXEffect {
+            // HACK: ENORMOUS HACK: Apparently ID3DXEffect::QueryInterface doesn't support ID3DXBaseEffect. So...
 
-        internal static readonly FieldInfo pComPtr;
+            //
+            // ID3DXBaseEffect
+            //
 
-        static TextureUtils () {
-            pComPtr = typeof(Texture2D).GetField("pComPtr", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            void GetDesc (out void* pDesc);
+            void GetParameterDesc (void* hParameter, out void* pDesc);
+            void GetTechniqueDesc (void* hTechnique, out void* pDesc);
+            void GetPassDesc (void* hPass, out void* pDesc);
+            void GetFunctionDesc (void* hShader, out void* pDesc);
+
+            [PreserveSig]
+            void* GetParameter (void* hParameter, uint index);
+            [PreserveSig]
+            void* GetParameterByName (
+                void* hParameter, 
+                [MarshalAs(UnmanagedType.LPStr)]
+                string name
+            );
+            [PreserveSig]
+            void* GetParameterBySemantic (
+                void* hParameter, 
+                [MarshalAs(UnmanagedType.LPStr)]
+                string name
+            );
+            [PreserveSig]
+            void* GetParameterElement (void* hParameter, uint index);
+
+            [PreserveSig]
+            void* GetTechnique (uint index);
+            [PreserveSig]
+            void* GetTechniqueByName (
+                [MarshalAs(UnmanagedType.LPStr)]
+                string name
+            );
+
+            [PreserveSig]
+            void* GetPass (void* hTechnique, uint index);
+            [PreserveSig]
+            void* GetPassByName (
+                void* hTechnique, 
+                [MarshalAs(UnmanagedType.LPStr)]
+                string name
+            );
+
+            [PreserveSig]
+            void* GetFunction (uint index);
+            [PreserveSig]
+            void* GetFunctionByName (
+                [MarshalAs(UnmanagedType.LPStr)]
+                string name
+            );
+
+            [PreserveSig]
+            void* GetAnnotation (void* hObject, uint index);
+            [PreserveSig]
+            void* GetAnnotationByName (
+                void* hObject, 
+                [MarshalAs(UnmanagedType.LPStr)]
+                string name
+            );
+
+            void SetValue (void* hParameter, void* pData, uint bytes);
+            void GetValue (void* hParameter, void* pData, uint bytes);
+
+            void SetBool (void* hParameter, int b);
+            void GetBool (void* hParameter, out int b);
+
+            void SetBoolArray (void* hParameter, int* pB, uint count);
+            void GetBoolArray (void* hParameter, int* pB, uint count);
+
+            void SetInt (void* hParameter, int i);
+            void GetInt (void* hParameter, out int i);
+
+            void SetIntArray (void* hParameter, int* pI, uint count);
+            void GetIntArray (void* hParameter, int* pI, uint count);
+
+            void SetFloat (void* hParameter, float f);
+            void GetFloat (void* hParameter, out float f);
+
+            void SetFloatArray (void* hParameter, float* pF, uint count);
+            void GetFloatArray (void* hParameter, float* pF, uint count);
+
+            /*
+            FIXME: Map these out
+
+            // Get/Set Parameters
+            STDMETHOD(SetVector)(THIS_ D3DXHANDLE hParameter, CONST D3DXVECTOR4* pVector) PURE;
+            STDMETHOD(GetVector)(THIS_ D3DXHANDLE hParameter, D3DXVECTOR4* pVector) PURE;
+            STDMETHOD(SetVectorArray)(THIS_ D3DXHANDLE hParameter, CONST D3DXVECTOR4* pVector, UINT Count) PURE;
+            STDMETHOD(GetVectorArray)(THIS_ D3DXHANDLE hParameter, D3DXVECTOR4* pVector, UINT Count) PURE;
+            STDMETHOD(SetMatrix)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix) PURE;
+            STDMETHOD(GetMatrix)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX* pMatrix) PURE;
+            STDMETHOD(SetMatrixArray)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix, UINT Count) PURE;
+            STDMETHOD(GetMatrixArray)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX* pMatrix, UINT Count) PURE;
+            STDMETHOD(SetMatrixPointerArray)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX** ppMatrix, UINT Count) PURE;
+            STDMETHOD(GetMatrixPointerArray)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX** ppMatrix, UINT Count) PURE;
+            STDMETHOD(SetMatrixTranspose)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix) PURE;
+            STDMETHOD(GetMatrixTranspose)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX* pMatrix) PURE;
+            STDMETHOD(SetMatrixTransposeArray)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX* pMatrix, UINT Count) PURE;
+            STDMETHOD(GetMatrixTransposeArray)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX* pMatrix, UINT Count) PURE;
+            STDMETHOD(SetMatrixTransposePointerArray)(THIS_ D3DXHANDLE hParameter, CONST D3DXMATRIX** ppMatrix, UINT Count) PURE;
+            STDMETHOD(GetMatrixTransposePointerArray)(THIS_ D3DXHANDLE hParameter, D3DXMATRIX** ppMatrix, UINT Count) PURE;
+            STDMETHOD(SetString)(THIS_ D3DXHANDLE hParameter, LPCSTR pString) PURE;
+            STDMETHOD(GetString)(THIS_ D3DXHANDLE hParameter, LPCSTR* ppString) PURE;
+            STDMETHOD(SetTexture)(THIS_ D3DXHANDLE hParameter, LPDIRECT3DBASETEXTURE9 pTexture) PURE;
+            STDMETHOD(GetTexture)(THIS_ D3DXHANDLE hParameter, LPDIRECT3DBASETEXTURE9 *ppTexture) PURE;
+            STDMETHOD(GetPixelShader)(THIS_ D3DXHANDLE hParameter, LPDIRECT3DPIXELSHADER9 *ppPShader) PURE;
+            STDMETHOD(GetVertexShader)(THIS_ D3DXHANDLE hParameter, LPDIRECT3DVERTEXSHADER9 *ppVShader) PURE;
+
+            //Set Range of an Array to pass to device
+            //Useful for sending only a subrange of an array down to the device
+            STDMETHOD(SetArrayRange)(THIS_ D3DXHANDLE hParameter, UINT uStart, UINT uEnd) PURE; 
+            */
+
+            int GetPool (out void* ppPool);
+
+            int SetTechnique (void* hTechnique);
+            void* GetCurrentTechnique ();
+
+            /*
+
+    // Selecting and setting a technique
+    STDMETHOD(ValidateTechnique)(THIS_ D3DXHANDLE hTechnique) PURE;
+    STDMETHOD(FindNextValidTechnique)(THIS_ D3DXHANDLE hTechnique, D3DXHANDLE *pTechnique) PURE;
+    STDMETHOD_(BOOL, IsParameterUsed)(THIS_ D3DXHANDLE hParameter, D3DXHANDLE hTechnique) PURE;
+
+    // Using current technique
+    // Begin           starts active technique
+    // BeginPass       begins a pass
+    // CommitChanges   updates changes to any set calls in the pass. This should be called before
+    //                 any DrawPrimitive call to d3d
+    // EndPass         ends a pass
+    // End             ends active technique
+    STDMETHOD(Begin)(THIS_ UINT *pPasses, DWORD Flags) PURE;
+    STDMETHOD(BeginPass)(THIS_ UINT Pass) PURE;
+    STDMETHOD(CommitChanges)(THIS) PURE;
+    STDMETHOD(EndPass)(THIS) PURE;
+    STDMETHOD(End)(THIS) PURE;
+
+    // Managing D3D Device
+    STDMETHOD(GetDevice)(THIS_ LPDIRECT3DDEVICE9* ppDevice) PURE;
+    STDMETHOD(OnLostDevice)(THIS) PURE;
+    STDMETHOD(OnResetDevice)(THIS) PURE;
+
+    // Logging device calls
+    STDMETHOD(SetStateManager)(THIS_ LPD3DXEFFECTSTATEMANAGER pManager) PURE;
+    STDMETHOD(GetStateManager)(THIS_ LPD3DXEFFECTSTATEMANAGER *ppManager) PURE;
+
+    // Parameter blocks
+    STDMETHOD(BeginParameterBlock)(THIS) PURE;
+    STDMETHOD_(D3DXHANDLE, EndParameterBlock)(THIS) PURE;
+    STDMETHOD(ApplyParameterBlock)(THIS_ D3DXHANDLE hParameterBlock) PURE;
+    STDMETHOD(DeleteParameterBlock)(THIS_ D3DXHANDLE hParameterBlock) PURE;
+
+    // Cloning
+    STDMETHOD(CloneEffect)(THIS_ LPDIRECT3DDEVICE9 pDevice, LPD3DXEFFECT* ppEffect) PURE;
+    
+    // Fast path for setting variables directly in ID3DXEffect
+STDMETHOD(SetRawValue)(THIS_ D3DXHANDLE hParameter, LPCVOID pData, UINT ByteOffset, UINT Bytes) PURE;
+            */
         }
 
+        internal static readonly FieldInfo pComPtr, _handle;
+
+        static EffectUtils () {
+            pComPtr = typeof(Effect).GetField("pComPtr", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            _handle = typeof(EffectParameter).GetField("_handle", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        }
+
+        public static unsafe ID3DXEffect GetID3DXEffect (this Effect effect) {
+            var unboxedPointer = Pointer.Unbox(pComPtr.GetValue(effect));
+            var obj = Marshal.GetObjectForIUnknown(new IntPtr(unboxedPointer));
+            var typedObject = (ID3DXEffect)obj;
+            return typedObject;
+        }
+
+        public static unsafe void* GetD3DXHandle (this EffectParameter parameter) {
+            return (void*)Pointer.Unbox(_handle.GetValue(parameter));
+        }
+
+        /*
         /// <summary>
-        /// Retrieves a pointer to the IDirect3DTexture9 for the specified texture.
+        /// Make sure to use Marshal.Release when you're done!
         /// </summary>
-        /// <param name="texture">The texture.</param>
-        /// <returns>The texture's IDirect3DTexture9 pointer.</returns>
-        public static unsafe void* GetIDirect3DTexture9 (this Texture2D texture) {
-            return Pointer.Unbox(pComPtr.GetValue(texture));
+        public static unsafe void* GetID3DXEffect (this EffectParameter parameter) {
+            var baseEffect = Pointer.Unbox(pEffect.GetValue(parameter));
+            IntPtr result;
+            var hr = Marshal.QueryInterface(new IntPtr(baseEffect), ref Guids.ID3DXEffectID3DXEffect, out result);
+            return result.ToPointer();
         }
-
-        /// <summary>
-        /// Retrieves a pointer to the IDirect3DSurface9 for one of the specified texture's mip levels.
-        /// </summary>
-        /// <param name="texture">The texture to retrieve a mip level from.</param>
-        /// <param name="level">The index of the mip level.</param>
-        /// <returns>A pointer to the mip level's surface.</returns>
-        public static unsafe void* GetSurfaceLevel (this Texture2D texture, int level) {
-            void* pTexture = texture.GetIDirect3DTexture9();
-            void* pGetSurfaceLevel = COMUtils.AccessVTable(pTexture, VTables.IDirect3DTexture9.GetSurfaceLevel);
-            void* pSurface;
-
-            var getSurfaceLevel = (GetSurfaceLevelDelegate)Marshal.GetDelegateForFunctionPointer(new IntPtr(pGetSurfaceLevel), typeof(GetSurfaceLevelDelegate));
-            var rv = getSurfaceLevel(pTexture, 0, &pSurface);
-            if (rv == 0)
-                return pSurface;
-            else
-                throw new COMException("GetSurfaceLevel failed", rv);
-        }
-
-        /// <summary>
-        /// Copies pixels from an address in memory into a mip level of Texture2D, converting them from one format to another if necessary.
-        /// </summary>
-        /// <param name="texture">The texture to copy to.</param>
-        /// <param name="level">The index into the texture's mip levels.</param>
-        /// <param name="pData">The address of the pixel data.</param>
-        /// <param name="width">The width of the pixel data (in pixels).</param>
-        /// <param name="height">The height of the pixel data (in pixels).</param>
-        /// <param name="pitch">The number of bytes occupied by a single row of the pixel data (including padding at the end of rows).</param>
-        /// <param name="pixelFormat">The format of the pixel data.</param>
-        public static unsafe void SetData (
-            this Texture2D texture, void* pSurface, void* pData, 
-            int width, int height, uint pitch, 
-            D3DFORMAT pixelFormat
-        ) {
-            var rect = new RECT {
-                Top = 0,
-                Left = 0,
-                Right = width,
-                Bottom = height
-            };
-
-            SetData(texture, pSurface, pData, ref rect, pitch, ref rect, pixelFormat);
-        }
-
-        /// <summary>
-        /// Copies pixels from an address in memory into a mip level of Texture2D, converting them from one format to another if necessary.
-        /// </summary>
-        /// <param name="texture">The texture to copy to.</param>
-        /// <param name="level">The index into the texture's mip levels.</param>
-        /// <param name="pData">The address of the pixel data.</param>
-        /// <param name="destRect">The destination rectangle.</param>
-        /// <param name="pitch">The number of bytes occupied by a single row of the pixel data (including padding at the end of rows).</param>
-        /// <param name="sourceRect">The source rectangle.</param>
-        /// <param name="pixelFormat">The format of the pixel data.</param>
-        public static unsafe void SetData (
-            this Texture2D texture, void* pSurface, void* pData,
-            ref RECT destRect, uint pitch, ref RECT sourceRect,
-            D3DFORMAT pixelFormat
-        ) {
-            fixed (RECT* pDestRect = &destRect)
-            fixed (RECT* pSourceRect = &sourceRect) {
-                var rv = D3DXLoadSurfaceFromMemory(pSurface, null, pDestRect, pData, pixelFormat, pitch, null, pSourceRect, D3DX_FILTER.NONE, 0);
-                if (rv != 0)
-                    throw new COMException("D3DXLoadSurfaceFromMemory failed", rv);
-            }
-        }
+        */
     }
 #endif
 
