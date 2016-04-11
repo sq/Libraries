@@ -26,15 +26,17 @@ namespace Squared.Render {
         }
     }
 
-    public unsafe class UniformBinding<T> : IUniformBinding 
+    public unsafe partial class UniformBinding<T> : IUniformBinding 
         where T : struct
     {
         public class Storage : SafeBuffer {
             public Storage () 
                 : base(true) 
             {
-                Initialize<T>(1);
-                SetHandle(Marshal.AllocHGlobal((int)ByteLength));
+                // HACK: If this isn't big enough, you screwed up
+                const int size = 1024 * 16;
+                Initialize(size);
+                SetHandle(Marshal.AllocHGlobal(size));
             }
 
             protected override bool ReleaseHandle () {
@@ -43,209 +45,15 @@ namespace Squared.Render {
             }
         }
 
-        public enum BindingType {
-            Blittable,
-            // GPU format is column-major for some reason??
-            RowMajorMatrix
-        }
+        private readonly ID3DXEffect pEffect;
+        private readonly void*       hParameter;
+        private readonly Fixup[]     Fixups;
 
-        public class BindingMember {
-            public   readonly string      Name;
-            public   readonly uint        Offset;
-            public   readonly uint        Size;
-            internal readonly void*       Handle;
-            public   readonly BindingType Type;
+        // The latest value is written into this buffer
+        private readonly SafeBuffer  ScratchBuffer;
+        // And then transferred and mutated in this buffer before being sent to D3D
+        private readonly SafeBuffer  UploadBuffer;
 
-            internal BindingMember (
-                string name, uint offset, uint size, 
-                void* handle, BindingType type
-            ) {
-                Name = name;
-                Offset = offset;
-                Size = size;
-                Handle = handle;
-                Type = type;
-            }
-        }
-
-        private class BindingCheckState {
-            public readonly ID3DXEffect Effect;
-            public readonly List<string> Errors = new List<string>();
-            public readonly List<BindingMember> Results;
-
-            private readonly string CheckEffectName;
-            private readonly string CheckUniformName;
-
-            public uint NextUniformOffset = 0;
-
-            public BindingCheckState (
-                ID3DXEffect pEffect, List<BindingMember> results, 
-                string effectName, string uniformName
-            ) {
-                Effect = pEffect;
-                Results = results;
-                CheckEffectName = effectName;
-                CheckUniformName = uniformName;
-            }
-
-            public void Finish () {
-                if (Errors.Count < 1)
-                    return;
-
-                var sb = new StringBuilder();
-                sb.AppendFormat(
-                    "Uniform binding failed for {0}{1}{2}",
-                    CheckEffectName,
-                    (CheckUniformName != null)
-                        ? "." + CheckUniformName
-                        : "",
-                    Environment.NewLine
-                );
-                foreach (var error in Errors)
-                    sb.AppendLine(error);
-
-                Console.WriteLine(sb.ToString());
-                throw new Exception(sb.ToString());
-            }
-
-            public void CheckMemberBindings (
-                void* hEnclosingParameter, Type type
-            ) {
-                var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
-                // HACK: Just brute-force scan for parameters until it fails.
-                for (uint i = 0; i < 999; i++) {
-                    var hParameter = Effect.GetParameter(hEnclosingParameter, i);
-                    if (hParameter == null)
-                        break;
-
-                    D3DXPARAMETER_DESC parameterDesc;
-                    Effect.GetParameterDesc(hParameter, out parameterDesc);
-                    var parameterName = Marshal.PtrToStringAnsi(new IntPtr(parameterDesc.Name));
-
-                    var field = type.GetField(parameterName, flags);
-                    if (field == null)
-                        field = type.GetField("_" + parameterName, flags);
-
-                    uint fieldOffset =
-                        (field == null)
-                            ? 0
-                            : (uint)Marshal.OffsetOf(type, field.Name).ToInt32();
-                    Type fieldType =
-                        (field == null)
-                            ? null
-                            : field.FieldType;
-
-                    CheckMemberBinding(hParameter, ref parameterDesc, parameterName, fieldType, fieldOffset);
-                }
-            }
-
-            private void ParameterError (ref D3DXPARAMETER_DESC parameterDesc, string parameterName, string message) {
-                Errors.Add(string.Format(
-                    "Error binding uniform {0} ({1} {2}): {3}",
-                    parameterName, parameterDesc.Class, parameterDesc.Type,
-                    message
-                ));
-            }
-
-            private uint ComputeEffectiveSize (ref D3DXPARAMETER_DESC desc) {
-                switch (desc.Class) {
-                    // All scalars and vectors are rounded up to float4
-                    case D3DXPARAMETER_CLASS.SCALAR:
-                    case D3DXPARAMETER_CLASS.VECTOR:
-                        return 16 * desc.Rows;
-                    
-                    // All matrices are float4x4 in column-major order, which should be fine since XNA doesn't
-                    //  expose 3x3 matrices...
-                    case D3DXPARAMETER_CLASS.MATRIX_ROWS:
-                    case D3DXPARAMETER_CLASS.MATRIX_COLUMNS:
-                        return desc.SizeBytes;
-
-                    case D3DXPARAMETER_CLASS.STRUCT:
-                        throw new InvalidOperationException("Don't compute the size of a struct from the descriptor");
-                }
-
-                // FIXME
-                throw new NotImplementedException(desc.Class.ToString());
-            }
-
-            public void CheckMemberBinding (
-                void* hParameter, ref D3DXPARAMETER_DESC parameterDesc, string parameterName, Type type, uint fieldOffset
-            ) {
-                var uniformOffset = NextUniformOffset;
-
-                if (parameterDesc.Class == D3DXPARAMETER_CLASS.STRUCT) {
-                    if (type == null) {
-                        ParameterError(ref parameterDesc, parameterName, "No matching public field");
-                        return;
-                    } else if (uniformOffset != fieldOffset) {
-                        ParameterError(ref parameterDesc, parameterName, "Uniform offset " + uniformOffset + " != field offset " + fieldOffset);
-                        return;
-                    }
-
-                    // FIXME: Nested structs will have bad offsets
-                    CheckMemberBindings(hParameter, type);
-                    return;
-                }
-
-                var effectiveSize = ComputeEffectiveSize(ref parameterDesc);
-                NextUniformOffset += effectiveSize;
-
-                switch (parameterDesc.Class) {
-                    case D3DXPARAMETER_CLASS.SCALAR:
-                    case D3DXPARAMETER_CLASS.VECTOR:
-                    case D3DXPARAMETER_CLASS.MATRIX_COLUMNS:
-                    case D3DXPARAMETER_CLASS.MATRIX_ROWS:
-                        if (type == null) {
-                            ParameterError(ref parameterDesc, parameterName, "No matching public field");
-                            return;
-                        } else if (uniformOffset != fieldOffset) {
-                            ParameterError(ref parameterDesc, parameterName, "Uniform offset " + uniformOffset + " != field offset " + fieldOffset);
-                            return;
-                        }
-
-                        var managedSize = Marshal.SizeOf(type);
-                        if (effectiveSize < managedSize) {
-                            ParameterError(ref parameterDesc, parameterName, "Uniform size " + effectiveSize + " < field size " + managedSize);
-                            return;
-                        }
-
-                        if (parameterDesc.Class == D3DXPARAMETER_CLASS.SCALAR) {
-                            if (!type.IsPrimitive) {
-                                ParameterError(ref parameterDesc, parameterName, "Expected scalar");
-                                return;
-                            }
-                        }
-
-                        Results.Add(new BindingMember(
-                            parameterName, uniformOffset, effectiveSize, hParameter,
-                            parameterDesc.Class == D3DXPARAMETER_CLASS.MATRIX_ROWS
-                                ? BindingType.RowMajorMatrix
-                                : BindingType.Blittable
-                        ));
-
-                        return;
-
-                    case D3DXPARAMETER_CLASS.OBJECT:
-                        ParameterError(ref parameterDesc, parameterName, "Texture and sampler uniforms not supported");
-                        return;
-
-                    default:
-                        throw new NotImplementedException(parameterDesc.Class.ToString());
-                }
-            }
-        }
-
-        public  readonly List<BindingMember> Members = new List<BindingMember>();
-        private readonly BindingMember[]     Fixups;
-
-        private readonly ID3DXEffect        pEffect;
-        private readonly void*              hParameter;
-        private readonly D3DXPARAMETER_DESC ParameterDesc;
-        private readonly int                TotalSize;
-        private readonly SafeBuffer         Buffer;
-
-        private T      LatestValue;
         private bool   ValueIsDirty;
         
         public  bool   IsDisposed { get; private set; }
@@ -261,36 +69,23 @@ namespace Squared.Render {
 
             Effect = effect;
             pEffect = effect.GetID3DXEffect();
-
             hParameter = pEffect.GetParameterByName(null, uniformName);
-            pEffect.GetParameterDesc(hParameter, out ParameterDesc);
 
-            var state = new BindingCheckState(pEffect, Members, effect.CurrentTechnique.Name, uniformName);
+            var layout = new Layout(Type, pEffect, hParameter);
+            Fixups = layout.Fixups;
 
-            if (ParameterDesc.StructMembers > 0) {
-                if (!IsStructure(Type))
-                    throw new InvalidOperationException("This uniform is a structure so it may only be bound to a structure.");
-
-                state.CheckMemberBindings(hParameter, Type);
-            } else {
-                state.CheckMemberBinding(hParameter, ref ParameterDesc, uniformName, Type, 0);
-            }
-
-            state.Finish();
-
-            Fixups = Members.Where(m => m.Type == BindingType.RowMajorMatrix).ToArray();
-            TotalSize = Marshal.SizeOf(Type);
-            Buffer = new Storage();
-            ValueIsDirty = true;
+            ScratchBuffer = new Storage();
+            UploadBuffer = new Storage();
+            ValueIsDirty = false;
         }
 
         public void SetValue (T value) {
-            LatestValue = value;
+            ScratchBuffer.Write<T>(0, value);
             ValueIsDirty = true;
         }
 
         public void SetValue (ref T value) {
-            LatestValue = value;
+            ScratchBuffer.Write<T>(0, value);
             ValueIsDirty = true;
         }
 
@@ -324,16 +119,19 @@ namespace Squared.Render {
             if (!ValueIsDirty)
                 return;
 
-            Buffer.Write(0, LatestValue);
-            var pBuffer = Buffer.DangerousGetHandle();
+            var pScratch = ScratchBuffer.DangerousGetHandle();
+            var pUpload  = UploadBuffer.DangerousGetHandle();
 
             // Fix-up matrices because the in-memory order is transposed :|
             foreach (var fixup in Fixups) {
-                var pMatrix = pBuffer + (int)fixup.Offset;
-                InPlaceTranspose((float*)pMatrix);
+                Buffer.MemoryCopy(
+                    (pScratch + fixup.SourceOffset).ToPointer(),
+                    (pUpload + fixup.DestinationOffset).ToPointer(),
+                    fixup.Count, fixup.Count
+                );
             }
 
-            pEffect.SetRawValue(hParameter, pBuffer.ToPointer(), 0, (uint)TotalSize);
+            // pEffect.SetRawValue(hParameter, pBuffer.ToPointer(), 0, (uint)TotalSize);
 
             ValueIsDirty = false;
         }
@@ -347,7 +145,8 @@ namespace Squared.Render {
                 return;
 
             IsDisposed = true;
-            Buffer.Dispose();
+            ScratchBuffer.Dispose();
+            UploadBuffer.Dispose();
             Marshal.ReleaseComObject(pEffect);
         }
     }

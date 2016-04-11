@@ -9,7 +9,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Squared.Task</RootNamespace>
     <AssemblyName>Squared.Task</AssemblyName>
-    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">

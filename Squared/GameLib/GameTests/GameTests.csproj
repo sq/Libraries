@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>GameTests</RootNamespace>
     <AssemblyName>GameTests</AssemblyName>
-    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <XnaFrameworkVersion>v4.0</XnaFrameworkVersion>
     <FileUpgradeFlags>
