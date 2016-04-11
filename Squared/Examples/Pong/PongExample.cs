@@ -145,7 +145,7 @@ namespace Pong {
         }
 
         public override void Draw(GameTime gameTime, Frame frame) {
-            ClearBatch.AddNew(frame, 4, Materials.Clear, clearColor: Color.Black);
+            ClearBatch.AddNew(frame, 4, Materials.Clear, clearColor: new Color(16, 32, 48));
 
             var alphaGeometry = Materials.Get(Materials.ScreenSpaceGeometry, blendState: BlendState.AlphaBlend);
 
@@ -345,31 +345,13 @@ namespace Pong {
                 }
             };
 
-            // Replace the default materials with ones that set up our custom render states
-            ScreenSpaceBitmap = new DelegateMaterial(
-                base.ScreenSpaceBitmap,
-                alphaBlend,
-                null
-            );
-
-            ScreenSpaceGeometry = new DelegateMaterial(
-                base.ScreenSpaceGeometry,
-                alphaBlend,
-                null
-            );
-
             // Create a couple custom materials
-            Trail = new DelegateMaterial(
-                base.ScreenSpaceBitmap,
-                additiveBlend,
-                null
-            );
+            Trail = base.ScreenSpaceBitmap.WrapWithHandlers(additiveBlend);
+            SubtractiveGeometry = base.ScreenSpaceGeometry.WrapWithHandlers(subtractiveBlend);
 
-            SubtractiveGeometry = new DelegateMaterial(
-                base.ScreenSpaceGeometry,
-                subtractiveBlend,
-                null
-            );
+            // Replace the default materials with ones that set up our custom render states
+            ScreenSpaceBitmap = base.ScreenSpaceBitmap.WrapWithHandlers(alphaBlend);
+            ScreenSpaceGeometry = base.ScreenSpaceGeometry.WrapWithHandlers(alphaBlend);
         }
     }
 }
