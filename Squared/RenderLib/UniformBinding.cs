@@ -44,7 +44,7 @@ namespace Squared.Render {
                 : base(true) 
             {
                 // HACK: If this isn't big enough, you screwed up
-                const int size = 1024 * 16;
+                const int size = 1024 * 4;
                 Initialize(size);
                 SetHandle(Marshal.AllocHGlobal(size));
             }
