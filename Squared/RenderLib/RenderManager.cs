@@ -1046,16 +1046,20 @@ namespace Squared.Render {
 
     public static class BatchExtensions {
         public static void IssueAndWrapExceptions (this Batch batch, DeviceManager manager) {
-            try {
-                batch.Issue(manager);
-            } catch (Exception exc) {
 #if DEBUG
-                if (Debugger.IsAttached)
-                    Debugger.Break();
+            if (Debugger.IsAttached) {
+                batch.Issue(manager);
+            } else {
 #endif
-                
-                throw new BatchIssueFailedException(batch, exc);
+
+                try {
+                    batch.Issue(manager);
+                } catch (Exception exc) {                
+                    throw new BatchIssueFailedException(batch, exc);
+                }
+#if DEBUG
             }
+#endif
         }
     }
 }
