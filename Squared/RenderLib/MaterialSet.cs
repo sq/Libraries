@@ -272,6 +272,17 @@ namespace Squared.Render {
             }
         }
 
+        public bool TrySetBoundUniform<T> (Material material, string uniformName, ref T value)
+            where T : struct
+        {
+            var ub = GetUniformBinding<T>(material, uniformName);
+            if (ub == null)
+                return false;
+
+            ub.Value.Current = value;
+            return true;
+        }
+
         public void Add (Material extraMaterial) {
             lock (Lock)
                 ExtraMaterials.Add(extraMaterial);
