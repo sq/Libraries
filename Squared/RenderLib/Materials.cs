@@ -91,8 +91,11 @@ namespace Squared.Render {
         }
 
         public Material Clone () {
+            var newEffect = Effect.Clone();
+            newEffect.CurrentTechnique = newEffect.Techniques[Effect.CurrentTechnique.Name];
+
             return new Material(
-                Effect, null,
+                newEffect, null,
                 BeginHandlers, EndHandlers
             );
         }
