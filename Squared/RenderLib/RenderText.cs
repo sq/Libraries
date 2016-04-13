@@ -560,7 +560,7 @@ namespace Squared.Render.Text {
         public Vector2? position;
         public Color? color;
         public float scale;
-        public BitmapSortKey sortKey;
+        public DrawCallSortKey sortKey;
         public int characterSkipCount;
         public int characterLimit;
         public float xOffsetOfFirstLine;
@@ -748,7 +748,7 @@ namespace Squared.Render {
     public static class SpriteFontExtensions {
         public static StringLayout LayoutString (
             this SpriteFont font, AbstractString text, ArraySegment<BitmapDrawCall>? buffer = null,
-            Vector2? position = null, Color? color = null, float scale = 1, BitmapSortKey sortKey = default(BitmapSortKey),
+            Vector2? position = null, Color? color = null, float scale = 1, DrawCallSortKey sortKey = default(DrawCallSortKey),
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
             bool alignToPixels = false,

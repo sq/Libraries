@@ -343,7 +343,7 @@ namespace Squared.Render {
         public void AddRange (
             BitmapDrawCall[] items, int firstIndex, int count, 
             Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, 
-            BitmapSortKey? sortKey = null, Vector2? scale = null, Material material = null
+            DrawCallSortKey? sortKey = null, Vector2? scale = null, Material material = null
         ) {
             if (material != null)
                 throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
@@ -699,7 +699,7 @@ namespace Squared.Render {
         public void AddRange (
             BitmapDrawCall[] items, int firstIndex, int count, 
             Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, 
-            BitmapSortKey? sortKey = null, Vector2? scale = null, Material customMaterial = null,
+            DrawCallSortKey? sortKey = null, Vector2? scale = null, Material customMaterial = null,
             SamplerState samplerState1 = null, SamplerState samplerState2 = null
         ) {
             for (int i = 0; i < count; i++) {
@@ -886,24 +886,24 @@ namespace Squared.Render {
         }
     }
 
-    public struct BitmapSortKey {
+    public struct DrawCallSortKey {
         public Tags  Tags;
         public float Order;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BitmapSortKey (Tags tags = default(Tags), float order = 0) {
+        public DrawCallSortKey (Tags tags = default(Tags), float order = 0) {
             Tags = tags;
             Order = order;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static implicit operator BitmapSortKey (Tags tags) {
-            return new BitmapSortKey(tags: tags);
+        public static implicit operator DrawCallSortKey (Tags tags) {
+            return new DrawCallSortKey(tags: tags);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static implicit operator BitmapSortKey (float order) {
-            return new BitmapSortKey(order: order);
+        public static implicit operator DrawCallSortKey (float order) {
+            return new DrawCallSortKey(order: order);
         }
     }
 
@@ -915,7 +915,7 @@ namespace Squared.Render {
         public Bounds  TextureRegion;
         public float   Rotation;
         public Color   MultiplyColor, AddColor;
-        public BitmapSortKey SortKey;
+        public DrawCallSortKey SortKey;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitmapDrawCall (Texture2D texture, Vector2 position)
@@ -977,7 +977,7 @@ namespace Squared.Render {
             Origin = origin;
             Rotation = rotation;
 
-            SortKey = default(BitmapSortKey);
+            SortKey = default(DrawCallSortKey);
         }
 
         public void Mirror (bool x, bool y) {

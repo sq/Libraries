@@ -10,6 +10,7 @@ using System.Reflection;
 using Squared.Util;
 using System.Diagnostics;
 using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace Squared.Render.Internal {
     public struct VertexBuffer<T> : IDisposable
@@ -169,6 +170,7 @@ namespace Squared.Render {
     public class PrimitiveBatch<T> : ListBatch<PrimitiveDrawCall<T>>
         where T : struct, IVertexType {
 
+        private readonly PrimitiveDrawCallComparer<T> _Comparer = new PrimitiveDrawCallComparer<T>();
         private Action<DeviceManager, object> _BatchSetup;
         private object _UserData;
 
@@ -232,6 +234,8 @@ namespace Squared.Render {
         }
 
         public override void Prepare (PrepareManager manager) {
+            _DrawCalls.Sort(_Comparer);
+
             int primCount = 0;
 
             foreach (var call in _DrawCalls)
@@ -251,6 +255,9 @@ namespace Squared.Render {
                 var device = manager.Device;
 
                 foreach (var call in _DrawCalls) {
+                    if (call.BeforeDraw != null)
+                        call.BeforeDraw(manager, call.UserData);
+
                     if (call.Indices != null) {
                         device.DrawUserIndexedPrimitives<T>(
                             call.PrimitiveType, call.Vertices, call.VertexOffset, call.VertexCount, call.Indices, call.IndexOffset, call.PrimitiveCount
@@ -312,6 +319,23 @@ namespace Squared.Render {
         }
     }
 
+    public sealed class PrimitiveDrawCallComparer<T> : IComparer<PrimitiveDrawCall<T>>
+        where T : struct
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare (PrimitiveDrawCall<T> x, PrimitiveDrawCall<T> y) {
+            // FIXME: Tags?
+            var result = (x.SortKey.Order > y.SortKey.Order)
+                ? 1
+                : (
+                    (x.SortKey.Order < y.SortKey.Order)
+                    ? -1
+                    : 0
+                );
+            return result;
+        }
+    }
+
     public struct PrimitiveDrawCall<T> 
         where T : struct {
 
@@ -323,13 +347,26 @@ namespace Squared.Render {
         public readonly int VertexCount;
         public readonly int PrimitiveCount;
 
+        public readonly DrawCallSortKey SortKey;
+
+        public readonly Action<DeviceManager, object> BeforeDraw;
+        public readonly object UserData;
+
         public static PrimitiveDrawCall<T> Null = new PrimitiveDrawCall<T>();
 
-        public PrimitiveDrawCall (PrimitiveType primitiveType, T[] vertices, int vertexOffset, int primitiveCount)
+        public PrimitiveDrawCall (
+            PrimitiveType primitiveType, T[] vertices, int vertexOffset, int primitiveCount
+        )
             : this (primitiveType, vertices, vertexOffset, vertices.Length, null, 0, primitiveCount) {
         }
 
-        public PrimitiveDrawCall (PrimitiveType primitiveType, T[] vertices, int vertexOffset, int vertexCount, short[] indices, int indexOffset, int primitiveCount) {
+        public PrimitiveDrawCall (
+            PrimitiveType primitiveType, T[] vertices, int vertexOffset, int vertexCount, 
+            short[] indices, int indexOffset, int primitiveCount,
+            DrawCallSortKey sortKey = default(DrawCallSortKey),
+            Action<DeviceManager, object> beforeDraw = null,
+            object userData = null
+        ) {
             if (primitiveCount <= 0)
                 throw new ArgumentOutOfRangeException("primitiveCount", "At least one primitive must be drawn within a draw call.");
             if (vertexCount <= 0)
@@ -342,6 +379,9 @@ namespace Squared.Render {
             Indices = indices;
             IndexOffset = indexOffset;
             PrimitiveCount = primitiveCount;
+            BeforeDraw = beforeDraw;
+            UserData = userData;
+            SortKey = sortKey;
         }
     }
 

@@ -399,7 +399,7 @@ namespace Squared.Render.Convenience {
         /// </summary>
         public Sorter<BitmapDrawCall> DeclarativeSorter;
 
-        private BitmapSortKey NextSortKey;
+        private DrawCallSortKey NextSortKey;
         private CachedBatches Cache;
 
         public ImperativeRenderer (
@@ -434,7 +434,7 @@ namespace Squared.Render.Convenience {
             WorldSpace = worldSpace;
             AutoIncrementSortKey = autoIncrementSortKey;
             AutoIncrementLayer = autoIncrementLayer;
-            NextSortKey = new BitmapSortKey(tags, 0);
+            NextSortKey = new DrawCallSortKey(tags, 0);
             Cache = new CachedBatches();
             LowPriorityMaterialOrdering = lowPriorityMaterialOrdering;
             DeclarativeSorter = declarativeSorter;
@@ -550,7 +550,7 @@ namespace Squared.Render.Convenience {
             Texture2D texture, Vector2 position,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, Vector2? scale = null, Vector2 origin = default(Vector2),
-            bool mirrorX = false, bool mirrorY = false, BitmapSortKey? sortKey = null,
+            bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null, 
             BlendState blendState = null, SamplerState samplerState = null,
             Material material = null
@@ -577,7 +577,7 @@ namespace Squared.Render.Convenience {
             Texture2D texture, float x, float y,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, float scaleX = 1, float scaleY = 1, float originX = 0, float originY = 0,
-            bool mirrorX = false, bool mirrorY = false, BitmapSortKey? sortKey = null,
+            bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null,
             Material material = null
@@ -604,7 +604,7 @@ namespace Squared.Render.Convenience {
             Texture2D texture, Rectangle destRectangle,
             Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
             float rotation = 0, float originX = 0, float originY = 0,
-            bool mirrorX = false, bool mirrorY = false, BitmapSortKey? sortKey = null,
+            bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null,
             Material material = null
@@ -633,7 +633,7 @@ namespace Squared.Render.Convenience {
 
         public void DrawMultiple (
             ArraySegment<BitmapDrawCall> drawCalls,
-            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, BitmapSortKey? sortKey = null,
+            Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, Vector2? scale = null,
             Material material = null
@@ -660,7 +660,7 @@ namespace Squared.Render.Convenience {
 
         public void DrawString (
             SpriteFont font, string text,
-            Vector2 position, Color? color = null, float scale = 1, BitmapSortKey? sortKey = null,
+            Vector2 position, Color? color = null, float scale = 1, DrawCallSortKey? sortKey = null,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null
