@@ -545,9 +545,13 @@ namespace Squared.Render {
                         device.SamplerStates[0] = SamplerState;
                         device.SamplerStates[1] = SamplerState2;
 
+                        // FIXME: What is going wrong with XNA here?
+                        paramTexture1.SetValue((Texture2D)null);
                         paramTexture1.SetValue(tex1);
-                        if (paramTexture2 != null)
+                        if (paramTexture2 != null) {
+                            paramTexture2.SetValue((Texture2D)null);
                             paramTexture2.SetValue(currentTexture.Texture2);
+                        }
 
                         var vSize = new Vector2(tex1.Width, tex1.Height);
                         paramSize.SetValue(vSize);
