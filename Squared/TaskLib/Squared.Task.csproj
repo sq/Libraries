@@ -131,9 +131,7 @@
     <Compile Include="TaskScheduler.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="Web.cs" />
-    <Compile Include="Win32.cs">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Win32.cs" />
     <Compile Include="WorkerThread.cs" />
   </ItemGroup>
   <ItemGroup>
