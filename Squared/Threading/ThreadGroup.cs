@@ -51,7 +51,7 @@ namespace Squared.Threading {
 
             lock (Threads)
             while ((Count < MinimumThreadCount) && (Count < MaximumThreadCount))
-                SpawnThread();
+                SpawnThread(true);
 
             HasNoThreads = (Count == 0);
             CanMakeNewThreads = (Count < MaximumThreadCount);
@@ -164,7 +164,7 @@ namespace Squared.Threading {
 
             if (HasNoThreads || (timeSinceLastIdleMs >= NewThreadBusyThresholdMs)) {
                 lock (Threads) {
-                    SpawnThread();
+                    SpawnThread(false);
 
                     if (NewThreadCreated != null)
                         NewThreadCreated(timeSinceLastIdleMs);
@@ -178,7 +178,7 @@ namespace Squared.Threading {
 
         public void ForciblySpawnThread () {
             lock (Threads)
-                SpawnThread();
+                SpawnThread(true);
         }
 
         internal void RegisterQueuesForNewThread (GroupThread newThread) {
@@ -187,9 +187,9 @@ namespace Squared.Threading {
                 newThread.RegisterQueue(queue);
         }
 
-        private void SpawnThread () {
+        private void SpawnThread (bool force) {
             // Just in case thread state gets out of sync...
-            if (Threads.Count >= MaximumThreadCount)
+            if ((Threads.Count >= MaximumThreadCount) && !force)
                 return;
 
             Interlocked.Exchange(ref LastTimeThreadWasIdle, TimeProvider.Ticks);
