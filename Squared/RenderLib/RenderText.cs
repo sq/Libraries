@@ -168,7 +168,7 @@ namespace Squared.Render.Text {
                 return _Buffer;
             }
             set {
-                _Buffer = new ArraySegment<BitmapDrawCall>();
+                _Buffer = value;
             }
         }
 
