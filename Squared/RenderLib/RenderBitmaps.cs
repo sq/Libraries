@@ -132,6 +132,8 @@ namespace Squared.Render {
     }
 
     public class BitmapBatch : ListBatch<BitmapDrawCall>, IBitmapBatch {
+        public static readonly SamplerState DefaultSamplerState = SamplerState.LinearClamp;
+
         class BitmapBatchCombiner : IBatchCombiner {
             public bool CanCombine (Batch lhs, Batch rhs) {
                 if ((lhs == null) || (rhs == null))
@@ -284,8 +286,8 @@ namespace Squared.Render {
         ) {
             base.Initialize(container, layer, material, true, capacity);
 
-            SamplerState = samplerState ?? SamplerState.LinearClamp;
-            SamplerState2 = samplerState2 ?? SamplerState.LinearClamp;
+            SamplerState = samplerState ?? BitmapBatch.DefaultSamplerState;
+            SamplerState2 = samplerState2 ?? BitmapBatch.DefaultSamplerState;
 
             _Allocator = container.RenderManager.GetArrayAllocator<BitmapVertex>();
 
@@ -795,11 +797,14 @@ namespace Squared.Render {
                 if (material == null)
                     throw new Exception("Missing material for draw call");
 
+                var ss1 = dc.SamplerState1 ?? BitmapBatch.DefaultSamplerState;
+                var ss2 = dc.SamplerState2 ?? BitmapBatch.DefaultSamplerState;
+
                 if (
                     (currentBatch == null) ||
                     (currentBatch.Material != material) ||
-                    (currentBatch.SamplerState != dc.SamplerState1) ||
-                    (currentBatch.SamplerState2 != dc.SamplerState2)
+                    (currentBatch.SamplerState != ss1) ||
+                    (currentBatch.SamplerState2 != ss2)
                 ) {
                     if (currentBatch != null)
                         currentBatch.Dispose();
