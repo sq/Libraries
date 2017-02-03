@@ -13,6 +13,8 @@ using Squared.Render.Evil;
 
 namespace Squared.Render {
     public class Material : IDisposable {
+        public static readonly Material Null = new Material(null);
+
         public readonly Effect Effect;
         public readonly bool   OwnsEffect;
 

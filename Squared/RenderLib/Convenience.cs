@@ -150,7 +150,7 @@ namespace Squared.Render.Convenience {
         private struct CachedBatch {
             public IBatch Batch;
 
-            public readonly Type BatchType;
+            public readonly CachedBatchType BatchType;
             public readonly IBatchContainer Container;
             public readonly int Layer;
             public readonly bool WorldSpace;
@@ -163,7 +163,7 @@ namespace Squared.Render.Convenience {
             public readonly int HashCode;
 
             public CachedBatch (
-                Type batchType,
+                CachedBatchType cbt,
                 IBatchContainer container,
                 int layer,
                 bool worldSpace,
@@ -175,16 +175,26 @@ namespace Squared.Render.Convenience {
                 bool useZBuffer
             ) {
                 Batch = null;
-                BatchType = batchType;
+                BatchType = cbt;
                 Container = container;
                 Layer = layer;
+                // FIXME: Mask if multimaterial?
                 WorldSpace = worldSpace;
-                RasterizerState = rasterizerState;
-                DepthStencilState = depthStencilState;
-                BlendState = blendState;
-                SamplerState = samplerState;
-                CustomMaterial = customMaterial;
                 UseZBuffer = useZBuffer;
+
+                if (cbt != CachedBatchType.MultimaterialBitmap) {
+                    RasterizerState = rasterizerState;
+                    DepthStencilState = depthStencilState;
+                    BlendState = blendState;
+                    SamplerState = samplerState;
+                    CustomMaterial = customMaterial;
+                } else {
+                    RasterizerState = null;
+                    DepthStencilState = null;
+                    BlendState = null;
+                    SamplerState = null;
+                    CustomMaterial = null;
+                }
 
                 HashCode = Container.GetHashCode() ^ 
                     Layer.GetHashCode();
@@ -194,6 +204,9 @@ namespace Squared.Render.Convenience {
 
                 if (SamplerState != null)
                     HashCode ^= SamplerState.GetHashCode();
+
+                if (CustomMaterial != null)
+                    HashCode ^= CustomMaterial.GetHashCode();
             }
 
             public bool KeysEqual (ref CachedBatch rhs) {
@@ -205,12 +218,9 @@ namespace Squared.Render.Convenience {
                     (BlendState == rhs.BlendState) &&
                     (UseZBuffer == rhs.UseZBuffer) &&
                     (RasterizerState == rhs.RasterizerState) &&
-                    (DepthStencilState == rhs.DepthStencilState)
+                    (DepthStencilState == rhs.DepthStencilState) &&
+                    (CustomMaterial == rhs.CustomMaterial)                
                 );
-
-                // We only check for a material match if not using multimaterial batches
-                if (result && (BatchType != typeof(MultimaterialBitmapBatch)))
-                    result &= (CustomMaterial == rhs.CustomMaterial);
 
                 return result;
             }
@@ -233,6 +243,12 @@ namespace Squared.Render.Convenience {
             }
         }
 
+        private enum CachedBatchType {
+            Bitmap,
+            MultimaterialBitmap,
+            Geometry
+        }
+
         private struct CachedBatches {
             public const int Capacity = 4;
 
@@ -241,7 +257,7 @@ namespace Squared.Render.Convenience {
 
             public bool TryGet<T> (
                 out CachedBatch result,
-                Type batchType,
+                CachedBatchType cbt,
                 IBatchContainer container, 
                 int layer, 
                 bool worldSpace, 
@@ -255,7 +271,7 @@ namespace Squared.Render.Convenience {
                 CachedBatch itemAtIndex, searchKey;
 
                 searchKey = new CachedBatch(
-                    batchType,
+                    cbt,
                     container,
                     layer,
                     worldSpace,
@@ -529,15 +545,11 @@ namespace Squared.Render.Convenience {
                 blendState, samplerState, material
             )) {
                 if (LowPriorityMaterialOrdering) {
-                    if (blendState != null) {
-                        if (material != null)
-                            material = Materials.Get(material, RasterizerState, DepthStencilState, blendState ?? BlendState);
-                        else
-                            material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, RasterizerState, DepthStencilState, blendState ?? BlendState);
-                    }
-                }
+                    if (material != null)
+                        material = Materials.Get(material, RasterizerState, DepthStencilState, blendState ?? BlendState);
+                    else
+                        material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, RasterizerState, DepthStencilState, blendState ?? BlendState);
 
-                if (LowPriorityMaterialOrdering) {
                     var mmbb = (MultimaterialBitmapBatch)batch;
                     mmbb.Add(ref drawCall, material, samplerState, samplerState);
                 } else {
@@ -641,6 +653,11 @@ namespace Squared.Render.Convenience {
         ) {
             using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, material)) {
                 if (LowPriorityMaterialOrdering) {
+                    if (material != null)
+                        material = Materials.Get(material, RasterizerState, DepthStencilState, blendState ?? BlendState);
+                    else
+                        material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, RasterizerState, DepthStencilState, blendState ?? BlendState);
+
                     var mmbb = (MultimaterialBitmapBatch)batch;
                     mmbb.AddRange(
                         drawCalls.Array, drawCalls.Offset, drawCalls.Count,
@@ -763,9 +780,7 @@ namespace Squared.Render.Convenience {
             CachedBatch cacheEntry;
             if (!Cache.TryGet<IBitmapBatch>(
                 out cacheEntry,
-                LowPriorityMaterialOrdering
-                    ? typeof(MultimaterialBitmapBatch)
-                    : typeof(BitmapBatch),
+                LowPriorityMaterialOrdering ? CachedBatchType.MultimaterialBitmap : CachedBatchType.Bitmap,
                 container: Container,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,
@@ -791,8 +806,7 @@ namespace Squared.Render.Convenience {
 
                 IBitmapBatch bb;
                 if (LowPriorityMaterialOrdering) {
-                    bb = MultimaterialBitmapBatch.New(Container, actualLayer, material, UseZBuffer);
-                    bb = bb;
+                    bb = MultimaterialBitmapBatch.New(Container, actualLayer, Material.Null, UseZBuffer);
                 } else {
                     bb = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, UseZBuffer);
                 }
@@ -819,7 +833,7 @@ namespace Squared.Render.Convenience {
             CachedBatch cacheEntry;
             if (!Cache.TryGet<GeometryBatch>(
                 out cacheEntry,
-                typeof(GeometryBatch),
+                CachedBatchType.Geometry,
                 container: Container,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,

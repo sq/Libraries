@@ -268,6 +268,8 @@ namespace Squared.Render {
                 throw new ArgumentNullException("container");
             if (material == null)
                 throw new ArgumentNullException("material");
+            if (material.Effect == null)
+                throw new ArgumentNullException("material.Effect");
 
             var result = container.RenderManager.AllocateBatch<BitmapBatch>();
             result.Initialize(container, layer, material, samplerState, samplerState2, useZBuffer);
@@ -689,7 +691,11 @@ namespace Squared.Render {
             if (!item.IsValid)
                 throw new InvalidOperationException("Invalid draw call");
 
-            _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, material ?? Material, samplerState1, samplerState2));
+            var dcm = material ?? Material;
+            if ((dcm == null) || (dcm.Effect == null))
+                throw new InvalidOperationException("Draw call has no material and this batch has no material");
+
+            _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -697,7 +703,11 @@ namespace Squared.Render {
             if (!item.IsValid)
                 throw new InvalidOperationException("Invalid draw call");
 
-            _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, material ?? Material, samplerState1, samplerState2));
+            var dcm = material ?? Material;
+            if ((dcm == null) || (dcm.Effect == null))
+                throw new InvalidOperationException("Draw call has no material and this batch has no material");
+
+            _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2));
         }
 
         public void AddRange (
@@ -724,7 +734,11 @@ namespace Squared.Render {
                 if (scale.HasValue)
                     item.Scale = scale.Value;
 
-                _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, customMaterial ?? Material, samplerState1, samplerState2));
+                var dcm = customMaterial ?? Material;
+                if ((dcm == null) || (dcm.Effect == null))
+                    throw new InvalidOperationException("Draw call has no material and this batch has no material");
+
+                _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2));
             }
         }
 
