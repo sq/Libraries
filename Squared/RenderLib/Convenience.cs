@@ -194,9 +194,6 @@ namespace Squared.Render.Convenience {
 
                 if (SamplerState != null)
                     HashCode ^= SamplerState.GetHashCode();
-
-                if (CustomMaterial != null)
-                    HashCode ^= CustomMaterial.GetHashCode();
             }
 
             public bool KeysEqual (ref CachedBatch rhs) {
@@ -208,9 +205,13 @@ namespace Squared.Render.Convenience {
                     (BlendState == rhs.BlendState) &&
                     (UseZBuffer == rhs.UseZBuffer) &&
                     (RasterizerState == rhs.RasterizerState) &&
-                    (DepthStencilState == rhs.DepthStencilState) &&
-                    (CustomMaterial == rhs.CustomMaterial)
+                    (DepthStencilState == rhs.DepthStencilState)
                 );
+
+                // We only check for a material match if not using multimaterial batches
+                if (result && (BatchType != typeof(MultimaterialBitmapBatch)))
+                    result &= (CustomMaterial == rhs.CustomMaterial);
+
                 return result;
             }
 
