@@ -19,9 +19,9 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string TestText =
-            "The quick brown fox jumped over the lazy dogs.\r\n" /* +
+            "The quick brown fox jumped over the lazy dogs.\r\n" +
             "Long woooooooooooooooooooooooord\r\n" +
-            "a b c d e f g h i j k l m n o p q r s t u v w x y z" */;
+            "a b c d e f g h i j k l m n o p q r s t u v w x y z";
 
         SpriteFont Font;
 
@@ -32,6 +32,9 @@ namespace FontTest {
 
         public Vector2 Margin = new Vector2(24, 24);
         public Vector2? BottomRight;
+
+        PressableKey Alignment = new PressableKey(Keys.A);
+        PressableKey WordWrap = new PressableKey(Keys.W);
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
@@ -45,13 +48,20 @@ namespace FontTest {
             Materials = new DefaultMaterialSet(Services);
 
             base.Initialize();
+
+            Alignment.Pressed += (s, e) => {
+                Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 3);
+            };
+            WordWrap.Pressed += (s, e) => {
+                Text.WordWrap = !Text.WordWrap;
+            };
         }
 
         protected override void LoadContent () {
             Font = Content.Load<SpriteFont>("font");
 
             Text = new DynamicStringLayout(Font, TestText) {
-                Alignment = HorizontalAlignment.Right,
+                // Alignment = HorizontalAlignment.Right,
                 CharacterWrap = true,
                 WordWrap = true
             };
@@ -71,6 +81,10 @@ namespace FontTest {
                 BottomRight = new Vector2(ms.X, ms.Y);
             else if (ms.RightButton == ButtonState.Pressed)
                 BottomRight = null;
+
+            var ks = Keyboard.GetState();
+            Alignment.Update(ref ks);
+            WordWrap.Update(ref ks);
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
@@ -87,17 +101,32 @@ namespace FontTest {
             ir.OutlineRectangle(new Bounds(Margin, new Vector2(Text.LineBreakAtX.Value + Margin.X, 1024 - Margin.Y)), Color.Red);
 
             var layout = Text.Get();
-            var scale = 1024f / layout.Size.Y;
-            scale = Arithmetic.Clamp(scale, 0.33f, 1f);
 
-            ir.OutlineRectangle(Bounds.FromPositionAndSize(Margin, layout.Size * scale), Color.Yellow);
+            foreach (var dc in layout.DrawCalls)
+                ir.OutlineRectangle(dc.EstimateDrawBounds().Translate(Margin), Color.Blue);
 
-            ir.DrawMultiple(layout, Margin, scale: new Vector2(scale));
+            ir.OutlineRectangle(Bounds.FromPositionAndSize(Margin, layout.Size), Color.Yellow * 0.75f);
+
+            ir.DrawMultiple(layout, Margin);
         }
     }
 
-    public class Toggle {
+    public class PressableKey {
+        public readonly Keys Key;
+        public event EventHandler Pressed;
+
+        private bool previousState;
+
+        public PressableKey (Keys key, EventHandler pressed = null) {
+            Key = key;
+            Pressed = pressed;
+        }
+
         public void Update (ref KeyboardState ks) {
+            var state = ks.IsKeyDown(Key);
+            if ((state != previousState) && (Pressed != null) && state)
+                Pressed(this, EventArgs.Empty);
+            previousState = state;
         }
     }
 }

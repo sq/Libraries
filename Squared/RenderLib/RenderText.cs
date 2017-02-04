@@ -556,10 +556,9 @@ namespace Squared.Render.Text {
             ArraySegment<BitmapDrawCall> buffer, HorizontalAlignment alignment,
             int firstIndex, int lastIndex
         ) {
-            var firstDc = buffer.Array[buffer.Offset + firstIndex];
-            var endDc = buffer.Array[buffer.Offset + lastIndex];
-            var texRect = endDc.TextureRectangle;
-            var lineWidth = (endDc.Position.X - firstDc.Position.X) + texRect.Width;
+            var firstDc = buffer.Array[buffer.Offset + firstIndex].EstimateDrawBounds();
+            var endDc = buffer.Array[buffer.Offset + lastIndex].EstimateDrawBounds();
+            var lineWidth = (endDc.BottomRight.X - firstDc.TopLeft.X);
 
             float whitespace;
             if (lineBreakAtX.HasValue)
@@ -567,14 +566,11 @@ namespace Squared.Render.Text {
             else
                 whitespace = totalSize.X - lineWidth;
 
-            var lineOffset = whitespace * (
-                (alignment == HorizontalAlignment.Center)
-                    ? 0.5f
-                    : 1f
-            );
+            if (alignment == HorizontalAlignment.Center)
+                whitespace /= 2;
 
             for (var j = firstIndex; j <= lastIndex; j++) {
-                buffer.Array[buffer.Offset + j].Position.X += lineOffset;
+                buffer.Array[buffer.Offset + j].Position.X += whitespace;
                 // We used the sortkey to store line numbers, now we put the right data there
                 buffer.Array[buffer.Offset + j].SortKey = sortKey;
             }

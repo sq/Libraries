@@ -1098,13 +1098,20 @@ namespace Squared.Render {
             Origin = newOrigin;
         }
 
-        public bool Crop (Bounds cropBounds) {
+        public Bounds EstimateDrawBounds () {
             var texSize = new Vector2(Textures.Texture1.Width, Textures.Texture1.Height);
             var texRgn = (TextureRegion.BottomRight - TextureRegion.TopLeft) * texSize * Scale;
-            var drawBounds = new Bounds(
-                Position,
-                Position + texRgn
+            var offset = Origin * texSize;
+
+            return new Bounds(
+                Position - offset,
+                Position + texRgn - offset
             );
+        }
+
+        public bool Crop (Bounds cropBounds) {
+            var texSize = new Vector2(Textures.Texture1.Width, Textures.Texture1.Height);
+            var drawBounds = EstimateDrawBounds();
 
             var newBounds_ = Bounds.FromIntersection(drawBounds, cropBounds);
             if (!newBounds_.HasValue)
