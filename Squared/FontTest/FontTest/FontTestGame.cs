@@ -51,6 +51,9 @@ namespace FontTest {
             Font = Content.Load<SpriteFont>("font");
 
             Text = new DynamicStringLayout(Font, TestText) {
+                Alignment = HorizontalAlignment.Right,
+                CharacterWrap = true,
+                WordWrap = true
             };
         }
 
@@ -76,8 +79,6 @@ namespace FontTest {
 
             ir.Clear(color: ClearColor);
 
-            Text.CharacterWrap = true;
-            Text.WordWrap = true;
             if (BottomRight.HasValue)
                 Text.LineBreakAtX = BottomRight.Value.X - Margin.X;
             else

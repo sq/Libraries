@@ -133,6 +133,7 @@ namespace Squared.Render.Text {
         private float _WrapIndentation = 0f;
         private bool _AlignToPixels = false;
         private char _WrapCharacter = '\0';
+        private int _Alignment = (int)HorizontalAlignment.Left;
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _Font = font;
@@ -282,15 +283,22 @@ namespace Squared.Render.Text {
             }
         }
 
-        /// <summary>
-        /// NOTE: Only valid if WordWrap is also true
-        /// </summary>
         public bool CharacterWrap {
             get {
+                // FIXME: Is this right?
                 return _CharacterWrap || _WordWrap;
             }
             set {
                 InvalidatingValueAssignment(ref _CharacterWrap, value);
+            }
+        }
+
+        public HorizontalAlignment Alignment {
+            get {
+                return (HorizontalAlignment)_Alignment;
+            }
+            set {
+                InvalidatingValueAssignment(ref _Alignment, (int)value);
             }
         }
 
@@ -377,7 +385,8 @@ namespace Squared.Render.Text {
                         lineBreakAtX = (_CharacterWrap || _WordWrap) ? _LineBreakAtX : null,
                         alignToPixels = _AlignToPixels,
                         wordWrap = _WordWrap,
-                        wrapCharacter = _WrapCharacter
+                        wrapCharacter = _WrapCharacter,
+                        alignment = (HorizontalAlignment)_Alignment
                     }
                 ) {
                     le.Initialize();
@@ -464,6 +473,13 @@ namespace Squared.Render.Text {
         }
     }
 
+    public enum HorizontalAlignment : int {
+        Left,
+        Center,
+        Right,
+        // Justify
+    }
+
     public struct StringLayoutEngine : IDisposable {
         public const int DefaultBufferPadding = 64;
 
@@ -482,6 +498,7 @@ namespace Squared.Render.Text {
         public bool     alignToPixels;
         public bool     wordWrap;
         public char     wrapCharacter;
+        public HorizontalAlignment alignment;
         public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
 
         // State
@@ -492,7 +509,8 @@ namespace Squared.Render.Text {
         public int      drawCallsWritten;
         public ArraySegment<BitmapDrawCall> remainingBuffer;
         float   initialLineXOffset, currentLineMaxX, lastWordEndX;
-        int     wordStartWritePosition, rowIndex, colIndex;
+        int     bufferWritePosition, wordStartWritePosition;
+        int     rowIndex, colIndex;
         bool    wordWrapSuppressed;
         Vector2 wordStartOffset;
 
@@ -503,6 +521,7 @@ namespace Squared.Render.Text {
             characterOffset = new Vector2(xOffsetOfFirstLine, 0);
             initialLineXOffset = characterOffset.X;
 
+            bufferWritePosition = 0;
             wordStartWritePosition = -1;
             wordStartOffset = Vector2.Zero;
             rowIndex = colIndex = 0;
@@ -518,7 +537,11 @@ namespace Squared.Render.Text {
             for (var i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
                 var newCharacterX = xOffsetOfWrappedLine + (dc.Position.X - firstOffset.X);
+
                 dc.Position = new Vector2(newCharacterX, dc.Position.Y + lineSpacing);
+                if (alignment != HorizontalAlignment.Left)
+                    dc.SortKey.Order += 1;
+
                 buffer.Array[buffer.Offset + i] = dc;
             }
 
@@ -527,6 +550,59 @@ namespace Squared.Render.Text {
             // HACK :(
             totalSize.X = Math.Max(totalSize.X, firstOffset.X);
             lastWordEndX = newX + characterOffset.X;
+        }
+
+        private void AlignLine (
+            ArraySegment<BitmapDrawCall> buffer, HorizontalAlignment alignment,
+            int firstIndex, int lastIndex
+        ) {
+            var firstDc = buffer.Array[buffer.Offset + firstIndex];
+            var endDc = buffer.Array[buffer.Offset + lastIndex];
+            var texRect = endDc.TextureRectangle;
+            var lineWidth = (endDc.Position.X - firstDc.Position.X) + texRect.Width;
+
+            float whitespace;
+            if (lineBreakAtX.HasValue)
+                whitespace = lineBreakAtX.Value - lineWidth;
+            else
+                whitespace = totalSize.X - lineWidth;
+
+            var lineOffset = whitespace * (
+                (alignment == HorizontalAlignment.Center)
+                    ? 0.5f
+                    : 1f
+            );
+
+            for (var j = firstIndex; j <= lastIndex; j++) {
+                buffer.Array[buffer.Offset + j].Position.X += lineOffset;
+                // We used the sortkey to store line numbers, now we put the right data there
+                buffer.Array[buffer.Offset + j].SortKey = sortKey;
+            }
+        }
+
+        private void AlignLines (
+            ArraySegment<BitmapDrawCall> buffer, HorizontalAlignment alignment
+        ) {
+            if (alignment == HorizontalAlignment.Left)
+                return;
+            if (buffer.Count == 0)
+                return;
+
+            int lineStartIndex = 0;
+            float currentLine = buffer.Array[buffer.Offset].SortKey.Order;
+
+            for (var i = 1; i < buffer.Count; i++) {
+                var line = buffer.Array[buffer.Offset + i].SortKey.Order;
+
+                if (line > currentLine) {
+                    AlignLine(buffer, alignment, lineStartIndex, i - 1);
+
+                    lineStartIndex = i;
+                    currentLine = line;
+                }
+            }
+
+            AlignLine(buffer, alignment, lineStartIndex, buffer.Count - 1);
         }
 
         public ArraySegment<BitmapDrawCall> AppendText (
@@ -567,8 +643,6 @@ namespace Squared.Render.Text {
             float rectScaleX = 1f / glyphSource.Texture.Width;
             float rectScaleY = 1f / glyphSource.Texture.Height;
             float x = 0;
-
-            int bufferWritePosition = 0;
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 var ch = text[i];
@@ -704,6 +778,10 @@ namespace Squared.Render.Text {
                         else
                             drawCall.Position = glyphPosition;
 
+                        // HACK so that the alignment pass can detect rows. We strip this later.
+                        if (alignment != HorizontalAlignment.Left)
+                            drawCall.SortKey.Order = rowIndex;
+
                         _buffer.Array[_buffer.Offset + bufferWritePosition] = drawCall;
 
                         bufferWritePosition += 1;
@@ -742,12 +820,16 @@ namespace Squared.Render.Text {
         public StringLayout Finish () {
             totalSize.X = Math.Max(totalSize.X, currentLineMaxX);
 
+            var resultSegment = new ArraySegment<BitmapDrawCall>(
+                buffer.Value.Array, buffer.Value.Offset, drawCallsWritten
+            );
+            if (alignment != HorizontalAlignment.Left)
+                AlignLines(resultSegment, alignment);
+
             return new StringLayout(
                 position.GetValueOrDefault(), totalSize, lineSpacing,
                 firstCharacterBounds, lastCharacterBounds,
-                new ArraySegment<BitmapDrawCall>(
-                    buffer.Value.Array, buffer.Value.Offset, drawCallsWritten
-                )
+                resultSegment
             );
         }
 

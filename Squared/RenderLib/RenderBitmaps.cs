@@ -932,12 +932,12 @@ namespace Squared.Render {
 
     public struct BitmapDrawCall {
         public TextureSet Textures;
-        public Vector2 Position;
-        public Vector2 Scale;
-        public Vector2 Origin;
-        public Bounds  TextureRegion;
-        public float   Rotation;
-        public Color   MultiplyColor, AddColor;
+        public Vector2    Position;
+        public Vector2    Scale;
+        public Vector2    Origin;
+        public Bounds     TextureRegion;
+        public float      Rotation;
+        public Color      MultiplyColor, AddColor;
         public DrawCallSortKey SortKey;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
