@@ -126,6 +126,7 @@ namespace Squared.Render.Text {
         private int _CharacterSkipCount = 0;
         private int _CharacterLimit = int.MaxValue;
         private float _XOffsetOfFirstLine = 0;
+        private float _XOffsetOfNewLine = 0;
         private float? _LineBreakAtX = null;
         private bool _WordWrap = false;
         private bool _CharacterWrap = true;
@@ -254,6 +255,15 @@ namespace Squared.Render.Text {
             }
         }
 
+        public float XOffsetOfNewLine {
+            get {
+                return _XOffsetOfNewLine;
+            }
+            set {
+                InvalidatingValueAssignment(ref _XOffsetOfNewLine, value);
+            }
+        }
+
         public float? LineBreakAtX {
             get {
                 return _LineBreakAtX;
@@ -284,12 +294,15 @@ namespace Squared.Render.Text {
             }
         }
 
-        public char WrapCharacter {
+        public char? WrapCharacter {
             get {
-                return _WrapCharacter;
+                return (_WrapCharacter == '\0') ? null : (char?)_WrapCharacter;
             }
             set {
-                InvalidatingValueAssignment(ref _WrapCharacter, value);
+                if (value.HasValue)
+                    InvalidatingValueAssignment(ref _WrapCharacter, value.Value);
+                else
+                    InvalidatingValueAssignment(ref _WrapCharacter, '\0');
             }
         }
 
@@ -332,7 +345,7 @@ namespace Squared.Render.Text {
 
                 int capacity = length;
                 if (_WordWrap)
-                    capacity *= 2;
+                    capacity += StringLayoutEngine.DefaultBufferPadding;
 
                 ArraySegment<BitmapDrawCall> seg1;
                 ArraySegment<BitmapDrawCall>? seg2 = null;
@@ -349,22 +362,29 @@ namespace Squared.Render.Text {
                 if (_Buffer.Count < capacity)
                     throw new InvalidOperationException("Buffer too small");
 
-                seg1 = _Buffer;
-                // FIXME: Insufficient space?
-                if (_WordWrap)
-                    seg2 = new ArraySegment<BitmapDrawCall>(
-                        _Buffer.Array, _Buffer.Offset + length, length
-                    );
+                using (
+                    var le = new StringLayoutEngine {
+                        buffer = _Buffer,
+                        position = _Position,
+                        color = _Color,
+                        scale = _Scale,
+                        sortKey = _SortKey,
+                        characterSkipCount = _CharacterSkipCount,
+                        characterLimit = _CharacterLimit,
+                        xOffsetOfFirstLine = _XOffsetOfFirstLine,
+                        xOffsetOfWrappedLine = _XOffsetOfNewLine + _WrapIndentation,
+                        xOffsetOfNewLine = _XOffsetOfNewLine,
+                        lineBreakAtX = (_CharacterWrap || _WordWrap) ? _LineBreakAtX : null,
+                        alignToPixels = _AlignToPixels,
+                        wordWrap = _WordWrap,
+                        wrapCharacter = _WrapCharacter
+                    }
+                ) {
+                    le.Initialize();
+                    le.AppendText(_Font, _Text, _KerningAdjustments);
 
-                _CachedStringLayout = Font.LayoutString(
-                    _Text, seg1, 
-                    _Position, _Color, 
-                    _Scale, _SortKey, 
-                    _CharacterSkipCount, _CharacterLimit, 
-                    _XOffsetOfFirstLine, (_CharacterWrap && !_WordWrap) ? null : _LineBreakAtX,
-                    _AlignToPixels, _KerningAdjustments,
-                    _WordWrap, _WrapCharacter
-                );
+                    _CachedStringLayout = le.Finish();
+                }
             }
 
             return _CachedStringLayout.Value;
@@ -445,24 +465,31 @@ namespace Squared.Render.Text {
     }
 
     public struct StringLayoutEngine : IDisposable {
+        public const int DefaultBufferPadding = 64;
+
         // Parameters
         public ArraySegment<BitmapDrawCall>? buffer;
         public Vector2? position;
-        public Color? color;
-        public float scale;
+        public Color?   color;
+        public float    scale;
         public DrawCallSortKey sortKey;
-        public int characterSkipCount;
-        public int characterLimit;
-        public float xOffsetOfFirstLine;
-        public float? lineBreakAtX;
-        public bool alignToPixels;
-        public bool wordWrap;
-        public char wrapCharacter;
+        public int      characterSkipCount;
+        public int      characterLimit;
+        public float    xOffsetOfFirstLine;
+        public float    xOffsetOfWrappedLine;
+        public float    xOffsetOfNewLine;
+        public float?   lineBreakAtX;
+        public bool     alignToPixels;
+        public bool     wordWrap;
+        public char     wrapCharacter;
+        public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
 
         // State
-        public Vector2 actualPosition, totalSize, characterOffset;
-        public Bounds  firstCharacterBounds, lastCharacterBounds;
-        public float   spacing, lineSpacing;
+        public float    maxLineHeight;
+        public Vector2  actualPosition, totalSize, characterOffset;
+        public Bounds   firstCharacterBounds, lastCharacterBounds;
+        public float    spacing, lineSpacing;
+        public int      drawCallsWritten;
         public ArraySegment<BitmapDrawCall> remainingBuffer;
         int 
             // Beginning of the most recent whitespace/non-whitespace range
@@ -501,10 +528,9 @@ namespace Squared.Render.Text {
             else if ((remainingBuffer.Array != null) && (remainingBuffer.Count > 0))
                 _buffer = remainingBuffer;
             else
-                buffer = _buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[text.Length]);
-
-            if (_buffer.Count < text.Length)
-                throw new ArgumentException("buffer too small", "buffer");
+                buffer = _buffer = new ArraySegment<BitmapDrawCall>(
+                    new BitmapDrawCall[text.Length + DefaultBufferPadding]
+                );
 
             if (kerningAdjustments == null)
                 kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
@@ -522,12 +548,12 @@ namespace Squared.Render.Text {
             float rectScaleX = 1f / glyphSource.Texture.Width;
             float rectScaleY = 1f / glyphSource.Texture.Height;
 
-            int bufferWritePosition = _buffer.Offset;
-            int drawCallsWritten = 0;
+            int bufferWritePosition = 0;
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 var ch = text[i];
                 var isWhiteSpace = char.IsWhiteSpace(ch);
+                var forcedWrap = false;
 
                 var lineBreak = false;
                 if (ch == '\r') {
@@ -557,12 +583,14 @@ namespace Squared.Render.Text {
                         glyph.RightSideBearing + 
                         glyph.Width + spacing;
 
-                    if ((x >= lineBreakAtX) && (colIndex > 0) && !isWhiteSpace)
+                    if ((x >= lineBreakAtX) && (colIndex > 0) && !isWhiteSpace) {
+                        forcedWrap = true;
                         lineBreak = true;
+                    }
                 }
 
                 if (lineBreak) {
-                    characterOffset.X = 0;
+                    characterOffset.X = forcedWrap ? xOffsetOfWrappedLine : xOffsetOfNewLine;
                     characterOffset.Y += lineSpacing;
                     rowIndex += 1;
                     colIndex = 0;
@@ -600,16 +628,21 @@ namespace Squared.Render.Text {
                         actualPosition.Y + (glyph.Cropping.Y + characterOffset.Y) * scale
                     );
 
-                    bool characterInvisible = char.IsWhiteSpace(ch);
+                    if (!isWhiteSpace) {                    
+                        if (bufferWritePosition >= _buffer.Count) {
+                            if (growBuffer != null)
+                                buffer = _buffer = growBuffer(_buffer);
+                            else
+                                throw new ArgumentException("buffer too small", "buffer");
+                        }
 
-                    if (!characterInvisible) {
                         drawCall.TextureRegion = glyphSource.Texture.BoundsFromRectangle(ref glyph.BoundsInTexture);
                         if (alignToPixels)
                             drawCall.Position = glyphPosition.Floor();
                         else
                             drawCall.Position = glyphPosition;
 
-                        _buffer.Array[bufferWritePosition] = drawCall;
+                        _buffer.Array[_buffer.Offset + bufferWritePosition] = drawCall;
 
                         bufferWritePosition += 1;
                         drawCallsWritten += 1;
@@ -654,6 +687,16 @@ namespace Squared.Render.Text {
             return segment;
         }
 
+        public StringLayout Finish () {
+            return new StringLayout(
+                position.GetValueOrDefault(), totalSize, lineSpacing,
+                firstCharacterBounds, lastCharacterBounds,
+                new ArraySegment<BitmapDrawCall>(
+                    buffer.Value.Array, buffer.Value.Offset, drawCallsWritten
+                )
+            );
+        }
+
         public void Dispose () {
         }
     }
@@ -663,7 +706,8 @@ namespace Squared.Render {
     public static class SpriteFontExtensions {
         public static StringLayout LayoutString (
             this SpriteFont font, AbstractString text, ArraySegment<BitmapDrawCall>? buffer = null,
-            Vector2? position = null, Color? color = null, float scale = 1, DrawCallSortKey sortKey = default(DrawCallSortKey),
+            Vector2? position = null, Color? color = null, float scale = 1, 
+            DrawCallSortKey sortKey = default(DrawCallSortKey),
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
             bool alignToPixels = false,
@@ -692,11 +736,7 @@ namespace Squared.Render {
                     font, text, kerningAdjustments
                 );
 
-                return new StringLayout(
-                    position.GetValueOrDefault(), state.totalSize, font.LineSpacing,
-                    state.firstCharacterBounds, state.lastCharacterBounds,
-                    segment
-                );
+                return state.Finish();
             }
         }
     }

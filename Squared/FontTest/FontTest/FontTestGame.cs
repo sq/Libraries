@@ -78,7 +78,7 @@ namespace FontTest {
             if (BottomRight.HasValue)
                 Text.LineBreakAtX = BottomRight.Value.X - Margin.X;
             else
-                Text.LineBreakAtX = Arithmetic.PulseSine((float)(gameTime.TotalGameTime.TotalSeconds / 14), 0, 1024);
+                Text.LineBreakAtX = Arithmetic.Pulse((float)(gameTime.TotalGameTime.TotalSeconds / 14), 0, 1024);
 
             ir.OutlineRectangle(new Bounds(Margin, new Vector2(Text.LineBreakAtX.Value + Margin.X, 1024 - Margin.Y)), Color.Red);
 
