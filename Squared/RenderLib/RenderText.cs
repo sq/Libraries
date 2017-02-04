@@ -814,7 +814,7 @@ namespace Squared.Render.Text {
 
                 if (!isWhiteSpace) {
                     currentLineMaxX = Math.Max(currentLineMaxX, characterOffset.X);
-                    totalSize.Y = Math.Max(totalSize.Y, characterOffset.Y + font.LineSpacing);
+                    totalSize.Y = Math.Max(totalSize.Y, (characterOffset.Y + font.LineSpacing) * scale);
                 }
 
                 colIndex += 1;
@@ -835,7 +835,7 @@ namespace Squared.Render.Text {
         }
 
         public StringLayout Finish () {
-            totalSize.X = Math.Max(totalSize.X, currentLineMaxX);
+            totalSize.X = Math.Max(totalSize.X, currentLineMaxX) * scale;
 
             var resultSegment = new ArraySegment<BitmapDrawCall>(
                 buffer.Value.Array, buffer.Value.Offset, drawCallsWritten

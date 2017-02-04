@@ -67,7 +67,8 @@ namespace FontTest {
             Text = new DynamicStringLayout(Font, TestText) {
                 // Alignment = HorizontalAlignment.Right,
                 CharacterWrap = true,
-                WordWrap = true
+                WordWrap = true,
+                Scale = 0.75f
             };
         }
 
