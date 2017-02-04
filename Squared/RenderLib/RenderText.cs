@@ -444,8 +444,9 @@ namespace Squared.Render.Text {
         }
     }
 
-    public struct StringLayoutEngine {
+    public struct StringLayoutEngine : IDisposable {
         // Parameters
+        public ArraySegment<BitmapDrawCall>? buffer;
         public Vector2? position;
         public Color? color;
         public float scale;
@@ -483,8 +484,7 @@ namespace Squared.Render.Text {
         }
 
         public ArraySegment<BitmapDrawCall> AppendText (
-            SpriteFont font, AbstractString text, 
-            ArraySegment<BitmapDrawCall>? buffer = null,
+            SpriteFont font, AbstractString text,
             Dictionary<char, KerningAdjustment> kerningAdjustments = null
         ) {
             if (!IsInitialized)
@@ -501,7 +501,7 @@ namespace Squared.Render.Text {
             else if ((remainingBuffer.Array != null) && (remainingBuffer.Count > 0))
                 _buffer = remainingBuffer;
             else
-                _buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[text.Length]);
+                buffer = _buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[text.Length]);
 
             if (_buffer.Count < text.Length)
                 throw new ArgumentException("buffer too small", "buffer");
@@ -622,8 +622,10 @@ namespace Squared.Render.Text {
 
                 characterOffset.X += (glyph.Width + glyph.RightSideBearing);
 
-                totalSize.X = Math.Max(totalSize.X, characterOffset.X);
-                totalSize.Y = Math.Max(totalSize.Y, characterOffset.Y + font.LineSpacing);
+                if (!isWhiteSpace) {
+                    totalSize.X = Math.Max(totalSize.X, characterOffset.X);
+                    totalSize.Y = Math.Max(totalSize.Y, characterOffset.Y + font.LineSpacing);
+                }
 
                 if (isWhiteSpace) {
                     if (lastWhitespace != i - 1)
@@ -651,6 +653,9 @@ namespace Squared.Render.Text {
 
             return segment;
         }
+
+        public void Dispose () {
+        }
     }
 }
 
@@ -676,20 +681,23 @@ namespace Squared.Render {
                 lineBreakAtX = lineBreakAtX,
                 alignToPixels = alignToPixels,
                 wordWrap = wordWrap,
-                wrapCharacter = wrapCharacter
+                wrapCharacter = wrapCharacter,
+                buffer = buffer
             };
 
             state.Initialize();
 
-            var segment = state.AppendText(
-                font, text, buffer, kerningAdjustments
-            );
+            using (state) {
+                var segment = state.AppendText(
+                    font, text, kerningAdjustments
+                );
 
-            return new StringLayout(
-                position.GetValueOrDefault(), state.totalSize, font.LineSpacing,
-                state.firstCharacterBounds, state.lastCharacterBounds,
-                segment
-            );
+                return new StringLayout(
+                    position.GetValueOrDefault(), state.totalSize, font.LineSpacing,
+                    state.firstCharacterBounds, state.lastCharacterBounds,
+                    segment
+                );
+            }
         }
     }
 }
