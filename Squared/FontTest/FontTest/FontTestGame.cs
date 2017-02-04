@@ -19,9 +19,9 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string TestText =
-            "The quick brown fox jumped over the lazy dogs.\r\n" +
+            "The quick brown fox jumped over the lazy dogs.\r\n" /* +
             "Long woooooooooooooooooooooooord\r\n" +
-            "a b c d e f g h i j k l m n o p q r s t u v w x y z";
+            "a b c d e f g h i j k l m n o p q r s t u v w x y z" */;
 
         SpriteFont Font;
 
@@ -60,6 +60,9 @@ namespace FontTest {
         protected override void Update (GameTime gameTime) {
             base.Update(gameTime);
 
+            if (!IsActive)
+                return;
+
             var ms = Mouse.GetState();
             if (ms.LeftButton == ButtonState.Pressed)
                 BottomRight = new Vector2(ms.X, ms.Y);
@@ -89,6 +92,11 @@ namespace FontTest {
             ir.OutlineRectangle(Bounds.FromPositionAndSize(Margin, layout.Size * scale), Color.Yellow);
 
             ir.DrawMultiple(layout, Margin, scale: new Vector2(scale));
+        }
+    }
+
+    public class Toggle {
+        public void Update (ref KeyboardState ks) {
         }
     }
 }

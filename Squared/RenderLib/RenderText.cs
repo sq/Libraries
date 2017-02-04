@@ -491,23 +491,40 @@ namespace Squared.Render.Text {
         public float    spacing, lineSpacing;
         public int      drawCallsWritten;
         public ArraySegment<BitmapDrawCall> remainingBuffer;
-        int 
-            // Beginning of the most recent whitespace/non-whitespace range
-            firstNonWhitespace, firstWhitespace,
-            // End of the most recent whitespace/non-whitespace range
-            lastNonWhitespace, lastWhitespace,
-            rowIndex, colIndex;
+        float   initialLineXOffset;
+        int     nonWhitespaceStarted, rowIndex, colIndex;
+        bool    wordWrapSuppressed;
+        Vector2 nonWhitespaceStartOffset;
 
         private bool IsInitialized;
 
         public void Initialize () {
             actualPosition = position.GetValueOrDefault(Vector2.Zero);
             characterOffset = new Vector2(xOffsetOfFirstLine, 0);
+            initialLineXOffset = characterOffset.X;
 
-            firstNonWhitespace = firstWhitespace = lastWhitespace = lastNonWhitespace = -999;
+            nonWhitespaceStarted = -1;
+            nonWhitespaceStartOffset = Vector2.Zero;
             rowIndex = colIndex = 0;
+            wordWrapSuppressed = false;
 
             IsInitialized = true;
+        }
+
+        private void WrapWord (
+            ArraySegment<BitmapDrawCall> buffer,
+            Vector2 firstOffset, int firstIndex, int lastIndex
+        ) {
+            for (var i = firstIndex; i <= lastIndex; i++) {
+                var dc = buffer.Array[buffer.Offset + i];
+                dc.Position = new Vector2(
+                    xOffsetOfWrappedLine + (dc.Position.X - firstOffset.X),
+                    dc.Position.Y + lineSpacing
+                );
+                buffer.Array[buffer.Offset + i] = dc;
+            }
+
+            characterOffset.X = xOffsetOfWrappedLine + (characterOffset.X - firstOffset.X);
         }
 
         public ArraySegment<BitmapDrawCall> AppendText (
@@ -565,6 +582,16 @@ namespace Squared.Render.Text {
                     lineBreak = true;
                 }
 
+                if (!isWhiteSpace) {
+                    if (nonWhitespaceStarted < 0) {
+                        nonWhitespaceStarted = bufferWritePosition;
+                        nonWhitespaceStartOffset = characterOffset;
+                    }
+                } else {
+                    nonWhitespaceStarted = -1;
+                    wordWrapSuppressed = false;
+                }
+
                 bool deadGlyph;
 
                 Glyph glyph;
@@ -577,23 +604,37 @@ namespace Squared.Render.Text {
                     glyph.RightSideBearing += kerningAdjustment.RightSideBearing;
                 }
 
-                if (!deadGlyph) {
-                    var x = characterOffset.X + 
-                        glyph.LeftSideBearing + 
-                        glyph.RightSideBearing + 
-                        glyph.Width + spacing;
+                var x = characterOffset.X + 
+                    glyph.LeftSideBearing + 
+                    glyph.RightSideBearing + 
+                    glyph.Width + spacing;
 
-                    if ((x >= lineBreakAtX) && (colIndex > 0) && !isWhiteSpace) {
+                if (!deadGlyph) {
+                    if ((x >= lineBreakAtX) && (colIndex > 0) && !isWhiteSpace)
                         forcedWrap = true;
-                        lineBreak = true;
-                    }
+                }
+
+                if (forcedWrap) {
+                    var currentWordSize = x - nonWhitespaceStartOffset.X;
+
+                    if (wordWrap && !wordWrapSuppressed && (currentWordSize <= lineBreakAtX)) {
+                        WrapWord(_buffer, nonWhitespaceStartOffset, nonWhitespaceStarted, bufferWritePosition - 1);
+                        wordWrapSuppressed = true;
+                    } else {
+                        characterOffset.X = xOffsetOfWrappedLine;
+                    }               
+
+                    lineBreak = true;
                 }
 
                 if (lineBreak) {
-                    characterOffset.X = forcedWrap ? xOffsetOfWrappedLine : xOffsetOfNewLine;
+                    if (!forcedWrap)
+                        characterOffset.X = xOffsetOfNewLine;
+
                     characterOffset.Y += lineSpacing;
                     rowIndex += 1;
                     colIndex = 0;
+                    initialLineXOffset = characterOffset.X;
                 }
 
                 if (deadGlyph) {
@@ -658,16 +699,6 @@ namespace Squared.Render.Text {
                 if (!isWhiteSpace) {
                     totalSize.X = Math.Max(totalSize.X, characterOffset.X);
                     totalSize.Y = Math.Max(totalSize.Y, characterOffset.Y + font.LineSpacing);
-                }
-
-                if (isWhiteSpace) {
-                    if (lastWhitespace != i - 1)
-                        firstWhitespace = i;
-                    lastWhitespace = i;
-                } else {
-                    if (lastNonWhitespace != i - 1)
-                        firstNonWhitespace = i;
-                    lastNonWhitespace = i;
                 }
 
                 colIndex += 1;
