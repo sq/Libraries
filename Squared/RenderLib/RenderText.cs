@@ -286,7 +286,7 @@ namespace Squared.Render.Text {
         public bool CharacterWrap {
             get {
                 // FIXME: Is this right?
-                return _CharacterWrap || _WordWrap;
+                return _CharacterWrap;
             }
             set {
                 InvalidatingValueAssignment(ref _CharacterWrap, value);
@@ -382,8 +382,9 @@ namespace Squared.Render.Text {
                         xOffsetOfFirstLine = _XOffsetOfFirstLine,
                         xOffsetOfWrappedLine = _XOffsetOfNewLine + _WrapIndentation,
                         xOffsetOfNewLine = _XOffsetOfNewLine,
-                        lineBreakAtX = (_CharacterWrap || _WordWrap) ? _LineBreakAtX : null,
+                        lineBreakAtX = _LineBreakAtX,
                         alignToPixels = _AlignToPixels,
+                        characterWrap = _CharacterWrap,
                         wordWrap = _WordWrap,
                         wrapCharacter = _WrapCharacter,
                         alignment = (HorizontalAlignment)_Alignment
@@ -496,6 +497,7 @@ namespace Squared.Render.Text {
         public float    xOffsetOfNewLine;
         public float?   lineBreakAtX;
         public bool     alignToPixels;
+        public bool     characterWrap;
         public bool     wordWrap;
         public char     wrapCharacter;
         public HorizontalAlignment alignment;
@@ -707,14 +709,14 @@ namespace Squared.Render.Text {
                     if (wordWrap && !wordWrapSuppressed && (currentWordSize <= lineBreakAtX)) {
                         WrapWord(_buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, x);
                         wordWrapSuppressed = true;
-                    } else {
+                        lineBreak = true;
+                    } else if (characterWrap) {
                         characterOffset.X = xOffsetOfWrappedLine;
                         totalSize.X = Math.Max(totalSize.X, currentLineMaxX);
                         wordStartWritePosition = bufferWritePosition;
                         wordStartOffset = characterOffset;
+                        lineBreak = true;
                     }
-
-                    lineBreak = true;
                 }
 
                 if (lineBreak) {
@@ -865,6 +867,7 @@ namespace Squared.Render {
                 xOffsetOfFirstLine = xOffsetOfFirstLine,
                 lineBreakAtX = lineBreakAtX,
                 alignToPixels = alignToPixels,
+                characterWrap = lineBreakAtX.HasValue,
                 wordWrap = wordWrap,
                 wrapCharacter = wrapCharacter,
                 buffer = buffer

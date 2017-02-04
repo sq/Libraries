@@ -34,6 +34,7 @@ namespace FontTest {
         public Vector2 BottomRight = new Vector2(512, 512);
 
         PressableKey Alignment = new PressableKey(Keys.A);
+        PressableKey CharacterWrap = new PressableKey(Keys.C);
         PressableKey WordWrap = new PressableKey(Keys.W);
 
         public FontTestGame () {
@@ -51,6 +52,9 @@ namespace FontTest {
 
             Alignment.Pressed += (s, e) => {
                 Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 3);
+            };
+            CharacterWrap.Pressed += (s, e) => {
+                Text.CharacterWrap = !Text.CharacterWrap;
             };
             WordWrap.Pressed += (s, e) => {
                 Text.WordWrap = !Text.WordWrap;
@@ -84,6 +88,7 @@ namespace FontTest {
 
             var ks = Keyboard.GetState();
             Alignment.Update(ref ks);
+            CharacterWrap.Update(ref ks);
             WordWrap.Update(ref ks);
         }
 
