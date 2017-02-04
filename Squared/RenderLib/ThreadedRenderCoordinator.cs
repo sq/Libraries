@@ -13,15 +13,30 @@ using Squared.Threading;
 
 namespace Squared.Render {
     public class RenderCoordinator : IDisposable {
-        struct DrawTask : IWorkItem {
-            public readonly Action Callback;
+        public struct SafepointToken : IDisposable {
+            public readonly RenderCoordinator Parent;
 
-            public DrawTask (Action callback) {
+            internal SafepointToken (RenderCoordinator rc) {
+                Parent = rc;
+            }
+
+            public void Dispose () {
+                Parent.ExitSafepoint();
+            }
+        }
+
+        struct DrawTask : IWorkItem {
+            public readonly Action<Frame> Callback;
+            public readonly Frame Frame;
+
+            public DrawTask (Action<Frame> callback, Frame frame) {
                 Callback = callback;
+                Frame = frame;
             }
 
             public void Execute () {
-                Callback();
+                lock (Frame)
+                    Callback(Frame);
             }
         }
 
@@ -54,8 +69,8 @@ namespace Squared.Render {
 #else
         private bool _ActualEnableThreading = true;
 #endif
-        private Frame _FrameBeingPrepared = null;
-        private Frame _FrameBeingDrawn = null;
+        private object _FrameLock = new object();
+        private Frame  _FrameBeingPrepared = null;
 
         internal bool SynchronousDrawsEnabled = true;
 
@@ -177,14 +192,26 @@ namespace Squared.Render {
         protected void OnDeviceResetting (object sender, EventArgs args) {
             Monitor.Enter(CreateResourceLock);
             Monitor.Enter(UseResourceLock);
+            Monitor.Enter(DrawLock);
         }
 
         protected void OnDeviceReset (object sender, EventArgs args) {
+            Monitor.Exit(DrawLock);
             Monitor.Exit(UseResourceLock);
             Monitor.Exit(CreateResourceLock);
 
             if (DeviceReset != null)
                 DeviceReset(this, EventArgs.Empty);
+        }
+
+        protected void ExitSafepoint () {
+            Monitor.Exit(DrawLock);
+        }
+
+        public SafepointToken Safepoint () {
+            Monitor.Enter(DrawLock);
+
+            return new SafepointToken(this);
         }
 
         private void WaitForPendingWork () {
@@ -245,7 +272,8 @@ namespace Squared.Render {
 
             bool result;
             if (_Running) {
-                _FrameBeingPrepared = Manager.CreateFrame();
+                lock (_FrameLock)
+                    _FrameBeingPrepared = Manager.CreateFrame();
 
                 if (DoThreadedIssue)
                     result = true;
@@ -287,11 +315,6 @@ namespace Squared.Render {
         protected void PrepareNextFrame (Frame newFrame, bool threaded) {
             if (newFrame != null)
                 PrepareFrame(newFrame, threaded);
-
-            var oldFrame = Interlocked.Exchange(ref _FrameBeingDrawn, newFrame);
-
-            if (oldFrame != null)
-                oldFrame.Dispose();
         }
         
         protected bool DoThreadedPrepare {
@@ -311,7 +334,10 @@ namespace Squared.Render {
             if (IsDisposed)
                 return;
 
-            var newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
+            Frame newFrame;
+            lock (_FrameLock)
+                newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
+
             PrepareNextFrame(newFrame, true);
             
             if (_Running) {
@@ -320,10 +346,10 @@ namespace Squared.Render {
                     if (!_SyncBeginDraw())
                         return;
 
-                    DrawQueue.Enqueue(new DrawTask(ThreadedDraw));
+                    DrawQueue.Enqueue(new DrawTask(ThreadedDraw, newFrame));
                     ThreadGroup.NotifyQueuesChanged();
                 } else {
-                    ThreadedDraw();
+                    ThreadedDraw(newFrame);
                 }
 
                 if (_DeviceLost) {
@@ -381,14 +407,12 @@ namespace Squared.Render {
             }
         }
 
-        protected void RenderFrameToDraw (bool endDraw) {
-            Manager.FlushBufferGenerators();
-
-            var frameToDraw = Interlocked.Exchange(ref _FrameBeingDrawn, null);
-
-            using (frameToDraw) {
-                if (frameToDraw != null)
+        protected void RenderFrameToDraw (Frame frameToDraw, bool endDraw) {
+            try {
+                if (frameToDraw != null) {                    
+                    Manager.FlushBufferGenerators();    
                     RenderFrame(frameToDraw, true);
+                }
 
                 if (endDraw) {
                     RunBeforePresentHandlers();
@@ -400,10 +424,13 @@ namespace Squared.Render {
                 if (endDraw) {
                     RunAfterPresentHandlers();
                 }
+            } finally {
+                if (frameToDraw != null)
+                    frameToDraw.Dispose();
             }
         }
 
-        protected void ThreadedDraw () {
+        protected void ThreadedDraw (Frame frame) {
             try {
                 if (!_Running)
                     return;
@@ -411,7 +438,7 @@ namespace Squared.Render {
                 CheckMainThread(DoThreadedIssue);
 
                 lock (DrawLock)
-                    RenderFrameToDraw(true);
+                    RenderFrameToDraw(frame, true);
 
                 _DeviceLost |= IsDeviceLost;
             } catch (InvalidOperationException ioe) {
@@ -478,7 +505,7 @@ namespace Squared.Render {
                         RenderManager.ResetDeviceState(Device);
                         Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
 
-                        RenderFrameToDraw(false);
+                        RenderFrameToDraw(frame, false);
                     } finally {
                         Device.SetRenderTargets(oldRenderTargets);
                         materials.PopViewTransform();
