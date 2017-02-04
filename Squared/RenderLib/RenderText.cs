@@ -580,6 +580,8 @@ namespace Squared.Render.Text {
             if (alignment == HorizontalAlignment.Center)
                 whitespace /= 2;
 
+            totalSize.X = Math.Max(totalSize.X, whitespace + lineWidth);
+
             for (var j = firstIndex; j <= lastIndex; j++) {
                 buffer.Array[buffer.Offset + j].Position.X += whitespace;
                 // We used the sortkey to store line numbers, now we put the right data there
