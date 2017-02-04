@@ -131,6 +131,7 @@ namespace Squared.Render.Text {
         private bool _CharacterWrap = true;
         private float _WrapIndentation = 0f;
         private bool _AlignToPixels = false;
+        private char _WrapCharacter = '\0';
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _Font = font;
@@ -276,10 +277,19 @@ namespace Squared.Render.Text {
         /// </summary>
         public bool CharacterWrap {
             get {
-                return _CharacterWrap;
+                return _CharacterWrap || _WordWrap;
             }
             set {
                 InvalidatingValueAssignment(ref _CharacterWrap, value);
+            }
+        }
+
+        public char WrapCharacter {
+            get {
+                return _WrapCharacter;
+            }
+            set {
+                InvalidatingValueAssignment(ref _WrapCharacter, value);
             }
         }
 
@@ -351,13 +361,13 @@ namespace Squared.Render.Text {
                     _Position, _Color, 
                     _Scale, _SortKey, 
                     _CharacterSkipCount, _CharacterLimit, 
-                    _XOffsetOfFirstLine, _WordWrap ? null : _LineBreakAtX,
+                    _XOffsetOfFirstLine, (_CharacterWrap && !_WordWrap) ? null : _LineBreakAtX,
                     _AlignToPixels, _KerningAdjustments
                 );
 
                 if (_WordWrap && _LineBreakAtX.HasValue) {
                     _CachedStringLayout = _CachedStringLayout.Value.WordWrap(
-                        _Text, _LineBreakAtX.Value, seg2, WrapIndentation, characterWrap: CharacterWrap
+                        _Text, _LineBreakAtX.Value, seg2, WrapIndentation, characterWrap: CharacterWrap, wrapCharacter: WrapCharacter
                     );
                 }
             }
@@ -415,122 +425,6 @@ namespace Squared.Render.Text {
 
         public static implicit operator ArraySegment<BitmapDrawCall> (StringLayout layout) {
             return layout.DrawCalls;
-        }
-
-        public StringLayout WordWrap (AbstractString text, float wrapAtX, ArraySegment<BitmapDrawCall>? buffer = null, float wrapIndentation = 0f, bool characterWrap = true) {
-            int? thisWordStartIndex = null;
-            int indexOfFirstCharInLine = 0;
-            float? previousCharacterX = null;
-            float thisWordWidth = 0;
-            var newSize = new Vector2();
-
-            ArraySegment<BitmapDrawCall> _buffer;
-            if (buffer.HasValue)
-                _buffer = buffer.Value;
-            else
-                _buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[Count]);
-
-            Array.Copy(this.DrawCalls.Array, this.DrawCalls.Offset, _buffer.Array, _buffer.Offset, Count);
-
-            for (var i = 0; i < Count; i++) {
-                var ch = text[i];
-                var dc = _buffer.Array[_buffer.Offset + i];
-
-                // Detect line break
-                if (previousCharacterX.HasValue && (dc.Position.X <= previousCharacterX.Value))
-                    indexOfFirstCharInLine = i;
-
-                var isWordChar = Char.IsLetterOrDigit(ch) || (ch == '\'');
-                // Start out using texture width (not entirely accurate)
-                var thisCharWidth = dc.TextureRegion.Size.X * dc.Texture.Width;
-                // Then if we can, use the gap between this char and next char
-                if (i < (Count - 1)) {
-                    var nextDrawCall = _buffer.Array[_buffer.Offset + i + 1];
-                    // Make sure the next draw call wasn't wrapped
-                    if (nextDrawCall.Position.X > dc.Position.X)
-                        thisCharWidth = nextDrawCall.Position.X - dc.Position.X;
-                }
-                thisWordWidth += thisCharWidth;
-
-                var needWrap = (dc.Position.X >= wrapAtX) &&
-                    !(ch == 10 || ch == 13 || ch == ' ');
-
-                if (needWrap) {
-                    int fromOffset = i;
-
-                    if (thisWordStartIndex.HasValue && (thisWordWidth <= (wrapAtX - wrapIndentation))) {
-                        // We have a current word and it's not too wide to fit on its own line.
-                        fromOffset = thisWordStartIndex.Value;
-                    } else if (characterWrap) {
-                        // We can character wrap, so continue with a fromOffset of i
-                    } else {
-                        // Character wrap disallowed, so don't wrap. The user will probably scale the output layout.
-                        needWrap = false;
-                    }
-
-                    // We'd be wrapping the whole line, which is pointless.
-                    if (indexOfFirstCharInLine == fromOffset) {
-                        needWrap = false;
-                    }
-
-                    if (needWrap) {
-                        float xDelta = Position.X - _buffer.Array[_buffer.Offset + fromOffset].Position.X + wrapIndentation;
-                        indexOfFirstCharInLine = fromOffset;
-
-                        float firstX = _buffer.Array[_buffer.Offset + fromOffset].Position.X;
-                        bool didBreakLine = false;
-
-                        for (var j = fromOffset; j < Count; j++) {
-                            var dc2 = _buffer.Array[_buffer.Offset + j];
-
-                            if ((dc2.Position.X <= firstX) && (j > fromOffset))
-                                didBreakLine = true;
-
-                            if (!didBreakLine)
-                                dc2.Position.X += xDelta;
-
-                            dc2.Position.Y += LineHeight;
-                            _buffer.Array[_buffer.Offset + j] = dc2;
-                        }
-                    }
-                }
-
-                if (!isWordChar) {
-                    if (thisWordStartIndex.HasValue)
-                        thisWordStartIndex = null;
-                } else {
-                    if (!thisWordStartIndex.HasValue) {
-                        thisWordStartIndex = i;
-                        thisWordWidth = 0f;
-                    }
-                }
-
-                previousCharacterX = dc.Position.X;
-            }
-
-            for (var i = 0; i < Count; i++) {
-                var dc = _buffer.Array[_buffer.Offset + i];
-                newSize.X = Math.Max(
-                    dc.Position.X + (dc.Texture.Width * dc.TextureRegion.Size.X) - Position.X, newSize.X
-                );
-                newSize.Y = Math.Max(
-                    dc.Position.Y + (dc.Texture.Height * dc.TextureRegion.Size.Y) - Position.Y, newSize.Y
-                );
-            }
-
-            var segment = new ArraySegment<BitmapDrawCall>(_buffer.Array, _buffer.Offset, Count);
-
-            if (segment.Count > text.Length)
-                throw new InvalidDataException();
-
-            return new StringLayout(
-                Position, newSize,
-                LineHeight,
-                // FIXME
-                FirstCharacterBounds,
-                LastCharacterBounds,
-                segment
-            );
         }
 
         public static Dictionary<char, KerningAdjustment> GetDefaultKerningAdjustments (SpriteFont font) {

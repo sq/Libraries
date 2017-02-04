@@ -73,3 +73,7 @@ _ReSharper.*
 /Squared/ThreadingTests/bin
 *.psess
 *.vspx
+/Squared/FontTest/FontTestContent/obj
+/Squared/FontTest/FontTestContent/bin
+/Squared/FontTest/FontTest/bin
+/Squared/FontTest/FontTest/obj
