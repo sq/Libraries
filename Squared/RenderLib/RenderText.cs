@@ -362,14 +362,9 @@ namespace Squared.Render.Text {
                     _Scale, _SortKey, 
                     _CharacterSkipCount, _CharacterLimit, 
                     _XOffsetOfFirstLine, (_CharacterWrap && !_WordWrap) ? null : _LineBreakAtX,
-                    _AlignToPixels, _KerningAdjustments
+                    _AlignToPixels, _KerningAdjustments,
+                    _WordWrap, _WrapCharacter
                 );
-
-                if (_WordWrap && _LineBreakAtX.HasValue) {
-                    _CachedStringLayout = _CachedStringLayout.Value.WordWrap(
-                        _Text, _LineBreakAtX.Value, seg2, WrapIndentation, characterWrap: CharacterWrap, wrapCharacter: WrapCharacter
-                    );
-                }
             }
 
             return _CachedStringLayout.Value;
@@ -460,13 +455,20 @@ namespace Squared.Render.Text {
         public float xOffsetOfFirstLine;
         public float? lineBreakAtX;
         public bool alignToPixels;
+        public bool wordWrap;
+        public char wrapCharacter;
 
         // State
         public Vector2 actualPosition, totalSize, characterOffset;
         public Bounds  firstCharacterBounds, lastCharacterBounds;
         public float   spacing, lineSpacing;
-        public bool    firstCharacterEver, firstCharacterOfLine;
         public ArraySegment<BitmapDrawCall> remainingBuffer;
+        int 
+            // Beginning of the most recent whitespace/non-whitespace range
+            firstNonWhitespace, firstWhitespace,
+            // End of the most recent whitespace/non-whitespace range
+            lastNonWhitespace, lastWhitespace,
+            rowIndex, colIndex;
 
         private bool IsInitialized;
 
@@ -474,8 +476,8 @@ namespace Squared.Render.Text {
             actualPosition = position.GetValueOrDefault(Vector2.Zero);
             characterOffset = new Vector2(xOffsetOfFirstLine, 0);
 
-            firstCharacterEver = true;
-            firstCharacterOfLine = true;
+            firstNonWhitespace = firstWhitespace = lastWhitespace = lastNonWhitespace = -999;
+            rowIndex = colIndex = 0;
 
             IsInitialized = true;
         }
@@ -525,6 +527,7 @@ namespace Squared.Render.Text {
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 var ch = text[i];
+                var isWhiteSpace = char.IsWhiteSpace(ch);
 
                 var lineBreak = false;
                 if (ch == '\r') {
@@ -549,15 +552,20 @@ namespace Squared.Render.Text {
                 }
 
                 if (!deadGlyph) {
-                    var x = characterOffset.X + glyph.LeftSideBearing + glyph.RightSideBearing + glyph.Width + spacing;
-                    if (x >= lineBreakAtX)
+                    var x = characterOffset.X + 
+                        glyph.LeftSideBearing + 
+                        glyph.RightSideBearing + 
+                        glyph.Width + spacing;
+
+                    if ((x >= lineBreakAtX) && (colIndex > 0) && !isWhiteSpace)
                         lineBreak = true;
                 }
 
                 if (lineBreak) {
                     characterOffset.X = 0;
                     characterOffset.Y += lineSpacing;
-                    firstCharacterOfLine = true;
+                    rowIndex += 1;
+                    colIndex = 0;
                 }
 
                 if (deadGlyph) {
@@ -575,17 +583,13 @@ namespace Squared.Render.Text {
                     )
                 );
 
-                if (firstCharacterEver) {
+                if ((rowIndex == 0) && (colIndex == 0))
                     firstCharacterBounds = lastCharacterBounds;
-                    firstCharacterEver = false;
-                }
 
                 characterOffset.X += glyph.LeftSideBearing;
 
-                if (firstCharacterOfLine) {
+                if (colIndex == 0)
                     characterOffset.X = Math.Max(characterOffset.X, 0);
-                    firstCharacterOfLine = false;
-                }
 
                 if (characterSkipCount <= 0) {
                     if (characterLimit <= 0)
@@ -620,6 +624,18 @@ namespace Squared.Render.Text {
 
                 totalSize.X = Math.Max(totalSize.X, characterOffset.X);
                 totalSize.Y = Math.Max(totalSize.Y, characterOffset.Y + font.LineSpacing);
+
+                if (isWhiteSpace) {
+                    if (lastWhitespace != i - 1)
+                        firstWhitespace = i;
+                    lastWhitespace = i;
+                } else {
+                    if (lastNonWhitespace != i - 1)
+                        firstNonWhitespace = i;
+                    lastNonWhitespace = i;
+                }
+
+                colIndex += 1;
             }
 
             var segment = new ArraySegment<BitmapDrawCall>(
@@ -646,7 +662,8 @@ namespace Squared.Render {
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
             bool alignToPixels = false,
-            Dictionary<char, KerningAdjustment> kerningAdjustments = null
+            Dictionary<char, KerningAdjustment> kerningAdjustments = null,
+            bool wordWrap = false, char wrapCharacter = '\0'
         ) {
             var state = new StringLayoutEngine {
                 position = position,
@@ -657,7 +674,9 @@ namespace Squared.Render {
                 characterLimit = characterLimit,
                 xOffsetOfFirstLine = xOffsetOfFirstLine,
                 lineBreakAtX = lineBreakAtX,
-                alignToPixels = alignToPixels
+                alignToPixels = alignToPixels,
+                wordWrap = wordWrap,
+                wrapCharacter = wrapCharacter
             };
 
             state.Initialize();
