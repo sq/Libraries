@@ -577,10 +577,18 @@ namespace Squared.Render.Text {
             else
                 whitespace = totalSize.X - lineWidth;
 
+            // HACK: Don't do anything if the line is too big, just overflow to the right.
+            //  Otherwise, the sizing info will be wrong and bad things happen.
+            if (whitespace <= 0)
+                whitespace = 0;
+
+            // HACK: We compute this before halving the whitespace, so that the size of 
+            //  the layout is enough to ensure manually centering the whole layout will
+            //  still preserve per-line centering.
+            totalSize.X = Math.Max(totalSize.X, whitespace + lineWidth);
+
             if (alignment == HorizontalAlignment.Center)
                 whitespace /= 2;
-
-            totalSize.X = Math.Max(totalSize.X, whitespace + lineWidth);
 
             for (var j = firstIndex; j <= lastIndex; j++) {
                 buffer.Array[buffer.Offset + j].Position.X += whitespace;
