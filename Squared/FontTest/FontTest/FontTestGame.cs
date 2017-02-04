@@ -30,8 +30,8 @@ namespace FontTest {
 
         DynamicStringLayout Text;
 
-        public Vector2 Margin = new Vector2(24, 24);
-        public Vector2? BottomRight;
+        public Vector2 TopLeft = new Vector2(24, 24);
+        public Vector2 BottomRight = new Vector2(512, 512);
 
         PressableKey Alignment = new PressableKey(Keys.A);
         PressableKey WordWrap = new PressableKey(Keys.W);
@@ -80,7 +80,7 @@ namespace FontTest {
             if (ms.LeftButton == ButtonState.Pressed)
                 BottomRight = new Vector2(ms.X, ms.Y);
             else if (ms.RightButton == ButtonState.Pressed)
-                BottomRight = null;
+                TopLeft = new Vector2(ms.X, ms.Y);
 
             var ks = Keyboard.GetState();
             Alignment.Update(ref ks);
@@ -93,21 +93,19 @@ namespace FontTest {
 
             ir.Clear(color: ClearColor);
 
-            if (BottomRight.HasValue)
-                Text.LineBreakAtX = BottomRight.Value.X - Margin.X;
-            else
-                Text.LineBreakAtX = Arithmetic.Pulse((float)(gameTime.TotalGameTime.TotalSeconds / 14), 0, 1024);
+            Text.Position = TopLeft;
+            Text.LineBreakAtX = BottomRight.X - TopLeft.X;
 
-            ir.OutlineRectangle(new Bounds(Margin, new Vector2(Text.LineBreakAtX.Value + Margin.X, 1024 - Margin.Y)), Color.Red);
+            ir.OutlineRectangle(new Bounds(TopLeft, BottomRight), Color.Red);
 
             var layout = Text.Get();
 
             foreach (var dc in layout.DrawCalls)
-                ir.OutlineRectangle(dc.EstimateDrawBounds().Translate(Margin), Color.Blue);
+                ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
 
-            ir.OutlineRectangle(Bounds.FromPositionAndSize(Margin, layout.Size), Color.Yellow * 0.75f);
+            ir.OutlineRectangle(Bounds.FromPositionAndSize(TopLeft, layout.Size), Color.Yellow * 0.75f);
 
-            ir.DrawMultiple(layout, Margin);
+            ir.DrawMultiple(layout);
         }
     }
 

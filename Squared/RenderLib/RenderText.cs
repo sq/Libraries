@@ -547,8 +547,17 @@ namespace Squared.Render.Text {
 
             newX -= characterOffset.X;
             characterOffset.X = xOffsetOfWrappedLine + (characterOffset.X - firstOffset.X);
-            // HACK :(
-            totalSize.X = Math.Max(totalSize.X, firstOffset.X);
+
+            // HACK: firstOffset may include whitespace so we want to pull the right edge in.
+            //  Without doing this, the size rect for the string is too large.
+            var actualRightEdge = firstOffset.X;
+            if (firstIndex > 0)
+                actualRightEdge = Math.Min(
+                    actualRightEdge, 
+                    buffer.Array[buffer.Offset + firstIndex - 1].EstimateDrawBounds().BottomRight.X
+                );
+            totalSize.X = Math.Max(totalSize.X, actualRightEdge);
+
             lastWordEndX = newX + characterOffset.X;
         }
 
