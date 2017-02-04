@@ -536,11 +536,14 @@ namespace Squared.Render.Text {
             ArraySegment<BitmapDrawCall> buffer,
             Vector2 firstOffset, int firstIndex, int lastIndex, float newX
         ) {
+            var scaledFirstOffset = firstOffset * scale;
+            var scaledLineSpacing = lineSpacing * scale;
+
             for (var i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
-                var newCharacterX = xOffsetOfWrappedLine + (dc.Position.X - firstOffset.X);
+                var newCharacterX = xOffsetOfWrappedLine + (dc.Position.X - scaledFirstOffset.X);
 
-                dc.Position = new Vector2(newCharacterX, dc.Position.Y + lineSpacing);
+                dc.Position = new Vector2(newCharacterX, dc.Position.Y + scaledLineSpacing);
                 if (alignment != HorizontalAlignment.Left)
                     dc.SortKey.Order += 1;
 
@@ -704,7 +707,7 @@ namespace Squared.Render.Text {
                     glyph.RightSideBearing + 
                     glyph.Width + spacing;
 
-                if (x >= lineBreakAtX) {
+                if ((x * scale) >= lineBreakAtX) {
                     if (
                         !deadGlyph &&
                         (colIndex > 0) &&
@@ -716,7 +719,7 @@ namespace Squared.Render.Text {
                 if (forcedWrap) {
                     var currentWordSize = x - wordStartOffset.X;
 
-                    if (wordWrap && !wordWrapSuppressed && (currentWordSize <= lineBreakAtX)) {
+                    if (wordWrap && !wordWrapSuppressed && (currentWordSize * scale <= lineBreakAtX)) {
                         WrapWord(_buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, x);
                         wordWrapSuppressed = true;
                         lineBreak = true;

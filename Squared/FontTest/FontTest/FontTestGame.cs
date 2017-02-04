@@ -68,7 +68,7 @@ namespace FontTest {
                 // Alignment = HorizontalAlignment.Right,
                 CharacterWrap = true,
                 WordWrap = true,
-                Scale = 0.75f
+                Scale = 0.9f
             };
         }
 
