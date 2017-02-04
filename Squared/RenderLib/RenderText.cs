@@ -491,10 +491,10 @@ namespace Squared.Render.Text {
         public float    spacing, lineSpacing;
         public int      drawCallsWritten;
         public ArraySegment<BitmapDrawCall> remainingBuffer;
-        float   initialLineXOffset;
-        int     nonWhitespaceStarted, rowIndex, colIndex;
+        float   initialLineXOffset, currentLineMaxX, lastWordEndX;
+        int     wordStartWritePosition, rowIndex, colIndex;
         bool    wordWrapSuppressed;
-        Vector2 nonWhitespaceStartOffset;
+        Vector2 wordStartOffset;
 
         private bool IsInitialized;
 
@@ -503,8 +503,8 @@ namespace Squared.Render.Text {
             characterOffset = new Vector2(xOffsetOfFirstLine, 0);
             initialLineXOffset = characterOffset.X;
 
-            nonWhitespaceStarted = -1;
-            nonWhitespaceStartOffset = Vector2.Zero;
+            wordStartWritePosition = -1;
+            wordStartOffset = Vector2.Zero;
             rowIndex = colIndex = 0;
             wordWrapSuppressed = false;
 
@@ -513,18 +513,20 @@ namespace Squared.Render.Text {
 
         private void WrapWord (
             ArraySegment<BitmapDrawCall> buffer,
-            Vector2 firstOffset, int firstIndex, int lastIndex
+            Vector2 firstOffset, int firstIndex, int lastIndex, float newX
         ) {
             for (var i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
-                dc.Position = new Vector2(
-                    xOffsetOfWrappedLine + (dc.Position.X - firstOffset.X),
-                    dc.Position.Y + lineSpacing
-                );
+                var newCharacterX = xOffsetOfWrappedLine + (dc.Position.X - firstOffset.X);
+                dc.Position = new Vector2(newCharacterX, dc.Position.Y + lineSpacing);
                 buffer.Array[buffer.Offset + i] = dc;
             }
 
+            newX -= characterOffset.X;
             characterOffset.X = xOffsetOfWrappedLine + (characterOffset.X - firstOffset.X);
+            // HACK :(
+            totalSize.X = Math.Max(totalSize.X, firstOffset.X);
+            lastWordEndX = newX + characterOffset.X;
         }
 
         public ArraySegment<BitmapDrawCall> AppendText (
@@ -564,15 +566,16 @@ namespace Squared.Render.Text {
 
             float rectScaleX = 1f / glyphSource.Texture.Width;
             float rectScaleY = 1f / glyphSource.Texture.Height;
+            float x = 0;
 
             int bufferWritePosition = 0;
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 var ch = text[i];
-                var isWhiteSpace = char.IsWhiteSpace(ch);
-                var forcedWrap = false;
+                bool isWhiteSpace = char.IsWhiteSpace(ch),
+                     forcedWrap = false, lineBreak = false,
+                     deadGlyph = false;
 
-                var lineBreak = false;
                 if (ch == '\r') {
                     if (((i + 1) < l) && (text[i + 1] == '\n'))
                         i += 1;
@@ -583,16 +586,17 @@ namespace Squared.Render.Text {
                 }
 
                 if (!isWhiteSpace) {
-                    if (nonWhitespaceStarted < 0) {
-                        nonWhitespaceStarted = bufferWritePosition;
-                        nonWhitespaceStartOffset = characterOffset;
+                    if (wordStartWritePosition < 0) {
+                        wordStartWritePosition = bufferWritePosition;
+                        wordStartOffset = characterOffset;
                     }
                 } else {
-                    nonWhitespaceStarted = -1;
+                    if (wordStartWritePosition >= 0)
+                        lastWordEndX = x;
+
+                    wordStartWritePosition = -1;
                     wordWrapSuppressed = false;
                 }
-
-                bool deadGlyph;
 
                 Glyph glyph;
                 deadGlyph = !glyphSource.GetGlyph(ch, out glyph);
@@ -604,37 +608,48 @@ namespace Squared.Render.Text {
                     glyph.RightSideBearing += kerningAdjustment.RightSideBearing;
                 }
 
-                var x = characterOffset.X + 
+                x = characterOffset.X + 
                     glyph.LeftSideBearing + 
                     glyph.RightSideBearing + 
                     glyph.Width + spacing;
 
-                if (!deadGlyph) {
-                    if ((x >= lineBreakAtX) && (colIndex > 0) && !isWhiteSpace)
+                if (x >= lineBreakAtX) {
+                    if (
+                        !deadGlyph &&
+                        (colIndex > 0) &&
+                        !isWhiteSpace
+                    )
                         forcedWrap = true;
                 }
 
                 if (forcedWrap) {
-                    var currentWordSize = x - nonWhitespaceStartOffset.X;
+                    var currentWordSize = x - wordStartOffset.X;
 
                     if (wordWrap && !wordWrapSuppressed && (currentWordSize <= lineBreakAtX)) {
-                        WrapWord(_buffer, nonWhitespaceStartOffset, nonWhitespaceStarted, bufferWritePosition - 1);
+                        WrapWord(_buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, x);
                         wordWrapSuppressed = true;
                     } else {
                         characterOffset.X = xOffsetOfWrappedLine;
-                    }               
+                        totalSize.X = Math.Max(totalSize.X, currentLineMaxX);
+                        wordStartWritePosition = bufferWritePosition;
+                        wordStartOffset = characterOffset;
+                    }
 
                     lineBreak = true;
                 }
 
                 if (lineBreak) {
-                    if (!forcedWrap)
+                    if (!forcedWrap) {
                         characterOffset.X = xOffsetOfNewLine;
+                        totalSize.X = Math.Max(totalSize.X, currentLineMaxX);
+                    }
 
+                    initialLineXOffset = characterOffset.X;
+                    currentLineMaxX = 0;
+                    lastWordEndX = 0;
                     characterOffset.Y += lineSpacing;
                     rowIndex += 1;
                     colIndex = 0;
-                    initialLineXOffset = characterOffset.X;
                 }
 
                 if (deadGlyph) {
@@ -642,6 +657,12 @@ namespace Squared.Render.Text {
                     characterLimit--;
                     continue;
                 }
+
+                // HACK: Recompute after wrapping
+                x = characterOffset.X + 
+                    glyph.LeftSideBearing + 
+                    glyph.RightSideBearing + 
+                    glyph.Width + spacing;
 
                 characterOffset.X += spacing;
 
@@ -697,7 +718,7 @@ namespace Squared.Render.Text {
                 characterOffset.X += (glyph.Width + glyph.RightSideBearing);
 
                 if (!isWhiteSpace) {
-                    totalSize.X = Math.Max(totalSize.X, characterOffset.X);
+                    currentLineMaxX = Math.Max(currentLineMaxX, characterOffset.X);
                     totalSize.Y = Math.Max(totalSize.Y, characterOffset.Y + font.LineSpacing);
                 }
 
@@ -719,6 +740,8 @@ namespace Squared.Render.Text {
         }
 
         public StringLayout Finish () {
+            totalSize.X = Math.Max(totalSize.X, currentLineMaxX);
+
             return new StringLayout(
                 position.GetValueOrDefault(), totalSize, lineSpacing,
                 firstCharacterBounds, lastCharacterBounds,
