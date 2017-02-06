@@ -122,11 +122,13 @@ namespace Squared.Render.Text {
         public float    spacing, lineSpacing;
         public int      drawCallsWritten;
         public ArraySegment<BitmapDrawCall> remainingBuffer;
-        float   initialLineXOffset, lastWordEndX;
+        float   initialLineXOffset;
         int     bufferWritePosition, wordStartWritePosition;
         int     rowIndex, colIndex;
         bool    wordWrapSuppressed;
-        float   currentLineMaxX, maxX, maxY;
+        float   currentLineMaxX;
+        float   currentLineWhitespaceMaxXLeft, currentLineWhitespaceMaxX;
+        float   maxX, maxY;
         Vector2 wordStartOffset;
 
         private bool IsInitialized;
@@ -149,6 +151,12 @@ namespace Squared.Render.Text {
             ArraySegment<BitmapDrawCall> buffer,
             Vector2 firstOffset, int firstIndex, int lastIndex, float newX
         ) {
+            // FIXME: Can this ever happen?
+            if (currentLineWhitespaceMaxX <= 0)
+                maxX = Math.Max(maxX, currentLineMaxX);
+            else
+                maxX = Math.Max(maxX, currentLineWhitespaceMaxXLeft);
+
             var scaledFirstOffset = firstOffset * scale;
             var scaledLineSpacing = lineSpacing * scale;
 
@@ -174,8 +182,6 @@ namespace Squared.Render.Text {
                     actualRightEdge, 
                     buffer.Array[buffer.Offset + firstIndex - 1].EstimateDrawBounds().BottomRight.X
                 );
-
-            lastWordEndX = newX + characterOffset.X;
         }
 
         private void AlignLine (
@@ -291,17 +297,14 @@ namespace Squared.Render.Text {
                     lineBreak = true;
                 }
 
-                if (!isWhiteSpace) {
+                if (isWhiteSpace) {
+                    wordStartWritePosition = -1;
+                    wordWrapSuppressed = false;
+                } else {
                     if (wordStartWritePosition < 0) {
                         wordStartWritePosition = bufferWritePosition;
                         wordStartOffset = characterOffset;
                     }
-                } else {
-                    if (wordStartWritePosition >= 0)
-                        lastWordEndX = x;
-
-                    wordStartWritePosition = -1;
-                    wordWrapSuppressed = false;
                 }
 
                 Glyph glyph;
@@ -352,7 +355,8 @@ namespace Squared.Render.Text {
 
                     initialLineXOffset = characterOffset.X;
                     currentLineMaxX = 0;
-                    lastWordEndX = 0;
+                    currentLineWhitespaceMaxX = 0;
+                    currentLineWhitespaceMaxXLeft = 0;
                     characterOffset.Y += lineSpacing;
                     rowIndex += 1;
                     colIndex = 0;
@@ -422,6 +426,9 @@ namespace Squared.Render.Text {
 
                         bufferWritePosition += 1;
                         drawCallsWritten += 1;
+                    } else {
+                        currentLineWhitespaceMaxXLeft = Math.Max(currentLineWhitespaceMaxXLeft, characterOffset.X);
+                        currentLineWhitespaceMaxX = Math.Max(currentLineWhitespaceMaxX, x);
                     }
 
                     characterLimit--;
