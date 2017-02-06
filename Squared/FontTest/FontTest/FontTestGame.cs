@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -21,9 +22,13 @@ namespace FontTest {
         public string TestText =
             "The quick brown fox jumped over the lazy dogs." +
             "\r\nLong woooooooooooooooooooooooord" +
-            "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z";
+            "\r\nこの体は、無限のチェイサーで出来ていた" +
+            "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +
+            "\r\nはいはい！";
 
-        SpriteFont Font;
+        IGlyphSource SpriteFont, LatinFont, UniFont, FallbackFont;
+
+        IGlyphSource ActiveFont;
 
         DefaultMaterialSet Materials;
         GraphicsDeviceManager Graphics;
@@ -36,6 +41,7 @@ namespace FontTest {
         PressableKey Alignment = new PressableKey(Keys.A);
         PressableKey CharacterWrap = new PressableKey(Keys.C);
         PressableKey WordWrap = new PressableKey(Keys.W);
+        PressableKey FreeType = new PressableKey(Keys.F);
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
@@ -59,12 +65,23 @@ namespace FontTest {
             WordWrap.Pressed += (s, e) => {
                 Text.WordWrap = !Text.WordWrap;
             };
+            FreeType.Pressed += (s, e) => {
+                if (Text.GlyphSource == SpriteFont)
+                    Text.GlyphSource = FallbackFont;
+                else
+                    Text.GlyphSource = SpriteFont;
+            };
         }
 
         protected override void LoadContent () {
-            Font = Content.Load<SpriteFont>("font");
+            SpriteFont = new SpriteFontGlyphSource(Content.Load<SpriteFont>("font"));
+            LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") { SizePoints = 40 };
+            UniFont = new FreeTypeFont(RenderCoordinator, @"\Windows\Fonts\ArialUni.ttf") { SizePoints = 20 };
+            FallbackFont = new FallbackGlyphSource(LatinFont, UniFont);
 
-            Text = new DynamicStringLayout(Font, TestText) {
+            ActiveFont = SpriteFont;
+
+            Text = new DynamicStringLayout(ActiveFont, TestText) {
                 // Alignment = HorizontalAlignment.Right,
                 CharacterWrap = true,
                 WordWrap = true,
@@ -91,6 +108,7 @@ namespace FontTest {
             Alignment.Update(ref ks);
             CharacterWrap.Update(ref ks);
             WordWrap.Update(ref ks);
+            FreeType.Update(ref ks);
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {

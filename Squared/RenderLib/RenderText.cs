@@ -64,10 +64,15 @@ namespace Squared.Render.Text {
             return layout.DrawCalls;
         }
 
-        public static Dictionary<char, KerningAdjustment> GetDefaultKerningAdjustments (SpriteFont font) {
-            Dictionary<char, KerningAdjustment> result;
-            _DefaultKerningAdjustments.TryGetValue(font, out result);
-            return result;
+        public static Dictionary<char, KerningAdjustment> GetDefaultKerningAdjustments (IGlyphSource font) {
+            // FIXME
+            if (font is SpriteFontGlyphSource) {
+                Dictionary<char, KerningAdjustment> result;
+                _DefaultKerningAdjustments.TryGetValue(((SpriteFontGlyphSource)font).Font, out result);
+                return result;
+            } else {
+                return null;
+            }
         }
 
         public static void SetDefaultKerningAdjustments (SpriteFont font, Dictionary<char, KerningAdjustment> adjustments) {
@@ -119,7 +124,6 @@ namespace Squared.Render.Text {
         public float    maxLineHeight;
         public Vector2  actualPosition, characterOffset;
         public Bounds   firstCharacterBounds, lastCharacterBounds;
-        public float    spacing, lineSpacing;
         public int      drawCallsWritten;
         public ArraySegment<BitmapDrawCall> remainingBuffer;
         float   initialLineXOffset;
@@ -129,6 +133,8 @@ namespace Squared.Render.Text {
         float   currentLineMaxX;
         float   currentLineWhitespaceMaxXLeft, currentLineWhitespaceMaxX;
         float   maxX, maxY;
+        float?  currentLineSpacing;
+        float   maxLineSpacing;
         Vector2 wordStartOffset;
 
         private bool IsInitialized;
@@ -143,6 +149,8 @@ namespace Squared.Render.Text {
             wordStartOffset = Vector2.Zero;
             rowIndex = colIndex = 0;
             wordWrapSuppressed = false;
+            currentLineSpacing = null;
+            maxLineSpacing = 0;
 
             IsInitialized = true;
         }
@@ -158,7 +166,7 @@ namespace Squared.Render.Text {
                 maxX = Math.Max(maxX, currentLineWhitespaceMaxXLeft);
 
             var scaledFirstOffset = firstOffset * scale;
-            var scaledLineSpacing = lineSpacing * scale;
+            var scaledLineSpacing = currentLineSpacing.GetValueOrDefault(maxLineSpacing) * scale;
 
             for (var i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
@@ -270,10 +278,7 @@ namespace Squared.Render.Text {
                 );
 
             if (kerningAdjustments == null)
-                kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font.SpriteFont);
-
-            spacing = font.CharacterSpacing;
-            lineSpacing = Math.Max(lineSpacing, font.LineSpacing);
+                kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
 
             var drawCall = default(BitmapDrawCall);
             drawCall.MultiplyColor = color.GetValueOrDefault(Color.White);
@@ -281,12 +286,15 @@ namespace Squared.Render.Text {
             drawCall.SortKey = sortKey;
 
             float x = 0;
+            float? defaultLineSpacing = null;
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 var ch = text[i];
                 bool isWhiteSpace = char.IsWhiteSpace(ch),
                      forcedWrap = false, lineBreak = false,
                      deadGlyph = false;
+                Glyph glyph;
+                KerningAdjustment kerningAdjustment;
 
                 if (ch == '\r') {
                     if (((i + 1) < l) && (text[i + 1] == '\n'))
@@ -307,20 +315,32 @@ namespace Squared.Render.Text {
                     }
                 }
 
-                Glyph glyph;
                 deadGlyph = !font.GetGlyph(ch, out glyph);
 
-                KerningAdjustment kerningAdjustment;
+                float effectiveLineSpacing = glyph.LineSpacing;
+                if (deadGlyph) {
+                    if (currentLineSpacing.HasValue)
+                        effectiveLineSpacing = currentLineSpacing.Value;
+                    else if (defaultLineSpacing.HasValue)
+                        effectiveLineSpacing = defaultLineSpacing.Value;
+                    else {
+                        Glyph space;
+                        if (font.GetGlyph(' ', out space))
+                            defaultLineSpacing = effectiveLineSpacing = space.LineSpacing;
+                    }
+                }
+
                 if ((kerningAdjustments != null) && kerningAdjustments.TryGetValue(ch, out kerningAdjustment)) {
                     glyph.LeftSideBearing += kerningAdjustment.LeftSideBearing;
                     glyph.Width += kerningAdjustment.Width;
                     glyph.RightSideBearing += kerningAdjustment.RightSideBearing;
                 }
 
-                x = characterOffset.X + 
+                x = 
+                    characterOffset.X + 
                     glyph.LeftSideBearing + 
                     glyph.RightSideBearing + 
-                    glyph.Width + spacing;
+                    glyph.Width + glyph.CharacterSpacing;
 
                 if ((x * scale) >= lineBreakAtX) {
                     if (
@@ -357,7 +377,7 @@ namespace Squared.Render.Text {
                     currentLineMaxX = 0;
                     currentLineWhitespaceMaxX = 0;
                     currentLineWhitespaceMaxXLeft = 0;
-                    characterOffset.Y += lineSpacing;
+                    characterOffset.Y += effectiveLineSpacing;
                     rowIndex += 1;
                     colIndex = 0;
                 }
@@ -369,17 +389,18 @@ namespace Squared.Render.Text {
                 }
 
                 // HACK: Recompute after wrapping
-                x = characterOffset.X + 
+                x = 
+                    characterOffset.X + 
                     glyph.LeftSideBearing + 
                     glyph.RightSideBearing + 
-                    glyph.Width + spacing;
+                    glyph.Width + glyph.CharacterSpacing;
 
-                characterOffset.X += spacing;
+                characterOffset.X += glyph.CharacterSpacing;
 
                 lastCharacterBounds = Bounds.FromPositionAndSize(
                     characterOffset, new Vector2(
                         glyph.LeftSideBearing + glyph.Width + glyph.RightSideBearing,
-                        font.LineSpacing
+                        glyph.LineSpacing
                     )
                 );
 
@@ -396,8 +417,8 @@ namespace Squared.Render.Text {
                         break;
 
                     var glyphPosition = new Vector2(
-                        actualPosition.X + (glyph.Cropping.X + characterOffset.X) * scale,
-                        actualPosition.Y + (glyph.Cropping.Y + characterOffset.Y) * scale
+                        actualPosition.X + (glyph.XOffset + characterOffset.X) * scale,
+                        actualPosition.Y + (glyph.YOffset + characterOffset.Y) * scale
                     );
 
                     if (!isWhiteSpace) {                    
@@ -422,7 +443,7 @@ namespace Squared.Render.Text {
                         _buffer.Array[_buffer.Offset + bufferWritePosition] = drawCall;
 
                         currentLineMaxX = Math.Max(currentLineMaxX, x);
-                        maxY = Math.Max(maxY, characterOffset.Y + lineSpacing);
+                        maxY = Math.Max(maxY, characterOffset.Y + effectiveLineSpacing);
 
                         bufferWritePosition += 1;
                         drawCallsWritten += 1;
@@ -437,6 +458,8 @@ namespace Squared.Render.Text {
                 }
 
                 characterOffset.X += (glyph.Width + glyph.RightSideBearing);
+                currentLineSpacing = glyph.LineSpacing;
+                maxLineSpacing = Math.Max(maxLineSpacing, effectiveLineSpacing);
 
                 colIndex += 1;
             }
@@ -466,8 +489,8 @@ namespace Squared.Render.Text {
 
             return new StringLayout(
                 position.GetValueOrDefault(), 
-                new Vector2(maxX * scale, maxY * scale), 
-                lineSpacing,
+                new Vector2(maxX * scale, maxY * scale),
+                maxLineSpacing,
                 firstCharacterBounds, lastCharacterBounds,
                 resultSegment
             );
@@ -505,7 +528,7 @@ namespace Squared.Render {
                 wrapCharacter = wrapCharacter,
                 buffer = buffer
             };
-            var gs = GlyphSource.New(font);
+            var gs = new SpriteFontGlyphSource(font);
 
             state.Initialize();
 

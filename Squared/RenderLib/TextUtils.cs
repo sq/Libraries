@@ -131,7 +131,7 @@ namespace Squared.Render.Text {
         private int _Alignment = (int)HorizontalAlignment.Left;
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
-            _GlyphSource = Squared.Render.Text.GlyphSource.New(font);
+            _GlyphSource = new SpriteFontGlyphSource(font);
             _Text = text;
         }
 
@@ -186,12 +186,15 @@ namespace Squared.Render.Text {
 
         public SpriteFont Font {
             get {
-                return (_GlyphSource != null) ? _GlyphSource.SpriteFont : null;
+                if (_GlyphSource is SpriteFontGlyphSource)
+                    return ((SpriteFontGlyphSource)_GlyphSource).Font;
+                else
+                    return null;
             }
             set {
                 InvalidatingReferenceAssignment(
                     ref _GlyphSource, 
-                    Squared.Render.Text.GlyphSource.New(value)
+                    new SpriteFontGlyphSource(value)
                 );
             }
         }
@@ -413,17 +416,44 @@ namespace Squared.Render.Text {
         }
     }
 
-    public interface IGlyphSource {
-        // HACK: So you can access the underlying spritefont if there is one
-        SpriteFont SpriteFont { get; }
+    public class FallbackGlyphSource : IGlyphSource, IDisposable {
+        public readonly List<IGlyphSource> Sources = new List<IGlyphSource>();
 
-        float CharacterSpacing { get; }
-        float LineSpacing { get; }
+        public FallbackGlyphSource (params IGlyphSource[] sources) {
+            Sources.AddRange(sources);
+        }
 
-        bool GetGlyph (char ch, out Glyph glyph);
+        public SpriteFont SpriteFont
+        {
+            get
+            {
+                return null;
+            }
+        }
+
+        public bool GetGlyph (char ch, out Glyph result) {
+            foreach (var item in Sources) {
+                if (item.GetGlyph(ch, out result))
+                    return true;
+            }
+
+            result = default(Glyph);
+            return false;
+        }
+        
+        public void Dispose () {
+            foreach (var item in Sources) {
+                if (item is IDisposable)
+                    ((IDisposable)item).Dispose();
+            }
+        }
     }
 
-    public static class GlyphSource {
+    public interface IGlyphSource {
+        bool GetGlyph (char ch, out Glyph result);
+    }
+
+    public static class SpriteFontUtil {
         public struct FontFields {
             public Texture2D Texture;
             public List<Rectangle> GlyphRectangles;
@@ -431,76 +461,9 @@ namespace Squared.Render.Text {
             public List<char> Characters;
             public List<Vector3> Kerning;
         }
-
-        public struct SpriteFontGlyphSource : IGlyphSource {
-            public readonly SpriteFont Font;
-            public readonly Texture2D Texture;
-
-            public readonly FontFields Fields;
-            public readonly int DefaultCharacterIndex;
-
-            SpriteFont IGlyphSource.SpriteFont {
-                get { return Font; }
-            }
-
-            float IGlyphSource.CharacterSpacing {
-                get { return Font.Spacing; }
-            }
-
-            float IGlyphSource.LineSpacing {
-                get { return Font.LineSpacing; }
-            }
-
-            private Glyph MakeGlyphForCharacter (char ch, int characterIndex) {
-                var kerning = Fields.Kerning[characterIndex];
-
-                return new Glyph {
-                    Character = ch,
-                    Texture = Texture,
-                    BoundsInTexture = Fields.GlyphRectangles[characterIndex],
-                    Cropping = Fields.CropRectangles[characterIndex],
-                    LeftSideBearing = kerning.X,
-                    RightSideBearing = kerning.Z,
-                    WidthIncludingBearings = kerning.X + kerning.Y + kerning.Z,
-                    Width = kerning.Y
-                };
-            }
-
-            public bool GetGlyph (char ch, out Glyph result) {
-                var characterIndex = Fields.Characters.BinarySearch(ch);
-                if (characterIndex < 0)
-                    characterIndex = DefaultCharacterIndex;
-
-                if (characterIndex < 0) {
-                    result = default(Glyph);
-                    return false;
-                }
-
-                result = MakeGlyphForCharacter(ch, characterIndex);
-                return true;
-            }
-
-            public SpriteFontGlyphSource (SpriteFont font) {
-                Font = font;
-
-                if (textureValue != null) {
-                    // XNA SpriteFont
-                    GetPrivateFields(font, out Fields);
-                    Texture = Fields.Texture;
-
-                    if (Font.DefaultCharacter.HasValue)
-                        DefaultCharacterIndex = Fields.Characters.BinarySearch(Font.DefaultCharacter.Value);
-                    else
-                        DefaultCharacterIndex = -1;
-                } else {
-                    throw new NotImplementedException("Unsupported SpriteFont implementation");
-                }
-            }
-        }
-
         internal static readonly FieldInfo textureValue, glyphData, croppingData, kerning, characterMap;
 
-        static GlyphSource () {
+        static SpriteFontUtil () {
             var tSpriteFont = typeof(SpriteFont);
             textureValue = GetPrivateField(tSpriteFont, "textureValue");
             glyphData = GetPrivateField(tSpriteFont, "glyphData");
@@ -513,11 +476,12 @@ namespace Squared.Render.Text {
             return type.GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
-        public static SpriteFontGlyphSource New (SpriteFont font) {
-            return new SpriteFontGlyphSource(font);
-        }
+        public static bool GetPrivateFields (this SpriteFont font, out FontFields result) {
+            if (textureValue == null) {
+                result = default(FontFields);
+                return false;
+            }
 
-        public static void GetPrivateFields (this SpriteFont font, out FontFields result) {
             result = new FontFields {
                 Texture = (Texture2D)(textureValue).GetValue(font),
                 GlyphRectangles = (List<Rectangle>)glyphData.GetValue(font),
@@ -525,6 +489,63 @@ namespace Squared.Render.Text {
                 Characters = (List<char>)characterMap.GetValue(font),
                 Kerning = (List<Vector3>)kerning.GetValue(font)
             };
+            return true;
+        }
+    }
+
+    public struct SpriteFontGlyphSource : IGlyphSource {
+        public readonly SpriteFont Font;
+        public readonly Texture2D Texture;
+
+        public readonly SpriteFontUtil.FontFields Fields;
+        public readonly int DefaultCharacterIndex;
+
+        private void MakeGlyphForCharacter (char ch, int characterIndex, out Glyph glyph) {
+            var kerning = Fields.Kerning[characterIndex];
+            var cropping = Fields.CropRectangles[characterIndex];
+
+            glyph = new Glyph {
+                Character = ch,
+                Texture = Texture,
+                BoundsInTexture = Fields.GlyphRectangles[characterIndex],
+                XOffset = cropping.X,
+                YOffset = cropping.Y,
+                LeftSideBearing = kerning.X,
+                RightSideBearing = kerning.Z,
+                Width = kerning.Y,
+                CharacterSpacing = Font.Spacing,
+                LineSpacing = Font.LineSpacing
+            };
+        }
+
+        public bool GetGlyph (char ch, out Glyph result) {
+            var characterIndex = Fields.Characters.BinarySearch(ch);
+            if (characterIndex < 0)
+                characterIndex = DefaultCharacterIndex;
+
+            if (characterIndex < 0) {
+                result = default(Glyph);
+                return false;
+            }
+
+            MakeGlyphForCharacter(ch, characterIndex, out result);
+            return true;
+        }
+
+        public SpriteFontGlyphSource (SpriteFont font) {
+            Font = font;
+
+            if (SpriteFontUtil.GetPrivateFields(font, out Fields)) {
+                // XNA SpriteFont
+                Texture = Fields.Texture;
+
+                if (Font.DefaultCharacter.HasValue)
+                    DefaultCharacterIndex = Fields.Characters.BinarySearch(Font.DefaultCharacter.Value);
+                else
+                    DefaultCharacterIndex = -1;
+            } else {
+                throw new NotImplementedException("Unsupported SpriteFont implementation");
+            }
         }
     }
 
@@ -532,10 +553,11 @@ namespace Squared.Render.Text {
         public Texture2D Texture;
         public char Character;
         public Rectangle BoundsInTexture;
-        public Rectangle Cropping;
+        public float XOffset, YOffset;
         public float LeftSideBearing;
         public float RightSideBearing;
         public float Width;
-        public float WidthIncludingBearings;
+        public float CharacterSpacing;
+        public float LineSpacing;
     }
 }
