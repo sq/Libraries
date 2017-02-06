@@ -117,15 +117,16 @@ namespace Squared.Render.Text {
 
         // State
         public float    maxLineHeight;
-        public Vector2  actualPosition, totalSize, characterOffset;
+        public Vector2  actualPosition, characterOffset;
         public Bounds   firstCharacterBounds, lastCharacterBounds;
         public float    spacing, lineSpacing;
         public int      drawCallsWritten;
         public ArraySegment<BitmapDrawCall> remainingBuffer;
-        float   initialLineXOffset, currentLineMaxX, lastWordEndX;
+        float   initialLineXOffset, lastWordEndX;
         int     bufferWritePosition, wordStartWritePosition;
         int     rowIndex, colIndex;
         bool    wordWrapSuppressed;
+        float   currentLineMaxX, maxX, maxY;
         Vector2 wordStartOffset;
 
         private bool IsInitialized;
@@ -173,7 +174,6 @@ namespace Squared.Render.Text {
                     actualRightEdge, 
                     buffer.Array[buffer.Offset + firstIndex - 1].EstimateDrawBounds().BottomRight.X
                 );
-            totalSize.X = Math.Max(totalSize.X, actualRightEdge);
 
             lastWordEndX = newX + characterOffset.X;
         }
@@ -189,8 +189,11 @@ namespace Squared.Render.Text {
             float whitespace;
             if (lineBreakAtX.HasValue)
                 whitespace = lineBreakAtX.Value - lineWidth;
-            else
-                whitespace = totalSize.X - lineWidth;
+            else {
+                // whitespace = totalSize.X - lineWidth;
+                // FIXME:
+                whitespace = 0;
+            }
 
             // HACK: Don't do anything if the line is too big, just overflow to the right.
             //  Otherwise, the sizing info will be wrong and bad things happen.
@@ -200,7 +203,8 @@ namespace Squared.Render.Text {
             // HACK: We compute this before halving the whitespace, so that the size of 
             //  the layout is enough to ensure manually centering the whole layout will
             //  still preserve per-line centering.
-            totalSize.X = Math.Max(totalSize.X, whitespace + lineWidth);
+            // FIXME
+            // totalSize.X = Math.Max(totalSize.X, whitespace + lineWidth);
 
             if (alignment == HorizontalAlignment.Center)
                 whitespace /= 2;
@@ -333,7 +337,7 @@ namespace Squared.Render.Text {
                         lineBreak = true;
                     } else if (characterWrap) {
                         characterOffset.X = xOffsetOfWrappedLine;
-                        totalSize.X = Math.Max(totalSize.X, currentLineMaxX);
+                        maxX = Math.Max(maxX, currentLineMaxX);
                         wordStartWritePosition = bufferWritePosition;
                         wordStartOffset = characterOffset;
                         lineBreak = true;
@@ -343,7 +347,7 @@ namespace Squared.Render.Text {
                 if (lineBreak) {
                     if (!forcedWrap) {
                         characterOffset.X = xOffsetOfNewLine;
-                        totalSize.X = Math.Max(totalSize.X, currentLineMaxX);
+                        maxX = Math.Max(maxX, currentLineMaxX);
                     }
 
                     initialLineXOffset = characterOffset.X;
@@ -413,6 +417,9 @@ namespace Squared.Render.Text {
 
                         _buffer.Array[_buffer.Offset + bufferWritePosition] = drawCall;
 
+                        currentLineMaxX = Math.Max(currentLineMaxX, x);
+                        maxY = Math.Max(maxY, characterOffset.Y + lineSpacing);
+
                         bufferWritePosition += 1;
                         drawCallsWritten += 1;
                     }
@@ -423,11 +430,6 @@ namespace Squared.Render.Text {
                 }
 
                 characterOffset.X += (glyph.Width + glyph.RightSideBearing);
-
-                if (!isWhiteSpace) {
-                    currentLineMaxX = Math.Max(currentLineMaxX, characterOffset.X);
-                    totalSize.Y = Math.Max(totalSize.Y, (characterOffset.Y + font.LineSpacing) * scale);
-                }
 
                 colIndex += 1;
             }
@@ -447,7 +449,7 @@ namespace Squared.Render.Text {
         }
 
         public StringLayout Finish () {
-            totalSize.X = Math.Max(totalSize.X, currentLineMaxX) * scale;
+            maxX = Math.Max(maxX, currentLineMaxX);
 
             var resultSegment = new ArraySegment<BitmapDrawCall>(
                 buffer.Value.Array, buffer.Value.Offset, drawCallsWritten
@@ -456,7 +458,9 @@ namespace Squared.Render.Text {
                 AlignLines(resultSegment, alignment);
 
             return new StringLayout(
-                position.GetValueOrDefault(), totalSize, lineSpacing,
+                position.GetValueOrDefault(), 
+                new Vector2(maxX * scale, maxY * scale), 
+                lineSpacing,
                 firstCharacterBounds, lastCharacterBounds,
                 resultSegment
             );
