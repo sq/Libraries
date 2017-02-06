@@ -16,25 +16,16 @@ using SrGlyph = Squared.Render.Text.Glyph;
 namespace Squared.Render.Text {
     public class FreeTypeFont : IGlyphSource, IDisposable {
         public class FontSize : IGlyphSource, IDisposable {
+            public const int AtlasWidth = 1024, AtlasHeight = 1024;
+
+            internal List<DynamicAtlas<Color>> Atlases = new List<DynamicAtlas<Color>>();
             internal FreeTypeFont Font;
-            internal FTSize Size;
-            internal bool OwnsSize;
             internal Dictionary<char, SrGlyph> Cache = new Dictionary<char, SrGlyph>();
-            internal Dictionary<FTBitmap, Texture2D> TextureCache = 
-                new Dictionary<FTBitmap, Texture2D>(new ReferenceComparer<FTBitmap>());
             internal float _SizePoints;
 
             public FontSize (FreeTypeFont font, float sizePoints) {
                 Font = font;
-                Size = Font.Face.NewSize();
-                OwnsSize = true;
                 SizePoints = sizePoints;
-            }
-
-            internal FontSize (FreeTypeFont font, FTSize size, bool ownsSize) {
-                Font = font;
-                Size = size;
-                OwnsSize = ownsSize;
             }
 
             public float SizePoints {
@@ -42,40 +33,38 @@ namespace Squared.Render.Text {
                     return _SizePoints;
                 }
                 set {
-                    Size.Activate();
-                    Font.Face.SetCharSize(0, value, 96, 96);
+                    _SizePoints = value;
                     Invalidate();
                 }
             }
 
-            private Texture2D GetTexture (FTBitmap bitmap) {
-                if ((bitmap.Width <= 0) || (bitmap.Rows <= 0))
-                    return null;
+            private DynamicAtlas<Color>.Reservation Upload (FTBitmap bitmap) {
+                bool foundRoom = false;
+                DynamicAtlas<Color>.Reservation result = default(DynamicAtlas<Color>.Reservation);
 
-                Texture2D result;
-                if (TextureCache.TryGetValue(bitmap, out result))
-                    return result;
-
-                lock (Font.RenderCoordinator.CreateResourceLock)
-                    TextureCache[bitmap] = result = new Texture2D(
-                        Font.RenderCoordinator.Device, bitmap.Width, bitmap.Rows, false, 
-                        SurfaceFormat.Color
-                    );
-
-                if (bitmap.PixelMode == PixelMode.Gray) {
-                    var temp = new Color[bitmap.Width * bitmap.Rows];
-                    for (var y = 0; y < bitmap.Rows; y++) {
-                        for (var x = 0; x < bitmap.Width; x++) {
-                            var g = bitmap.BufferData[x + (y * bitmap.Pitch)];
-                            temp[x + (y * bitmap.Width)] = new Color(g, g, g, g);
-                        }
+                foreach (var atlas in Atlases) {
+                    if (atlas.TryReserve(bitmap.Width, bitmap.Rows, out result)) {
+                        foundRoom = true;
+                        break;
                     }
-                    result.SetData(temp);
-                } else if (bitmap.PixelMode == PixelMode.Bgra) {
-                    // FIXME
-                    result.SetData(bitmap.BufferData);
-                } else {
-                    throw new NotImplementedException("Invalid pixel format");
+                }
+
+                if (!foundRoom) {
+                    var newAtlas = new DynamicAtlas<Color>(Font.RenderCoordinator, AtlasWidth, AtlasHeight, SurfaceFormat.Color);
+                    Atlases.Add(newAtlas);
+                    if (!newAtlas.TryReserve(bitmap.Width, bitmap.Rows, out result))
+                        throw new InvalidOperationException("Character too large for atlas");
+                }
+
+                var pixels = result.Atlas.Pixels;
+
+                for (var y = 0; y < bitmap.Rows; y++) {
+                    var rowOffset = result.Atlas.Width * (y + result.Y) + result.X;
+
+                    for (var x = 0; x < bitmap.Width; x++) {
+                        var g = bitmap.BufferData[x + (y * bitmap.Pitch)];
+                        pixels[rowOffset + x] = new Color(g, g, g, g);
+                    }
                 }
 
                 return result;
@@ -88,7 +77,7 @@ namespace Squared.Render.Text {
                 if ((ch == '\r') || (ch == '\n') || (ch == '\0'))
                     return false;
 
-                Size.Activate();
+                Font.Face.SetCharSize(0, _SizePoints, 96, 96);
 
                 var index = Font.Face.GetCharIndex(ch);
                 if (index <= 0)
@@ -103,12 +92,15 @@ namespace Squared.Render.Text {
                 );
 
                 var ftgs = Font.Face.Glyph;
-                var scaleX = Size.Metrics.ScaleX;
-                var scaleY = Size.Metrics.ScaleY;
+                var scaleX = Font.Face.Size.Metrics.ScaleX;
+                var scaleY = Font.Face.Size.Metrics.ScaleY;
                 var bitmap = ftgs.Bitmap;
 
-                var ascender = Size.Metrics.Ascender.ToSingle();
-                var tex = GetTexture(bitmap);
+                DynamicAtlas<Color>.Reservation texRegion = default(DynamicAtlas<Color>.Reservation);
+                if ((bitmap.Width > 0) && (bitmap.Rows > 0))
+                    texRegion = Upload(bitmap);
+
+                var ascender = Font.Face.Size.Metrics.Ascender.ToSingle();
                 var metrics = ftgs.Metrics;
 
                 glyph = new SrGlyph {
@@ -122,28 +114,24 @@ namespace Squared.Render.Text {
                     ),
                     XOffset = ftgs.BitmapLeft - metrics.HorizontalBearingX.ToSingle(),
                     YOffset = -ftgs.BitmapTop + ascender,
-                    Texture = tex,
-                    LineSpacing = Size.Metrics.Height.ToSingle()
+                    Texture = texRegion.Texture,
+                    BoundsInTexture = texRegion.Rectangle,
+                    LineSpacing = Font.Face.Size.Metrics.Height.ToSingle()
                 };
-
-                if (tex != null)
-                    glyph.BoundsInTexture = new Rectangle(0, 0, tex.Width, tex.Height);
 
                 Cache[ch] = glyph;
                 return true;
             }
 
             public void Invalidate () {
-                foreach (var kvp in TextureCache)
-                    Font.RenderCoordinator.DisposeResource(kvp.Value);
+                foreach (var atlas in Atlases)
+                    atlas.Dispose();
 
                 Cache.Clear();
-                TextureCache.Clear();
+                Atlases.Clear();
             }
 
             public void Dispose () {
-                if (OwnsSize)
-                    Size.Dispose();
             }
         }
 
@@ -175,9 +163,7 @@ namespace Squared.Render.Text {
         }
 
         private void Initialize () {
-            // DefaultSize = new FontSize(this, 12);
-            DefaultSize = new FontSize(this, this.Face.Size, false);
-            SizePoints = 12;
+            DefaultSize = new FontSize(this, 12);
         }
 
         public float SizePoints {

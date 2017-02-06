@@ -118,6 +118,7 @@
     <Compile Include="BatchCombiner.cs" />
     <Compile Include="Convenience.cs" />
     <Compile Include="DefaultMaterialSet.cs" />
+    <Compile Include="DynamicAtlas.cs" />
     <Compile Include="Materials.cs" />
     <Compile Include="MaterialSet.cs" />
     <Compile Include="Pools.cs" />

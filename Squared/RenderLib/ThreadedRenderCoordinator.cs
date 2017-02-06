@@ -82,6 +82,7 @@ namespace Squared.Render {
         public readonly Stopwatch
             WorkStopwatch = new Stopwatch(),
             WaitStopwatch = new Stopwatch(),
+            BeforePrepareStopwatch = new Stopwatch(),
             BeforePresentStopwatch = new Stopwatch();
 
         // Used to detect re-entrant painting (usually means that an
@@ -92,6 +93,7 @@ namespace Squared.Render {
         //  using multithreaded rendering
         private bool _DeviceLost = false;
 
+        private readonly ConcurrentQueue<Action> BeforePrepareQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> AfterPresentQueue = new ConcurrentQueue<Action>();
 
@@ -139,6 +141,13 @@ namespace Squared.Render {
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
             CoreInitialize();
+        }
+
+        /// <summary>
+        /// Queues an operation to occur immediately before prepare operations begin.
+        /// </summary>
+        public void BeforePrepare (Action action) {
+            BeforePrepareQueue.Enqueue(action);
         }
 
         /// <summary>
@@ -301,6 +310,7 @@ namespace Squared.Render {
             CheckMainThread(DoThreadedPrepare && threaded);
 
             try {
+                RunBeforePrepareHandlers();
                 Manager.ResetBufferGenerators();
                 frame.Prepare(DoThreadedPrepare && threaded);
             } finally {
@@ -381,6 +391,20 @@ namespace Squared.Render {
             }
 
             _DeviceLost |= IsDeviceLost;
+        }
+
+        protected void RunBeforePrepareHandlers () {
+            BeforePrepareStopwatch.Start();
+
+            while (BeforePrepareQueue.Count > 0) {
+                Action beforePrepare;
+                if (!BeforePrepareQueue.TryDequeue(out beforePrepare))
+                    continue;
+
+                beforePrepare();
+            }
+
+            BeforePrepareStopwatch.Stop();
         }
 
         protected void RunBeforePresentHandlers () {
