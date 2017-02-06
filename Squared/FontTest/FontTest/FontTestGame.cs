@@ -24,7 +24,7 @@ namespace FontTest {
             "\r\nLong woooooooooooooooooooooooord" +
             "\r\nこの体は、無限のチェイサーで出来ていた" +
             "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +
-            "\r\nはいはい！";
+            "\r\nはいはい！おつかれさまでした！";
 
         IGlyphSource SpriteFont, LatinFont, UniFont, FallbackFont;
 

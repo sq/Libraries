@@ -21,6 +21,8 @@ namespace Squared.Render.Text {
         internal Dictionary<FTBitmap, Texture2D> TextureCache = 
             new Dictionary<FTBitmap, Texture2D>(new ReferenceComparer<FTBitmap>());
 
+        public bool Hinting { get; set; }
+
         public FreeTypeFont (RenderCoordinator rc, string filename, int faceIndex = 0) {
             RenderCoordinator = rc;
             Face = new Face(new Library(), filename, faceIndex);
@@ -70,6 +72,7 @@ namespace Squared.Render.Text {
                 }
                 result.SetData(temp);
             } else if (bitmap.PixelMode == PixelMode.Bgra) {
+                // FIXME
                 result.SetData(bitmap.BufferData);
             } else {
                 throw new NotImplementedException("Invalid pixel format");
@@ -89,53 +92,58 @@ namespace Squared.Render.Text {
             if (index <= 0)
                 return false;
 
+            var flags = LoadFlags.Color | LoadFlags.Render;
+            if (!Hinting)
+                flags |= LoadFlags.NoHinting;
+
             Face.LoadGlyph(
-                index, LoadFlags.Color | LoadFlags.Render | LoadFlags.NoHinting, LoadTarget.Normal
+                index, flags, LoadTarget.Normal
             );
+
             var ftgs = Face.Glyph;
             var scaleX = Face.Size.Metrics.ScaleX;
             var scaleY = Face.Size.Metrics.ScaleY;
             var bitmap = ftgs.Bitmap;
 
-            // using (var ftg = ftgs.GetGlyph()) {
-                var ascender = Face.Size.Metrics.Ascender.ToSingle();
-                var tex = GetTexture(bitmap);
-                var metrics = ftgs.Metrics;
+            var ascender = Face.Size.Metrics.Ascender.ToSingle();
+            var tex = GetTexture(bitmap);
+            var metrics = ftgs.Metrics;
 
-                glyph = new SrGlyph {
-                    Character = ch,
-                    Width = metrics.Width.ToSingle(),
-                    LeftSideBearing = metrics.HorizontalBearingX.ToSingle(),
-                    RightSideBearing = (
-                        metrics.HorizontalAdvance.ToSingle() - 
-                            metrics.Width.ToSingle() -
-                            metrics.HorizontalBearingX.ToSingle()
-                    ),
-                    XOffset = ftgs.BitmapLeft,
-                    YOffset = -ftgs.BitmapTop + ascender,
-                    Texture = tex,
-                    LineSpacing = Face.Size.Metrics.Height.ToSingle()
-                };
+            glyph = new SrGlyph {
+                Character = ch,
+                Width = metrics.Width.ToSingle(),
+                LeftSideBearing = metrics.HorizontalBearingX.ToSingle(),
+                RightSideBearing = (
+                    metrics.HorizontalAdvance.ToSingle() - 
+                        metrics.Width.ToSingle() -
+                        metrics.HorizontalBearingX.ToSingle()
+                ),
+                XOffset = ftgs.BitmapLeft - metrics.HorizontalBearingX.ToSingle(),
+                YOffset = -ftgs.BitmapTop + ascender,
+                Texture = tex,
+                LineSpacing = Face.Size.Metrics.Height.ToSingle()
+            };
 
-                if (tex != null)
-                    glyph.BoundsInTexture = new Rectangle(0, 0, tex.Width, tex.Height);
-            // }
+            if (ch == '！')
+                System.Diagnostics.Debugger.Break();
+
+            if (tex != null)
+                glyph.BoundsInTexture = new Rectangle(0, 0, tex.Width, tex.Height);
 
             Cache[ch] = glyph;
             return true;
         }
 
-        public bool GetKerning (char left, char right, out Vector2 result) {
-            result = Vector2.Zero;
-            return false;
-        }
-
-        public void Dispose () {
+        public void Invalidate () {
             foreach (var kvp in TextureCache)
                 RenderCoordinator.DisposeResource(kvp.Value);
 
             Cache.Clear();
             TextureCache.Clear();
+        }
+
+        public void Dispose () {
+            Invalidate();
         }
     }
 }
