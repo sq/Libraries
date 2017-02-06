@@ -132,6 +132,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Shaders.resx</DependentUpon>
     </Compile>
+    <Compile Include="TextUtils.cs" />
     <Compile Include="ThreadedRenderCoordinator.cs" />
     <Compile Include="ThreadedRenderGame.cs" />
     <Compile Include="Evil.cs" />
