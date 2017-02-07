@@ -276,6 +276,8 @@ namespace Squared.Render.Text {
             if (kerningAdjustments == null)
                 kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
 
+            scale /= font.DPIScaleFactor;
+
             var drawCall = default(BitmapDrawCall);
             drawCall.MultiplyColor = color.GetValueOrDefault(Color.White);
             drawCall.ScaleF = scale;
@@ -431,7 +433,6 @@ namespace Squared.Render.Text {
                             drawCall.Position = glyphPosition.Floor();
                         else
                             drawCall.Position = glyphPosition;
-                        drawCall.ScaleF = scale * glyph.ScaleFactor;
 
                         // HACK so that the alignment pass can detect rows. We strip this later.
                         if (alignment != HorizontalAlignment.Left)

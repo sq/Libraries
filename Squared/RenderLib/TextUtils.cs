@@ -445,6 +445,12 @@ namespace Squared.Render.Text {
             result = default(Glyph);
             return false;
         }
+
+        public float DPIScaleFactor {
+            get {
+                return Sources[0].DPIScaleFactor;
+            }
+        }
         
         public void Dispose () {
             foreach (var item in Sources) {
@@ -456,6 +462,7 @@ namespace Squared.Render.Text {
 
     public interface IGlyphSource {
         bool GetGlyph (char ch, out Glyph result);
+        float DPIScaleFactor { get; }
     }
 
     public static class SpriteFontUtil {
@@ -528,6 +535,12 @@ namespace Squared.Render.Text {
         }
 
 
+        public float DPIScaleFactor {
+            get {
+                return 1.0f;
+            }
+        }
+
         private void MakeGlyphForCharacter (char ch, int characterIndex, out Glyph glyph) {
             var kerning = Fields.Kerning[characterIndex];
             var cropping = Fields.CropRectangles[characterIndex];
@@ -542,8 +555,7 @@ namespace Squared.Render.Text {
                 RightSideBearing = kerning.Z,
                 Width = kerning.Y,
                 CharacterSpacing = Font.Spacing,
-                LineSpacing = Font.LineSpacing,
-                ScaleFactor = 1
+                LineSpacing = Font.LineSpacing
             };
         }
 
@@ -588,6 +600,5 @@ namespace Squared.Render.Text {
         public float Width;
         public float CharacterSpacing;
         public float LineSpacing;
-        public float ScaleFactor;
     }
 }

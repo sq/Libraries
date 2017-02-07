@@ -72,7 +72,11 @@ namespace Squared.Render.Text {
 
             public float LineSpacing {
                 get {
-                    Font.Face.SetCharSize(0, _SizePoints, 96, 96);
+                    Font.Face.SetCharSize(
+                        0, _SizePoints, 
+                        (uint)(96 * Font.DPIPercent / 100), (uint)(96 * Font.DPIPercent / 100)
+                    );
+
                     return Font.Face.Size.Metrics.Height.ToSingle();
                 }
             }
@@ -128,8 +132,7 @@ namespace Squared.Render.Text {
                     YOffset = -ftgs.BitmapTop + ascender,
                     Texture = texRegion.Texture,
                     BoundsInTexture = texRegion.Rectangle,
-                    LineSpacing = Font.Face.Size.Metrics.Height.ToSingle(),
-                    ScaleFactor = scaleFactor
+                    LineSpacing = Font.Face.Size.Metrics.Height.ToSingle()
                 };
 
                 Cache[ch] = glyph;
@@ -144,6 +147,12 @@ namespace Squared.Render.Text {
                 Atlases.Clear();
             }
 
+            float IGlyphSource.DPIScaleFactor {
+                get {
+                    return Font.DPIPercent / 100f;
+                }
+            }
+
             public void Dispose () {
             }
         }
@@ -155,6 +164,12 @@ namespace Squared.Render.Text {
         // FIXME: Invalidate on set
         public int DPIPercent { get; set; }
         public bool Hinting { get; set; }
+
+        float IGlyphSource.DPIScaleFactor {
+            get {
+                return DPIPercent / 100f;
+            }
+        }
 
         public FreeTypeFont (RenderCoordinator rc, string filename, int faceIndex = 0) {
             RenderCoordinator = rc;

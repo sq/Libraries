@@ -88,22 +88,22 @@ namespace FontTest {
 
         protected override void LoadContent () {
             SpriteFont = new SpriteFontGlyphSource(Content.Load<SpriteFont>("font"));
-            LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") { SizePoints = 40 };
-            UniFont = new FreeTypeFont(RenderCoordinator, @"\Windows\Fonts\ArialUni.ttf") { SizePoints = 30 };
+            LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") { SizePoints = 40, DPIPercent = 200 };
+            UniFont = new FreeTypeFont(RenderCoordinator, @"\Windows\Fonts\ArialUni.ttf") { SizePoints = 30, DPIPercent = 200 };
             FallbackFont = new FallbackGlyphSource(LatinFont, UniFont);
 
-            ActiveFont = SpriteFont;
+            ActiveFont = FallbackFont;
 
             Text = new DynamicStringLayout(ActiveFont, TestText) {
                 // Alignment = HorizontalAlignment.Right,
                 CharacterWrap = true,
                 WordWrap = true,
-                Scale = 0.9f
+                Scale = 1.5f
             };
             Text2 = new DynamicStringLayout(ActiveFont, TestText2) {
                 CharacterWrap = true,
                 WordWrap = true,
-                Scale = 0.9f
+                Scale = 1.5f
             };
         }
 
