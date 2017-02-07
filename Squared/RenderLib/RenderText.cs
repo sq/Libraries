@@ -157,7 +157,7 @@ namespace Squared.Render.Text {
 
         private void WrapWord (
             ArraySegment<BitmapDrawCall> buffer,
-            Vector2 firstOffset, int firstIndex, int lastIndex, float newX
+            Vector2 firstOffset, int firstIndex, int lastIndex, float newX, float effectiveScale
         ) {
             // FIXME: Can this ever happen?
             if (currentLineWhitespaceMaxX <= 0)
@@ -165,8 +165,8 @@ namespace Squared.Render.Text {
             else
                 maxX = Math.Max(maxX, currentLineWhitespaceMaxXLeft);
 
-            var scaledFirstOffset = firstOffset * scale;
-            var scaledLineSpacing = currentLineSpacing.GetValueOrDefault(maxLineSpacing) * scale;
+            var scaledFirstOffset = firstOffset * effectiveScale;
+            var scaledLineSpacing = currentLineSpacing.GetValueOrDefault(maxLineSpacing) * effectiveScale;
 
             for (var i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
@@ -340,7 +340,7 @@ namespace Squared.Render.Text {
                     glyph.RightSideBearing + 
                     glyph.Width + glyph.CharacterSpacing;
 
-                if ((x * scale) >= lineBreakAtX) {
+                if ((x * effectiveScale) >= lineBreakAtX) {
                     if (
                         !deadGlyph &&
                         (colIndex > 0) &&
@@ -353,7 +353,7 @@ namespace Squared.Render.Text {
                     var currentWordSize = x - wordStartOffset.X;
 
                     if (wordWrap && !wordWrapSuppressed && (currentWordSize * effectiveScale <= lineBreakAtX)) {
-                        WrapWord(_buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, x);
+                        WrapWord(_buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, x, effectiveScale);
                         wordWrapSuppressed = true;
                         lineBreak = true;
                     } else if (characterWrap) {
