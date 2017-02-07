@@ -44,8 +44,11 @@ namespace Squared.Render.Text {
                 bool foundRoom = false;
                 DynamicAtlas<Color>.Reservation result = default(DynamicAtlas<Color>.Reservation);
 
+                var widthW = bitmap.Width + (Font.GlyphMargin * 2);
+                var heightW = bitmap.Rows + (Font.GlyphMargin * 2);
+
                 foreach (var atlas in Atlases) {
-                    if (atlas.TryReserve(bitmap.Width, bitmap.Rows, out result)) {
+                    if (atlas.TryReserve(widthW, heightW, out result)) {
                         foundRoom = true;
                         break;
                     }
@@ -54,14 +57,14 @@ namespace Squared.Render.Text {
                 if (!foundRoom) {
                     var newAtlas = new DynamicAtlas<Color>(Font.RenderCoordinator, AtlasWidth, AtlasHeight, SurfaceFormat.Color);
                     Atlases.Add(newAtlas);
-                    if (!newAtlas.TryReserve(bitmap.Width, bitmap.Rows, out result))
+                    if (!newAtlas.TryReserve(widthW, heightW, out result))
                         throw new InvalidOperationException("Character too large for atlas");
                 }
 
                 var pixels = result.Atlas.Pixels;
 
                 for (var y = 0; y < bitmap.Rows; y++) {
-                    var rowOffset = result.Atlas.Width * (y + result.Y) + result.X;
+                    var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
 
                     for (var x = 0; x < bitmap.Width; x++) {
                         var g = bitmap.BufferData[x + (y * bitmap.Pitch)];
@@ -164,6 +167,7 @@ namespace Squared.Render.Text {
 
         public FontSize DefaultSize { get; private set; }
         // FIXME: Invalidate on set
+        public int GlyphMargin { get; set; }
         public int DPIPercent { get; set; }
         public bool Hinting { get; set; }
 

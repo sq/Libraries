@@ -284,8 +284,12 @@ namespace Squared.Render {
         }
 
         public void Add (Material extraMaterial) {
-            lock (Lock)
+            lock (Lock) {
+                // HACK: Prefetch the uniform binding on this thread so we don't get a crash later
+                GetUniformBinding<ViewTransform>(extraMaterial, "Viewport");
+
                 ExtraMaterials.Add(extraMaterial);
+            }
         }
 
         public bool Remove (Material extraMaterial) {
