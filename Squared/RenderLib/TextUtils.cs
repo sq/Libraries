@@ -359,6 +359,11 @@ namespace Squared.Render.Text {
             }
         }
 
+        public void Invalidate () {
+            // Hey, you're the boss
+            _CachedStringLayout = null;
+        }
+
         public StringLayout Get () {
             if (_Text.IsNull)
                 return new StringLayout();

@@ -42,6 +42,8 @@ namespace FontTest {
         PressableKey CharacterWrap = new PressableKey(Keys.C);
         PressableKey WordWrap = new PressableKey(Keys.W);
         PressableKey FreeType = new PressableKey(Keys.F);
+        PressableKey ShowOutlines = new PressableKey(Keys.O);
+        PressableKey Hinting = new PressableKey(Keys.H);
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
@@ -71,12 +73,21 @@ namespace FontTest {
                 else
                     Text.GlyphSource = SpriteFont;
             };
+            Hinting.Pressed += (s, e) => {
+                var ftf = (FreeTypeFont)LatinFont;
+                ftf.Hinting = !ftf.Hinting;
+                ftf.Invalidate();
+                ftf = (FreeTypeFont)UniFont;
+                ftf.Hinting = !ftf.Hinting;
+                ftf.Invalidate();
+                Text.Invalidate();
+            };
         }
 
         protected override void LoadContent () {
             SpriteFont = new SpriteFontGlyphSource(Content.Load<SpriteFont>("font"));
-            LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") { SizePoints = 256 };
-            UniFont = new FreeTypeFont(RenderCoordinator, @"\Windows\Fonts\ArialUni.ttf") { SizePoints = 20 };
+            LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") { SizePoints = 40 };
+            UniFont = new FreeTypeFont(RenderCoordinator, @"\Windows\Fonts\ArialUni.ttf") { SizePoints = 30 };
             FallbackFont = new FallbackGlyphSource(LatinFont, UniFont);
 
             ActiveFont = SpriteFont;
@@ -109,6 +120,15 @@ namespace FontTest {
             CharacterWrap.Update(ref ks);
             WordWrap.Update(ref ks);
             FreeType.Update(ref ks);
+            ShowOutlines.Update(ref ks);
+            Hinting.Update(ref ks);
+
+            var newSize = Arithmetic.Clamp(20 + (ms.ScrollWheelValue / 56f), 6, 200);
+            var font = ((FreeTypeFont)LatinFont);
+            if (newSize != font.SizePoints) {
+                font.SizePoints = newSize;
+                Text.Invalidate();
+            }
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
@@ -124,6 +144,7 @@ namespace FontTest {
 
             var layout = Text.Get();
 
+            if (ShowOutlines.Value)
             foreach (var dc in layout.DrawCalls)
                 ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
 
@@ -134,6 +155,7 @@ namespace FontTest {
     }
 
     public class PressableKey {
+        public bool Value;
         public readonly Keys Key;
         public event EventHandler Pressed;
 
@@ -146,8 +168,11 @@ namespace FontTest {
 
         public void Update (ref KeyboardState ks) {
             var state = ks.IsKeyDown(Key);
-            if ((state != previousState) && (Pressed != null) && state)
-                Pressed(this, EventArgs.Empty);
+            if ((state != previousState) && state) {
+                if (Pressed != null)
+                    Pressed(this, EventArgs.Empty);
+                Value = !Value;
+            }
             previousState = state;
         }
     }

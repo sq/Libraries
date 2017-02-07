@@ -166,7 +166,15 @@ namespace Squared.Render.Text {
             DefaultSize = new FontSize(this, 12);
         }
 
+        public void Invalidate () {
+            DefaultSize.Invalidate();
+            // TODO: Invalidate other sizes
+        }
+
         public float SizePoints {
+            get {
+                return DefaultSize.SizePoints;
+            }
             set {
                 DefaultSize.SizePoints = value;
             }
