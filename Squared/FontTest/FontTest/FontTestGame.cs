@@ -20,8 +20,9 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string TestText =
-            "The quick brown fox jumped" +
-            "\r\nこの体は、無限のチェイサーで出来ていた";
+            "The quick brown fox jumped over the lazy dogs" +
+            "\r\nこの体は、無限のチェイサーで出来ていた" +
+            "\r\n\r\nEmpty line before this one";
 
         public string TestText2 =
             "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +
@@ -46,6 +47,7 @@ namespace FontTest {
         PressableKey ShowOutlines = new PressableKey(Keys.O);
         PressableKey Hinting = new PressableKey(Keys.H);
         PressableKey Which = new PressableKey(Keys.Space);
+        PressableKey Margin = new PressableKey(Keys.M);
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
@@ -83,6 +85,14 @@ namespace FontTest {
                 ftf.Hinting = !ftf.Hinting;
                 ftf.Invalidate();
                 Text.Invalidate();
+                Text2.Invalidate();
+            };
+            Margin.Pressed += (s, e) => {
+                var ftf = (FreeTypeFont)LatinFont;
+                ftf.GlyphMargin = (ftf.GlyphMargin + 1) % 6;
+                ftf.Invalidate();
+                Text.Invalidate();
+                Text2.Invalidate();
             };
         }
 
@@ -130,6 +140,7 @@ namespace FontTest {
             ShowOutlines.Update(ref ks);
             Hinting.Update(ref ks);
             Which.Update(ref ks);
+            Margin.Update(ref ks);
 
             var newSize = Arithmetic.Clamp(20 + (ms.ScrollWheelValue / 56f), 6, 200);
             var font = ((FreeTypeFont)LatinFont);

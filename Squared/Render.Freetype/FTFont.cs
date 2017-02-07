@@ -133,8 +133,8 @@ namespace Squared.Render.Text {
                             metrics.Width.ToSingle() -
                             metrics.HorizontalBearingX.ToSingle()
                     ),
-                    XOffset = ftgs.BitmapLeft - metrics.HorizontalBearingX.ToSingle(),
-                    YOffset = -ftgs.BitmapTop + ascender,
+                    XOffset = ftgs.BitmapLeft - metrics.HorizontalBearingX.ToSingle() - Font.GlyphMargin,
+                    YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin,
                     Texture = texRegion.Texture,
                     BoundsInTexture = texRegion.Rectangle,
                     LineSpacing = Font.Face.Size.Metrics.Height.ToSingle()
