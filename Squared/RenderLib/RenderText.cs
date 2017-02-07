@@ -276,11 +276,11 @@ namespace Squared.Render.Text {
             if (kerningAdjustments == null)
                 kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
 
-            scale /= font.DPIScaleFactor;
+            var effectiveScale = scale / font.DPIScaleFactor;
 
             var drawCall = default(BitmapDrawCall);
             drawCall.MultiplyColor = color.GetValueOrDefault(Color.White);
-            drawCall.ScaleF = scale;
+            drawCall.ScaleF = effectiveScale;
             drawCall.SortKey = sortKey;
 
             float x = 0;
@@ -352,13 +352,13 @@ namespace Squared.Render.Text {
                 if (forcedWrap) {
                     var currentWordSize = x - wordStartOffset.X;
 
-                    if (wordWrap && !wordWrapSuppressed && (currentWordSize * scale <= lineBreakAtX)) {
+                    if (wordWrap && !wordWrapSuppressed && (currentWordSize * effectiveScale <= lineBreakAtX)) {
                         WrapWord(_buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, x);
                         wordWrapSuppressed = true;
                         lineBreak = true;
                     } else if (characterWrap) {
                         characterOffset.X = xOffsetOfWrappedLine;
-                        maxX = Math.Max(maxX, currentLineMaxX);
+                        maxX = Math.Max(maxX, currentLineMaxX * effectiveScale);
                         wordStartWritePosition = bufferWritePosition;
                         wordStartOffset = characterOffset;
                         lineBreak = true;
@@ -368,7 +368,7 @@ namespace Squared.Render.Text {
                 if (lineBreak) {
                     if (!forcedWrap) {
                         characterOffset.X = xOffsetOfNewLine;
-                        maxX = Math.Max(maxX, currentLineMaxX);
+                        maxX = Math.Max(maxX, currentLineMaxX * effectiveScale);
                     }
 
                     initialLineXOffset = characterOffset.X;
@@ -396,10 +396,10 @@ namespace Squared.Render.Text {
                 characterOffset.X += glyph.CharacterSpacing;
 
                 lastCharacterBounds = Bounds.FromPositionAndSize(
-                    characterOffset, new Vector2(
+                    characterOffset * effectiveScale, new Vector2(
                         glyph.LeftSideBearing + glyph.Width + glyph.RightSideBearing,
                         glyph.LineSpacing
-                    )
+                    ) * effectiveScale
                 );
 
                 if ((rowIndex == 0) && (colIndex == 0))
@@ -415,8 +415,8 @@ namespace Squared.Render.Text {
                         break;
 
                     var glyphPosition = new Vector2(
-                        actualPosition.X + (glyph.XOffset + characterOffset.X) * scale,
-                        actualPosition.Y + (glyph.YOffset + characterOffset.Y) * scale
+                        actualPosition.X + (glyph.XOffset + characterOffset.X) * effectiveScale,
+                        actualPosition.Y + (glyph.YOffset + characterOffset.Y) * effectiveScale
                     );
 
                     if (!isWhiteSpace) {                    
@@ -441,7 +441,7 @@ namespace Squared.Render.Text {
                         _buffer.Array[_buffer.Offset + bufferWritePosition] = drawCall;
 
                         currentLineMaxX = Math.Max(currentLineMaxX, x);
-                        maxY = Math.Max(maxY, characterOffset.Y + effectiveLineSpacing);
+                        maxY = Math.Max(maxY, (characterOffset.Y + effectiveLineSpacing) * effectiveScale);
 
                         bufferWritePosition += 1;
                         drawCallsWritten += 1;
@@ -473,13 +473,12 @@ namespace Squared.Render.Text {
             if (segment.Count > text.Length)
                 throw new InvalidDataException();
 
+            maxX = Math.Max(maxX, currentLineMaxX * effectiveScale);
+
             return segment;
         }
 
         public StringLayout Finish () {
-            maxX = Math.Max(maxX, currentLineMaxX) * scale;
-            maxY *= scale;
-
             var resultSegment = new ArraySegment<BitmapDrawCall>(
                 buffer.Value.Array, buffer.Value.Offset, drawCallsWritten
             );

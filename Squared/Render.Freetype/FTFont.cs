@@ -74,7 +74,7 @@ namespace Squared.Render.Text {
                 get {
                     Font.Face.SetCharSize(
                         0, _SizePoints, 
-                        (uint)(96 * Font.DPIPercent / 100), (uint)(96 * Font.DPIPercent / 100)
+                        96, 96
                     );
 
                     return Font.Face.Size.Metrics.Height.ToSingle();
