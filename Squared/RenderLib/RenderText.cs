@@ -161,9 +161,9 @@ namespace Squared.Render.Text {
         ) {
             // FIXME: Can this ever happen?
             if (currentLineWhitespaceMaxX <= 0)
-                maxX = Math.Max(maxX, currentLineMaxX);
+                maxX = Math.Max(maxX, currentLineMaxX * effectiveScale);
             else
-                maxX = Math.Max(maxX, currentLineWhitespaceMaxXLeft);
+                maxX = Math.Max(maxX, currentLineWhitespaceMaxXLeft * effectiveScale);
 
             var scaledFirstOffset = firstOffset * effectiveScale;
             var scaledLineSpacing = currentLineSpacing.GetValueOrDefault(maxLineSpacing) * effectiveScale;
