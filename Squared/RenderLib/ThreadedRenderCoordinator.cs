@@ -213,11 +213,17 @@ namespace Squared.Render {
                 DeviceReset(this, EventArgs.Empty);
         }
 
+        public void NotifyDeviceChanged () {
+            if (DeviceReset != null)
+                DeviceReset(this, EventArgs.Empty);
+        }
+
         protected void ExitSafepoint () {
             Monitor.Exit(DrawLock);
         }
 
         public SafepointToken Safepoint () {
+            WaitForActiveDraw();
             Monitor.Enter(DrawLock);
 
             return new SafepointToken(this);

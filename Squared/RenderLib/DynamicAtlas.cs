@@ -54,6 +54,7 @@ namespace Squared.Render {
         public T[] Pixels { get; private set; }
         public bool IsDirty { get; private set; }
 
+        private Texture2D _Texture;
         private int Spacing = 2;
         private int X = 1, Y = 1, RowHeight = 0;
         private object Lock = new object();
@@ -68,7 +69,13 @@ namespace Squared.Render {
             lock (Coordinator.CreateResourceLock)
                 Texture = new Texture2D(coordinator.Device, width, height, false, format);
 
+            coordinator.DeviceReset += Coordinator_DeviceReset;
+
             Pixels = new T[width * height];
+            Invalidate();
+        }
+
+        private void Coordinator_DeviceReset (object sender, EventArgs e) {
             Invalidate();
         }
 
@@ -84,6 +91,9 @@ namespace Squared.Render {
 
         public void Flush () {
             lock (Lock) {
+                if (Texture == null)
+                    return;
+
                 IsDirty = false;
 
                 lock (Coordinator.UseResourceLock)
@@ -126,9 +136,12 @@ namespace Squared.Render {
         }
 
         public void Dispose () {
-            Coordinator.DisposeResource(Texture);
-            Texture = null;
-            Pixels = null;
+            lock (Lock) {
+                Coordinator.DeviceReset -= Coordinator_DeviceReset;
+                Coordinator.DisposeResource(Texture);
+                Texture = null;
+                Pixels = null;
+            }
         }
     }
 }

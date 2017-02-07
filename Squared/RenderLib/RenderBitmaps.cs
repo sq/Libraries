@@ -368,7 +368,7 @@ namespace Squared.Render {
                 if (sortKey.HasValue)
                     item.SortKey = sortKey.Value;
                 if (scale.HasValue)
-                    item.Scale = scale.Value;
+                    item.Scale *= scale.Value;
 
                 _DrawCalls.Add(ref item);
             }
@@ -734,7 +734,7 @@ namespace Squared.Render {
                 if (sortKey.HasValue)
                     item.SortKey = sortKey.Value;
                 if (scale.HasValue)
-                    item.Scale = scale.Value;
+                    item.Scale *= scale.Value;
 
                 var dcm = customMaterial ?? Material;
                 if ((dcm == null) || (dcm.Effect == null))
