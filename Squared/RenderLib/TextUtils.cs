@@ -135,7 +135,7 @@ namespace Squared.Render.Text {
             _Text = text;
         }
 
-        public DynamicStringLayout (IGlyphSource font, string text = "") {
+        public DynamicStringLayout (IGlyphSource font = null, string text = "") {
             _GlyphSource = font;
             _Text = text;
         }
@@ -504,6 +504,29 @@ namespace Squared.Render.Text {
 
         public readonly SpriteFontUtil.FontFields Fields;
         public readonly int DefaultCharacterIndex;
+
+        // Forward some SpriteFont methods and properties to make it easier to drop-in replace
+        
+        public float Spacing {
+            get {
+                return Font.Spacing;
+            }
+        }
+
+        public float LineSpacing {
+            get {
+                return Font.LineSpacing;
+            }
+        }
+
+        public Vector2 MeasureString (string text) {
+            return Font.MeasureString(text);
+        }
+
+        public Vector2 MeasureString (StringBuilder text) {
+            return Font.MeasureString(text);
+        }
+
 
         private void MakeGlyphForCharacter (char ch, int characterIndex, out Glyph glyph) {
             var kerning = Fields.Kerning[characterIndex];

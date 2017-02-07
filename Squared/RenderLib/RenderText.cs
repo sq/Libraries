@@ -540,5 +540,43 @@ namespace Squared.Render {
                 return state.Finish();
             }
         }
+
+        // Yuck :(
+        public static StringLayout LayoutString (
+            this IGlyphSource glyphSource, AbstractString text, ArraySegment<BitmapDrawCall>? buffer = null,
+            Vector2? position = null, Color? color = null, float scale = 1, 
+            DrawCallSortKey sortKey = default(DrawCallSortKey),
+            int characterSkipCount = 0, int characterLimit = int.MaxValue,
+            float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
+            bool alignToPixels = false,
+            Dictionary<char, KerningAdjustment> kerningAdjustments = null,
+            bool wordWrap = false, char wrapCharacter = '\0'
+        ) {
+            var state = new StringLayoutEngine {
+                position = position,
+                color = color,
+                scale = scale,
+                sortKey = sortKey,
+                characterSkipCount = characterSkipCount,
+                characterLimit = characterLimit,
+                xOffsetOfFirstLine = xOffsetOfFirstLine,
+                lineBreakAtX = lineBreakAtX,
+                alignToPixels = alignToPixels,
+                characterWrap = lineBreakAtX.HasValue,
+                wordWrap = wordWrap,
+                wrapCharacter = wrapCharacter,
+                buffer = buffer
+            };
+
+            state.Initialize();
+
+            using (state) {
+                var segment = state.AppendText(
+                    glyphSource, text, kerningAdjustments
+                );
+
+                return state.Finish();
+            }
+        }
     }
 }

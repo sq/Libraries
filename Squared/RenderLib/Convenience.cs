@@ -699,6 +699,29 @@ namespace Squared.Render.Convenience {
             }
         }
 
+        public void DrawString (
+            IGlyphSource glyphSource, string text,
+            Vector2 position, Color? color = null, float scale = 1, DrawCallSortKey? sortKey = null,
+            int characterSkipCount = 0, int characterLimit = int.MaxValue,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null, SamplerState samplerState = null
+        ) {
+            using (var buffer = BufferPool<BitmapDrawCall>.Allocate(text.Length)) {
+                var layout = glyphSource.LayoutString(
+                    text, new ArraySegment<BitmapDrawCall>(buffer.Data),
+                    position, color, scale, sortKey.GetValueOrDefault(NextSortKey),
+                    characterSkipCount, characterLimit, alignToPixels: true
+                );
+
+                DrawMultiple(
+                    layout,
+                    layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState
+                );
+
+                buffer.Clear();
+            }
+        }
+
 
         public void FillRectangle (
             Rectangle rectangle, Color fillColor,
