@@ -451,6 +451,12 @@ namespace Squared.Render.Text {
                 return Sources[0].DPIScaleFactor;
             }
         }
+
+        public float LineSpacing {
+            get {
+                return Sources[0].LineSpacing;
+            }
+        }
         
         public void Dispose () {
             foreach (var item in Sources) {
@@ -462,6 +468,7 @@ namespace Squared.Render.Text {
 
     public interface IGlyphSource {
         bool GetGlyph (char ch, out Glyph result);
+        float LineSpacing { get; }
         float DPIScaleFactor { get; }
     }
 

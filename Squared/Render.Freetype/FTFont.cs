@@ -15,6 +15,8 @@ using SrGlyph = Squared.Render.Text.Glyph;
 
 namespace Squared.Render.Text {
     public class FreeTypeFont : IGlyphSource, IDisposable {
+        public static uint BaseDPI = 96;
+
         public class FontSize : IGlyphSource, IDisposable {
             public const int AtlasWidth = 1024, AtlasHeight = 1024;
 
@@ -74,7 +76,7 @@ namespace Squared.Render.Text {
                 get {
                     Font.Face.SetCharSize(
                         0, _SizePoints, 
-                        96, 96
+                        BaseDPI, BaseDPI
                     );
 
                     return Font.Face.Size.Metrics.Height.ToSingle();
@@ -90,7 +92,7 @@ namespace Squared.Render.Text {
 
                 Font.Face.SetCharSize(
                     0, _SizePoints, 
-                    (uint)(96 * Font.DPIPercent / 100), (uint)(96 * Font.DPIPercent / 100)
+                    (uint)(BaseDPI * Font.DPIPercent / 100), (uint)(BaseDPI * Font.DPIPercent / 100)
                 );
 
                 var index = Font.Face.GetCharIndex(ch);
@@ -141,7 +143,7 @@ namespace Squared.Render.Text {
 
             public void Invalidate () {
                 foreach (var atlas in Atlases)
-                    atlas.Dispose();
+                    Font.RenderCoordinator.DisposeResource(atlas);
 
                 Cache.Clear();
                 Atlases.Clear();
