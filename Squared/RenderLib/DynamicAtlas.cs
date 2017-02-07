@@ -113,6 +113,7 @@ namespace Squared.Render {
             result = new Reservation(this, X, Y, width, height);
             X += width + Spacing;
             RowHeight = Math.Max(RowHeight, height);
+            Invalidate();
 
             return true;
         }

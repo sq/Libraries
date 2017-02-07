@@ -20,9 +20,10 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string TestText =
-            "The quick brown fox jumped over the lazy dogs." +
-            "\r\nLong woooooooooooooooooooooooord" +
-            "\r\nこの体は、無限のチェイサーで出来ていた" +
+            "The quick brown fox jumped" +
+            "\r\nこの体は、無限のチェイサーで出来ていた";
+
+        public string TestText2 =
             "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +
             "\r\nはいはい！おつかれさまでした！";
 
@@ -33,7 +34,7 @@ namespace FontTest {
         DefaultMaterialSet Materials;
         GraphicsDeviceManager Graphics;
 
-        DynamicStringLayout Text;
+        DynamicStringLayout Text, Text2;
 
         public Vector2 TopLeft = new Vector2(24, 24);
         public Vector2 BottomRight = new Vector2(512, 512);
@@ -44,6 +45,7 @@ namespace FontTest {
         PressableKey FreeType = new PressableKey(Keys.F);
         PressableKey ShowOutlines = new PressableKey(Keys.O);
         PressableKey Hinting = new PressableKey(Keys.H);
+        PressableKey Which = new PressableKey(Keys.Space);
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
@@ -59,19 +61,19 @@ namespace FontTest {
             base.Initialize();
 
             Alignment.Pressed += (s, e) => {
-                Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 3);
+                Text2.Alignment = Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 3);
             };
             CharacterWrap.Pressed += (s, e) => {
-                Text.CharacterWrap = !Text.CharacterWrap;
+                Text2.CharacterWrap = Text.CharacterWrap = !Text.CharacterWrap;
             };
             WordWrap.Pressed += (s, e) => {
-                Text.WordWrap = !Text.WordWrap;
+                Text2.WordWrap = Text.WordWrap = !Text.WordWrap;
             };
             FreeType.Pressed += (s, e) => {
                 if (Text.GlyphSource == SpriteFont)
-                    Text.GlyphSource = FallbackFont;
+                    Text2.GlyphSource = Text.GlyphSource = FallbackFont;
                 else
-                    Text.GlyphSource = SpriteFont;
+                    Text2.GlyphSource = Text.GlyphSource = SpriteFont;
             };
             Hinting.Pressed += (s, e) => {
                 var ftf = (FreeTypeFont)LatinFont;
@@ -94,6 +96,11 @@ namespace FontTest {
 
             Text = new DynamicStringLayout(ActiveFont, TestText) {
                 // Alignment = HorizontalAlignment.Right,
+                CharacterWrap = true,
+                WordWrap = true,
+                Scale = 0.9f
+            };
+            Text2 = new DynamicStringLayout(ActiveFont, TestText2) {
                 CharacterWrap = true,
                 WordWrap = true,
                 Scale = 0.9f
@@ -122,12 +129,14 @@ namespace FontTest {
             FreeType.Update(ref ks);
             ShowOutlines.Update(ref ks);
             Hinting.Update(ref ks);
+            Which.Update(ref ks);
 
             var newSize = Arithmetic.Clamp(20 + (ms.ScrollWheelValue / 56f), 6, 200);
             var font = ((FreeTypeFont)LatinFont);
             if (newSize != font.SizePoints) {
                 font.SizePoints = newSize;
                 Text.Invalidate();
+                Text2.Invalidate();
             }
         }
 
@@ -138,7 +147,7 @@ namespace FontTest {
             ir.Clear(color: ClearColor);
 
             Text.Position = TopLeft;
-            Text.LineBreakAtX = BottomRight.X - TopLeft.X;
+            Text2.LineBreakAtX = Text.LineBreakAtX = BottomRight.X - TopLeft.X;
 
             ir.OutlineRectangle(new Bounds(TopLeft, BottomRight), Color.Red);
 
@@ -148,9 +157,21 @@ namespace FontTest {
             foreach (var dc in layout.DrawCalls)
                 ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
 
-            ir.OutlineRectangle(Bounds.FromPositionAndSize(TopLeft, layout.Size), Color.Yellow * 0.75f);
-
+            ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.Size), Color.Yellow * 0.75f);
             ir.DrawMultiple(layout);
+
+            if (Which.Value) {
+                Text2.Position = TopLeft + new Vector2(0, layout.Size.Y + 20);
+                layout = Text2.Get();
+
+                if (ShowOutlines.Value)
+                foreach (var dc in layout.DrawCalls)
+                    ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
+
+                ir.OutlineRectangle(Bounds.FromPositionAndSize(Text2.Position, layout.Size), Color.Yellow * 0.75f);
+                ir.DrawMultiple(layout);
+            }
+
         }
     }
 
