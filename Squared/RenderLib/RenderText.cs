@@ -203,11 +203,8 @@ namespace Squared.Render.Text {
             float whitespace;
             if (lineBreakAtX.HasValue)
                 whitespace = lineBreakAtX.Value - lineWidth;
-            else {
-                // whitespace = totalSize.X - lineWidth;
-                // FIXME:
-                whitespace = 0;
-            }
+            else
+                whitespace = maxX - lineWidth;
 
             // HACK: Don't do anything if the line is too big, just overflow to the right.
             //  Otherwise, the sizing info will be wrong and bad things happen.
@@ -217,8 +214,7 @@ namespace Squared.Render.Text {
             // HACK: We compute this before halving the whitespace, so that the size of 
             //  the layout is enough to ensure manually centering the whole layout will
             //  still preserve per-line centering.
-            // FIXME
-            // totalSize.X = Math.Max(totalSize.X, whitespace + lineWidth);
+            maxX = Math.Max(maxX, whitespace + lineWidth);
 
             if (alignment == HorizontalAlignment.Center)
                 whitespace /= 2;
@@ -479,7 +475,8 @@ namespace Squared.Render.Text {
         }
 
         public StringLayout Finish () {
-            maxX = Math.Max(maxX, currentLineMaxX);
+            maxX = Math.Max(maxX, currentLineMaxX) * scale;
+            maxY *= scale;
 
             var resultSegment = new ArraySegment<BitmapDrawCall>(
                 buffer.Value.Array, buffer.Value.Offset, drawCallsWritten
@@ -489,7 +486,7 @@ namespace Squared.Render.Text {
 
             return new StringLayout(
                 position.GetValueOrDefault(), 
-                new Vector2(maxX * scale, maxY * scale),
+                new Vector2(maxX, maxY),
                 maxLineSpacing,
                 firstCharacterBounds, lastCharacterBounds,
                 resultSegment
