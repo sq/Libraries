@@ -431,6 +431,7 @@ namespace Squared.Render.Text {
                             drawCall.Position = glyphPosition.Floor();
                         else
                             drawCall.Position = glyphPosition;
+                        drawCall.ScaleF = scale * glyph.ScaleFactor;
 
                         // HACK so that the alignment pass can detect rows. We strip this later.
                         if (alignment != HorizontalAlignment.Left)

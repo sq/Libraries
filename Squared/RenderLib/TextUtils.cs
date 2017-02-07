@@ -542,7 +542,8 @@ namespace Squared.Render.Text {
                 RightSideBearing = kerning.Z,
                 Width = kerning.Y,
                 CharacterSpacing = Font.Spacing,
-                LineSpacing = Font.LineSpacing
+                LineSpacing = Font.LineSpacing,
+                ScaleFactor = 1
             };
         }
 
@@ -587,5 +588,6 @@ namespace Squared.Render.Text {
         public float Width;
         public float CharacterSpacing;
         public float LineSpacing;
+        public float ScaleFactor;
     }
 }

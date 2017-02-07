@@ -70,6 +70,13 @@ namespace Squared.Render.Text {
                 return result;
             }
 
+            public float LineSpacing {
+                get {
+                    Font.Face.SetCharSize(0, _SizePoints, 96, 96);
+                    return Font.Face.Size.Metrics.Height.ToSingle();
+                }
+            }
+
             public bool GetGlyph (char ch, out Glyph glyph) {
                 if (Cache.TryGetValue(ch, out glyph))
                     return true;
@@ -77,7 +84,10 @@ namespace Squared.Render.Text {
                 if ((ch == '\r') || (ch == '\n') || (ch == '\0'))
                     return false;
 
-                Font.Face.SetCharSize(0, _SizePoints, 96, 96);
+                Font.Face.SetCharSize(
+                    0, _SizePoints, 
+                    (uint)(96 * Font.DPIPercent / 100), (uint)(96 * Font.DPIPercent / 100)
+                );
 
                 var index = Font.Face.GetCharIndex(ch);
                 if (index <= 0)
@@ -103,12 +113,14 @@ namespace Squared.Render.Text {
                 var ascender = Font.Face.Size.Metrics.Ascender.ToSingle();
                 var metrics = ftgs.Metrics;
 
+                var scaleFactor = 100f / Font.DPIPercent;
+
                 glyph = new SrGlyph {
                     Character = ch,
                     Width = metrics.Width.ToSingle(),
                     LeftSideBearing = metrics.HorizontalBearingX.ToSingle(),
                     RightSideBearing = (
-                        metrics.HorizontalAdvance.ToSingle() - 
+                        metrics.HorizontalAdvance.ToSingle() -
                             metrics.Width.ToSingle() -
                             metrics.HorizontalBearingX.ToSingle()
                     ),
@@ -116,7 +128,8 @@ namespace Squared.Render.Text {
                     YOffset = -ftgs.BitmapTop + ascender,
                     Texture = texRegion.Texture,
                     BoundsInTexture = texRegion.Rectangle,
-                    LineSpacing = Font.Face.Size.Metrics.Height.ToSingle()
+                    LineSpacing = Font.Face.Size.Metrics.Height.ToSingle(),
+                    ScaleFactor = scaleFactor
                 };
 
                 Cache[ch] = glyph;
@@ -140,6 +153,7 @@ namespace Squared.Render.Text {
 
         public FontSize DefaultSize { get; private set; }
         // FIXME: Invalidate on set
+        public int DPIPercent { get; set; }
         public bool Hinting { get; set; }
 
         public FreeTypeFont (RenderCoordinator rc, string filename, int faceIndex = 0) {
@@ -163,6 +177,7 @@ namespace Squared.Render.Text {
         }
 
         private void Initialize () {
+            DPIPercent = 100;
             DefaultSize = new FontSize(this, 12);
         }
 
@@ -177,6 +192,12 @@ namespace Squared.Render.Text {
             }
             set {
                 DefaultSize.SizePoints = value;
+            }
+        }
+
+        public float LineSpacing {
+            get {
+                return DefaultSize.LineSpacing;
             }
         }
 
