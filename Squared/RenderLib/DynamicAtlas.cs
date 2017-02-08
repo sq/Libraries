@@ -7,6 +7,38 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Squared.Render {
+    public delegate void MipGenerator<T> (T[] src, int srcWidth, int srcHeight, T[] dest) where T : struct;
+
+    public static class MipGenerator {
+        public static unsafe void Color (Color[] src, int srcWidth, int srcHeight, Color[] dest) {
+            var destWidth = srcWidth / 2;
+            var destHeight = srcHeight / 2;
+
+            fixed (Color* pSrcColor = src, pDestColor = dest) {
+                byte* pSrc = (byte*)pSrcColor, pDest = (byte*)pDestColor;
+                var srcRowSize = srcWidth * 4;
+            
+                for (var y = 0; y < destHeight; y++) {
+                    byte* srcRow = pSrc + ((y * 2) * srcRowSize);
+                    byte* destRow = pDest + (y * destWidth * 4);
+
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + ((x * 2) * 4);
+                        var b = a + 4;
+                        var c = a + srcRowSize;
+                        var d = b + srcRowSize;
+
+                        var result = destRow + (x * 4);
+                        result[0] = (byte)((a[0] + b[0] + c[0] + d[0]) / 4);
+                        result[1] = (byte)((a[1] + b[1] + c[1] + d[1]) / 4);
+                        result[2] = (byte)((a[2] + b[2] + c[2] + d[2]) / 4);
+                        result[3] = (byte)((a[3] + b[3] + c[3] + d[3]) / 4);
+                    }
+                }
+            }
+        }
+    }
+
     public class DynamicAtlas<T> : IDisposable 
         where T : struct 
     {
@@ -53,25 +85,40 @@ namespace Squared.Render {
         public Texture2D Texture { get; private set; }
         public T[] Pixels { get; private set; }
         public bool IsDirty { get; private set; }
+        public int Spacing { get; private set; }
 
         private Texture2D _Texture;
-        private int Spacing = 2;
-        private int X = 1, Y = 1, RowHeight = 0;
+        private int X, Y, RowHeight;
         private object Lock = new object();
         private Action _BeforePrepare;
+        private T[] MipBuffer;
+        private int MipLevelCount;
+        private readonly MipGenerator<T> GenerateMip;
 
-        public DynamicAtlas (RenderCoordinator coordinator, int width, int height, SurfaceFormat format) {
+        public DynamicAtlas (
+            RenderCoordinator coordinator, int width, int height, SurfaceFormat format, 
+            int spacing = 2, MipGenerator<T> mipGenerator = null
+        ) {
             Coordinator = coordinator;
             Width = width;
             Height = height;
+            Spacing = spacing;
+            X = Y = Spacing;
+            RowHeight = 0;
             _BeforePrepare = Flush;
 
             lock (Coordinator.CreateResourceLock)
-                Texture = new Texture2D(coordinator.Device, width, height, false, format);
+                Texture = new Texture2D(coordinator.Device, width, height, mipGenerator != null, format);
 
             coordinator.DeviceReset += Coordinator_DeviceReset;
 
             Pixels = new T[width * height];
+            if (mipGenerator != null)
+                MipBuffer = new T[(width / 2) * (height / 2)];
+
+            GenerateMip = mipGenerator;
+            MipLevelCount = Texture.LevelCount;
+
             Invalidate();
         }
 
@@ -98,6 +145,30 @@ namespace Squared.Render {
 
                 lock (Coordinator.UseResourceLock)
                     Texture.SetData(Pixels);
+
+                GenerateMips();
+            }
+        }
+
+        private void GenerateMips () {
+            if (MipLevelCount <= 1)
+                return;
+
+            var srcBuffer = Pixels;
+            var srcWidth = Width;
+            var srcHeight = Height;
+
+            for (var i = 1; i < MipLevelCount; i++) {
+                var destWidth = srcWidth / 2;
+                var destHeight = srcHeight / 2;
+
+                GenerateMip(srcBuffer, srcWidth, srcHeight, MipBuffer);
+                lock (Coordinator.UseResourceLock)
+                    Texture.SetData(i, null, MipBuffer, 0, destWidth * destHeight);
+
+                srcBuffer = MipBuffer;
+                srcWidth = destWidth;
+                srcHeight = destHeight;
             }
         }
 
@@ -116,7 +187,7 @@ namespace Squared.Render {
 
             if (needWrap) {
                 Y += (RowHeight + Spacing);
-                X = 1;
+                X = Spacing;
                 RowHeight = 0;
             }
 
@@ -130,9 +201,9 @@ namespace Squared.Render {
 
         public void Clear () {
             Array.Clear(Pixels, 0, Pixels.Length);
-            X = Y = 1;
+            X = Y = Spacing;
             RowHeight = 0;
-            IsDirty = true;
+            Invalidate();
         }
 
         public void Dispose () {

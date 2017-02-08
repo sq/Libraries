@@ -40,7 +40,7 @@ namespace Squared.Render.Text {
                 }
             }
 
-            private DynamicAtlas<Color>.Reservation Upload (FTBitmap bitmap) {
+            private unsafe DynamicAtlas<Color>.Reservation Upload (FTBitmap bitmap) {
                 bool foundRoom = false;
                 DynamicAtlas<Color>.Reservation result = default(DynamicAtlas<Color>.Reservation);
 
@@ -55,19 +55,23 @@ namespace Squared.Render.Text {
                 }
 
                 if (!foundRoom) {
-                    var newAtlas = new DynamicAtlas<Color>(Font.RenderCoordinator, AtlasWidth, AtlasHeight, SurfaceFormat.Color);
+                    var newAtlas = new DynamicAtlas<Color>(
+                        Font.RenderCoordinator, AtlasWidth, AtlasHeight, 
+                        SurfaceFormat.Color, 4, Font.MipMapping ? (MipGenerator<Color>)MipGenerator.Color : null
+                    );
                     Atlases.Add(newAtlas);
                     if (!newAtlas.TryReserve(widthW, heightW, out result))
                         throw new InvalidOperationException("Character too large for atlas");
                 }
 
                 var pixels = result.Atlas.Pixels;
+                var pSrc = (byte*)bitmap.Buffer;
 
                 for (var y = 0; y < bitmap.Rows; y++) {
                     var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
 
                     for (var x = 0; x < bitmap.Width; x++) {
-                        var g = bitmap.BufferData[x + (y * bitmap.Pitch)];
+                        var g = pSrc[x + (y * bitmap.Pitch)];
                         pixels[rowOffset + x] = new Color(g, g, g, g);
                     }
                 }
@@ -170,6 +174,7 @@ namespace Squared.Render.Text {
         public int GlyphMargin { get; set; }
         public int DPIPercent { get; set; }
         public bool Hinting { get; set; }
+        public bool MipMapping { get; set; }
 
         float IGlyphSource.DPIScaleFactor {
             get {
@@ -199,6 +204,8 @@ namespace Squared.Render.Text {
 
         private void Initialize () {
             DPIPercent = 100;
+            MipMapping = true;
+            GlyphMargin = 0;
             DefaultSize = new FontSize(this, 12);
         }
 
