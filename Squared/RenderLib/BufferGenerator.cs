@@ -9,15 +9,15 @@ using Squared.Util;
 
 namespace Squared.Render.Internal {
     public interface IBufferGenerator : IDisposable {
-        void Reset();
-        void Flush();
+        void Reset(int frameIndex);
+        void Flush(int frameIndex);
     }
 
     public interface IHardwareBuffer : IDisposable {
         void SetInactive (GraphicsDevice device);
         void SetActive (GraphicsDevice device);
-        void Invalidate ();
-        void Validate ();
+        void Invalidate (int frameIndex);
+        void Validate (int frameIndex);
         int VertexCount { get; }
         int IndexCount { get; }
         int Id { get; }
@@ -154,6 +154,7 @@ namespace Squared.Render.Internal {
         protected TVertex[] _VertexArray;
         protected TIndex[] _IndexArray;
         protected int _FlushedToBuffers = 0;
+        private int _LastFrameReset, _LastFrameFlushed;
 
         protected readonly SoftwareBufferPool _SoftwareBufferPool;
         protected readonly UnorderedList<SoftwareBuffer> _SoftwareBuffers = new UnorderedList<SoftwareBuffer>();
@@ -228,7 +229,7 @@ namespace Squared.Render.Internal {
             return newSize;
         }
 
-        void IBufferGenerator.Reset () {
+        void IBufferGenerator.Reset (int frameIndex) {
             lock (_StateLock) {
                 _FillingHardwareBufferEntry = null;
                 _FlushedToBuffers = 0;
@@ -246,7 +247,7 @@ namespace Squared.Render.Internal {
 
                     if (shouldKill) {
                         e.RemoveCurrent();
-                        hb.Invalidate();
+                        hb.Invalidate(frameIndex);
 
                         DisposeResource(hb);
                     }
@@ -256,7 +257,7 @@ namespace Squared.Render.Internal {
                 foreach (var _hb in _UsedHardwareBuffers) {
                     // HACK
                     var hwb = _hb.Buffer;
-                    hwb.Invalidate();
+                    hwb.Invalidate(frameIndex);
 
                     _UnusedHardwareBuffers.Add(hwb);
                 }
@@ -269,6 +270,8 @@ namespace Squared.Render.Internal {
                 }
 
                 _SoftwareBuffers.Clear();
+
+                _LastFrameReset = frameIndex;
 
                 /*
                 Array.Clear(_VertexArray, 0, _VertexArray.Length);
@@ -440,7 +443,7 @@ namespace Squared.Render.Internal {
             return buffer;
         }
 
-        private void FlushToBuffers () {
+        private void FlushToBuffers (int frameIndex) {
             var va = _VertexArray;
             var ia = _IndexArray;
 
@@ -455,11 +458,13 @@ namespace Squared.Render.Internal {
                     hwbe.Buffer, vertexSegment, indexSegment
                 );
 
-                hwbe.Buffer.Validate();
+                hwbe.Buffer.Validate(frameIndex);
             }
+
+            _LastFrameFlushed = frameIndex;
         }
 
-        void IBufferGenerator.Flush () {
+        void IBufferGenerator.Flush (int frameIndex) {
             lock (_StateLock) {
                 if (_FlushedToBuffers == 0) {
                     if (_PendingCopies.Count > 0) {
@@ -472,7 +477,7 @@ namespace Squared.Render.Internal {
                         _PendingCopies.Clear();
                     }
 
-                    FlushToBuffers();
+                    FlushToBuffers(frameIndex);
                 } else {
                     throw new InvalidOperationException("Buffer generator flushed twice in a row");
                 }
@@ -484,6 +489,7 @@ namespace Squared.Render.Internal {
         where TVertex : struct 
     {
         internal volatile int _IsValid = 0, _IsActive = 0;
+        private int _LastFrameValidated, _LastFrameInvalidated;
 
         public readonly object InUseLock = new object();
 
@@ -524,6 +530,7 @@ namespace Squared.Render.Internal {
             if (wasActive != 0)
                 throw new InvalidOperationException("Buffer already active");
 
+            // ???????
             if (_IsValid != 1)
                 throw new ThreadStateException("Buffer not valid");
 
@@ -579,7 +586,7 @@ namespace Squared.Render.Internal {
             return String.Format("XNABufferPair<{0}> #{1}", typeof(TVertex).Name, Id);
         }
 
-        void IHardwareBuffer.Validate () {
+        void IHardwareBuffer.Validate (int frameIndex) {
             var wasActive = Interlocked.Exchange(ref _IsActive, 0);
             var wasValid = Interlocked.Exchange(ref _IsValid, 1);
 
@@ -587,16 +594,20 @@ namespace Squared.Render.Internal {
                 throw new InvalidOperationException("Buffer in use");
             else if (wasValid != 0)
                 // FIXME: Happens sometimes on device reset?
-                // throw new InvalidOperationException("Buffer validated twice");
+                throw new InvalidOperationException("Buffer validated twice");
                 ;
+
+            _LastFrameValidated = frameIndex;
         }
 
-        void IHardwareBuffer.Invalidate () {
+        void IHardwareBuffer.Invalidate (int frameIndex) {
             var wasActive = Interlocked.Exchange(ref _IsActive, 0);
             var wasValid = Interlocked.Exchange(ref _IsValid, 0);
 
             if (wasActive != 0)
                 throw new InvalidOperationException("Buffer in use");
+
+            _LastFrameInvalidated = frameIndex;
         }
     }
 

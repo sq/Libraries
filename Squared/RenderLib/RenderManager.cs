@@ -341,20 +341,20 @@ namespace Squared.Render {
             return allocator.Allocate();
         }
 
-        internal void ResetBufferGenerators () {
+        internal void ResetBufferGenerators (int frameIndex) {
             _AllowCreatingNewGenerators = 1;
 
             lock (_BufferGenerators)
                 foreach (var generator in _BufferGenerators.Values)
-                    generator.Reset();
+                    generator.Reset(frameIndex);
         }
 
-        internal void FlushBufferGenerators () {
+        internal void FlushBufferGenerators (int frameIndex) {
             _AllowCreatingNewGenerators = 0;
 
             lock (_BufferGenerators)
                 foreach (var generator in _BufferGenerators.Values)
-                    generator.Flush();
+                    generator.Flush(frameIndex);
         }
 
         internal void FlushPendingDisposes () {

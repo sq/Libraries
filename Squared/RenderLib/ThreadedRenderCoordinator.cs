@@ -317,7 +317,7 @@ namespace Squared.Render {
 
             try {
                 RunBeforePrepareHandlers();
-                Manager.ResetBufferGenerators();
+                Manager.ResetBufferGenerators(frame.Index);
                 frame.Prepare(DoThreadedPrepare && threaded);
             } finally {
                 if (DoThreadedPrepare)
@@ -440,7 +440,7 @@ namespace Squared.Render {
         protected void RenderFrameToDraw (Frame frameToDraw, bool endDraw) {
             try {
                 if (frameToDraw != null) {                    
-                    Manager.FlushBufferGenerators();    
+                    Manager.FlushBufferGenerators(frameToDraw.Index);    
                     RenderFrame(frameToDraw, true);
                 }
 
