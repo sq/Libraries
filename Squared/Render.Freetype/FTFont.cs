@@ -103,7 +103,13 @@ namespace Squared.Render.Text {
                     (uint)(BaseDPI * Font.DPIPercent / 100), (uint)(BaseDPI * Font.DPIPercent / 100)
                 );
 
-                var index = Font.Face.GetCharIndex(ch);
+                uint index;
+
+                if (ch == '\t')
+                    index = Font.Face.GetCharIndex(' ');
+                else
+                    index = Font.Face.GetCharIndex(ch);
+
                 if (index <= 0)
                     return false;
 
@@ -126,6 +132,9 @@ namespace Squared.Render.Text {
 
                 var ascender = Font.Face.Size.Metrics.Ascender.ToSingle();
                 var metrics = ftgs.Metrics;
+                var advance = metrics.HorizontalAdvance.ToSingle();
+                if (ch == '\t')
+                    advance *= Font.TabSize;
 
                 var scaleFactor = 100f / Font.DPIPercent;
 
@@ -134,7 +143,7 @@ namespace Squared.Render.Text {
                     Width = metrics.Width.ToSingle(),
                     LeftSideBearing = metrics.HorizontalBearingX.ToSingle(),
                     RightSideBearing = (
-                        metrics.HorizontalAdvance.ToSingle() -
+                        advance -
                             metrics.Width.ToSingle() -
                             metrics.HorizontalBearingX.ToSingle()
                     ),
@@ -183,6 +192,7 @@ namespace Squared.Render.Text {
         public int DPIPercent { get; set; }
         public bool Hinting { get; set; }
         public bool MipMapping { get; set; }
+        public int TabSize { get; set; }
 
         float IGlyphSource.DPIScaleFactor {
             get {
@@ -215,6 +225,7 @@ namespace Squared.Render.Text {
             MipMapping = true;
             GlyphMargin = 0;
             DefaultSize = new FontSize(this, 12);
+            TabSize = 4;
         }
 
         public void Invalidate () {
