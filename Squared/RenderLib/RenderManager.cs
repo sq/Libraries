@@ -156,6 +156,9 @@ namespace Squared.Render {
 
         private int _AllowCreatingNewGenerators = 1;
         private int _FrameCount = 0;
+        private readonly Frame _Frame;
+        private bool _FrameInUse = false;
+
         private readonly Dictionary<Type, int> _PreferredPoolCapacities =
             new Dictionary<Type, int>(new ReferenceComparer<Type>());
         private readonly Dictionary<Type, IArrayPoolAllocator> _ArrayAllocators = 
@@ -165,7 +168,6 @@ namespace Squared.Render {
         private readonly Dictionary<Type, IBufferGenerator> _BufferGenerators =
             new Dictionary<Type, IBufferGenerator>(new ReferenceComparer<Type>());
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
-        private FramePool _FrameAllocator;
 
         private Action<IDisposable> _DisposeResource;
 
@@ -184,11 +186,11 @@ namespace Squared.Render {
 
             MainThread = mainThread;
             DeviceManager = new DeviceManager(device);
-            _FrameAllocator = new FramePool(this);
             ThreadGroup = threadGroup;
             PrepareManager = new PrepareManager(ThreadGroup);
 
             _DisposeResource = DisposeResource;
+            _Frame = new Frame();
         }
 
         /// <summary>
@@ -232,13 +234,23 @@ namespace Squared.Render {
         }
 
         internal void ReleaseFrame (Frame frame) {
-            _FrameAllocator.Release(frame);
+            if (_Frame != frame)
+                throw new InvalidOperationException();
+
+            lock (_Frame)
+                _FrameInUse = false;
         }
 
         public Frame CreateFrame () {
-            CollectAllocators();
+            lock (_Frame) {
+                if (_FrameInUse)
+                    throw new InvalidOperationException("A frame is already in use");
 
-            return _FrameAllocator.Allocate();
+                _FrameInUse = true;
+                CollectAllocators();
+                _Frame.Initialize(this, PickFrameIndex());
+                return _Frame;
+            }
         }
 
         public void CollectAllocators () {

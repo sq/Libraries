@@ -172,8 +172,9 @@ namespace Squared.Render {
 
             try {
                 OnBeforeDraw(gameTime);
+                var frame = RenderCoordinator.BeginFrame();
                 RenderCoordinator.SynchronousDrawsEnabled = false;
-                Draw(gameTime, RenderCoordinator.Frame);
+                Draw(gameTime, frame);
             } finally {
                 RenderCoordinator.SynchronousDrawsEnabled = true;
                 RenderCoordinator.WorkStopwatch.Stop();

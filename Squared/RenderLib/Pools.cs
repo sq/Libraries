@@ -37,26 +37,6 @@ namespace Squared.Render {
         }
     }
 
-    public class FramePool : BaseObjectPool<Frame> {
-        public readonly RenderManager RenderManager;
-
-        public FramePool (RenderManager renderManager)
-            : base(4) 
-        {
-            RenderManager = renderManager;
-        }
-
-        public override Frame Allocate () {
-            var result = base.Allocate();
-            result.Initialize(RenderManager, RenderManager.PickFrameIndex());
-            return result;
-        }
-
-        protected override Frame AllocateNew () {
-            return new Frame();
-        }
-    }
-
     public abstract class BaseObjectPool<T>
         where T : class {
 

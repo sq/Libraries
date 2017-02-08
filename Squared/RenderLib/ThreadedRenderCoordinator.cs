@@ -88,6 +88,10 @@ namespace Squared.Render {
         // Used to detect re-entrant painting (usually means that an
         //  exception was thrown on the render thread)
         private int _SynchronousDrawIsActive = 0;
+        // Sometimes a new paint can be issued while we're blocked on
+        //  a wait handle, because waits pump messages. We need to
+        //  detect this and ensure another draw does not begin.
+        private int _InsideDrawOperation = 0;
 
         // Lost devices can cause things to go horribly wrong if we're 
         //  using multithreaded rendering
@@ -276,29 +280,36 @@ namespace Squared.Render {
             return true;
         }
 
+        public Frame BeginFrame () {
+            return _FrameBeingPrepared = Manager.CreateFrame();
+        }
+
         public bool BeginDraw () {
             if (IsDisposed)
+                return false;
+            if (_InsideDrawOperation > 0)
                 return false;
 
             WaitForActiveSynchronousDraw();
             WaitForActiveDraw();
 
-            _ActualEnableThreading = EnableThreading;
+            Interlocked.Increment(ref _InsideDrawOperation);
+            try {
+                _ActualEnableThreading = EnableThreading;
 
-            bool result;
-            if (_Running) {
-                lock (_FrameLock)
-                    _FrameBeingPrepared = Manager.CreateFrame();
-
-                if (DoThreadedIssue)
-                    result = true;
-                else
-                    result = _SyncBeginDraw();
-            } else {
-                result = false;
+                bool result;
+                if (_Running) {
+                    if (DoThreadedIssue)
+                        result = true;
+                    else
+                        result = _SyncBeginDraw();
+                } else {
+                    result = false;
+                }
+                return result;
+            } finally {
+                Interlocked.Decrement(ref _InsideDrawOperation);
             }
-
-            return result;
         }
 
         protected void CheckMainThread (bool allowThreading) {
@@ -350,29 +361,34 @@ namespace Squared.Render {
             if (IsDisposed)
                 return;
 
-            Frame newFrame;
-            lock (_FrameLock)
-                newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
+            Interlocked.Increment(ref _InsideDrawOperation);
+            try {
+                Frame newFrame;
+                lock (_FrameLock)
+                    newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
-            PrepareNextFrame(newFrame, true);
+                PrepareNextFrame(newFrame, true);
             
-            if (_Running) {
-                if (DoThreadedIssue) {
-                    lock (UseResourceLock)
-                    if (!_SyncBeginDraw())
-                        return;
+                if (_Running) {
+                    if (DoThreadedIssue) {
+                        lock (UseResourceLock)
+                        if (!_SyncBeginDraw())
+                            return;
 
-                    DrawQueue.Enqueue(new DrawTask(ThreadedDraw, newFrame));
-                    ThreadGroup.NotifyQueuesChanged();
-                } else {
-                    ThreadedDraw(newFrame);
+                        DrawQueue.Enqueue(new DrawTask(ThreadedDraw, newFrame));
+                        ThreadGroup.NotifyQueuesChanged();
+                    } else {
+                        ThreadedDraw(newFrame);
+                    }
+
+                    if (_DeviceLost) {
+                        WaitForActiveDraw();
+
+                        _DeviceLost = IsDeviceLost;
+                    }
                 }
-
-                if (_DeviceLost) {
-                    WaitForActiveDraw();
-
-                    _DeviceLost = IsDeviceLost;
-                }
+            } finally {
+                Interlocked.Decrement(ref _InsideDrawOperation);
             }
         }
 
