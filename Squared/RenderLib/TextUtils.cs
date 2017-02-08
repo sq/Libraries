@@ -110,6 +110,7 @@ namespace Squared.Render.Text {
     public class DynamicStringLayout {
         private ArraySegment<BitmapDrawCall> _Buffer; 
         private StringLayout? _CachedStringLayout;
+        private int _CachedGlyphVersion = -1;
 
         private Dictionary<char, KerningAdjustment> _KerningAdjustments; 
         private IGlyphSource _GlyphSource;
@@ -368,6 +369,9 @@ namespace Squared.Render.Text {
             if (_Text.IsNull)
                 return new StringLayout();
 
+            if (_CachedStringLayout.HasValue && _CachedGlyphVersion < _GlyphSource.Version)
+                _CachedStringLayout = null;
+
             if (!_CachedStringLayout.HasValue) {
                 int length = _Text.Length;
 
@@ -413,6 +417,7 @@ namespace Squared.Render.Text {
                     le.Initialize();
                     le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
 
+                    _CachedGlyphVersion = _GlyphSource.Version;
                     _CachedStringLayout = le.Finish();
                 }
             }
@@ -457,6 +462,15 @@ namespace Squared.Render.Text {
                 return Sources[0].LineSpacing;
             }
         }
+
+        int IGlyphSource.Version {
+            get {
+                int result = 0;
+                foreach (var item in Sources)
+                    result += item.Version;
+                return result;
+            }
+        }
         
         public void Dispose () {
             foreach (var item in Sources) {
@@ -470,6 +484,8 @@ namespace Squared.Render.Text {
         bool GetGlyph (char ch, out Glyph result);
         float LineSpacing { get; }
         float DPIScaleFactor { get; }
+
+        int Version { get; }
     }
 
     public static class SpriteFontUtil {
@@ -530,6 +546,12 @@ namespace Squared.Render.Text {
         public float LineSpacing {
             get {
                 return Font.LineSpacing;
+            }
+        }
+
+        int IGlyphSource.Version {
+            get {
+                return 1;
             }
         }
 

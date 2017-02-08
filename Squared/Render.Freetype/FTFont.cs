@@ -24,6 +24,7 @@ namespace Squared.Render.Text {
             internal FreeTypeFont Font;
             internal Dictionary<char, SrGlyph> Cache = new Dictionary<char, SrGlyph>();
             internal float _SizePoints;
+            internal int _Version;
 
             public FontSize (FreeTypeFont font, float sizePoints) {
                 Font = font;
@@ -149,16 +150,23 @@ namespace Squared.Render.Text {
             }
 
             public void Invalidate () {
+                _Version++;
+
                 foreach (var atlas in Atlases)
-                    Font.RenderCoordinator.DisposeResource(atlas);
+                    atlas.Clear();
 
                 Cache.Clear();
-                Atlases.Clear();
             }
 
             float IGlyphSource.DPIScaleFactor {
                 get {
                     return Font.DPIPercent / 100f;
+                }
+            }
+
+            int IGlyphSource.Version {
+                get {
+                    return _Version;
                 }
             }
 
@@ -226,6 +234,12 @@ namespace Squared.Render.Text {
         public float LineSpacing {
             get {
                 return DefaultSize.LineSpacing;
+            }
+        }
+
+        int IGlyphSource.Version {
+            get {
+                return DefaultSize._Version;
             }
         }
 

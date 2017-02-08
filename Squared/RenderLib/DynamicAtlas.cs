@@ -110,8 +110,6 @@ namespace Squared.Render {
             lock (Coordinator.CreateResourceLock)
                 Texture = new Texture2D(coordinator.Device, width, height, mipGenerator != null, format);
 
-            coordinator.DeviceReset += Coordinator_DeviceReset;
-
             Pixels = new T[width * height];
             if (mipGenerator != null)
                 MipBuffer = new T[(width / 2) * (height / 2)];
@@ -119,10 +117,6 @@ namespace Squared.Render {
             GenerateMip = mipGenerator;
             MipLevelCount = Texture.LevelCount;
 
-            Invalidate();
-        }
-
-        private void Coordinator_DeviceReset (object sender, EventArgs e) {
             Invalidate();
         }
 
@@ -208,7 +202,6 @@ namespace Squared.Render {
 
         public void Dispose () {
             lock (Lock) {
-                Coordinator.DeviceReset -= Coordinator_DeviceReset;
                 Coordinator.DisposeResource(Texture);
                 Texture = null;
                 Pixels = null;
