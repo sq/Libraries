@@ -1,3 +1,7 @@
+#ifndef MIP_BIAS
+#define MIP_BIAS 0
+#endif
+
 float4 TransformPosition (float4 position, float offset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
 #ifdef FNA
@@ -17,6 +21,7 @@ Texture2D BitmapTexture : register(t0);
 
 sampler TextureSampler : register(s0) {
     Texture = (BitmapTexture);
+    MipLODBias = MIP_BIAS;
 };
 
 Texture2D SecondTexture : register(t1);
