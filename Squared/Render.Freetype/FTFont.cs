@@ -20,6 +20,8 @@ namespace Squared.Render.Text {
         public class FontSize : IGlyphSource, IDisposable {
             public const int AtlasWidth = 1024, AtlasHeight = 1024;
 
+            public bool IsDisposed { get; private set; }
+
             internal List<DynamicAtlas<Color>> Atlases = new List<DynamicAtlas<Color>>();
             internal FreeTypeFont Font;
             internal Dictionary<char, SrGlyph> Cache = new Dictionary<char, SrGlyph>();
@@ -29,6 +31,7 @@ namespace Squared.Render.Text {
             public FontSize (FreeTypeFont font, float sizePoints) {
                 Font = font;
                 SizePoints = sizePoints;
+                Font.Sizes.Add(this);
             }
 
             public float SizePoints {
@@ -92,6 +95,11 @@ namespace Squared.Render.Text {
             }
 
             public bool GetGlyph (char ch, out Glyph glyph) {
+                if (IsDisposed) {
+                    glyph = default(Glyph);
+                    return false;
+                }
+
                 if (Cache.TryGetValue(ch, out glyph))
                     return true;
 
@@ -159,6 +167,9 @@ namespace Squared.Render.Text {
             }
 
             public void Invalidate () {
+                if (IsDisposed)
+                    return;
+
                 _Version++;
 
                 foreach (var atlas in Atlases)
@@ -180,6 +191,14 @@ namespace Squared.Render.Text {
             }
 
             public void Dispose () {
+                if (IsDisposed)
+                    return;
+
+                IsDisposed = true;
+
+                Cache.Clear();
+                foreach (var atlas in Atlases)
+                    atlas.Dispose();
             }
         }
 
@@ -193,6 +212,8 @@ namespace Squared.Render.Text {
         public bool Hinting { get; set; }
         public bool MipMapping { get; set; }
         public int TabSize { get; set; }
+
+        private HashSet<FontSize> Sizes = new HashSet<FontSize>(new ReferenceComparer<FontSize>());
 
         float IGlyphSource.DPIScaleFactor {
             get {
@@ -229,8 +250,8 @@ namespace Squared.Render.Text {
         }
 
         public void Invalidate () {
-            DefaultSize.Invalidate();
-            // TODO: Invalidate other sizes
+            foreach (var size in Sizes)
+                size.Invalidate();
         }
 
         public float SizePoints {
@@ -259,6 +280,10 @@ namespace Squared.Render.Text {
         }
 
         public void Dispose () {
+            foreach (var size in Sizes)
+                size.Dispose();
+
+            Sizes.Clear();
             Face.Dispose();
         }
     }
