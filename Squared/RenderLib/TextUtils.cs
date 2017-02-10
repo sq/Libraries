@@ -375,12 +375,7 @@ namespace Squared.Render.Text {
             if (!_CachedStringLayout.HasValue) {
                 int length = _Text.Length;
 
-                int capacity = length;
-                if (_WordWrap)
-                    capacity += StringLayoutEngine.DefaultBufferPadding;
-
-                ArraySegment<BitmapDrawCall> seg1;
-                ArraySegment<BitmapDrawCall>? seg2 = null;
+                int capacity = length + StringLayoutEngine.DefaultBufferPadding;
 
                 if ((_Buffer.Array != null) && (_Buffer.Count < capacity))
                     _Buffer = default(ArraySegment<BitmapDrawCall>);
