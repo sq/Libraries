@@ -156,7 +156,7 @@ namespace Squared.Render.Text {
 
         private void WrapWord (
             ArraySegment<BitmapDrawCall> buffer,
-            Vector2 firstOffset, int firstIndex, int lastIndex, float newX, float effectiveScale
+            Vector2 firstOffset, int firstIndex, int lastIndex, float effectiveScale, float effectiveLineSpacing
         ) {
             // FIXME: Can this ever happen?
             if (currentLineWhitespaceMaxX <= 0)
@@ -169,7 +169,7 @@ namespace Squared.Render.Text {
 
             for (var i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
-                var newCharacterX = xOffsetOfWrappedLine + (dc.Position.X - scaledFirstOffset.X);
+                var newCharacterX = (xOffsetOfWrappedLine * effectiveScale) + (dc.Position.X - scaledFirstOffset.X);
 
                 dc.Position = new Vector2(newCharacterX, dc.Position.Y + scaledLineSpacing);
                 if (alignment != HorizontalAlignment.Left)
@@ -178,8 +178,8 @@ namespace Squared.Render.Text {
                 buffer.Array[buffer.Offset + i] = dc;
             }
 
-            newX -= characterOffset.X;
             characterOffset.X = xOffsetOfWrappedLine + (characterOffset.X - firstOffset.X);
+            characterOffset.Y += effectiveLineSpacing;
 
             // HACK: firstOffset may include whitespace so we want to pull the right edge in.
             //  Without doing this, the size rect for the string is too large.
@@ -353,11 +353,13 @@ namespace Squared.Render.Text {
                     var currentWordSize = x - wordStartOffset.X;
 
                     if (wordWrap && !wordWrapSuppressed && (currentWordSize * effectiveScale <= lineBreakAtX)) {
-                        WrapWord(buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, x, effectiveScale);
+                        WrapWord(buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, effectiveScale, effectiveLineSpacing);
                         wordWrapSuppressed = true;
                         lineBreak = true;
                     } else if (characterWrap) {
                         characterOffset.X = xOffsetOfWrappedLine;
+                        characterOffset.Y += effectiveLineSpacing;
+
                         maxX = Math.Max(maxX, currentLineMaxX * effectiveScale);
                         wordStartWritePosition = bufferWritePosition;
                         wordStartOffset = characterOffset;
@@ -368,6 +370,7 @@ namespace Squared.Render.Text {
                 if (lineBreak) {
                     if (!forcedWrap) {
                         characterOffset.X = xOffsetOfNewLine;
+                        characterOffset.Y += effectiveLineSpacing;
                         maxX = Math.Max(maxX, currentLineMaxX * effectiveScale);
                     }
 
@@ -375,7 +378,6 @@ namespace Squared.Render.Text {
                     currentLineMaxX = 0;
                     currentLineWhitespaceMaxX = 0;
                     currentLineWhitespaceMaxXLeft = 0;
-                    characterOffset.Y += effectiveLineSpacing;
                     rowIndex += 1;
                     colIndex = 0;
                 }

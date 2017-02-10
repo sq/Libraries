@@ -49,6 +49,7 @@ namespace FontTest {
         PressableKey Hinting = new PressableKey(Keys.H);
         PressableKey Which = new PressableKey(Keys.Space);
         PressableKey Margin = new PressableKey(Keys.M);
+        PressableKey Indent = new PressableKey(Keys.I);
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
@@ -142,6 +143,7 @@ namespace FontTest {
             Hinting.Update(ref ks);
             Which.Update(ref ks);
             Margin.Update(ref ks);
+            Indent.Update(ref ks);
 
             var newSize = Arithmetic.Clamp(20 + (ms.ScrollWheelValue / 56f), 6, 200);
             var font = ((FreeTypeFont)LatinFont);
@@ -160,6 +162,7 @@ namespace FontTest {
 
             Text.Position = TopLeft;
             Text2.LineBreakAtX = Text.LineBreakAtX = BottomRight.X - TopLeft.X;
+            Text.WrapIndentation = Text2.WrapIndentation = Indent.Value ? 64 : 0;
 
             ir.OutlineRectangle(new Bounds(TopLeft, BottomRight), Color.Red);
 
