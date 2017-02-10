@@ -1101,7 +1101,7 @@ namespace Squared.Render {
         public Bounds EstimateDrawBounds () {
             var texSize = new Vector2(Textures.Texture1.Width, Textures.Texture1.Height);
             var texRgn = (TextureRegion.BottomRight - TextureRegion.TopLeft) * texSize * Scale;
-            var offset = Origin * texSize;
+            var offset = Origin * texRgn;
 
             return new Bounds(
                 Position - offset,
@@ -1109,28 +1109,40 @@ namespace Squared.Render {
             );
         }
 
+        // Returns true if the draw call was modified at all
         public bool Crop (Bounds cropBounds) {
+            // HACK
+            if (Math.Abs(Rotation) >= 0.01)
+                return false;
+
+            AdjustOrigin(Vector2.Zero);
+
             var texSize = new Vector2(Textures.Texture1.Width, Textures.Texture1.Height);
+            var texRgnPx = TextureRegion.Scale(texSize);
             var drawBounds = EstimateDrawBounds();
 
             var newBounds_ = Bounds.FromIntersection(drawBounds, cropBounds);
-            if (!newBounds_.HasValue)
-                return false;
+            if (!newBounds_.HasValue) {
+                TextureRegion = new Bounds(Vector2.Zero, Vector2.Zero);
+                return true;
+            }
+
             var newBounds = newBounds_.Value;
+            var scaledSize = texSize * Scale;
 
             if (newBounds.TopLeft.X > drawBounds.TopLeft.X) {
-                Position.X += newBounds.TopLeft.X - drawBounds.TopLeft.X;
-                TextureRegion.TopLeft.X += (newBounds.TopLeft.X - drawBounds.TopLeft.X) / texSize.X / Scale.X;
+                Position.X += (newBounds.TopLeft.X - drawBounds.TopLeft.X);
+                TextureRegion.TopLeft.X += (newBounds.TopLeft.X - drawBounds.TopLeft.X) / scaledSize.X;
             }
             if (newBounds.TopLeft.Y > drawBounds.TopLeft.Y) {
-                Position.Y += newBounds.TopLeft.Y - drawBounds.TopLeft.Y;
-                TextureRegion.TopLeft.Y += (newBounds.TopLeft.Y - drawBounds.TopLeft.Y) / texSize.Y / Scale.Y;
+                Position.Y += (newBounds.TopLeft.Y - drawBounds.TopLeft.Y);
+                TextureRegion.TopLeft.Y += (newBounds.TopLeft.Y - drawBounds.TopLeft.Y) / scaledSize.Y;
             }
 
             if (newBounds.BottomRight.X < drawBounds.BottomRight.X)
-                TextureRegion.BottomRight.X += (newBounds.BottomRight.X - drawBounds.BottomRight.X) / texSize.X / Scale.X;
+                TextureRegion.BottomRight.X += (newBounds.BottomRight.X - drawBounds.BottomRight.X) / scaledSize.X;
             if (newBounds.BottomRight.Y < drawBounds.BottomRight.Y)
-                TextureRegion.BottomRight.Y += (newBounds.BottomRight.Y - drawBounds.BottomRight.Y) / texSize.Y / Scale.Y;
+                TextureRegion.BottomRight.Y += (newBounds.BottomRight.Y - drawBounds.BottomRight.Y) / scaledSize.Y;
 
             return true;
         }
