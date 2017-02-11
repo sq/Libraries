@@ -135,6 +135,7 @@ namespace Squared.Render.Text {
         float?  currentLineSpacing;
         float   maxLineSpacing;
         Vector2 wordStartOffset;
+        private bool ownsBuffer;
 
         private bool IsInitialized;
 
@@ -251,12 +252,23 @@ namespace Squared.Render.Text {
         }
 
         private void EnsureBufferCapacity (int count) {
-            if (buffer.Array == null)
+            if (buffer.Array == null) {
+                ownsBuffer = true;
                 buffer = new ArraySegment<BitmapDrawCall>(
                     new BitmapDrawCall[count]
                 );
-            else if (buffer.Count < count)
-                throw new InvalidOperationException("Buffer too small");
+            } else if (buffer.Count < count) {
+                if (ownsBuffer) {
+                    var oldBuffer = buffer;
+                    var newSize = Math.Min(count + 128, oldBuffer.Count * 2);
+                    buffer = new ArraySegment<BitmapDrawCall>(
+                        new BitmapDrawCall[newSize]
+                    );
+                    Array.Copy(oldBuffer.Array, buffer.Array, oldBuffer.Count);
+                } else {
+                    throw new InvalidOperationException("Buffer too small");
+                }
+            }
         }
 
         public ArraySegment<BitmapDrawCall> AppendText (
@@ -271,7 +283,7 @@ namespace Squared.Render.Text {
             if (text.IsNull)
                 throw new ArgumentNullException("text");
 
-            EnsureBufferCapacity(text.Length + DefaultBufferPadding);
+            EnsureBufferCapacity(bufferWritePosition + text.Length + DefaultBufferPadding);
 
             if (kerningAdjustments == null)
                 kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
@@ -423,12 +435,8 @@ namespace Squared.Render.Text {
                     );
 
                     if (!isWhiteSpace) {                    
-                        if (bufferWritePosition >= buffer.Count) {
-                            if (growBuffer != null)
-                                buffer = growBuffer(buffer);
-                            else
-                                throw new ArgumentException("buffer too small", "buffer");
-                        }
+                        if (bufferWritePosition >= buffer.Count)
+                            EnsureBufferCapacity(bufferWritePosition);
 
                         drawCall.Texture = glyph.Texture;
                         drawCall.TextureRegion = glyph.Texture.BoundsFromRectangle(ref glyph.BoundsInTexture);
@@ -468,9 +476,6 @@ namespace Squared.Render.Text {
             var segment = new ArraySegment<BitmapDrawCall>(
                 buffer.Array, buffer.Offset, drawCallsWritten
             );
-
-            if (segment.Count > text.Length)
-                throw new InvalidDataException();
 
             maxX = Math.Max(maxX, currentLineMaxX * effectiveScale);
 
