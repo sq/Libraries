@@ -134,6 +134,9 @@ namespace Squared.Threading {
         Exception Error {
             get;
         }
+        Type ResultType {
+            get;
+        }
 
         bool GetResult (out object result, out Exception error);
         void SetResult (object result, Exception error);
@@ -574,6 +577,12 @@ namespace Squared.Threading {
             get {
                 OnErrorCheck();
                 return _State == State_CompletedWithError;
+            }
+        }
+
+        Type IFuture.ResultType {
+            get {
+                return typeof(T);
             }
         }
 
