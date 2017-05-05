@@ -16,27 +16,49 @@ using Squared.Threading;
 
 namespace Squared.Task {
     public static class FutureAwaitExtensionMethods {
+        public struct FutureWithDisposedValue<TResult> {
+            public Future<TResult> Future;
+            public TResult         DisposedValue;
+        }
+
         public struct FutureAwaiter<TResult> : INotifyCompletion {
             public readonly CancellationScope.Registration Registration;
             public readonly Future<TResult> Future;
+            public readonly bool HasDisposedValue;
+            public readonly TResult DisposedValue;
 
             public FutureAwaiter (Future<TResult> future) {
                 Registration = new CancellationScope.Registration();
                 Future = future;
+                HasDisposedValue = false;
+                DisposedValue = default(TResult);
+            }
+
+            public FutureAwaiter (FutureWithDisposedValue<TResult> fwdv) {
+                Registration = new CancellationScope.Registration();
+                Future = fwdv.Future;
+                HasDisposedValue = true;
+                DisposedValue = fwdv.DisposedValue;
             }
 
             public void OnCompleted (Action continuation) {
-                Future.RegisterOnComplete(Registration.OnComplete(continuation));
+                var oc = Registration.OnComplete(continuation);
+                Future.RegisterOnComplete(oc);
+                if (HasDisposedValue)
+                    Future.RegisterOnDispose((f) => oc(f));
             }
 
             public bool IsCompleted {
                 get {
-                    return Future.Completed;
+                    return Future.Disposed || Future.Completed;
                 }
             }
 
             public TResult GetResult () {
                 Registration.ThrowIfCanceled();
+
+                if (Future.Disposed && HasDisposedValue)
+                    return DisposedValue;
 
                 return Future.Result;
             }
@@ -357,6 +379,10 @@ namespace Squared.Task {
             return new FutureAwaiter<T>(future);
         }
 
+        public static FutureAwaiter<T> GetAwaiter<T> (this FutureWithDisposedValue<T> fwdv) {
+            return new FutureAwaiter<T>(fwdv);
+        }
+
         public static IFutureAwaiter GetAwaiter (this IFuture future) {
             return new IFutureAwaiter(future);
         }
@@ -455,6 +481,13 @@ namespace Squared.Task {
 
         public static WaitableEvent<T> Event<T> (this EventBus eventBus, object source = null, string type = null) {
             return new WaitableEvent<T>(eventBus, source ?? EventBus.AnySource, type ?? EventBus.AnyType);
+        }
+
+        public static FutureWithDisposedValue<TResult> ValueWhenDisposed<TResult> (this Future<TResult> future, TResult value) {
+            return new FutureWithDisposedValue<TResult> {
+                Future = future,
+                DisposedValue = value
+            };
         }
     }
 }
