@@ -44,8 +44,7 @@ namespace Squared.Task {
             public void OnCompleted (Action continuation) {
                 var oc = Registration.OnComplete(continuation);
                 Future.RegisterOnComplete(oc);
-                if (HasDisposedValue)
-                    Future.RegisterOnDispose((f) => oc(f));
+                Future.RegisterOnDispose((f) => oc(f));
             }
 
             public bool IsCompleted {
@@ -57,8 +56,14 @@ namespace Squared.Task {
             public TResult GetResult () {
                 Registration.ThrowIfCanceled();
 
-                if (Future.Disposed && HasDisposedValue)
-                    return DisposedValue;
+                if (Future.Disposed) {
+                    if (HasDisposedValue)
+                        return DisposedValue;
+                    else if (typeof(TResult) == typeof(NoneType))
+                        // HACK: If you're just waiting for something to happen, no point in throwing
+                        //  upon dispose. The user can check Future.Disposed after if they care.
+                        return default(TResult);
+                }
 
                 return Future.Result;
             }
