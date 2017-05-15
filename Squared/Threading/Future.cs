@@ -600,6 +600,8 @@ namespace Squared.Threading {
                 } else if (state == State_CompletedWithError) {
                     OnErrorCheck();
                     return _Error;
+                } else if (state == State_Disposed) {
+                    return null;
                 } else
                     throw new FutureHasNoResultException(this);
             }
@@ -613,6 +615,8 @@ namespace Squared.Threading {
                 } else if (state == State_CompletedWithError) {
                     OnErrorCheck();
                     throw new FutureException("Future's result was an error", (Exception)_Error);
+                } else if (state == State_Disposed) {
+                    throw new FutureDisposedException(this);
                 } else
                     throw new FutureHasNoResultException(this);
             }
