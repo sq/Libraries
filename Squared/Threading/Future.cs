@@ -682,14 +682,14 @@ namespace Squared.Threading {
             if ((state == State_Indeterminate) || (state == State_Empty))
                 return false;
 
-            Thread.MemoryBarrier();            
+            if (!SetResultPrologue())
+                return false;
 
-            _State = state;
             _Result = source._Result;
             _Error = source._Error;
             _ErrorInfo = source._ErrorInfo;
 
-            Thread.MemoryBarrier();
+            SetResultEpilogue(state);
             return true;
         }
 
