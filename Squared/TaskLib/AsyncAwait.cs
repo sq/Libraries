@@ -13,6 +13,7 @@ using tTask = System.Threading.Tasks.Task;
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 using EventInfo = Squared.Util.Event.EventInfo;
 using Squared.Threading;
+using System.Runtime.ExceptionServices;
 
 namespace Squared.Task {
     public static class FutureAwaitExtensionMethods {
@@ -59,7 +60,7 @@ namespace Squared.Task {
                 if (Future.Disposed && HasDisposedValue)
                     return DisposedValue;
 
-                return Future.Result;
+                return Future.Result2;
             }
         }
 
@@ -85,9 +86,9 @@ namespace Squared.Task {
             }
 
             public object GetResult () {
-                CancellationScope.Current.ThrowIfCanceled();
+                Registration.ThrowIfCanceled();
 
-                return Future.Result;
+                return Future.Result2;
             }
         }
 
@@ -446,9 +447,10 @@ namespace Squared.Task {
 
         public static void BindFuture (this tTask task, IFuture future) {
             task.GetAwaiter().OnCompleted(() => {
-                if (task.Exception != null)
-                    future.SetResult(null, task.Exception);
-                else
+                // FIXME: ExceptionDispatchInfo?
+                if (task.IsFaulted) {
+                    future.Fail(task.Exception.InnerExceptions.Count == 1 ? task.Exception.InnerException : task.Exception);
+                } else
                     future.Complete();
             });
             future.RegisterOnDispose((_) => {
@@ -458,10 +460,7 @@ namespace Squared.Task {
 
         public static void BindFuture<T> (this System.Threading.Tasks.Task<T> task, Future<T> future) {
             task.GetAwaiter().OnCompleted(() => {
-                if (task.Exception != null)
-                    future.SetResult(default(T), task.Exception);
-                else
-                    future.SetResult(task.Result, task.Exception);
+                future.SetResult2(task);
             });
             future.RegisterOnDispose((_) => {
                 task.TryCancelScope();

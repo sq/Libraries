@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Squared.Util;
 using Squared.Threading;
+using System.Runtime.ExceptionServices;
 
 namespace Squared.Task {
     public class SchedulableGeneratorThunk : ISchedulable, IDisposable {
@@ -55,9 +56,16 @@ namespace Squared.Task {
             Dispose();
         }
 
-        internal void Abort (Exception ex) {
+        internal void Abort (IFuture f) {
             if (_Future != null)
-                _Future.Fail(ex);
+                _Future.CopyFrom(f);
+
+            Dispose();
+        }
+
+        internal void Abort (ExceptionDispatchInfo exInfo) {
+            if (_Future != null)
+                _Future.SetResult2(null, exInfo);
 
             Dispose();
         }
@@ -102,7 +110,7 @@ namespace Squared.Task {
 
         void QueueStepOnComplete (IFuture f) {
             if (_WakeDiscardingResult && f.Failed) {
-                Abort(f.Error);
+                Abort(f);
                 return;
             }
 
@@ -154,7 +162,7 @@ namespace Squared.Task {
 
             if (!_WakeDiscardingResult) {
                 if (_WakePrevious.Failed) {
-                    Abort(_WakePrevious.Error);
+                    Abort(_WakePrevious);
                     _WakePrevious = null;
                     return true;
                 }
@@ -251,7 +259,7 @@ namespace Squared.Task {
                 object value = _Task.Current;
                 ScheduleNextStep(value);
             } catch (Exception ex) {
-                Abort(ex);
+                Abort(ExceptionDispatchInfo.Capture(ex));
             }
         }
     }

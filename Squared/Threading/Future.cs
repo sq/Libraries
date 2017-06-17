@@ -4,6 +4,8 @@ using System.Threading;
 using System.Linq;
 using System.Linq.Expressions;
 using Squared.Util.Bind;
+using System.Runtime.ExceptionServices;
+using System.Runtime.CompilerServices;
 
 namespace Squared.Threading {
     public delegate void OnComplete(IFuture future);
@@ -131,6 +133,9 @@ namespace Squared.Threading {
         object Result {
             get;
         }
+        object Result2 {
+            get;
+        }
         Exception Error {
             get;
         }
@@ -140,9 +145,11 @@ namespace Squared.Threading {
 
         bool GetResult (out object result, out Exception error);
         void SetResult (object result, Exception error);
+        void SetResult2 (object result, ExceptionDispatchInfo errorInfo);
         void RegisterOnComplete (OnComplete handler);
         void RegisterOnDispose (OnDispose handler);
         void RegisterOnErrorCheck (Action handler);
+        bool CopyFrom (IFuture source);
     }
 
     public class NoneType {
@@ -385,6 +392,7 @@ namespace Squared.Threading {
         private int _State = State_Empty;
         private OnComplete _OnComplete = null;
         private OnDispose _OnDispose = null;
+        private ExceptionDispatchInfo _ErrorInfo = null;
         private Exception _Error = null;
         private Action _OnErrorChecked = null;
         private T _Result = default(T);
@@ -392,7 +400,7 @@ namespace Squared.Threading {
         public override string ToString () {
             int state = _State;
             var result = _Result;
-            var error = _Error;
+            var error = (_ErrorInfo != null) ? _ErrorInfo.SourceException : _Error;
             string stateText = "??";
             switch (state) {
                 case State_Empty:
@@ -592,6 +600,12 @@ namespace Squared.Threading {
             }
         }
 
+        object IFuture.Result2 {
+            get {
+                return this.Result2;
+            }
+        }
+
         public Exception Error {
             get {
                 int state = _State;
@@ -599,7 +613,7 @@ namespace Squared.Threading {
                     return null;
                 } else if (state == State_CompletedWithError) {
                     OnErrorCheck();
-                    return _Error;
+                    return (_ErrorInfo != null) ? _ErrorInfo.SourceException : _Error;
                 } else if (state == State_Disposed) {
                     return null;
                 } else
@@ -614,12 +628,69 @@ namespace Squared.Threading {
                     return _Result;
                 } else if (state == State_CompletedWithError) {
                     OnErrorCheck();
-                    throw new FutureException("Future's result was an error", (Exception)_Error);
+                    throw new FutureException("Future's result was an error", (_ErrorInfo != null) ? _ErrorInfo.SourceException : _Error);
                 } else if (state == State_Disposed) {
                     throw new FutureDisposedException(this);
                 } else
                     throw new FutureHasNoResultException(this);
             }
+        }
+
+        // HACK: UGH. Access this if you want to rethrow with stack preserved.
+        public T Result2 {
+            get {
+                int state = _State;
+                if (state == State_CompletedWithValue) {
+                    return _Result;
+                } else if (state == State_CompletedWithError) {
+                    OnErrorCheck();
+                    if (_ErrorInfo != null) {
+                        _ErrorInfo.Throw();
+                        throw new InvalidOperationException();
+                    } else
+                        throw new FutureException("Future's result was an error", _Error);
+                } else if (state == State_Disposed) {
+                    throw new FutureDisposedException(this);
+                } else
+                    throw new FutureHasNoResultException(this);
+            }
+        }
+
+        bool IFuture.CopyFrom (IFuture source) {
+            var tSelf = source as Future<T>;
+            if (tSelf != null)
+                return CopyFrom(tSelf);
+            else {
+                object r;
+                Exception e;
+                if (source.GetResult(out r, out e)) {
+                    if (r == null)
+                        SetResult(default(T), e);
+                    else
+                        SetResult((T)r, e);
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
+        public bool CopyFrom (Future<T> source) {
+            var state = source._State;
+
+            // FIXME: Wait if it's indeterminate state
+            if ((state == State_Indeterminate) || (state == State_Empty))
+                return false;
+
+            Thread.MemoryBarrier();            
+
+            _State = state;
+            _Result = source._Result;
+            _Error = source._Error;
+            _ErrorInfo = source._ErrorInfo;
+
+            Thread.MemoryBarrier();
+            return true;
         }
 
         void IFuture.SetResult (object result, Exception error) {
@@ -633,14 +704,26 @@ namespace Squared.Threading {
                 SetResult((T)result, error);
         }
 
-        public void SetResult (T result, Exception error) {
+        void IFuture.SetResult2 (object result, ExceptionDispatchInfo errorInfo) {
+            if ((errorInfo != null) && (result != null)) {
+                throw new FutureException("Cannot complete a future with both a result and an error.", errorInfo.SourceException);
+            }
+
+            if (result == null)
+                SetResult2(default(T), errorInfo);
+            else
+                SetResult2((T)result, errorInfo);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool SetResultPrologue () {
             int iterations = 1;
 
             while (true) {
                 int oldState = Interlocked.CompareExchange(ref _State, State_Indeterminate, State_Empty);
 
                 if (oldState == State_Disposed) {
-                    return;
+                    return false;
                 } else if ((oldState == State_CompletedWithValue) || (oldState == State_CompletedWithError))
                     throw new FutureAlreadyHasResultException(this);
                 else if (oldState == State_Empty)
@@ -649,9 +732,11 @@ namespace Squared.Threading {
                 SpinWait(iterations++);
             }
 
-            int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
-            _Result = result;
-            _Error = error;
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void SetResultEpilogue (int newState) {
             OnComplete handler = _OnComplete;
             _OnDispose = null;
             _OnComplete = null;
@@ -659,10 +744,70 @@ namespace Squared.Threading {
             if (Interlocked.Exchange(ref _State, newState) != State_Indeterminate)
                 throw new ThreadStateException();
 
-            if (newState == State_CompletedWithValue)
+            if ((newState == State_CompletedWithValue) || (newState == State_CompletedWithError))
                 InvokeOnComplete(handler);
-            else if (newState == State_CompletedWithError)
-                InvokeOnComplete(handler);
+        }
+
+        public void SetResult2 (System.Threading.Tasks.Task task) {
+            if (!task.IsCompleted)
+                throw new InvalidOperationException("Task not completed");
+
+            if (!SetResultPrologue())
+                return;
+
+            int newState = task.IsFaulted ? State_CompletedWithError : State_CompletedWithValue;
+            _Error = null;
+            if (newState == State_CompletedWithError) {
+                _ErrorInfo = ExceptionDispatchInfo.Capture(task.Exception.InnerExceptions.Count == 1 ? task.Exception.InnerException : task.Exception);
+            } else {
+                _ErrorInfo = null;
+            }
+
+            SetResultEpilogue(newState);
+        }
+
+        public void SetResult2 (System.Threading.Tasks.Task<T> task) {
+            if (!task.IsCompleted)
+                throw new InvalidOperationException("Task not completed");
+
+            if (!SetResultPrologue())
+                return;
+
+            int newState = task.IsFaulted ? State_CompletedWithError : State_CompletedWithValue;
+            _Error = null;
+            if (newState == State_CompletedWithError) {
+                // FIXME: Assign result here?
+                _ErrorInfo = ExceptionDispatchInfo.Capture(task.Exception.InnerExceptions.Count == 1 ? task.Exception.InnerException : task.Exception);
+            } else {
+                _Result = task.Result;
+                _ErrorInfo = null;
+            }
+
+            SetResultEpilogue(newState);
+        }
+
+        public void SetResult2 (T result, ExceptionDispatchInfo errorInfo) {
+            if (!SetResultPrologue())
+                return;
+
+            int newState = (errorInfo != null) ? State_CompletedWithError : State_CompletedWithValue;
+            _Result = result;
+            _Error = null;
+            _ErrorInfo = errorInfo;
+
+            SetResultEpilogue(newState);
+        }
+
+        public void SetResult (T result, Exception error) {
+            if (!SetResultPrologue())
+                return;
+
+            int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
+            _Result = result;
+            _Error = error;
+            _ErrorInfo = null;
+
+            SetResultEpilogue(newState);
         }
 
         public void Dispose () {
@@ -731,7 +876,7 @@ namespace Squared.Threading {
                 if (_State == State_CompletedWithError) {
                     OnErrorCheck();
                     result = default(T);
-                    error = _Error;
+                    error = (_ErrorInfo != null) ? _ErrorInfo.SourceException : _Error;
                     return true;
                 }
             }
@@ -748,10 +893,7 @@ namespace Squared.Threading {
         /// </summary>
         public static void Bind (this IFuture future, IFuture target) {
             OnComplete handler = (f) => {
-                object result;
-                Exception error;
-                f.GetResult(out result, out error);
-                future.SetResult(result, error);
+                future.CopyFrom(f);
             };
             target.RegisterOnComplete(handler);
         }
@@ -799,11 +941,12 @@ namespace Squared.Threading {
         }
 
         public static void Fail (this IFuture future, Exception error) {
-            future.SetResult(null, error);
+            // future.SetResult(null, error);
+            future.SetResult2(null, ExceptionDispatchInfo.Capture(error));
         }
 
         public static void Fail<T> (this Future<T> future, Exception error) {
-            future.SetResult(default(T), error);
+            future.SetResult2(default(T), ExceptionDispatchInfo.Capture(error));
         }
 
         public static bool CheckForFailure (this IFuture future, params Type[] failureTypes) {
