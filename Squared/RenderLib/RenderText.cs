@@ -252,19 +252,23 @@ namespace Squared.Render.Text {
         }
 
         private void EnsureBufferCapacity (int count) {
+            int paddedCount = count + DefaultBufferPadding;
+
             if (buffer.Array == null) {
                 ownsBuffer = true;
                 buffer = new ArraySegment<BitmapDrawCall>(
-                    new BitmapDrawCall[count]
+                    new BitmapDrawCall[paddedCount]
                 );
-            } else if (buffer.Count < count) {
+            } else if (buffer.Count < paddedCount) {
                 if (ownsBuffer) {
                     var oldBuffer = buffer;
-                    var newSize = Math.Min(count + 128, oldBuffer.Count * 2);
+                    var newSize = Math.Min(paddedCount + 256, oldBuffer.Count * 2);
                     buffer = new ArraySegment<BitmapDrawCall>(
                         new BitmapDrawCall[newSize]
                     );
                     Array.Copy(oldBuffer.Array, buffer.Array, oldBuffer.Count);
+                } else if (buffer.Count >= count) {
+                    // This is OK, there should be enough room...
                 } else {
                     throw new InvalidOperationException("Buffer too small");
                 }
@@ -283,7 +287,7 @@ namespace Squared.Render.Text {
             if (text.IsNull)
                 throw new ArgumentNullException("text");
 
-            EnsureBufferCapacity(bufferWritePosition + text.Length + DefaultBufferPadding);
+            EnsureBufferCapacity(bufferWritePosition + text.Length);
 
             if (kerningAdjustments == null)
                 kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
