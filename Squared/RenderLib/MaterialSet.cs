@@ -266,7 +266,12 @@ namespace Squared.Render {
                 if (material.OwningThread != Thread.CurrentThread)
                     throw new InvalidOperationException("Uniform bindings must be allocated on the thread that owns the material.");
 
+#if SDL2
+                UniformBinding<T> result;
+                throw new NotImplementedException("Create uniform binding for effect");
+#else
                 var result = UniformBinding<T>.TryCreate(effect, material.COMEffect, uniformName);
+#endif
                 UniformBindings.Add(key, result);
                 return result;
             }

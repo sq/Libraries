@@ -37,6 +37,18 @@ namespace Squared.Render {
             public readonly Fixup[] Fixups;
             public readonly uint UploadSize;
 
+            private FieldInfo FindField (Type type, string name) {
+                var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+                var result = type.GetField(name, flags);
+                if (result == null)
+                    result = type.GetField("_" + name, flags);
+                return result;
+            }
+
+
+            #region Direct3D
+#if !SDL2
+
             private readonly ID3DXEffect Effect;
 
             public Layout (Type type, ID3DXEffect effect, void* hParameter) {
@@ -61,14 +73,6 @@ namespace Squared.Render {
 
                     FixupMember(fixups, hMember, type, 0, ref uploadSize);
                 }
-            }
-
-            private FieldInfo FindField (Type type, string name) {
-                var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-                var result = type.GetField(name, flags);
-                if (result == null)
-                    result = type.GetField("_" + name, flags);
-                return result;
             }
 
             private void FixupMember (
@@ -123,6 +127,14 @@ namespace Squared.Render {
                 var paddedSize = ((valueSize + 15) / 16) * 16;
                 uploadSize += (uint)paddedSize;
             }
+
+#endif
+            #endregion
+
+            #region SDL2
+            #if SDL2
+            #endif
+            #endregion
         }
     }
 }

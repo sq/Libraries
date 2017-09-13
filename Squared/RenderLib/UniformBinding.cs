@@ -55,9 +55,6 @@ namespace Squared.Render {
             }
         }
 
-        private readonly ID3DXEffect pEffect;
-        private readonly void*       pUnboxedEffect;
-        private readonly void*       hParameter;
         private readonly Fixup[]     Fixups;
         private readonly uint        UploadSize;
 
@@ -74,6 +71,13 @@ namespace Squared.Render {
         public  Effect Effect     { get; private set; }
         public  string Name       { get; private set; }
         public  Type   Type       { get; private set; }
+
+        #region Direct3D
+#if !SDL2
+
+        private readonly ID3DXEffect pEffect;
+        private readonly void*       pUnboxedEffect;
+        private readonly void*       hParameter;
 
         /// <summary>
         /// Bind a single named uniform of the effect as type T.
@@ -121,6 +125,14 @@ namespace Squared.Render {
 
             return new UniformBinding<T>(effect, pEffect, hParameter);
         }
+
+#endif
+        #endregion
+
+        #region SDL2
+        #if SDL2
+        #endif
+        #endregion
 
         /// <summary>
         /// If you retain this you are a bad person and I'm ashamed of you! Don't do that!!!
@@ -182,10 +194,14 @@ namespace Squared.Render {
                 );
             }
 
+#if SDL2
+            throw new NotImplementedException("Write parameters buffer to GL uniform buffer");
+#else
             // HACK: Bypass the COM wrapper and invoke directly from the vtable.
             var hr = pSetRawValue(pUnboxedEffect, hParameter, pUpload.ToPointer(), 0, UploadSize);
             Marshal.ThrowExceptionForHR(hr);
             // pEffect.SetRawValue(hParameter, pUpload.ToPointer(), 0, UploadSize);
+#endif
 
             IsDirty = false;
         }
@@ -202,7 +218,10 @@ namespace Squared.Render {
             ScratchBuffer.Dispose();
             UploadBuffer.Dispose();
 
+#if SDL2
+#else
             Marshal.ReleaseComObject(pEffect);
+#endif
         }
     }
 
