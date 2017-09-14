@@ -585,6 +585,16 @@ namespace Squared.Render {
             }
         }
 
+        public bool TryGetPreparingFrame (out Frame frame) {
+            frame = null;
+
+            if (!_Running)
+                return false;
+
+            frame = _FrameBeingPrepared;
+            return (frame != null);
+        }
+
         public void Dispose () {
             if (!_Running) {
                 FlushPendingDisposes();
