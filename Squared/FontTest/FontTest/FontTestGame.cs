@@ -101,7 +101,7 @@ namespace FontTest {
         protected override void LoadContent () {
             SpriteFont = new SpriteFontGlyphSource(Content.Load<SpriteFont>("font"));
             LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") { SizePoints = 40, DPIPercent = 200 };
-            UniFont = new FreeTypeFont(RenderCoordinator, @"\Windows\Fonts\ArialUni.ttf") { SizePoints = 30, DPIPercent = 200 };
+            UniFont = new FreeTypeFont(RenderCoordinator, @"C:\Windows\Fonts\ArialUni.ttf") { SizePoints = 30, DPIPercent = 200 };
             FallbackFont = new FallbackGlyphSource(LatinFont, UniFont);
 
             ActiveFont = FallbackFont;

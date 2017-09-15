@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -10,6 +11,32 @@ namespace Squared.Render {
     public delegate void MipGenerator<T> (T[] src, int srcWidth, int srcHeight, T[] dest) where T : struct;
 
     public static class MipGenerator {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static double ToLinear (byte v) {
+            double fv = v / 255.0;
+            if (fv < 0.04045)
+                return fv / 12.92;
+            else
+                return Math.Pow((fv + 0.055) / 1.055, 2.4);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte FromLinear (double v) {
+            double scaled;
+	        if (v <= 0.0031308)
+		        scaled = 12.92 * v;
+	        else
+                scaled = (Math.Pow(v, 1.0 / 2.4) - 0.055) * 1.055;
+
+            return (byte)(scaled * 255.0);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte Average_sRGB (byte a, byte b, byte c, byte d) {
+            double sum = ToLinear(a) + ToLinear(b) + ToLinear(c) + ToLinear(d);
+            return FromLinear(sum / 4);
+        }
+
         public static unsafe void Color (Color[] src, int srcWidth, int srcHeight, Color[] dest) {
             var destWidth = srcWidth / 2;
             var destHeight = srcHeight / 2;
@@ -33,6 +60,34 @@ namespace Squared.Render {
                         result[1] = (byte)((a[1] + b[1] + c[1] + d[1]) / 4);
                         result[2] = (byte)((a[2] + b[2] + c[2] + d[2]) / 4);
                         result[3] = (byte)((a[3] + b[3] + c[3] + d[3]) / 4);
+                    }
+                }
+            }
+        }
+
+        public static unsafe void sRGBColor (Color[] src, int srcWidth, int srcHeight, Color[] dest) {
+            var destWidth = srcWidth / 2;
+            var destHeight = srcHeight / 2;
+
+            fixed (Color* pSrcColor = src, pDestColor = dest) {
+                byte* pSrc = (byte*)pSrcColor, pDest = (byte*)pDestColor;
+                var srcRowSize = srcWidth * 4;
+            
+                for (var y = 0; y < destHeight; y++) {
+                    byte* srcRow = pSrc + ((y * 2) * srcRowSize);
+                    byte* destRow = pDest + (y * destWidth * 4);
+
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + ((x * 2) * 4);
+                        var b = a + 4;
+                        var c = a + srcRowSize;
+                        var d = b + srcRowSize;
+
+                        var result = destRow + (x * 4);
+                        result[0] = Average_sRGB(a[0], b[0], c[0], d[0]);
+                        result[1] = Average_sRGB(a[1], b[1], c[1], d[1]);
+                        result[2] = Average_sRGB(a[2], b[2], c[2], d[2]);
+                        result[3] = Average_sRGB(a[3], b[3], c[3], d[3]);
                     }
                 }
             }

@@ -44,6 +44,11 @@ namespace Squared.Render.Text {
                 }
             }
 
+            private unsafe static MipGenerator<Color> PickMipGenerator (FreeTypeFont font) {
+                // TODO: Add a property that controls whether srgb is used. Or is freetype always srgb?
+                return MipGenerator.sRGBColor;
+            }
+
             private unsafe DynamicAtlas<Color>.Reservation Upload (FTBitmap bitmap) {
                 bool foundRoom = false;
                 DynamicAtlas<Color>.Reservation result = default(DynamicAtlas<Color>.Reservation);
@@ -61,7 +66,7 @@ namespace Squared.Render.Text {
                 if (!foundRoom) {
                     var newAtlas = new DynamicAtlas<Color>(
                         Font.RenderCoordinator, AtlasWidth, AtlasHeight, 
-                        SurfaceFormat.Color, 4, Font.MipMapping ? (MipGenerator<Color>)MipGenerator.Color : null
+                        SurfaceFormat.Color, 4, Font.MipMapping ? PickMipGenerator(Font) : null
                     );
                     Atlases.Add(newAtlas);
                     if (!newAtlas.TryReserve(widthW, heightW, out result))
