@@ -78,13 +78,24 @@ namespace Squared.Render.Text {
 
                 switch (bitmap.PixelMode) {
                     case PixelMode.Gray:
+                        double gInv = 1.0 / Font.Gamma;
+                        bool applyGamma = (Font.Gamma < 0.9999) || (Font.Gamma > 1.0001);
+
                         for (var y = 0; y < bitmap.Rows; y++) {
                             var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
                             int yPitch = y * bitmap.Pitch;
 
-                            for (var x = 0; x < bitmap.Width; x++) {
-                                var g = pSrc[x + yPitch];
-                                pixels[rowOffset + x] = new Color(g, g, g, g);
+                            if (applyGamma) {
+                                for (var x = 0; x < bitmap.Width; x++) {
+                                    var gD = pSrc[x + yPitch] / 255.0;
+                                    var g = (int)(Math.Pow(gD, gInv) * 255.0);
+                                    pixels[rowOffset + x] = new Color(g, g, g, g);
+                                }
+                            } else {
+                                for (var x = 0; x < bitmap.Width; x++) {
+                                    var g = pSrc[x + yPitch];
+                                    pixels[rowOffset + x] = new Color(g, g, g, g);
+                                }
                             }
                         }
                         break;
@@ -237,6 +248,7 @@ namespace Squared.Render.Text {
 
         public FontSize DefaultSize { get; private set; }
         // FIXME: Invalidate on set
+        public double Gamma { get; set; }
         public int GlyphMargin { get; set; }
         public int DPIPercent { get; set; }
         public bool Hinting { get; set; }
@@ -272,6 +284,7 @@ namespace Squared.Render.Text {
         }
 
         private void Initialize () {
+            Gamma = 1.0;
             DPIPercent = 100;
             MipMapping = true;
             GlyphMargin = 0;
