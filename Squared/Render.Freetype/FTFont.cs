@@ -203,6 +203,10 @@ namespace Squared.Render.Text {
                     LineSpacing = Font.Face.Size.Metrics.Height.ToSingle()
                 };
 
+                // Some fonts have weirdly-sized space characters
+                if (Char.IsWhiteSpace(ch))
+                    glyph.RightSideBearing = (float)Math.Round(glyph.RightSideBearing);
+
                 Cache[ch] = glyph;
                 return true;
             }

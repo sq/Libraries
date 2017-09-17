@@ -221,6 +221,8 @@ namespace Squared.Render.Text {
 
             for (var j = firstIndex; j <= lastIndex; j++) {
                 buffer.Array[buffer.Offset + j].Position.X += whitespace;
+                if (alignToPixels && (alignment != HorizontalAlignment.Left))
+                    buffer.Array[buffer.Offset + j].Position = buffer.Array[buffer.Offset + j].Position.Floor();
                 // We used the sortkey to store line numbers, now we put the right data there
                 buffer.Array[buffer.Offset + j].SortKey = sortKey;
             }
@@ -444,7 +446,7 @@ namespace Squared.Render.Text {
 
                         drawCall.Texture = glyph.Texture;
                         drawCall.TextureRegion = glyph.Texture.BoundsFromRectangle(ref glyph.BoundsInTexture);
-                        if (alignToPixels)
+                        if (alignToPixels && (alignment == HorizontalAlignment.Left))
                             drawCall.Position = glyphPosition.Floor();
                         else
                             drawCall.Position = glyphPosition;
