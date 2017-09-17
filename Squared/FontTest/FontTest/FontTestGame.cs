@@ -101,6 +101,7 @@ namespace FontTest {
         protected override void LoadContent () {
             SpriteFont = new SpriteFontGlyphSource(Content.Load<SpriteFont>("font"));
             LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") { SizePoints = 40, DPIPercent = 200 };
+            // LatinFont = new FreeTypeFont(RenderCoordinator, "cambria.ttc") { SizePoints = 40, DPIPercent = 200 };
             UniFont = new FreeTypeFont(RenderCoordinator, @"C:\Windows\Fonts\ArialUni.ttf") { SizePoints = 30, DPIPercent = 200 };
             FallbackFont = new FallbackGlyphSource(LatinFont, UniFont);
 
@@ -146,6 +147,7 @@ namespace FontTest {
             Indent.Update(ref ks);
 
             var newSize = Arithmetic.Clamp(20 + (ms.ScrollWheelValue / 56f), 6, 200);
+            // var newSize = Arithmetic.Clamp(7 + (ms.ScrollWheelValue / 56f), 6, 200);
             var font = ((FreeTypeFont)LatinFont);
             if (newSize != font.SizePoints) {
                 font.SizePoints = newSize;

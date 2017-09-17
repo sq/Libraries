@@ -76,13 +76,38 @@ namespace Squared.Render.Text {
                 var pixels = result.Atlas.Pixels;
                 var pSrc = (byte*)bitmap.Buffer;
 
-                for (var y = 0; y < bitmap.Rows; y++) {
-                    var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                switch (bitmap.PixelMode) {
+                    case PixelMode.Gray:
+                        for (var y = 0; y < bitmap.Rows; y++) {
+                            var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                            int yPitch = y * bitmap.Pitch;
 
-                    for (var x = 0; x < bitmap.Width; x++) {
-                        var g = pSrc[x + (y * bitmap.Pitch)];
-                        pixels[rowOffset + x] = new Color(g, g, g, g);
-                    }
+                            for (var x = 0; x < bitmap.Width; x++) {
+                                var g = pSrc[x + yPitch];
+                                pixels[rowOffset + x] = new Color(g, g, g, g);
+                            }
+                        }
+                        break;
+
+                    case PixelMode.Mono:
+                        for (var y = 0; y < bitmap.Rows; y++) {
+                            var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                            int yPitch = y * bitmap.Pitch;
+
+                            for (int x = 0, outX = rowOffset; x < bitmap.Pitch; x++, outX += 8) {
+                                var bits = pSrc[x + yPitch];
+
+                                for (int i = 0; i < 8; i++) {
+                                    int iy = 7 - i;
+                                    int g = ((bits & (1 << iy)) != 0) ? 255 : 0;
+                                    pixels[outX + i] = new Color(g, g, g, g);
+                                }
+                            }
+                        }
+                        break;
+
+                    default:
+                        throw new NotImplementedException("Unsupported pixel mode: " + bitmap.PixelMode);
                 }
 
                 return result;

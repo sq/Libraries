@@ -150,6 +150,9 @@
   <ItemGroup />
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="cambria.ttc">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="FiraSans-Regular.otf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
