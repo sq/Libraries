@@ -113,10 +113,10 @@ namespace Squared.Render.Text {
         public float    xOffsetOfWrappedLine;
         public float    xOffsetOfNewLine;
         public float?   lineBreakAtX;
-        public bool     alignToPixels;
         public bool     characterWrap;
         public bool     wordWrap;
         public char     wrapCharacter;
+        public GlyphPixelAlignment alignToPixels;
         public HorizontalAlignment alignment;
         public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
 
@@ -151,6 +151,7 @@ namespace Squared.Render.Text {
             wordWrapSuppressed = false;
             currentLineSpacing = null;
             maxLineSpacing = 0;
+            alignToPixels = GlyphPixelAlignment.Default;
 
             IsInitialized = true;
         }
@@ -192,13 +193,35 @@ namespace Squared.Render.Text {
                 );
         }
 
-        private Vector2 Snap (Vector2 pos, float scale) {
-            return pos.Floor();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Snap (Vector2 pos, out Vector2 result) {
+            float x, y;
 
-            return new Vector2(
-                (int)(pos.X / scale) * scale,
-                (int)(pos.Y / scale) * scale
-            );
+            switch (alignToPixels.Horizontal) {
+                case PixelAlignmentMode.Floor:
+                    x = (float)Math.Floor(pos.X);
+                    break;
+                case PixelAlignmentMode.FloorHalf:
+                    x = (float)Math.Floor(pos.X * 2) / 2;
+                    break;
+                default:
+                    x = pos.X;
+                    break;
+            }
+
+            switch (alignToPixels.Vertical) {
+                case PixelAlignmentMode.Floor:
+                    y = (float)Math.Floor(pos.Y);
+                    break;
+                case PixelAlignmentMode.FloorHalf:
+                    y = (float)Math.Floor(pos.Y * 2) / 2;
+                    break;
+                default:
+                    y = pos.Y;
+                    break;
+            }
+
+            result = new Vector2(x, y);
         }
 
         private void AlignLine (
@@ -453,10 +476,7 @@ namespace Squared.Render.Text {
 
                         drawCall.Texture = glyph.Texture;
                         drawCall.TextureRegion = glyph.Texture.BoundsFromRectangle(ref glyph.BoundsInTexture);
-                        if (alignToPixels)
-                            drawCall.Position = Snap(glyphPosition, effectiveScale);
-                        else
-                            drawCall.Position = glyphPosition;
+                        Snap(glyphPosition, out drawCall.Position);
 
                         // HACK so that the alignment pass can detect rows. We strip this later.
                         if (alignment != HorizontalAlignment.Left)
@@ -529,7 +549,7 @@ namespace Squared.Render {
             DrawCallSortKey sortKey = default(DrawCallSortKey),
             int characterSkipCount = 0, int? characterLimit = null,
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
-            bool alignToPixels = false,
+            GlyphPixelAlignment alignToPixels = default(GlyphPixelAlignment),
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
             bool wordWrap = false, char wrapCharacter = '\0'
         ) {
@@ -596,6 +616,58 @@ namespace Squared.Render {
                 );
 
                 return state.Finish();
+            }
+        }
+    }
+
+    namespace Text {
+        public enum PixelAlignmentMode {
+            None,
+            Floor,
+            // Like Floor but allows half-pixel values (x.5 in addition to x.0)
+            FloorHalf
+        }
+
+        public struct GlyphPixelAlignment : IEquatable<GlyphPixelAlignment> {
+            public PixelAlignmentMode Horizontal, Vertical;
+
+            public GlyphPixelAlignment (bool alignToPixels) {
+                Horizontal = Vertical = alignToPixels ? PixelAlignmentMode.Floor : PixelAlignmentMode.None;
+            }
+
+            public GlyphPixelAlignment (PixelAlignmentMode mode) {
+                Horizontal = Vertical = mode;
+            }
+
+            public GlyphPixelAlignment (PixelAlignmentMode horizontal, PixelAlignmentMode vertical) {
+                Horizontal = horizontal;
+                Vertical = vertical;
+            }
+
+            public static implicit operator GlyphPixelAlignment (bool alignToPixels) {
+                return new GlyphPixelAlignment(alignToPixels);
+            }
+
+            public static readonly GlyphPixelAlignment Default = new GlyphPixelAlignment(PixelAlignmentMode.None);
+            public static readonly GlyphPixelAlignment FloorXY = new GlyphPixelAlignment(PixelAlignmentMode.Floor);
+            public static readonly GlyphPixelAlignment FloorY = new GlyphPixelAlignment(PixelAlignmentMode.None, PixelAlignmentMode.Floor);
+
+            public bool Equals (GlyphPixelAlignment other) {
+                return (other.Horizontal == Horizontal) && (other.Vertical == Vertical);
+            }
+
+            public override bool Equals (object obj) {
+                if (obj is GlyphPixelAlignment)
+                    return Equals((GlyphPixelAlignment)obj);
+
+                return false;
+            }
+
+            public override string ToString () {
+                if (Horizontal == Vertical)
+                    return Horizontal.ToString();
+                else
+                    return string.Format("{0}, {1}", Horizontal, Vertical);
             }
         }
     }

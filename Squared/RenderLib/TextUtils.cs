@@ -127,7 +127,7 @@ namespace Squared.Render.Text {
         private bool _WordWrap = false;
         private bool _CharacterWrap = true;
         private float _WrapIndentation = 0f;
-        private bool _AlignToPixels = false;
+        private GlyphPixelAlignment _AlignToPixels = GlyphPixelAlignment.Default;
         private char _WrapCharacter = '\0';
         private int _Alignment = (int)HorizontalAlignment.Left;
 
@@ -342,7 +342,7 @@ namespace Squared.Render.Text {
             }
         }
 
-        public bool AlignToPixels {
+        public GlyphPixelAlignment AlignToPixels {
             get {
                 return _AlignToPixels;
             }
