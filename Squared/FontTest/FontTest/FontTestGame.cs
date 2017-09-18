@@ -100,25 +100,34 @@ namespace FontTest {
 
         protected override void LoadContent () {
             SpriteFont = new SpriteFontGlyphSource(Content.Load<SpriteFont>("font"));
-            LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") { SizePoints = 40, DPIPercent = 200, GlyphMargin = 4 };
-            LatinFont = new FreeTypeFont(RenderCoordinator, "cambria.ttc") { SizePoints = 40, DPIPercent = 100, GlyphMargin = 4 };
-            UniFont = new FreeTypeFont(RenderCoordinator, @"C:\Windows\Fonts\ArialUni.ttf") { SizePoints = 30, DPIPercent = 200, GlyphMargin = 4 };
+            LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") {
+                SizePoints = 40, DPIPercent = 200, GlyphMargin = 4, Gamma = 1.6
+            };
+            if (false)
+                LatinFont = new FreeTypeFont(RenderCoordinator, "cambria.ttc") {
+                    SizePoints = 40, DPIPercent = 200, GlyphMargin = 4, Gamma = 1.6
+                };
+            UniFont = new FreeTypeFont(RenderCoordinator, @"C:\Windows\Fonts\ArialUni.ttf") {
+                SizePoints = 30, DPIPercent = 200, GlyphMargin = 4, Gamma = 1.6
+            };
             FallbackFont = new FallbackGlyphSource(LatinFont, UniFont);
 
             ActiveFont = FallbackFont;
 
             Text = new DynamicStringLayout(ActiveFont, TestText) {
                 // Alignment = HorizontalAlignment.Right,
-                AlignToPixels = true,
+                AlignToPixels = GlyphPixelAlignment.FloorY,
                 CharacterWrap = true,
                 WordWrap = true,
-                Scale = 1f
+                Scale = 2f,
+                ReverseOrder = true
             };
             Text2 = new DynamicStringLayout(ActiveFont, TestText2) {
-                AlignToPixels = true,
+                AlignToPixels = GlyphPixelAlignment.FloorY,
                 CharacterWrap = true,
                 WordWrap = true,
-                Scale = 1f
+                Scale = 2f,
+                ReverseOrder = true
             };
         }
 
@@ -159,7 +168,7 @@ namespace FontTest {
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
-            var ir = new ImperativeRenderer(frame, Materials);
+            var ir = new ImperativeRenderer(frame, Materials, samplerState: SamplerState.LinearClamp);
             ir.AutoIncrementLayer = true;
 
             ir.Clear(color: ClearColor);
@@ -177,8 +186,8 @@ namespace FontTest {
                 ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
 
             var m = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
-            m.Parameters.ShadowColor.SetValue(new Vector4(1, 0, 1, 1));
-            m.Parameters.ShadowOffset.SetValue(new Vector2(1f, 1f));
+            m.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.66f));
+            m.Parameters.ShadowOffset.SetValue(new Vector2(3.5f, 3.5f));
 
             ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.Size), Color.Yellow * 0.75f);
             ir.DrawMultiple(layout, material: m);

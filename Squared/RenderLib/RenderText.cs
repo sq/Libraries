@@ -116,6 +116,7 @@ namespace Squared.Render.Text {
         public bool     characterWrap;
         public bool     wordWrap;
         public char     wrapCharacter;
+        public bool     reverseOrder;
         public GlyphPixelAlignment alignToPixels;
         public HorizontalAlignment alignment;
         public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
@@ -526,6 +527,9 @@ namespace Squared.Render.Text {
 
             if (alignment != HorizontalAlignment.Left)
                 AlignLines(result, alignment);
+
+            if (reverseOrder)
+                Array.Reverse(result.Array, result.Offset, result.Count);
 
             return new StringLayout(
                 position.GetValueOrDefault(), 

@@ -130,6 +130,7 @@ namespace Squared.Render.Text {
         private GlyphPixelAlignment _AlignToPixels = GlyphPixelAlignment.Default;
         private char _WrapCharacter = '\0';
         private int _Alignment = (int)HorizontalAlignment.Left;
+        private bool _ReverseOrder = false;
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _GlyphSource = new SpriteFontGlyphSource(font);
@@ -360,6 +361,15 @@ namespace Squared.Render.Text {
             }
         }
 
+        public bool ReverseOrder {
+            get {
+                return _ReverseOrder;
+            }
+            set {
+                InvalidatingValueAssignment(ref _ReverseOrder, value);
+            }
+        }
+
         public void Invalidate () {
             // Hey, you're the boss
             _CachedStringLayout = null;
@@ -406,7 +416,8 @@ namespace Squared.Render.Text {
                         characterWrap = _CharacterWrap,
                         wordWrap = _WordWrap,
                         wrapCharacter = _WrapCharacter,
-                        alignment = (HorizontalAlignment)_Alignment
+                        alignment = (HorizontalAlignment)_Alignment,
+                        reverseOrder = _ReverseOrder
                     }
                 ) {
                     le.Initialize();
