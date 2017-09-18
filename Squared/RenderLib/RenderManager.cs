@@ -159,14 +159,15 @@ namespace Squared.Render {
         private readonly Frame _Frame;
         private bool _FrameInUse = false;
 
+        private readonly List<IBufferGenerator> _AllBufferGenerators = new List<IBufferGenerator>();
+        private readonly ThreadLocal<Dictionary<Type, IBufferGenerator>> _BufferGenerators;
+
         private readonly Dictionary<Type, int> _PreferredPoolCapacities =
             new Dictionary<Type, int>(new ReferenceComparer<Type>());
         private readonly Dictionary<Type, IArrayPoolAllocator> _ArrayAllocators = 
             new Dictionary<Type, IArrayPoolAllocator>(new ReferenceComparer<Type>());
         private readonly Dictionary<Type, IBatchPool> _BatchAllocators =
             new Dictionary<Type, IBatchPool>(new ReferenceComparer<Type>());
-        private readonly Dictionary<Type, IBufferGenerator> _BufferGenerators =
-            new Dictionary<Type, IBufferGenerator>(new ReferenceComparer<Type>());
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
 
         private Action<IDisposable> _DisposeResource;
@@ -189,8 +190,17 @@ namespace Squared.Render {
             ThreadGroup = threadGroup;
             PrepareManager = new PrepareManager(ThreadGroup);
 
+            _BufferGenerators = new ThreadLocal<Dictionary<Type, IBufferGenerator>>(
+                MakeThreadBufferGeneratorTable
+            );
+
             _DisposeResource = DisposeResource;
             _Frame = new Frame();
+        }
+
+        private Dictionary<Type, IBufferGenerator> MakeThreadBufferGeneratorTable () {
+            var result = new Dictionary<Type, IBufferGenerator>(new ReferenceComparer<Type>());
+            return result;
         }
 
         /// <summary>
@@ -281,20 +291,22 @@ namespace Squared.Render {
             var t = typeof(T);
 
             IBufferGenerator result = null;
-            lock (_BufferGenerators) {
-                if (_BufferGenerators.TryGetValue(t, out result))
-                    return (T)result;
-
-                if (_AllowCreatingNewGenerators != 1)
-                    throw new InvalidOperationException("Cannot create a buffer generator after the flush operation has occurred");
-
-                result = (IBufferGenerator)Activator.CreateInstance(
-                    t, DeviceManager.Device, CreateResourceLock, _DisposeResource
-                );
-                _BufferGenerators.Add(t, result);
-
+            var bg = _BufferGenerators.Value;
+            if (bg.TryGetValue(t, out result))
                 return (T)result;
-            }
+
+            if (_AllowCreatingNewGenerators != 1)
+                throw new InvalidOperationException("Cannot create a buffer generator after the flush operation has occurred");
+
+            result = (IBufferGenerator)Activator.CreateInstance(
+                t, DeviceManager.Device, CreateResourceLock, _DisposeResource
+            );
+            bg.Add(t, result);
+
+            lock (_AllBufferGenerators)
+                _AllBufferGenerators.Add(result);
+
+            return (T)result;
         }
 
         public ArrayPoolAllocator<T> GetArrayAllocator<T> () {
@@ -356,17 +368,17 @@ namespace Squared.Render {
         internal void ResetBufferGenerators (int frameIndex) {
             _AllowCreatingNewGenerators = 1;
 
-            lock (_BufferGenerators)
-                foreach (var generator in _BufferGenerators.Values)
-                    generator.Reset(frameIndex);
+            lock (_AllBufferGenerators)
+            foreach (var generator in _AllBufferGenerators)
+                generator.Reset(frameIndex);
         }
 
         internal void FlushBufferGenerators (int frameIndex) {
             _AllowCreatingNewGenerators = 0;
 
-            lock (_BufferGenerators)
-                foreach (var generator in _BufferGenerators.Values)
-                    generator.Flush(frameIndex);
+            lock (_AllBufferGenerators)
+            foreach (var bg in _AllBufferGenerators)
+                bg.Flush(frameIndex);
         }
 
         internal void FlushPendingDisposes () {
