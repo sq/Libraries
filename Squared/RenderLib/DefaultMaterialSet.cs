@@ -117,6 +117,7 @@ namespace Squared.Render {
         );
 
         public Material ScreenSpaceBitmap, WorldSpaceBitmap;
+        public Material ScreenSpaceShadowedBitmap, WorldSpaceShadowedBitmap;
         public Material ScreenSpaceBitmapWithDiscard, WorldSpaceBitmapWithDiscard;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
@@ -161,6 +162,20 @@ namespace Squared.Render {
                 bitmapShader,
                 "WorldSpaceBitmapTechnique"
             );
+            
+            ScreenSpaceShadowedBitmap = new Material(
+                bitmapShader,
+                "ScreenSpaceShadowedBitmapTechnique"
+            );
+            ScreenSpaceShadowedBitmap.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 1));
+            ScreenSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(new Vector2(2, 2));
+
+            WorldSpaceShadowedBitmap = new Material(
+                bitmapShader,
+                "WorldSpaceShadowedBitmapTechnique"
+            );
+            WorldSpaceShadowedBitmap.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 1));
+            WorldSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(new Vector2(2, 2));
 
             ScreenSpaceBitmapWithDiscard = new Material(
                 bitmapShader,
@@ -424,7 +439,7 @@ namespace Squared.Render {
         public readonly EffectParameter ViewportPosition, ViewportScale;
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
         public readonly EffectParameter BitmapTextureSize, HalfTexel;
-        public readonly EffectParameter Time;
+        public readonly EffectParameter Time, ShadowColor, ShadowOffset;
 
         public DefaultMaterialSetEffectParameters (Effect effect) {
             var viewport = effect.Parameters["Viewport"];
@@ -439,6 +454,8 @@ namespace Squared.Render {
             BitmapTextureSize = effect.Parameters["BitmapTextureSize"];
             HalfTexel = effect.Parameters["HalfTexel"];
             Time = effect.Parameters["Time"];
+            ShadowColor = effect.Parameters["ShadowColor"];
+            ShadowOffset = effect.Parameters["ShadowOffset"];
         }
     }
 
@@ -459,5 +476,7 @@ namespace Squared.Render {
         public Vector2   HalfTexel;
         public Texture2D BitmapTexture;
         public Texture2D SecondTexture;
+        public Vector4   ShadowColor;
+        public Vector2   ShadowOffset;
     }
 }

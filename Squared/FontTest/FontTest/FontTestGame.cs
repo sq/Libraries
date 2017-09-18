@@ -100,9 +100,9 @@ namespace FontTest {
 
         protected override void LoadContent () {
             SpriteFont = new SpriteFontGlyphSource(Content.Load<SpriteFont>("font"));
-            LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") { SizePoints = 40, DPIPercent = 200 };
-            LatinFont = new FreeTypeFont(RenderCoordinator, "cambria.ttc") { SizePoints = 40, DPIPercent = 100, GlyphMargin = 3 };
-            UniFont = new FreeTypeFont(RenderCoordinator, @"C:\Windows\Fonts\ArialUni.ttf") { SizePoints = 30, DPIPercent = 200 };
+            LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") { SizePoints = 40, DPIPercent = 200, GlyphMargin = 4 };
+            LatinFont = new FreeTypeFont(RenderCoordinator, "cambria.ttc") { SizePoints = 40, DPIPercent = 100, GlyphMargin = 4 };
+            UniFont = new FreeTypeFont(RenderCoordinator, @"C:\Windows\Fonts\ArialUni.ttf") { SizePoints = 30, DPIPercent = 200, GlyphMargin = 4 };
             FallbackFont = new FallbackGlyphSource(LatinFont, UniFont);
 
             ActiveFont = FallbackFont;
@@ -159,7 +159,7 @@ namespace FontTest {
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
-            var ir = new ImperativeRenderer(frame, Materials, blendState: BlendState.AlphaBlend);
+            var ir = new ImperativeRenderer(frame, Materials);
             ir.AutoIncrementLayer = true;
 
             ir.Clear(color: ClearColor);
@@ -176,8 +176,12 @@ namespace FontTest {
             foreach (var dc in layout.DrawCalls)
                 ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
 
+            var m = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
+            m.Parameters.ShadowColor.SetValue(new Vector4(1, 0, 1, 1));
+            m.Parameters.ShadowOffset.SetValue(new Vector2(1f, 1f));
+
             ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.Size), Color.Yellow * 0.75f);
-            ir.DrawMultiple(layout);
+            ir.DrawMultiple(layout, material: m);
 
             if (Which.Value) {
                 Text2.Position = TopLeft + new Vector2(0, layout.Size.Y + 20);
@@ -188,7 +192,7 @@ namespace FontTest {
                     ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
 
                 ir.OutlineRectangle(Bounds.FromPositionAndSize(Text2.Position, layout.Size), Color.Yellow * 0.75f);
-                ir.DrawMultiple(layout);
+                ir.DrawMultiple(layout, material: m);
             }
 
         }
