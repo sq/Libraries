@@ -163,6 +163,8 @@ namespace Squared.Render.Text {
                     return false;
 
                 var flags = LoadFlags.Color | LoadFlags.Render;
+                if (!Font.EnableBitmaps)
+                    flags |= LoadFlags.NoBitmap;
                 if (!Font.Hinting)
                     flags |= LoadFlags.NoHinting;
 
@@ -257,6 +259,7 @@ namespace Squared.Render.Text {
         public int DPIPercent { get; set; }
         public bool Hinting { get; set; }
         public bool MipMapping { get; set; }
+        public bool EnableBitmaps { get; set; }
         public int TabSize { get; set; }
 
         private HashSet<FontSize> Sizes = new HashSet<FontSize>(new ReferenceComparer<FontSize>());
