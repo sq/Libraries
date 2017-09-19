@@ -955,7 +955,7 @@ namespace Squared.Render {
         private static void _SetRenderTargetCallback (DeviceManager dm, object userData) {
             var data = (SetRenderTargetData)userData;
             if (Tracing.RenderTrace.EnableTracing)
-                Tracing.RenderTrace.ImmediateMarker("Set   Render Target {0}", data.RenderTarget.GetHashCode());
+                Tracing.RenderTrace.ImmediateMarker("Set   RT {0}", Tracing.ObjectNames.ToObjectID(data.RenderTarget));
 
             dm.PushRenderTarget(data.RenderTarget);
             if (data.Before != null)
@@ -967,7 +967,7 @@ namespace Squared.Render {
         private static void _RestoreRenderTargetCallback (DeviceManager dm, object userData) {
             var data = (SetRenderTargetData)userData;
             if (Tracing.RenderTrace.EnableTracing)
-                Tracing.RenderTrace.ImmediateMarker("Unset Render Target {0}", data.RenderTarget.GetHashCode());
+                Tracing.RenderTrace.ImmediateMarker("Unset RT {0}", Tracing.ObjectNames.ToObjectID(data.RenderTarget));
 
             dm.PopRenderTarget();
             if (data.After != null)

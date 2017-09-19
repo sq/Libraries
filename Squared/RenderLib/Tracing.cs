@@ -19,10 +19,57 @@
 // THE SOFTWARE.
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Squared.Render.Tracing {
+    public interface INameableGraphicsObject {
+    }
+
+    public static class ObjectNames {
+        public static readonly ConditionalWeakTable<object, string> Table = 
+            new ConditionalWeakTable<object, string>();
+
+        public static void SetName (this Microsoft.Xna.Framework.Graphics.GraphicsResource obj, string name) {
+            obj.Name = name;
+            SetName((object)obj, name);
+        }
+
+        public static void SetName (this INameableGraphicsObject obj, string name) {
+            SetName((object)obj, name);
+        }
+
+        public static void SetName (object obj, string name) {
+            lock (Table) {
+                Table.Remove(obj);
+                Table.Add(obj, name);
+            }
+        }
+
+        public static bool TryGetName (this INameableGraphicsObject obj, out string result) {
+            lock (Table)
+                return Table.TryGetValue(obj, out result);
+        }
+
+        public static bool TryGetName (object obj, out string result) {
+            lock (Table)
+                return Table.TryGetValue(obj, out result);
+        }
+
+        public static string ToObjectID (this INameableGraphicsObject obj) {
+            return ToObjectID((object)obj);
+        }
+
+        public static string ToObjectID (object obj) {
+            string result;
+            if (TryGetName(obj, out result))
+                return result;
+            else
+                return string.Format("{0:X4}", obj.GetHashCode());
+        }
+    }
+
     public static class D3D9 {
         /// <summary>
         /// Marks the beginning of a user-defined event. PIX can use this event to trigger an action.
