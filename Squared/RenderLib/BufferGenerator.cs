@@ -134,18 +134,17 @@ namespace Squared.Render.Internal {
                 IsValid = true;
             }
 
+            internal void ArraysChanged (TVertex[] newVertexArray, TIndex[] newIndexArray) {
+                Vertices = new ArraySegment<TVertex>(
+                    newVertexArray, Vertices.Offset, Vertices.Count
+                );
+                Indices = new ArraySegment<TIndex>(
+                    newIndexArray, Indices.Offset, Indices.Count
+                );
+            }
+
             public override string ToString() {
                 return String.Format("<Software Buffer #{0} ({1} - {2})>", Id, IsValid ? "valid" : "invalid", HardwareBuffer);
-            }
-        }
-
-        protected struct PendingCopy {
-            public Array Source, Destination;
-            public int SourceIndex, DestinationIndex, Count;
-
-            public void Execute () {
-                // FIXME: Acquire lock(s) here?
-                Array.Copy(Source, SourceIndex, Destination, DestinationIndex, Count);
             }
         }
 
@@ -160,16 +159,15 @@ namespace Squared.Render.Internal {
         protected readonly UnorderedList<SoftwareBuffer> _SoftwareBuffers = new UnorderedList<SoftwareBuffer>();
         protected readonly UnorderedList<THardwareBuffer> _UnusedHardwareBuffers = new UnorderedList<THardwareBuffer>();
         protected readonly UnorderedList<HardwareBufferEntry> _UsedHardwareBuffers = new UnorderedList<HardwareBufferEntry>();
-        protected readonly UnorderedList<PendingCopy> _PendingCopies = new UnorderedList<PendingCopy>();
 
         protected HardwareBufferEntry _FillingHardwareBufferEntry = null;
 
-        const int MaxBufferAge = 16;
-        const int MaxUnusedBuffers = 16;
-        const int InitialArraySize = 4096;
+        const int MaxBufferAge = 4;
+        const int MaxUnusedBuffers = 4;
+        const int InitialArraySize = 40960;
 
         const int MinVerticesPerBuffer = 1024;
-        const int MinIndicesPerBuffer = 1536;
+        const int MinIndicesPerBuffer = 3072;
         
         // Modify these per-platform as necessary
         protected int MaxVerticesPerHardwareBuffer = UInt16.MaxValue;
@@ -212,8 +210,6 @@ namespace Squared.Render.Internal {
 
                 _UnusedHardwareBuffers.Clear();
 
-                _PendingCopies.Clear();
-
                 _VertexArray = null;
                 _IndexArray = null;
 
@@ -224,9 +220,17 @@ namespace Squared.Render.Internal {
         }
 
         protected virtual int PickNewArraySize (int previousSize, int requestedSize) {
-            var newSize = 1 << (int)Math.Ceiling(Math.Log(requestedSize, 2));
+            const int largeChunkSize = 512000;
 
-            return newSize;
+            if (previousSize >= largeChunkSize) {
+                var newSize = ((requestedSize + largeChunkSize - 1) / largeChunkSize) * largeChunkSize;
+
+                return newSize;
+            } else {
+                var newSize = 1 << (int)Math.Ceiling(Math.Log(requestedSize, 2));
+
+                return newSize;
+            }
         }
 
         void IBufferGenerator.Reset (int frameIndex) {
@@ -280,7 +284,7 @@ namespace Squared.Render.Internal {
             }
         }
 
-        private T[] EnsureBufferCapacity<T> (
+        private bool EnsureBufferCapacity<T> (
             ref T[] array, ref int usedElementCount,
             int elementsToAdd, out int oldElementCount
         ) {
@@ -290,20 +294,11 @@ namespace Squared.Render.Internal {
             var oldArray = array;
             var oldArraySize = array.Length;
             if (oldArraySize >= newElementCount)
-                return array;
+                return false;
 
             var newSize = PickNewArraySize(oldArraySize, newElementCount);
-            var newArray = new T[newSize];
-
-            _PendingCopies.Add(new PendingCopy {
-                Source = oldArray,
-                SourceIndex = 0,
-                Destination = newArray,
-                DestinationIndex = 0,
-                Count = oldElementCount
-            });
-
-            return array = newArray;
+            Array.Resize(ref array, newSize);
+            return true;
         }
 
         private HardwareBufferEntry PrepareToFillBuffer (
@@ -370,12 +365,18 @@ namespace Squared.Render.Internal {
                 SoftwareBuffer swb;
 
                 int oldVertexCount, oldIndexCount;
-                var vertexArray = EnsureBufferCapacity(
+                var didArraysChange = EnsureBufferCapacity(
                     ref _VertexArray, ref _VertexCount, vertexCount, out oldVertexCount
                 );
-                var indexArray = EnsureBufferCapacity(
-                    ref _IndexArray, ref _IndexCount, indexCount, out oldIndexCount
-                );
+                if (EnsureBufferCapacity(
+                        ref _IndexArray, ref _IndexCount, indexCount, out oldIndexCount
+                    ))
+                    didArraysChange = true;
+
+                if (didArraysChange) {
+                    foreach (var _swb in _SoftwareBuffers)
+                        _swb.ArraysChanged(_VertexArray, _IndexArray);
+                }
 
                 HardwareBufferEntry hardwareBufferEntry;
 
@@ -400,8 +401,8 @@ namespace Squared.Render.Internal {
 
                 swb = _SoftwareBufferPool.Allocate();
                 swb.Initialize(
-                    new ArraySegment<TVertex>(vertexArray, hardwareBufferEntry.VertexOffset + oldHwbVerticesUsed, vertexCount),
-                    new ArraySegment<TIndex>(indexArray, hardwareBufferEntry.IndexOffset + oldHwbIndicesUsed, indexCount),
+                    new ArraySegment<TVertex>(_VertexArray, hardwareBufferEntry.VertexOffset + oldHwbVerticesUsed, vertexCount),
+                    new ArraySegment<TIndex>(_IndexArray, hardwareBufferEntry.IndexOffset + oldHwbIndicesUsed, indexCount),
                     hardwareBufferEntry.Buffer,
                     oldHwbVerticesUsed,
                     oldHwbIndicesUsed
@@ -467,16 +468,6 @@ namespace Squared.Render.Internal {
         void IBufferGenerator.Flush (int frameIndex) {
             lock (_StateLock) {
                 if (_FlushedToBuffers == 0) {
-                    if (_PendingCopies.Count > 0) {
-                        PendingCopy pc;
-
-                        using (var e = _PendingCopies.GetEnumerator())
-                            while (e.GetNext(out pc))
-                                pc.Execute();
-
-                        _PendingCopies.Clear();
-                    }
-
                     FlushToBuffers(frameIndex);
                 } else {
                     throw new InvalidOperationException("Buffer generator flushed twice in a row");
@@ -540,9 +531,24 @@ namespace Squared.Render.Internal {
         }
 
         public void Allocate () {
-            Vertices = new DynamicVertexBuffer(GraphicsDevice, typeof(TVertex), VertexCount, BufferUsage.WriteOnly);
-            Indices = new DynamicIndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, IndexCount, BufferUsage.WriteOnly);
-            IsAllocated = true;
+            bool hasRetried = false;
+
+            retry:
+                try {
+                    Vertices = new DynamicVertexBuffer(GraphicsDevice, typeof(TVertex), VertexCount, BufferUsage.WriteOnly);
+                    Indices = new DynamicIndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, IndexCount, BufferUsage.WriteOnly);
+                    IsAllocated = true;
+                } catch (OutOfMemoryException exc) {
+                    if (hasRetried)
+                        throw;
+
+                    hasRetried = true;
+                    if (Vertices != null)
+                        Vertices.Dispose();
+
+                    GC.Collect();
+                    goto retry;
+                }
         }
 
         public void Dispose () {

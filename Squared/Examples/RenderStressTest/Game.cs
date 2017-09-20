@@ -19,10 +19,10 @@ namespace RenderStressTest {
         public const int Width = 1280;
         public const int Height = 720;
 
-        public const int NumberOfOrbs = 32768;
+        public const int NumberOfOrbs = 102400;
 
         // The number of spheres to pack into a single GPU draw batch.
-        public const int BatchSize = 256;
+        public const int BatchSize = 1024;
 
         // Controls whether we perform updates across multiple threads.
         public const bool ThreadedUpdate = true;
