@@ -283,9 +283,8 @@ namespace Squared.Render {
 
         private int LastReservationID = 0;
 
-        private ArrayPoolAllocator<BitmapVertex> _Allocator;
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
-            256, 16, 64, NativeBatchCapacityLimit
+            320, 4, 256, NativeBatchCapacityLimit, 10240
         );
         private UnorderedList<NativeBatch> _NativeBatches = null;
 
@@ -339,8 +338,6 @@ namespace Squared.Render {
 
             SamplerState = samplerState ?? BitmapBatch.DefaultSamplerState;
             SamplerState2 = samplerState2 ?? BitmapBatch.DefaultSamplerState;
-
-            _Allocator = container.RenderManager.GetArrayAllocator<BitmapVertex>();
 
             UseZBuffer = useZBuffer;
 

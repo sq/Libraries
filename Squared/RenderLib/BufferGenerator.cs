@@ -74,6 +74,14 @@ namespace Squared.Render.Internal {
                 SourceIndexCount = sourceIndexCount;
                 VerticesUsed = IndicesUsed = 0;
             }
+
+            public float UtilizationPercentage {
+                get {
+                    var usedVerts = VerticesUsed / (float)Buffer.VertexCount;
+                    var usedIndices = IndicesUsed / (float)Buffer.IndexCount;
+                    return ((usedVerts + usedIndices) / 2) * 100;
+                }
+            }
         }
 
         public class SoftwareBuffer : ISoftwareBuffer {
@@ -156,6 +164,15 @@ namespace Squared.Render.Internal {
             }
         }
 
+        protected static object _StaticStateLock = new object();
+        protected static int    _InstanceCount = 0;
+        protected static int    _LastFrameStaticReset = -1;
+        protected static readonly UnorderedList<XNABufferPair<TVertex>> _UnusedHardwareBuffers 
+            = new UnorderedList<XNABufferPair<TVertex>>();
+
+        protected readonly UnorderedList<HardwareBufferEntry> _UsedHardwareBuffers 
+            = new UnorderedList<HardwareBufferEntry>();
+
         protected object _StateLock = new object();
         protected int _VertexCount = 0, _IndexCount = 0;
         protected TVertex[] _VertexArray;
@@ -165,17 +182,22 @@ namespace Squared.Render.Internal {
 
         protected readonly SoftwareBufferPool _SoftwareBufferPool;
         protected readonly UnorderedList<SoftwareBuffer> _SoftwareBuffers = new UnorderedList<SoftwareBuffer>();
-        protected readonly UnorderedList<XNABufferPair<TVertex>> _UnusedHardwareBuffers = new UnorderedList<XNABufferPair<TVertex>>();
-        protected readonly UnorderedList<HardwareBufferEntry> _UsedHardwareBuffers = new UnorderedList<HardwareBufferEntry>();
 
         protected HardwareBufferEntry _FillingHardwareBufferEntry = null;
 
         const int MaxBufferAge = 4;
         const int MaxUnusedBuffers = 4;
-        const int InitialArraySize = 40960;
 
-        const int MinVerticesPerBuffer = 1024;
-        const int MinIndicesPerBuffer = 3072;
+        // Initial size of the single vertex and index buffers
+        const int InitialArraySize = 8192;
+        // Once the buffer passes this capacity it's considered 'large' and grows slower
+        // Large buffers are also not retained between frames
+        const int LargeSizeThreshold = 262144;
+        // Once the buffer is considered large it grows at this rate
+        const int LargeChunkSize = 102400;
+
+        const int MinVerticesPerHardwareBuffer = 10240;
+        const int MinIndicesPerHardwareBuffer = 15360;
         
         protected int MaxVerticesPerHardwareBuffer = 204800;
         protected int MaxSoftwareBuffersPerHardwareBuffer = 1024;
@@ -203,29 +225,36 @@ namespace Squared.Render.Internal {
             DisposeResource = disposeResource;
             _VertexArray = new TVertex[InitialArraySize];
             _IndexArray = new TIndex[InitialArraySize];
+
+            lock (_StaticStateLock)
+                _InstanceCount++;
         }
 
         public virtual void Dispose () {
             lock (_StateLock) {
-                foreach (var buffer in _UnusedHardwareBuffers)
-                    buffer.Dispose();
-
-                _UnusedHardwareBuffers.Clear();
-
                 _VertexArray = null;
                 _IndexArray = null;
 
                 _VertexCount = _IndexCount = 0;
 
                 _FlushedToBuffers = 0;
+
+                lock (_StaticStateLock) {
+                    _InstanceCount -= 1;
+
+                    if (_InstanceCount <= 0) {
+                        foreach (var buffer in _UnusedHardwareBuffers)
+                            buffer.Dispose();
+
+                        _UnusedHardwareBuffers.Clear();
+                    }
+                }
             }
         }
 
         protected virtual int PickNewArraySize (int previousSize, int requestedSize) {
-            const int largeChunkSize = 512000;
-
-            if (previousSize >= largeChunkSize) {
-                var newSize = ((requestedSize + largeChunkSize - 1) / largeChunkSize) * largeChunkSize;
+            if (previousSize >= LargeSizeThreshold) {
+                var newSize = ((requestedSize + LargeChunkSize - 1) / LargeChunkSize) * LargeChunkSize;
 
                 return newSize;
             } else {
@@ -235,29 +264,39 @@ namespace Squared.Render.Internal {
             }
         }
 
+        private static void StaticReset (int frameIndex, Action<IDisposable> disposeResource) {
+            if (_LastFrameStaticReset >= frameIndex)
+                return;
+
+            // Any buffers that remain unused (either from being too small, or being unnecessary now)
+            //  should be disposed.
+            XNABufferPair<TVertex> hb;
+            using (var e = _UnusedHardwareBuffers.GetEnumerator())
+            while (e.GetNext(out hb)) {
+                hb.Age += 1;
+
+                bool shouldKill = (hb.Age >= MaxBufferAge) ||
+                    ((_UnusedHardwareBuffers.Count > MaxUnusedBuffers) && (hb.Age > 1));
+
+                if (shouldKill) {
+                    e.RemoveCurrent();
+                    hb.Invalidate(frameIndex);
+
+                    disposeResource(hb);
+                }
+            }
+
+            _LastFrameStaticReset = frameIndex;
+        }
+
         public void Reset (int frameIndex) {
             lock (_StateLock) {
                 _FillingHardwareBufferEntry = null;
                 _FlushedToBuffers = 0;
                 _VertexCount = _IndexCount = 0;
 
-                // Any buffers that remain unused (either from being too small, or being unnecessary now)
-                //  should be disposed.
-                XNABufferPair<TVertex> hb;
-                using (var e = _UnusedHardwareBuffers.GetEnumerator())
-                while (e.GetNext(out hb)) {
-                    hb.Age += 1;
-
-                    bool shouldKill = (hb.Age >= MaxBufferAge) ||
-                        ((_UnusedHardwareBuffers.Count > MaxUnusedBuffers) && (hb.Age > 1));
-
-                    if (shouldKill) {
-                        e.RemoveCurrent();
-                        hb.Invalidate(frameIndex);
-
-                        DisposeResource(hb);
-                    }
-                }
+                lock (_StaticStateLock)
+                    StaticReset(frameIndex, DisposeResource);
 
                 // Return any buffers that were used this frame to the unused state.
                 foreach (var _hb in _UsedHardwareBuffers) {
@@ -265,7 +304,8 @@ namespace Squared.Render.Internal {
                     var hwb = _hb.Buffer;
                     hwb.Invalidate(frameIndex);
 
-                    _UnusedHardwareBuffers.Add(hwb);
+                    lock (_StaticStateLock)
+                        _UnusedHardwareBuffers.Add(hwb);
                 }
 
                 _UsedHardwareBuffers.Clear();
@@ -294,7 +334,9 @@ namespace Squared.Render.Internal {
             int newElementCount = (usedElementCount += elementsToAdd);
 
             var oldArray = array;
-            var oldArraySize = array.Length;
+            int oldArraySize = 0;
+            if (array != null)
+                oldArraySize = array.Length;
             if (oldArraySize >= newElementCount)
                 return false;
 
@@ -318,6 +360,7 @@ namespace Squared.Render.Internal {
                 var entry = new HardwareBufferEntry(newBuffer, vertexOffset, indexOffset, additionalVertexCount, additionalIndexCount);
 
                 _UsedHardwareBuffers.Add(entry);
+
                 _FillingHardwareBufferEntry = entry;
 
                 return entry;
@@ -419,26 +462,26 @@ namespace Squared.Render.Internal {
         private XNABufferPair<TVertex> AllocateSuitablySizedHardwareBuffer (int vertexCount, int indexCount) {
             XNABufferPair<TVertex> buffer;
 
-            using (var e = _UnusedHardwareBuffers.GetEnumerator())
-            while (e.GetNext(out buffer)) {
-                if (
-                    (buffer.VertexCount >= vertexCount) &&
-                    (buffer.IndexCount >= indexCount)
-                ) {
-                    // This buffer is large enough, so return it.
-                    e.RemoveCurrent();
+            lock (_StaticStateLock) {
+                using (var e = _UnusedHardwareBuffers.GetEnumerator())
+                while (e.GetNext(out buffer)) {
+                    if (
+                        (buffer.VertexCount >= vertexCount) &&
+                        (buffer.IndexCount >= indexCount)
+                    ) {
+                        // This buffer is large enough, so return it.
+                        e.RemoveCurrent();
 
-                    buffer.Age = Arithmetic.Clamp(buffer.Age - 2, 0, MaxBufferAge);
-                    return buffer;
+                        buffer.Age = Arithmetic.Clamp(buffer.Age - 2, 0, MaxBufferAge);
+                        return buffer;
+                    }
                 }
             }
 
-            if (MaxSoftwareBuffersPerHardwareBuffer > 1) {
-                if (vertexCount < MinVerticesPerBuffer)
-                    vertexCount = MinVerticesPerBuffer;
-                if (indexCount < MinIndicesPerBuffer)
-                    indexCount = MinIndicesPerBuffer;
-            }
+            if (vertexCount < MinVerticesPerHardwareBuffer)
+                vertexCount = MinVerticesPerHardwareBuffer;
+            if (indexCount < MinIndicesPerHardwareBuffer)
+                indexCount = MinIndicesPerHardwareBuffer;
 
             // We didn't find a suitably large buffer.
             buffer = AllocateHardwareBuffer(vertexCount, indexCount);

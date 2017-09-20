@@ -435,7 +435,7 @@ namespace Squared.Render {
         public static BatchComparer BatchComparer = new BatchComparer();
 
         private static ListPool<Batch> _ListPool = new ListPool<Batch>(
-            16, 0, 256, 4096
+            16, 256, 4096
         );
 
         public RenderManager RenderManager;
@@ -801,11 +801,11 @@ namespace Squared.Render {
     public abstract class ListBatch<T> : Batch {
         public const int BatchCapacityLimit = 4096;
 
-        protected UnorderedList<T> _DrawCalls;
-
         private static ListPool<T> _ListPool = new ListPool<T>(
-            2048, 16, 128, BatchCapacityLimit
+            256, 4, 1024, BatchCapacityLimit, 81920
         );
+
+        protected UnorderedList<T> _DrawCalls;
 
         new protected void Initialize (
             IBatchContainer container, int layer, Material material,

@@ -55,7 +55,7 @@ namespace LargeBufferTest {
             ClearBatch.AddNew(frame, -1, Materials.Clear, clearColor: ClearColor);
 
             const int width = 1280;
-            const int height = 500;
+            const int height = 600;
 
             var options = new ParallelOptions {
 //                MaxDegreeOfParallelism = 1

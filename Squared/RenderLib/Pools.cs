@@ -87,12 +87,23 @@ namespace Squared.Render {
         public readonly int LargePoolCapacity;
         public readonly int InitialItemCapacity;
         public readonly int MaxItemCapacity;
+        public readonly int MaxLargeItemCapacity;
 
-        public ListPool (int poolCapacity, int largePoolCapacity, int initialItemCapacity, int maxItemCapacity) {
+        public ListPool (int poolCapacity, int initialItemCapacity, int maxItemCapacity) {
+            PoolCapacity = poolCapacity;
+            InitialItemCapacity = initialItemCapacity;
+            MaxItemCapacity = maxItemCapacity;
+
+            LargePoolCapacity = 0;
+            MaxLargeItemCapacity = 0;
+        }
+
+        public ListPool (int poolCapacity, int largePoolCapacity, int initialItemCapacity, int maxItemCapacity, int maxLargeItemCapacity) {
             PoolCapacity = poolCapacity;
             LargePoolCapacity = largePoolCapacity;
             InitialItemCapacity = initialItemCapacity;
             MaxItemCapacity = maxItemCapacity;
+            MaxLargeItemCapacity = maxLargeItemCapacity;
         }
 
         public UnorderedList<T> Allocate (int? capacity) {
@@ -134,11 +145,20 @@ namespace Squared.Render {
                 return;
 
             if (list.Capacity > MaxItemCapacity) {
-                lock (_LargePool) {
-                    if (_LargePool.Count >= LargePoolCapacity)
-                        return;
+                if (list.Capacity < MaxLargeItemCapacity) {
+                    lock (_LargePool) {
+                        if (_LargePool.Count >= LargePoolCapacity)
+                            return;
+                    }
 
-                    _LargePool.Add(list);
+                    list.Clear();
+
+                    lock (_LargePool) {
+                        if (_LargePool.Count >= LargePoolCapacity)
+                            return;
+
+                        _LargePool.Add(list);
+                    }
                 }
 
                 return;
@@ -147,7 +167,13 @@ namespace Squared.Render {
             lock (_Pool) {
                 if (_Pool.Count >= PoolCapacity)
                     return;
+            }
 
+            list.Clear();
+
+            lock (_Pool) {
+                if (_Pool.Count >= PoolCapacity)
+                    return;
                 _Pool.Add(list);
             }
         }

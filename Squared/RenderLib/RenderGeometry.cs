@@ -120,11 +120,11 @@ namespace Squared.Render {
         #region Implementation
 
         private static readonly ListPool<GeometryDrawCall> _ListPool = new ListPool<GeometryDrawCall>(
-            256, 4, 128, 1024
+            256, 4, 128, 1024, 10240
         );
 
         private static readonly ListPool<DrawArguments> _DrawArgumentsListPool = new ListPool<DrawArguments>(
-            256, 4, 128, 1024
+            256, 4, 128, 1024, 10240
         );
 
         internal Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>> Lists = new Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>>();
