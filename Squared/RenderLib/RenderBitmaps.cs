@@ -134,9 +134,38 @@ namespace Squared.Render {
     public class BitmapBatch : ListBatch<BitmapDrawCall>, IBitmapBatch {
         public static readonly SamplerState DefaultSamplerState = SamplerState.LinearClamp;
 
-        internal struct RangeReservationInfo {
-            public int Index, Count;
-            public StackTrace Stack;
+        public struct Reservation {
+            public readonly BitmapBatch Batch;
+            public readonly int ID;
+
+            public readonly BitmapDrawCall[] Array;
+            public readonly int Offset;
+            public int Count;
+            public readonly StackTrace Stack;
+
+            internal Reservation (BitmapBatch batch, BitmapDrawCall[] array, int offset, int count) {
+                Batch = batch;
+                ID = ++batch.LastReservationID;
+                Array = array;
+                Offset = offset;
+                Count = count;
+                if (CaptureStackTraces)
+                    Stack = new StackTrace(2, true);
+                else
+                    Stack = null;
+            }
+
+            public void Shrink (int newCount) {
+                if (ID != Batch.LastReservationID)
+                    throw new InvalidOperationException("You can't shrink a reservation after another one has been created");
+                if (newCount > Count)
+                    throw new ArgumentException("Can't grow using shrink, silly", "newCount");
+                if (newCount == Count)
+                    return;
+
+                Batch.RemoveRange(Offset + newCount, Count - newCount);
+                Count = newCount;
+            }
         }
 
         class BitmapBatchCombiner : IBatchCombiner {
@@ -252,6 +281,8 @@ namespace Squared.Render {
         public const int NativeBatchSize = 1024;
         private const int NativeBatchCapacityLimit = 1024;
 
+        private int LastReservationID = 0;
+
         private ArrayPoolAllocator<BitmapVertex> _Allocator;
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
             256, 16, 64, NativeBatchCapacityLimit
@@ -276,7 +307,7 @@ namespace Squared.Render {
   
         private XNABufferGenerator<BitmapVertex> _BufferGenerator = null;
 
-        private UnorderedList<RangeReservationInfo> RangeReservationInfos = null;
+        private UnorderedList<Reservation> RangeReservations = null;
 
         static BitmapBatch () {
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
@@ -303,8 +334,8 @@ namespace Squared.Render {
         ) {
             base.Initialize(container, layer, material, true, capacity);
 
-            if (RangeReservationInfos != null)
-                RangeReservationInfos.Clear();
+            if (RangeReservations != null)
+                RangeReservations.Clear();
 
             SamplerState = samplerState ?? BitmapBatch.DefaultSamplerState;
             SamplerState2 = samplerState2 ?? BitmapBatch.DefaultSamplerState;
@@ -328,22 +359,20 @@ namespace Squared.Render {
                 ));
         }
 
-        public ArraySegment<BitmapDrawCall> ReserveSpace (int count) {
-            var result = _DrawCalls.ReserveSpace(count);
+        public Reservation ReserveSpace (int count) {
+            var range = _DrawCalls.ReserveSpace(count);
+            var reservation = new Reservation(
+                this, range.Array, range.Offset, range.Count
+            );
 
             if (CaptureStackTraces) {
-                if (RangeReservationInfos == null)
-                    RangeReservationInfos = new UnorderedList<RangeReservationInfo>();
+                if (RangeReservations == null)
+                    RangeReservations = new UnorderedList<Reservation>();
 
-                var rri = new RangeReservationInfo {
-                    Index = result.Offset,
-                    Count = count,
-                    Stack = new StackTrace(3, true)
-                };
-                RangeReservationInfos.Add(ref rri);
+                RangeReservations.Add(reservation);
             }
 
-            return result;
+            return reservation;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -523,23 +552,6 @@ namespace Squared.Render {
                     nativeBatchCapacity = Math.Min(NativeBatchCapacityLimit + 2, _DrawCalls.Count / 8);
 
                 _NativeBatches = _NativePool.Allocate(nativeBatchCapacity);
-            }
-
-            if (CaptureStackTraces) {
-                var buf = _DrawCalls.GetBuffer();
-                for (var i = 0; i < _DrawCalls.Count; i++) {
-                    if (buf[i].IsValid)
-                        continue;
-
-                    foreach (var rr in RangeReservationInfos) {
-                        if ((i >= rr.Index) && (i < rr.Index + rr.Count)) {
-                            var stack = rr.Stack;
-                            throw new InvalidDataException("A reserved range contains invalid draw calls.");
-                        }
-                    }
-
-                    throw new InvalidDataException("Invalid draw call");
-                }
             }
 
             if (DisableSorting) {
