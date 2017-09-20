@@ -696,6 +696,8 @@ namespace Squared.Render {
                 throw new ObjectDisposedException("material");
 
             StackTrace = null;
+            if (BatchesCombinedIntoThisOne != null)
+                BatchesCombinedIntoThisOne.Clear();
             Released = false;
             ReleaseAfterDraw = false;
             Layer = layer;
