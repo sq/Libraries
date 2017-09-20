@@ -134,6 +134,11 @@ namespace Squared.Render {
     public class BitmapBatch : ListBatch<BitmapDrawCall>, IBitmapBatch {
         public static readonly SamplerState DefaultSamplerState = SamplerState.LinearClamp;
 
+        internal struct RangeReservationInfo {
+            public int Index, Count;
+            public StackTrace Stack;
+        }
+
         class BitmapBatchCombiner : IBatchCombiner {
             public bool CanCombine (Batch lhs, Batch rhs) {
                 if ((lhs == null) || (rhs == null))
@@ -271,6 +276,8 @@ namespace Squared.Render {
   
         private XNABufferGenerator<BitmapVertex> _BufferGenerator = null;
 
+        private UnorderedList<RangeReservationInfo> RangeReservationInfos = null;
+
         static BitmapBatch () {
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
         }
@@ -296,6 +303,9 @@ namespace Squared.Render {
         ) {
             base.Initialize(container, layer, material, true, capacity);
 
+            if (RangeReservationInfos != null)
+                RangeReservationInfos.Clear();
+
             SamplerState = samplerState ?? BitmapBatch.DefaultSamplerState;
             SamplerState2 = samplerState2 ?? BitmapBatch.DefaultSamplerState;
 
@@ -319,7 +329,21 @@ namespace Squared.Render {
         }
 
         public ArraySegment<BitmapDrawCall> ReserveSpace (int count) {
-            return _DrawCalls.ReserveSpace(count);
+            var result = _DrawCalls.ReserveSpace(count);
+
+            if (CaptureStackTraces) {
+                if (RangeReservationInfos == null)
+                    RangeReservationInfos = new UnorderedList<RangeReservationInfo>();
+
+                var rri = new RangeReservationInfo {
+                    Index = result.Offset,
+                    Count = count,
+                    Stack = new StackTrace(3, true)
+                };
+                RangeReservationInfos.Add(ref rri);
+            }
+
+            return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -411,6 +435,8 @@ namespace Squared.Render {
                         break;
 
                     var call = drawCalls[i];
+                    if (!call.IsValid)
+                        throw new InvalidDataException("Invalid draw call");
 
                     bool texturesEqual = call.Textures.Equals(ref currentTextures);
 
@@ -497,6 +523,23 @@ namespace Squared.Render {
                     nativeBatchCapacity = Math.Min(NativeBatchCapacityLimit + 2, _DrawCalls.Count / 8);
 
                 _NativeBatches = _NativePool.Allocate(nativeBatchCapacity);
+            }
+
+            if (CaptureStackTraces) {
+                var buf = _DrawCalls.GetBuffer();
+                for (var i = 0; i < _DrawCalls.Count; i++) {
+                    if (buf[i].IsValid)
+                        continue;
+
+                    foreach (var rr in RangeReservationInfos) {
+                        if ((i >= rr.Index) && (i < rr.Index + rr.Count)) {
+                            var stack = rr.Stack;
+                            throw new InvalidDataException("A reserved range contains invalid draw calls.");
+                        }
+                    }
+
+                    throw new InvalidDataException("Invalid draw call");
+                }
             }
 
             if (DisableSorting) {
