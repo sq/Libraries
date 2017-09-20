@@ -799,10 +799,10 @@ namespace Squared.Render {
     }
 
     public abstract class ListBatch<T> : Batch {
-        public const int BatchCapacityLimit = 4096;
+        public const int BatchCapacityLimit = 512;
 
         private static ListPool<T> _ListPool = new ListPool<T>(
-            256, 4, 1024, BatchCapacityLimit, 81920
+            256, 4, 64, BatchCapacityLimit, 10240
         );
 
         protected UnorderedList<T> _DrawCalls;

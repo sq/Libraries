@@ -284,7 +284,7 @@ namespace Squared.Render {
         private int LastReservationID = 0;
 
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
-            320, 4, 256, NativeBatchCapacityLimit, 10240
+            320, 4, 64, 256, 1024
         );
         private UnorderedList<NativeBatch> _NativeBatches = null;
 
