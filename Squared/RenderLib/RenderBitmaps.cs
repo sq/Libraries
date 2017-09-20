@@ -179,11 +179,21 @@ namespace Squared.Render {
                 var drawCallsRhs = bbrhs._DrawCalls;
                 var drawCallsRhsBuffer = drawCallsRhs.GetBuffer();
 
-                for (int i = 0, l = drawCallsRhs.Count; i < l; i++)
-                    drawCallsLhs.Add(drawCallsRhsBuffer[i]);
+                for (int i = 0, l = drawCallsRhs.Count; i < l; i++) {
+                    if (!drawCallsRhsBuffer[i].IsValid)
+                        throw new Exception("Invalid draw call in batch");
+
+                    drawCallsLhs.Add(ref drawCallsRhsBuffer[i]);
+                }
 
                 drawCallsRhs.Clear();
                 rhs.IsCombined = true;
+                if (CaptureStackTraces) {
+                    if (lhs.BatchesCombinedIntoThisOne == null)
+                        lhs.BatchesCombinedIntoThisOne = new UnorderedList<Batch>();
+
+                    lhs.BatchesCombinedIntoThisOne.Add(rhs);
+                }
 
                 return lhs;
             }
@@ -1028,6 +1038,9 @@ namespace Squared.Render {
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
+                if (value == null)
+                    throw new ArgumentNullException("texture");
+
                 Textures = new TextureSet(value);
             }
         }
@@ -1153,6 +1166,8 @@ namespace Squared.Render {
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
+                if (value == null || value.Texture == null)
+                    throw new ArgumentNullException("texture");
                 Textures = new TextureSet(value.Texture);
                 TextureRegion = value.TextureRegion;
             }

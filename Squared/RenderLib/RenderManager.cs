@@ -681,6 +681,8 @@ namespace Squared.Render {
         internal IBatchPool Pool;
         internal bool IsCombined;
 
+        internal UnorderedList<Batch> BatchesCombinedIntoThisOne = null;
+
         protected static long _BatchCount = 0;
 
         protected Batch () {
