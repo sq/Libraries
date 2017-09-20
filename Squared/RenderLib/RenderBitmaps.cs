@@ -305,7 +305,7 @@ namespace Squared.Render {
             0, 2, 3
         };
   
-        private XNABufferGenerator<BitmapVertex> _BufferGenerator = null;
+        private BufferGenerator<BitmapVertex> _BufferGenerator = null;
 
         private UnorderedList<Reservation> RangeReservations = null;
 
@@ -567,7 +567,7 @@ namespace Squared.Render {
 
             var count = _DrawCalls.Count;
 
-            _BufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<BitmapVertex>>();
+            _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
 
             var _drawCalls = _DrawCalls.GetBuffer();
             int drawCallsPrepared = 0;

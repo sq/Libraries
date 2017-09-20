@@ -129,7 +129,7 @@ namespace Squared.Render {
 
         internal Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>> Lists = new Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>>();
 
-        private XNABufferGenerator<GeometryVertex> _BufferGenerator = null;
+        private BufferGenerator<GeometryVertex> _BufferGenerator = null;
         internal UnorderedList<DrawArguments> _DrawArguments; 
 
         internal ArrayPoolAllocator<GeometryVertex> VertexAllocator;
@@ -193,7 +193,7 @@ namespace Squared.Render {
 
         public override void Prepare (PrepareManager manager) {
             if (Count > 0) {
-                _BufferGenerator = Container.RenderManager.GetBufferGenerator<XNABufferGenerator<GeometryVertex>>();
+                _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<GeometryVertex>>();
 
                 _DrawArguments = _DrawArgumentsListPool.Allocate(null);
                 var swb = _BufferGenerator.Allocate(VertexCount, IndexCount, true);
