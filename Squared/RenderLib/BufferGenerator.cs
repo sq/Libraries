@@ -13,6 +13,9 @@ namespace Squared.Render.Internal {
     public interface IBufferGenerator : IDisposable {
         void Reset(int frameIndex);
         void Flush(int frameIndex);
+
+        int ManagedVertexBytes { get; }
+        int ManagedIndexBytes { get; }
     }
 
     public interface IHardwareBuffer : IDisposable {
@@ -202,27 +205,32 @@ namespace Squared.Render.Internal {
         protected int MaxVerticesPerHardwareBuffer = 204800;
         protected int MaxSoftwareBuffersPerHardwareBuffer = 1024;
 
+        public readonly RenderManager RenderManager;
         public readonly GraphicsDevice GraphicsDevice;
         public readonly object CreateResourceLock;
-        public readonly Action<IDisposable> DisposeResource;
 
         private static volatile int _NextBufferId = 0;
 
-        public BufferGenerator (
-            GraphicsDevice graphicsDevice, 
-            object createResourceLock, Action<IDisposable> disposeResource
-        ) {
-            if (graphicsDevice == null)
-                throw new ArgumentNullException("graphicsDevice");
-            if (createResourceLock == null)
-                throw new ArgumentNullException("createResourceLock");
-            if (disposeResource == null)
-                throw new ArgumentNullException("disposeResource");
+        public int ManagedVertexBytes {
+            get {
+                return System.Runtime.InteropServices.Marshal.SizeOf(typeof(TVertex)) * _VertexArray.Length;
+            }
+        }
+
+        public int ManagedIndexBytes {
+            get {
+                return 2 * _IndexArray.Length;
+            }
+        }
+
+        public BufferGenerator (RenderManager renderManager) {
+            if (renderManager == null)
+                throw new ArgumentNullException("renderManager");
 
             _SoftwareBufferPool = new SoftwareBufferPool(this);
-            GraphicsDevice = graphicsDevice;
-            CreateResourceLock = createResourceLock;
-            DisposeResource = disposeResource;
+            RenderManager = renderManager;
+            GraphicsDevice = renderManager.DeviceManager.Device;
+            CreateResourceLock = renderManager.CreateResourceLock;
             _VertexArray = new TVertex[InitialArraySize];
             _IndexArray = new TIndex[InitialArraySize];
 
@@ -264,7 +272,7 @@ namespace Squared.Render.Internal {
             }
         }
 
-        private static void StaticReset (int frameIndex, Action<IDisposable> disposeResource) {
+        private static void StaticReset (int frameIndex, RenderManager renderManager) {
             if (_LastFrameStaticReset >= frameIndex)
                 return;
 
@@ -282,7 +290,7 @@ namespace Squared.Render.Internal {
                     e.RemoveCurrent();
                     hb.Invalidate(frameIndex);
 
-                    disposeResource(hb);
+                    renderManager.DisposeResource(hb);
                 }
             }
 
@@ -296,7 +304,7 @@ namespace Squared.Render.Internal {
                 _VertexCount = _IndexCount = 0;
 
                 lock (_StaticStateLock)
-                    StaticReset(frameIndex, DisposeResource);
+                    StaticReset(frameIndex, RenderManager);
 
                 // Return any buffers that were used this frame to the unused state.
                 foreach (var _hb in _UsedHardwareBuffers) {
@@ -522,7 +530,7 @@ namespace Squared.Render.Internal {
 
         protected XNABufferPair<TVertex> AllocateHardwareBuffer (int vertexCount, int indexCount) {
             int id = Interlocked.Increment(ref _NextBufferId);
-            return new XNABufferPair<TVertex>(GraphicsDevice, id, vertexCount, indexCount, DisposeResource);
+            return new XNABufferPair<TVertex>(RenderManager, id, vertexCount, indexCount);
         }
 
         protected void FillHardwareBuffer (
@@ -550,24 +558,25 @@ namespace Squared.Render.Internal {
 
         public readonly object InUseLock = new object();
 
+        public readonly RenderManager RenderManager;
         public readonly GraphicsDevice GraphicsDevice;
         public DynamicVertexBuffer Vertices;
         public DynamicIndexBuffer Indices;
-        public readonly Action<IDisposable> DisposeResource;
 
         public XNABufferPair (
-            GraphicsDevice graphicsDevice, int id,
-            int vertexCount, int indexCount, 
-            Action<IDisposable> disposeResource
+            RenderManager renderManager, int id,
+            int vertexCount, int indexCount
         ) {
+            if (renderManager == null)
+                throw new ArgumentNullException("renderManager");
             if (vertexCount >= UInt16.MaxValue)
                 throw new ArgumentOutOfRangeException("vertexCount", vertexCount, "Vertex count must be less than UInt16.MaxValue");
 
             Id = id;
-            GraphicsDevice = graphicsDevice;
+            RenderManager = renderManager;
+            GraphicsDevice = renderManager.DeviceManager.Device;
             VertexCount = vertexCount;
             IndexCount = indexCount;
-            DisposeResource = disposeResource;
         }
 
         public void SetInactive (GraphicsDevice device) {
@@ -597,32 +606,22 @@ namespace Squared.Render.Internal {
         }
 
         public void Allocate () {
-            bool hasRetried = false;
-
-            retry:
-                try {
-                    Vertices = new DynamicVertexBuffer(GraphicsDevice, typeof(TVertex), VertexCount, BufferUsage.WriteOnly);
-                    Indices = new DynamicIndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, IndexCount, BufferUsage.WriteOnly);
-                    IsAllocated = true;
-                } catch (OutOfMemoryException exc) {
-                    if (hasRetried)
-                        throw;
-
-                    hasRetried = true;
-                    if (Vertices != null)
-                        Vertices.Dispose();
-
-                    GC.Collect();
-                    goto retry;
-                }
+            Vertices = new DynamicVertexBuffer(GraphicsDevice, typeof(TVertex), VertexCount, BufferUsage.WriteOnly);
+            Interlocked.Add(ref RenderManager.TotalVertexBytes, System.Runtime.InteropServices.Marshal.SizeOf(typeof(TVertex)) * VertexCount);
+            Indices = new DynamicIndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, IndexCount, BufferUsage.WriteOnly);
+            Interlocked.Add(ref RenderManager.TotalIndexBytes, 2 * IndexCount);
+            IsAllocated = true;
         }
 
         public void Dispose () {
             if (_IsActive != 0)
                 throw new InvalidOperationException("Disposed buffer while in use");
 
-            DisposeResource(Vertices);
-            DisposeResource(Indices);
+            Interlocked.Add(ref RenderManager.TotalVertexBytes, System.Runtime.InteropServices.Marshal.SizeOf(typeof(TVertex)) * -VertexCount);
+            Interlocked.Add(ref RenderManager.TotalIndexBytes, 2 * -IndexCount);
+
+            RenderManager.DisposeResource(Vertices);
+            RenderManager.DisposeResource(Indices);
             Vertices = null;
             Indices = null;
             IsAllocated = false;

@@ -149,6 +149,11 @@ namespace Squared.Render {
 
     // Thread-safe
     public sealed class RenderManager {
+        public struct MemoryStatistics {
+            public long ManagedVertexBytes, ManagedIndexBytes;
+            public long UnmanagedVertexBytes, UnmanagedIndexBytes;
+        }
+
         public readonly PrepareManager PrepareManager;
         public readonly ThreadGroup    ThreadGroup;
         public readonly DeviceManager  DeviceManager;
@@ -158,6 +163,8 @@ namespace Squared.Render {
         private int _FrameCount = 0;
         private readonly Frame _Frame;
         private bool _FrameInUse = false;
+
+        internal long TotalVertexBytes, TotalIndexBytes;
 
         private readonly List<IBufferGenerator> _AllBufferGenerators = new List<IBufferGenerator>();
         private readonly ThreadLocal<Dictionary<Type, IBufferGenerator>> _BufferGenerators;
@@ -169,8 +176,6 @@ namespace Squared.Render {
         private readonly Dictionary<Type, IBatchPool> _BatchAllocators =
             new Dictionary<Type, IBatchPool>(new ReferenceComparer<Type>());
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
-
-        private Action<IDisposable> _DisposeResource;
 
         /// <summary>
         /// You must acquire this lock before applying changes to the device, creating objects, or loading content.
@@ -194,7 +199,6 @@ namespace Squared.Render {
                 MakeThreadBufferGeneratorTable
             );
 
-            _DisposeResource = DisposeResource;
             _Frame = new Frame();
         }
 
@@ -225,6 +229,23 @@ namespace Squared.Render {
             device.BlendState = BlendState.Opaque;
             device.DepthStencilState = DepthStencilState.None;
             device.RasterizerState = RasterizerState.CullNone;
+        }
+
+        public MemoryStatistics GetMemoryStatistics () {
+            var result = new MemoryStatistics {
+                UnmanagedVertexBytes = TotalVertexBytes,
+                UnmanagedIndexBytes = TotalIndexBytes,
+                ManagedVertexBytes = 0,
+                ManagedIndexBytes = 0
+            };
+
+            lock (_AllBufferGenerators)
+            foreach (var generator in _AllBufferGenerators) {
+                result.ManagedVertexBytes += generator.ManagedVertexBytes;
+                result.ManagedIndexBytes += generator.ManagedIndexBytes;
+            }
+
+            return result;
         }
 
         internal void SynchronousPrepareBatches (Frame frame) {
@@ -299,7 +320,7 @@ namespace Squared.Render {
                 throw new InvalidOperationException("Cannot create a buffer generator after the flush operation has occurred");
 
             result = (IBufferGenerator)Activator.CreateInstance(
-                t, DeviceManager.Device, CreateResourceLock, _DisposeResource
+                t, this
             );
             bg.Add(t, result);
 

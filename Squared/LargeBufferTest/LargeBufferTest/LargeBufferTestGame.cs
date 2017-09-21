@@ -52,6 +52,14 @@ namespace LargeBufferTest {
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
+            var stats = RenderManager.GetMemoryStatistics();
+            Console.WriteLine(
+                "managed: {0:0000000}kb    vertex: {1:0000000}kb    index: {2:0000000}kb",
+                (stats.ManagedIndexBytes + stats.ManagedVertexBytes) / 1024.0,
+                stats.UnmanagedVertexBytes / 1024.0,
+                stats.UnmanagedIndexBytes / 1024.0
+            );
+
             ClearBatch.AddNew(frame, -1, Materials.Clear, clearColor: ClearColor);
 
             const int width = 1280;
