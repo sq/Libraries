@@ -19,6 +19,11 @@ using Squared.Threading;
 
 namespace Squared.Task {
     public class CancellationScope {
+        /// <summary>
+        /// Set this to false in order to allow cancellation scopes to be used on threads without an active scheduler.
+        /// </summary>
+        public static bool StrictMode = true;
+
         public class Registration {
             public readonly CancellationScope Scope;
             public readonly TaskScheduler     Scheduler;
@@ -29,7 +34,7 @@ namespace Squared.Task {
                 Scope = CancellationScope.Current;
                 Scheduler = TaskScheduler.Current;
 
-                if (Scheduler == null)
+                if ((Scheduler == null) && StrictMode)
                     throw new InvalidOperationException("No implicitly active TaskScheduler on this thread.");
             }
 
@@ -42,7 +47,11 @@ namespace Squared.Task {
             }
 
             private void _OnComplete (IFuture f) {
-                Scheduler.QueueWorkItem(Continuation);
+                // FIXME: Is this right?
+                if ((Scheduler == null) && !StrictMode)
+                    Continuation();
+                else
+                    Scheduler.QueueWorkItem(Continuation);
             }
 
             public void ThrowIfCanceled () {
