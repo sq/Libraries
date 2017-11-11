@@ -39,6 +39,15 @@ namespace Squared.Render.Evil {
             void* pVTable = (*(void**)pInterface);
             return *((void**)((ulong)pVTable + offsetInBytes));
         }
+
+        public static unsafe TDelegate GetMethodFromVTable<TDelegate> (void* pInterface, uint slotIndex) {
+            var offsetInBytes = (uint)(slotIndex * sizeof(void*));
+            var methodPtr = AccessVTable(pInterface, offsetInBytes);
+
+            var pComFunction = AccessVTable(pInterface, offsetInBytes);
+            var result = Marshal.GetDelegateForFunctionPointer<TDelegate>(new IntPtr(pComFunction));
+            return result;
+        }
     }
 
     public enum D3DXPARAMETER_CLASS : UInt32 { 

@@ -49,10 +49,10 @@ namespace Squared.Render {
             #region Direct3D
 #if !SDL2
 
-            private readonly ID3DXEffect Effect;
+            private readonly void* pUnboxedEffect;
 
-            public Layout (Type type, ID3DXEffect effect, void* hParameter) {
-                Effect = effect;
+            public Layout (Type type, void* pUnboxedEffect, void* hParameter) {
+                this.pUnboxedEffect = pUnboxedEffect;
 
                 var fixups = new List<Fixup>();
                 uint uploadSize = 0;
@@ -66,23 +66,27 @@ namespace Squared.Render {
             private void FixupMembers (List<Fixup> fixups, Type type, void* hParameter, int sourceOffset, ref uint uploadSize) {
                 uploadSize = 0;
 
+                D3DXPARAMETER_DESC desc;
+                var pGetParameter = COMUtils.GetMethodFromVTable<DGetParameter>(pUnboxedEffect, KnownMethodSlots.GetParameter);
+                var pGetParameterDesc = COMUtils.GetMethodFromVTable<DGetParameterDesc>(pUnboxedEffect, KnownMethodSlots.GetParameterDesc);
+
                 for (uint i = 0; i < 999; i++) {
-                    var hMember = Effect.GetParameter(hParameter, i);
+                    var hMember = pGetParameter(pUnboxedEffect, hParameter, i);
                     if (hMember == null)
                         break;
 
-                    FixupMember(fixups, hMember, type, 0, ref uploadSize);
+                    pGetParameterDesc(pUnboxedEffect, hMember, out desc);
+
+                    FixupMember(fixups, hMember, type, 0, ref desc, ref uploadSize);
                 }
             }
 
             private void FixupMember (
                 List<Fixup> fixups, void* hMember, 
                 Type type, int sourceOffset,
+                ref D3DXPARAMETER_DESC desc,
                 ref uint uploadSize
             ) {
-                D3DXPARAMETER_DESC desc;
-                Effect.GetParameterDesc(hMember, out desc);
-
                 var offset = uploadSize;
 
                 var name = Marshal.PtrToStringAnsi(new IntPtr(desc.Name));

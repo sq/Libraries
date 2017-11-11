@@ -30,7 +30,28 @@ namespace Squared.Render {
     }
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    unsafe delegate int SetRawDelegate (void* _this, void* a, void* b, uint c, uint d);
+    unsafe delegate void* DGetParameterDesc (
+        void* _this, void* hParameter, out D3DXPARAMETER_DESC pDesc
+    );
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    unsafe delegate void* DGetParameter (
+        void* _this, void* hEnclosingParameter, uint index
+    );
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    unsafe delegate void* DGetParameterByName (
+        void* _this, void* hEnclosingParameter, 
+        [MarshalAs(UnmanagedType.LPStr), In]
+        string name
+    );
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    unsafe delegate int DSetRawValue (
+        void* _this, void* hParameter, 
+        [In] void* pData, 
+        uint byteOffset, uint countBytes
+    );
 
     public unsafe partial class UniformBinding<T> : IUniformBinding 
         where T : struct
@@ -39,14 +60,35 @@ namespace Squared.Render {
             public T Current;
         }
 
+        private static class KnownMethodSlots {
+            public static uint GetParameterDesc;
+            public static uint GetParameter;
+            public static uint GetParameterByName;
+            public static uint SetRawValue;
+
+            static KnownMethodSlots () {
+                var iface = typeof(ID3DXEffect);
+                var firstSlot = Marshal.GetStartComSlot(iface);
+                var lastSlot = Marshal.GetEndComSlot(iface);
+
+                for (var i = firstSlot; i <= lastSlot; i++) {
+                    ComMemberType mt = ComMemberType.Method;
+                    var mi = Marshal.GetMethodInfoForComSlot(iface, i, ref mt);
+                    var targetField = typeof(KnownMethodSlots).GetField(mi.Name);
+                    if (targetField == null)
+                        continue;
+                    targetField.SetValue(null, (uint)i);
+                }
+            }
+        }
+
         private struct NativeBinding {
-            public bool           IsValid;
-            public Fixup[]        Fixups;
-            public uint           UploadSize;
-            public SetRawDelegate pSetRawValue;
-            public ID3DXEffect    pEffect;
-            public void*          pUnboxedEffect;
-            public void*          hParameter;
+            public bool         IsValid;
+            public Fixup[]      Fixups;
+            public uint         UploadSize;
+            public DSetRawValue pSetRawValue;
+            public void*        pUnboxedEffect;
+            public void*        hParameter;
         }
 
         private class Storage : SafeBuffer {
@@ -108,32 +150,27 @@ namespace Squared.Render {
         }
 
         private void CreateNativeBinding (out NativeBinding result) {
-            var pEffect = Effect.GetID3DXEffect();
+            var pUnboxedEffect = Effect.GetUnboxedID3DXEffect();
+            result = default(NativeBinding);
 
-            var hParameter = pEffect.GetParameterByName(null, Name);
+            var pGetParameterByName = COMUtils.GetMethodFromVTable<DGetParameterByName>(
+                pUnboxedEffect, KnownMethodSlots.GetParameterByName
+            );
+
+            var hParameter = pGetParameterByName(pUnboxedEffect, null, Name);
             if (hParameter == null)
                 throw new Exception("Could not find d3dx parameter for uniform " + Name);
 
-            var layout = new Layout(Type, pEffect, hParameter);
+            var layout = new Layout(Type, pUnboxedEffect, hParameter);
 
             result = new NativeBinding {
-                pEffect = pEffect,
-                pUnboxedEffect = Effect.GetUnboxedID3DXEffect(),
+                pUnboxedEffect = pUnboxedEffect,
                 hParameter = hParameter,
                 Fixups = layout.Fixups,
                 UploadSize = layout.UploadSize
             };
 
-            var iface = typeof(ID3DXEffect);
-            var firstSlot = Marshal.GetStartComSlot(iface);
-
-            // HACK: Bypass totally broken remoting wrappers by directly pulling the method out of the vtable
-            const int SetRawValueSlot = 75;
-            var pComFunction = Evil.COMUtils.AccessVTable(
-                result.pUnboxedEffect, 
-                (uint)((SetRawValueSlot + firstSlot) * sizeof(void*))
-            );
-            result.pSetRawValue = Marshal.GetDelegateForFunctionPointer<SetRawDelegate>(new IntPtr(pComFunction));
+            result.pSetRawValue = COMUtils.GetMethodFromVTable<DSetRawValue>(result.pUnboxedEffect, KnownMethodSlots.SetRawValue);
 
             result.IsValid = true;
         }
@@ -235,8 +272,6 @@ namespace Squared.Render {
         public void ReleaseNativeBinding () {
 #if SDL2
 #else
-            if (CurrentNativeBinding.IsValid)
-                Marshal.ReleaseComObject(CurrentNativeBinding.pEffect);
 #endif
             CurrentNativeBinding = default(NativeBinding);
         }
