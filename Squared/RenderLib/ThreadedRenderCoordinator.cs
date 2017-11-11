@@ -12,6 +12,16 @@ using Squared.Render.Internal;
 using Squared.Threading;
 
 namespace Squared.Render {
+    public static class RenderCoordinatorExtensions {
+        public static void ApplyChangesAfterPresent (this GraphicsDeviceManager gdm, RenderCoordinator rc) {
+            // HACK: Wait until rendering has finished, then reset the device on the main thread
+            var sc = SynchronizationContext.Current;
+            rc.AfterPresent(() => {
+                sc.Post((_) => gdm.ApplyChanges(), null);
+            });
+        }
+    }
+
     public class RenderCoordinator : IDisposable {
         public struct SafepointToken : IDisposable {
             public readonly RenderCoordinator Parent;
@@ -203,15 +213,17 @@ namespace Squared.Render {
 
         // We must acquire both locks before resetting the device to avoid letting the reset happen during a paint or content load operation.
         protected void OnDeviceResetting (object sender, EventArgs args) {
+            Monitor.Enter(DrawLock);
             Monitor.Enter(CreateResourceLock);
             Monitor.Enter(UseResourceLock);
-            Monitor.Enter(DrawLock);
+
+            UniformBinding.HandleDeviceReset();
         }
 
         protected void OnDeviceReset (object sender, EventArgs args) {
-            Monitor.Exit(DrawLock);
             Monitor.Exit(UseResourceLock);
             Monitor.Exit(CreateResourceLock);
+            Monitor.Exit(DrawLock);
 
             if (DeviceReset != null)
                 DeviceReset(this, EventArgs.Empty);

@@ -18,7 +18,8 @@ namespace Squared.Render {
         Effect Effect  { get; }
         bool   IsDirty { get; }
 
-        void Flush ();
+        void Flush();
+        void HandleDeviceReset();
     }
 
     public static class UniformBindingExtensions {
@@ -107,6 +108,8 @@ namespace Squared.Render {
             }
         }
 
+        private readonly object         Lock = new object();
+
         private readonly ValueContainer _ValueContainer = new ValueContainer();
         // The latest value is written into this buffer
         private readonly SafeBuffer     ScratchBuffer;
@@ -194,10 +197,14 @@ namespace Squared.Render {
         }
 
         private void GetCurrentNativeBinding (out NativeBinding nativeBinding) {
-            if (!CurrentNativeBinding.IsValid)
-                CreateNativeBinding(out CurrentNativeBinding);
+            lock (Lock) {
+                if (!CurrentNativeBinding.IsValid) {
+                    IsDirty = true;
+                    CreateNativeBinding(out CurrentNativeBinding);
+                }
 
-            nativeBinding = CurrentNativeBinding;
+                nativeBinding = CurrentNativeBinding;
+            }
         }
 
         private void InPlaceTranspose (float* pMatrix) {
@@ -230,7 +237,7 @@ namespace Squared.Render {
             NativeBinding nb;
             GetCurrentNativeBinding(out nb);
 
-            if (!IsDirty && CurrentNativeBinding.IsValid)
+            if (!IsDirty && nb.IsValid)
                 return;
 
             ScratchBuffer.Write<T>(0, _ValueContainer.Current);
@@ -269,7 +276,14 @@ namespace Squared.Render {
             return type.IsValueType && !type.IsPrimitive;
         }
 
-        public void ReleaseNativeBinding () {
+        public void HandleDeviceReset () {
+            lock (Lock) {
+                ReleaseNativeBinding();
+                IsDirty = true;
+            }
+        }
+
+        private void ReleaseNativeBinding () {
 #if SDL2
 #else
 #endif
@@ -284,7 +298,8 @@ namespace Squared.Render {
             ScratchBuffer.Dispose();
             UploadBuffer.Dispose();
 
-            ReleaseNativeBinding();
+            lock (Lock)
+                ReleaseNativeBinding();
         }
     }
 
@@ -294,6 +309,13 @@ namespace Squared.Render {
 
         private static readonly Dictionary<Effect, List<IUniformBinding>> Bindings =
             new Dictionary<Effect, List<IUniformBinding>>(new ReferenceComparer<Effect>());
+
+        public static void HandleDeviceReset () {
+            lock (Bindings)
+            foreach (var kvp in Bindings)
+            foreach (var b in kvp.Value)
+                b.HandleDeviceReset();
+        }
 
         public static void FlushEffect (Effect effect) {
             lock (Bindings) {
