@@ -439,7 +439,7 @@ namespace Squared.Render {
         public readonly EffectParameter ViewportPosition, ViewportScale;
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
         public readonly EffectParameter BitmapTextureSize, HalfTexel;
-        public readonly EffectParameter Time, ShadowColor, ShadowOffset;
+        public readonly EffectParameter Time, ShadowColor, ShadowOffset, LightmapUVOffset;
 
         public DefaultMaterialSetEffectParameters (Effect effect) {
             var viewport = effect.Parameters["Viewport"];
@@ -456,6 +456,7 @@ namespace Squared.Render {
             Time = effect.Parameters["Time"];
             ShadowColor = effect.Parameters["ShadowColor"];
             ShadowOffset = effect.Parameters["ShadowOffset"];
+            LightmapUVOffset = effect.Parameters["LightmapUVOffset"];
         }
     }
 
