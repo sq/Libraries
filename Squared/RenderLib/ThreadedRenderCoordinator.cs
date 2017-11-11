@@ -642,9 +642,12 @@ namespace Squared.Render {
         }
 
         private void FlushPendingDisposes () {
-            FlushDisposeList(_PendingDisposes);
+            lock (CreateResourceLock)
+            lock (UseResourceLock) {
+                FlushDisposeList(_PendingDisposes);
 
-            Manager.FlushPendingDisposes();
+                Manager.FlushPendingDisposes();
+            }
         }
 
         public void DisposeResource (IDisposable resource) {
