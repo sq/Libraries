@@ -270,7 +270,7 @@ namespace Squared.Render {
                 UniformBinding<T> result;
                 throw new NotImplementedException("Create uniform binding for effect");
 #else
-                var result = UniformBinding<T>.TryCreate(effect, material.COMEffect, uniformName);
+                var result = UniformBinding<T>.TryCreate(effect, uniformName);
 #endif
                 UniformBindings.Add(key, result);
                 return result;

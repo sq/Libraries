@@ -39,7 +39,17 @@ namespace Squared.Render {
             public T Current;
         }
 
-        public class Storage : SafeBuffer {
+        private struct NativeBinding {
+            public bool           IsValid;
+            public Fixup[]        Fixups;
+            public uint           UploadSize;
+            public SetRawDelegate pSetRawValue;
+            public ID3DXEffect    pEffect;
+            public void*          pUnboxedEffect;
+            public void*          hParameter;
+        }
+
+        private class Storage : SafeBuffer {
             public Storage () 
                 : base(true) 
             {
@@ -55,16 +65,13 @@ namespace Squared.Render {
             }
         }
 
-        private readonly Fixup[]     Fixups;
-        private readonly uint        UploadSize;
-
         private readonly ValueContainer _ValueContainer = new ValueContainer();
         // The latest value is written into this buffer
-        private readonly SafeBuffer  ScratchBuffer;
+        private readonly SafeBuffer     ScratchBuffer;
         // And then transferred and mutated in this buffer before being sent to D3D
-        private readonly SafeBuffer  UploadBuffer;
+        private readonly SafeBuffer     UploadBuffer;
 
-        private readonly SetRawDelegate pSetRawValue;
+        private NativeBinding           CurrentNativeBinding;
 
         public  bool   IsDirty    { get; private set; }
         public  bool   IsDisposed { get; private set; }
@@ -75,29 +82,47 @@ namespace Squared.Render {
         #region Direct3D
 #if !SDL2
 
-        private readonly ID3DXEffect pEffect;
-        private readonly void*       pUnboxedEffect;
-        private readonly void*       hParameter;
-
         /// <summary>
         /// Bind a single named uniform of the effect as type T.
         /// </summary>
-        private UniformBinding (Effect effect, ID3DXEffect pEffect, void* hParameter) {
+        private UniformBinding (Effect effect, string uniformName) {
             Type = typeof(T);
 
             Effect = effect;
-            this.pEffect = pEffect;
-            this.pUnboxedEffect = effect.GetUnboxedID3DXEffect();
-            this.hParameter = hParameter;
-
-            var layout = new Layout(Type, pEffect, hParameter);
-
-            Fixups = layout.Fixups;
-            UploadSize = layout.UploadSize;
+            Name = uniformName;
 
             ScratchBuffer = new Storage();
             UploadBuffer = new Storage();
-            IsDirty = false;
+            IsDirty = true;
+
+            UniformBinding.Register(effect, this);
+        }
+
+        public static UniformBinding<T> TryCreate (Effect effect, string uniformName) {
+            if (effect == null)
+                return null;
+            if (effect.Parameters[uniformName] == null)
+                return null;
+
+            return new UniformBinding<T>(effect, uniformName);
+        }
+
+        private void CreateNativeBinding (out NativeBinding result) {
+            var pEffect = Effect.GetID3DXEffect();
+
+            var hParameter = pEffect.GetParameterByName(null, Name);
+            if (hParameter == null)
+                throw new Exception("Could not find d3dx parameter for uniform " + Name);
+
+            var layout = new Layout(Type, pEffect, hParameter);
+
+            result = new NativeBinding {
+                pEffect = pEffect,
+                pUnboxedEffect = Effect.GetUnboxedID3DXEffect(),
+                hParameter = hParameter,
+                Fixups = layout.Fixups,
+                UploadSize = layout.UploadSize
+            };
 
             var iface = typeof(ID3DXEffect);
             var firstSlot = Marshal.GetStartComSlot(iface);
@@ -105,25 +130,12 @@ namespace Squared.Render {
             // HACK: Bypass totally broken remoting wrappers by directly pulling the method out of the vtable
             const int SetRawValueSlot = 75;
             var pComFunction = Evil.COMUtils.AccessVTable(
-                pUnboxedEffect, 
+                result.pUnboxedEffect, 
                 (uint)((SetRawValueSlot + firstSlot) * sizeof(void*))
             );
-            pSetRawValue = Marshal.GetDelegateForFunctionPointer<SetRawDelegate>(new IntPtr(pComFunction));
+            result.pSetRawValue = Marshal.GetDelegateForFunctionPointer<SetRawDelegate>(new IntPtr(pComFunction));
 
-            UniformBinding.Register(effect, this);
-        }
-
-        public static UniformBinding<T> TryCreate (Effect effect, ID3DXEffect pEffect, string uniformName) {
-            if (effect == null)
-                return null;
-            if (pEffect == null)
-                return null;
-
-            var hParameter = pEffect.GetParameterByName(null, uniformName);
-            if (hParameter == null)
-                return null;
-
-            return new UniformBinding<T>(effect, pEffect, hParameter);
+            result.IsValid = true;
         }
 
 #endif
@@ -142,6 +154,13 @@ namespace Squared.Render {
                 IsDirty = true;
                 return _ValueContainer;
             }
+        }
+
+        private void GetCurrentNativeBinding (out NativeBinding nativeBinding) {
+            if (!CurrentNativeBinding.IsValid)
+                CreateNativeBinding(out CurrentNativeBinding);
+
+            nativeBinding = CurrentNativeBinding;
         }
 
         private void InPlaceTranspose (float* pMatrix) {
@@ -171,7 +190,10 @@ namespace Squared.Render {
         }
 
         public void Flush () {
-            if (!IsDirty)
+            NativeBinding nb;
+            GetCurrentNativeBinding(out nb);
+
+            if (!IsDirty && CurrentNativeBinding.IsValid)
                 return;
 
             ScratchBuffer.Write<T>(0, _ValueContainer.Current);
@@ -180,7 +202,7 @@ namespace Squared.Render {
             var pUpload  = UploadBuffer.DangerousGetHandle();
 
             // Fix-up matrices because the in-memory order is transposed :|
-            foreach (var fixup in Fixups) {
+            foreach (var fixup in nb.Fixups) {
                 var pSource = (pScratch + fixup.FromOffset);
                 var pDest = (pUpload + fixup.ToOffset);
 
@@ -198,7 +220,7 @@ namespace Squared.Render {
             throw new NotImplementedException("Write parameters buffer to GL uniform buffer");
 #else
             // HACK: Bypass the COM wrapper and invoke directly from the vtable.
-            var hr = pSetRawValue(pUnboxedEffect, hParameter, pUpload.ToPointer(), 0, UploadSize);
+            var hr = nb.pSetRawValue(nb.pUnboxedEffect, nb.hParameter, pUpload.ToPointer(), 0, nb.UploadSize);
             Marshal.ThrowExceptionForHR(hr);
             // pEffect.SetRawValue(hParameter, pUpload.ToPointer(), 0, UploadSize);
 #endif
@@ -210,6 +232,15 @@ namespace Squared.Render {
             return type.IsValueType && !type.IsPrimitive;
         }
 
+        public void ReleaseNativeBinding () {
+#if SDL2
+#else
+            if (CurrentNativeBinding.IsValid)
+                Marshal.ReleaseComObject(CurrentNativeBinding.pEffect);
+#endif
+            CurrentNativeBinding = default(NativeBinding);
+        }
+
         public void Dispose () {
             if (IsDisposed)
                 return;
@@ -218,10 +249,7 @@ namespace Squared.Render {
             ScratchBuffer.Dispose();
             UploadBuffer.Dispose();
 
-#if SDL2
-#else
-            Marshal.ReleaseComObject(pEffect);
-#endif
+            ReleaseNativeBinding();
         }
     }
 
