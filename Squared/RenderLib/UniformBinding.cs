@@ -31,30 +31,6 @@ namespace Squared.Render {
         }
     }
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    unsafe delegate void* DGetParameterDesc (
-        void* _this, void* hParameter, out D3DXPARAMETER_DESC pDesc
-    );
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    unsafe delegate void* DGetParameter (
-        void* _this, void* hEnclosingParameter, uint index
-    );
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    unsafe delegate void* DGetParameterByName (
-        void* _this, void* hEnclosingParameter, 
-        [MarshalAs(UnmanagedType.LPStr), In]
-        string name
-    );
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    unsafe delegate int DSetRawValue (
-        void* _this, void* hParameter, 
-        [In] void* pData, 
-        uint byteOffset, uint countBytes
-    );
-
     public unsafe partial class UniformBinding<T> : IUniformBinding 
         where T : struct
     {
@@ -64,6 +40,30 @@ namespace Squared.Render {
         
 #region Direct3D
 #if !SDL2 && !MONOGAME
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        unsafe delegate void* DGetParameterDesc (
+            void* _this, void* hParameter, out D3DXPARAMETER_DESC pDesc
+        );
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        unsafe delegate void* DGetParameter (
+            void* _this, void* hEnclosingParameter, uint index
+        );
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        unsafe delegate void* DGetParameterByName (
+            void* _this, void* hEnclosingParameter, 
+            [MarshalAs(UnmanagedType.LPStr), In]
+            string name
+        );
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        unsafe delegate int DSetRawValue (
+            void* _this, void* hParameter, 
+            [In] void* pData, 
+            uint byteOffset, uint countBytes
+        );
+
         private static class KnownMethodSlots {
             public static uint GetParameterDesc;
             public static uint GetParameter;
@@ -345,7 +345,9 @@ namespace Squared.Render {
         }
 
         private void ReleaseBindings () {
+#if !SDL2 && !MONOGAME
             CurrentNativeBinding = default(NativeBinding);
+#endif
             // TODO: Should we invalidate the compatibility binding here? I don't think that needs to happen
         }
 
