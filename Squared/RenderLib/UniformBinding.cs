@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -60,7 +61,9 @@ namespace Squared.Render {
         public class ValueContainer {
             public T Current;
         }
-
+        
+#region Direct3D
+#if !SDL2 && !MONOGAME
         private static class KnownMethodSlots {
             public static uint GetParameterDesc;
             public static uint GetParameter;
@@ -92,6 +95,10 @@ namespace Squared.Render {
             public void*        hParameter;
         }
 
+        private NativeBinding CurrentNativeBinding;
+#endif
+#endregion
+
         private class Storage : SafeBuffer {
             public Storage () 
                 : base(true) 
@@ -116,16 +123,14 @@ namespace Squared.Render {
         // And then transferred and mutated in this buffer before being sent to D3D
         private readonly SafeBuffer     UploadBuffer;
 
-        private NativeBinding           CurrentNativeBinding;
+        private delegate void CompatibilitySetter (ref T value);
+        private CompatibilitySetter CurrentCompatibilityBinding;
 
         public  bool   IsDirty    { get; private set; }
         public  bool   IsDisposed { get; private set; }
         public  Effect Effect     { get; private set; }
         public  string Name       { get; private set; }
         public  Type   Type       { get; private set; }
-
-        #region Direct3D
-#if !SDL2
 
         /// <summary>
         /// Bind a single named uniform of the effect as type T.
@@ -152,6 +157,8 @@ namespace Squared.Render {
             return new UniformBinding<T>(effect, uniformName);
         }
 
+#if !SDL2 && !MONOGAME
+#region Direct3D
         private void CreateNativeBinding (out NativeBinding result) {
             var pUnboxedEffect = Effect.GetUnboxedID3DXEffect();
             result = default(NativeBinding);
@@ -178,24 +185,6 @@ namespace Squared.Render {
             result.IsValid = true;
         }
 
-#endif
-        #endregion
-
-        #region SDL2
-        #if SDL2
-        #endif
-        #endregion
-
-        /// <summary>
-        /// If you retain this you are a bad person and I'm ashamed of you! Don't do that!!!
-        /// </summary>
-        public ValueContainer Value {
-            get {
-                IsDirty = true;
-                return _ValueContainer;
-            }
-        }
-
         private void GetCurrentNativeBinding (out NativeBinding nativeBinding) {
             lock (Lock) {
                 if (!CurrentNativeBinding.IsValid) {
@@ -205,6 +194,39 @@ namespace Squared.Render {
 
                 nativeBinding = CurrentNativeBinding;
             }
+        }
+
+        private void NativeFlush () {
+            NativeBinding nb;
+            GetCurrentNativeBinding(out nb);
+
+            if (!IsDirty && nb.IsValid)
+                return;
+
+            ScratchBuffer.Write<T>(0, _ValueContainer.Current);
+
+            var pScratch = ScratchBuffer.DangerousGetHandle();
+            var pUpload  = UploadBuffer.DangerousGetHandle();
+
+            // Fix-up matrices because the in-memory order is transposed :|
+            foreach (var fixup in nb.Fixups) {
+                var pSource = (pScratch + fixup.FromOffset);
+                var pDest = (pUpload + fixup.ToOffset);
+
+                if (fixup.TransposeMatrix)
+                    InPlaceTranspose((float*)pSource);
+
+                Buffer.MemoryCopy(
+                    pSource.ToPointer(),
+                    pDest.ToPointer(),
+                    fixup.DataSize, fixup.DataSize
+                );
+            }
+
+            // HACK: Bypass the COM wrapper and invoke directly from the vtable.
+            var hr = nb.pSetRawValue(nb.pUnboxedEffect, nb.hParameter, pUpload.ToPointer(), 0, nb.UploadSize);
+            Marshal.ThrowExceptionForHR(hr);
+            // pEffect.SetRawValue(hParameter, pUpload.ToPointer(), 0, UploadSize);
         }
 
         private void InPlaceTranspose (float* pMatrix) {
@@ -232,42 +254,81 @@ namespace Squared.Render {
             pMatrix[14] = pMatrix[11];
             pMatrix[11] = temp;
         }
+#endregion
+#else
+        private void NativeFlush () {
+        }
+#endif
 
-        public void Flush () {
-            NativeBinding nb;
-            GetCurrentNativeBinding(out nb);
+        /// <summary>
+        /// If you retain this you are a bad person and I'm ashamed of you! Don't do that!!!
+        /// </summary>
+        public ValueContainer Value {
+            get {
+                IsDirty = true;
+                return _ValueContainer;
+            }
+        }
 
-            if (!IsDirty && nb.IsValid)
-                return;
+        // We use LCG to create a single throwaway delegate that is responsible for filling
+        //  all the relevant effect parameters with the value(s) of each field of the struct.
+        private void CreateCompatibilityBinding (out CompatibilitySetter result) {
+            var t = typeof(T);
+            var tp = typeof(EffectParameter);
 
-            ScratchBuffer.Write<T>(0, _ValueContainer.Current);
+            var uniformParameter = Effect.Parameters[Name];
+            if (uniformParameter == null)
+                throw new Exception("Shader has no uniform named '" + Name + "'");
+            if (uniformParameter.ParameterClass != EffectParameterClass.Struct)
+                throw new Exception("Shader uniform is not a struct");
 
-            var pScratch = ScratchBuffer.DangerousGetHandle();
-            var pUpload  = UploadBuffer.DangerousGetHandle();
+            var pValue = Expression.Parameter(t.MakeByRefType(), "value");
+            var body = new List<Expression>();
 
-            // Fix-up matrices because the in-memory order is transposed :|
-            foreach (var fixup in nb.Fixups) {
-                var pSource = (pScratch + fixup.FromOffset);
-                var pDest = (pUpload + fixup.ToOffset);
+            foreach (var p in uniformParameter.StructureMembers) {
+                var field = t.GetField(p.Name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (field == null)
+                    throw new Exception(string.Format("No field named '{0}' found when binding type {1}", p.Name, t.Name));
 
-                if (fixup.TransposeMatrix)
-                    InPlaceTranspose((float*)pSource);
+                var setMethod = tp.GetMethod("SetValue", new[] { field.FieldType });
+                if (setMethod == null)
+                    throw new Exception(string.Format("No setter for effect parameter type {0}", field.FieldType.Name));
 
-                Buffer.MemoryCopy(
-                    pSource.ToPointer(),
-                    pDest.ToPointer(),
-                    fixup.DataSize, fixup.DataSize
-                );
+                var vParameter = Expression.Constant(p, tp);
+
+                var fieldValue = Expression.Field(pValue, field);
+                body.Add(Expression.Call(vParameter, setMethod, fieldValue));
             }
 
-#if SDL2
-            throw new NotImplementedException("Write parameters buffer to GL uniform buffer");
-#else
-            // HACK: Bypass the COM wrapper and invoke directly from the vtable.
-            var hr = nb.pSetRawValue(nb.pUnboxedEffect, nb.hParameter, pUpload.ToPointer(), 0, nb.UploadSize);
-            Marshal.ThrowExceptionForHR(hr);
-            // pEffect.SetRawValue(hParameter, pUpload.ToPointer(), 0, UploadSize);
-#endif
+            var bodyBlock = Expression.Block(body);
+
+            var expr = Expression.Lambda<CompatibilitySetter>(bodyBlock, pValue);
+            result = expr.Compile();
+        }
+
+        private void GetCurrentCompatibilityBinding (out CompatibilitySetter compatibilityBinding) {
+            lock (Lock) {
+                if (CurrentCompatibilityBinding == null) {
+                    IsDirty = true;
+                    CreateCompatibilityBinding(out CurrentCompatibilityBinding);
+                }
+
+                compatibilityBinding = CurrentCompatibilityBinding;
+            }
+        }
+
+        private void CompatibilityFlush () {
+            CompatibilitySetter setter;
+            GetCurrentCompatibilityBinding(out setter);
+            setter(ref _ValueContainer.Current);
+        }
+
+        public void Flush () {
+            if (UniformBinding.ForceCompatibilityMode) {
+                CompatibilityFlush();
+            } else {
+                NativeFlush();
+            }
 
             IsDirty = false;
         }
@@ -278,16 +339,14 @@ namespace Squared.Render {
 
         public void HandleDeviceReset () {
             lock (Lock) {
-                ReleaseNativeBinding();
+                ReleaseBindings();
                 IsDirty = true;
             }
         }
 
-        private void ReleaseNativeBinding () {
-#if SDL2
-#else
-#endif
+        private void ReleaseBindings () {
             CurrentNativeBinding = default(NativeBinding);
+            // TODO: Should we invalidate the compatibility binding here? I don't think that needs to happen
         }
 
         public void Dispose () {
@@ -299,13 +358,23 @@ namespace Squared.Render {
             UploadBuffer.Dispose();
 
             lock (Lock)
-                ReleaseNativeBinding();
+                ReleaseBindings();
         }
     }
 
     public static class UniformBinding {
         // Making a dictionary larger increases performance
         private const int BindingDictionaryCapacity = 4096;
+
+        // Set this to false to force a slower compatibility mode that works with FNA and MonoGame
+        public static bool ForceCompatibilityMode =
+#if SDL2
+            true;
+#elif MONOGAME
+            true;
+#else
+            false;
+#endif
 
         private static readonly Dictionary<Effect, List<IUniformBinding>> Bindings =
             new Dictionary<Effect, List<IUniformBinding>>(new ReferenceComparer<Effect>());
