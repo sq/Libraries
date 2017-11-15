@@ -416,8 +416,12 @@ namespace Squared.Render {
         public override void Prepare (PrepareManager manager) {
             // FIXME: Why the hell do we have to record these in Prepare and not Issue? >:|
             long primCount = 0;
-            foreach (var call in _DrawCalls)
-                primCount += call.PrimitiveCount;
+            foreach (var call in _DrawCalls) {
+                if (call.InstanceCount.HasValue)
+                    primCount += call.PrimitiveCount * call.InstanceCount.Value;
+                else
+                    primCount += call.PrimitiveCount;
+            }
 
             RecordPrimitives(primCount);
         }
@@ -433,6 +437,29 @@ namespace Squared.Render {
                 var device = manager.Device;
 
                 foreach (var call in _DrawCalls) {
+                    if (call.InstanceCount.HasValue) {
+                        if (call.VertexBuffer3 != null) {
+                            device.SetVertexBuffers(
+                                call.VertexBuffer, new VertexBufferBinding(call.VertexBuffer2, call.VertexOffset2, 1),
+                                new VertexBufferBinding(call.VertexBuffer3, call.VertexOffset3, 1)
+                            );
+                        } else if (call.VertexBuffer2 != null) {
+                            device.SetVertexBuffers(
+                                call.VertexBuffer, new VertexBufferBinding(call.VertexBuffer2, call.VertexOffset2, 1)
+                            );
+                        } else {
+                            // FIXME: Throw?
+                            device.SetVertexBuffers(call.VertexBuffer);
+                        }
+                        device.Indices = call.IndexBuffer;
+                        device.DrawInstancedPrimitives(
+                            call.PrimitiveType, call.BaseVertex, call.MinVertexIndex, 
+                            call.NumVertices, call.StartIndex, call.PrimitiveCount, 
+                            call.InstanceCount.Value
+                        );
+                        continue;
+                    }
+
                     device.SetVertexBuffer(call.VertexBuffer, call.VertexOffset);
                     device.Indices = call.IndexBuffer;
 
@@ -483,16 +510,18 @@ namespace Squared.Render {
 
     public struct NativeDrawCall {
         public readonly PrimitiveType PrimitiveType;
-        public readonly VertexBuffer VertexBuffer;
+        public readonly VertexBuffer VertexBuffer, VertexBuffer2, VertexBuffer3;
         public readonly IndexBuffer IndexBuffer;
 
-        public readonly int VertexOffset;
+        public readonly int VertexOffset, VertexOffset2, VertexOffset3;
         public readonly int BaseVertex;
         public readonly int MinVertexIndex;
         public readonly int NumVertices;
         public readonly int StartIndex;
         public readonly int StartVertex;
         public readonly int PrimitiveCount;
+
+        public readonly int? InstanceCount;
 
         /// <summary>
         /// This maps to a call to DrawIndexedPrimitives.
@@ -525,6 +554,9 @@ namespace Squared.Render {
             PrimitiveCount = primitiveCount;
 
             StartVertex = 0;
+            VertexOffset2 = VertexOffset3 = 0;
+            VertexBuffer2 = VertexBuffer3 = null;
+            InstanceCount = null;
         }
 
         public NativeDrawCall (PrimitiveType primitiveType, VertexBuffer vertexBuffer, int vertexOffset, int startVertex, int primitiveCount) {
@@ -539,6 +571,42 @@ namespace Squared.Render {
 
             IndexBuffer = null;
             BaseVertex = MinVertexIndex = NumVertices = StartIndex = 0;
+            VertexOffset2 = VertexOffset3 = 0;
+            VertexBuffer2 = VertexBuffer3 = null;
+            InstanceCount = null;
+        }
+
+        public NativeDrawCall (
+            PrimitiveType primitiveType, 
+            VertexBuffer vertexBuffer1, int vertexOffset1,
+            VertexBuffer vertexBuffer2, int vertexOffset2,
+            VertexBuffer vertexBuffer3, int vertexOffset3,
+            IndexBuffer indexBuffer, 
+            int baseVertex, int minVertexIndex, int numVertices, 
+            int startIndex, int primitiveCount,
+            int instanceCount
+        ) {
+            if (vertexBuffer1 == null)
+                throw new ArgumentNullException("vertexBuffer1");
+            if (vertexBuffer2 == null)
+                throw new ArgumentNullException("vertexBuffer2");
+
+            PrimitiveType = primitiveType;
+            VertexBuffer = vertexBuffer1;
+            VertexOffset = vertexOffset1;
+            VertexBuffer2 = vertexBuffer2;
+            VertexOffset2 = vertexOffset2;
+            VertexBuffer3 = vertexBuffer3;
+            VertexOffset3 = vertexOffset3;
+            IndexBuffer = indexBuffer;
+            BaseVertex = baseVertex;
+            MinVertexIndex = minVertexIndex;
+            NumVertices = numVertices;
+            StartIndex = startIndex;
+            PrimitiveCount = primitiveCount;
+
+            StartVertex = 0;
+            InstanceCount = instanceCount;
         }
     }
 }
