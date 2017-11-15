@@ -17,7 +17,31 @@ using Squared.Util.DeclarativeSort;
 using System.Threading;
 using System.Runtime.CompilerServices;
 
-namespace Squared.Render {    
+namespace Squared.Render {
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct CornerVertex : IVertexType {        
+        public short Corner;
+        public short Unused;
+
+        public static readonly VertexElement[] Elements;
+        static readonly VertexDeclaration _VertexDeclaration;
+
+        static CornerVertex () {
+            var tThis = typeof(CornerVertex);
+
+            Elements = new VertexElement[] {
+                new VertexElement( Marshal.OffsetOf(tThis, "Corner").ToInt32(), 
+                    VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 )
+            };
+
+            _VertexDeclaration = new VertexDeclaration(Elements);
+        }
+
+        public VertexDeclaration VertexDeclaration {
+            get { return _VertexDeclaration; }
+        }
+    }
+
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct BitmapVertex : IVertexType {
         public Vector3 Position;
@@ -28,9 +52,6 @@ namespace Squared.Render {
         public float Rotation;
         public Color MultiplyColor;
         public Color AddColor;
-        
-        public short Corner;
-        public short Unused;
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -53,8 +74,6 @@ namespace Squared.Render {
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "AddColor").ToInt32(), 
                     VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "Corner").ToInt32(), 
-                    VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 )
             };
 
             _VertexDeclaration = new VertexDeclaration(Elements);
@@ -237,15 +256,13 @@ namespace Squared.Render {
             public readonly ISoftwareBuffer SoftwareBuffer;
             public readonly TextureSet TextureSet;
 
-            public readonly int LocalIndexOffset;
             public readonly int LocalVertexOffset;
             public readonly int VertexCount;
 
-            public NativeBatch (ISoftwareBuffer softwareBuffer, TextureSet textureSet, int localIndexOffset, int localVertexOffset, int vertexCount) {
+            public NativeBatch (ISoftwareBuffer softwareBuffer, TextureSet textureSet, int localVertexOffset, int vertexCount) {
                 SoftwareBuffer = softwareBuffer;
                 TextureSet = textureSet;
 
-                LocalIndexOffset = localIndexOffset;
                 LocalVertexOffset = localVertexOffset;
                 VertexCount = vertexCount;
             }
@@ -305,6 +322,7 @@ namespace Squared.Render {
         };
   
         private BufferGenerator<BitmapVertex> _BufferGenerator = null;
+        private BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
 
         private UnorderedList<Reservation> RangeReservations = null;
 
@@ -437,25 +455,24 @@ namespace Squared.Render {
         private unsafe void FillOneSoftwareBuffer (BitmapDrawCall[] drawCalls, ref int drawCallsPrepared, int count) {
             int totalVertCount = 0;
             int vertCount = 0, vertOffset = 0;
-            int indexCount = 0, indexOffset = 0;
-            int nativeBatchSizeLimit = NativeBatchSize * 4;
-            int vertexWritePosition = 0, indexWritePosition = 0;
+            int nativeBatchSizeLimit = NativeBatchSize;
+            int vertexWritePosition = 0;
 
             TextureSet currentTextures = new TextureSet();
             BitmapVertex vertex = new BitmapVertex();
 
             var remainingDrawCalls = (count - drawCallsPrepared);
-            var remainingVertices = remainingDrawCalls * 4;
+            var remainingVertices = remainingDrawCalls;
 
             int nativeBatchSize = Math.Min(nativeBatchSizeLimit, remainingVertices);
-            var softwareBuffer = _BufferGenerator.Allocate(nativeBatchSize, (nativeBatchSize / 4) * 6);
+            var softwareBuffer = _BufferGenerator.Allocate(nativeBatchSize, 1);
 
-            ushort indexBase = (ushort)softwareBuffer.HardwareVertexOffset;
+            // ushort indexBase = (ushort)softwareBuffer.HardwareVertexOffset;
 
             float zBufferFactor = UseZBuffer ? 1.0f : 0.0f;
 
-            fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset])
-            fixed (ushort* pIndices = &softwareBuffer.Indices.Array[softwareBuffer.Indices.Offset])
+            fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset]) {
+            // fixed (ushort* pIndices = &softwareBuffer.Indices.Array[softwareBuffer.Indices.Offset])
                 for (int i = drawCallsPrepared; i < count; i++) {
                     if (totalVertCount >= nativeBatchSizeLimit)
                         break;
@@ -470,14 +487,11 @@ namespace Squared.Render {
                         if (vertCount > 0) {
                             _NativeBatches.Add(new NativeBatch(
                                 softwareBuffer, currentTextures,
-                                indexOffset,
                                 vertOffset,
                                 vertCount
                             ));
 
-                            indexOffset += indexCount;
                             vertOffset += vertCount;
-                            indexCount = 0;
                             vertCount = 0;
                         }
 
@@ -495,36 +509,22 @@ namespace Squared.Render {
                     vertex.Scale = call.Scale;
                     vertex.Origin = call.Origin;
                     vertex.Rotation = call.Rotation;
+                    pVertices[vertexWritePosition] = vertex;
 
-                    for (var j = 0; j < 6; j++)
-                        pIndices[indexWritePosition + j] = (ushort)(indexBase + QuadIndices[j]);
-
-                    indexWritePosition += 6;
-
-                    for (short j = 0; j < 4; j++) {
-                        vertex.Unused = vertex.Corner = j;
-                        pVertices[vertexWritePosition + j] = vertex;
-                    }
-
-                    vertexWritePosition += 4;
-                    indexBase += 4;
-
-                    totalVertCount += 4;
-                    vertCount += 4;
-                    indexCount += 6;
+                    vertexWritePosition += 1;
+                    totalVertCount += 1;
+                    vertCount += 1;
 
                     drawCallsPrepared += 1;
                 }
+            }
 
-            if (indexWritePosition > softwareBuffer.Indices.Count)
-                throw new InvalidOperationException("Wrote too many indices");
-            else if (vertexWritePosition > softwareBuffer.Vertices.Count)
+            if (vertexWritePosition > softwareBuffer.Vertices.Count)
                 throw new InvalidOperationException("Wrote too many vertices");
 
             if (vertCount > 0)
                 _NativeBatches.Add(new NativeBatch(
                     softwareBuffer, currentTextures,
-                    indexOffset,
                     vertOffset,
                     vertCount
                 ));
@@ -566,6 +566,8 @@ namespace Squared.Render {
 
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
 
+            CreateCornerBuffer();
+
             var _drawCalls = _DrawCalls.GetBuffer();
             int drawCallsPrepared = 0;
 
@@ -573,6 +575,24 @@ namespace Squared.Render {
                 FillOneSoftwareBuffer(_drawCalls, ref drawCallsPrepared, count);
 
             StateTransition(PrepareState.Preparing, PrepareState.Prepared);
+        }
+
+        private void CreateCornerBuffer () {
+            var cornerGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<CornerVertex>>();
+            // TODO: Is it OK to share the buffer?
+            _CornerBuffer = cornerGenerator.Allocate(4, 6, true);
+
+            var verts = _CornerBuffer.Vertices;
+            var indices = _CornerBuffer.Indices;
+
+            var v = new CornerVertex();
+            for (var i = 0; i < 4; i++) {
+                v.Corner = v.Unused = (short)i;
+                verts.Array[verts.Offset + i] = v;
+            }
+
+            for (var i = 0; i < QuadIndices.Length; i++)
+                indices.Array[indices.Offset + i] = QuadIndices[i];            
         }
             
         public override void Issue (DeviceManager manager) {
@@ -593,6 +613,13 @@ namespace Squared.Render {
 
             // if (RenderTrace.EnableTracing)
             //    RenderTrace.ImmediateMarker("BitmapBatch.Issue(layer={0}, count={1})", Layer, _DrawCalls.Count);
+
+            VertexBuffer vb, cornerVb;
+            DynamicIndexBuffer ib, cornerIb;
+
+            var cornerHwb = _CornerBuffer.HardwareBuffer;
+            cornerHwb.SetActive();
+            cornerHwb.GetBuffers(out cornerVb, out cornerIb);
 
             using (manager.ApplyMaterial(Material)) {
                 TextureSet currentTexture = new TextureSet();
@@ -636,28 +663,34 @@ namespace Squared.Render {
                     var hwb = swb.HardwareBuffer;
                     if (previousHardwareBuffer != hwb) {
                         if (previousHardwareBuffer != null)
-                            previousHardwareBuffer.SetInactive(device);
+                            previousHardwareBuffer.SetInactive();
 
-                        hwb.SetActive(device);
+                        hwb.SetActive();
                         previousHardwareBuffer = hwb;
                     }
 
-                    var primitiveCount = nb.VertexCount / 2;
-
-                    device.DrawIndexedPrimitives(
-                        PrimitiveType.TriangleList, 0, 
-                        swb.HardwareVertexOffset + nb.LocalVertexOffset, 
-                        nb.VertexCount, 
-                        swb.HardwareIndexOffset + nb.LocalIndexOffset,
-                        primitiveCount
+                    hwb.GetBuffers(out vb, out ib);
+                    device.SetVertexBuffers(
+                        cornerVb,
+                        new VertexBufferBinding(vb, swb.HardwareVertexOffset + nb.LocalVertexOffset, 1)
+                    );
+                    device.Indices = cornerIb;
+                    device.DrawInstancedPrimitives(
+                        PrimitiveType.TriangleList, 
+                        0, _CornerBuffer.HardwareVertexOffset, 4, 
+                        _CornerBuffer.HardwareIndexOffset, 2, 
+                        nb.VertexCount
                     );
                 }
 
                 if (previousHardwareBuffer != null)
-                    previousHardwareBuffer.SetInactive(device);
+                    previousHardwareBuffer.SetInactive();
             }
 
+            cornerHwb.SetInactive();
+
             _BufferGenerator = null;
+            _CornerBuffer = null;
 
             base.Issue(manager);
 
@@ -667,6 +700,7 @@ namespace Squared.Render {
         protected override void OnReleaseResources () {
             _State = (int)PrepareState.Invalid;
             _BufferGenerator = null;
+            _CornerBuffer = null;
 
             _NativePool.Release(ref _NativeBatches);
 

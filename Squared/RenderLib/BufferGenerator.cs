@@ -19,8 +19,11 @@ namespace Squared.Render.Internal {
     }
 
     public interface IHardwareBuffer : IDisposable {
+        void SetInactive ();
+        void SetActive ();
         void SetInactive (GraphicsDevice device);
         void SetActive (GraphicsDevice device);
+        void GetBuffers (out VertexBuffer vb, out DynamicIndexBuffer ib);
         /*
         void Invalidate (int frameIndex);
         void Validate (int frameIndex);
@@ -603,6 +606,40 @@ namespace Squared.Render.Internal {
             Monitor.Enter(InUseLock);
             device.SetVertexBuffer(Vertices);
             device.Indices = Indices;
+        }
+
+        public void SetInactive () {
+            var wasActive = Interlocked.Exchange(ref _IsActive, 0);
+            if (wasActive != 1)
+                throw new InvalidOperationException("Buffer not active");
+            if (_IsValid != 1)
+                throw new ThreadStateException("Buffer not valid");
+
+            Monitor.Exit(InUseLock);
+        }
+
+        public void SetActive () {
+            var wasActive = Interlocked.Exchange(ref _IsActive, 1);
+            if (wasActive != 0)
+                throw new InvalidOperationException("Buffer already active");
+
+            // ???????
+            if (_IsValid != 1)
+                throw new ThreadStateException("Buffer not valid");
+
+            Monitor.Enter(InUseLock);
+        }
+
+        public void GetBuffers (out VertexBuffer vb, out DynamicIndexBuffer ib) {
+            if (_IsActive != 1)
+                throw new InvalidOperationException("Buffer not active");
+
+            // ???????
+            if (_IsValid != 1)
+                throw new ThreadStateException("Buffer not valid");
+
+            vb = Vertices;
+            ib = Indices;
         }
 
         public void Allocate () {
