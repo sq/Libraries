@@ -230,13 +230,16 @@ namespace Squared.Render {
 
                 var drawCallsLhs = bblhs._DrawCalls;
                 var drawCallsRhs = bbrhs._DrawCalls;
-                var drawCallsRhsBuffer = drawCallsRhs.GetBuffer();
 
-                for (int i = 0, l = drawCallsRhs.Count; i < l; i++) {
-                    if (!drawCallsRhsBuffer[i].IsValid)
-                        throw new Exception("Invalid draw call in batch");
+                using (var b = drawCallsRhs.GetBuffer(false)) {
+                    var drawCallsRhsBuffer = b.Data;
 
-                    drawCallsLhs.Add(ref drawCallsRhsBuffer[i]);
+                    for (int i = 0, l = drawCallsRhs.Count; i < l; i++) {
+                        if (!drawCallsRhsBuffer[i].IsValid)
+                            throw new Exception("Invalid draw call in batch");
+
+                        drawCallsLhs.Add(ref drawCallsRhsBuffer[i]);
+                    }
                 }
 
                 drawCallsRhs.Clear();
@@ -555,11 +558,11 @@ namespace Squared.Render {
             } else if (Sorter != null) {
                 var comparer = DrawCallSorterComparer.Value;
                 comparer.Comparer = Sorter.GetComparer(true);
-                _DrawCalls.FastCLRSort(comparer);
+                _DrawCalls.Sort(comparer);
             } else if (UseZBuffer) {
-                _DrawCalls.FastCLRSort(DrawCallTextureComparer);
+                _DrawCalls.Sort(DrawCallTextureComparer);
             } else {
-                _DrawCalls.FastCLRSort(DrawCallComparer);
+                _DrawCalls.Sort(DrawCallComparer);
             }
 
             var count = _DrawCalls.Count;
@@ -568,11 +571,11 @@ namespace Squared.Render {
 
             CreateCornerBuffer();
 
-            var _drawCalls = _DrawCalls.GetBuffer();
+            var _drawCalls = _DrawCalls.GetBuffer(true);
             int drawCallsPrepared = 0;
 
             while (drawCallsPrepared < count)
-                FillOneSoftwareBuffer(_drawCalls, ref drawCallsPrepared, count);
+                FillOneSoftwareBuffer(_drawCalls.Data, ref drawCallsPrepared, count);
 
             StateTransition(PrepareState.Preparing, PrepareState.Prepared);
         }
@@ -871,56 +874,58 @@ namespace Squared.Render {
         }
 
         public override void Prepare (PrepareManager manager) {
-            var drawCalls = _DrawCalls.GetBuffer();
-            var count = _DrawCalls.Count;
+            using (var b = _DrawCalls.GetBuffer(true)) {
+                var drawCalls = b.Data;
+                var count = b.Count;
 
-            var comparer = Comparer.Value;
-            if (Sorter != null)
-                comparer.DrawCallComparer = Sorter.GetComparer(true);
-            else
-                comparer.DrawCallComparer = BitmapBatch.DrawCallComparer;
+                var comparer = Comparer.Value;
+                if (Sorter != null)
+                    comparer.DrawCallComparer = Sorter.GetComparer(true);
+                else
+                    comparer.DrawCallComparer = BitmapBatch.DrawCallComparer;
 
-            Sort.FastCLRSort(
-                drawCalls, comparer, 0, count
-            );
+                Sort.FastCLRSort(
+                    drawCalls, comparer, 0, count
+                );
 
-            BitmapBatch currentBatch = null;
-            int layerIndex = 0;
+                BitmapBatch currentBatch = null;
+                int layerIndex = 0;
 
-            for (var i = 0; i < count; i++) {
-                var dc = drawCalls[i];
-                var material = dc.Material;
-                if (material == null)
-                    throw new Exception("Missing material for draw call");
+                for (var i = 0; i < count; i++) {
+                    var dc = drawCalls[i];
+                    var material = dc.Material;
+                    if (material == null)
+                        throw new Exception("Missing material for draw call");
 
-                var ss1 = dc.SamplerState1 ?? BitmapBatch.DefaultSamplerState;
-                var ss2 = dc.SamplerState2 ?? BitmapBatch.DefaultSamplerState;
+                    var ss1 = dc.SamplerState1 ?? BitmapBatch.DefaultSamplerState;
+                    var ss2 = dc.SamplerState2 ?? BitmapBatch.DefaultSamplerState;
 
-                if (
-                    (currentBatch == null) ||
-                    (currentBatch.Material != material) ||
-                    (currentBatch.SamplerState != ss1) ||
-                    (currentBatch.SamplerState2 != ss2)
-                ) {
-                    if (currentBatch != null)
-                        currentBatch.Dispose();
+                    if (
+                        (currentBatch == null) ||
+                        (currentBatch.Material != material) ||
+                        (currentBatch.SamplerState != ss1) ||
+                        (currentBatch.SamplerState2 != ss2)
+                    ) {
+                        if (currentBatch != null)
+                            currentBatch.Dispose();
 
-                    currentBatch = BitmapBatch.New(
-                        _Group, layerIndex++, material, dc.SamplerState1, dc.SamplerState2, UseZBuffer
-                    );
+                        currentBatch = BitmapBatch.New(
+                            _Group, layerIndex++, material, dc.SamplerState1, dc.SamplerState2, UseZBuffer
+                        );
 
-                    // We've already sorted the draw calls.
-                    currentBatch.DisableSorting = true;
+                        // We've already sorted the draw calls.
+                        currentBatch.DisableSorting = true;
+                    }
+
+                    currentBatch.Add(dc.DrawCall);
                 }
 
-                currentBatch.Add(dc.DrawCall);
+                if (currentBatch != null)
+                    currentBatch.Dispose();
+
+                _Group.Dispose();
+                manager.PrepareAsync(_Group);
             }
-
-            if (currentBatch != null)
-                currentBatch.Dispose();
-
-            _Group.Dispose();
-            manager.PrepareAsync(_Group);
         }
 
         public override void Issue (DeviceManager manager) {

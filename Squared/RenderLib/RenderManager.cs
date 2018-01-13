@@ -15,6 +15,7 @@ using Squared.Game;
 using Microsoft.Xna.Framework;
 using Squared.Render.Internal;
 using Squared.Threading;
+using System.Collections;
 
 namespace Squared.Render {
     public static class RenderExtensionMethods {
@@ -52,7 +53,7 @@ namespace Squared.Render {
     public interface IBatchContainer {
         void Add (Batch batch);
         RenderManager RenderManager { get; }
-        bool IsDisposed { get; }
+        bool IsReleased { get; }
     }
 
     public sealed class DeviceManager {
@@ -465,6 +466,8 @@ namespace Squared.Render {
 
         private static readonly object PrepareLock = new object();
 
+        private readonly object BatchLock = new object();
+
         public static BatchComparer BatchComparer = new BatchComparer();
 
         private static ListPool<Batch> _ListPool = new ListPool<Batch>(
@@ -475,7 +478,7 @@ namespace Squared.Render {
         public int Index;
         public long InitialBatchCount;
 
-        public UnorderedList<Batch> Batches;
+        public DenseList<Batch> Batches;
 
         volatile int State = State_Disposed;
 
@@ -491,7 +494,8 @@ namespace Squared.Render {
         }
 
         internal void Initialize (RenderManager renderManager, int index) {
-            Batches = _ListPool.Allocate(null);
+            Batches.ListPool = _ListPool;
+            Batches.Clear();
             RenderManager = renderManager;
             Index = index;
             InitialBatchCount = Batch.LifetimeCount;
@@ -502,11 +506,13 @@ namespace Squared.Render {
             if (State != State_Initialized)
                 throw new InvalidOperationException();
 
-            lock (Batches) {
+            lock (BatchLock) {
+                /*
 #if DEBUG && PARANOID
                 if (Batches.Contains(batch))
                     throw new InvalidOperationException("Batch already added to this frame");
 #endif
+                */
 
                 Batches.Add(batch);
                 batch.Container = this;
@@ -554,7 +560,7 @@ namespace Squared.Render {
             var device = dm.Device;
 
             int c = Batches.Count;
-            var _batches = Batches.GetBuffer();
+            var _batches = Batches.GetBuffer(false);
             for (int i = 0; i < c; i++) {
                 var batch = _batches[i];
                 if (batch != null)
@@ -574,21 +580,21 @@ namespace Squared.Render {
             if (State == State_Disposed)
                 return;
 
-            var _batches = Batches.GetBuffer();
+            var _batches = Batches.GetBuffer(false);
             for (int i = 0; i < Batches.Count; i++) {
                 var batch = _batches[i];
                 if (batch != null)
                     batch.ReleaseResources();
             }
 
-            _ListPool.Release(ref Batches);
+            Batches.Dispose();
 
             RenderManager.ReleaseFrame(this);
 
             State = State_Disposed;
         }
 
-        public bool IsDisposed {
+        public bool IsReleased {
             get {
                 return State == State_Disposed;
             }
@@ -833,6 +839,278 @@ namespace Squared.Render {
         }
     }
 
+    public struct DenseList<T> : IDisposable, IEnumerable<T> {
+        public struct Enumerator : IEnumerator<T> {
+            private Buffer Buffer;
+            private int Index;
+            private int Count;
+
+            internal Enumerator (Buffer buffer) {
+                Buffer = buffer;
+                Index = -1;
+                Count = buffer.Count;
+            }
+
+            public T Current {
+                get {
+                    return Buffer.Data[Index];
+                }
+            }
+
+            object IEnumerator.Current {
+                get {
+                    return Buffer.Data[Index];
+                }
+            }
+
+            public void Dispose () {
+                Buffer.Dispose();
+                Index = -1;
+            }
+
+            public bool MoveNext () {
+                if (Index < Count) {
+                    Index++;
+                    return Index < Count;
+                }
+                return false;
+            }
+
+            public void Reset () {
+                Index = -1;
+            }
+        }
+
+        public struct Buffer : IDisposable {
+            internal BufferPool<T>.Buffer BufferPoolAllocation;
+            internal bool IsTemporary;
+
+            public int Count;
+            public T[] Data;
+
+            public T this[int index] {
+                get {
+                    return Data[index];
+                }
+                set {
+                    Data[index] = value;
+                }
+            }            
+
+            public void Dispose () {
+                if (IsTemporary)
+                    BufferPoolAllocation.Dispose();
+
+                Data = null;
+            }
+        }
+
+        public ListPool<T> ListPool;
+
+        private T Item1, Item2, Item3, Item4;
+        private UnorderedList<T> Calls;
+
+        private int _Count;
+
+        public void Clear () {
+            _Count = 0;
+            Item1 = Item2 = Item3 = Item4 = default(T);
+            if (Calls != null)
+                Calls.Clear();
+        }
+
+        public void CreateList (int? capacity = null) {
+            if (Calls != null)
+                return;
+
+            if (ListPool != null)
+                Calls = ListPool.Allocate(capacity);
+            else if (capacity.HasValue)
+                Calls = new UnorderedList<T>(capacity.Value);
+            else
+                Calls = new UnorderedList<T>(); 
+
+            if (_Count > 0)
+                Calls.Add(ref Item1);
+            if (_Count > 1)
+                Calls.Add(ref Item2);
+            if (_Count > 2)
+                Calls.Add(ref Item3);
+            if (_Count > 3)
+                Calls.Add(ref Item4);
+            Item1 = Item2 = Item3 = Item4 = default(T);
+            _Count = 0;
+        }
+
+        public int Count {
+            get {
+                if (Calls != null)
+                    return Calls.Count;
+                else
+                    return _Count;
+            }
+        }
+
+        public void Add (T item) {
+            Add(ref item);
+        }
+
+        public void Add (ref T item) {
+            if ((Calls != null) || (_Count >= 4)) {
+                CreateList();
+                Calls.Add(ref item);
+                return;
+            }
+
+            var i = _Count;
+            _Count += 1;
+            switch (i) {
+                case 0:
+                    Item1 = item;
+                    return;
+                case 1:
+                    Item2 = item;
+                    return;
+                case 2:
+                    Item3 = item;
+                    return;
+                case 3:
+                    Item4 = item;
+                    return;
+                default:
+                    throw new Exception();
+            }
+        }
+
+        public ArraySegment<T> ReserveSpace (int count) {
+            // FIXME: Slow
+            CreateList();
+            return Calls.ReserveSpace(count);
+        }
+
+        public void RemoveRange (int index, int count) {
+            // FIXME: Slow
+            CreateList();
+            Calls.RemoveRange(index, count);
+        }
+
+        public void OverwriteWith (T[] data) {
+            var count = data.Length;
+
+            if (count > 4) {
+                CreateList(count);
+                Calls.Clear();
+                Calls.AddRange(data);
+            } else {
+                _Count = count;
+                if (data.Length > 0)
+                    Item1 = data[0];
+                if (data.Length > 1)
+                    Item2 = data[1];
+                if (data.Length > 2)
+                    Item3 = data[2];
+                if (data.Length > 3)
+                    Item4 = data[3];
+            }
+        }
+
+        public Buffer GetBuffer (bool writable) {
+            if (writable)
+                CreateList();
+
+            if (Calls != null)
+                return new Buffer {
+                    IsTemporary = false,
+                    Data = Calls.GetBuffer(),
+                    Count = Calls.Count
+                };
+            else {
+                var alloc = BufferPool<T>.Allocate(4);
+                var buf = alloc.Data;
+                buf[0] = Item1;
+                buf[1] = Item2;
+                buf[2] = Item3;
+                buf[3] = Item4;
+                return new Buffer {
+                    IsTemporary = true,
+                    Data = buf,
+                    BufferPoolAllocation = alloc,
+                    Count = _Count
+                };
+            }
+        }
+
+        public void Sort<TComparer> (TComparer comparer)
+            where TComparer : IComparer<T>
+        {
+            if (Calls != null) {
+                Calls.FastCLRSort(comparer);
+                return;
+            }
+
+            T a, b;
+            if (comparer.Compare(Item1, Item2) <= 0) {
+                a = Item1; b = Item2;
+            } else {
+                a = Item2; b = Item1;
+            }
+
+            T c, d;
+            if (comparer.Compare(Item3, Item4) <= 0) {
+                c = Item3; d = Item4;
+            } else {
+                c = Item4; d = Item3;
+            }
+
+            T m1;
+            if (comparer.Compare(a, c) <= 0) {
+                Item1 = a;
+                m1 = c;
+            } else {
+                Item1 = c;
+                m1 = a;
+            }
+
+            T m2;
+            if (comparer.Compare(b, d) >= 0) {
+                Item4 = b;
+                m2 = d;
+            } else {
+                Item4 = d;
+                m2 = b;
+            }
+
+            if (comparer.Compare(m1, m2) <= 0) {
+                Item2 = m1;
+                Item3 = m2;
+            } else {
+                Item2 = m2;
+                Item3 = m1;
+            }
+        }
+
+        public void Dispose () {
+            _Count = 0;
+            Item1 = Item2 = Item3 = Item4 = default(T);
+            if (ListPool != null)
+                ListPool.Release(ref Calls);
+            else
+                Calls = null;
+        }
+
+        Enumerator GetEnumerator () {
+            return new Enumerator(GetBuffer(false));
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator () {
+            return new Enumerator(GetBuffer(false));
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return new Enumerator(GetBuffer(false));
+        }
+    }
+
     public abstract class ListBatch<T> : Batch {
         public const int BatchCapacityLimit = 512;
 
@@ -840,15 +1118,15 @@ namespace Squared.Render {
             256, 4, 64, BatchCapacityLimit, 10240
         );
 
-        protected UnorderedList<T> _DrawCalls;
+        protected DenseList<T> _DrawCalls;
 
         new protected void Initialize (
             IBatchContainer container, int layer, Material material,
             bool addToContainer, int? capacity = null
         ) {
+            _DrawCalls.ListPool = _ListPool;
+            _DrawCalls.Clear();
             base.Initialize(container, layer, material, addToContainer);
-
-            _DrawCalls = _ListPool.Allocate(capacity);
         }
 
         protected void Add (T item) {
@@ -860,8 +1138,7 @@ namespace Squared.Render {
         }
 
         protected override void OnReleaseResources() {
-            _ListPool.Release(ref _DrawCalls);
-
+            _DrawCalls.Dispose();
             base.OnReleaseResources();
         }
     }
@@ -961,29 +1238,36 @@ namespace Squared.Render {
             public object UserData;
         }
 
+        public OcclusionQuery OcclusionQuery;
+
         Action<DeviceManager, object> _Before, _After;
         private object _UserData;
 
         public override void Prepare (PrepareManager manager) {
             BatchCombiner.CombineBatches(_DrawCalls);
 
-            _DrawCalls.FastCLRSort(Frame.BatchComparer);
+            _DrawCalls.Sort(Frame.BatchComparer);
 
             manager.PrepareMany(_DrawCalls, true);
         }
 
         public override void Issue (DeviceManager manager) {
+            if (OcclusionQuery != null)
+                OcclusionQuery.Begin();
             if (_Before != null)
                 _Before(manager, _UserData);
 
             try {
-                foreach (var batch in _DrawCalls) {
-                    if (batch != null)
-                        batch.IssueAndWrapExceptions(manager);
+                using (var b = _DrawCalls.GetBuffer(false)) {
+                    for (int i = 0; i < b.Count; i++)
+                        if (b.Data[i] != null)
+                            b.Data[i].IssueAndWrapExceptions(manager);
                 }
             } finally {
                 if (_After != null)
                     _After(manager, _UserData);
+                if (OcclusionQuery != null)
+                    OcclusionQuery.End();
 
                 base.Issue(manager);
             }
@@ -1050,6 +1334,8 @@ namespace Squared.Render {
             _Before = before;
             _After = after;
             _UserData = userData;
+            IsReleased = false;
+            OcclusionQuery = null;
         }
 
         public RenderManager RenderManager {
@@ -1057,11 +1343,7 @@ namespace Squared.Render {
             private set;
         }
 
-        public bool IsDisposed {
-            get {
-                return _DrawCalls == null;
-            }
-        }
+        public bool IsReleased { get; private set; }
 
         public void Add (Batch batch) {
             if (batch.Container != null)
@@ -1077,6 +1359,8 @@ namespace Squared.Render {
                     batch.ReleaseResources();
 
             _DrawCalls.Clear();
+            IsReleased = true;
+            OcclusionQuery = null;
 
             base.OnReleaseResources();
         }

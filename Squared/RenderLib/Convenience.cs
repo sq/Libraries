@@ -537,7 +537,7 @@ namespace Squared.Render.Convenience {
         ) {
             if (Container == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
-            else if (Container.IsDisposed)
+            else if (Container.IsReleased)
                 throw new ObjectDisposedException("The container this ImperativeRenderer is drawing into has been disposed.");
 
             using (var batch = GetBitmapBatch(

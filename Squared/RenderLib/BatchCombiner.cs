@@ -35,15 +35,16 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="batches">The list of batches to perform a combination pass over.</param>
         /// <returns>The number of batches eliminated.</returns>
-        public static int CombineBatches (UnorderedList<Batch> batches) {
-            batches.FastCLRSort(BatchTypeSorter);
+        public static int CombineBatches (DenseList<Batch> batches) {
+            batches.Sort(BatchTypeSorter);
 
             int i = 0, j = i + 1, l = batches.Count, eliminatedCount = 0;
 
             Batch a, b;
             Type aType, bType;
 
-            var _batches = batches.GetBuffer();
+            var isWritable = false;
+            var _batches = batches.GetBuffer(false);
 
             while ((i < l) && (j < l)) {
                 a = _batches[i];
@@ -71,6 +72,12 @@ namespace Squared.Render {
 
                     foreach (var combiner in Combiners) {
                         if (combined = combiner.CanCombine(a, b)) {
+                            if (!isWritable) {
+                                isWritable = true;
+                                _batches.Dispose();
+                                _batches = batches.GetBuffer(true);
+                            }
+
                             _batches[i] = _batches[j] = null;
                             _batches[i] = combiner.Combine(a, b);
                             _batches[i].Container = a.Container;
@@ -88,6 +95,8 @@ namespace Squared.Render {
                     j += 1;
                 }
             }
+
+            _batches.Dispose();
 
             if (false && eliminatedCount > 0)
                 Console.WriteLine("Eliminated {0:0000} of {1:0000} batch(es)", eliminatedCount, batches.Count);

@@ -201,7 +201,7 @@ namespace Squared.Render {
             }
 #endif
 
-            var _drawCalls = _DrawCalls.GetBuffer();
+            var _drawCalls = _DrawCalls.GetBuffer(true);
             int count = _DrawCalls.Count;
             while (count > 0) {
                 PrimitiveDrawCall<T> lastCall = _drawCalls[count - 1];

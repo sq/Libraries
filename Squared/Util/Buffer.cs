@@ -43,9 +43,11 @@ namespace Squared.Util {
 
         public struct Buffer : IDisposable {
             public T[] Data;
+            public bool ReturnToPool;
 
-            public Buffer (T[] data) {
+            public Buffer (T[] data, bool returnToPool) {
                 Data = data;
+                ReturnToPool = returnToPool;
             }
 
             public static implicit operator T[] (Buffer _) {
@@ -70,7 +72,8 @@ namespace Squared.Util {
                 T[] data = Data;
                 Data = null;
 
-                BufferPool<T>.AddToPool(data);
+                if (ReturnToPool)
+                    BufferPool<T>.AddToPool(data);
             }
         }
 
@@ -91,7 +94,7 @@ namespace Squared.Util {
 
             if (_size > MaxBufferSize) {
                 T[] result = new T[_size];
-                return new Buffer(result);
+                return new Buffer(result, true);
             }
 
             lock (Pool) {
@@ -100,7 +103,7 @@ namespace Squared.Util {
                     if (item.Length >= _size) {
                         T[] result = item;
                         Pool.RemoveAt(i);
-                        return new Buffer(result);
+                        return new Buffer(result, true);
                     }
                 }
 
@@ -121,7 +124,7 @@ namespace Squared.Util {
 
             {
                 T[] result = new T[_size];
-                return new Buffer(result);
+                return new Buffer(result, true);
             }
         }
     }
