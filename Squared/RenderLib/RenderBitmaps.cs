@@ -225,24 +225,21 @@ namespace Squared.Render {
             }
 
             public Batch Combine (Batch lhs, Batch rhs) {
-                var bblhs = (BitmapBatch)lhs;
-                var bbrhs = (BitmapBatch)rhs;
+                var bl = (BitmapBatch)lhs;
+                var br = (BitmapBatch)rhs;
 
-                var drawCallsLhs = bblhs._DrawCalls;
-                var drawCallsRhs = bbrhs._DrawCalls;
-
-                using (var b = drawCallsRhs.GetBuffer(false)) {
+                using (var b = br._DrawCalls.GetBuffer(false)) {
                     var drawCallsRhsBuffer = b.Data;
 
-                    for (int i = 0, l = drawCallsRhs.Count; i < l; i++) {
+                    for (int i = 0, l = b.Count; i < l; i++) {
                         if (!drawCallsRhsBuffer[i].IsValid)
                             throw new Exception("Invalid draw call in batch");
 
-                        drawCallsLhs.Add(ref drawCallsRhsBuffer[i]);
+                        bl._DrawCalls.Add(ref drawCallsRhsBuffer[i]);
                     }
                 }
 
-                drawCallsRhs.Clear();
+                br._DrawCalls.Clear();
                 rhs.IsCombined = true;
                 if (CaptureStackTraces) {
                     if (lhs.BatchesCombinedIntoThisOne == null)
