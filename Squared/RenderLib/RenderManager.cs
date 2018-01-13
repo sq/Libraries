@@ -478,7 +478,7 @@ namespace Squared.Render {
         public int Index;
         public long InitialBatchCount;
 
-        public DenseList<Batch> Batches;
+        public DenseList<Batch> Batches = new DenseList<Batch>();
 
         volatile int State = State_Disposed;
 
@@ -528,7 +528,7 @@ namespace Squared.Render {
                 Console.WriteLine("Frame contains {0} batches", totalBatches);
             }
 
-            BatchCombiner.CombineBatches(Batches);
+            BatchCombiner.CombineBatches(ref Batches);
 
             Batches.Sort(BatchComparer);
 
@@ -839,7 +839,7 @@ namespace Squared.Render {
         }
     }
 
-    public struct DenseList<T> : IDisposable, IEnumerable<T> {
+    public class DenseList<T> : IDisposable, IEnumerable<T> {
         public struct Enumerator : IEnumerator<T> {
             private Buffer Buffer;
             private int Index;
@@ -1118,7 +1118,7 @@ namespace Squared.Render {
             256, 4, 64, BatchCapacityLimit, 10240
         );
 
-        protected DenseList<T> _DrawCalls;
+        protected DenseList<T> _DrawCalls = new DenseList<T>();
 
         new protected void Initialize (
             IBatchContainer container, int layer, Material material,
@@ -1244,7 +1244,7 @@ namespace Squared.Render {
         private object _UserData;
 
         public override void Prepare (PrepareManager manager) {
-            BatchCombiner.CombineBatches(_DrawCalls);
+            BatchCombiner.CombineBatches(ref _DrawCalls);
 
             _DrawCalls.Sort(Frame.BatchComparer);
 
