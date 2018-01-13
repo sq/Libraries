@@ -839,7 +839,7 @@ namespace Squared.Render {
         }
     }
 
-    public class DenseList<T> : IDisposable, IEnumerable<T> {
+    public struct DenseList<T> : IDisposable, IEnumerable<T> {
         public struct Enumerator : IEnumerator<T> {
             private Buffer Buffer;
             private int Index;
@@ -1048,6 +1048,9 @@ namespace Squared.Render {
                 return;
             }
 
+            if (_Count <= 1)
+                return;
+
             T a, b;
             if (comparer.Compare(Item1, Item2) <= 0) {
                 a = Item1; b = Item2;
@@ -1055,37 +1058,56 @@ namespace Squared.Render {
                 a = Item2; b = Item1;
             }
 
-            T c, d;
-            if (comparer.Compare(Item3, Item4) <= 0) {
-                c = Item3; d = Item4;
-            } else {
-                c = Item4; d = Item3;
-            }
-
-            T m1;
-            if (comparer.Compare(a, c) <= 0) {
+            if (_Count == 2) {
                 Item1 = a;
-                m1 = c;
+                Item2 = b;
+                return;
+            } else if (_Count == 3) {
+                if (comparer.Compare(b, Item3) <= 0) {
+                    Item1 = a;
+                    Item2 = b;
+                } else if (comparer.Compare(a, Item3) <= 0) {
+                    Item1 = a;
+                    Item2 = Item3;
+                    Item3 = b;
+                } else {
+                    Item1 = Item3;
+                    Item2 = a;
+                    Item3 = b;
+                }
             } else {
-                Item1 = c;
-                m1 = a;
-            }
+                T c, d;
+                if (comparer.Compare(Item3, Item4) <= 0) {
+                    c = Item3; d = Item4;
+                } else {
+                    c = Item4; d = Item3;
+                }
 
-            T m2;
-            if (comparer.Compare(b, d) >= 0) {
-                Item4 = b;
-                m2 = d;
-            } else {
-                Item4 = d;
-                m2 = b;
-            }
+                T m1;
+                if (comparer.Compare(a, c) <= 0) {
+                    Item1 = a;
+                    m1 = c;
+                } else {
+                    Item1 = c;
+                    m1 = a;
+                }
 
-            if (comparer.Compare(m1, m2) <= 0) {
-                Item2 = m1;
-                Item3 = m2;
-            } else {
-                Item2 = m2;
-                Item3 = m1;
+                T m2;
+                if (comparer.Compare(b, d) >= 0) {
+                    Item4 = b;
+                    m2 = d;
+                } else {
+                    Item4 = d;
+                    m2 = b;
+                }
+
+                if (comparer.Compare(m1, m2) <= 0) {
+                    Item2 = m1;
+                    Item3 = m2;
+                } else {
+                    Item2 = m2;
+                    Item3 = m1;
+                }
             }
         }
 

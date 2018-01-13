@@ -1274,5 +1274,15 @@ namespace Squared.Render {
             dc.AddColor *= opacity;
             return dc;
         }
+
+        public override string ToString () {
+            string name = null;
+            if (Texture == null)
+                name = "null";
+            else if (!ObjectNames.TryGetName(Texture, out name))
+                name = string.Format("{0}x{1}", Texture.Width, Texture.Height);
+
+            return string.Format("tex {0} pos {1}", name, Position);
+        }
     }
 }
