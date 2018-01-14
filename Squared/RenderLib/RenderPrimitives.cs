@@ -238,8 +238,8 @@ namespace Squared.Render {
 
             int primCount = 0;
 
-            foreach (var call in _DrawCalls)
-                primCount += call.PrimitiveCount;
+            for (int i = 0, c = _DrawCalls.Count; i < c; i++)
+                primCount += _DrawCalls[i].PrimitiveCount;
 
             NativeBatch.RecordPrimitives(primCount);
         }
@@ -254,7 +254,9 @@ namespace Squared.Render {
             using (manager.ApplyMaterial(Material)) {
                 var device = manager.Device;
 
-                foreach (var call in _DrawCalls) {
+                for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
+                    var call = _DrawCalls[i];
+
                     if (call.BeforeDraw != null)
                         call.BeforeDraw(manager, call.UserData);
 
@@ -416,7 +418,9 @@ namespace Squared.Render {
         public override void Prepare (PrepareManager manager) {
             // FIXME: Why the hell do we have to record these in Prepare and not Issue? >:|
             long primCount = 0;
-            foreach (var call in _DrawCalls) {
+
+            for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
+                var call = _DrawCalls[i];
                 if (call.InstanceCount.HasValue)
                     primCount += call.PrimitiveCount * call.InstanceCount.Value;
                 else
@@ -436,7 +440,9 @@ namespace Squared.Render {
             using (manager.ApplyMaterial(Material)) {
                 var device = manager.Device;
 
-                foreach (var call in _DrawCalls) {
+                for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
+                    var call = _DrawCalls[i];
+
                     if (call.InstanceCount.HasValue) {
                         if (call.VertexBuffer3 != null) {
                             device.SetVertexBuffers(

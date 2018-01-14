@@ -955,6 +955,26 @@ namespace Squared.Render {
             Add(ref item);
         }
 
+        public T this [int index] {
+            get {
+                if (Calls != null)
+                    return Calls.GetBuffer()[index];
+
+                switch (index) {
+                    case 0:
+                        return Item1;
+                    case 1:
+                        return Item2;
+                    case 2:
+                        return Item3;
+                    case 3:
+                        return Item4;
+                    default:
+                        throw new Exception();
+                }
+            }
+        }
+
         public void Add (ref T item) {
             if ((Calls != null) || (_Count >= 4)) {
                 CreateList();
@@ -1376,9 +1396,11 @@ namespace Squared.Render {
         }
 
         protected override void OnReleaseResources () {
-            foreach (var batch in _DrawCalls)
+            for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
+                var batch = _DrawCalls[i];
                 if (batch != null)
                     batch.ReleaseResources();
+            }
 
             _DrawCalls.Clear();
             IsReleased = true;
