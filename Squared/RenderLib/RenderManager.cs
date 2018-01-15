@@ -115,7 +115,11 @@ namespace Squared.Render {
             ViewportStack.Push(Device.Viewport);
             Device.SetRenderTarget(newRenderTarget);
             RenderManager.ResetDeviceState(Device);
-            Device.Viewport = new Viewport(0, 0, newRenderTarget.Width, newRenderTarget.Height);
+            if (newRenderTarget != null) {
+                Device.Viewport = new Viewport(0, 0, newRenderTarget.Width, newRenderTarget.Height);
+            } else {
+                Device.Viewport = new Viewport(0, 0, Device.PresentationParameters.BackBufferWidth, Device.PresentationParameters.BackBufferHeight);
+            }
         }
 
         public void PushRenderTargets (RenderTargetBinding[] newRenderTargets) {
