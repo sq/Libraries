@@ -644,23 +644,22 @@ namespace Squared.Render {
             Queue.WaitUntilDrained();
         }
 
-        public void PrepareMany<T> (T batches, bool async)
-            where T : IEnumerable<IBatch>
+        public void PrepareMany<T> (DenseList<T> batches, bool async)
+            where T : IBatch 
         {
             if (ForceSync.Value)
                 async = false;
 
             const int blockSize = 256;
             using (var buffer = BufferPool<Task>.Allocate(blockSize)) {
-                int j = 0;
-
                 var task = new Task(this, null);
-                foreach (var batch in batches) {
+                for (int j = 0, c = batches.Count; j < c; j++) {
+                    var batch = batches[j];
                     if (batch == null)
                         continue;
 
                     task.Batch = batch;
-                    buffer.Data[j++] = task;
+                    buffer.Data[j] = task;
 
                     if (j == blockSize) {
                         Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j));
@@ -668,7 +667,7 @@ namespace Squared.Render {
                     }
                 }
 
-                Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j));
+                Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, batches.Count));
             }
 
             Group.NotifyQueuesChanged();
