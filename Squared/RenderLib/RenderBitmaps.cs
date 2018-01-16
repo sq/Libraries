@@ -320,6 +320,9 @@ namespace Squared.Render {
             0, 1, 2,
             0, 2, 3
         };
+
+        private static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
+            new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
   
         private BufferGenerator<BitmapVertex> _BufferGenerator = null;
         private BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
@@ -624,6 +627,8 @@ namespace Squared.Render {
             cornerHwb.SetActive();
             cornerHwb.GetBuffers(out cornerVb, out cornerIb);
 
+            var scratchBindings = _ScratchBindingArray.Value;
+
             using (manager.ApplyMaterial(Material)) {
                 TextureSet currentTexture = new TextureSet();
                 var paramSize = manager.CurrentParameters.BitmapTextureSize;
@@ -673,10 +678,11 @@ namespace Squared.Render {
                     }
 
                     hwb.GetBuffers(out vb, out ib);
-                    device.SetVertexBuffers(
-                        cornerVb,
-                        new VertexBufferBinding(vb, swb.HardwareVertexOffset + nb.LocalVertexOffset, 1)
-                    );
+
+                    scratchBindings[0] = cornerVb;
+                    scratchBindings[1] = new VertexBufferBinding(vb, swb.HardwareVertexOffset + nb.LocalVertexOffset, 1);
+
+                    device.SetVertexBuffers(scratchBindings);
                     device.Indices = cornerIb;
                     device.DrawInstancedPrimitives(
                         PrimitiveType.TriangleList, 
