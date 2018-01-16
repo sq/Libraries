@@ -46,15 +46,17 @@ namespace Squared.Render.Text {
 
             private unsafe static MipGenerator<Color> PickMipGenerator (FreeTypeFont font) {
                 // TODO: Add a property that controls whether srgb is used. Or is freetype always srgb?
-                return MipGenerator.sRGBColor;
+                return MipGenerator.sRGBPAGray;
             }
 
             private unsafe DynamicAtlas<Color>.Reservation Upload (FTBitmap bitmap) {
                 bool foundRoom = false;
                 DynamicAtlas<Color>.Reservation result = default(DynamicAtlas<Color>.Reservation);
 
-                var widthW = bitmap.Width + (Font.GlyphMargin * 2);
-                var heightW = bitmap.Rows + (Font.GlyphMargin * 2);
+                int width = bitmap.Width, rows = bitmap.Rows, pitch = bitmap.Pitch;
+
+                var widthW = width + (Font.GlyphMargin * 2);
+                var heightW = rows + (Font.GlyphMargin * 2);
 
                 foreach (var atlas in Atlases) {
                     if (atlas.TryReserve(widthW, heightW, out result)) {
@@ -73,52 +75,49 @@ namespace Squared.Render.Text {
                         throw new InvalidOperationException("Character too large for atlas");
                 }
 
-                var pixels = result.Atlas.Pixels;
                 var pSrc = (byte*)bitmap.Buffer;
 
-                switch (bitmap.PixelMode) {
-                    case PixelMode.Gray:
-                        double gInv = 1.0 / Font.Gamma;
-                        bool applyGamma = (Font.Gamma < 0.9999) || (Font.Gamma > 1.0001);
+                fixed (Color* pPixels = result.Atlas.Pixels) {
+                    var pDest = (byte*)pPixels;
+                    switch (bitmap.PixelMode) {
+                        case PixelMode.Gray:
+                            var table = Font.GammaTable;
 
-                        for (var y = 0; y < bitmap.Rows; y++) {
-                            var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
-                            int yPitch = y * bitmap.Pitch;
+                            for (var y = 0; y < rows; y++) {
+                                var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                                var pDestRow = pDest + (rowOffset * 4);
+                                int yPitch = y * pitch;
 
-                            if (applyGamma) {
-                                for (var x = 0; x < bitmap.Width; x++) {
-                                    var gD = pSrc[x + yPitch] / 255.0;
-                                    var g = (int)(Math.Pow(gD, gInv) * 255.0);
-                                    pixels[rowOffset + x] = new Color(g, g, g, g);
-                                }
-                            } else {
-                                for (var x = 0; x < bitmap.Width; x++) {
-                                    var g = pSrc[x + yPitch];
-                                    pixels[rowOffset + x] = new Color(g, g, g, g);
+                                for (var x = 0; x < width; x++) {
+                                    var g = table[pSrc[x + yPitch]];
+                                    pDestRow[3] = pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
+                                    pDestRow += 4;
                                 }
                             }
-                        }
-                        break;
+                            break;
 
-                    case PixelMode.Mono:
-                        for (var y = 0; y < bitmap.Rows; y++) {
-                            var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
-                            int yPitch = y * bitmap.Pitch;
+                        case PixelMode.Mono:
+                            for (var y = 0; y < rows; y++) {
+                                var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                                var pDestRow = pDest + (rowOffset * 4);
+                                int yPitch = y * pitch;
 
-                            for (int x = 0, outX = rowOffset; x < bitmap.Pitch; x++, outX += 8) {
-                                var bits = pSrc[x + yPitch];
+                                for (int x = 0; x < pitch; x++, pDestRow += (8 * 4)) {
+                                    var bits = pSrc[x + yPitch];
 
-                                for (int i = 0; i < 8; i++) {
-                                    int iy = 7 - i;
-                                    int g = ((bits & (1 << iy)) != 0) ? 255 : 0;
-                                    pixels[outX + i] = new Color(g, g, g, g);
+                                    for (int i = 0; i < 8; i++) {
+                                        int iy = 7 - i;
+                                        byte g = ((bits & (1 << iy)) != 0) ? (byte)255 : (byte)0;
+                                        var pElt = pDestRow + (i * 4);
+                                        pElt[3] = pElt[2] = pElt[1] = pElt[0] = g;
+                                    }
                                 }
                             }
-                        }
-                        break;
+                            break;
 
-                    default:
-                        throw new NotImplementedException("Unsupported pixel mode: " + bitmap.PixelMode);
+                        default:
+                            throw new NotImplementedException("Unsupported pixel mode: " + bitmap.PixelMode);
+                    }
                 }
 
                 return result;
@@ -189,16 +188,19 @@ namespace Squared.Render.Text {
 
                 var scaleFactor = 100f / Font.DPIPercent;
 
+                var widthMetric = metrics.Width.ToSingle();
+                var bearingXMetric = metrics.HorizontalBearingX.ToSingle();
+
                 glyph = new SrGlyph {
                     Character = ch,
-                    Width = metrics.Width.ToSingle(),
-                    LeftSideBearing = metrics.HorizontalBearingX.ToSingle(),
+                    Width = widthMetric,
+                    LeftSideBearing = bearingXMetric,
                     RightSideBearing = (
                         advance -
-                            metrics.Width.ToSingle() -
+                            widthMetric -
                             metrics.HorizontalBearingX.ToSingle()
                     ),
-                    XOffset = ftgs.BitmapLeft - metrics.HorizontalBearingX.ToSingle() - Font.GlyphMargin,
+                    XOffset = ftgs.BitmapLeft - bearingXMetric - Font.GlyphMargin,
                     YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin,
                     Texture = texRegion.Texture,
                     BoundsInTexture = texRegion.Rectangle,
@@ -254,7 +256,6 @@ namespace Squared.Render.Text {
 
         public FontSize DefaultSize { get; private set; }
         // FIXME: Invalidate on set
-        public double Gamma { get; set; }
         public int GlyphMargin { get; set; }
         public int DPIPercent { get; set; }
         public bool Hinting { get; set; }
@@ -262,7 +263,29 @@ namespace Squared.Render.Text {
         public bool EnableBitmaps { get; set; }
         public int TabSize { get; set; }
 
+        private double _Gamma;
+        private byte[] GammaTable;
         private HashSet<FontSize> Sizes = new HashSet<FontSize>(new ReferenceComparer<FontSize>());
+
+        public double Gamma {
+            get {
+                return _Gamma;
+            }
+            set {
+                _Gamma = value;
+                GammaTable = new byte[256];
+
+                double gInv = 1.0 / value;
+                for (int i = 0; i < 256; i++) {
+                    if (value == 1)
+                        GammaTable[i] = (byte)i;
+                    else {
+                        var gD = i / 255.0;
+                        GammaTable[i] = (byte)(Math.Pow(gD, gInv) * 255.0);
+                    }
+                }
+            }
+        }
 
         float IGlyphSource.DPIScaleFactor {
             get {

@@ -25,11 +25,6 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double ToLinear (byte v) {
-            return ToLinearTable[v];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte FromLinear (double v) {
             double scaled;
 	        if (v <= 0.0031308)
@@ -42,7 +37,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte Average_sRGB (byte a, byte b, byte c, byte d) {
-            double sum = ToLinear(a) + ToLinear(b) + ToLinear(c) + ToLinear(d);
+            double sum = ToLinearTable[a] + ToLinearTable[b] + ToLinearTable[c] + ToLinearTable[d];
             return FromLinear(sum / 4);
         }
 
@@ -97,6 +92,32 @@ namespace Squared.Render {
                         result[1] = Average_sRGB(a[1], b[1], c[1], d[1]);
                         result[2] = Average_sRGB(a[2], b[2], c[2], d[2]);
                         result[3] = Average_sRGB(a[3], b[3], c[3], d[3]);
+                    }
+                }
+            }
+        }
+
+        public static unsafe void sRGBPAGray (Color[] src, int srcWidth, int srcHeight, Color[] dest) {
+            var destWidth = srcWidth / 2;
+            var destHeight = srcHeight / 2;
+
+            fixed (Color* pSrcColor = src, pDestColor = dest) {
+                byte* pSrc = (byte*)pSrcColor, pDest = (byte*)pDestColor;
+                var srcRowSize = srcWidth * 4;
+            
+                for (var y = 0; y < destHeight; y++) {
+                    byte* srcRow = pSrc + ((y * 2) * srcRowSize);
+                    byte* destRow = pDest + (y * destWidth * 4);
+
+                    for (var x = 0; x < destWidth; x++) {
+                        var a = srcRow + ((x * 2) * 4);
+                        var b = a + 4;
+                        var c = a + srcRowSize;
+                        var d = b + srcRowSize;
+
+                        var result = destRow + (x * 4);
+                        var gray = Average_sRGB(a[0], b[0], c[0], d[0]);
+                        result[0] = result[1] = result[2] = result[3] = gray;
                     }
                 }
             }
