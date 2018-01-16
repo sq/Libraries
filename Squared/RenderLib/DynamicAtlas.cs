@@ -11,13 +11,22 @@ namespace Squared.Render {
     public delegate void MipGenerator<T> (T[] src, int srcWidth, int srcHeight, T[] dest) where T : struct;
 
     public static class MipGenerator {
+        private static readonly double[] ToLinearTable = new
+            double[256];
+
+        static MipGenerator () {
+            for (int i = 0; i < 256; i++) {
+                double fv = i / 255.0;
+                if (fv < 0.04045)
+                    ToLinearTable[i] = fv / 12.92;
+                else
+                    ToLinearTable[i] = Math.Pow((fv + 0.055) / 1.055, 2.4);
+            }
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static double ToLinear (byte v) {
-            double fv = v / 255.0;
-            if (fv < 0.04045)
-                return fv / 12.92;
-            else
-                return Math.Pow((fv + 0.055) / 1.055, 2.4);
+            return ToLinearTable[v];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
