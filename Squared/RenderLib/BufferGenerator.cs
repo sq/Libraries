@@ -189,6 +189,8 @@ namespace Squared.Render.Internal {
         protected readonly SoftwareBufferPool _SoftwareBufferPool;
         protected readonly UnorderedList<SoftwareBuffer> _SoftwareBuffers = new UnorderedList<SoftwareBuffer>();
 
+        protected readonly Dictionary<string, SoftwareBuffer> _BufferCache = new Dictionary<string, SoftwareBuffer>();
+
         protected HardwareBufferEntry _FillingHardwareBufferEntry = null;
 
         const int MaxBufferAge = 4;
@@ -321,6 +323,8 @@ namespace Squared.Render.Internal {
 
                 _UsedHardwareBuffers.Clear();
 
+                _BufferCache.Clear();
+
                 foreach (var swb in _SoftwareBuffers) {
                     swb.Uninitialize();
                     _SoftwareBufferPool.Release(swb);
@@ -394,6 +398,24 @@ namespace Squared.Render.Internal {
                 return true;
 
             return false;
+        }
+
+        public void SetCachedBuffer (string key, SoftwareBuffer buffer) {
+            lock (_BufferCache)
+                _BufferCache.Add(key, buffer);
+        }
+
+        public bool TryGetCachedBuffer (string key, int vertexCount, int indexCount, out SoftwareBuffer result) {
+            lock (_BufferCache)
+            if (!_BufferCache.TryGetValue(key, out result))
+                return false;
+
+            if ((result.Vertices.Count < vertexCount) || (result.Indices.Count < indexCount)) {
+                result = null;
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>

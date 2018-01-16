@@ -580,7 +580,10 @@ namespace Squared.Render {
         private void CreateCornerBuffer () {
             var cornerGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<CornerVertex>>();
             // TODO: Is it OK to share the buffer?
-            _CornerBuffer = cornerGenerator.Allocate(4, 6, true);
+            if (!cornerGenerator.TryGetCachedBuffer("QuadCorners", 4, 6, out _CornerBuffer)) {
+                _CornerBuffer = cornerGenerator.Allocate(4, 6, true);
+                cornerGenerator.SetCachedBuffer("QuadCorners", _CornerBuffer);
+            }
 
             var verts = _CornerBuffer.Vertices;
             var indices = _CornerBuffer.Indices;
