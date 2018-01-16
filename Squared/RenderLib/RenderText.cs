@@ -528,8 +528,17 @@ namespace Squared.Render.Text {
             if (alignment != HorizontalAlignment.Left)
                 AlignLines(result, alignment);
 
-            if (reverseOrder)
-                Array.Reverse(result.Array, result.Offset, result.Count);
+            if (reverseOrder) {
+                int i = result.Offset;
+                int j = result.Offset + result.Count - 1;
+                while (i < j) {
+                    var temp = result.Array[i];
+                    result.Array[i] = result.Array[j];
+                    result.Array[j] = temp;
+                    i++;
+                    j--;
+                }
+            }
 
             return new StringLayout(
                 position.GetValueOrDefault(), 
