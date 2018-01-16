@@ -110,6 +110,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Arithmetic.cs" />
+    <Compile Include="IndexedSort.cs" />
     <Compile Include="CLRSort.cs" />
     <Compile Include="DeclarativeSort.cs" />
     <Compile Include="LambdaCompiler.cs" />

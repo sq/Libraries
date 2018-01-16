@@ -30,5 +30,20 @@ namespace Squared.Util {
                 count.GetValueOrDefault(data.Length - actualOffset)
             );
         }
+
+        public static void IndexedSort<TElement, TComparer>(
+            TElement[] data, int[] indices,
+            TComparer comparer, int? offset = null, int? count = null
+        )
+            where TComparer : IComparer<TElement>
+        {
+            var sorter = new IndexedSorter<TElement, TComparer>(data, indices, comparer);
+            var actualOffset = offset.GetValueOrDefault(0);
+
+            sorter.Sort(
+                actualOffset,
+                count.GetValueOrDefault(data.Length - actualOffset)
+            );
+        }
     }
 }

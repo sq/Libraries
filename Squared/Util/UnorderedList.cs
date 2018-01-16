@@ -237,6 +237,12 @@ namespace Squared.Util {
             Util.Sort.FastCLRSort(_Items, comparer, 0, _Count);
         }
 
+        public void IndexedSort<TComparer> (TComparer comparer, int[] indices)
+            where TComparer : IComparer<T>
+        {
+            Util.Sort.IndexedSort(_Items, indices, comparer, 0, _Count);
+        }
+
         public ArraySegment<T> ReserveSpace (int count) {
             var newCount = _Count + count;
             EnsureCapacity(newCount);

@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define USE_INDEXED_SORT
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -323,6 +325,7 @@ namespace Squared.Render {
 
         private static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
             new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
+        private static ThreadLocal<int[]> _SortIndexArray = new ThreadLocal<int[]>();
   
         private BufferGenerator<BitmapVertex> _BufferGenerator = null;
         private BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
@@ -455,7 +458,7 @@ namespace Squared.Render {
             }
         }
 
-        private unsafe void FillOneSoftwareBuffer (BitmapDrawCall[] drawCalls, ref int drawCallsPrepared, int count) {
+        private unsafe void FillOneSoftwareBuffer (BitmapDrawCall[] drawCalls, int[] indices, ref int drawCallsPrepared, int count) {
             int totalVertCount = 0;
             int vertCount = 0, vertOffset = 0;
             int nativeBatchSizeLimit = NativeBatchSize;
@@ -480,7 +483,12 @@ namespace Squared.Render {
                     if (totalVertCount >= nativeBatchSizeLimit)
                         break;
 
+#if USE_INDEXED_SORT
+                    var callIndex = indices[i];
+                    var call = drawCalls[callIndex];
+#else
                     var call = drawCalls[i];
+#endif
                     if (!call.IsValid)
                         throw new InvalidDataException("Invalid draw call");
 
@@ -532,6 +540,16 @@ namespace Squared.Render {
                     vertCount
                 ));
         }
+
+        private int[] GetIndexArray (int minimumSize) {
+            const int rounding = 4096;
+            var size = ((minimumSize + (rounding - 1)) / rounding) * rounding + 16;
+            var array = _SortIndexArray.Value;
+            if ((array == null) || (array.Length < size))
+                _SortIndexArray.Value = array = new int[size];
+
+            return array;
+        }
         
         public override void Prepare (PrepareManager manager) {
             var prior = (PrepareState)Interlocked.Exchange(ref _State, (int)PrepareState.Preparing);
@@ -554,18 +572,27 @@ namespace Squared.Render {
                 _NativeBatches = _NativePool.Allocate(nativeBatchCapacity);
             }
 
+            var count = _DrawCalls.Count;
+            int[] indexArray = null;
+
+#if USE_INDEXED_SORT
+            if (!DisableSorting) {
+                indexArray = GetIndexArray(count);
+                for (int i = 0; i < count; i++)
+                    indexArray[i] = i;
+            }
+#endif
+
             if (DisableSorting) {
             } else if (Sorter != null) {
                 var comparer = DrawCallSorterComparer.Value;
                 comparer.Comparer = Sorter.GetComparer(true);
-                _DrawCalls.Sort(comparer);
+                _DrawCalls.Sort(comparer, indexArray);
             } else if (UseZBuffer) {
-                _DrawCalls.Sort(DrawCallTextureComparer);
+                _DrawCalls.Sort(DrawCallTextureComparer, indexArray);
             } else {
-                _DrawCalls.Sort(DrawCallComparer);
+                _DrawCalls.Sort(DrawCallComparer, indexArray);
             }
-
-            var count = _DrawCalls.Count;
 
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
 
@@ -575,7 +602,7 @@ namespace Squared.Render {
             int drawCallsPrepared = 0;
 
             while (drawCallsPrepared < count)
-                FillOneSoftwareBuffer(_drawCalls.Data, ref drawCallsPrepared, count);
+                FillOneSoftwareBuffer(_drawCalls.Data, indexArray, ref drawCallsPrepared, count);
 
             StateTransition(PrepareState.Preparing, PrepareState.Prepared);
         }

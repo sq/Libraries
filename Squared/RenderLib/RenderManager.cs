@@ -438,9 +438,9 @@ namespace Squared.Render {
                 if (y == null)
                     return 0;
                 else
-                    return -1;
+                    return 1;
             } else if (y == null) {
-                return 1;
+                return -1;
             }
 
             int result = x.Layer.CompareTo(y.Layer);
@@ -482,7 +482,7 @@ namespace Squared.Render {
         public int Index;
         public long InitialBatchCount;
 
-        public DenseList<Batch> Batches = new DenseList<Batch>();
+        internal DenseList<Batch> Batches = new DenseList<Batch>();
 
         volatile int State = State_Disposed;
 
@@ -510,6 +510,9 @@ namespace Squared.Render {
             if (State != State_Initialized)
                 throw new InvalidOperationException();
 
+            if (batch == null)
+                throw new ArgumentNullException("batch");
+
             lock (BatchLock) {
                 /*
 #if DEBUG && PARANOID
@@ -532,9 +535,12 @@ namespace Squared.Render {
                 Console.WriteLine("Frame contains {0} batches", totalBatches);
             }
 
-            BatchCombiner.CombineBatches(ref Batches);
+            var numRemoved = BatchCombiner.CombineBatches(ref Batches);
 
+            // Batch combining may have left holes so we need to sort again to sift the holes
+            //  to the back
             Batches.Sort(BatchComparer);
+            Batches.RemoveTail(numRemoved);
 
             if (!Monitor.TryEnter(PrepareLock, 5000)) {
                 throw new InvalidOperationException("Spent more than five seconds waiting for a previous prepare operation.");
@@ -616,6 +622,9 @@ namespace Squared.Render {
             public IBatch Batch;
 
             public Task (PrepareManager manager, IBatch batch) {
+                if (manager == null)
+                    throw new ArgumentNullException("manager");
+
                 Manager = manager;
                 Batch = batch;
             }
@@ -1017,6 +1026,20 @@ namespace Squared.Render {
             Calls.RemoveRange(index, count);
         }
 
+        public void RemoveTail (int count) {
+            if (count == 0)
+                return;
+            if (count > Count)
+                throw new ArgumentException("count");
+
+            if (Calls == null) {
+                _Count -= count;
+                return;
+            }
+
+            Calls.RemoveRange(Calls.Count - count, count);
+        }
+
         public void OverwriteWith (T[] data) {
             var count = data.Length;
 
@@ -1063,11 +1086,15 @@ namespace Squared.Render {
             }
         }
 
-        public void Sort<TComparer> (TComparer comparer)
+        public void Sort<TComparer> (TComparer comparer, int[] indices = null)
             where TComparer : IComparer<T>
         {
             if (Calls != null) {
-                Calls.FastCLRSort(comparer);
+                if (indices != null)
+                    Calls.IndexedSort(comparer, indices);
+                else
+                    Calls.FastCLRSort(comparer);
+
                 return;
             }
 
@@ -1388,9 +1415,11 @@ namespace Squared.Render {
             private set;
         }
 
-        public bool IsReleased { get; private set; }
+        new public bool IsReleased { get; private set; }
 
-        public void Add (Batch batch) {
+        new public void Add (Batch batch) {
+            if (batch == null)
+                throw new ArgumentNullException("batch");
             if (batch.Container != null)
                 throw new InvalidOperationException("This batch is already in another container.");
 
