@@ -483,12 +483,14 @@ namespace Squared.Render {
                     if (totalVertCount >= nativeBatchSizeLimit)
                         break;
 
-#if USE_INDEXED_SORT
-                    var callIndex = indices[i];
-                    var call = drawCalls[callIndex];
-#else
-                    var call = drawCalls[i];
-#endif
+                    BitmapDrawCall call;
+                    if (indices != null) {
+                        var callIndex = indices[i];
+                        call = drawCalls[callIndex];
+                    } else {
+                        call = drawCalls[i];
+                    }
+
                     if (!call.IsValid)
                         throw new InvalidDataException("Invalid draw call");
 
