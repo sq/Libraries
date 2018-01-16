@@ -670,7 +670,7 @@ namespace Squared.Render {
                     task.Batch = batch;
                     buffer.Data[j] = task;
 
-                    if (j == blockSize) {
+                    if (j == (blockSize - 1)) {
                         Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j));
                         j = 0;
                     }
