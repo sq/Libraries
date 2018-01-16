@@ -10,13 +10,17 @@ using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
+using Squared.Game;
 using Squared.Render;
 using Squared.Render.Convenience;
+using Squared.Render.Text;
+using Squared.Util;
 
 namespace LargeBufferTest {
     public class LargeBufferTestGame : MultithreadedGame {
         public static readonly Color ClearColor = new Color(24, 96, 220, 255);
 
+        FreeTypeFont Font;
         Texture2D WhitePixel, GrayPixel;
 
         DefaultMaterialSet Materials;
@@ -38,6 +42,14 @@ namespace LargeBufferTest {
         }
 
         protected override void LoadContent () {
+            Font = new FreeTypeFont(
+                RenderCoordinator,
+                Environment.GetFolderPath(Environment.SpecialFolder.Windows) + "\\Fonts\\arial.ttf"
+            ) {
+                DPIPercent = 100,
+                SizePoints = 10f,
+                Hinting = false
+            };
             WhitePixel = new Texture2D(GraphicsDevice, 1, 1);
             WhitePixel.SetData(new [] { Color.White });
             GrayPixel = new Texture2D(GraphicsDevice, 1, 1);
@@ -49,16 +61,20 @@ namespace LargeBufferTest {
 
         protected override void Update (GameTime gameTime) {
             base.Update(gameTime);
+
+            PerformanceStats.Record(this);
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
-            var stats = RenderManager.GetMemoryStatistics();
-            Console.WriteLine(
-                "managed: {0:0000000}kb    vertex: {1:0000000}kb    index: {2:0000000}kb",
-                (stats.ManagedIndexBytes + stats.ManagedVertexBytes) / 1024.0,
-                stats.UnmanagedVertexBytes / 1024.0,
-                stats.UnmanagedIndexBytes / 1024.0
-            );
+            if (false) {
+                var stats = RenderManager.GetMemoryStatistics();
+                Console.WriteLine(
+                    "managed: {0:0000000}kb    vertex: {1:0000000}kb    index: {2:0000000}kb",
+                    (stats.ManagedIndexBytes + stats.ManagedVertexBytes) / 1024.0,
+                    stats.UnmanagedVertexBytes / 1024.0,
+                    stats.UnmanagedIndexBytes / 1024.0
+                );
+            }
 
             ClearBatch.AddNew(frame, -1, Materials.Clear, clearColor: ClearColor);
 
@@ -99,6 +115,36 @@ namespace LargeBufferTest {
                 (bb) => 
                     bb.Dispose()
             );
+
+            var ir = new ImperativeRenderer(
+                frame, Materials, 
+                blendState: BlendState.Opaque, 
+                depthStencilState: DepthStencilState.None, 
+                rasterizerState: RasterizerState.CullNone,
+                worldSpace: false,
+                layer: 9999
+            );
+
+            DrawPerformanceStats(ref ir);
+        }
+
+        private void DrawPerformanceStats (ref ImperativeRenderer ir) {
+            const float scale = 1f;
+            var text = PerformanceStats.GetText(this);
+
+            using (var buffer = BufferPool<BitmapDrawCall>.Allocate(text.Length)) {
+                var layout = Font.LayoutString(text, buffer, scale: scale);
+                var layoutSize = layout.Size;
+                var position = new Vector2(30f, 30f);
+                var dc = layout.DrawCalls;
+
+                ir.FillRectangle(
+                    Bounds.FromPositionAndSize(position, layoutSize),
+                    Color.Black
+                );
+                ir.Layer += 1;
+                ir.DrawMultiple(dc, position);
+            }
         }
     }
 }
