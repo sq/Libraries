@@ -24,9 +24,9 @@ namespace Squared.Threading {
     internal struct InternalWorkItem<T>
         where T : IWorkItem
     {
-        public readonly WorkQueue<T>          Queue;
-        public readonly OnWorkItemComplete<T> OnComplete;
-        public          T                     Data;
+        public WorkQueue<T>          Queue;
+        public OnWorkItemComplete<T> OnComplete;
+        public T                     Data;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal InternalWorkItem (WorkQueue<T> queue, ref T data, OnWorkItemComplete<T> onComplete) {
@@ -34,137 +34,134 @@ namespace Squared.Threading {
             Data = data;
             OnComplete = onComplete;
         }
-        
-        // TODO: Add cheap blocking wait primitive
     }
 
     public class WorkQueue<T> : IWorkQueue
         where T : IWorkItem 
     {
-        public struct Marker {
-            private readonly WorkQueue<T> Queue;
-            public readonly long Executed, Enqueued;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public Marker (WorkQueue<T> queue) {
-                Queue = queue;
-                Executed = Interlocked.Read(ref Queue.ItemsExecuted);
-                Enqueued = Interlocked.Read(ref Queue.ItemsEnqueued);
-            }
-
-            /// <summary>
-            /// Waits until all items enqueued at the marking point have been executed
-            /// </summary>
-            public void Wait () {
-                while (true) {
-                    lock (Queue.Token) {
-                        var executed = Interlocked.Read(ref Queue.ItemsExecuted);
-                        if (executed >= Enqueued)
-                            return;
-
-                        Monitor.Wait(Queue.Token);
-                    }
-                }
-            }
-        }
-
         /// <summary>
         /// Configures the number of steps taken each time this queue is visited by a worker thread.
         /// Low values increase the overhead of individual work items.
         /// High values reduce the overhead of work items but increase the odds that all worker threads can get bogged down
         ///  by a single queue.
         /// </summary>
-        public int DefaultStepCount = 128;
-
-        private readonly object Token = new object();
+        public int DefaultStepCount = 64;
 
         private readonly Queue<InternalWorkItem<T>> Queue = new Queue<InternalWorkItem<T>>();
+        private int InFlightTasks = 0;
 
-        private long ItemsEnqueued;
-        private long ItemsExecuted;
+        private readonly ManualResetEventSlim DrainComplete = new ManualResetEventSlim(false);
+        private volatile int NumWaitingForDrain = 0;
 
         public WorkQueue () {
         }
 
+        private void ManageDrain () {
+            if (NumWaitingForDrain > 0)
+                throw new Exception("Draining");
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null) {
-            Interlocked.Increment(ref ItemsEnqueued);
-            lock (Queue)
-                Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null) {
-            Interlocked.Increment(ref ItemsEnqueued);
-            lock (Queue)
-                Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void EnqueueMany (ArraySegment<T> data) {
-            Interlocked.Add(ref ItemsEnqueued, data.Count);
             lock (Queue) {
-                for (var i = 0; i < data.Count; i++)
-                    Queue.Enqueue(new InternalWorkItem<T>(this, ref data.Array[data.Offset + i], null));
+                ManageDrain();
+                Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Marker Mark () {
-            return new Marker(this);
+        public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null) {
+            lock (Queue) {
+                ManageDrain();
+                Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnqueueMany (ArraySegment<T> data) {
+            lock (Queue) {
+                ManageDrain();
+
+                var wi = new InternalWorkItem<T>();
+                wi.Queue = this;
+                wi.OnComplete = null;
+                for (var i = 0; i < data.Count; i++) {
+                    wi.Data = data.Array[data.Offset + i];
+                    Queue.Enqueue(wi);
+                }
+            }
         }
 
         public int Step (out bool exhausted, int? maximumCount = null) {
             int result = 0, count = 0;
             int actualMaximumCount = maximumCount.GetValueOrDefault(DefaultStepCount);
+            InternalWorkItem<T> item = default(InternalWorkItem<T>);
 
-            lock (Queue)
-            while (
-                ((count = Queue.Count) > 0) &&
-                (result < actualMaximumCount)
-            ) {
-                var item = Queue.Dequeue();
+            bool running = true;
+            do {
+                lock (Queue) {
+                    running = ((count = Queue.Count) > 0) &&
+                        (result < actualMaximumCount);
 
-                Monitor.Exit(Queue);
-                try {
+                    if (running) {
+                        InFlightTasks++;
+
+                        item = Queue.Dequeue();
+                    }
+                }
+
+                if (running) {
                     item.Data.Execute();
                     if (item.OnComplete != null)
                         item.OnComplete(ref item.Data);
-                } finally {
-                    Monitor.Enter(Queue);
+
+                    result++;
+
+                    lock (Queue) {
+                        InFlightTasks--;
+                        if ((Queue.Count == 0) && (InFlightTasks <= 0))
+                            DrainComplete.Set();
+                    }
                 }
+            } while (running);
 
-                result++;
-            }
-
-            if (result > 0)
-                Interlocked.Add(ref ItemsExecuted, result);
-
-            lock (Token)
-                Monitor.PulseAll(Token);
-
-            exhausted = (result > 0) && (count <= 0);
+            lock (Queue)
+                exhausted = Queue.Count == 0;
 
             return result;
         }
 
-        public void WaitUntilDrained () {
-            var done = false;
+        public void AssertEmpty () {
+            bool isEmpty = true;
 
-            while (!done) {
-                int count;
-                lock (Token) {
-                    lock (Queue)
-                        count = Queue.Count;
+            if (InFlightTasks > 0)
+                isEmpty = false;
 
-                    done = 
-                        (Interlocked.Read(ref ItemsExecuted) >= Interlocked.Read(ref ItemsEnqueued)) &&
-                        (count == 0);
+            lock (Queue) {
+                if (Queue.Count > 0)
+                    isEmpty = false;
 
-                    if (!done)                        
-                        Monitor.Wait(Token);
-                }
+                if (InFlightTasks > 0)
+                    isEmpty = false;
             }
+
+            if (!isEmpty)
+                throw new Exception("Queue is not fully drained");
+        }
+
+        public void WaitUntilDrained () {
+            var resultCount = Interlocked.Increment(ref NumWaitingForDrain);
+
+            bool doWait = false;
+            lock (Queue)
+                doWait = (Queue.Count > 0) || (InFlightTasks > 0);
+
+            if (doWait)
+                DrainComplete.Wait();
+
+            var result = Interlocked.Decrement(ref NumWaitingForDrain);
+            if (result == 0)
+                DrainComplete.Reset();
         }
     }
 }

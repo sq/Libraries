@@ -553,7 +553,7 @@ namespace Squared.Render {
             return array;
         }
         
-        public override void Prepare (PrepareManager manager) {
+        protected override void Prepare (PrepareManager manager) {
             var prior = (PrepareState)Interlocked.Exchange(ref _State, (int)PrepareState.Preparing);
             if ((prior == PrepareState.Issuing) || (prior == PrepareState.Preparing))
                 throw new ThreadStateException("This batch is currently in use");
@@ -908,7 +908,7 @@ namespace Squared.Render {
             _Group.CaptureStack(0);
         }
 
-        public override void Prepare (PrepareManager manager) {
+        protected override void Prepare (PrepareManager manager) {
             using (var b = _DrawCalls.GetBuffer(true)) {
                 var drawCalls = b.Data;
                 var count = b.Count;

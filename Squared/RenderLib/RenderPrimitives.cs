@@ -233,7 +233,7 @@ namespace Squared.Render {
             base.Add(ref item);
         }
 
-        public override void Prepare (PrepareManager manager) {
+        protected override void Prepare (PrepareManager manager) {
             _DrawCalls.Sort(_Comparer);
 
             int primCount = 0;
@@ -415,7 +415,7 @@ namespace Squared.Render {
             base.Add(ref item);
         }
 
-        public override void Prepare (PrepareManager manager) {
+        protected override void Prepare (PrepareManager manager) {
             // FIXME: Why the hell do we have to record these in Prepare and not Issue? >:|
             long primCount = 0;
 

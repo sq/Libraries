@@ -172,7 +172,7 @@ namespace Squared.Render.Tracing {
             Text = text;
         }
 
-        public override void Prepare (PrepareManager manager) {
+        protected override void Prepare (PrepareManager manager) {
         }
 
         public override void Issue(DeviceManager manager) {

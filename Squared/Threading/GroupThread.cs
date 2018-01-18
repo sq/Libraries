@@ -12,7 +12,7 @@ namespace Squared.Threading {
 
         private readonly UnorderedList<IWorkQueue> Queues = new UnorderedList<IWorkQueue>();
 
-        private const int IdleWaitDurationMs = 10;
+        private const int IdleWaitDurationMs = 100;
 
         public bool IsDisposed { get; private set; }
 

@@ -23,18 +23,6 @@ namespace Squared.Render {
     }
 
     public class RenderCoordinator : IDisposable {
-        public struct SafepointToken : IDisposable {
-            public readonly RenderCoordinator Parent;
-
-            internal SafepointToken (RenderCoordinator rc) {
-                Parent = rc;
-            }
-
-            public void Dispose () {
-                Parent.ExitSafepoint();
-            }
-        }
-
         struct DrawTask : IWorkItem {
             public readonly Action<Frame> Callback;
             public readonly Frame Frame;
@@ -236,14 +224,7 @@ namespace Squared.Render {
 
         protected void ExitSafepoint () {
             Monitor.Exit(DrawLock);
-        }
-
-        public SafepointToken Safepoint () {
-            WaitForActiveDraw();
-            Monitor.Enter(DrawLock);
-
-            return new SafepointToken(this);
-        }
+        }        
 
         private void WaitForPendingWork () {
             if (IsDisposed)
@@ -358,7 +339,6 @@ namespace Squared.Render {
         
         protected bool DoThreadedPrepare {
             get {
-                // FIXME: With the old BufferGenerator, this caused random bitmapbatch corruption
                 return _ActualEnableThreading;
             }
         }
@@ -467,7 +447,8 @@ namespace Squared.Render {
 
         protected void RenderFrameToDraw (Frame frameToDraw, bool endDraw) {
             try {
-                if (frameToDraw != null) {                    
+                if (frameToDraw != null) {
+                    Manager.PrepareManager.AssertEmpty();
                     Manager.FlushBufferGenerators(frameToDraw.Index);    
                     RenderFrame(frameToDraw, true);
                 }

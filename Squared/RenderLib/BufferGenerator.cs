@@ -94,7 +94,7 @@ namespace Squared.Render.Internal {
             private static volatile int NextId;
 
             public readonly BufferGenerator<TVertex> BufferGenerator;
-            internal bool IsValid = false;
+            internal bool IsInitialized = false;
 
             public int Id {
                 get;
@@ -132,7 +132,7 @@ namespace Squared.Render.Internal {
             }
 
             public void Uninitialize () {
-                IsValid = false;
+                IsInitialized = false;
             }
 
             IHardwareBuffer ISoftwareBuffer.HardwareBuffer {
@@ -145,7 +145,7 @@ namespace Squared.Render.Internal {
                 ArraySegment<TVertex> vertices, ArraySegment<TIndex> indices,
                 XNABufferPair<TVertex> hardwareBuffer, int hardwareVertexOffset, int hardwareIndexOffset
             ) {
-                if (IsValid)
+                if (IsInitialized)
                     throw new ThreadStateException("Software buffer already initialized.");
 
                 Vertices = vertices;
@@ -153,7 +153,7 @@ namespace Squared.Render.Internal {
                 HardwareBuffer = hardwareBuffer;
                 HardwareVertexOffset = hardwareVertexOffset;
                 HardwareIndexOffset = hardwareIndexOffset;
-                IsValid = true;
+                IsInitialized = true;
             }
 
             internal void ArraysChanged (TVertex[] newVertexArray, TIndex[] newIndexArray) {
@@ -166,7 +166,7 @@ namespace Squared.Render.Internal {
             }
 
             public override string ToString() {
-                return String.Format("<Software Buffer #{0} ({1} - {2})>", Id, IsValid ? "valid" : "invalid", HardwareBuffer);
+                return String.Format("<Software Buffer #{0} ({1} - {2})>", Id, IsInitialized ? "initialized" : "invalid", HardwareBuffer);
             }
         }
 
@@ -713,7 +713,7 @@ namespace Squared.Render.Internal {
         }
 
         public override string ToString() {
-            return String.Format("XNABufferPair<{0}> #{1}", typeof(TVertex).Name, Id);
+            return String.Format("XNABufferPair<{0}> #{1} {2}", typeof(TVertex).Name, Id, (_IsValid != 0) ? "valid" : "invalid");
         }
 
         public void Validate (int frameIndex) {

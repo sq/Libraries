@@ -176,7 +176,9 @@ namespace Squared.Render {
         public readonly DeviceManager  DeviceManager;
         public readonly Thread         MainThread;
 
-        private int _AllowCreatingNewGenerators = 1;
+        // FIXME: ????
+        private volatile int _AllowCreatingNewGenerators = 1;
+
         private int _FrameCount = 0;
         private readonly Frame _Frame;
         private bool _FrameInUse = false;
@@ -268,13 +270,14 @@ namespace Squared.Render {
         internal void SynchronousPrepareBatches (Frame frame) {
             PrepareManager.PrepareMany(frame.Batches, false);
 
-            PrepareManager.Wait();
+            PrepareManager.AssertEmpty();
         }
 
         internal void ParallelPrepareBatches (Frame frame) {
             PrepareManager.PrepareMany(frame.Batches, true);
 
             PrepareManager.Wait();
+            PrepareManager.AssertEmpty();
         }
 
         internal int PickFrameIndex () {
@@ -412,6 +415,8 @@ namespace Squared.Render {
         }
 
         internal void FlushBufferGenerators (int frameIndex) {
+            PrepareManager.Wait();
+
             _AllowCreatingNewGenerators = 0;
 
             lock (_AllBufferGenerators)
@@ -461,12 +466,14 @@ namespace Squared.Render {
 
     // Thread-safe
     public sealed class Frame : IDisposable, IBatchContainer {
-        private const int State_Initialized = 0;
-        private const int State_Preparing = 1;
-        private const int State_Prepared = 2;
-        private const int State_Drawing = 3;
-        private const int State_Drawn = 4;
-        private const int State_Disposed = 5;
+        private enum States : int {
+            Initialized = 0,
+            Preparing = 1,
+            Prepared = 2,
+            Drawing = 3,
+            Drawn = 4,
+            Disposed = 5
+        }
 
         private static readonly object PrepareLock = new object();
 
@@ -484,7 +491,7 @@ namespace Squared.Render {
 
         internal DenseList<Batch> Batches = new DenseList<Batch>();
 
-        volatile int State = State_Disposed;
+        volatile int State = (int)States.Disposed;
 
         // If you allocate a frame manually instead of using the pool, you'll need to initialize it
         //  yourself using Initialize (below).
@@ -503,11 +510,11 @@ namespace Squared.Render {
             RenderManager = renderManager;
             Index = index;
             InitialBatchCount = Batch.LifetimeCount;
-            State = State_Initialized;
+            State = (int)States.Initialized;
         }
 
         public void Add (Batch batch) {
-            if (State != State_Initialized)
+            if (State != (int)States.Initialized)
                 throw new InvalidOperationException();
 
             if (batch == null)
@@ -527,7 +534,7 @@ namespace Squared.Render {
         }
 
         public void Prepare (bool parallel) {
-            if (Interlocked.Exchange(ref State, State_Preparing) != State_Initialized)
+            if (Interlocked.Exchange(ref State, (int)States.Preparing) != (int)States.Initialized)
                 throw new InvalidOperationException("Frame was not in initialized state when prepare operation began ");
 
             if (false) {
@@ -555,12 +562,12 @@ namespace Squared.Render {
                 Monitor.Exit(PrepareLock);
             }
 
-            if (Interlocked.Exchange(ref State, State_Prepared) != State_Preparing)
+            if (Interlocked.Exchange(ref State, (int)States.Prepared) != (int)States.Preparing)
                 throw new InvalidOperationException("Frame was not in preparing state when prepare operation completed");
         }
 
         public void Draw () {
-            if (Interlocked.Exchange(ref State, State_Drawing) != State_Prepared)
+            if (Interlocked.Exchange(ref State, (int)States.Drawing) != (int)States.Prepared)
                 throw new InvalidOperationException();
 
             if (Tracing.RenderTrace.EnableTracing)
@@ -582,12 +589,12 @@ namespace Squared.Render {
             if (Tracing.RenderTrace.EnableTracing)
                 Tracing.RenderTrace.ImmediateMarker("Frame {0:0000} : End Draw", Index);
 
-            if (Interlocked.Exchange(ref State, State_Drawn) != State_Drawing)
+            if (Interlocked.Exchange(ref State, (int)States.Drawn) != (int)States.Drawing)
                 throw new InvalidOperationException();
         }
 
         public void Dispose () {
-            if (State == State_Disposed)
+            if (State == (int)States.Disposed)
                 return;
 
             var _batches = Batches.GetBuffer(false);
@@ -601,12 +608,12 @@ namespace Squared.Render {
 
             RenderManager.ReleaseFrame(this);
 
-            State = State_Disposed;
+            State = (int)States.Disposed;
         }
 
         public bool IsReleased {
             get {
-                return State == State_Disposed;
+                return State == (int)States.Disposed;
             }
         }
 
@@ -618,19 +625,25 @@ namespace Squared.Render {
     public class PrepareManager {
         public struct Task : IWorkItem {
             public readonly PrepareManager Manager;
+            public readonly bool IsAsync;
 
             public IBatch Batch;
 
-            public Task (PrepareManager manager, IBatch batch) {
+            public Task (PrepareManager manager, IBatch batch, bool isAsync) {
                 if (manager == null)
                     throw new ArgumentNullException("manager");
 
                 Manager = manager;
                 Batch = batch;
+                IsAsync = isAsync;
             }
 
             public void Execute () {
-                Batch.Prepare(Manager);
+                Execute(IsAsync);
+            }
+
+            public void Execute (bool async) {
+                Batch.Prepare(Manager, async);
             }
         };
 
@@ -644,42 +657,55 @@ namespace Squared.Render {
             Queue = threadGroup.GetQueueForType<Task>();
         }
 
-        public WorkQueue<Task>.Marker Mark () {
-            return Queue.Mark();
+        public void AssertEmpty () {
+            Queue.AssertEmpty();
         }
 
         public void Wait () {
-            Group.NotifyQueuesChanged(true);
+            Group.NotifyQueuesChanged(true);            
             Queue.WaitUntilDrained();
         }
-
+        
         public void PrepareMany<T> (DenseList<T> batches, bool async)
             where T : IBatch 
         {
             if (ForceSync.Value)
                 async = false;
 
+            int totalAdded = 0;
+
             const int blockSize = 256;
             using (var buffer = BufferPool<Task>.Allocate(blockSize)) {
-                var task = new Task(this, null);
-                for (int j = 0, c = batches.Count; j < c; j++) {
+                var task = new Task(this, null, async);
+                int j = 0, c = batches.Count;
+
+                for (j = 0; j < c; j++) {
                     var batch = batches[j];
                     if (batch == null)
                         continue;
 
                     task.Batch = batch;
-                    buffer.Data[j] = task;
 
-                    if (j == (blockSize - 1)) {
-                        Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j));
-                        j = 0;
+                    if (async) {
+                        buffer.Data[j] = task;
+                        totalAdded += 1;
+
+                        if (j == (blockSize - 1)) {
+                            Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j));
+                            j = 0;
+                        }
+                    } else {
+                        task.Execute();
                     }
                 }
 
-                Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, batches.Count));
+                if (async && (j > 0)) {
+                    Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j));
+                }
             }
 
-            Group.NotifyQueuesChanged();
+            if (async)
+                Group.NotifyQueuesChanged();
         }
 
         public void PrepareAsync (IBatch batch) {
@@ -691,7 +717,7 @@ namespace Squared.Render {
                 return;
             }
 
-            Queue.Enqueue(new Task(this, batch));
+            Queue.Enqueue(new Task(this, batch, true));
             // FIXME: Is this too often?
             Group.NotifyQueuesChanged();
         }
@@ -703,7 +729,7 @@ namespace Squared.Render {
             var wasSync = ForceSync.Value;
             try {
                 ForceSync.Value = true;
-                batch.Prepare(this);
+                batch.Prepare(this, false);
             } finally {
                 ForceSync.Value = wasSync;
             }
@@ -711,7 +737,8 @@ namespace Squared.Render {
     }
 
     public interface IBatch : IDisposable {
-        void Prepare (PrepareManager manager);
+        bool IsPrepared { get; }
+        void Prepare (PrepareManager manager, bool async);
     }
 
     public abstract class Batch : IBatch {
@@ -731,6 +758,8 @@ namespace Squared.Render {
         internal bool Released;
         internal IBatchPool Pool;
         internal bool IsCombined;
+
+        public bool IsPrepared { get; protected set; }
 
         internal UnorderedList<Batch> BatchesCombinedIntoThisOne = null;
 
@@ -781,12 +810,19 @@ namespace Squared.Render {
 
         public void CaptureStack (int extraFramesToSkip) {
             if (CaptureStackTraces)
-                StackTrace = new StackTrace(2 + extraFramesToSkip, true);
+                StackTrace = new StackTrace(2 + extraFramesToSkip, false);
         }
 
         // This is where you should do any computation necessary to prepare a batch for rendering.
         // Examples: State sorting, computing vertices.
-        public abstract void Prepare (PrepareManager manager);
+        public virtual void Prepare (PrepareManager manager, bool async) {
+            Prepare(manager);
+            IsPrepared = true;
+        }
+
+        protected virtual void Prepare (PrepareManager manager) {
+            IsPrepared = true;
+        }
 
         // This is where you send commands to the video card to render your batch.
         public virtual void Issue (DeviceManager manager) {
@@ -807,6 +843,8 @@ namespace Squared.Render {
         }
 
         public void ReleaseResources () {
+            IsPrepared = false;
+
             if (Released)
                 throw new ObjectDisposedException("Batch");
 
@@ -847,7 +885,7 @@ namespace Squared.Render {
         }
 
         public override string ToString () {
-            return string.Format("{0} #{1} material={2}", GetType().Name, Index, Material);
+            return string.Format("{0} #{1} {2} material={3}", GetType().Name, Index, IsPrepared ? "prepared" : "", Material);
         }
     }
 
@@ -1230,7 +1268,7 @@ namespace Squared.Render {
                 throw new ArgumentException("You must specify at least one of clearColor, clearZ and clearStencil.");
         }
 
-        public override void Prepare (PrepareManager manager) {
+        protected override void Prepare (PrepareManager manager) {
         }
 
         public override void Issue (DeviceManager manager) {
@@ -1272,7 +1310,7 @@ namespace Squared.Render {
             RenderTarget = renderTarget;
         }
 
-        public override void Prepare (PrepareManager manager) {
+        protected override void Prepare (PrepareManager manager) {
         }
 
         public override void Issue (DeviceManager manager) {
@@ -1315,12 +1353,14 @@ namespace Squared.Render {
         Action<DeviceManager, object> _Before, _After;
         private object _UserData;
 
-        public override void Prepare (PrepareManager manager) {
+        public override void Prepare (PrepareManager manager, bool async) {
             BatchCombiner.CombineBatches(ref _DrawCalls);
 
             _DrawCalls.Sort(Frame.BatchComparer);
 
-            manager.PrepareMany(_DrawCalls, true);
+            manager.PrepareMany(_DrawCalls, false);
+
+            IsPrepared = true;
         }
 
         public override void Issue (DeviceManager manager) {
@@ -1475,11 +1515,14 @@ namespace Squared.Render {
             } else {
 #endif
 
-                try {
-                    batch.Issue(manager);
-                } catch (Exception exc) {                
-                    throw new BatchIssueFailedException(batch, exc);
-                }
+            if (!batch.IsPrepared)
+                throw new BatchIssueFailedException(batch, new Exception("Batch not prepared"));
+
+            try {
+                batch.Issue(manager);
+            } catch (Exception exc) {                
+                throw new BatchIssueFailedException(batch, exc);
+            }
 #if DEBUG
             }
 #endif
