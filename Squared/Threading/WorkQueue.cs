@@ -39,6 +39,9 @@ namespace Squared.Threading {
     public class WorkQueue<T> : IWorkQueue
         where T : IWorkItem 
     {
+        // For debugging
+        public const bool BlockEnqueuesWhileDraining = false;
+
         /// <summary>
         /// Configures the number of steps taken each time this queue is visited by a worker thread.
         /// Low values increase the overhead of individual work items.
@@ -56,8 +59,9 @@ namespace Squared.Threading {
         public WorkQueue () {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ManageDrain () {
-            if (NumWaitingForDrain > 0)
+            if (BlockEnqueuesWhileDraining && (NumWaitingForDrain > 0))
                 throw new Exception("Draining");
         }
 
@@ -77,7 +81,6 @@ namespace Squared.Threading {
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnqueueMany (ArraySegment<T> data) {
             lock (Queue) {
                 ManageDrain();

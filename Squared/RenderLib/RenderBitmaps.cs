@@ -242,7 +242,7 @@ namespace Squared.Render {
                 }
 
                 br._DrawCalls.Clear();
-                rhs.IsCombined = true;
+                rhs.State.IsCombined = true;
                 if (CaptureStackTraces) {
                     if (lhs.BatchesCombinedIntoThisOne == null)
                         lhs.BatchesCombinedIntoThisOne = new UnorderedList<Batch>();
@@ -636,7 +636,7 @@ namespace Squared.Render {
 
             StateTransition(PrepareState.Prepared, PrepareState.Issuing);
 
-            if (IsCombined)
+            if (State.IsCombined)
                 throw new InvalidOperationException("Batch was combined into another batch");
 
             if (_BufferGenerator == null)

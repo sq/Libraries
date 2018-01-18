@@ -643,6 +643,7 @@ namespace Squared.Render {
             }
 
             public void Execute (bool async) {
+                Manager.ValidateBatch(Batch, false);
                 Batch.Prepare(Manager, async);
             }
         };
@@ -684,6 +685,7 @@ namespace Squared.Render {
                     if (batch == null)
                         continue;
 
+                    ValidateBatch(batch, async);
                     task.Batch = batch;
 
                     if (async) {
@@ -708,6 +710,23 @@ namespace Squared.Render {
                 Group.NotifyQueuesChanged();
         }
 
+        private void ValidateBatch (IBatch batch, bool enqueuing) {
+            var state = batch.State;
+            if (!state.IsInitialized)
+                throw new Exception("Uninitialized batch");
+            else if (state.IsPrepared)
+                throw new Exception("Batch already prepared");
+            else if (state.IsIssued)
+                throw new Exception("Batch already issued");
+
+            if (enqueuing) {
+                if (state.IsPrepareQueued)
+                    throw new Exception("Batch already queued for prepare");
+
+                state.IsPrepareQueued = true;
+            }
+        }
+
         public void PrepareAsync (IBatch batch) {
             if (batch == null)
                 return;
@@ -717,6 +736,8 @@ namespace Squared.Render {
                 return;
             }
 
+            ValidateBatch(batch, true);
+
             Queue.Enqueue(new Task(this, batch, true));
             // FIXME: Is this too often?
             Group.NotifyQueuesChanged();
@@ -725,6 +746,8 @@ namespace Squared.Render {
         public void PrepareSync (IBatch batch) {
             if (batch == null)
                 return;
+
+            ValidateBatch(batch, false);
 
             var wasSync = ForceSync.Value;
             try {
@@ -737,11 +760,19 @@ namespace Squared.Render {
     }
 
     public interface IBatch : IDisposable {
-        bool IsPrepared { get; }
+        Batch.PrepareState State { get; }
         void Prepare (PrepareManager manager, bool async);
     }
 
     public abstract class Batch : IBatch {
+        public class PrepareState {
+            public bool IsInitialized;
+            public bool IsPrepareQueued;
+            public bool IsPrepared;
+            public bool IsIssued;
+            public bool IsCombined;
+        }
+
         private static Dictionary<Type, int> TypeIds = new Dictionary<Type, int>(new ReferenceComparer<Type>());
 
         public static bool CaptureStackTraces = false;
@@ -757,13 +788,12 @@ namespace Squared.Render {
         internal bool ReleaseAfterDraw;
         internal bool Released;
         internal IBatchPool Pool;
-        internal bool IsCombined;
-
-        public bool IsPrepared { get; protected set; }
 
         internal UnorderedList<Batch> BatchesCombinedIntoThisOne = null;
 
         protected static long _BatchCount = 0;
+
+        public PrepareState State { get; private set; }
 
         protected Batch () {
             var thisType = GetType();
@@ -771,9 +801,14 @@ namespace Squared.Render {
                 if (!TypeIds.TryGetValue(thisType, out TypeId))
                     TypeIds.Add(thisType, TypeId = TypeIds.Count);
             }
+
+            State = new PrepareState();
         }
 
         protected void Initialize (IBatchContainer container, int layer, Material material, bool addToContainer) {
+            if (State.IsPrepareQueued)
+                throw new Exception("Batch currently queued for prepare");
+
             if ((material != null) && (material.IsDisposed))
                 throw new ObjectDisposedException("material");
 
@@ -784,9 +819,12 @@ namespace Squared.Render {
             ReleaseAfterDraw = false;
             Layer = layer;
             Material = material;
-            IsCombined = false;
 
             Index = Interlocked.Increment(ref _BatchCount);
+
+            State.IsCombined = false;
+            State.IsInitialized = true;
+            State.IsPrepared = State.IsPrepareQueued = State.IsIssued = false;
 
             if (addToContainer)
                 container.Add(this);
@@ -799,11 +837,19 @@ namespace Squared.Render {
         public void Reuse (IBatchContainer newContainer, int? newLayer = null) {
             if (Released)
                 throw new ObjectDisposedException("batch");
-            else if (IsCombined)
+            else if (State.IsCombined)
                 throw new InvalidOperationException("Batch was combined into another batch");
 
             if (newLayer.HasValue)
                 Layer = newLayer.Value;
+
+            if (!State.IsInitialized)
+                throw new Exception("Not initialized");
+
+            if (State.IsPrepareQueued)
+                throw new Exception("Batch currently queued for prepare");
+
+            State.IsPrepared = State.IsIssued = false;
 
             newContainer.Add(this);
         }
@@ -813,37 +859,47 @@ namespace Squared.Render {
                 StackTrace = new StackTrace(2 + extraFramesToSkip, false);
         }
 
+        protected void OnPrepareDone () {
+            State.IsPrepareQueued = false;
+            State.IsPrepared = true;
+        }
+
         // This is where you should do any computation necessary to prepare a batch for rendering.
         // Examples: State sorting, computing vertices.
         public virtual void Prepare (PrepareManager manager, bool async) {
             Prepare(manager);
-            IsPrepared = true;
+            OnPrepareDone();
         }
 
         protected virtual void Prepare (PrepareManager manager) {
-            IsPrepared = true;
+            OnPrepareDone();
         }
 
         // This is where you send commands to the video card to render your batch.
         public virtual void Issue (DeviceManager manager) {
             Container = null;
+            State.IsIssued = true;
         }
 
         protected virtual void OnReleaseResources () {
             if (Released)
                 return;
 
+            State.IsPrepared = false;
+            State.IsInitialized = false;
+
             Released = true;
             Pool.Release(this);
 
-            StackTrace = null;
             Container = null;
             Material = null;
-            Index = -1;
         }
 
         public void ReleaseResources () {
-            IsPrepared = false;
+            if (State.IsPrepareQueued)
+                throw new Exception("Batch currently queued for prepare");
+
+            State.IsPrepared = false;
 
             if (Released)
                 throw new ObjectDisposedException("Batch");
@@ -885,7 +941,15 @@ namespace Squared.Render {
         }
 
         public override string ToString () {
-            return string.Format("{0} #{1} {2} material={3}", GetType().Name, Index, IsPrepared ? "prepared" : "", Material);
+            var stateString = "Invalid";
+            if (State.IsIssued)
+                stateString = "Issued";
+            else if (State.IsPrepared)
+                stateString = "Prepared";
+            else if (State.IsPrepareQueued)
+                stateString = "Prepare Queued";
+
+            return string.Format("{0} #{1} {2} material={3}", GetType().Name, Index, stateString, Material);
         }
     }
 
@@ -1358,9 +1422,9 @@ namespace Squared.Render {
 
             _DrawCalls.Sort(Frame.BatchComparer);
 
-            manager.PrepareMany(_DrawCalls, false);
+            manager.PrepareMany(_DrawCalls, async);
 
-            IsPrepared = true;
+            OnPrepareDone();
         }
 
         public override void Issue (DeviceManager manager) {
@@ -1515,7 +1579,12 @@ namespace Squared.Render {
             } else {
 #endif
 
-            if (!batch.IsPrepared)
+            var state = batch.State;
+            if (!state.IsInitialized)
+                throw new BatchIssueFailedException(batch, new Exception("Batch not initialized"));
+            else if (state.IsPrepareQueued)
+                throw new BatchIssueFailedException(batch, new Exception("Batch in prepare queue"));
+            else if (!state.IsPrepared)
                 throw new BatchIssueFailedException(batch, new Exception("Batch not prepared"));
 
             try {
