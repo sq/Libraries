@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Squared.Util;
@@ -20,12 +21,14 @@ namespace Squared.Render {
             }
 
             public T Current {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
                     return Buffer.Data[Index];
                 }
             }
 
             object IEnumerator.Current {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
                     return Buffer.Data[Index];
                 }
@@ -36,6 +39,7 @@ namespace Squared.Render {
                 Index = -1;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
                 if (Index < Count) {
                     Index++;
@@ -87,10 +91,15 @@ namespace Squared.Render {
                 Items.Clear();
         }
 
-        public void CreateList (int? capacity = null) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnsureList (int? capacity = null) {
             if (Items != null)
                 return;
 
+            CreateList(capacity);
+        }
+
+        private void CreateList (int? capacity = null) {
             if (ListPool != null)
                 Items = ListPool.Allocate(capacity);
             else if (capacity.HasValue)
@@ -111,6 +120,7 @@ namespace Squared.Render {
         }
 
         public int Count {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (Items != null)
                     return Items.Count;
@@ -119,11 +129,13 @@ namespace Squared.Render {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (T item) {
             Add(ref item);
         }
 
         public T this [int index] {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (Items != null)
                     return Items.GetBuffer()[index];
@@ -143,9 +155,10 @@ namespace Squared.Render {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (ref T item) {
             if ((Items != null) || (_Count >= 4)) {
-                CreateList();
+                EnsureList();
                 Items.Add(ref item);
                 return;
             }
@@ -165,20 +178,18 @@ namespace Squared.Render {
                 case 3:
                     Item4 = item;
                     return;
-                default:
-                    throw new Exception();
             }
         }
 
         public ArraySegment<T> ReserveSpace (int count) {
             // FIXME: Slow
-            CreateList(count);
+            EnsureList(count);
             return Items.ReserveSpace(count);
         }
 
         public void RemoveRange (int index, int count) {
             // FIXME: Slow
-            CreateList();
+            EnsureList();
             Items.RemoveRange(index, count);
         }
 
@@ -200,7 +211,7 @@ namespace Squared.Render {
             var count = data.Length;
 
             if (count > 4) {
-                CreateList(count);
+                EnsureList(count);
                 Items.Clear();
                 Items.AddRange(data);
             } else {
@@ -218,7 +229,7 @@ namespace Squared.Render {
 
         public Buffer GetBuffer (bool writable) {
             if (writable)
-                CreateList();
+                EnsureList();
 
             if (Items != null)
                 return new Buffer {
