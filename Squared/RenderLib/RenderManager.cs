@@ -275,7 +275,7 @@ namespace Squared.Render {
         }
 
         internal void ParallelPrepareBatches (Frame frame) {
-            var context = new Batch.PrepareContext(PrepareManager, false, frame.BatchesToRelease);
+            var context = new Batch.PrepareContext(PrepareManager, true, frame.BatchesToRelease);
             context.PrepareMany(frame.Batches);
 
             PrepareManager.Wait();
@@ -643,14 +643,15 @@ namespace Squared.Render {
 
             public void Execute () {
                 Context.Validate(Batch, false);
-                Batch.Prepare(Context);
+                if (!Batch.State.IsCombined)
+                    Batch.Prepare(Context);
+
+                Batch.State.IsPrepareQueued = false;
             }
         };
 
         public  readonly ThreadGroup     Group;
         private readonly WorkQueue<Task> Queue;
-
-        static readonly ThreadLocal<bool> ForceSync = new ThreadLocal<bool>(() => false);
 
         public PrepareManager (ThreadGroup threadGroup) {
             Group = threadGroup;
@@ -669,9 +670,6 @@ namespace Squared.Render {
         public void PrepareMany<T> (DenseList<T> batches, Batch.PrepareContext context)
             where T : IBatch 
         {
-            if (ForceSync.Value)
-                context.Async = false;
-
             int totalAdded = 0;
 
             const int blockSize = 256;
@@ -684,7 +682,7 @@ namespace Squared.Render {
                     if (batch == null)
                         continue;
 
-                    ValidateBatch(batch, context.Async);
+                    ValidateBatch(batch, true);
                     task.Batch = batch;
 
                     if (context.Async) {
@@ -715,8 +713,10 @@ namespace Squared.Render {
             lock (state) {
                 if (!state.IsInitialized)
                     throw new Exception("Uninitialized batch");
+                /*
                 else if (state.IsCombined)
                     throw new Exception("Batch combined");
+                */
                 else if (state.IsPrepared)
                     throw new Exception("Batch already prepared");
                 else if (state.IsIssued)
@@ -731,34 +731,19 @@ namespace Squared.Render {
             }
         }
 
-        public void PrepareAsync (IBatch batch, Batch.PrepareContext context) {
+        public void Prepare (IBatch batch, Batch.PrepareContext context) {
             if (batch == null)
                 return;
-
-            if (ForceSync.Value) {
-                PrepareSync(batch, context);
-                return;
-            }
 
             ValidateBatch(batch, true);
+            var task = new Task(batch, context);
 
-            Queue.Enqueue(new Task(batch, context));
-            // FIXME: Is this too often?
-            Group.NotifyQueuesChanged();
-        }
-
-        public void PrepareSync (IBatch batch, Batch.PrepareContext context) {
-            if (batch == null)
-                return;
-
-            ValidateBatch(batch, false);
-
-            var wasSync = ForceSync.Value;
-            try {
-                ForceSync.Value = true;
-                batch.Prepare(context);
-            } finally {
-                ForceSync.Value = wasSync;
+            if (context.Async) {
+                Queue.Enqueue(task);
+                // FIXME: Is this too often?
+                Group.NotifyQueuesChanged();
+            } else {
+                task.Execute();
             }
         }
     }
@@ -782,10 +767,7 @@ namespace Squared.Render {
             }
 
             public void Prepare (IBatch batch) {
-                if (Async)
-                    Manager.PrepareAsync(batch, this);
-                else
-                    Manager.PrepareSync(batch, this);
+                Manager.Prepare(batch, this);
             }
 
             internal void InvokeBasePrepare (Batch b) {
@@ -813,7 +795,7 @@ namespace Squared.Render {
 
         private static Dictionary<Type, int> TypeIds = new Dictionary<Type, int>(new ReferenceComparer<Type>());
 
-        public static bool CaptureStackTraces = false;
+        public static bool CaptureStackTraces = true;
 
         public readonly int TypeId;
 
@@ -1637,6 +1619,9 @@ namespace Squared.Render {
             var state = batch.State;
             if (!state.IsInitialized)
                 throw new BatchIssueFailedException(batch, new Exception("Batch not initialized"));
+            else if (state.IsCombined)
+                // HACK
+                return;
             else if (state.IsPrepareQueued)
                 throw new BatchIssueFailedException(batch, new Exception("Batch in prepare queue"));
             else if (!state.IsPrepared)
