@@ -431,12 +431,10 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            if (_DrawCalls.Count == 0)
-                return;
-
             if (_BatchSetup != null)
                 _BatchSetup(manager, _UserData);
 
+            if (_DrawCalls.Count > 0)
             using (manager.ApplyMaterial(Material)) {
                 var device = manager.Device;
 

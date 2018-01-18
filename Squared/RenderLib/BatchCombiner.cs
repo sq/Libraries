@@ -35,7 +35,7 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="batches">The list of batches to perform a combination pass over.</param>
         /// <returns>The number of batches eliminated.</returns>
-        public static int CombineBatches (ref DenseList<Batch> batches) {
+        public static int CombineBatches (ref DenseList<Batch> batches, List<Batch> batchesToRelease) {
             batches.Sort(BatchTypeSorter);
 
             int i = 0, j = i + 1, l = batches.Count, eliminatedCount = 0;
@@ -82,10 +82,12 @@ namespace Squared.Render {
                             _batches[i] = combiner.Combine(a, b);
                             _batches[i].Container = a.Container;
 
-                            if ((a != _batches[i]) && (a.ReleaseAfterDraw))
-                                a.ReleaseResources();
-                            if (b.ReleaseAfterDraw)
-                                b.ReleaseResources();
+                            lock (batchesToRelease) {
+                                if ((a != _batches[i]) && (a.ReleaseAfterDraw))
+                                    batchesToRelease.Add(a);
+                                if (b.ReleaseAfterDraw)
+                                    batchesToRelease.Add(b);
+                            }
 
                             eliminatedCount += 1;
                             break;

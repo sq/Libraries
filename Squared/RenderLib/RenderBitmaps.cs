@@ -920,7 +920,7 @@ namespace Squared.Render {
             _Group.CaptureStack(0);
         }
 
-        protected override void Prepare (PrepareManager manager) {
+        public override void Prepare (PrepareContext context) {
             using (var b = _DrawCalls.GetBuffer(true)) {
                 var drawCalls = b.Data;
                 var count = b.Count;
@@ -971,7 +971,7 @@ namespace Squared.Render {
                     currentBatch.Dispose();
 
                 _Group.Dispose();
-                manager.PrepareAsync(_Group);
+                context.Prepare(_Group);
             }
         }
 
