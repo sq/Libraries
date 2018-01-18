@@ -32,6 +32,11 @@ namespace LargeBufferTest {
             Graphics.PreferredBackBufferHeight = 720;
             Content.RootDirectory = "Content";
 
+            BitmapBatch.AdjustPoolCapacities(
+                null, 1024000,
+                null, 16
+            );
+
 //            UseThreadedDraw = false;
         }
 

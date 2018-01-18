@@ -86,27 +86,27 @@ namespace Squared.Render {
         private UnorderedList<UnorderedList<T>> _Pool = new UnorderedList<UnorderedList<T>>();
         private UnorderedList<UnorderedList<T>> _LargePool = new UnorderedList<UnorderedList<T>>();
 
-        public readonly int PoolCapacity;
-        public readonly int LargePoolCapacity;
-        public readonly int InitialItemCapacity;
-        public readonly int MaxItemCapacity;
-        public readonly int MaxLargeItemCapacity;
+        public          int SmallPoolCapacity;
+        public          int LargePoolCapacity;
+        public readonly int InitialItemSize;
+        public          int SmallPoolMaxItemSize;
+        public          int LargePoolMaxItemSize;
 
-        public ListPool (int poolCapacity, int initialItemCapacity, int maxItemCapacity) {
-            PoolCapacity = poolCapacity;
-            InitialItemCapacity = initialItemCapacity;
-            MaxItemCapacity = maxItemCapacity;
+        public ListPool (int smallPoolCapacity, int initialItemSize, int maxItemSize) {
+            SmallPoolCapacity = smallPoolCapacity;
+            InitialItemSize = initialItemSize;
+            SmallPoolMaxItemSize = maxItemSize;
 
             LargePoolCapacity = 0;
-            MaxLargeItemCapacity = 0;
+            LargePoolMaxItemSize = 0;
         }
 
-        public ListPool (int poolCapacity, int largePoolCapacity, int initialItemCapacity, int maxItemCapacity, int maxLargeItemCapacity) {
-            PoolCapacity = poolCapacity;
+        public ListPool (int smallPoolCapacity, int largePoolCapacity, int initialItemSize, int maxSmallItemSize, int maxLargeItemSize) {
+            SmallPoolCapacity = smallPoolCapacity;
             LargePoolCapacity = largePoolCapacity;
-            InitialItemCapacity = initialItemCapacity;
-            MaxItemCapacity = maxItemCapacity;
-            MaxLargeItemCapacity = maxLargeItemCapacity;
+            InitialItemSize = initialItemSize;
+            SmallPoolMaxItemSize = maxSmallItemSize;
+            LargePoolMaxItemSize = maxLargeItemSize;
         }
 
         public UnorderedList<T> Allocate (int? capacity) {
@@ -115,7 +115,7 @@ namespace Squared.Render {
             if (
                 (LargePoolCapacity > 0) &&
                 capacity.HasValue && 
-                (capacity.Value > MaxItemCapacity)
+                (capacity.Value > SmallPoolMaxItemSize)
             ) {
                 lock (_LargePool)
                     _LargePool.TryPopFront(out result);
@@ -133,7 +133,7 @@ namespace Squared.Render {
             }
 
             if (result == null)
-                result = new UnorderedList<T>(capacity.GetValueOrDefault(InitialItemCapacity));
+                result = new UnorderedList<T>(capacity.GetValueOrDefault(InitialItemSize));
             else
                 result.Clear();
 
@@ -147,8 +147,8 @@ namespace Squared.Render {
             if (list == null)
                 return;
 
-            if (list.Capacity > MaxItemCapacity) {
-                if (list.Capacity < MaxLargeItemCapacity) {
+            if (list.Capacity > SmallPoolMaxItemSize) {
+                if (list.Capacity < LargePoolMaxItemSize) {
                     lock (_LargePool) {
                         if (_LargePool.Count >= LargePoolCapacity)
                             return;
@@ -168,14 +168,14 @@ namespace Squared.Render {
             }
 
             lock (_Pool) {
-                if (_Pool.Count >= PoolCapacity)
+                if (_Pool.Count >= SmallPoolCapacity)
                     return;
             }
 
             list.Clear();
 
             lock (_Pool) {
-                if (_Pool.Count >= PoolCapacity)
+                if (_Pool.Count >= SmallPoolCapacity)
                     return;
                 _Pool.Add(list);
             }

@@ -877,13 +877,15 @@ namespace Squared.Render {
 
         // This is where you send commands to the video card to render your batch.
         public virtual void Issue (DeviceManager manager) {
-            Container = null;
             State.IsIssued = true;
         }
 
         protected virtual void OnReleaseResources () {
             if (Released)
                 return;
+
+            if (State.IsPrepareQueued)
+                throw new Exception("Batch currently queued for prepare");
 
             State.IsPrepared = false;
             State.IsInitialized = false;
@@ -896,9 +898,6 @@ namespace Squared.Render {
         }
 
         public void ReleaseResources () {
-            if (State.IsPrepareQueued)
-                throw new Exception("Batch currently queued for prepare");
-
             State.IsPrepared = false;
 
             if (Released)
@@ -1118,7 +1117,7 @@ namespace Squared.Render {
 
         public ArraySegment<T> ReserveSpace (int count) {
             // FIXME: Slow
-            CreateList();
+            CreateList(count);
             return Calls.ReserveSpace(count);
         }
 
@@ -1301,6 +1300,16 @@ namespace Squared.Render {
             _DrawCalls.ListPool = _ListPool;
             _DrawCalls.Clear();
             base.Initialize(container, layer, material, addToContainer);
+        }
+
+        public static void AdjustPoolCapacities (
+            int? itemSizeLimit, int? largeItemSizeLimit,
+            int? smallPoolCapacity, int? largePoolCapacity
+        ) {
+            _ListPool.SmallPoolMaxItemSize = itemSizeLimit.GetValueOrDefault(_ListPool.SmallPoolMaxItemSize);
+            _ListPool.LargePoolMaxItemSize = largeItemSizeLimit.GetValueOrDefault(_ListPool.LargePoolMaxItemSize);
+            _ListPool.SmallPoolCapacity = smallPoolCapacity.GetValueOrDefault(_ListPool.SmallPoolCapacity);
+            _ListPool.LargePoolCapacity = largePoolCapacity.GetValueOrDefault(_ListPool.LargePoolCapacity);
         }
 
         protected void Add (T item) {

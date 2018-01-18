@@ -336,6 +336,18 @@ namespace Squared.Render {
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
         }
 
+        new public static void AdjustPoolCapacities (
+            int? smallItemSizeLimit, int? largeItemSizeLimit,
+            int? smallPoolCapacity, int? largePoolCapacity
+        ) {
+            ListBatch<BitmapDrawCall>.AdjustPoolCapacities(smallItemSizeLimit, largeItemSizeLimit, smallPoolCapacity, largePoolCapacity);
+
+            _NativePool.SmallPoolMaxItemSize = smallItemSizeLimit.GetValueOrDefault(_NativePool.SmallPoolMaxItemSize);
+            _NativePool.LargePoolMaxItemSize = largeItemSizeLimit.GetValueOrDefault(_NativePool.LargePoolMaxItemSize);
+            _NativePool.SmallPoolCapacity = smallPoolCapacity.GetValueOrDefault(_NativePool.SmallPoolCapacity);
+            _NativePool.LargePoolCapacity = largePoolCapacity.GetValueOrDefault(_NativePool.LargePoolCapacity);
+        }
+
         public static BitmapBatch New (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, bool useZBuffer = false) {
             if (container == null)
                 throw new ArgumentNullException("container");
