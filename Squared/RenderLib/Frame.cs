@@ -86,11 +86,9 @@ namespace Squared.Render {
             }
 
             var numRemoved = BatchCombiner.CombineBatches(ref Batches, BatchesToRelease);
-
-            // Batch combining may have left holes so we need to sort again to sift the holes
-            //  to the back
+            // Batch combining shuffles the batches around to group by type. Once it's done,
+            //  we need to do the final sort to preserve layer and material ordering.
             Batches.Sort(BatchComparer);
-            Batches.RemoveTail(numRemoved);
 
             if (!Monitor.TryEnter(PrepareLock, 5000)) {
                 throw new InvalidOperationException("Spent more than five seconds waiting for a previous prepare operation.");
