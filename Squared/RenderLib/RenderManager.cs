@@ -507,13 +507,13 @@ namespace Squared.Render {
         {
             int totalAdded = 0;
 
-            const int blockSize = 256;
+            const int blockSize = 128;
             using (var buffer = BufferPool<Task>.Allocate(blockSize)) {
                 var task = new Task(null, context);
                 int j = 0, c = batches.Count;
 
-                for (j = 0; j < c; j++) {
-                    var batch = batches[j];
+                for (int i = 0; i < c; i++) {
+                    var batch = batches[i];
                     if (batch == null)
                         continue;
 
@@ -521,7 +521,7 @@ namespace Squared.Render {
                     task.Batch = batch;
 
                     if (context.Async) {
-                        buffer.Data[j] = task;
+                        buffer.Data[j++] = task;
                         totalAdded += 1;
 
                         if (j == (blockSize - 1)) {
@@ -533,9 +533,8 @@ namespace Squared.Render {
                     }
                 }
 
-                if (context.Async && (j > 0)) {
+                if (context.Async && (j > 0))
                     Queue.EnqueueMany(new ArraySegment<Task>(buffer.Data, 0, j));
-                }
             }
 
             if (context.Async)
