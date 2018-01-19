@@ -13,14 +13,16 @@ namespace Squared.Render {
             private int Index;
 
             private readonly T Item1, Item2, Item3, Item4;
+            private readonly bool HasList;
             private readonly T[] Items;
             private readonly int Count;
 
             internal Enumerator (ref DenseList<T> list) {
                 Index = -1;
                 Count = list.Count;
+                HasList = list._HasList;
 
-                if (list.Items != null) {
+                if (HasList) {
                     Item1 = Item2 = Item3 = Item4 = default(T);
                     Items = list.Items.GetBuffer();
                 } else {
@@ -35,7 +37,7 @@ namespace Squared.Render {
             public T Current {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
-                    if (Items != null)
+                    if (HasList)
                         return Items[Index];
                     else switch (Index) {
                         case 0:
@@ -55,7 +57,7 @@ namespace Squared.Render {
             object IEnumerator.Current {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
-                    if (Items != null)
+                    if (HasList)
                         return Items[Index];
                     else switch (Index) {
                         case 0:
@@ -89,7 +91,7 @@ namespace Squared.Render {
             public bool TryGetNext (ref T result) {
                 var countMinus1 = Count - 1;
                 if (Index++ < countMinus1) {
-                    if (Items != null) {
+                    if (HasList) {
                         result = Items[Index];
                         return false;
                     } else switch (Index) {
@@ -147,6 +149,7 @@ namespace Squared.Render {
 
         private T Item1, Item2, Item3, Item4;
         private UnorderedList<T> Items;
+        private bool _HasList;
 
         private int _Count;
 
@@ -156,13 +159,13 @@ namespace Squared.Render {
                 Item1 = Item2 = Item3 = Item4 = default(T);
             }
 
-            if (Items != null)
+            if (_HasList)
                 Items.Clear();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureList (int? capacity = null) {
-            if (Items != null)
+            if (_HasList)
                 return;
 
             CreateList(capacity);
@@ -172,6 +175,7 @@ namespace Squared.Render {
             if (!capacity.HasValue)
                 capacity = ListCapacity;
 
+            _HasList = true;
             if (ListPool != null)
                 Items = ListPool.Allocate(capacity);
             else if (capacity.HasValue)
@@ -194,7 +198,7 @@ namespace Squared.Render {
         public int Count {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                if (Items != null)
+                if (_HasList)
                     return Items.Count;
                 else
                     return _Count;
@@ -206,8 +210,9 @@ namespace Squared.Render {
             Add(ref item);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GetItem (int index, out T result) {
-            if (Items != null)
+            if (_HasList)
                 Items.DangerousGetItem(index, out result);
             else switch (index) {
                 case 0:
@@ -227,10 +232,33 @@ namespace Squared.Render {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetItem (int index, out T result) {
+            if (_HasList)
+                return Items.DangerousTryGetItem(index, out result);
+            else switch (index) {
+                case 0:
+                    result = Item1;
+                    return true;
+                case 1:
+                    result = Item2;
+                    return true;
+                case 2:
+                    result = Item3;
+                    return true;
+                case 3:
+                    result = Item4;
+                    return true;
+                default:
+                    result = default(T);
+                    return false;
+            }
+        }
+
         public T this [int index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                if (Items != null)
+                if (_HasList)
                     return Items.DangerousGetItem(index);
 
                 switch (index) {
@@ -250,7 +278,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (ref T item) {
-            if ((Items != null) || (_Count >= 4)) {
+            if (_HasList || (_Count >= 4)) {
                 EnsureList();
                 Items.Add(ref item);
                 return;
@@ -292,8 +320,9 @@ namespace Squared.Render {
             if (count > Count)
                 throw new ArgumentException("count");
 
-            if (Items == null) {
+            if (!_HasList) {
                 _Count -= count;
+                // FIXME: Element leak
                 return;
             }
 
@@ -303,7 +332,7 @@ namespace Squared.Render {
         public void OverwriteWith (T[] data) {
             var count = data.Length;
 
-            if (count > 4) {
+            if ((count > 4) || _HasList) {
                 EnsureList(count);
                 Items.Clear();
                 Items.AddRange(data);
@@ -324,7 +353,7 @@ namespace Squared.Render {
             if (writable)
                 EnsureList();
 
-            if (Items != null)
+            if (_HasList)
                 return new Buffer {
                     IsTemporary = false,
                     Data = Items.GetBuffer(),
@@ -349,7 +378,7 @@ namespace Squared.Render {
         public void Sort<TComparer> (TComparer comparer, int[] indices = null)
             where TComparer : IRefComparer<T>
         {
-            if (Items != null) {
+            if (_HasList) {
                 if (indices != null)
                     Items.IndexedSortRef(comparer, indices);
                 else
@@ -428,6 +457,7 @@ namespace Squared.Render {
                 ListPool.Release(ref Items);
             else
                 Items = null;
+            _HasList = false;
         }
 
         public Enumerator GetEnumerator () {

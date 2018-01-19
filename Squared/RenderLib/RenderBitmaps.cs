@@ -522,9 +522,11 @@ namespace Squared.Render {
                     BitmapDrawCall call;
                     if (indices != null) {
                         var callIndex = indices[i];
-                        _DrawCalls.GetItem(callIndex, out call);
+                        if (!_DrawCalls.TryGetItem(callIndex, out call))
+                            break;
                     } else {
-                        _DrawCalls.GetItem(i, out call);
+                        if (!_DrawCalls.TryGetItem(i, out call))
+                            break;
                     }
 
                     bool texturesEqual = call.Textures.Equals(ref currentTextures);
@@ -711,7 +713,8 @@ namespace Squared.Render {
 
                 for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
                     NativeBatch nb;
-                    _NativeBatches.GetItem(n, out nb);
+                    if (!_NativeBatches.TryGetItem(n, out nb))
+                        break;
 
                     if (nb.TextureSet != currentTexture) {
                         currentTexture = nb.TextureSet;

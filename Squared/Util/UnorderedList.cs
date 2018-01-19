@@ -175,6 +175,18 @@ namespace Squared.Util {
             result = _Items[index];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool DangerousTryGetItem (int index, out T result) {
+            if ((index < 0) || (index >= _Count)) {
+                result = default(T);
+                return false;
+                throw new IndexOutOfRangeException();
+            }
+
+            result = _Items[index];
+            return true;
+        }
+
         public void DangerousRemoveAt (int index) {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();

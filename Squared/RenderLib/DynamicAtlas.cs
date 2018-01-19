@@ -176,6 +176,7 @@ namespace Squared.Render {
         private int X, Y, RowHeight;
         private object Lock = new object();
         private Action _BeforePrepare;
+        private bool _NeedClear;
         private T[] MipBuffer;
         private int MipLevelCount;
         private readonly MipGenerator<T> GenerateMip;
@@ -252,36 +253,56 @@ namespace Squared.Render {
         }
 
         public bool TryReserve (int width, int height, out Reservation result) {
-            bool needWrap = (X + width) >= (Width - 1);
+            lock (Lock) {
+                bool needWrap = (X + width) >= (Width - 1);
 
-            if (
-                ((Y + height) >= Height) ||
-                (
-                    needWrap && ((Y + RowHeight + height) >= Height)
-                )
-            ) {
-                result = default(Reservation);
-                return false;
+                if (
+                    ((Y + height) >= Height) ||
+                    (
+                        needWrap && ((Y + RowHeight + height) >= Height)
+                    )
+                ) {
+                    result = default(Reservation);
+                    return false;
+                }
+
+                if (needWrap) {
+                    Y += (RowHeight + Spacing);
+                    X = Spacing;
+                    RowHeight = 0;
+                }
+
+
+                result = new Reservation(this, X, Y, width, height);
+                X += width + Spacing;
+                RowHeight = Math.Max(RowHeight, height);
             }
 
-            if (needWrap) {
-                Y += (RowHeight + Spacing);
-                X = Spacing;
-                RowHeight = 0;
-            }
-
-            result = new Reservation(this, X, Y, width, height);
-            X += width + Spacing;
-            RowHeight = Math.Max(RowHeight, height);
+            AutoClear();
             Invalidate();
 
             return true;
         }
 
-        public void Clear () {
+        private void AutoClear () {
+            lock (Lock) {
+                if (!_NeedClear)
+                    return;
+
+                _NeedClear = false;
+            }
+
             Array.Clear(Pixels, 0, Pixels.Length);
-            X = Y = Spacing;
-            RowHeight = 0;
+        }
+
+        public void Clear (bool eraseOldPixels = true) {
+            lock (Lock) {
+                if (!_NeedClear)
+                    _NeedClear = eraseOldPixels;
+                X = Y = Spacing;
+                RowHeight = 0;
+            }
+
             Invalidate();
         }
 
