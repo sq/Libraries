@@ -41,11 +41,11 @@ namespace Squared.Render {
                         case 0:
                             return Item1;
                         case 1:
-                            return Item1;
+                            return Item2;
                         case 2:
-                            return Item1;
+                            return Item3;
                         case 3:
-                            return Item1;
+                            return Item4;
                     }
 
                     throw new InvalidOperationException("No current value");
@@ -61,11 +61,11 @@ namespace Squared.Render {
                         case 0:
                             return Item1;
                         case 1:
-                            return Item1;
+                            return Item2;
                         case 2:
-                            return Item1;
+                            return Item3;
                         case 3:
-                            return Item1;
+                            return Item4;
                     }
 
                     throw new InvalidOperationException("No current value");
@@ -206,11 +206,32 @@ namespace Squared.Render {
             Add(ref item);
         }
 
+        public void GetItem (int index, out T result) {
+            if (Items != null)
+                Items.DangerousGetItem(index, out result);
+            else switch (index) {
+                case 0:
+                    result = Item1;
+                    return;
+                case 1:
+                    result = Item2;
+                    return;
+                case 2:
+                    result = Item3;
+                    return;
+                case 3:
+                    result = Item4;
+                    return;
+                default:
+                    throw new IndexOutOfRangeException();
+            }
+        }
+
         public T this [int index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (Items != null)
-                    return Items.GetBuffer()[index];
+                    return Items.DangerousGetItem(index);
 
                 switch (index) {
                     case 0:
@@ -222,7 +243,7 @@ namespace Squared.Render {
                     case 3:
                         return Item4;
                     default:
-                        throw new Exception();
+                        throw new IndexOutOfRangeException();
                 }
             }
         }
@@ -262,7 +283,7 @@ namespace Squared.Render {
         public void RemoveRange (int index, int count) {
             // FIXME: Slow
             EnsureList();
-            Items.RemoveRange(index, count);
+            Items.DangerousRemoveRange(index, count);
         }
 
         public void RemoveTail (int count) {
@@ -276,7 +297,7 @@ namespace Squared.Render {
                 return;
             }
 
-            Items.RemoveRange(Items.Count - count, count);
+            Items.DangerousRemoveRange(Items.Count - count, count);
         }
 
         public void OverwriteWith (T[] data) {
@@ -326,13 +347,13 @@ namespace Squared.Render {
         }
 
         public void Sort<TComparer> (TComparer comparer, int[] indices = null)
-            where TComparer : IComparer<T>
+            where TComparer : IRefComparer<T>
         {
             if (Items != null) {
                 if (indices != null)
-                    Items.IndexedSort(comparer, indices);
+                    Items.IndexedSortRef(comparer, indices);
                 else
-                    Items.FastCLRSort(comparer);
+                    Items.FastCLRSortRef(comparer);
 
                 return;
             }
@@ -341,7 +362,7 @@ namespace Squared.Render {
                 return;
 
             T a, b;
-            if (comparer.Compare(Item1, Item2) <= 0) {
+            if (comparer.Compare(ref Item1, ref Item2) <= 0) {
                 a = Item1; b = Item2;
             } else {
                 a = Item2; b = Item1;
@@ -352,10 +373,10 @@ namespace Squared.Render {
                 Item2 = b;
                 return;
             } else if (_Count == 3) {
-                if (comparer.Compare(b, Item3) <= 0) {
+                if (comparer.Compare(ref b, ref Item3) <= 0) {
                     Item1 = a;
                     Item2 = b;
-                } else if (comparer.Compare(a, Item3) <= 0) {
+                } else if (comparer.Compare(ref a, ref Item3) <= 0) {
                     Item1 = a;
                     Item2 = Item3;
                     Item3 = b;
@@ -366,14 +387,14 @@ namespace Squared.Render {
                 }
             } else {
                 T c, d;
-                if (comparer.Compare(Item3, Item4) <= 0) {
+                if (comparer.Compare(ref Item3, ref Item4) <= 0) {
                     c = Item3; d = Item4;
                 } else {
                     c = Item4; d = Item3;
                 }
 
                 T m1;
-                if (comparer.Compare(a, c) <= 0) {
+                if (comparer.Compare(ref a, ref c) <= 0) {
                     Item1 = a;
                     m1 = c;
                 } else {
@@ -382,7 +403,7 @@ namespace Squared.Render {
                 }
 
                 T m2;
-                if (comparer.Compare(b, d) >= 0) {
+                if (comparer.Compare(ref b, ref d) >= 0) {
                     Item4 = b;
                     m2 = d;
                 } else {
@@ -390,7 +411,7 @@ namespace Squared.Render {
                     m2 = b;
                 }
 
-                if (comparer.Compare(m1, m2) <= 0) {
+                if (comparer.Compare(ref m1, ref m2) <= 0) {
                     Item2 = m1;
                     Item3 = m2;
                 } else {

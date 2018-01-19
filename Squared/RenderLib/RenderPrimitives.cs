@@ -254,8 +254,9 @@ namespace Squared.Render {
             using (manager.ApplyMaterial(Material)) {
                 var device = manager.Device;
 
+                PrimitiveDrawCall<T> call;
                 for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
-                    var call = _DrawCalls[i];
+                    _DrawCalls.GetItem(i, out call);
 
                     if (call.BeforeDraw != null)
                         call.BeforeDraw(manager, call.UserData);
@@ -321,11 +322,11 @@ namespace Squared.Render {
         }
     }
 
-    public sealed class PrimitiveDrawCallComparer<T> : IComparer<PrimitiveDrawCall<T>>
+    public sealed class PrimitiveDrawCallComparer<T> : IRefComparer<PrimitiveDrawCall<T>>, IComparer<PrimitiveDrawCall<T>>
         where T : struct
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int Compare (PrimitiveDrawCall<T> x, PrimitiveDrawCall<T> y) {
+        public int Compare (ref PrimitiveDrawCall<T> x, ref PrimitiveDrawCall<T> y) {
             // FIXME: Tags?
             var result = (x.SortKey.Order > y.SortKey.Order)
                 ? 1
@@ -335,6 +336,11 @@ namespace Squared.Render {
                     : 0
                 );
             return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare (PrimitiveDrawCall<T> x, PrimitiveDrawCall<T> y) {
+            return Compare(ref x, ref y);
         }
     }
 
@@ -419,8 +425,9 @@ namespace Squared.Render {
             // FIXME: Why the hell do we have to record these in Prepare and not Issue? >:|
             long primCount = 0;
 
+            NativeDrawCall call;
             for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
-                var call = _DrawCalls[i];
+                _DrawCalls.GetItem(i, out call);
                 if (call.InstanceCount.HasValue)
                     primCount += call.PrimitiveCount * call.InstanceCount.Value;
                 else
@@ -438,8 +445,9 @@ namespace Squared.Render {
             using (manager.ApplyMaterial(Material)) {
                 var device = manager.Device;
 
+                NativeDrawCall call;
                 for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
-                    var call = _DrawCalls[i];
+                    _DrawCalls.GetItem(i, out call);
 
                     if (call.InstanceCount.HasValue) {
                         if (call.VertexBuffer3 != null) {

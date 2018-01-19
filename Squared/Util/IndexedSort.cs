@@ -28,7 +28,7 @@ using System.Runtime.CompilerServices;
 
 namespace Squared.Util {
     public struct IndexedSorter<TElement, TComparer>
-        where TComparer : IComparer<TElement>
+        where TComparer : IRefComparer<TElement>
     {
         internal const int IntrosortSizeThreshold = 16;
         internal const int QuickSortDepthThreshold = 32;
@@ -47,7 +47,7 @@ namespace Squared.Util {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal int Compare (int i, int j) {
             int a = Indices[i], b = Indices[j];
-            return Comparer.Compare(Items[a], Items[b]);
+            return Comparer.Compare(ref Items[a], ref Items[b]);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -139,8 +139,8 @@ namespace Squared.Util {
             int left = lo, right = hi - 1;  // We already partitioned lo and hi and put the pivot in hi - 1.  And we pre-increment & decrement below.
                 
             while (left < right) {
-                while (Comparer.Compare(Items[Indices[++left]], pivot) < 0) ;
-                while (Comparer.Compare(pivot, Items[Indices[--right]]) < 0) ;
+                while (Comparer.Compare(ref Items[Indices[++left]], ref pivot) < 0) ;
+                while (Comparer.Compare(ref pivot, ref Items[Indices[--right]]) < 0) ;
 
                 if (left >= right)
                     break;
@@ -196,7 +196,7 @@ namespace Squared.Util {
                 tIndex = i + 1;
                 t = Indices[tIndex];
 
-                while (j >= lo && Comparer.Compare(Items[t], Items[Indices[j]]) < 0)
+                while (j >= lo && Comparer.Compare(ref Items[t], ref Items[Indices[j]]) < 0)
                 {
                     Indices[j + 1] = Indices[j];
                     Indices[j + 1] = Indices[j];

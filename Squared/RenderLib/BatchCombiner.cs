@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Squared.Util;
 
@@ -10,8 +11,9 @@ namespace Squared.Render {
         Batch Combine (Batch lhs, Batch rhs);
     }
 
-    public class BatchTypeSorter : IComparer<Batch> {
-        public int Compare (Batch x, Batch y) {
+    public class BatchTypeSorter : IRefComparer<Batch>, IComparer<Batch> {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare (ref Batch x, ref Batch y) {
             if (x == null)
                 return (x == y) ? 0 : -1;
             else if (y == null)
@@ -23,10 +25,15 @@ namespace Squared.Render {
             else
                 return typeResult;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare (Batch x, Batch y) {
+            return Compare(ref x, ref y);
+        }
     }
 
     public static class BatchCombiner {
-        public static readonly IComparer<Batch> BatchTypeSorter = new BatchTypeSorter();
+        public static readonly IRefComparer<Batch> BatchTypeSorter = new BatchTypeSorter();
         public static readonly List<IBatchCombiner> Combiners = new List<IBatchCombiner>();
 
         /// <summary>

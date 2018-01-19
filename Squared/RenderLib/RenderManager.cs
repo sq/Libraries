@@ -16,6 +16,7 @@ using Microsoft.Xna.Framework;
 using Squared.Render.Internal;
 using Squared.Threading;
 using System.Collections;
+using System.Runtime.CompilerServices;
 
 namespace Squared.Render {
     public static class RenderExtensionMethods {
@@ -439,8 +440,9 @@ namespace Squared.Render {
         }
     }
 
-    public sealed class BatchComparer : IComparer<Batch> {
-        public int Compare (Batch x, Batch y) {
+    public sealed class BatchComparer : IRefComparer<Batch>, IComparer<Batch> {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare (ref Batch x, ref Batch y) {
             if (x == null) {
                 if (y == null)
                     return 0;
@@ -463,6 +465,11 @@ namespace Squared.Render {
             }
 
             return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare (Batch x, Batch y) {
+            return Compare(ref x, ref y);
         }
     }
 
@@ -512,8 +519,9 @@ namespace Squared.Render {
                 var task = new Task(null, context);
                 int j = 0, c = batches.Count;
 
+                T batch;
                 for (int i = 0; i < c; i++) {
-                    var batch = batches[i];
+                    batches.GetItem(i, out batch);
                     if (batch == null)
                         continue;
 

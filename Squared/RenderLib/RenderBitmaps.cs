@@ -86,11 +86,11 @@ namespace Squared.Render {
         }
     }
 
-    public sealed class BitmapDrawCallSorterComparer : IComparer<BitmapDrawCall> {
+    public sealed class BitmapDrawCallSorterComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
         public Sorter<BitmapDrawCall>.SorterComparer Comparer;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
+        public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             var result = Comparer.Compare(x, y);
 
             if (result == 0) {
@@ -105,11 +105,16 @@ namespace Squared.Render {
 
             return result;
         }
-    }
 
-    public sealed class BitmapDrawCallOrderAndTextureComparer : IComparer<BitmapDrawCall> {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
+            return Compare(ref x, ref y);
+        }
+    }
+
+    public sealed class BitmapDrawCallOrderAndTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             var result = (x.SortKey.Order > y.SortKey.Order)
                 ? 1
                 : (
@@ -127,11 +132,16 @@ namespace Squared.Render {
                 );
             return result;
         }
-    }
 
-    public sealed class BitmapDrawCallTextureComparer : IComparer<BitmapDrawCall> {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
+            return Compare(ref x, ref y);
+        }
+    }
+
+    public sealed class BitmapDrawCallTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             return (x.Textures.HashCode > y.Textures.HashCode)
                 ? 1
                 : (
@@ -139,6 +149,11 @@ namespace Squared.Render {
                     ? -1
                     : 0
                 );
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
+            return Compare(ref x, ref y);
         }
     }
 
@@ -487,7 +502,6 @@ namespace Squared.Render {
             int vertexWritePosition = 0;
 
             TextureSet currentTextures = new TextureSet();
-            BitmapVertex vertex = new BitmapVertex();
 
             var remainingDrawCalls = (count - drawCallsPrepared);
             var remainingVertices = remainingDrawCalls;
@@ -508,18 +522,18 @@ namespace Squared.Render {
                     BitmapDrawCall call;
                     if (indices != null) {
                         var callIndex = indices[i];
-                        call = _DrawCalls[callIndex];
+                        _DrawCalls.GetItem(callIndex, out call);
                     } else {
-                        call = _DrawCalls[i];
+                        _DrawCalls.GetItem(i, out call);
                     }
-
-                    if (!call.IsValid)
-                        throw new InvalidDataException("Invalid draw call");
 
                     bool texturesEqual = call.Textures.Equals(ref currentTextures);
 
                     if (!texturesEqual) {
                         if (vertCount > 0) {
+                            if ((currentTextures.Texture1 == null) || currentTextures.Texture1.IsDisposed)
+                                throw new InvalidDataException("Invalid draw call(s)");
+
                             _NativeBatches.Add(new NativeBatch(
                                 softwareBuffer, currentTextures,
                                 vertOffset,
@@ -533,18 +547,20 @@ namespace Squared.Render {
                         currentTextures = call.Textures;
                     }
 
-                    vertex.Position.X = call.Position.X;
-                    vertex.Position.Y = call.Position.Y;
-                    vertex.Position.Z = call.SortKey.Order * zBufferFactor;
-                    var tr = call.TextureRegion;
-                    vertex.TextureTopLeft = tr.TopLeft;
-                    vertex.TextureBottomRight = tr.BottomRight;
-                    vertex.MultiplyColor = call.MultiplyColor;
-                    vertex.AddColor = call.AddColor;
-                    vertex.Scale = call.Scale;
-                    vertex.Origin = call.Origin;
-                    vertex.Rotation = call.Rotation;
-                    pVertices[vertexWritePosition] = vertex;
+                    pVertices[vertexWritePosition] = new BitmapVertex {
+                        Position = {
+                            X = call.Position.X,
+                            Y = call.Position.Y,
+                            Z = call.SortKey.Order * zBufferFactor
+                        },
+                        TextureTopLeft = call.TextureRegion.TopLeft,
+                        TextureBottomRight = call.TextureRegion.BottomRight,
+                        MultiplyColor = call.MultiplyColor,
+                        AddColor = call.AddColor,
+                        Scale = call.Scale,
+                        Origin = call.Origin,
+                        Rotation = call.Rotation
+                    };
 
                     vertexWritePosition += 1;
                     totalVertCount += 1;
@@ -557,12 +573,16 @@ namespace Squared.Render {
             if (vertexWritePosition > softwareBuffer.Vertices.Count)
                 throw new InvalidOperationException("Wrote too many vertices");
 
-            if (vertCount > 0)
+            if (vertCount > 0) {
+                if ((currentTextures.Texture1 == null) || currentTextures.Texture1.IsDisposed)
+                    throw new InvalidDataException("Invalid draw call(s)");
+
                 _NativeBatches.Add(new NativeBatch(
                     softwareBuffer, currentTextures,
                     vertOffset,
                     vertCount
                 ));
+            }
         }
 
         private int[] GetIndexArray (int minimumSize) {
@@ -690,7 +710,8 @@ namespace Squared.Render {
                 var paramTexture2 = m.Effect.Parameters["SecondTexture"];
 
                 for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
-                    var nb = _NativeBatches[n];
+                    NativeBatch nb;
+                    _NativeBatches.GetItem(n, out nb);
 
                     if (nb.TextureSet != currentTexture) {
                         currentTexture = nb.TextureSet;

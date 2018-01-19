@@ -17,6 +17,7 @@ namespace Squared.Util {
             UnorderedList<T> _List;
             int _Index, _Offset, _Count;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal Enumerator (UnorderedList<T> list, int start, int count) {
                 _List = list;
                 _Index = -1;
@@ -25,6 +26,7 @@ namespace Squared.Util {
             }
 
             public T Current {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get { return _List._Items[_Index + _Offset]; }
             }
 
@@ -35,10 +37,12 @@ namespace Squared.Util {
                 get { return _List._Items[_Index + _Offset]; }
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void SetCurrent (ref T newValue) {
                 _List._Items[_Index + _Offset] = newValue;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool GetNext (out T nextItem) {
                 _Index += 1;
 
@@ -51,6 +55,7 @@ namespace Squared.Util {
                 }
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
                 _Index += 1;
                 return (_Index < _Count);
@@ -61,7 +66,7 @@ namespace Squared.Util {
             }
 
             public void RemoveCurrent () {
-                _List.RemoveAt(_Index + _Offset);
+                _List.DangerousRemoveAt(_Index + _Offset);
                 _Count -= 1;
                 _Index -= 1;
             }
@@ -89,26 +94,34 @@ namespace Squared.Util {
             return new Enumerator(this, start, Math.Min(_Count - start, partitionSize));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator () {
             return new Enumerator(this, 0, _Count);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         IEnumerator<T> IEnumerable<T>.GetEnumerator () {
             return new Enumerator(this, 0, _Count);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         IEnumerator IEnumerable.GetEnumerator () {
             return new Enumerator(this, 0, _Count);
         }
 
+        private void Grow (int targetCapacity) {
+            var newCapacity = 1 << (int)Math.Ceiling(Math.Log(targetCapacity, 2));
+            var oldItems = _Items;
+            _Items = new T[newCapacity];
+            Array.Copy(oldItems, _Items, _Count);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureCapacity (int capacity) {
             if (_Items.Length >= capacity)
                 return;
 
-            var newCapacity = 1 << (int)Math.Ceiling(Math.Log(capacity, 2));
-            var oldItems = _Items;
-            _Items = new T[newCapacity];
-            Array.Copy(oldItems, _Items, _Count);
+            Grow(capacity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -146,8 +159,23 @@ namespace Squared.Util {
             return (index >= 0);
         }
 
-        // FIXME: These really shouldn't be here
-        public void RemoveAt (int index) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T DangerousGetItem (int index) {
+            if ((index < 0) || (index >= _Count))
+                throw new IndexOutOfRangeException();
+
+            return _Items[index];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void DangerousGetItem (int index, out T result) {
+            if ((index < 0) || (index >= _Count))
+                throw new IndexOutOfRangeException();
+
+            result = _Items[index];
+        }
+
+        public void DangerousRemoveAt (int index) {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();
 
@@ -163,7 +191,7 @@ namespace Squared.Util {
             _Count = newCount;
         }
 
-        public void RemoveRange (int index, int count) {
+        public void DangerousRemoveRange (int index, int count) {
             if (count <= 0)
                 return;
             if ((index < 0) || (index >= _Count))
@@ -188,7 +216,7 @@ namespace Squared.Util {
             }
 
             result = _Items[0];
-            RemoveAt(0);
+            DangerousRemoveAt(0);
             return true;
         }
 
@@ -200,6 +228,7 @@ namespace Squared.Util {
         }
 
         public int Capacity {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return _Items.Length;
             }
@@ -210,6 +239,7 @@ namespace Squared.Util {
             _Count = 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T[] GetBuffer () {
             return _Items;
         }
@@ -241,6 +271,18 @@ namespace Squared.Util {
             where TComparer : IComparer<T>
         {
             Util.Sort.IndexedSort(_Items, indices, comparer, 0, _Count);
+        }
+
+        public void FastCLRSortRef<TComparer> (TComparer comparer)
+            where TComparer : IRefComparer<T>
+        {
+            Util.Sort.FastCLRSortRef(_Items, comparer, 0, _Count);
+        }
+
+        public void IndexedSortRef<TComparer> (TComparer comparer, int[] indices)
+            where TComparer : IRefComparer<T>
+        {
+            Util.Sort.IndexedSortRef(_Items, indices, comparer, 0, _Count);
         }
 
         public ArraySegment<T> ReserveSpace (int count) {

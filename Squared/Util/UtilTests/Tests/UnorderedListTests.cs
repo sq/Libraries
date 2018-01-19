@@ -28,13 +28,13 @@ namespace Squared.Util {
         public void RemoveAt () {
             var l = new UnorderedList<int>(new int[] { 1, 2, 3, 4, 5 });
 
-            l.RemoveAt(1);
+            l.DangerousRemoveAt(1);
             Assert.AreEqual(
                 new int[] { 1, 5, 3, 4 },
                 l.ToArray()
             );
 
-            l.RemoveAt(2);
+            l.DangerousRemoveAt(2);
             Assert.AreEqual(
                 new int[] { 1, 5, 4 },
                 l.ToArray()
