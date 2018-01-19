@@ -170,6 +170,8 @@ namespace Squared.Render.Tracing {
         public MarkerBatch (int layer, string text) {
             Layer = layer;
             Text = text;
+
+            State.IsInitialized = true;
         }
 
         protected override void Prepare (PrepareManager manager) {
