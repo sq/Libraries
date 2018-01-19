@@ -10,32 +10,69 @@ using Squared.Util;
 namespace Squared.Render {
     public struct DenseList<T> : IDisposable, IEnumerable<T> {
         public struct Enumerator : IEnumerator<T> {
-            private Buffer Buffer;
             private int Index;
-            private int Count;
 
-            internal Enumerator (Buffer buffer) {
-                Buffer = buffer;
+            private readonly T Item1, Item2, Item3, Item4;
+            private readonly T[] Items;
+            private readonly int Count;
+
+            internal Enumerator (ref DenseList<T> list) {
                 Index = -1;
-                Count = buffer.Count;
-            }
+                Count = list.Count;
+
+                if (list.Items != null) {
+                    Item1 = Item2 = Item3 = Item4 = default(T);
+                    Items = list.Items.GetBuffer();
+                } else {
+                    Item1 = list.Item1;
+                    Item2 = list.Item2;
+                    Item3 = list.Item3;
+                    Item4 = list.Item4;
+                    Items = null;
+                }
+            }            
 
             public T Current {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
-                    return Buffer.Data[Index];
+                    if (Items != null)
+                        return Items[Index];
+                    else switch (Index) {
+                        case 0:
+                            return Item1;
+                        case 1:
+                            return Item1;
+                        case 2:
+                            return Item1;
+                        case 3:
+                            return Item1;
+                    }
+
+                    throw new InvalidOperationException("No current value");
                 }
             }
 
             object IEnumerator.Current {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
-                    return Buffer.Data[Index];
+                    if (Items != null)
+                        return Items[Index];
+                    else switch (Index) {
+                        case 0:
+                            return Item1;
+                        case 1:
+                            return Item1;
+                        case 2:
+                            return Item1;
+                        case 3:
+                            return Item1;
+                    }
+
+                    throw new InvalidOperationException("No current value");
                 }
             }
 
             public void Dispose () {
-                Buffer.Dispose();
                 Index = -1;
             }
 
@@ -45,6 +82,34 @@ namespace Squared.Render {
                     Index++;
                     return Index < Count;
                 }
+                return false;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool TryGetNext (ref T result) {
+                var countMinus1 = Count - 1;
+                if (Index++ < countMinus1) {
+                    if (Items != null) {
+                        result = Items[Index];
+                        return false;
+                    } else switch (Index) {
+                        case 0:
+                            result = Item1;
+                            return true;
+                        case 1:
+                            result = Item2;
+                            return true;
+                        case 2:
+                            result = Item3;
+                            return true;
+                        case 3:
+                            result = Item4;
+                            return true;
+                        default:
+                            return false;
+                    }
+                }
+
                 return false;
             }
 
@@ -78,6 +143,7 @@ namespace Squared.Render {
         }
 
         public ListPool<T> ListPool;
+        public int? ListCapacity;
 
         private T Item1, Item2, Item3, Item4;
         private UnorderedList<T> Items;
@@ -85,8 +151,11 @@ namespace Squared.Render {
         private int _Count;
 
         public void Clear () {
-            _Count = 0;
-            Item1 = Item2 = Item3 = Item4 = default(T);
+            if (_Count != 0) {
+                _Count = 0;
+                Item1 = Item2 = Item3 = Item4 = default(T);
+            }
+
             if (Items != null)
                 Items.Clear();
         }
@@ -100,6 +169,9 @@ namespace Squared.Render {
         }
 
         private void CreateList (int? capacity = null) {
+            if (!capacity.HasValue)
+                capacity = ListCapacity;
+
             if (ListPool != null)
                 Items = ListPool.Allocate(capacity);
             else if (capacity.HasValue)
@@ -337,16 +409,16 @@ namespace Squared.Render {
                 Items = null;
         }
 
-        Enumerator GetEnumerator () {
-            return new Enumerator(GetBuffer(false));
+        public Enumerator GetEnumerator () {
+            return new Enumerator(ref this);
         }
 
         IEnumerator<T> IEnumerable<T>.GetEnumerator () {
-            return new Enumerator(GetBuffer(false));
+            return new Enumerator(ref this);
         }
 
         IEnumerator IEnumerable.GetEnumerator () {
-            return new Enumerator(GetBuffer(false));
+            return new Enumerator(ref this);
         }
     }
 }

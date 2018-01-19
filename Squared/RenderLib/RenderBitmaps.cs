@@ -258,15 +258,23 @@ namespace Squared.Render {
             public readonly ISoftwareBuffer SoftwareBuffer;
             public readonly TextureSet TextureSet;
 
+            public readonly Vector2 Texture1Size, Texture1HalfTexel;
+
             public readonly int LocalVertexOffset;
             public readonly int VertexCount;
 
-            public NativeBatch (ISoftwareBuffer softwareBuffer, TextureSet textureSet, int localVertexOffset, int vertexCount) {
+            public NativeBatch (
+                ISoftwareBuffer softwareBuffer, TextureSet textureSet, 
+                int localVertexOffset, int vertexCount
+            ) {
                 SoftwareBuffer = softwareBuffer;
                 TextureSet = textureSet;
 
                 LocalVertexOffset = localVertexOffset;
                 VertexCount = vertexCount;
+
+                Texture1Size = new Vector2(textureSet.Texture1.Width, textureSet.Texture1.Height);
+                Texture1HalfTexel = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
             }
         }
 
@@ -305,7 +313,7 @@ namespace Squared.Render {
         private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
             320, 4, 64, 256, 1024
         );
-        private UnorderedList<NativeBatch> _NativeBatches = null;
+        private DenseList<NativeBatch> _NativeBatches;
 
         private enum PrepareState : int {
             Invalid,
@@ -470,7 +478,9 @@ namespace Squared.Render {
             }
         }
 
-        private unsafe void FillOneSoftwareBuffer (BitmapDrawCall[] drawCalls, int[] indices, ref int drawCallsPrepared, int count) {
+        private unsafe void FillOneSoftwareBuffer (
+            int[] indices, ref int drawCallsPrepared, int count
+        ) {
             int totalVertCount = 0;
             int vertCount = 0, vertOffset = 0;
             int nativeBatchSizeLimit = NativeBatchSize;
@@ -498,9 +508,9 @@ namespace Squared.Render {
                     BitmapDrawCall call;
                     if (indices != null) {
                         var callIndex = indices[i];
-                        call = drawCalls[callIndex];
+                        call = _DrawCalls[callIndex];
                     } else {
-                        call = drawCalls[i];
+                        call = _DrawCalls[i];
                     }
 
                     if (!call.IsValid)
@@ -577,14 +587,14 @@ namespace Squared.Render {
 
             Squared.Render.NativeBatch.RecordPrimitives(_DrawCalls.Count * 2);
 
-            if (_NativeBatches == null) {
-                // If the batch contains a lot of draw calls, try to make sure we allocate our native batch from the large pool.
-                int? nativeBatchCapacity = null;
-                if (_DrawCalls.Count >= BatchCapacityLimit)
-                    nativeBatchCapacity = Math.Min(NativeBatchCapacityLimit + 2, _DrawCalls.Count / 8);
+            // If the batch contains a lot of draw calls, try to make sure we allocate our native batch from the large pool.
+            int? nativeBatchCapacity = null;
+            if (_DrawCalls.Count >= BatchCapacityLimit)
+                nativeBatchCapacity = Math.Min(NativeBatchCapacityLimit + 2, _DrawCalls.Count / 8);
 
-                _NativeBatches = _NativePool.Allocate(nativeBatchCapacity);
-            }
+            _NativeBatches.Clear();
+            _NativeBatches.ListPool = _NativePool;
+            _NativeBatches.ListCapacity = nativeBatchCapacity;
 
             var count = _DrawCalls.Count;
             int[] indexArray = null;
@@ -612,11 +622,9 @@ namespace Squared.Render {
 
             CreateCornerBuffer();
 
-            var _drawCalls = _DrawCalls.GetBuffer(true);
             int drawCallsPrepared = 0;
-
             while (drawCallsPrepared < count)
-                FillOneSoftwareBuffer(_drawCalls.Data, indexArray, ref drawCallsPrepared, count);
+                FillOneSoftwareBuffer(indexArray, ref drawCallsPrepared, count);
 
             StateTransition(PrepareState.Preparing, PrepareState.Prepared);
         }
@@ -667,6 +675,8 @@ namespace Squared.Render {
             var cornerHwb = _CornerBuffer.HardwareBuffer;
             cornerHwb.SetActive();
             cornerHwb.GetBuffers(out cornerVb, out cornerIb);
+            if (device.Indices != cornerIb)
+                device.Indices = cornerIb;
 
             var scratchBindings = _ScratchBindingArray.Value;
 
@@ -679,7 +689,9 @@ namespace Squared.Render {
                 var paramTexture1 = m.Effect.Parameters["BitmapTexture"];
                 var paramTexture2 = m.Effect.Parameters["SecondTexture"];
 
-                foreach (var nb in _NativeBatches) {
+                for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
+                    var nb = _NativeBatches[n];
+
                     if (nb.TextureSet != currentTexture) {
                         currentTexture = nb.TextureSet;
                         var tex1 = currentTexture.Texture1;
@@ -695,9 +707,8 @@ namespace Squared.Render {
                             paramTexture2.SetValue(currentTexture.Texture2);
                         }
 
-                        var vSize = new Vector2(tex1.Width, tex1.Height);
-                        paramSize.SetValue(vSize);
-                        paramHalfTexel.SetValue(new Vector2(1.0f / vSize.X, 1.0f / vSize.Y) * 0.5f);
+                        paramSize.SetValue(nb.Texture1Size);
+                        paramHalfTexel.SetValue(nb.Texture1HalfTexel);
 
                         manager.CurrentMaterial.Flush();
                     }
@@ -724,7 +735,6 @@ namespace Squared.Render {
                     scratchBindings[1] = new VertexBufferBinding(vb, swb.HardwareVertexOffset + nb.LocalVertexOffset, 1);
 
                     device.SetVertexBuffers(scratchBindings);
-                    device.Indices = cornerIb;
                     device.DrawInstancedPrimitives(
                         PrimitiveType.TriangleList, 
                         0, _CornerBuffer.HardwareVertexOffset, 4, 
@@ -752,7 +762,7 @@ namespace Squared.Render {
             _BufferGenerator = null;
             _CornerBuffer = null;
 
-            _NativePool.Release(ref _NativeBatches);
+            _NativeBatches.Dispose();
 
             base.OnReleaseResources();
         }
