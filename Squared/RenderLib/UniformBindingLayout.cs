@@ -97,6 +97,8 @@ namespace Squared.Render {
                 sourceOffset += Marshal.OffsetOf(type, field.Name).ToInt32();
                 // FIXME: Arrays
                 var valueSize = Marshal.SizeOf(field.FieldType);
+                if (valueSize != desc.SizeBytes)
+                    throw new Exception("Field size mismatch");
 
                 switch (desc.Class) {
                     case D3DXPARAMETER_CLASS.MATRIX_COLUMNS:
