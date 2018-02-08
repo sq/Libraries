@@ -122,7 +122,11 @@ namespace Squared.Render {
         public Material ScreenSpaceBitmapWithDiscard, WorldSpaceBitmapWithDiscard;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
-        public Material ScreenSpaceLightmappedBitmapToSRGB, WorldSpaceLightmappedBitmapToSRGB;
+        /// <summary>
+        /// Make sure to resolve your lightmap to sRGB before using it with this, otherwise your lighting
+        ///  will have really terrible banding in dark areas.
+        /// </summary>
+        public Material ScreenSpaceLightmappedsRGBBitmap, WorldSpaceLightmappedsRGBBitmap;
         public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
         public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
         public Material Clear;
@@ -221,14 +225,14 @@ namespace Squared.Render {
                 "WorldSpaceLightmappedBitmap"
             );
 
-            ScreenSpaceLightmappedBitmapToSRGB = new Material(
+            ScreenSpaceLightmappedsRGBBitmap = new Material(
                 lightmapShader,
-                "ScreenSpaceLightmappedBitmapToSRGB"
+                "ScreenSpaceLightmappedsRGBBitmap"
             );
 
-            WorldSpaceLightmappedBitmapToSRGB = new Material(
+            WorldSpaceLightmappedsRGBBitmap = new Material(
                 lightmapShader,
-                "WorldSpaceLightmappedBitmapToSRGB"
+                "WorldSpaceLightmappedsRGBBitmap"
             );
 
             var blurShader = BuiltInShaders.Load<Effect>("GaussianBlur");
