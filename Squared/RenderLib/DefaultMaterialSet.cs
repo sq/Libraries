@@ -117,10 +117,12 @@ namespace Squared.Render {
         );
 
         public Material ScreenSpaceBitmap, WorldSpaceBitmap;
+        public Material ScreenSpaceBitmapToSRGB, WorldSpaceBitmapToSRGB;
         public Material ScreenSpaceShadowedBitmap, WorldSpaceShadowedBitmap;
         public Material ScreenSpaceBitmapWithDiscard, WorldSpaceBitmapWithDiscard;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
+        public Material ScreenSpaceLightmappedBitmapToSRGB, WorldSpaceLightmappedBitmapToSRGB;
         public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
         public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
         public Material Clear;
@@ -161,6 +163,16 @@ namespace Squared.Render {
             WorldSpaceBitmap = new Material(
                 bitmapShader,
                 "WorldSpaceBitmapTechnique"
+            );
+            
+            ScreenSpaceBitmapToSRGB = new Material(
+                bitmapShader,
+                "ScreenSpaceBitmapToSRGBTechnique"
+            );
+
+            WorldSpaceBitmapToSRGB = new Material(
+                bitmapShader,
+                "WorldSpaceBitmapToSRGBTechnique"
             );
             
             ScreenSpaceShadowedBitmap = new Material(
@@ -207,6 +219,16 @@ namespace Squared.Render {
             WorldSpaceLightmappedBitmap = new Material(
                 lightmapShader,
                 "WorldSpaceLightmappedBitmap"
+            );
+
+            ScreenSpaceLightmappedBitmapToSRGB = new Material(
+                lightmapShader,
+                "ScreenSpaceLightmappedBitmapToSRGB"
+            );
+
+            WorldSpaceLightmappedBitmapToSRGB = new Material(
+                lightmapShader,
+                "WorldSpaceLightmappedBitmapToSRGB"
             );
 
             var blurShader = BuiltInShaders.Load<Effect>("GaussianBlur");

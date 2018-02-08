@@ -380,7 +380,7 @@ namespace Squared.Render {
                 throw new ArgumentNullException("material.Effect");
 
             var result = container.RenderManager.AllocateBatch<BitmapBatch>();
-            result.Initialize(container, layer, material, samplerState, samplerState2, useZBuffer);
+            result.Initialize(container, layer, material, samplerState, samplerState2 ?? samplerState, useZBuffer);
             result.CaptureStack(0);
             return result;
         }
@@ -396,7 +396,7 @@ namespace Squared.Render {
                 RangeReservations.Clear();
 
             SamplerState = samplerState ?? BitmapBatch.DefaultSamplerState;
-            SamplerState2 = samplerState2 ?? BitmapBatch.DefaultSamplerState;
+            SamplerState2 = samplerState2 ?? samplerState ?? BitmapBatch.DefaultSamplerState;
 
             UseZBuffer = useZBuffer;
 
@@ -720,9 +720,6 @@ namespace Squared.Render {
                         currentTexture = nb.TextureSet;
                         var tex1 = currentTexture.Texture1;
 
-                        device.SamplerStates[0] = SamplerState;
-                        device.SamplerStates[1] = SamplerState2;
-
                         // FIXME: What is going wrong with XNA here?
                         paramTexture1.SetValue((Texture2D)null);
                         paramTexture1.SetValue(tex1);
@@ -735,6 +732,9 @@ namespace Squared.Render {
                         paramHalfTexel.SetValue(nb.Texture1HalfTexel);
 
                         manager.CurrentMaterial.Flush();
+
+                        device.SamplerStates[0] = SamplerState;
+                        device.SamplerStates[1] = SamplerState2;
                     }
 
                     if (UseZBuffer) {

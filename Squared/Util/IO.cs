@@ -48,7 +48,7 @@ namespace Squared.Util {
 
         public bool Valid {
             get {
-                int value = Handle.ToInt32();
+                var value = Handle.ToInt64();
                 return (value != -1) && (value != 0);
             }
         }
@@ -262,10 +262,10 @@ namespace Squared.Util {
                             if (globMatch) {
                                 entry.Name = buffer.ToString();
                                 entry.Attributes = findData.dwFileAttributes;
-                                entry.Size = findData.dwFileSizeLow + (findData.dwFileSizeHigh * ((ulong)(UInt32.MaxValue) + 1));
-                                entry.Created = findData.ftCreationTime;
-                                entry.LastAccessed = findData.ftLastAccessTime;
-                                entry.LastWritten = findData.ftLastWriteTime;
+                                entry.Size = findData.dwFileSizeLow + (findData.dwFileSizeHigh * ((ulong)(UInt32.MaxValue) + 1));                                
+                                entry.Created = DateTime.FromFileTimeUtc(findData.ftCreationTime).Ticks;
+                                entry.LastAccessed = DateTime.FromFileTimeUtc(findData.ftLastAccessTime).Ticks;
+                                entry.LastWritten = DateTime.FromFileTimeUtc(findData.ftLastWriteTime).Ticks;
                                 entry.IsDirectory = isDirectory;
                                 yield return entry;
                             }
