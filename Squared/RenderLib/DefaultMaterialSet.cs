@@ -272,7 +272,8 @@ namespace Squared.Render {
         public void PreallocateBindings () {
             // Pre-allocate the uniform bindings for our materials on the main thread.
             ForEachMaterial<object>((material, _) => {
-                GetUniformBinding<ViewTransform>(material, "Viewport");
+                material._ViewportUniform = GetUniformBinding<ViewTransform>(material, "Viewport");
+                material._ViewportUniformInitialized = true;
             }, null);
         }
 
@@ -381,14 +382,16 @@ namespace Squared.Render {
             if (m.Effect == null)
                 return;
 
-            var ub = GetUniformBinding<ViewTransform>(m, "Viewport");
+            var ub = m._ViewportUniform;
+            if (!m._ViewportUniformInitialized) {
+                ub = m._ViewportUniform = GetUniformBinding<ViewTransform>(m, "Viewport");
+                m._ViewportUniformInitialized = true;
+            }
+
             if (ub == null)
                 return;
 
             ub.Value.Current = viewTransform;
-
-            // FIXME: WHY IS THIS NECESSARY?
-            // m.Flush();
         }
 
         /// <summary>

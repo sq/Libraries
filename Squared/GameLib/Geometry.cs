@@ -217,7 +217,24 @@ namespace Squared.Game {
                 position, position + size
             );
         }
+
+        public bool Equals (ref Bounds rhs) {
+            return (TopLeft == rhs.TopLeft) && (BottomRight == rhs.BottomRight);
+        }
+
+        public bool Equals (Bounds rhs) {
+            return Equals(ref rhs);
+        }
+
+        public override bool Equals (object rhs) {
+            if (!(rhs is Bounds))
+                return false;
+
+            var brhs = (Bounds)rhs;
+            return Equals(ref brhs);
+        }
     }
+
     public class Polygon : IEnumerable<Vector2>, IHasBounds {
         public struct Edge {
             public Vector2 Start, End;

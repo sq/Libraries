@@ -252,6 +252,11 @@ namespace Squared.Render {
         public UniformBinding<T> GetUniformBinding<T> (Material material, string uniformName)
             where T : struct 
         {
+            IUniformBinding existing;
+            lock (material.UniformBindings)
+            if (material.UniformBindings.TryGetValue(uniformName, out existing))
+                return existing.Cast<T>();
+
             var effect = material.Effect;
             if (effect == null)
                 return null;
@@ -259,7 +264,6 @@ namespace Squared.Render {
             var key = new UniformBindingKey(effect, uniformName, typeof(T));
 
             lock (UniformBindings) {
-                IUniformBinding existing;
                 if (UniformBindings.TryGetValue(key, out existing))
                     return existing.Cast<T>();
 
@@ -273,6 +277,9 @@ namespace Squared.Render {
                 var result = UniformBinding<T>.TryCreate(effect, uniformName);
 #endif
                 UniformBindings.Add(key, result);
+                lock (material.UniformBindings)
+                    material.UniformBindings.Add(uniformName, result);
+
                 return result;
             }
         }
@@ -291,7 +298,8 @@ namespace Squared.Render {
         public void Add (Material extraMaterial) {
             lock (Lock) {
                 // HACK: Prefetch the uniform binding on this thread so we don't get a crash later
-                GetUniformBinding<ViewTransform>(extraMaterial, "Viewport");
+                extraMaterial._ViewportUniform = GetUniformBinding<ViewTransform>(extraMaterial, "Viewport");
+                extraMaterial._ViewportUniformInitialized = true;
 
                 ExtraMaterials.Add(extraMaterial);
             }
