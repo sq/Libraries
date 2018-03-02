@@ -39,10 +39,14 @@
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
+    <Compile Include="Batch.cs" />
     <Compile Include="BatchCombiner.cs" />
+    <Compile Include="BatchGroup.cs" />
     <Compile Include="Convenience.cs" />
     <Compile Include="DefaultMaterialSet.cs" />
+    <Compile Include="DenseList.cs" />
     <Compile Include="DynamicAtlas.cs" />
+    <Compile Include="Frame.cs" />
     <Compile Include="Materials.cs" />
     <Compile Include="MaterialSet.cs" />
     <Compile Include="Pools.cs" />
@@ -52,6 +56,11 @@
     <Compile Include="RenderManager.cs" />
     <Compile Include="RenderPrimitives.cs" />
     <Compile Include="RenderText.cs" />
+    <Compile Include="Shaders.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Shaders.resx</DependentUpon>
+    </Compile>
     <Compile Include="TextUtils.cs" />
     <Compile Include="ThreadedRenderCoordinator.cs" />
     <Compile Include="ThreadedRenderGame.cs" />
@@ -77,7 +86,7 @@
       <Project>{B802D543-58A6-4FEA-B182-5BB21B79DFC6}</Project>
       <Name>Squared.Game.SDL2</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\FNA\FNA.csproj">
+    <ProjectReference Include="..\..\..\..\FNA\FNA.csproj">
       <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
       <Name>FNA</Name>
     </ProjectReference>

@@ -37,8 +37,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86" />
-    <Reference Include="Microsoft.Xna.Framework.Graphics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86" />
     <Reference Include="SharpFont, Version=4.0.1.200, Culture=neutral, PublicKeyToken=48add4c483071cdf, processorArchitecture=MSIL">
       <HintPath>$(SolutionDir)\packages\SharpFont.4.0.1\lib\net45\SharpFont.dll</HintPath>
       <Private>True</Private>
@@ -57,17 +55,21 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\RenderLib\Squared.Render.csproj">
-      <Project>{fe871f18-fd35-4124-af8f-0021c9d4ba29}</Project>
-      <Name>Squared.Render</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Util\Squared.Util.csproj">
-      <Project>{d7f549cf-e0a6-491c-a78c-ecab590bb2a7}</Project>
-      <Name>Squared.Util</Name>
-    </ProjectReference>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
+    <ProjectReference Include="..\..\..\..\FNA\FNA.csproj">
+      <Project>{35253ce1-c864-4cd3-8249-4d1319748e8f}</Project>
+      <Name>FNA</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RenderLib\Squared.Render.SDL2.csproj">
+      <Project>{140ffd8a-4ecd-4bbc-ae81-fcc21f9ed36a}</Project>
+      <Name>Squared.Render.SDL2</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Util\Squared.Util.SDL2.csproj">
+      <Project>{d3a95fbf-a1c5-45d0-839f-b155d7b10272}</Project>
+      <Name>Squared.Util.SDL2</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

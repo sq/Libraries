@@ -49,13 +49,9 @@
     <Compile Include="SpatialCollection.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\FNA\FNA.csproj">
+    <ProjectReference Include="..\..\..\..\FNA\FNA.csproj">
       <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
       <Name>FNA</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Threading\Squared.Threading.SDL2.csproj">
-      <Project>{eccb8787-0fc6-43b2-abd1-6cbb237916ec}</Project>
-      <Name>Squared.Threading.SDL2</Name>
     </ProjectReference>
     <ProjectReference Include="..\Util\Squared.Util.SDL2.csproj">
       <Project>{d3a95fbf-a1c5-45d0-839f-b155d7b10272}</Project>
