@@ -1006,12 +1006,17 @@ namespace Squared.Render {
 
                 _Group.Dispose();
                 context.Prepare(_Group);
+
+                OnPrepareDone();
             }
         }
 
         public override void Issue (DeviceManager manager) {
-            using (manager.ApplyMaterial(Material))
+            using (manager.ApplyMaterial(Material)) {
                 _Group.Issue(manager);
+
+                base.Issue(manager);
+            }
         }
     }
 
