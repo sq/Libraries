@@ -259,12 +259,12 @@ namespace Squared.Render {
             return true;
         }
 
-        private bool WaitForActiveDraws () {
+        public bool WaitForActiveDraws () {
             return WaitForActiveDraw() &&
                 WaitForActiveSynchronousDraw();
         }
 
-        public bool WaitForActiveDraw () {
+        internal bool WaitForActiveDraw () {
             if (_ActualEnableThreading) {
                 DrawQueue.WaitUntilDrained();
             } else

@@ -129,8 +129,10 @@ namespace Squared.Render {
             RenderCoordinator.WorkStopwatch.Restart();
 
             try {
-                var failed = RenderCoordinator.BeginDraw();
-                return failed;
+                var ok = RenderCoordinator.BeginDraw();
+                if (!ok)
+                    Console.WriteLine("BeginDraw failed");
+                return ok;
             } finally {
                 RenderCoordinator.WorkStopwatch.Stop();
                 NextFrameTiming.BeginDraw = RenderCoordinator.WorkStopwatch.Elapsed;
@@ -170,6 +172,9 @@ namespace Squared.Render {
 
             var priorIndex = Batch.LifetimeCount;
             NextFrameTiming.PriorPrimitiveCount = NativeBatch.LifetimePrimitiveCount;
+
+            // ????
+            RenderCoordinator.WaitForActiveDraws();
 
             try {
                 OnBeforeDraw(gameTime);
