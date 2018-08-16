@@ -53,6 +53,10 @@ namespace Squared.Render {
                 (Projection == rhs.Projection) &&
                 (ModelView == rhs.ModelView);
         }
+
+        public override string ToString () {
+            return string.Format("ViewTransform pos={0} scale={1}", Position, Scale);
+        }
     }
 
     public class DefaultMaterialSet : MaterialSetBase {
