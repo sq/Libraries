@@ -258,8 +258,9 @@ namespace Squared.Render {
                 for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
                     _DrawCalls.GetItem(i, out call);
 
-                    if (call.BeforeDraw != null)
-                        call.BeforeDraw(manager, call.UserData);
+                    var beforeDraw = call.BeforeDraw;
+                    if (beforeDraw != null)
+                        beforeDraw(manager, ref call, i);
 
                     if (call.Indices != null) {
                         device.DrawUserIndexedPrimitives<T>(
@@ -344,6 +345,9 @@ namespace Squared.Render {
         }
     }
 
+    public delegate void PrimitiveBeforeDraw<T> (DeviceManager dm, ref PrimitiveDrawCall<T> drawCall, int index)
+        where T : struct;
+
     public struct PrimitiveDrawCall<T> 
         where T : struct {
 
@@ -357,7 +361,7 @@ namespace Squared.Render {
 
         public readonly DrawCallSortKey SortKey;
 
-        public readonly Action<DeviceManager, object> BeforeDraw;
+        public readonly PrimitiveBeforeDraw<T> BeforeDraw;
         public readonly object UserData;
 
         public static PrimitiveDrawCall<T> Null = new PrimitiveDrawCall<T>();
@@ -372,7 +376,7 @@ namespace Squared.Render {
             PrimitiveType primitiveType, T[] vertices, int vertexOffset, int vertexCount, 
             short[] indices, int indexOffset, int primitiveCount,
             DrawCallSortKey sortKey = default(DrawCallSortKey),
-            Action<DeviceManager, object> beforeDraw = null,
+            PrimitiveBeforeDraw<T> beforeDraw = null,
             object userData = null
         ) {
             if (primitiveCount <= 0)

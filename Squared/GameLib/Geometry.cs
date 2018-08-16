@@ -24,6 +24,8 @@ namespace Squared.Game {
     }
 
     public struct Bounds {
+        public static readonly Bounds Unit = FromPositionAndSize(Vector2.Zero, Vector2.One);
+
         public Vector2 TopLeft;
         public Vector2 BottomRight;
 

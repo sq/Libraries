@@ -143,15 +143,51 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddRange (T[] items) {
-            int newCount = _Count + items.Length;
+        public void AddRange (T[] items, int sourceOffset, int count) {
+            int newCount = _Count + count;
             EnsureCapacity(newCount);
 
-            int insertOffset = newCount - items.Length;
-            for (var i = 0; i < items.Length; i++)
+            int insertOffset = newCount - count;
+            for (var i = 0; i < count; i++)
+                _Items[insertOffset + i] = items[i + sourceOffset];
+
+            _Count = newCount;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddRange (T[] items) {
+            AddRange(items, 0, items.Length);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddRange (List<T> items) {
+            var listCount = items.Count;
+            int newCount = _Count + listCount;
+            EnsureCapacity(newCount);
+
+            int insertOffset = newCount - listCount;
+            for (var i = 0; i < listCount; i++)
                 _Items[insertOffset + i] = items[i];
 
             _Count = newCount;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddRange (IEnumerable<T> items) {
+            var array = items as T[];
+            var list = items as List<T>;
+            var ulist = items as UnorderedList<T>;
+
+            if (array != null) {
+                AddRange(array);
+            } else if (list != null) {
+                AddRange(list);
+            } else if (ulist != null) {
+                AddRange(ulist.GetBuffer(), 0, ulist.Count);
+            } else {
+                foreach (var item in items)
+                    Add(item);
+            }
         }
 
         public bool Contains (T item) {
