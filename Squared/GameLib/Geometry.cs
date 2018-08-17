@@ -59,6 +59,18 @@ namespace Squared.Game {
             }
         }
 
+        public Interval X {
+            get {
+                return new Interval(TopLeft.X, BottomRight.X);
+            }
+        }
+
+        public Interval Y {
+            get {
+                return new Interval(TopLeft.Y, BottomRight.Y);
+            }
+        }
+
         public Bounds (Rectangle rectangle, float scaleX = 1, float scaleY = 1)
             : this(
                 new Vector2(rectangle.Left * scaleX, rectangle.Top * scaleY),
@@ -234,6 +246,14 @@ namespace Squared.Game {
 
             var brhs = (Bounds)rhs;
             return Equals(ref brhs);
+        }
+
+        public static bool operator == (Bounds lhs, Bounds rhs) {
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator != (Bounds lhs, Bounds rhs) {
+            return !lhs.Equals(rhs);
         }
     }
 

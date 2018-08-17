@@ -131,12 +131,27 @@ namespace Squared.Util {
             return Math.Sign(c) != Math.Sign(d);
         }
 
+        public static bool operator == (Interval lhs, Interval rhs) {
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator != (Interval lhs, Interval rhs) {
+            return !lhs.Equals(rhs);
+        }
+
         public bool Equals (Interval other) {
             if (Min != other.Min)
                 return false;
             if (Max != other.Max)
                 return false;
             return true;
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is Interval)
+                return Equals((Interval)obj);
+            else
+                return false;
         }
 
         public float[] ToArray () {
