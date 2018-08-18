@@ -564,7 +564,8 @@ namespace Squared.Render {
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
             GlyphPixelAlignment alignToPixels = default(GlyphPixelAlignment),
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
-            bool wordWrap = false, char wrapCharacter = '\0'
+            bool wordWrap = false, char wrapCharacter = '\0',
+            bool reverseOrder = false
         ) {
             var state = new StringLayoutEngine {
                 position = position,
@@ -579,7 +580,8 @@ namespace Squared.Render {
                 characterWrap = lineBreakAtX.HasValue,
                 wordWrap = wordWrap,
                 wrapCharacter = wrapCharacter,
-                buffer = buffer.GetValueOrDefault(default(ArraySegment<BitmapDrawCall>))
+                buffer = buffer.GetValueOrDefault(default(ArraySegment<BitmapDrawCall>)),
+                reverseOrder = reverseOrder
             };
             var gs = new SpriteFontGlyphSource(font);
 
@@ -603,7 +605,8 @@ namespace Squared.Render {
             float xOffsetOfFirstLine = 0, float? lineBreakAtX = null,
             bool alignToPixels = false,
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
-            bool wordWrap = false, char wrapCharacter = '\0'
+            bool wordWrap = false, char wrapCharacter = '\0',
+            bool reverseOrder = false
         ) {
             var state = new StringLayoutEngine {
                 position = position,
@@ -618,7 +621,8 @@ namespace Squared.Render {
                 characterWrap = lineBreakAtX.HasValue,
                 wordWrap = wordWrap,
                 wrapCharacter = wrapCharacter,
-                buffer = buffer.GetValueOrDefault(default(ArraySegment<BitmapDrawCall>))
+                buffer = buffer.GetValueOrDefault(default(ArraySegment<BitmapDrawCall>)),
+                reverseOrder = reverseOrder
             };
 
             state.Initialize();

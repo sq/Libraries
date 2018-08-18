@@ -66,7 +66,7 @@ namespace Squared.Render.Text {
                 else if (StringBuilder != null)
                     return StringBuilder[index];
                 else if (ArraySegment.Array != null) {
-                    if ((index <= 0) || (index >= ArraySegment.Count))
+                    if ((index < 0) || (index >= ArraySegment.Count))
                         throw new ArgumentOutOfRangeException("index");
 
                     return ArraySegment.Array[index + ArraySegment.Offset];

@@ -681,7 +681,7 @@ namespace Squared.Render.Convenience {
             Vector2 position, Color? color = null, float scale = 1, DrawCallSortKey? sortKey = null,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null
+            BlendState blendState = null, SamplerState samplerState = null, Material material = null
         ) {
             using (var buffer = BufferPool<BitmapDrawCall>.Allocate(text.Length)) {
                 var layout = font.LayoutString(
@@ -692,7 +692,8 @@ namespace Squared.Render.Convenience {
 
                 DrawMultiple(
                     layout,
-                    layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState
+                    layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState,
+                    material: material
                 );
 
                 buffer.Clear();
@@ -704,7 +705,8 @@ namespace Squared.Render.Convenience {
             Vector2 position, Color? color = null, float scale = 1, DrawCallSortKey? sortKey = null,
             int characterSkipCount = 0, int characterLimit = int.MaxValue,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null, SamplerState samplerState = null
+            BlendState blendState = null, SamplerState samplerState = null,
+            Material material = null
         ) {
             using (var buffer = BufferPool<BitmapDrawCall>.Allocate(text.Length)) {
                 var layout = glyphSource.LayoutString(
@@ -715,7 +717,8 @@ namespace Squared.Render.Convenience {
 
                 DrawMultiple(
                     layout,
-                    layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState
+                    layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState,
+                    material: material
                 );
 
                 buffer.Clear();
