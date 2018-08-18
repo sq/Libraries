@@ -134,7 +134,7 @@ namespace Squared.Render {
         public Material ScreenSpaceLightmappedsRGBBitmap, WorldSpaceLightmappedsRGBBitmap;
         public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
         public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
-        public Material Clear;
+        public Material Clear, SetScissor;
 
         protected readonly Action<Material, float> _ApplyTimeDelegate;
         protected readonly RefMaterialAction<ViewTransform> _ApplyViewTransformDelegate; 
@@ -160,6 +160,9 @@ namespace Squared.Render {
                 new Action<DeviceManager>[] { (dm) => ApplyShaderVariables() }
             );
 
+            SetScissor = new Material(
+                null, null
+            );
    
             var bitmapShader = BuiltInShaders.Load<Effect>("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load<Effect>("SquaredGeometryShader");

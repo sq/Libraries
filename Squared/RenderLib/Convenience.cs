@@ -722,6 +722,12 @@ namespace Squared.Render.Convenience {
             }
         }
 
+        public void SetScissor (Rectangle rectangle, int? layer = null) {
+            SetScissorBatch.AddNew(Container, layer.GetValueOrDefault(Layer), Materials.SetScissor, rectangle);
+
+            if (AutoIncrementLayer && !layer.HasValue)
+                Layer += 1;
+        }
 
         public void FillRectangle (
             Rectangle rectangle, Color fillColor,

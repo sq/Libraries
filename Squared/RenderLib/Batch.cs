@@ -333,6 +333,34 @@ namespace Squared.Render {
         }
     }
 
+    public class SetScissorBatch : Batch {
+        public Rectangle Scissor;
+
+        public void Initialize (IBatchContainer container, int layer, Material material, Rectangle scissor) {
+            base.Initialize(container, layer, material, true);
+            Scissor = scissor;
+        }
+
+        protected override void Prepare (PrepareManager manager) {
+        }
+
+        public override void Issue (DeviceManager manager) {
+            manager.Device.ScissorRectangle = Scissor;
+
+            base.Issue(manager);
+        }
+
+        public static void AddNew (IBatchContainer container, int layer, Material material, Rectangle scissor) {
+            if (container == null)
+                throw new ArgumentNullException("container");
+
+            var result = container.RenderManager.AllocateBatch<SetScissorBatch>();
+            result.Initialize(container, layer, material, scissor);
+            result.CaptureStack(0);
+            result.Dispose();
+        }
+    }
+
     public class SetRenderTargetBatch : Batch {
         public RenderTarget2D RenderTarget;
 
