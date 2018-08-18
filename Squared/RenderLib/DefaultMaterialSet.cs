@@ -125,6 +125,7 @@ namespace Squared.Render {
         public Material ScreenSpaceShadowedBitmap, WorldSpaceShadowedBitmap;
         public Material ScreenSpaceBitmapWithDiscard, WorldSpaceBitmapWithDiscard;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
+        public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
         /// <summary>
         /// Make sure to resolve your lightmap to sRGB before using it with this, otherwise your lighting
@@ -215,6 +216,16 @@ namespace Squared.Render {
             WorldSpaceGeometry = new Material(
                 geometryShader,
                 "WorldSpaceUntextured"
+            );
+
+            ScreenSpaceTexturedGeometry = new Material(
+                geometryShader,
+                "ScreenSpaceTextured"
+            );
+
+            WorldSpaceTexturedGeometry = new Material(
+                geometryShader,
+                "WorldSpaceTextured"
             );
             
             var lightmapShader = BuiltInShaders.Load<Effect>("Lightmap");
