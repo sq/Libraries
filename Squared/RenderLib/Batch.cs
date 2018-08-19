@@ -345,7 +345,10 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            manager.Device.ScissorRectangle = Scissor;
+            var viewport = manager.Device.Viewport;
+            var viewportRect = new Rectangle(viewport.X, viewport.Y, viewport.Width, viewport.Height);
+            var intersected = Rectangle.Intersect(viewportRect, Scissor);
+            manager.Device.ScissorRectangle = intersected;
 
             base.Issue(manager);
         }
