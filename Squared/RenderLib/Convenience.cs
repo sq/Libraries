@@ -796,6 +796,31 @@ namespace Squared.Render.Convenience {
                 gb.AddLine(position, position + Vector2.One, color, color);
         }
 
+        public void FillCircle (
+            Vector2 center, float innerRadius, float outerRadius, 
+            Color innerColor, Color outerColor,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var gb = GetGeometryBatch(
+                layer, worldSpace, blendState
+            ))
+                gb.AddFilledRing(center, innerRadius, outerRadius, innerColor, outerColor);
+        }
+
+        public void FillRing (
+            Vector2 center, Vector2 innerRadius, Vector2 outerRadius, 
+            Color innerColorStart, Color outerColorStart, 
+            Color? innerColorEnd = null, Color? outerColorEnd = null, 
+            float startAngle = 0, float endAngle = (float)(Math.PI * 2),
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var gb = GetGeometryBatch(
+                layer, worldSpace, blendState
+            ))
+                gb.AddFilledRing(center, innerRadius, outerRadius, innerColorStart, outerColorStart, innerColorEnd, outerColorEnd, startAngle, endAngle);
+        }
 
         public IBitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, Material customMaterial) {
             if (Materials == null)

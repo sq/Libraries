@@ -476,7 +476,12 @@ namespace Squared.Render {
             return result;
         }
 
-        public void AddFilledRing (Vector2 center, Vector2 innerRadius, Vector2 outerRadius, Color innerColorStart, Color outerColorStart, Color? innerColorEnd = null, Color? outerColorEnd = null, float startAngle = 0, float endAngle = (float)(Math.PI * 2)) {
+        public void AddFilledRing (
+            Vector2 center, Vector2 innerRadius, Vector2 outerRadius, 
+            Color innerColorStart, Color outerColorStart, 
+            Color? innerColorEnd = null, Color? outerColorEnd = null, 
+            float startAngle = 0, float endAngle = (float)(Math.PI * 2)
+        ) {
             var dc = new GeometryDrawCall {
                 Preparer = PrepareRing,
                 PrimitiveType = PrimitiveType.TriangleList,
