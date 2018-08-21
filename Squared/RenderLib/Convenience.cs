@@ -813,13 +813,14 @@ namespace Squared.Render.Convenience {
             Color innerColorStart, Color outerColorStart, 
             Color? innerColorEnd = null, Color? outerColorEnd = null, 
             float startAngle = 0, float endAngle = (float)(Math.PI * 2),
+            float quality = 0,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
             using (var gb = GetGeometryBatch(
                 layer, worldSpace, blendState
             ))
-                gb.AddFilledRing(center, innerRadius, outerRadius, innerColorStart, outerColorStart, innerColorEnd, outerColorEnd, startAngle, endAngle);
+                gb.AddFilledRing(center, innerRadius, outerRadius, innerColorStart, outerColorStart, innerColorEnd, outerColorEnd, startAngle, endAngle, quality);
         }
 
         public IBitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, Material customMaterial) {

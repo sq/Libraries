@@ -28,7 +28,7 @@ namespace Squared.Render {
         internal int PreparerHash;
         internal PrimitiveType PrimitiveType;
 
-        public float Z;
+        public float Z, Quality;
         public Vector2 Vector0, Vector1, Vector2;
         public Color Color0, Color1, Color2, Color3;
         public float Scalar0, Scalar1;
@@ -458,21 +458,22 @@ namespace Squared.Render {
         }
         
 #if !PSM
-        public void AddFilledRing (Vector2 center, float innerRadius, float outerRadius, Color innerColor, Color outerColor) {
+        public void AddFilledRing (Vector2 center, float innerRadius, float outerRadius, Color innerColor, Color outerColor, float quality = 0) {
             AddFilledRing(
                 center, 
                 new Vector2(innerRadius, innerRadius), 
                 new Vector2(outerRadius, outerRadius), 
-                innerColor, outerColor, innerColor, outerColor
+                innerColor, outerColor, innerColor, outerColor, quality: quality
             );
         }
 
-        protected static int ComputeRingPoints (ref Vector2 radius) {
-            var result = (int)Math.Ceiling(Math.Abs(radius.X + radius.Y) / 3.75f) + 8;
+        protected static int ComputeRingPoints (ref Vector2 radius, float quality) {
+            float scale = Arithmetic.Clamp(3.75f - quality, 2, 5);
+            var result = (int)Math.Ceiling(Math.Abs(radius.X + radius.Y) / scale) + 8;
             if (result < 8)
                 result = 8;
-            if (result > 1024)
-                result = 1024;
+            if (result > 2048)
+                result = 2048;
             return result;
         }
 
@@ -480,7 +481,8 @@ namespace Squared.Render {
             Vector2 center, Vector2 innerRadius, Vector2 outerRadius, 
             Color innerColorStart, Color outerColorStart, 
             Color? innerColorEnd = null, Color? outerColorEnd = null, 
-            float startAngle = 0, float endAngle = (float)(Math.PI * 2)
+            float startAngle = 0, float endAngle = (float)(Math.PI * 2),
+            float quality = 0
         ) {
             var dc = new GeometryDrawCall {
                 Preparer = PrepareRing,
@@ -493,16 +495,17 @@ namespace Squared.Render {
                 Color2 = innerColorEnd.GetValueOrDefault(innerColorStart),
                 Color3 = outerColorEnd.GetValueOrDefault(outerColorStart),
                 Scalar0 = startAngle,
-                Scalar1 = endAngle
+                Scalar1 = endAngle,
+                Quality = quality
             };
 
-            int numPoints = ComputeRingPoints(ref outerRadius);
+            int numPoints = ComputeRingPoints(ref outerRadius, quality);
 
             Add(ref dc, numPoints * 2, (numPoints - 1) * 6);
         }
 
         public static unsafe void _PrepareRing (ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, ref GeometryDrawCall dc) {
-            int numPoints = ComputeRingPoints(ref dc.Vector2);
+            int numPoints = ComputeRingPoints(ref dc.Vector2, dc.Quality);
 
             const int vertexStride = 2;
             const int indexStride = 6;

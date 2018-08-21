@@ -21,7 +21,7 @@ using System.Runtime.CompilerServices;
 
 namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct CornerVertex : IVertexType {        
+    public struct CornerVertex : IVertexType {
         public short Corner;
         public short Unused;
 
@@ -165,6 +165,38 @@ namespace Squared.Render {
         void Add (BitmapDrawCall item);
         void Add (ref BitmapDrawCall item);
         void AddRange (ArraySegment<BitmapDrawCall> items);
+    }
+
+    public static class QuadUtils {
+        private static readonly ushort[] QuadIndices = new ushort[] {
+            0, 1, 2,
+            0, 2, 3
+        };
+
+        public static BufferGenerator<CornerVertex>.SoftwareBuffer CreateCornerBuffer (IBatchContainer container) {
+            BufferGenerator<CornerVertex>.SoftwareBuffer result;
+            var cornerGenerator = container.RenderManager.GetBufferGenerator<BufferGenerator<CornerVertex>>();
+            // TODO: Is it OK to share the buffer?
+            if (!cornerGenerator.TryGetCachedBuffer("QuadCorners", 4, 6, out result)) {
+                result = cornerGenerator.Allocate(4, 6, true);
+                cornerGenerator.SetCachedBuffer("QuadCorners", result);
+                // TODO: Can we just skip filling the buffer here?
+            }
+
+            var verts = result.Vertices;
+            var indices = result.Indices;
+
+            var v = new CornerVertex();
+            for (var i = 0; i < 4; i++) {
+                v.Corner = v.Unused = (short)i;
+                verts.Array[verts.Offset + i] = v;
+            }
+
+            for (var i = 0; i < QuadIndices.Length; i++)
+                indices.Array[indices.Offset + i] = QuadIndices[i];
+
+            return result;
+        }
     }
 
     public class BitmapBatch : ListBatch<BitmapDrawCall>, IBitmapBatch {
@@ -340,11 +372,6 @@ namespace Squared.Render {
         }
 
         private volatile int _State = (int)PrepareState.Invalid;
-
-        private static readonly ushort[] QuadIndices = new ushort[] {
-            0, 1, 2,
-            0, 2, 3
-        };
 
         private static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
             new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
@@ -642,34 +669,13 @@ namespace Squared.Render {
 
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
 
-            CreateCornerBuffer();
+            _CornerBuffer = QuadUtils.CreateCornerBuffer(Container);
 
             int drawCallsPrepared = 0;
             while (drawCallsPrepared < count)
                 FillOneSoftwareBuffer(indexArray, ref drawCallsPrepared, count);
 
             StateTransition(PrepareState.Preparing, PrepareState.Prepared);
-        }
-
-        private void CreateCornerBuffer () {
-            var cornerGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<CornerVertex>>();
-            // TODO: Is it OK to share the buffer?
-            if (!cornerGenerator.TryGetCachedBuffer("QuadCorners", 4, 6, out _CornerBuffer)) {
-                _CornerBuffer = cornerGenerator.Allocate(4, 6, true);
-                cornerGenerator.SetCachedBuffer("QuadCorners", _CornerBuffer);
-            }
-
-            var verts = _CornerBuffer.Vertices;
-            var indices = _CornerBuffer.Indices;
-
-            var v = new CornerVertex();
-            for (var i = 0; i < 4; i++) {
-                v.Corner = v.Unused = (short)i;
-                verts.Array[verts.Offset + i] = v;
-            }
-
-            for (var i = 0; i < QuadIndices.Length; i++)
-                indices.Array[indices.Offset + i] = QuadIndices[i];            
         }
             
         public override void Issue (DeviceManager manager) {
