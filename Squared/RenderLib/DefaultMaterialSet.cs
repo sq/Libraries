@@ -188,7 +188,7 @@ namespace Squared.Render {
 
             Clear = new Material(
                 null, null, 
-                new Action<DeviceManager>[] { (dm) => ApplyShaderVariables() }
+                new Action<DeviceManager>[] { (dm) => ApplyShaderVariables(false) }
             );
 
             SetScissor = new Material(
@@ -408,16 +408,16 @@ namespace Squared.Render {
         }
 
         /// <summary>
-        /// Sets the view transform of all material(s) owned by this material set to the ViewTransform field's current value.
+        /// Instantly sets the view transform of all material(s) owned by this material set to the ViewTransform field's current value.
         /// Also sets other parameters like Time.
-        /// Clear batches automatically call this function for you.
+        /// <param name="force">Overrides the LazyViewTransformChanges configuration variable if it's set</param>
         /// </summary>
-        public void ApplyShaderVariables () {
-            var vt = ViewTransformStack.Peek();
-            ApplyViewTransform(ref vt, true);
-
+        public void ApplyShaderVariables (bool force = true) {
             float timeSeconds = (float)TimeProvider.Seconds;
             ForEachMaterial(_ApplyTimeDelegate, timeSeconds);
+
+            var vt = ViewTransformStack.Peek();
+            ApplyViewTransform(ref vt, force || !LazyViewTransformChanges);
         }
 
         private static void ApplyTimeToMaterial (Material m, float time) {
@@ -462,10 +462,12 @@ namespace Squared.Render {
         public void ApplyViewTransform (ref ViewTransform viewTransform, bool force) {
             ActiveViewTransform.ViewTransform = viewTransform;
             ActiveViewTransform.Id++;
-            if (force)
+            var am = ActiveViewTransform.ActiveMaterial;
+
+            if (force || (am == null))
                 ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
-            else if (ActiveViewTransform.ActiveMaterial != null)
-                ActiveViewTransform.ActiveMaterial.AutoApplyCurrentViewTransform();
+            else if (am != null)
+                am.Flush();
         }
 
         /// <summary>
