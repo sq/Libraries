@@ -12,7 +12,7 @@ using Squared.Util;
 using Squared.Render.Evil;
 
 namespace Squared.Render {
-    public class Material : IDisposable {
+    public sealed class Material : IDisposable {
         // HACK: Performance improvement for common cases
         internal bool _ViewportUniformInitialized = false;
         internal UniformBinding<ViewTransform> _ViewportUniform = null;
@@ -34,6 +34,9 @@ namespace Squared.Render {
 
         private static int _NextMaterialID;
         public readonly int MaterialID;
+
+        internal DefaultMaterialSet.ActiveViewTransformInfo ActiveViewTransform;
+        internal uint ActiveViewTransformId;
 
         protected bool _IsDisposed;
 
@@ -105,6 +108,12 @@ namespace Squared.Render {
             );
         }
 
+        internal bool AutoApplyCurrentViewTransform () {
+            if (ActiveViewTransform == null)
+                return false;
+            return ActiveViewTransform.AutoApply(this);
+        }
+
         private void CheckDevice (DeviceManager deviceManager) {
             if (Effect == null)
                 return;
@@ -113,17 +122,25 @@ namespace Squared.Render {
                 throw new InvalidOperationException();
         }
 
-        public virtual void Begin (DeviceManager deviceManager) {
+        public void Begin (DeviceManager deviceManager) {
             CheckDevice(deviceManager);
+            if (ActiveViewTransform != null)
+                ActiveViewTransform.ActiveMaterial = this;
 
             Flush();
 
             if (BeginHandlers != null)
                 foreach (var handler in BeginHandlers)
                     handler(deviceManager);
+
+            if (AutoApplyCurrentViewTransform())
+                Flush(false);
         }
 
-        public virtual void Flush () {
+        public void Flush (bool autoApplyViewTransform = true) {
+            if (autoApplyViewTransform)
+                AutoApplyCurrentViewTransform();
+
             if (Effect != null) {
                 UniformBinding.FlushEffect(Effect);
 
@@ -132,7 +149,7 @@ namespace Squared.Render {
             }
         }
 
-        public virtual void End (DeviceManager deviceManager) {
+        public void End (DeviceManager deviceManager) {
             CheckDevice(deviceManager);
 
             if (EndHandlers != null)
@@ -140,7 +157,7 @@ namespace Squared.Render {
                     handler(deviceManager);
         }
 
-        public virtual void Dispose () {
+        public void Dispose () {
             if (_IsDisposed)
                 return;
 

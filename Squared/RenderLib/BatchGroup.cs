@@ -43,6 +43,9 @@ namespace Squared.Render {
             if (_Before != null)
                 _Before(manager, _UserData);
 
+            if (manager.CurrentMaterial != null)
+                manager.CurrentMaterial.AutoApplyCurrentViewTransform();
+
             try {
                 using (var b = _DrawCalls.GetBuffer(false)) {
                     for (int i = 0; i < b.Count; i++)
@@ -54,6 +57,9 @@ namespace Squared.Render {
                     _After(manager, _UserData);
                 if (OcclusionQuery != null)
                     OcclusionQuery.End();
+
+                if (manager.CurrentMaterial != null)
+                    manager.CurrentMaterial.AutoApplyCurrentViewTransform();
 
                 base.Issue(manager);
             }

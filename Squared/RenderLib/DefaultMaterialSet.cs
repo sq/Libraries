@@ -60,6 +60,31 @@ namespace Squared.Render {
     }
 
     public class DefaultMaterialSet : MaterialSetBase {
+        internal class ActiveViewTransformInfo {
+            public readonly DefaultMaterialSet MaterialSet;
+            public ViewTransform ViewTransform;
+            public uint Id = 0;
+            public Material ActiveMaterial;
+
+            internal ActiveViewTransformInfo (DefaultMaterialSet materialSet) {
+                MaterialSet = materialSet;
+            }
+
+            public bool AutoApply (Material m) {
+                bool hasChanged = false;
+                if (m.ActiveViewTransform != this) {
+                    m.ActiveViewTransform = this;
+                    hasChanged = true;
+                } else {
+                    hasChanged = m.ActiveViewTransformId != Id;
+                }
+
+                MaterialSet.ApplyViewTransformToMaterial(m, ref ViewTransform);
+                m.ActiveViewTransformId = Id;
+                return hasChanged;
+            }
+        }
+
         protected struct MaterialCacheKey {
             public readonly Material Material;
             public readonly RasterizerState RasterizerState;
@@ -140,9 +165,15 @@ namespace Squared.Render {
         protected readonly RefMaterialAction<ViewTransform> _ApplyViewTransformDelegate; 
         protected readonly Stack<ViewTransform> ViewTransformStack = new Stack<ViewTransform>();
 
-        protected ViewTransform? CurrentlyAppliedViewTransform = null;
+        /// <summary>
+        /// If true, view transform changes are lazily applied at the point each material is activated
+        ///  instead of being eagerly applied to all materials whenever you change the view transform
+        /// </summary>
+        public bool LazyViewTransformChanges = true;
+        internal readonly ActiveViewTransformInfo ActiveViewTransform;
 
         public DefaultMaterialSet (IServiceProvider serviceProvider) {
+            ActiveViewTransform = new ActiveViewTransformInfo(this);
             _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
             _ApplyTimeDelegate          = ApplyTimeToMaterial;
 
@@ -302,6 +333,7 @@ namespace Squared.Render {
             set {
                 ViewTransformStack.Pop();
                 ViewTransformStack.Push(value);
+                ApplyViewTransform(value, !LazyViewTransformChanges);
             }
         }
 
@@ -354,7 +386,7 @@ namespace Squared.Render {
         /// </summary>
         public void PushViewTransform (ViewTransform viewTransform) {
             ViewTransformStack.Push(viewTransform);
-            ApplyViewTransform(ref viewTransform);
+            ApplyViewTransform(ref viewTransform, !LazyViewTransformChanges);
         }
 
         /// <summary>
@@ -362,7 +394,7 @@ namespace Squared.Render {
         /// </summary>
         public void PushViewTransform (ref ViewTransform viewTransform) {
             ViewTransformStack.Push(viewTransform);
-            ApplyViewTransform(ref viewTransform);
+            ApplyViewTransform(ref viewTransform, !LazyViewTransformChanges);
         }
 
         /// <summary>
@@ -370,7 +402,8 @@ namespace Squared.Render {
         /// </summary>
         public ViewTransform PopViewTransform () {
             var result = ViewTransformStack.Pop();
-            ApplyShaderVariables();
+            var current = ViewTransformStack.Peek();
+            ApplyViewTransform(ref current, !LazyViewTransformChanges);
             return result;
         }
 
@@ -381,7 +414,7 @@ namespace Squared.Render {
         /// </summary>
         public void ApplyShaderVariables () {
             var vt = ViewTransformStack.Peek();
-            ApplyViewTransform(ref vt);
+            ApplyViewTransform(ref vt, true);
 
             float timeSeconds = (float)TimeProvider.Seconds;
             ForEachMaterial(_ApplyTimeDelegate, timeSeconds);
@@ -413,21 +446,26 @@ namespace Squared.Render {
         }
 
         /// <summary>
-        /// Manually sets the view transform of all material(s) owned by this material set without changing the ViewTransform field.
+        /// Lazily sets the view transform of all material(s) owned by this material set without changing the ViewTransform field.
         /// </summary>
         /// <param name="viewTransform">The view transform to apply.</param>
-        public void ApplyViewTransform (ref ViewTransform viewTransform) {
-            if (
-                CurrentlyAppliedViewTransform.HasValue &&
-                CurrentlyAppliedViewTransform.Value.Equals(ref viewTransform)
-            ) {
-                // Already applied. Don't apply again.
-                return;
-            } else {
-                CurrentlyAppliedViewTransform = viewTransform;
-            }
+        /// <param name="force">Forcibly applies it now to all materials instead of lazily</param>
+        public void ApplyViewTransform (ViewTransform viewTransform, bool force) {
+            ApplyViewTransform(ref viewTransform, force);
+        }
 
-            ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
+        /// <summary>
+        /// Lazily sets the view transform of all material(s) owned by this material set without changing the ViewTransform field.
+        /// </summary>
+        /// <param name="viewTransform">The view transform to apply.</param>
+        /// <param name="force">Forcibly applies it now to all materials instead of lazily</param>
+        public void ApplyViewTransform (ref ViewTransform viewTransform, bool force) {
+            ActiveViewTransform.ViewTransform = viewTransform;
+            ActiveViewTransform.Id++;
+            if (force)
+                ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
+            else if (ActiveViewTransform.ActiveMaterial != null)
+                ActiveViewTransform.ActiveMaterial.AutoApplyCurrentViewTransform();
         }
 
         /// <summary>
