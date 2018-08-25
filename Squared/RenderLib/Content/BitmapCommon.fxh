@@ -29,7 +29,7 @@ float Dither64 (float2 vpos, float frameIndexMod4) {
 }
 
 float3 ApplyDither (float3 rgb, float2 vpos) {
-    float threshold = Dither17(vpos, Dithering.FrameIndex % 4);
+    float threshold = Dither17(vpos, (Dithering.FrameIndex % 4) + 0.5);
     float3 threshold3 = float3(threshold, threshold, threshold);
 
     float3 rgb8 = rgb * Dithering.Unit;
