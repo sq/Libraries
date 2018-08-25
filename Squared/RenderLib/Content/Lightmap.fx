@@ -9,6 +9,7 @@ void LightmappedPixelShader(
     in float2 texCoord : TEXCOORD0,
     in float2 texTL : TEXCOORD1,
     in float2 texBR : TEXCOORD2,
+    in float2 vpos : VPOS,
     out float4 result : COLOR0
 ) {
     float2 lightmapTexCoord = clamp(texCoord + LightmapUVOffset, texTL, texBR);
@@ -26,6 +27,8 @@ void LightmappedPixelShader(
     result = multiplyColor * tex2D(TextureSampler, texCoord);
     result += (addColor * result.a);
 
+    result.rgb = ApplyDither(result.rgb, vpos);
+
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);
 }
@@ -36,6 +39,7 @@ void sRGBLightmappedPixelShader(
     in float2 texCoord : TEXCOORD0,
     in float2 texTL : TEXCOORD1,
     in float2 texBR : TEXCOORD2,
+    in float2 vpos : VPOS,
     out float4 result : COLOR0
 ) {
     float2 lightmapTexCoord = clamp(texCoord + LightmapUVOffset, texTL, texBR);
@@ -57,6 +61,8 @@ void sRGBLightmappedPixelShader(
     result += (addColor * result.a);
 
     result.rgb = LinearToSRGB(result.rgb);
+
+    result.rgb = ApplyDither(result.rgb, vpos);
 
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);

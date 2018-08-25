@@ -59,6 +59,39 @@ namespace Squared.Render {
         }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct DitheringSettings {
+        public float Strength;
+        private float _Unit, _InvUnit;
+        public float FrameIndex;
+
+        /// <summary>
+        /// Determines the scale of values before dithering. Set to 255 for 8 bit RGBA, 65535 for 16 bit RGBA, 
+        ///  or some other random value if you love weird visuals
+        /// </summary>
+        public float Unit {
+            get {
+                return _Unit;
+            }
+            set {
+                _Unit = value;
+                _InvUnit = 1.0f / value;
+            }
+        }
+
+        /// <summary>
+        /// Automatically sets Unit for you based on a power of two (8 for 8 bits, etc)
+        /// </summary>
+        public int Power {
+            set {
+                _Unit = (1 << value) - 1;
+                if (_Unit < 1)
+                    _Unit = 1;
+                _InvUnit = 1.0f / _Unit;
+            }
+        }
+    }
+
     public class DefaultMaterialSet : MaterialSetBase {
         internal class ActiveViewTransformInfo {
             public readonly DefaultMaterialSet MaterialSet;
@@ -161,7 +194,7 @@ namespace Squared.Render {
         public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
         public Material Clear, SetScissor;
 
-        protected readonly Action<Material, float> _ApplyTimeDelegate;
+        private readonly Action<Material, FrameParams> _ApplyParamsDelegate;
         protected readonly RefMaterialAction<ViewTransform> _ApplyViewTransformDelegate; 
         protected readonly Stack<ViewTransform> ViewTransformStack = new Stack<ViewTransform>();
 
@@ -170,12 +203,29 @@ namespace Squared.Render {
         ///  instead of being eagerly applied to all materials whenever you change the view transform
         /// </summary>
         public bool LazyViewTransformChanges = true;
+
+        /// <summary>
+        /// Controls the strength of dithering applied to the result of the lightmapped bitmap materials.
+        /// </summary>
+        public DitheringSettings LightmapDitheringSettings;
+
         internal readonly ActiveViewTransformInfo ActiveViewTransform;
+
+        private struct FrameParams {
+            public float Seconds;
+            public int? FrameIndex;
+        }
 
         public DefaultMaterialSet (IServiceProvider serviceProvider) {
             ActiveViewTransform = new ActiveViewTransformInfo(this);
             _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
-            _ApplyTimeDelegate          = ApplyTimeToMaterial;
+            _ApplyParamsDelegate        = ApplyParamsToMaterial;
+
+            LightmapDitheringSettings = new DitheringSettings {
+                Unit = 255,
+                Strength = 1.0f,
+                FrameIndex = 0
+            };
 
             TimeProvider = (ITimeProvider)serviceProvider.GetService(typeof(ITimeProvider))
                 ?? new DotNetTimeProvider();
@@ -188,7 +238,7 @@ namespace Squared.Render {
 
             Clear = new Material(
                 null, null, 
-                new Action<DeviceManager>[] { (dm) => ApplyShaderVariables(false) }
+                new Action<DeviceManager>[] { (dm) => ApplyShaderVariables(false, dm.FrameIndex) }
             );
 
             SetScissor = new Material(
@@ -323,6 +373,8 @@ namespace Squared.Render {
             ForEachMaterial<object>((material, _) => {
                 material._ViewportUniform = GetUniformBinding<ViewTransform>(material, "Viewport");
                 material._ViewportUniformInitialized = true;
+                material._DitheringUniform = GetUniformBinding<DitheringSettings>(material, "Dithering");
+                material._DitheringUniformInitialized = true;
             }, null);
         }
 
@@ -412,21 +464,40 @@ namespace Squared.Render {
         /// Also sets other parameters like Time.
         /// <param name="force">Overrides the LazyViewTransformChanges configuration variable if it's set</param>
         /// </summary>
-        public void ApplyShaderVariables (bool force = true) {
-            float timeSeconds = (float)TimeProvider.Seconds;
-            ForEachMaterial(_ApplyTimeDelegate, timeSeconds);
+        public void ApplyShaderVariables (bool force = true, int? frameIndex = null) {
+            var @params = new FrameParams {
+                Seconds = (float)TimeProvider.Seconds,
+                FrameIndex = frameIndex
+            };
+            ForEachMaterial(_ApplyParamsDelegate, @params);
 
             var vt = ViewTransformStack.Peek();
             ApplyViewTransform(ref vt, force || !LazyViewTransformChanges);
         }
 
-        private static void ApplyTimeToMaterial (Material m, float time) {
+        private void ApplyParamsToMaterial (Material m, FrameParams @params) {
             if (m.Effect == null)
                 return;
 
             var p = m.Parameters.Time;
             if (p != null)
-                p.SetValue(time);
+                p.SetValue(@params.Seconds);
+            if (@params.FrameIndex.HasValue) {
+                p = m.Parameters.FrameIndex;
+                if (p != null)
+                    p.SetValue((float)@params.FrameIndex.Value);
+            }
+
+            var ds = LightmapDitheringSettings;
+            ds.FrameIndex = @params.FrameIndex.GetValueOrDefault(0);
+
+            var ub = m._DitheringUniform;
+            if (!m._DitheringUniformInitialized) {
+                ub = m._DitheringUniform = GetUniformBinding<DitheringSettings>(m, "Dithering");
+                m._DitheringUniformInitialized = true;
+            }
+            if (ub != null)
+                ub.Value.Current = ds;
         }
 
         public void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
@@ -526,7 +597,8 @@ namespace Squared.Render {
         public readonly EffectParameter ViewportPosition, ViewportScale;
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
         public readonly EffectParameter BitmapTextureSize, HalfTexel;
-        public readonly EffectParameter Time, ShadowColor, ShadowOffset, LightmapUVOffset;
+        public readonly EffectParameter ShadowColor, ShadowOffset, LightmapUVOffset;
+        public readonly EffectParameter Time, FrameIndex, DitherStrength;
 
         public DefaultMaterialSetEffectParameters (Effect effect) {
             var viewport = effect.Parameters["Viewport"];
@@ -541,9 +613,11 @@ namespace Squared.Render {
             BitmapTextureSize = effect.Parameters["BitmapTextureSize"];
             HalfTexel = effect.Parameters["HalfTexel"];
             Time = effect.Parameters["Time"];
+            FrameIndex = effect.Parameters["FrameIndex"];
             ShadowColor = effect.Parameters["ShadowColor"];
             ShadowOffset = effect.Parameters["ShadowOffset"];
             LightmapUVOffset = effect.Parameters["LightmapUVOffset"];
+            DitherStrength = effect.Parameters["DitherStrength"];
         }
     }
 

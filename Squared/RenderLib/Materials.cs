@@ -14,8 +14,9 @@ using Squared.Render.Evil;
 namespace Squared.Render {
     public sealed class Material : IDisposable {
         // HACK: Performance improvement for common cases
-        internal bool _ViewportUniformInitialized = false;
+        internal bool _ViewportUniformInitialized = false, _DitheringUniformInitialized = false;
         internal UniformBinding<ViewTransform> _ViewportUniform = null;
+        internal UniformBinding<DitheringSettings> _DitheringUniform = null;
 
         internal readonly Dictionary<string, IUniformBinding> UniformBindings =
             new Dictionary<string, IUniformBinding>(StringComparer.Ordinal);

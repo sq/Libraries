@@ -25,6 +25,7 @@ void ToSRGBPixelShader(
     in float2 texCoord : TEXCOORD0,
     in float2 texTL : TEXCOORD1,
     in float2 texBR : TEXCOORD2,
+    in float2 vpos : VPOS,
     out float4 result : COLOR0
 ) {
     addColor.rgb *= addColor.a;
@@ -33,7 +34,7 @@ void ToSRGBPixelShader(
     result = multiplyColor * tex2D(TextureSampler, clamp(texCoord, texTL, texBR));
     result += (addColor * result.a);
     // Fixme: Premultiplied alpha?
-    result.rgb = LinearToSRGB(result.rgb);
+    result.rgb = ApplyDither(LinearToSRGB(result.rgb), vpos);
 }
 
 void ShadowedPixelShader(

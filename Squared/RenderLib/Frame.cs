@@ -115,6 +115,7 @@ namespace Squared.Render {
                 Tracing.RenderTrace.ImmediateMarker("Frame {0:0000} : Begin Draw", Index);
 
             var dm = RenderManager.DeviceManager;
+            dm.FrameIndex = Index;
             var device = dm.Device;
 
             int c = Batches.Count;

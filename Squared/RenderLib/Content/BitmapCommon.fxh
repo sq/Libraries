@@ -2,6 +2,52 @@
 #define MIP_BIAS 0
 #endif
 
+#if 1
+
+struct DitheringSettings {
+    float Strength, Unit, InvUnit, FrameIndex;
+};
+
+uniform DitheringSettings Dithering;
+
+float Dither17 (float2 vpos, float frameIndexMod4) {
+    uint3 k0 = uint3(2, 7, 23);
+    float ret = dot(float3(vpos, frameIndexMod4), k0 / 17.0f);
+    return frac(ret);
+}
+
+float Dither32 (float2 vpos, float frameIndexMod4) {
+    uint3 k0 = uint3(13, 5, 15);
+    float ret = dot(float3(vpos, frameIndexMod4), k0 / 32.0f);
+    return frac(ret);
+}
+
+float Dither64 (float2 vpos, float frameIndexMod4) {
+    uint3 k0 = uint3(33, 52, 25);
+    float ret = dot(float3(vpos, frameIndexMod4), k0 / 64.0f);
+    return frac(ret);
+}
+
+float3 ApplyDither (float3 rgb, float2 vpos) {
+    float threshold = Dither17(vpos, Dithering.FrameIndex % 4);
+    float3 threshold3 = float3(threshold, threshold, threshold);
+
+    float3 rgb8 = rgb * Dithering.Unit;
+    float3 a = trunc(rgb8), b = ceil(rgb8);
+    float3 distanceFromA = b - rgb8;
+    float3 mask = step(distanceFromA, threshold3);
+    float3 result = lerp(a, b, mask);
+    return lerp(rgb, result * Dithering.InvUnit, Dithering.Strength);
+}
+
+#else
+
+float3 ApplyDither (float3 rgb, float2 vpos) {
+    return rgb;
+}
+
+#endif
+
 float4 TransformPosition (float4 position, float offset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
 #ifdef FNA

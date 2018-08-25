@@ -93,6 +93,7 @@ namespace Squared.Render {
 
         public readonly GraphicsDevice Device;
         public Material CurrentMaterial { get; private set; }
+        public int FrameIndex { get; internal set; }
 
         public DeviceManager (GraphicsDevice device) {
             Device = device;
