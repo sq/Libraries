@@ -64,6 +64,27 @@ namespace Squared.Render {
         public float Strength;
         private float _Unit, _InvUnit;
         public float FrameIndex;
+        private float _BandSizeMinus1;
+        public float RangeMin;
+        private float _RangeMaxMinus1;
+
+        public float RangeMax {
+            get {
+                return _RangeMaxMinus1 + 1;
+            }
+            set {
+                _RangeMaxMinus1 = value - 1;
+            }
+        }
+
+        public float BandSize {
+            get {
+                return _BandSizeMinus1 + 1;
+            }
+            set {
+                _BandSizeMinus1 = value - 1;
+            }
+        }
 
         /// <summary>
         /// Determines the scale of values before dithering. Set to 255 for 8 bit RGBA, 65535 for 16 bit RGBA, 
@@ -75,7 +96,9 @@ namespace Squared.Render {
             }
             set {
                 _Unit = value;
-                _InvUnit = 1.0f / value;
+                if (_Unit < 1)
+                    _Unit = 1;
+                _InvUnit = 1.0f / _Unit;
             }
         }
 

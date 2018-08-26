@@ -6,6 +6,7 @@
 
 struct DitheringSettings {
     float Strength, Unit, InvUnit, FrameIndex;
+    float BandSizeMinus1, RangeMin, RangeMaxMinus1;
 };
 
 uniform DitheringSettings Dithering;
@@ -30,14 +31,19 @@ float Dither64 (float2 vpos, float frameIndexMod4) {
 
 float3 ApplyDither (float3 rgb, float2 vpos) {
     float threshold = Dither17(vpos, (Dithering.FrameIndex % 4) + 0.5);
+    threshold = (Dithering.BandSizeMinus1 + 1) * threshold;
     float3 threshold3 = float3(threshold, threshold, threshold);
+    const float offset = 0.05;
 
     float3 rgb8 = rgb * Dithering.Unit;
     float3 a = trunc(rgb8), b = ceil(rgb8);
-    float3 distanceFromA = b - rgb8;
-    float3 mask = step(distanceFromA, threshold3);
+    float3 distanceFromA = rgb8 - a;
+    float3 mask = 1.0 - step(distanceFromA, threshold3);
     float3 result = lerp(a, b, mask);
-    return lerp(rgb, result * Dithering.InvUnit, Dithering.Strength);
+    float3 strength3 = Dithering.Strength * 
+        smoothstep(Dithering.RangeMin - offset, Dithering.RangeMin, rgb) *
+        1 - smoothstep(Dithering.RangeMaxMinus1 + 1, Dithering.RangeMaxMinus1 + 1 + offset, rgb);
+    return lerp(rgb, result / Dithering.Unit, strength3);
 }
 
 #else
