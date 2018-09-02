@@ -1,5 +1,6 @@
 #include "ViewTransformCommon.fxh"
 #include "BitmapCommon.fxh"
+#include "DitherCommon.fxh"
 
 uniform const float4 ShadowColor;
 uniform const float2 ShadowOffset;

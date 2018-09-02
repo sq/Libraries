@@ -1,5 +1,6 @@
 #include "ViewTransformCommon.fxh"
 #include "BitmapCommon.fxh"
+#include "DitherCommon.fxh"
 
 uniform float2 LightmapUVOffset;
 

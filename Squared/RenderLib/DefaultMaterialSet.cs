@@ -230,7 +230,7 @@ namespace Squared.Render {
         /// <summary>
         /// Controls the strength of dithering applied to the result of the lightmapped bitmap materials.
         /// </summary>
-        public DitheringSettings LightmapDitheringSettings;
+        public DitheringSettings DefaultDitheringSettings;
 
         internal readonly ActiveViewTransformInfo ActiveViewTransform;
 
@@ -244,7 +244,7 @@ namespace Squared.Render {
             _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
             _ApplyParamsDelegate        = ApplyParamsToMaterial;
 
-            LightmapDitheringSettings = new DitheringSettings {
+            DefaultDitheringSettings = new DitheringSettings {
                 Unit = 255,
                 Strength = 1.0f,
                 FrameIndex = 0
@@ -511,7 +511,7 @@ namespace Squared.Render {
                     p.SetValue((float)@params.FrameIndex.Value);
             }
 
-            var ds = LightmapDitheringSettings;
+            var ds = DefaultDitheringSettings;
             ds.FrameIndex = @params.FrameIndex.GetValueOrDefault(0);
 
             var ub = m._DitheringUniform;

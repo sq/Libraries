@@ -95,6 +95,9 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <None Include="DitherCommon.fxh">
+      <Name>DitherCommon</Name>
+    </None>
     <None Include="BitmapCommon.fxh">
       <Name>BitmapCommon</Name>
       <Importer>EffectImporter</Importer>
