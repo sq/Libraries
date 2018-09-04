@@ -208,6 +208,7 @@ namespace Squared.Render {
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
+        public Material ScreenSpaceEllipse, WorldSpaceEllipse;
         /// <summary>
         /// Make sure to resolve your lightmap to sRGB before using it with this, otherwise your lighting
         ///  will have really terrible banding in dark areas.
@@ -270,6 +271,7 @@ namespace Squared.Render {
    
             var bitmapShader = BuiltInShaders.Load<Effect>("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load<Effect>("SquaredGeometryShader");
+            var ellipseShader = BuiltInShaders.Load<Effect>("Ellipse");
             
             ScreenSpaceBitmap = new Material(
                 bitmapShader,
@@ -333,6 +335,16 @@ namespace Squared.Render {
             WorldSpaceTexturedGeometry = new Material(
                 geometryShader,
                 "WorldSpaceTextured"
+            );
+
+            ScreenSpaceEllipse = new Material(
+                ellipseShader,
+                "ScreenSpaceEllipse"
+            );
+
+            WorldSpaceEllipse = new Material(
+                ellipseShader,
+                "WorldSpaceEllipse"
             );
             
             var lightmapShader = BuiltInShaders.Load<Effect>("Lightmap");

@@ -246,7 +246,8 @@ namespace Squared.Render.Convenience {
         private enum CachedBatchType {
             Bitmap,
             MultimaterialBitmap,
-            Geometry
+            Geometry,
+            Ellipse
         }
 
         private struct CachedBatches {
@@ -823,6 +824,43 @@ namespace Squared.Render.Convenience {
                 gb.AddFilledRing(center, innerRadius, outerRadius, innerColorStart, outerColorStart, innerColorEnd, outerColorEnd, startAngle, endAngle, quality);
         }
 
+        public void Ellipse (
+            Vector2 center, Vector2 radius, Color innerColor, Color? outerColor = null,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var eb = GetEllipseBatch(
+                layer, worldSpace, blendState
+            ))
+                eb.Add(new EllipseDrawCall {
+                    Center = center,
+                    Radius = radius - Vector2.One,
+                    OutlineSize = 1,
+                    CenterColor = innerColor,
+                    EdgeColor = outerColor.GetValueOrDefault(innerColor),
+                    OutlineColor = outerColor.GetValueOrDefault(innerColor)
+                });
+        }
+
+        public void Ellipse (
+            Vector2 center, Vector2 radius, float outlineSize,
+            Color innerColor, Color outerColor, Color outlineColor,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var eb = GetEllipseBatch(
+                layer, worldSpace, blendState
+            ))
+                eb.Add(new EllipseDrawCall {
+                    Center = center,
+                    Radius = radius,
+                    OutlineSize = outlineSize,
+                    CenterColor = innerColor,
+                    EdgeColor = outerColor,
+                    OutlineColor = outlineColor
+                });
+        }
+
         public IBitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, Material customMaterial) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
@@ -917,6 +955,45 @@ namespace Squared.Render.Convenience {
                 Layer += 1;
 
             return (GeometryBatch)cacheEntry.Batch;
+        }
+
+        public EllipseBatch GetEllipseBatch (int? layer, bool? worldSpace, BlendState blendState) {
+            if (Materials == null)
+                throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
+
+            var actualLayer = layer.GetValueOrDefault(Layer);
+            var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
+            var desiredBlendState = blendState ?? BlendState;
+
+            CachedBatch cacheEntry;
+            if (!Cache.TryGet<EllipseBatch>(
+                out cacheEntry,
+                CachedBatchType.Ellipse,
+                container: Container,
+                layer: actualLayer,
+                worldSpace: actualWorldSpace,
+                rasterizerState: RasterizerState,
+                depthStencilState: DepthStencilState,
+                blendState: desiredBlendState,
+                samplerState: null,
+                customMaterial: null,
+                useZBuffer: UseZBuffer
+            )) {
+                var material = Materials.Get(
+                    actualWorldSpace ? Materials.WorldSpaceEllipse : Materials.ScreenSpaceEllipse,
+                    rasterizerState: RasterizerState,
+                    depthStencilState: DepthStencilState,
+                    blendState: desiredBlendState
+                );
+
+                cacheEntry.Batch = EllipseBatch.New(Container, actualLayer, material);
+                Cache.InsertAtFront(ref cacheEntry, null);
+            }
+
+            if (AutoIncrementLayer && !layer.HasValue)
+                Layer += 1;
+
+            return (EllipseBatch)cacheEntry.Batch;
         }
     }
 
