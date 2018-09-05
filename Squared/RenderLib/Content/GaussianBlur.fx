@@ -15,10 +15,9 @@ sampler TapSampler : register(s0) {
 
 float4 tap(
     in float2 texCoord,
-    in float2 texTL : TEXCOORD1,
-    in float2 texBR : TEXCOORD2
+    in float4 texRgn
 ) {
-    return tex2Dbias(TapSampler, float4(clamp(texCoord, texTL, texBR), 0, MipOffset));
+    return tex2Dbias(TapSampler, float4(clamp(texCoord, texRgn.xy, texRgn.zw), 0, MipOffset));
 }
 
 float4 GaussianBlur5TapPixelShaderCore(
@@ -26,16 +25,15 @@ float4 GaussianBlur5TapPixelShaderCore(
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
     in float2 texCoord : TEXCOORD0,
-    in float2 texTL : TEXCOORD1,
-    in float2 texBR : TEXCOORD2
+    in float4 texRgn : TEXCOORD1
 ) {
-    float4 sum = tap(texCoord, texTL, texBR) * TapWeight[0];
+    float4 sum = tap(texCoord, texRgn) * TapWeight[0];
 
     for (int i = 1; i < 3; i += 1) {
         float2 offset2 = step * TapOffset[i];
 
-        sum += tap(texCoord - offset2, texTL, texBR) * TapWeight[i];
-        sum += tap(texCoord + offset2, texTL, texBR) * TapWeight[i];
+        sum += tap(texCoord - offset2, texRgn) * TapWeight[i];
+        sum += tap(texCoord + offset2, texRgn) * TapWeight[i];
     }
 
     addColor.rgb *= addColor.a;
@@ -50,8 +48,7 @@ void HorizontalGaussianBlur5TapPixelShader(
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
     in float2 texCoord : TEXCOORD0,
-    in float2 texTL : TEXCOORD1,
-    in float2 texBR : TEXCOORD2,
+    in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
     result = GaussianBlur5TapPixelShaderCore(
@@ -59,8 +56,7 @@ void HorizontalGaussianBlur5TapPixelShader(
         multiplyColor,
         addColor,
         texCoord,
-        texTL,
-        texBR
+        texRgn
     );
 }
 
@@ -68,8 +64,7 @@ void VerticalGaussianBlur5TapPixelShader(
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
     in float2 texCoord : TEXCOORD0,
-    in float2 texTL : TEXCOORD1,
-    in float2 texBR : TEXCOORD2,
+    in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
     result = GaussianBlur5TapPixelShaderCore(
@@ -77,8 +72,7 @@ void VerticalGaussianBlur5TapPixelShader(
         multiplyColor,
         addColor,
         texCoord,
-        texTL,
-        texBR
+        texRgn
     );
 }
 

@@ -47,8 +47,8 @@ namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct BitmapVertex : IVertexType {
         public Vector3 Position;
-        public Vector2 TextureTopLeft;
-        public Vector2 TextureBottomRight;
+        public Vector4 Texture1Region;
+        public Vector4 Texture2Region;
         public Vector2 Scale;
         public Vector2 Origin;
         public float Rotation;
@@ -64,14 +64,15 @@ namespace Squared.Render {
             Elements = new VertexElement[] {
                 new VertexElement( Marshal.OffsetOf(tThis, "Position").ToInt32(), 
                     VertexElementFormat.Vector3, VertexElementUsage.Position, 0 ),
-                // TextureRegion
-                new VertexElement( Marshal.OffsetOf(tThis, "TextureTopLeft").ToInt32(), 
+                new VertexElement( Marshal.OffsetOf(tThis, "Texture1Region").ToInt32(), 
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 1 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "Texture2Region").ToInt32(), 
+                    VertexElementFormat.Vector4, VertexElementUsage.Position, 2 ),
                 // ScaleOrigin
                 new VertexElement( Marshal.OffsetOf(tThis, "Scale").ToInt32(), 
-                    VertexElementFormat.Vector4, VertexElementUsage.Position, 2 ),
+                    VertexElementFormat.Vector4, VertexElementUsage.Position, 3 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Rotation").ToInt32(), 
-                    VertexElementFormat.Single, VertexElementUsage.Position, 3 ),
+                    VertexElementFormat.Single, VertexElementUsage.Position, 4 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "MultiplyColor").ToInt32(), 
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "AddColor").ToInt32(), 
@@ -582,8 +583,8 @@ namespace Squared.Render {
                             Y = call.Position.Y,
                             Z = call.SortKey.Order * zBufferFactor
                         },
-                        TextureTopLeft = call.TextureRegion.TopLeft,
-                        TextureBottomRight = call.TextureRegion.BottomRight,
+                        Texture1Region = call.TextureRegion.ToVector4(),
+                        Texture2Region = call.TextureRegion2.GetValueOrDefault(call.TextureRegion).ToVector4(),
                         MultiplyColor = call.MultiplyColor,
                         AddColor = call.AddColor,
                         Scale = call.Scale,
@@ -1129,6 +1130,7 @@ namespace Squared.Render {
         public Vector2    Scale;
         public Vector2    Origin;
         public Bounds     TextureRegion;
+        public Bounds?    TextureRegion2;
         public float      Rotation;
         public Color      MultiplyColor, AddColor;
         public DrawCallSortKey SortKey;
@@ -1187,6 +1189,7 @@ namespace Squared.Render {
             Textures = new TextureSet(texture);
             Position = position;
             TextureRegion = textureRegion;
+            TextureRegion2 = null;
             MultiplyColor = color;
             AddColor = new Color(0, 0, 0, 0);
             Scale = scale;

@@ -255,6 +255,10 @@ namespace Squared.Game {
         public static bool operator != (Bounds lhs, Bounds rhs) {
             return !lhs.Equals(rhs);
         }
+
+        public Vector4 ToVector4 () {
+            return new Vector4(TopLeft.X, TopLeft.Y, BottomRight.X, BottomRight.Y);
+        }
     }
 
     public class Polygon : IEnumerable<Vector2>, IHasBounds {

@@ -39,13 +39,13 @@ static const float2 Corners[] = {
     {0, 1}
 };
 
-inline float2 ComputeRegionSize(
+inline float2 ComputeRegionSize (
     in float4 texRgn : POSITION1
 ) {
     return texRgn.zw - texRgn.xy;
 }
 
-inline float2 ComputeCorner(
+inline float2 ComputeCorner (
     in int2 cornerIndex : BLENDINDICES0,
     in float2 regionSize
 ) {
@@ -53,21 +53,21 @@ inline float2 ComputeCorner(
     return corner * regionSize;
 }
 
-inline float2 ComputeTexCoord(
-    in int2 cornerIndex : BLENDINDICES0,
+inline float2 ComputeTexCoord (
+    in int2 cornerIndex,
     in float2 corner,
-    in float4 texRgn : POSITION1,
-    out float2 texTL : TEXCOORD1,
-    out float2 texBR : TEXCOORD2
+    in float4 texRgn,
+    out float4 newTexRgn
 ) {
-    texTL = min(texRgn.xy, texRgn.zw);
-    texBR = max(texRgn.xy, texRgn.zw);
+    float2 texTL = min(texRgn.xy, texRgn.zw);
+    float2 texBR = max(texRgn.xy, texRgn.zw);
+    newTexRgn = float4(texTL.x, texTL.y, texBR.x, texBR.y);
     return clamp(
         texRgn.xy + corner, texTL, texBR
     );
 }
 
-inline float2 ComputeRotatedCorner(
+inline float2 ComputeRotatedCorner (
     in float2 corner,
     in float4 texRgn : POSITION1,
     in float4 scaleOrigin : POSITION2, // scalex, scaley, originx, originy
@@ -87,46 +87,52 @@ inline float2 ComputeRotatedCorner(
     );
 }
 
-void ScreenSpaceVertexShader(
+void ScreenSpaceVertexShader (
     in float3 position : POSITION0, // x, y
-    in float4 texRgn : POSITION1, // x1, y1, x2, y2
-    in float4 scaleOrigin : POSITION2, // scalex, scaley, originx, originy
-    in float rotation : POSITION3,
+    in float4 texRgn1 : POSITION1, // x1, y1, x2, y2
+    in float4 texRgn2 : POSITION2, // x1, y1, x2, y2
+    in float4 scaleOrigin : POSITION3, // scalex, scaley, originx, originy
+    in float rotation : POSITION4,
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
     in int2 cornerIndex : BLENDINDICES0, // 0-3
-    out float2 texCoord : TEXCOORD0,
-    out float2 texTL : TEXCOORD1,
-    out float2 texBR : TEXCOORD2,
+    out float2 texCoord1 : TEXCOORD0,
+    out float4 newTexRgn1 : TEXCOORD1,
+    out float2 texCoord2 : TEXCOORD2,
+    out float4 newTexRgn2 : TEXCOORD3,
     out float4 result : POSITION0
 ) {
-    float2 regionSize = ComputeRegionSize(texRgn);
+    float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerIndex, regionSize);
-    texCoord = ComputeTexCoord(cornerIndex, corner, texRgn, texTL, texBR);
-    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn, scaleOrigin, rotation);
+    texCoord1 = ComputeTexCoord(cornerIndex, corner, texRgn1, newTexRgn1);
+    texCoord2 = ComputeTexCoord(cornerIndex, corner, texRgn2, newTexRgn2);
+    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, rotation);
     
     position.xy += rotatedCorner;
 
     result = TransformPosition(float4(position.xy, position.z, 1), 0.5);
 }
 
-void WorldSpaceVertexShader(
+void WorldSpaceVertexShader (
     in float3 position : POSITION0, // x, y
-    in float4 texRgn : POSITION1, // x1, y1, x2, y2
-    in float4 scaleOrigin : POSITION2, // scalex, scaley, originx, originy
-    in float rotation : POSITION3,
+    in float4 texRgn1 : POSITION1, // x1, y1, x2, y2
+    in float4 texRgn2 : POSITION2, // x1, y1, x2, y2
+    in float4 scaleOrigin : POSITION3, // scalex, scaley, originx, originy
+    in float rotation : POSITION4,
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
     in int2 cornerIndex : BLENDINDICES0, // 0-3
-    out float2 texCoord : TEXCOORD0,
-    out float2 texTL : TEXCOORD1,
-    out float2 texBR : TEXCOORD2,
+    out float2 texCoord1 : TEXCOORD0,
+    out float4 newTexRgn1 : TEXCOORD1,
+    out float2 texCoord2 : TEXCOORD2,
+    out float4 newTexRgn2 : TEXCOORD3,
     out float4 result : POSITION0
 ) {
-    float2 regionSize = ComputeRegionSize(texRgn);
+    float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerIndex, regionSize);
-    texCoord = ComputeTexCoord(cornerIndex, corner, texRgn, texTL, texBR);
-    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn, scaleOrigin, rotation);
+    texCoord1 = ComputeTexCoord(cornerIndex, corner, texRgn1, newTexRgn1);
+    texCoord2 = ComputeTexCoord(cornerIndex, corner, texRgn2, newTexRgn2);
+    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, rotation);
     
     position.xy += rotatedCorner - Viewport.Position.xy;
     

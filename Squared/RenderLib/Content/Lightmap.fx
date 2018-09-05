@@ -4,16 +4,15 @@
 
 uniform float2 LightmapUVOffset;
 
-void LightmappedPixelShader(
-    in float4 multiplyColor : COLOR0, 
-    in float4 addColor : COLOR1, 
-    in float2 texCoord : TEXCOORD0,
-    in float2 texTL : TEXCOORD1,
-    in float2 texBR : TEXCOORD2,
-    in float2 vpos : VPOS,
-    out float4 result : COLOR0
+float4 LightmappedPixelShaderCore(
+    in float4 multiplyColor,
+    in float4 addColor,
+    in float2 texCoord1,
+    in float4 texRgn1,
+    in float2 texCoord2,
+    in float4 texRgn2
 ) {
-    float2 lightmapTexCoord = clamp(texCoord + LightmapUVOffset, texTL, texBR);
+    float2 lightmapTexCoord = clamp(texCoord2 + LightmapUVOffset, texRgn2.xy, texRgn2.zw);
 
     float4 lightmapColor = tex2D(TextureSampler2, lightmapTexCoord) * 2;
     lightmapColor.a = 1;
@@ -23,10 +22,24 @@ void LightmappedPixelShader(
 
     multiplyColor = multiplyColor * lightmapColor;
 
-    texCoord = clamp(texCoord, texTL, texBR);
+    texCoord1 = clamp(texCoord1, texRgn1.xy, texRgn1.zw);
 
-    result = multiplyColor * tex2D(TextureSampler, texCoord);
+    float4 result = multiplyColor * tex2D(TextureSampler, texCoord1);
     result += (addColor * result.a);
+    return result;
+}
+
+void LightmappedPixelShader(
+    in float4 multiplyColor : COLOR0, 
+    in float4 addColor : COLOR1, 
+    in float2 texCoord1 : TEXCOORD0,
+    in float4 texRgn1 : TEXCOORD1,
+    in float2 texCoord2 : TEXCOORD2,
+    in float4 texRgn2 : TEXCOORD3,
+    in float2 vpos : VPOS,
+    out float4 result : COLOR0
+) {
+    result = LightmappedPixelShaderCore(multiplyColor, addColor, texCoord1, texRgn1, texCoord2, texRgn2);
 
     result.rgb = ApplyDither(result.rgb, vpos);
 
@@ -37,29 +50,14 @@ void LightmappedPixelShader(
 void sRGBLightmappedPixelShader(
     in float4 multiplyColor : COLOR0,
     in float4 addColor : COLOR1,
-    in float2 texCoord : TEXCOORD0,
-    in float2 texTL : TEXCOORD1,
-    in float2 texBR : TEXCOORD2,
+    in float2 texCoord1 : TEXCOORD0,
+    in float4 texRgn1 : TEXCOORD1,
+    in float2 texCoord2 : TEXCOORD2,
+    in float4 texRgn2 : TEXCOORD3,
     in float2 vpos : VPOS,
     out float4 result : COLOR0
 ) {
-    float2 lightmapTexCoord = clamp(texCoord + LightmapUVOffset, texTL, texBR);
-
-    float4 lightmapColor = tex2D(TextureSampler2, lightmapTexCoord) * 2;
-    lightmapColor.a = 1;
-
-    addColor.rgb *= addColor.a;
-    addColor.a = 0;
-
-    multiplyColor = multiplyColor * lightmapColor;
-
-    texCoord = clamp(texCoord, texTL, texBR);
-
-    float4 linearTexColor = tex2D(TextureSampler, texCoord);
-    linearTexColor.rgb = SRGBToLinear(linearTexColor.rgb);
-
-    result = multiplyColor * linearTexColor;
-    result += (addColor * result.a);
+    result = LightmappedPixelShaderCore(multiplyColor, addColor, texCoord1, texRgn1, texCoord2, texRgn2);
 
     result.rgb = LinearToSRGB(result.rgb);
 
