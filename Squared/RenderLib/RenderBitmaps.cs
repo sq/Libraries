@@ -709,6 +709,9 @@ namespace Squared.Render {
 
             var scratchBindings = _ScratchBindingArray.Value;
 
+            var previousSS1 = device.SamplerStates[0];
+            var previousSS2 = device.SamplerStates[1];
+
             using (manager.ApplyMaterial(Material)) {
                 TextureSet currentTexture = new TextureSet();
                 var paramSize = manager.CurrentParameters.BitmapTextureSize;
@@ -777,6 +780,9 @@ namespace Squared.Render {
                 if (previousHardwareBuffer != null)
                     previousHardwareBuffer.SetInactive();
             }
+
+            device.SamplerStates[0] = previousSS1;
+            device.SamplerStates[1] = previousSS2;
 
             cornerHwb.SetInactive();
 

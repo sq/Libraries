@@ -229,6 +229,10 @@ namespace Squared.Render {
             return result;
         }
 
+        private static SamplerState DummySamplerState = new SamplerState {
+            Filter = TextureFilter.Anisotropic
+        };
+
         /// <summary>
         /// A device reset can leave a device in an intermediate state that will cause drawing operations to fail later.
         /// We address this by resetting pieces of device state to known-good values at the beginning of every frame,
@@ -240,11 +244,13 @@ namespace Squared.Render {
 
             for (int i = 0; i < numStages; i++) {
                 device.Textures[i] = null;
+                device.SamplerStates[i] = DummySamplerState;
                 device.SamplerStates[i] = SamplerState.PointClamp;
             }
 
             for (int i = 0; i < numVertexStages; i++) {
                 device.VertexTextures[i] = null;
+                device.VertexSamplerStates[i] = DummySamplerState;
                 device.VertexSamplerStates[i] = SamplerState.PointClamp;
             }
 
