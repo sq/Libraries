@@ -229,8 +229,18 @@ namespace Squared.Render {
             return result;
         }
 
-        private static SamplerState DummySamplerState = new SamplerState {
-            Filter = TextureFilter.Anisotropic
+        private static readonly BlendState ResetBlendState = new BlendState {
+            AlphaDestinationBlend = Blend.Zero,
+            ColorDestinationBlend = Blend.Zero,
+            Name = "ResetBlendState"
+        };
+
+        private static readonly SamplerState ResetSamplerState = new SamplerState {
+            Filter = TextureFilter.Point,
+            AddressU = TextureAddressMode.Clamp,
+            AddressV = TextureAddressMode.Clamp,
+            AddressW = TextureAddressMode.Clamp,
+            Name = "ResetSamplerState"
         };
 
         /// <summary>
@@ -244,17 +254,15 @@ namespace Squared.Render {
 
             for (int i = 0; i < numStages; i++) {
                 device.Textures[i] = null;
-                device.SamplerStates[i] = DummySamplerState;
-                device.SamplerStates[i] = SamplerState.PointClamp;
+                device.SamplerStates[i] = ResetSamplerState;
             }
 
             for (int i = 0; i < numVertexStages; i++) {
                 device.VertexTextures[i] = null;
-                device.VertexSamplerStates[i] = DummySamplerState;
-                device.VertexSamplerStates[i] = SamplerState.PointClamp;
+                device.VertexSamplerStates[i] = ResetSamplerState;
             }
 
-            device.BlendState = BlendState.Opaque;
+            device.BlendState = ResetBlendState;
             device.DepthStencilState = DepthStencilState.None;
             device.RasterizerState = RasterizerState.CullNone;
         }
