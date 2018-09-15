@@ -59,7 +59,7 @@ namespace Squared.Render {
                 if (technique != null)
                     Effect.CurrentTechnique = technique;
                 else {
-                    throw new ArgumentException("techniqueName");
+                    throw new ArgumentException("No technique named " + techniqueName, "techniqueName");
                 }
             } else {
                 Effect = effect;

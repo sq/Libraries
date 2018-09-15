@@ -537,12 +537,9 @@ namespace Squared.Render {
             int nativeBatchSize = Math.Min(nativeBatchSizeLimit, remainingVertices);
             var softwareBuffer = _BufferGenerator.Allocate(nativeBatchSize, 1);
 
-            // ushort indexBase = (ushort)softwareBuffer.HardwareVertexOffset;
-
             float zBufferFactor = UseZBuffer ? 1.0f : 0.0f;
 
             fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset]) {
-            // fixed (ushort* pIndices = &softwareBuffer.Indices.Array[softwareBuffer.Indices.Offset])
                 for (int i = drawCallsPrepared; i < count; i++) {
                     if (totalVertCount >= nativeBatchSizeLimit)
                         break;
