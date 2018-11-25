@@ -16,8 +16,8 @@ float4 TransformPosition (float4 position, float offset) {
     return mul(modelViewPos, Viewport.Projection);
 }
 
-uniform const float2 BitmapTextureSize;
-uniform const float2 HalfTexel;
+uniform const float2 BitmapTextureSize, BitmapTextureSize2;
+uniform const float2 HalfTexel, HalfTexel2;
 
 Texture2D BitmapTexture : register(t0);
 

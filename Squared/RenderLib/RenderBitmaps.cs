@@ -307,6 +307,7 @@ namespace Squared.Render {
             public readonly TextureSet TextureSet;
 
             public readonly Vector2 Texture1Size, Texture1HalfTexel;
+            public readonly Vector2 Texture2Size, Texture2HalfTexel;
 
             public readonly int LocalVertexOffset;
             public readonly int VertexCount;
@@ -323,6 +324,13 @@ namespace Squared.Render {
 
                 Texture1Size = new Vector2(textureSet.Texture1.Width, textureSet.Texture1.Height);
                 Texture1HalfTexel = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
+
+                if (textureSet.Texture2 != null) {
+                    Texture2Size = new Vector2(textureSet.Texture2.Width, textureSet.Texture2.Height);
+                    Texture2HalfTexel = new Vector2(1.0f / Texture2Size.X, 1.0f / Texture2Size.Y);
+                } else {
+                    Texture2HalfTexel = Texture2Size = Vector2.Zero;
+                }
             }
         }
 
@@ -713,6 +721,8 @@ namespace Squared.Render {
                 TextureSet currentTexture = new TextureSet();
                 var paramSize = manager.CurrentParameters.BitmapTextureSize;
                 var paramHalfTexel = manager.CurrentParameters.HalfTexel;
+                var paramSize2 = manager.CurrentParameters.BitmapTextureSize2;
+                var paramHalfTexel2 = manager.CurrentParameters.HalfTexel2;
 
                 var m = manager.CurrentMaterial;
                 var paramTexture1 = m.Effect.Parameters["BitmapTexture"];
@@ -737,6 +747,11 @@ namespace Squared.Render {
 
                         paramSize.SetValue(nb.Texture1Size);
                         paramHalfTexel.SetValue(nb.Texture1HalfTexel);
+
+                        if ((paramTexture2 != null) && (currentTexture.Texture2 != null)) {
+                            paramSize2.SetValue(nb.Texture2Size);
+                            paramHalfTexel2.SetValue(nb.Texture2HalfTexel);
+                        }
 
                         manager.CurrentMaterial.Flush();
 

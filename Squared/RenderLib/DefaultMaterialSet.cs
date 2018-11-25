@@ -203,6 +203,7 @@ namespace Squared.Render {
 
         public Material ScreenSpaceBitmap, WorldSpaceBitmap;
         public Material ScreenSpaceBitmapToSRGB, WorldSpaceBitmapToSRGB;
+        public Material ScreenSpaceBitmapWithLUT, WorldSpaceBitmapWithLUT;
         public Material ScreenSpaceShadowedBitmap, WorldSpaceShadowedBitmap;
         public Material ScreenSpaceBitmapWithDiscard, WorldSpaceBitmapWithDiscard;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
@@ -281,6 +282,16 @@ namespace Squared.Render {
             WorldSpaceBitmap = new Material(
                 bitmapShader,
                 "WorldSpaceBitmapTechnique"
+            );
+            
+            ScreenSpaceBitmapWithLUT = new Material(
+                bitmapShader,
+                "ScreenSpaceBitmapWithLUTTechnique"
+            );
+
+            WorldSpaceBitmapWithLUT = new Material(
+                bitmapShader,
+                "WorldSpaceBitmapWithLUTTechnique"
             );
             
             ScreenSpaceBitmapToSRGB = new Material(
@@ -632,6 +643,7 @@ namespace Squared.Render {
         public readonly EffectParameter ViewportPosition, ViewportScale;
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
         public readonly EffectParameter BitmapTextureSize, HalfTexel;
+        public readonly EffectParameter BitmapTextureSize2, HalfTexel2;
         public readonly EffectParameter ShadowColor, ShadowOffset, LightmapUVOffset;
         public readonly EffectParameter Time, FrameIndex, DitherStrength;
 
@@ -647,6 +659,8 @@ namespace Squared.Render {
 
             BitmapTextureSize = effect.Parameters["BitmapTextureSize"];
             HalfTexel = effect.Parameters["HalfTexel"];
+            BitmapTextureSize2 = effect.Parameters["BitmapTextureSize2"];
+            HalfTexel2 = effect.Parameters["HalfTexel2"];
             Time = effect.Parameters["Time"];
             FrameIndex = effect.Parameters["FrameIndex"];
             ShadowColor = effect.Parameters["ShadowColor"];
