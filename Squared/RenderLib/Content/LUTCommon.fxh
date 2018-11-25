@@ -1,7 +1,3 @@
-#define LUTResolution 32.0
-#define LUTSliceCount LUTResolution
-#define LUTSliceWidthPixels LUTResolution
-#define LUTSliceHeightPixels LUTResolution
 #define LUTWidthPixels (LUTSliceWidthPixels * LUTSliceCount)
 #define LUTHeightPixels LUTSliceHeightPixels
 #define SliceSizeX (1.0 / LUTSliceCount)
@@ -30,46 +26,44 @@ sampler LUT2Sampler : register(s5) {
     MagFilter = LINEAR;
 };
 
-float2 SliceIndexToBaseUV (float sliceIndex) {
-    return float2(sliceIndex / LUTSliceCount, 0);
+void BlueToLUTBaseX (const float res, const float resMinus1, float value, out float x1, out float x2, out float weight) {
+    float sliceIndexF = value * resMinus1;
+    float sliceIndex1 = trunc(sliceIndexF);
+    float sliceIndex2 = ceil(sliceIndexF);
+    weight = (sliceIndexF - sliceIndex1);
+    x1 = sliceIndex1 / res;
+    x2 = sliceIndex2 / res;
 }
 
-void BlueToLUTBaseUV (float value, out float2 uv1, out float2 uv2, out float weight) {
-    float maxSliceIndex = LUTSliceCount - 1;
-    float sliceIndexF = lerp(0, maxSliceIndex, value);
-    float sliceIndex1 = clamp(floor(sliceIndexF), 0, maxSliceIndex);
-    float sliceIndex2 = clamp(ceil(sliceIndexF), 0, maxSliceIndex);
-    weight = (sliceIndexF - sliceIndex1);
-    uv1 = SliceIndexToBaseUV(sliceIndex1);
-    uv2 = SliceIndexToBaseUV(sliceIndex2);
+float3 ReadLUT (sampler2D s, float resolution, float3 value) {
+    value = saturate(value);
+    const float resMinus1 = resolution - 1.0;
+
+    float x1, x2, weight;
+    BlueToLUTBaseX(resolution, resMinus1, value.b, x1, x2, weight);
+
+    float2 size = float2(1.0 / resolution, 1);
+    // HACK: Rescale input values to account for the fact that a texture's coordinates are [-0.5, size+0.5] instead of [0, 1]
+    float rescale = resMinus1 / resolution;
+    // Half-texel offset
+    float2 offset = float2(1.0 / (2.0 * (resolution * resolution)), 1.0 / (2.0 * resolution));
+    // Compute u/v within a slice for given red/green values (selected based on blue)
+    float2 uvrg = (value.rg * rescale * size) + offset;
+
+    float3 value1, value2;
+    value1 = tex2Dlod(s, float4(uvrg + float2(x1, 0), 0, 0)).rgb;
+    value2 = tex2Dlod(s, float4(uvrg + float2(x2, 0), 0, 0)).rgb;
+    return lerp(value1, value2, weight);
 }
 
 float3 ApplyLUT (float3 value, float lut2Weight) {
-    float2 uvA, uvB;
-    float weight;
-    float3 lutValueA, lutValueB, lut1Value, lut2Value;
-
-    float2 size = float2(SliceSizeX, 1);
-    // HACK: Rescale input values to account for the fact that a texture's coordinates are [-0.5, size+0.5] instead of [0, 1]
-    float2 rescale = float2((LUTSliceWidthPixels - 1.0) / LUTSliceWidthPixels, (LUTSliceHeightPixels - 1.0) / LUTSliceHeightPixels);
-    // Half-texel offset
-    float2 offset = float2(1.0 / (2.0 * LUTWidthPixels), 1.0 / (2.0 * LUTHeightPixels));
-    // Compute u/v within a slice for given red/green values (selected based on blue)
-    float2 uvrg = (value.rg * size * rescale) + offset;
-
-    BlueToLUTBaseUV(value.b, uvA, uvB, weight);
-    lutValueA = tex2Dlod(LUT1Sampler, float4(uvA + uvrg, 0, 0)).rgb;
-    lutValueB = tex2Dlod(LUT1Sampler, float4(uvB + uvrg, 0, 0)).rgb;
-    lut1Value = lerp(lutValueA, lutValueB, weight);
+    float3 tap1 = ReadLUT(LUT1Sampler, LUT1Resolution, value.rgb);
 
     [branch]
     if (lut2Weight > 0) {
-        lutValueA = tex2Dlod(LUT2Sampler, float4(uvA + uvrg, 0, 0)).rgb;
-        lutValueB = tex2Dlod(LUT2Sampler, float4(uvB + uvrg, 0, 0)).rgb;
-        lut2Value = lerp(lutValueA, lutValueB, weight);
-
-        return lerp(lut1Value, lut2Value, lut2Weight);
+        float3 tap2 = ReadLUT(LUT2Sampler, LUT2Resolution, value.rgb);
+        return lerp(tap1, tap2, lut2Weight);
     } else {
-        return lut1Value;
+        return tap1;
     }
 }

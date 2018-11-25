@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Graphics.PackedVector;
 using Squared.Util;
 
 namespace Squared.Render {
@@ -34,11 +35,11 @@ namespace Squared.Render {
 
         public static ColorLUT CreateIdentity (
             RenderCoordinator coordinator,
-            LUTPrecision precision = LUTPrecision.Int8, 
+            LUTPrecision precision = LUTPrecision.UInt8, 
             LUTResolution resolution = LUTResolution.Low, 
             bool renderable = false
         ) {
-            var surfaceFormat = precision == LUTPrecision.Int8
+            var surfaceFormat = precision == LUTPrecision.UInt8
                 ? SurfaceFormat.Color
                 : (precision == LUTPrecision.UInt16
                     ? SurfaceFormat.Rgba64
@@ -57,19 +58,17 @@ namespace Squared.Render {
 
             var result = new ColorLUT(tex, true);
             switch (precision) {
-                case LUTPrecision.Int8:
+                case LUTPrecision.UInt8:
                     result.SetToIdentity8(coordinator);
                     break;
-                default:
-                    throw new NotImplementedException();
-                /*
                 case LUTPrecision.UInt16:
                     result.SetToIdentity16(coordinator);
                     break;
                 case LUTPrecision.Float32:
-                    result.SetToIdentity32(coordinator);
+                    result.SetToIdentityF(coordinator);
                     break;
-                */
+                default:
+                    throw new ArgumentOutOfRangeException("precision");
             }
             return result;
         }
@@ -79,16 +78,65 @@ namespace Squared.Render {
             var pixelCount = stride * Resolution;
             var buf = new Color[pixelCount];
             var resMinus1 = Resolution - 1;
+            var max = 255;
             for (int slice = 0; slice < Resolution; slice += 1) {
                 int xOffset = slice * Resolution;
                 for (int y = 0; y < Resolution; y += 1) {
                     int rowOffset = xOffset + (y * stride);
                     for (int x = 0; x < Resolution; x += 1) {
-                        int r = (255 * x) / resMinus1;
-                        int g = (255 * y) / resMinus1;
-                        int b = (255 * slice) / resMinus1;
+                        int r = (max * x) / resMinus1;
+                        int g = (max * y) / resMinus1;
+                        int b = (max * slice) / resMinus1;
                         buf[rowOffset + x] = new Color(
-                            r, g, b, 255
+                            r, g, b, max
+                        );
+                    }
+                } 
+            }
+
+            lock (coordinator.UseResourceLock)
+                Texture.SetData(buf);
+        }
+
+        public void SetToIdentity16 (RenderCoordinator coordinator) {
+            var stride = Resolution * Resolution;
+            var pixelCount = stride * Resolution;
+            var buf = new Rgba64[pixelCount];
+            float resMinus1 = Resolution - 1;
+            for (int slice = 0; slice < Resolution; slice += 1) {
+                int xOffset = slice * Resolution;
+                for (int y = 0; y < Resolution; y += 1) {
+                    int rowOffset = xOffset + (y * stride);
+                    for (int x = 0; x < Resolution; x += 1) {
+                        float r = x / resMinus1;
+                        float g = y / resMinus1;
+                        float b = slice / resMinus1;
+                        buf[rowOffset + x] = new Rgba64(
+                            r, g, b, 1
+                        );
+                    }
+                } 
+            }
+
+            lock (coordinator.UseResourceLock)
+                Texture.SetData(buf);
+        }
+
+        public void SetToIdentityF (RenderCoordinator coordinator) {
+            var stride = Resolution * Resolution;
+            var pixelCount = stride * Resolution;
+            var buf = new Vector4[pixelCount];
+            float resMinus1 = Resolution - 1;
+            for (int slice = 0; slice < Resolution; slice += 1) {
+                int xOffset = slice * Resolution;
+                for (int y = 0; y < Resolution; y += 1) {
+                    int rowOffset = xOffset + (y * stride);
+                    for (int x = 0; x < Resolution; x += 1) {
+                        float r = x / resMinus1;
+                        float g = y / resMinus1;
+                        float b = slice / resMinus1;
+                        buf[rowOffset + x] = new Vector4(
+                            r, g, b, 1
                         );
                     }
                 } 
@@ -109,7 +157,7 @@ namespace Squared.Render {
     }
 
     public enum LUTPrecision : int {
-        Int8 = 8,
+        UInt8 = 8,
         UInt16 = 16,
         Float32 = 32
     }
