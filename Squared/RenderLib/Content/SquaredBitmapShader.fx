@@ -5,6 +5,7 @@
 
 uniform const float4 ShadowColor;
 uniform const float2 ShadowOffset;
+uniform const float LUT2Weight;
 
 void BasicPixelShader(
     in float4 multiplyColor : COLOR0, 
@@ -31,7 +32,7 @@ void BasicPixelShaderWithLUT(
     addColor.a = 0;
 
     float4 texColor = tex2D(TextureSampler, clamp(texCoord, texRgn.xy, texRgn.zw));
-    texColor.rgb = ApplyLUT(texColor.rgb);
+    texColor.rgb = ApplyLUT(texColor.rgb, LUT2Weight);
 
     result = multiplyColor * texColor;
     result += (addColor * result.a);
