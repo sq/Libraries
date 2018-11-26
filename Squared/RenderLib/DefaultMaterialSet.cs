@@ -521,6 +521,14 @@ namespace Squared.Render {
             ApplyViewTransform(ref vt, force || !LazyViewTransformChanges);
         }
 
+        public void SetLUTs (Material m, ColorLUT lut1, ColorLUT lut2 = null, float lut2Weight = 0) {
+            var p = m.Effect.Parameters;
+            p["LUT1"].SetValue(lut1);
+            p["LUT2"].SetValue(lut2);
+            p["LUTResolutions"].SetValue(new Vector2(lut1 != null ? lut1.Resolution : 1, lut2 != null ? lut2.Resolution : 1));
+            p["LUT2Weight"].SetValue(lut2Weight);
+        }
+
         private void ApplyParamsToMaterial (Material m, FrameParams @params) {
             if (m.Effect == null)
                 return;

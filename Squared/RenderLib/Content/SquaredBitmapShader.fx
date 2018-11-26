@@ -5,7 +5,41 @@
 
 uniform const float4 ShadowColor;
 uniform const float2 ShadowOffset;
+
+Texture2D LUT1 : register(t4);
+Texture2D LUT2 : register(t5);
+uniform const float2 LUTResolutions;
 uniform const float LUT2Weight;
+
+sampler LUT1Sampler : register(s4) {
+    Texture = (LUT1);
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    MipFilter = LINEAR;
+    MinFilter = LINEAR;
+    MagFilter = LINEAR;
+};
+
+sampler LUT2Sampler : register(s5) {
+    Texture = (LUT2);
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    MipFilter = LINEAR;
+    MinFilter = LINEAR;
+    MagFilter = LINEAR;
+};
+
+float3 ApplyLUT(float3 value, float lut2Weight) {
+    float3 tap1 = ReadLUT(LUT1Sampler, LUTResolutions.x, value.rgb);
+
+    [branch]
+    if (lut2Weight > 0) {
+        float3 tap2 = ReadLUT(LUT2Sampler, LUTResolutions.y, value.rgb);
+        return lerp(tap1, tap2, lut2Weight);
+    } else {
+        return tap1;
+    }
+}
 
 void BasicPixelShader(
     in float4 multiplyColor : COLOR0, 

@@ -2,30 +2,6 @@
 #define LUTHeightPixels LUTSliceHeightPixels
 #define SliceSizeX (1.0 / LUTSliceCount)
 
-Texture2D LUT1 : register(t4);
-uniform const float LUT1Resolution;
-
-sampler LUT1Sampler : register(s4) {
-    Texture = (LUT1);
-    AddressU  = CLAMP;
-    AddressV  = CLAMP;
-    MipFilter = LINEAR;
-    MinFilter = LINEAR;
-    MagFilter = LINEAR;
-};
-
-Texture2D LUT2 : register(t5);
-uniform const float LUT2Resolution;
-
-sampler LUT2Sampler : register(s5) {
-    Texture = (LUT2);
-    AddressU  = CLAMP;
-    AddressV  = CLAMP;
-    MipFilter = LINEAR;
-    MinFilter = LINEAR;
-    MagFilter = LINEAR;
-};
-
 void BlueToLUTBaseX (const float res, const float resMinus1, float value, out float x1, out float x2, out float weight) {
     float sliceIndexF = value * resMinus1;
     float sliceIndex1 = trunc(sliceIndexF);
@@ -54,16 +30,4 @@ float3 ReadLUT (sampler2D s, float resolution, float3 value) {
     value1 = tex2Dlod(s, float4(uvrg + float2(x1, 0), 0, 0)).rgb;
     value2 = tex2Dlod(s, float4(uvrg + float2(x2, 0), 0, 0)).rgb;
     return lerp(value1, value2, weight);
-}
-
-float3 ApplyLUT (float3 value, float lut2Weight) {
-    float3 tap1 = ReadLUT(LUT1Sampler, LUT1Resolution, value.rgb);
-
-    [branch]
-    if (lut2Weight > 0) {
-        float3 tap2 = ReadLUT(LUT2Sampler, LUT2Resolution, value.rgb);
-        return lerp(tap1, tap2, lut2Weight);
-    } else {
-        return tap1;
-    }
 }
