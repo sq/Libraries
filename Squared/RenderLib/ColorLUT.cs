@@ -37,7 +37,8 @@ namespace Squared.Render {
             RenderCoordinator coordinator,
             LUTPrecision precision = LUTPrecision.UInt8, 
             LUTResolution resolution = LUTResolution.Low, 
-            bool renderable = false
+            bool renderable = false,
+            Matrix? colorMatrix = null
         ) {
             var surfaceFormat = precision == LUTPrecision.UInt8
                 ? SurfaceFormat.Color
@@ -56,16 +57,17 @@ namespace Squared.Render {
                     tex = new Texture2D(coordinator.Device, width, height, false, surfaceFormat);
             }
 
+            var _matrix = colorMatrix.HasValue ? colorMatrix.Value : default(Matrix);
             var result = new ColorLUT(tex, true);
             switch (precision) {
                 case LUTPrecision.UInt8:
-                    result.SetToIdentity8(coordinator);
+                    result.SetToIdentity8(coordinator, colorMatrix.HasValue, ref _matrix);
                     break;
                 case LUTPrecision.UInt16:
-                    result.SetToIdentity16(coordinator);
+                    result.SetToIdentity16(coordinator, colorMatrix.HasValue, ref _matrix);
                     break;
                 case LUTPrecision.Float32:
-                    result.SetToIdentityF(coordinator);
+                    result.SetToIdentityF(coordinator, colorMatrix.HasValue, ref _matrix);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException("precision");
@@ -73,23 +75,37 @@ namespace Squared.Render {
             return result;
         }
 
-        public void SetToIdentity8 (RenderCoordinator coordinator) {
+        private static void Calculate (int x, int y, int z, float invResMinus1, bool useMatrix, ref Matrix colorMatrix, out Vector3 result) {
+            var temp = new Vector3(x * invResMinus1, y * invResMinus1, z * invResMinus1);
+            if (useMatrix)
+                Vector3.Transform(ref temp, ref colorMatrix, out result);
+            else
+                result = temp;
+        }
+
+        private unsafe void SetToIdentityInner (
+            int y, int z,
+            Vector3* scratch, bool useMatrix, ref Matrix colorMatrix
+        ) {
+            float invResMinus1 = 1.0f / (Resolution - 1);
+            for (int x = 0; x < Resolution; x += 1)
+                Calculate(x, y, z, invResMinus1, useMatrix, ref colorMatrix, out scratch[x]);
+        }
+
+        public unsafe void SetToIdentity8 (RenderCoordinator coordinator, bool useMatrix, ref Matrix colorMatrix) {
+            var scratch = stackalloc Vector3[Resolution];
             var stride = Resolution * Resolution;
-            var pixelCount = stride * Resolution;
-            var buf = new Color[pixelCount];
-            var resMinus1 = Resolution - 1;
-            var max = 255;
-            for (int slice = 0; slice < Resolution; slice += 1) {
-                int xOffset = slice * Resolution;
+            var buf = new Color[stride * Resolution];
+
+            for (int z = 0; z < Resolution; z += 1) {
+                int xOffset = z * Resolution;
                 for (int y = 0; y < Resolution; y += 1) {
                     int rowOffset = xOffset + (y * stride);
+                    SetToIdentityInner(y, z, scratch, useMatrix, ref colorMatrix);
+
                     for (int x = 0; x < Resolution; x += 1) {
-                        int r = (max * x) / resMinus1;
-                        int g = (max * y) / resMinus1;
-                        int b = (max * slice) / resMinus1;
-                        buf[rowOffset + x] = new Color(
-                            r, g, b, max
-                        );
+                        var v = scratch[x];
+                        buf[rowOffset + x] = new Color(v.X, v.Y, v.Z, 1.0f);
                     }
                 } 
             }
@@ -98,22 +114,20 @@ namespace Squared.Render {
                 Texture.SetData(buf);
         }
 
-        public void SetToIdentity16 (RenderCoordinator coordinator) {
+        public unsafe void SetToIdentity16 (RenderCoordinator coordinator, bool useMatrix, ref Matrix colorMatrix) {
+            var scratch = stackalloc Vector3[Resolution];
             var stride = Resolution * Resolution;
-            var pixelCount = stride * Resolution;
-            var buf = new Rgba64[pixelCount];
-            float resMinus1 = Resolution - 1;
-            for (int slice = 0; slice < Resolution; slice += 1) {
-                int xOffset = slice * Resolution;
+            var buf = new Rgba64[stride * Resolution];
+
+            for (int z = 0; z < Resolution; z += 1) {
+                int xOffset = z * Resolution;
                 for (int y = 0; y < Resolution; y += 1) {
                     int rowOffset = xOffset + (y * stride);
+                    SetToIdentityInner(y, z, scratch, useMatrix, ref colorMatrix);
+
                     for (int x = 0; x < Resolution; x += 1) {
-                        float r = x / resMinus1;
-                        float g = y / resMinus1;
-                        float b = slice / resMinus1;
-                        buf[rowOffset + x] = new Rgba64(
-                            r, g, b, 1
-                        );
+                        var v = scratch[x];
+                        buf[rowOffset + x] = new Rgba64(v.X, v.Y, v.Z, 1.0f);
                     }
                 } 
             }
@@ -122,23 +136,19 @@ namespace Squared.Render {
                 Texture.SetData(buf);
         }
 
-        public void SetToIdentityF (RenderCoordinator coordinator) {
+        public unsafe void SetToIdentityF (RenderCoordinator coordinator, bool useMatrix, ref Matrix colorMatrix) {
+            var scratch = stackalloc Vector3[Resolution];
             var stride = Resolution * Resolution;
-            var pixelCount = stride * Resolution;
-            var buf = new Vector4[pixelCount];
-            float resMinus1 = Resolution - 1;
-            for (int slice = 0; slice < Resolution; slice += 1) {
-                int xOffset = slice * Resolution;
+            var buf = new Vector4[stride * Resolution];
+
+            for (int z = 0; z < Resolution; z += 1) {
+                int xOffset = z * Resolution;
                 for (int y = 0; y < Resolution; y += 1) {
                     int rowOffset = xOffset + (y * stride);
-                    for (int x = 0; x < Resolution; x += 1) {
-                        float r = x / resMinus1;
-                        float g = y / resMinus1;
-                        float b = slice / resMinus1;
-                        buf[rowOffset + x] = new Vector4(
-                            r, g, b, 1
-                        );
-                    }
+                    SetToIdentityInner(y, z, scratch, useMatrix, ref colorMatrix);
+
+                    for (int x = 0; x < Resolution; x += 1)
+                        buf[rowOffset + x] = new Vector4(scratch[x], 1.0f);
                 } 
             }
 
