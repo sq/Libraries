@@ -1107,7 +1107,7 @@ namespace Squared.Util.DeclarativeSort {
             }
         }
 
-        public class SorterComparer : IComparer<TValue> {
+        public class SorterComparer : IRefComparer<TValue>, IComparer<TValue> {
             public const bool Tracing = false;
 
             public  readonly Sorter<TValue> Sorter;
@@ -1183,7 +1183,12 @@ namespace Squared.Util.DeclarativeSort {
                 return expr.Compile();
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]             
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public int Compare (ref TValue lhs, ref TValue rhs) {
+                return Comparer(ref lhs, ref rhs);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public int Compare (TValue lhs, TValue rhs) {
                 return Comparer(ref lhs, ref rhs);
             }

@@ -303,21 +303,21 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            using (manager.ApplyMaterial(Material)) {
-                var clearOptions = default(ClearOptions);
+            manager.ApplyMaterial(Material);
 
-                if (ClearColor.HasValue)
-                    clearOptions |= ClearOptions.Target;
-                if (ClearZ.HasValue)
-                    clearOptions |= ClearOptions.DepthBuffer;
-                if (ClearStencil.HasValue)
-                    clearOptions |= ClearOptions.Stencil;
+            var clearOptions = default(ClearOptions);
 
-                manager.Device.Clear(
-                    clearOptions,
-                    ClearColor.GetValueOrDefault(Color.Black), ClearZ.GetValueOrDefault(0), ClearStencil.GetValueOrDefault(0)
-                );
-            }
+            if (ClearColor.HasValue)
+                clearOptions |= ClearOptions.Target;
+            if (ClearZ.HasValue)
+                clearOptions |= ClearOptions.DepthBuffer;
+            if (ClearStencil.HasValue)
+                clearOptions |= ClearOptions.Stencil;
+
+            manager.Device.Clear(
+                clearOptions,
+                ClearColor.GetValueOrDefault(Color.Black), ClearZ.GetValueOrDefault(0), ClearStencil.GetValueOrDefault(0)
+            );
 
             base.Issue(manager);
         }

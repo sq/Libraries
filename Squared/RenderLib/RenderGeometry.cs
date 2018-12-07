@@ -234,17 +234,17 @@ namespace Squared.Render {
 
         public override void Issue (DeviceManager manager) {
             if (Count > 0) {
-                using (manager.ApplyMaterial(Material)) {
-                    var hwb = _SoftwareBuffer.HardwareBuffer;
-                    if (hwb == null)
-                        throw new ThreadStateException("Could not get a hardware buffer for this batch");
+                manager.ApplyMaterial(Material);
 
-                    hwb.SetActive(manager.Device);
-                    foreach (var da in _DrawArguments) {
-                        manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
-                    }
-                    hwb.SetInactive(manager.Device);
+                var hwb = _SoftwareBuffer.HardwareBuffer;
+                if (hwb == null)
+                    throw new ThreadStateException("Could not get a hardware buffer for this batch");
+
+                hwb.SetActive(manager.Device);
+                foreach (var da in _DrawArguments) {
+                    manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
                 }
+                hwb.SetInactive(manager.Device);
             }
 
             _DrawArgumentsListPool.Release(ref _DrawArguments);
@@ -673,15 +673,14 @@ namespace Squared.Render {
         public override void Issue (DeviceManager manager) {
             var count = _DrawCalls.Count;
             if (count > 0) {
-                using (manager.ApplyMaterial(Material)) {
-                    var hwb = _SoftwareBuffer.HardwareBuffer;
-                    if (hwb == null)
-                        throw new ThreadStateException("Could not get a hardware buffer for this batch");
+                manager.ApplyMaterial(Material);
+                var hwb = _SoftwareBuffer.HardwareBuffer;
+                if (hwb == null)
+                    throw new ThreadStateException("Could not get a hardware buffer for this batch");
 
-                    hwb.SetActive(manager.Device);
-                    manager.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, count * 4, 0, count * 2);
-                    hwb.SetInactive(manager.Device);
-                }
+                hwb.SetActive(manager.Device);
+                manager.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, count * 4, 0, count * 2);
+                hwb.SetInactive(manager.Device);
             }
 
             _SoftwareBuffer = null;

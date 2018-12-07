@@ -58,30 +58,26 @@ namespace Squared.Render {
     }
 
     public sealed class DeviceManager {
-        public struct ActiveMaterial : IDisposable {
-            public readonly DeviceManager DeviceManager;
-            public readonly Material Material;
-
-            public ActiveMaterial (DeviceManager deviceManager, Material material) {
-                DeviceManager = deviceManager;
-                Material = material;
-
+        public static class ActiveMaterial {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static void Set (DeviceManager deviceManager, Material material) {
                 if (deviceManager.CurrentMaterial != material) {
-                    if (deviceManager.CurrentMaterial != null)
-                        deviceManager.CurrentMaterial.End(deviceManager);
-
-                    deviceManager.CurrentMaterial = material;
-
-                    if (material != null) {
-                        material.Flush();
-                        material.Begin(deviceManager);
-                    }
+                    Set_Slow(deviceManager, material);
                 } else {
                     material.Flush();
                 }
             }
 
-            public void Dispose () {
+            private static void Set_Slow (DeviceManager deviceManager, Material material) {
+                if (deviceManager.CurrentMaterial != null)
+                    deviceManager.CurrentMaterial.End(deviceManager);
+
+                deviceManager.CurrentMaterial = material;
+
+                if (material != null) {
+                    material.Flush();
+                    material.Begin(deviceManager);
+                }
             }
         }
 
@@ -150,8 +146,9 @@ namespace Squared.Render {
             }
         }
 
-        public ActiveMaterial ApplyMaterial (Material material) {
-            return new ActiveMaterial(this, material);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ApplyMaterial (Material material) {
+            ActiveMaterial.Set(this, material);
         }
 
         public void Finish () {

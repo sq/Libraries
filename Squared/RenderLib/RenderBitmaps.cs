@@ -717,7 +717,8 @@ namespace Squared.Render {
             var previousSS1 = device.SamplerStates[0];
             var previousSS2 = device.SamplerStates[1];
 
-            using (manager.ApplyMaterial(Material)) {
+            manager.ApplyMaterial(Material);
+            {
                 TextureSet currentTexture = new TextureSet();
                 var paramSize = manager.CurrentParameters.BitmapTextureSize;
                 var paramHalfTexel = manager.CurrentParameters.HalfTexel;
@@ -823,9 +824,9 @@ namespace Squared.Render {
     }
 
     public struct MaterialBitmapDrawCall {
-        public readonly BitmapDrawCall DrawCall;
-        public readonly Material Material;
-        public readonly SamplerState SamplerState1, SamplerState2;
+        public BitmapDrawCall DrawCall;
+        public Material Material;
+        public SamplerState SamplerState1, SamplerState2;
 
         public MaterialBitmapDrawCall (
             ref BitmapDrawCall drawCall, Material material, 
@@ -839,12 +840,18 @@ namespace Squared.Render {
     }
 
     public class MultimaterialBitmapBatch : ListBatch<MaterialBitmapDrawCall>, IBitmapBatch {
-        internal class MultimaterialComparer : IComparer<MaterialBitmapDrawCall> {
-            public IComparer<BitmapDrawCall> DrawCallComparer;
+        internal class MultimaterialComparer : IRefComparer<MaterialBitmapDrawCall>, IComparer<MaterialBitmapDrawCall> {
+            public IRefComparer<BitmapDrawCall> DrawCallComparer;
             public static readonly ReferenceComparer<Material> MaterialComparer = new ReferenceComparer<Material>();
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public int Compare (MaterialBitmapDrawCall lhs, MaterialBitmapDrawCall rhs) {
-                var result = DrawCallComparer.Compare(lhs.DrawCall, rhs.DrawCall);
+                return Compare(ref lhs, ref rhs);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public int Compare (ref MaterialBitmapDrawCall lhs, ref MaterialBitmapDrawCall rhs) {
+                var result = DrawCallComparer.Compare(ref lhs.DrawCall, ref rhs.DrawCall);
 
                 if (result == 0)
                     result = lhs.Material.MaterialID.CompareTo(rhs.Material.MaterialID);
@@ -902,7 +909,8 @@ namespace Squared.Render {
             if ((dcm == null) || (dcm.Effect == null))
                 throw new InvalidOperationException("Draw call has no material and this batch has no material");
 
-            _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2));
+            var dc = new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2);
+            _DrawCalls.Add(ref dc);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -914,7 +922,8 @@ namespace Squared.Render {
             if ((dcm == null) || (dcm.Effect == null))
                 throw new InvalidOperationException("Draw call has no material and this batch has no material");
 
-            _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2));
+            var dc = new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2);
+            _DrawCalls.Add(ref dc);
         }
 
         public void AddRange (
@@ -923,6 +932,7 @@ namespace Squared.Render {
             DrawCallSortKey? sortKey = null, Vector2? scale = null, Material customMaterial = null,
             SamplerState samplerState1 = null, SamplerState samplerState2 = null
         ) {
+            MaterialBitmapDrawCall dc;
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];
                 if (!item.IsValid)
@@ -945,7 +955,12 @@ namespace Squared.Render {
                 if ((dcm == null) || (dcm.Effect == null))
                     throw new InvalidOperationException("Draw call has no material and this batch has no material");
 
-                _DrawCalls.Add(new MaterialBitmapDrawCall(ref item, dcm, samplerState1, samplerState2));
+                dc.DrawCall = item;
+                dc.Material = dcm;
+                dc.SamplerState1 = samplerState1;
+                dc.SamplerState2 = samplerState2;
+
+                _DrawCalls.Add(ref dc);
             }
         }
 
@@ -990,7 +1005,7 @@ namespace Squared.Render {
                 else
                     comparer.DrawCallComparer = BitmapBatch.DrawCallComparer;
 
-                Sort.FastCLRSort(
+                Sort.FastCLRSortRef(
                     drawCalls, comparer, 0, count
                 );
 
@@ -1037,11 +1052,10 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            using (manager.ApplyMaterial(Material)) {
-                _Group.Issue(manager);
+            manager.ApplyMaterial(Material);
+            _Group.Issue(manager);
 
-                base.Issue(manager);
-            }
+            base.Issue(manager);
         }
     }
 

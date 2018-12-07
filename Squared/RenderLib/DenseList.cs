@@ -276,29 +276,36 @@ namespace Squared.Render {
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (ref T item) {
-            if (_HasList || (_Count >= 4)) {
-                EnsureList();
-                Items.Add(ref item);
-                return;
-            }
+        private void Add_Slow (ref T item) {
+            EnsureList();
+            Items.Add(ref item);
+        }
 
-            var i = _Count;
-            _Count += 1;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Add_Fast (ref T item) {
+            var i = _Count++;
             switch (i) {
                 case 0:
                     Item1 = item;
-                    return;
+                    break;
                 case 1:
                     Item2 = item;
-                    return;
+                    break;
                 case 2:
                     Item3 = item;
-                    return;
+                    break;
                 case 3:
                     Item4 = item;
-                    return;
+                    break;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add (ref T item) {
+            if (_HasList || (_Count >= 4)) {
+                Add_Slow(ref item);
+            } else {
+                Add_Fast(ref item);
             }
         }
 

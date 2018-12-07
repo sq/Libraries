@@ -9,18 +9,34 @@ namespace Squared.Util {
         int Compare (ref T lhs, ref T rhs);
     }
 
-    public struct RefComparerAdapter<TComparer, TElement> : IRefComparer<TElement>
+    public interface IRefComparerAdapter<T> {
+        IComparer<T> Comparer { get; }
+    }
+
+    public struct RefComparerAdapter<TComparer, TElement> : IRefComparer<TElement>, IRefComparerAdapter<TElement>
         where TComparer : IComparer<TElement> 
     {
-        public TComparer Comparer;
+        private TComparer _Comparer;
 
         public RefComparerAdapter (TComparer comparer) {
-            Comparer = comparer;
+            _Comparer = comparer;
+        }
+
+        public TComparer Comparer {
+            get {
+                return _Comparer;
+            }
+        }
+
+        IComparer<TElement> IRefComparerAdapter<TElement>.Comparer {
+            get {
+                return _Comparer;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref TElement lhs, ref TElement rhs) {
-            return Comparer.Compare(lhs, rhs);
+            return _Comparer.Compare(lhs, rhs);
         }
     }
 

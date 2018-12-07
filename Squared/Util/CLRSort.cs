@@ -34,22 +34,46 @@ namespace Squared.Util {
         internal const int QuickSortDepthThreshold = 32;
 
         private readonly TElement[] Items;
-        private readonly TComparer  Comparer;
+        private readonly TComparer           RefComparer;
+        private readonly IComparer<TElement> NonRefComparer;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal FastCLRSorter (TElement[] items, TComparer comparer) {
             Items = items;
-            Comparer = comparer;
+            RefComparer = comparer;
+
+            var rca = comparer as IRefComparerAdapter<TElement>;
+            if (rca != null)
+                NonRefComparer = rca.Comparer;
+            else
+                NonRefComparer = null;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int CompareAtIndex (int a, int b) {
+            if (NonRefComparer != null)
+                return NonRefComparer.Compare(Items[a], Items[b]);
+            else
+                return RefComparer.Compare(ref Items[a], ref Items[b]);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int Compare (ref TElement a, ref TElement b) {
+            if (NonRefComparer != null)
+                return NonRefComparer.Compare(a, b);
+            else
+                return RefComparer.Compare(ref a, ref b);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SwapIfGreaterWithItems (int a, int b) {
-            if (a != b) {
-                if (Comparer.Compare(ref Items[a], ref Items[b]) > 0) {
-                    var key = Items[a];
-                    Items[a] = Items[b];
-                    Items[b] = key;
-                }
+            if (a == b)
+                return;
+
+            if (CompareAtIndex(a, b) > 0) {
+                var key = Items[a];
+                Items[a] = Items[b];
+                Items[b] = key;
             }
         }
 
@@ -130,8 +154,8 @@ namespace Squared.Util {
             int left = lo, right = hi - 1;  // We already partitioned lo and hi and put the pivot in hi - 1.  And we pre-increment & decrement below.
                 
             while (left < right) {
-                while (Comparer.Compare(ref Items[++left], ref pivot) < 0) ;
-                while (Comparer.Compare(ref pivot, ref Items[--right]) < 0) ;
+                while (Compare(ref Items[++left], ref pivot) < 0) ;
+                while (Compare(ref pivot, ref Items[--right]) < 0) ;
 
                 if (left >= right)
                     break;
@@ -163,11 +187,11 @@ namespace Squared.Util {
 
             while (i <= n / 2) {
                 child = 2 * i;
-                if (child < n && Comparer.Compare(ref Items[lo + child - 1], ref Items[lo + child]) < 0) {
+                if (child < n && CompareAtIndex(lo + child - 1, lo + child) < 0) {
                     child++;
                 }
 
-                if (!(Comparer.Compare(ref d, ref Items[lo + child - 1]) < 0))
+                if (!(Compare(ref d, ref Items[lo + child - 1]) < 0))
                     break;
 
                 Items[lo + i - 1] = Items[lo + child - 1];
@@ -185,7 +209,7 @@ namespace Squared.Util {
                 j = i;
                 t = Items[i + 1];
 
-                while (j >= lo && Comparer.Compare(ref t, ref Items[j]) < 0)
+                while (j >= lo && Compare(ref t, ref Items[j]) < 0)
                 {
                     Items[j + 1] = Items[j];
                     j--;
