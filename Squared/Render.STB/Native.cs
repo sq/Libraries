@@ -48,5 +48,8 @@ namespace Squared.Render.STB.Native {
         public static extern int stbi_is_16_bit_from_memory (byte* buffer, int len);
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern int stbi_is_16_bit_from_callbacks (ref STBI_IO_Callbacks clbk, void *user);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        public static extern byte* stbi_failure_reason ();
     }
 }

@@ -453,13 +453,13 @@ namespace Squared.Render.Evil {
         /// <param name="texture">The texture to retrieve a mip level from.</param>
         /// <param name="level">The index of the mip level.</param>
         /// <returns>A pointer to the mip level's surface.</returns>
-        public static unsafe void* GetSurfaceLevel (this Texture2D texture, int level) {
+        public static unsafe void* GetSurfaceLevel (this Texture2D texture, uint level) {
             void* pTexture = texture.GetIDirect3DTexture9();
             void* pGetSurfaceLevel = COMUtils.AccessVTable(pTexture, VTables.IDirect3DTexture9.GetSurfaceLevel);
             void* pSurface;
 
             var getSurfaceLevel = (GetSurfaceLevelDelegate)Marshal.GetDelegateForFunctionPointer(new IntPtr(pGetSurfaceLevel), typeof(GetSurfaceLevelDelegate));
-            var rv = getSurfaceLevel(pTexture, 0, &pSurface);
+            var rv = getSurfaceLevel(pTexture, level, &pSurface);
             if (rv == 0)
                 return pSurface;
             else

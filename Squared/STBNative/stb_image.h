@@ -552,6 +552,10 @@ typedef uint32_t stbi__uint32;
 typedef int32_t  stbi__int32;
 #endif
 
+#ifndef STBI_BUFFER_SIZE
+#define STBI_BUFFER_SIZE 128
+#endif
+
 // should produce compiler error if size is wrong
 typedef unsigned char validate_uint32[sizeof(stbi__uint32)==4 ? 1 : -1];
 
@@ -700,7 +704,7 @@ typedef struct
 
    int read_from_callbacks;
    int buflen;
-   stbi_uc buffer_start[128];
+   stbi_uc buffer_start[STBI_BUFFER_SIZE];
 
    stbi_uc *img_buffer, *img_buffer_end;
    stbi_uc *img_buffer_original, *img_buffer_original_end;
