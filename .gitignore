@@ -5,6 +5,10 @@
 *.pidb
 *.mdf
 *.ldf
+*.vsp
+*.filters
+*.VC.opendb
+*.sdf
 _ReSharper.*
 /Squared/360/TaskLib360/bin
 /Squared/360/TaskLib360/obj
@@ -79,3 +83,7 @@ _ReSharper.*
 /Squared/FontTest/FontTest/obj
 /Squared/Render.Freetype/bin
 /Squared/Render.Freetype/obj
+/Squared/STBNative/obj
+/Squared/STBNative/bin
+/Squared/Render.STB/obj
+/Squared/Render.STB/bin
