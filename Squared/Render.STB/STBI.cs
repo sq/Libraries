@@ -13,11 +13,11 @@ namespace Squared.Render.STB {
         public bool IsDisposed { get; private set; }
         public void* Data { get; private set; }
 
-        public Image (string path)
-            : this (File.OpenRead(path), true) {
+        public Image (string path, bool premultiply = true)
+            : this (File.OpenRead(path), true, premultiply) {
         }
 
-        public Image (FileStream stream, bool ownsStream) {
+        public Image (FileStream stream, bool ownsStream, bool premultiply = true) {
             BufferPool<byte>.Buffer scratch = BufferPool<byte>.Allocate(10240);
 
             var callbacks = new Native.STBI_IO_Callbacks {
@@ -54,9 +54,22 @@ namespace Squared.Render.STB {
                     message += ": " + Encoding.UTF8.GetString(reason, 128);
                 throw new Exception(message);
             }
+
+            if (premultiply)
+                PremultiplyData();
         }
 
-        public Texture2D CreateTexture (GraphicsDevice device, bool generateMips = false) {
+        private unsafe void PremultiplyData () {
+            var pData = (byte*)Data;
+            for (int i = 0, count = Width * Height; i < count; i++, pData+=4) {
+                var a = pData[3];
+                pData[0] = (byte)(pData[0] * a / 255);
+                pData[1] = (byte)(pData[1] * a / 255);
+                pData[2] = (byte)(pData[2] * a / 255);
+            }
+        }
+
+        public Texture2D CreateTexture (RenderCoordinator coordinator, bool generateMips = false) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image is disposed");
             // FIXME: Channel count
@@ -64,7 +77,9 @@ namespace Squared.Render.STB {
             var pLevelData = Data;
             int levelWidth = Width, levelHeight = Height;
             int previousLevelWidth = Width, previousLevelHeight = Height;
-            var result = new Texture2D(device, Width, Height, generateMips, SurfaceFormat.Color);
+            Texture2D result;
+            lock (coordinator.CreateResourceLock)
+                result = new Texture2D(coordinator.Device, Width, Height, generateMips, SurfaceFormat.Color);
 
             using (var scratch = BufferPool<Color>.Allocate(Width * Height))
             fixed (Color* pScratch = scratch.Data)
@@ -78,11 +93,13 @@ namespace Squared.Render.STB {
                     MipGenerator.Color(pPreviousLevelData, previousLevelWidth, previousLevelHeight, pLevelData, levelWidth, levelHeight);
                 }
 
-                var pSurface = Evil.TextureUtils.GetSurfaceLevel(result, level);
-                try {
-                    Evil.TextureUtils.SetData(result, pSurface, pLevelData, levelWidth, levelHeight, (uint)levelWidth * 4, Evil.D3DFORMAT.A8B8G8R8);
-                } finally {
-                    Marshal.Release(new IntPtr(pSurface));
+                lock (coordinator.UseResourceLock) {
+                    var pSurface = Evil.TextureUtils.GetSurfaceLevel(result, level);
+                    try {
+                        Evil.TextureUtils.SetData(result, pSurface, pLevelData, levelWidth, levelHeight, (uint)levelWidth * 4, Evil.D3DFORMAT.A8B8G8R8);
+                    } finally {
+                        Marshal.Release(new IntPtr(pSurface));
+                    }
                 }
                 previousLevelWidth = levelWidth;
                 previousLevelHeight = levelHeight;
