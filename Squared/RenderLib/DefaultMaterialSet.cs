@@ -241,6 +241,8 @@ namespace Squared.Render {
             public int? FrameIndex;
         }
 
+        private IGraphicsDeviceService gds;
+
         public DefaultMaterialSet (IServiceProvider serviceProvider) {
             ActiveViewTransform = new ActiveViewTransformInfo(this);
             _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
@@ -402,7 +404,15 @@ namespace Squared.Render {
                 "WorldSpaceVerticalGaussianBlur5Tap"
             );
 
-            var gds = serviceProvider.GetService(typeof(IGraphicsDeviceService)) as IGraphicsDeviceService;
+            gds = serviceProvider.GetService(typeof(IGraphicsDeviceService)) as IGraphicsDeviceService;
+            AutoSetViewTransform();
+
+            PreallocateBindings();
+        }
+
+        public void AutoSetViewTransform () {
+            ViewTransformStack.Clear();
+
             if (gds != null)
                 ViewTransformStack.Push(ViewTransform.CreateOrthographic(
                     gds.GraphicsDevice.PresentationParameters.BackBufferWidth,
@@ -410,8 +420,6 @@ namespace Squared.Render {
                 ));
             else
                 ViewTransformStack.Push(ViewTransform.Default);
-
-            PreallocateBindings();
         }
 
         public void PreallocateBindings () {

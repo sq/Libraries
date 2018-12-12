@@ -70,7 +70,12 @@ namespace Squared.Render {
         private object _FrameLock = new object();
         private Frame  _FrameBeingPrepared = null;
 
+        private readonly IGraphicsDeviceService DeviceService;
+
         internal bool SynchronousDrawsEnabled = true;
+
+        private volatile bool IsResetting;
+        private volatile bool FirstFrameSinceReset;
 
         private readonly Func<bool> _SyncBeginDraw;
         private readonly Action _SyncEndDraw;
@@ -93,7 +98,7 @@ namespace Squared.Render {
 
         // Lost devices can cause things to go horribly wrong if we're 
         //  using multithreaded rendering
-        private bool _DeviceLost = false;
+        private bool _DeviceLost = false, _DeviceIsDisposed = false;
 
         private readonly ConcurrentQueue<Action> BeforePrepareQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
@@ -134,6 +139,7 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="deviceService"></param>
         public RenderCoordinator (IGraphicsDeviceService deviceService, Thread mainThread, ThreadGroup threadGroup) {
+            DeviceService = deviceService;
             ThreadGroup = threadGroup;
             Manager = new RenderManager(deviceService.GraphicsDevice, mainThread, ThreadGroup);
 
@@ -170,6 +176,8 @@ namespace Squared.Render {
         private void CoreInitialize () {
             Device.DeviceResetting += OnDeviceResetting;
             Device.DeviceReset += OnDeviceReset;
+            Device.DeviceLost += OnDeviceLost;
+            Device.Disposing += OnDeviceDisposing;
         }
 
         protected bool DefaultBeginDraw () {
@@ -199,19 +207,61 @@ namespace Squared.Render {
             );
         }
 
+        protected void OnDeviceDisposing (object sender, EventArgs args) {
+            Console.WriteLine("OnDeviceDisposing");
+
+            _DeviceIsDisposed = true;
+            _DeviceLost = true;
+        }
+
+        protected void OnDeviceLost (object sender, EventArgs args) {
+            Console.WriteLine("OnDeviceLost");
+
+            FirstFrameSinceReset = true;
+            _DeviceLost = true;
+        }
+
         // We must acquire both locks before resetting the device to avoid letting the reset happen during a paint or content load operation.
         protected void OnDeviceResetting (object sender, EventArgs args) {
-            Monitor.Enter(DrawLock);
-            Monitor.Enter(CreateResourceLock);
-            Monitor.Enter(UseResourceLock);
+            Console.WriteLine("OnDeviceResetting");
+
+            FirstFrameSinceReset = true;
+
+            if (!IsResetting) {
+                IsResetting = true;
+
+                Monitor.Enter(DrawLock);
+                Monitor.Enter(CreateResourceLock);
+                Monitor.Enter(UseResourceLock);
+            }
 
             UniformBinding.HandleDeviceReset();
         }
 
+        protected void EndReset () {
+            if (Device == null) {
+            }
+
+            if (Device.IsDisposed) {
+                _DeviceIsDisposed = true;
+                return;
+            }
+
+            if (IsResetting) {
+                Monitor.Exit(UseResourceLock);
+                Monitor.Exit(CreateResourceLock);
+                Monitor.Exit(DrawLock);
+
+                IsResetting = false;
+                FirstFrameSinceReset = true;
+            }
+        }
+
         protected void OnDeviceReset (object sender, EventArgs args) {
-            Monitor.Exit(UseResourceLock);
-            Monitor.Exit(CreateResourceLock);
-            Monitor.Exit(DrawLock);
+            Console.WriteLine("OnDeviceReset");
+
+            if (IsResetting)
+                EndReset();
 
             if (DeviceReset != null)
                 DeviceReset(this, EventArgs.Empty);
@@ -221,11 +271,7 @@ namespace Squared.Render {
             if (DeviceReset != null)
                 DeviceReset(this, EventArgs.Empty);
         }
-
-        protected void ExitSafepoint () {
-            Monitor.Exit(DrawLock);
-        }        
-
+        
         private void WaitForPendingWork () {
             if (IsDisposed)
                 return;
@@ -278,13 +324,31 @@ namespace Squared.Render {
         }
 
         public bool BeginDraw () {
+            var ffsr = FirstFrameSinceReset;
+
+            if (IsResetting || _DeviceIsDisposed || _DeviceLost) {
+                EndReset();
+                return false;
+            }
             if (IsDisposed)
                 return false;
             if (_InsideDrawOperation > 0)
                 return false;
 
-            WaitForActiveSynchronousDraw();
-            WaitForActiveDraw();
+            try {
+                WaitForActiveSynchronousDraw();
+                WaitForActiveDraw();
+            } catch (NullReferenceException) {
+                if (FirstFrameSinceReset || _DeviceIsDisposed || _DeviceLost)
+                    return false;
+                else
+                    throw;
+            } catch (InvalidOperationException) {
+                if (FirstFrameSinceReset || _DeviceIsDisposed || _DeviceLost)
+                    return false;
+                else
+                    throw;
+            }
 
             Interlocked.Increment(ref _InsideDrawOperation);
             try {
@@ -299,6 +363,12 @@ namespace Squared.Render {
                 } else {
                     result = false;
                 }
+
+                if (ffsr && FirstFrameSinceReset && result) {
+                    Console.WriteLine("Clearing ffsr");
+                    FirstFrameSinceReset = false;
+                }
+
                 return result;
             } finally {
                 Interlocked.Decrement(ref _InsideDrawOperation);

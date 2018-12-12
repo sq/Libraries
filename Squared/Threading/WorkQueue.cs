@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -52,6 +53,8 @@ namespace Squared.Threading {
 
         private readonly Queue<InternalWorkItem<T>> Queue = new Queue<InternalWorkItem<T>>();
         private int InFlightTasks = 0;
+
+        private ExceptionDispatchInfo UnhandledException;
 
         private readonly ManualResetEvent DrainComplete = new ManualResetEvent(false);
         private volatile int NumWaitingForDrain = 0;
@@ -104,31 +107,40 @@ namespace Squared.Threading {
 
             bool running = true;
             do {
-                lock (Queue) {
-                    running = ((count = Queue.Count) > 0) &&
-                        (result < actualMaximumCount);
+                var isInFlight = false;
+
+                try {
+                    lock (Queue) {
+                        running = ((count = Queue.Count) > 0) &&
+                            (result < actualMaximumCount);
+
+                        if (running) {
+                            isInFlight = true;
+                            InFlightTasks++;
+
+                            item = Queue.Dequeue();
+                        }
+                    }
 
                     if (running) {
-                        InFlightTasks++;
+                        item.Data.Execute();
+                        if (item.OnComplete != null)
+                            item.OnComplete(ref item.Data);
 
-                        item = Queue.Dequeue();
+                        result++;
                     }
-                }
+                } catch (Exception exc) {
+                    UnhandledException = ExceptionDispatchInfo.Capture(exc);
+                    SignalDrained();
+                    break;
+                } finally {
+                    if (running) {
+                        lock (Queue) {
+                            if (isInFlight)
+                                InFlightTasks--;
 
-                if (running) {
-                    item.Data.Execute();
-                    if (item.OnComplete != null)
-                        item.OnComplete(ref item.Data);
-
-                    result++;
-
-                    lock (Queue) {
-                        InFlightTasks--;
-                        if ((Queue.Count == 0) && (InFlightTasks <= 0)) {
-                            var f = Interlocked.Exchange(ref _DrainCompleteFuture, null);
-                            DrainComplete.Set();
-                            if (f != null)
-                                f.Complete();
+                            if ((Queue.Count == 0) && (InFlightTasks <= 0))
+                                SignalDrained();
                         }
                     }
                 }
@@ -138,6 +150,13 @@ namespace Squared.Threading {
                 exhausted = Queue.Count == 0;
 
             return result;
+        }
+
+        private void SignalDrained () {
+            var f = Interlocked.Exchange(ref _DrainCompleteFuture, null);
+            DrainComplete.Set();
+            if (f != null)
+                f.SetResult2(NoneType.None, UnhandledException);
         }
 
         public void AssertEmpty () {
@@ -191,6 +210,10 @@ namespace Squared.Threading {
             var result = Interlocked.Decrement(ref NumWaitingForDrain);
             if ((result == 0) && waitSuccessful)
                 DrainComplete.Reset();
+
+            var uhe = Interlocked.Exchange(ref UnhandledException, null);
+            if (uhe != null)
+                uhe.Throw();
         }
     }
 }
