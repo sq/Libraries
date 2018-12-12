@@ -56,6 +56,8 @@ namespace Squared.Threading {
         private readonly ManualResetEventSlim DrainComplete = new ManualResetEventSlim(false);
         private volatile int NumWaitingForDrain = 0;
 
+        private SignalFuture _DrainCompleteFuture = null;
+
         public WorkQueue () {
         }
 
@@ -122,8 +124,12 @@ namespace Squared.Threading {
 
                     lock (Queue) {
                         InFlightTasks--;
-                        if ((Queue.Count == 0) && (InFlightTasks <= 0))
+                        if ((Queue.Count == 0) && (InFlightTasks <= 0)) {
+                            var f = Interlocked.Exchange(ref _DrainCompleteFuture, null);
                             DrainComplete.Set();
+                            if (f != null)
+                                f.Complete();
+                        }
                     }
                 }
             } while (running);
@@ -150,6 +156,23 @@ namespace Squared.Threading {
 
             if (!isEmpty)
                 throw new Exception("Queue is not fully drained");
+        }
+
+        public SignalFuture DrainedSignal {
+            get {
+                lock (Queue)
+                    if (Queue.Count == 0)
+                        return SignalFuture.Signaled;
+
+                var f = _DrainCompleteFuture;
+                if (f == null) {
+                    f = new SignalFuture(false);
+                    var originalValue = Interlocked.CompareExchange(ref _DrainCompleteFuture, f, null);
+                    if (originalValue != null)
+                        f = originalValue;
+                }
+                return f;
+            }
         }
 
         public void WaitUntilDrained () {

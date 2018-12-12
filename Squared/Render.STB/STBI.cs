@@ -66,24 +66,28 @@ namespace Squared.Render.STB {
         }
 
         private unsafe void PremultiplyAndChannelSwapData () {
-            var pData = (byte*)Data;
-            for (int i = 0, count = Width * Height; i < count; i++, pData+=4) {
-                var a = pData[3];
-                var r = (byte)(pData[0] * a / 255);
-                var g = (byte)(pData[1] * a / 255);
-                var b = (byte)(pData[2] * a / 255);
-                pData[0] = b;
-                pData[1] = g;
-                pData[2] = r;
+            var pData = (uint*)Data;
+            var pBytes = (byte*)Data;
+            var pEnd = pData + (Width * Height);
+            for (; pData < pEnd; pData++, pBytes+=4) {
+                var value = *pData;
+                var a = (value & 0xFF000000) >> 24;
+                var r = (value & 0xFF);
+                var g = (value & 0xFF00) >> 8;
+                var b = (value & 0xFF0000) >> 16;
+                pBytes[0] = (byte)(b * a / 255);
+                pBytes[1] = (byte)(g * a / 255);
+                pBytes[2] = (byte)(r * a / 255);
             }
         }
 
         private unsafe void ChannelSwapData () {
-            var pData = (byte*)Data;
-            for (int i = 0, count = Width * Height; i < count; i++, pData+=4) {
-                var temp = pData[0];
-                pData[0] = pData[2];
-                pData[2] = temp;
+            var pBytes = (byte*)Data;
+            var pEnd = pBytes + (Width * Height * 4);
+            for (; pBytes < pEnd; pBytes += 4) {
+                var r = pBytes[0];
+                pBytes[0] = pBytes[2];
+                pBytes[2] = r;
             }
         }
 
