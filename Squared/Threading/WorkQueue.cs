@@ -53,7 +53,7 @@ namespace Squared.Threading {
         private readonly Queue<InternalWorkItem<T>> Queue = new Queue<InternalWorkItem<T>>();
         private int InFlightTasks = 0;
 
-        private readonly ManualResetEventSlim DrainComplete = new ManualResetEventSlim(false);
+        private readonly ManualResetEvent DrainComplete = new ManualResetEvent(false);
         private volatile int NumWaitingForDrain = 0;
 
         private SignalFuture _DrainCompleteFuture = null;
@@ -175,18 +175,21 @@ namespace Squared.Threading {
             }
         }
 
-        public void WaitUntilDrained () {
+        public void WaitUntilDrained (int timeoutMs = -1) {
             var resultCount = Interlocked.Increment(ref NumWaitingForDrain);
 
             bool doWait = false;
             lock (Queue)
                 doWait = (Queue.Count > 0) || (InFlightTasks > 0);
 
+            bool waitSuccessful;
             if (doWait)
-                DrainComplete.Wait();
+                waitSuccessful = DrainComplete.WaitOne(timeoutMs);
+            else
+                waitSuccessful = true;
 
             var result = Interlocked.Decrement(ref NumWaitingForDrain);
-            if (result == 0)
+            if ((result == 0) && waitSuccessful)
                 DrainComplete.Reset();
         }
     }
