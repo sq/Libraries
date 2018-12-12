@@ -14,6 +14,13 @@ namespace Squared.Render.Evil {
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     internal unsafe delegate int GetDisplayModeDelegate (void* pDevice, int iSwapChain, out D3DDISPLAYMODE pMode);
 
+    
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe struct D3DLOCKED_RECT {
+        public int Pitch;
+        public void* pBits;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT {
         public int Left;
@@ -322,6 +329,16 @@ namespace Squared.Render.Evil {
         }
     }
 
+    [Flags]
+    public enum D3DLOCK : uint {
+        READONLY         = 0x00000010,
+        DISCARD          = 0x00002000,
+        NOOVERWRITE      = 0x00001000,
+        NOSYSLOCK        = 0x00000800,
+        DONOTWAIT        = 0x00004000,
+        NO_DIRTY_UPDATE  = 0x00008000
+    }
+
     public enum D3DFORMAT : uint {
         UNKNOWN              =  0,
 
@@ -408,12 +425,26 @@ namespace Squared.Render.Evil {
 
     [SuppressUnmanagedCodeSecurity]
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    internal unsafe delegate int GetSurfaceLevelDelegate (void* pTexture, uint iLevel, void** pSurface);    
+    internal unsafe delegate int LockRectDelegate (void* pTexture, uint iLevel, D3DLOCKED_RECT* pLockedRect, RECT* pRect, uint flags);
+
+    [SuppressUnmanagedCodeSecurity]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    internal unsafe delegate int UnlockRectDelegate (void* pTexture, uint iLevel);
+
+    [SuppressUnmanagedCodeSecurity]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    internal unsafe delegate int GetSurfaceLevelDelegate (void* pTexture, uint iLevel, void** pSurface);
 
     public static class TextureUtils {
         public static class VTables {
             public static class IDirect3DTexture9 {
+                public const uint SetAutoGenFilterType = 56;
+                public const uint GetAutoGenFilterType = 60;
+                public const uint GenerateMipSubLevels = 64;
+                public const uint GetLevelDesc = 68;
                 public const uint GetSurfaceLevel = 72;
+                public const uint LockRect = 76;
+                public const uint UnlockRect = 80;
             }
         }
 
@@ -458,7 +489,7 @@ namespace Squared.Render.Evil {
             void* pGetSurfaceLevel = COMUtils.AccessVTable(pTexture, VTables.IDirect3DTexture9.GetSurfaceLevel);
             void* pSurface;
 
-            var getSurfaceLevel = (GetSurfaceLevelDelegate)Marshal.GetDelegateForFunctionPointer(new IntPtr(pGetSurfaceLevel), typeof(GetSurfaceLevelDelegate));
+            var getSurfaceLevel = Marshal.GetDelegateForFunctionPointer<GetSurfaceLevelDelegate>(new IntPtr(pGetSurfaceLevel));
             var rv = getSurfaceLevel(pTexture, level, &pSurface);
             if (rv == 0)
                 return pSurface;
@@ -466,11 +497,42 @@ namespace Squared.Render.Evil {
                 throw new COMException("GetSurfaceLevel failed", rv);
         }
 
+        public static unsafe void SetDataFast (
+            this Texture2D texture, uint level, void* pData,
+            int width, int height, uint pitch
+        ) {
+            void* pTexture = texture.GetIDirect3DTexture9();
+            void* pLockRect = COMUtils.AccessVTable(pTexture, VTables.IDirect3DTexture9.LockRect);
+            void* pUnlockRect = COMUtils.AccessVTable(pTexture, VTables.IDirect3DTexture9.UnlockRect);
+            var lockRect = Marshal.GetDelegateForFunctionPointer<LockRectDelegate>(new IntPtr(pLockRect));
+            var unlockRect = Marshal.GetDelegateForFunctionPointer<UnlockRectDelegate>(new IntPtr(pUnlockRect));
+            int lockHr = 0;
+            var lockedRect = new D3DLOCKED_RECT();
+            try {
+                var flags = D3DLOCK.NOSYSLOCK | D3DLOCK.DISCARD;
+                var rect = new RECT {
+                    Left = 0, Top = 0,
+                    Right = width, Bottom = height
+                };
+                lockHr = lockRect(pTexture, level, &lockedRect, &rect, (uint)flags);
+                if (lockHr != 0)
+                    throw Marshal.GetExceptionForHR(lockHr);
+                if (lockedRect.pBits == null)
+                    throw new Exception("LockRect did not return a data pointer");
+                else if (lockedRect.Pitch != pitch)
+                    throw new ArgumentException("Pitch of provided data does not match pitch of locked surface", "pitch");
+
+                Buffer.MemoryCopy(pData, lockedRect.pBits, lockedRect.Pitch * height, pitch * height);
+            } finally {
+                if (lockedRect.pBits != null)
+                    unlockRect(pTexture, level);
+            }
+        }
+
         /// <summary>
         /// Copies pixels from an address in memory into a mip level of Texture2D, converting them from one format to another if necessary.
         /// </summary>
         /// <param name="texture">The texture to copy to.</param>
-        /// <param name="level">The index into the texture's mip levels.</param>
         /// <param name="pData">The address of the pixel data.</param>
         /// <param name="width">The width of the pixel data (in pixels).</param>
         /// <param name="height">The height of the pixel data (in pixels).</param>
@@ -495,7 +557,6 @@ namespace Squared.Render.Evil {
         /// Copies pixels from an address in memory into a mip level of Texture2D, converting them from one format to another if necessary.
         /// </summary>
         /// <param name="texture">The texture to copy to.</param>
-        /// <param name="level">The index into the texture's mip levels.</param>
         /// <param name="pData">The address of the pixel data.</param>
         /// <param name="destRect">The destination rectangle.</param>
         /// <param name="pitch">The number of bytes occupied by a single row of the pixel data (including padding at the end of rows).</param>
