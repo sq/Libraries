@@ -251,11 +251,8 @@ namespace Squared.Render {
                     var destHeight = srcHeight / 2;
 
                     GenerateMip(pSrc, srcWidth, srcHeight, pDest, destWidth, destHeight);
-                    lock (Coordinator.UseResourceLock) {
-                        var pSurface = Evil.TextureUtils.GetSurfaceLevel(Texture, (uint)i);
-                        Evil.TextureUtils.SetData(Texture, pSurface, pDest, destWidth, destHeight, (uint)(destWidth * 4), Evil.D3DFORMAT.A8R8G8B8);
-                        Marshal.Release(new IntPtr(pSurface));
-                    }
+                    lock (Coordinator.UseResourceLock)
+                        Evil.TextureUtils.SetDataFast(Texture, (uint)i, pDest, destWidth, destHeight, (uint)(destWidth * 4));
 
                     var temp = pSrc;
                     pSrc = pDest;
