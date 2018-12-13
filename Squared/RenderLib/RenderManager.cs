@@ -236,6 +236,8 @@ namespace Squared.Render {
         /// </summary>
         public readonly object UseResourceLock = new object();
 
+        public event EventHandler<DeviceManager> DeviceChanged;
+
         public RenderManager (GraphicsDevice device, Thread mainThread, ThreadGroup threadGroup) {
             if (mainThread == null)
                 throw new ArgumentNullException("mainThread");
@@ -269,6 +271,8 @@ namespace Squared.Render {
                 DeviceManager.Dispose();
             DeviceManager = new DeviceManager(device);
             CreateNewBufferGenerators();
+            if (DeviceChanged != null)
+                DeviceChanged(this, DeviceManager);
         }
 
         private Dictionary<Type, IBufferGenerator> MakeThreadBufferGeneratorTable () {
