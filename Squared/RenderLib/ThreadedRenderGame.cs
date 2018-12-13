@@ -38,6 +38,8 @@ namespace Squared.Render {
         private FrameTiming NextFrameTiming;
         private readonly ConcurrentQueue<Action<GameTime>> BeforeDrawQueue = new ConcurrentQueue<Action<GameTime>>();
 
+        public event Action BeginDrawFailed;
+
         public MultithreadedGame()
             : base() {
 
@@ -136,8 +138,12 @@ namespace Squared.Render {
 
             try {
                 var ok = RenderCoordinator.BeginDraw();
-                if (!ok)
-                    Console.WriteLine("BeginDraw failed");
+                if (!ok) {
+                    if (BeginDrawFailed != null)
+                        BeginDrawFailed();
+                    else
+                        Console.WriteLine("BeginDraw failed");
+                }
                 return ok;
             } finally {
                 RenderCoordinator.WorkStopwatch.Stop();

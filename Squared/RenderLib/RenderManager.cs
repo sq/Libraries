@@ -91,6 +91,9 @@ namespace Squared.Render {
         public Material CurrentMaterial { get; private set; }
         public int FrameIndex { get; internal set; }
 
+        private static volatile int NextDeviceId;
+        public int DeviceId { get; private set; }
+
         private bool _IsDisposed;
 
         public bool IsDisposed {
@@ -111,6 +114,7 @@ namespace Squared.Render {
 
         public DeviceManager (GraphicsDevice device) {
             Device = device;
+            DeviceId = ++NextDeviceId;
         }
 
         public void PushStates () {
@@ -167,6 +171,15 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ApplyMaterial (Material material) {
             ActiveMaterial.Set(this, material);
+        }
+
+        public void Begin () {
+            if (CurrentMaterial != null)
+                CurrentMaterial = null;
+
+            RenderManager.ResetDeviceState(Device);
+            Device.SetRenderTargets();
+            Device.SetVertexBuffer(null);
         }
 
         public void Finish () {

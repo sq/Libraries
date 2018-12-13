@@ -107,7 +107,7 @@ namespace Squared.Render {
         public readonly ThreadGroup ThreadGroup;
         private readonly WorkQueue<DrawTask> DrawQueue;
 
-        public event EventHandler DeviceReset;
+        public event EventHandler DeviceReset, DeviceChanged;
 
         public bool IsDisposed { get; private set; }
 
@@ -161,6 +161,9 @@ namespace Squared.Render {
         private void DeviceService_DeviceCreated (object sender, EventArgs e) {
             if (DeviceService.GraphicsDevice != Manager.DeviceManager.Device)
                 Manager.ChangeDevice(DeviceService.GraphicsDevice);
+
+            if (DeviceChanged != null)
+                DeviceChanged(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -220,23 +223,17 @@ namespace Squared.Render {
         }
 
         protected void OnDeviceDisposing (object sender, EventArgs args) {
-            Console.WriteLine("OnDeviceDisposing");
-
             _DeviceIsDisposed = true;
             _DeviceLost = true;
         }
 
         protected void OnDeviceLost (object sender, EventArgs args) {
-            Console.WriteLine("OnDeviceLost");
-
             FirstFrameSinceReset = true;
             _DeviceLost = true;
         }
 
         // We must acquire both locks before resetting the device to avoid letting the reset happen during a paint or content load operation.
         protected void OnDeviceResetting (object sender, EventArgs args) {
-            Console.WriteLine("OnDeviceResetting");
-
             FirstFrameSinceReset = true;
 
             if (!IsResetting) {
@@ -270,8 +267,6 @@ namespace Squared.Render {
         }
 
         protected void OnDeviceReset (object sender, EventArgs args) {
-            Console.WriteLine("OnDeviceReset");
-
             if (IsResetting)
                 EndReset();
 
@@ -282,6 +277,8 @@ namespace Squared.Render {
         public void NotifyDeviceChanged () {
             if (DeviceReset != null)
                 DeviceReset(this, EventArgs.Empty);
+            if (DeviceChanged != null)
+                DeviceChanged(this, EventArgs.Empty);
         }
         
         private void WaitForPendingWork () {
@@ -338,7 +335,7 @@ namespace Squared.Render {
         public bool BeginDraw () {
             var ffsr = FirstFrameSinceReset;
 
-            if (IsResetting || _DeviceIsDisposed || _DeviceLost) {
+            if (IsResetting || _DeviceIsDisposed) {
                 EndReset();
                 if (_DeviceIsDisposed) {
                     _DeviceIsDisposed = Device.IsDisposed;

@@ -118,6 +118,8 @@ namespace Squared.Render {
             dm.FrameIndex = Index;
             var device = dm.Device;
 
+            dm.Begin();
+
             int c = Batches.Count;
             var _batches = Batches.GetBuffer(false);
             for (int i = 0; i < c; i++) {

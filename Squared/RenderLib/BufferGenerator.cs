@@ -20,9 +20,10 @@ namespace Squared.Render.Internal {
 
     public interface IHardwareBuffer : IDisposable {
         void SetInactive ();
-        void SetActive ();
-        void SetInactive (GraphicsDevice device);
-        void SetActive (GraphicsDevice device);
+        bool TrySetInactive ();
+        IHardwareBuffer SetActive ();
+        void SetInactiveAndUnapply (GraphicsDevice device);
+        IHardwareBuffer SetActiveAndApply (GraphicsDevice device);
         void GetBuffers (out VertexBuffer vb, out DynamicIndexBuffer ib);
         /*
         void Invalidate (int frameIndex);
@@ -211,9 +212,9 @@ namespace Squared.Render.Internal {
         protected int MaxSoftwareBuffersPerHardwareBuffer = 1024;
 
         public readonly RenderManager RenderManager;
-        public readonly GraphicsDevice GraphicsDevice;
         public readonly object CreateResourceLock;
 
+        public int DeviceId { get; private set; }
         private static volatile int _NextBufferId = 0;
 
         public int ManagedVertexBytes {
@@ -234,7 +235,7 @@ namespace Squared.Render.Internal {
 
             _SoftwareBufferPool = new SoftwareBufferPool(this);
             RenderManager = renderManager;
-            GraphicsDevice = renderManager.DeviceManager.Device;
+            DeviceId = renderManager.DeviceManager.DeviceId;
             CreateResourceLock = renderManager.CreateResourceLock;
             _VertexArray = new TVertex[InitialArraySize];
             _IndexArray = new TIndex[InitialArraySize];
@@ -303,6 +304,8 @@ namespace Squared.Render.Internal {
         }
 
         public void Reset (int frameIndex) {
+            var id = RenderManager.DeviceManager.DeviceId;
+
             lock (_StateLock) {
                 _FillingHardwareBufferEntry = null;
                 _FlushedToBuffers = 0;
@@ -315,6 +318,8 @@ namespace Squared.Render.Internal {
                 foreach (var _hb in _UsedHardwareBuffers) {
                     // HACK
                     var hwb = _hb.Buffer;
+                    if (hwb.DeviceId < id)
+                        continue;
                     hwb.Invalidate(frameIndex);
 
                     lock (_StaticStateLock)
@@ -584,9 +589,10 @@ namespace Squared.Render.Internal {
         public readonly object InUseLock = new object();
 
         public readonly RenderManager RenderManager;
-        public readonly GraphicsDevice GraphicsDevice;
         public DynamicVertexBuffer Vertices;
         public DynamicIndexBuffer Indices;
+
+        public int DeviceId { get; private set; }
 
         public XNABufferPair (
             RenderManager renderManager, int id,
@@ -598,13 +604,12 @@ namespace Squared.Render.Internal {
                 throw new ArgumentOutOfRangeException("vertexCount", vertexCount, "Vertex count must be less than UInt16.MaxValue");
 
             Id = id;
-            RenderManager = renderManager;
-            GraphicsDevice = renderManager.DeviceManager.Device;
+            RenderManager = renderManager;            
             VertexCount = vertexCount;
             IndexCount = indexCount;
         }
 
-        public void SetInactive (GraphicsDevice device) {
+        public void SetInactiveAndUnapply (GraphicsDevice device) {
             var wasActive = Interlocked.Exchange(ref _IsActive, 0);
             if (wasActive != 1)
                 throw new InvalidOperationException("Buffer not active");
@@ -616,7 +621,7 @@ namespace Squared.Render.Internal {
             Monitor.Exit(InUseLock);
         }
 
-        public void SetActive (GraphicsDevice device) {
+        public IHardwareBuffer SetActiveAndApply (GraphicsDevice device) {
             var wasActive = Interlocked.Exchange(ref _IsActive, 1);
             if (wasActive != 0)
                 throw new InvalidOperationException("Buffer already active");
@@ -628,6 +633,8 @@ namespace Squared.Render.Internal {
             Monitor.Enter(InUseLock);
             device.SetVertexBuffer(Vertices);
             device.Indices = Indices;
+
+            return this;
         }
 
         public void SetInactive () {
@@ -640,7 +647,20 @@ namespace Squared.Render.Internal {
             Monitor.Exit(InUseLock);
         }
 
-        public void SetActive () {
+        public bool TrySetInactive () {
+            var wasActive = Interlocked.Exchange(ref _IsActive, 0);
+            if (_IsValid != 1)
+                throw new ThreadStateException("Buffer not valid");
+
+            if (wasActive != 0) {
+                Monitor.Exit(InUseLock);
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        public IHardwareBuffer SetActive () {
             var wasActive = Interlocked.Exchange(ref _IsActive, 1);
             if (wasActive != 0)
                 throw new InvalidOperationException("Buffer already active");
@@ -650,6 +670,8 @@ namespace Squared.Render.Internal {
                 throw new ThreadStateException("Buffer not valid");
 
             Monitor.Enter(InUseLock);
+
+            return this;
         }
 
         public void GetBuffers (out VertexBuffer vb, out DynamicIndexBuffer ib) {
@@ -665,9 +687,10 @@ namespace Squared.Render.Internal {
         }
 
         public void Allocate () {
-            Vertices = new DynamicVertexBuffer(GraphicsDevice, typeof(TVertex), VertexCount, BufferUsage.WriteOnly);
+            DeviceId = RenderManager.DeviceManager.DeviceId;
+            Vertices = new DynamicVertexBuffer(RenderManager.DeviceManager.Device, typeof(TVertex), VertexCount, BufferUsage.WriteOnly);
             Interlocked.Add(ref RenderManager.TotalVertexBytes, System.Runtime.InteropServices.Marshal.SizeOf(typeof(TVertex)) * VertexCount);
-            Indices = new DynamicIndexBuffer(GraphicsDevice, IndexElementSize.SixteenBits, IndexCount, BufferUsage.WriteOnly);
+            Indices = new DynamicIndexBuffer(RenderManager.DeviceManager.Device, IndexElementSize.SixteenBits, IndexCount, BufferUsage.WriteOnly);
             Interlocked.Add(ref RenderManager.TotalIndexBytes, 2 * IndexCount);
             IsAllocated = true;
         }

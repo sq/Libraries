@@ -707,97 +707,101 @@ namespace Squared.Render {
             DynamicIndexBuffer ib, cornerIb;
 
             var cornerHwb = _CornerBuffer.HardwareBuffer;
-            cornerHwb.SetActive();
-            cornerHwb.GetBuffers(out cornerVb, out cornerIb);
-            if (device.Indices != cornerIb)
-                device.Indices = cornerIb;
+            try {
+                cornerHwb.SetActive();
+                cornerHwb.GetBuffers(out cornerVb, out cornerIb);
+                if (device.Indices != cornerIb)
+                    device.Indices = cornerIb;
 
-            var scratchBindings = _ScratchBindingArray.Value;
+                var scratchBindings = _ScratchBindingArray.Value;
 
-            var previousSS1 = device.SamplerStates[0];
-            var previousSS2 = device.SamplerStates[1];
+                var previousSS1 = device.SamplerStates[0];
+                var previousSS2 = device.SamplerStates[1];
 
-            manager.ApplyMaterial(Material);
-            {
-                TextureSet currentTexture = new TextureSet();
-                var paramSize = manager.CurrentParameters.BitmapTextureSize;
-                var paramHalfTexel = manager.CurrentParameters.HalfTexel;
-                var paramSize2 = manager.CurrentParameters.BitmapTextureSize2;
-                var paramHalfTexel2 = manager.CurrentParameters.HalfTexel2;
+                manager.ApplyMaterial(Material);
+                {
+                    TextureSet currentTexture = new TextureSet();
+                    var paramSize = manager.CurrentParameters.BitmapTextureSize;
+                    var paramHalfTexel = manager.CurrentParameters.HalfTexel;
+                    var paramSize2 = manager.CurrentParameters.BitmapTextureSize2;
+                    var paramHalfTexel2 = manager.CurrentParameters.HalfTexel2;
 
-                var m = manager.CurrentMaterial;
-                var paramTexture1 = m.Effect.Parameters["BitmapTexture"];
-                var paramTexture2 = m.Effect.Parameters["SecondTexture"];
+                    var m = manager.CurrentMaterial;
+                    var paramTexture1 = m.Effect.Parameters["BitmapTexture"];
+                    var paramTexture2 = m.Effect.Parameters["SecondTexture"];
 
-                for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
-                    NativeBatch nb;
-                    if (!_NativeBatches.TryGetItem(n, out nb))
-                        break;
+                    for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
+                        NativeBatch nb;
+                        if (!_NativeBatches.TryGetItem(n, out nb))
+                            break;
 
-                    if (nb.TextureSet != currentTexture) {
-                        currentTexture = nb.TextureSet;
-                        var tex1 = currentTexture.Texture1;
+                        if (nb.TextureSet != currentTexture) {
+                            currentTexture = nb.TextureSet;
+                            var tex1 = currentTexture.Texture1;
 
-                        // FIXME: What is going wrong with XNA here?
-                        paramTexture1.SetValue((Texture2D)null);
-                        paramTexture1.SetValue(tex1);
-                        if (paramTexture2 != null) {
-                            paramTexture2.SetValue((Texture2D)null);
-                            paramTexture2.SetValue(currentTexture.Texture2);
+                            // FIXME: What is going wrong with XNA here?
+                            paramTexture1.SetValue((Texture2D)null);
+                            paramTexture1.SetValue(tex1);
+                            if (paramTexture2 != null) {
+                                paramTexture2.SetValue((Texture2D)null);
+                                paramTexture2.SetValue(currentTexture.Texture2);
+                            }
+
+                            paramSize.SetValue(nb.Texture1Size);
+                            paramHalfTexel.SetValue(nb.Texture1HalfTexel);
+
+                            if ((paramTexture2 != null) && (currentTexture.Texture2 != null)) {
+                                paramSize2.SetValue(nb.Texture2Size);
+                                paramHalfTexel2.SetValue(nb.Texture2HalfTexel);
+                            }
+
+                            manager.CurrentMaterial.Flush();
+
+                            device.SamplerStates[0] = SamplerState;
+                            device.SamplerStates[1] = SamplerState2;
                         }
 
-                        paramSize.SetValue(nb.Texture1Size);
-                        paramHalfTexel.SetValue(nb.Texture1HalfTexel);
-
-                        if ((paramTexture2 != null) && (currentTexture.Texture2 != null)) {
-                            paramSize2.SetValue(nb.Texture2Size);
-                            paramHalfTexel2.SetValue(nb.Texture2HalfTexel);
+                        if (UseZBuffer) {
+                            var dss = device.DepthStencilState;
+                            if (dss.DepthBufferEnable == false)
+                                throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
                         }
 
-                        manager.CurrentMaterial.Flush();
+                        var swb = nb.SoftwareBuffer;
+                        var hwb = swb.HardwareBuffer;
+                        if (previousHardwareBuffer != hwb) {
+                            if (previousHardwareBuffer != null)
+                                previousHardwareBuffer.SetInactive();
 
-                        device.SamplerStates[0] = SamplerState;
-                        device.SamplerStates[1] = SamplerState2;
+                            hwb.SetActive();
+                            previousHardwareBuffer = hwb;
+                        }
+
+                        hwb.GetBuffers(out vb, out ib);
+
+                        scratchBindings[0] = cornerVb;
+                        scratchBindings[1] = new VertexBufferBinding(vb, swb.HardwareVertexOffset + nb.LocalVertexOffset, 1);
+
+                        device.SetVertexBuffers(scratchBindings);
+                        device.DrawInstancedPrimitives(
+                            PrimitiveType.TriangleList, 
+                            0, _CornerBuffer.HardwareVertexOffset, 4, 
+                            _CornerBuffer.HardwareIndexOffset, 2, 
+                            nb.VertexCount
+                        );
                     }
 
-                    if (UseZBuffer) {
-                        var dss = device.DepthStencilState;
-                        if (dss.DepthBufferEnable == false)
-                            throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
-                    }
-
-                    var swb = nb.SoftwareBuffer;
-                    var hwb = swb.HardwareBuffer;
-                    if (previousHardwareBuffer != hwb) {
-                        if (previousHardwareBuffer != null)
-                            previousHardwareBuffer.SetInactive();
-
-                        hwb.SetActive();
-                        previousHardwareBuffer = hwb;
-                    }
-
-                    hwb.GetBuffers(out vb, out ib);
-
-                    scratchBindings[0] = cornerVb;
-                    scratchBindings[1] = new VertexBufferBinding(vb, swb.HardwareVertexOffset + nb.LocalVertexOffset, 1);
-
-                    device.SetVertexBuffers(scratchBindings);
-                    device.DrawInstancedPrimitives(
-                        PrimitiveType.TriangleList, 
-                        0, _CornerBuffer.HardwareVertexOffset, 4, 
-                        _CornerBuffer.HardwareIndexOffset, 2, 
-                        nb.VertexCount
-                    );
+                    if (previousHardwareBuffer != null)
+                        previousHardwareBuffer.SetInactive();
                 }
 
+                device.SamplerStates[0] = previousSS1;
+                device.SamplerStates[1] = previousSS2;
+            } finally {
+                cornerHwb.TrySetInactive();
                 if (previousHardwareBuffer != null)
-                    previousHardwareBuffer.SetInactive();
+                    previousHardwareBuffer.TrySetInactive();
             }
-
-            device.SamplerStates[0] = previousSS1;
-            device.SamplerStates[1] = previousSS2;
-
-            cornerHwb.SetInactive();
 
             _BufferGenerator = null;
             _CornerBuffer = null;

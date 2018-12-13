@@ -233,18 +233,24 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            if (Count > 0) {
-                manager.ApplyMaterial(Material);
+            IHardwareBuffer hwb = null;
+            try {
+                if (Count > 0) {
+                    manager.ApplyMaterial(Material);
 
-                var hwb = _SoftwareBuffer.HardwareBuffer;
-                if (hwb == null)
-                    throw new ThreadStateException("Could not get a hardware buffer for this batch");
+                    hwb = _SoftwareBuffer.HardwareBuffer;
+                    if (hwb == null)
+                        throw new ThreadStateException("Could not get a hardware buffer for this batch");
 
-                hwb.SetActive(manager.Device);
-                foreach (var da in _DrawArguments) {
-                    manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
+                    hwb.SetActiveAndApply(manager.Device);
+                    foreach (var da in _DrawArguments) {
+                        manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
+                    }
+                    hwb.SetInactiveAndUnapply(manager.Device);
                 }
-                hwb.SetInactive(manager.Device);
+            } finally {
+                if (hwb != null)
+                    hwb.TrySetInactive();
             }
 
             _DrawArgumentsListPool.Release(ref _DrawArguments);
@@ -678,9 +684,9 @@ namespace Squared.Render {
                 if (hwb == null)
                     throw new ThreadStateException("Could not get a hardware buffer for this batch");
 
-                hwb.SetActive(manager.Device);
+                hwb.SetActiveAndApply(manager.Device);
                 manager.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, count * 4, 0, count * 2);
-                hwb.SetInactive(manager.Device);
+                hwb.SetInactiveAndUnapply(manager.Device);
             }
 
             _SoftwareBuffer = null;
