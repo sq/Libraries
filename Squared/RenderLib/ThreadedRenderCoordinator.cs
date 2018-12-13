@@ -138,17 +138,29 @@ namespace Squared.Render {
         /// Constructs a render coordinator. A render manager and synchronous draw methods are automatically provided for you.
         /// </summary>
         /// <param name="deviceService"></param>
-        public RenderCoordinator (IGraphicsDeviceService deviceService, Thread mainThread, ThreadGroup threadGroup) {
+        public RenderCoordinator (
+            IGraphicsDeviceService deviceService, Thread mainThread, ThreadGroup threadGroup,
+            Func<bool> synchronousBeginDraw = null, Action synchronousEndDraw = null
+        ) {
             DeviceService = deviceService;
             ThreadGroup = threadGroup;
             Manager = new RenderManager(deviceService.GraphicsDevice, mainThread, ThreadGroup);
+            UseResourceLock = Manager.UseResourceLock;
+            CreateResourceLock = Manager.CreateResourceLock;
 
-            _SyncBeginDraw = DefaultBeginDraw;
-            _SyncEndDraw = DefaultEndDraw;
+            _SyncBeginDraw = synchronousBeginDraw ?? DefaultBeginDraw;
+            _SyncEndDraw = synchronousEndDraw ?? DefaultEndDraw;
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
             CoreInitialize();
+
+            deviceService.DeviceCreated += DeviceService_DeviceCreated;
+        }
+
+        private void DeviceService_DeviceCreated (object sender, EventArgs e) {
+            if (DeviceService.GraphicsDevice != Manager.DeviceManager.Device)
+                Manager.ChangeDevice(DeviceService.GraphicsDevice);
         }
 
         /// <summary>
@@ -328,6 +340,11 @@ namespace Squared.Render {
 
             if (IsResetting || _DeviceIsDisposed || _DeviceLost) {
                 EndReset();
+                if (_DeviceIsDisposed) {
+                    _DeviceIsDisposed = Device.IsDisposed;
+                    if (!_DeviceIsDisposed)
+                        _DeviceLost = false;
+                }
                 return false;
             }
             if (IsDisposed)
@@ -338,16 +355,18 @@ namespace Squared.Render {
             try {
                 WaitForActiveSynchronousDraw();
                 WaitForActiveDraw();
-            } catch (NullReferenceException) {
-                if (FirstFrameSinceReset || _DeviceIsDisposed || _DeviceLost)
-                    return false;
-                else
-                    throw;
-            } catch (InvalidOperationException) {
-                if (FirstFrameSinceReset || _DeviceIsDisposed || _DeviceLost)
-                    return false;
-                else
-                    throw;
+            } catch (Exception exc) {
+                if (FirstFrameSinceReset || _DeviceIsDisposed || _DeviceLost) {
+                    if (
+                        (exc is ObjectDisposedException) || 
+                        (exc is InvalidOperationException) || 
+                        (exc is NullReferenceException)
+                    )
+                        return false;
+                }
+
+                return false;
+                // throw;
             }
 
             Interlocked.Increment(ref _InsideDrawOperation);
@@ -364,10 +383,8 @@ namespace Squared.Render {
                     result = false;
                 }
 
-                if (ffsr && FirstFrameSinceReset && result) {
-                    Console.WriteLine("Clearing ffsr");
+                if (ffsr && FirstFrameSinceReset && result)
                     FirstFrameSinceReset = false;
-                }
 
                 return result;
             } finally {

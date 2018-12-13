@@ -312,8 +312,10 @@ namespace Squared.Render {
 
         public virtual void Dispose () {
             lock (UniformBindings) {
-                foreach (var kvp in UniformBindings)
-                    kvp.Value.Dispose();
+                foreach (var kvp in UniformBindings) {
+                    if (kvp.Value != null)
+                        kvp.Value.Dispose();
+                }
                 UniformBindings.Clear();
             }
 

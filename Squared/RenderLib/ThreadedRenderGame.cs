@@ -111,10 +111,16 @@ namespace Squared.Render {
         }
 
         protected override void Initialize () {
-            RenderManager = new RenderManager(GraphicsDevice, Thread.CurrentThread, ThreadGroup);
-            RenderCoordinator = new RenderCoordinator(
-                RenderManager, base.BeginDraw, base.EndDraw
-            );
+            var gds = Services.GetService(typeof(IGraphicsDeviceService)) as IGraphicsDeviceService;
+            if (gds != null) {
+                RenderCoordinator = new RenderCoordinator(gds, Thread.CurrentThread, ThreadGroup, base.BeginDraw, base.EndDraw);
+                RenderManager = RenderCoordinator.Manager;
+            } else {
+                RenderManager = new RenderManager(GraphicsDevice, Thread.CurrentThread, ThreadGroup);
+                RenderCoordinator = new RenderCoordinator(
+                    RenderManager, base.BeginDraw, base.EndDraw
+                );
+            }
             RenderCoordinator.EnableThreading = UseThreadedDraw;
             RenderCoordinator.DeviceReset += (s, e) => OnDeviceReset();
 

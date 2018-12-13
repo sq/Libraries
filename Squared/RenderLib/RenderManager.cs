@@ -57,7 +57,7 @@ namespace Squared.Render {
         bool IsReleased { get; }
     }
 
-    public sealed class DeviceManager {
+    public sealed class DeviceManager : IDisposable {
         public static class ActiveMaterial {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Set (DeviceManager deviceManager, Material material) {
@@ -90,6 +90,24 @@ namespace Squared.Render {
         public readonly GraphicsDevice Device;
         public Material CurrentMaterial { get; private set; }
         public int FrameIndex { get; internal set; }
+
+        private bool _IsDisposed;
+
+        public bool IsDisposed {
+            get {
+                if (!_IsDisposed && Device.IsDisposed)
+                    _IsDisposed = true;
+                return _IsDisposed;
+            }
+        }
+
+        public void Dispose () {
+            if (IsDisposed)
+                return;
+
+            _IsDisposed = true;
+            // FIXME: Dispose device? Probably not
+        }
 
         public DeviceManager (GraphicsDevice device) {
             Device = device;
@@ -173,7 +191,7 @@ namespace Squared.Render {
 
         public readonly PrepareManager PrepareManager;
         public readonly ThreadGroup    ThreadGroup;
-        public readonly DeviceManager  DeviceManager;
+        public          DeviceManager  DeviceManager { get; private set; }
         public readonly Thread         MainThread;
 
         // FIXME: ????
@@ -186,7 +204,7 @@ namespace Squared.Render {
         internal long TotalVertexBytes, TotalIndexBytes;
 
         private readonly List<IBufferGenerator> _AllBufferGenerators = new List<IBufferGenerator>();
-        private readonly ThreadLocal<Dictionary<Type, IBufferGenerator>> _BufferGenerators;
+        private ThreadLocal<Dictionary<Type, IBufferGenerator>> _BufferGenerators;
 
         private readonly Dictionary<Type, int> _PreferredPoolCapacities =
             new Dictionary<Type, int>(new ReferenceComparer<Type>());
@@ -214,11 +232,30 @@ namespace Squared.Render {
             ThreadGroup = threadGroup;
             PrepareManager = new PrepareManager(ThreadGroup);
 
+            CreateNewBufferGenerators();
+
+            _Frame = new Frame();
+        }
+
+        internal void CreateNewBufferGenerators () {
+            lock (_AllBufferGenerators)
+            foreach (var generator in _AllBufferGenerators) {
+                try {
+                    generator.Dispose();
+                } catch (Exception) {
+                }
+            }
+
             _BufferGenerators = new ThreadLocal<Dictionary<Type, IBufferGenerator>>(
                 MakeThreadBufferGeneratorTable
             );
+        }
 
-            _Frame = new Frame();
+        internal void ChangeDevice (GraphicsDevice device) {
+            if (DeviceManager != null)
+                DeviceManager.Dispose();
+            DeviceManager = new DeviceManager(device);
+            CreateNewBufferGenerators();
         }
 
         private Dictionary<Type, IBufferGenerator> MakeThreadBufferGeneratorTable () {
@@ -630,6 +667,9 @@ namespace Squared.Render {
 
     public static class BatchExtensions {
         public static void IssueAndWrapExceptions (this Batch batch, DeviceManager manager) {
+            if (manager.IsDisposed)
+                return;
+
 #if DEBUG
             if (Debugger.IsAttached) {
                 batch.Issue(manager);
