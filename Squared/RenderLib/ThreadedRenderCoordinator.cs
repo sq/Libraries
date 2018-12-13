@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Internal;
 using Squared.Threading;
+using Squared.Util;
 
 namespace Squared.Render {
     public static class RenderCoordinatorExtensions {
@@ -111,6 +112,8 @@ namespace Squared.Render {
 
         public bool IsDisposed { get; private set; }
 
+        private long TimeOfLastResetOrDeviceChange = 0;
+
         /// <summary>
         /// Constructs a render coordinator.
         /// </summary>
@@ -131,7 +134,7 @@ namespace Squared.Render {
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
-            CoreInitialize();
+            RegisterForDeviceEvents();
         }
 
         /// <summary>
@@ -153,17 +156,21 @@ namespace Squared.Render {
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
-            CoreInitialize();
+            RegisterForDeviceEvents();
 
             deviceService.DeviceCreated += DeviceService_DeviceCreated;
         }
 
         private void DeviceService_DeviceCreated (object sender, EventArgs e) {
-            if (DeviceService.GraphicsDevice != Manager.DeviceManager.Device)
-                Manager.ChangeDevice(DeviceService.GraphicsDevice);
+            if (DeviceService.GraphicsDevice != Manager.DeviceManager.Device) {
+                TimeOfLastResetOrDeviceChange = Time.Ticks;
 
-            if (DeviceChanged != null)
-                DeviceChanged(this, EventArgs.Empty);
+                Manager.ChangeDevice(DeviceService.GraphicsDevice);
+                RegisterForDeviceEvents();
+
+                if (DeviceChanged != null)
+                    DeviceChanged(this, EventArgs.Empty);
+            }
         }
 
         /// <summary>
@@ -188,7 +195,7 @@ namespace Squared.Render {
             AfterPresentQueue.Enqueue(action);
         }
 
-        private void CoreInitialize () {
+        private void RegisterForDeviceEvents () {
             Device.DeviceResetting += OnDeviceResetting;
             Device.DeviceReset += OnDeviceReset;
             Device.DeviceLost += OnDeviceLost;
@@ -228,12 +235,14 @@ namespace Squared.Render {
         }
 
         protected void OnDeviceLost (object sender, EventArgs args) {
+            TimeOfLastResetOrDeviceChange = Time.Ticks;
             FirstFrameSinceReset = true;
             _DeviceLost = true;
         }
 
         // We must acquire both locks before resetting the device to avoid letting the reset happen during a paint or content load operation.
         protected void OnDeviceResetting (object sender, EventArgs args) {
+            TimeOfLastResetOrDeviceChange = Time.Ticks;
             FirstFrameSinceReset = true;
 
             if (!IsResetting) {
@@ -267,20 +276,15 @@ namespace Squared.Render {
         }
 
         protected void OnDeviceReset (object sender, EventArgs args) {
+            TimeOfLastResetOrDeviceChange = Time.Ticks;
+
             if (IsResetting)
                 EndReset();
 
             if (DeviceReset != null)
                 DeviceReset(this, EventArgs.Empty);
         }
-
-        public void NotifyDeviceChanged () {
-            if (DeviceReset != null)
-                DeviceReset(this, EventArgs.Empty);
-            if (DeviceChanged != null)
-                DeviceChanged(this, EventArgs.Empty);
-        }
-        
+                
         private void WaitForPendingWork () {
             if (IsDisposed)
                 return;
@@ -332,6 +336,20 @@ namespace Squared.Render {
             return _FrameBeingPrepared = Manager.CreateFrame();
         }
 
+        private bool ShouldSuppressResetRelatedDrawErrors {
+            get {
+                if (FirstFrameSinceReset || _DeviceIsDisposed || _DeviceLost)
+                    return true;
+
+                // HACK
+                var now = Time.Ticks;
+                if ((now - TimeOfLastResetOrDeviceChange) < TimeSpan.FromMilliseconds(200).Ticks)
+                    return true;
+
+                return false;
+            }
+        }
+
         public bool BeginDraw () {
             var ffsr = FirstFrameSinceReset;
 
@@ -353,7 +371,7 @@ namespace Squared.Render {
                 WaitForActiveSynchronousDraw();
                 WaitForActiveDraw();
             } catch (Exception exc) {
-                if (FirstFrameSinceReset || _DeviceIsDisposed || _DeviceLost) {
+                if (ShouldSuppressResetRelatedDrawErrors) {
                     if (
                         (exc is ObjectDisposedException) || 
                         (exc is InvalidOperationException) || 
@@ -362,8 +380,7 @@ namespace Squared.Render {
                         return false;
                 }
 
-                return false;
-                // throw;
+                throw;
             }
 
             Interlocked.Increment(ref _InsideDrawOperation);
