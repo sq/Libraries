@@ -397,8 +397,10 @@ namespace Squared.Render {
                     result = false;
                 }
 
-                if (ffsr && FirstFrameSinceReset && result)
+                if (ffsr && FirstFrameSinceReset && result) {
                     FirstFrameSinceReset = false;
+                    UniformBinding.CollectGarbage();
+                }
 
                 return result;
             } finally {

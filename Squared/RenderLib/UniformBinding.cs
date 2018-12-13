@@ -385,6 +385,26 @@ namespace Squared.Render {
         private static readonly Dictionary<Effect, List<IUniformBinding>> Bindings =
             new Dictionary<Effect, List<IUniformBinding>>(new ReferenceComparer<Effect>());
 
+        public static void CollectGarbage () {
+            var deadEffects = new List<Effect>();
+
+            lock (Bindings) {
+                foreach (var kvp in Bindings) {
+                    if (kvp.Key.IsDisposed || kvp.Key.GraphicsDevice.IsDisposed)
+                        deadEffects.Add(kvp.Key);
+                }
+            }
+
+            lock (Bindings) {
+                foreach (var effect in deadEffects) {
+                    var list = Bindings[effect];
+                    foreach (var binding in list)
+                        binding.Dispose();
+                    Bindings.Remove(effect);
+                }
+            }
+        }
+
         public static void HandleDeviceReset () {
             lock (Bindings)
             foreach (var kvp in Bindings)
