@@ -232,6 +232,12 @@ namespace Squared.Game {
             );
         }
 
+        public static Bounds FromPositionAndSize (float x, float y, float width, float height) {
+            return new Bounds(
+                new Vector2(x, y), new Vector2(x + width, y + height)
+            );
+        }
+
         public bool Equals (ref Bounds rhs) {
             return (TopLeft == rhs.TopLeft) && (BottomRight == rhs.BottomRight);
         }
