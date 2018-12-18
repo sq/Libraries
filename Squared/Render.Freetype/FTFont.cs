@@ -161,11 +161,15 @@ namespace Squared.Render.Text {
                 if (index <= 0)
                     return false;
 
-                var flags = LoadFlags.Color | LoadFlags.Render;
+                var flags = LoadFlags.Render;
                 if (!Font.EnableBitmaps)
                     flags |= LoadFlags.NoBitmap;
                 if (!Font.Hinting)
                     flags |= LoadFlags.NoHinting;
+                if (Font.Monochrome)
+                    flags |= LoadFlags.Monochrome;
+                else
+                    flags |= LoadFlags.Color;
 
                 Font.Face.LoadGlyph(
                     index, flags, LoadTarget.Normal
@@ -261,6 +265,7 @@ namespace Squared.Render.Text {
         public bool Hinting { get; set; }
         public bool MipMapping { get; set; }
         public bool EnableBitmaps { get; set; }
+        public bool Monochrome { get; set; }
         public int TabSize { get; set; }
 
         private double _Gamma;

@@ -750,6 +750,15 @@ namespace Squared.Render.Convenience {
                 gb.AddFilledQuad(bounds, fillColor);
         }
 
+        public void GradientFillRectangle (
+            Bounds bounds, Color topLeft, Color topRight, Color bottomLeft, Color bottomRight,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var gb = GetGeometryBatch(layer, worldSpace, blendState))
+                gb.AddGradientFilledQuad(bounds, topLeft, topRight, bottomLeft, bottomRight);
+        }
+
         public void OutlineRectangle (
             Rectangle rectangle, Color outlineColor,
             int? layer = null, bool? worldSpace = null,
