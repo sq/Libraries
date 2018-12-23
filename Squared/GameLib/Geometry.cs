@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Squared.Util;
 using Microsoft.Xna.Framework;
+using System.Runtime.CompilerServices;
 
 namespace Squared.Game {
     public class Vector2Comparer : IEqualityComparer<Vector2> {
@@ -226,12 +227,14 @@ namespace Squared.Game {
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Bounds FromPositionAndSize (Vector2 position, Vector2 size) {
             return new Bounds(
                 position, position + size
             );
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Bounds FromPositionAndSize (float x, float y, float width, float height) {
             return new Bounds(
                 new Vector2(x, y), new Vector2(x + width, y + height)

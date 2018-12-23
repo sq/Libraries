@@ -476,7 +476,7 @@ namespace Squared.Render.Text {
                             EnsureBufferCapacity(bufferWritePosition);
 
                         drawCall.Texture = glyph.Texture;
-                        drawCall.TextureRegion = glyph.Texture.BoundsFromRectangle(ref glyph.BoundsInTexture);
+                        drawCall.TextureRegion = glyph.BoundsInTexture;
                         Snap(glyphPosition, out drawCall.Position);
 
                         // HACK so that the alignment pass can detect rows. We strip this later.

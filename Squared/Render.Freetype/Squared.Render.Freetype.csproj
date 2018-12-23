@@ -53,6 +53,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\GameLib\Squared.Game.csproj">
+      <Project>{36463aee-e309-43a6-bcfa-a69944390af0}</Project>
+      <Name>Squared.Game</Name>
+    </ProjectReference>
     <ProjectReference Include="..\RenderLib\Squared.Render.csproj">
       <Project>{fe871f18-fd35-4124-af8f-0021c9d4ba29}</Project>
       <Name>Squared.Render</Name>

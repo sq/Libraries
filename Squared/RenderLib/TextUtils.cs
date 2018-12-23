@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Game;
 
 namespace Squared.Render.Text {
     public struct AbstractString : IEquatable<AbstractString> {
@@ -579,11 +580,13 @@ namespace Squared.Render.Text {
         private void MakeGlyphForCharacter (char ch, int characterIndex, out Glyph glyph) {
             var kerning = Fields.Kerning[characterIndex];
             var cropping = Fields.CropRectangles[characterIndex];
+            var rect = Fields.GlyphRectangles[characterIndex];
 
             glyph = new Glyph {
                 Character = ch,
                 Texture = Texture,
-                BoundsInTexture = Fields.GlyphRectangles[characterIndex],
+                RectInTexture = rect,
+                BoundsInTexture = Texture.BoundsFromRectangle(ref rect),
                 XOffset = cropping.X,
                 YOffset = cropping.Y,
                 LeftSideBearing = kerning.X,
@@ -628,7 +631,8 @@ namespace Squared.Render.Text {
     public struct Glyph {
         public Texture2D Texture;
         public char Character;
-        public Rectangle BoundsInTexture;
+        public Rectangle RectInTexture;
+        public Bounds BoundsInTexture;
         public float XOffset, YOffset;
         public float LeftSideBearing;
         public float RightSideBearing;

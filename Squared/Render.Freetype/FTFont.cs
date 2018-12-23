@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SharpFont;
+using Squared.Game;
 using Squared.Render;
 using Squared.Render.Text;
 using Squared.Util;
@@ -18,12 +19,14 @@ namespace Squared.Render.Text {
         public static uint BaseDPI = 96;
 
         public class FontSize : IGlyphSource, IDisposable {
+            public const int LowCacheSize = 256;
             public const int AtlasWidth = 1024, AtlasHeight = 1024;
 
             public bool IsDisposed { get; private set; }
 
             internal List<DynamicAtlas<Color>> Atlases = new List<DynamicAtlas<Color>>();
             internal FreeTypeFont Font;
+            internal SrGlyph[] LowCache = new SrGlyph[LowCacheSize];
             internal Dictionary<char, SrGlyph> Cache = new Dictionary<char, SrGlyph>();
             internal float _SizePoints;
             internal int _Version;
@@ -140,6 +143,13 @@ namespace Squared.Render.Text {
                     return false;
                 }
 
+                if (ch < LowCacheSize) {
+                    if (LowCache[ch].Texture != null) {
+                        glyph = LowCache[ch];
+                        return true;
+                    }
+                }
+                
                 if (Cache.TryGetValue(ch, out glyph))
                     return true;
 
@@ -195,6 +205,8 @@ namespace Squared.Render.Text {
                 var widthMetric = metrics.Width.ToSingle();
                 var bearingXMetric = metrics.HorizontalBearingX.ToSingle();
 
+                var rect = texRegion.Rectangle;
+
                 glyph = new SrGlyph {
                     Character = ch,
                     Width = widthMetric,
@@ -207,7 +219,8 @@ namespace Squared.Render.Text {
                     XOffset = ftgs.BitmapLeft - bearingXMetric - Font.GlyphMargin,
                     YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin,
                     Texture = texRegion.Texture,
-                    BoundsInTexture = texRegion.Rectangle,
+                    RectInTexture = rect,
+                    BoundsInTexture = texRegion.Texture.BoundsFromRectangle(ref rect),
                     LineSpacing = Font.Face.Size.Metrics.Height.ToSingle()
                 };
 
@@ -215,6 +228,8 @@ namespace Squared.Render.Text {
                 if (Char.IsWhiteSpace(ch))
                     glyph.RightSideBearing = (float)Math.Round(glyph.RightSideBearing);
 
+                if (ch < LowCacheSize)
+                    LowCache[ch] = glyph;
                 Cache[ch] = glyph;
                 return true;
             }
@@ -228,6 +243,7 @@ namespace Squared.Render.Text {
                 foreach (var atlas in Atlases)
                     atlas.Clear();
 
+                Array.Clear(LowCache, 0, LowCacheSize);
                 Cache.Clear();
             }
 
@@ -249,6 +265,7 @@ namespace Squared.Render.Text {
 
                 IsDisposed = true;
 
+                Array.Clear(LowCache, 0, LowCacheSize);
                 Cache.Clear();
                 foreach (var atlas in Atlases)
                     atlas.Dispose();
