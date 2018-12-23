@@ -646,8 +646,7 @@ namespace Squared.Render {
                 var vw = vb.GetWriter(4 * count);
                 var iw = ib.GetWriter(QuadIndices.Length * count, ref vw);
 
-                int j = vb.Storage.Offset, k = ib.Storage.Offset;
-                for (int i = 0; i < count; i++, j+=4, k+=6) {
+                for (int i = 0, j = 0; i < count; i++, j+=4) {
                     var dc = _DrawCalls[i];
                     var vert = new EllipseVertex {
                         Center = dc.Center,
@@ -669,7 +668,8 @@ namespace Squared.Render {
                     vert.Position = new Vector3(dc.Center + sz, 0);
                     vw.Write(vert);
 
-                    iw.Write(QuadIndices);
+                    foreach (var idx in QuadIndices)
+                        iw.Write((ushort)(idx + j));
                 }
 
                 NativeBatch.RecordPrimitives(count * 2);
