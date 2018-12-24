@@ -4,6 +4,7 @@ using System.Linq;
 using Squared.Util;
 using Microsoft.Xna.Framework;
 using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 
 namespace Squared.Game {
     public class Vector2Comparer : IEqualityComparer<Vector2> {
@@ -24,7 +25,8 @@ namespace Squared.Game {
         Bounds Bounds { get; }
     }
 
-    public struct Bounds {
+    [Serializable]
+    public struct Bounds : ISerializable {
         public static readonly Bounds Unit = FromPositionAndSize(Vector2.Zero, Vector2.One);
 
         public Vector2 TopLeft;
@@ -267,6 +269,16 @@ namespace Squared.Game {
 
         public Vector4 ToVector4 () {
             return new Vector4(TopLeft.X, TopLeft.Y, BottomRight.X, BottomRight.Y);
+        }
+
+        internal Bounds (SerializationInfo info, StreamingContext context) {
+            TopLeft = (Vector2)info.GetValue("TopLeft", typeof(Vector2));
+            BottomRight = (Vector2)info.GetValue("BottomRight", typeof(Vector2));
+        }
+
+        void ISerializable.GetObjectData (SerializationInfo info, StreamingContext context) {
+            info.AddValue("TopLeft", TopLeft);
+            info.AddValue("BottomRight", BottomRight);
         }
     }
 

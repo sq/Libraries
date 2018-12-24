@@ -129,14 +129,20 @@ namespace Squared.Render.Text {
                 return result;
             }
 
+            private float? _LineSpacing = null;
+
             public float LineSpacing {
                 get {
-                    Font.Face.SetCharSize(
-                        0, _SizePoints, 
-                        BaseDPI, BaseDPI
-                    );
+                    if (!_LineSpacing.HasValue) {
+                        Font.Face.SetCharSize(
+                            0, _SizePoints, 
+                            BaseDPI, BaseDPI
+                        );
 
-                    return Font.Face.Size.Metrics.Height.ToSingle();
+                        _LineSpacing = Font.Face.Size.Metrics.Height.ToSingle();
+                    }
+
+                    return _LineSpacing.Value;
                 }
             }
 
@@ -248,6 +254,8 @@ namespace Squared.Render.Text {
 
                 Array.Clear(LowCache, 0, LowCacheSize);
                 Cache.Clear();
+
+                _LineSpacing = null;
             }
 
             float IGlyphSource.DPIScaleFactor {
