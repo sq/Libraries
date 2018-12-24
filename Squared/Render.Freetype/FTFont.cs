@@ -42,6 +42,9 @@ namespace Squared.Render.Text {
                     return _SizePoints;
                 }
                 set {
+                    if (_SizePoints == value)
+                        return;
+
                     _SizePoints = value;
                     Invalidate();
                 }
