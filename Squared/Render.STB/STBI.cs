@@ -12,12 +12,13 @@ namespace Squared.Render.STB {
         public readonly int Width, Height, ChannelCount;
         public bool IsDisposed { get; private set; }
         public void* Data { get; private set; }
+        public bool IsFloatingPoint { get; private set; }
 
-        public Image (string path, bool premultiply = true)
-            : this (File.OpenRead(path), true, premultiply) {
+        public Image (string path, bool premultiply = true, bool asFloatingPoint = false)
+            : this (File.OpenRead(path), true, premultiply, asFloatingPoint) {
         }
 
-        public Image (FileStream stream, bool ownsStream, bool premultiply = true) {
+        public Image (FileStream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false) {
             BufferPool<byte>.Buffer scratch = BufferPool<byte>.Allocate(10240);
 
             var callbacks = new Native.STBI_IO_Callbacks {
@@ -40,8 +41,13 @@ namespace Squared.Render.STB {
                 }
             };
 
+            IsFloatingPoint = asFloatingPoint;
+
             // FIXME: Don't request RGBA?
-            Data = Native.API.stbi_load_from_callbacks(ref callbacks, null, out Width, out Height, out ChannelCount, 4);
+            if (asFloatingPoint)
+                Data = Native.API.stbi_loadf_from_callbacks(ref callbacks, null, out Width, out Height, out ChannelCount, 4);
+            else
+                Data = Native.API.stbi_load_from_callbacks(ref callbacks, null, out Width, out Height, out ChannelCount, 4);
 
             scratch.Dispose();
             if (ownsStream)
@@ -55,7 +61,15 @@ namespace Squared.Render.STB {
                 throw new Exception(message);
             }
 
-            ConvertData(premultiply);
+            if (asFloatingPoint)
+                ConvertFPData(premultiply);
+            else
+                ConvertData(premultiply);
+        }
+
+        private unsafe void ConvertFPData (bool premultiply) {
+            if (premultiply)
+                PremultiplyFPData();
         }
 
         private unsafe void ConvertData (bool premultiply) {
@@ -63,6 +77,18 @@ namespace Squared.Render.STB {
                 PremultiplyAndChannelSwapData();
             else
                 ChannelSwapData();
+        }
+
+        private unsafe void PremultiplyFPData () {
+            var pData = (float*)Data;
+            var pEnd = pData + (Width * Height * ChannelCount);
+            for (; pData < pEnd; pData+=4) {
+                var a = pData[3];
+                var temp = pData[0];
+                pData[0] *= a;
+                pData[1] *= a;
+                pData[2] *= a;
+            }
         }
 
         private unsafe void PremultiplyAndChannelSwapData () {
@@ -83,7 +109,7 @@ namespace Squared.Render.STB {
 
         private unsafe void ChannelSwapData () {
             var pBytes = (byte*)Data;
-            var pEnd = pBytes + (Width * Height * 4);
+            var pEnd = pBytes + (Width * Height * ChannelCount);
             for (; pBytes < pEnd; pBytes += 4) {
                 var r = pBytes[0];
                 pBytes[0] = pBytes[2];
@@ -95,52 +121,71 @@ namespace Squared.Render.STB {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image is disposed");
             // FIXME: Channel count
+            var format = IsFloatingPoint ? SurfaceFormat.Vector4 : SurfaceFormat.Color;
+            Texture2D result;
+            lock (coordinator.CreateResourceLock)
+                result = new Texture2D(coordinator.Device, Width, Height, generateMips, format);
+
+            // FIXME: FP mips
+            if (generateMips && !IsFloatingPoint)
+                UploadWithMips(coordinator, result);
+            else
+                UploadDirect(coordinator, result);
+
+            return result;
+        }
+
+        internal int SizeofPixel {
+            get {
+                return 4 * (IsFloatingPoint ? 4 : 1);
+            }
+        }
+
+        private void UploadDirect (RenderCoordinator coordinator, Texture2D result) {
+            lock (coordinator.UseResourceLock)
+                Evil.TextureUtils.SetDataFast(result, 0, Data, Width, Height, (uint)(Width * SizeofPixel));
+        }
+
+        private void UploadWithMips (RenderCoordinator coordinator, Texture2D result) {
             var pPreviousLevelData = Data;
             var pLevelData = Data;
             int levelWidth = Width, levelHeight = Height;
             int previousLevelWidth = Width, previousLevelHeight = Height;
-            Texture2D result;
-            lock (coordinator.CreateResourceLock)
-                result = new Texture2D(coordinator.Device, Width, Height, generateMips, SurfaceFormat.Color);
 
             using (var scratch = BufferPool<Color>.Allocate(Width * Height))
-            fixed (Color* pScratch = scratch.Data)
-            for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
-                if (level > 0) {
-                    if (generateMips)
-                        pLevelData = pScratch;
-                    else
-                        break;
+                fixed (Color* pScratch = scratch.Data)
+                    for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
+                        if (level > 0) {
+                            pLevelData = pScratch;
 
-                    MipGenerator.Color(pPreviousLevelData, previousLevelWidth, previousLevelHeight, pLevelData, levelWidth, levelHeight);
-                }
+                            MipGenerator.Color(pPreviousLevelData, previousLevelWidth, previousLevelHeight, pLevelData, levelWidth, levelHeight);
+                        }
 
-                lock (coordinator.UseResourceLock)
-                    Evil.TextureUtils.SetDataFast(result, level, pLevelData, levelWidth, levelHeight, (uint)levelWidth * 4);
-                /*
-                var pSurface = Evil.TextureUtils.GetSurfaceLevel(result, level);
-                try {
-                    Evil.TextureUtils.SetData(result, pSurface, pLevelData, levelWidth, levelHeight, (uint)levelWidth * 4, Evil.D3DFORMAT.A8B8G8R8);
-                } finally {
-                    Marshal.Release(new IntPtr(pSurface));
-                }
-                */
+                        lock (coordinator.UseResourceLock)
+                            Evil.TextureUtils.SetDataFast(result, level, pLevelData, levelWidth, levelHeight, (uint)(levelWidth * SizeofPixel));
+                        /*
+                        var pSurface = Evil.TextureUtils.GetSurfaceLevel(result, level);
+                        try {
+                            Evil.TextureUtils.SetData(result, pSurface, pLevelData, levelWidth, levelHeight, (uint)levelWidth * 4, Evil.D3DFORMAT.A8B8G8R8);
+                        } finally {
+                            Marshal.Release(new IntPtr(pSurface));
+                        }
+                        */
 
-                previousLevelWidth = levelWidth;
-                previousLevelHeight = levelHeight;
-                var newWidth = levelWidth / 2;
-                var newHeight = levelHeight / 2;
-                levelWidth = newWidth;
-                levelHeight = newHeight;
-                var temp = pPreviousLevelData;
-                if (temp == pLevelData) {
-                    pLevelData = pScratch;
-                } else {
-                    pPreviousLevelData = pLevelData;
-                    pLevelData = pPreviousLevelData;
-                }
-            }
-            return result;
+                        previousLevelWidth = levelWidth;
+                        previousLevelHeight = levelHeight;
+                        var newWidth = levelWidth / 2;
+                        var newHeight = levelHeight / 2;
+                        levelWidth = newWidth;
+                        levelHeight = newHeight;
+                        var temp = pPreviousLevelData;
+                        if (temp == pLevelData) {
+                            pLevelData = pScratch;
+                        } else {
+                            pPreviousLevelData = pLevelData;
+                            pLevelData = pPreviousLevelData;
+                        }
+                    }
         }
 
         public void Dispose () {

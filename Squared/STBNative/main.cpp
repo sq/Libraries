@@ -12,7 +12,6 @@
 #define STBI_NO_HDR
 #define STBI_NO_PIC
 #define STBI_NO_PNM
-#define STBI_NO_LINEAR
 
 #include "stb_image.h"
 #include "stb_image_write.h"
