@@ -26,6 +26,9 @@ namespace Squared.Render {
             16, 256, 4096
         );
 
+        public bool ChangeRenderTargets;
+        public string Label;
+
         public RenderManager RenderManager;
         public int Index;
         public long InitialBatchCount;
@@ -53,6 +56,8 @@ namespace Squared.Render {
             Index = index;
             InitialBatchCount = Batch.LifetimeCount;
             State = (int)States.Initialized;
+            Label = "Frame";
+            ChangeRenderTargets = true;
             BatchesToRelease.Clear();
         }
 
@@ -112,13 +117,13 @@ namespace Squared.Render {
                 throw new InvalidOperationException();
 
             if (Tracing.RenderTrace.EnableTracing)
-                Tracing.RenderTrace.ImmediateMarker("Frame {0:0000} : Begin Draw", Index);
+                Tracing.RenderTrace.ImmediateMarker("{1} {0:0000} : Begin Draw", Index, Label);
 
             var dm = RenderManager.DeviceManager;
             dm.FrameIndex = Index;
             var device = dm.Device;
 
-            dm.Begin();
+            dm.Begin(ChangeRenderTargets);
 
             int c = Batches.Count;
             var _batches = Batches.GetBuffer(false);

@@ -630,11 +630,14 @@ namespace Squared.Render {
 
             WaitForActiveDraw();
 
+            var oldLazyState = materials.LazyViewTransformChanges;
             try {
+                materials.LazyViewTransformChanges = false;
+                materials.ApplyViewTransform(materials.ViewTransform, true);
                 using (var frame = Manager.CreateFrame()) {
+                    frame.ChangeRenderTargets = false;
+                    frame.Label = "Synchronous Draw";
                     materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
-
-                    ClearBatch.AddNew(frame, int.MinValue, materials.Clear, clearColor: Color.Transparent);
 
                     drawBehavior(frame);
 
@@ -646,6 +649,7 @@ namespace Squared.Render {
                         Device.SetRenderTarget(renderTarget);
                         RenderManager.ResetDeviceState(Device);
                         Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
+                        Device.Clear(Color.Transparent);
 
                         RenderFrameToDraw(frame, false);
                     } finally {
@@ -657,6 +661,7 @@ namespace Squared.Render {
 
                 return true;
             } finally {
+                materials.LazyViewTransformChanges = oldLazyState;
                 _SynchronousDrawFinishedSignal.Set();
                 Interlocked.Exchange(ref _SynchronousDrawIsActive, 0);
             }

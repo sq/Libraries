@@ -173,12 +173,13 @@ namespace Squared.Render {
             ActiveMaterial.Set(this, material);
         }
 
-        public void Begin () {
+        public void Begin (bool changeRenderTargets) {
             if (CurrentMaterial != null)
                 CurrentMaterial = null;
 
             RenderManager.ResetDeviceState(Device);
-            Device.SetRenderTargets();
+            if (changeRenderTargets)
+                Device.SetRenderTargets();
             Device.SetVertexBuffer(null);
         }
 
