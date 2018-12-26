@@ -26,9 +26,15 @@ namespace ShaderCompiler {
             foreach (var shader in Directory.GetFiles(sourceDir, "*.fx")) {
                 var destPath = Path.Combine(destDir, Path.GetFileName(shader) + ".bin");
                 var doesNotExist = !File.Exists(destPath);
-                var isModified = !doesNotExist && (File.GetLastWriteTimeUtc(destPath) < File.GetLastWriteTimeUtc(shader));
+                var resultDate = File.GetLastWriteTimeUtc(destPath);
+                Console.WriteLine(Path.GetFileName(shader));
+                var fileList = EnumerateFilenamesForShader(shader).ToList();
+                var isModified = !doesNotExist && fileList.Any((fn) => File.GetLastWriteTimeUtc(fn) >= resultDate);
                 if (doesNotExist || isModified || shouldRebuild) {
-                    Console.WriteLine("File {0} {1}. Compiling...", Path.GetFileName(shader), doesNotExist ? "does not exist" : "is outdated");
+                    if (!doesNotExist)
+                        File.Delete(destPath);
+
+                    Console.WriteLine("  {0} Compiling...", doesNotExist ? "does not exist" : "is outdated");
                     var psi = new ProcessStartInfo(
                         fxcPath,
                         string.Format("/nologo {0} /T fx_2_0 {1} /Fo {2}", shader, fxcParams, destPath)
@@ -42,6 +48,35 @@ namespace ShaderCompiler {
                 totalFileCount++;
             }
             Console.WriteLine("Compiled {0}/{1} shader(s) to {2}", updatedFileCount, totalFileCount, destDir);
+
+            if (Debugger.IsAttached)
+                Console.ReadLine();
+        }
+        
+        private static IEnumerable<string> EnumerateFilenamesForShader (string path) {
+            yield return path;
+
+            var dir = Path.GetDirectoryName(Path.GetFullPath(path));
+            var name = Path.GetFileName(path);
+            var prologue = "#include \"";
+
+            foreach (var line in File.ReadAllLines(path)) {
+                if (!line.StartsWith(prologue))
+                    continue;
+
+                var includePath = line.Substring(prologue.Length);
+                if (includePath.EndsWith("\""))
+                    includePath = includePath.Substring(0, includePath.Length - 1);
+
+                var absoluteIncludePath = Path.Combine(dir, includePath);
+                if (!File.Exists(absoluteIncludePath))
+                    Console.Error.WriteLine("// WARNING: File not found: {0}", absoluteIncludePath);
+
+                Console.WriteLine("  {1}", name, includePath);
+
+                foreach (var includedPath in EnumerateFilenamesForShader(absoluteIncludePath))
+                    yield return includedPath;
+            }
         }
 
         private static HttpWebRequest MakeRequest (string url) {
