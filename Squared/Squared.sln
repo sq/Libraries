@@ -24,9 +24,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameTests", "GameLib\GameTests\GameTests.csproj", "{6C518754-C6CD-4094-94C2-E624B7F4E5B3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Squared.Render", "RenderLib\Squared.Render.csproj", "{FE871F18-FD35-4124-AF8F-0021C9D4BA29}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274} = {EAB7FAD6-0915-4134-8331-A2A1F84C6274}
-	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pong", "Examples\Pong\Pong.csproj", "{551EB4BC-9F3E-4D1F-832E-E6E814760AAF}"
 EndProject
@@ -41,8 +38,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderStressTest", "Examples\RenderStressTest\RenderStressTest.csproj", "{67FE3293-3EBC-4E46-8210-C518F1C5745D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CurveTester", "Examples\CurveTester\CurveTester.csproj", "{B07F6C17-6DC5-4492-B54E-749B23888E87}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DummyContentContainer", "DummyContentContainer\DummyContentContainer.csproj", "{EAB7FAD6-0915-4134-8331-A2A1F84C6274}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderPrecisionTest", "RenderPrecisionTest\RenderPrecisionTest\RenderPrecisionTest.csproj", "{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}"
 EndProject
@@ -367,21 +362,6 @@ Global
 		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Release|x64.ActiveCfg = Release|x86
 		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Release|x86.ActiveCfg = Release|x86
 		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Release|x86.Build.0 = Release|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Debug|Any CPU.ActiveCfg = Debug|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Debug|Any CPU.Build.0 = Debug|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Debug|x64.ActiveCfg = Debug|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Debug|x86.ActiveCfg = Debug|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Debug|x86.Build.0 = Debug|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Mono|Any CPU.ActiveCfg = Release|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Mono|Any CPU.Build.0 = Release|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Mono|x64.ActiveCfg = Release|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Mono|x64.Build.0 = Release|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Mono|x86.ActiveCfg = Release|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Mono|x86.Build.0 = Release|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Release|Any CPU.ActiveCfg = Release|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Release|x64.ActiveCfg = Release|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Release|x86.ActiveCfg = Release|x86
-		{EAB7FAD6-0915-4134-8331-A2A1F84C6274}.Release|x86.Build.0 = Release|x86
 		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Debug|Any CPU.ActiveCfg = Debug|x86
 		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Debug|Any CPU.Build.0 = Debug|x86
 		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Debug|x64.ActiveCfg = Debug|x86

@@ -453,15 +453,16 @@ namespace ThreadedPlatformer {
         /// </summary>
         public void Draw (GameTime gameTime, Frame frame, DefaultMaterialSet materials) {
             BitmapBatch bb;
+            var material = materials.Get(materials.ScreenSpaceBitmap, blendState: BlendState.AlphaBlend);
 
             for (int i = 0; i <= EntityLayer; ++i)
-                using (bb = BitmapBatch.New(frame, i, materials.ScreenSpaceBitmap))
+                using (bb = BitmapBatch.New(frame, i, material))
                     bb.Add(new BitmapDrawCall(layers[i], Vector2.Zero));
 
-            using (bb = BitmapBatch.New(frame, EntityLayer + 1, materials.ScreenSpaceBitmap))
+            using (bb = BitmapBatch.New(frame, EntityLayer + 1, material))
                 DrawTiles(bb);
 
-            using (var entityBatch = BitmapBatch.New(frame, EntityLayer + 1, materials.ScreenSpaceBitmap)) {
+            using (var entityBatch = BitmapBatch.New(frame, EntityLayer + 1, material)) {
                 foreach (Gem gem in gems)
                     gem.Draw(gameTime, entityBatch);
 
@@ -472,7 +473,7 @@ namespace ThreadedPlatformer {
             }
 
             for (int i = EntityLayer + 1; i < layers.Length; ++i)
-                using (bb = BitmapBatch.New(frame, i + 1, materials.ScreenSpaceBitmap))
+                using (bb = BitmapBatch.New(frame, i + 1, material))
                     bb.Add(new BitmapDrawCall(layers[i], Vector2.Zero));
         }
 
