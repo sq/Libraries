@@ -37,6 +37,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <PropertyGroup>
+    <RunPostBuildEvent>Always</RunPostBuildEvent>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
       <Private>False</Private>
@@ -102,24 +105,14 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\*.fx" />
+    <ShaderText Include="Shaders\*.fx" />
     <None Include="Shaders\*.fxh" />
-  </ItemGroup>
-  <ItemGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <EmbeddedResource Include="Shaders\bin\Debug\*.fx.bin">
-      <LogicalName>%(Filename)</LogicalName>
-    </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup Condition=" '$(Configuration)' == 'Release' ">
-    <EmbeddedResource Include="Shaders\bin\Release\*.fx.bin">
+    <EmbeddedResource Include="@(ShaderText -> 'Shaders\bin\$(Configuration)\%(Filename).fx.bin')">
       <LogicalName>%(Filename)</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <PreBuildEvent>"$(ProjectDir)\..\..\ShaderCompiler\bin\ShaderCompiler.exe" $(ProjectDir)\..\..\ext\fxc $(ProjectDir)\Shaders $(ProjectDir)\Shaders\bin\Debug "/O0 /Zi"</PreBuildEvent>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-    <PreBuildEvent>"$(ProjectDir)\..\..\ShaderCompiler\bin\ShaderCompiler.exe" $(ProjectDir)\..\..\ext\fxc $(ProjectDir)\Shaders $(ProjectDir)\Shaders\bin\Release "/O3 /Zi"</PreBuildEvent>
+  <PropertyGroup>
+    <PreBuildEvent>"$(ProjectDir)\..\..\ShaderCompiler\bin\ShaderCompiler.exe" $(ProjectDir)\..\..\ext\fxc $(ProjectDir)\Shaders $(ProjectDir)\Shaders\bin\$(Configuration) "/O0 /Zi"</PreBuildEvent>
   </PropertyGroup>
 </Project>
