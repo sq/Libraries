@@ -1,3 +1,0 @@
-#define WORLD_SPACE
-
-#include "Geometry.fcgh"

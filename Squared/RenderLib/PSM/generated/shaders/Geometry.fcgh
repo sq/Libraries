@@ -1,8 +1,0 @@
-# 1 "shaders/Geometry.fcgh"
-void main( 
-    in float4 transformedPosition : POSITION,
-    in float4 colorOut : COLOR0,
-    out float4 result : COLOR
-) {
-	result = colorOut;
-}
