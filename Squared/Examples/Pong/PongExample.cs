@@ -54,7 +54,7 @@ namespace Pong {
         }
 
         protected override void LoadContent() {
-            Materials = new PongMaterials(Services) {
+            Materials = new PongMaterials(RenderCoordinator) {
                 ViewportScale = new Vector2(1, 1),
                 ViewportPosition = new Vector2(0, 0),
                 ProjectionMatrix = Matrix.CreateOrthographicOffCenter(
@@ -289,8 +289,8 @@ namespace Pong {
         public Material Trail;
         public Material SubtractiveGeometry;
 
-        public PongMaterials (IServiceProvider serviceProvider)
-            : base(serviceProvider) {
+        public PongMaterials (RenderCoordinator coordinator)
+            : base(coordinator) {
 
             var addBs = new BlendState {
                 AlphaBlendFunction = BlendFunction.Add,

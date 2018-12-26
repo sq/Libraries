@@ -102,6 +102,7 @@
     <Compile Include="DefaultMaterialSet.cs" />
     <Compile Include="DenseList.cs" />
     <Compile Include="DynamicAtlas.cs" />
+    <Compile Include="EmbeddedEffectProvider.cs" />
     <Compile Include="Frame.cs" />
     <Compile Include="Materials.cs" />
     <Compile Include="MaterialSet.cs" />
@@ -112,11 +113,6 @@
     <Compile Include="RenderManager.cs" />
     <Compile Include="RenderPrimitives.cs" />
     <Compile Include="RenderText.cs" />
-    <Compile Include="Shaders.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Shaders.resx</DependentUpon>
-    </Compile>
     <Compile Include="TextUtils.cs" />
     <Compile Include="ThreadedRenderCoordinator.cs" />
     <Compile Include="ThreadedRenderGame.cs" />
@@ -189,19 +185,25 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Shaders.resx">
-      <Generator>PublicResXFileCodeGenerator</Generator>
-      <LastGenOutput>Shaders.Designer.cs</LastGenOutput>
-      <SubType>Designer</SubType>
+    <None Include="Shaders\*.fx" />
+    <None Include="Shaders\*.fxh" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <EmbeddedResource Include="Shaders\bin\Debug\*.fx.bin">
+      <LogicalName>%(Filename)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(Configuration)' == 'Release' ">
+    <EmbeddedResource Include="Shaders\bin\Release\*.fx.bin">
+      <LogicalName>%(Filename)</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\Microsoft.Xna.GameStudio.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <PreBuildEvent>"$(ProjectDir)\..\..\ShaderCompiler\bin\ShaderCompiler.exe" $(ProjectDir)\..\..\ext\fxc $(ProjectDir)\Shaders $(ProjectDir)\Shaders\bin\Debug "/O0 /Zi"</PreBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <PreBuildEvent>"$(ProjectDir)\..\..\ShaderCompiler\bin\ShaderCompiler.exe" $(ProjectDir)\..\..\ext\fxc $(ProjectDir)\Shaders $(ProjectDir)\Shaders\bin\Release "/O3 /Zi"</PreBuildEvent>
+  </PropertyGroup>
 </Project>

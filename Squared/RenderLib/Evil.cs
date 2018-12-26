@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -280,7 +281,7 @@ namespace Squared.Render.Evil {
     public static class EffectUtils {
         [DllImport("d3dx9_41.dll")]
         [SuppressUnmanagedCodeSecurity]
-        public static unsafe extern int D3DXCreateEffectEx (
+        private static unsafe extern int D3DXCreateEffectEx (
             void*     pDevice,
             void*     pData,
             UInt32    dataLen,
@@ -298,6 +299,29 @@ namespace Squared.Render.Evil {
         static EffectUtils () {
             pComPtr = typeof(Effect).GetField("pComPtr", BindingFlags.Instance | BindingFlags.NonPublic);
             technique_pComPtr = typeof(EffectTechnique).GetField("pComPtr", BindingFlags.Instance | BindingFlags.NonPublic);
+        }
+
+        public static Effect EffectFromFxcOutput (GraphicsDevice device, Stream stream) {
+            var bytes = new byte[stream.Length];
+            stream.Read(bytes, 0, bytes.Length);
+            return EffectFromFxcOutput(device, bytes);
+        }
+
+        public static unsafe Effect EffectFromFxcOutput (GraphicsDevice device, byte[] bytes) {
+            var pDev = GraphicsDeviceUtils.GetIDirect3DDevice9(device);
+            void* pEffect, pTemp;
+            fixed (byte* pBytes = bytes) {
+                var hr = D3DXCreateEffectEx(pDev, pBytes, (uint)bytes.Length, null, null, "", 0, null, out pEffect, out pTemp);
+                if (hr != 0)
+                    throw Marshal.GetExceptionForHR(hr);
+            }
+            var t = typeof(Effect);
+            var ctors = t.GetConstructors(
+                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance
+            );
+            var ctor = ctors[0];
+            var result = ctor.Invoke(new object[] { new IntPtr(pEffect), device });
+            return (Effect)result;
         }
 
         public static unsafe void* GetUnboxedID3DXEffect (this Effect effect) {

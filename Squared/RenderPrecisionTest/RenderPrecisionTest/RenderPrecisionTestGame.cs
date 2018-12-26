@@ -28,9 +28,9 @@ namespace RenderPrecisionTest {
         }
 
         protected override void Initialize () {
-            Materials = new DefaultMaterialSet(Services);
-
             base.Initialize();
+
+            Materials = new DefaultMaterialSet(RenderCoordinator);
         }
 
         protected override void LoadContent () {

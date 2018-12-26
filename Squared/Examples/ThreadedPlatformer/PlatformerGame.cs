@@ -67,7 +67,7 @@ namespace ThreadedPlatformer {
             diedOverlay = Content.Load<Texture2D>("Overlays/you_died");
 
             // Load materials used by threaded renderer
-            materials = new DefaultMaterialSet(Services) {
+            materials = new DefaultMaterialSet(RenderCoordinator) {
                 ProjectionMatrix = Matrix.CreateOrthographicOffCenter(
                     0.0f, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height, 0, 0, 1
                 )

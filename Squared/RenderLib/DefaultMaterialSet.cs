@@ -193,8 +193,8 @@ namespace Squared.Render {
                 return obj.GetHashCode();
             }
         }
-        
-        public readonly ContentManager BuiltInShaders;
+
+        public readonly EmbeddedEffectProvider BuiltInShaders;
         public readonly ITimeProvider  TimeProvider;
 
         protected readonly MaterialDictionary<MaterialCacheKey> MaterialCache = new MaterialDictionary<MaterialCacheKey>(
@@ -236,14 +236,15 @@ namespace Squared.Render {
 
         internal readonly ActiveViewTransformInfo ActiveViewTransform;
 
+        public readonly RenderCoordinator Coordinator;
+
         private struct FrameParams {
             public float Seconds;
             public int? FrameIndex;
         }
 
-        private IGraphicsDeviceService gds;
-
-        public DefaultMaterialSet (IServiceProvider serviceProvider) {
+        public DefaultMaterialSet (RenderCoordinator coordinator, ITimeProvider timeProvider = null) {
+            Coordinator = coordinator;
             ActiveViewTransform = new ActiveViewTransformInfo(this);
             _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
             _ApplyParamsDelegate        = ApplyParamsToMaterial;
@@ -254,14 +255,9 @@ namespace Squared.Render {
                 FrameIndex = 0
             };
 
-            TimeProvider = (ITimeProvider)serviceProvider.GetService(typeof(ITimeProvider))
-                ?? new DotNetTimeProvider();
+            TimeProvider = timeProvider ?? new DotNetTimeProvider();
 
-#if SDL2 // `Content/SquaredRender/` folder -flibit
-            BuiltInShaders = new ContentManager(serviceProvider, "Content/SquaredRender");
-#else
-            BuiltInShaders = new ResourceContentManager(serviceProvider, Shaders.ResourceManager);
-#endif
+            BuiltInShaders = new EmbeddedEffectProvider(coordinator);
 
             Clear = new Material(
                 null, null, 
@@ -272,9 +268,9 @@ namespace Squared.Render {
                 null, null
             );
    
-            var bitmapShader = BuiltInShaders.Load<Effect>("SquaredBitmapShader");
-            var geometryShader = BuiltInShaders.Load<Effect>("SquaredGeometryShader");
-            var ellipseShader = BuiltInShaders.Load<Effect>("Ellipse");
+            var bitmapShader = BuiltInShaders.Load("SquaredBitmapShader");
+            var geometryShader = BuiltInShaders.Load("SquaredGeometryShader");
+            var ellipseShader = BuiltInShaders.Load("Ellipse");
             
             ScreenSpaceBitmap = new Material(
                 bitmapShader,
@@ -360,7 +356,7 @@ namespace Squared.Render {
                 "WorldSpaceEllipse"
             );
             
-            var lightmapShader = BuiltInShaders.Load<Effect>("Lightmap");
+            var lightmapShader = BuiltInShaders.Load("Lightmap");
 
             ScreenSpaceLightmappedBitmap = new Material(
                 lightmapShader,
@@ -382,7 +378,7 @@ namespace Squared.Render {
                 "WorldSpaceLightmappedsRGBBitmap"
             );
 
-            var blurShader = BuiltInShaders.Load<Effect>("GaussianBlur");
+            var blurShader = BuiltInShaders.Load("GaussianBlur");
 
             ScreenSpaceHorizontalGaussianBlur5Tap = new Material(
                 blurShader,
@@ -404,7 +400,6 @@ namespace Squared.Render {
                 "WorldSpaceVerticalGaussianBlur5Tap"
             );
 
-            gds = serviceProvider.GetService(typeof(IGraphicsDeviceService)) as IGraphicsDeviceService;
             AutoSetViewTransform();
 
             PreallocateBindings();
@@ -413,13 +408,10 @@ namespace Squared.Render {
         public void AutoSetViewTransform () {
             ViewTransformStack.Clear();
 
-            if (gds != null)
-                ViewTransformStack.Push(ViewTransform.CreateOrthographic(
-                    gds.GraphicsDevice.PresentationParameters.BackBufferWidth,
-                    gds.GraphicsDevice.PresentationParameters.BackBufferHeight
-                ));
-            else
-                ViewTransformStack.Push(ViewTransform.Default);
+            ViewTransformStack.Push(ViewTransform.CreateOrthographic(
+                Coordinator.Device.PresentationParameters.BackBufferWidth,
+                Coordinator.Device.PresentationParameters.BackBufferHeight
+            ));
         }
 
         public void PreallocateBindings () {

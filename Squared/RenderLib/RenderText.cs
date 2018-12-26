@@ -255,7 +255,10 @@ namespace Squared.Render.Text {
             for (var j = firstIndex; j <= lastIndex; j++) {
                 buffer.Array[buffer.Offset + j].Position.X += whitespace;
                 // We used the sortkey to store line numbers, now we put the right data there
-                buffer.Array[buffer.Offset + j].SortKey = sortKey;
+                var key = sortKey;
+                if (reverseOrder)
+                    key.Order += j;
+                buffer.Array[buffer.Offset + j].SortKey = key;
             }
         }
 
@@ -482,6 +485,8 @@ namespace Squared.Render.Text {
                         // HACK so that the alignment pass can detect rows. We strip this later.
                         if (alignment != HorizontalAlignment.Left)
                             drawCall.SortKey.Order = rowIndex;
+                        else if (reverseOrder)
+                            drawCall.SortKey.Order += 1;
 
                         buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
 

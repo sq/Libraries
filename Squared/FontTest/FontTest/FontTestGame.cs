@@ -60,9 +60,9 @@ namespace FontTest {
         }
 
         protected override void Initialize () {
-            Materials = new DefaultMaterialSet(Services);
-
             base.Initialize();
+
+            Materials = new DefaultMaterialSet(RenderCoordinator);
 
             Alignment.Pressed += (s, e) => {
                 Text2.Alignment = Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 3);
