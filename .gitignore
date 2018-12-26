@@ -9,6 +9,7 @@
 *.filters
 *.VC.opendb
 *.sdf
+.vs
 _ReSharper.*
 /Squared/360/TaskLib360/bin
 /Squared/360/TaskLib360/obj
@@ -87,3 +88,9 @@ _ReSharper.*
 /Squared/STBNative/bin
 /Squared/Render.STB/obj
 /Squared/Render.STB/bin
+/Ext/fxc
+/ShaderCompiler/obj
+/ShaderCompiler/bin/*.pdb
+/Squared/FontTest/FontTest/*.ttf
+/Squared/FontTest/FontTest/*.otf
+/Squared/FontTest/FontTest/*.ttc

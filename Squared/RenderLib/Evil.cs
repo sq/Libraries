@@ -278,6 +278,21 @@ namespace Squared.Render.Evil {
     }
 
     public static class EffectUtils {
+        [DllImport("d3dx9_41.dll")]
+        [SuppressUnmanagedCodeSecurity]
+        public static unsafe extern int D3DXCreateEffectEx (
+            void*     pDevice,
+            void*     pData,
+            UInt32    dataLen,
+            void*     pDefines,
+            void*     pInclude,
+            string    pSkipConstants,
+            UInt32    flags,
+            void*     pPool,
+            out void* ppEffect,
+            out void* ppCompilationErrors
+        );
+
         internal static readonly FieldInfo pComPtr, technique_pComPtr;
 
         static EffectUtils () {
