@@ -32,6 +32,7 @@ namespace Squared.Render {
         public float Z, Quality;
         public Vector2 Vector0, Vector1, Vector2;
         public Color Color0, Color1, Color2, Color3;
+        public Vector2 TexCoord0, TexCoord1, TexCoord2, TexCoord3;
         public float Scalar0, Scalar1;
     }
 

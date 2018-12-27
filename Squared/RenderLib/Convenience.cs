@@ -870,7 +870,7 @@ namespace Squared.Render.Convenience {
                 });
         }
 
-        public IBitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, Material customMaterial) {
+        public IBitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, Material customMaterial = null) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
@@ -927,7 +927,7 @@ namespace Squared.Render.Convenience {
             return (IBitmapBatch)cacheEntry.Batch;
         }
 
-        public GeometryBatch GetGeometryBatch (int? layer, bool? worldSpace, BlendState blendState) {
+        public GeometryBatch GetGeometryBatch (int? layer, bool? worldSpace, BlendState blendState, Material customMaterial = null) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
@@ -946,16 +946,24 @@ namespace Squared.Render.Convenience {
                 depthStencilState: DepthStencilState,
                 blendState: desiredBlendState,
                 samplerState: null,
-                customMaterial: null,
+                customMaterial: customMaterial,
                 useZBuffer: UseZBuffer
             )) {
-                var material = Materials.GetGeometryMaterial(
-                    actualWorldSpace,
-                    rasterizerState: RasterizerState,
-                    depthStencilState: DepthStencilState,
-                    blendState: desiredBlendState
-                );
+                Material material;
 
+                if (customMaterial != null) {
+                    material = Materials.Get(
+                        customMaterial, RasterizerState, DepthStencilState, desiredBlendState
+                    );
+                } else {
+                    material = Materials.GetGeometryMaterial(
+                        actualWorldSpace,
+                        rasterizerState: RasterizerState,
+                        depthStencilState: DepthStencilState,
+                        blendState: desiredBlendState
+                    );
+                }
+                
                 cacheEntry.Batch = GeometryBatch.New(Container, actualLayer, material);
                 Cache.InsertAtFront(ref cacheEntry, null);
             }

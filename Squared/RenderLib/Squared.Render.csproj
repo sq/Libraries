@@ -71,7 +71,7 @@
     <Compile Include="DefaultMaterialSet.cs" />
     <Compile Include="DenseList.cs" />
     <Compile Include="DynamicAtlas.cs" />
-    <Compile Include="EmbeddedEffectProvider.cs" />
+    <Compile Include="EmbeddedResourceProvider.cs" />
     <Compile Include="Frame.cs" />
     <Compile Include="Materials.cs" />
     <Compile Include="MaterialSet.cs" />

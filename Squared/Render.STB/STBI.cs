@@ -18,12 +18,18 @@ namespace Squared.Render.STB {
             : this (File.OpenRead(path), true, premultiply, asFloatingPoint) {
         }
 
-        public Image (FileStream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false) {
+        public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false) {
             BufferPool<byte>.Buffer scratch = BufferPool<byte>.Allocate(10240);
+            var length = stream.Length;
+
+            if (!stream.CanSeek)
+                throw new ArgumentException("Stream must be seekable");
+            if (!stream.CanRead)
+                throw new ArgumentException("Stream must be readable");
 
             var callbacks = new Native.STBI_IO_Callbacks {
                 eof = (user) => {
-                    return stream.Position >= stream.Length ? 1 : 0;
+                    return stream.Position >= length ? 1 : 0;
                 },
                 read = (user, buf, count) => {
                     if (scratch.Data.Length < count) {
