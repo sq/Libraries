@@ -11,7 +11,7 @@
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -25,7 +25,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\x86\Release</OutputPath>
@@ -113,7 +113,13 @@
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <ShaderOptimizationLevel>d</ShaderOptimizationLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' != 'Debug' ">
+    <ShaderOptimizationLevel>3</ShaderOptimizationLevel>
+  </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>"$(ProjectDir)\..\..\ShaderCompiler\bin\ShaderCompiler.exe" $(ProjectDir)\..\..\ext\fxc $(ProjectDir)\Shaders $(ProjectDir)\Shaders\bin\$(Configuration) "/O0 /Zi"</PreBuildEvent>
+    <PreBuildEvent>"$(ProjectDir)\..\..\ShaderCompiler\bin\ShaderCompiler.exe" $(ProjectDir)\..\..\ext\fxc $(ProjectDir)\Shaders $(ProjectDir)\Shaders\bin\$(Configuration) "/O$(ShaderOptimizationLevel) /Zi"</PreBuildEvent>
   </PropertyGroup>
 </Project>
