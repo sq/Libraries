@@ -16,10 +16,12 @@ namespace Squared.Util {
     public struct RefComparerAdapter<TComparer, TElement> : IRefComparer<TElement>, IRefComparerAdapter<TElement>
         where TComparer : IComparer<TElement> 
     {
+        private IComparer<TElement> _Boxed;
         private TComparer _Comparer;
 
         public RefComparerAdapter (TComparer comparer) {
             _Comparer = comparer;
+            _Boxed = _Comparer;
         }
 
         public TComparer Comparer {
@@ -30,7 +32,7 @@ namespace Squared.Util {
 
         IComparer<TElement> IRefComparerAdapter<TElement>.Comparer {
             get {
-                return _Comparer;
+                return _Boxed;
             }
         }
 

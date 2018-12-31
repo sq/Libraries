@@ -81,7 +81,7 @@ namespace Squared.Render {
         private readonly Func<bool> _SyncBeginDraw;
         private readonly Action _SyncEndDraw;
         private readonly List<IDisposable> _PendingDisposes = new List<IDisposable>();
-        private readonly ManualResetEventSlim _SynchronousDrawFinishedSignal = new ManualResetEventSlim(true);
+        private readonly ManualResetEvent _SynchronousDrawFinishedSignal = new ManualResetEvent(true);
 
         public readonly Stopwatch
             WorkStopwatch = new Stopwatch(),
@@ -104,6 +104,9 @@ namespace Squared.Render {
         private readonly ConcurrentQueue<Action> BeforePrepareQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> AfterPresentQueue = new ConcurrentQueue<Action>();
+
+        private readonly ManualResetEvent PresentBegunSignal = new ManualResetEvent(false);
+        private long PresentBegunWhen = 0;
 
         public readonly ThreadGroup ThreadGroup;
         private readonly WorkQueue<DrawTask> DrawQueue;
@@ -314,7 +317,7 @@ namespace Squared.Render {
             if (IsDisposed)
                 return false;
 
-            _SynchronousDrawFinishedSignal.Wait();
+            _SynchronousDrawFinishedSignal.WaitOne();
             return true;
         }
 
@@ -387,6 +390,8 @@ namespace Squared.Render {
             try {
                 _ActualEnableThreading = EnableThreading;
 
+                PresentBegunSignal.Reset();
+
                 bool result;
                 if (_Running) {
                     if (DoThreadedIssue)
@@ -436,6 +441,8 @@ namespace Squared.Render {
         /// Finishes preparing the current Frame and readies it to be sent to the graphics device for rendering.
         /// </summary>
         protected void PrepareNextFrame (Frame newFrame, bool threaded) {
+            PresentBegunSignal.Reset();
+
             if (newFrame != null)
                 PrepareFrame(newFrame, threaded);
         }
@@ -548,24 +555,58 @@ namespace Squared.Render {
             }
         }
 
+        public bool TryWaitForPresentToStart (int millisecondsTimeout, int delayMs = 1) {
+            var now = Time.Ticks;
+            var waitEnd = now + millisecondsTimeout + delayMs;
+            if (!PresentBegunSignal.WaitOne(millisecondsTimeout))
+                return false;
+
+            var offset = Time.MillisecondInTicks * delayMs;
+            var expected = PresentBegunWhen + offset;
+
+            now = Time.Ticks;
+            if (now >= waitEnd)
+                return false;
+            if (now < expected)
+                Thread.SpinWait(50);
+            now = Time.Ticks;
+
+            while (now < expected) {
+                if (now >= waitEnd)
+                    return false;
+                Thread.Yield();
+                now = Time.Ticks;
+            }
+
+            return true;
+        }
+
+        private void SetPresentBegun () {
+            var now = Time.Ticks;
+            PresentBegunWhen = now;
+            PresentBegunSignal.Set();
+        }
+
         protected void RenderFrameToDraw (Frame frameToDraw, bool endDraw) {
             try {
+                PresentBegunSignal.Reset();
+
                 if (frameToDraw != null) {
                     Manager.PrepareManager.AssertEmpty();
-                    Manager.FlushBufferGenerators(frameToDraw.Index);    
+                    Manager.FlushBufferGenerators(frameToDraw.Index);
                     RenderFrame(frameToDraw, true);
                 }
 
                 if (endDraw) {
                     RunBeforePresentHandlers();
+                    SetPresentBegun();
                     _SyncEndDraw();
                 }
 
                 FlushPendingDisposes();
 
-                if (endDraw) {
+                if (endDraw)
                     RunAfterPresentHandlers();
-                }
             } finally {
                 if (frameToDraw != null)
                     frameToDraw.Dispose();

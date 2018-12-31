@@ -36,8 +36,8 @@ namespace Squared.Render {
         public float Scalar0, Scalar1;
     }
 
-    public class GeometryDrawCallSorter : IComparer<GeometryDrawCall> {
-        public int Compare (GeometryDrawCall lhs, GeometryDrawCall rhs) {
+    public class GeometryDrawCallSorter : IRefComparer<GeometryDrawCall> {
+        public int Compare (ref GeometryDrawCall lhs, ref GeometryDrawCall rhs) {
             return lhs.PreparerHash.CompareTo(rhs.PreparerHash);
         }
     }
@@ -210,7 +210,7 @@ namespace Squared.Render {
                     var l = kvp.Value;
                     var c = l.Count;
 
-                    l.FastCLRSort(_DrawCallSorter);
+                    l.FastCLRSortRef(_DrawCallSorter);
 
                     int vertexCount = vb.Count, indexCount = ib.Count;
 
