@@ -557,7 +557,7 @@ namespace Squared.Render {
 
         public bool TryWaitForPresentToStart (int millisecondsTimeout, int delayMs = 1) {
             var now = Time.Ticks;
-            var waitEnd = now + millisecondsTimeout + delayMs;
+            var waitEnd = now + (millisecondsTimeout + delayMs) * Time.MillisecondInTicks;
             if (!PresentBegunSignal.WaitOne(millisecondsTimeout))
                 return false;
 

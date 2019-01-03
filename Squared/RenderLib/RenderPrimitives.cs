@@ -403,6 +403,9 @@ namespace Squared.Render {
         private Action<DeviceManager, object> _BatchTeardown;
         private object _UserData;
 
+        private VertexBufferBinding[] TwoBindings = new VertexBufferBinding[2], 
+            ThreeBindings = new VertexBufferBinding[3];
+
         private static long _PrimitiveCount = 0;
 
         public void Initialize (
@@ -459,14 +462,14 @@ namespace Squared.Render {
 
                         if (call.InstanceCount.HasValue) {
                             if (call.VertexBuffer3 != null) {
-                                device.SetVertexBuffers(
-                                    call.VertexBuffer, new VertexBufferBinding(call.VertexBuffer2, call.VertexOffset2, 1),
-                                    new VertexBufferBinding(call.VertexBuffer3, call.VertexOffset3, 1)
-                                );
+                                ThreeBindings[0] = new VertexBufferBinding(call.VertexBuffer, 0, 0);
+                                ThreeBindings[1] = new VertexBufferBinding(call.VertexBuffer2, call.VertexOffset2, 1);
+                                ThreeBindings[2] = new VertexBufferBinding(call.VertexBuffer3, call.VertexOffset3, 1);
+                                device.SetVertexBuffers(ThreeBindings);
                             } else if (call.VertexBuffer2 != null) {
-                                device.SetVertexBuffers(
-                                    call.VertexBuffer, new VertexBufferBinding(call.VertexBuffer2, call.VertexOffset2, 1)
-                                );
+                                TwoBindings[0] = new VertexBufferBinding(call.VertexBuffer, 0, 0);
+                                TwoBindings[1] = new VertexBufferBinding(call.VertexBuffer2, call.VertexOffset2, 1);
+                                device.SetVertexBuffers(TwoBindings);
                             } else {
                                 // FIXME: Throw?
                                 device.SetVertexBuffers(call.VertexBuffer);
