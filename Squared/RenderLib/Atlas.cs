@@ -7,7 +7,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 
-namespace Squared.Render {
+namespace Squared.Render.Atlases {
     public class Atlas : IEnumerable<Atlas.Cell> {
         public struct Cell {
             public readonly Atlas Atlas;
