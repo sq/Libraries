@@ -477,6 +477,42 @@ namespace Squared.Render {
         }
     }
 
+    internal class UniformBindingTable {
+        private IUniformBinding[] BindingsByID = new IUniformBinding[32];
+
+        public void Add (uint id, IUniformBinding binding) {
+            lock (BindingsByID) {
+                if (id >= BindingsByID.Length) {
+                    var newLength = id + 12;
+                    var newArray = new IUniformBinding[newLength];
+                    Array.Copy(BindingsByID, newArray, BindingsByID.Length);
+                    BindingsByID = newArray;
+                }
+
+                var existing = BindingsByID[id];
+                if ((existing != null) && (existing != binding))
+                    throw new UniformBindingException("Binding table has two entries for the same ID");
+
+                BindingsByID[id] = binding;
+            }
+        }
+
+        public bool TryGetValue (uint id, out IUniformBinding result) {
+            result = null;
+            if (id < 0)
+                return false;
+
+            lock (BindingsByID) {
+                if (id >= BindingsByID.Length)
+                    return false;
+
+                result = BindingsByID[id];
+            }
+
+            return (result != null);
+        }
+    }
+
     public interface ITypedUniform {
         string Name { get; }
         uint ID { get; }
@@ -515,7 +551,7 @@ namespace Squared.Render {
         }
 
         public bool TrySet (Material m, ref T value) {
-            var ub = MaterialSet.GetUniformBinding<T>(m, Name);
+            var ub = MaterialSet.GetUniformBinding(m, this);
             if (ub == null)
                 return false;
 
@@ -529,7 +565,7 @@ namespace Squared.Render {
         }
 
         public void Initialize (Material material) {
-            MaterialSet.GetUniformBinding<T>(material, Name);
+            MaterialSet.GetUniformBinding(material, this);
         }
 
         public void Dispose () {

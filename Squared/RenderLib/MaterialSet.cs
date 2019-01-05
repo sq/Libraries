@@ -76,6 +76,7 @@ namespace Squared.Render {
         // Making a dictionary larger increases performance
         private const int BindingDictionaryCapacity = 4096;
 
+        private readonly List<ITypedUniform> RegisteredUniforms = new List<ITypedUniform>();
         private readonly List<ITypedUniform> PendingUniformRegistrations = new List<ITypedUniform>();
 
         private readonly Dictionary<UniformBindingKey, IUniformBinding> UniformBindings = 
@@ -228,7 +229,7 @@ namespace Squared.Render {
             }
         }
 
-        private UniformBinding<T> GetUniformBindingSlow<T> (Material material, string uniformName)
+        private UniformBinding<T> GetUniformBindingSlow<T> (Material material, TypedUniform<T> uniform)
             where T: struct
         {
             var effect = material.Effect;
@@ -236,7 +237,8 @@ namespace Squared.Render {
                 return null;
 
             IUniformBinding existing;
-            var key = new UniformBindingKey(effect, uniformName, typeof(T));
+            var key = uniform.KeyTemplate;
+            key.Effect = effect;
 
             lock (UniformBindings) {
                 if (UniformBindings.TryGetValue(key, out existing))
@@ -245,43 +247,44 @@ namespace Squared.Render {
                 if (material.OwningThread != Thread.CurrentThread)
                     throw new UniformBindingException(
                         "Uniform bindings must be allocated on the thread that owns the material. An attempt was made to allocate a binding for '" + 
-                        uniformName + "' on '" + material.Effect.CurrentTechnique.Name + "'"
+                        uniform.Name + "' on '" + material.Effect.CurrentTechnique.Name + "'"
                     );
 
 #if SDL2
                 UniformBinding<T> result;
                 throw new NotImplementedException("Create uniform binding for effect");
 #else
-                var result = UniformBinding<T>.TryCreate(effect, uniformName);
+                var result = UniformBinding<T>.TryCreate(effect, uniform.Name);
 #endif
+
                 UniformBindings.Add(key, result);
-                lock (material.UniformBindings)
-                    material.UniformBindings.Add(uniformName, result);
+                material.UniformBindings.Add(uniform.ID, result);
 
                 return result;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public UniformBinding<T> GetUniformBinding<T> (Material material, string uniformName)
+        internal UniformBinding<T> GetUniformBinding<T> (Material material, TypedUniform<T> uniform)
             where T: struct 
         {
             IUniformBinding existing;
-            lock (material.UniformBindings)
-            if (material.UniformBindings.TryGetValue(uniformName, out existing))
+            if (material.UniformBindings.TryGetValue(uniform.ID, out existing))
                 return existing.Cast<T>();
 
-            return GetUniformBindingSlow<T>(material, uniformName);
+            return GetUniformBindingSlow<T>(material, uniform);
         }
 
         public void Add (Material extraMaterial) {
-            lock (Lock) {
-                // HACK: Prefetch the uniform binding on this thread so we don't get a crash later
-                extraMaterial._ViewportUniform = GetUniformBinding<ViewTransform>(extraMaterial, "Viewport");
-                extraMaterial._ViewportUniformInitialized = true;
+            List<ITypedUniform> ru;
+            lock (RegisteredUniforms)
+                ru = RegisteredUniforms.ToList();
 
+            foreach (var u in ru)
+                u.Initialize(extraMaterial);
+
+            lock (Lock)
                 ExtraMaterials.Add(extraMaterial);
-            }
         }
 
         public bool Remove (Material extraMaterial) {
@@ -315,6 +318,8 @@ namespace Squared.Render {
                 needQueue = PendingUniformRegistrations.Count == 0;
                 PendingUniformRegistrations.Add(uniform);
             }
+            lock (RegisteredUniforms)
+                RegisteredUniforms.Add(uniform);
             if (needQueue)
                 QueuePendingRegistrationHandler();
         }

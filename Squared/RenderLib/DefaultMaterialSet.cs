@@ -236,6 +236,9 @@ namespace Squared.Render {
 
         internal readonly ActiveViewTransformInfo ActiveViewTransform;
 
+        internal readonly TypedUniform<ViewTransform> uViewport;
+        internal readonly TypedUniform<DitheringSettings> uDithering;
+
         public readonly RenderCoordinator Coordinator;
 
         private struct FrameParams {
@@ -248,6 +251,9 @@ namespace Squared.Render {
             ActiveViewTransform = new ActiveViewTransformInfo(this);
             _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
             _ApplyParamsDelegate        = ApplyParamsToMaterial;
+
+            uViewport = NewTypedUniform<ViewTransform>("Viewport");
+            uDithering = NewTypedUniform<DitheringSettings>("Dithering");
 
             DefaultDitheringSettings = new DitheringSettings {
                 Unit = 255,
@@ -401,8 +407,6 @@ namespace Squared.Render {
             );
 
             AutoSetViewTransform();
-
-            PreallocateBindings();
         }
 
         protected override void QueuePendingRegistrationHandler () {
@@ -416,16 +420,6 @@ namespace Squared.Render {
                 Coordinator.Device.PresentationParameters.BackBufferWidth,
                 Coordinator.Device.PresentationParameters.BackBufferHeight
             ));
-        }
-
-        public void PreallocateBindings () {
-            // Pre-allocate the uniform bindings for our materials on the main thread.
-            ForEachMaterial<object>((material, _) => {
-                material._ViewportUniform = GetUniformBinding<ViewTransform>(material, "Viewport");
-                material._ViewportUniformInitialized = true;
-                material._DitheringUniform = GetUniformBinding<DitheringSettings>(material, "Dithering");
-                material._DitheringUniformInitialized = true;
-            }, null);
         }
 
         public ViewTransform ViewTransform {
@@ -549,29 +543,14 @@ namespace Squared.Render {
             var ds = DefaultDitheringSettings;
             ds.FrameIndex = @params.FrameIndex.GetValueOrDefault(0);
 
-            var ub = m._DitheringUniform;
-            if (!m._DitheringUniformInitialized) {
-                ub = m._DitheringUniform = GetUniformBinding<DitheringSettings>(m, "Dithering");
-                m._DitheringUniformInitialized = true;
-            }
-            if (ub != null)
-                ub.Value.Current = ds;
+            uDithering.TrySet(m, ref ds);
         }
 
         public void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
             if (m.Effect == null)
                 return;
 
-            var ub = m._ViewportUniform;
-            if (!m._ViewportUniformInitialized) {
-                ub = m._ViewportUniform = GetUniformBinding<ViewTransform>(m, "Viewport");
-                m._ViewportUniformInitialized = true;
-            }
-
-            if (ub == null)
-                return;
-
-            ub.Value.Current = viewTransform;
+            uViewport.TrySet(m, ref viewTransform);
         }
 
         /// <summary>
