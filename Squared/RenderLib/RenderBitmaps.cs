@@ -730,6 +730,9 @@ namespace Squared.Render {
                     var paramTexture1 = m.Effect.Parameters["BitmapTexture"];
                     var paramTexture2 = m.Effect.Parameters["SecondTexture"];
 
+                    paramTexture1.SetValue((Texture2D)null);
+                    paramTexture2.SetValue((Texture2D)null);
+
                     for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
                         NativeBatch nb;
                         if (!_NativeBatches.TryGetItem(n, out nb))
@@ -793,6 +796,9 @@ namespace Squared.Render {
 
                     if (previousHardwareBuffer != null)
                         previousHardwareBuffer.SetInactive();
+
+                    paramTexture1.SetValue((Texture2D)null);
+                    paramTexture2.SetValue((Texture2D)null);
                 }
 
                 device.SamplerStates[0] = previousSS1;

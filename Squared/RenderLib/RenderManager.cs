@@ -160,6 +160,8 @@ namespace Squared.Render {
 
             Device.SetRenderTargets(RenderTargetStack.Pop());
             Device.Viewport = ViewportStack.Pop();
+            // GOD
+            RenderManager.ResetDeviceState(Device);
         }
 
         public DefaultMaterialSetEffectParameters CurrentParameters {
@@ -301,7 +303,7 @@ namespace Squared.Render {
         ///  and you can call this method to do so manually at any time.
         /// </summary>
         public static void ResetDeviceState (GraphicsDevice device) {
-            const int numStages = 8;
+            const int numStages = 16;
             const int numVertexStages = 4;
 
             for (int i = 0; i < numStages; i++) {
