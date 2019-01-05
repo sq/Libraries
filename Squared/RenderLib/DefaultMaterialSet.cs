@@ -405,6 +405,10 @@ namespace Squared.Render {
             PreallocateBindings();
         }
 
+        protected override void QueuePendingRegistrationHandler () {
+            Coordinator.BeforePrepare(PerformPendingRegistrations);
+        }
+
         public void AutoSetViewTransform () {
             ViewTransformStack.Clear();
 

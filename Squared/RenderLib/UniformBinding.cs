@@ -382,40 +382,40 @@ namespace Squared.Render {
             false;
 #endif
 
-        private static readonly Dictionary<Effect, List<IUniformBinding>> Bindings =
+        private static readonly Dictionary<Effect, List<IUniformBinding>> BindingsByEffect =
             new Dictionary<Effect, List<IUniformBinding>>(new ReferenceComparer<Effect>());
 
         public static void CollectGarbage () {
             var deadEffects = new List<Effect>();
 
-            lock (Bindings) {
-                foreach (var kvp in Bindings) {
+            lock (BindingsByEffect) {
+                foreach (var kvp in BindingsByEffect) {
                     if (kvp.Key.IsDisposed || kvp.Key.GraphicsDevice.IsDisposed)
                         deadEffects.Add(kvp.Key);
                 }
             }
 
-            lock (Bindings) {
+            lock (BindingsByEffect) {
                 foreach (var effect in deadEffects) {
-                    var list = Bindings[effect];
+                    var list = BindingsByEffect[effect];
                     foreach (var binding in list)
                         binding.Dispose();
-                    Bindings.Remove(effect);
+                    BindingsByEffect.Remove(effect);
                 }
             }
         }
 
         public static void HandleDeviceReset () {
-            lock (Bindings)
-            foreach (var kvp in Bindings)
-            foreach (var b in kvp.Value)
-                b.HandleDeviceReset();
+            lock (BindingsByEffect)
+                foreach (var kvp in BindingsByEffect)
+                    foreach (var b in kvp.Value)
+                        b.HandleDeviceReset();
         }
 
         public static void FlushEffect (Effect effect) {
-            lock (Bindings) {
+            lock (BindingsByEffect) {
                 List<IUniformBinding> bindings;
-                if (!Bindings.TryGetValue(effect, out bindings))
+                if (!BindingsByEffect.TryGetValue(effect, out bindings))
                     return;
 
                 foreach (var binding in bindings)
@@ -425,12 +425,115 @@ namespace Squared.Render {
 
         internal static void Register (Effect effect, IUniformBinding binding) {
             List<IUniformBinding> bindings;
-            lock (Bindings) {
-                if (!Bindings.TryGetValue(effect, out bindings))
-                    Bindings[effect] = bindings = new List<IUniformBinding>();
+            lock (BindingsByEffect) {
+                if (!BindingsByEffect.TryGetValue(effect, out bindings))
+                    BindingsByEffect[effect] = bindings = new List<IUniformBinding>();
 
                 bindings.Add(binding);
             }
+        }
+    }
+
+    internal struct UniformBindingKey {
+        public class EqualityComparer : IEqualityComparer<UniformBindingKey> {
+            public bool Equals (UniformBindingKey x, UniformBindingKey y) {
+                return x.Equals(y);
+            }
+
+            public int GetHashCode (UniformBindingKey obj) {
+                return obj.HashCode;
+            }
+        }
+
+        public            Effect Effect;
+        public   readonly string UniformName;
+        public   readonly Type   Type;
+        internal readonly int    HashCode;
+
+        public UniformBindingKey (Effect effect, string uniformName, Type type) {
+            Effect = effect;
+            UniformName = uniformName;
+            Type = type;
+
+            HashCode = Type.GetHashCode() ^ 
+                (UniformName.GetHashCode() << 8);
+        }
+
+        public override int GetHashCode () {
+            return HashCode;
+        }
+
+        public bool Equals (UniformBindingKey rhs) {
+            return (Effect == rhs.Effect) &&
+                (Type == rhs.Type) &&
+                (UniformName == rhs.UniformName);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is UniformBindingKey)
+                return Equals((UniformBindingKey)obj);
+            else
+                return false;
+        }
+    }
+
+    public interface ITypedUniform {
+        string Name { get; }
+        uint ID { get; }
+        void Initialize (Material m);
+    }
+
+    internal class TypedUniform {
+        internal readonly static Dictionary<UniformBindingKey, uint> KeyToIDCache = 
+            new Dictionary<UniformBindingKey, uint>(new UniformBindingKey.EqualityComparer());
+    }
+
+    public class TypedUniform<T> : IDisposable, ITypedUniform
+        where T: struct 
+    {
+        internal readonly UniformBindingKey KeyTemplate;
+        public readonly MaterialSetBase MaterialSet;
+        public string Name { get; private set; }
+        public uint ID { get; private set; }
+
+        public TypedUniform (MaterialSetBase materials, string uniformName) {
+            MaterialSet = materials;
+            KeyTemplate = new UniformBindingKey(null, uniformName, typeof(T));
+            Name = uniformName;
+
+            uint id;
+            lock (TypedUniform.KeyToIDCache) {
+                if (!TypedUniform.KeyToIDCache.TryGetValue(KeyTemplate, out id)) {
+                    id = (uint)TypedUniform.KeyToIDCache.Count;
+                    TypedUniform.KeyToIDCache[KeyTemplate] = id;
+                }
+            }
+
+            ID = id;
+
+            MaterialSet.RegisterUniform(this);
+        }
+
+        public bool TrySet (Material m, ref T value) {
+            var ub = MaterialSet.GetUniformBinding<T>(m, Name);
+            if (ub == null)
+                return false;
+
+            ub.Value.Current = value;
+            return true;
+        }
+
+        public void Set (Material m, ref T value) {
+            if (!TrySet(m, ref value))
+                throw new Exception("Failed to set uniform");
+        }
+
+        public void Initialize (Material material) {
+            MaterialSet.GetUniformBinding<T>(material, Name);
+        }
+
+        public void Dispose () {
+            MaterialSet.UnregisterUniform(this);
         }
     }
 }

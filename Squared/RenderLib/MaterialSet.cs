@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework.Content;
 using System.Reflection;
 using Squared.Render.Convenience;
 using Squared.Util;
+using System.Runtime.CompilerServices;
 
 namespace Squared.Render {
     public interface IMaterialCollection {
@@ -65,50 +66,6 @@ namespace Squared.Render {
     }
 
     public abstract class MaterialSetBase : IDisposable {
-        private struct UniformBindingKey {
-            public class EqualityComparer : IEqualityComparer<UniformBindingKey> {
-                public bool Equals (UniformBindingKey x, UniformBindingKey y) {
-                    return x.Equals(y);
-                }
-
-                public int GetHashCode (UniformBindingKey obj) {
-                    return obj.HashCode;
-                }
-            }
-
-            public   readonly Effect Effect;
-            public   readonly string UniformName;
-            public   readonly Type   Type;
-            internal readonly int    HashCode;
-
-            public UniformBindingKey (Effect effect, string uniformName, Type type) {
-                Effect = effect;
-                UniformName = uniformName;
-                Type = type;
-
-                HashCode = Type.GetHashCode() ^ 
-                    (Effect.GetHashCode() << 4) ^
-                    (UniformName.GetHashCode() << 8);
-            }
-
-            public override int GetHashCode () {
-                return HashCode;
-            }
-
-            public bool Equals (UniformBindingKey rhs) {
-                return (Effect == rhs.Effect) &&
-                    (Type == rhs.Type) &&
-                    (UniformName == rhs.UniformName);
-            }
-
-            public override bool Equals (object obj) {
-                if (obj is UniformBindingKey)
-                    return Equals((UniformBindingKey)obj);
-                else
-                    return false;
-            }
-        }
-
         private   readonly object Lock = new object();
         protected readonly MaterialList ExtraMaterials = new MaterialList();
 
@@ -118,6 +75,8 @@ namespace Squared.Render {
 
         // Making a dictionary larger increases performance
         private const int BindingDictionaryCapacity = 4096;
+
+        private readonly List<ITypedUniform> PendingUniformRegistrations = new List<ITypedUniform>();
 
         private readonly Dictionary<UniformBindingKey, IUniformBinding> UniformBindings = 
             new Dictionary<UniformBindingKey, IUniformBinding>(
@@ -131,6 +90,26 @@ namespace Squared.Render {
 
             OwningThread = Thread.CurrentThread;
             BuildMaterialSets(out AllMaterialFields, out AllMaterialSequences, out AllMaterialCollections);
+        }
+
+        protected abstract void QueuePendingRegistrationHandler ();
+
+        internal void InitializeTypedUniformsForMaterial (Material m, List<ITypedUniform> uniforms) {
+            foreach (var tu in uniforms)
+                tu.Initialize(m);
+        }
+
+        internal void PerformPendingRegistrations () {
+            List<ITypedUniform> pur;
+            lock (PendingUniformRegistrations) {
+                if (PendingUniformRegistrations.Count == 0)
+                    return;
+
+                pur = PendingUniformRegistrations.ToList();
+                PendingUniformRegistrations.Clear();
+            }
+
+            ForEachMaterial(InitializeTypedUniformsForMaterial, pur);
         }
 
         protected void BuildMaterialSets (
@@ -249,18 +228,14 @@ namespace Squared.Render {
             }
         }
 
-        public UniformBinding<T> GetUniformBinding<T> (Material material, string uniformName)
-            where T : struct 
+        private UniformBinding<T> GetUniformBindingSlow<T> (Material material, string uniformName)
+            where T: struct
         {
-            IUniformBinding existing;
-            lock (material.UniformBindings)
-            if (material.UniformBindings.TryGetValue(uniformName, out existing))
-                return existing.Cast<T>();
-
             var effect = material.Effect;
             if (effect == null)
                 return null;
 
+            IUniformBinding existing;
             var key = new UniformBindingKey(effect, uniformName, typeof(T));
 
             lock (UniformBindings) {
@@ -282,6 +257,18 @@ namespace Squared.Render {
 
                 return result;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public UniformBinding<T> GetUniformBinding<T> (Material material, string uniformName)
+            where T: struct 
+        {
+            IUniformBinding existing;
+            lock (material.UniformBindings)
+            if (material.UniformBindings.TryGetValue(uniformName, out existing))
+                return existing.Cast<T>();
+
+            return GetUniformBindingSlow<T>(material, uniformName);
         }
 
         public bool TrySetBoundUniform<T> (Material material, string uniformName, ref T value)
@@ -322,6 +309,25 @@ namespace Squared.Render {
             lock (Lock)
             foreach (var material in AllMaterials)
                 material.Dispose();
+        }
+
+        public TypedUniform<T> NewTypedUniform<T> (string uniformName)
+            where T : struct
+        {
+            return new TypedUniform<T>(this, uniformName);
+        }
+
+        internal void RegisterUniform (ITypedUniform uniform) {
+            bool needQueue;
+            lock (PendingUniformRegistrations) {
+                needQueue = PendingUniformRegistrations.Count == 0;
+                PendingUniformRegistrations.Add(uniform);
+            }
+            if (needQueue)
+                QueuePendingRegistrationHandler();
+        }
+
+        internal void UnregisterUniform (ITypedUniform uniform) {
         }
     }
 }
