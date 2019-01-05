@@ -268,7 +268,7 @@ namespace Squared.Render {
                     return existing.Cast<T>();
 
                 if (material.OwningThread != Thread.CurrentThread)
-                    throw new InvalidOperationException("Uniform bindings must be allocated on the thread that owns the material.");
+                    throw new InvalidOperationException("Uniform bindings must be allocated on the thread that owns the material. An attempt was made to allocate a binding for '" + uniformName + "' on '" + material.Effect.CurrentTechnique.Name + "'");
 
 #if SDL2
                 UniformBinding<T> result;
