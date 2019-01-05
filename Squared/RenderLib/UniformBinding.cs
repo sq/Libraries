@@ -173,7 +173,7 @@ namespace Squared.Render {
 
             var hParameter = pGetParameterByName(pUnboxedEffect, null, Name);
             if (hParameter == null)
-                throw new Exception("Could not find d3dx parameter for uniform " + Name);
+                throw new UniformBindingException("Could not find d3dx parameter for uniform " + Name);
 
             var layout = new Layout(Type, pUnboxedEffect, hParameter);
 
@@ -282,9 +282,9 @@ namespace Squared.Render {
 
             var uniformParameter = Effect.Parameters[Name];
             if (uniformParameter == null)
-                throw new Exception("Shader has no uniform named '" + Name + "'");
+                throw new UniformBindingException("Shader has no uniform named '" + Name + "'");
             if (uniformParameter.ParameterClass != EffectParameterClass.Struct)
-                throw new Exception("Shader uniform is not a struct");
+                throw new UniformBindingException("Shader uniform is not a struct");
 
             var pValue = Expression.Parameter(t.MakeByRefType(), "value");
             var body = new List<Expression>();
@@ -292,11 +292,11 @@ namespace Squared.Render {
             foreach (var p in uniformParameter.StructureMembers) {
                 var field = t.GetField(p.Name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 if (field == null)
-                    throw new Exception(string.Format("No field named '{0}' found when binding type {1}", p.Name, t.Name));
+                    throw new UniformBindingException(string.Format("No field named '{0}' found when binding type {1}", p.Name, t.Name));
 
                 var setMethod = tp.GetMethod("SetValue", new[] { field.FieldType });
                 if (setMethod == null)
-                    throw new Exception(string.Format("No setter for effect parameter type {0}", field.FieldType.Name));
+                    throw new UniformBindingException(string.Format("No setter for effect parameter type {0}", field.FieldType.Name));
 
                 var vParameter = Expression.Constant(p, tp);
 
@@ -525,7 +525,7 @@ namespace Squared.Render {
 
         public void Set (Material m, ref T value) {
             if (!TrySet(m, ref value))
-                throw new Exception("Failed to set uniform");
+                throw new UniformBindingException("Failed to set uniform " + Name);
         }
 
         public void Initialize (Material material) {
@@ -534,6 +534,12 @@ namespace Squared.Render {
 
         public void Dispose () {
             MaterialSet.UnregisterUniform(this);
+        }
+    }
+
+    public class UniformBindingException : Exception {
+        public UniformBindingException (string message, Exception innerException = null)
+            : base (message, innerException) {
         }
     }
 }

@@ -243,7 +243,10 @@ namespace Squared.Render {
                     return existing.Cast<T>();
 
                 if (material.OwningThread != Thread.CurrentThread)
-                    throw new InvalidOperationException("Uniform bindings must be allocated on the thread that owns the material. An attempt was made to allocate a binding for '" + uniformName + "' on '" + material.Effect.CurrentTechnique.Name + "'");
+                    throw new UniformBindingException(
+                        "Uniform bindings must be allocated on the thread that owns the material. An attempt was made to allocate a binding for '" + 
+                        uniformName + "' on '" + material.Effect.CurrentTechnique.Name + "'"
+                    );
 
 #if SDL2
                 UniformBinding<T> result;
@@ -269,17 +272,6 @@ namespace Squared.Render {
                 return existing.Cast<T>();
 
             return GetUniformBindingSlow<T>(material, uniformName);
-        }
-
-        public bool TrySetBoundUniform<T> (Material material, string uniformName, ref T value)
-            where T : struct
-        {
-            var ub = GetUniformBinding<T>(material, uniformName);
-            if (ub == null)
-                return false;
-
-            ub.Value.Current = value;
-            return true;
         }
 
         public void Add (Material extraMaterial) {

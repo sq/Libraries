@@ -92,13 +92,13 @@ namespace Squared.Render {
                 var name = Marshal.PtrToStringAnsi(new IntPtr(desc.Name));
                 var field = FindField(type, name);
                 if (field == null)
-                    throw new Exception("No field found for " + name);
+                    throw new UniformBindingException("No field found for " + name);
 
                 sourceOffset += Marshal.OffsetOf(type, field.Name).ToInt32();
                 // FIXME: Arrays
                 var valueSize = Marshal.SizeOf(field.FieldType);
                 if (valueSize != desc.SizeBytes)
-                    throw new Exception("Field size mismatch");
+                    throw new UniformBindingException("Field size mismatch");
 
                 switch (desc.Class) {
                     case D3DXPARAMETER_CLASS.MATRIX_COLUMNS:
@@ -127,7 +127,7 @@ namespace Squared.Render {
                         break;
 
                     default:
-                        throw new NotImplementedException(desc.Class.ToString());
+                        throw new UniformBindingException("Parameter type not implemented: " + desc.Class.ToString());
                 }
 
                 var paddedSize = ((valueSize + 15) / 16) * 16;
