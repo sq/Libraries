@@ -309,6 +309,23 @@ namespace Squared.Render {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddRange (ArraySegment<T> items) {
+            AddRange(items.Array, items.Offset, items.Count);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddRange (T[] items, int offset, int count) {
+            var newCount = _Count + count;
+            if (newCount <= 4) {
+                for (int i = 0; i < count; i++)
+                    Add_Fast(ref items[offset + i]);
+            } else {
+                EnsureList(newCount);
+                Items.AddRange(items, offset, count);
+            }
+        }
+
         public ArraySegment<T> ReserveSpace (int count) {
             // FIXME: Slow
             EnsureList(count);

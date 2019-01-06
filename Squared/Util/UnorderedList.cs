@@ -160,6 +160,11 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddRange (ArraySegment<T> items) {
+            AddRange(items.Array, items.Offset, items.Count);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (List<T> items) {
             var listCount = items.Count;
             int newCount = _Count + listCount;

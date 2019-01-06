@@ -115,9 +115,8 @@ namespace Squared.Render {
 
     public sealed class BitmapDrawCallOrderAndTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
-            var orderDelta = x.SortKey.Order - y.SortKey.Order;
-            var result = Math.Sign(orderDelta);
+        public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
+            var result = FastMath.CompareF(x.SortKey.Order, y.SortKey.Order);
             if (result == 0)
                 result = (x.Textures.HashCode - y.Textures.HashCode);
             return result;
@@ -484,8 +483,12 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (ArraySegment<BitmapDrawCall> items) {
-            for (int i = 0; i < items.Count; i++)
-                _DrawCalls.Add(ref items.Array[i + items.Offset]);
+            _DrawCalls.AddRange(items);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddRange (BitmapDrawCall[] items, int firstIndex, int count) {
+            _DrawCalls.AddRange(items, firstIndex, count);
         }
 
         public void AddRange (
@@ -495,6 +498,14 @@ namespace Squared.Render {
         ) {
             if (material != null)
                 throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
+
+            if (
+                (offset == null) && (multiplyColor == null) && (addColor == null) &&
+                (sortKey == null) && (scale == null)
+            ) {
+                AddRange(items, firstIndex, count);
+                return;
+            }
 
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];

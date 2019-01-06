@@ -5,6 +5,8 @@ using System.Text;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Linq.Expressions;
+using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace Squared.Util {
 #if WINDOWS
@@ -647,5 +649,42 @@ namespace Squared.Util {
 
         #endregion
 #endif
+    }
+
+    public static class FastMath {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe int SignF (float f) {
+            unchecked {
+                uint u = *(uint*)&f;
+                int signBit = (int)(u >> 31);
+                int result = (signBit * -2) + 1;
+                return result;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe int CompareFSlow (uint u1, uint u2) {
+            int sign1 = (int)(u1 >> 31), sign2 = (int)(u2 >> 31);
+            if (sign1 != sign2)
+                return (sign2 - sign1);
+
+            int multiplier = (sign1 * -2) + 1;
+            var delta = u1 - u2;
+            int result = (int)(delta) * multiplier;
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe int CompareF (float lhs, float rhs) {
+            unchecked {
+                uint u1 = *(uint*)&lhs;
+                uint u2 = *(uint*)&rhs;
+
+                if (u1 == u2)
+                    return 0;
+
+                return CompareFSlow(u1, u2);
+            }
+        }
     }
 }
