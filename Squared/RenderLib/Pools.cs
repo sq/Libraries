@@ -154,12 +154,11 @@ namespace Squared.Render {
                             return;
                     }
 
-                    list.Clear();
-
                     lock (_LargePool) {
                         if (_LargePool.Count >= LargePoolCapacity)
                             return;
 
+                        list.Clear();
                         _LargePool.Add(list);
                     }
                 }
@@ -172,11 +171,11 @@ namespace Squared.Render {
                     return;
             }
 
-            list.Clear();
-
             lock (_Pool) {
                 if (_Pool.Count >= SmallPoolCapacity)
                     return;
+
+                list.Clear();
                 _Pool.Add(list);
             }
         }
