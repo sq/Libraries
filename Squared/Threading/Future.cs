@@ -700,8 +700,16 @@ namespace Squared.Threading {
 
             if (result == null)
                 SetResult(default(T), error);
-            else
-                SetResult((T)result, error);
+            else {
+                T value;
+                try {
+                    value = (T)result;
+                } catch (Exception exc) {
+                    value = default(T);
+                    error = new FutureException("Could not convert result to correct type", exc);
+                }
+                SetResult(value, error);
+            }
         }
 
         void IFuture.SetResult2 (object result, ExceptionDispatchInfo errorInfo) {

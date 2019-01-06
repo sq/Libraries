@@ -570,7 +570,7 @@ namespace Squared.Render {
             GlyphPixelAlignment alignToPixels = default(GlyphPixelAlignment),
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
             bool wordWrap = false, char wrapCharacter = '\0',
-            bool reverseOrder = false
+            bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null
         ) {
             var state = new StringLayoutEngine {
                 position = position,
@@ -589,6 +589,9 @@ namespace Squared.Render {
                 reverseOrder = reverseOrder
             };
             var gs = new SpriteFontGlyphSource(font);
+
+            if (horizontalAlignment.HasValue)
+                state.alignment = horizontalAlignment.Value;
 
             state.Initialize();
 
@@ -611,7 +614,7 @@ namespace Squared.Render {
             bool alignToPixels = false,
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
             bool wordWrap = false, char wrapCharacter = '\0',
-            bool reverseOrder = false
+            bool reverseOrder = false, HorizontalAlignment? horizontalAlignment = null
         ) {
             var state = new StringLayoutEngine {
                 position = position,
@@ -629,6 +632,9 @@ namespace Squared.Render {
                 buffer = buffer.GetValueOrDefault(default(ArraySegment<BitmapDrawCall>)),
                 reverseOrder = reverseOrder
             };
+
+            if (horizontalAlignment.HasValue)
+                state.alignment = horizontalAlignment.Value;
 
             state.Initialize();
 

@@ -4,11 +4,35 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Squared.Threading {
+    public interface IWorkItemQueueTarget {
+        /// <summary>Adds a work item to the end of the job queue for the current step.</summary>
+        void QueueWorkItem (Action item);
+    }
+
+    public static class WorkItemQueueTarget {
+        private static IWorkItemQueueTarget Default = null;
+
+        public static IWorkItemQueueTarget Current {
+            get {
+                var result = (IWorkItemQueueTarget)CallContext.LogicalGetData("TaskScheduler");
+                return result ?? Default;
+            }
+            set {
+                CallContext.LogicalSetData("WorkItemQueueTarget", value);
+            }
+        }
+
+        public static void SetDefaultIfNone (IWorkItemQueueTarget @default) {
+            Interlocked.CompareExchange(ref Default, @default, null);
+        }
+    }
+
     public interface IWorkQueue {
         /// <param name="exhausted">Is set to true if the Step operation caused the queue to become empty.</param>
         /// <returns>The number of work items handled.</returns>

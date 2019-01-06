@@ -29,7 +29,7 @@ namespace Squared.Render {
         private object _UserData;
 
         public override void Prepare (PrepareContext context) {
-            BatchCombiner.CombineBatches(ref _DrawCalls, context.BatchesToRelease);
+            BatchCombiner.CombineBatches(_DrawCalls, context.BatchesToRelease);
 
             _DrawCalls.Sort(Frame.BatchComparer);
             context.PrepareMany(_DrawCalls);

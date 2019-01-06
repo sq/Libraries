@@ -90,7 +90,7 @@ namespace Squared.Render {
                 Console.WriteLine("Frame contains {0} batches", totalBatches);
             }
 
-            var numRemoved = BatchCombiner.CombineBatches(ref Batches, BatchesToRelease);
+            var numRemoved = BatchCombiner.CombineBatches(Batches, BatchesToRelease);
             // Batch combining shuffles the batches around to group by type. Once it's done,
             //  we need to do the final sort to preserve layer and material ordering.
             Batches.Sort(BatchComparer);

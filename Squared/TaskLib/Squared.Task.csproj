@@ -112,7 +112,6 @@
   <ItemGroup>
     <Compile Include="AsyncAwait.cs" />
     <Compile Include="BlockingQueue.cs" />
-    <Compile Include="CancellationScope.cs" />
     <Compile Include="DiskMonitor.cs" />
     <Compile Include="Http\Events.cs" />
     <Compile Include="Http\Header.cs" />

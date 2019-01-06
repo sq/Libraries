@@ -14,9 +14,7 @@ namespace Squared.Task {
         }
     }
 
-    public interface IJobQueue : IDisposable {
-        /// <summary>Adds a work item to the end of the job queue for the current step.</summary>
-        void QueueWorkItem (Action item);
+    public interface IJobQueue : IDisposable, IWorkItemQueueTarget {
         /// <summary>Adds a work item to the end of the job queue for the next step.</summary>
         void QueueWorkItemForNextStep (Action item);
         /// <summary>Pumps the job queue, processing all the work items it contains.</summary>

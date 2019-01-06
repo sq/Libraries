@@ -167,7 +167,7 @@ namespace Squared.Task {
         }
     }
 
-    public class TaskScheduler : IDisposable {
+    public class TaskScheduler : IDisposable, IWorkItemQueueTarget {
         internal struct PushedActivity : IDisposable {
             public readonly SynchronizationContext PriorContext;
 
@@ -231,9 +231,10 @@ namespace Squared.Task {
 
             _SynchronizationContext = new TaskSchedulerSynchronizationContext(this);
 
-            if (!_Default.IsValueCreated)
+            if (!_Default.IsValueCreated) {
                 _Default.Value = this;
-            else
+                WorkItemQueueTarget.SetDefaultIfNone(this);
+            } else
                 _Default.Value = null;
         }
 
@@ -252,6 +253,7 @@ namespace Squared.Task {
 
             internal set {
                 CallContext.LogicalSetData("TaskScheduler", value);
+                WorkItemQueueTarget.Current = value;
             }
         }
 

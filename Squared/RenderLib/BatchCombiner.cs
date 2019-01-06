@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Squared.Util;
+using Squared.Threading;
 
 namespace Squared.Render {
     public interface IBatchCombiner {
@@ -42,7 +43,7 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="batches">The list of batches to perform a combination pass over.</param>
         /// <returns>The number of batches eliminated.</returns>
-        public static int CombineBatches (ref DenseList<Batch> batches, List<Batch> batchesToRelease) {
+        public static int CombineBatches (DenseList<Batch> batches, List<Batch> batchesToRelease) {
             batches.Sort(BatchTypeSorter);
 
             int i = 0, j = i + 1, l = batches.Count, eliminatedCount = 0;
@@ -56,19 +57,21 @@ namespace Squared.Render {
             while ((i < l) && (j < l)) {
                 a = _batches[i];
 
-                if (a == null) {
+                if ((a == null) || (a.SuspendFuture != null)) {
                     i += 1;
                     j = i + 1;
                     continue;
                 }
+
                 aType = a.GetType();
 
                 b = _batches[j];
 
-                if (b == null) {
+                if ((b == null) || (b.SuspendFuture != null)) {
                     j += 1;
                     continue;
                 }
+
                 bType = b.GetType();
 
                 if ((aType != bType) || (a.Layer != b.Layer)) {

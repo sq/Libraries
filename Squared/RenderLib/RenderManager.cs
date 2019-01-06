@@ -555,6 +555,7 @@ namespace Squared.Render {
 
             public void Execute () {
                 Context.Validate(Batch, false);
+
                 if (!Batch.State.IsCombined)
                     Batch.Prepare(Context);
 
@@ -575,7 +576,7 @@ namespace Squared.Render {
         }
 
         public void Wait () {
-            Group.NotifyQueuesChanged(true);            
+            Group.NotifyQueuesChanged(true);
             Queue.WaitUntilDrained();
         }
         

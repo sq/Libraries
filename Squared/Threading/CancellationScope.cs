@@ -17,22 +17,22 @@ using TaskStatus = System.Threading.Tasks.TaskStatus;
 using System.Linq.Expressions;
 using Squared.Threading;
 
-namespace Squared.Task {
+namespace Squared.Threading.AsyncAwait {
     public class CancellationScope {
         /// <summary>
         /// Set this to false in order to allow cancellation scopes to be used on threads without an active scheduler.
         /// </summary>
-        public static bool StrictMode = true;
+        public static bool StrictMode = false;
 
         public class Registration {
-            public readonly CancellationScope Scope;
-            public readonly TaskScheduler     Scheduler;
+            public readonly CancellationScope    Scope;
+            public readonly IWorkItemQueueTarget Scheduler;
 
             private Action Continuation;
 
-            public Registration () {
+            public Registration (IWorkItemQueueTarget scheduler) {
                 Scope = CancellationScope.Current;
-                Scheduler = TaskScheduler.Current;
+                Scheduler = scheduler;
 
                 if ((Scheduler == null) && StrictMode)
                     throw new InvalidOperationException("No implicitly active TaskScheduler on this thread.");

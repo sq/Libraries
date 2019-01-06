@@ -13,6 +13,7 @@ namespace Squared.Render {
     public interface IBatch : IDisposable {
         Batch.PrepareState State { get; }
         void Prepare (Batch.PrepareContext context);
+        void Suspend ();
     }
 
     public abstract class Batch : IBatch {
@@ -72,6 +73,8 @@ namespace Squared.Render {
         internal IBatchPool Pool;
 
         internal UnorderedList<Batch> BatchesCombinedIntoThisOne = null;
+
+        internal volatile Threading.IFuture SuspendFuture = null;
 
         protected static long _BatchCount = 0;
 
@@ -140,6 +143,21 @@ namespace Squared.Render {
             newContainer.Add(this);
         }
 
+        /// <summary>
+        /// Suspends preparing of the batch until you call Dispose on it.
+        /// This allows you to begin filling a batch with draw calls on another thread while the rest of the
+        ///  render preparation pipeline continues.
+        /// </summary>
+        public void Suspend () {
+            if (SuspendFuture != null)
+                throw new InvalidOperationException("Batch already suspended");
+            if (IsReleased)
+                throw new InvalidOperationException("Batch already released");
+            if (State.IsPrepared || State.IsIssued)
+                throw new InvalidOperationException("Batch already prepared or issued");
+            SuspendFuture = new Threading.SignalFuture();
+        }
+
         public void CaptureStack (int extraFramesToSkip) {
             if (CaptureStackTraces)
                 StackTrace = new StackTrace(2 + extraFramesToSkip, false);
@@ -152,19 +170,43 @@ namespace Squared.Render {
             }
         }
 
+        private void WaitForSuspend () {
+            var sf = SuspendFuture;
+            if (sf != null) {
+                if (sf.Completed)
+                    return;
+
+                using (var mre = new ManualResetEventSlim(false)) {
+                    sf.RegisterOnComplete((f) => mre.Set());
+                    if (!mre.Wait(1000))
+                        throw new ThreadStateException("A batch remained suspended for too long");
+
+                    var _ = sf.Result2;
+                }
+
+                SuspendFuture = null;
+            }
+        }
+
         // This is where you should do any computation necessary to prepare a batch for rendering.
         // Examples: State sorting, computing vertices.
         public virtual void Prepare (PrepareContext context) {
+            WaitForSuspend();
+
             context.InvokeBasePrepare(this);
             OnPrepareDone();
         }
 
         protected virtual void Prepare (PrepareManager manager) {
+            WaitForSuspend();
+
             OnPrepareDone();
         }
 
         // This is where you send commands to the video card to render your batch.
         public virtual void Issue (DeviceManager manager) {
+            WaitForSuspend();
+
             State.IsIssued = true;
         }
 
@@ -190,6 +232,9 @@ namespace Squared.Render {
         }
 
         public void ReleaseResources () {
+            if (SuspendFuture != null)
+                SuspendFuture = null;
+
             if (Released)
                 throw new ObjectDisposedException("Batch");
 
@@ -204,6 +249,9 @@ namespace Squared.Render {
         /// You may opt to avoid calling this method in order to reuse a batch across multiple frames.
         /// </summary>
         public virtual void Dispose () {
+            if (SuspendFuture != null)
+                SuspendFuture.SetResult(Threading.NoneType.None, null);
+
             ReleaseAfterDraw = true;
         }
 
