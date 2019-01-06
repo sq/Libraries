@@ -116,10 +116,12 @@ namespace Squared.Render {
     public sealed class BitmapDrawCallOrderAndTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
-            var result = FastMath.CompareF(x.SortKey.Order, y.SortKey.Order);
-            if (result == 0)
-                result = (x.Textures.HashCode - y.Textures.HashCode);
-            return result;
+            // var result = FastMath.CompareF(x.SortKey.Order, y.SortKey.Order);
+            var delta = x.SortKey.Order - y.SortKey.Order;
+            if (delta == 0)
+                return (x.Textures.HashCode - y.Textures.HashCode);
+
+            return (delta < 0) ? -1 : 1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

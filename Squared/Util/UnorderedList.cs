@@ -148,8 +148,11 @@ namespace Squared.Util {
             EnsureCapacity(newCount);
 
             int insertOffset = newCount - count;
+            /*
             for (var i = 0; i < count; i++)
                 _Items[insertOffset + i] = items[i + sourceOffset];
+            */
+            Array.Copy(items, sourceOffset, _Items, insertOffset, count);
 
             _Count = newCount;
         }
