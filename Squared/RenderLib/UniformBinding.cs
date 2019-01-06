@@ -478,21 +478,30 @@ namespace Squared.Render {
     }
 
     internal class UniformBindingTable {
+        private bool[]            HasValue = new bool[32];
         private IUniformBinding[] BindingsByID = new IUniformBinding[32];
 
         public void Add (uint id, IUniformBinding binding) {
             lock (BindingsByID) {
                 if (id >= BindingsByID.Length) {
                     var newLength = id + 12;
-                    var newArray = new IUniformBinding[newLength];
-                    Array.Copy(BindingsByID, newArray, BindingsByID.Length);
-                    BindingsByID = newArray;
+                    {
+                        var newArray = new IUniformBinding[newLength];
+                        Array.Copy(BindingsByID, newArray, BindingsByID.Length);
+                        BindingsByID = newArray;
+                    }
+                    {
+                        var newArray = new bool[newLength];
+                        Array.Copy(HasValue, newArray, HasValue.Length);
+                        HasValue = newArray;
+                    }
                 }
 
                 var existing = BindingsByID[id];
                 if ((existing != null) && (existing != binding))
                     throw new UniformBindingException("Binding table has two entries for the same ID");
 
+                HasValue[id] = true;
                 BindingsByID[id] = binding;
             }
         }
@@ -506,10 +515,13 @@ namespace Squared.Render {
                 if (id >= BindingsByID.Length)
                     return false;
 
+                if (!HasValue[id])
+                    return false;
+
                 result = BindingsByID[id];
             }
 
-            return (result != null);
+            return true;
         }
     }
 

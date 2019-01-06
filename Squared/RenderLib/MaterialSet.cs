@@ -272,7 +272,9 @@ namespace Squared.Render {
             if (material.UniformBindings.TryGetValue(uniform.ID, out existing))
                 return existing.Cast<T>();
 
-            return GetUniformBindingSlow<T>(material, uniform);
+            var result = GetUniformBindingSlow<T>(material, uniform);
+            material.UniformBindings.Add(uniform.ID, result);
+            return result;
         }
 
         public void Add (Material extraMaterial) {
