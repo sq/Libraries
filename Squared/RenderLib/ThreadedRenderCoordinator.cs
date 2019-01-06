@@ -24,6 +24,8 @@ namespace Squared.Render {
     }
 
     public class RenderCoordinator : IDisposable {
+        private static ThreadLocal<bool> IsDrawingOnThisThread = new ThreadLocal<bool>(false);
+
         struct DrawTask : IWorkItem {
             public readonly Action<Frame> Callback;
             public readonly Frame Frame;
@@ -34,8 +36,14 @@ namespace Squared.Render {
             }
 
             public void Execute () {
-                lock (Frame)
+                try {
+                    IsDrawingOnThisThread.Value = true;
+                    Monitor.Enter(Frame);
                     Callback(Frame);
+                } finally {
+                    IsDrawingOnThisThread.Value = false;
+                    Monitor.Exit(Frame);
+                }
             }
         }
 
@@ -328,6 +336,9 @@ namespace Squared.Render {
 
         internal bool WaitForActiveDraw () {
             if (_ActualEnableThreading) {
+                if (IsDrawingOnThisThread.Value)
+                    throw new Exception("This thread is currently performing a draw");
+
                 DrawQueue.WaitUntilDrained();
             } else
                 return false;
