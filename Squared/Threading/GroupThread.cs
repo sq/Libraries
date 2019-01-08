@@ -8,7 +8,7 @@ namespace Squared.Threading {
     public class GroupThread : IDisposable {
         public readonly ThreadGroup      Owner;
         public readonly Thread           Thread;
-        public readonly ManualResetEvent WakeEvent;
+        public readonly ManualResetEventSlim WakeEvent;
 
         private readonly UnorderedList<IWorkQueue> Queues = new UnorderedList<IWorkQueue>();
 
@@ -18,7 +18,7 @@ namespace Squared.Threading {
 
         public GroupThread (ThreadGroup owner) {
             Owner = owner;
-            WakeEvent = new ManualResetEvent(true);
+            WakeEvent = new ManualResetEventSlim(true);
             Thread = new Thread(ThreadMain);
             Thread.Name = string.Format("ThreadGroup {0} worker #{1}", owner.GetHashCode(), owner.Count);
             Thread.IsBackground = owner.CreateBackgroundThreads;
@@ -34,7 +34,7 @@ namespace Squared.Threading {
         }
 
         private static void ThreadMain (object _self) {
-            ManualResetEvent wakeEvent;
+            ManualResetEventSlim wakeEvent;
             var weakSelf = ThreadMainSetup(ref _self, out wakeEvent);
 
             int queueIndex = 0;
@@ -53,14 +53,14 @@ namespace Squared.Threading {
                 if (!moreWorkRemains) {
                     // We only wait if no work remains
                     
-                    if (wakeEvent.WaitOne(IdleWaitDurationMs))
+                    if (wakeEvent.Wait(IdleWaitDurationMs))
                         wakeEvent.Reset();
                 }
             }
         }
 
         private static WeakReference<GroupThread> ThreadMainSetup (
-            ref object _self, out ManualResetEvent wakeEvent
+            ref object _self, out ManualResetEventSlim wakeEvent
         ) {
             var self = (GroupThread)_self;
             var weakSelf = new WeakReference<GroupThread>(self);

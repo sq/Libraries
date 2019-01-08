@@ -54,6 +54,14 @@ namespace Squared.Render {
                 (ModelView == rhs.ModelView);
         }
 
+        public override bool Equals (object obj) {
+            if (!(obj is ViewTransform))
+                return false;
+
+            var vt = (ViewTransform)obj;
+            return Equals(ref vt);
+        }
+
         public override string ToString () {
             return string.Format("ViewTransform pos={0} scale={1}", Position, Scale);
         }
@@ -244,6 +252,17 @@ namespace Squared.Render {
         private struct FrameParams {
             public float Seconds;
             public int? FrameIndex;
+
+            public bool Equals (FrameParams rhs) {
+                return (Seconds == rhs.Seconds) && (FrameIndex == rhs.FrameIndex);
+            }
+
+            public override bool Equals (object obj) {
+                if (!(obj is FrameParams))
+                    return false;
+
+                return Equals((FrameParams)obj);
+            }
         }
 
         public DefaultMaterialSet (RenderCoordinator coordinator, ITimeProvider timeProvider = null) {
@@ -503,6 +522,9 @@ namespace Squared.Render {
             return result;
         }
 
+        private FrameParams? LastAppliedFrameParams;
+        private ViewTransform? LastAppliedViewTransform;
+
         /// <summary>
         /// Instantly sets the view transform of all material(s) owned by this material set to the ViewTransform field's current value.
         /// Also sets other parameters like Time.
@@ -513,10 +535,17 @@ namespace Squared.Render {
                 Seconds = (float)TimeProvider.Seconds,
                 FrameIndex = frameIndex
             };
-            ForEachMaterial(_ApplyParamsDelegate, @params);
+
+            if (!LastAppliedFrameParams.HasValue ||
+                !LastAppliedFrameParams.Value.Equals(@params)) {
+                LastAppliedFrameParams = @params;
+                ForEachMaterial(_ApplyParamsDelegate, @params);
+            }
 
             var vt = ViewTransformStack.Peek();
-            ApplyViewTransform(ref vt, force || !LazyViewTransformChanges);
+            if (!LastAppliedViewTransform.HasValue ||
+                !LastAppliedViewTransform.Value.Equals(ref vt))
+                ApplyViewTransform(ref vt, force || !LazyViewTransformChanges);
         }
 
         public void SetLUTs (Material m, ColorLUT lut1, ColorLUT lut2 = null, float lut2Weight = 0) {
@@ -531,14 +560,9 @@ namespace Squared.Render {
             if (m.Effect == null)
                 return;
 
-            var p = m.Parameters.Time;
-            if (p != null)
-                p.SetValue(@params.Seconds);
-            if (@params.FrameIndex.HasValue) {
-                p = m.Parameters.FrameIndex;
-                if (p != null)
-                    p.SetValue((float)@params.FrameIndex.Value);
-            }
+            m.Parameters.Time?.SetValue(@params.Seconds);
+            if (@params.FrameIndex.HasValue)
+                m.Parameters.FrameIndex?.SetValue((float)@params.FrameIndex.Value);
 
             var ds = DefaultDitheringSettings;
             ds.FrameIndex = @params.FrameIndex.GetValueOrDefault(0);
@@ -572,9 +596,10 @@ namespace Squared.Render {
             ActiveViewTransform.Id++;
             var am = ActiveViewTransform.ActiveMaterial;
 
-            if (force || (am == null))
+            if (force || (am == null)) {
+                LastAppliedViewTransform = viewTransform;
                 ForEachMaterial(_ApplyViewTransformDelegate, ref viewTransform);
-            else if (am != null)
+            } else if (am != null)
                 am.Flush();
         }
 
