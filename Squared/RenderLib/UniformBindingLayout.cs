@@ -70,6 +70,11 @@ namespace Squared.Render {
                 var pGetParameter = COMUtils.GetMethodFromVTable<DGetParameter>(pUnboxedEffect, KnownMethodSlots.GetParameter);
                 var pGetParameterDesc = COMUtils.GetMethodFromVTable<DGetParameterDesc>(pUnboxedEffect, KnownMethodSlots.GetParameterDesc);
 
+                var hParam = pGetParameterDesc(pUnboxedEffect, hParameter, out desc);
+                var managedSize = Marshal.SizeOf(type);
+                if (desc.SizeBytes != managedSize)
+                    throw new UniformBindingException("Managed struct " + type.Name + " has a different size from shader uniform");
+
                 for (uint i = 0; i < 999; i++) {
                     var hMember = pGetParameter(pUnboxedEffect, hParameter, i);
                     if (hMember == null)
@@ -100,12 +105,25 @@ namespace Squared.Render {
                 if (valueSize != desc.SizeBytes)
                     throw new UniformBindingException("Field size mismatch");
 
+                var endpoint = (offset + valueSize - 1);
+
+                var startVector = offset / 16;
+                var endVector = endpoint / 16;
+
+                if (valueSize <= 16) {
+                    if (startVector != endVector)
+                        throw new UniformBindingException("Field " + name + " crosses a 16 byte alignment boundary");
+                }
+
+                if (field.FieldType == typeof(bool))
+                    throw new UniformBindingException("Bool fields not supported, set bool parameters directly");
+
                 switch (desc.Class) {
                     case D3DXPARAMETER_CLASS.MATRIX_COLUMNS:
                     case D3DXPARAMETER_CLASS.MATRIX_ROWS:
                         fixups.Add(new Fixup(
                             sourceOffset, (int)offset, valueSize, (int)valueSize, 
-                            (desc.Class == D3DXPARAMETER_CLASS.MATRIX_ROWS)                            
+                            (desc.Class == D3DXPARAMETER_CLASS.MATRIX_ROWS)
                         ));
                         break;
 
