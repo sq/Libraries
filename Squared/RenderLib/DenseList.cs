@@ -317,9 +317,11 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (T[] items, int offset, int count) {
             var newCount = _Count + count;
-            if (newCount <= 4) {
-                for (int i = 0; i < count; i++)
+            if (newCount < 4) {
+                for (int i = 0; i < count - 1; i++)
                     Add_Fast(ref items[offset + i]);
+
+                Add(items[offset + count - 1]);
             } else {
                 EnsureList(newCount);
                 Items.AddRange(items, offset, count);
