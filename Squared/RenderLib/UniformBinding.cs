@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -268,6 +269,7 @@ namespace Squared.Render {
         /// If you retain this you are a bad person and I'm ashamed of you! Don't do that!!!
         /// </summary>
         public ValueContainer Value {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 IsDirty = true;
                 return _ValueContainer;
@@ -478,48 +480,51 @@ namespace Squared.Render {
     }
 
     internal class UniformBindingTable {
-        private bool[]            HasValue = new bool[32];
-        private IUniformBinding[] BindingsByID = new IUniformBinding[32];
+        private volatile bool[]            HasValue = new bool[256];
+        private volatile IUniformBinding[] BindingsByID = new IUniformBinding[256];
 
         public void Add (uint id, IUniformBinding binding) {
-            lock (BindingsByID) {
-                if (id >= BindingsByID.Length) {
+            var b = BindingsByID;
+            var hv = HasValue;
+            lock (b) {
+                if (id >= b.Length) {
                     var newLength = id + 12;
                     {
                         var newArray = new IUniformBinding[newLength];
-                        Array.Copy(BindingsByID, newArray, BindingsByID.Length);
-                        BindingsByID = newArray;
+                        Array.Copy(b, newArray, b.Length);
+                        b = BindingsByID = newArray;
                     }
                     {
                         var newArray = new bool[newLength];
-                        Array.Copy(HasValue, newArray, HasValue.Length);
-                        HasValue = newArray;
+                        Array.Copy(HasValue, newArray, hv.Length);
+                        hv = HasValue = newArray;
                     }
                 }
 
-                var existing = BindingsByID[id];
+                var existing = b[id];
                 if ((existing != null) && (existing != binding))
                     throw new UniformBindingException("Binding table has two entries for the same ID");
 
-                HasValue[id] = true;
-                BindingsByID[id] = binding;
+                hv[id] = true;
+                b[id] = binding;
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetValue (uint id, out IUniformBinding result) {
             result = null;
             if (id < 0)
                 return false;
 
-            lock (BindingsByID) {
-                if (id >= BindingsByID.Length)
-                    return false;
+            var bindings = BindingsByID;
+            if (id >= bindings.Length)
+                return false;
 
-                if (!HasValue[id])
-                    return false;
+            var hasValue = HasValue;
+            if (!hasValue[id])
+                return false;
 
-                result = BindingsByID[id];
-            }
+            result = bindings[id];
 
             return true;
         }
@@ -562,6 +567,7 @@ namespace Squared.Render {
             MaterialSet.RegisterUniform(this);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TrySet (Material m, ref T value) {
             var ub = MaterialSet.GetUniformBinding(m, this);
             if (ub == null)
@@ -571,6 +577,7 @@ namespace Squared.Render {
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Set (Material m, ref T value) {
             if (!TrySet(m, ref value))
                 throw new UniformBindingException("Failed to set uniform " + Name);

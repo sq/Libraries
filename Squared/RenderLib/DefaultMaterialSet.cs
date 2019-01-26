@@ -557,12 +557,9 @@ namespace Squared.Render {
         }
 
         private void ApplyParamsToMaterial (Material m, FrameParams @params) {
-            if (m.Effect == null)
-                return;
-
-            m.Parameters.Time?.SetValue(@params.Seconds);
+            m.Parameters?.Time?.SetValue(@params.Seconds);
             if (@params.FrameIndex.HasValue)
-                m.Parameters.FrameIndex?.SetValue((float)@params.FrameIndex.Value);
+                m.Parameters?.FrameIndex?.SetValue((float)@params.FrameIndex.Value);
 
             var ds = DefaultDitheringSettings;
             ds.FrameIndex = @params.FrameIndex.GetValueOrDefault(0);
@@ -571,9 +568,6 @@ namespace Squared.Render {
         }
 
         public void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
-            if (m.Effect == null)
-                return;
-
             uViewport.TrySet(m, ref viewTransform);
         }
 

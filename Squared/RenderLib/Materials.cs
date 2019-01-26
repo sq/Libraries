@@ -22,7 +22,7 @@ namespace Squared.Render {
 
         public readonly Thread OwningThread;
 
-        public readonly DefaultMaterialSetEffectParameters  Parameters;
+        public readonly DefaultMaterialSetEffectParameters Parameters;
 
         public readonly Action<DeviceManager>[] BeginHandlers;
         public readonly Action<DeviceManager>[] EndHandlers;
