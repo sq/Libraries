@@ -26,7 +26,7 @@ float Dither64 (float2 vpos, float frameIndexMod4) {
 }
 
 float3 ApplyDither (float3 rgb, float2 vpos) {
-    float threshold = Dither17(vpos, (Dithering.FrameIndex % 4) + 0.5);
+    float threshold = Dither32(vpos, (Dithering.FrameIndex % 4) + 0.5);
     threshold = (Dithering.BandSizeMinus1 + 1) * threshold;
     float3 threshold3 = float3(threshold, threshold, threshold);
     const float offset = 0.05;
