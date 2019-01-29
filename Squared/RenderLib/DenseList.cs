@@ -320,11 +320,9 @@ namespace Squared.Render {
                 return;
 
             var newCount = _Count + count;
-            if (newCount < 4) {
-                for (int i = 0; i < count - 1; i++)
-                    Add_Fast(ref items[offset + i]);
-
-                Add(items[offset + count - 1]);
+            if (newCount <= 4) {
+                for (int i = 0; i < count; i++)
+                    Add(ref items[offset + i]);
             } else {
                 EnsureList(newCount);
                 Items.AddRange(items, offset, count);
