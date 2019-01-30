@@ -653,6 +653,16 @@ namespace Squared.Util {
 
     public static class FastMath {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int FloorLog2 (int n) {
+            int result = 0;
+            while (n >= 1) {
+                result++;
+                n /= 2;
+            }
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe int SignF (float f) {
             unchecked {
                 uint u = *(uint*)&f;

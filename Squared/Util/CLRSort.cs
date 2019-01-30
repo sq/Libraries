@@ -88,21 +88,11 @@ namespace Squared.Util {
             IntrospectiveSort(left, length);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int FloorLog2 (int n) {
-            int result = 0;
-            while (n >= 1) {
-                result++;
-                n /= 2;
-            }
-            return result;
-        }
-
         private void IntrospectiveSort(int left, int length) {
             if (length < 2)
                 return;
 
-            IntroSort(left, length + left - 1, 2 * FloorLog2(Items.Length));
+            IntroSort(left, length + left - 1, 2 * FastMath.FloorLog2(Items.Length));
         }
 
         private void IntroSort(int lo, int hi, int depthLimit) {
