@@ -110,10 +110,13 @@ namespace Squared.Util {
         }
 
         private void Grow (int targetCapacity) {
+            const int slowThreshold = 65536;
             var newCapacity = 1 << (int)Math.Ceiling(Math.Log(targetCapacity, 2));
-            var oldItems = _Items;
-            _Items = new T[newCapacity];
-            Array.Copy(oldItems, _Items, _Count);
+            if (newCapacity >= slowThreshold)
+                newCapacity = ((targetCapacity + slowThreshold - 1) / slowThreshold) * slowThreshold;
+
+            if (newCapacity > _Items.Length)
+                Array.Resize(ref _Items, newCapacity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
