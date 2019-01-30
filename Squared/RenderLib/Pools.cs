@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.Render {
@@ -83,6 +84,17 @@ namespace Squared.Render {
     }
 
     public class ListPool<T> {
+        private struct ListClearWorkItem : IWorkItem {
+            public UnorderedList<T> List;
+            public UnorderedList<UnorderedList<T>> Pool;
+
+            public void Execute () {
+                List.Clear();
+                lock (Pool)
+                    Pool.Add(List);
+            }
+        }
+
         private UnorderedList<UnorderedList<T>> _Pool = new UnorderedList<UnorderedList<T>>();
         private UnorderedList<UnorderedList<T>> _LargePool = new UnorderedList<UnorderedList<T>>();
 
@@ -91,6 +103,8 @@ namespace Squared.Render {
         public readonly int InitialItemSize;
         public          int SmallPoolMaxItemSize;
         public          int LargePoolMaxItemSize;
+
+        public ThreadGroup ThreadGroup { get; set; }
 
         public ListPool (int smallPoolCapacity, int initialItemSize, int maxItemSize) {
             SmallPoolCapacity = smallPoolCapacity;
@@ -134,10 +148,21 @@ namespace Squared.Render {
 
             if (result == null)
                 result = new UnorderedList<T>(capacity.GetValueOrDefault(InitialItemSize));
-            else
-                result.Clear();
 
             return result;
+        }
+
+        private void ClearAndReturn (UnorderedList<T> list, UnorderedList<UnorderedList<T>> pool) {
+            if (ThreadGroup != null) {
+                ThreadGroup.Enqueue(new ListClearWorkItem {
+                    List = list,
+                    Pool = pool
+                });
+                return;
+            }
+
+            list.Clear();
+            pool.Add(list);
         }
 
         public void Release (ref UnorderedList<T> _list) {
@@ -158,8 +183,7 @@ namespace Squared.Render {
                         if (_LargePool.Count >= LargePoolCapacity)
                             return;
 
-                        list.Clear();
-                        _LargePool.Add(list);
+                        ClearAndReturn(list, _LargePool);
                     }
                 }
 
@@ -175,8 +199,7 @@ namespace Squared.Render {
                 if (_Pool.Count >= SmallPoolCapacity)
                     return;
 
-                list.Clear();
-                _Pool.Add(list);
+                ClearAndReturn(list, _Pool);
             }
         }
     }

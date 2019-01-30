@@ -424,6 +424,9 @@ namespace Squared.Render {
 
             UseZBuffer = useZBuffer;
 
+            var rm = container.RenderManager;
+            _DrawCalls.ListPool.ThreadGroup = rm.ThreadGroup;
+
             var prior = (PrepareState)Interlocked.Exchange(ref _State, (int)PrepareState.NotPrepared);
             if ((prior == PrepareState.Issuing) || (prior == PrepareState.Preparing))
                 throw new ThreadStateException("This batch is currently in use");
