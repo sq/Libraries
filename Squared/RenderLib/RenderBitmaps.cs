@@ -426,6 +426,7 @@ namespace Squared.Render {
 
             var rm = container.RenderManager;
             _DrawCalls.ListPool.ThreadGroup = rm.ThreadGroup;
+            rm.AddDrainRequiredListPool(_DrawCalls.ListPool);
 
             var prior = (PrepareState)Interlocked.Exchange(ref _State, (int)PrepareState.NotPrepared);
             if ((prior == PrepareState.Issuing) || (prior == PrepareState.Preparing))

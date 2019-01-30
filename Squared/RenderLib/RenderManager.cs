@@ -237,6 +237,9 @@ namespace Squared.Render {
         /// </summary>
         public readonly object UseResourceLock = new object();
 
+        private readonly HashSet<IDrainable> RequiredDrainListPools = new HashSet<IDrainable>();
+        private static readonly object ListPoolLock = new object();
+
         public event EventHandler<DeviceManager> DeviceChanged;
 
         public RenderManager (GraphicsDevice device, Thread mainThread, ThreadGroup threadGroup) {
@@ -379,6 +382,13 @@ namespace Squared.Render {
             lock (_ArrayAllocators)
                 foreach (var allocator in _ArrayAllocators.Values)
                     allocator.Step();
+
+            // Ensure that all the list pools used by the previous frame
+            //  have finished their async clears. This ensures that we don't
+            //  end up leaking lots of lists
+            lock (ListPoolLock)
+            foreach (var lp in RequiredDrainListPools)
+                lp.WaitForWorkItems();
         }
 
         public bool TrySetPoolCapacity<T> (int newCapacity)
@@ -475,6 +485,11 @@ namespace Squared.Render {
             }
 
             return allocator.Allocate();
+        }
+
+        internal void AddDrainRequiredListPool (IDrainable listPool) {
+            lock (ListPoolLock)
+                RequiredDrainListPools.Add(listPool);
         }
 
         internal void ResetBufferGenerators (int frameIndex) {
