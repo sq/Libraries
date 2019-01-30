@@ -596,6 +596,22 @@ namespace Squared.Render {
             }
         }
 
+        private void CreateNewNativeBatch (
+            BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref TextureSet currentTextures, ref int vertCount, ref int vertOffset
+        ) {
+            if ((currentTextures.Texture1 == null) || currentTextures.Texture1.IsDisposed)
+                throw new InvalidDataException("Invalid draw call(s)");
+
+            _NativeBatches.Add(new NativeBatch(
+                softwareBuffer, currentTextures,
+                vertOffset,
+                vertCount
+            ));
+
+            vertOffset += vertCount;
+            vertCount = 0;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void FillOneBitmapVertex (
             BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref BitmapDrawCall call, out BitmapVertex result, 
@@ -604,19 +620,8 @@ namespace Squared.Render {
             bool texturesEqual = call.Textures.Equals(ref currentTextures);
 
             if (!texturesEqual) {
-                if (vertCount > 0) {
-                    if ((currentTextures.Texture1 == null) || currentTextures.Texture1.IsDisposed)
-                        throw new InvalidDataException("Invalid draw call(s)");
-
-                    _NativeBatches.Add(new NativeBatch(
-                        softwareBuffer, currentTextures,
-                        vertOffset,
-                        vertCount
-                    ));
-
-                    vertOffset += vertCount;
-                    vertCount = 0;
-                }
+                if (vertCount > 0)
+                    CreateNewNativeBatch(softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset);
 
                 currentTextures = call.Textures;
             }
