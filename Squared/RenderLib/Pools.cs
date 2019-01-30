@@ -136,17 +136,20 @@ namespace Squared.Render {
             LargePoolMaxItemSize = maxLargeItemSize;
         }
 
-        public UnorderedList<T> Allocate (int? capacity) {
+        public UnorderedList<T> Allocate (int? capacity, bool capacityIsHint = false) {
             UnorderedList<T> result = null;
 
+            var isBig = capacity.HasValue &&
+                (capacity.Value > SmallPoolMaxItemSize);
+
             if (
-                (LargePoolCapacity > 0) &&
-                capacity.HasValue && 
-                (capacity.Value > SmallPoolMaxItemSize)
+                (LargePoolCapacity > 0) && isBig
             ) {
                 lock (_LargePool)
                     _LargePool.TryPopFront(out result);
-            } else {
+            }
+
+            if (capacityIsHint || !isBig || (LargePoolCapacity <= 0)) {
                 lock (_Pool)
                     _Pool.TryPopFront(out result);
 

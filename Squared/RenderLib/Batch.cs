@@ -318,6 +318,10 @@ namespace Squared.Render {
             _ListPool.LargePoolCapacity = largePoolCapacity.GetValueOrDefault(_ListPool.LargePoolCapacity);
         }
 
+        public void EnsureCapacity (int capacity) {
+            _DrawCalls.EnsureCapacity(capacity);
+        }
+
         protected void Add (T item) {
             _DrawCalls.Add(item);
         }

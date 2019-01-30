@@ -158,6 +158,14 @@ namespace Squared.Render {
         internal UnorderedList<T> Items;
         internal bool _HasList;
 
+        public void EnsureCapacity (int capacity) {
+            if (capacity <= 4)
+                return;
+
+            EnsureList();
+            Items.EnsureCapacity(capacity);
+        }
+
         public void Clear () {
             if (Storage.Count != 0) {
                 Storage.Count = 0;

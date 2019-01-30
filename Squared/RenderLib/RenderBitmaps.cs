@@ -395,7 +395,7 @@ namespace Squared.Render {
             _NativePool.LargePoolCapacity = largePoolCapacity.GetValueOrDefault(_NativePool.LargePoolCapacity);
         }
 
-        public static BitmapBatch New (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, bool useZBuffer = false) {
+        public static BitmapBatch New (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, bool useZBuffer = false, int? capacity = null) {
             if (container == null)
                 throw new ArgumentNullException("container");
             if (material == null)
@@ -404,7 +404,7 @@ namespace Squared.Render {
                 throw new ArgumentNullException("material.Effect");
 
             var result = container.RenderManager.AllocateBatch<BitmapBatch>();
-            result.Initialize(container, layer, material, samplerState, samplerState2 ?? samplerState, useZBuffer);
+            result.Initialize(container, layer, material, samplerState, samplerState2 ?? samplerState, useZBuffer, capacity: capacity);
             result.CaptureStack(0);
             return result;
         }

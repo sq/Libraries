@@ -87,19 +87,21 @@ namespace LargeBufferTest {
             const int height = 720;
 
             var options = new ParallelOptions {
-//                MaxDegreeOfParallelism = 1
             };
             int layer = 0;
             Parallel.For(
                 0, height, options,
                 // One batch per worker thread
-                () => 
-                    BitmapBatch.New(
-                        frame, 
+                () => {
+                    var bb = BitmapBatch.New(
+                        frame,
                         // Suppress batch combining
-                        Interlocked.Increment(ref layer), 
-                        Materials.ScreenSpaceBitmap
-                    ),
+                        Interlocked.Increment(ref layer),
+                        Materials.ScreenSpaceBitmap,
+                        capacity: width * height / 4
+                    );
+                    return bb;
+                },
                 (y, loopState, bb) => {
                     var drawCall = new BitmapDrawCall(WhitePixel, new Vector2(0, y));
                     float fx = 0;

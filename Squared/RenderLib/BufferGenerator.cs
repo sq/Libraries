@@ -201,9 +201,9 @@ namespace Squared.Render.Internal {
         const int InitialArraySize = 8192;
         // Once the buffer passes this capacity it's considered 'large' and grows slower
         // Large buffers are also not retained between frames
-        const int LargeSizeThreshold = 262144;
+        const int LargeSizeThreshold = 102400;
         // Once the buffer is considered large it grows at this rate
-        const int LargeChunkSize = 102400;
+        const int LargeChunkSize = 65536;
 
         const int MinVerticesPerHardwareBuffer = 10240;
         const int MinIndicesPerHardwareBuffer = 15360;
