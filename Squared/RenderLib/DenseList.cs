@@ -3,12 +3,19 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Squared.Util;
 
 namespace Squared.Render {
     public struct DenseList<T> : IDisposable, IEnumerable<T> {
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct InlineStorage {
+            public T Item1, Item2, Item3, Item4;
+            public int Count;
+        }
+
         public struct Enumerator : IEnumerator<T> {
             private int Index;
 
@@ -26,10 +33,10 @@ namespace Squared.Render {
                     Item1 = Item2 = Item3 = Item4 = default(T);
                     Items = list.Items.GetBuffer();
                 } else {
-                    Item1 = list.Item1;
-                    Item2 = list.Item2;
-                    Item3 = list.Item3;
-                    Item4 = list.Item4;
+                    Item1 = list.Storage.Item1;
+                    Item2 = list.Storage.Item2;
+                    Item3 = list.Storage.Item3;
+                    Item4 = list.Storage.Item4;
                     Items = null;
                 }
             }            
@@ -147,20 +154,24 @@ namespace Squared.Render {
         public ListPool<T> ListPool;
         public int? ListCapacity;
 
-        private T Item1, Item2, Item3, Item4;
-        private UnorderedList<T> Items;
-        private bool _HasList;
-
-        private int _Count;
+        internal InlineStorage Storage;
+        internal UnorderedList<T> Items;
+        internal bool _HasList;
 
         public void Clear () {
-            if (_Count != 0) {
-                _Count = 0;
-                Item1 = Item2 = Item3 = Item4 = default(T);
+            if (Storage.Count != 0) {
+                Storage.Count = 0;
+                Storage.Item1 = Storage.Item2 = Storage.Item3 = Storage.Item4 = default(T);
             }
 
             if (_HasList)
                 Items.Clear();
+        }
+
+        public DenseListPin<J, T> Pin<J> ()
+            where J : struct
+        {
+            return new DenseListPin<J, T>(ref this);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -183,16 +194,16 @@ namespace Squared.Render {
             else
                 Items = new UnorderedList<T>(); 
 
-            if (_Count > 0)
-                Items.Add(ref Item1);
-            if (_Count > 1)
-                Items.Add(ref Item2);
-            if (_Count > 2)
-                Items.Add(ref Item3);
-            if (_Count > 3)
-                Items.Add(ref Item4);
-            Item1 = Item2 = Item3 = Item4 = default(T);
-            _Count = 0;
+            if (Storage.Count > 0)
+                Items.Add(ref Storage.Item1);
+            if (Storage.Count > 1)
+                Items.Add(ref Storage.Item2);
+            if (Storage.Count > 2)
+                Items.Add(ref Storage.Item3);
+            if (Storage.Count > 3)
+                Items.Add(ref Storage.Item4);
+            Storage.Item1 = Storage.Item2 = Storage.Item3 = Storage.Item4 = default(T);
+            Storage.Count = 0;
         }
 
         public int Count {
@@ -201,7 +212,7 @@ namespace Squared.Render {
                 if (_HasList)
                     return Items.Count;
                 else
-                    return _Count;
+                    return Storage.Count;
             }
         }
 
@@ -216,16 +227,16 @@ namespace Squared.Render {
                 Items.DangerousGetItem(index, out result);
             else switch (index) {
                 case 0:
-                    result = Item1;
+                    result = Storage.Item1;
                     return;
                 case 1:
-                    result = Item2;
+                    result = Storage.Item2;
                     return;
                 case 2:
-                    result = Item3;
+                    result = Storage.Item3;
                     return;
                 case 3:
-                    result = Item4;
+                    result = Storage.Item4;
                     return;
                 default:
                     throw new IndexOutOfRangeException();
@@ -238,16 +249,16 @@ namespace Squared.Render {
                 return Items.DangerousTryGetItem(index, out result);
             else switch (index) {
                 case 0:
-                    result = Item1;
+                    result = Storage.Item1;
                     return true;
                 case 1:
-                    result = Item2;
+                    result = Storage.Item2;
                     return true;
                 case 2:
-                    result = Item3;
+                    result = Storage.Item3;
                     return true;
                 case 3:
-                    result = Item4;
+                    result = Storage.Item4;
                     return true;
                 default:
                     result = default(T);
@@ -263,13 +274,13 @@ namespace Squared.Render {
 
                 switch (index) {
                     case 0:
-                        return Item1;
+                        return Storage.Item1;
                     case 1:
-                        return Item2;
+                        return Storage.Item2;
                     case 2:
-                        return Item3;
+                        return Storage.Item3;
                     case 3:
-                        return Item4;
+                        return Storage.Item4;
                     default:
                         throw new IndexOutOfRangeException();
                 }
@@ -283,26 +294,26 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Add_Fast (ref T item) {
-            var i = _Count++;
+            var i = Storage.Count++;
             switch (i) {
                 case 0:
-                    Item1 = item;
+                    Storage.Item1 = item;
                     break;
                 case 1:
-                    Item2 = item;
+                    Storage.Item2 = item;
                     break;
                 case 2:
-                    Item3 = item;
+                    Storage.Item3 = item;
                     break;
                 case 3:
-                    Item4 = item;
+                    Storage.Item4 = item;
                     break;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (ref T item) {
-            if (_HasList || (_Count >= 4)) {
+            if (_HasList || (Storage.Count >= 4)) {
                 Add_Slow(ref item);
             } else {
                 Add_Fast(ref item);
@@ -319,7 +330,7 @@ namespace Squared.Render {
             if (count < 1)
                 return;
 
-            var newCount = _Count + count;
+            var newCount = Storage.Count + count;
             if (newCount <= 4) {
                 for (int i = 0; i < count; i++)
                     Add(ref items[offset + i]);
@@ -348,7 +359,7 @@ namespace Squared.Render {
                 throw new ArgumentException("count");
 
             if (!_HasList) {
-                _Count -= count;
+                Storage.Count -= count;
                 // FIXME: Element leak
                 return;
             }
@@ -364,15 +375,15 @@ namespace Squared.Render {
                 Items.Clear();
                 Items.AddRange(data);
             } else {
-                _Count = count;
+                Storage.Count = count;
                 if (data.Length > 0)
-                    Item1 = data[0];
+                    Storage.Item1 = data[0];
                 if (data.Length > 1)
-                    Item2 = data[1];
+                    Storage.Item2 = data[1];
                 if (data.Length > 2)
-                    Item3 = data[2];
+                    Storage.Item3 = data[2];
                 if (data.Length > 3)
-                    Item4 = data[3];
+                    Storage.Item4 = data[3];
             }
         }
 
@@ -389,15 +400,15 @@ namespace Squared.Render {
             else {
                 var alloc = BufferPool<T>.Allocate(4);
                 var buf = alloc.Data;
-                buf[0] = Item1;
-                buf[1] = Item2;
-                buf[2] = Item3;
-                buf[3] = Item4;
+                buf[0] = Storage.Item1;
+                buf[1] = Storage.Item2;
+                buf[2] = Storage.Item3;
+                buf[3] = Storage.Item4;
                 return new Buffer {
                     IsTemporary = true,
                     Data = buf,
                     BufferPoolAllocation = alloc,
-                    Count = _Count
+                    Count = Storage.Count
                 };
             }
         }
@@ -414,72 +425,72 @@ namespace Squared.Render {
                 return;
             }
 
-            if (_Count <= 1)
+            if (Storage.Count <= 1)
                 return;
 
             T a, b;
-            if (comparer.Compare(ref Item1, ref Item2) <= 0) {
-                a = Item1; b = Item2;
+            if (comparer.Compare(ref Storage.Item1, ref Storage.Item2) <= 0) {
+                a = Storage.Item1; b = Storage.Item2;
             } else {
-                a = Item2; b = Item1;
+                a = Storage.Item2; b = Storage.Item1;
             }
 
-            if (_Count == 2) {
-                Item1 = a;
-                Item2 = b;
+            if (Storage.Count == 2) {
+                Storage.Item1 = a;
+                Storage.Item2 = b;
                 return;
-            } else if (_Count == 3) {
-                if (comparer.Compare(ref b, ref Item3) <= 0) {
-                    Item1 = a;
-                    Item2 = b;
-                } else if (comparer.Compare(ref a, ref Item3) <= 0) {
-                    Item1 = a;
-                    Item2 = Item3;
-                    Item3 = b;
+            } else if (Storage.Count == 3) {
+                if (comparer.Compare(ref b, ref Storage.Item3) <= 0) {
+                    Storage.Item1 = a;
+                    Storage.Item2 = b;
+                } else if (comparer.Compare(ref a, ref Storage.Item3) <= 0) {
+                    Storage.Item1 = a;
+                    Storage.Item2 = Storage.Item3;
+                    Storage.Item3 = b;
                 } else {
-                    Item1 = Item3;
-                    Item2 = a;
-                    Item3 = b;
+                    Storage.Item1 = Storage.Item3;
+                    Storage.Item2 = a;
+                    Storage.Item3 = b;
                 }
             } else {
                 T c, d;
-                if (comparer.Compare(ref Item3, ref Item4) <= 0) {
-                    c = Item3; d = Item4;
+                if (comparer.Compare(ref Storage.Item3, ref Storage.Item4) <= 0) {
+                    c = Storage.Item3; d = Storage.Item4;
                 } else {
-                    c = Item4; d = Item3;
+                    c = Storage.Item4; d = Storage.Item3;
                 }
 
                 T m1;
                 if (comparer.Compare(ref a, ref c) <= 0) {
-                    Item1 = a;
+                    Storage.Item1 = a;
                     m1 = c;
                 } else {
-                    Item1 = c;
+                    Storage.Item1 = c;
                     m1 = a;
                 }
 
                 T m2;
                 if (comparer.Compare(ref b, ref d) >= 0) {
-                    Item4 = b;
+                    Storage.Item4 = b;
                     m2 = d;
                 } else {
-                    Item4 = d;
+                    Storage.Item4 = d;
                     m2 = b;
                 }
 
                 if (comparer.Compare(ref m1, ref m2) <= 0) {
-                    Item2 = m1;
-                    Item3 = m2;
+                    Storage.Item2 = m1;
+                    Storage.Item3 = m2;
                 } else {
-                    Item2 = m2;
-                    Item3 = m1;
+                    Storage.Item2 = m2;
+                    Storage.Item3 = m1;
                 }
             }
         }
 
         public void Dispose () {
-            _Count = 0;
-            Item1 = Item2 = Item3 = Item4 = default(T);
+            Storage.Count = 0;
+            Storage.Item1 = Storage.Item2 = Storage.Item3 = Storage.Item4 = default(T);
             if (ListPool != null)
                 ListPool.Release(ref Items);
             else
@@ -497,6 +508,36 @@ namespace Squared.Render {
 
         IEnumerator IEnumerable.GetEnumerator () {
             return new Enumerator(ref this);
+        }
+    }
+
+    public struct DenseListPin<T, J> : IDisposable 
+        where T : struct
+    {
+        private bool IsBuffer;
+        public GCHandle Buffer;
+        private object Boxed;
+
+        public DenseListPin (ref DenseList<J> list) {
+            if (list._HasList) {
+                IsBuffer = true;
+                Boxed = list.Items.GetBuffer();
+                Buffer = GCHandle.Alloc(Boxed);
+            } else {
+                IsBuffer = false;
+                Boxed = list.Storage;
+                Buffer = GCHandle.Alloc(Boxed);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe void* GetItems () {
+            return (void*)Buffer.AddrOfPinnedObject();
+        }
+
+        public void Dispose () {
+            if (IsBuffer)
+                Buffer.Free();
         }
     }
 }

@@ -534,7 +534,7 @@ namespace Squared.Render {
         }
 
         private unsafe void FillOneSoftwareBuffer (
-            int[] indices, ref int drawCallsPrepared, int count
+            int[] indices, DenseList<BitmapDrawCall>.Buffer drawCalls, ref int drawCallsPrepared, int count
         ) {
             int totalVertCount = 0;
             int vertCount = 0, vertOffset = 0;
@@ -551,55 +551,27 @@ namespace Squared.Render {
 
             float zBufferFactor = UseZBuffer ? 1.0f : 0.0f;
 
+            var callCount = drawCalls.Count;
+            var callArray = drawCalls.Data;
+
             fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset]) {
                 for (int i = drawCallsPrepared; i < count; i++) {
                     if (totalVertCount >= nativeBatchSizeLimit)
                         break;
 
-                    BitmapDrawCall call;
-                    if (indices != null) {
-                        var callIndex = indices[i];
-                        if (!_DrawCalls.TryGetItem(callIndex, out call))
-                            break;
-                    } else {
-                        if (!_DrawCalls.TryGetItem(i, out call))
-                            break;
-                    }
+                    int callIndex;
+                    if (indices != null)
+                        callIndex = indices[i];
+                    else
+                        callIndex = i;
 
-                    bool texturesEqual = call.Textures.Equals(ref currentTextures);
+                    if (callIndex >= callCount)
+                        break;
 
-                    if (!texturesEqual) {
-                        if (vertCount > 0) {
-                            if ((currentTextures.Texture1 == null) || currentTextures.Texture1.IsDisposed)
-                                throw new InvalidDataException("Invalid draw call(s)");
-
-                            _NativeBatches.Add(new NativeBatch(
-                                softwareBuffer, currentTextures,
-                                vertOffset,
-                                vertCount
-                            ));
-
-                            vertOffset += vertCount;
-                            vertCount = 0;
-                        }
-
-                        currentTextures = call.Textures;
-                    }
-
-                    pVertices[vertexWritePosition] = new BitmapVertex {
-                        Position = {
-                            X = call.Position.X,
-                            Y = call.Position.Y,
-                            Z = call.SortKey.Order * zBufferFactor
-                        },
-                        Texture1Region = call.TextureRegion.ToVector4(),
-                        Texture2Region = call.TextureRegion2.GetValueOrDefault(call.TextureRegion).ToVector4(),
-                        MultiplyColor = call.MultiplyColor,
-                        AddColor = call.AddColor,
-                        Scale = call.Scale,
-                        Origin = call.Origin,
-                        Rotation = call.Rotation
-                    };
+                    FillOneBitmapVertex(
+                        softwareBuffer, ref callArray[callIndex], out pVertices[vertexWritePosition],
+                        ref currentTextures, ref vertCount, ref vertOffset, zBufferFactor
+                    );
 
                     vertexWritePosition += 1;
                     totalVertCount += 1;
@@ -622,6 +594,49 @@ namespace Squared.Render {
                     vertCount
                 ));
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void FillOneBitmapVertex (
+            BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref BitmapDrawCall call, out BitmapVertex result, 
+            ref TextureSet currentTextures, ref int vertCount, ref int vertOffset, float zBufferFactor
+        ) {
+            bool texturesEqual = call.Textures.Equals(ref currentTextures);
+
+            if (!texturesEqual) {
+                if (vertCount > 0) {
+                    if ((currentTextures.Texture1 == null) || currentTextures.Texture1.IsDisposed)
+                        throw new InvalidDataException("Invalid draw call(s)");
+
+                    _NativeBatches.Add(new NativeBatch(
+                        softwareBuffer, currentTextures,
+                        vertOffset,
+                        vertCount
+                    ));
+
+                    vertOffset += vertCount;
+                    vertCount = 0;
+                }
+
+                currentTextures = call.Textures;
+            }
+
+            var p = call.Position;
+
+            result = new BitmapVertex {
+                Position = {
+                    X = p.X,
+                    Y = p.Y,
+                    Z = call.SortKey.Order * zBufferFactor
+                },
+                Texture1Region = call.TextureRegion.ToVector4(),
+                Texture2Region = call.TextureRegion2.GetValueOrDefault(call.TextureRegion).ToVector4(),
+                MultiplyColor = call.MultiplyColor,
+                AddColor = call.AddColor,
+                Scale = call.Scale,
+                Origin = call.Origin,
+                Rotation = call.Rotation
+            };
         }
 
         private int[] GetIndexArray (int minimumSize) {
@@ -681,9 +696,11 @@ namespace Squared.Render {
 
             _CornerBuffer = QuadUtils.CreateCornerBuffer(Container);
 
-            int drawCallsPrepared = 0;
-            while (drawCallsPrepared < count)
-                FillOneSoftwareBuffer(indexArray, ref drawCallsPrepared, count);
+            using (var callBuffer = _DrawCalls.GetBuffer(false)) {
+                int drawCallsPrepared = 0;
+                while (drawCallsPrepared < count)
+                    FillOneSoftwareBuffer(indexArray, callBuffer, ref drawCallsPrepared, count);
+            }
 
             StateTransition(PrepareState.Preparing, PrepareState.Prepared);
         }
