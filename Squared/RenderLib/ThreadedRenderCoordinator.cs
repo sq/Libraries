@@ -70,7 +70,7 @@ namespace Squared.Render {
         private readonly object DrawLock = new object();
 
         private bool _Running = true;
-#if SDL2 // Disable threading -flibit
+#if SDL2 || FNA // Disable threading -flibit
         // 8 months later and I continue to say: NOPE. -flibit
         private bool _ActualEnableThreading = false;
 #else
@@ -233,7 +233,7 @@ namespace Squared.Render {
 
             var viewport = Device.Viewport;
             Device.Present(
-#if !SDL2 // Ignore verbose Present() overload -flibit
+#if !SDL2 || FNA // Ignore verbose Present() overload -flibit
                 new Rectangle(0, 0, viewport.Width, viewport.Height),
                 new Rectangle(0, 0, viewport.Width, viewport.Height),
                 IntPtr.Zero

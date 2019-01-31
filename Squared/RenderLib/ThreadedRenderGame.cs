@@ -48,7 +48,7 @@ namespace Squared.Render {
                 NewThreadBusyThresholdMs = 2.0f
             };
 
-#if SDL2 // Disable threading -flibit
+#if SDL2 || FNA // Disable threading -flibit
             // Again, I say: NOPE. -flibit
             UseThreadedDraw = false;
 #else

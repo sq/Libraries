@@ -33,7 +33,7 @@ namespace Squared.Render {
     }
 
 #region Direct3D
-#if !SDL2 && !MONOGAME
+#if !SDL2 && !MONOGAME && !FNA
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     unsafe delegate void* DGetParameterDesc (
         void* _this, void* hParameter, out D3DXPARAMETER_DESC pDesc
@@ -68,7 +68,7 @@ namespace Squared.Render {
         }
         
 #region Direct3D
-#if !SDL2 && !MONOGAME
+#if !SDL2 && !MONOGAME && !FNA
         private static class KnownMethodSlots {
             public static uint GetParameterDesc;
             public static uint GetParameter;
@@ -162,7 +162,7 @@ namespace Squared.Render {
             return new UniformBinding<T>(effect, uniformName);
         }
 
-#if !SDL2 && !MONOGAME
+#if !SDL2 && !MONOGAME && !FNA
 #region Direct3D
         private void CreateNativeBinding (out NativeBinding result) {
             var pUnboxedEffect = Effect.GetUnboxedID3DXEffect();
@@ -351,7 +351,7 @@ namespace Squared.Render {
         }
 
         private void ReleaseBindings () {
-#if !SDL2 && !MONOGAME
+#if !SDL2 && !MONOGAME && !FNA
             CurrentNativeBinding = default(NativeBinding);
 #endif
             // TODO: Should we invalidate the compatibility binding here? I don't think that needs to happen
@@ -376,7 +376,7 @@ namespace Squared.Render {
 
         // Set this to false to force a slower compatibility mode that works with FNA and MonoGame
         public static bool ForceCompatibilityMode =
-#if SDL2
+#if SDL2 || FNA
             true;
 #elif MONOGAME
             true;

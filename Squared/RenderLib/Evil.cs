@@ -277,8 +277,10 @@ namespace Squared.Render.Evil {
 
         void SetRawValue (void* hParameter, [In] void* pData, uint byteOffset, uint countBytes);
     }
+#endif
 
     public static class EffectUtils {
+#if WINDOWS
         [DllImport("d3dx9_41.dll")]
         [SuppressUnmanagedCodeSecurity]
         private static unsafe extern int D3DXCreateEffectEx (
@@ -300,6 +302,7 @@ namespace Squared.Render.Evil {
             pComPtr = typeof(Effect).GetField("pComPtr", BindingFlags.Instance | BindingFlags.NonPublic);
             technique_pComPtr = typeof(EffectTechnique).GetField("pComPtr", BindingFlags.Instance | BindingFlags.NonPublic);
         }
+#endif
 
         public static Effect EffectFromFxcOutput (GraphicsDevice device, Stream stream) {
             var bytes = new byte[stream.Length];
@@ -308,6 +311,7 @@ namespace Squared.Render.Evil {
         }
 
         public static unsafe Effect EffectFromFxcOutput (GraphicsDevice device, byte[] bytes) {
+#if WINDOWS
             var pDev = GraphicsDeviceUtils.GetIDirect3DDevice9(device);
             void* pEffect, pTemp;
             fixed (byte* pBytes = bytes) {
@@ -322,7 +326,12 @@ namespace Squared.Render.Evil {
             var ctor = ctors[0];
             var result = ctor.Invoke(new object[] { new IntPtr(pEffect), device });
             return (Effect)result;
+#else
+            return new Effect(device, bytes);
+#endif
         }
+
+#if WINDOWS
 
         public static unsafe void* GetUnboxedID3DXEffect (this Effect effect) {
             return Pointer.Unbox(pComPtr.GetValue(effect));
@@ -613,6 +622,6 @@ namespace Squared.Render.Evil {
                     throw new COMException("D3DXLoadSurfaceFromMemory failed", rv);
             }
         }
-    }
 #endif
+    }
 }

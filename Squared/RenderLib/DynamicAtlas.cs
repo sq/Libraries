@@ -252,7 +252,11 @@ namespace Squared.Render {
 
                     GenerateMip(pSrc, srcWidth, srcHeight, pDest, destWidth, destHeight);
                     lock (Coordinator.UseResourceLock)
+#if FNA
+                        Texture.SetDataPointerEXT(i, null, new IntPtr(pDest), destWidth * destHeight * 4);
+#else
                         Evil.TextureUtils.SetDataFast(Texture, (uint)i, pDest, destWidth, destHeight, (uint)(destWidth * 4));
+#endif
 
                     var temp = pSrc;
                     pSrc = pDest;
