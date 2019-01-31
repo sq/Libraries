@@ -293,8 +293,12 @@ namespace Squared.Render {
 
             foreach (var p in uniformParameter.StructureMembers) {
                 var field = t.GetField(p.Name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (field == null)
-                    throw new UniformBindingException(string.Format("No field named '{0}' found when binding type {1}", p.Name, t.Name));
+                if (field == null) {
+                    if (UniformBinding.IgnoreMissingUniforms)
+                        continue;
+                    else
+                        throw new UniformBindingException(string.Format("No field named '{0}' found when binding type {1}", p.Name, t.Name));
+                }
 
                 var setMethod = tp.GetMethod("SetValue", new[] { field.FieldType });
                 if (setMethod == null)
@@ -379,6 +383,13 @@ namespace Squared.Render {
 #if SDL2 || FNA
             true;
 #elif MONOGAME
+            true;
+#else
+            false;
+#endif
+
+        public static bool IgnoreMissingUniforms =
+#if FNA
             true;
 #else
             false;

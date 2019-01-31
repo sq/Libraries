@@ -250,12 +250,7 @@ namespace Squared.Render {
                         uniform.Name + "' on '" + material.Effect.CurrentTechnique.Name + "'"
                     );
 
-#if SDL2 || FNA
-                UniformBinding<T> result;
-                throw new NotImplementedException("Create uniform binding for effect");
-#else
                 var result = UniformBinding<T>.TryCreate(effect, uniform.Name);
-#endif
 
                 UniformBindings.Add(key, result);
                 material.UniformBindings.Add(uniform.ID, result);
