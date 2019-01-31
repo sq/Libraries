@@ -98,7 +98,7 @@ namespace LargeBufferTest {
                         // Suppress batch combining
                         Interlocked.Increment(ref layer),
                         Materials.ScreenSpaceBitmap,
-                        capacity: width * height / 4
+                        capacity: width * height / 8
                     );
                     return bb;
                 },

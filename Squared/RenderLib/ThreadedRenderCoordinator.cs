@@ -113,8 +113,9 @@ namespace Squared.Render {
         private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> AfterPresentQueue = new ConcurrentQueue<Action>();
 
-        private readonly ManualResetEvent PresentBegunSignal = new ManualResetEvent(false);
-        private long PresentBegunWhen = 0;
+        private readonly ManualResetEvent PresentBegunSignal = new ManualResetEvent(false),
+            PresentEndedSignal = new ManualResetEvent(false);
+        private long PresentBegunWhen = 0, PresentEndedWhen = 0;
 
         public readonly ThreadGroup ThreadGroup;
         private readonly WorkQueue<DrawTask> DrawQueue;
@@ -566,11 +567,14 @@ namespace Squared.Render {
             }
         }
 
-        public bool TryWaitForPresentToStart (int millisecondsTimeout, int delayMs = 1) {
+        public bool TryWaitForPresentToStart (int millisecondsTimeout, out bool didPresentEnd, float delayMs = 1) {
+            didPresentEnd = false;
+
             var now = Time.Ticks;
-            var waitEnd = now + (millisecondsTimeout + delayMs) * Time.MillisecondInTicks;
-            if (!PresentBegunSignal.WaitOne(millisecondsTimeout))
+            var waitEnd = (long)(now + (millisecondsTimeout + delayMs) * Time.MillisecondInTicks);
+            if (!PresentBegunSignal.WaitOne(millisecondsTimeout)) {
                 return false;
+            }
 
             var offset = Time.MillisecondInTicks * delayMs;
             var expected = PresentBegunWhen + offset;
@@ -586,16 +590,25 @@ namespace Squared.Render {
                 if (now >= waitEnd)
                     return false;
                 Thread.Yield();
+                Thread.SpinWait(10);
                 now = Time.Ticks;
             }
 
+            didPresentEnd = PresentEndedSignal.WaitOne(0);
             return true;
         }
 
         private void SetPresentBegun () {
             var now = Time.Ticks;
             PresentBegunWhen = now;
+            PresentEndedSignal.Reset();
             PresentBegunSignal.Set();
+        }
+
+        private void SetPresentEnded () {
+            var now = Time.Ticks;
+            PresentEndedWhen = now;
+            PresentEndedSignal.Set();
         }
 
         protected void RenderFrameToDraw (Frame frameToDraw, bool endDraw) {
@@ -612,6 +625,7 @@ namespace Squared.Render {
                     RunBeforePresentHandlers();
                     SetPresentBegun();
                     _SyncEndDraw();
+                    SetPresentEnded();
                 }
 
                 FlushPendingDisposes();
