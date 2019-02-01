@@ -233,7 +233,8 @@ namespace Squared.Render.Tracing {
             try {
 #if SDL2 || FNA // StringMarkerGREMEDY -flibit
                 // FIXME: FNA SetStringMarkerEXT! -flibit
-                GetGLProcAddress();
+                if (!GetGLProcAddress())
+                    return;
                 var chars = Encoding.ASCII.GetBytes(name);
                 glStringMarkerGREMEDY(chars.Length, chars);
 #else
@@ -249,14 +250,22 @@ namespace Squared.Render.Tracing {
         private delegate void StringMarkerGREMEDY(int len, byte[] strang);
         private static StringMarkerGREMEDY glStringMarkerGREMEDY;
         private static bool gotAddress = false;
-        private static void GetGLProcAddress()
+        private static bool GetGLProcAddress()
         {
-            if (gotAddress) return;
-            glStringMarkerGREMEDY = (StringMarkerGREMEDY) Marshal.GetDelegateForFunctionPointer(
-                SDL2.SDL.SDL_GL_GetProcAddress("glStringMarkerGREMEDY"),
-                typeof(StringMarkerGREMEDY)
-            );
+            if (gotAddress)
+                return true;
             gotAddress = true;
+
+            var pFn = SDL2.SDL.SDL_GL_GetProcAddress("glStringMarkerGREMEDY");
+            if (pFn == IntPtr.Zero) {
+                glStringMarkerGREMEDY = null;
+                TracingBroken = 1;
+                return false;
+            } else {
+                glStringMarkerGREMEDY = (StringMarkerGREMEDY) Marshal.GetDelegateForFunctionPointer(pFn, typeof(StringMarkerGREMEDY));
+                TracingBroken = 0;
+                return true;
+            }
         }
 #endif
     }
