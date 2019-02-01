@@ -332,14 +332,14 @@ namespace Squared.Render {
                 "ScreenSpaceShadowedBitmapTechnique"
             );
             ScreenSpaceShadowedBitmap.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 1));
-            ScreenSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(new Vector2(2, 2));
+            ScreenSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
 
             WorldSpaceShadowedBitmap = new Material(
                 bitmapShader,
                 "WorldSpaceShadowedBitmapTechnique"
             );
             WorldSpaceShadowedBitmap.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 1));
-            WorldSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(new Vector2(2, 2));
+            WorldSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
 
             ScreenSpaceBitmapWithDiscard = new Material(
                 bitmapShader,
