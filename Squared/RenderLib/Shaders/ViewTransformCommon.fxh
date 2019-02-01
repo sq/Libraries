@@ -5,20 +5,14 @@ struct ViewTransform {
     float2 Position;
 };
 
-// FIXME: FNA HACKS
-uniform float4x4 ViewportProjection;
-uniform float4x4 ViewportModelView;
-
 uniform ViewTransform Viewport;
 
 float4x4 GetViewportProjectionMatrix () {
-    // FIXME: FNA HACKS
-    return ViewportProjection;
+    return Viewport.Projection;
 }
 
 float4x4 GetViewportModelViewMatrix () {
-    // FIXME: FNA HACKS
-    return ViewportModelView;
+    return Viewport.ModelView;
 }
 
 float2 GetViewportScale () {

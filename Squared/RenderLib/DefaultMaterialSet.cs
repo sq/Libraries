@@ -570,12 +570,14 @@ namespace Squared.Render {
         public void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
             uViewport.TrySet(m, ref viewTransform);
 
+            /*
             // HACK: Compatibility with shaders that are compensating for FNA's struct uniform bugs
             var ep = m.Effect?.Parameters;
             ep?["ViewportModelView"]?.SetValue(viewTransform.ModelView);
             ep?["ViewportProjection"]?.SetValue(viewTransform.Projection);
             ep?["ViewportScale"]?.SetValue(viewTransform.Scale);
             ep?["ViewportPosition"]?.SetValue(viewTransform.Position);
+            */
         }
 
         /// <summary>

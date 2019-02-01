@@ -191,7 +191,7 @@ namespace Squared.Render {
             if (p == null)
                 return;
 
-            // FIXME
+            // FIXME: Very slow and clumsy
             IntPtr ptr;
             uint size;
             foreach (var member in p.StructureMembers) {
@@ -206,6 +206,10 @@ namespace Squared.Render {
                 var srcPtr = pScratch + offset.ToInt32();
 
                 Buffer.MemoryCopy(srcPtr.ToPointer(), ptr.ToPointer(), size, fieldSize);
+
+                // Convert from HLSL row/column order to GLSL (funny that D3DX9 uses this order too...)
+                if (field.FieldType == typeof(Matrix))
+                    InPlaceTranspose((float*)ptr.ToPointer());
             }
         }
 #endif
