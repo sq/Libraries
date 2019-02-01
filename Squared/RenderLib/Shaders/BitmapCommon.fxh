@@ -14,9 +14,6 @@ float4 TransformPosition (float4 position, float offset) {
 #endif
     // Finally project after offsetting
     float4 result = mul(modelViewPos, GetViewportProjectionMatrix());
-    result.x /= (1920 / 2);
-    result.y /= (1080 / 2);
-    result.w = 1;
     return result;
 }
 
@@ -53,17 +50,7 @@ inline float2 ComputeCorner (
     in int2 cornerIndex : BLENDINDICES0,
     in float2 regionSize
 ) {
-    float2 corner;
-    if (cornerIndex.x < 1)
-        corner = float2(0, 0);
-    else if (cornerIndex.x < 2)
-        corner = float2(1, 0);
-    else if (cornerIndex.x < 3)
-        corner = float2(1, 1);
-    else
-        corner = float2(0, 1);
-        
-    // float2 corner = Corners[cornerIndex.x];
+    float2 corner = Corners[cornerIndex.x];
     return corner * regionSize;
 }
 

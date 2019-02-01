@@ -19,11 +19,13 @@ float4x4 GetViewportModelViewMatrix () {
 }
 
 float2 GetViewportScale () {
+    // FIXME: FNA HACKS
     return float2(1, 1);
     return Viewport.Scale;
 }
 
 float2 GetViewportPosition () {
+    // FIXME: FNA HACKS
     return float2(0, 0);
     return Viewport.Position;
 }

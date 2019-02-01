@@ -568,11 +568,11 @@ namespace Squared.Render {
         }
 
         public void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
-            uViewport.TrySet(m, ref viewTransform);
-
             if (true) {
-                m.Effect?.Parameters["ViewportProjection"]?.SetValue(viewTransform.Projection);
                 m.Effect?.Parameters["ViewportModelView"]?.SetValue(viewTransform.ModelView);
+                m.Effect?.Parameters["ViewportProjection"]?.SetValue(viewTransform.Projection);
+            } else {
+                uViewport.TrySet(m, ref viewTransform);
             }
         }
 
