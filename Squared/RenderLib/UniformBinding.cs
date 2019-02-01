@@ -66,8 +66,8 @@ namespace Squared.Render {
         public class ValueContainer {
             public T Current;
         }
-        
-#region Direct3D
+
+        #region Direct3D
 #if !SDL2 && !MONOGAME && !FNA
         private static class KnownMethodSlots {
             public static uint GetParameterDesc;
@@ -101,69 +101,7 @@ namespace Squared.Render {
         }
 
         private NativeBinding CurrentNativeBinding;
-#endif
-#endregion
 
-        private class Storage : SafeBuffer {
-            public Storage () 
-                : base(true) 
-            {
-                // HACK: If this isn't big enough, you screwed up
-                const int size = 1024 * 4;
-                Initialize(size);
-                SetHandle(Marshal.AllocHGlobal(size));
-            }
-
-            protected override bool ReleaseHandle () {
-                Marshal.FreeHGlobal(DangerousGetHandle());
-                return true;
-            }
-        }
-
-        private readonly object         Lock = new object();
-
-        private readonly ValueContainer _ValueContainer = new ValueContainer();
-        // The latest value is written into this buffer
-        private readonly SafeBuffer     ScratchBuffer;
-        // And then transferred and mutated in this buffer before being sent to D3D
-        private readonly SafeBuffer     UploadBuffer;
-
-        private delegate void CompatibilitySetter (ref T value);
-        private CompatibilitySetter CurrentCompatibilityBinding;
-
-        public  bool   IsDirty    { get; private set; }
-        public  bool   IsDisposed { get; private set; }
-        public  Effect Effect     { get; private set; }
-        public  string Name       { get; private set; }
-        public  Type   Type       { get; private set; }
-
-        /// <summary>
-        /// Bind a single named uniform of the effect as type T.
-        /// </summary>
-        private UniformBinding (Effect effect, string uniformName) {
-            Type = typeof(T);
-
-            Effect = effect;
-            Name = uniformName;
-
-            ScratchBuffer = new Storage();
-            UploadBuffer = new Storage();
-            IsDirty = true;
-
-            UniformBinding.Register(effect, this);
-        }
-
-        public static UniformBinding<T> TryCreate (Effect effect, string uniformName) {
-            if (effect == null)
-                return null;
-            if (effect.Parameters[uniformName] == null)
-                return null;
-
-            return new UniformBinding<T>(effect, uniformName);
-        }
-
-#if !SDL2 && !MONOGAME && !FNA
-#region Direct3D
         private void CreateNativeBinding (out NativeBinding result) {
             var pUnboxedEffect = Effect.GetUnboxedID3DXEffect();
             result = default(NativeBinding);
@@ -233,6 +171,118 @@ namespace Squared.Render {
             Marshal.ThrowExceptionForHR(hr);
             // pEffect.SetRawValue(hParameter, pUpload.ToPointer(), 0, UploadSize);
         }
+#endif
+#endregion
+
+#region FNA
+#if FNA
+        private Layout NativeLayout;
+
+        void NativeFlush () {
+            if (!IsDirty)
+                return;
+
+            ScratchBuffer.Write<T>(0, _ValueContainer.Current);
+
+            var pScratch = ScratchBuffer.DangerousGetHandle();
+            var p = Effect.Parameters[Name];
+
+            // HACK: GLSL can strip unused uniforms
+            if (p == null)
+                return;
+
+            // FIXME
+            IntPtr ptr;
+            uint size;
+            foreach (var member in p.StructureMembers) {
+                member.GetDataPointerEXT(out ptr, out size);
+                var field = Layout.FindField(Type, member.Name);
+                if (field == null)
+                    continue;
+
+                var offset = Marshal.OffsetOf(Type, field.Name);
+                var fieldSize = Marshal.SizeOf(field.FieldType);
+
+                var srcPtr = pScratch + offset.ToInt32();
+
+                Buffer.MemoryCopy(srcPtr.ToPointer(), ptr.ToPointer(), size, fieldSize);
+            }
+        }
+#endif
+#endregion
+
+        private class Storage : SafeBuffer {
+            public Storage () 
+                : base(true) 
+            {
+                // HACK: If this isn't big enough, you screwed up
+                const int size = 1024 * 4;
+                Initialize(size);
+                SetHandle(Marshal.AllocHGlobal(size));
+            }
+
+            protected override bool ReleaseHandle () {
+                Marshal.FreeHGlobal(DangerousGetHandle());
+                return true;
+            }
+        }
+
+        private readonly object         Lock = new object();
+
+        private readonly ValueContainer _ValueContainer = new ValueContainer();
+        // The latest value is written into this buffer
+        private readonly SafeBuffer     ScratchBuffer;
+        // And then transferred and mutated in this buffer before being sent to D3D
+        private readonly SafeBuffer     UploadBuffer;
+
+        private delegate void CompatibilitySetter (ref T value);
+        private CompatibilitySetter CurrentCompatibilityBinding;
+
+        public  bool   IsDirty    { get; private set; }
+        public  bool   IsDisposed { get; private set; }
+        public  Effect Effect     { get; private set; }
+        public  string Name       { get; private set; }
+        public  Type   Type       { get; private set; }
+
+        /// <summary>
+        /// Bind a single named uniform of the effect as type T.
+        /// </summary>
+        private UniformBinding (Effect effect, string uniformName) {
+            Type = typeof(T);
+
+            Effect = effect;
+            Name = uniformName;
+
+            ScratchBuffer = new Storage();
+            UploadBuffer = new Storage();
+            IsDirty = true;
+
+            UniformBinding.Register(effect, this);
+
+#if FNA
+            NativeLayout = new Layout(Type, effect.Parameters[uniformName]);
+#endif
+        }
+
+        public static UniformBinding<T> TryCreate (Effect effect, string uniformName) {
+            if (effect == null)
+                return null;
+            if (effect.Parameters[uniformName] == null)
+                return null;
+
+            return new UniformBinding<T>(effect, uniformName);
+        }
+
+        /// <summary>
+        /// If you retain this you are a bad person and I'm ashamed of you! Don't do that!!!
+        /// </summary>
+        public ValueContainer Value {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                IsDirty = true;
+                return _ValueContainer;
+            }
+        }
 
         private void InPlaceTranspose (float* pMatrix) {
             float temp = pMatrix[4];
@@ -258,22 +308,6 @@ namespace Squared.Render {
             temp = pMatrix[14];
             pMatrix[14] = pMatrix[11];
             pMatrix[11] = temp;
-        }
-#endregion
-#else
-        private void NativeFlush () {
-        }
-#endif
-
-        /// <summary>
-        /// If you retain this you are a bad person and I'm ashamed of you! Don't do that!!!
-        /// </summary>
-        public ValueContainer Value {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get {
-                IsDirty = true;
-                return _ValueContainer;
-            }
         }
 
         // We use LCG to create a single throwaway delegate that is responsible for filling
@@ -381,7 +415,7 @@ namespace Squared.Render {
         // Set this to false to force a slower compatibility mode that works with FNA and MonoGame
         public static bool ForceCompatibilityMode =
 #if SDL2 || FNA
-            true;
+            false;
 #elif MONOGAME
             true;
 #else

@@ -37,7 +37,7 @@ namespace Squared.Render {
             public readonly Fixup[] Fixups;
             public readonly uint UploadSize;
 
-            private FieldInfo FindField (Type type, string name) {
+            public static FieldInfo FindField (Type type, string name) {
                 var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
                 var result = type.GetField(name, flags);
                 if (result == null)
@@ -157,6 +157,11 @@ namespace Squared.Render {
 
             #region SDL2
             #if SDL2 || FNA
+
+            public Layout (Type type, EffectParameter parameter) {
+                // FIXME
+            }
+
             #endif
             #endregion
         }
