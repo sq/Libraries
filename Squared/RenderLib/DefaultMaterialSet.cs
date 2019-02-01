@@ -14,10 +14,10 @@ using System.Runtime.InteropServices;
 namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential)]
     public struct ViewTransform {
-        public Vector2 Scale;
-        public Vector2 Position;
         public Matrix Projection;
         public Matrix ModelView;
+        public Vector2 Scale;
+        public Vector2 Position;
 
         public static readonly ViewTransform Default = new ViewTransform {
             Scale = Vector2.One,
@@ -569,6 +569,11 @@ namespace Squared.Render {
 
         public void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
             uViewport.TrySet(m, ref viewTransform);
+
+            if (true) {
+                m.Effect?.Parameters["ViewportProjection"]?.SetValue(viewTransform.Projection);
+                m.Effect?.Parameters["ViewportModelView"]?.SetValue(viewTransform.ModelView);
+            }
         }
 
         /// <summary>

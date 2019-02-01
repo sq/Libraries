@@ -24,8 +24,8 @@ void WorldSpaceVertexShader(
     inout float4 color : COLOR0,
     out float4 result : POSITION0
 ) {
-    position -= Viewport.Position.xy;
-    position *= Viewport.Scale.xy;
+    position -= GetViewportPosition().xy;
+    position *= GetViewportScale().xy;
     result = TransformPosition(float4(position.xy, 0, 1), 0);
 }
 
@@ -44,8 +44,8 @@ void WorldSpaceTexturedVertexShader(
     inout float2 texCoord : TEXCOORD0,
     out float4 result : POSITION0
 ) {
-    position -= Viewport.Position.xy;
-    position *= Viewport.Scale.xy;
+    position -= GetViewportPosition().xy;
+    position *= GetViewportScale().xy;
     result = TransformPosition(float4(position.xy, 0, 1), 0);
 }
 

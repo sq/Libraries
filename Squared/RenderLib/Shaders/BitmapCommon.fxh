@@ -8,12 +8,16 @@ float4 TransformPosition (float4 position, float offset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
 #ifdef FNA
     // ... Except for OpenGL, who don't need no half pixels
-    float4 modelViewPos = mul(position, Viewport.ModelView);
+    float4 modelViewPos = mul(position, GetViewportModelViewMatrix());
 #else
-    float4 modelViewPos = mul(position, Viewport.ModelView) - float4(offset, offset, 0, 0);
+    float4 modelViewPos = mul(position, GetViewportModelViewMatrix()) - float4(offset, offset, 0, 0);
 #endif
     // Finally project after offsetting
-    return mul(modelViewPos, Viewport.Projection);
+    float4 result = mul(modelViewPos, GetViewportProjectionMatrix());
+    result.x /= (1920 / 2);
+    result.y /= (1080 / 2);
+    result.w = 1;
+    return result;
 }
 
 uniform const float2 BitmapTextureSize, BitmapTextureSize2;
@@ -49,7 +53,17 @@ inline float2 ComputeCorner (
     in int2 cornerIndex : BLENDINDICES0,
     in float2 regionSize
 ) {
-    float2 corner = Corners[cornerIndex.x];
+    float2 corner;
+    if (cornerIndex.x < 1)
+        corner = float2(0, 0);
+    else if (cornerIndex.x < 2)
+        corner = float2(1, 0);
+    else if (cornerIndex.x < 3)
+        corner = float2(1, 1);
+    else
+        corner = float2(0, 1);
+        
+    // float2 corner = Corners[cornerIndex.x];
     return corner * regionSize;
 }
 
@@ -134,9 +148,9 @@ void WorldSpaceVertexShader (
     texCoord2 = ComputeTexCoord(cornerIndex, corner, texRgn2, newTexRgn2);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, rotation);
     
-    position.xy += rotatedCorner - Viewport.Position.xy;
+    position.xy += rotatedCorner - GetViewportPosition().xy;
     
-    result = TransformPosition(float4(position.xy * Viewport.Scale.xy, position.z, 1), 0.5);
+    result = TransformPosition(float4(position.xy * GetViewportScale().xy, position.z, 1), 0.5);
 }
 
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html

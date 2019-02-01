@@ -37,7 +37,7 @@ void WorldSpaceVertexShader(
     out float2 screenPosition : TEXCOORD2,
     out float4 result : POSITION0
 ) {
-    result = TransformPosition(float4(position.xy * Viewport.Scale.xy, position.z, 1), 0.5);
+    result = TransformPosition(float4(position.xy * GetViewportScale().xy, position.z, 1), 0.5);
     screenPosition = position.xy;
 }
 
