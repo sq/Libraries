@@ -70,12 +70,7 @@ namespace Squared.Render {
         private readonly object DrawLock = new object();
 
         private bool _Running = true;
-#if SDL2 || FNA // Disable threading -flibit
-        // 8 months later and I continue to say: NOPE. -flibit
-        private bool _ActualEnableThreading = false;
-#else
         private bool _ActualEnableThreading = true;
-#endif
         private object _FrameLock = new object();
         private Frame  _FrameBeingPrepared = null;
 
@@ -467,7 +462,12 @@ namespace Squared.Render {
         
         protected bool DoThreadedIssue { 
             get {
+#if FNA || SDL2 || MONOGAME
+                // Threaded OpenGL is literally never going to work.
+                return false;
+#else
                 return _ActualEnableThreading;
+#endif
             }
         }
 

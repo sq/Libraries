@@ -191,11 +191,13 @@ namespace Squared.Render {
             if (p == null)
                 return;
 
+            var fData = typeof(EffectParameter).GetField("values", BindingFlags.Instance | BindingFlags.NonPublic);
+            var fDataSize = typeof(EffectParameter).GetField("valuesSizeBytes", BindingFlags.Instance | BindingFlags.NonPublic);
+
             // FIXME: Very slow and clumsy
-            IntPtr ptr;
-            uint size;
             foreach (var member in p.StructureMembers) {
-                member.GetDataPointerEXT(out ptr, out size);
+                var ptr = (IntPtr)fData.GetValue(member);
+                var size = (uint)fDataSize.GetValue(member);
                 var field = Layout.FindField(Type, member.Name);
                 if (field == null)
                     continue;

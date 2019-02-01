@@ -48,12 +48,9 @@ namespace Squared.Render {
                 NewThreadBusyThresholdMs = 2.0f
             };
 
-#if SDL2 || FNA // Disable threading -flibit
-            // Again, I say: NOPE. -flibit
-            UseThreadedDraw = false;
-#else
             UseThreadedDraw = true;
 
+#if !FNA
             if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA) {
                 throw new InvalidOperationException(
                     "An STA apartment is required. See comments for more information."
