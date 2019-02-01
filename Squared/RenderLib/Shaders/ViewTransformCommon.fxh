@@ -5,8 +5,10 @@ struct ViewTransform {
     float2 Position;
 };
 
+// FIXME: FNA HACKS
 uniform float4x4 ViewportProjection;
 uniform float4x4 ViewportModelView;
+uniform float2 ViewportScale, ViewportPosition;
 
 uniform ViewTransform Viewport;
 
