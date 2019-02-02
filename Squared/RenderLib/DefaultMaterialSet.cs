@@ -524,6 +524,7 @@ namespace Squared.Render {
 
         private FrameParams? LastAppliedFrameParams;
         private ViewTransform? LastAppliedViewTransform;
+        private bool? LastIsOpenGL;
 
         /// <summary>
         /// Instantly sets the view transform of all material(s) owned by this material set to the ViewTransform field's current value.
@@ -537,8 +538,11 @@ namespace Squared.Render {
             };
 
             if (!LastAppliedFrameParams.HasValue ||
-                !LastAppliedFrameParams.Value.Equals(@params)) {
+                !LastAppliedFrameParams.Value.Equals(@params) ||
+                LastIsOpenGL != Coordinator.IsOpenGL
+            ) {
                 LastAppliedFrameParams = @params;
+                LastIsOpenGL = Coordinator.IsOpenGL;
                 ForEachMaterial(_ApplyParamsDelegate, @params);
             }
 
