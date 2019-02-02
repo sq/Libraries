@@ -561,6 +561,8 @@ namespace Squared.Render {
             if (@params.FrameIndex.HasValue)
                 m.Parameters?.FrameIndex?.SetValue((float)@params.FrameIndex.Value);
 
+            m.Parameters?.HalfPixelOffset?.SetValue(!Coordinator.IsOpenGL);
+
             var ds = DefaultDitheringSettings;
             ds.FrameIndex = @params.FrameIndex.GetValueOrDefault(0);
 
@@ -665,6 +667,7 @@ namespace Squared.Render {
         public readonly EffectParameter BitmapTextureSize2, HalfTexel2;
         public readonly EffectParameter ShadowColor, ShadowOffset, LightmapUVOffset;
         public readonly EffectParameter Time, FrameIndex, DitherStrength;
+        public readonly EffectParameter HalfPixelOffset;
 
         public DefaultMaterialSetEffectParameters (Effect effect) {
             var viewport = effect.Parameters["Viewport"];
@@ -686,6 +689,7 @@ namespace Squared.Render {
             ShadowOffset = effect.Parameters["ShadowOffset"];
             LightmapUVOffset = effect.Parameters["LightmapUVOffset"];
             DitherStrength = effect.Parameters["DitherStrength"];
+            HalfPixelOffset = effect.Parameters["HalfPixelOffset"];
         }
     }
 

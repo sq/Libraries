@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using Microsoft.Xna.Framework;
@@ -118,6 +119,7 @@ namespace Squared.Render {
         public event EventHandler DeviceReset, DeviceChanged;
 
         public bool IsDisposed { get; private set; }
+        public bool IsOpenGL { get; private set; }
 
         private long TimeOfLastResetOrDeviceChange = 0;
 
@@ -141,6 +143,7 @@ namespace Squared.Render {
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
+            UpdateIsOpenGL(Device);
             RegisterForDeviceEvents();
         }
 
@@ -163,21 +166,31 @@ namespace Squared.Render {
 
             DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
+            UpdateIsOpenGL(Device);
             RegisterForDeviceEvents();
 
             deviceService.DeviceCreated += DeviceService_DeviceCreated;
         }
 
+        private void UpdateIsOpenGL (GraphicsDevice device) {
+            var f = device.GetType().GetField("GLDevice", BindingFlags.Instance | BindingFlags.NonPublic);
+            IsOpenGL = (f != null);
+        }
+
+        private void SetGraphicsDevice (GraphicsDevice device) {
+            TimeOfLastResetOrDeviceChange = Time.Ticks;
+            if (Manager.DeviceManager.Device != device)
+                Manager.ChangeDevice(device);
+
+            UpdateIsOpenGL(device);
+            RegisterForDeviceEvents();
+
+            if (DeviceChanged != null)
+                DeviceChanged(this, EventArgs.Empty);
+        }
+
         private void DeviceService_DeviceCreated (object sender, EventArgs e) {
-            if (DeviceService.GraphicsDevice != Manager.DeviceManager.Device) {
-                TimeOfLastResetOrDeviceChange = Time.Ticks;
-
-                Manager.ChangeDevice(DeviceService.GraphicsDevice);
-                RegisterForDeviceEvents();
-
-                if (DeviceChanged != null)
-                    DeviceChanged(this, EventArgs.Empty);
-            }
+            SetGraphicsDevice(DeviceService.GraphicsDevice);
         }
 
         /// <summary>

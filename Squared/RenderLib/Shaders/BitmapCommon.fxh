@@ -4,14 +4,13 @@
 
 #define ENABLE_DITHERING
 
-float4 TransformPosition (float4 position, float offset) {
+uniform bool HalfPixelOffset;
+
+float4 TransformPosition (float4 position, bool halfPixelOffset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
-#ifdef FNA
-    // ... Except for OpenGL, who don't need no half pixels
     float4 modelViewPos = mul(position, GetViewportModelViewMatrix());
-#else
-    float4 modelViewPos = mul(position, GetViewportModelViewMatrix()) - float4(offset, offset, 0, 0);
-#endif
+    if (halfPixelOffset && HalfPixelOffset)
+        modelViewPos.xy -= 0.5;
     // Finally project after offsetting
     float4 result = mul(modelViewPos, GetViewportProjectionMatrix());
     return result;
@@ -111,7 +110,7 @@ void ScreenSpaceVertexShader (
     
     position.xy += rotatedCorner;
 
-    result = TransformPosition(float4(position.xy, position.z, 1), 0.5);
+    result = TransformPosition(float4(position.xy, position.z, 1), true);
 }
 
 void WorldSpaceVertexShader (
@@ -137,7 +136,7 @@ void WorldSpaceVertexShader (
     
     position.xy += rotatedCorner - GetViewportPosition().xy;
     
-    result = TransformPosition(float4(position.xy * GetViewportScale().xy, position.z, 1), 0.5);
+    result = TransformPosition(float4(position.xy * GetViewportScale().xy, position.z, 1), true);
 }
 
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html

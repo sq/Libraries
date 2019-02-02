@@ -16,7 +16,7 @@ void ScreenSpaceVertexShader(
     inout float4 color : COLOR0,
     out float4 result : POSITION0
 ) {
-    result = TransformPosition(float4(position.xy, 0, 1), 0);
+    result = TransformPosition(float4(position.xy, 0, 1), false);
 }
 
 void WorldSpaceVertexShader(
@@ -26,7 +26,7 @@ void WorldSpaceVertexShader(
 ) {
     position -= GetViewportPosition().xy;
     position *= GetViewportScale().xy;
-    result = TransformPosition(float4(position.xy, 0, 1), 0);
+    result = TransformPosition(float4(position.xy, 0, 1), false);
 }
 
 void ScreenSpaceTexturedVertexShader(
@@ -35,7 +35,7 @@ void ScreenSpaceTexturedVertexShader(
     inout float2 texCoord : TEXCOORD0,
     out float4 result : POSITION0
 ) {
-    result = TransformPosition(float4(position.xy, 0, 1), 0);
+    result = TransformPosition(float4(position.xy, 0, 1), false);
 }
 
 void WorldSpaceTexturedVertexShader(
@@ -46,7 +46,7 @@ void WorldSpaceTexturedVertexShader(
 ) {
     position -= GetViewportPosition().xy;
     position *= GetViewportScale().xy;
-    result = TransformPosition(float4(position.xy, 0, 1), 0);
+    result = TransformPosition(float4(position.xy, 0, 1), false);
 }
 
 void VertexColorPixelShader(

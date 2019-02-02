@@ -1,14 +1,13 @@
 #include "ViewTransformCommon.fxh"
 #include "DitherCommon.fxh"
 
-float4 TransformPosition(float4 position, float offset) {
+uniform bool HalfPixelOffset;
+
+float4 TransformPosition(float4 position, bool halfPixelOffset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
-#ifdef FNA
-    // ... Except for OpenGL, who don't need no half pixels
     float4 modelViewPos = mul(position, Viewport.ModelView);
-#else
-    float4 modelViewPos = mul(position, Viewport.ModelView) - float4(offset, offset, 0, 0);
-#endif
+    if (halfPixelOffset && HalfPixelOffset)
+        modelViewPos.xy -= 0.5;
     // Finally project after offsetting
     return mul(modelViewPos, Viewport.Projection);
 }
@@ -23,7 +22,7 @@ void ScreenSpaceVertexShader(
     out float2 screenPosition : TEXCOORD2,
     out float4 result : POSITION0
 ) {
-    result = TransformPosition(float4(position.xy, position.z, 1), 0.5);
+    result = TransformPosition(float4(position.xy, position.z, 1), true);
     screenPosition = position.xy;
 }
 
@@ -37,7 +36,7 @@ void WorldSpaceVertexShader(
     out float2 screenPosition : TEXCOORD2,
     out float4 result : POSITION0
 ) {
-    result = TransformPosition(float4(position.xy * GetViewportScale().xy, position.z, 1), 0.5);
+    result = TransformPosition(float4(position.xy * GetViewportScale().xy, position.z, 1), true);
     screenPosition = position.xy;
 }
 
