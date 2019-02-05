@@ -34,10 +34,13 @@ namespace ShaderCompiler {
                     if (!doesNotExist)
                         File.Delete(destPath);
 
-                    Console.WriteLine("  {0} Compiling...", doesNotExist ? "does not exist" : "is outdated");
+                    var localFxcParams = GetFxcParamsForShader(shader) ?? fxcParams;
+                    var fullFxcParams = 
+                        string.Format("/nologo {0} /T fx_2_0 {1} /Fo {2}", shader, localFxcParams, destPath);
+
+                    Console.WriteLine("  {0} Compiling with params '{1}'...", doesNotExist ? "does not exist" : "is outdated", localFxcParams);
                     var psi = new ProcessStartInfo(
-                        fxcPath,
-                        string.Format("/nologo {0} /T fx_2_0 {1} /Fo {2}", shader, fxcParams, destPath)
+                        fxcPath, fullFxcParams
                     ) {
                         UseShellExecute = false
                     };
@@ -51,6 +54,19 @@ namespace ShaderCompiler {
 
             if (Debugger.IsAttached)
                 Console.ReadLine();
+        }
+
+        private static string GetFxcParamsForShader (string path) {
+            var prologue = "#pragma fxcparams(";
+
+            foreach (var line in File.ReadAllLines(path)) {
+                if (!line.StartsWith(prologue))
+                    continue;
+
+                return line.Substring(prologue.Length).Replace(")", "");
+            }
+
+            return null;
         }
         
         private static IEnumerable<string> EnumerateFilenamesForShader (string path) {
@@ -72,7 +88,7 @@ namespace ShaderCompiler {
                 if (!File.Exists(absoluteIncludePath))
                     Console.Error.WriteLine("// WARNING: File not found: {0}", absoluteIncludePath);
 
-                Console.WriteLine("  {1}", name, includePath);
+                // Console.WriteLine("  {1}", name, includePath);
 
                 foreach (var includedPath in EnumerateFilenamesForShader(absoluteIncludePath))
                     yield return includedPath;
