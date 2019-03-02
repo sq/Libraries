@@ -212,7 +212,8 @@ namespace Squared.Render {
         private volatile int _AllowCreatingNewGenerators = 1;
 
         private int _FrameCount = 0;
-        private readonly Frame _Frame;
+        private object _FrameLock = new object();
+        private Frame _Frame;
         private bool _FrameInUse = false;
 
         internal long TotalVertexBytes, TotalIndexBytes;
@@ -253,7 +254,7 @@ namespace Squared.Render {
 
             CreateNewBufferGenerators();
 
-            _Frame = new Frame();
+            _Frame = null;
         }
 
         internal void CreateNewBufferGenerators () {
@@ -359,20 +360,22 @@ namespace Squared.Render {
         }
 
         internal void ReleaseFrame (Frame frame) {
-            if (_Frame != frame)
-                throw new InvalidOperationException();
+            lock (_FrameLock) {
+                if (_Frame != frame)
+                    throw new InvalidOperationException();
 
-            lock (_Frame)
                 _FrameInUse = false;
+            }
         }
 
         public Frame CreateFrame () {
-            lock (_Frame) {
+            lock (_FrameLock) {
                 if (_FrameInUse)
                     throw new InvalidOperationException("A frame is already in use");
 
                 _FrameInUse = true;
                 CollectAllocators();
+                _Frame = new Frame();
                 _Frame.Initialize(this, PickFrameIndex());
                 return _Frame;
             }
