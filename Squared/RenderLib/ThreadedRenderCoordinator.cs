@@ -258,10 +258,12 @@ namespace Squared.Render {
             TimeOfLastResetOrDeviceChange = Time.Ticks;
             FirstFrameSinceReset = true;
             _DeviceLost = true;
+            Manager.OnDeviceResetOrLost();
         }
 
         // We must acquire both locks before resetting the device to avoid letting the reset happen during a paint or content load operation.
         protected void OnDeviceResetting (object sender, EventArgs args) {
+
             TimeOfLastResetOrDeviceChange = Time.Ticks;
             FirstFrameSinceReset = true;
 
@@ -303,6 +305,8 @@ namespace Squared.Render {
 
             if (DeviceReset != null)
                 DeviceReset(this, EventArgs.Empty);
+
+            Manager.OnDeviceResetOrLost();
         }
                 
         private void WaitForPendingWork () {

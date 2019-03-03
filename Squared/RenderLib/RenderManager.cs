@@ -271,7 +271,18 @@ namespace Squared.Render {
             );
         }
 
+        internal void OnDeviceResetOrLost () {
+            if (false)
+            lock (_FrameLock) {
+                _FrameInUse = false;
+                // FIXME: Leak
+                _Frame = null;
+            }
+        }
+
         internal void ChangeDevice (GraphicsDevice device) {
+            OnDeviceResetOrLost();
+
             if (DeviceManager != null)
                 DeviceManager.Dispose();
             DeviceManager = new DeviceManager(device);
@@ -361,20 +372,25 @@ namespace Squared.Render {
 
         internal void ReleaseFrame (Frame frame) {
             lock (_FrameLock) {
-                if (_Frame != frame)
-                    throw new InvalidOperationException();
-
-                _FrameInUse = false;
+                if (_Frame == frame)
+                    _FrameInUse = false;
             }
         }
 
         public Frame CreateFrame () {
             lock (_FrameLock) {
+                /*
                 if (_FrameInUse)
                     throw new InvalidOperationException("A frame is already in use");
 
                 _FrameInUse = true;
                 CollectAllocators();
+                */
+
+                // UGH
+                if (!_FrameInUse)
+                    CollectAllocators();
+                _FrameInUse = true;
                 _Frame = new Frame();
                 _Frame.Initialize(this, PickFrameIndex());
                 return _Frame;

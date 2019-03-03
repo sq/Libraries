@@ -190,6 +190,9 @@ namespace Squared.Render {
                 var frame = RenderCoordinator.BeginFrame();
                 RenderCoordinator.SynchronousDrawsEnabled = false;
                 Draw(gameTime, frame);
+            } catch (Exception exc) {
+                Console.WriteLine("Caught {0} in Draw", exc);
+                throw;
             } finally {
                 RenderCoordinator.SynchronousDrawsEnabled = true;
                 RenderCoordinator.WorkStopwatch.Stop();
@@ -203,6 +206,9 @@ namespace Squared.Render {
 
             try {
                 RenderCoordinator.EndDraw();
+            } catch (Exception exc) {
+                Console.WriteLine("Caught {0} in EndDraw", exc);
+                throw;
             } finally {
                 RenderCoordinator.WorkStopwatch.Stop();
 
