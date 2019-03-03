@@ -131,6 +131,15 @@ namespace Squared.Task {
             }
         }
 
+        public static FutureAwaitExtensionMethods.IFutureAwaiter GetAwaiter (this IEnumerator<object> task) {
+            var scheduler = TaskScheduler.Current;
+            if (scheduler == null)
+                throw new InvalidOperationException("No active TaskScheduler");
+
+            var f = scheduler.Start(task, TaskExecutionPolicy.RunWhileFutureLives);
+            return f.GetAwaiter();
+        }
+
         public static ISchedulableAwaiter GetAwaiter (this ISchedulable schedulable) {
             return new ISchedulableAwaiter(schedulable);
         }
