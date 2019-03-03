@@ -95,7 +95,18 @@ namespace Squared.Render.Convenience {
         public static readonly RasterizerState ScissorOnly = new RasterizerState {
             CullMode = CullMode.None,
             ScissorTestEnable = true
-        };    
+        };
+
+        /// <summary>
+        /// Provides a sampler state appropriate for rendering text. The mip bias is adjusted to preserve sharpness.
+        /// </summary>
+        public static readonly SamplerState Text = new SamplerState {
+            AddressU = TextureAddressMode.Clamp,
+            AddressV = TextureAddressMode.Clamp,
+            AddressW = TextureAddressMode.Clamp,
+            Filter = TextureFilter.Linear,
+            MipMapLevelOfDetailBias = -0.5f
+        };
     }
 
     public static class MaterialUtil {
