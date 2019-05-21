@@ -79,10 +79,15 @@ namespace Squared.Render.STB {
         }
 
         private unsafe void ConvertData (bool premultiply) {
+#if FNA
+            if (premultiply)
+                PremultiplyData();
+#else
             if (premultiply)
                 PremultiplyAndChannelSwapData();
             else
                 ChannelSwapData();
+#endif
         }
 
         private unsafe void PremultiplyFPData () {
@@ -94,6 +99,22 @@ namespace Squared.Render.STB {
                 pData[0] *= a;
                 pData[1] *= a;
                 pData[2] *= a;
+            }
+        }
+
+        private unsafe void PremultiplyData () {
+            var pData = (uint*)Data;
+            var pBytes = (byte*)Data;
+            var pEnd = pData + (Width * Height);
+            for (; pData < pEnd; pData++, pBytes+=4) {
+                var value = *pData;
+                var a = (value & 0xFF000000) >> 24;
+                var r = (value & 0xFF);
+                var g = (value & 0xFF00) >> 8;
+                var b = (value & 0xFF0000) >> 16;
+                pBytes[0] = (byte)(r * a / 255);
+                pBytes[1] = (byte)(g * a / 255);
+                pBytes[2] = (byte)(b * a / 255);
             }
         }
 
