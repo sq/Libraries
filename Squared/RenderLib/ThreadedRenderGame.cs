@@ -133,6 +133,8 @@ namespace Squared.Render {
         protected override bool BeginDraw() {
             RenderCoordinator.WorkStopwatch.Restart();
 
+            ThreadGroup.StepMainThreadUntilDrained();
+
             try {
                 var ok = RenderCoordinator.BeginDraw();
                 if (!ok) {
@@ -224,6 +226,8 @@ namespace Squared.Render {
                 RenderCoordinator.WaitStopwatch.Reset();
                 RenderCoordinator.BeforePresentStopwatch.Reset();
             }
+
+            ThreadGroup.StepMainThreadUntilDrained();
 
             RenderCoordinator.EnableThreading = UseThreadedDraw;
         }

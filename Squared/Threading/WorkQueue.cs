@@ -39,6 +39,10 @@ namespace Squared.Threading {
         int Step (out bool exhausted, int? maximumCount = null);
     }
 
+    // This job must be run on the main thread
+    public interface IMainThreadWorkItem : IWorkItem {
+    }
+
     public interface IWorkItem {
         void Execute ();
     }
@@ -67,6 +71,9 @@ namespace Squared.Threading {
         // For debugging
         public const bool BlockEnqueuesWhileDraining = false;
 
+        // For debugging
+        public bool IsMainThreadQueue = false;
+
         /// <summary>
         /// Configures the number of steps taken each time this queue is visited by a worker thread.
         /// Low values increase the overhead of individual work items.
@@ -85,7 +92,10 @@ namespace Squared.Threading {
 
         private SignalFuture _DrainCompleteFuture = null;
 
+        private readonly bool IsMainThreadWorkItem;
+
         public WorkQueue () {
+            IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -96,6 +106,11 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (T data, OnWorkItemComplete<T> onComplete = null) {
+#if DEBUG
+            if (IsMainThreadWorkItem && !IsMainThreadQueue)
+                throw new InvalidOperationException("This work item must be queued on the main thread");
+#endif
+
             lock (Queue) {
                 ManageDrain();
                 Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
@@ -104,6 +119,11 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Enqueue (ref T data, OnWorkItemComplete<T> onComplete = null) {
+#if DEBUG
+            if (IsMainThreadWorkItem && !IsMainThreadQueue)
+                throw new InvalidOperationException("This work item must be queued on the main thread");
+#endif
+
             lock (Queue) {
                 ManageDrain();
                 Queue.Enqueue(new InternalWorkItem<T>(this, ref data, onComplete));
@@ -111,6 +131,11 @@ namespace Squared.Threading {
         }
 
         public void EnqueueMany (ArraySegment<T> data) {
+#if DEBUG
+            if (IsMainThreadWorkItem && !IsMainThreadQueue)
+                throw new InvalidOperationException("This work item must be queued on the main thread");
+#endif
+
             lock (Queue) {
                 ManageDrain();
 

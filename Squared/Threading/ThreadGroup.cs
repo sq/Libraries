@@ -26,6 +26,8 @@ namespace Squared.Threading {
         // A lock-free dictionary for looking up queues by work item type
         private readonly ConcurrentDictionary<Type, IWorkQueue> Queues = 
             new ConcurrentDictionary<Type, IWorkQueue>(new ReferenceComparer<Type>());
+        private readonly ConcurrentDictionary<Type, IWorkQueue> MainThreadQueues = 
+            new ConcurrentDictionary<Type, IWorkQueue>(new ReferenceComparer<Type>());
 
         // We keep a separate iterable copy of the queue list for thread spawning purposes
         private readonly List<IWorkQueue> QueueList = new List<IWorkQueue>();
@@ -55,6 +57,34 @@ namespace Squared.Threading {
 
             HasNoThreads = (Count == 0);
             CanMakeNewThreads = (Count < MaximumThreadCount);
+        }
+
+        /// <summary>
+        /// Call this method to advance all the main thread work item queues.
+        /// This is necessary to ensure main-thread-only jobs advance.
+        /// </summary>
+        /// <returns>Whether all queues have been exhausted.</returns>
+        public bool StepMainThread () {
+            bool allExhausted = true;
+            int totalSteps = 0;
+            IWorkQueue[] queues;
+            // FIXME: Pointless alloc
+            lock (MainThreadQueues) {
+                queues = new IWorkQueue[MainThreadQueues.Count];
+                MainThreadQueues.Values.CopyTo(queues, 0);
+            }
+            foreach (var q in queues) {
+                bool exhausted;
+                totalSteps += q.Step(out exhausted);
+                if (!exhausted)
+                    allExhausted = false;
+            }
+            return allExhausted;
+        }
+
+        public void StepMainThreadUntilDrained () {
+            while (!StepMainThread())
+                ;
         }
 
         public int Count {
@@ -94,27 +124,38 @@ namespace Squared.Threading {
         ///  ThreadGroup.NotifyQueuesChanged to ensure that a sufficient number of threads are ready
         ///  to perform work.
         /// </summary>
-        public WorkQueue<T> GetQueueForType<T> ()
+        /// <param name="forMainThread">Pass true if you wish to queue a work item to run on the main thread. Will be set automatically for main-thread-only work items.</param>
+        public WorkQueue<T> GetQueueForType<T> (bool forMainThread = false)
             where T : IWorkItem 
         {
             var type = typeof(T);
             IWorkQueue existing;
             WorkQueue<T> result;
 
-            if (!Queues.TryGetValue(type, out existing)) {
-                result = CreateQueueForType<T>();
+            var queues = Queues;
+            var isMainThreadOnly = typeof(IMainThreadWorkItem).IsAssignableFrom(type) || forMainThread;
+
+            // If the job must be run on the main thread, add to the main thread queue
+            // Note that you must manually pump this queue yourself.
+            if (isMainThreadOnly)
+                queues = MainThreadQueues;
+
+            if (!queues.TryGetValue(type, out existing)) {
+                result = CreateQueueForType<T>(isMainThreadOnly);
                 
                 // We lost a race to create the new work queue
-                if (!Queues.TryAdd(type, result)) {
-                    result = (WorkQueue<T>)Queues[type];
+                if (!queues.TryAdd(type, result)) {
+                    result = (WorkQueue<T>)queues[type];
                 } else {
                     lock (QueueList)
                         QueueList.Add(result);
 
-                    // FIXME: Can this deadlock somehow?
-                    lock (Threads)
-                    foreach (var thread in Threads)
-                        thread.RegisterQueue(result);
+                    if (!isMainThreadOnly) {
+                        // FIXME: Can this deadlock somehow?
+                        lock (Threads)
+                        foreach (var thread in Threads)
+                            thread.RegisterQueue(result);
+                    }
                 }
             } else {
                 result = (WorkQueue<T>)existing;
@@ -123,10 +164,12 @@ namespace Squared.Threading {
             return result;
         }
 
-        private WorkQueue<T> CreateQueueForType<T> ()
+        private WorkQueue<T> CreateQueueForType<T> (bool isMainThreadOnly)
             where T : IWorkItem
         {
-            return new WorkQueue<T>();
+            return new WorkQueue<T>() {
+                IsMainThreadQueue = isMainThreadOnly
+            };
         }
 
         /// <summary>
