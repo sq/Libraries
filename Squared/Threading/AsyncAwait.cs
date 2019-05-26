@@ -23,24 +23,31 @@ namespace Squared.Threading {
             public TResult         DisposedValue;
         }
 
+        public struct NonThrowingFuture<TResult> {
+            public Future<TResult> Future;
+        }
+
         public struct FutureAwaiter<TResult> : INotifyCompletion {
             public readonly CancellationScope.Registration Registration;
             public readonly Future<TResult> Future;
             public readonly bool HasDisposedValue;
             public readonly TResult DisposedValue;
+            public readonly bool ThrowOnError;
 
-            public FutureAwaiter (Future<TResult> future) {
+            public FutureAwaiter (Future<TResult> future, bool throwOnError = true) {
                 Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
                 HasDisposedValue = false;
                 DisposedValue = default(TResult);
+                ThrowOnError = throwOnError;
             }
 
-            public FutureAwaiter (FutureWithDisposedValue<TResult> fwdv) {
+            public FutureAwaiter (FutureWithDisposedValue<TResult> fwdv, bool throwOnError = true) {
                 Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = fwdv.Future;
                 HasDisposedValue = true;
                 DisposedValue = fwdv.DisposedValue;
+                ThrowOnError = throwOnError;
             }
 
             public void OnCompleted (Action continuation) {
@@ -60,6 +67,9 @@ namespace Squared.Threading {
 
                 if (Future.Disposed && HasDisposedValue)
                     return DisposedValue;
+
+                if ((ThrowOnError == false) && Future.Failed)
+                    return default(TResult);
 
                 return Future.Result2;
             }
@@ -281,6 +291,10 @@ namespace Squared.Threading {
             return new FutureAwaiter<T>(fwdv);
         }
 
+        public static FutureAwaiter<T> GetAwaiter<T> (this NonThrowingFuture<T> future) {
+            return new FutureAwaiter<T>(future.Future, false);
+        }
+
         public static IFutureAwaiter GetAwaiter (this IFuture future) {
             return new IFutureAwaiter(future);
         }
@@ -348,6 +362,12 @@ namespace Squared.Threading {
             return new FutureWithDisposedValue<TResult> {
                 Future = future,
                 DisposedValue = value
+            };
+        }
+
+        public static NonThrowingFuture<TResult> DoNotThrow<TResult> (this Future<TResult> future) {
+            return new NonThrowingFuture<TResult> {
+                Future = future
             };
         }
     }
