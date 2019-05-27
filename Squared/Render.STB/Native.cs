@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace Squared.Render.STB.Native {
@@ -20,19 +22,12 @@ namespace Squared.Render.STB.Native {
     }
 
     public static unsafe partial class API {
-#if X64
-#if DEBUG
-        const string DllName = "stbi-x64-Debug";
-#else
-        const string DllName = "stbi-x64-Release";
-#endif
-#else
-#if DEBUG
-        const string DllName = "stbi-x86-Debug";
-#else
-        const string DllName = "stbi-x86-Release";
-#endif
-#endif
+        static API () {
+            var loader = new Util.EmbeddedDLLLoader(Assembly.GetExecutingAssembly());
+            loader.Load(DllName + ".dll");
+        }
+
+        const string DllName = "stb_image";
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern void stbi_image_free (void* ptr);

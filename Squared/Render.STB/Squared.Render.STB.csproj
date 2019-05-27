@@ -18,7 +18,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>    
+    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -81,6 +81,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="STBI.cs" />
     <Compile Include="STBIW.cs" />
+    <EmbeddedResource Include="..\STBNative\bin\stbi-$(PlatformTarget)-$(Configuration).dll">
+      <LogicalName>stb_image.dll</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RenderLib\Squared.Render.csproj">
@@ -92,43 +95,6 @@
       <Name>Squared.Util</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)|$(Platform)' == 'Release|FNA-x64'">
-    <Content Include="..\STBNative\bin\stbi-x64-Release.dll">
-      <Link>stbi-x64-Release.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|FNA-x64'">
-    <Content Include="..\STBNative\bin\stbi-x64-Debug.dll">
-      <Link>stbi-x64-Debug.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)|$(Platform)' == 'Release|FNA'">
-    <Content Include="..\STBNative\bin\stbi-x86-Release.dll">
-      <Link>stbi-x86-Release.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|FNA'">
-    <Content Include="..\STBNative\bin\stbi-x86-Debug.dll">
-      <Link>stbi-x86-Debug.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)|$(Platform)' == 'x86'">
-    <Content Include="..\STBNative\bin\stbi-x86-Release.dll">
-      <Link>stbi-x86-Release.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)|$(Platform)' == 'x86'">
-    <Content Include="..\STBNative\bin\stbi-x86-Debug.dll">
-      <Link>stbi-x86-Debug.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
