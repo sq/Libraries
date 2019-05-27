@@ -12,12 +12,18 @@ void BlueToLUTBaseX (const float res, const float resMinus1, float value, out fl
 }
 
 float3 ReadLUT (sampler2D s, float resolution, float3 value) {
-    value = saturate(value);
-    const float resMinus1 = resolution - 1.0;
+    // FIXME: MojoShader workaround
+    if (0) {
+        value = saturate(value);
+    } else {
+        value = float3(saturate(value.r), saturate(value.g), saturate(value.b));
+    }
+
+    float resMinus1 = resolution - 1.0;
 
     float x1, x2, weight;
     BlueToLUTBaseX(resolution, resMinus1, value.b, x1, x2, weight);
-
+    
     float2 size = float2(1.0 / resolution, 1);
     // HACK: Rescale input values to account for the fact that a texture's coordinates are [-0.5, size+0.5] instead of [0, 1]
     float rescale = resMinus1 / resolution;
