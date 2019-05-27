@@ -22,5 +22,3 @@ float2 GetViewportScale () {
 float2 GetViewportPosition () {
     return Viewport.Position;
 }
-
-#define vpos (__vpos__)

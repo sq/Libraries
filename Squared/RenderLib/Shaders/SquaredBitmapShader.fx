@@ -1,5 +1,6 @@
 #include "ViewTransformCommon.fxh"
 #include "BitmapCommon.fxh"
+#include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
 #include "LUTCommon.fxh"
 
@@ -60,14 +61,14 @@ void BasicPixelShaderWithLUT(
     in float4 addColor : COLOR1,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    in float2 __vpos__ : VPOS,
+    ACCEPTS_VPOS,
     out float4 result : COLOR0
 ) {
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
     float4 texColor = tex2D(TextureSampler, clamp(texCoord, texRgn.xy, texRgn.zw));
-    texColor.rgb = ApplyDither(ApplyLUT(texColor.rgb, LUT2Weight), vpos);
+    texColor.rgb = ApplyDither(ApplyLUT(texColor.rgb, LUT2Weight), GET_VPOS);
 
     result = multiplyColor * texColor;
     result += (addColor * result.a);
@@ -78,7 +79,7 @@ void ToSRGBPixelShader(
     in float4 addColor : COLOR1,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    in float2 __vpos__ : VPOS,
+    ACCEPTS_VPOS,
     out float4 result : COLOR0
 ) {
     addColor.rgb *= addColor.a;
@@ -87,7 +88,7 @@ void ToSRGBPixelShader(
     result = multiplyColor * tex2D(TextureSampler, clamp(texCoord, texRgn.xy, texRgn.zw));
     result += (addColor * result.a);
     // Fixme: Premultiplied alpha?
-    result.rgb = ApplyDither(LinearToSRGB(result.rgb), vpos);
+    result.rgb = ApplyDither(LinearToSRGB(result.rgb), GET_VPOS);
 }
 
 void ShadowedPixelShader(

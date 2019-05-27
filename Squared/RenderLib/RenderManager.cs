@@ -71,9 +71,10 @@ namespace Squared.Render {
             private static void Set_Slow (DeviceManager deviceManager, Material material) {
                 if (deviceManager.CurrentMaterial != null)
                     deviceManager.CurrentMaterial.End(deviceManager);
-
+                
                 deviceManager.CurrentMaterial = material;
-
+                deviceManager.UpdateTargetInfo();
+            
                 if (material != null)
                     material.Begin(deviceManager);
             }
@@ -92,6 +93,8 @@ namespace Squared.Render {
         private static volatile int NextDeviceId;
         public int DeviceId { get; private set; }
 
+        private int CachedTargetWidth, CachedTargetHeight;
+        private bool IsRenderTargetBound;
         private bool _IsDisposed;
 
         public bool IsDisposed {
@@ -113,6 +116,49 @@ namespace Squared.Render {
         public DeviceManager (GraphicsDevice device) {
             Device = device;
             DeviceId = ++NextDeviceId;
+        }
+
+        internal void UpdateTargetInfo () {
+            UpdateTargetInfo(null, false);
+        }
+
+        internal void UpdateTargetInfo (RenderTarget2D target, bool knownTarget) {
+            var material = CurrentMaterial;
+            if (material == null)
+                return;
+
+            var iud = material.Parameters?.IsRenderTargetUpsideDown;
+            var rtd = material.Parameters?.RenderTargetDimensions;
+
+            if ((iud == null) && (rtd == null))
+                return;
+
+            // FIXME: leak
+            if ((CachedTargetWidth <= 0) || knownTarget) {
+                if (!knownTarget) {
+                    var rts = Device.GetRenderTargets();
+                    if ((rts == null) || (rts.Length == 0))
+                        target = null;
+                    else
+                        target = (RenderTarget2D)rts[0].RenderTarget;
+                }
+
+                if (target == null) {
+                    CachedTargetWidth = Device.PresentationParameters.BackBufferWidth;
+                    CachedTargetHeight = Device.PresentationParameters.BackBufferHeight;
+                    IsRenderTargetBound = false;
+                } else {
+                    CachedTargetWidth = target.Width;
+                    CachedTargetHeight = target.Height;
+                    IsRenderTargetBound = true;
+                }
+            }
+
+#if FNA
+            iud.SetValue(!IsRenderTargetBound);
+#else
+#endif
+            rtd?.SetValue(new Vector2(CachedTargetWidth, CachedTargetHeight));
         }
 
         public void PushStates () {
@@ -139,27 +185,34 @@ namespace Squared.Render {
             } else {
                 Device.Viewport = new Viewport(0, 0, Device.PresentationParameters.BackBufferWidth, Device.PresentationParameters.BackBufferHeight);
             }
+            UpdateTargetInfo(newRenderTarget, true);
         }
 
         public void PushRenderTargets (RenderTargetBinding[] newRenderTargets) {
             PushStates();
 
             var first = (RenderTarget2D)newRenderTargets[0].RenderTarget;
+            CachedTargetWidth = first.Width;
+            CachedTargetHeight = first.Height;
 
             RenderTargetStack.Push(Device.GetRenderTargets());
             ViewportStack.Push(Device.Viewport);
             Device.SetRenderTargets(newRenderTargets);
             RenderManager.ResetDeviceState(Device);
             Device.Viewport = new Viewport(0, 0, first.Width, first.Height);
+            UpdateTargetInfo(first, true);
         }
 
         public void PopRenderTarget () {
             PopStates();
 
-            Device.SetRenderTargets(RenderTargetStack.Pop());
+            var newRenderTargets = RenderTargetStack.Pop();
+            Device.SetRenderTargets(newRenderTargets);
             Device.Viewport = ViewportStack.Pop();
             // GOD
             RenderManager.ResetDeviceState(Device);
+            CachedTargetWidth = CachedTargetHeight = 0;
+            UpdateTargetInfo();
         }
 
         public DefaultMaterialSetEffectParameters CurrentParameters {
@@ -181,6 +234,7 @@ namespace Squared.Render {
             if (changeRenderTargets)
                 Device.SetRenderTargets();
             Device.SetVertexBuffer(null);
+            CachedTargetWidth = CachedTargetHeight = 0;
         }
 
         public void Finish () {
@@ -193,6 +247,7 @@ namespace Squared.Render {
 
             Device.SetRenderTargets();
             Device.SetVertexBuffer(null);
+            CachedTargetWidth = CachedTargetHeight = 0;
         }
     }
 

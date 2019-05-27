@@ -124,8 +124,8 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Shaders\TargetInfo.fxh" />
     <ShaderText Include="Shaders\*.fx" />
-    <None Include="Shaders\BitmapCommon.fxh" />
     <None Include="Shaders\Common.fxh" />
     <None Include="Shaders\DitherCommon.fxh" />
     <None Include="Shaders\GeometryCommon.fxh" />

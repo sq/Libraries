@@ -1,4 +1,5 @@
 #include "ViewTransformCommon.fxh"
+#include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
 
 uniform bool HalfPixelOffset;

@@ -1,5 +1,6 @@
 #include "ViewTransformCommon.fxh"
 #include "BitmapCommon.fxh"
+#include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
 
 uniform float2 LightmapUVOffset;
@@ -36,12 +37,12 @@ void LightmappedPixelShader(
     in float4 texRgn1 : TEXCOORD1,
     in float2 texCoord2 : TEXCOORD2,
     in float4 texRgn2 : TEXCOORD3,
-    in float2 __vpos__ : VPOS,
+    ACCEPTS_VPOS,
     out float4 result : COLOR0
 ) {
     result = LightmappedPixelShaderCore(multiplyColor, addColor, texCoord1, texRgn1, texCoord2, texRgn2);
 
-    result.rgb = ApplyDither(result.rgb, vpos);
+    result.rgb = ApplyDither(result.rgb, GET_VPOS);
 
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);
@@ -54,14 +55,14 @@ void sRGBLightmappedPixelShader(
     in float4 texRgn1 : TEXCOORD1,
     in float2 texCoord2 : TEXCOORD2,
     in float4 texRgn2 : TEXCOORD3,
-    in float2 __vpos__ : VPOS,
+    ACCEPTS_VPOS,
     out float4 result : COLOR0
 ) {
     result = LightmappedPixelShaderCore(multiplyColor, addColor, texCoord1, texRgn1, texCoord2, texRgn2);
 
     result.rgb = LinearToSRGB(result.rgb);
 
-    result.rgb = ApplyDither(result.rgb, vpos);
+    result.rgb = ApplyDither(result.rgb, GET_VPOS);
 
     const float discardThreshold = (1.0 / 255.0);
     clip(result.a - discardThreshold);

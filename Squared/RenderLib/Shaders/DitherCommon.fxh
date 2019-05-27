@@ -7,25 +7,25 @@ uniform DitheringSettings Dithering;
 
 #ifdef ENABLE_DITHERING
 
-float Dither17 (float2 __vpos__, float frameIndexMod4) {
+float Dither17 (float2 vpos, float frameIndexMod4) {
     uint3 k0 = uint3(2, 7, 23);
     float ret = dot(float3(vpos, frameIndexMod4), k0 / 17.0f);
     return frac(ret);
 }
 
-float Dither32 (float2 __vpos__, float frameIndexMod4) {
+float Dither32 (float2 vpos, float frameIndexMod4) {
     uint3 k0 = uint3(13, 5, 15);
     float ret = dot(float3(vpos, frameIndexMod4), k0 / 32.0f);
     return frac(ret);
 }
 
-float Dither64 (float2 __vpos__, float frameIndexMod4) {
+float Dither64 (float2 vpos, float frameIndexMod4) {
     uint3 k0 = uint3(33, 52, 25);
     float ret = dot(float3(vpos, frameIndexMod4), k0 / 64.0f);
     return frac(ret);
 }
 
-float3 ApplyDither (float3 rgb, float2 __vpos__) {
+float3 ApplyDither (float3 rgb, float2 vpos) {
     float threshold = Dither32(vpos, (Dithering.FrameIndex % 4) + 0.5);
     threshold = (Dithering.BandSizeMinus1 + 1) * threshold;
     float3 threshold3 = float3(threshold, threshold, threshold);
@@ -44,7 +44,7 @@ float3 ApplyDither (float3 rgb, float2 __vpos__) {
 
 #else
 
-float3 ApplyDither (float3 rgb, float2 __vpos__) {
+float3 ApplyDither (float3 rgb, float2 vpos) {
     return rgb;
 }
 

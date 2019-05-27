@@ -1,5 +1,6 @@
 #include "ViewTransformCommon.fxh"
 #include "BitmapCommon.fxh"
+#include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
 
 uniform float TapOffset[3] = { 0.0, 1.3846153846, 3.2307692308 };
