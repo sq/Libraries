@@ -23,7 +23,9 @@ namespace Squared.Util {
         public readonly Assembly Assembly;
         internal readonly List<IntPtr> LoadedHandles = new List<IntPtr>();
         internal readonly List<string> CreatedFiles = new List<string>();
-        internal static string TemporaryDirectory;
+        internal string TemporaryDirectory;
+
+        internal bool IsRegisteredForShutdownNotice;
 
         public EmbeddedDLLLoader (Assembly assembly) {
             Assembly = assembly;
@@ -31,6 +33,15 @@ namespace Squared.Util {
 
         private string GetDirectory () {
             if (TemporaryDirectory == null) {
+                var tempdir = Path.GetTempPath();
+                if (tempdir != null) {
+                    var desiredPath = Path.Combine(tempdir, "Squared.Util.EmbeddedDLLLoader", Assembly.GetName().Name);
+                    try {
+                        Directory.CreateDirectory(desiredPath);
+                        return TemporaryDirectory = desiredPath;
+                    } catch {
+                    }
+                }
                 var path = Path.GetTempFileName();
                 File.Delete(path);
                 Directory.CreateDirectory(path);
