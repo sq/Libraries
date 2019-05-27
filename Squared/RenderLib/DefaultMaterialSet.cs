@@ -225,7 +225,7 @@ namespace Squared.Render {
         public Material ScreenSpaceLightmappedsRGBBitmap, WorldSpaceLightmappedsRGBBitmap;
         public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
         public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
-        public Material Clear, SetScissor;
+        public Material Clear, SetScissor, SetViewport;
 
         private readonly Action<Material, FrameParams> _ApplyParamsDelegate;
         protected readonly RefMaterialAction<ViewTransform> _ApplyViewTransformDelegate; 
@@ -290,6 +290,10 @@ namespace Squared.Render {
             );
 
             SetScissor = new Material(
+                null, null
+            );
+
+            SetViewport = new Material(
                 null, null
             );
    

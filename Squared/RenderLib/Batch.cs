@@ -386,9 +386,9 @@ namespace Squared.Render {
     }
 
     public class SetScissorBatch : Batch {
-        public Rectangle Scissor;
+        public Rectangle? Scissor;
 
-        public void Initialize (IBatchContainer container, int layer, Material material, Rectangle scissor) {
+        public void Initialize (IBatchContainer container, int layer, Material material, Rectangle? scissor) {
             base.Initialize(container, layer, material, true);
             Scissor = scissor;
         }
@@ -399,18 +399,71 @@ namespace Squared.Render {
         public override void Issue (DeviceManager manager) {
             var viewport = manager.Device.Viewport;
             var viewportRect = new Rectangle(viewport.X, viewport.Y, viewport.Width, viewport.Height);
-            var intersected = Rectangle.Intersect(viewportRect, Scissor);
-            manager.Device.ScissorRectangle = intersected;
+            if (Scissor == null) {
+                manager.Device.ScissorRectangle = viewportRect;
+            } else {
+                var intersected = Rectangle.Intersect(viewportRect, Scissor.Value);
+                manager.Device.ScissorRectangle = intersected;
+            }
 
             base.Issue(manager);
         }
 
-        public static void AddNew (IBatchContainer container, int layer, Material material, Rectangle scissor) {
+        public static void AddNew (IBatchContainer container, int layer, Material material, Rectangle? scissor) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<SetScissorBatch>();
             result.Initialize(container, layer, material, scissor);
+            result.CaptureStack(0);
+            result.Dispose();
+        }
+    }
+
+    public class SetViewportBatch : Batch {
+        public Rectangle? Viewport;
+        public DefaultMaterialSet MaterialSet;
+        public bool UpdateViewTransform;
+
+        public void Initialize (IBatchContainer container, int layer, Material material, Rectangle? viewport, DefaultMaterialSet materialSet) {
+            base.Initialize(container, layer, material, true);
+            Viewport = viewport;
+            MaterialSet = materialSet;
+        }
+
+        protected override void Prepare (PrepareManager manager) {
+        }
+
+        public override void Issue (DeviceManager manager) {
+            Viewport newViewport;
+            var rts = manager.Device.GetRenderTargets();
+            if ((rts?.Length ?? 0) > 0) {
+                var tex = (Texture2D)rts[0].RenderTarget;
+                var deviceRect = new Rectangle(0, 0, tex.Width, tex.Height);
+                var rect = Viewport ?? deviceRect;
+                var intersected = Rectangle.Intersect(rect, Viewport.Value);
+                newViewport = new Viewport(intersected);
+            } else {
+                newViewport = new Viewport(Viewport ?? manager.Device.PresentationParameters.Bounds);
+            }
+
+            manager.Device.Viewport = newViewport;
+
+            if (UpdateViewTransform)
+                MaterialSet.ViewTransform = ViewTransform.CreateOrthographic(newViewport);
+
+            base.Issue(manager);
+        }
+
+        public static void AddNew (IBatchContainer container, int layer, Material material, Rectangle? viewport, bool updateViewTransform = false, DefaultMaterialSet materialSet = null) {
+            if (container == null)
+                throw new ArgumentNullException("container");
+            if (updateViewTransform && (materialSet == null))
+                throw new ArgumentNullException("materialSet");
+
+            var result = container.RenderManager.AllocateBatch<SetViewportBatch>();
+            result.Initialize(container, layer, material, viewport, materialSet);
+            result.UpdateViewTransform = updateViewTransform;
             result.CaptureStack(0);
             result.Dispose();
         }

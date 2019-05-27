@@ -757,8 +757,15 @@ namespace Squared.Render.Convenience {
             }
         }
 
-        public void SetScissor (Rectangle rectangle, int? layer = null) {
+        public void SetScissor (Rectangle? rectangle, int? layer = null) {
             SetScissorBatch.AddNew(Container, layer.GetValueOrDefault(Layer), Materials.SetScissor, rectangle);
+
+            if (AutoIncrementLayer && !layer.HasValue)
+                Layer += 1;
+        }
+
+        public void SetViewport (Rectangle? rectangle, bool updateViewTransform, int? layer = null) {
+            SetViewportBatch.AddNew(Container, layer.GetValueOrDefault(Layer), Materials.SetViewport, rectangle, updateViewTransform, Materials);
 
             if (AutoIncrementLayer && !layer.HasValue)
                 Layer += 1;
