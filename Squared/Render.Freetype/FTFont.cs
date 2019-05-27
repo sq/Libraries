@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -16,6 +17,13 @@ using SrGlyph = Squared.Render.Text.Glyph;
 
 namespace Squared.Render.Text {
     public class FreeTypeFont : IGlyphSource, IDisposable {
+        private static EmbeddedDLLLoader DllLoader;
+
+        static FreeTypeFont () {
+            DllLoader = new EmbeddedDLLLoader(Assembly.GetExecutingAssembly());
+            DllLoader.Load("freetype6.dll");
+        }
+
         public static uint BaseDPI = 96;
 
         public class FontSize : IGlyphSource, IDisposable {

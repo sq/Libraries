@@ -100,6 +100,9 @@
     <Compile Include="EmbeddedFontProvider.cs" />
     <Compile Include="FTFont.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="..\..\Ext\Dependencies\Freetype\$(PlatformTarget)\freetype6.dll">
+      <LogicalName>freetype6.dll</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Ext\SharpFont\Source\SharpFont\SharpFont.csproj">
@@ -118,18 +121,6 @@
       <Project>{d7f549cf-e0a6-491c-a78c-ecab590bb2a7}</Project>
       <Name>Squared.Util</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup Condition="'$(Platform)' != 'FNA-x64'">
-    <None Include="..\..\Ext\Dependencies\Freetype\x86\freetype6.dll">
-      <Link>freetype6.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup Condition="'$(Platform)' == 'FNA-x64'">
-    <None Include="..\..\Ext\Dependencies\Freetype\x64\freetype6.dll">
-      <Link>freetype6.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -23,7 +23,7 @@ namespace Squared.Util {
         public readonly Assembly Assembly;
         internal readonly List<IntPtr> LoadedHandles = new List<IntPtr>();
         internal readonly List<string> CreatedFiles = new List<string>();
-        internal string TemporaryDirectory;
+        internal static string TemporaryDirectory;
 
         public EmbeddedDLLLoader (Assembly assembly) {
             Assembly = assembly;
