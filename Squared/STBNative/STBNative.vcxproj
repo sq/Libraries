@@ -22,7 +22,7 @@
     <ProjectGuid>{82960120-664F-4D6C-9DA5-140077DDB6C1}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>STBNative</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

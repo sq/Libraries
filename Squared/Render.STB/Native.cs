@@ -20,10 +20,18 @@ namespace Squared.Render.STB.Native {
     }
 
     public static unsafe partial class API {
+#if X64
+#if DEBUG
+        const string DllName = "stbi-x64-Debug";
+#else
+        const string DllName = "stbi-x64-Release";
+#endif
+#else
 #if DEBUG
         const string DllName = "stbi-x86-Debug";
 #else
         const string DllName = "stbi-x86-Release";
+#endif
 #endif
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
