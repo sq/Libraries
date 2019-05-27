@@ -1,9 +1,41 @@
 struct DitheringSettings {
+    float4 StrengthUnitAndIndex;
+    float4 BandSizeAndRange;
+    /*
     float Strength, Unit, InvUnit, FrameIndex;
     float BandSizeMinus1, RangeMin, RangeMaxMinus1;
+    */
 };
 
 uniform DitheringSettings Dithering;
+
+float DitheringGetStrength () {
+    return Dithering.StrengthUnitAndIndex.x;
+}
+
+float DitheringGetUnit () {
+    return Dithering.StrengthUnitAndIndex.y;
+}
+
+float DitheringGetInvUnit () {
+    return Dithering.StrengthUnitAndIndex.z;
+}
+
+float DitheringGetFrameIndex () {
+    return Dithering.StrengthUnitAndIndex.w;
+}
+
+float DitheringGetBandSizeMinus1 () {
+    return Dithering.BandSizeAndRange.x;
+}
+
+float DitheringGetRangeMin () {
+    return Dithering.BandSizeAndRange.y;
+}
+
+float DitheringGetRangeMaxMinus1 () {
+    return Dithering.BandSizeAndRange.z;
+}
 
 #ifdef ENABLE_DITHERING
 
@@ -26,20 +58,20 @@ float Dither64 (float2 vpos, float frameIndexMod4) {
 }
 
 float3 ApplyDither (float3 rgb, float2 vpos) {
-    float threshold = Dither32(vpos, (Dithering.FrameIndex % 4) + 0.5);
-    threshold = (Dithering.BandSizeMinus1 + 1) * threshold;
+    float threshold = Dither32(vpos, (DitheringGetFrameIndex() % 4) + 0.5);
+    threshold = (DitheringGetBandSizeMinus1() + 1) * threshold;
     float3 threshold3 = float3(threshold, threshold, threshold);
     const float offset = 0.05;
 
-    float3 rgb8 = rgb * Dithering.Unit;
+    float3 rgb8 = rgb * DitheringGetUnit();
     float3 a = trunc(rgb8), b = ceil(rgb8);
     float3 distanceFromA = rgb8 - a;
     float3 mask = 1.0 - step(distanceFromA, threshold3);
     float3 result = lerp(a, b, mask);
-    float3 strength3 = Dithering.Strength * 
-        smoothstep(Dithering.RangeMin - offset, Dithering.RangeMin, rgb) *
-        1 - smoothstep(Dithering.RangeMaxMinus1 + 1, Dithering.RangeMaxMinus1 + 1 + offset, rgb);
-    return lerp(rgb, result / Dithering.Unit, strength3);
+    float3 strength3 = DitheringGetStrength() * 
+        smoothstep(DitheringGetRangeMin() - offset, DitheringGetRangeMin(), rgb) *
+        1 - smoothstep(DitheringGetRangeMaxMinus1() + 1, DitheringGetRangeMaxMinus1() + 1 + offset, rgb);
+    return lerp(rgb, result * DitheringGetInvUnit(), strength3);
 }
 
 #else

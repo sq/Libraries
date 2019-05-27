@@ -69,28 +69,51 @@ namespace Squared.Render {
 
     [StructLayout(LayoutKind.Sequential)]
     public struct DitheringSettings {
-        public float Strength;
-        private float _Unit, _InvUnit;
-        public float FrameIndex;
-        private float _BandSizeMinus1;
-        public float RangeMin;
-        private float _RangeMaxMinus1;
+        private Vector4 StrengthUnitAndIndex;
+        private Vector4 BandSizeAndRange;
+
+        public float Strength {
+            get {
+                return StrengthUnitAndIndex.X;
+            }
+            set {
+                StrengthUnitAndIndex.X = value;
+            }
+        }
+
+        public float FrameIndex {
+            get {
+                return StrengthUnitAndIndex.W;
+            }
+            set {
+                StrengthUnitAndIndex.W = value;
+            }
+        }
+
+        public float RangeMin {
+            get {
+                return BandSizeAndRange.Y;
+            }
+            set {
+                BandSizeAndRange.Y = value;
+            }
+        }
 
         public float RangeMax {
             get {
-                return _RangeMaxMinus1 + 1;
+                return BandSizeAndRange.Z + 1;
             }
             set {
-                _RangeMaxMinus1 = value - 1;
+                BandSizeAndRange.Z = value - 1;
             }
         }
 
         public float BandSize {
             get {
-                return _BandSizeMinus1 + 1;
+                return BandSizeAndRange.X + 1;
             }
             set {
-                _BandSizeMinus1 = value - 1;
+                BandSizeAndRange.X = value - 1;
             }
         }
 
@@ -100,13 +123,13 @@ namespace Squared.Render {
         /// </summary>
         public float Unit {
             get {
-                return _Unit;
+                return StrengthUnitAndIndex.Y;
             }
             set {
-                _Unit = value;
-                if (_Unit < 1)
-                    _Unit = 1;
-                _InvUnit = 1.0f / _Unit;
+                StrengthUnitAndIndex.Y = value;
+                if (StrengthUnitAndIndex.Y < 1)
+                    StrengthUnitAndIndex.Y = 1;
+                StrengthUnitAndIndex.Z = 1.0f / StrengthUnitAndIndex.Y;
             }
         }
 
@@ -115,10 +138,10 @@ namespace Squared.Render {
         /// </summary>
         public int Power {
             set {
-                _Unit = (1 << value) - 1;
-                if (_Unit < 1)
-                    _Unit = 1;
-                _InvUnit = 1.0f / _Unit;
+                StrengthUnitAndIndex.Y = (1 << value) - 1;
+                if (StrengthUnitAndIndex.Y < 1)
+                    StrengthUnitAndIndex.Y = 1;
+                StrengthUnitAndIndex.Z = 1.0f / StrengthUnitAndIndex.Y;
             }
         }
     }
