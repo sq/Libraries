@@ -8,3 +8,5 @@ float4 TransformPosition (float4 position, bool halfPixelOffset) {
     // Finally project after offsetting
     return mul(modelViewPos, GetViewportProjectionMatrix());
 }
+
+#define vpos (__vpos__)

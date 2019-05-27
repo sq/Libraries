@@ -440,9 +440,12 @@ namespace Squared.Render {
             if ((rts?.Length ?? 0) > 0) {
                 var tex = (Texture2D)rts[0].RenderTarget;
                 var deviceRect = new Rectangle(0, 0, tex.Width, tex.Height);
-                var rect = Viewport ?? deviceRect;
-                var intersected = Rectangle.Intersect(rect, Viewport.Value);
-                newViewport = new Viewport(intersected);
+                if (Viewport.HasValue) {
+                    var intersected = Rectangle.Intersect(deviceRect, Viewport.Value);
+                    newViewport = new Viewport(intersected);
+                } else {
+                    newViewport = new Viewport(deviceRect);
+                }
             } else {
                 newViewport = new Viewport(Viewport ?? manager.Device.PresentationParameters.Bounds);
             }

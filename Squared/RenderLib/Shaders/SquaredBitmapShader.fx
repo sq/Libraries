@@ -60,7 +60,7 @@ void BasicPixelShaderWithLUT(
     in float4 addColor : COLOR1,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    in float2 vpos : VPOS,
+    in float2 __vpos__ : VPOS,
     out float4 result : COLOR0
 ) {
     addColor.rgb *= addColor.a;
@@ -78,7 +78,7 @@ void ToSRGBPixelShader(
     in float4 addColor : COLOR1,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    in float2 vpos : VPOS,
+    in float2 __vpos__ : VPOS,
     out float4 result : COLOR0
 ) {
     addColor.rgb *= addColor.a;
