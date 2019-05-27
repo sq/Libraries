@@ -774,26 +774,26 @@ namespace Squared.Render.Convenience {
         public void FillRectangle (
             Rectangle rectangle, Color fillColor,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Material customMaterial = null
         ) {
-            FillRectangle(new Bounds(rectangle), fillColor, layer, worldSpace, blendState);
+            FillRectangle(new Bounds(rectangle), fillColor, layer, worldSpace, blendState, customMaterial);
         }
 
         public void FillRectangle (
             Bounds bounds, Color fillColor,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Material customMaterial = null
         ) {
-            using (var gb = GetGeometryBatch(layer, worldSpace, blendState))
+            using (var gb = GetGeometryBatch(layer, worldSpace, blendState, customMaterial))
                 gb.AddFilledQuad(bounds, fillColor);
         }
 
         public void GradientFillRectangle (
             Bounds bounds, Color topLeft, Color topRight, Color bottomLeft, Color bottomRight,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Material customMaterial = null
         ) {
-            using (var gb = GetGeometryBatch(layer, worldSpace, blendState))
+            using (var gb = GetGeometryBatch(layer, worldSpace, blendState, customMaterial))
                 gb.AddGradientFilledQuad(bounds, topLeft, topRight, bottomLeft, bottomRight);
         }
 
