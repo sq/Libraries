@@ -143,6 +143,6 @@
     <ShaderOptimizationLevel>3</ShaderOptimizationLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>"$(ProjectDir)\..\..\ShaderCompiler\bin\ShaderCompiler.exe" $(ProjectDir)\..\..\ext\fxc $(ProjectDir)\Shaders $(ProjectDir)\Shaders\bin\$(Configuration) "/O$(ShaderOptimizationLevel) /Zi"</PreBuildEvent>
+    <PreBuildEvent>"$(ProjectDir)\..\..\ShaderCompiler\bin\ShaderCompiler.exe" $(ProjectDir)\..\..\ext\fxc $(ProjectDir)\Shaders $(ProjectDir)\Shaders\bin\$(Configuration) "/O$(ShaderOptimizationLevel) /Zi /Op"</PreBuildEvent>
   </PropertyGroup>
 </Project>

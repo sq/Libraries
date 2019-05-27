@@ -22,6 +22,14 @@ namespace ShaderCompiler {
             int totalFileCount = 0, updatedFileCount = 0;
             if (!Directory.Exists(destDir))
                 Directory.CreateDirectory(destDir);
+
+            string oldParams = null, oldParamsPath = Path.Combine(destDir, "params.txt");
+            if (File.Exists(oldParamsPath))
+                oldParams = File.ReadAllText(oldParamsPath);
+
+            if (oldParams != fxcParams)
+                shouldRebuild = true;
+
             Console.WriteLine("Compiling shaders from {0}...", sourceDir);
             foreach (var shader in Directory.GetFiles(sourceDir, "*.fx")) {
                 var destPath = Path.Combine(destDir, Path.GetFileName(shader) + ".bin");
@@ -51,6 +59,8 @@ namespace ShaderCompiler {
                 totalFileCount++;
             }
             Console.WriteLine("Compiled {0}/{1} shader(s) to {2}", updatedFileCount, totalFileCount, destDir);
+
+            File.WriteAllText(oldParamsPath, fxcParams);
 
             if (Debugger.IsAttached)
                 Console.ReadLine();
