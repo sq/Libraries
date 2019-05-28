@@ -18,8 +18,26 @@
     <ShaderOptimizationLevel Condition=" '$(ShaderOptimizationLevel)' == '' ">3</ShaderOptimizationLevel>
   </PropertyGroup>
 
+  <PropertyGroup Condition=" '$(Platform)' == 'x86' ">
+    <AutoEnableFNA>false</AutoEnableFNA>
+    <AutoPlatformTarget>x86</AutoPlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'FNA' ">
+    <AutoEnableFNA>true</AutoEnableFNA>
+    <AutoPlatformTarget>x86</AutoPlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'FNA-x64' ">
+    <AutoEnableFNA>true</AutoEnableFNA>
+    <AutoPlatformTarget>x64</AutoPlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(AutoPlatforms)' == 'true' ">
+    <EnableFNA>$(AutoEnableFNA)</EnableFNA>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(EnableFNA)' == 'true'">
     <DefineConstants>$(DefineConstants);FNA</DefineConstants>
+    <PlatformTarget Condition=" '$(AutoPlatforms)' == 'true' ">$(AutoPlatformTarget)</PlatformTarget>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(EnableFNA)' == 'false'">
@@ -68,7 +86,11 @@
   </Choose>  
 
   <Target Name="ValidateFNAPaths" BeforeTargets="BeforeBuild">
-    <Message Text="FNA enable status: $(EnableFNA)" />
+    <Message Text="Configuration: $(Configuration)" />
+    <Message Text="Platform: $(Platform)" />
+    <Message Text="Automatic platforms enabled? $(AutoPlatforms)" />
+    <Message Text="Automatic platforms selected FNA? $(AutoEnableFNA)" />
+    <Message Text="FNA enabled? $(EnableFNA)" />
     <Message Text="FNA path: '$(FNAPath)'" />
     <Message Text="FNAlibs path: '$(FNALibsPath)'" />
     <Message Text="Shader compiler path: '$(ShaderCompilerPath)'" />
