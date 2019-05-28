@@ -666,7 +666,7 @@ namespace Squared.Render {
         public Type FieldType;
 
         public InvalidUniformMemberException (string fieldName, Type fieldType)
-            : base($"Uniform members can only be Vector4 or Matrix. Blame OpenGL. Member {fieldName} is of type {fieldType.Name}.") {
+            : base(string.Format("Uniform members can only be Vector4 or Matrix. Blame OpenGL. Member {0} is of type {1}.", fieldName, fieldType.Name)) {
             FieldName = fieldName;
             FieldType = fieldType;
         }

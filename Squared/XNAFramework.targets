@@ -2,7 +2,6 @@
   <PropertyGroup>
     <FNALibsPath Condition=" '$(FNALibsPath)' == '' ">$(FNAPath)\fnalibs</FNALibsPath>
     <EnableFNA Condition=" '$(EnableFNA)' == '' ">false</EnableFNA>
-    <ShaderDirectory Condition=" '$(ShaderDirectory)' == '' ">Shaders</ShaderDirectory>
     <ShaderBinDirectory Condition=" '$(ShaderBinDirectory)' == ''">$(ShaderDirectory)\bin</ShaderBinDirectory>
     <ShaderLocalBinDirectory>$(ShaderBinDirectory)\$(Configuration)</ShaderLocalBinDirectory>
     <ShaderCompilerPath>$(SquaredPath)\ShaderCompiler\bin\ShaderCompiler.exe</ShaderCompilerPath>
@@ -53,9 +52,6 @@
         </Reference>
       </ItemGroup>
     </When>
-  </Choose>  
-
-  <Choose>
     <When Condition="'$(EnableFNA)' == 'true'">
       <ItemGroup>
         <ProjectReference Include="$(FNAPath)\FNA.csproj">
@@ -67,7 +63,7 @@
         </None>
       </ItemGroup>
     </When>
-  </Choose>
+  </Choose>  
 
   <Target Name="ValidateFNAPaths" BeforeTargets="BeforeBuild">
     <Message Text="FNA enable status: $(EnableFNA)" />
