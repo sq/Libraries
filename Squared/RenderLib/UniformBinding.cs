@@ -67,6 +67,16 @@ namespace Squared.Render {
             public T Current;
         }
 
+        private void ValidateFieldType (string name, Type type) {
+            if (type == typeof(Matrix))
+                return;
+            else if (type == typeof(Vector4))
+                return;
+
+            // FIXME: If we figure out how to match mojoshader layout this can be removed
+            throw new InvalidUniformMemberException(name, type);
+        }
+
         #region Direct3D
 #if !SDL2 && !MONOGAME && !FNA
         private static class KnownMethodSlots {
@@ -201,6 +211,8 @@ namespace Squared.Render {
                 var field = Layout.FindField(Type, member.Name);
                 if (field == null)
                     continue;
+
+                ValidateFieldType(field.Name, field.FieldType);
 
                 var offset = Marshal.OffsetOf(Type, field.Name);
                 var fieldSize = Marshal.SizeOf(field.FieldType);
@@ -646,6 +658,17 @@ namespace Squared.Render {
     public class UniformBindingException : Exception {
         public UniformBindingException (string message, Exception innerException = null)
             : base (message, innerException) {
+        }
+    }
+
+    public class InvalidUniformMemberException : Exception {
+        public string FieldName;
+        public Type FieldType;
+
+        public InvalidUniformMemberException (string fieldName, Type fieldType)
+            : base($"Uniform members can only be Vector4 or Matrix. Blame OpenGL. Member {fieldName} is of type {fieldType.Name}.") {
+            FieldName = fieldName;
+            FieldType = fieldType;
         }
     }
 }
