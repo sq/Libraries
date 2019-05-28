@@ -1,0 +1,89 @@
+<Project>
+  <PropertyGroup>
+    <FNALibsPath Condition=" '$(FNALibPath)' == '' ">$(FNAPath)\fnalibs</FNALibsPath>
+    <EnableFNA Condition=" '$(EnableFNA)' == '' ">false</EnableFNA>
+    <ShaderDirectory Condition=" '$(ShaderDirectory)' == '' ">Shaders</ShaderDirectory>
+    <ShaderBinDirectory Condition=" '$(ShaderBinDirectory)' == ''">$(ShaderDirectory)\bin</ShaderBinDirectory>
+    <ShaderLocalBinDirectory>$(ShaderBinDirectory)\$(Configuration)</ShaderLocalBinDirectory>
+    <ShaderCompilerPath>$(SquaredPath)\ShaderCompiler\bin\ShaderCompiler.exe</ShaderCompilerPath>
+    <!-- workaround for wildcard includes breaking in VS -->
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <ShaderOptimizationLevel Condition=" '$(ShaderOptimizationLevel)' == '' ">d</ShaderOptimizationLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' != 'Debug' ">
+    <ShaderOptimizationLevel Condition=" '$(ShaderOptimizationLevel)' == '' ">3</ShaderOptimizationLevel>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(EnableFNA)' == 'true'">
+    <DefineConstants>$(DefineConstants);FNA</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(EnableFNA)' == 'true'">
+    <ProjectReference Include="$(FNAPath)\FNA.csproj">
+      <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
+      <Name>FNA</Name>
+    </ProjectReference>
+    <None Include="$(FNALibsPath)\$(PlatformTarget)\*.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(EnableFNA)' == 'false'">
+    <XnaFrameworkVersion>v4.0</XnaFrameworkVersion>
+    <XnaPlatform>Windows</XnaPlatform>
+    <XnaProfile>HiDef</XnaProfile>
+    <DefineConstants>$(DefineConstants);XNA;WINDOWS</DefineConstants>
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(EnableFNA)' == 'false'">
+    <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Xna.Framework.Graphics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Xna.Framework.Net, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Xna.Framework.Storage, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL">
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Import Condition="'$(EnableFNA)' != 'true'" Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\Microsoft.Xna.GameStudio.targets" />
+
+  <Target Name="ValidatePaths" BeforeTargets="BeforeBuild">
+    <Message Text="FNA enable status: $(EnableFNA)" />
+    <Message Text="FNA path: '$(FNAPath)'" />
+    <Message Text="FNAlibs path: '$(FNALibsPath)'" />
+    <Message Text="Shader compiler path: '$(ShaderCompilerPath)'" />
+    <Message Text="Shader directory: '$(ShaderDirectory)'" />
+    <Message Text="Shader output directory: '$(ShaderLocalBinDirectory)'" />
+    <Message Text="Shader optimization level: $(ShaderOptimizationLevel)" />    
+
+    <Error Text="You must set FNAPath" Condition=" '$(FNAPath)' == '' " />
+  </Target>
+
+  <Target Name="CompileShaders" Condition=" '$(ShaderDirectory)' != '' " BeforeTargets="BeforeBuild">
+    <Message Text="Compiling shaders" />
+    <Error Text="You must set SquaredPath to use the shader compiler" Condition=" '$(SquaredPath)' == '' " />
+
+    <Exec Command='"$(ShaderCompilerPath)" "$(SquaredPath)\ext\fxc" "$(ShaderDirectory)" "$(ShaderLocalBinDirectory)" "/O$(ShaderOptimizationLevel) /Zi"' />
+  </Target>
+
+  <ItemGroup Condition=" '$(ShaderDirectory)' != '' ">
+    <ShaderText Include="$(ShaderDirectory)\*.fx" />
+    <None Include="$(ShaderDirectory)\*.fxh" />
+    <EmbeddedResource Include="@(ShaderText -> '$(ShaderLocalBinDirectory)\%(Filename).fx.bin')">
+      <LogicalName>%(Filename)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>
