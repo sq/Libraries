@@ -832,6 +832,11 @@ namespace Squared.Render {
             }
         }
 
+        public void DisposeResource<T> (ref T resource) where T : IDisposable {
+            DisposeResource(resource);
+            resource = default(T);
+        }
+
         public void DisposeResource (IDisposable resource) {
             if (resource == null)
                 return;
