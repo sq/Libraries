@@ -73,7 +73,6 @@ namespace Squared.Render {
                     deviceManager.CurrentMaterial.End(deviceManager);
                 
                 deviceManager.CurrentMaterial = material;
-                deviceManager.UpdateTargetInfo();
             
                 if (material != null)
                     material.Begin(deviceManager);
@@ -93,8 +92,7 @@ namespace Squared.Render {
         private static volatile int NextDeviceId;
         public int DeviceId { get; private set; }
 
-        private int CachedTargetWidth, CachedTargetHeight;
-        private bool IsRenderTargetBound;
+        private Texture2D CachedCurrentRenderTarget;
         private bool _IsDisposed;
 
         public bool IsDisposed {
@@ -118,14 +116,27 @@ namespace Squared.Render {
             DeviceId = ++NextDeviceId;
         }
 
-        internal void UpdateTargetInfo () {
-            UpdateTargetInfo(null, false);
-        }
+        internal void UpdateTargetInfo (RenderTarget2D target, bool knownTarget, bool setParams) {
+            if (knownTarget) {
+                CachedCurrentRenderTarget = target;
+            } else {
+                var rts = Device.GetRenderTargets();
+                if ((rts == null) || (rts.Length == 0))
+                    CachedCurrentRenderTarget = null;
+                else
+                    CachedCurrentRenderTarget = (RenderTarget2D)rts[0].RenderTarget;
+            }
 
-        internal void UpdateTargetInfo (RenderTarget2D target, bool knownTarget) {
             var material = CurrentMaterial;
             if (material == null)
                 return;
+
+            var targetWidth = CachedCurrentRenderTarget != null
+                ? CachedCurrentRenderTarget.Width
+                : Device.PresentationParameters.BackBufferWidth;
+            var targetHeight = CachedCurrentRenderTarget != null
+                ? CachedCurrentRenderTarget.Height
+                : Device.PresentationParameters.BackBufferHeight;
 
             var iud = material.Parameters?.IsRenderTargetUpsideDown;
             var rtd = material.Parameters?.RenderTargetDimensions;
@@ -133,32 +144,20 @@ namespace Squared.Render {
             if ((iud == null) && (rtd == null))
                 return;
 
-            // FIXME: leak
-            if ((CachedTargetWidth <= 0) || knownTarget) {
-                if (!knownTarget) {
-                    var rts = Device.GetRenderTargets();
-                    if ((rts == null) || (rts.Length == 0))
-                        target = null;
-                    else
-                        target = (RenderTarget2D)rts[0].RenderTarget;
-                }
-
-                if (target == null) {
-                    CachedTargetWidth = Device.PresentationParameters.BackBufferWidth;
-                    CachedTargetHeight = Device.PresentationParameters.BackBufferHeight;
-                    IsRenderTargetBound = false;
-                } else {
-                    CachedTargetWidth = target.Width;
-                    CachedTargetHeight = target.Height;
-                    IsRenderTargetBound = true;
-                }
-            }
+            if (!setParams)
+                return;
 
 #if FNA
-            iud.SetValue(!IsRenderTargetBound);
+            iud?.SetValue(CachedCurrentRenderTarget == null);
 #else
 #endif
-            rtd?.SetValue(new Vector2(CachedTargetWidth, CachedTargetHeight));
+            if (rtd != null) {
+                if ((material.Effect?.CurrentTechnique?.Name ?? "").Contains("Light"))
+                    ;
+                rtd.SetValue(new Vector2(targetWidth, targetHeight));
+            }
+
+            material.Flush();
         }
 
         public void PushStates () {
@@ -173,46 +172,55 @@ namespace Squared.Render {
             Device.BlendState = BlendStateStack.Pop();
         }
 
-        public void PushRenderTarget (RenderTarget2D newRenderTarget) {
-            PushStates();
-
-            RenderTargetStack.Push(Device.GetRenderTargets());
-            ViewportStack.Push(Device.Viewport);
-            Device.SetRenderTarget(newRenderTarget);
+        public void SetRenderTarget (RenderTarget2D newRenderTarget, bool setParams = true) {
             RenderManager.ResetDeviceState(Device);
+            Device.SetRenderTarget(newRenderTarget);
             if (newRenderTarget != null) {
                 Device.Viewport = new Viewport(0, 0, newRenderTarget.Width, newRenderTarget.Height);
             } else {
                 Device.Viewport = new Viewport(0, 0, Device.PresentationParameters.BackBufferWidth, Device.PresentationParameters.BackBufferHeight);
             }
-            UpdateTargetInfo(newRenderTarget, true);
+            UpdateTargetInfo(newRenderTarget, true, setParams);
+        }
+
+        public void SetRenderTargets (RenderTargetBinding[] newRenderTargets, bool setParams = true) {
+            if ((newRenderTargets == null) || (newRenderTargets.Length == 0)) {
+                SetRenderTarget(null);
+            } else {
+                var first = (RenderTarget2D)newRenderTargets[0].RenderTarget;
+                Device.SetRenderTargets(newRenderTargets);
+                UpdateTargetInfo(first, true, setParams);
+                RenderManager.ResetDeviceState(Device);
+                Device.Viewport = new Viewport(0, 0, CachedCurrentRenderTarget.Width, CachedCurrentRenderTarget.Height);
+            }
+        }
+
+        public void PushRenderTarget (RenderTarget2D newRenderTarget) {
+            PushStates();
+            RenderTargetStack.Push(Device.GetRenderTargets());
+            ViewportStack.Push(Device.Viewport);
+            SetRenderTarget(newRenderTarget);
         }
 
         public void PushRenderTargets (RenderTargetBinding[] newRenderTargets) {
             PushStates();
 
-            var first = (RenderTarget2D)newRenderTargets[0].RenderTarget;
-            CachedTargetWidth = first.Width;
-            CachedTargetHeight = first.Height;
-
             RenderTargetStack.Push(Device.GetRenderTargets());
             ViewportStack.Push(Device.Viewport);
-            Device.SetRenderTargets(newRenderTargets);
-            RenderManager.ResetDeviceState(Device);
-            Device.Viewport = new Viewport(0, 0, first.Width, first.Height);
-            UpdateTargetInfo(first, true);
+
+            SetRenderTargets(newRenderTargets);
         }
 
         public void PopRenderTarget () {
             PopStates();
 
             var newRenderTargets = RenderTargetStack.Pop();
+            SetRenderTargets(newRenderTargets);
             Device.SetRenderTargets(newRenderTargets);
             Device.Viewport = ViewportStack.Pop();
             // GOD
             RenderManager.ResetDeviceState(Device);
-            CachedTargetWidth = CachedTargetHeight = 0;
-            UpdateTargetInfo();
+            UpdateTargetInfo(null, false, false);
         }
 
         public DefaultMaterialSetEffectParameters CurrentParameters {
@@ -232,9 +240,9 @@ namespace Squared.Render {
 
             RenderManager.ResetDeviceState(Device);
             if (changeRenderTargets)
-                Device.SetRenderTargets();
+                SetRenderTargets(null);
             Device.SetVertexBuffer(null);
-            CachedTargetWidth = CachedTargetHeight = 0;
+            UpdateTargetInfo(null, false, true);
         }
 
         public void Finish () {
@@ -245,9 +253,8 @@ namespace Squared.Render {
 
             RenderManager.ResetDeviceState(Device);
 
-            Device.SetRenderTargets();
+            SetRenderTargets(null);
             Device.SetVertexBuffer(null);
-            CachedTargetWidth = CachedTargetHeight = 0;
         }
     }
 

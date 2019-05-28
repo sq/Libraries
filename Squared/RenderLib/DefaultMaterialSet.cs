@@ -16,8 +16,26 @@ namespace Squared.Render {
     public struct ViewTransform {
         public Matrix Projection;
         public Matrix ModelView;
-        public Vector2 Scale;
-        public Vector2 Position;
+        private Vector4 ScaleAndPosition;
+
+        public Vector2 Scale {
+            get {
+                return new Vector2(ScaleAndPosition.X, ScaleAndPosition.Y);
+            }
+            set {
+                ScaleAndPosition.X = value.X;
+                ScaleAndPosition.Y = value.Y;
+            }
+        }
+        public Vector2 Position {
+            get {
+                return new Vector2(ScaleAndPosition.Z, ScaleAndPosition.W);
+            }
+            set {
+                ScaleAndPosition.Z = value.X;
+                ScaleAndPosition.W = value.Y;
+            }
+        }
 
         public static readonly ViewTransform Default = new ViewTransform {
             Scale = Vector2.One,

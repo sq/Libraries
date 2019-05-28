@@ -67,6 +67,12 @@ void BasicPixelShaderWithLUT(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
+    if (0) {
+        float2 vpos = GET_VPOS;
+        result = float4(vpos.x / 1920, vpos.y / 1280, 0, 1);
+        return;
+    }
+
     float4 texColor = tex2D(TextureSampler, clamp(texCoord, texRgn.xy, texRgn.zw));
     texColor.rgb = ApplyLUT(texColor.rgb, LUT2Weight);
     texColor.rgb = ApplyDither(texColor.rgb, GET_VPOS);

@@ -484,7 +484,7 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            manager.Device.SetRenderTarget(RenderTarget);
+            manager.SetRenderTarget(RenderTarget);
             RenderManager.ResetDeviceState(manager.Device);
 
             base.Issue(manager);

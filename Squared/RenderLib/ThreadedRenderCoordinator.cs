@@ -726,19 +726,15 @@ namespace Squared.Render {
 
                     PrepareNextFrame(frame, false);
 
-                    var oldRenderTargets = Device.GetRenderTargets();
-                    var oldViewport = Device.Viewport;
                     try {
-                        Device.SetRenderTarget(renderTarget);
+                        Manager.DeviceManager.PushRenderTarget(renderTarget);
                         RenderManager.ResetDeviceState(Device);
                         Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
                         Device.Clear(Color.Transparent);
 
                         RenderFrameToDraw(frame, false);
                     } finally {
-                        Device.SetRenderTargets(oldRenderTargets);
-                        materials.PopViewTransform();
-                        Device.Viewport = oldViewport;
+                        Manager.DeviceManager.PopRenderTarget();
                     }
                 }
 

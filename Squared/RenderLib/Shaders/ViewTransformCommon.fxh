@@ -1,8 +1,7 @@
 struct ViewTransform {
     float4x4 Projection;
     float4x4 ModelView;
-    float2 Scale;
-    float2 Position;
+    float4 ScaleAndPosition;
 };
 
 uniform ViewTransform Viewport;
@@ -16,9 +15,9 @@ float4x4 GetViewportModelViewMatrix () {
 }
 
 float2 GetViewportScale () {
-    return Viewport.Scale;
+    return Viewport.ScaleAndPosition.xy;
 }
 
 float2 GetViewportPosition () {
-    return Viewport.Position;
+    return Viewport.ScaleAndPosition.zw;
 }
