@@ -163,7 +163,7 @@ namespace Squared.Render {
                 rtd.SetValue(new Vector2(targetWidth, targetHeight));
             }
 
-            material.Flush();
+            // material.Flush();
         }
 
         public void PushStates () {
