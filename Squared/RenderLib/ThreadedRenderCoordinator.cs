@@ -19,7 +19,10 @@ namespace Squared.Render {
             // HACK: Wait until rendering has finished, then reset the device on the main thread
             var sc = SynchronizationContext.Current;
             rc.AfterPresent(() => {
-                sc.Post((_) => gdm.ApplyChanges(), null);
+                if (rc.EnableThreading && sc != null)
+                    sc.Post((_) => gdm.ApplyChanges(), null);
+                else
+                    gdm.ApplyChanges();
             });
         }
     }
