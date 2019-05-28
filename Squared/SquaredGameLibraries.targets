@@ -1,0 +1,66 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ProjectReference Include="$(SquaredPath)\Squared\TaskLib\Squared.Task.csproj">
+      <Project>{173abdca-7278-46ff-a300-d3bf8ccef181}</Project>
+      <Name>Squared.Task</Name>
+    </ProjectReference>
+    <ProjectReference Include="$(SquaredPath)\Squared\Threading\Squared.Threading.csproj">
+      <Project>{eccb8787-0fc6-43b2-abd1-6cbb237916ec}</Project>
+      <Name>Squared.Threading</Name>
+    </ProjectReference>
+    <ProjectReference Include="$(SquaredPath)\Squared\Util\Squared.Util.csproj">
+      <Project>{d7f549cf-e0a6-491c-a78c-ecab590bb2a7}</Project>
+      <Name>Squared.Util</Name>
+    </ProjectReference>
+    <ProjectReference Include="$(SquaredPath)\Squared\RenderLib\Squared.Render.csproj">
+      <Project>{fe871f18-fd35-4124-af8f-0021c9d4ba29}</Project>
+      <Name>Squared.Render</Name>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(IncludeGame)' != 'false' ">
+    <ProjectReference Include="$(SquaredPath)\Squared\GameLib\Squared.Game.csproj">
+      <Project>{36463aee-e309-43a6-bcfa-a69944390af0}</Project>
+      <Name>Squared.Game</Name>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(IncludeFreetype)' == 'true' ">
+    <ProjectReference Include="$(SquaredPath)\..\Ext\SharpFont\Source\SharpFont\SharpFont.csproj">
+      <Project>{ecd55e3b-1139-4f0d-af63-3f471aaf6e91}</Project>
+      <Name>SharpFont</Name>
+    </ProjectReference>
+    <ProjectReference Include="$(SquaredPath)\Squared\Render.Freetype\Squared.Render.Freetype.csproj">
+      <Project>{cfb603c1-8371-460d-ba60-91e697eae1b3}</Project>
+      <Name>Squared.Render.Freetype</Name>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(IncludeSTBImage)' == 'true' ">
+    <ProjectReference Include="$(SquaredPath)\STBNative\STBNative.vcxproj">
+      <Project>{82960120-664F-4D6C-9DA5-140077DDB6C1}</Project>
+      <Name>STBNative</Name>
+    </ProjectReference>
+    <ProjectReference Include="$(SquaredPath)\Render.STB\Squared.Render.STB.csproj">
+      <Project>{cfb603c1-8371-460d-ba60-91e697eae1b4}</Project>
+      <Name>Squared.Render.STB</Name>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(IncludeNuklear)' == 'true' ">
+    <ProjectReference Include="$(SquaredPath)\Squared.Nuklear\Nuklear\Nuklear.vcxproj">
+      <Project>{6ef251c3-0cf3-4e0c-907b-11bd3deba8e6}</Project>
+      <Name>Nuklear</Name>
+    </ProjectReference>
+    <ProjectReference Include="$(SquaredPath)\Squared.Nuklear\Squared.Nuklear\Squared.Nuklear.csproj">
+      <Project>{bdb132a4-22a1-479d-a4d0-0a2b00021f16}</Project>
+      <Name>Squared.Nuklear</Name>
+    </ProjectReference>
+  </ItemGroup>
+
+  <Target Name="ValidateSquaredPaths" BeforeTargets="BeforeBuild">
+    <Message Text="Squared path: '$(SquaredPath)'" />
+
+    <Error Text="You must set SquaredPath" Condition=" '$(SquaredPath)' == '' " />
+  </Target>
+</Project>

@@ -1,4 +1,4 @@
-<Project>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <FNALibsPath Condition=" '$(FNALibsPath)' == '' ">$(FNAPath)\fnalibs</FNALibsPath>
     <EnableFNA Condition=" '$(EnableFNA)' == '' ">false</EnableFNA>
@@ -65,7 +65,7 @@
     </Content>
   </ItemGroup>
 
-  <Target Name="ValidatePaths" BeforeTargets="BeforeBuild">
+  <Target Name="ValidateFNAPaths" BeforeTargets="BeforeBuild">
     <Message Text="FNA enable status: $(EnableFNA)" />
     <Message Text="FNA path: '$(FNAPath)'" />
     <Message Text="FNAlibs path: '$(FNALibsPath)'" />
