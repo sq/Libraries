@@ -73,6 +73,7 @@ namespace Squared.Render {
                     deviceManager.CurrentMaterial.End(deviceManager);
                 
                 deviceManager.CurrentMaterial = material;
+                deviceManager.UpdateTargetInfo(null, false, true);
             
                 if (material != null)
                     material.Begin(deviceManager);
