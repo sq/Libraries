@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Util;
 
 namespace Squared.Game {
     public static class GameExtensionMethods {
@@ -82,6 +84,26 @@ namespace Squared.Game {
 
         public static Bounds BoundsFromRectangle (this Texture2D @this, Rectangle rectangle) {
             return @this.BoundsFromRectangle(ref rectangle);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsFinite (this Vector2 v) {
+            return Arithmetic.IsFinite(v.X) && Arithmetic.IsFinite(v.Y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsFinite (this Vector3 v) {
+            return Arithmetic.IsFinite(v.X) &&
+                Arithmetic.IsFinite(v.Y) &&
+                Arithmetic.IsFinite(v.Z);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool AssertFinite (this Vector4 v) {
+            return Arithmetic.IsFinite(v.X) &&
+                Arithmetic.IsFinite(v.Y) &&
+                Arithmetic.IsFinite(v.Z) &&
+                Arithmetic.IsFinite(v.W);
         }
     }
 }

@@ -312,6 +312,16 @@ namespace Squared.Util {
             );
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsFinite (float f) {
+            if (float.IsInfinity(f))
+                return false;
+            else if (float.IsNaN(f))
+                return false;
+            else
+                return true;
+        }
+
 #if WINDOWS
         #region CompileExpression<T> overloads
 

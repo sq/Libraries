@@ -627,7 +627,6 @@ namespace Squared.Render {
             }
 
             var p = call.Position;
-
             result = new BitmapVertex {
                 Position = {
                     X = p.X,
@@ -1203,6 +1202,12 @@ namespace Squared.Render {
         public Color      MultiplyColor, AddColor;
         public DrawCallSortKey SortKey;
 
+#if DEBUG
+        public static bool ValidateFields = false;
+#else
+        public static bool ValidateFields = false;
+#endif
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BitmapDrawCall (Texture2D texture, Vector2 position)
             : this(texture, position, texture.Bounds()) {
@@ -1430,6 +1435,25 @@ namespace Squared.Render {
         public bool IsValid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
+                if (ValidateFields) {
+                    if (!Position.IsFinite())
+                        return false;
+                    if (!TextureRegion.TopLeft.IsFinite())
+                        return false;
+                    if (!TextureRegion.BottomRight.IsFinite())
+                        return false;
+                    if (TextureRegion2.HasValue) {
+                        if (!TextureRegion2.Value.TopLeft.IsFinite())
+                            return false;
+                        if (!TextureRegion2.Value.BottomRight.IsFinite())
+                            return false;
+                    }
+                    if (!Arithmetic.IsFinite(Rotation))
+                        return false;
+                    if (!Scale.IsFinite())
+                        return false;
+                }
+
                 return ((Textures.Texture1 != null) && !Textures.Texture1.IsDisposed);
             }
         }
