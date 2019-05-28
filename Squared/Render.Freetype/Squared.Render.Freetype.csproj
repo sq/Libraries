@@ -100,7 +100,14 @@
     <Compile Include="EmbeddedFontProvider.cs" />
     <Compile Include="FTFont.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="..\..\Ext\Dependencies\Freetype\$(PlatformTarget)\freetype6.dll">
+  </ItemGroup>
+  <ItemGroup Condition="'$(Platform)' == 'FNA-x64'">
+    <EmbeddedResource Include="..\..\Ext\Dependencies\Freetype\x64\freetype6.dll">
+      <LogicalName>freetype6.dll</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup Condition="'$(Platform)' != 'FNA-x64'">
+    <EmbeddedResource Include="..\..\Ext\Dependencies\Freetype\x86\freetype6.dll">
       <LogicalName>freetype6.dll</LogicalName>
     </EmbeddedResource>
   </ItemGroup>

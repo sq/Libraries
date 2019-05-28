@@ -57,7 +57,10 @@ namespace Squared.Util {
                 src.CopyTo(dest);
 
             CreatedFiles.Add(path);
-            LoadedHandles.Add(LoadLibrary(path));
+            var hLibrary = LoadLibrary(path);
+            if (hLibrary == null)
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), "Failed to load " + name);
+            LoadedHandles.Add(hLibrary);
         }
 
         public void Dispose () {
