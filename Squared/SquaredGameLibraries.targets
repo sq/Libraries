@@ -89,5 +89,7 @@
     <Message Text="Squared path: '$(SquaredPath)'" />
 
     <Error Text="You must set SquaredPath" Condition=" '$(SquaredPath)' == '' " />
+
+    <Error Text="SquaredPath '$(SquaredPath)' does not exist" Condition=" !Exists('$(SquaredPath)') " />
   </Target>
 </Project>

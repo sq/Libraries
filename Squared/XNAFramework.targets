@@ -77,6 +77,8 @@
     <Message Text="Shader optimization level: $(ShaderOptimizationLevel)" />    
 
     <Error Text="You must set FNAPath" Condition=" '$(FNAPath)' == '' " />
+
+    <Error Text="FNALibsPath '$(FNALibsPath)' does not exist or is not set" Condition=" !Exists('$(FNALibsPath)') And ('$(EnableFNA)' == 'true') " />
   </Target>
 
   <Target Name="CompileShaders" Condition=" '$(ShaderDirectory)' != '' " BeforeTargets="BeforeBuild">
