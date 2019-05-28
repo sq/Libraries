@@ -1,10 +1,6 @@
 struct DitheringSettings {
     float4 StrengthUnitAndIndex;
     float4 BandSizeAndRange;
-    /*
-    float Strength, Unit, InvUnit, FrameIndex;
-    float BandSizeMinus1, RangeMin, RangeMaxMinus1;
-    */
 };
 
 uniform DitheringSettings Dithering;
@@ -58,9 +54,15 @@ float Dither64 (float2 vpos, float frameIndexMod4) {
 }
 
 float3 ApplyDither (float3 rgb, float2 vpos) {
-    float threshold = Dither32(vpos, (DitheringGetFrameIndex() % 4) + 0.5);
+    // FIXME: This flickers every few frames in OpenGL
+    // float threshold = Dither32(vpos, (DitheringGetFrameIndex() % 4) + 0.5);
+    // So does this
+    // float threshold = Dither64(vpos, (DitheringGetFrameIndex() % 4) + 0.5);
+    // This does not
+    float threshold = Dither17(vpos, (DitheringGetFrameIndex() % 4) + 0.5);
+
     threshold = (DitheringGetBandSizeMinus1() + 1) * threshold;
-    float3 threshold3 = float3(threshold, threshold, threshold);
+    float3 threshold3 = threshold;
     const float offset = 0.05;
 
     float3 rgb8 = rgb * DitheringGetUnit();
