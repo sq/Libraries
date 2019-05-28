@@ -8,6 +8,8 @@
     <ShaderCompilerPath>$(SquaredPath)\ShaderCompiler\bin\ShaderCompiler.exe</ShaderCompilerPath>
     <!-- workaround for wildcard includes breaking in VS -->
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+    <!-- Squared libraries use Unsafe so just enable it -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -21,16 +23,6 @@
     <DefineConstants>$(DefineConstants);FNA</DefineConstants>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(EnableFNA)' == 'true'">
-    <ProjectReference Include="$(FNAPath)\FNA.csproj">
-      <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
-      <Name>FNA</Name>
-    </ProjectReference>
-    <None Include="$(FNALibsPath)\$(PlatformTarget)\*.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
   <PropertyGroup Condition="'$(EnableFNA)' == 'false'">
     <XnaFrameworkVersion>v4.0</XnaFrameworkVersion>
     <XnaPlatform>Windows</XnaPlatform>
@@ -41,29 +33,41 @@
     <XnaOutputType Condition="'$(OutputType)' == 'WinExe'">Game</XnaOutputType>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(EnableFNA)' == 'false'">
-    <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Microsoft.Xna.Framework.Graphics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86">
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Microsoft.Xna.Framework.Net, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL">
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Microsoft.Xna.Framework.Storage, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL">
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
+  <Choose>
+    <When Condition="'$(EnableFNA)' == 'false'">
+      <ItemGroup>
+        <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="Microsoft.Xna.Framework.Graphics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86">
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="Microsoft.Xna.Framework.Net, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL">
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="Microsoft.Xna.Framework.Storage, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL">
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>  
 
-  <ItemGroup Condition="'$(EnableFNA)' == 'true'">
-    <Content Include="$(FNALibPath)\*.dll;$(FNALibPath)\*.so;$(FNALibPath)\*.dylib">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
+  <Choose>
+    <When Condition="'$(EnableFNA)' == 'true'">
+      <ItemGroup>
+        <ProjectReference Include="$(FNAPath)\FNA.csproj">
+          <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
+          <Name>FNA</Name>
+        </ProjectReference>
+        <None Include="$(FNALibsPath)\$(PlatformTarget)\*.dll">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+      </ItemGroup>
+    </When>
+  </Choose>
 
   <Target Name="ValidateFNAPaths" BeforeTargets="BeforeBuild">
     <Message Text="FNA enable status: $(EnableFNA)" />

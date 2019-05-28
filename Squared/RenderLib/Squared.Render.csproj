@@ -11,67 +11,32 @@
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
     <RunPostBuildEvent>Always</RunPostBuildEvent>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
+    <OutputPath>bin\$(Platform)\$(Configuration)</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)' == 'x86'">
+    <EnableFNA>false</EnableFNA>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)' == 'FNA'">
+    <EnableFNA>true</EnableFNA>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)' == 'FNA-x64'">
+    <EnableFNA>true</EnableFNA>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
     <Optimize>false</Optimize>
-    <OutputPath>bin\x86\Debug</OutputPath>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <NoStdLib>true</NoStdLib>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-    <DebugType>pdbonly</DebugType>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
-    <OutputPath>bin\x86\Release</OutputPath>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <NoStdLib>true</NoStdLib>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
-    <DefineConstants>DEBUG;TRACE;WINDOWS</DefineConstants>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
-    <DefineConstants>TRACE;WINDOWS</DefineConstants>
-    <PlatformTarget>x86</PlatformTarget>
-    <DebugType>full</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|FNA'">
-    <DefineConstants>DEBUG;TRACE;FNA</DefineConstants>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|FNA'">
-    <DefineConstants>TRACE;FNA</DefineConstants>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>full</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-  </PropertyGroup>
-  <ItemGroup Condition=" '$(Platform)' == 'x86' ">
-    <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Microsoft.Xna.Framework.Graphics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86">
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup Condition=" '$(Platform)' == 'FNA' ">
-    <ProjectReference Include="..\..\..\FNA\FNA.csproj">
-      <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
-      <Name>FNA</Name>
-    </ProjectReference>
-  </ItemGroup>
+
   <ItemGroup>
     <Reference Include="mscorlib">
       <Private>False</Private>
@@ -113,20 +78,8 @@
     <Compile Include="UniformBinding.cs" />
     <Compile Include="UniformBindingLayout.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\GameLib\Squared.Game.csproj">
-      <Project>{36463AEE-E309-43A6-BCFA-A69944390AF0}</Project>
-      <Name>Squared.Game</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Threading\Squared.Threading.csproj">
-      <Project>{eccb8787-0fc6-43b2-abd1-6cbb237916ec}</Project>
-      <Name>Squared.Threading</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Util\Squared.Util.csproj">
-      <Project>{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}</Project>
-      <Name>Squared.Util</Name>
-    </ProjectReference>
-  </ItemGroup>
+
+  <!--
   <ItemGroup>
     <None Include="Shaders\TargetInfo.fxh" />
     <ShaderText Include="Shaders\*.fx" />
@@ -139,14 +92,17 @@
       <LogicalName>%(Filename)</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <ShaderOptimizationLevel>d</ShaderOptimizationLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' != 'Debug' ">
-    <ShaderOptimizationLevel>3</ShaderOptimizationLevel>
-  </PropertyGroup>
+  -->
+
   <PropertyGroup>
-    <PreBuildEvent>"$(ProjectDir)\..\..\ShaderCompiler\bin\ShaderCompiler.exe" $(ProjectDir)\..\..\ext\fxc $(ProjectDir)\Shaders $(ProjectDir)\Shaders\bin\$(Configuration) "/O$(ShaderOptimizationLevel) /Zi /Op"</PreBuildEvent>
+    <SquaredPath>..\..\</SquaredPath>
+    <FNAPath>..\..\..\FNA\</FNAPath>
+    <FNALibPath>..\..\..\FNA\fnalibs</FNALibPath>
+    <ShaderDirectory>Shaders</ShaderDirectory>
+    <IncludeSquaredRender>false</IncludeSquaredRender>
   </PropertyGroup>
+
+  <Import Project="$(SquaredPath)\Squared\SquaredGameLibraries.targets" />
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SquaredPath)\Squared\XNAFramework.targets" />
 </Project>

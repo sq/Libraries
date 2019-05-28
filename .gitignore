@@ -96,3 +96,4 @@ _ReSharper.*
 /Squared/FontTest/FontTest/*.ttc
 /Squared/RenderLib/Shaders/bin
 /Squared/obj
+params.txt
