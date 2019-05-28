@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <FNALibsPath Condition=" '$(FNALibPath)' == '' ">$(FNAPath)\fnalibs</FNALibsPath>
+    <FNALibsPath Condition=" '$(FNALibsPath)' == '' ">$(FNAPath)\fnalibs</FNALibsPath>
     <EnableFNA Condition=" '$(EnableFNA)' == '' ">false</EnableFNA>
     <ShaderDirectory Condition=" '$(ShaderDirectory)' == '' ">Shaders</ShaderDirectory>
     <ShaderBinDirectory Condition=" '$(ShaderBinDirectory)' == ''">$(ShaderDirectory)\bin</ShaderBinDirectory>
@@ -59,6 +59,12 @@
   </ItemGroup>
 
   <Import Condition="'$(EnableFNA)' != 'true'" Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\Microsoft.Xna.GameStudio.targets" />
+
+  <ItemGroup Condition="'$(EnableFNA)' == 'true'">
+    <Content Include="$(FNALibPath)\*.dll;$(FNALibPath)\*.so;$(FNALibPath)\*.dylib">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
   <Target Name="ValidatePaths" BeforeTargets="BeforeBuild">
     <Message Text="FNA enable status: $(EnableFNA)" />
