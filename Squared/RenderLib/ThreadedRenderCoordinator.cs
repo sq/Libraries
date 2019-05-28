@@ -729,7 +729,6 @@ namespace Squared.Render {
                     try {
                         Manager.DeviceManager.PushRenderTarget(renderTarget);
                         RenderManager.ResetDeviceState(Device);
-                        Device.Viewport = new Viewport(0, 0, renderTarget.Width, renderTarget.Height);
                         Device.Clear(Color.Transparent);
 
                         RenderFrameToDraw(frame, false);

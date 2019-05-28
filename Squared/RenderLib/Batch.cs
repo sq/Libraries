@@ -450,7 +450,7 @@ namespace Squared.Render {
                 newViewport = new Viewport(Viewport ?? manager.Device.PresentationParameters.Bounds);
             }
 
-            manager.Device.Viewport = newViewport;
+            manager.SetViewport(newViewport);
 
             if (UpdateViewTransform)
                 MaterialSet.ViewTransform = ViewTransform.CreateOrthographic(newViewport);

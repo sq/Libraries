@@ -137,6 +137,11 @@ namespace Squared.Render {
             var targetHeight = CachedCurrentRenderTarget != null
                 ? CachedCurrentRenderTarget.Height
                 : Device.PresentationParameters.BackBufferHeight;
+            /*
+             * Some sources claim in GL it's based on the viewport, but it is not on geforce at least
+            var targetWidth = Device.Viewport.Width;
+            var targetHeight = Device.Viewport.Height;
+            */
 
             var iud = material.Parameters?.IsRenderTargetUpsideDown;
             var rtd = material.Parameters?.RenderTargetDimensions;
@@ -172,6 +177,16 @@ namespace Squared.Render {
             Device.BlendState = BlendStateStack.Pop();
         }
 
+        public void SetViewport (Viewport viewport) {
+            Device.Viewport = viewport;
+            // UpdateTargetInfo(null, false, true);
+        }
+
+        public void SetViewport (Rectangle viewport) {
+            Device.Viewport = new Viewport(viewport);
+            // UpdateTargetInfo(null, false, true);
+        }
+
         public void SetRenderTarget (RenderTarget2D newRenderTarget, bool setParams = true) {
             RenderManager.ResetDeviceState(Device);
             Device.SetRenderTarget(newRenderTarget);
@@ -189,9 +204,9 @@ namespace Squared.Render {
             } else {
                 var first = (RenderTarget2D)newRenderTargets[0].RenderTarget;
                 Device.SetRenderTargets(newRenderTargets);
-                UpdateTargetInfo(first, true, setParams);
                 RenderManager.ResetDeviceState(Device);
-                Device.Viewport = new Viewport(0, 0, CachedCurrentRenderTarget.Width, CachedCurrentRenderTarget.Height);
+                Device.Viewport = new Viewport(0, 0, first.Width, first.Height);
+                UpdateTargetInfo(first, true, setParams);
             }
         }
 

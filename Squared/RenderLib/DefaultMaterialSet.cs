@@ -80,6 +80,10 @@ namespace Squared.Render {
             return Equals(ref vt);
         }
 
+        public override int GetHashCode () {
+            return Scale.GetHashCode() ^ Position.GetHashCode() ^ Projection.GetHashCode() ^ ModelView.GetHashCode();
+        }
+
         public override string ToString () {
             return string.Format("ViewTransform pos={0} scale={1}", Position, Scale);
         }
