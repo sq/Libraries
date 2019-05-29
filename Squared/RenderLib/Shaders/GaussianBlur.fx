@@ -1,3 +1,4 @@
+#include "CompilerWorkarounds.fxh"
 #include "ViewTransformCommon.fxh"
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
@@ -18,7 +19,7 @@ float4 tap(
     in float2 texCoord,
     in float4 texRgn
 ) {
-    return tex2Dbias(TapSampler, float4(clamp(texCoord, texRgn.xy, texRgn.zw), 0, MipOffset));
+    return tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MipOffset));
 }
 
 float4 GaussianBlur5TapPixelShaderCore(

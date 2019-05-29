@@ -1,3 +1,4 @@
+#include "CompilerWorkarounds.fxh"
 #include "ViewTransformCommon.fxh"
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
@@ -31,6 +32,7 @@ sampler LUT2Sampler : register(s5) {
 };
 
 float3 ApplyLUT(float3 value, float lut2Weight) {
+    value = saturate3(value);
     float3 tap1 = ReadLUT(LUT1Sampler, LUTResolutions.x, value);
 
     // HACK: Branch breaks this in MojoShader
@@ -53,7 +55,7 @@ void BasicPixelShader(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    result = multiplyColor * tex2D(TextureSampler, clamp(texCoord, texRgn.xy, texRgn.zw));
+    result = multiplyColor * tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
     result += (addColor * result.a);
 }
 
@@ -68,7 +70,7 @@ void BasicPixelShaderWithLUT(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    float4 texColor = tex2D(TextureSampler, clamp(texCoord, texRgn.xy, texRgn.zw));
+    float4 texColor = tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
     texColor.rgb = ApplyLUT(texColor.rgb, LUT2Weight);
     texColor.rgb = ApplyDither(texColor.rgb, GET_VPOS);
 
@@ -87,7 +89,7 @@ void ToSRGBPixelShader(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    result = multiplyColor * tex2D(TextureSampler, clamp(texCoord, texRgn.xy, texRgn.zw));
+    result = multiplyColor * tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
     result += (addColor * result.a);
     // Fixme: Premultiplied alpha?
     result.rgb = ApplyDither(LinearToSRGB(result.rgb), GET_VPOS);
@@ -103,8 +105,8 @@ void ShadowedPixelShader(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    float2 shadowTexCoord = clamp(texCoord - (ShadowOffset * HalfTexel * 2), texRgn.xy, texRgn.zw);
-    float4 texColor = tex2D(TextureSampler, clamp(texCoord, texRgn.xy, texRgn.zw));
+    float2 shadowTexCoord = clamp2(texCoord - (ShadowOffset * HalfTexel * 2), texRgn.xy, texRgn.zw);
+    float4 texColor = tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
     float4 shadowColor = ShadowColor * tex2D(TextureSampler, shadowTexCoord);
     float shadowAlpha = 1 - texColor.a;
     result = ((shadowColor * shadowAlpha) + (addColor * texColor.a)) * multiplyColor.a + (texColor * multiplyColor);
@@ -120,7 +122,7 @@ void BasicPixelShaderWithDiscard(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    result = multiplyColor * tex2D(TextureSampler, clamp(texCoord, texRgn.xy, texRgn.zw));
+    result = multiplyColor * tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
     result += (addColor * result.a);
 
     const float discardThreshold = (1.0 / 255.0);

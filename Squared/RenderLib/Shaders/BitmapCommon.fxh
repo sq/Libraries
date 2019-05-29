@@ -62,7 +62,7 @@ inline float2 ComputeTexCoord (
     float2 texTL = min(texRgn.xy, texRgn.zw);
     float2 texBR = max(texRgn.xy, texRgn.zw);
     newTexRgn = float4(texTL.x, texTL.y, texBR.x, texBR.y);
-    return clamp(
+    return clamp2(
         texRgn.xy + corner, texTL, texBR
     );
 }
