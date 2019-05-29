@@ -81,6 +81,9 @@
         <None Include="$(FNALibsPath)\$(PlatformTarget)\*.dll">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
+        <None Include="$(FNALibsPath)\$(PlatformTarget)\*.pdb">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
       </ItemGroup>
     </When>
   </Choose>  
