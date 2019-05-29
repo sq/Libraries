@@ -31,11 +31,12 @@ sampler LUT2Sampler : register(s5) {
 };
 
 float3 ApplyLUT(float3 value, float lut2Weight) {
-    float3 tap1 = ReadLUT(LUT1Sampler, LUTResolutions.x, value.rgb);
+    float3 tap1 = ReadLUT(LUT1Sampler, LUTResolutions.x, value);
 
-    [branch]
+    // HACK: Branch breaks this in MojoShader
+    [flatten]
     if (lut2Weight > 0) {
-        float3 tap2 = ReadLUT(LUT2Sampler, LUTResolutions.y, value.rgb);
+        float3 tap2 = ReadLUT(LUT2Sampler, LUTResolutions.y, value);
         return lerp(tap1, tap2, lut2Weight);
     } else {
         return tap1;
