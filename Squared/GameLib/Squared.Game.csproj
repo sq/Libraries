@@ -65,7 +65,6 @@
     <SquaredPath>..\..\</SquaredPath>
     <FNAPath>..\..\..\FNA\</FNAPath>
     <FNALibPath>..\..\..\FNA\fnalibs</FNALibPath>
-    <ShaderDirectory>Shaders</ShaderDirectory>
     <IncludeSquaredGame>false</IncludeSquaredGame>
     <IncludeSquaredRender>false</IncludeSquaredRender>
     <IncludeSquaredTask>false</IncludeSquaredTask>

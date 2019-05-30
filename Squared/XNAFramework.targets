@@ -103,14 +103,28 @@
     <Message Text="Shader output directory: '$(ShaderLocalBinDirectory)'" />
     <Message Text="Shader optimization level: $(ShaderOptimizationLevel)" />    
 
-    <Error Text="You must set FNAPath" Condition=" '$(FNAPath)' == '' " />
+    <Error Importance="High" Text="You must set FNAPath" Condition=" '$(FNAPath)' == '' " />
 
-    <Error Text="FNALibsPath '$(FNALibsPath)' does not exist or is not set" Condition=" !Exists('$(FNALibsPath)') And ('$(EnableFNA)' == 'true') " />
+    <Error Importance="High" Text="FNALibsPath '$(FNALibsPath)' does not exist or is not set" Condition=" !Exists('$(FNALibsPath)') And ('$(EnableFNA)' == 'true') " />
   </Target>
 
+  <Target Name="CleanShaders" Condition=" '$(ShaderDirectory)' != '' " AfterTargets="Clean">
+    <Message Importance="High" Text="Cleaning shaders" />
+
+    <Exec Command='del /Q /S "$(ShaderLocalBinDirectory)\*.bin"' />
+  </Target>
+
+  <!-- FIXME: I want this to run only during Rebuild
+  <Target Name="CleanShadersDuringRebuild" Condition=" '$(ShaderDirectory)' != '' " BeforeTargets="Rebuild;CompileShaders">
+    <Message Importance="High" Text="Cleaning shaders" />
+
+    <Exec Command='del /Q /S "$(ShaderLocalBinDirectory)\*.bin"' />
+  </Target>
+  -->
+
   <Target Name="CompileShaders" Condition=" '$(ShaderDirectory)' != '' " BeforeTargets="BeforeBuild">
-    <Message Text="Compiling shaders" />
-    <Error Text="You must set SquaredPath to use the shader compiler" Condition=" '$(SquaredPath)' == '' " />
+    <Message Importance="High" Text="Compiling shaders" />
+    <Error Importance="High" Text="You must set SquaredPath to use the shader compiler" Condition=" '$(SquaredPath)' == '' " />
 
     <Exec Command='"$(ShaderCompilerPath)" "$(SquaredPath)\ext\fxc" "$(ShaderDirectory)" "$(ShaderLocalBinDirectory)" "/O$(ShaderOptimizationLevel) /Zi $(ShaderCompilerDefines)"' />
   </Target>
