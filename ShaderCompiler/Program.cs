@@ -20,6 +20,11 @@ namespace ShaderCompiler {
             var destDir = args[2];
             var fxcParams = args[3];
             var fxcPath = Path.Combine(fxcDir, @"fxc.exe");
+
+            string testParsePath = null;
+            if (args.Length > 4)
+                testParsePath = args[4];
+
             if (!File.Exists(fxcPath))
                 DownloadFXC(fxcDir);
             int totalFileCount = 0, updatedFileCount = 0, errorCount = 0;
@@ -80,17 +85,36 @@ namespace ShaderCompiler {
                     );
                     needNewline = false;
 
-                    var psi = new ProcessStartInfo(
-                        fxcPath, fullFxcParams
-                    ) {
-                        UseShellExecute = false
-                    };
+                    int exitCode;
+                    {
+                        var psi = new ProcessStartInfo(
+                            fxcPath, fullFxcParams
+                        ) {
+                            UseShellExecute = false
+                        };
 
-                    Console.ForegroundColor = ConsoleColor.DarkCyan;
-                    using (var p = Process.Start(psi)) {
-                        p.WaitForExit();
-                        if (p.ExitCode != 0)
-                            errorCount += 1;
+                        Console.ForegroundColor = ConsoleColor.DarkCyan;
+                        using (var p = Process.Start(psi)) {
+                            p.WaitForExit();
+                            exitCode = p.ExitCode;
+                        }
+                    }
+
+                    if (exitCode != 0) {
+                        errorCount += 1;
+                    } else if (!String.IsNullOrWhiteSpace(testParsePath)) {
+                        var psi = new ProcessStartInfo(
+                            testParsePath, string.Format("glsl120 \"{0}\"", destPath)
+                        ) {
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true
+                        };
+                        using (var outStream = File.OpenWrite(destPath.Replace(".bin", ".glsl")))
+                        using (var p = Process.Start(psi)) {
+                            p.StandardOutput.BaseStream.CopyTo(outStream);
+                            p.StandardOutput.Close();
+                            p.WaitForExit();
+                        }
                     }
 
                     Console.WriteLine();

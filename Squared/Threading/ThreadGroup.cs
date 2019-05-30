@@ -28,6 +28,8 @@ namespace Squared.Threading {
             new ConcurrentDictionary<Type, IWorkQueue>(new ReferenceComparer<Type>());
         private readonly ConcurrentDictionary<Type, IWorkQueue> MainThreadQueues = 
             new ConcurrentDictionary<Type, IWorkQueue>(new ReferenceComparer<Type>());
+        private readonly UnorderedList<IWorkQueue> MainThreadQueueList = 
+            new UnorderedList<IWorkQueue>();
 
         // We keep a separate iterable copy of the queue list for thread spawning purposes
         private readonly List<IWorkQueue> QueueList = new List<IWorkQueue>();
@@ -67,18 +69,16 @@ namespace Squared.Threading {
         public bool StepMainThread () {
             bool allExhausted = true;
             int totalSteps = 0;
-            IWorkQueue[] queues;
-            // FIXME: Pointless alloc
-            lock (MainThreadQueues) {
-                queues = new IWorkQueue[MainThreadQueues.Count];
-                MainThreadQueues.Values.CopyTo(queues, 0);
-            }
-            foreach (var q in queues) {
+
+            // FIXME: This will deadlock if you create a new queue while it's stepping the main thread
+            lock (MainThreadQueueList)
+            foreach (var q in MainThreadQueueList) {
                 bool exhausted;
                 totalSteps += q.Step(out exhausted);
                 if (!exhausted)
                     allExhausted = false;
             }
+
             return allExhausted;
         }
 
@@ -156,6 +156,11 @@ namespace Squared.Threading {
                         foreach (var thread in Threads)
                             thread.RegisterQueue(result);
                     }
+                }
+
+                if (isMainThreadOnly) {
+                    lock (MainThreadQueueList)
+                        MainThreadQueueList.Add(result);
                 }
             } else {
                 result = (WorkQueue<T>)existing;

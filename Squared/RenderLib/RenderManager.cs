@@ -58,6 +58,12 @@ namespace Squared.Render {
     }
 
     public sealed class DeviceManager : IDisposable {
+        /// <summary>
+        /// Set this to true if you insist on using Device.SetRenderTarget(s) 
+        ///  instead of using DeviceManager's methods
+        /// </summary>
+        public static bool ParanoidRenderTargetChecks = false;
+
         public static class ActiveMaterial {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Set (DeviceManager deviceManager, Material material) {
@@ -120,7 +126,7 @@ namespace Squared.Render {
         internal void UpdateTargetInfo (RenderTarget2D target, bool knownTarget, bool setParams) {
             if (knownTarget) {
                 CachedCurrentRenderTarget = target;
-            } else {
+            } else if (ParanoidRenderTargetChecks) {
                 var rts = Device.GetRenderTargets();
                 if ((rts == null) || (rts.Length == 0))
                     CachedCurrentRenderTarget = null;
@@ -144,21 +150,20 @@ namespace Squared.Render {
             if (material == null)
                 return;
 
-            var iud = material.Parameters?.IsRenderTargetUpsideDown;
             var rtd = material.Parameters?.RenderTargetDimensions;
 
-            if ((iud == null) && (rtd == null))
+            if (rtd == null)
                 return;
 
             if (!setParams)
                 return;
 
 #if FNA
-            iud?.SetValue(CachedCurrentRenderTarget == null);
-#else
+            if (CachedCurrentRenderTarget == null)
+                targetHeight *= -1;
 #endif
-            if (rtd != null)
-                rtd.SetValue(new Vector2(targetWidth, targetHeight));
+
+            rtd.SetValue(new Vector2(targetWidth, targetHeight));
 
             // material.Flush();
         }
@@ -233,7 +238,7 @@ namespace Squared.Render {
             Device.Viewport = ViewportStack.Pop();
             // GOD
             RenderManager.ResetDeviceState(Device);
-            UpdateTargetInfo(null, false, false);
+            UpdateTargetInfo(newRenderTargets?.Length > 0 ? newRenderTargets[0].RenderTarget as RenderTarget2D : null, true, false);
         }
 
         public DefaultMaterialSetEffectParameters CurrentParameters {
@@ -254,8 +259,9 @@ namespace Squared.Render {
             RenderManager.ResetDeviceState(Device);
             if (changeRenderTargets)
                 SetRenderTargets(null);
+            else
+                UpdateTargetInfo(null, false, true);
             Device.SetVertexBuffer(null);
-            UpdateTargetInfo(null, false, true);
         }
 
         public void Finish () {

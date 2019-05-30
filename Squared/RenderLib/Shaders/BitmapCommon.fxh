@@ -4,7 +4,7 @@
 
 #define ENABLE_DITHERING
 
-uniform bool HalfPixelOffset;
+uniform float HalfPixelOffset;
 
 float4 TransformPosition (float4 position, bool halfPixelOffset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels

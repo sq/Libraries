@@ -27,6 +27,7 @@ namespace Squared.Render {
                 ScaleAndPosition.Y = value.Y;
             }
         }
+
         public Vector2 Position {
             get {
                 return new Vector2(ScaleAndPosition.Z, ScaleAndPosition.W);
@@ -721,7 +722,7 @@ namespace Squared.Render {
         public readonly EffectParameter ShadowColor, ShadowOffset, LightmapUVOffset;
         public readonly EffectParameter Time, FrameIndex, DitherStrength;
         public readonly EffectParameter HalfPixelOffset;
-        public readonly EffectParameter IsRenderTargetUpsideDown, RenderTargetDimensions;
+        public readonly EffectParameter RenderTargetDimensions;
 
         public DefaultMaterialSetEffectParameters (Effect effect) {
             var viewport = effect.Parameters["Viewport"];
@@ -744,7 +745,6 @@ namespace Squared.Render {
             LightmapUVOffset = effect.Parameters["LightmapUVOffset"];
             DitherStrength = effect.Parameters["DitherStrength"];
             HalfPixelOffset = effect.Parameters["HalfPixelOffset"];
-            IsRenderTargetUpsideDown = effect.Parameters["__IsRenderTargetUpsideDown__"];
             RenderTargetDimensions = effect.Parameters["__RenderTargetDimensions__"];
         }
     }
