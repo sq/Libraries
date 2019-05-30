@@ -6,11 +6,15 @@ using System.Linq;
 using System.Net;
 using System.Net.Cache;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace ShaderCompiler {
     class Program {
         public static void Main (string[] args) {
+            var shouldRebuild = args.Any(a => a.ToLower() == "--rebuild");
+            args = args.Where(a => a.ToLower() != "--rebuild").ToArray();
+            
             var fxcDir = args[0];
             var sourceDir = args[1];
             var destDir = args[2];
@@ -18,10 +22,20 @@ namespace ShaderCompiler {
             var fxcPath = Path.Combine(fxcDir, @"fxc.exe");
             if (!File.Exists(fxcPath))
                 DownloadFXC(fxcDir);
-            var shouldRebuild = (args.Length > 4) && (args[4].ToLower() == "rebuild");
-            int totalFileCount = 0, updatedFileCount = 0;
+            int totalFileCount = 0, updatedFileCount = 0, errorCount = 0;
             if (!Directory.Exists(destDir))
                 Directory.CreateDirectory(destDir);
+
+            var defines = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var paramsString = fxcParams.Trim();
+            if (!string.IsNullOrWhiteSpace(paramsString)) {
+                var defineRegex = new Regex("/D[ ]+(?'name'[a-zA-Z0-9_]+)=(?'value'[a-zA-Z0-9_,;.\\-\\*\\!\\&\\|]*)", RegexOptions.ExplicitCapture);
+                foreach (Match m in defineRegex.Matches(paramsString)) {
+                    var name = m.Groups["name"].Value;
+                    var value = m.Groups["value"].Value ?? "";
+                    defines.Add(name, value);
+                }
+            }
 
             string oldParams = null, oldParamsPath = Path.Combine(destDir, "params.txt");
             if (File.Exists(oldParamsPath))
@@ -35,48 +49,115 @@ namespace ShaderCompiler {
                 var destPath = Path.Combine(destDir, Path.GetFileName(shader) + ".bin");
                 var doesNotExist = !File.Exists(destPath);
                 var resultDate = File.GetLastWriteTimeUtc(destPath);
-                Console.WriteLine(Path.GetFileName(shader));
+
+                var needNewline = true;
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.Write(Path.GetFileName(shader));
+
                 var fileList = EnumerateFilenamesForShader(shader).ToList();
                 var isModified = !doesNotExist && fileList.Any((fn) => File.GetLastWriteTimeUtc(fn) >= resultDate);
+
                 if (doesNotExist || isModified || shouldRebuild) {
                     if (!doesNotExist)
                         File.Delete(destPath);
 
-                    var localFxcParams = GetFxcParamsForShader(shader) ?? fxcParams;
+                    var localFxcParams = GetFxcParamsForShader(shader, fxcParams, defines);
                     var fullFxcParams = 
                         string.Format("/nologo {0} /T fx_2_0 {1} /Fo {2}", shader, localFxcParams, destPath);
 
-                    Console.WriteLine("  {0} Compiling with params '{1}'...", doesNotExist ? "does not exist" : "is outdated", localFxcParams);
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.WriteLine(
+                        " {0}{2}Compiling with params '{1}'...", 
+                        doesNotExist 
+                            ? "does not exist"
+                            : (
+                                shouldRebuild
+                                    ? "is forced to rebuild"
+                                    : "is outdated"
+                            ), 
+                        localFxcParams,
+                        Environment.NewLine
+                    );
+                    needNewline = false;
+
                     var psi = new ProcessStartInfo(
                         fxcPath, fullFxcParams
                     ) {
                         UseShellExecute = false
                     };
-                    using (var p = Process.Start(psi))
+
+                    Console.ForegroundColor = ConsoleColor.DarkCyan;
+                    using (var p = Process.Start(psi)) {
                         p.WaitForExit();
+                        if (p.ExitCode != 0)
+                            errorCount += 1;
+                    }
+
+                    Console.WriteLine();
                     updatedFileCount++;
                 }
+
+                Console.ResetColor();
+                if (needNewline)
+                    Console.WriteLine();
                 totalFileCount++;
             }
-            Console.WriteLine("Compiled {0}/{1} shader(s) to {2}", updatedFileCount, totalFileCount, destDir);
 
-            File.WriteAllText(oldParamsPath, fxcParams);
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("Compiled {0}/{1} shader(s) with {3} error(s) to '{2}'", updatedFileCount, totalFileCount, destDir, errorCount);
+            Console.ResetColor();
+
+            if (errorCount == 0)
+                File.WriteAllText(oldParamsPath, fxcParams);
+            else
+                File.Delete(oldParamsPath);
 
             if (Debugger.IsAttached)
                 Console.ReadLine();
         }
 
-        private static string GetFxcParamsForShader (string path) {
+        private static string GetFxcParamsForShader (string path, string defaultParams, Dictionary<string, string> defines) {
+            var result = new StringBuilder();
             var prologue = "#pragma fxcparams(";
+            var conditionalRegex = new Regex("if([ ]*)\\(([ ]*)(?'name'[^ =]+)[ ]*(?'operator'[!=]=)[ ]*(?'value'('[^']*)'|[^ =\\)]+)\\)[ ]*", RegexOptions.ExplicitCapture);
 
             foreach (var line in File.ReadAllLines(path)) {
                 if (!line.StartsWith(prologue))
                     continue;
 
-                return line.Substring(prologue.Length).Replace(")", "");
+                var skip = false;
+                var text = line.Trim().Substring(prologue.Length, line.Length - prologue.Length - 1).Trim();
+                var conditionals = conditionalRegex.Matches(text);
+                var filteredText = conditionalRegex.Replace(text, "").Trim();
+
+                foreach (Match m in conditionals) {
+                    var name = m.Groups["name"].Value;
+                    var op = m.Groups["operator"].Value;
+                    var value = m.Groups["value"].Value;
+
+                    string definedValue;
+                    defines.TryGetValue(name, out definedValue);
+                    var doesMatch = (definedValue ?? "").Equals(value.Trim(), StringComparison.OrdinalIgnoreCase);
+
+                    if (op == "!=")
+                        doesMatch = !doesMatch;
+
+                    if (!doesMatch)
+                        skip = true;
+                }
+
+                if (!skip) {
+                    result.Append(filteredText);
+                    break;
+                }
             }
 
-            return null;
+            if (result.Length == 0)
+                result.Append(defaultParams.Trim());
+            else foreach (var kvp in defines)
+                result.AppendFormat(" /D {0}={1}", kvp.Key, kvp.Value);
+
+            return result.ToString().Trim();
         }
         
         private static IEnumerable<string> EnumerateFilenamesForShader (string path) {
@@ -95,8 +176,10 @@ namespace ShaderCompiler {
                     includePath = includePath.Substring(0, includePath.Length - 1);
 
                 var absoluteIncludePath = Path.Combine(dir, includePath);
-                if (!File.Exists(absoluteIncludePath))
+                if (!File.Exists(absoluteIncludePath)) {
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.Error.WriteLine("// WARNING: File not found: {0}", absoluteIncludePath);
+                }
 
                 // Console.WriteLine("  {1}", name, includePath);
 
