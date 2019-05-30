@@ -54,3 +54,17 @@ float4 clamp4 (float4 v, float4 minimum, float4 maximum) {
     return clamp(v, minimum, maximum);
 }
 #endif
+
+// HACK: branch hints can cause very bad things to happen when the conditionals are translated to GLSL by mojoshader.
+// Sometimes it works without a hint at all but other times you need a flatten hint.
+
+#define REQUIRE_FLATTEN [flatten]
+#define REQUIRE_BRANCH [branch]
+
+#if FNA
+#define PREFER_FLATTEN [flatten]
+#define PREFER_BRANCH [flatten]
+#else
+#define PREFER_FLATTEN [flatten]
+#define PREFER_BRANCH [branch]
+#endif

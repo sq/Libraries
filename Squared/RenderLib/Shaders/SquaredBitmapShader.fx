@@ -35,8 +35,7 @@ float3 ApplyLUT(float3 value, float lut2Weight) {
     value = saturate3(value);
     float3 tap1 = ReadLUT(LUT1Sampler, LUTResolutions.x, value);
 
-    // HACK: Branch breaks this in MojoShader
-    [flatten]
+    PREFER_BRANCH
     if (lut2Weight > 0) {
         float3 tap2 = ReadLUT(LUT2Sampler, LUTResolutions.y, value);
         return lerp(tap1, tap2, lut2Weight);
