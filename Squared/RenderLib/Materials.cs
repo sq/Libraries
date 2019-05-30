@@ -117,7 +117,8 @@ namespace Squared.Render {
                 throw new InvalidOperationException();
         }
 
-        public void Begin (DeviceManager deviceManager) {
+        // For debugging
+        private void Begin_Internal (string shaderName, DeviceManager deviceManager) {
             CheckDevice(deviceManager);
             if (ActiveViewTransform != null)
                 ActiveViewTransform.ActiveMaterial = this;
@@ -132,7 +133,12 @@ namespace Squared.Render {
                 Flush(false);
         }
 
-        public void Flush (bool autoApplyViewTransform = true) {
+        public void Begin (DeviceManager deviceManager) {
+            Begin_Internal(Effect != null ? Effect.CurrentTechnique.Name : null, deviceManager);
+        }
+
+        // For debugging
+        private void Flush_Internal (string shaderName, bool autoApplyViewTransform) {
             if (autoApplyViewTransform)
                 AutoApplyCurrentViewTransform();
 
@@ -142,6 +148,10 @@ namespace Squared.Render {
                 var currentTechnique = Effect.CurrentTechnique;
                 currentTechnique.Passes[0].Apply();
             }
+        }
+
+        public void Flush (bool autoApplyViewTransform = true) {
+            Flush_Internal(Effect != null ? Effect.CurrentTechnique.Name : null, autoApplyViewTransform);
         }
 
         public void End (DeviceManager deviceManager) {

@@ -38,6 +38,7 @@
   <PropertyGroup Condition="'$(EnableFNA)' == 'true'">
     <DefineConstants>$(DefineConstants);FNA;SDL2</DefineConstants>
     <PlatformTarget Condition=" '$(AutoPlatforms)' == 'true' ">$(AutoPlatformTarget)</PlatformTarget>
+    <ShaderCompilerDefines>$(ShaderCompilerDefines)/D FNA=1 /D XNA=0</ShaderCompilerDefines>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(EnableFNA)' == 'false'">
@@ -48,6 +49,7 @@
     <PlatformTarget>x86</PlatformTarget>
     <Prefer32Bit>true</Prefer32Bit>
     <XnaOutputType Condition="'$(OutputType)' == 'WinExe'">Game</XnaOutputType>
+    <ShaderCompilerDefines>$(ShaderCompilerDefines)/D FNA=0 /D XNA=1</ShaderCompilerDefines>
   </PropertyGroup>
 
   <Choose>
@@ -110,7 +112,7 @@
     <Message Text="Compiling shaders" />
     <Error Text="You must set SquaredPath to use the shader compiler" Condition=" '$(SquaredPath)' == '' " />
 
-    <Exec Command='"$(ShaderCompilerPath)" "$(SquaredPath)\ext\fxc" "$(ShaderDirectory)" "$(ShaderLocalBinDirectory)" "/O$(ShaderOptimizationLevel) /Zi"' />
+    <Exec Command='"$(ShaderCompilerPath)" "$(SquaredPath)\ext\fxc" "$(ShaderDirectory)" "$(ShaderLocalBinDirectory)" "/O$(ShaderOptimizationLevel) /Zi $(ShaderCompilerDefines)"' />
   </Target>
 
   <ItemGroup Condition=" '$(ShaderDirectory)' != '' ">
