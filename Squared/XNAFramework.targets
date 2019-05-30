@@ -107,9 +107,9 @@
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader output directory: '$(ShaderLocalBinDirectory)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader optimization level: $(ShaderOptimizationLevel)" />    
 
-    <Error Importance="High" Text="You must set FNAPath" Condition=" '$(FNAPath)' == '' " />
+    <Error Text="You must set FNAPath" Condition=" '$(FNAPath)' == '' " />
 
-    <Error Importance="High" Text="FNALibsPath '$(FNALibsPath)' does not exist or is not set" Condition=" !Exists('$(FNALibsPath)') And ('$(EnableFNA)' == 'true') " />
+    <Error Text="FNALibsPath '$(FNALibsPath)' does not exist or is not set" Condition=" !Exists('$(FNALibsPath)') And ('$(EnableFNA)' == 'true') " />
   </Target>
 
   <Target Name="CleanShaders" Condition="'$(ShaderDirectory)' != ''" AfterTargets="Clean">
@@ -129,7 +129,7 @@
 
   <Target Name="CompileShaders" Condition="'$(ShaderDirectory)' != ''" BeforeTargets="BeforeBuild">
     <Message Importance="High" Text="Compiling shaders" />
-    <Error Importance="High" Text="You must set SquaredPath to use the shader compiler" Condition=" '$(SquaredPath)' == '' " />
+    <Error Text="You must set SquaredPath to use the shader compiler" Condition=" '$(SquaredPath)' == '' " />
 
     <Exec Command='"$(ShaderCompilerPath)" "$(SquaredPath)\ext\fxc" "$(ShaderDirectory)" "$(ShaderLocalBinDirectory)" "/O$(ShaderOptimizationLevel) /Zi $(ShaderCompilerDefines)" "$(TestParsePath)"' />
   </Target>
