@@ -128,10 +128,6 @@ namespace Squared.Render {
                     CachedCurrentRenderTarget = (RenderTarget2D)rts[0].RenderTarget;
             }
 
-            var material = CurrentMaterial;
-            if (material == null)
-                return;
-
             var targetWidth = CachedCurrentRenderTarget != null
                 ? CachedCurrentRenderTarget.Width
                 : Device.PresentationParameters.BackBufferWidth;
@@ -143,6 +139,10 @@ namespace Squared.Render {
             var targetWidth = Device.Viewport.Width;
             var targetHeight = Device.Viewport.Height;
             */
+
+            var material = CurrentMaterial;
+            if (material == null)
+                return;
 
             var iud = material.Parameters?.IsRenderTargetUpsideDown;
             var rtd = material.Parameters?.RenderTargetDimensions;
@@ -157,11 +157,8 @@ namespace Squared.Render {
             iud?.SetValue(CachedCurrentRenderTarget == null);
 #else
 #endif
-            if (rtd != null) {
-                if ((material.Effect?.CurrentTechnique?.Name ?? "").Contains("Light"))
-                    ;
+            if (rtd != null)
                 rtd.SetValue(new Vector2(targetWidth, targetHeight));
-            }
 
             // material.Flush();
         }

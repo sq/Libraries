@@ -167,7 +167,6 @@ namespace Squared.Render {
         public bool IsDirty { get; private set; }
         public int Spacing { get; private set; }
 
-        private Texture2D _Texture;
         private int X, Y, RowHeight;
         private object Lock = new object();
         private Action _BeforePrepare;

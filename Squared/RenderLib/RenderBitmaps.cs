@@ -359,7 +359,7 @@ namespace Squared.Render {
         );
         private DenseList<NativeBatch> _NativeBatches;
 
-        private enum PrepareState : int {
+        private enum BitmapBatchPrepareState : int {
             Invalid,
             NotPrepared,
             Preparing,
@@ -368,7 +368,7 @@ namespace Squared.Render {
             Issued
         }
 
-        private volatile int _State = (int)PrepareState.Invalid;
+        private volatile int _State = (int)BitmapBatchPrepareState.Invalid;
 
         private static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
             new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
@@ -428,14 +428,14 @@ namespace Squared.Render {
             _DrawCalls.ListPool.ThreadGroup = rm.ThreadGroup;
             rm.AddDrainRequiredListPool(_DrawCalls.ListPool);
 
-            var prior = (PrepareState)Interlocked.Exchange(ref _State, (int)PrepareState.NotPrepared);
-            if ((prior == PrepareState.Issuing) || (prior == PrepareState.Preparing))
+            var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)BitmapBatchPrepareState.NotPrepared);
+            if ((prior == BitmapBatchPrepareState.Issuing) || (prior == BitmapBatchPrepareState.Preparing))
                 throw new ThreadStateException("This batch is currently in use");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void StateTransition (PrepareState from, PrepareState to) {
-            var prior = (PrepareState)Interlocked.Exchange(ref _State, (int)to);
+        private void StateTransition (BitmapBatchPrepareState from, BitmapBatchPrepareState to) {
+            var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)to);
             if (prior != from)
                 throw new ThreadStateException(string.Format(
                     "Expected to transition this batch from {0} to {1}, but state was {2}",
@@ -460,7 +460,7 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (BitmapDrawCall item) {
+        new public void Add (BitmapDrawCall item) {
             if (!item.IsValid)
                 throw new InvalidOperationException("Invalid draw call");
 
@@ -476,7 +476,7 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        new public void Add (ref BitmapDrawCall item, Material material) {
+        public void Add (ref BitmapDrawCall item, Material material) {
             if (!item.IsValid)
                 throw new InvalidOperationException("Invalid draw call");
             if (material != null)
@@ -654,10 +654,10 @@ namespace Squared.Render {
         }
         
         protected override void Prepare (PrepareManager manager) {
-            var prior = (PrepareState)Interlocked.Exchange(ref _State, (int)PrepareState.Preparing);
-            if ((prior == PrepareState.Issuing) || (prior == PrepareState.Preparing))
+            var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)BitmapBatchPrepareState.Preparing);
+            if ((prior == BitmapBatchPrepareState.Issuing) || (prior == BitmapBatchPrepareState.Preparing))
                 throw new ThreadStateException("This batch is currently in use");
-            else if (prior == PrepareState.Invalid)
+            else if (prior == BitmapBatchPrepareState.Invalid)
                 throw new ThreadStateException("This batch is not valid");
 
             if (_DrawCalls.Count == 0)
@@ -706,14 +706,14 @@ namespace Squared.Render {
                     FillOneSoftwareBuffer(indexArray, callBuffer, ref drawCallsPrepared, count);
             }
 
-            StateTransition(PrepareState.Preparing, PrepareState.Prepared);
+            StateTransition(BitmapBatchPrepareState.Preparing, BitmapBatchPrepareState.Prepared);
         }
             
         public override void Issue (DeviceManager manager) {
             if (_DrawCalls.Count == 0)
                 return;
 
-            StateTransition(PrepareState.Prepared, PrepareState.Issuing);
+            StateTransition(BitmapBatchPrepareState.Prepared, BitmapBatchPrepareState.Issuing);
 
             if (State.IsCombined)
                 throw new InvalidOperationException("Batch was combined into another batch");
@@ -839,11 +839,11 @@ namespace Squared.Render {
 
             base.Issue(manager);
 
-            StateTransition(PrepareState.Issuing, PrepareState.Issued);
+            StateTransition(BitmapBatchPrepareState.Issuing, BitmapBatchPrepareState.Issued);
         }
 
         protected override void OnReleaseResources () {
-            _State = (int)PrepareState.Invalid;
+            _State = (int)BitmapBatchPrepareState.Invalid;
             _BufferGenerator = null;
             _CornerBuffer = null;
 
@@ -925,12 +925,12 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        new public void Add (ref BitmapDrawCall item) {
+        public void Add (ref BitmapDrawCall item) {
             Add(ref item, Material, null, null);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        new public void AddRange (ArraySegment<BitmapDrawCall> items) {
+        public void AddRange (ArraySegment<BitmapDrawCall> items) {
             for (int i = 0; i < items.Count; i++)
                 Add(ref items.Array[i + items.Offset]);
         }
@@ -1012,7 +1012,7 @@ namespace Squared.Render {
             return result;
         }
 
-        new public void Initialize (
+        public void Initialize (
             IBatchContainer container, int layer,             
             Material material, Sorter<BitmapDrawCall> sorter,
             bool useZBuffer, int? capacity = null

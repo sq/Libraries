@@ -299,7 +299,7 @@ namespace Squared.Render {
 
         protected DenseList<T> _DrawCalls = new DenseList<T>();
 
-        new protected void Initialize (
+        protected void Initialize (
             IBatchContainer container, int layer, Material material,
             bool addToContainer, int? capacity = null
         ) {

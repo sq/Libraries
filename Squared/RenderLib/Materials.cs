@@ -33,7 +33,7 @@ namespace Squared.Render {
         internal DefaultMaterialSet.ActiveViewTransformInfo ActiveViewTransform;
         internal uint ActiveViewTransformId;
 
-        protected bool _IsDisposed;
+        private bool _IsDisposed;
 
         private Material () {
             MaterialID = Interlocked.Increment(ref _NextMaterialID);

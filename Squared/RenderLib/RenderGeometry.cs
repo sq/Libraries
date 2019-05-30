@@ -141,7 +141,7 @@ namespace Squared.Render {
 
         const int MaxVertexCount = 65535;
 
-        new public void Initialize (IBatchContainer container, int layer, Material material) {
+        public void Initialize (IBatchContainer container, int layer, Material material) {
             base.Initialize(container, layer, material, true);
 
             if (VertexAllocator == null)
@@ -624,7 +624,7 @@ namespace Squared.Render {
 
         const int MaxVertexCount = 65535;
 
-        new public void Initialize (IBatchContainer container, int layer, Material material) {
+        public void Initialize (IBatchContainer container, int layer, Material material) {
             base.Initialize(container, layer, material, true);
 
             if (VertexAllocator == null)

@@ -80,10 +80,9 @@ namespace Squared.Render {
         #region Direct3D
 #if !SDL2 && !MONOGAME && !FNA
         private static class KnownMethodSlots {
-            public static uint GetParameterDesc;
-            public static uint GetParameter;
-            public static uint GetParameterByName;
-            public static uint SetRawValue;
+            public static uint 
+                GetParameterDesc = 0, GetParameter = 0, 
+                GetParameterByName = 0, SetRawValue = 0;
 
             static KnownMethodSlots () {
                 var iface = typeof(ID3DXEffect);
@@ -549,7 +548,8 @@ namespace Squared.Render {
         public void Add (uint id, IUniformBinding binding) {
             var b = BindingsByID;
             var hv = HasValue;
-            lock (b) {
+            var bToUnlock = b;
+            lock (bToUnlock) {
                 if (id >= b.Length) {
                     var newLength = id + 12;
                     {

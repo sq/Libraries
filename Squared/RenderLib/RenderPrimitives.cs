@@ -181,7 +181,7 @@ namespace Squared.Render {
             _UserData = userData;
         }
 
-        public void Add (PrimitiveDrawCall<T> item) {
+        new public void Add (PrimitiveDrawCall<T> item) {
             Add(ref item);
         }
 
@@ -421,7 +421,7 @@ namespace Squared.Render {
             _UserData = userData;
         }
 
-        public void Add (NativeDrawCall item) {
+        new public void Add (NativeDrawCall item) {
             Add(ref item);
         }
 
