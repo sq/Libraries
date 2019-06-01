@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Squared.Util;
@@ -16,6 +17,12 @@ namespace Squared.Threading {
         ///  a new thread will be spawned if possible
         /// </summary>
         public float    NewThreadBusyThresholdMs = 5;
+
+        /// <summary>
+        /// If set to a value above 0, the amount of time spent stepping on the main thread
+        ///  in one invocation will be limited to this duration
+        /// </summary>
+        public float    MainThreadStepLengthLimitMs = -1;
 
         public readonly ITimeProvider TimeProvider;
         public readonly bool CreateBackgroundThreads;
@@ -71,20 +78,30 @@ namespace Squared.Threading {
             int totalSteps = 0;
 
             // FIXME: This will deadlock if you create a new queue while it's stepping the main thread
+            var sw = Stopwatch.StartNew();
             lock (MainThreadQueueList)
             foreach (var q in MainThreadQueueList) {
                 bool exhausted;
-                totalSteps += q.Step(out exhausted);
+                // We want to run one queue item at a time to try and drain all the main thread queues evenly
+                totalSteps += q.Step(out exhausted, 1);
                 if (!exhausted)
                     allExhausted = false;
+
+                if (
+                    (MainThreadStepLengthLimitMs > 0) &&
+                    sw.ElapsedMilliseconds > MainThreadStepLengthLimitMs
+                )
+                    return false;
             }
 
             return allExhausted;
         }
 
         public void StepMainThreadUntilDrained () {
-            while (!StepMainThread())
-                ;
+            if (MainThreadStepLengthLimitMs > 0)
+                StepMainThread();
+            else while (!StepMainThread())
+                Thread.Yield();
         }
 
         public int Count {
