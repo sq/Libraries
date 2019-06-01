@@ -107,7 +107,7 @@
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader output directory: '$(ShaderLocalBinDirectory)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader optimization level: $(ShaderOptimizationLevel)" />    
 
-    <Error Text="You must set FNAPath" Condition=" '$(FNAPath)' == '' " />
+    <Error Text="You must set FNAPath" Condition=" ('$(FNAPath)' == '') And ('$(EnableFNA)' == 'true') " />
 
     <Error Text="FNALibsPath '$(FNALibsPath)' does not exist or is not set" Condition=" !Exists('$(FNALibsPath)') And ('$(EnableFNA)' == 'true') " />
   </Target>
