@@ -185,36 +185,36 @@ namespace Squared.Render.STB {
             int previousLevelWidth = Width, previousLevelHeight = Height;
 
             using (var scratch = BufferPool<Color>.Allocate(Width * Height))
-                fixed (Color* pScratch = scratch.Data)
-                    for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
-                        if (level > 0) {
-                            pLevelData = pScratch;
+            fixed (Color* pScratch = scratch.Data)
+            for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
+                if (level > 0) {
+                    pLevelData = pScratch;
 
-                            MipGenerator.Color(pPreviousLevelData, previousLevelWidth, previousLevelHeight, pLevelData, levelWidth, levelHeight);
-                        }
+                    MipGenerator.Color(pPreviousLevelData, previousLevelWidth, previousLevelHeight, pLevelData, levelWidth, levelHeight);
+                }
 
 #if FNA
-                        lock (coordinator.UseResourceLock)
-                            result.SetDataPointerEXT((int)level, null, new IntPtr(pLevelData), (levelWidth * SizeofPixel * levelHeight));
+                lock (coordinator.UseResourceLock)
+                    result.SetDataPointerEXT((int)level, null, new IntPtr(pLevelData), (levelWidth * SizeofPixel * levelHeight));
 #else
-                        lock (coordinator.UseResourceLock)
-                            Evil.TextureUtils.SetDataFast(result, level, pLevelData, levelWidth, levelHeight, (uint)(levelWidth * SizeofPixel));
+                lock (coordinator.UseResourceLock)
+                    Evil.TextureUtils.SetDataFast(result, level, pLevelData, levelWidth, levelHeight, (uint)(levelWidth * SizeofPixel));
 #endif
 
-                        previousLevelWidth = levelWidth;
-                        previousLevelHeight = levelHeight;
-                        var newWidth = levelWidth / 2;
-                        var newHeight = levelHeight / 2;
-                        levelWidth = newWidth;
-                        levelHeight = newHeight;
-                        var temp = pPreviousLevelData;
-                        if (temp == pLevelData) {
-                            pLevelData = pScratch;
-                        } else {
-                            pPreviousLevelData = pLevelData;
-                            pLevelData = pPreviousLevelData;
-                        }
-                    }
+                previousLevelWidth = levelWidth;
+                previousLevelHeight = levelHeight;
+                var newWidth = levelWidth / 2;
+                var newHeight = levelHeight / 2;
+                levelWidth = newWidth;
+                levelHeight = newHeight;
+                var temp = pPreviousLevelData;
+                if (temp == pLevelData) {
+                    pLevelData = pScratch;
+                } else {
+                    pPreviousLevelData = pLevelData;
+                    pLevelData = pPreviousLevelData;
+                }
+            }
         }
 
         public void Dispose () {

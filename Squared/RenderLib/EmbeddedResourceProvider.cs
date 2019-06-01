@@ -30,7 +30,7 @@ namespace Squared.Render {
 
         public List<string> GetNames (string prefix = null) {
             if (prefix == null)
-                prefix = Prefix;
+                prefix = Prefix ?? "";
 
             return (
                 from n in Assembly.GetManifestResourceNames()

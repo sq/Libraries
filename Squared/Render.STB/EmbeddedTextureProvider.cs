@@ -39,7 +39,6 @@ namespace Squared.Render {
         protected override Texture2D CreateInstance (Stream stream, object data) {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
             using (var img = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint))
-            lock (Coordinator.CreateResourceLock)
                 return img.CreateTexture(Coordinator, options.GenerateMips);
         }
     }

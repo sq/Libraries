@@ -572,8 +572,11 @@ namespace Squared.Render.Evil {
 
                 Buffer.MemoryCopy(pData, lockedRect.pBits, lockedRect.Pitch * height, pitch * height);
             } finally {
-                if (lockedRect.pBits != null)
-                    unlockRect(pTexture, level);
+                if (lockedRect.pBits != null) {
+                    var unlockHr = unlockRect(pTexture, level);
+                    if (unlockHr != 0)
+                        throw Marshal.GetExceptionForHR(lockHr);
+                }
             }
         }
 

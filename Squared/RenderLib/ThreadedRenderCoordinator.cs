@@ -725,18 +725,22 @@ namespace Squared.Render {
                     frame.Label = "Synchronous Draw";
                     materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
 
-                    drawBehavior(frame);
-
-                    PrepareNextFrame(frame, false);
-
                     try {
-                        Manager.DeviceManager.PushRenderTarget(renderTarget);
-                        RenderManager.ResetDeviceState(Device);
-                        Device.Clear(Color.Transparent);
+                        drawBehavior(frame);
 
-                        RenderFrameToDraw(frame, false);
+                        PrepareNextFrame(frame, false);
+
+                        Manager.DeviceManager.PushRenderTarget(renderTarget);
+                        try {
+                            RenderManager.ResetDeviceState(Device);
+                            Device.Clear(Color.Transparent);
+
+                            RenderFrameToDraw(frame, false);
+                        } finally {
+                            Manager.DeviceManager.PopRenderTarget();
+                        }
                     } finally {
-                        Manager.DeviceManager.PopRenderTarget();
+                        materials.PopViewTransform();
                     }
                 }
 
