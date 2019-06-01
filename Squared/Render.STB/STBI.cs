@@ -14,8 +14,12 @@ namespace Squared.Render.STB {
         public void* Data { get; private set; }
         public bool IsFloatingPoint { get; private set; }
 
+        private static FileStream OpenStream (string path) {
+            return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        }
+
         public Image (string path, bool premultiply = true, bool asFloatingPoint = false)
-            : this (File.OpenRead(path), true, premultiply, asFloatingPoint) {
+            : this (OpenStream(path), true, premultiply, asFloatingPoint) {
         }
 
         public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false) {
