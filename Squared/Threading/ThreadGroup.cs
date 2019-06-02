@@ -22,7 +22,7 @@ namespace Squared.Threading {
         /// If set to a value above 0, the amount of time spent stepping on the main thread
         ///  in one invocation will be limited to this duration
         /// </summary>
-        public float    MainThreadStepLengthLimitMs = -1;
+        public float?   MainThreadStepLengthLimitMs = null;
 
         public readonly ITimeProvider TimeProvider;
         public readonly bool CreateBackgroundThreads;
@@ -73,9 +73,10 @@ namespace Squared.Threading {
         /// This is necessary to ensure main-thread-only jobs advance.
         /// </summary>
         /// <returns>Whether all queues have been exhausted.</returns>
-        public bool StepMainThread () {
+        public bool StepMainThread (float? currentElapsedMs = null) {
             bool allExhausted = true;
             int totalSteps = 0;
+            float stepLengthLimitMs = (MainThreadStepLengthLimitMs ?? 999999) - (currentElapsedMs ?? 0);
 
             // FIXME: This will deadlock if you create a new queue while it's stepping the main thread
             var sw = Stopwatch.StartNew();
@@ -88,8 +89,7 @@ namespace Squared.Threading {
                     allExhausted = false;
 
                 if (
-                    (MainThreadStepLengthLimitMs > 0) &&
-                    sw.ElapsedMilliseconds > MainThreadStepLengthLimitMs
+                    sw.ElapsedMilliseconds > stepLengthLimitMs
                 )
                     return false;
             }
@@ -97,11 +97,17 @@ namespace Squared.Threading {
             return allExhausted;
         }
 
-        public void StepMainThreadUntilDrained () {
-            if (MainThreadStepLengthLimitMs > 0)
-                StepMainThread();
-            else while (!StepMainThread())
+        public bool TryStepMainThreadUntilDrained () {
+            float stepLengthLimitMs = MainThreadStepLengthLimitMs ?? 999999;
+            var sw = Stopwatch.StartNew();
+
+            while (!StepMainThread(sw.ElapsedMilliseconds)) {
                 Thread.Yield();
+                if (sw.ElapsedMilliseconds >= stepLengthLimitMs)
+                    return false;
+            }
+
+            return true;
         }
 
         public int Count {

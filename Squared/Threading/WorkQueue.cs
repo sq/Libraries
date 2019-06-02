@@ -68,19 +68,23 @@ namespace Squared.Threading {
     public class WorkQueue<T> : IWorkQueue
         where T : IWorkItem 
     {
-        // For debugging
-        public const bool BlockEnqueuesWhileDraining = false;
+        public static class Configuration {
+            public static int? MaxStepCount = null;
+
+            // For debugging
+            public static bool BlockEnqueuesWhileDraining = false;
+
+            /// <summary>
+            /// Configures the number of steps taken each time this queue is visited by a worker thread.
+            /// Low values increase the overhead of individual work items.
+            /// High values reduce the overhead of work items but increase the odds that all worker threads can get bogged down
+            ///  by a single queue.
+            /// </summary>
+            public static int DefaultStepCount = 64;
+        }
 
         // For debugging
-        public bool IsMainThreadQueue = false;
-
-        /// <summary>
-        /// Configures the number of steps taken each time this queue is visited by a worker thread.
-        /// Low values increase the overhead of individual work items.
-        /// High values reduce the overhead of work items but increase the odds that all worker threads can get bogged down
-        ///  by a single queue.
-        /// </summary>
-        public int DefaultStepCount = 64;
+        internal bool IsMainThreadQueue = false;
 
         private readonly Queue<InternalWorkItem<T>> Queue = new Queue<InternalWorkItem<T>>();
         private int InFlightTasks = 0;
@@ -100,7 +104,7 @@ namespace Squared.Threading {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ManageDrain () {
-            if (BlockEnqueuesWhileDraining && (NumWaitingForDrain > 0))
+            if (Configuration.BlockEnqueuesWhileDraining && (NumWaitingForDrain > 0))
                 throw new Exception("Draining");
         }
 
@@ -151,8 +155,11 @@ namespace Squared.Threading {
 
         public int Step (out bool exhausted, int? maximumCount = null) {
             int result = 0, count = 0;
-            int actualMaximumCount = maximumCount.GetValueOrDefault(DefaultStepCount);
             InternalWorkItem<T> item = default(InternalWorkItem<T>);
+            int actualMaximumCount = Math.Min(
+                maximumCount ?? Configuration.DefaultStepCount, 
+                Configuration.MaxStepCount ?? Configuration.DefaultStepCount
+            );
 
             bool running = true;
             do {
