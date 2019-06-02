@@ -67,7 +67,7 @@ namespace Squared.Render {
             public T Current;
         }
 
-        private void ValidateFieldType (string name, Type type) {
+        public static void ValidateFieldType (string name, Type type) {
             if (type == typeof(Matrix))
                 return;
             else if (type == typeof(Vector4))
@@ -187,42 +187,26 @@ namespace Squared.Render {
 #if FNA
         private Layout NativeLayout;
 
-        void NativeFlush () {
+        unsafe void NativeFlush () {
             if (!IsDirty)
+                return;
+
+            // This means the parameter was killed by the shader compiler or the struct has no members
+            if (!NativeLayout.IsValid)
                 return;
 
             ScratchBuffer.Write<T>(0, _ValueContainer.Current);
 
             var pScratch = ScratchBuffer.DangerousGetHandle();
-            var p = Effect.Parameters[Name];
+            foreach (var m in NativeLayout.Members) {
+                var srcPtr = (pScratch + m.ManagedOffset).ToPointer();
+                var destPtr = m.NativePointer.ToPointer();
 
-            // HACK: GLSL can strip unused uniforms
-            if (p == null)
-                return;
-
-            var fData = typeof(EffectParameter).GetField("values", BindingFlags.Instance | BindingFlags.NonPublic);
-            var fDataSize = typeof(EffectParameter).GetField("valuesSizeBytes", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            // FIXME: Very slow and clumsy
-            foreach (var member in p.StructureMembers) {
-                var ptr = (IntPtr)fData.GetValue(member);
-                var size = (uint)fDataSize.GetValue(member);
-                var field = Layout.FindField(Type, member.Name);
-                if (field == null)
-                    continue;
-
-                ValidateFieldType(field.Name, field.FieldType);
-
-                var offset = Marshal.OffsetOf(Type, field.Name);
-                var fieldSize = Marshal.SizeOf(field.FieldType);
-
-                var srcPtr = pScratch + offset.ToInt32();
-
-                Buffer.MemoryCopy(srcPtr.ToPointer(), ptr.ToPointer(), size, fieldSize);
+                Buffer.MemoryCopy(srcPtr, destPtr, m.NativeSize, m.ManagedSize);
 
                 // Convert from HLSL row/column order to GLSL (funny that D3DX9 uses this order too...)
-                if (field.FieldType == typeof(Matrix))
-                    InPlaceTranspose((float*)ptr.ToPointer());
+                if (m.FieldType == typeof(Matrix))
+                    InPlaceTranspose((float*)destPtr);
             }
         }
 #endif
@@ -277,7 +261,11 @@ namespace Squared.Render {
             UniformBinding.Register(effect, this);
 
 #if FNA
-            NativeLayout = new Layout(Type, effect.Parameters[uniformName]);
+            var parameter = effect.Parameters[uniformName];
+            if (parameter == null)
+                NativeLayout = default(Layout);
+            else
+                NativeLayout = new Layout(Type, parameter);
 #endif
         }
 

@@ -34,9 +34,6 @@ namespace Squared.Render {
         }
 
         public class Layout {
-            public readonly Fixup[] Fixups;
-            public readonly uint UploadSize;
-
             public static FieldInfo FindField (Type type, string name) {
                 var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
                 var result = type.GetField(name, flags);
@@ -48,6 +45,9 @@ namespace Squared.Render {
 
             #region Direct3D
 #if !SDL2 && !FNA
+
+            public readonly Fixup[] Fixups;
+            public readonly uint UploadSize;
 
             private readonly void* pUnboxedEffect;
 
@@ -155,11 +155,54 @@ namespace Squared.Render {
 #endif
             #endregion
 
-            #region SDL2
-            #if SDL2 || FNA
+            #region FNA
+            #if FNA
+
+            public struct MemberMapping {
+                public string Name;
+                public EffectParameter Member;
+                public FieldInfo Field;
+                public Type FieldType;
+                public int ManagedOffset;
+                public IntPtr NativePointer;
+                public uint ManagedSize, NativeSize;
+            }
+
+            FieldInfo fData, fDataSize;
+            public readonly MemberMapping[] Members;
 
             public Layout (Type type, EffectParameter parameter) {
-                // FIXME
+                fData = FindField(typeof(EffectParameter), "values");
+                fDataSize = FindField(typeof(EffectParameter), "valuesSizeBytes");
+
+                var mappings = new List<MemberMapping>();
+                foreach (var member in parameter.StructureMembers) {
+                    var field = FindField(type, member.Name);
+                    if (field == null)
+                        throw new Exception("No matching field found for structure member " + member.Name);
+
+                    ValidateFieldType(field.Name, field.FieldType);
+
+                    var m = new MemberMapping {
+                        Name = member.Name,
+                        Member = member,
+                        Field = field,
+                        FieldType = field.FieldType,
+                        ManagedOffset = Marshal.OffsetOf(type, field.Name).ToInt32(),
+                        ManagedSize = (uint)Marshal.SizeOf(field.FieldType),
+                        NativePointer = (IntPtr)fData.GetValue(member),
+                        NativeSize = (uint)fDataSize.GetValue(member)
+                    };
+                    mappings.Add(m);
+                }
+
+                Members = mappings.ToArray();
+            }
+
+            public bool IsValid {
+                get {
+                    return (Members != null) && (Members.Length > 0);
+                }
             }
 
             #endif
