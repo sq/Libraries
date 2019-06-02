@@ -1,7 +1,10 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <SquaredPropertiesOverridePath>$(SolutionDir)Squared.Override.props</SquaredPropertiesOverridePath>
     <QualifiedSquaredPath>$(SquaredPath)\Squared</QualifiedSquaredPath>
   </PropertyGroup>
+
+  <Import Project="$(SquaredPropertiesOverridePath)" Condition="Exists('$(SquaredPropertiesOverridePath)')" />
 
   <ItemGroup>
     <ProjectReference Include="$(QualifiedSquaredPath)\Util\Squared.Util.csproj">
@@ -86,7 +89,9 @@
   </Choose>
 
   <Target Name="ValidateSquaredPaths" BeforeTargets="BeforeBuild">
-    <Message Text="Squared path: '$(SquaredPath)'" />
+    <Message Importance="High"  Text="Loaded property overrides from '$(SquaredPropertiesOverridePath)'" Condition="Exists('$(SquaredPropertiesOverridePath)')" />
+    
+    <Message Importance="High" Text="Squared path: '$(SquaredPath)'" />
 
     <Error Text="You must set SquaredPath" Condition=" '$(SquaredPath)' == '' " />
 
