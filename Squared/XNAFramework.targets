@@ -1,5 +1,11 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <XNAPropertiesOverridePath>$(SquaredPath)\..\..\XNA.Override.props</XNAPropertiesOverridePath>
+  </PropertyGroup>
+
+  <Import Project="$(XNAPropertiesOverridePath)" Condition="Exists('$(XNAPropertiesOverridePath)')"/>
+
+  <PropertyGroup>
     <FNALibsPath Condition="'$(FNALibsPath)' == ''">$(FNAPath)\fnalibs</FNALibsPath>
     <EnableFNA Condition="'$(EnableFNA)' == ''">false</EnableFNA>
     <ShaderBinDirectory Condition="'$(ShaderBinDirectory)' == ''">$(ShaderDirectory)\bin</ShaderBinDirectory>
@@ -94,6 +100,7 @@
   </Choose>  
 
   <Target Name="ValidateFNAPaths" BeforeTargets="BeforeBuild">
+    <Message Text="Loaded property overrides from '$(XNAPropertiesOverridePath)'" Condition="Exists('$(XNAPropertiesOverridePath)')"
     <Message Text="Configuration: $(Configuration)" />
     <Message Text="Platform: $(Platform)" />
     <Message Importance="High" Text="Automatic platforms enabled? $(AutoPlatforms)" />
