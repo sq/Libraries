@@ -78,9 +78,5 @@ namespace Squared.Util {
                 }
             }
         }
-
-        ~EmbeddedDLLLoader () {
-            Dispose();
-        }
     }
 }
