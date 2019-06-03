@@ -250,6 +250,33 @@ namespace Squared.Threading {
             }
         }
 
+        public async Task WaitUntilDrainedAsync (int timeoutMs = -1) {
+            var resultCount = Interlocked.Increment(ref NumWaitingForDrain);
+
+            bool doWait = false;
+            lock (Queue)
+                doWait = (Queue.Count > 0) || (InFlightTasks > 0);
+
+            bool waitSuccessful;
+            if (doWait) {
+                var fWait = new Future<bool>();
+                ThreadPool.RegisterWaitForSingleObject(
+                    DrainComplete, (_, timedOut) => { fWait.SetResult(!timedOut, null); }, 
+                    null, timeoutMs, true
+                );
+                waitSuccessful = await fWait;
+            } else
+                waitSuccessful = true;
+
+            var result = Interlocked.Decrement(ref NumWaitingForDrain);
+            if ((result == 0) && waitSuccessful)
+                DrainComplete.Reset();
+
+            var uhe = Interlocked.Exchange(ref UnhandledException, null);
+            if (uhe != null)
+                uhe.Throw();
+        }
+
         public void WaitUntilDrained (int timeoutMs = -1) {
             var resultCount = Interlocked.Increment(ref NumWaitingForDrain);
 
