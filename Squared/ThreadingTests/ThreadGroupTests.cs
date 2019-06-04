@@ -128,7 +128,6 @@ namespace Squared.Threading {
             var timeProvider = Time.DefaultTimeProvider;
             using (var group = new ThreadGroup(1, 1)) {
                 var queue = group.GetQueueForType<VoidWorkItem>();
-                queue.DefaultStepCount = 1024;
 
                 var item = new VoidWorkItem();
 
@@ -159,7 +158,6 @@ namespace Squared.Threading {
             var timeProvider = Time.DefaultTimeProvider;
             using (var group = new ThreadGroup(1)) {
                 var queue = group.GetQueueForType<VoidWorkItem>();
-                queue.DefaultStepCount = 1024;
 
                 var item = new VoidWorkItem();
 
