@@ -468,19 +468,26 @@ namespace Squared.Render {
         }
 
         private struct CurrentNativeBatchState {
-            public Material Material;
+            public Material Material { get; private set; }
+            public DefaultMaterialSetEffectParameters Parameters { get; private set; }
             public SamplerState SamplerState1, SamplerState2;
-            public DefaultMaterialSetEffectParameters Parameters;
             public EffectParameter Texture1, Texture2;
             public TextureSet Textures;
 
             public CurrentNativeBatchState (DeviceManager dm) {
-                Material = dm.CurrentMaterial;
-                Parameters = dm.CurrentParameters;
                 SamplerState1 = dm.Device.SamplerStates[0];
                 SamplerState2 = dm.Device.SamplerStates[1];
                 Textures = new Render.TextureSet();
-                var ep = Material?.Effect?.Parameters;
+                Material = null;
+                Parameters = null;
+                Texture1 = Texture2 = null;
+                SetMaterial(dm.CurrentMaterial);
+            }
+
+            public void SetMaterial (Material m) {
+                Material = m;
+                Parameters = m.Parameters;
+                var ep = m?.Effect?.Parameters;
                 if (ep != null) {
                     Texture1 = ep["BitmapTexture"];
                     Texture2 = ep["SecondTexture"];
@@ -531,8 +538,7 @@ namespace Squared.Render {
 
             if (nb.Material != cnbs.Material) {
                 manager.ApplyMaterial(nb.Material);
-                cnbs.Material = nb.Material;
-                cnbs.Parameters = manager.CurrentParameters;
+                cnbs.SetMaterial(nb.Material);
                 result = true;
             }
 
