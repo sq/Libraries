@@ -491,10 +491,11 @@ namespace Squared.Render {
         }
 
         private bool PerformNativeBatchTextureTransition (
-            DeviceManager manager, 
-            ref NativeBatch nb, ref CurrentNativeBatchState cnbs
+            DeviceManager manager,
+            ref NativeBatch nb, ref CurrentNativeBatchState cnbs,
+            bool force
         ) {
-            if (nb.TextureSet.Equals(ref cnbs.Textures))
+            if (nb.TextureSet.Equals(ref cnbs.Textures) && !force)
                 return false;
 
             cnbs.Textures = nb.TextureSet;
@@ -522,14 +523,17 @@ namespace Squared.Render {
             return true;
         }
 
-        private void PerformNativeBatchTransition (
+        private bool PerformNativeBatchTransition (
             DeviceManager manager,
             ref NativeBatch nb, ref CurrentNativeBatchState cnbs
         ) {
+            var result = false;
+
             if (nb.Material != cnbs.Material) {
                 manager.ApplyMaterial(nb.Material);
                 cnbs.Material = nb.Material;
                 cnbs.Parameters = manager.CurrentParameters;
+                result = true;
             }
 
             if (nb.SamplerState != null)
@@ -543,6 +547,8 @@ namespace Squared.Render {
                 cnbs.SamplerState2 = nb.SamplerState2;
                 manager.Device.SamplerStates[1] = nb.SamplerState2;
             }
+
+            return result;
         }
 
         protected abstract void PrepareDrawCalls (PrepareManager manager);
@@ -606,10 +612,8 @@ namespace Squared.Render {
                             if (!_NativeBatches.TryGetItem(n, out nb))
                                 break;
 
-                            PerformNativeBatchTransition(manager, ref nb, ref cnbs);
-
-                            if (PerformNativeBatchTextureTransition(manager, ref nb, ref cnbs))
-                                ;
+                            var forceTextureTransition = PerformNativeBatchTransition(manager, ref nb, ref cnbs);
+                            PerformNativeBatchTextureTransition(manager, ref nb, ref cnbs, forceTextureTransition);
 
                             if (UseZBuffer) {
                                 var dss = device.DepthStencilState;
