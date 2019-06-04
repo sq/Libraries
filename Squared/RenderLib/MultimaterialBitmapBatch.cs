@@ -282,7 +282,7 @@ namespace Squared.Render {
 
                 if (currentRangeStart != -1) {
                     int rangeCount = count - currentRangeStart;
-                    PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, count, ref drawCallsPrepared);
+                    PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, rangeCount, ref drawCallsPrepared);
                 }
             }
         }
