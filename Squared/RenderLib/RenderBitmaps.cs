@@ -533,107 +533,108 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            if (_DrawCalls.Count == 0)
-                return;
+            // fixme
+            if (_DrawCalls.Count > 0)
+            if (typeof (TDrawCall) == typeof(BitmapDrawCall)) {
+                StateTransition(BitmapBatchPrepareState.Prepared, BitmapBatchPrepareState.Issuing);
 
-            StateTransition(BitmapBatchPrepareState.Prepared, BitmapBatchPrepareState.Issuing);
+                if (State.IsCombined)
+                    throw new InvalidOperationException("Batch was combined into another batch");
 
-            if (State.IsCombined)
-                throw new InvalidOperationException("Batch was combined into another batch");
+                if (_BufferGenerator == null)
+                    throw new InvalidOperationException("Already issued");
 
-            if (_BufferGenerator == null)
-                throw new InvalidOperationException("Already issued");
+                var device = manager.Device;
 
-            var device = manager.Device;
+                IHardwareBuffer previousHardwareBuffer = null;
 
-            IHardwareBuffer previousHardwareBuffer = null;
+                // if (RenderTrace.EnableTracing)
+                //    RenderTrace.ImmediateMarker("BitmapBatch.Issue(layer={0}, count={1})", Layer, _DrawCalls.Count);
 
-            // if (RenderTrace.EnableTracing)
-            //    RenderTrace.ImmediateMarker("BitmapBatch.Issue(layer={0}, count={1})", Layer, _DrawCalls.Count);
+                VertexBuffer vb, cornerVb;
+                DynamicIndexBuffer ib, cornerIb;
 
-            VertexBuffer vb, cornerVb;
-            DynamicIndexBuffer ib, cornerIb;
+                var cornerHwb = _CornerBuffer.HardwareBuffer;
+                try {
+                    cornerHwb.SetActive();
+                    cornerHwb.GetBuffers(out cornerVb, out cornerIb);
+                    if (device.Indices != cornerIb)
+                        device.Indices = cornerIb;
 
-            var cornerHwb = _CornerBuffer.HardwareBuffer;
-            try {
-                cornerHwb.SetActive();
-                cornerHwb.GetBuffers(out cornerVb, out cornerIb);
-                if (device.Indices != cornerIb)
-                    device.Indices = cornerIb;
+                    var scratchBindings = _ScratchBindingArray.Value;
 
-                var scratchBindings = _ScratchBindingArray.Value;
+                    var previousSS1 = device.SamplerStates[0];
+                    var previousSS2 = device.SamplerStates[1];
 
-                var previousSS1 = device.SamplerStates[0];
-                var previousSS2 = device.SamplerStates[1];
+                    manager.ApplyMaterial(Material);
 
-                manager.ApplyMaterial(Material);
+                    var cnbs = new CurrentNativeBatchState(manager);
+                    cnbs.Texture1?.SetValue((Texture2D)null);
+                    cnbs.Texture2.SetValue((Texture2D)null);
 
-                var cnbs = new CurrentNativeBatchState(manager);
-                cnbs.Texture1?.SetValue((Texture2D)null);
-                cnbs.Texture2.SetValue((Texture2D)null);
+                    {
+                        for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
+                            NativeBatch nb;
+                            if (!_NativeBatches.TryGetItem(n, out nb))
+                                break;
 
-                {
-                    for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
-                        NativeBatch nb;
-                        if (!_NativeBatches.TryGetItem(n, out nb))
-                            break;
+                            PerformNativeBatchTransition(manager, ref nb, ref cnbs);
 
-                        PerformNativeBatchTransition(manager, ref nb, ref cnbs);
+                            if (PerformNativeBatchTextureTransition(manager, ref nb, ref cnbs))
+                                ;
 
-                        if (PerformNativeBatchTextureTransition(manager, ref nb, ref cnbs))
-                            ;
+                            if (UseZBuffer) {
+                                var dss = device.DepthStencilState;
+                                if (dss.DepthBufferEnable == false)
+                                    throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
+                            }
 
-                        if (UseZBuffer) {
-                            var dss = device.DepthStencilState;
-                            if (dss.DepthBufferEnable == false)
-                                throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
+                            var swb = nb.SoftwareBuffer;
+                            var hwb = swb.HardwareBuffer;
+                            if (previousHardwareBuffer != hwb) {
+                                if (previousHardwareBuffer != null)
+                                    previousHardwareBuffer.SetInactive();
+
+                                hwb.SetActive();
+                                previousHardwareBuffer = hwb;
+                            }
+
+                            hwb.GetBuffers(out vb, out ib);
+
+                            scratchBindings[0] = cornerVb;
+                            scratchBindings[1] = new VertexBufferBinding(vb, swb.HardwareVertexOffset + nb.LocalVertexOffset, 1);
+
+                            device.SetVertexBuffers(scratchBindings);
+                            device.DrawInstancedPrimitives(
+                                PrimitiveType.TriangleList, 
+                                0, _CornerBuffer.HardwareVertexOffset, 4, 
+                                _CornerBuffer.HardwareIndexOffset, 2, 
+                                nb.VertexCount
+                            );
                         }
 
-                        var swb = nb.SoftwareBuffer;
-                        var hwb = swb.HardwareBuffer;
-                        if (previousHardwareBuffer != hwb) {
-                            if (previousHardwareBuffer != null)
-                                previousHardwareBuffer.SetInactive();
-
-                            hwb.SetActive();
-                            previousHardwareBuffer = hwb;
-                        }
-
-                        hwb.GetBuffers(out vb, out ib);
-
-                        scratchBindings[0] = cornerVb;
-                        scratchBindings[1] = new VertexBufferBinding(vb, swb.HardwareVertexOffset + nb.LocalVertexOffset, 1);
-
-                        device.SetVertexBuffers(scratchBindings);
-                        device.DrawInstancedPrimitives(
-                            PrimitiveType.TriangleList, 
-                            0, _CornerBuffer.HardwareVertexOffset, 4, 
-                            _CornerBuffer.HardwareIndexOffset, 2, 
-                            nb.VertexCount
-                        );
+                        if (previousHardwareBuffer != null)
+                            previousHardwareBuffer.SetInactive();
                     }
 
+                    cnbs.Texture1?.SetValue((Texture2D)null);
+                    cnbs.Texture2.SetValue((Texture2D)null);
+
+                    device.SamplerStates[0] = previousSS1;
+                    device.SamplerStates[1] = previousSS2;
+                } finally {
+                    cornerHwb.TrySetInactive();
                     if (previousHardwareBuffer != null)
-                        previousHardwareBuffer.SetInactive();
+                        previousHardwareBuffer.TrySetInactive();
                 }
 
-                cnbs.Texture1?.SetValue((Texture2D)null);
-                cnbs.Texture2.SetValue((Texture2D)null);
+                _BufferGenerator = null;
+                _CornerBuffer = null;
 
-                device.SamplerStates[0] = previousSS1;
-                device.SamplerStates[1] = previousSS2;
-            } finally {
-                cornerHwb.TrySetInactive();
-                if (previousHardwareBuffer != null)
-                    previousHardwareBuffer.TrySetInactive();
+                StateTransition(BitmapBatchPrepareState.Issuing, BitmapBatchPrepareState.Issued);
             }
 
-            _BufferGenerator = null;
-            _CornerBuffer = null;
-
             base.Issue(manager);
-
-            StateTransition(BitmapBatchPrepareState.Issuing, BitmapBatchPrepareState.Issued);
         }
     }
 
