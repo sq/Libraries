@@ -1,6 +1,4 @@
-﻿#define USE_INDEXED_SORT
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -33,6 +31,10 @@ namespace Squared.Render {
             Material = material;
             SamplerState1 = samplerState1;
             SamplerState2 = samplerState2;
+        }
+
+        public override string ToString () {
+            return $"{Material} {DrawCall}";
         }
     }
 
@@ -78,8 +80,6 @@ namespace Squared.Render {
         ///  and the z-buffer will be relied on to provide sorting of individual draw calls.
         /// </summary>
         public bool UseZBuffer = false;
-
-        private BatchGroup _Group;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add (BitmapDrawCall item) {
@@ -170,12 +170,12 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<MultimaterialBitmapBatch>();
             result.Initialize(container, layer, material, sorter, useZBuffer);
-            result.CaptureStack(0);            
+            result.CaptureStack(0);
             return result;
         }
 
         public void Initialize (
-            IBatchContainer container, int layer,             
+            IBatchContainer container, int layer,
             Material material, Sorter<BitmapDrawCall> sorter,
             bool useZBuffer, int? capacity = null
         ) {
@@ -184,17 +184,58 @@ namespace Squared.Render {
             Sorter = sorter;
             UseZBuffer = useZBuffer;
 
-            _DrawCalls.Clear();
+            if (RangeReservations != null)
+                RangeReservations.Clear();
 
-            _Group = container.RenderManager.AllocateBatch<BatchGroup>();
-            _Group.Initialize(container, layer, null, null, null, false);
-            _Group.CaptureStack(0);
+            var rm = container.RenderManager;
+            _DrawCalls.ListPool.ThreadGroup = rm.ThreadGroup;
+            rm.AddDrainRequiredListPool(_DrawCalls.ListPool);
+
+            var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)BitmapBatchPrepareState.NotPrepared);
+            if ((prior == BitmapBatchPrepareState.Issuing) || (prior == BitmapBatchPrepareState.Preparing))
+                throw new ThreadStateException("This batch is currently in use");
+
+            _DrawCalls.Clear();
         }
 
-        public override void Prepare (PrepareContext context) {
+        void PrepareNativeBatchForRange (
+            MaterialBitmapDrawCall[] drawCalls, int[] indexArray, int first, int count, ref int drawCallsPrepared
+        ) {
+            if (count <= 0)
+                return;
+
+            using (var buffer = BufferPool<BitmapDrawCall>.Allocate(count)) {
+                var data = buffer.Data;
+                var firstDc = drawCalls[first];
+
+                for (int j = 0; j < count; j++)
+                    data[j] = drawCalls[j + first].DrawCall;
+
+                var callSegment = new ArraySegment<BitmapDrawCall>(data, 0, count);
+                while (drawCallsPrepared < count)
+                    FillOneSoftwareBuffer(
+                        indexArray, callSegment, ref drawCallsPrepared, count,
+                        firstDc.Material, firstDc.SamplerState1, firstDc.SamplerState2
+                    );
+            }
+        }
+
+        protected override void PrepareDrawCalls (PrepareManager manager) {
+            Squared.Render.NativeBatch.RecordPrimitives(_DrawCalls.Count * 2);
+
+            AllocateNativeBatches();
+
+            var count = _DrawCalls.Count;
+            var indexArray = GetIndexArray(count);
+            for (int i = 0; i < count; i++)
+                indexArray[i] = i;
+
+            _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
+            _CornerBuffer = QuadUtils.CreateCornerBuffer(Container);
+
+            int drawCallsPrepared = 0;
             using (var b = _DrawCalls.GetBuffer(true)) {
                 var drawCalls = b.Data;
-                var count = b.Count;
 
                 var comparer = Comparer.Value;
                 if (Sorter != null)
@@ -206,8 +247,9 @@ namespace Squared.Render {
                     drawCalls, comparer, 0, count
                 );
 
-                BitmapBatch currentBatch = null;
-                int layerIndex = 0;
+                Material currentMaterial = null;
+                SamplerState currentSamplerState1 = null, currentSamplerState2 = null;
+                int currentRangeStart = -1;
 
                 for (var i = 0; i < count; i++) {
                     var dc = drawCalls[i];
@@ -218,41 +260,31 @@ namespace Squared.Render {
                     var ss1 = dc.SamplerState1 ?? BitmapBatch.DefaultSamplerState;
                     var ss2 = dc.SamplerState2 ?? BitmapBatch.DefaultSamplerState;
 
-                    if (
-                        (currentBatch == null) ||
-                        (currentBatch.Material != material) ||
-                        (currentBatch.SamplerState != ss1) ||
-                        (currentBatch.SamplerState2 != ss2)
-                    ) {
-                        if (currentBatch != null)
-                            currentBatch.Dispose();
+                    var startNewRange = (
+                        (currentRangeStart == -1) ||
+                        (material != currentMaterial) ||
+                        (currentSamplerState1 != ss1) ||
+                        (currentSamplerState2 != ss2)
+                    );
 
-                        currentBatch = BitmapBatch.New(
-                            _Group, layerIndex++, material, dc.SamplerState1, dc.SamplerState2, UseZBuffer
-                        );
-
-                        // We've already sorted the draw calls.
-                        currentBatch.DisableSorting = true;
+                    if (startNewRange && (currentRangeStart != -1)) {
+                        int rangeCount = i - currentRangeStart;
+                        PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, rangeCount, ref drawCallsPrepared);
                     }
 
-                    currentBatch.Add(dc.DrawCall);
+                    if (startNewRange) {
+                        currentRangeStart = i;
+                        currentMaterial = material;
+                        currentSamplerState1 = ss1;
+                        currentSamplerState2 = ss2;
+                    }
                 }
 
-                if (currentBatch != null)
-                    currentBatch.Dispose();
-
-                _Group.Dispose();
-                context.Prepare(_Group);
-
-                OnPrepareDone();
+                if (currentRangeStart != -1) {
+                    int rangeCount = count - currentRangeStart;
+                    PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, count, ref drawCallsPrepared);
+                }
             }
-        }
-
-        public override void Issue (DeviceManager manager) {
-            manager.ApplyMaterial(Material);
-            _Group.Issue(manager);
-
-            base.Issue(manager);
         }
     }
 }

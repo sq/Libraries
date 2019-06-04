@@ -1,6 +1,4 @@
-﻿#define USE_INDEXED_SORT
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -237,37 +235,19 @@ namespace Squared.Render {
             }
         }
         
-        protected override void Prepare (PrepareManager manager) {
-            var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)BitmapBatchPrepareState.Preparing);
-            if ((prior == BitmapBatchPrepareState.Issuing) || (prior == BitmapBatchPrepareState.Preparing))
-                throw new ThreadStateException("This batch is currently in use");
-            else if (prior == BitmapBatchPrepareState.Invalid)
-                throw new ThreadStateException("This batch is not valid");
-
-            if (_DrawCalls.Count == 0)
-                return;
-
+        protected override void PrepareDrawCalls (PrepareManager manager) {
             Squared.Render.NativeBatch.RecordPrimitives(_DrawCalls.Count * 2);
 
-            // If the batch contains a lot of draw calls, try to make sure we allocate our native batch from the large pool.
-            int? nativeBatchCapacity = null;
-            if (_DrawCalls.Count >= BatchCapacityLimit)
-                nativeBatchCapacity = Math.Min(NativeBatchCapacityLimit + 2, _DrawCalls.Count / 8);
-
-            _NativeBatches.Clear();
-            _NativeBatches.ListPool = _NativePool;
-            _NativeBatches.ListCapacity = nativeBatchCapacity;
+            AllocateNativeBatches();
 
             var count = _DrawCalls.Count;
             int[] indexArray = null;
 
-#if USE_INDEXED_SORT
             if (!DisableSorting) {
                 indexArray = GetIndexArray(count);
                 for (int i = 0; i < count; i++)
                     indexArray[i] = i;
             }
-#endif
 
             if (DisableSorting) {
             } else if (Sorter != null) {
@@ -281,7 +261,6 @@ namespace Squared.Render {
             }
 
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
-
             _CornerBuffer = QuadUtils.CreateCornerBuffer(Container);
 
             using (var callBuffer = _DrawCalls.GetBuffer(false)) {
@@ -293,8 +272,6 @@ namespace Squared.Render {
                         Material, SamplerState, SamplerState2
                     );
             }
-
-            StateTransition(BitmapBatchPrepareState.Preparing, BitmapBatchPrepareState.Prepared);
         }
 
         protected override void OnReleaseResources () {

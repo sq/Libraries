@@ -188,7 +188,7 @@ namespace Squared.Render {
         }
     }
 
-    public class BitmapBatchBase<TDrawCall> : ListBatch<TDrawCall> {
+    public abstract class BitmapBatchBase<TDrawCall> : ListBatch<TDrawCall> {
         public struct Reservation {
             public readonly BitmapBatchBase<TDrawCall> Batch;
             public readonly int ID;
@@ -309,6 +309,17 @@ namespace Squared.Render {
                 _SortIndexArray.Value = array = new int[size];
 
             return array;
+        }
+
+        protected void AllocateNativeBatches () {
+            // If the batch contains a lot of draw calls, try to make sure we allocate our native batch from the large pool.
+            int? nativeBatchCapacity = null;
+            if (_DrawCalls.Count >= BatchCapacityLimit)
+                nativeBatchCapacity = Math.Min(NativeBatchCapacityLimit + 2, _DrawCalls.Count / 8);
+
+            _NativeBatches.Clear();
+            _NativeBatches.ListPool = _NativePool;
+            _NativeBatches.ListCapacity = nativeBatchCapacity;
         }
 
         protected void CreateNewNativeBatch (
@@ -530,6 +541,23 @@ namespace Squared.Render {
                 cnbs.SamplerState2 = nb.SamplerState2;
                 manager.Device.SamplerStates[1] = nb.SamplerState2;
             }
+        }
+
+        protected abstract void PrepareDrawCalls (PrepareManager manager);
+
+        protected sealed override void Prepare (PrepareManager manager) {
+            var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)BitmapBatchPrepareState.Preparing);
+            if ((prior == BitmapBatchPrepareState.Issuing) || (prior == BitmapBatchPrepareState.Preparing))
+                throw new ThreadStateException("This batch is currently in use");
+            else if (prior == BitmapBatchPrepareState.Invalid)
+                throw new ThreadStateException("This batch is not valid");
+
+            if (_DrawCalls.Count > 0)
+                PrepareDrawCalls(manager);
+
+            base.Prepare(manager);
+
+            StateTransition(BitmapBatchPrepareState.Preparing, BitmapBatchPrepareState.Prepared);
         }
 
         public override void Issue (DeviceManager manager) {
