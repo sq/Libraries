@@ -42,6 +42,7 @@
     <FNAPath>..\..\..\..\FNA</FNAPath>
     <AutoPlatforms>true</AutoPlatforms>
     <IncludeFreetype>true</IncludeFreetype>
+    <ISwearIAmThreadSafe>true</ISwearIAmThreadSafe>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' " />

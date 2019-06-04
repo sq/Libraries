@@ -13,7 +13,7 @@ using Squared.Util;
 
 namespace LargeBufferTest {
     public class LargeBufferTestGame : MultithreadedGame {
-        public const bool UseSpriteBatch = true;
+        public const bool UseSpriteBatch = false;
 
         public static readonly Color ClearColor = new Color(24, 96, 220, 255);
 
@@ -84,7 +84,7 @@ namespace LargeBufferTest {
             const int height = 720;
             var pos = Vector2.Zero;
 
-            SpriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Opaque);
+            SpriteBatch.Begin(SpriteSortMode.Texture, BlendState.Opaque);
             for (int y = 0; y < height; y++) {
                 float fx = 0;
                 pos.Y = y;

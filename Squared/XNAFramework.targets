@@ -46,6 +46,7 @@
 
   <PropertyGroup Condition="'$(EnableFNA)' == 'true'">
     <DefineConstants>$(DefineConstants);FNA;SDL2</DefineConstants>
+    <DefineConstants Condition="'$(ISwearIAmThreadSafe)' == 'true' ">$(DefineConstants);DISABLE_THREADING</DefineConstants>
     <PlatformTarget Condition=" '$(AutoPlatforms)' == 'true' ">$(AutoPlatformTarget)</PlatformTarget>
     <ShaderCompilerDefines>$(ShaderCompilerDefines)/D FNA=1 /D XNA=0</ShaderCompilerDefines>
   </PropertyGroup>
