@@ -20,8 +20,7 @@ using System.Threading;
 using System.Runtime.CompilerServices;
 
 namespace Squared.Render {
-
-    public class BitmapBatch : BitmapBatchBase<BitmapDrawCall> {
+    public class BitmapBatch : BitmapBatchBase<BitmapDrawCall>, IBitmapBatch {
         public static readonly SamplerState DefaultSamplerState = SamplerState.LinearClamp;
 
         public struct Reservation {
@@ -120,38 +119,6 @@ namespace Squared.Render {
                 }
 
                 return lhs;
-            }
-        }
-
-        struct NativeBatch {
-            public readonly ISoftwareBuffer SoftwareBuffer;
-            public readonly TextureSet TextureSet;
-
-            public readonly Vector2 Texture1Size, Texture1HalfTexel;
-            public readonly Vector2 Texture2Size, Texture2HalfTexel;
-
-            public readonly int LocalVertexOffset;
-            public readonly int VertexCount;
-
-            public NativeBatch (
-                ISoftwareBuffer softwareBuffer, TextureSet textureSet, 
-                int localVertexOffset, int vertexCount
-            ) {
-                SoftwareBuffer = softwareBuffer;
-                TextureSet = textureSet;
-
-                LocalVertexOffset = localVertexOffset;
-                VertexCount = vertexCount;
-
-                Texture1Size = new Vector2(textureSet.Texture1.Width, textureSet.Texture1.Height);
-                Texture1HalfTexel = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
-
-                if (textureSet.Texture2 != null) {
-                    Texture2Size = new Vector2(textureSet.Texture2.Width, textureSet.Texture2.Height);
-                    Texture2HalfTexel = new Vector2(1.0f / Texture2Size.X, 1.0f / Texture2Size.Y);
-                } else {
-                    Texture2HalfTexel = Texture2Size = Vector2.Zero;
-                }
             }
         }
 
@@ -423,8 +390,8 @@ namespace Squared.Render {
 
                 _NativeBatches.Add(new NativeBatch(
                     softwareBuffer, currentTextures,
-                    vertOffset,
-                    vertCount
+                    vertOffset, vertCount, 
+                    null, null, null
                 ));
             }
         }
@@ -437,8 +404,8 @@ namespace Squared.Render {
 
             _NativeBatches.Add(new NativeBatch(
                 softwareBuffer, currentTextures,
-                vertOffset,
-                vertCount
+                vertOffset, vertCount,
+                null, null, null
             ));
 
             vertOffset += vertCount;

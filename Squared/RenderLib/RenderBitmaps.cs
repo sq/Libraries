@@ -188,21 +188,47 @@ namespace Squared.Render {
         }
     }
 
-    public class BitmapBatchBase<TDrawCall> : ListBatch<TDrawCall>, IBitmapBatch {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddRange (ArraySegment<BitmapDrawCall> items) {
-            for (int i = 0; i < items.Count; i++)
-                Add(ref items.Array[i + items.Offset]);
-        }
+    public class BitmapBatchBase<TDrawCall> : ListBatch<TDrawCall> {
+        internal struct NativeBatch {
+            public readonly Material Material;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (BitmapDrawCall item) {
-            Add(item, Material, null, null);
-        }
+            public SamplerState SamplerState;
+            public SamplerState SamplerState2;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add (ref BitmapDrawCall item) {
-            Add(ref item, Material, null, null);
+            public readonly ISoftwareBuffer SoftwareBuffer;
+            public readonly TextureSet TextureSet;
+
+            public readonly Vector2 Texture1Size, Texture1HalfTexel;
+            public readonly Vector2 Texture2Size, Texture2HalfTexel;
+
+            public readonly int LocalVertexOffset;
+            public readonly int VertexCount;
+
+            public NativeBatch (
+                ISoftwareBuffer softwareBuffer, TextureSet textureSet, 
+                int localVertexOffset, int vertexCount, Material material,
+                SamplerState samplerState, SamplerState samplerState2
+            ) {
+                Material = material;
+                SamplerState = samplerState;
+                SamplerState2 = samplerState2;
+
+                SoftwareBuffer = softwareBuffer;
+                TextureSet = textureSet;
+
+                LocalVertexOffset = localVertexOffset;
+                VertexCount = vertexCount;
+
+                Texture1Size = new Vector2(textureSet.Texture1.Width, textureSet.Texture1.Height);
+                Texture1HalfTexel = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
+
+                if (textureSet.Texture2 != null) {
+                    Texture2Size = new Vector2(textureSet.Texture2.Width, textureSet.Texture2.Height);
+                    Texture2HalfTexel = new Vector2(1.0f / Texture2Size.X, 1.0f / Texture2Size.Y);
+                } else {
+                    Texture2HalfTexel = Texture2Size = Vector2.Zero;
+                }
+            }
         }
     }
 
