@@ -475,8 +475,8 @@ namespace Squared.Render {
             public TextureSet Textures;
 
             public CurrentNativeBatchState (DeviceManager dm) {
-                SamplerState1 = dm.Device.SamplerStates[0];
-                SamplerState2 = dm.Device.SamplerStates[1];
+                SamplerState1 = null;
+                SamplerState2 = null;
                 Textures = new Render.TextureSet();
                 Material = null;
                 Parameters = null;
@@ -524,8 +524,10 @@ namespace Squared.Render {
 
             manager.CurrentMaterial.Flush();
 
-            manager.Device.SamplerStates[0] = cnbs.SamplerState1;
-            manager.Device.SamplerStates[1] = cnbs.SamplerState2;
+            if (cnbs.SamplerState1 != null)
+                manager.Device.SamplerStates[0] = cnbs.SamplerState1;
+            if (cnbs.SamplerState2 != null)
+                manager.Device.SamplerStates[1] = cnbs.SamplerState2;
 
             return true;
         }
@@ -542,16 +544,13 @@ namespace Squared.Render {
                 result = true;
             }
 
-            if (nb.SamplerState != null)
-            if (nb.SamplerState != cnbs.SamplerState1) {
+            if (nb.SamplerState != null) {
                 cnbs.SamplerState1 = nb.SamplerState;
-                manager.Device.SamplerStates[0] = nb.SamplerState;
+                manager.Device.SamplerStates[0] = cnbs.SamplerState1;
             }
-
-            if (nb.SamplerState2 != null)
-            if (nb.SamplerState2 != cnbs.SamplerState2) {
+            if (nb.SamplerState2 != null) {
                 cnbs.SamplerState2 = nb.SamplerState2;
-                manager.Device.SamplerStates[1] = nb.SamplerState2;
+                manager.Device.SamplerStates[1] = cnbs.SamplerState2;
             }
 
             return result;
