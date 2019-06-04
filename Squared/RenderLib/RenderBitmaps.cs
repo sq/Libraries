@@ -287,6 +287,29 @@ namespace Squared.Render {
         protected volatile int _State = (int)BitmapBatchPrepareState.Invalid;
 
         protected UnorderedList<Reservation> RangeReservations = null;
+  
+        protected BufferGenerator<BitmapVertex> _BufferGenerator = null;
+        protected BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
+
+        protected static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
+            new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
+        protected static ThreadLocal<int[]> _SortIndexArray = new ThreadLocal<int[]>();
+
+        /// <summary>
+        /// If set and no declarative sorter is provided, draw calls will only be sorted by texture,
+        ///  and the z-buffer will be relied on to provide sorting of individual draw calls.
+        /// </summary>
+        public bool UseZBuffer = false;
+
+        protected int[] GetIndexArray (int minimumSize) {
+            const int rounding = 4096;
+            var size = ((minimumSize + (rounding - 1)) / rounding) * rounding + 16;
+            var array = _SortIndexArray.Value;
+            if ((array == null) || (array.Length < size))
+                _SortIndexArray.Value = array = new int[size];
+
+            return array;
+        }
 
         protected void CreateNewNativeBatch (
             BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref TextureSet currentTextures, 
@@ -305,6 +328,93 @@ namespace Squared.Render {
                 vertOffset += vertCount;
                 vertCount = 0;
             }
+        }
+
+        protected unsafe void FillOneSoftwareBuffer (
+            int[] indices, ArraySegment<BitmapDrawCall> drawCalls, ref int drawCallsPrepared, int count
+        ) {
+            int totalVertCount = 0;
+            int vertCount = 0, vertOffset = 0;
+            int nativeBatchSizeLimit = NativeBatchSize;
+            int vertexWritePosition = 0;
+
+            TextureSet currentTextures = new TextureSet();
+
+            var remainingDrawCalls = (count - drawCallsPrepared);
+            var remainingVertices = remainingDrawCalls;
+
+            int nativeBatchSize = Math.Min(nativeBatchSizeLimit, remainingVertices);
+            var softwareBuffer = _BufferGenerator.Allocate(nativeBatchSize, 1);
+
+            float zBufferFactor = UseZBuffer ? 1.0f : 0.0f;
+
+            var callCount = drawCalls.Count;
+            var callArray = drawCalls.Array;
+
+            fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset]) {
+                for (int i = drawCallsPrepared; i < count; i++) {
+                    if (totalVertCount >= nativeBatchSizeLimit)
+                        break;
+
+                    int callIndex;
+                    if (indices != null)
+                        callIndex = indices[i];
+                    else
+                        callIndex = i;
+
+                    if (callIndex >= callCount)
+                        break;
+
+                    FillOneBitmapVertex(
+                        softwareBuffer, ref callArray[callIndex], out pVertices[vertexWritePosition],
+                        ref currentTextures, ref vertCount, ref vertOffset, zBufferFactor
+                    );
+
+                    vertexWritePosition += 1;
+                    totalVertCount += 1;
+                    vertCount += 1;
+
+                    drawCallsPrepared += 1;
+                }
+            }
+
+            if (vertexWritePosition > softwareBuffer.Vertices.Count)
+                throw new InvalidOperationException("Wrote too many vertices");
+
+            if (vertCount > 0) {
+                CreateNewNativeBatch(softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, true);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void FillOneBitmapVertex (
+            BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref BitmapDrawCall call, out BitmapVertex result, 
+            ref TextureSet currentTextures, ref int vertCount, ref int vertOffset, float zBufferFactor
+        ) {
+            bool texturesEqual = call.Textures.Equals(ref currentTextures);
+
+            if (!texturesEqual) {
+                if (vertCount > 0)
+                    CreateNewNativeBatch(softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, false);
+
+                currentTextures = call.Textures;
+            }
+
+            var p = call.Position;
+            result = new BitmapVertex {
+                Position = {
+                    X = p.X,
+                    Y = p.Y,
+                    Z = call.SortKey.Order * zBufferFactor
+                },
+                Texture1Region = call.TextureRegion.ToVector4(),
+                Texture2Region = call.TextureRegion2.GetValueOrDefault(call.TextureRegion).ToVector4(),
+                MultiplyColor = call.MultiplyColor,
+                AddColor = call.AddColor,
+                Scale = call.Scale,
+                Origin = call.Origin,
+                Rotation = call.Rotation
+            };
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -375,7 +485,9 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (ref TextureSet rhs) {
-            return (HashCode == rhs.HashCode) && (Texture1 == rhs.Texture1) && (Texture2 == rhs.Texture2);
+            return (HashCode == rhs.HashCode) && 
+                (Texture1 == rhs.Texture1) && 
+                (Texture2 == rhs.Texture2);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
