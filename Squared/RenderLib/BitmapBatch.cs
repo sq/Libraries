@@ -23,40 +23,6 @@ namespace Squared.Render {
     public class BitmapBatch : BitmapBatchBase<BitmapDrawCall>, IBitmapBatch {
         public static readonly SamplerState DefaultSamplerState = SamplerState.LinearClamp;
 
-        public struct Reservation {
-            public readonly BitmapBatch Batch;
-            public readonly int ID;
-
-            public readonly BitmapDrawCall[] Array;
-            public readonly int Offset;
-            public int Count;
-            public readonly StackTrace Stack;
-
-            internal Reservation (BitmapBatch batch, BitmapDrawCall[] array, int offset, int count) {
-                Batch = batch;
-                ID = ++batch.LastReservationID;
-                Array = array;
-                Offset = offset;
-                Count = count;
-                if (CaptureStackTraces)
-                    Stack = new StackTrace(2, true);
-                else
-                    Stack = null;
-            }
-
-            public void Shrink (int newCount) {
-                if (ID != Batch.LastReservationID)
-                    throw new InvalidOperationException("You can't shrink a reservation after another one has been created");
-                if (newCount > Count)
-                    throw new ArgumentException("Can't grow using shrink, silly", "newCount");
-                if (newCount == Count)
-                    return;
-
-                Batch.RemoveRange(Offset + newCount, Count - newCount);
-                Count = newCount;
-            }
-        }
-
         class BitmapBatchCombiner : IBatchCombiner {
             public bool CanCombine (Batch lhs, Batch rhs) {
                 if ((lhs == null) || (rhs == null))
@@ -149,35 +115,12 @@ namespace Squared.Render {
             () => new BitmapDrawCallSorterComparer()
         );
 
-        public const int NativeBatchSize = 1024;
-        private const int NativeBatchCapacityLimit = 1024;
-
-        private int LastReservationID = 0;
-
-        private static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
-            320, 4, 64, 256, 1024
-        );
-        private DenseList<NativeBatch> _NativeBatches;
-
-        private enum BitmapBatchPrepareState : int {
-            Invalid,
-            NotPrepared,
-            Preparing,
-            Prepared,
-            Issuing,
-            Issued
-        }
-
-        private volatile int _State = (int)BitmapBatchPrepareState.Invalid;
-
         private static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
             new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
         private static ThreadLocal<int[]> _SortIndexArray = new ThreadLocal<int[]>();
   
         private BufferGenerator<BitmapVertex> _BufferGenerator = null;
         private BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
-
-        private UnorderedList<Reservation> RangeReservations = null;
 
         static BitmapBatch () {
             BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
@@ -231,32 +174,6 @@ namespace Squared.Render {
             var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)BitmapBatchPrepareState.NotPrepared);
             if ((prior == BitmapBatchPrepareState.Issuing) || (prior == BitmapBatchPrepareState.Preparing))
                 throw new ThreadStateException("This batch is currently in use");
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void StateTransition (BitmapBatchPrepareState from, BitmapBatchPrepareState to) {
-            var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)to);
-            if (prior != from)
-                throw new ThreadStateException(string.Format(
-                    "Expected to transition this batch from {0} to {1}, but state was {2}",
-                    from, to, prior
-                ));
-        }
-
-        public Reservation ReserveSpace (int count) {
-            var range = _DrawCalls.ReserveSpace(count);
-            var reservation = new Reservation(
-                this, range.Array, range.Offset, range.Count
-            );
-
-            if (CaptureStackTraces) {
-                if (RangeReservations == null)
-                    RangeReservations = new UnorderedList<Reservation>();
-
-                RangeReservations.Add(reservation);
-            }
-
-            return reservation;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -385,31 +302,8 @@ namespace Squared.Render {
                 throw new InvalidOperationException("Wrote too many vertices");
 
             if (vertCount > 0) {
-                if ((currentTextures.Texture1 == null) || currentTextures.Texture1.IsDisposed)
-                    throw new InvalidDataException("Invalid draw call(s)");
-
-                _NativeBatches.Add(new NativeBatch(
-                    softwareBuffer, currentTextures,
-                    vertOffset, vertCount, 
-                    null, null, null
-                ));
+                CreateNewNativeBatch(softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, true);
             }
-        }
-
-        private void CreateNewNativeBatch (
-            BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref TextureSet currentTextures, ref int vertCount, ref int vertOffset
-        ) {
-            if ((currentTextures.Texture1 == null) || currentTextures.Texture1.IsDisposed)
-                throw new InvalidDataException("Invalid draw call(s)");
-
-            _NativeBatches.Add(new NativeBatch(
-                softwareBuffer, currentTextures,
-                vertOffset, vertCount,
-                null, null, null
-            ));
-
-            vertOffset += vertCount;
-            vertCount = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -421,7 +315,7 @@ namespace Squared.Render {
 
             if (!texturesEqual) {
                 if (vertCount > 0)
-                    CreateNewNativeBatch(softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset);
+                    CreateNewNativeBatch(softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, false);
 
                 currentTextures = call.Textures;
             }
@@ -650,11 +544,6 @@ namespace Squared.Render {
             _NativeBatches.Dispose();
 
             base.OnReleaseResources();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RemoveRange (int index, int count) {
-            _DrawCalls.RemoveRange(index, count);
         }
     }
 }

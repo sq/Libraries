@@ -189,7 +189,41 @@ namespace Squared.Render {
     }
 
     public class BitmapBatchBase<TDrawCall> : ListBatch<TDrawCall> {
-        internal struct NativeBatch {
+        public struct Reservation {
+            public readonly BitmapBatchBase<TDrawCall> Batch;
+            public readonly int ID;
+
+            public readonly TDrawCall[] Array;
+            public readonly int Offset;
+            public int Count;
+            public readonly StackTrace Stack;
+
+            internal Reservation (BitmapBatchBase<TDrawCall> batch, TDrawCall[] array, int offset, int count) {
+                Batch = batch;
+                ID = ++batch.LastReservationID;
+                Array = array;
+                Offset = offset;
+                Count = count;
+                if (CaptureStackTraces)
+                    Stack = new StackTrace(2, true);
+                else
+                    Stack = null;
+            }
+
+            public void Shrink (int newCount) {
+                if (ID != Batch.LastReservationID)
+                    throw new InvalidOperationException("You can't shrink a reservation after another one has been created");
+                if (newCount > Count)
+                    throw new ArgumentException("Can't grow using shrink, silly", "newCount");
+                if (newCount == Count)
+                    return;
+
+                Batch.RemoveRange(Offset + newCount, Count - newCount);
+                Count = newCount;
+            }
+        }
+
+        protected struct NativeBatch {
             public readonly Material Material;
 
             public SamplerState SamplerState;
@@ -229,6 +263,79 @@ namespace Squared.Render {
                     Texture2HalfTexel = Texture2Size = Vector2.Zero;
                 }
             }
+        }
+
+        public const int NativeBatchSize = 1024;
+        protected const int NativeBatchCapacityLimit = 1024;
+
+        protected int LastReservationID = 0;
+
+        protected static ListPool<NativeBatch> _NativePool = new ListPool<NativeBatch>(
+            320, 4, 64, 256, 1024
+        );
+        protected DenseList<NativeBatch> _NativeBatches;
+
+        protected enum BitmapBatchPrepareState : int {
+            Invalid,
+            NotPrepared,
+            Preparing,
+            Prepared,
+            Issuing,
+            Issued
+        }
+
+        protected volatile int _State = (int)BitmapBatchPrepareState.Invalid;
+
+        protected UnorderedList<Reservation> RangeReservations = null;
+
+        protected void CreateNewNativeBatch (
+            BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref TextureSet currentTextures, 
+            ref int vertCount, ref int vertOffset, bool isFinalCall
+        ) {
+            if ((currentTextures.Texture1 == null) || currentTextures.Texture1.IsDisposed)
+                throw new InvalidDataException("Invalid draw call(s)");
+
+            _NativeBatches.Add(new NativeBatch(
+                softwareBuffer, currentTextures,
+                vertOffset, vertCount,
+                null, null, null
+            ));
+
+            if (!isFinalCall) {
+                vertOffset += vertCount;
+                vertCount = 0;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void StateTransition (BitmapBatchPrepareState from, BitmapBatchPrepareState to) {
+            var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)to);
+            if (prior != from)
+                throw new ThreadStateException(string.Format(
+                    "Expected to transition this batch from {0} to {1}, but state was {2}",
+                    from, to, prior
+                ));
+        }
+
+        public Reservation ReserveSpace (int count) {
+            var range = _DrawCalls.ReserveSpace(count);
+            var reservation = new Reservation(
+                this, range.Array, range.Offset, range.Count
+            );
+
+            if (CaptureStackTraces) {
+                if (RangeReservations == null)
+                    RangeReservations = new UnorderedList<Reservation>();
+
+                RangeReservations.Add(reservation);
+            }
+
+            return reservation;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void RemoveRange (int index, int count) {
+            _DrawCalls.RemoveRange(index, count);
         }
     }
 
