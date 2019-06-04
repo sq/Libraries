@@ -532,11 +532,13 @@ namespace Squared.Render {
                 cnbs.Parameters = manager.CurrentParameters;
             }
 
+            if (nb.SamplerState != null)
             if (nb.SamplerState != cnbs.SamplerState1) {
                 cnbs.SamplerState1 = nb.SamplerState;
                 manager.Device.SamplerStates[0] = nb.SamplerState;
             }
 
+            if (nb.SamplerState2 != null)
             if (nb.SamplerState2 != cnbs.SamplerState2) {
                 cnbs.SamplerState2 = nb.SamplerState2;
                 manager.Device.SamplerStates[1] = nb.SamplerState2;
@@ -561,9 +563,7 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            // fixme
-            if (_DrawCalls.Count > 0)
-            if (typeof (TDrawCall) == typeof(BitmapDrawCall)) {
+            if (_DrawCalls.Count > 0) {
                 StateTransition(BitmapBatchPrepareState.Prepared, BitmapBatchPrepareState.Issuing);
 
                 if (State.IsCombined)
@@ -598,7 +598,7 @@ namespace Squared.Render {
 
                     var cnbs = new CurrentNativeBatchState(manager);
                     cnbs.Texture1?.SetValue((Texture2D)null);
-                    cnbs.Texture2.SetValue((Texture2D)null);
+                    cnbs.Texture2?.SetValue((Texture2D)null);
 
                     {
                         for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
@@ -646,7 +646,7 @@ namespace Squared.Render {
                     }
 
                     cnbs.Texture1?.SetValue((Texture2D)null);
-                    cnbs.Texture2.SetValue((Texture2D)null);
+                    cnbs.Texture2?.SetValue((Texture2D)null);
 
                     device.SamplerStates[0] = previousSS1;
                     device.SamplerStates[1] = previousSS2;
