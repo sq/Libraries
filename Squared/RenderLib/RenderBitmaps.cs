@@ -312,8 +312,9 @@ namespace Squared.Render {
         }
 
         protected void CreateNewNativeBatch (
-            BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref TextureSet currentTextures, 
-            ref int vertCount, ref int vertOffset, bool isFinalCall
+            BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref TextureSet currentTextures,
+            ref int vertCount, ref int vertOffset, bool isFinalCall,
+            Material material, SamplerState samplerState1, SamplerState samplerState2
         ) {
             if ((currentTextures.Texture1 == null) || currentTextures.Texture1.IsDisposed)
                 throw new InvalidDataException("Invalid draw call(s)");
@@ -321,7 +322,7 @@ namespace Squared.Render {
             _NativeBatches.Add(new NativeBatch(
                 softwareBuffer, currentTextures,
                 vertOffset, vertCount,
-                null, null, null
+                material, samplerState1, samplerState2
             ));
 
             if (!isFinalCall) {
@@ -331,7 +332,8 @@ namespace Squared.Render {
         }
 
         protected unsafe void FillOneSoftwareBuffer (
-            int[] indices, ArraySegment<BitmapDrawCall> drawCalls, ref int drawCallsPrepared, int count
+            int[] indices, ArraySegment<BitmapDrawCall> drawCalls, ref int drawCallsPrepared, int count,
+            Material material, SamplerState samplerState1, SamplerState samplerState2
         ) {
             int totalVertCount = 0;
             int vertCount = 0, vertOffset = 0;
@@ -365,9 +367,21 @@ namespace Squared.Render {
                     if (callIndex >= callCount)
                         break;
 
+                    bool texturesEqual = callArray[callIndex].Textures.Equals(ref currentTextures);
+
+                    if (!texturesEqual) {
+                        if (vertCount > 0)
+                            CreateNewNativeBatch(
+                                softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, false,
+                                material, samplerState1, samplerState2
+                            );
+
+                        currentTextures = callArray[callIndex].Textures;
+                    }
+
                     FillOneBitmapVertex(
                         softwareBuffer, ref callArray[callIndex], out pVertices[vertexWritePosition],
-                        ref currentTextures, ref vertCount, ref vertOffset, zBufferFactor
+                        ref vertCount, ref vertOffset, zBufferFactor
                     );
 
                     vertexWritePosition += 1;
@@ -382,24 +396,18 @@ namespace Squared.Render {
                 throw new InvalidOperationException("Wrote too many vertices");
 
             if (vertCount > 0) {
-                CreateNewNativeBatch(softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, true);
+                CreateNewNativeBatch(
+                    softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, true,
+                    material, samplerState1, samplerState2
+                );
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void FillOneBitmapVertex (
             BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref BitmapDrawCall call, out BitmapVertex result, 
-            ref TextureSet currentTextures, ref int vertCount, ref int vertOffset, float zBufferFactor
+            ref int vertCount, ref int vertOffset, float zBufferFactor
         ) {
-            bool texturesEqual = call.Textures.Equals(ref currentTextures);
-
-            if (!texturesEqual) {
-                if (vertCount > 0)
-                    CreateNewNativeBatch(softwareBuffer, ref currentTextures, ref vertCount, ref vertOffset, false);
-
-                currentTextures = call.Textures;
-            }
-
             var p = call.Position;
             result = new BitmapVertex {
                 Position = {
@@ -446,6 +454,186 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveRange (int index, int count) {
             _DrawCalls.RemoveRange(index, count);
+        }
+
+        private struct CurrentNativeBatchState {
+            public Material Material;
+            public SamplerState SamplerState1, SamplerState2;
+            public DefaultMaterialSetEffectParameters Parameters;
+            public EffectParameter Texture1, Texture2;
+            public TextureSet Textures;
+
+            public CurrentNativeBatchState (DeviceManager dm) {
+                Material = dm.CurrentMaterial;
+                Parameters = dm.CurrentParameters;
+                SamplerState1 = dm.Device.SamplerStates[0];
+                SamplerState2 = dm.Device.SamplerStates[1];
+                Textures = new Render.TextureSet();
+                var ep = Material?.Effect?.Parameters;
+                if (ep != null) {
+                    Texture1 = ep["BitmapTexture"];
+                    Texture2 = ep["SecondTexture"];
+                } else {
+                    Texture1 = Texture2 = null;
+                }
+            }
+        }
+
+        private bool PerformNativeBatchTextureTransition (
+            DeviceManager manager, 
+            ref NativeBatch nb, ref CurrentNativeBatchState cnbs
+        ) {
+            if (nb.TextureSet.Equals(ref cnbs.Textures))
+                return false;
+
+            cnbs.Textures = nb.TextureSet;
+            var tex1 = nb.TextureSet.Texture1;
+            var tex2 = nb.TextureSet.Texture2;
+
+            cnbs.Texture1?.SetValue((Texture2D)null);
+            if (tex1 != null)
+                cnbs.Texture1?.SetValue(tex1);
+
+            cnbs.Texture2?.SetValue((Texture2D)null);
+            if (tex2 != null)
+                cnbs.Texture2?.SetValue(tex2);
+
+            cnbs.Parameters.BitmapTextureSize?.SetValue(nb.Texture1Size);
+            cnbs.Parameters.BitmapTextureSize2?.SetValue(nb.Texture2Size);
+            cnbs.Parameters.HalfTexel?.SetValue(nb.Texture1HalfTexel);
+            cnbs.Parameters.HalfTexel2?.SetValue(nb.Texture2HalfTexel);
+
+            manager.CurrentMaterial.Flush();
+
+            manager.Device.SamplerStates[0] = cnbs.SamplerState1;
+            manager.Device.SamplerStates[1] = cnbs.SamplerState2;
+
+            return true;
+        }
+
+        private void PerformNativeBatchTransition (
+            DeviceManager manager,
+            ref NativeBatch nb, ref CurrentNativeBatchState cnbs
+        ) {
+            if (nb.Material != cnbs.Material) {
+                manager.ApplyMaterial(nb.Material);
+                cnbs.Material = nb.Material;
+                cnbs.Parameters = manager.CurrentParameters;
+            }
+
+            if (nb.SamplerState != cnbs.SamplerState1) {
+                cnbs.SamplerState1 = nb.SamplerState;
+                manager.Device.SamplerStates[0] = nb.SamplerState;
+            }
+
+            if (nb.SamplerState2 != cnbs.SamplerState2) {
+                cnbs.SamplerState2 = nb.SamplerState2;
+                manager.Device.SamplerStates[1] = nb.SamplerState2;
+            }
+        }
+
+        public override void Issue (DeviceManager manager) {
+            if (_DrawCalls.Count == 0)
+                return;
+
+            StateTransition(BitmapBatchPrepareState.Prepared, BitmapBatchPrepareState.Issuing);
+
+            if (State.IsCombined)
+                throw new InvalidOperationException("Batch was combined into another batch");
+
+            if (_BufferGenerator == null)
+                throw new InvalidOperationException("Already issued");
+
+            var device = manager.Device;
+
+            IHardwareBuffer previousHardwareBuffer = null;
+
+            // if (RenderTrace.EnableTracing)
+            //    RenderTrace.ImmediateMarker("BitmapBatch.Issue(layer={0}, count={1})", Layer, _DrawCalls.Count);
+
+            VertexBuffer vb, cornerVb;
+            DynamicIndexBuffer ib, cornerIb;
+
+            var cornerHwb = _CornerBuffer.HardwareBuffer;
+            try {
+                cornerHwb.SetActive();
+                cornerHwb.GetBuffers(out cornerVb, out cornerIb);
+                if (device.Indices != cornerIb)
+                    device.Indices = cornerIb;
+
+                var scratchBindings = _ScratchBindingArray.Value;
+
+                var previousSS1 = device.SamplerStates[0];
+                var previousSS2 = device.SamplerStates[1];
+
+                manager.ApplyMaterial(Material);
+
+                var cnbs = new CurrentNativeBatchState(manager);
+                cnbs.Texture1?.SetValue((Texture2D)null);
+                cnbs.Texture2.SetValue((Texture2D)null);
+
+                {
+                    for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
+                        NativeBatch nb;
+                        if (!_NativeBatches.TryGetItem(n, out nb))
+                            break;
+
+                        PerformNativeBatchTransition(manager, ref nb, ref cnbs);
+
+                        if (PerformNativeBatchTextureTransition(manager, ref nb, ref cnbs))
+                            ;
+
+                        if (UseZBuffer) {
+                            var dss = device.DepthStencilState;
+                            if (dss.DepthBufferEnable == false)
+                                throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
+                        }
+
+                        var swb = nb.SoftwareBuffer;
+                        var hwb = swb.HardwareBuffer;
+                        if (previousHardwareBuffer != hwb) {
+                            if (previousHardwareBuffer != null)
+                                previousHardwareBuffer.SetInactive();
+
+                            hwb.SetActive();
+                            previousHardwareBuffer = hwb;
+                        }
+
+                        hwb.GetBuffers(out vb, out ib);
+
+                        scratchBindings[0] = cornerVb;
+                        scratchBindings[1] = new VertexBufferBinding(vb, swb.HardwareVertexOffset + nb.LocalVertexOffset, 1);
+
+                        device.SetVertexBuffers(scratchBindings);
+                        device.DrawInstancedPrimitives(
+                            PrimitiveType.TriangleList, 
+                            0, _CornerBuffer.HardwareVertexOffset, 4, 
+                            _CornerBuffer.HardwareIndexOffset, 2, 
+                            nb.VertexCount
+                        );
+                    }
+
+                    if (previousHardwareBuffer != null)
+                        previousHardwareBuffer.SetInactive();
+                }
+
+                cnbs.Texture1?.SetValue((Texture2D)null);
+                cnbs.Texture2.SetValue((Texture2D)null);
+
+                device.SamplerStates[0] = previousSS1;
+                device.SamplerStates[1] = previousSS2;
+            } finally {
+                cornerHwb.TrySetInactive();
+                if (previousHardwareBuffer != null)
+                    previousHardwareBuffer.TrySetInactive();
+            }
+
+            _BufferGenerator = null;
+            _CornerBuffer = null;
+
+            base.Issue(manager);
+
+            StateTransition(BitmapBatchPrepareState.Issuing, BitmapBatchPrepareState.Issued);
         }
     }
 
