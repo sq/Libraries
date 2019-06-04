@@ -18,7 +18,11 @@ using Squared.Util;
 
 namespace LargeBufferTest {
     public class LargeBufferTestGame : MultithreadedGame {
+        public const bool UseSpriteBatch = true;
+
         public static readonly Color ClearColor = new Color(24, 96, 220, 255);
+
+        SpriteBatch SpriteBatch;
 
         FreeTypeFont Font;
         Texture2D WhitePixel, GrayPixel;
@@ -59,6 +63,9 @@ namespace LargeBufferTest {
             WhitePixel.SetData(new [] { Color.White });
             GrayPixel = new Texture2D(GraphicsDevice, 1, 1);
             GrayPixel.SetData(new [] { Color.Silver });
+
+            if (UseSpriteBatch)
+                SpriteBatch = new SpriteBatch(GraphicsDevice);
         }
 
         protected override void UnloadContent () {
@@ -68,6 +75,35 @@ namespace LargeBufferTest {
             base.Update(gameTime);
 
             PerformanceStats.Record(this);
+        }
+
+        protected override void OnBeforeDraw (GameTime gameTime) {
+            base.OnBeforeDraw(gameTime);
+        }
+
+        void PerformSpriteBatchDraw (GameTime gameTime) {
+            GraphicsDevice.Clear(Color.Transparent);
+
+            const int width = 1280;
+            const int height = 720;
+            var pos = Vector2.Zero;
+
+            SpriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Opaque);
+            for (int y = 0; y < height; y++) {
+                float fx = 0;
+                pos.Y = y;
+                for (int x = 0; x < width; x++, fx++) {
+                    var tex = ((x % 2) == 0) ? WhitePixel : GrayPixel;
+                    pos.X = fx;
+                    SpriteBatch.Draw(
+                        tex, pos, new Color(255, x % 255, y % 255)
+                    );
+                }
+            }
+
+            DrawPerformanceStats(SpriteBatch);
+
+            SpriteBatch.End();
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
@@ -81,11 +117,15 @@ namespace LargeBufferTest {
                 );
             }
 
+            if (UseSpriteBatch) {
+                PerformSpriteBatchDraw(gameTime);
+                return;
+            }
+
             ClearBatch.AddNew(frame, -1, Materials.Clear, clearColor: ClearColor);
 
             const int width = 1280;
             const int height = 720;
-
             var options = new ParallelOptions {
             };
             int layer = 0;
@@ -133,6 +173,30 @@ namespace LargeBufferTest {
             );
 
             DrawPerformanceStats(ref ir);
+        }
+
+        private void DrawPerformanceStats (SpriteBatch spriteBatch) {
+            const float scale = 1f;
+            var text = PerformanceStats.GetText(this);
+
+            // FIXME
+            Console.WriteLine(text);
+
+            /*
+            using (var buffer = BufferPool<BitmapDrawCall>.Allocate(text.Length)) {
+                var layout = Font.LayoutString(text, buffer, scale: scale);
+                var layoutSize = layout.Size;
+                var position = new Vector2(30f, 30f);
+                var dc = layout.DrawCalls;
+
+                ir.FillRectangle(
+                    Bounds.FromPositionAndSize(position, layoutSize),
+                    Color.Black
+                );
+                ir.Layer += 1;
+                ir.DrawMultiple(dc, position);
+            }
+            */
         }
 
         private void DrawPerformanceStats (ref ImperativeRenderer ir) {
