@@ -570,6 +570,8 @@ namespace Squared.Render {
             if (_DrawCalls.Count > 0)
                 PrepareDrawCalls(manager);
 
+            Squared.Render.NativeBatch.RecordCommands(_NativeBatches.Count);
+
             base.Prepare(manager);
 
             StateTransition(BitmapBatchPrepareState.Preparing, BitmapBatchPrepareState.Prepared);
@@ -1059,7 +1061,7 @@ namespace Squared.Render {
             if (Texture == null)
                 name = "null";
             else if (!ObjectNames.TryGetName(Texture, out name))
-                name = string.Format("{0}x{1}", Texture.Width, Texture.Height);
+                name = string.Format("{2:X4} {0}x{1}", Texture.Width, Texture.Height, Texture.GetHashCode());
 
             return string.Format("tex {0} pos {1}", name, Position);
         }

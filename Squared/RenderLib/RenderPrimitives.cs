@@ -406,7 +406,7 @@ namespace Squared.Render {
         private VertexBufferBinding[] TwoBindings = new VertexBufferBinding[2], 
             ThreeBindings = new VertexBufferBinding[3];
 
-        private static long _PrimitiveCount = 0;
+        private static long _PrimitiveCount, _CommandCount = 0;
 
         public void Initialize (
             IBatchContainer container, int layer, Material material, 
@@ -520,8 +520,19 @@ namespace Squared.Render {
             return result;
         }
 
+        public static void RecordCommands (long count) {
+            Interlocked.Add(ref _CommandCount, count);
+        }
+
         public static void RecordPrimitives (long count) {
             Interlocked.Add(ref _PrimitiveCount, count);
+        }
+
+        public static long LifetimeCommandCount {
+            get {
+                // HACK
+                return Interlocked.Add(ref _CommandCount, 0);
+            }
         }
 
         public static long LifetimePrimitiveCount {

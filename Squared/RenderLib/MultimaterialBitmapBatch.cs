@@ -229,9 +229,6 @@ namespace Squared.Render {
             AllocateNativeBatches();
 
             var count = _DrawCalls.Count;
-            var indexArray = GetIndexArray(count);
-            for (int i = 0; i < count; i++)
-                indexArray[i] = i;
 
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
             _CornerBuffer = QuadUtils.CreateCornerBuffer(Container);
@@ -266,28 +263,29 @@ namespace Squared.Render {
                     var tex = dc.DrawCall.Textures;
 
                     var startNewRange = (
-                        (currentRangeStart == -1) ||
                         (material != currentMaterial) ||
                         (currentSamplerState1 != ss1) ||
                         (currentSamplerState2 != ss2) ||
                         !currentTextures.Equals(ref dc.DrawCall.Textures)
                     );
 
-                    if (startNewRange) {
+                    if ((startNewRange) || (currentRangeStart == -1)) {
                         if (currentRangeStart != -1) {
                             int rangeCount = (i - currentRangeStart);
-                            PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, rangeCount);
+                            PrepareNativeBatchForRange(drawCalls, null, currentRangeStart, rangeCount);
                         }
+
                         currentRangeStart = i;
                         currentMaterial = material;
                         currentSamplerState1 = ss1;
                         currentSamplerState2 = ss2;
+                        currentTextures = dc.DrawCall.Textures;
                     }
                 }
 
                 if (currentRangeStart != -1) {
                     int rangeCount = (count - currentRangeStart);
-                    PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, rangeCount);
+                    PrepareNativeBatchForRange(drawCalls, null, currentRangeStart, rangeCount);
                 }
             }
         }

@@ -247,6 +247,7 @@ namespace Squared.Render {
                     foreach (var da in _DrawArguments) {
                         manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
                     }
+                    Squared.Render.NativeBatch.RecordCommands(_DrawArguments.Count);
                     hwb.SetInactiveAndUnapply(manager.Device);
                 }
             } finally {
@@ -687,6 +688,7 @@ namespace Squared.Render {
 
                 hwb.SetActiveAndApply(manager.Device);
                 manager.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, count * 4, 0, count * 2);
+                Squared.Render.NativeBatch.RecordCommands(1);
                 hwb.SetInactiveAndUnapply(manager.Device);
             }
 
