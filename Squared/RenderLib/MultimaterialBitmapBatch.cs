@@ -211,11 +211,14 @@ namespace Squared.Render {
                 for (int j = 0; j < count; j++)
                     data[j] = drawCalls[j + first].DrawCall;
 
+                var ss1 = firstDc.SamplerState1 ?? BitmapBatch.DefaultSamplerState;
+                var ss2 = firstDc.SamplerState2 ?? BitmapBatch.DefaultSamplerState;
+
                 var callSegment = new ArraySegment<BitmapDrawCall>(data, 0, count);
                 while (drawCallsPrepared < count)
                     FillOneSoftwareBuffer(
                         indexArray, callSegment, ref drawCallsPrepared, count,
-                        firstDc.Material, firstDc.SamplerState1, firstDc.SamplerState2
+                        firstDc.Material, ss1, ss2
                     );
             }
         }
