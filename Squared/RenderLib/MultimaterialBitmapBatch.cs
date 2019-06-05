@@ -271,7 +271,7 @@ namespace Squared.Render {
                     );
 
                     if (startNewRange && (currentRangeStart != -1)) {
-                        int rangeCount = i - currentRangeStart;
+                        int rangeCount = (i - currentRangeStart) + 1;
                         PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, rangeCount, ref drawCallsPrepared);
                     }
 
@@ -284,7 +284,7 @@ namespace Squared.Render {
                 }
 
                 if (currentRangeStart != -1) {
-                    int rangeCount = count - currentRangeStart;
+                    int rangeCount = (count - currentRangeStart);
                     PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, rangeCount, ref drawCallsPrepared);
                 }
             }

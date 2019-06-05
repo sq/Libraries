@@ -481,7 +481,6 @@ namespace Squared.Render {
                 Material = null;
                 Parameters = null;
                 Texture1 = Texture2 = null;
-                SetMaterial(dm.CurrentMaterial);
             }
 
             public void SetMaterial (Material m) {
@@ -497,30 +496,29 @@ namespace Squared.Render {
             }
         }
 
-        private bool PerformNativeBatchTextureTransition (
+        private void PerformNativeBatchTextureTransition (
             DeviceManager manager,
             ref NativeBatch nb, ref CurrentNativeBatchState cnbs,
             bool force
         ) {
-            if (nb.TextureSet.Equals(ref cnbs.Textures) && !force)
-                return false;
+            if (!nb.TextureSet.Equals(ref cnbs.Textures) || force) {
+                cnbs.Textures = nb.TextureSet;
+                var tex1 = nb.TextureSet.Texture1;
+                var tex2 = nb.TextureSet.Texture2;
 
-            cnbs.Textures = nb.TextureSet;
-            var tex1 = nb.TextureSet.Texture1;
-            var tex2 = nb.TextureSet.Texture2;
+                cnbs.Texture1?.SetValue((Texture2D)null);
+                if (tex1 != null)
+                    cnbs.Texture1?.SetValue(tex1);
 
-            cnbs.Texture1?.SetValue((Texture2D)null);
-            if (tex1 != null)
-                cnbs.Texture1?.SetValue(tex1);
+                cnbs.Texture2?.SetValue((Texture2D)null);
+                if (tex2 != null)
+                    cnbs.Texture2?.SetValue(tex2);
 
-            cnbs.Texture2?.SetValue((Texture2D)null);
-            if (tex2 != null)
-                cnbs.Texture2?.SetValue(tex2);
-
-            cnbs.Parameters.BitmapTextureSize?.SetValue(nb.Texture1Size);
-            cnbs.Parameters.BitmapTextureSize2?.SetValue(nb.Texture2Size);
-            cnbs.Parameters.HalfTexel?.SetValue(nb.Texture1HalfTexel);
-            cnbs.Parameters.HalfTexel2?.SetValue(nb.Texture2HalfTexel);
+                cnbs.Parameters.BitmapTextureSize?.SetValue(nb.Texture1Size);
+                cnbs.Parameters.BitmapTextureSize2?.SetValue(nb.Texture2Size);
+                cnbs.Parameters.HalfTexel?.SetValue(nb.Texture1HalfTexel);
+                cnbs.Parameters.HalfTexel2?.SetValue(nb.Texture2HalfTexel);
+            }
 
             manager.CurrentMaterial.Flush();
 
@@ -528,8 +526,6 @@ namespace Squared.Render {
                 manager.Device.SamplerStates[0] = cnbs.SamplerState1;
             if (cnbs.SamplerState2 != null)
                 manager.Device.SamplerStates[1] = cnbs.SamplerState2;
-
-            return true;
         }
 
         private bool PerformNativeBatchTransition (
@@ -605,11 +601,7 @@ namespace Squared.Render {
                     var previousSS1 = device.SamplerStates[0];
                     var previousSS2 = device.SamplerStates[1];
 
-                    manager.ApplyMaterial(Material);
-
                     var cnbs = new CurrentNativeBatchState(manager);
-                    cnbs.Texture1?.SetValue((Texture2D)null);
-                    cnbs.Texture2?.SetValue((Texture2D)null);
 
                     {
                         for (int nc = _NativeBatches.Count, n = 0; n < nc; n++) {
@@ -625,6 +617,8 @@ namespace Squared.Render {
                                 if (dss.DepthBufferEnable == false)
                                     throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
                             }
+
+                            manager.CurrentMaterial.Flush();
 
                             var swb = nb.SoftwareBuffer;
                             var hwb = swb.HardwareBuffer;
