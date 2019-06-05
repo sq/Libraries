@@ -615,7 +615,7 @@ namespace Squared.Render {
             if (@params.FrameIndex.HasValue)
                 m.Parameters?.FrameIndex?.SetValue((float)@params.FrameIndex.Value);
 
-            m.Parameters?.HalfPixelOffset?.SetValue(!Coordinator.IsOpenGL);
+            m.Parameters?.HalfPixelOffset?.SetValue(!Coordinator.IsOpenGL ? 1f : 0f);
 
             var ds = DefaultDitheringSettings;
             ds.FrameIndex = @params.FrameIndex.GetValueOrDefault(0);

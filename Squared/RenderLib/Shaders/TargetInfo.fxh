@@ -1,3 +1,6 @@
+#if !DEFINED_RTD
+#define DEFINED_RTD 1
+
 #define ACCEPTS_VPOS in float2 __vpos__ : VPOS
 #define RAW_VPOS __vpos__.xy
 
@@ -19,3 +22,4 @@ float2 normalize_vpos (float2 __vpos__) {
 float2 GetRenderTargetSize () {
     return __RenderTargetDimensions__;
 }
+#endif
