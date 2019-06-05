@@ -199,7 +199,7 @@ namespace Squared.Render {
         }
 
         void PrepareNativeBatchForRange (
-            MaterialBitmapDrawCall[] drawCalls, int[] indexArray, int first, int count, ref int drawCallsPrepared
+            MaterialBitmapDrawCall[] drawCalls, int[] indexArray, int first, int count
         ) {
             if (count <= 0)
                 return;
@@ -215,11 +215,11 @@ namespace Squared.Render {
                 var ss2 = firstDc.SamplerState2 ?? BitmapBatch.DefaultSamplerState;
 
                 var callSegment = new ArraySegment<BitmapDrawCall>(data, 0, count);
-                while (drawCallsPrepared < count)
-                    FillOneSoftwareBuffer(
-                        indexArray, callSegment, ref drawCallsPrepared, count,
-                        firstDc.Material, ss1, ss2
-                    );
+                int drawCallsPrepared = 0;
+                while (!FillOneSoftwareBuffer(
+                    indexArray, callSegment, ref drawCallsPrepared, count,
+                    firstDc.Material, ss1, ss2
+                ));
             }
         }
 
@@ -252,6 +252,7 @@ namespace Squared.Render {
 
                 Material currentMaterial = null;
                 SamplerState currentSamplerState1 = null, currentSamplerState2 = null;
+                var currentTextures = default(TextureSet);
                 int currentRangeStart = -1;
 
                 for (var i = 0; i < count; i++) {
@@ -262,20 +263,21 @@ namespace Squared.Render {
 
                     var ss1 = dc.SamplerState1 ?? BitmapBatch.DefaultSamplerState;
                     var ss2 = dc.SamplerState2 ?? BitmapBatch.DefaultSamplerState;
+                    var tex = dc.DrawCall.Textures;
 
                     var startNewRange = (
                         (currentRangeStart == -1) ||
                         (material != currentMaterial) ||
                         (currentSamplerState1 != ss1) ||
-                        (currentSamplerState2 != ss2)
+                        (currentSamplerState2 != ss2) ||
+                        !currentTextures.Equals(ref dc.DrawCall.Textures)
                     );
 
-                    if (startNewRange && (currentRangeStart != -1)) {
-                        int rangeCount = (i - currentRangeStart) + 1;
-                        PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, rangeCount, ref drawCallsPrepared);
-                    }
-
                     if (startNewRange) {
+                        if (currentRangeStart != -1) {
+                            int rangeCount = (i - currentRangeStart);
+                            PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, rangeCount);
+                        }
                         currentRangeStart = i;
                         currentMaterial = material;
                         currentSamplerState1 = ss1;
@@ -285,7 +287,7 @@ namespace Squared.Render {
 
                 if (currentRangeStart != -1) {
                     int rangeCount = (count - currentRangeStart);
-                    PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, rangeCount, ref drawCallsPrepared);
+                    PrepareNativeBatchForRange(drawCalls, indexArray, currentRangeStart, rangeCount);
                 }
             }
         }

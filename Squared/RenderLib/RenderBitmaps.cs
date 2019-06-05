@@ -342,7 +342,7 @@ namespace Squared.Render {
             }
         }
 
-        protected unsafe void FillOneSoftwareBuffer (
+        protected unsafe bool FillOneSoftwareBuffer (
             int[] indices, ArraySegment<BitmapDrawCall> drawCalls, ref int drawCallsPrepared, int count,
             Material material, SamplerState samplerState1, SamplerState samplerState2
         ) {
@@ -364,10 +364,14 @@ namespace Squared.Render {
             var callCount = drawCalls.Count;
             var callArray = drawCalls.Array;
 
+            bool result = true;
+
             fixed (BitmapVertex* pVertices = &softwareBuffer.Vertices.Array[softwareBuffer.Vertices.Offset]) {
                 for (int i = drawCallsPrepared; i < count; i++) {
-                    if (totalVertCount >= nativeBatchSizeLimit)
+                    if (totalVertCount >= nativeBatchSizeLimit) {
+                        result = false;
                         break;
+                    }
 
                     int callIndex;
                     if (indices != null)
@@ -412,6 +416,8 @@ namespace Squared.Render {
                     material, samplerState1, samplerState2
                 );
             }
+
+            return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -589,6 +595,8 @@ namespace Squared.Render {
                 VertexBuffer vb, cornerVb;
                 DynamicIndexBuffer ib, cornerIb;
 
+                var totalDraws = 0;
+
                 var cornerHwb = _CornerBuffer.HardwareBuffer;
                 try {
                     cornerHwb.SetActive();
@@ -642,6 +650,8 @@ namespace Squared.Render {
                                 _CornerBuffer.HardwareIndexOffset, 2, 
                                 nb.VertexCount
                             );
+
+                            totalDraws += nb.VertexCount;
                         }
 
                         if (previousHardwareBuffer != null)
@@ -663,6 +673,9 @@ namespace Squared.Render {
                 _CornerBuffer = null;
 
                 StateTransition(BitmapBatchPrepareState.Issuing, BitmapBatchPrepareState.Issued);
+
+                if (totalDraws != _DrawCalls.Count)
+                    ; // throw new Exception();
             }
 
             base.Issue(manager);
