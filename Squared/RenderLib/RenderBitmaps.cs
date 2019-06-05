@@ -626,7 +626,6 @@ namespace Squared.Render {
                                     throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
                             }
 
-                            manager.CurrentMaterial.Flush();
 
                             var swb = nb.SoftwareBuffer;
                             var hwb = swb.HardwareBuffer;
