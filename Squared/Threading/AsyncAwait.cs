@@ -25,6 +25,10 @@ namespace Squared.Threading {
 
         public struct NonThrowingFuture<TResult> {
             public Future<TResult> Future;
+
+            public FutureAwaiter<TResult> GetAwaiter () {
+                return new FutureAwaiter<TResult>(Future, false);
+            }
         }
 
         public struct FutureAwaiter<TResult> : INotifyCompletion {
@@ -289,10 +293,6 @@ namespace Squared.Threading {
 
         public static FutureAwaiter<T> GetAwaiter<T> (this FutureWithDisposedValue<T> fwdv) {
             return new FutureAwaiter<T>(fwdv);
-        }
-
-        public static FutureAwaiter<T> GetAwaiter<T> (this NonThrowingFuture<T> future) {
-            return new FutureAwaiter<T>(future.Future, false);
         }
 
         public static IFutureAwaiter GetAwaiter (this IFuture future) {
