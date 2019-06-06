@@ -21,6 +21,10 @@ namespace Squared.Threading {
         public struct FutureWithDisposedValue<TResult> {
             public Future<TResult> Future;
             public TResult         DisposedValue;
+
+            public FutureAwaiter<TResult> GetAwaiter () {
+                return new FutureAwaiter<TResult>(Future, DisposedValue, true);
+            }
         }
 
         public struct NonThrowingFuture<TResult> {
@@ -38,7 +42,7 @@ namespace Squared.Threading {
             public readonly TResult DisposedValue;
             public readonly bool ThrowOnError;
 
-            public FutureAwaiter (Future<TResult> future, bool throwOnError = true) {
+            public FutureAwaiter (Future<TResult> future, bool throwOnError) {
                 Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
                 HasDisposedValue = false;
@@ -46,11 +50,11 @@ namespace Squared.Threading {
                 ThrowOnError = throwOnError;
             }
 
-            public FutureAwaiter (FutureWithDisposedValue<TResult> fwdv, bool throwOnError = true) {
+            public FutureAwaiter (Future<TResult> future, TResult disposedValue, bool throwOnError) {
                 Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
-                Future = fwdv.Future;
+                Future = future;
                 HasDisposedValue = true;
-                DisposedValue = fwdv.DisposedValue;
+                DisposedValue = disposedValue;
                 ThrowOnError = throwOnError;
             }
 
@@ -288,11 +292,7 @@ namespace Squared.Threading {
         }
 
         public static FutureAwaiter<T> GetAwaiter<T> (this Future<T> future) {
-            return new FutureAwaiter<T>(future);
-        }
-
-        public static FutureAwaiter<T> GetAwaiter<T> (this FutureWithDisposedValue<T> fwdv) {
-            return new FutureAwaiter<T>(fwdv);
+            return new FutureAwaiter<T>(future, true);
         }
 
         public static IFutureAwaiter GetAwaiter (this IFuture future) {
