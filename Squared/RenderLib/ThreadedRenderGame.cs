@@ -35,8 +35,9 @@ namespace Squared.Render {
             private set;
         }
 
-        public bool IsUnloadingContent { get; private set; }
-        public bool IsLoadingContent { get; private set; }
+        protected bool HasEverLoadedContent { get; private set; }
+        protected bool IsUnloadingContent { get; private set; }
+        protected bool IsLoadingContent { get; private set; }
         public bool IsContentLoaded { get; private set; }
 
         private FrameTiming NextFrameTiming;
@@ -168,7 +169,7 @@ namespace Squared.Render {
             }
         }
 
-        protected abstract void OnLoadContent ();
+        protected abstract void OnLoadContent (bool isReloading);
         protected abstract void OnUnloadContent ();
 
         sealed protected override void LoadContent () {
@@ -179,7 +180,8 @@ namespace Squared.Render {
             IsLoadingContent = true;
             try {
                 base.LoadContent();
-                OnLoadContent();
+                OnLoadContent(HasEverLoadedContent);
+                HasEverLoadedContent = true;
                 IsContentLoaded = true;
             } finally {
                 IsLoadingContent = false;

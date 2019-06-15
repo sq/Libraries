@@ -113,6 +113,13 @@ namespace Squared.Render {
                 State.IsPrepared = State.IsPrepareQueued = State.IsIssued = false;
             }
 
+#if DEBUG
+            if (material?.Effect != null) {
+                if (container.RenderManager.DeviceManager.Device != material.Effect.GraphicsDevice)
+                    throw new ArgumentException("This effect belongs to a different graphics device");
+            }
+#endif
+
             if (addToContainer)
                 container.Add(this);
         }

@@ -1126,7 +1126,9 @@ namespace Squared.Render {
                         return false;
                 }
 
-                return ((Textures.Texture1 != null) && !Textures.Texture1.IsDisposed);
+                var instance1 = Textures.Texture1.Instance;
+
+                return ((instance1 != null) && !instance1.IsDisposed && !instance1.GraphicsDevice.IsDisposed);
             }
         }
 

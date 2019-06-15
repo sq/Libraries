@@ -87,10 +87,5 @@ namespace Squared.Render {
             lock (Coordinator.CreateResourceLock)
                 return EffectUtils.EffectFromFxcOutput(Coordinator.Device, stream);
         }
-
-        public override void Dispose () {
-            // HACK: Effect.Dispose in both XNA and FNA is very, very broken. Just leak.
-            Cache.Clear();
-        }
     }
 }
