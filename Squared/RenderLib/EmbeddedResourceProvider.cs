@@ -13,10 +13,10 @@ namespace Squared.Render {
         where T : class, IDisposable {
         public readonly Assembly Assembly;
         public readonly RenderCoordinator Coordinator;
-        private readonly Dictionary<string, T> Cache = new Dictionary<string, T>();
         public string Prefix { get; set; }
         public string Suffix { get; protected set; }
 
+        protected readonly Dictionary<string, T> Cache = new Dictionary<string, T>();
         protected object DefaultOptions;
 
         public EmbeddedResourceProvider (Assembly assembly, RenderCoordinator coordinator) {
@@ -42,28 +42,29 @@ namespace Squared.Render {
 
         protected abstract T CreateInstance (Stream stream, object data);
 
-        protected T Load (string name, object data) {
+        protected T Load (string name, object data, bool cached) {
             if (name.Contains("."))
                 name = name.Replace(Path.GetExtension(name), "");
 
             T result;
-            if (!Cache.TryGetValue(name, out result)) {
+            if (!cached || !Cache.TryGetValue(name, out result)) {
                 var streamName = (Prefix ?? "") + name + Suffix;
                 using (var stream = Assembly.GetManifestResourceStream(streamName)) {
                     if (stream == null)
                         throw new FileNotFoundException("No manifest resource stream with this name found", name);
                     result = CreateInstance(stream, data);
-                    Cache[name] = result;
+                    if (cached)
+                        Cache[name] = result;
                 }
             }
             return result;
         }
 
-        public T Load (string name) {
-            return Load(name, DefaultOptions);
+        public T Load (string name, bool cached = true) {
+            return Load(name, DefaultOptions, cached);
         }
 
-        public void Dispose () {
+        public virtual void Dispose () {
             foreach (var value in Cache.Values)
                 Coordinator.DisposeResource(value);
 
@@ -85,6 +86,11 @@ namespace Squared.Render {
         protected override Effect CreateInstance (Stream stream, object data) {
             lock (Coordinator.CreateResourceLock)
                 return EffectUtils.EffectFromFxcOutput(Coordinator.Device, stream);
+        }
+
+        public override void Dispose () {
+            // HACK: Effect.Dispose in both XNA and FNA is very, very broken. Just leak.
+            Cache.Clear();
         }
     }
 }

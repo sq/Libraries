@@ -253,11 +253,14 @@ namespace Squared.Render {
                 LocalVertexOffset = localVertexOffset;
                 VertexCount = vertexCount;
 
-                Texture1Size = new Vector2(textureSet.Texture1.Width, textureSet.Texture1.Height);
+                var tex1 = textureSet.Texture1.Instance;
+                var tex2 = textureSet.Texture2.Instance;
+
+                Texture1Size = new Vector2(tex1.Width, tex1.Height);
                 Texture1HalfTexel = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
 
                 if (textureSet.Texture2 != null) {
-                    Texture2Size = new Vector2(textureSet.Texture2.Width, textureSet.Texture2.Height);
+                    Texture2Size = new Vector2(tex2.Width, tex2.Height);
                     Texture2HalfTexel = new Vector2(1.0f / Texture2Size.X, 1.0f / Texture2Size.Y);
                 } else {
                     Texture2HalfTexel = Texture2Size = Vector2.Zero;
@@ -514,11 +517,11 @@ namespace Squared.Render {
 
                 cnbs.Texture1?.SetValue((Texture2D)null);
                 if (tex1 != null)
-                    cnbs.Texture1?.SetValue(tex1);
+                    cnbs.Texture1?.SetValue(tex1.Instance);
 
                 cnbs.Texture2?.SetValue((Texture2D)null);
                 if (tex2 != null)
-                    cnbs.Texture2?.SetValue(tex2);
+                    cnbs.Texture2?.SetValue(tex2.Instance);
 
                 cnbs.Parameters.BitmapTextureSize?.SetValue(nb.Texture1Size);
                 cnbs.Parameters.BitmapTextureSize2?.SetValue(nb.Texture2Size);
@@ -683,14 +686,103 @@ namespace Squared.Render {
         }
     }
 
+    public struct AbstractTextureReference {
+        public readonly IDynamicTexture Dynamic;
+        public readonly Texture2D Static;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public AbstractTextureReference (Texture2D tex) {
+            Dynamic = null;
+            Static = tex;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public AbstractTextureReference (IDynamicTexture tex) {
+            Dynamic = tex;
+            Static = null;
+        }
+
+        public bool IsDisposed {
+            get {
+                if (Dynamic != null)
+                    return Dynamic.IsDisposed;
+                else if (Static != null)
+                    return Static.IsDisposed;
+                else // FIXME: True?
+                    return false;
+            }
+        }
+
+        // FIXME: Make this a method?
+        public Texture2D Instance {
+            get {
+                if (Dynamic != null)
+                    return Dynamic.Texture;
+                else
+                    return Static;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public override int GetHashCode () {
+            if (Dynamic != null)
+                return Dynamic.GetHashCode();
+            else if (Static != null)
+                return Static.GetHashCode();
+            else
+                return 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Equals (AbstractTextureReference rhs) {
+            return (Static == rhs.Static) && (Dynamic == rhs.Dynamic);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is AbstractTextureReference)
+                return Equals((AbstractTextureReference)obj);
+            else
+                return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator == (AbstractTextureReference lhs, AbstractTextureReference rhs) {
+            return lhs.Equals(rhs);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator != (AbstractTextureReference lhs, AbstractTextureReference rhs) {
+            return !lhs.Equals(rhs);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator AbstractTextureReference (Texture2D tex) {
+            return new AbstractTextureReference(tex);
+        }
+    }
+
     public struct TextureSet {
-        public readonly Texture2D Texture1, Texture2;
+        public readonly AbstractTextureReference Texture1, Texture2;
         public readonly int HashCode;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public TextureSet (AbstractTextureReference texture1) {
+            Texture1 = texture1;
+            Texture2 = default(AbstractTextureReference);
+            HashCode = texture1.GetHashCode();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public TextureSet (AbstractTextureReference texture1, AbstractTextureReference texture2) {
+            Texture1 = texture1;
+            Texture2 = texture2;
+            HashCode = texture1.GetHashCode() ^ texture2.GetHashCode();
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1) {
             Texture1 = texture1;
-            Texture2 = null;
+            Texture2 = default(AbstractTextureReference);
             HashCode = texture1.GetHashCode();
         }
 
@@ -704,9 +796,9 @@ namespace Squared.Render {
         public Texture2D this[int index] {
             get {
                 if (index == 0)
-                    return Texture1;
+                    return Texture1.Instance;
                 else if (index == 1)
-                    return Texture2;
+                    return Texture2.Instance;
                 else
                     throw new InvalidOperationException();
             }
@@ -728,9 +820,9 @@ namespace Squared.Render {
         public override bool Equals (object obj) {
             if (obj is TextureSet) {
                 var rhs = (TextureSet)obj;
-                return this.Equals(ref rhs);
+                return Equals(ref rhs);
             } else {
-                return base.Equals(obj);
+                return false;
             }
         }
 
@@ -882,7 +974,7 @@ namespace Squared.Render {
         public Texture2D Texture {
             get {
                 if (Textures.Texture2 == null)
-                    return Textures.Texture1;
+                    return Textures.Texture1.Instance;
                 else
                     throw new InvalidOperationException("DrawCall has multiple textures");
             }
@@ -962,7 +1054,8 @@ namespace Squared.Render {
         }
 
         public Bounds EstimateDrawBounds () {
-            var texSize = new Vector2(Textures.Texture1.Width, Textures.Texture1.Height);
+            var tex1 = Textures.Texture1.Instance;
+            var texSize = new Vector2(tex1.Width, tex1.Height);
             var texRgn = (TextureRegion.BottomRight - TextureRegion.TopLeft) * texSize * Scale;
             var offset = Origin * texRgn;
 
@@ -980,7 +1073,8 @@ namespace Squared.Render {
 
             AdjustOrigin(Vector2.Zero);
 
-            var texSize = new Vector2(Textures.Texture1.Width, Textures.Texture1.Height);
+            var tex1 = Textures.Texture1.Instance;
+            var texSize = new Vector2(tex1.Width, tex1.Height);
             var texRgnPx = TextureRegion.Scale(texSize);
             var drawBounds = EstimateDrawBounds();
 
@@ -1008,19 +1102,6 @@ namespace Squared.Render {
                 TextureRegion.BottomRight.Y += (newBounds.BottomRight.Y - drawBounds.BottomRight.Y) / scaledSize.Y;
 
             return true;
-        }
-
-        public ImageReference ImageRef {
-            get {
-                return new ImageReference(Textures.Texture1, TextureRegion);
-            }
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set {
-                if (value == null || value.Texture == null)
-                    throw new ArgumentNullException("texture");
-                Textures = new TextureSet(value.Texture);
-                TextureRegion = value.TextureRegion;
-            }
         }
 
         public bool IsValid {

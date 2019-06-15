@@ -47,6 +47,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Atlas.cs" />
+    <Compile Include="AutoRenderTarget.cs" />
     <Compile Include="Batch.cs" />
     <Compile Include="BatchCombiner.cs" />
     <Compile Include="BatchGroup.cs" />

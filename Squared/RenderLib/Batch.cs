@@ -473,17 +473,29 @@ namespace Squared.Render {
     }
 
     public class SetRenderTargetBatch : Batch {
-        public RenderTarget2D RenderTarget;
+        protected AutoRenderTarget AutoRenderTarget;
+        protected RenderTarget2D RenderTarget;
+
+        public void Initialize (IBatchContainer container, int layer, AutoRenderTarget autoRenderTarget) {
+            base.Initialize(container, layer, null, true);
+            AutoRenderTarget = autoRenderTarget;
+
+            if (autoRenderTarget.IsDisposed)
+                throw new ObjectDisposedException("renderTarget");
+        }
 
         public void Initialize (IBatchContainer container, int layer, RenderTarget2D renderTarget) {
             base.Initialize(container, layer, null, true);
             RenderTarget = renderTarget;
 
-            if (renderTarget.IsDisposed)
+            if (renderTarget.IsDisposed || renderTarget.IsContentLost)
                 throw new ObjectDisposedException("renderTarget");
         }
 
         protected override void Prepare (PrepareManager manager) {
+            if (AutoRenderTarget != null) {
+                RenderTarget = AutoRenderTarget.Get();
+            }
         }
 
         public override void Issue (DeviceManager manager) {

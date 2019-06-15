@@ -7,8 +7,17 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Game;
 
 namespace Squared.Render {
+    public interface IDynamicTexture {
+        bool IsDisposed { get; }
+        int Width { get; }
+        int Height { get; }
+        SurfaceFormat Format { get; }
+        Texture2D Texture { get; }
+    }
+
     public unsafe delegate void MipGenerator<T> (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) where T : struct;
 
     public static class MipGenerator {
@@ -119,7 +128,7 @@ namespace Squared.Render {
         }
     }
 
-    public class DynamicAtlas<T> : IDisposable 
+    public class DynamicAtlas<T> : IDisposable, IDynamicTexture
         where T : struct 
     {
         public struct Reservation {
@@ -149,19 +158,14 @@ namespace Squared.Render {
                     return new Rectangle(X, Y, Width, Height);
                 }
             }
-
-            public Texture2D Texture {
-                get {
-                    if (Atlas != null)
-                        return Atlas.Texture;
-                    else
-                        return null;
-                }
-            }
         }
 
+        public bool IsDisposed { get; private set; }
+
         public readonly RenderCoordinator Coordinator;
-        public readonly int Width, Height;
+        public int Width { get; private set; }
+        public int Height { get; private set; }
+        public SurfaceFormat Format { get; private set; }
         public Texture2D Texture { get; private set; }
         public T[] Pixels { get; private set; }
         public bool IsDirty { get; private set; }
@@ -182,13 +186,13 @@ namespace Squared.Render {
             Coordinator = coordinator;
             Width = width;
             Height = height;
+            Format = format;
             Spacing = spacing;
             X = Y = Spacing;
             RowHeight = 0;
             _BeforePrepare = Flush;
 
-            lock (Coordinator.CreateResourceLock)
-                Texture = new Texture2D(coordinator.Device, width, height, mipGenerator != null, format);
+            EnsureValidResource();
 
             Pixels = new T[width * height];
             if (mipGenerator != null) {
@@ -204,25 +208,54 @@ namespace Squared.Render {
             Invalidate();
         }
 
+        private void EnsureValidResource () {
+            if (IsDisposed)
+                return;
+
+            if (Texture != null) {
+                if (Texture.IsDisposed)
+                    Texture = null;
+            }
+
+            if (Texture != null)
+                return;
+
+            lock (Coordinator.CreateResourceLock)
+                Texture = new Texture2D(Coordinator.Device, Width, Height, GenerateMip != null, Format);
+        }
+
         public void Invalidate () {
             lock (Lock) {
                 if (IsDirty)
                     return;
 
-                Coordinator.BeforePrepare(_BeforePrepare);
+                if (!IsDisposed)
+                    Coordinator.BeforePrepare(_BeforePrepare);
                 IsDirty = true;
             }
         }
 
         public void Flush () {
             lock (Lock) {
+                if (IsDisposed)
+                    return;
+
+                EnsureValidResource();
+
                 if (Texture == null)
                     return;
 
                 IsDirty = false;
 
-                lock (Coordinator.UseResourceLock)
-                    Texture.SetData(Pixels);
+                try {
+                    lock (Coordinator.UseResourceLock)
+                        Texture.SetData(Pixels);
+                } catch (ObjectDisposedException ode) {
+                    Texture = null;
+                    EnsureValidResource();
+                    lock (Coordinator.UseResourceLock)
+                        Texture.SetData(Pixels);
+                }
 
                 GenerateMips();
             }
@@ -328,12 +361,28 @@ namespace Squared.Render {
             Invalidate();
         }
 
+        public Bounds BoundsFromRectangle (Rectangle rectangle) {
+            return GameExtensionMethods.BoundsFromRectangle(Width, Height, ref rectangle);
+        }
+
+        public Bounds BoundsFromRectangle (ref Rectangle rectangle) {
+            return GameExtensionMethods.BoundsFromRectangle(Width, Height, ref rectangle);
+        }
+
         public void Dispose () {
             lock (Lock) {
+                if (IsDisposed)
+                    return;
+                IsDisposed = true;
+
                 Coordinator.DisposeResource(Texture);
                 Texture = null;
                 Pixels = null;
             }
+        }
+
+        public static implicit operator AbstractTextureReference (DynamicAtlas<T> atlas) {
+            return new AbstractTextureReference(atlas);
         }
     }
 }

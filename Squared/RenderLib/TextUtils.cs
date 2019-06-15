@@ -629,7 +629,7 @@ namespace Squared.Render.Text {
     }
 
     public struct Glyph {
-        public Texture2D Texture;
+        public AbstractTextureReference Texture;
         public char Character;
         public Rectangle RectInTexture;
         public Bounds BoundsInTexture;

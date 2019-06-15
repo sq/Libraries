@@ -478,7 +478,7 @@ namespace Squared.Render.Text {
                         if (bufferWritePosition >= buffer.Count)
                             EnsureBufferCapacity(bufferWritePosition);
 
-                        drawCall.Texture = glyph.Texture;
+                        drawCall.Textures = new TextureSet(glyph.Texture);
                         drawCall.TextureRegion = glyph.BoundsInTexture;
                         Snap(glyphPosition, out drawCall.Position);
 

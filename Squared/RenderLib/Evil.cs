@@ -325,7 +325,8 @@ namespace Squared.Render.Evil {
             );
             var ctor = ctors[0];
             var result = ctor.Invoke(new object[] { new IntPtr(pEffect), device });
-            return (Effect)result;
+            var nativeResult = (Effect)result;
+            return nativeResult.Clone();
 #else
             return new Effect(device, bytes);
 #endif

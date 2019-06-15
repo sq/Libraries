@@ -235,11 +235,14 @@ namespace Squared.Render.Text {
                     ),
                     XOffset = ftgs.BitmapLeft - bearingXMetric - Font.GlyphMargin,
                     YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin,
-                    Texture = texRegion.Texture,
                     RectInTexture = rect,
-                    BoundsInTexture = texRegion.Texture.BoundsFromRectangle(ref rect),
                     LineSpacing = Font.Face.Size.Metrics.Height.ToSingle()
                 };
+
+                if (texRegion.Atlas != null) {
+                    glyph.Texture = texRegion.Atlas;
+                    glyph.BoundsInTexture = texRegion.Atlas.BoundsFromRectangle(ref rect);
+                }
 
                 // Some fonts have weirdly-sized space characters
                 if (Char.IsWhiteSpace(ch))

@@ -35,6 +35,10 @@ namespace Squared.Render {
             private set;
         }
 
+        public bool IsUnloadingContent { get; private set; }
+        public bool IsLoadingContent { get; private set; }
+        public bool IsContentLoaded { get; private set; }
+
         private FrameTiming NextFrameTiming;
         private readonly ConcurrentQueue<Action<GameTime>> BeforeDrawQueue = new ConcurrentQueue<Action<GameTime>>();
 
@@ -140,25 +144,60 @@ namespace Squared.Render {
                 ;
         }
 
-        public abstract void Draw(GameTime gameTime, Frame frame);
+        public abstract void Draw (GameTime gameTime, Frame frame);
 
         protected override bool BeginDraw() {
             RenderCoordinator.WorkStopwatch.Restart();
 
             ThreadGroup.TryStepMainThreadUntilDrained();
 
+            var settling = RenderCoordinator.IsWaitingForDeviceToSettle;
+
             try {
-                var ok = RenderCoordinator.BeginDraw();
+                var ok = IsContentLoaded && !settling && RenderCoordinator.BeginDraw();
                 if (!ok) {
                     if (BeginDrawFailed != null)
                         BeginDrawFailed();
-                    else if (!RenderCoordinator.IsWaitingForDeviceToSettle)
+                    else if (!settling)
                         Console.Error.WriteLine("BeginDraw failed");
                 }
                 return ok;
             } finally {
                 RenderCoordinator.WorkStopwatch.Stop();
                 NextFrameTiming.BeginDraw = RenderCoordinator.WorkStopwatch.Elapsed;
+            }
+        }
+
+        protected abstract void OnLoadContent ();
+        protected abstract void OnUnloadContent ();
+
+        sealed protected override void LoadContent () {
+            if (IsLoadingContent)
+                return;
+            RenderCoordinator.WaitForActiveDraws();
+
+            IsLoadingContent = true;
+            try {
+                base.LoadContent();
+                OnLoadContent();
+                IsContentLoaded = true;
+            } finally {
+                IsLoadingContent = false;
+            }
+        }
+
+        sealed protected override void UnloadContent () {
+            if (IsUnloadingContent)
+                return;
+            RenderCoordinator.WaitForActiveDraws();
+
+            IsUnloadingContent = true;
+            try {
+                OnUnloadContent();
+                base.UnloadContent();
+            } finally {
+                IsContentLoaded = false;
+                IsUnloadingContent = false;
             }
         }
 

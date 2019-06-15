@@ -17,6 +17,7 @@ namespace Squared.Render {
         private static readonly SetRenderTargetDataPool _Pool = new SetRenderTargetDataPool();
 
         private class SetRenderTargetData {
+            public AutoRenderTarget AutoRenderTarget;
             public RenderTarget2D RenderTarget;
             public Action<DeviceManager, object> Before;
             public Action<DeviceManager, object> After;
@@ -63,6 +64,10 @@ namespace Squared.Render {
 
         private static void _SetRenderTargetCallback (DeviceManager dm, object userData) {
             var data = (SetRenderTargetData)userData;
+
+            if (data.AutoRenderTarget != null)
+                data.RenderTarget = data.AutoRenderTarget.Get();
+
             if (Tracing.RenderTrace.EnableTracing)
                 Tracing.RenderTrace.ImmediateMarker("Set   RT {0}", Tracing.ObjectNames.ToObjectID(data.RenderTarget));
 
@@ -85,7 +90,32 @@ namespace Squared.Render {
             _Pool.Release(data);
         }
 
-        public static BatchGroup ForRenderTarget (IBatchContainer container, int layer, RenderTarget2D renderTarget, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null) {
+        public static BatchGroup ForRenderTarget (
+            IBatchContainer container, int layer, AutoRenderTarget renderTarget, 
+            Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
+            object userData = null
+        ) {
+            if (container == null)
+                throw new ArgumentNullException("container");
+
+            var result = container.RenderManager.AllocateBatch<BatchGroup>();
+            var data = _Pool.Allocate();
+
+            data.AutoRenderTarget = renderTarget;
+            data.Before = before;
+            data.After = after;
+            data.UserData = userData;
+            result.Initialize(container, layer, SetRenderTargetCallback, RestoreRenderTargetCallback, data);
+            result.CaptureStack(0);
+
+            return result;
+        }
+
+        public static BatchGroup ForRenderTarget (
+            IBatchContainer container, int layer, RenderTarget2D renderTarget, 
+            Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
+            object userData = null
+        ) {
             if (container == null)
                 throw new ArgumentNullException("container");
 

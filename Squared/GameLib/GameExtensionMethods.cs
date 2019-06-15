@@ -66,12 +66,9 @@ namespace Squared.Game {
             return BoundsFromRectangle(@this, ref r);
         }
 
-        public static Bounds BoundsFromRectangle (this Texture2D @this, ref Rectangle rectangle) {
-            if (@this == null)
-                return default(Bounds);
-
-            float fw = @this.Width;
-            float fh = @this.Height;
+        public static Bounds BoundsFromRectangle (int width, int height, ref Rectangle rectangle) {
+            float fw = width;
+            float fh = height;
             float rw = rectangle.Width;
             float rh = rectangle.Height;
             float xScale = 1f / fw, yScale = 1f / fh;
@@ -80,6 +77,13 @@ namespace Squared.Game {
             var tl = new Vector2(rectangle.Left * xScale + offsetX, rectangle.Top * yScale + offsetY);
             var br = new Vector2(tl.X + (rw * xScale), tl.Y + (rh * yScale));
             return new Bounds(tl, br);
+        }
+
+        public static Bounds BoundsFromRectangle (this Texture2D @this, ref Rectangle rectangle) {
+            if (@this == null)
+                return default(Bounds);
+
+            return BoundsFromRectangle(@this.Width, @this.Height, ref rectangle);
         }
 
         public static Bounds BoundsFromRectangle (this Texture2D @this, Rectangle rectangle) {
