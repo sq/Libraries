@@ -60,8 +60,8 @@ namespace Squared.Render {
             return result;
         }
 
-        public T Load (string name, bool cached = true) {
-            return Load(name, DefaultOptions, cached);
+        public T Load (string name) {
+            return Load(name, DefaultOptions, true);
         }
 
         public virtual void Dispose () {
