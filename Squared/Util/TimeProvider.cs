@@ -215,6 +215,10 @@ namespace Squared.Util {
         public void Reset () {
             _Offset = 0;
         }
+
+        public void StartNow () {
+            _Offset = -Source.Ticks;
+        }
     }
 
     public class ScalableTimeProvider : ITimeProvider {
@@ -289,6 +293,10 @@ namespace Squared.Util {
 
         public void Reset () {
             _Offset = 0;
+        }
+
+        public void StartNow () {
+            _Offset = -Source.Ticks;
         }
     }
 }

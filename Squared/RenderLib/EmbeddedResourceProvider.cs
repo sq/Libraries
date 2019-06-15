@@ -43,6 +43,9 @@ namespace Squared.Render {
         protected abstract T CreateInstance (Stream stream, object data);
 
         protected T Load (string name, object data) {
+            if (name.Contains("."))
+                name = name.Replace(Path.GetExtension(name), "");
+
             T result;
             if (!Cache.TryGetValue(name, out result)) {
                 var streamName = (Prefix ?? "") + name + Suffix;
