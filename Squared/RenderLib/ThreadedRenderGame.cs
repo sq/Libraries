@@ -84,6 +84,10 @@ namespace Squared.Render {
             base.EndRun();
         }
 
+        protected void OnFormMoved (object sender, EventArgs e) {
+            RenderCoordinator.NotifyWindowIsMoving();
+        }
+
         protected void OnFormClosing (object sender, CancelEventArgs e) {
             InternalDispose();   
         }
@@ -102,10 +106,11 @@ namespace Squared.Render {
                 return false;
 
             var gfClosingEvent = gf.GetType().GetEvent("Closing");
-            if (gfClosingEvent == null)
-                return false;
+            gfClosingEvent?.AddEventHandler(gf, (CancelEventHandler)OnFormClosing);
 
-            gfClosingEvent.AddEventHandler(gf, (CancelEventHandler)OnFormClosing);
+            var gfMovedEvent = gf.GetType().GetEvent("LocationChanged");
+            gfMovedEvent?.AddEventHandler(gf, (EventHandler)OnFormMoved);
+
             return true;
         }
 
@@ -123,9 +128,16 @@ namespace Squared.Render {
             RenderCoordinator.EnableThreading = UseThreadedDraw;
             RenderCoordinator.DeviceReset += (s, e) => OnDeviceReset();
 
+            gds.DeviceResetting += Gds_DeviceResetting;
+
             SetupCloseHook();
 
             base.Initialize();
+        }
+
+        private void Gds_DeviceResetting (object sender, EventArgs e) {
+            if (!RenderCoordinator.WaitForActiveDraws())
+                ;
         }
 
         public abstract void Draw(GameTime gameTime, Frame frame);
@@ -140,8 +152,8 @@ namespace Squared.Render {
                 if (!ok) {
                     if (BeginDrawFailed != null)
                         BeginDrawFailed();
-                    else
-                        Console.WriteLine("BeginDraw failed");
+                    else if (!RenderCoordinator.IsWaitingForDeviceToSettle)
+                        Console.Error.WriteLine("BeginDraw failed");
                 }
                 return ok;
             } finally {

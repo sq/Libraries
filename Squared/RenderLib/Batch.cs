@@ -478,6 +478,9 @@ namespace Squared.Render {
         public void Initialize (IBatchContainer container, int layer, RenderTarget2D renderTarget) {
             base.Initialize(container, layer, null, true);
             RenderTarget = renderTarget;
+
+            if (renderTarget.IsDisposed)
+                throw new ObjectDisposedException("renderTarget");
         }
 
         protected override void Prepare (PrepareManager manager) {

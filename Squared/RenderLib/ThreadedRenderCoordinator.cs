@@ -229,6 +229,9 @@ namespace Squared.Render {
             if (IsDisposed)
                 return false;
 
+            if (IsWaitingForDeviceToSettle)
+                return false;
+
             if (Device.GraphicsDeviceStatus == GraphicsDeviceStatus.Normal) {
                 RenderManager.ResetDeviceState(Device);
                 return true;
@@ -240,6 +243,9 @@ namespace Squared.Render {
 
         protected void DefaultEndDraw () {
             if (IsDisposed)
+                return;
+
+            if (IsWaitingForDeviceToSettle)
                 return;
 
             var viewport = Device.Viewport;
@@ -311,6 +317,11 @@ namespace Squared.Render {
 
             Manager.OnDeviceResetOrLost();
         }
+
+        internal void NotifyWindowIsMoving () {
+            // Suspend rendering operations until we have stopped moving for a bit
+            TimeOfLastResetOrDeviceChange = Time.Ticks;
+        }
                 
         private void WaitForPendingWork () {
             if (IsDisposed)
@@ -366,16 +377,27 @@ namespace Squared.Render {
             return _FrameBeingPrepared = Manager.CreateFrame();
         }
 
+        public bool IsWaitingForDeviceToSettle {
+            get {
+                var now = Time.Ticks;
+                var timeSinceReset = (now - TimeOfLastResetOrDeviceChange);
+                var threshold = TimeSpan.FromMilliseconds(500).Ticks;
+                if (timeSinceReset < threshold)
+                    return true;
+
+                return false;
+            }
+        }
+
         private bool ShouldSuppressResetRelatedDrawErrors {
             get {
                 if (FirstFrameSinceReset || _DeviceIsDisposed || _DeviceLost)
                     return true;
 
-                // HACK
-                var now = Time.Ticks;
-                if ((now - TimeOfLastResetOrDeviceChange) < TimeSpan.FromMilliseconds(200).Ticks)
+                if (IsWaitingForDeviceToSettle)
                     return true;
 
+                // HACK
                 return false;
             }
         }
@@ -395,6 +417,9 @@ namespace Squared.Render {
             if (IsDisposed)
                 return false;
             if (_InsideDrawOperation > 0)
+                return false;
+
+            if (IsWaitingForDeviceToSettle)
                 return false;
 
             try {
@@ -493,6 +518,9 @@ namespace Squared.Render {
 
         public void EndDraw () {
             if (IsDisposed)
+                return;
+
+            if (IsWaitingForDeviceToSettle)
                 return;
 
             Interlocked.Increment(ref _InsideDrawOperation);
