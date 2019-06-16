@@ -50,11 +50,40 @@ namespace Squared.Util {
             return TemporaryDirectory;
         }
 
+        private static bool StreamsMatch (Stream a, Stream b) {
+            if (a.Length != b.Length)
+                return false;
+
+            const int chunkSize = 81920;
+            var bufA = new byte[chunkSize];
+            var bufB = new byte[chunkSize];
+            for (int i = 0, l = (int)a.Length; i < l; i += chunkSize) {
+                var bytesReadA = a.Read(bufA, 0, chunkSize);
+                var bytesReadB = b.Read(bufB, 0, chunkSize);
+                if (bytesReadA != bytesReadB)
+                    return false;
+
+                for (int j = 0; j < bytesReadA; j++)
+                    if (bufA[j] != bufB[j])
+                        return false;
+            }
+
+            return true;
+        }
+
         public void Load (string name) {
             var path = Path.Combine(GetDirectory(), name);
-            using (var src = Assembly.GetManifestResourceStream(name))
-            using (var dest = File.OpenWrite(path))
-                src.CopyTo(dest);
+            using (var src = Assembly.GetManifestResourceStream(name)) {
+                try {
+                    using (var dest = File.OpenWrite(path))
+                        src.CopyTo(dest);
+                } catch (IOException exc) {
+                    // File is locked. Attempt to see if it matches ours and if so, who cares
+                    using (var existing = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    if (!StreamsMatch(src, existing))
+                        throw new IOException("Could not unpack DLL and the existing one does not match");
+                }
+            }
 
             CreatedFiles.Add(path);
             var hLibrary = LoadLibrary(path);

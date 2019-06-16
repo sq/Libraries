@@ -23,8 +23,12 @@ namespace Squared.Render.STB.Native {
 
     public static unsafe partial class API {
         static API () {
-            var loader = new Util.EmbeddedDLLLoader(Assembly.GetExecutingAssembly());
-            loader.Load(DllName + ".dll");
+            try {
+                var loader = new Util.EmbeddedDLLLoader(Assembly.GetExecutingAssembly());
+                loader.Load(DllName + ".dll");
+            } catch (Exception exc) {
+                Console.Error.WriteLine("Failed to load {0}: {1}", DllName, exc.Message);
+            }
         }
 
         const string DllName = "stb_image";

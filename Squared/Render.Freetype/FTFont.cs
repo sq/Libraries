@@ -20,8 +20,12 @@ namespace Squared.Render.Text {
         private static EmbeddedDLLLoader DllLoader;
 
         static FreeTypeFont () {
-            DllLoader = new EmbeddedDLLLoader(Assembly.GetExecutingAssembly());
-            DllLoader.Load("freetype6.dll");
+            try {
+                var loader = new Util.EmbeddedDLLLoader(Assembly.GetExecutingAssembly());
+                loader.Load("freetype6.dll");
+            } catch (Exception exc) {
+                Console.Error.WriteLine("Failed to load freetype6.dll: {0}", exc.Message);
+            }
         }
 
         public static uint BaseDPI = 96;
