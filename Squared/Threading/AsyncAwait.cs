@@ -18,12 +18,29 @@ using System.Runtime.ExceptionServices;
 
 namespace Squared.Threading {
     public static class FutureAwaitExtensionMethods {
+        public struct IFutureWithDisposedValue {
+            public IFuture Future;
+            public object  DisposedValue;
+
+            public IFutureAwaiter GetAwaiter () {
+                return new IFutureAwaiter(Future, DisposedValue, true);
+            }
+        }
+
         public struct FutureWithDisposedValue<TResult> {
             public Future<TResult> Future;
             public TResult         DisposedValue;
 
             public FutureAwaiter<TResult> GetAwaiter () {
                 return new FutureAwaiter<TResult>(Future, DisposedValue, true);
+            }
+        }
+
+        public struct NonThrowingIFuture {
+            public IFuture Future;
+
+            public IFutureAwaiter GetAwaiter () {
+                return new IFutureAwaiter(Future, false);
             }
         }
 
@@ -86,10 +103,24 @@ namespace Squared.Threading {
         public struct IFutureAwaiter : INotifyCompletion {
             public readonly CancellationScope.Registration Registration;
             public readonly IFuture Future;
+            public readonly bool HasDisposedValue;
+            public readonly object DisposedValue;
+            public readonly bool ThrowOnError;
 
-            public IFutureAwaiter (IFuture future) {
+            public IFutureAwaiter (IFuture future, bool throwOnError) {
                 Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
                 Future = future;
+                HasDisposedValue = false;
+                DisposedValue = null;
+                ThrowOnError = throwOnError;
+            }
+
+            public IFutureAwaiter (IFuture future, object disposedValue, bool throwOnError) {
+                Registration = new CancellationScope.Registration(WorkItemQueueTarget.Current);
+                Future = future;
+                HasDisposedValue = true;
+                DisposedValue = disposedValue;
+                ThrowOnError = throwOnError;
             }
 
             public void OnCompleted (Action continuation) {
@@ -100,12 +131,18 @@ namespace Squared.Threading {
 
             public bool IsCompleted {
                 get {
-                    return Future.Completed;
+                    return Future.Disposed || Future.Completed;
                 }
             }
 
             public object GetResult () {
                 Registration.ThrowIfCanceled();
+
+                if (Future.Disposed && HasDisposedValue)
+                    return DisposedValue;
+
+                if ((ThrowOnError == false) && Future.Failed)
+                    return null;
 
                 return Future.Result2;
             }
@@ -296,7 +333,7 @@ namespace Squared.Threading {
         }
 
         public static IFutureAwaiter GetAwaiter (this IFuture future) {
-            return new IFutureAwaiter(future);
+            return new IFutureAwaiter(future, true);
         }
 
         public static VoidFutureAwaiter GetAwaiter (this Future<NoneType> future) {
@@ -367,6 +404,19 @@ namespace Squared.Threading {
 
         public static NonThrowingFuture<TResult> DoNotThrow<TResult> (this Future<TResult> future) {
             return new NonThrowingFuture<TResult> {
+                Future = future
+            };
+        }
+
+        public static IFutureWithDisposedValue ValueWhenDisposed (this IFuture future, object value) {
+            return new IFutureWithDisposedValue {
+                Future = future,
+                DisposedValue = value
+            };
+        }
+
+        public static NonThrowingIFuture DoNotThrow (this IFuture future) {
+            return new NonThrowingIFuture {
                 Future = future
             };
         }
