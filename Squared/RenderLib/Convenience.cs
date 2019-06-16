@@ -590,6 +590,39 @@ namespace Squared.Render.Convenience {
             }
         }
 
+        public void Draw (
+            IDynamicTexture texture, Vector2 position,
+            Rectangle? sourceRectangle = null, Color? multiplyColor = null, Color addColor = default(Color),
+            float rotation = 0, Vector2? scale = null, Vector2 origin = default(Vector2),
+            bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
+            int? layer = null, bool? worldSpace = null, 
+            BlendState blendState = null, SamplerState samplerState = null,
+            Material material = null
+        ) {
+            var textureSet = new TextureSet(new AbstractTextureReference(texture));
+            var textureRegion = Bounds.Unit;
+            if (sourceRectangle.HasValue) {
+                var sourceRectangleValue = sourceRectangle.Value;
+                textureRegion = GameExtensionMethods.BoundsFromRectangle(texture.Width, texture.Height, ref sourceRectangleValue);
+            }
+
+            var drawCall = new BitmapDrawCall(
+                textureSet, position, textureRegion,
+                multiplyColor.GetValueOrDefault(Color.White),
+                scale.GetValueOrDefault(Vector2.One), origin, rotation
+            ) {
+                AddColor = addColor,
+                SortKey = sortKey.GetValueOrDefault(NextSortKey)
+            };
+
+            if (mirrorX || mirrorY)
+                drawCall.Mirror(mirrorX, mirrorY);
+
+            if (AutoIncrementSortKey)
+                NextSortKey.Order += 1;
+
+            Draw(ref drawCall, layer: layer, worldSpace: worldSpace, blendState: blendState, samplerState: samplerState, material: material);
+        }
 
         public void Draw (
             Texture2D texture, Vector2 position,

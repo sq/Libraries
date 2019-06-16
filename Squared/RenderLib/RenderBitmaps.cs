@@ -936,13 +936,20 @@ namespace Squared.Render {
             : this(texture, position, textureRegion, color, scale, origin, 0.0f) {
         }
 
-        public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin, float rotation) {
-            if (texture == null)
-                throw new ArgumentNullException("texture");
-            else if (texture.IsDisposed)
-                throw new ObjectDisposedException("texture");
+        public BitmapDrawCall (Texture2D texture, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin, float rotation)
+            : this(new TextureSet(texture), position, textureRegion, color, scale, origin, rotation) {
+        }
 
-            Textures = new TextureSet(texture);
+        public BitmapDrawCall (TextureSet textures, Vector2 position, Bounds textureRegion, Color color, Vector2 scale, Vector2 origin, float rotation) {
+            if (textures.Texture1 == null)
+                throw new ArgumentNullException("texture1");
+            else if (textures.Texture1.IsDisposed)
+                throw new ObjectDisposedException("texture1");
+
+            if ((textures.Texture2 != null) && textures.Texture2.IsDisposed)
+                throw new ObjectDisposedException("texture2");
+
+            Textures = textures;
             Position = position;
             TextureRegion = textureRegion;
             TextureRegion2 = null;

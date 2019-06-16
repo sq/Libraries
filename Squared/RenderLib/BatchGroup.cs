@@ -97,6 +97,8 @@ namespace Squared.Render {
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
+            else if (renderTarget.IsDisposed)
+                throw new ObjectDisposedException("renderTarget");
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
             var data = _Pool.Allocate();
@@ -118,6 +120,8 @@ namespace Squared.Render {
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
+            else if (renderTarget.IsDisposed)
+                throw new ObjectDisposedException("renderTarget");
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
             var data = _Pool.Allocate();

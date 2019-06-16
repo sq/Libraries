@@ -167,7 +167,7 @@ namespace Squared.Render {
 
         public void CaptureStack (int extraFramesToSkip) {
             if (CaptureStackTraces)
-                StackTrace = new StackTrace(2 + extraFramesToSkip, false);
+                StackTrace = new StackTrace(1 + extraFramesToSkip, true);
         }
 
         protected void OnPrepareDone () {

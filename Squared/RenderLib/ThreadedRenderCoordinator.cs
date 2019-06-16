@@ -438,6 +438,8 @@ namespace Squared.Render {
                 throw;
             }
 
+            FlushPendingDisposes();
+
             Interlocked.Increment(ref _InsideDrawOperation);
             try {
                 _ActualEnableThreading = EnableThreading;
@@ -675,8 +677,6 @@ namespace Squared.Render {
                     _SyncEndDraw();
                     SetPresentEnded();
                 }
-
-                FlushPendingDisposes();
 
                 if (endDraw)
                     RunAfterPresentHandlers();

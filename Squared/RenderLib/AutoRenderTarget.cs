@@ -115,10 +115,8 @@ namespace Squared.Render {
                 IsDisposed = true;
             }
 
-            if (IsInstanceValid) {
+            if (IsInstanceValid)
                 Coordinator.DisposeResource(CurrentInstance);
-                CurrentInstance = null;
-            }
         }
     }
 }
