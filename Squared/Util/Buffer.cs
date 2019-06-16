@@ -38,8 +38,23 @@ namespace Squared.Util {
     }
 
     public static class BufferPool<T> {
-        public static int MaxPoolCount = 8;
-        public static int MaxBufferSize = 4096;
+        public const int BigSizeThresholdBytes = 128;
+        public const int DefaultSmallMaxBufferSize = 8192;
+        public const int DefaultBigMaxBufferSize = 1024;
+
+        public static int MaxPoolCount = 16;
+        public static int MaxBufferSize;
+
+        static BufferPool () {
+            var t = typeof(T);
+            int estimatedSize = 0;
+            estimatedSize = t.GetFields().Length * 4;
+
+            if (estimatedSize > BigSizeThresholdBytes)
+                MaxBufferSize = DefaultBigMaxBufferSize;
+            else
+                MaxBufferSize = DefaultSmallMaxBufferSize;
+        }
 
         public struct Buffer : IDisposable {
             public T[] Data;
@@ -77,15 +92,31 @@ namespace Squared.Util {
             }
         }
 
-        private static List<T[]> Pool = new List<T[]>();
+        private class PoolEntryComparer : IComparer<T[]> {
+            public static readonly PoolEntryComparer Instance = new PoolEntryComparer();
+
+            public int Compare (T[] x, T[] y) {
+                return x.Length.CompareTo(y.Length);
+            }
+        }
+
+        private static UnorderedList<T[]> Pool = new UnorderedList<T[]>();
 
         internal static void AddToPool (T[] buffer) {
             if (buffer.Length > MaxBufferSize)
                 return;
 
             lock (Pool) {
-                if (Pool.Count < MaxPoolCount)
-                    Pool.Add(buffer);
+                if (Pool.Count >= MaxPoolCount) {
+                    var firstItem = Pool.DangerousGetItem(0);
+                    if (firstItem.Length < buffer.Length)
+                        Pool.DangerousRemoveAt(0);
+                    else
+                        return;
+                }
+
+                Pool.Add(buffer);
+                Pool.FastCLRSort(PoolEntryComparer.Instance);
             }
         }
 
@@ -98,31 +129,36 @@ namespace Squared.Util {
             }
 
             lock (Pool) {
+                // Find the smallest buffer that can hold the requested size
                 for (int i = Pool.Count - 1; i >= 0; i--) {
-                    var item = Pool[i];
+                    var item = Pool.DangerousGetItem(i);
                     if (item.Length >= _size) {
                         T[] result = item;
-                        Pool.RemoveAt(i);
+                        Pool.DangerousRemoveAt(i);
                         return new Buffer(result, true);
                     }
                 }
 
-                if ((Pool.Count == MaxPoolCount) && (size < MaxBufferSize)) {
+                // If the pool is full and doesn't contain anything this big, prune the smallest item
+                //  to make room so this new buffer can be returned
+                if ((Pool.Count == MaxPoolCount) && (size <= MaxBufferSize)) {
                     int smallest = int.MaxValue;
                     int smallestIndex = -1;
                     for (int i = 0; i < Pool.Count; i++) {
-                        if (Pool[i].Length < smallest) {
-                            smallest = Pool[i].Length;
+                        var item = Pool.DangerousGetItem(i);
+                        if (item.Length < smallest) {
+                            smallest = item.Length;
                             smallestIndex = i;
                         }
                     }
 
                     if (smallestIndex != -1)
-                        Pool.RemoveAt(smallestIndex);
+                        Pool.DangerousRemoveAt(smallestIndex);
                 }
             }
 
             {
+                // Nothing big enough was found in the pool.
                 T[] result = new T[_size];
                 return new Buffer(result, true);
             }
