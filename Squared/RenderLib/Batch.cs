@@ -80,6 +80,8 @@ namespace Squared.Render {
 
         public PrepareState State { get; private set; }
 
+        internal int TimesIssued = 0;
+
         protected Batch () {
             var thisType = GetType();
             lock (TypeIds) {
@@ -104,6 +106,7 @@ namespace Squared.Render {
             ReleaseAfterDraw = false;
             Layer = layer;
             Material = material;
+            TimesIssued = 0;
 
             Index = Interlocked.Increment(ref _BatchCount);
 

@@ -290,13 +290,19 @@ namespace Squared.Render {
             UpdateTargetInfo(firstRenderTarget, true, setParams);
         }
 
-        public void SetRenderTarget (RenderTarget2D newRenderTarget, bool setParams = true) {
+        public void SetRenderTarget (RenderTarget2D newRenderTarget, bool setParams = true, bool isPushPop = false) {
+            if (!isPushPop)
+                Console.WriteLine("Transition RT ", newRenderTarget?.Format);
+
             Device.SetRenderTarget(newRenderTarget);
             CachedCurrentRenderTarget = new RenderTargetStackEntry(newRenderTarget);
             ResetDeviceState(newRenderTarget, setParams);
         }
 
-        private void SetRenderTargets (RenderTargetStackEntry entry, bool setParams = true) {
+        private void SetRenderTargets (RenderTargetStackEntry entry, bool setParams = true, bool isPushPop = false) {
+            if (!isPushPop)
+                Console.WriteLine("Transition RT ", entry.First?.Format);
+
             CachedCurrentRenderTarget = entry;
             if (entry.Count <= 1) {
                 Device.SetRenderTarget(entry.First);
@@ -307,8 +313,8 @@ namespace Squared.Render {
             ResetDeviceState(entry.First, setParams);
         }
 
-        public void SetRenderTargets (RenderTargetBinding[] newRenderTargets, bool setParams = true) {
-            SetRenderTargets(new RenderTargetStackEntry(newRenderTargets), setParams);
+        public void SetRenderTargets (RenderTargetBinding[] newRenderTargets, bool setParams = true, bool isPushPop = false) {
+            SetRenderTargets(new RenderTargetStackEntry(newRenderTargets), setParams, isPushPop);
         }
 
         public void AssertRenderTarget (RenderTarget2D renderTarget) {
@@ -329,7 +335,7 @@ namespace Squared.Render {
             PushStates();
             RenderTargetStack.Push(CachedCurrentRenderTarget);
             ViewportStack.Push(Device.Viewport);
-            SetRenderTarget(newRenderTarget);
+            SetRenderTarget(newRenderTarget, isPushPop: true);
         }
 
         public void PushRenderTargets (RenderTargetBinding[] newRenderTargets) {
@@ -337,23 +343,28 @@ namespace Squared.Render {
 
             RenderTargetStack.Push(CachedCurrentRenderTarget);
             ViewportStack.Push(Device.Viewport);
-            SetRenderTargets(newRenderTargets);
+            SetRenderTargets(newRenderTargets, isPushPop: true);
         }
 
         public void PopRenderTarget () {
             PopStates();
 
             var newRenderTargets = RenderTargetStack.Pop();
-            SetRenderTargets(newRenderTargets);
-            Device.Viewport = ViewportStack.Pop();
-            // GOD
+            SetRenderTargets(newRenderTargets, isPushPop: true);
             RenderManager.ResetDeviceState(Device);
+            Device.Viewport = ViewportStack.Pop();
             UpdateTargetInfo(newRenderTargets.First, true, false);
         }
 
         public DefaultMaterialSetEffectParameters CurrentParameters {
             get {
                 return CurrentMaterial.Parameters;
+            }
+        }
+
+        public RenderTarget2D CurrentRenderTarget {
+            get {
+                return CachedCurrentRenderTarget.First;
             }
         }
 
@@ -368,7 +379,7 @@ namespace Squared.Render {
 
             RenderManager.ResetDeviceState(Device);
             if (changeRenderTargets)
-                SetRenderTargets(null);
+                SetRenderTargets(null, isPushPop: true);
             else
                 UpdateTargetInfo(null, false, true);
 
@@ -383,7 +394,7 @@ namespace Squared.Render {
 
             RenderManager.ResetDeviceState(Device);
 
-            SetRenderTargets(null);
+            SetRenderTargets(null, isPushPop: true);
             Device.SetVertexBuffer(null);
 
 #if DEBUG
@@ -952,8 +963,12 @@ namespace Squared.Render {
                 return;
 
 #if DEBUG
+            if (batch.TimesIssued > 0)
+                throw new InvalidOperationException("Batch was issued multiple times");
+
             if (Debugger.IsAttached) {
                 batch.Issue(manager);
+                batch.TimesIssued++;
             } else {
 #endif
 
@@ -972,6 +987,8 @@ namespace Squared.Render {
                 batch.Issue(manager);
             } catch (Exception exc) {                
                 throw new BatchIssueFailedException(batch, exc);
+            } finally {
+                batch.TimesIssued++;
             }
 #if DEBUG
             }
