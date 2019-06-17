@@ -447,8 +447,6 @@ namespace Squared.Render {
                 throw;
             }
 
-            FlushPendingDisposes();
-
             Interlocked.Increment(ref _InsideDrawOperation);
             try {
                 _ActualEnableThreading = EnableThreading;
@@ -560,6 +558,8 @@ namespace Squared.Render {
                         _DeviceLost = IsDeviceLost;
                     }
                 }
+
+                FlushPendingDisposes();
             } finally {
                 Interlocked.Decrement(ref _InsideDrawOperation);
             }

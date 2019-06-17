@@ -64,6 +64,67 @@ namespace Squared.Render {
         /// </summary>
         public static bool ParanoidRenderTargetChecks = false;
 
+        private struct RenderTargetStackEntry {
+            public static readonly RenderTargetStackEntry None = new RenderTargetStackEntry((RenderTarget2D)null);
+
+            public readonly RenderTargetBinding[] Multiple;
+            public readonly RenderTarget2D Single;
+
+            public RenderTarget2D First {
+                get {
+                    return (Multiple != null)
+                        ? (RenderTarget2D)Multiple[0].RenderTarget
+                        : Single;
+                }
+            }
+
+            public RenderTargetStackEntry (RenderTarget2D target) {
+                Multiple = null;
+                Single = target;
+            }
+
+            public RenderTargetStackEntry (RenderTargetBinding[] bindings) {
+                Multiple = bindings;
+                Single = null;
+            }
+
+            public int Count {
+                get {
+                    return Math.Max(
+                        (Multiple != null) ? Multiple.Length : 0,
+                        (Single != null) ? 1 : 0
+                    );
+                }
+            }
+
+            public override int GetHashCode () {
+                if (Multiple != null)
+                    return Multiple.GetHashCode();
+                else if (Single != null)
+                    return Single.GetHashCode();
+                else
+                    return -1;
+            }
+
+            public bool Equals (RenderTargetStackEntry entry) {
+                if (entry.Count != Count)
+                    return false;
+
+                if (Count == 1)
+                    return object.ReferenceEquals(entry.First, First);
+                else
+                    return object.ReferenceEquals(entry.Single, Single) && 
+                        object.ReferenceEquals(entry.Multiple, Multiple);
+            }
+
+            public override bool Equals (object obj) {
+                if (obj is RenderTargetStackEntry)
+                    return Equals((RenderTargetStackEntry)obj);
+                else
+                    return false;
+            }
+        }
+
         public static class ActiveMaterial {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Set (DeviceManager deviceManager, Material material) {
@@ -86,11 +147,11 @@ namespace Squared.Render {
             }
         }
 
-        private readonly Stack<BlendState>            BlendStateStack = new Stack<BlendState>();
-        private readonly Stack<DepthStencilState>     DepthStencilStateStack = new Stack<DepthStencilState>();
-        private readonly Stack<RasterizerState>       RasterizerStateStack = new Stack<RasterizerState>();
-        private readonly Stack<RenderTargetBinding[]> RenderTargetStack = new Stack<RenderTargetBinding[]>();
-        private readonly Stack<Viewport>              ViewportStack = new Stack<Viewport>();
+        private readonly Stack<BlendState>             BlendStateStack = new Stack<BlendState>();
+        private readonly Stack<DepthStencilState>      DepthStencilStateStack = new Stack<DepthStencilState>();
+        private readonly Stack<RasterizerState>        RasterizerStateStack = new Stack<RasterizerState>();
+        private readonly Stack<RenderTargetStackEntry> RenderTargetStack = new Stack<RenderTargetStackEntry>();
+        private readonly Stack<Viewport>               ViewportStack = new Stack<Viewport>();
 
         public readonly GraphicsDevice Device;
         public Material CurrentMaterial { get; private set; }
@@ -99,7 +160,7 @@ namespace Squared.Render {
         private static volatile int NextDeviceId;
         public int DeviceId { get; private set; }
 
-        private Texture2D CachedCurrentRenderTarget;
+        private RenderTargetStackEntry CachedCurrentRenderTarget;
         private bool _IsDisposed;
 
         public bool IsDisposed {
@@ -125,21 +186,24 @@ namespace Squared.Render {
 
         internal void UpdateTargetInfo (RenderTarget2D target, bool knownTarget, bool setParams) {
             if (knownTarget) {
-                CachedCurrentRenderTarget = target;
+                CachedCurrentRenderTarget = new RenderTargetStackEntry(target);
             } else if (ParanoidRenderTargetChecks) {
                 var rts = Device.GetRenderTargets();
-                if ((rts == null) || (rts.Length == 0))
-                    CachedCurrentRenderTarget = null;
-                else
-                    CachedCurrentRenderTarget = (RenderTarget2D)rts[0].RenderTarget;
+                if ((rts == null) || (rts.Length == 0)) {
+                    CachedCurrentRenderTarget = RenderTargetStackEntry.None;
+                } else {
+                    CachedCurrentRenderTarget = new RenderTargetStackEntry(rts);
+                }
             }
 
-            var targetWidth = CachedCurrentRenderTarget != null
-                ? CachedCurrentRenderTarget.Width
+            var target1 = CachedCurrentRenderTarget.First;
+            var targetWidth = target1 != null
+                ? target1.Width
                 : Device.PresentationParameters.BackBufferWidth;
-            var targetHeight = CachedCurrentRenderTarget != null
-                ? CachedCurrentRenderTarget.Height
+            var targetHeight = target1 != null
+                ? target1.Height
                 : Device.PresentationParameters.BackBufferHeight;
+
             /*
              * Some sources claim in GL it's based on the viewport, but it is not on geforce at least
             var targetWidth = Device.Viewport.Width;
@@ -193,6 +257,7 @@ namespace Squared.Render {
         public void SetRenderTarget (RenderTarget2D newRenderTarget, bool setParams = true) {
             RenderManager.ResetDeviceState(Device);
             Device.SetRenderTarget(newRenderTarget);
+            CachedCurrentRenderTarget = new RenderTargetStackEntry(newRenderTarget);
             if (newRenderTarget != null) {
                 Device.Viewport = new Viewport(0, 0, newRenderTarget.Width, newRenderTarget.Height);
             } else {
@@ -201,21 +266,44 @@ namespace Squared.Render {
             UpdateTargetInfo(newRenderTarget, true, setParams);
         }
 
+        private void SetRenderTargets (RenderTargetStackEntry entry, bool setParams = true) {
+            if (entry.Multiple != null)
+                SetRenderTargets(entry.Multiple, setParams);
+            else
+                SetRenderTarget(entry.Single, true);
+        }
+
         public void SetRenderTargets (RenderTargetBinding[] newRenderTargets, bool setParams = true) {
             if ((newRenderTargets == null) || (newRenderTargets.Length == 0)) {
                 SetRenderTarget(null);
+                CachedCurrentRenderTarget = RenderTargetStackEntry.None;
             } else {
                 var first = (RenderTarget2D)newRenderTargets[0].RenderTarget;
                 Device.SetRenderTargets(newRenderTargets);
+                CachedCurrentRenderTarget = new RenderTargetStackEntry(newRenderTargets); ;
                 RenderManager.ResetDeviceState(Device);
                 Device.Viewport = new Viewport(0, 0, first.Width, first.Height);
                 UpdateTargetInfo(first, true, setParams);
             }
         }
 
+        public void AssertRenderTarget (RenderTarget2D renderTarget) {
+#if DEBUG
+            var currentRenderTargets = Device.GetRenderTargets();
+            var cachedCurrentRenderTarget = CachedCurrentRenderTarget;
+            var actualCurrentRenderTarget = new RenderTargetStackEntry(currentRenderTargets);
+            if (!cachedCurrentRenderTarget.Equals(actualCurrentRenderTarget))
+                throw new Exception("Mismatch between cached and actual render target(s)");
+            if (currentRenderTargets.Any(rtb => rtb.RenderTarget == renderTarget))
+                return;
+            else
+                throw new Exception("Render target was not bound.");
+#endif
+        }
+
         public void PushRenderTarget (RenderTarget2D newRenderTarget) {
             PushStates();
-            RenderTargetStack.Push(Device.GetRenderTargets());
+            RenderTargetStack.Push(CachedCurrentRenderTarget);
             ViewportStack.Push(Device.Viewport);
             SetRenderTarget(newRenderTarget);
         }
@@ -223,9 +311,8 @@ namespace Squared.Render {
         public void PushRenderTargets (RenderTargetBinding[] newRenderTargets) {
             PushStates();
 
-            RenderTargetStack.Push(Device.GetRenderTargets());
+            RenderTargetStack.Push(CachedCurrentRenderTarget);
             ViewportStack.Push(Device.Viewport);
-
             SetRenderTargets(newRenderTargets);
         }
 
@@ -234,11 +321,10 @@ namespace Squared.Render {
 
             var newRenderTargets = RenderTargetStack.Pop();
             SetRenderTargets(newRenderTargets);
-            Device.SetRenderTargets(newRenderTargets);
             Device.Viewport = ViewportStack.Pop();
             // GOD
             RenderManager.ResetDeviceState(Device);
-            UpdateTargetInfo(newRenderTargets?.Length > 0 ? newRenderTargets[0].RenderTarget as RenderTarget2D : null, true, false);
+            UpdateTargetInfo(newRenderTargets.First, true, false);
         }
 
         public DefaultMaterialSetEffectParameters CurrentParameters {
