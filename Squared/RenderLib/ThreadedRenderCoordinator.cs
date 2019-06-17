@@ -790,15 +790,12 @@ namespace Squared.Render {
                         RunBeforePrepareHandlers();
                         PrepareNextFrame(frame, false);
 
-                        Manager.DeviceManager.PushRenderTarget(renderTarget);
-                        try {
-                            RenderManager.ResetDeviceState(Device);
-                            Device.Clear(Color.Transparent);
+                        Manager.DeviceManager.SetRenderTarget(renderTarget);
+                        RenderManager.ResetDeviceState(Device);
+                        Device.Clear(Color.Transparent);
 
-                            RenderFrameToDraw(frame, false);
-                        } finally {
-                            Manager.DeviceManager.PopRenderTarget();
-                        }
+                        RenderFrameToDraw(frame, false);
+                        // We don't have to push/pop anymore because the stacks are cleared at the end of a frame.
                     } finally {
                         materials.PopViewTransform();
                     }

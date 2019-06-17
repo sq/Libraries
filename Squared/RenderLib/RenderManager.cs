@@ -329,24 +329,26 @@ namespace Squared.Render {
             PushStates();
             RenderTargetStack.Push(CachedCurrentRenderTarget);
             ViewportStack.Push(Device.Viewport);
+
             SetRenderTarget(newRenderTarget, isPushPop: true);
         }
 
         public void PushRenderTargets (RenderTargetBinding[] newRenderTargets) {
             PushStates();
-
             RenderTargetStack.Push(CachedCurrentRenderTarget);
             ViewportStack.Push(Device.Viewport);
+
             SetRenderTargets(newRenderTargets, isPushPop: true);
         }
 
         public void PopRenderTarget () {
             PopStates();
-
             var newRenderTargets = RenderTargetStack.Pop();
+
             SetRenderTargets(newRenderTargets, isPushPop: true);
-            RenderManager.ResetDeviceState(Device);
+
             Device.Viewport = ViewportStack.Pop();
+
             UpdateTargetInfo(newRenderTargets.First, true, false);
         }
 
@@ -392,7 +394,7 @@ namespace Squared.Render {
             Device.SetVertexBuffer(null);
 
 #if DEBUG
-            int threshold = 1;
+            int threshold = 2;
             if (BatchGroupStack.Count >= threshold)
                 throw new Exception("Unbalanced batch group stack");
             if (RenderTargetStack.Count >= threshold)
