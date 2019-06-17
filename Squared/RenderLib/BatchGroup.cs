@@ -6,24 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Squared.Render {
-
     public class BatchGroup : ListBatch<Batch>, IBatchContainer {
-        private class SetRenderTargetDataPool : BaseObjectPool<SetRenderTargetData> {
-            protected override SetRenderTargetData AllocateNew () {
-                return new SetRenderTargetData();
-            }
-        }
-
-        private static readonly SetRenderTargetDataPool _Pool = new SetRenderTargetDataPool();
-
-        private class SetRenderTargetData {
-            public AutoRenderTarget AutoRenderTarget;
-            public RenderTarget2D RenderTarget;
-            public Action<DeviceManager, object> Before;
-            public Action<DeviceManager, object> After;
-            public object UserData;
-        }
-
         public OcclusionQuery OcclusionQuery;
 
         Action<DeviceManager, object> _Before, _After;
@@ -60,37 +43,7 @@ namespace Squared.Render {
             }
         }
 
-        private static readonly Action<DeviceManager, object> SetRenderTargetCallback = _SetRenderTargetCallback;
-
-        private static void _SetRenderTargetCallback (DeviceManager dm, object userData) {
-            var data = (SetRenderTargetData)userData;
-
-            if (data.AutoRenderTarget != null)
-                data.RenderTarget = data.AutoRenderTarget.Get();
-
-            if (Tracing.RenderTrace.EnableTracing)
-                Tracing.RenderTrace.ImmediateMarker("Set   RT {0}", Tracing.ObjectNames.ToObjectID(data.RenderTarget));
-
-            dm.PushRenderTarget(data.RenderTarget);
-            if (data.Before != null)
-                data.Before(dm, data.UserData);
-        }
-
-        private static readonly Action<DeviceManager, object> RestoreRenderTargetCallback = _RestoreRenderTargetCallback;
-
-        private static void _RestoreRenderTargetCallback (DeviceManager dm, object userData) {
-            var data = (SetRenderTargetData)userData;
-            if (Tracing.RenderTrace.EnableTracing)
-                Tracing.RenderTrace.ImmediateMarker("Unset RT {0}", Tracing.ObjectNames.ToObjectID(data.RenderTarget));
-
-            dm.PopRenderTarget();
-            if (data.After != null)
-                data.After(dm, data.UserData);
-
-            _Pool.Release(data);
-        }
-
-        public static BatchGroup ForRenderTarget (
+        public static RenderTargetBatchGroup ForRenderTarget (
             IBatchContainer container, int layer, AutoRenderTarget renderTarget, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
             object userData = null
@@ -100,20 +53,16 @@ namespace Squared.Render {
             else if (renderTarget.IsDisposed)
                 throw new ObjectDisposedException("renderTarget");
 
-            var result = container.RenderManager.AllocateBatch<BatchGroup>();
-            var data = _Pool.Allocate();
+            var result = container.RenderManager.AllocateBatch<RenderTargetBatchGroup>();
 
-            data.AutoRenderTarget = renderTarget;
-            data.Before = before;
-            data.After = after;
-            data.UserData = userData;
-            result.Initialize(container, layer, SetRenderTargetCallback, RestoreRenderTargetCallback, data);
+            result.SingleAuto = renderTarget;
+            result.Initialize(container, layer, before, after, userData);
             result.CaptureStack(0);
 
             return result;
         }
 
-        public static BatchGroup ForRenderTarget (
+        public static RenderTargetBatchGroup ForRenderTarget (
             IBatchContainer container, int layer, RenderTarget2D renderTarget, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
             object userData = null
@@ -123,14 +72,43 @@ namespace Squared.Render {
             else if (renderTarget.IsDisposed)
                 throw new ObjectDisposedException("renderTarget");
 
-            var result = container.RenderManager.AllocateBatch<BatchGroup>();
-            var data = _Pool.Allocate();
+            var result = container.RenderManager.AllocateBatch<RenderTargetBatchGroup>();
 
-            data.RenderTarget = renderTarget;
-            data.Before = before;
-            data.After = after;
-            data.UserData = userData;
-            result.Initialize(container, layer, SetRenderTargetCallback, RestoreRenderTargetCallback, data);
+            result.Single = renderTarget;
+            result.Initialize(container, layer, before, after, userData);
+            result.CaptureStack(0);
+
+            return result;
+        }
+
+        public static RenderTargetBatchGroup ForRenderTargets (
+            IBatchContainer container, int layer, RenderTarget2D[] renderTargets, 
+            Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
+            object userData = null
+        ) {
+            var bindings = new RenderTargetBinding[renderTargets.Length];
+            return ForRenderTargets(
+                container, layer, bindings,
+                before, after, userData
+            );
+        }
+
+        public static RenderTargetBatchGroup ForRenderTargets (
+            IBatchContainer container, int layer, RenderTargetBinding[] renderTargets, 
+            Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
+            object userData = null
+        ) {
+            if (container == null)
+                throw new ArgumentNullException("container");
+
+            foreach (var binding in renderTargets)
+                if (binding.RenderTarget?.IsDisposed == true)
+                    throw new ObjectDisposedException("renderTargets[i]");
+
+            var result = container.RenderManager.AllocateBatch<RenderTargetBatchGroup>();
+
+            result.Multiple = renderTargets;
+            result.Initialize(container, layer, before, after, userData);
             result.CaptureStack(0);
 
             return result;
@@ -188,6 +166,29 @@ namespace Squared.Render {
             _DrawCalls.Clear();
 
             base.OnReleaseResources();
+        }
+    }
+
+    public class RenderTargetBatchGroup : BatchGroup {
+        internal RenderTarget2D Single;
+        internal AutoRenderTarget SingleAuto;
+        internal RenderTargetBinding[] Multiple;
+
+        public override void Issue (DeviceManager manager) {
+            var single = Single;
+            if (SingleAuto != null)
+                single = SingleAuto.Get();
+
+            if (single != null)
+                manager.PushRenderTarget(single);
+            else
+                manager.PushRenderTargets(Multiple);
+
+            try {
+                base.Issue(manager);
+            } finally {
+                manager.PopRenderTarget();
+            }
         }
     }
 }
