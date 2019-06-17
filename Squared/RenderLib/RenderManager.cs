@@ -244,7 +244,7 @@ namespace Squared.Render {
                 return;
 
 #if FNA
-            if (CachedCurrentRenderTarget == null)
+            if (CachedCurrentRenderTarget.First == null)
                 targetHeight *= -1;
 #endif
 
