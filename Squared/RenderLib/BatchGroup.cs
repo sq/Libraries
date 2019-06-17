@@ -7,6 +7,11 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace Squared.Render {
     public class BatchGroup : ListBatch<Batch>, IBatchContainer {
+        /// <summary>
+        /// Set a name for the batch to aid debugging;
+        /// </summary>
+        public string Name;
+
         public OcclusionQuery OcclusionQuery;
 
         Action<DeviceManager, object> _Before, _After;
@@ -46,7 +51,7 @@ namespace Squared.Render {
         public static RenderTargetBatchGroup ForRenderTarget (
             IBatchContainer container, int layer, AutoRenderTarget renderTarget, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null
+            object userData = null, string name = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
@@ -57,6 +62,7 @@ namespace Squared.Render {
 
             result.SingleAuto = renderTarget;
             result.Initialize(container, layer, before, after, userData);
+            result.Name = name;
             result.CaptureStack(0);
 
             return result;
@@ -65,7 +71,7 @@ namespace Squared.Render {
         public static RenderTargetBatchGroup ForRenderTarget (
             IBatchContainer container, int layer, RenderTarget2D renderTarget, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null
+            object userData = null, string name = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
@@ -76,6 +82,7 @@ namespace Squared.Render {
 
             result.Single = renderTarget;
             result.Initialize(container, layer, before, after, userData);
+            result.Name = name;
             result.CaptureStack(0);
 
             return result;
@@ -84,7 +91,7 @@ namespace Squared.Render {
         public static RenderTargetBatchGroup ForRenderTargets (
             IBatchContainer container, int layer, RenderTarget2D[] renderTargets, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null
+            object userData = null, string name = null
         ) {
             var bindings = new RenderTargetBinding[renderTargets.Length];
             return ForRenderTargets(
@@ -96,13 +103,13 @@ namespace Squared.Render {
         public static RenderTargetBatchGroup ForRenderTargets (
             IBatchContainer container, int layer, RenderTargetBinding[] renderTargets, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null
+            object userData = null, string name = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             if ((renderTargets == null) || (renderTargets.Length == 0))
-                return ForRenderTarget(container, layer, (RenderTarget2D)null, before, after, userData);
+                return ForRenderTarget(container, layer, (RenderTarget2D)null, before, after, userData, name: name);
 
             foreach (var binding in renderTargets)
                 if (binding.RenderTarget?.IsDisposed == true)
@@ -112,23 +119,33 @@ namespace Squared.Render {
 
             result.Multiple = renderTargets;
             result.Initialize(container, layer, before, after, userData);
+            result.Name = name;
             result.CaptureStack(0);
 
             return result;
         }
 
-        public static BatchGroup New (IBatchContainer container, int layer, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null) {
+        public static BatchGroup New (
+            IBatchContainer container, int layer, 
+            Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
+            object userData = null, string name = null
+        ) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
             result.Initialize(container, layer, before, after, userData);
+            result.Name = name;
             result.CaptureStack(0);
 
             return result;
         }
 
-        public void Initialize (IBatchContainer container, int layer, Action<DeviceManager, object> before, Action<DeviceManager, object> after, object userData, bool addToContainer = true) {
+        public void Initialize (
+            IBatchContainer container, int layer, 
+            Action<DeviceManager, object> before, Action<DeviceManager, object> after, 
+            object userData, bool addToContainer = true
+        ) {
             base.Initialize(container, layer, null, addToContainer);
 
             RenderManager = container.RenderManager;
@@ -169,6 +186,10 @@ namespace Squared.Render {
             _DrawCalls.Clear();
 
             base.OnReleaseResources();
+        }
+
+        public override string ToString () {
+            return string.Format("Group {0} #{1} {2} material={3}", Name, Index, StateString, Material);
         }
     }
 

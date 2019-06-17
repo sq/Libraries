@@ -284,16 +284,21 @@ namespace Squared.Render {
             }
         }
 
-        public override string ToString () {
-            var stateString = "Invalid";
-            if (State.IsIssued)
-                stateString = "Issued";
-            else if (State.IsPrepared)
-                stateString = "Prepared";
-            else if (State.IsPrepareQueued)
-                stateString = "Prepare Queued";
+        protected string StateString {
+            get {
+                if (State.IsIssued)
+                    return "Issued";
+                else if (State.IsPrepared)
+                    return "Prepared";
+                else if (State.IsPrepareQueued)
+                    return "Prepare Queued";
 
-            return string.Format("{0} #{1} {2} material={3}", GetType().Name, Index, stateString, Material);
+                return "Invalid";
+            }
+        }
+
+        public override string ToString () {
+            return string.Format("{0} #{1} {2} material={3}", GetType().Name, Index, StateString, Material);
         }
     }
 

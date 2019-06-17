@@ -64,11 +64,18 @@ namespace Squared.Render {
         /// </summary>
         public static bool ParanoidRenderTargetChecks = false;
 
+        /// <summary>
+        /// Set this to true if you wish to record a stack trace on render target transitions.
+        /// </summary>
+        public static bool CaptureRenderTargetTransitionStacks = true;
+
         private struct RenderTargetStackEntry {
             public static readonly RenderTargetStackEntry None = new RenderTargetStackEntry((RenderTarget2D)null);
 
             public readonly RenderTargetBinding[] Multiple;
             public readonly RenderTarget2D Single;
+            public readonly StackTrace StackTrace;
+            public readonly RenderTargetBatchGroup Batch;
 
             public RenderTarget2D First {
                 get {
@@ -78,14 +85,24 @@ namespace Squared.Render {
                 }
             }
 
-            public RenderTargetStackEntry (RenderTarget2D target) {
+            public RenderTargetStackEntry (RenderTarget2D target, RenderTargetBatchGroup batch = null) {
                 Multiple = null;
                 Single = target;
+                if (CaptureRenderTargetTransitionStacks)
+                    StackTrace = new StackTrace(1, true);
+                else
+                    StackTrace = null;
+                Batch = batch;
             }
 
-            public RenderTargetStackEntry (RenderTargetBinding[] bindings) {
+            public RenderTargetStackEntry (RenderTargetBinding[] bindings, RenderTargetBatchGroup batch = null) {
                 Multiple = bindings;
                 Single = null;
+                if (CaptureRenderTargetTransitionStacks)
+                    StackTrace = new StackTrace(1, true);
+                else
+                    StackTrace = null;
+                Batch = batch;
             }
 
             public int Count {
