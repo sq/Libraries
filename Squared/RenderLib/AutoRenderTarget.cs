@@ -12,7 +12,7 @@ namespace Squared.Render {
         /// <summary>
         /// If set, stack traces will be captured when an instance is disposed.
         /// </summary>
-        public static bool CaptureStackTraces = true;
+        public static bool CaptureStackTraces = false;
 
         public StackTrace DisposedStackTrace;
 

@@ -67,7 +67,7 @@ namespace Squared.Render {
         /// <summary>
         /// Set this to true if you wish to record a stack trace on render target transitions.
         /// </summary>
-        public static bool CaptureRenderTargetTransitionStacks = true;
+        public static bool CaptureRenderTargetTransitionStacks = false;
 
         private struct RenderTargetStackEntry {
             public static readonly RenderTargetStackEntry None = new RenderTargetStackEntry((RenderTarget2D)null);
@@ -291,18 +291,12 @@ namespace Squared.Render {
         }
 
         public void SetRenderTarget (RenderTarget2D newRenderTarget, bool setParams = true, bool isPushPop = false) {
-            if (!isPushPop)
-                Console.WriteLine("Transition RT ", newRenderTarget?.Format);
-
             Device.SetRenderTarget(newRenderTarget);
             CachedCurrentRenderTarget = new RenderTargetStackEntry(newRenderTarget);
             ResetDeviceState(newRenderTarget, setParams);
         }
 
         private void SetRenderTargets (RenderTargetStackEntry entry, bool setParams = true, bool isPushPop = false) {
-            if (!isPushPop)
-                Console.WriteLine("Transition RT ", entry.First?.Format);
-
             CachedCurrentRenderTarget = entry;
             if (entry.Count <= 1) {
                 Device.SetRenderTarget(entry.First);

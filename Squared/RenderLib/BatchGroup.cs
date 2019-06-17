@@ -27,9 +27,6 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
-            if (Name != null)
-                Console.WriteLine("Start {0}", Name);
-
             manager.BatchGroupStack.Push(this);
 
             if (OcclusionQuery != null)
@@ -53,9 +50,6 @@ namespace Squared.Render {
                 base.Issue(manager);
 
                 manager.BatchGroupStack.Pop();
-
-                if (Name != null)
-                    Console.WriteLine("End {0}", Name);
             }
         }
 
@@ -225,15 +219,10 @@ namespace Squared.Render {
             else
                 manager.PushRenderTarget(single);
 
-            var rt = manager.CurrentRenderTarget;
-            Console.WriteLine("Push RT {0}", rt?.Format);
-
             try {
                 base.Issue(manager);
             } finally {
                 manager.PopRenderTarget();
-                rt = manager.CurrentRenderTarget;
-                Console.WriteLine("Pop RT {0}", rt?.Format);
             }
         }
     }
