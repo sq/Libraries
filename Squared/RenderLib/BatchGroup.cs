@@ -50,7 +50,7 @@ namespace Squared.Render {
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
-            else if (renderTarget.IsDisposed)
+            else if (renderTarget?.IsDisposed == true)
                 throw new ObjectDisposedException("renderTarget");
 
             var result = container.RenderManager.AllocateBatch<RenderTargetBatchGroup>();
@@ -100,6 +100,9 @@ namespace Squared.Render {
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
+
+            if ((renderTargets == null) || (renderTargets.Length == 0))
+                return ForRenderTarget(container, layer, (RenderTarget2D)null, before, after, userData);
 
             foreach (var binding in renderTargets)
                 if (binding.RenderTarget?.IsDisposed == true)
