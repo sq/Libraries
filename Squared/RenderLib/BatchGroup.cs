@@ -69,7 +69,7 @@ namespace Squared.Render {
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
-            else if (renderTarget.IsDisposed)
+            else if (renderTarget?.IsDisposed == true)
                 throw new ObjectDisposedException("renderTarget");
 
             var result = container.RenderManager.AllocateBatch<RenderTargetBatchGroup>();
@@ -179,10 +179,10 @@ namespace Squared.Render {
             if (SingleAuto != null)
                 single = SingleAuto.Get();
 
-            if (single != null)
-                manager.PushRenderTarget(single);
-            else
+            if (Multiple != null)
                 manager.PushRenderTargets(Multiple);
+            else
+                manager.PushRenderTarget(single);
 
             try {
                 base.Issue(manager);
