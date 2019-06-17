@@ -173,7 +173,7 @@ namespace Squared.Render {
 
         private int X, Y, RowHeight;
         private object Lock = new object();
-        private Action _BeforePrepare;
+        private Action _BeforeIssue;
         private bool _NeedClear;
         private T[] MipBuffer1, MipBuffer2;
         private int MipLevelCount;
@@ -190,7 +190,7 @@ namespace Squared.Render {
             Spacing = spacing;
             X = Y = Spacing;
             RowHeight = 0;
-            _BeforePrepare = Flush;
+            _BeforeIssue = Flush;
 
             EnsureValidResource();
 
@@ -230,7 +230,7 @@ namespace Squared.Render {
                     return;
 
                 if (!IsDisposed)
-                    Coordinator.BeforePrepare(_BeforePrepare);
+                    Coordinator.BeforeIssue(_BeforeIssue);
                 IsDirty = true;
             }
         }

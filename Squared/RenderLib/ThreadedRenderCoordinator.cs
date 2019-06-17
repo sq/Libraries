@@ -94,7 +94,8 @@ namespace Squared.Render {
             WorkStopwatch = new Stopwatch(),
             WaitStopwatch = new Stopwatch(),
             BeforePrepareStopwatch = new Stopwatch(),
-            BeforePresentStopwatch = new Stopwatch();
+            BeforePresentStopwatch = new Stopwatch(),
+            BeforeIssueStopwatch = new Stopwatch();
 
         // Used to detect re-entrant painting (usually means that an
         //  exception was thrown on the render thread)
@@ -109,6 +110,7 @@ namespace Squared.Render {
         private bool _DeviceLost = false, _DeviceIsDisposed = false;
 
         private readonly ConcurrentQueue<Action> BeforePrepareQueue = new ConcurrentQueue<Action>();
+        private readonly ConcurrentQueue<Action> BeforeIssueQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> AfterPresentQueue = new ConcurrentQueue<Action>();
 
@@ -197,14 +199,21 @@ namespace Squared.Render {
         }
 
         /// <summary>
-        /// Queues an operation to occur immediately before prepare operations begin.
+        /// Queues an operation to occur on the main thread immediately before prepare operations begin.
         /// </summary>
         public void BeforePrepare (Action action) {
             BeforePrepareQueue.Enqueue(action);
         }
 
         /// <summary>
-        /// Queues an operation to occur immediately before Present, after all drawing
+        /// Queues an operation to occur on the render thread immediately before drawing operations begin.
+        /// </summary>
+        public void BeforeIssue (Action action) {
+            BeforeIssueQueue.Enqueue(action);
+        }
+
+        /// <summary>
+        /// Queues an operation to occur on the render thread immediately before Present, after all drawing
         ///  commands have been issued.
         /// </summary>
         public void BeforePresent (Action action) {
@@ -482,7 +491,6 @@ namespace Squared.Render {
             CheckMainThread(DoThreadedPrepare && threaded);
 
             try {
-                RunBeforePrepareHandlers();
                 Manager.ResetBufferGenerators(frame.Index);
                 frame.Prepare(DoThreadedPrepare && threaded);
             } finally {
@@ -531,6 +539,7 @@ namespace Squared.Render {
                 lock (_FrameLock)
                     newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
+                RunBeforePrepareHandlers();
                 PrepareNextFrame(newFrame, true);
             
                 if (_Running) {
@@ -565,6 +574,8 @@ namespace Squared.Render {
                 //  so that if it's not, we don't waste cpu time/gc pressure on trace messages
                 Tracing.RenderTrace.BeforeFrame();
 
+                RunBeforeIssueHandlers();
+
                 if (frame != null) {
                     _DeviceLost |= IsDeviceLost;
 
@@ -591,6 +602,20 @@ namespace Squared.Render {
             }
 
             BeforePrepareStopwatch.Stop();
+        }
+
+        protected void RunBeforeIssueHandlers () {
+            BeforeIssueStopwatch.Start();
+
+            while (BeforeIssueQueue.Count > 0) {
+                Action beforeIssue;
+                if (!BeforeIssueQueue.TryDequeue(out beforeIssue))
+                    continue;
+
+                beforeIssue();
+            }
+
+            BeforeIssueStopwatch.Stop();
         }
 
         protected void RunBeforePresentHandlers () {
@@ -756,6 +781,7 @@ namespace Squared.Render {
                     try {
                         drawBehavior(frame);
 
+                        RunBeforePrepareHandlers();
                         PrepareNextFrame(frame, false);
 
                         Manager.DeviceManager.PushRenderTarget(renderTarget);
