@@ -1,12 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Render.Tracing;
 
 namespace Squared.Render {
-    public class AutoRenderTarget : IDisposable, IDynamicTexture {
+    public class AutoRenderTarget : IDynamicTexture, ITraceCapturingDisposable {
+        /// <summary>
+        /// If set, stack traces will be captured when an instance is disposed.
+        /// </summary>
+        public static bool CaptureStackTraces = true;
+
+        public StackTrace DisposedStackTrace;
+
         public bool IsDisposed { get; private set; }
         public readonly RenderCoordinator Coordinator;
 
@@ -19,6 +28,7 @@ namespace Squared.Render {
 
         private object Lock = new object();
         private RenderTarget2D CurrentInstance;
+        public string Name { get; private set; }
 
         public AutoRenderTarget (
             RenderCoordinator coordinator, 
@@ -38,6 +48,10 @@ namespace Squared.Render {
             PreferredMultiSampleCount = preferredMultiSampleCount;
 
             GetOrCreateInstance(true);
+        }
+
+        public void SetName (string name) {
+            Name = name;
         }
 
         private bool IsInstanceValid {
@@ -88,12 +102,15 @@ namespace Squared.Render {
                     }
                 }
 
-                lock (Coordinator.CreateResourceLock)
+                lock (Coordinator.CreateResourceLock) {
                     CurrentInstance = new RenderTarget2D(
                         Coordinator.Device, Width, Height, MipMap,
                         PreferredFormat, PreferredDepthFormat,
                         PreferredMultiSampleCount, RenderTargetUsage.PreserveContents
                     );
+
+                    CurrentInstance.SetName(Name);
+                }
 
                 return CurrentInstance;
             }
@@ -107,12 +124,22 @@ namespace Squared.Render {
             return art.Get();
         }
 
+        void ITraceCapturingDisposable.AutoCaptureTraceback () {
+            if (DisposedStackTrace != null)
+                return;
+
+            if (CaptureStackTraces)
+                DisposedStackTrace = new StackTrace(1, true);
+        }
+
         public void Dispose () {
             lock (Lock) {
                 if (IsDisposed)
                     return;
 
                 IsDisposed = true;
+
+                ((ITraceCapturingDisposable)this).AutoCaptureTraceback();
             }
 
             if (IsInstanceValid)

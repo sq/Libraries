@@ -85,23 +85,23 @@ namespace Squared.Render {
                 }
             }
 
-            public RenderTargetStackEntry (RenderTarget2D target, RenderTargetBatchGroup batch = null) {
+            public RenderTargetStackEntry (RenderTarget2D target, RenderTargetBatchGroup batch = null, StackTrace stackTrace = null) {
                 Multiple = null;
                 Single = target;
                 if (CaptureRenderTargetTransitionStacks)
-                    StackTrace = new StackTrace(1, true);
+                    StackTrace = stackTrace ?? new StackTrace(1, true);
                 else
-                    StackTrace = null;
+                    StackTrace = stackTrace;
                 Batch = batch;
             }
 
-            public RenderTargetStackEntry (RenderTargetBinding[] bindings, RenderTargetBatchGroup batch = null) {
+            public RenderTargetStackEntry (RenderTargetBinding[] bindings, RenderTargetBatchGroup batch = null, StackTrace stackTrace = null) {
                 Multiple = bindings;
                 Single = null;
                 if (CaptureRenderTargetTransitionStacks)
-                    StackTrace = new StackTrace(1, true);
+                    StackTrace = stackTrace ?? new StackTrace(1, true);
                 else
-                    StackTrace = null;
+                    StackTrace = stackTrace;
                 Batch = batch;
             }
 
@@ -164,11 +164,13 @@ namespace Squared.Render {
             }
         }
 
-        private readonly Stack<BlendState>             BlendStateStack = new Stack<BlendState>();
-        private readonly Stack<DepthStencilState>      DepthStencilStateStack = new Stack<DepthStencilState>();
-        private readonly Stack<RasterizerState>        RasterizerStateStack = new Stack<RasterizerState>();
-        private readonly Stack<RenderTargetStackEntry> RenderTargetStack = new Stack<RenderTargetStackEntry>();
-        private readonly Stack<Viewport>               ViewportStack = new Stack<Viewport>();
+        private readonly Stack<BlendState>             BlendStateStack = new Stack<BlendState>(256);
+        private readonly Stack<DepthStencilState>      DepthStencilStateStack = new Stack<DepthStencilState>(256);
+        private readonly Stack<RasterizerState>        RasterizerStateStack = new Stack<RasterizerState>(256);
+        private readonly Stack<RenderTargetStackEntry> RenderTargetStack = new Stack<RenderTargetStackEntry>(256);
+        private readonly Stack<Viewport>               ViewportStack = new Stack<Viewport>(256);
+
+        internal readonly Stack<BatchGroup> BatchGroupStack = new Stack<BatchGroup>(256);
 
         public readonly GraphicsDevice Device;
         public Material CurrentMaterial { get; private set; }
@@ -203,13 +205,15 @@ namespace Squared.Render {
 
         internal void UpdateTargetInfo (RenderTarget2D target, bool knownTarget, bool setParams) {
             if (knownTarget) {
-                CachedCurrentRenderTarget = new RenderTargetStackEntry(target);
+                // HACK: Don't reconstruct to avoid destroying an existing stack trace
+                if (CachedCurrentRenderTarget.First != target)
+                    CachedCurrentRenderTarget = new RenderTargetStackEntry(target);
             } else if (ParanoidRenderTargetChecks) {
                 var rts = Device.GetRenderTargets();
                 if ((rts == null) || (rts.Length == 0)) {
                     CachedCurrentRenderTarget = RenderTargetStackEntry.None;
                 } else {
-                    CachedCurrentRenderTarget = new RenderTargetStackEntry(rts);
+                    CachedCurrentRenderTarget = new RenderTargetStackEntry(rts, CachedCurrentRenderTarget.Batch, CachedCurrentRenderTarget.StackTrace);
                 }
             }
 
@@ -271,37 +275,40 @@ namespace Squared.Render {
             // UpdateTargetInfo(null, false, true);
         }
 
-        public void SetRenderTarget (RenderTarget2D newRenderTarget, bool setParams = true) {
+        private void ResetDeviceState (RenderTarget2D firstRenderTarget, bool setParams) {
             RenderManager.ResetDeviceState(Device);
+            int w, h;
+            if (firstRenderTarget != null) {
+                w = firstRenderTarget.Width;
+                h = firstRenderTarget.Height;
+            } else {
+                w = Device.PresentationParameters.BackBufferWidth;
+                h = Device.PresentationParameters.BackBufferHeight;
+            }
+            Device.Viewport = new Viewport(0, 0, w, h);
+            Device.ScissorRectangle = new Rectangle(0, 0, w, h);
+            UpdateTargetInfo(firstRenderTarget, true, setParams);
+        }
+
+        public void SetRenderTarget (RenderTarget2D newRenderTarget, bool setParams = true) {
             Device.SetRenderTarget(newRenderTarget);
             CachedCurrentRenderTarget = new RenderTargetStackEntry(newRenderTarget);
-            if (newRenderTarget != null) {
-                Device.Viewport = new Viewport(0, 0, newRenderTarget.Width, newRenderTarget.Height);
-            } else {
-                Device.Viewport = new Viewport(0, 0, Device.PresentationParameters.BackBufferWidth, Device.PresentationParameters.BackBufferHeight);
-            }
-            UpdateTargetInfo(newRenderTarget, true, setParams);
+            ResetDeviceState(newRenderTarget, setParams);
         }
 
         private void SetRenderTargets (RenderTargetStackEntry entry, bool setParams = true) {
-            if (entry.Multiple != null)
-                SetRenderTargets(entry.Multiple, setParams);
-            else
-                SetRenderTarget(entry.Single, true);
+            CachedCurrentRenderTarget = entry;
+            if (entry.Count <= 1) {
+                Device.SetRenderTarget(entry.First);
+                CachedCurrentRenderTarget = entry;
+            } else {
+                Device.SetRenderTargets(entry.Multiple);
+            }
+            ResetDeviceState(entry.First, setParams);
         }
 
         public void SetRenderTargets (RenderTargetBinding[] newRenderTargets, bool setParams = true) {
-            if ((newRenderTargets == null) || (newRenderTargets.Length == 0)) {
-                SetRenderTarget(null);
-                CachedCurrentRenderTarget = RenderTargetStackEntry.None;
-            } else {
-                var first = (RenderTarget2D)newRenderTargets[0].RenderTarget;
-                Device.SetRenderTargets(newRenderTargets);
-                CachedCurrentRenderTarget = new RenderTargetStackEntry(newRenderTargets); ;
-                RenderManager.ResetDeviceState(Device);
-                Device.Viewport = new Viewport(0, 0, first.Width, first.Height);
-                UpdateTargetInfo(first, true, setParams);
-            }
+            SetRenderTargets(new RenderTargetStackEntry(newRenderTargets), setParams);
         }
 
         public void AssertRenderTarget (RenderTarget2D renderTarget) {
@@ -364,6 +371,7 @@ namespace Squared.Render {
                 SetRenderTargets(null);
             else
                 UpdateTargetInfo(null, false, true);
+
             Device.SetVertexBuffer(null);
         }
 
@@ -377,6 +385,26 @@ namespace Squared.Render {
 
             SetRenderTargets(null);
             Device.SetVertexBuffer(null);
+
+#if DEBUG
+            int threshold = 1;
+            if (BatchGroupStack.Count >= threshold)
+                throw new Exception("Unbalanced batch group stack");
+            if (RenderTargetStack.Count >= threshold)
+                throw new Exception("Unbalanced render target stack");
+            if (BlendStateStack.Count >= threshold)
+                throw new Exception("Unbalanced blend state stack");
+            if (RasterizerStateStack.Count >= threshold)
+                throw new Exception("Unbalanced rasterizer state stack");
+            if (DepthStencilStateStack.Count >= threshold)
+                throw new Exception("Unbalanced depth/stencil state stack");
+#endif
+
+            BatchGroupStack.Clear();
+            RenderTargetStack.Clear();
+            BlendStateStack.Clear();
+            RasterizerStateStack.Clear();
+            DepthStencilStateStack.Clear();
         }
     }
 
@@ -426,6 +454,8 @@ namespace Squared.Render {
         private static readonly object ListPoolLock = new object();
 
         public event EventHandler<DeviceManager> DeviceChanged;
+
+        private int IsDisposingResources;
 
         public RenderManager (GraphicsDevice device, Thread mainThread, ThreadGroup threadGroup) {
             if (mainThread == null)
@@ -720,12 +750,20 @@ namespace Squared.Render {
         }
 
         internal void FlushPendingDisposes () {
-            RenderCoordinator.FlushDisposeList(_PendingDisposes);
+            RenderCoordinator.FlushDisposeList(_PendingDisposes, ref IsDisposingResources);
         }
 
         public void DisposeResource (IDisposable resource) {
             if (resource == null)
                 return;
+
+            var tcd = resource as ITraceCapturingDisposable;
+            tcd?.AutoCaptureTraceback();
+
+            if (IsDisposingResources > 0) {
+                resource.Dispose();
+                return;
+            }
 
             lock (_PendingDisposes)
                 _PendingDisposes.Add(resource);

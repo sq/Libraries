@@ -14,6 +14,10 @@ using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.Render {
+    public interface ITraceCapturingDisposable : IDisposable {
+        void AutoCaptureTraceback ();
+    }
+
     public static class RenderCoordinatorExtensions {
         public static void ApplyChangesAfterPresent (this GraphicsDeviceManager gdm, RenderCoordinator rc) {
             // HACK: Wait until rendering has finished, then reset the device on the main thread
@@ -127,6 +131,8 @@ namespace Squared.Render {
         public bool IsOpenGL { get; private set; }
 
         private long TimeOfLastResetOrDeviceChange = 0;
+
+        private int IsDisposingResources = 0;
 
         /// <summary>
         /// Constructs a render coordinator.
@@ -861,30 +867,35 @@ namespace Squared.Render {
         }
 
         // TODO: Move this
-        internal static void FlushDisposeList (List<IDisposable> list) {
-            IDisposable[] pds = null;
+        internal static void FlushDisposeList (List<IDisposable> list, ref int isActive) {
+            Interlocked.Increment(ref isActive);
+            try {
+                IDisposable[] pds = null;
 
-            lock (list) {
-                if (list.Count == 0)
-                    return;
+                lock (list) {
+                    if (list.Count == 0)
+                        return;
 
-                // Prevents a deadlock from recursion
-                pds = list.ToArray();
-                list.Clear();
-            }
-
-            foreach (var pd in pds) {
-                try {
-                    pd.Dispose();
-                } catch (ObjectDisposedException) {
+                    // Prevents a deadlock from recursion
+                    pds = list.ToArray();
+                    list.Clear();
                 }
+
+                foreach (var pd in pds) {
+                    try {
+                        pd.Dispose();
+                    } catch (ObjectDisposedException) {
+                    }
+                }
+            } finally {
+                Interlocked.Decrement(ref isActive);
             }
         }
 
         private void FlushPendingDisposes () {
             lock (CreateResourceLock)
             lock (UseResourceLock) {
-                FlushDisposeList(_PendingDisposes);
+                FlushDisposeList(_PendingDisposes, ref IsDisposingResources);
 
                 Manager.FlushPendingDisposes();
             }
@@ -899,7 +910,15 @@ namespace Squared.Render {
             if (resource == null)
                 return;
 
+            var tcd = resource as ITraceCapturingDisposable;
+            tcd?.AutoCaptureTraceback();
+
             if (IsDisposed) {
+                resource.Dispose();
+                return;
+            }
+
+            if (IsDisposingResources > 0) {
                 resource.Dispose();
                 return;
             }

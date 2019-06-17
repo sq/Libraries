@@ -27,8 +27,11 @@ namespace Squared.Render {
         }
 
         public override void Issue (DeviceManager manager) {
+            manager.BatchGroupStack.Push(this);
+
             if (OcclusionQuery != null)
                 OcclusionQuery.Begin();
+
             if (_Before != null)
                 _Before(manager, _UserData);
 
@@ -45,6 +48,8 @@ namespace Squared.Render {
                     OcclusionQuery.End();
 
                 base.Issue(manager);
+
+                manager.BatchGroupStack.Pop();
             }
         }
 
@@ -189,7 +194,7 @@ namespace Squared.Render {
         }
 
         public override string ToString () {
-            return string.Format("Group {0} #{1} {2} material={3}", Name, Index, StateString, Material);
+            return string.Format("{4} {0} #{1} {2} material={3}", Name, Index, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch");
         }
     }
 
