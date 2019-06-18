@@ -99,3 +99,5 @@ _ReSharper.*
 params.txt
 /Squared/BasisNative/obj
 /Squared/BasisNative/bin
+/Squared/Render.Basis/obj
+/Squared/Render.Basis/bin
