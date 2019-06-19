@@ -35,7 +35,8 @@ float3 LinearToSRGB(float3 rgb) {
     inout float4 outlineColor : COLOR2, \
     out float4 result : POSITION0, \
     out float4 ab : TEXCOORD1, \
-    out float4 cd : TEXCOORD2
+    out float4 cd : TEXCOORD2, \
+    out float2 screenPosition : NORMAL0
 
 #define RASTERSHAPE_VS_PROLOGUE \
     ab = ab_in; cd = cd_in; \
@@ -46,6 +47,7 @@ float3 LinearToSRGB(float3 rgb) {
     DEFINE_QuadCorners
 
 #define RASTERSHAPE_FS_ARGS \
+    in float2 screenPosition : NORMAL0, \
     in float4 ab : TEXCOORD1, \
     in float4 cd : TEXCOORD2, \
     in float3 outlineSizeMiterAndType : TEXCOORD0, \
@@ -102,6 +104,7 @@ void ScreenSpaceRasterShapeVertexShader (
     result = TransformPosition(
         float4(position.xy, position.z, 1), true
     );
+    screenPosition = position.xy;
 }
 
 void WorldSpaceRasterShapeVertexShader(
@@ -117,17 +120,24 @@ void WorldSpaceRasterShapeVertexShader(
     result = TransformPosition(
         float4(position.xy * GetViewportScale().xy, position.z, 1), true
     );
+    screenPosition = position.xy;
 }
 
 float2 closestPointOnLine2(float2 a, float2 b, float2 pt, out float t) {
     float2  ab = b - a;
-    t = dot(pt - a, ab) / dot(ab, ab);
+    float d = dot(ab, ab);
+    if (abs(d) < 0.001)
+        d = 0.001;
+    t = dot(pt - a, ab) / d;
     return a + t * ab;
 }
 
 float2 closestPointOnLineSegment2(float2 a, float2 b, float2 pt, out float t) {
     float2  ab = b - a;
-    t = saturate(dot(pt - a, ab) / dot(ab, ab));
+    float d = dot(ab, ab);
+    if (abs(d) < 0.001)
+        d = 0.001;
+    t = saturate(dot(pt - a, ab) / d);
     return a + t * ab;
 }
 
@@ -136,9 +146,10 @@ void RasterShapePixelShader(
 ) {
     RASTERSHAPE_FS_PROLOGUE;
 
-    float2 screenPosition = GET_VPOS;
-    float  radiusLength = length(radius);
+    float  radiusLength = max(length(radius), 0.1);
+    float2 invRadius = 1.0 / max(radius, float2(0.1, 0.1));
 
+    float distanceF, distance;
     float2 distanceXy;
 
     if (type == TYPE_Ellipse) {
@@ -149,18 +160,25 @@ void RasterShapePixelShader(
         distanceXy = screenPosition - closestPoint;
     }
 
-    float  distanceF = length(distanceXy / radius);
-    float  distance = distanceF * radiusLength;
-    float  outlineDistance = (distance - radiusLength) / outlineSize;
+    distanceF = length(distanceXy * invRadius);
+    distance = distanceF * radiusLength;
     float4 gradient = lerp(centerColor, edgeColor, saturate(distanceF));
-    float4 gradientToOutline = lerp(gradient, outlineColor, saturate(outlineDistance));
-    float4 outlineToTransparent = lerp(
-        float4(LinearToSRGB(gradientToOutline.rgb), gradientToOutline.a), 
-        0, saturate(outlineDistance - 1)
-    );
+    if (outlineSize > 0.001) {
+        float  outlineDistance = (distance - radiusLength) / outlineSize;
+        float4 gradientToOutline = lerp(gradient, outlineColor, saturate(outlineDistance));
+        float4 outlineToTransparent = lerp(
+            float4(LinearToSRGB(gradientToOutline.rgb), gradientToOutline.a), 
+            0, saturate(outlineDistance - 1)
+        );
+        result = outlineToTransparent;
+    } else {
+        result = float4(LinearToSRGB(gradient.rgb), gradient.a);
+    }
 
-    result = outlineToTransparent;
-    result.rgb = ApplyDither(result.rgb, screenPosition);
+    result.rgb = ApplyDither(result.rgb, GET_VPOS);
+
+    if (result.a <= (1 / 512.0))
+        discard;
 }
 
 technique WorldSpaceRasterShape
