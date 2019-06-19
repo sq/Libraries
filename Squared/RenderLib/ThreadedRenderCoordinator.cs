@@ -760,6 +760,10 @@ namespace Squared.Render {
         /// Automatically sets up the device's viewport and the view transform of your materials and restores them afterwards.
         /// </summary>
         public bool SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
+            if (renderTarget == null)
+                throw new ArgumentNullException("renderTarget");
+            if (materials == null)
+                throw new ArgumentNullException("materials");
             if (renderTarget.IsDisposed)
                 return false;
             if (!SynchronousDrawsEnabled)
