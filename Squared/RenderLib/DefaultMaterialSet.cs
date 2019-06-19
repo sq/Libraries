@@ -263,7 +263,7 @@ namespace Squared.Render {
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
-        public Material ScreenSpaceEllipse, WorldSpaceEllipse;
+        public Material ScreenSpaceRasterShape, WorldSpaceRasterShape;
         /// <summary>
         /// Make sure to resolve your lightmap to sRGB before using it with this, otherwise your lighting
         ///  will have really terrible banding in dark areas.
@@ -284,7 +284,8 @@ namespace Squared.Render {
         public bool LazyViewTransformChanges = true;
 
         /// <summary>
-        /// Controls the strength of dithering applied to the result of the lightmapped bitmap materials.
+        /// Controls the strength of dithering applied to the result of the lightmapped bitmap materials, along with
+        ///  LUTs, sRGB conversions, and raster shapes.
         /// </summary>
         public DitheringSettings DefaultDitheringSettings;
 
@@ -421,14 +422,14 @@ namespace Squared.Render {
                 "WorldSpaceTextured"
             );
 
-            ScreenSpaceEllipse = new Material(
+            ScreenSpaceRasterShape = new Material(
                 rasterShapesShader,
-                "ScreenSpaceEllipse"
+                "ScreenSpaceRasterShape"
             );
 
-            WorldSpaceEllipse = new Material(
+            WorldSpaceRasterShape = new Material(
                 rasterShapesShader,
-                "WorldSpaceEllipse"
+                "WorldSpaceRasterShape"
             );
             
             var lightmapShader = BuiltInShaders.Load("Lightmap");

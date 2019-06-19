@@ -49,14 +49,15 @@ namespace Squared.Render {
     }
 
     public enum RasterShapeType : int {
-        Ellipse,
-        LineSegment
+        Ellipse = 0,
+        LineSegment = 1
     }
 
     public struct RasterShapeDrawCall {
         public RasterShapeType Type;
-        public Vector2 A, B, C, D;
+        public Vector2 A, B, C, Radius;
         public float OutlineSize, Miter;
+        // These are sRGB colors that will be linear blended then converted back to sRGB
         public Color CenterColor, EdgeColor, OutlineColor;
     }
 
@@ -95,7 +96,7 @@ namespace Squared.Render {
                     var dc = _DrawCalls[i];
                     var vert = new RasterShapeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
-                        PointsCD = new Vector4(dc.C.X, dc.C.Y, dc.D.X, dc.D.Y),
+                        PointsCD = new Vector4(dc.C.X, dc.C.Y, dc.Radius.X, dc.Radius.Y),
                         CenterColor = dc.CenterColor,
                         OutlineColor = dc.OutlineColor,
                         EdgeColor = dc.EdgeColor,

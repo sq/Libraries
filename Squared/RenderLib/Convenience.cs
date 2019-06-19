@@ -904,7 +904,7 @@ namespace Squared.Render.Convenience {
                 gb.AddFilledRing(center, innerRadius, outerRadius, innerColorStart, outerColorStart, innerColorEnd, outerColorEnd, startAngle, endAngle, quality);
         }
 
-        public void Ellipse (
+        public void RasterizeEllipse (
             Vector2 center, Vector2 radius, Color innerColor, Color? outerColor = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
@@ -913,8 +913,9 @@ namespace Squared.Render.Convenience {
                 layer, worldSpace, blendState
             ))
                 rsb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.Ellipse,
                     A = center,
-                    B = radius - Vector2.One,
+                    Radius = radius - Vector2.One,
                     OutlineSize = 1,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
@@ -922,7 +923,7 @@ namespace Squared.Render.Convenience {
                 });
         }
 
-        public void Ellipse (
+        public void RasterizeEllipse (
             Vector2 center, Vector2 radius, float outlineSize,
             Color innerColor, Color outerColor, Color outlineColor,
             int? layer = null, bool? worldSpace = null,
@@ -932,8 +933,48 @@ namespace Squared.Render.Convenience {
                 layer, worldSpace, blendState
             ))
                 eb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.Ellipse,
                     A = center,
-                    B = radius,
+                    Radius = radius,
+                    OutlineSize = outlineSize,
+                    CenterColor = innerColor,
+                    EdgeColor = outerColor,
+                    OutlineColor = outlineColor
+                });
+        }
+
+        public void RasterizeLineSegment (
+            Vector2 a, Vector2 b, Vector2 radius, Color innerColor, Color? outerColor = null,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var rsb = GetRasterShapeBatch(
+                layer, worldSpace, blendState
+            ))
+                rsb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.LineSegment,
+                    A = a, B = b,
+                    Radius = radius - Vector2.One,
+                    OutlineSize = 1,
+                    CenterColor = innerColor,
+                    EdgeColor = outerColor.GetValueOrDefault(innerColor),
+                    OutlineColor = outerColor.GetValueOrDefault(innerColor)
+                });
+        }
+
+        public void RasterizeLineSegment (
+            Vector2 a, Vector2 b, Vector2 radius, float outlineSize,
+            Color innerColor, Color outerColor, Color outlineColor,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var eb = GetRasterShapeBatch(
+                layer, worldSpace, blendState
+            ))
+                eb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.LineSegment,
+                    A = a, B = b,
+                    Radius = radius,
                     OutlineSize = outlineSize,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
@@ -1068,7 +1109,7 @@ namespace Squared.Render.Convenience {
                 useZBuffer: UseZBuffer
             )) {
                 var material = Materials.Get(
-                    actualWorldSpace ? Materials.WorldSpaceEllipse : Materials.ScreenSpaceEllipse,
+                    actualWorldSpace ? Materials.WorldSpaceRasterShape : Materials.ScreenSpaceRasterShape,
                     rasterizerState: RasterizerState,
                     depthStencilState: DepthStencilState,
                     blendState: desiredBlendState
