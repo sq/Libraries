@@ -62,16 +62,12 @@ namespace Squared.Render {
 
     public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
         private BufferGenerator<RasterShapeVertex> _BufferGenerator = null;
+        private BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
 
-        // 0   1   2   3
-        // tl, tr, bl, br
-        internal static readonly ushort[] QuadIndices = new ushort[] { 
-            0, 1, 3, 
-            0, 3, 2 
-        };
+        protected static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
+            new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
 
         internal ArrayPoolAllocator<RasterShapeVertex> VertexAllocator;
-        internal ArrayPoolAllocator<short> IndexAllocator;
         internal ISoftwareBuffer _SoftwareBuffer;
 
         const int MaxVertexCount = 65535;
@@ -81,21 +77,19 @@ namespace Squared.Render {
 
             if (VertexAllocator == null)
                 VertexAllocator = container.RenderManager.GetArrayAllocator<RasterShapeVertex>();
-            if (IndexAllocator == null)
-                IndexAllocator = container.RenderManager.GetArrayAllocator<short>();
         }
 
         protected override void Prepare (PrepareManager manager) {
             var count = _DrawCalls.Count;
-            var vertexCount = count * 4;
-            var indexCount = count * 6;
+            var vertexCount = count;
             if (count > 0) {
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<RasterShapeVertex>>();
-                var swb = _BufferGenerator.Allocate(vertexCount, indexCount, true);
+                _CornerBuffer = QuadUtils.CreateCornerBuffer(Container);
+                var swb = _BufferGenerator.Allocate(vertexCount, 1);
                 _SoftwareBuffer = swb;
 
                 var vb = new Internal.VertexBuffer<RasterShapeVertex>(swb.Vertices);
-                var vw = vb.GetWriter(4 * count);
+                var vw = vb.GetWriter(count);
 
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     var dc = _DrawCalls[i];
@@ -117,17 +111,43 @@ namespace Squared.Render {
         public override void Issue (DeviceManager manager) {
             var count = _DrawCalls.Count;
             if (count > 0) {
+                var device = manager.Device;
                 manager.ApplyMaterial(Material);
+
+                VertexBuffer vb, cornerVb;
+                DynamicIndexBuffer ib, cornerIb;
+
+                var cornerHwb = _CornerBuffer.HardwareBuffer;
+                cornerHwb.SetActive();
+                cornerHwb.GetBuffers(out cornerVb, out cornerIb);
+                if (device.Indices != cornerIb)
+                    device.Indices = cornerIb;
+
                 var hwb = _SoftwareBuffer.HardwareBuffer;
                 if (hwb == null)
                     throw new ThreadStateException("Could not get a hardware buffer for this batch");
 
-                hwb.SetActiveAndApply(manager.Device);
-                manager.Device.DrawIndexedPrimitives(
-                    PrimitiveType.TriangleList, 0, 0, count * 4, 0, count * 2
+                hwb.SetActive();
+                hwb.GetBuffers(out vb, out ib);
+
+                var scratchBindings = _ScratchBindingArray.Value;
+
+                scratchBindings[0] = cornerVb;
+                scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
+
+                device.SetVertexBuffers(scratchBindings);
+                device.DrawInstancedPrimitives(
+                    PrimitiveType.TriangleList, 
+                    0, _CornerBuffer.HardwareVertexOffset, 4, 
+                    _CornerBuffer.HardwareIndexOffset, 2, 
+                    _DrawCalls.Count
                 );
-                Squared.Render.NativeBatch.RecordCommands(1);
-                hwb.SetInactiveAndUnapply(manager.Device);
+
+                NativeBatch.RecordCommands(1);
+                hwb.SetInactive();
+                cornerHwb.SetInactive();
+
+                device.SetVertexBuffer(null);
             }
 
             _SoftwareBuffer = null;

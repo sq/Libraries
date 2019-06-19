@@ -345,7 +345,7 @@ namespace Squared.Render {
    
             var bitmapShader = BuiltInShaders.Load("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load("SquaredGeometryShader");
-            var ellipseShader = BuiltInShaders.Load("Ellipse");
+            var rasterShapesShader = BuiltInShaders.Load("RasterShapes");
             
             ScreenSpaceBitmap = new Material(
                 bitmapShader,
@@ -422,12 +422,12 @@ namespace Squared.Render {
             );
 
             ScreenSpaceEllipse = new Material(
-                ellipseShader,
+                rasterShapesShader,
                 "ScreenSpaceEllipse"
             );
 
             WorldSpaceEllipse = new Material(
-                ellipseShader,
+                rasterShapesShader,
                 "WorldSpaceEllipse"
             );
             

@@ -32,11 +32,11 @@ sampler TextureSampler2 : register(s1) {
     Texture = (SecondTexture);
 };
 
-static const float2 Corners[] = {
-    {0, 0},
-    {1, 0},
-    {1, 1},
-    {0, 1}
+#define DEFINE_QuadCorners const float2 QuadCorners[] = { \
+    {0, 0}, \
+    {1, 0}, \
+    {1, 1}, \
+    {0, 1} \
 };
 
 inline float2 ComputeRegionSize (
@@ -49,7 +49,8 @@ inline float2 ComputeCorner (
     in int2 cornerIndex : BLENDINDICES0,
     in float2 regionSize
 ) {
-    float2 corner = Corners[cornerIndex.x];
+    DEFINE_QuadCorners
+    float2 corner = QuadCorners[cornerIndex.x];
     return corner * regionSize;
 }
 
