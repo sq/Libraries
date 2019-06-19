@@ -909,12 +909,12 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
-            using (var eb = GetEllipseBatch(
+            using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState
             ))
-                eb.Add(new EllipseDrawCall {
-                    Center = center,
-                    Radius = radius - Vector2.One,
+                rsb.Add(new RasterShapeDrawCall {
+                    A = center,
+                    B = radius - Vector2.One,
                     OutlineSize = 1,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
@@ -928,12 +928,12 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
-            using (var eb = GetEllipseBatch(
+            using (var eb = GetRasterShapeBatch(
                 layer, worldSpace, blendState
             ))
-                eb.Add(new EllipseDrawCall {
-                    Center = center,
-                    Radius = radius,
+                eb.Add(new RasterShapeDrawCall {
+                    A = center,
+                    B = radius,
                     OutlineSize = outlineSize,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
@@ -1045,7 +1045,7 @@ namespace Squared.Render.Convenience {
             return (GeometryBatch)cacheEntry.Batch;
         }
 
-        public EllipseBatch GetEllipseBatch (int? layer, bool? worldSpace, BlendState blendState) {
+        public RasterShapeBatch GetRasterShapeBatch (int? layer, bool? worldSpace, BlendState blendState) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
@@ -1054,7 +1054,7 @@ namespace Squared.Render.Convenience {
             var desiredBlendState = blendState ?? BlendState;
 
             CachedBatch cacheEntry;
-            if (!Cache.TryGet<EllipseBatch>(
+            if (!Cache.TryGet<RasterShapeBatch>(
                 out cacheEntry,
                 CachedBatchType.Ellipse,
                 container: Container,
@@ -1074,14 +1074,14 @@ namespace Squared.Render.Convenience {
                     blendState: desiredBlendState
                 );
 
-                cacheEntry.Batch = EllipseBatch.New(Container, actualLayer, material);
+                cacheEntry.Batch = RasterShapeBatch.New(Container, actualLayer, material);
                 Cache.InsertAtFront(ref cacheEntry, null);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
                 Layer += 1;
 
-            return (EllipseBatch)cacheEntry.Batch;
+            return (RasterShapeBatch)cacheEntry.Batch;
         }
     }
 }
