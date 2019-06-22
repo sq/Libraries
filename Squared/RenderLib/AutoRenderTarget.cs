@@ -77,9 +77,9 @@ namespace Squared.Render {
                 IsDisposed = true;
 
                 ((ITraceCapturingDisposable)this).AutoCaptureTraceback();
-            }
 
-            OnDispose();
+                OnDispose();
+            }
         }
     }
 
@@ -177,33 +177,19 @@ namespace Squared.Render {
     }
 
     public class RenderTargetRing : AutoRenderTargetBase {
-        public struct WriteTarget : IDisposable {
-            public bool IsReleased { get; private set; }
+        public struct WriteTarget {
             public readonly RenderTargetRing Ring;
-            public readonly RenderTarget2D Target;
+            public readonly RenderTarget2D Target, Previous;
 
-            internal WriteTarget (RenderTargetRing ring, RenderTarget2D target) {
-                IsReleased = false;
+            internal WriteTarget (RenderTargetRing ring, RenderTarget2D target, RenderTarget2D previous) {
                 Ring = ring;
                 Target = target;
-            }
-
-            public void Dispose () {
-                lock (Ring.Lock) {
-                    if (IsReleased)
-                        return;
-                    if (Ring.CurrentWriteTarget == Target)
-                        Ring.CurrentWriteTarget = null;
-                    else
-                        ;
-                    Ring.RasterizedTarget = Target;
-                    IsReleased = true;
-                }
+                Previous = previous;
             }
         }
 
-        private RenderTarget2D CurrentWriteTarget = null, RasterizedTarget = null;
-        private List<RenderTarget2D> AvailableTargets = new List<RenderTarget2D>();
+        private Queue<RenderTarget2D> AvailableTargets = new Queue<RenderTarget2D>();
+        public int TotalCreated { get; private set; }
         public readonly int Capacity;
 
         public RenderTargetRing (
@@ -215,10 +201,48 @@ namespace Squared.Render {
             preferredDepthFormat, preferredMultiSampleCount
         ) {
             Capacity = Math.Max(1, capacity);
+            for (int i = 0; i < Capacity; i++)
+                AvailableTargets.Enqueue(CreateInstance());
         }
 
+        public WriteTarget AcquireWriteTarget () {
+            lock (Lock) {
+                if (LastWriteTarget != null)
+                    AvailableTargets.Enqueue(LastWriteTarget);
+
+                LastWriteTarget = CurrentWriteTarget;
+
+                if (TotalCreated < Capacity) {
+                    TotalCreated++;
+                    CurrentWriteTarget = CreateInstance();
+                    return new WriteTarget(this, CurrentWriteTarget, LastWriteTarget);
+                }
+
+                while (AvailableTargets.Count > 0) {
+                    var rt = AvailableTargets.Dequeue();
+                    if (!IsRenderTargetValid(rt)) {
+                        Coordinator.DisposeResource(rt);
+                        TotalCreated--;
+                        continue;
+                    }
+
+                    CurrentWriteTarget = rt;
+                    return new WriteTarget(this, rt, LastWriteTarget);
+                }
+
+                throw new Exception("Failed to create or reuse render target");
+            }
+        }
+
+        public RenderTarget2D CurrentWriteTarget { get; private set; }
+        public RenderTarget2D LastWriteTarget { get; private set; }
+
         protected override void OnDispose () {
-            
+            Coordinator.DisposeResource(CurrentWriteTarget);
+            Coordinator.DisposeResource(LastWriteTarget);
+            foreach (var rt in AvailableTargets)
+                Coordinator.DisposeResource(rt);
+            AvailableTargets.Clear();
         }
     }
 }

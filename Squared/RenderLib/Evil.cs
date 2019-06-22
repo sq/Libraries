@@ -327,13 +327,7 @@ namespace Squared.Render.Evil {
             var result = ctor.Invoke(new object[] { new IntPtr(pEffect), device });
             var nativeResult = (Effect)result;
             return nativeResult.Clone();
-#else
-            return new Effect(device, bytes);
-#endif
         }
-    }
-
-#if WINDOWS
 
         public static unsafe void* GetUnboxedID3DXEffect (this Effect effect) {
             return Pointer.Unbox(pComPtr.GetValue(effect));
@@ -345,8 +339,13 @@ namespace Squared.Render.Evil {
             var typedObject = (ID3DXEffect)obj;
             return typedObject;
         }
+#else
+            return new Effect(device, bytes);
+        }
+#endif
     }
 
+#if WINDOWS
     public static class GraphicsDeviceUtils {
         public static class VTables {
             public static class IDirect3DDevice9 {
@@ -654,12 +653,12 @@ namespace Squared.Render.Evil {
         public static void GetDataFast<T> (
             this Texture2D texture, T[] data
         ) where T : struct {
-            var interval = SDL2.SDL.SDL_GL_GetSwapInterval();
+            int swapInterval = SDL2.SDL.SDL_GL_GetSwapInterval();
             try {
                 SDL2.SDL.SDL_GL_SetSwapInterval(0);
                 texture.GetData(data);
             } finally {
-                SDL2.SDL.SDL_GL_SetSwapInterval(interval);
+                SDL2.SDL.SDL_GL_SetSwapInterval(swapInterval);
             }
         }
 
@@ -667,12 +666,12 @@ namespace Squared.Render.Evil {
             this Texture2D texture, int level, Rectangle? rect, 
             T[] data, int startIndex, int elementCount
         ) where T : struct {
-            var interval = SDL2.SDL.SDL_GL_GetSwapInterval();
+            int swapInterval = SDL2.SDL.SDL_GL_GetSwapInterval();
             try {
                 SDL2.SDL.SDL_GL_SetSwapInterval(0);
                 texture.GetData(level, rect, data, startIndex, elementCount);
             } finally {
-                SDL2.SDL.SDL_GL_SetSwapInterval(interval);
+                SDL2.SDL.SDL_GL_SetSwapInterval(swapInterval);
             }
         }
 #endif
