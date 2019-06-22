@@ -1,3 +1,5 @@
+#define ENABLE_DITHERING 1
+
 #include "ViewTransformCommon.fxh"
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
