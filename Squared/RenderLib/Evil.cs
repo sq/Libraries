@@ -331,6 +331,7 @@ namespace Squared.Render.Evil {
             return new Effect(device, bytes);
 #endif
         }
+    }
 
 #if WINDOWS
 
@@ -483,8 +484,10 @@ namespace Squared.Render.Evil {
     [SuppressUnmanagedCodeSecurity]
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     internal unsafe delegate int GetSurfaceLevelDelegate (void* pTexture, uint iLevel, void** pSurface);
+#endif
 
     public static class TextureUtils {
+#if WINDOWS
         public static class VTables {
             public static class IDirect3DTexture9 {
                 public const uint SetAutoGenFilterType = 56;
@@ -624,6 +627,52 @@ namespace Squared.Render.Evil {
                 var rv = D3DXLoadSurfaceFromMemory(pSurface, null, pDestRect, pData, pixelFormat, pitch, null, pSourceRect, D3DX_FILTER.NONE, 0);
                 if (rv != 0)
                     throw new COMException("D3DXLoadSurfaceFromMemory failed", rv);
+            }
+        }
+
+        public static void GetDataFast<T> (
+            this Texture2D texture, T[] buffer
+        ) where T : struct {
+            texture.GetData(buffer);
+        }
+
+        public static void GetDataFast<T> (
+            this Texture2D texture, int level, Rectangle? rect, 
+            T[] data, int startIndex, int elementCount
+        ) where T : struct {
+            texture.GetData(level, rect, data, startIndex, elementCount);
+        }
+
+#elif FNA
+        public static unsafe void SetDataFast (
+            this Texture2D texture, uint level, void* pData,
+            int width, int height, uint pitch
+        ) {
+            texture.SetDataPointerEXT((int)level, null, new IntPtr(pData), (int)(pitch * height));
+        }
+
+        public static void GetDataFast<T> (
+            this Texture2D texture, T[] data
+        ) where T : struct {
+            var interval = SDL2.SDL.SDL_GL_GetSwapInterval();
+            try {
+                SDL2.SDL.SDL_GL_SetSwapInterval(0);
+                texture.GetData(data);
+            } finally {
+                SDL2.SDL.SDL_GL_SetSwapInterval(interval);
+            }
+        }
+
+        public static void GetDataFast<T> (
+            this Texture2D texture, int level, Rectangle? rect, 
+            T[] data, int startIndex, int elementCount
+        ) where T : struct {
+            var interval = SDL2.SDL.SDL_GL_GetSwapInterval();
+            try {
+                SDL2.SDL.SDL_GL_SetSwapInterval(0);
+                texture.GetData(level, rect, data, startIndex, elementCount);
+            } finally {
+                SDL2.SDL.SDL_GL_SetSwapInterval(interval);
             }
         }
 #endif

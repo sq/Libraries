@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Tracing;
 
 namespace Squared.Render {
-    public class AutoRenderTarget : IDynamicTexture, ITraceCapturingDisposable {
+    public abstract class AutoRenderTargetBase : ITraceCapturingDisposable {
         /// <summary>
         /// If set, stack traces will be captured when an instance is disposed.
         /// </summary>
@@ -19,19 +19,17 @@ namespace Squared.Render {
         public bool IsDisposed { get; private set; }
         public readonly RenderCoordinator Coordinator;
 
-        public int Width { get; private set; }
-        public int Height { get; private set; }
-        public readonly bool MipMap;
-        public readonly SurfaceFormat PreferredFormat;
-        public readonly DepthFormat PreferredDepthFormat;
-        public readonly int PreferredMultiSampleCount;
+        public int Width { get; protected set; }
+        public int Height { get; protected set; }
+        public bool MipMap { get; protected set; }
+        public SurfaceFormat PreferredFormat { get; protected set; }
+        public DepthFormat PreferredDepthFormat { get; protected set; }
+        public int PreferredMultiSampleCount { get; protected set; }
 
-        private object Lock = new object();
-        private RenderTarget2D CurrentInstance;
-        public string Name { get; private set; }
+        protected object Lock = new object();
 
-        public AutoRenderTarget (
-            RenderCoordinator coordinator, 
+        public AutoRenderTargetBase (
+            RenderCoordinator coordinator,
             int width, int height,
             bool mipMap = false,
             SurfaceFormat preferredFormat = SurfaceFormat.Color,
@@ -46,7 +44,61 @@ namespace Squared.Render {
             PreferredFormat = preferredFormat;
             PreferredDepthFormat = preferredDepthFormat;
             PreferredMultiSampleCount = preferredMultiSampleCount;
+        }
 
+        void ITraceCapturingDisposable.AutoCaptureTraceback () {
+            if (DisposedStackTrace != null)
+                return;
+
+            if (CaptureStackTraces)
+                DisposedStackTrace = new StackTrace(1, true);
+        }
+
+        public static bool IsRenderTargetValid (RenderTarget2D rt) {
+            return (rt != null) && !rt.IsDisposed && !rt.IsContentLost;
+        }
+
+        protected RenderTarget2D CreateInstance () {
+            lock (Coordinator.CreateResourceLock)
+                return new RenderTarget2D(
+                    Coordinator.Device, Width, Height, MipMap,
+                    PreferredFormat, PreferredDepthFormat,
+                    PreferredMultiSampleCount, RenderTargetUsage.PreserveContents
+                );
+        }
+
+        protected abstract void OnDispose ();
+    
+        public void Dispose () {
+            lock (Lock) {
+                if (IsDisposed)
+                    return;
+
+                IsDisposed = true;
+
+                ((ITraceCapturingDisposable)this).AutoCaptureTraceback();
+            }
+
+            OnDispose();
+        }
+    }
+
+    public class AutoRenderTarget : AutoRenderTargetBase, IDynamicTexture {
+        private RenderTarget2D CurrentInstance;
+        public string Name { get; private set; }
+
+        public AutoRenderTarget (
+            RenderCoordinator coordinator,
+            int width, int height,
+            bool mipMap = false,
+            SurfaceFormat preferredFormat = SurfaceFormat.Color,
+            DepthFormat preferredDepthFormat = DepthFormat.None,
+            int preferredMultiSampleCount = 1
+        ) : base(
+            coordinator, width, height,
+            mipMap, preferredFormat, preferredDepthFormat, 
+            preferredMultiSampleCount
+        ) {
             GetOrCreateInstance(true);
         }
 
@@ -56,7 +108,7 @@ namespace Squared.Render {
 
         private bool IsInstanceValid {
             get {
-                return (CurrentInstance != null) && !CurrentInstance.IsDisposed && !CurrentInstance.IsContentLost;
+                return IsRenderTargetValid(CurrentInstance);
             }
         }
 
@@ -102,15 +154,9 @@ namespace Squared.Render {
                     }
                 }
 
-                lock (Coordinator.CreateResourceLock) {
-                    CurrentInstance = new RenderTarget2D(
-                        Coordinator.Device, Width, Height, MipMap,
-                        PreferredFormat, PreferredDepthFormat,
-                        PreferredMultiSampleCount, RenderTargetUsage.PreserveContents
-                    );
-
-                    CurrentInstance.SetName(Name);
-                }
+                CurrentInstance = CreateInstance();
+                CurrentInstance.Name = Name;
+                CurrentInstance.SetName(Name);
 
                 return CurrentInstance;
             }
@@ -124,26 +170,55 @@ namespace Squared.Render {
             return art.Get();
         }
 
-        void ITraceCapturingDisposable.AutoCaptureTraceback () {
-            if (DisposedStackTrace != null)
-                return;
-
-            if (CaptureStackTraces)
-                DisposedStackTrace = new StackTrace(1, true);
-        }
-
-        public void Dispose () {
-            lock (Lock) {
-                if (IsDisposed)
-                    return;
-
-                IsDisposed = true;
-
-                ((ITraceCapturingDisposable)this).AutoCaptureTraceback();
-            }
-
+        protected override void OnDispose () {
             if (IsInstanceValid)
                 Coordinator.DisposeResource(CurrentInstance);
+        }
+    }
+
+    public class RenderTargetRing : AutoRenderTargetBase {
+        public struct WriteTarget : IDisposable {
+            public bool IsReleased { get; private set; }
+            public readonly RenderTargetRing Ring;
+            public readonly RenderTarget2D Target;
+
+            internal WriteTarget (RenderTargetRing ring, RenderTarget2D target) {
+                IsReleased = false;
+                Ring = ring;
+                Target = target;
+            }
+
+            public void Dispose () {
+                lock (Ring.Lock) {
+                    if (IsReleased)
+                        return;
+                    if (Ring.CurrentWriteTarget == Target)
+                        Ring.CurrentWriteTarget = null;
+                    else
+                        ;
+                    Ring.RasterizedTarget = Target;
+                    IsReleased = true;
+                }
+            }
+        }
+
+        private RenderTarget2D CurrentWriteTarget = null, RasterizedTarget = null;
+        private List<RenderTarget2D> AvailableTargets = new List<RenderTarget2D>();
+        public readonly int Capacity;
+
+        public RenderTargetRing (
+            RenderCoordinator coordinator, int capacity, int width, int height, 
+            bool mipMap = false, SurfaceFormat preferredFormat = SurfaceFormat.Color, 
+            DepthFormat preferredDepthFormat = DepthFormat.None, int preferredMultiSampleCount = 1
+        ) : base(
+            coordinator, width, height, mipMap, preferredFormat, 
+            preferredDepthFormat, preferredMultiSampleCount
+        ) {
+            Capacity = Math.Max(1, capacity);
+        }
+
+        protected override void OnDispose () {
+            
         }
     }
 }

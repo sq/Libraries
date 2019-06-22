@@ -173,13 +173,8 @@ namespace Squared.Render.STB {
         }
 
         private void UploadDirect (RenderCoordinator coordinator, Texture2D result) {
-#if FNA
-            lock (coordinator.UseResourceLock)
-                result.SetDataPointerEXT(0, null, new IntPtr(Data), (Height * Width * SizeofPixel));
-#else
             lock (coordinator.UseResourceLock)
                 Evil.TextureUtils.SetDataFast(result, 0, Data, Width, Height, (uint)(Width * SizeofPixel));
-#endif
         }
 
         private void UploadWithMips (RenderCoordinator coordinator, Texture2D result) {
@@ -197,13 +192,8 @@ namespace Squared.Render.STB {
                     MipGenerator.Color(pPreviousLevelData, previousLevelWidth, previousLevelHeight, pLevelData, levelWidth, levelHeight);
                 }
 
-#if FNA
-                lock (coordinator.UseResourceLock)
-                    result.SetDataPointerEXT((int)level, null, new IntPtr(pLevelData), (levelWidth * SizeofPixel * levelHeight));
-#else
                 lock (coordinator.UseResourceLock)
                     Evil.TextureUtils.SetDataFast(result, level, pLevelData, levelWidth, levelHeight, (uint)(levelWidth * SizeofPixel));
-#endif
 
                 previousLevelWidth = levelWidth;
                 previousLevelHeight = levelHeight;
