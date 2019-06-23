@@ -81,14 +81,17 @@ namespace Squared.Util {
     }
 
     public static class Arithmetic {
-        public enum Operators {
-            Add,
-            Subtract,
-            Multiply,
-            Divide,
-            Modulo,
-            Negate,
-            Equality
+        public enum Operators : int {
+            // Binary operators
+            Add = 1,
+            Subtract = 2,
+            Multiply = 3,
+            Divide = 4,
+            Modulo = 5,
+            Equality = 6,
+            Inequality = 7,
+            // Unary operators
+            Negation = 8
         }
 
         public delegate T UnaryOperatorMethod<T> (T value);
@@ -96,18 +99,19 @@ namespace Squared.Util {
 
         internal struct OperatorInfo {
             public OpCode OpCode;
-            public String MethodName;
+            public String MethodName, Sigil;
             public bool IsComparison, IsUnary;
         }
 
         internal static Dictionary<Operators, OperatorInfo> _OperatorInfo = new Dictionary<Operators, OperatorInfo> {
-            { Operators.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition" } },
-            { Operators.Subtract, new OperatorInfo { OpCode = OpCodes.Sub, MethodName = "op_Subtraction" } },
-            { Operators.Multiply, new OperatorInfo { OpCode = OpCodes.Mul, MethodName = "op_Multiply" } },
-            { Operators.Divide, new OperatorInfo { OpCode = OpCodes.Div, MethodName = "op_Division" } },
-            { Operators.Modulo, new OperatorInfo { OpCode = OpCodes.Rem, MethodName = "op_Modulus" } },
-            { Operators.Negate, new OperatorInfo { OpCode = OpCodes.Neg, MethodName = "op_UnaryNegation", IsUnary = true } },
-            { Operators.Equality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality", IsComparison = true } }
+            { Operators.Add, new OperatorInfo { OpCode = OpCodes.Add, MethodName = "op_Addition", Sigil = "+" } },
+            { Operators.Subtract, new OperatorInfo { OpCode = OpCodes.Sub, MethodName = "op_Subtraction", Sigil = "-" } },
+            { Operators.Multiply, new OperatorInfo { OpCode = OpCodes.Mul, MethodName = "op_Multiply", Sigil = "*" } },
+            { Operators.Divide, new OperatorInfo { OpCode = OpCodes.Div, MethodName = "op_Division", Sigil = "/" } },
+            { Operators.Modulo, new OperatorInfo { OpCode = OpCodes.Rem, MethodName = "op_Modulus", Sigil = "%" } },
+            { Operators.Equality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Equality", Sigil = "==", IsComparison = true } },
+            { Operators.Inequality, new OperatorInfo { OpCode = OpCodes.Ceq, MethodName = "op_Inequality", Sigil = "!=", IsComparison = true } },
+            { Operators.Negation, new OperatorInfo { OpCode = OpCodes.Neg, MethodName = "op_UnaryNegation", Sigil = "-", IsUnary = true } },
         };
 
         internal static Dictionary<Type, int> _TypeRanking = new Dictionary<Type, int> {
@@ -128,8 +132,9 @@ namespace Squared.Util {
             { ExpressionType.Multiply, Operators.Multiply },
             { ExpressionType.Divide, Operators.Divide },
             { ExpressionType.Modulo, Operators.Modulo },
-            { ExpressionType.Negate, Operators.Negate },
+            { ExpressionType.Negate, Operators.Negation },
             { ExpressionType.Equal, Operators.Equality },
+            { ExpressionType.NotEqual, Operators.Inequality }
         };
 #endif
 
@@ -171,6 +176,10 @@ namespace Squared.Util {
             return (TDelegate)del;
         }
 #endif
+
+        public static string GetSigil (Operators op) {
+            return _OperatorInfo[op].Sigil;
+        }
 
         public static UnaryOperatorMethod<T> GetOperator<T> (Operators op) {
             if (!_OperatorInfo[op].IsUnary)

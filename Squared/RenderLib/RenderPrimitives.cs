@@ -447,6 +447,48 @@ namespace Squared.Render {
             RecordPrimitives(primCount);
         }
 
+        public static void IssueDrawCall (
+            GraphicsDevice device, ref NativeDrawCall call, 
+            VertexBufferBinding[] twoBindings, VertexBufferBinding[] threeBindings
+        ) {
+            if (twoBindings?.Length != 2)
+                throw new ArgumentException("twoBindings");
+            if (threeBindings?.Length != 3)
+                throw new ArgumentException("threeBindings");
+
+            if (call.InstanceCount.HasValue) {
+                if (call.VertexBuffer3 != null) {
+                    threeBindings[0] = new VertexBufferBinding(call.VertexBuffer, 0, 0);
+                    threeBindings[1] = new VertexBufferBinding(call.VertexBuffer2, call.VertexOffset2, 1);
+                    threeBindings[2] = new VertexBufferBinding(call.VertexBuffer3, call.VertexOffset3, 1);
+                    device.SetVertexBuffers(threeBindings);
+                } else if (call.VertexBuffer2 != null) {
+                    twoBindings[0] = new VertexBufferBinding(call.VertexBuffer, 0, 0);
+                    twoBindings[1] = new VertexBufferBinding(call.VertexBuffer2, call.VertexOffset2, 1);
+                    device.SetVertexBuffers(twoBindings);
+                } else {
+                    // FIXME: Throw?
+                    device.SetVertexBuffers(call.VertexBuffer);
+                }
+
+                device.Indices = call.IndexBuffer;
+                device.DrawInstancedPrimitives(
+                    call.PrimitiveType, call.BaseVertex, call.MinVertexIndex, 
+                    call.NumVertices, call.StartIndex, call.PrimitiveCount, 
+                    call.InstanceCount.Value
+                );
+                return;
+            }
+
+            device.SetVertexBuffer(call.VertexBuffer, call.VertexOffset);
+            device.Indices = call.IndexBuffer;
+
+            if (call.IndexBuffer != null)
+                device.DrawIndexedPrimitives(call.PrimitiveType, call.BaseVertex, call.MinVertexIndex, call.NumVertices, call.StartIndex, call.PrimitiveCount);
+            else
+                device.DrawPrimitives(call.PrimitiveType, call.StartVertex, call.PrimitiveCount);
+        }
+
         public override void Issue (DeviceManager manager) {
             if (_BatchSetup != null)
                 _BatchSetup(manager, _UserData);
@@ -459,37 +501,7 @@ namespace Squared.Render {
                     NativeDrawCall call;
                     for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
                         _DrawCalls.GetItem(i, out call);
-
-                        if (call.InstanceCount.HasValue) {
-                            if (call.VertexBuffer3 != null) {
-                                ThreeBindings[0] = new VertexBufferBinding(call.VertexBuffer, 0, 0);
-                                ThreeBindings[1] = new VertexBufferBinding(call.VertexBuffer2, call.VertexOffset2, 1);
-                                ThreeBindings[2] = new VertexBufferBinding(call.VertexBuffer3, call.VertexOffset3, 1);
-                                device.SetVertexBuffers(ThreeBindings);
-                            } else if (call.VertexBuffer2 != null) {
-                                TwoBindings[0] = new VertexBufferBinding(call.VertexBuffer, 0, 0);
-                                TwoBindings[1] = new VertexBufferBinding(call.VertexBuffer2, call.VertexOffset2, 1);
-                                device.SetVertexBuffers(TwoBindings);
-                            } else {
-                                // FIXME: Throw?
-                                device.SetVertexBuffers(call.VertexBuffer);
-                            }
-                            device.Indices = call.IndexBuffer;
-                            device.DrawInstancedPrimitives(
-                                call.PrimitiveType, call.BaseVertex, call.MinVertexIndex, 
-                                call.NumVertices, call.StartIndex, call.PrimitiveCount, 
-                                call.InstanceCount.Value
-                            );
-                            continue;
-                        }
-
-                        device.SetVertexBuffer(call.VertexBuffer, call.VertexOffset);
-                        device.Indices = call.IndexBuffer;
-
-                        if (call.IndexBuffer != null)
-                            device.DrawIndexedPrimitives(call.PrimitiveType, call.BaseVertex, call.MinVertexIndex, call.NumVertices, call.StartIndex, call.PrimitiveCount);
-                        else
-                            device.DrawPrimitives(call.PrimitiveType, call.StartVertex, call.PrimitiveCount);
+                        IssueDrawCall(device, ref call, TwoBindings, ThreeBindings);
                     }
 
                     device.SetVertexBuffer(null);

@@ -209,7 +209,6 @@ namespace Squared.Render {
             lock (Lock) {
                 if (LastWriteTarget != null)
                     AvailableTargets.Enqueue(LastWriteTarget);
-
                 LastWriteTarget = CurrentWriteTarget;
 
                 if (TotalCreated < Capacity) {
@@ -228,6 +227,12 @@ namespace Squared.Render {
 
                     CurrentWriteTarget = rt;
                     return new WriteTarget(this, rt, LastWriteTarget);
+                }
+
+                if (TotalCreated < Capacity) {
+                    TotalCreated++;
+                    CurrentWriteTarget = CreateInstance();
+                    return new WriteTarget(this, CurrentWriteTarget, LastWriteTarget);
                 }
 
                 throw new Exception("Failed to create or reuse render target");
