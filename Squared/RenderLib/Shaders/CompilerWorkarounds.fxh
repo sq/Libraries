@@ -18,27 +18,27 @@ float4 saturate4 (float4 v) {
 float2 clamp2 (float2 v, float2 minimum, float2 maximum) {
     // why the hell doesn't the constructor work
     float2 r;
-    r.x = clamp(v.x, minimum, maximum);
-    r.y = clamp(v.y, minimum, maximum);
+    r.x = clamp(v.x, minimum.x, maximum.x);
+    r.y = clamp(v.y, minimum.y, maximum.y);
     return r;
 }
 
 float3 clamp3 (float3 v, float3 minimum, float3 maximum) {
     // why the hell doesn't the constructor work
     float3 r;
-    r.x = clamp(v.x, minimum, maximum);
-    r.y = clamp(v.y, minimum, maximum);
-    r.z = clamp(v.z, minimum, maximum);
+    r.x = clamp(v.x, minimum.x, maximum.x);
+    r.y = clamp(v.y, minimum.y, maximum.y);
+    r.z = clamp(v.z, minimum.z, maximum.z);
     return r;
 }
 
 float4 clamp4 (float4 v, float4 minimum, float4 maximum) {
     // why the hell doesn't the constructor work
     float4 r;
-    r.x = clamp(v.x, minimum, maximum);
-    r.y = clamp(v.y, minimum, maximum);
-    r.z = clamp(v.z, minimum, maximum);
-    r.w = clamp(v.w, minimum, maximum);
+    r.x = clamp(v.x, minimum.x, maximum.x);
+    r.y = clamp(v.y, minimum.y, maximum.y);
+    r.z = clamp(v.z, minimum.z, maximum.z);
+    r.w = clamp(v.w, minimum.w, maximum.w);
     return r;
 }
 #else
