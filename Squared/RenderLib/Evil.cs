@@ -653,26 +653,14 @@ namespace Squared.Render.Evil {
         public static void GetDataFast<T> (
             this Texture2D texture, T[] data
         ) where T : struct {
-            int swapInterval = SDL2.SDL.SDL_GL_GetSwapInterval();
-            try {
-                SDL2.SDL.SDL_GL_SetSwapInterval(0);
-                texture.GetData(data);
-            } finally {
-                SDL2.SDL.SDL_GL_SetSwapInterval(swapInterval);
-            }
+            texture.GetData(data);
         }
 
         public static void GetDataFast<T> (
             this Texture2D texture, int level, Rectangle? rect, 
             T[] data, int startIndex, int elementCount
         ) where T : struct {
-            int swapInterval = SDL2.SDL.SDL_GL_GetSwapInterval();
-            try {
-                SDL2.SDL.SDL_GL_SetSwapInterval(0);
-                texture.GetData(level, rect, data, startIndex, elementCount);
-            } finally {
-                SDL2.SDL.SDL_GL_SetSwapInterval(swapInterval);
-            }
+            texture.GetData(level, rect, data, startIndex, elementCount);
         }
 #endif
     }

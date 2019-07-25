@@ -182,6 +182,27 @@ namespace Squared.Render {
         private RenderTargetStackEntry CachedCurrentRenderTarget;
         private bool _IsDisposed;
 
+        private bool? _NeedsYFlip;
+
+        public bool NeedsYFlip {
+            get {
+                if (!_NeedsYFlip.HasValue) {
+                    var asm = typeof(GraphicsDevice).Assembly;
+                    if (!asm.FullName.Contains("FNA")) {
+                        _NeedsYFlip = false;
+                    } else {
+                        var v = asm.GetName().Version;
+                        if ((v.Major >= 20) || ((v.Major == 19) && (v.Minor >= 08)))
+                            _NeedsYFlip = false;
+                        else
+                            _NeedsYFlip = true;
+                    }
+                }
+
+                return _NeedsYFlip.Value;
+            }
+        }
+
         public bool IsDisposed {
             get {
                 if (!_IsDisposed && Device.IsDisposed)
@@ -243,10 +264,9 @@ namespace Squared.Render {
             if (!setParams)
                 return;
 
-#if FNA
-            if (CachedCurrentRenderTarget.First == null)
-                targetHeight *= -1;
-#endif
+            if (NeedsYFlip)
+                if (CachedCurrentRenderTarget.First == null)
+                    targetHeight *= -1;
 
             rtd.SetValue(new Vector2(targetWidth, targetHeight));
 
