@@ -74,5 +74,10 @@ namespace Squared.Render.STB.Native {
         public static extern int stbi_write_tga_to_func (WriteCallback callback, void *user, int w, int h, int comp, byte* data);
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern int stbi_write_jpg_to_func (WriteCallback callback, void *user, int w, int h, int comp, byte* data, int quality);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        public static extern int get_stbi_write_png_compression_level ();
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        public static extern void set_stbi_write_png_compression_level (int level);
     }
 }

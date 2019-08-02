@@ -9,6 +9,20 @@ using Squared.Util;
 
 namespace Squared.Render.STB {
     public static class ImageWrite {
+        public static int PNGCompressionLevel {
+            get {
+                return Native.API.get_stbi_write_png_compression_level();
+            }
+            set {
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException("value");
+                else if (value > 9)
+                    throw new ArgumentOutOfRangeException("value");
+
+                Native.API.set_stbi_write_png_compression_level(value);
+            }
+        }
+
         public static byte[] GetTextureData (Texture2D tex, int numComponents) {
             if (tex.Format != SurfaceFormat.Color)
                 throw new ArgumentException("Only SurfaceFormat.Color is implemented");
@@ -48,7 +62,7 @@ namespace Squared.Render.STB {
         ) {
             var bytesPerPixel = buffer.Length / (width * height);
 
-            using (var scratch = BufferPool<byte>.Allocate(65536))
+            using (var scratch = BufferPool<byte>.Allocate(1024 * 64))
             fixed (byte * pBuffer = buffer)
             fixed (byte * _pScratch = scratch.Data) {
                 Native.WriteCallback callback = (pScratch, pData, count) => {

@@ -21,3 +21,11 @@
 
 #include "stb_image.h"
 #include "stb_image_write.h"
+
+STBIWDEF int get_stbi_write_png_compression_level () {
+    return stbi_write_png_compression_level;
+}
+
+STBIWDEF void set_stbi_write_png_compression_level (int level) {
+    stbi_write_png_compression_level = level;
+}
