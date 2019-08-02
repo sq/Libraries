@@ -7,25 +7,28 @@ using namespace basist;
 
 etc1_global_selector_codebook sel_codebook;
 
-BOOL WINAPI DllMain(
+bool is_initialized = false;
+
+BOOL WINAPI DllMain (
     _In_ HINSTANCE hinstDLL,
     _In_ DWORD     fdwReason,
     _In_ LPVOID    lpvReserved
 ) {
-    if (fdwReason != DLL_PROCESS_ATTACH)
-        return TRUE;
-
-    basist::basisu_transcoder_init();
-
-    sel_codebook = etc1_global_selector_codebook(
-        basist::g_global_selector_cb_size, basist::g_global_selector_cb
-    );
-
     return TRUE;
 }
 
 extern "C" {
     basisu_transcoder __declspec(dllexport) * New () {
+        if (!is_initialized) {
+            is_initialized = true;
+
+            basist::basisu_transcoder_init();
+
+            sel_codebook = etc1_global_selector_codebook(
+                basist::g_global_selector_cb_size, basist::g_global_selector_cb
+            );
+        }
+
         basisu_transcoder * pTranscoder = new basisu_transcoder(&sel_codebook);
 
         return pTranscoder;
@@ -79,7 +82,7 @@ extern "C" {
         return pTranscoder->get_image_level_info(pData, dataSize, *pResult, imageIndex, levelIndex);
     }
 
-    int __declspec(dllexport) GetImageLevelDesc(
+    int __declspec(dllexport) GetImageLevelDesc (
         basisu_transcoder * pTranscoder, void * pData,
         uint32_t dataSize, uint32_t imageIndex, uint32_t levelIndex,
         uint32_t *pOrigWidth, uint32_t *pOrigHeight, uint32_t *pTotalBlocks
@@ -98,7 +101,7 @@ extern "C" {
         return basis_get_bytes_per_block(format);
     }
 
-    int __declspec(dllexport) TranscodeImageLevel(
+    int __declspec(dllexport) TranscodeImageLevel (
         basisu_transcoder * pTranscoder, void * pData,
         uint32_t dataSize, uint32_t imageIndex, uint32_t levelIndex,
         void * pOutputBlocks, uint32_t outputBlocksSizeInBlocks,
@@ -118,7 +121,7 @@ extern "C" {
         );
     }
 
-    void __declspec(dllexport) Delete(basisu_transcoder * pTranscoder) {
+    void __declspec(dllexport) Delete (basisu_transcoder * pTranscoder) {
         if (!pTranscoder)
             return;
 
