@@ -10,6 +10,8 @@ namespace Squared.Render.STB.Native {
     public unsafe delegate void SkipCallback (void* userData, int count);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public unsafe delegate int EOFCallback (void* userData);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public unsafe delegate void WriteCallback (void* userData, byte* data, int size);
 
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct STBI_IO_Callbacks {
@@ -63,5 +65,14 @@ namespace Squared.Render.STB.Native {
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern byte* stbi_failure_reason ();
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        public static extern int stbi_write_png_to_func (WriteCallback callback, void *user, int w, int h, int comp, byte* data, int strideInBytes);
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        public static extern int stbi_write_bmp_to_func (WriteCallback callback, void *user, int w, int h, int comp, byte* data);
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        public static extern int stbi_write_tga_to_func (WriteCallback callback, void *user, int w, int h, int comp, byte* data);
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        public static extern int stbi_write_jpg_to_func (WriteCallback callback, void *user, int w, int h, int comp, byte* data, int quality);
     }
 }
