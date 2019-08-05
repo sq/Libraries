@@ -18,11 +18,11 @@ namespace Squared.Render.STB {
             return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         }
 
-        public Image (string path, bool premultiply = true, bool asFloatingPoint = false)
-            : this (OpenStream(path), true, premultiply, asFloatingPoint) {
+        public Image (string path, bool premultiply = true, bool asFloatingPoint = false, UInt32[] palette = null)
+            : this (OpenStream(path), true, premultiply, asFloatingPoint, palette) {
         }
 
-        public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false) {
+        public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false, UInt32[] palette = null) {
             BufferPool<byte>.Buffer scratch = BufferPool<byte>.Allocate(10240);
             var length = stream.Length;
 
@@ -54,7 +54,14 @@ namespace Squared.Render.STB {
             IsFloatingPoint = asFloatingPoint;
 
             // FIXME: Don't request RGBA?
-            if (asFloatingPoint)
+            if (palette != null) {
+                if (asFloatingPoint)
+                    throw new ArgumentException("Cannot load paletted image as floating point");
+                else if (premultiply)
+                    throw new ArgumentException("FIXME: Cannot premultiply paletted image");
+                fixed (UInt32 * pPalette = palette)
+                    Data = Native.API.stbi_load_from_callbacks_with_palette(ref callbacks, null, out Width, out Height, out ChannelCount, 1, pPalette, palette.Length);
+            } else if (asFloatingPoint)
                 Data = Native.API.stbi_loadf_from_callbacks(ref callbacks, null, out Width, out Height, out ChannelCount, 4);
             else
                 Data = Native.API.stbi_load_from_callbacks(ref callbacks, null, out Width, out Height, out ChannelCount, 4);
@@ -73,7 +80,7 @@ namespace Squared.Render.STB {
 
             if (asFloatingPoint)
                 ConvertFPData(premultiply);
-            else
+            else if (palette == null)
                 ConvertData(premultiply);
         }
 

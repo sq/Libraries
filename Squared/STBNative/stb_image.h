@@ -983,7 +983,7 @@ STBIDEF void stbi_set_flip_vertically_on_load(int flag_true_if_should_flip)
     stbi__vertically_flip_on_load = flag_true_if_should_flip;
 }
 
-static void *stbi__load_main(stbi__context *s, int *x, int *y, int *comp, int req_comp, stbi__result_info *ri, int bpc)
+static void *stbi__load_main(stbi__context *s, int *x, int *y, int *comp, int req_comp, stbi__result_info *ri, int bpc, unsigned int *palette_buffer, int palette_buffer_len)
 {
    memset(ri, 0, sizeof(*ri)); // make sure it's initialized if we add new fields
    ri->bits_per_channel = 8; // default is 8 so most paths don't have to be changed
@@ -991,29 +991,29 @@ static void *stbi__load_main(stbi__context *s, int *x, int *y, int *comp, int re
    ri->num_channels = 0;
 
    #ifndef STBI_NO_JPEG
-   if (stbi__jpeg_test(s)) return stbi__jpeg_load(s,x,y,comp,req_comp, ri);
+   if (!palette_buffer && stbi__jpeg_test(s)) return stbi__jpeg_load(s,x,y,comp,req_comp, ri);
    #endif
    #ifndef STBI_NO_PNG
-   if (stbi__png_test(s))  return stbi__png_load(s,x,y,comp,req_comp, NULL, NULL, ri);
+   if (stbi__png_test(s))  return stbi__png_load(s,x,y,comp,req_comp, palette_buffer, palette_buffer_len, ri);
    #endif
    #ifndef STBI_NO_BMP
-   if (stbi__bmp_test(s))  return stbi__bmp_load(s,x,y,comp,req_comp, ri);
+   if (!palette_buffer && stbi__bmp_test(s))  return stbi__bmp_load(s,x,y,comp,req_comp, ri);
    #endif
    #ifndef STBI_NO_GIF
-   if (stbi__gif_test(s))  return stbi__gif_load(s,x,y,comp,req_comp, ri);
+   if (!palette_buffer && stbi__gif_test(s))  return stbi__gif_load(s,x,y,comp,req_comp, ri);
    #endif
    #ifndef STBI_NO_PSD
-   if (stbi__psd_test(s))  return stbi__psd_load(s,x,y,comp,req_comp, ri, bpc);
+   if (!palette_buffer && stbi__psd_test(s))  return stbi__psd_load(s,x,y,comp,req_comp, ri, bpc);
    #endif
    #ifndef STBI_NO_PIC
-   if (stbi__pic_test(s))  return stbi__pic_load(s,x,y,comp,req_comp, ri);
+   if (!palette_buffer && stbi__pic_test(s))  return stbi__pic_load(s,x,y,comp,req_comp, ri);
    #endif
    #ifndef STBI_NO_PNM
-   if (stbi__pnm_test(s))  return stbi__pnm_load(s,x,y,comp,req_comp, ri);
+   if (!palette_buffer && stbi__pnm_test(s))  return stbi__pnm_load(s,x,y,comp,req_comp, ri);
    #endif
 
    #ifndef STBI_NO_HDR
-   if (stbi__hdr_test(s)) {
+   if (!palette_buffer && stbi__hdr_test(s)) {
       float *hdr = stbi__hdr_load(s, x,y,comp,req_comp, ri);
       return stbi__hdr_to_ldr(hdr, *x, *y, req_comp ? req_comp : *comp);
    }
@@ -1022,7 +1022,7 @@ static void *stbi__load_main(stbi__context *s, int *x, int *y, int *comp, int re
    #ifndef STBI_NO_TGA
    // test tga last because it's a crappy test!
    if (stbi__tga_test(s))
-      return stbi__tga_load(s,x,y,comp,req_comp, NULL, NULL, ri);
+      return stbi__tga_load(s,x,y,comp,req_comp, palette_buffer, palette_buffer_len, ri);
    #endif
 
    return stbi__errpuc("unknown image type", "Image not of any known type, or corrupt");
@@ -1098,9 +1098,12 @@ static void stbi__vertical_flip_slices(void *image, int w, int h, int z, int byt
 
 static unsigned char *stbi__load_indexed(stbi__context *s, int *x, int *y, unsigned int *palette_buffer, int palette_buffer_len)
 {
+   if (!palette_buffer)
+       return NULL;
+
    stbi__result_info ri;
    int comp;
-   void *result = stbi__load_main(s, x, y, &comp, 1, &ri, 8);
+   void *result = stbi__load_main(s, x, y, &comp, 1, &ri, 8, palette_buffer, palette_buffer_len);
 
    if (result == NULL)
       return NULL;
@@ -1128,7 +1131,7 @@ static unsigned char *stbi__load_indexed(stbi__context *s, int *x, int *y, unsig
 static unsigned char *stbi__load_and_postprocess_8bit(stbi__context *s, int *x, int *y, int *comp, int req_comp)
 {
    stbi__result_info ri;
-   void *result = stbi__load_main(s, x, y, comp, req_comp, &ri, 8);
+   void *result = stbi__load_main(s, x, y, comp, req_comp, &ri, 8, NULL, NULL);
 
    if (result == NULL)
       return NULL;
@@ -1152,7 +1155,7 @@ static unsigned char *stbi__load_and_postprocess_8bit(stbi__context *s, int *x, 
 static stbi__uint16 *stbi__load_and_postprocess_16bit(stbi__context *s, int *x, int *y, int *comp, int req_comp)
 {
    stbi__result_info ri;
-   void *result = stbi__load_main(s, x, y, comp, req_comp, &ri, 16);
+   void *result = stbi__load_main(s, x, y, comp, req_comp, &ri, 16, NULL, NULL);
 
    if (result == NULL)
       return NULL;
@@ -3153,7 +3156,7 @@ static int stbi__decode_jpeg_header(stbi__jpeg *z, int scan)
    z->app14_color_transform = -1; // valid values are 0,1,2
    z->marker = STBI__MARKER_none; // initialize cached marker to empty
    m = stbi__get_marker(z);
-   if (!stbi__SOI(m)) return stbi__err("no SOI","Corrupt JPEG");
+   if (!stbi__SOI(m)) return 0;
    if (scan == STBI__SCAN_type) return 1;
    m = stbi__get_marker(z);
    while (!stbi__SOF(m)) {

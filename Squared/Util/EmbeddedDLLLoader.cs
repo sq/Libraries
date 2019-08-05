@@ -75,6 +75,16 @@ namespace Squared.Util {
             var path = Path.Combine(GetDirectory(), name);
             using (var src = Assembly.GetManifestResourceStream(name)) {
                 try {
+                    var pdb = Assembly.GetManifestResourceStream(name.Replace(".dll", ".pdb"));
+                    if (pdb != null) {
+                        using (pdb)
+                        using (var dest = File.OpenWrite(path.Replace(".dll", ".pdb")))
+                            pdb.CopyTo(dest);
+                    }
+                } catch {
+                }
+
+                try {
                     using (var dest = File.OpenWrite(path))
                         src.CopyTo(dest);
                 } catch (IOException exc) {

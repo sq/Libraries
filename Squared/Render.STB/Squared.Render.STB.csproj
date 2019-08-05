@@ -84,6 +84,9 @@
     <EmbeddedResource Include="..\STBNative\bin\stbi-$(PlatformTarget)-$(Configuration).dll">
       <LogicalName>stb_image.dll</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="..\STBNative\bin\stbi-$(PlatformTarget)-$(Configuration).pdb">
+      <LogicalName>stb_image.pdb</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RenderLib\Squared.Render.csproj">

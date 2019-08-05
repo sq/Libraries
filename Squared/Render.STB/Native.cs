@@ -44,6 +44,9 @@ namespace Squared.Render.STB.Native {
         public static extern byte* stbi_load_from_callbacks (ref STBI_IO_Callbacks clbk, void *user, out int x, out int y, out int channels, int desired_channels);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        public static extern byte* stbi_load_from_callbacks_with_palette (ref STBI_IO_Callbacks clbk, void *user, out int x, out int y, out int channels, int desired_channels, UInt32* palette, int palette_len);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern ushort* stbi_load_16_from_memory (byte* buffer, int len, out int x, out int y, out int channels, int desired_channels);
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         public static extern ushort* stbi_load_16_from_callbacks (ref STBI_IO_Callbacks clbk, void *user, out int x, out int y, out int channels, int desired_channels);
