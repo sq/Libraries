@@ -48,6 +48,7 @@ namespace Squared.Render {
             public object UserData;
             public PendingDrawHandler Handler;
             public IFuture OnComplete;
+            public ViewTransform? ViewTransform;
         }
 
         struct DrawTask : IWorkItem {
@@ -415,7 +416,9 @@ namespace Squared.Render {
 
         private void PendingDrawSetupHandler (DeviceManager dm, object _pd) {
             var pd = (PendingDraw)_pd;
-            pd.Materials.PushViewTransform(ViewTransform.CreateOrthographic(pd.RenderTarget.Width, pd.RenderTarget.Height));
+            var vt = pd.ViewTransform ??
+                ViewTransform.CreateOrthographic(pd.RenderTarget.Width, pd.RenderTarget.Height);
+            pd.Materials.PushViewTransform(ref vt);
             dm.Device.Clear(Color.Transparent);
         }
 
@@ -870,7 +873,8 @@ namespace Squared.Render {
         /// <param name="onComplete">A Future instance that will have userData stored into it when rendering is complete.</param>
         public bool QueueDrawToRenderTarget (
             RenderTarget2D renderTarget, DefaultMaterialSet materials, 
-            PendingDrawHandler handler, object userData = null, IFuture onComplete = null
+            PendingDrawHandler handler, object userData = null, IFuture onComplete = null,
+            ViewTransform? viewTransform = null
         ) {
             if (!ValidateDrawToRenderTarget(renderTarget, materials))
                 return false;
@@ -881,7 +885,8 @@ namespace Squared.Render {
                     Handler = handler,
                     Materials = materials,
                     UserData = userData,
-                    OnComplete = onComplete
+                    OnComplete = onComplete,
+                    ViewTransform = viewTransform
                 });
             return true;
         }
