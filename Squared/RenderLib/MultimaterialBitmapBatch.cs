@@ -127,7 +127,7 @@ namespace Squared.Render {
             BitmapDrawCall[] items, int firstIndex, int count, 
             Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, 
             DrawCallSortKey? sortKey = null, Vector2? scale = null, Material customMaterial = null,
-            SamplerState samplerState1 = null, SamplerState samplerState2 = null
+            SamplerState samplerState1 = null, SamplerState samplerState2 = null, Color? userData = null
         ) {
             MaterialBitmapDrawCall dc;
             for (int i = 0; i < count; i++) {
@@ -143,6 +143,8 @@ namespace Squared.Render {
                     item.MultiplyColor = multiplyColor.Value;
                 if (addColor.HasValue)
                     item.AddColor = addColor.Value;
+                if (userData.HasValue)
+                    item.UserData = userData.Value;
                 if (sortKey.HasValue)
                     item.SortKey = sortKey.Value;
                 if (scale.HasValue)

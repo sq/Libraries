@@ -207,14 +207,15 @@ namespace Squared.Render {
         public void AddRange (
             BitmapDrawCall[] items, int firstIndex, int count, 
             Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, 
-            DrawCallSortKey? sortKey = null, Vector2? scale = null, Material material = null
+            DrawCallSortKey? sortKey = null, Vector2? scale = null, Material material = null,
+            Color? userData = null
         ) {
             if (material != null)
                 throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
 
             if (
                 (offset == null) && (multiplyColor == null) && (addColor == null) &&
-                (sortKey == null) && (scale == null)
+                (userData == null) && (sortKey == null) && (scale == null)
             ) {
                 AddRange(items, firstIndex, count);
                 return;
@@ -233,6 +234,8 @@ namespace Squared.Render {
                     item.MultiplyColor = multiplyColor.Value;
                 if (addColor.HasValue)
                     item.AddColor = addColor.Value;
+                if (userData.HasValue)
+                    item.UserData = userData.Value;
                 if (sortKey.HasValue)
                     item.SortKey = sortKey.Value;
                 if (scale.HasValue)

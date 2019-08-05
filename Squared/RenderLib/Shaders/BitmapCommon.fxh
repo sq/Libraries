@@ -96,6 +96,7 @@ void ScreenSpaceVertexShader (
     in float rotation : POSITION4,
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
+    inout float4 userData : COLOR2,
     in int2 cornerIndex : BLENDINDICES0, // 0-3
     out float2 texCoord1 : TEXCOORD0,
     out float4 newTexRgn1 : TEXCOORD1,
@@ -122,6 +123,7 @@ void WorldSpaceVertexShader (
     in float rotation : POSITION4,
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
+    inout float4 userData : COLOR2,
     in int2 cornerIndex : BLENDINDICES0, // 0-3
     out float2 texCoord1 : TEXCOORD0,
     out float4 newTexRgn1 : TEXCOORD1,

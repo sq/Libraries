@@ -105,7 +105,7 @@ namespace Squared.Render.Convenience {
             AddressV = TextureAddressMode.Clamp,
             AddressW = TextureAddressMode.Clamp,
             Filter = TextureFilter.Linear,
-            MipMapLevelOfDetailBias = -0.5f
+            MipMapLevelOfDetailBias = -0.75f
         };
     }
 
@@ -714,7 +714,7 @@ namespace Squared.Render.Convenience {
             Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, Vector2? scale = null,
-            Material material = null
+            Material material = null, Color? userData = null
         ) {
             using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, material)) {
                 if (LowPriorityMaterialOrdering) {
@@ -726,7 +726,7 @@ namespace Squared.Render.Convenience {
                     var mmbb = (MultimaterialBitmapBatch)batch;
                     mmbb.AddRange(
                         drawCalls.Array, drawCalls.Offset, drawCalls.Count,
-                        offset: offset, multiplyColor: multiplyColor, addColor: addColor, sortKey: sortKey,
+                        offset: offset, multiplyColor: multiplyColor, addColor: addColor, userData: userData, sortKey: sortKey,
                         scale: scale, customMaterial: material, 
                         samplerState1: samplerState, samplerState2: samplerState
                     );
@@ -734,7 +734,7 @@ namespace Squared.Render.Convenience {
                     var bb = (BitmapBatch)batch;
                     bb.AddRange(
                         drawCalls.Array, drawCalls.Offset, drawCalls.Count,
-                        offset: offset, multiplyColor: multiplyColor, addColor: addColor, sortKey: sortKey,
+                        offset: offset, multiplyColor: multiplyColor, addColor: addColor, userData: userData, sortKey: sortKey,
                         scale: scale
                     );
                 }

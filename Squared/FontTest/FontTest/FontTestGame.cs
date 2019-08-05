@@ -118,14 +118,14 @@ namespace FontTest {
 
             Text = new DynamicStringLayout(ActiveFont, TestText) {
                 // Alignment = HorizontalAlignment.Right,
-                AlignToPixels = GlyphPixelAlignment.FloorY,
+                AlignToPixels = GlyphPixelAlignment.FloorXY,
                 CharacterWrap = true,
                 WordWrap = true,
                 Scale = TextScale,
                 ReverseOrder = true
             };
             Text2 = new DynamicStringLayout(ActiveFont, TestText2) {
-                AlignToPixels = GlyphPixelAlignment.FloorY,
+                AlignToPixels = GlyphPixelAlignment.FloorXY,
                 CharacterWrap = true,
                 WordWrap = true,
                 Scale = TextScale,
@@ -185,11 +185,10 @@ namespace FontTest {
                 ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
 
             var m = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
-            m.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.66f));
             m.Parameters.ShadowOffset.SetValue(new Vector2(1.5f, 1.5f));
 
             ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.Size), Color.Yellow * 0.75f);
-            ir.DrawMultiple(layout, material: m, samplerState: RenderStates.Text);
+            ir.DrawMultiple(layout, material: m, samplerState: RenderStates.Text, userData: Color.Black * 0.66f);
 
             if (Which.Value) {
                 Text2.Position = TopLeft + new Vector2(0, layout.Size.Y + 20);
@@ -200,7 +199,7 @@ namespace FontTest {
                     ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
 
                 ir.OutlineRectangle(Bounds.FromPositionAndSize(Text2.Position, layout.Size), Color.Yellow * 0.75f);
-                ir.DrawMultiple(layout, material: m, samplerState: RenderStates.Text);
+                ir.DrawMultiple(layout, material: m, samplerState: RenderStates.Text, userData: Color.Black * 0.66f);
             }
 
         }
