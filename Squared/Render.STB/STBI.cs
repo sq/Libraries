@@ -13,6 +13,8 @@ namespace Squared.Render.STB {
         public bool IsDisposed { get; private set; }
         public void* Data { get; private set; }
         public bool IsFloatingPoint { get; private set; }
+        public bool IsPaletted { get; private set; }
+        public UInt32[] Palette { get; private set; }
 
         private static FileStream OpenStream (string path) {
             return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -62,6 +64,8 @@ namespace Squared.Render.STB {
                 ChannelCount = 1;
                 fixed (UInt32 * pPalette = palette)
                     Data = Native.API.stbi_load_from_callbacks_with_palette(ref callbacks, null, out Width, out Height, pPalette, palette.Length);
+                Palette = palette;
+                IsPaletted = true;
             } else if (asFloatingPoint)
                 Data = Native.API.stbi_loadf_from_callbacks(ref callbacks, null, out Width, out Height, out ChannelCount, 4);
             else
@@ -156,14 +160,24 @@ namespace Squared.Render.STB {
             }
         }
 
+        public SurfaceFormat Format {
+            get {
+                if (IsPaletted)
+                    return SurfaceFormat.Alpha8;
+                else if (IsFloatingPoint)
+                    return SurfaceFormat.Vector4;
+                else
+                    return SurfaceFormat.Color;
+            }
+        }
+
         public Texture2D CreateTexture (RenderCoordinator coordinator, bool generateMips = false) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image is disposed");
             // FIXME: Channel count
-            var format = IsFloatingPoint ? SurfaceFormat.Vector4 : SurfaceFormat.Color;
             Texture2D result;
             lock (coordinator.CreateResourceLock)
-                result = new Texture2D(coordinator.Device, Width, Height, generateMips, format);
+                result = new Texture2D(coordinator.Device, Width, Height, generateMips, Format);
 
             // FIXME: FP mips
             if (generateMips && !IsFloatingPoint)
