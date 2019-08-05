@@ -691,28 +691,66 @@ namespace Squared.Util {
             }
         }
 
+        [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 4)]
+        private struct U32F32 {
+            [FieldOffset(0)]
+            public uint U;
+            [FieldOffset(0)]
+            public float F;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static unsafe int CompareFSlow (uint u1, uint u2) {
-            int sign1 = (int)(u1 >> 31), sign2 = (int)(u2 >> 31);
-            if (sign1 != sign2)
-                return (sign2 - sign1);
+            unchecked {
+                int sign1 = (int)(u1 >> 31), sign2 = (int)(u2 >> 31);
+                if (sign1 != sign2)
+                    return (sign2 - sign1);
 
-            int multiplier = (sign1 * -2) + 1;
-            var delta = u1 - u2;
-            int result = (int)(delta) * multiplier;
-            return result;
+                int multiplier = (sign1 * -2) + 1;
+                var delta = u1 - u2;
+                int result = (int)(delta) * multiplier;
+                return result;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe int CompareF (float lhs, float rhs) {
             unchecked {
-                uint u1 = *(uint*)&lhs;
-                uint u2 = *(uint*)&rhs;
+                // HACK: The union produces a couple fewer memory loads/stores & fewer insns than the uint* approach.
+                //  I'm just going to assume that fewer memory ops & fewer insns = better perf 
+                /* Union (other insns removed)
+                    mov         qword ptr [rsp+28h],rax  
+                    vmovss      xmm0,dword ptr [rdx+70h]  
+                    vmovss      xmm1,dword ptr [rsi+70h]  
+                    vmovss      dword ptr [rsp+28h],xmm0  
+                    mov         ecx,dword ptr [rsp+28h]  
+                    vmovss      dword ptr [rsp+28h],xmm1  
+                    cmp         ecx,dword ptr [rsp+28h]  
+                    mov         eax,dword ptr [rsp+28h]  
+                    lea         r8d,[r9*2+1]  
+                  Ptrs
+                    vmovss      xmm0,dword ptr [rdx+70h]  
+                    vmovss      dword ptr [rsp+2Ch],xmm0  
+                    vmovss      xmm0,dword ptr [rsi+70h]  
+                    vmovss      dword ptr [rsp+28h],xmm0  
+                    lea         rcx,[rsp+2Ch]  
+                    lea         rax,[rsp+28h]  
+                    mov         r8d,dword ptr [rcx]  
+                    cmp         r8d,dword ptr [rax]  
+                    mov         r8d,dword ptr [rcx]  
+                    mov         ecx,dword ptr [rax]  
+                    lea         eax,[r9*2+1]  
+                */
+                uint u1;
+                U32F32 u = default(U32F32);
+                u.F = lhs;
+                u1 = u.U;
+                u.F = rhs;
 
-                if (u1 == u2)
+                if (u1 == u.U)
                     return 0;
 
-                return CompareFSlow(u1, u2);
+                return CompareFSlow(u1, u.U);
             }
         }
     }
