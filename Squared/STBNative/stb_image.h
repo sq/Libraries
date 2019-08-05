@@ -994,7 +994,7 @@ static void *stbi__load_main(stbi__context *s, int *x, int *y, int *comp, int re
    if (stbi__jpeg_test(s)) return stbi__jpeg_load(s,x,y,comp,req_comp, ri);
    #endif
    #ifndef STBI_NO_PNG
-   if (stbi__png_test(s))  return stbi__png_load(s,x,y,comp,req_comp, ri);
+   if (stbi__png_test(s))  return stbi__png_load(s,x,y,comp,req_comp, NULL, NULL, ri);
    #endif
    #ifndef STBI_NO_BMP
    if (stbi__bmp_test(s))  return stbi__bmp_load(s,x,y,comp,req_comp, ri);
@@ -1022,7 +1022,7 @@ static void *stbi__load_main(stbi__context *s, int *x, int *y, int *comp, int re
    #ifndef STBI_NO_TGA
    // test tga last because it's a crappy test!
    if (stbi__tga_test(s))
-      return stbi__tga_load(s,x,y,comp,req_comp, ri);
+      return stbi__tga_load(s,x,y,comp,req_comp, NULL, NULL, ri);
    #endif
 
    return stbi__errpuc("unknown image type", "Image not of any known type, or corrupt");
@@ -4797,9 +4797,9 @@ static int stbi__parse_png_file(stbi__png *z, int scan, int req_comp, unsigned i
 
    if (palette_buffer) {
        if (palette_buffer_len < 256)
-           return 0;
+           return stbi__err("palette buffer too small", "palette buffer len must be 256");
        else if (req_comp != 1)
-           return 0;
+           return stbi__err("invalid req_comp", "req_comp must be 1 when loading paletted");
        else
            palette = (stbi_uc *)(void *)palette_buffer;
    }
@@ -4971,8 +4971,15 @@ static int stbi__parse_png_file(stbi__png *z, int scan, int req_comp, unsigned i
 static void *stbi__do_png(stbi__png *p, int *x, int *y, int *n, int req_comp, unsigned int *palette_buffer, int palette_buffer_len, stbi__result_info *ri)
 {
    void *result=NULL;
-   if (req_comp < 0 || req_comp > 4) return stbi__errpuc("bad req_comp", "Internal error");
-   if (stbi__parse_png_file(p, STBI__SCAN_load, req_comp)) {
+   if (palette_buffer && req_comp != 1) {
+       stbi__err("bad req_comp", "req_comp must be 1 if loading paletted image without expansion"); 
+       return NULL;
+   }
+   if (req_comp < 0 || req_comp > 4) {
+       stbi__err("bad req_comp", "Internal error"); 
+       return NULL;
+   }
+   if (stbi__parse_png_file(p, STBI__SCAN_load, req_comp, palette_buffer, palette_buffer_len)) {
       if (p->depth < 8)
          ri->bits_per_channel = 8;
       else
@@ -5015,7 +5022,7 @@ static int stbi__png_test(stbi__context *s)
 
 static int stbi__png_info_raw(stbi__png *p, int *x, int *y, int *comp)
 {
-   if (!stbi__parse_png_file(p, STBI__SCAN_header, 0)) {
+   if (!stbi__parse_png_file(p, STBI__SCAN_header, 0, 0, 0)) {
       stbi__rewind( p->s );
       return 0;
    }
@@ -5595,7 +5602,7 @@ static void *stbi__tga_load(stbi__context *s, int *x, int *y, int *comp, int req
                  STBI_FREE(tga_data);
                  return stbi__errpuc("buffer too small", "Palette buffer too small");
              }
-             tga_palette = palette_buffer;
+             tga_palette = (unsigned char*)(void*)palette_buffer;
          } else {
             tga_palette = (unsigned char*)stbi__malloc_mad2(tga_palette_len, tga_comp, 0);
             if (!tga_palette) {
