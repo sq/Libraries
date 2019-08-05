@@ -731,7 +731,7 @@ namespace Squared.Render {
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
         public readonly EffectParameter BitmapTextureSize, HalfTexel;
         public readonly EffectParameter BitmapTextureSize2, HalfTexel2;
-        public readonly EffectParameter ShadowOffset, LightmapUVOffset;
+        public readonly EffectParameter ShadowColor, ShadowOffset, LightmapUVOffset;
         public readonly EffectParameter Time, FrameIndex, DitherStrength;
         public readonly EffectParameter HalfPixelOffset;
         public readonly EffectParameter RenderTargetDimensions;
@@ -752,6 +752,7 @@ namespace Squared.Render {
             HalfTexel2 = effect.Parameters["HalfTexel2"];
             Time = effect.Parameters["Time"];
             FrameIndex = effect.Parameters["FrameIndex"];
+            ShadowColor = effect.Parameters["GlobalShadowColor"];
             ShadowOffset = effect.Parameters["ShadowOffset"];
             LightmapUVOffset = effect.Parameters["LightmapUVOffset"];
             DitherStrength = effect.Parameters["DitherStrength"];

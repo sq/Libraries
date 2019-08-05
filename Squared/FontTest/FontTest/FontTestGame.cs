@@ -185,6 +185,7 @@ namespace FontTest {
                 ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
 
             var m = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
+            m.Parameters.ShadowColor.SetValue(Color.Red.ToVector4());
             m.Parameters.ShadowOffset.SetValue(new Vector2(1.5f, 1.5f));
 
             ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.Size), Color.Yellow * 0.75f);
@@ -199,7 +200,7 @@ namespace FontTest {
                     ir.OutlineRectangle(dc.EstimateDrawBounds(), Color.Blue);
 
                 ir.OutlineRectangle(Bounds.FromPositionAndSize(Text2.Position, layout.Size), Color.Yellow * 0.75f);
-                ir.DrawMultiple(layout, material: m, samplerState: RenderStates.Text, userData: Color.Black * 0.66f);
+                ir.DrawMultiple(layout, material: m, samplerState: RenderStates.Text);
             }
 
         }

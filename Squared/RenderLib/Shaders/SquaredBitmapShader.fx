@@ -5,6 +5,7 @@
 #include "DitherCommon.fxh"
 #include "LUTCommon.fxh"
 
+uniform const float4 GlobalShadowColor;
 uniform const float2 ShadowOffset;
 
 Texture2D LUT1 : register(t4);
@@ -106,7 +107,7 @@ void ShadowedPixelShader (
 
     float2 shadowTexCoord = clamp2(texCoord - (ShadowOffset * HalfTexel * 2), texRgn.xy, texRgn.zw);
     float4 texColor = tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
-    float4 shadowColor = shadowColorIn * tex2D(TextureSampler, shadowTexCoord);
+    float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2D(TextureSampler, shadowTexCoord);
     float shadowAlpha = 1 - texColor.a;
     result = ((shadowColor * shadowAlpha) + (addColor * texColor.a)) * multiplyColor.a + (texColor * multiplyColor);
 }
@@ -141,7 +142,7 @@ void ShadowedPixelShaderWithDiscard (
 
     float2 shadowTexCoord = clamp2(texCoord - (ShadowOffset * HalfTexel * 2), texRgn.xy, texRgn.zw);
     float4 texColor = tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
-    float4 shadowColor = shadowColorIn * tex2D(TextureSampler, shadowTexCoord);
+    float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2D(TextureSampler, shadowTexCoord);
     float shadowAlpha = 1 - texColor.a;
     result = ((shadowColor * shadowAlpha) + (addColor * texColor.a)) * multiplyColor.a + (texColor * multiplyColor);
 
