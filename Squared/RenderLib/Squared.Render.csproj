@@ -81,6 +81,9 @@
     <None Include="Shaders\*.fx" />
     <None Include="Shaders\*.fxh" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PalettedBitmap.fx" />
+  </ItemGroup>
   <PropertyGroup>
     <SquaredPath>..\..\</SquaredPath>
     <FNAPath>..\..\..\FNA\</FNAPath>

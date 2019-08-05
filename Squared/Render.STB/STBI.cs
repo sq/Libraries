@@ -171,6 +171,24 @@ namespace Squared.Render.STB {
             }
         }
 
+        public Texture2D CreatePaletteTexture (RenderCoordinator coordinator, int height = 1) {
+            if (IsDisposed)
+                throw new ObjectDisposedException("Image is disposed");
+            if (Palette == null)
+                throw new InvalidOperationException("Image has no palette");
+
+            Texture2D result;
+            lock (coordinator.CreateResourceLock)
+                result = new Texture2D(coordinator.Device, Palette.Length, height, false, SurfaceFormat.Color);
+
+            var pin = GCHandle.Alloc(Palette, GCHandleType.Pinned);
+            lock (coordinator.UseResourceLock)
+                result.SetDataPointerEXT(0, new Rectangle(0, 0, Palette.Length, 1), pin.AddrOfPinnedObject(), Palette.Length * sizeof(UInt32));
+            pin.Free();
+
+            return result;
+        }
+
         public Texture2D CreateTexture (RenderCoordinator coordinator, bool generateMips = false) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image is disposed");

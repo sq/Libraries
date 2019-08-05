@@ -13,6 +13,8 @@ namespace Squared.Render {
         public bool FloatingPoint;
         public bool GenerateMips;
         public UInt32[] Palette;
+        public int PaletteTextureHeight = 1;
+        public Texture2D PaletteTexture;
     }
 
     public class EmbeddedTexture2DProvider : EmbeddedResourceProvider<Texture2D> {
@@ -41,8 +43,12 @@ namespace Squared.Render {
             var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
             if (options.Palette != null && options.GenerateMips)
                 throw new ArgumentException("Cannot generate mips for a paletted image");
-            using (var img = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint, options.Palette))
+            using (var img = new STB.Image(stream, false, options.Premultiply, options.FloatingPoint, options.Palette)) {
+                if (options.Palette != null)
+                    options.PaletteTexture = img.CreatePaletteTexture(Coordinator, options.PaletteTextureHeight);
+
                 return img.CreateTexture(Coordinator, options.GenerateMips);
+            }
         }
     }
 }

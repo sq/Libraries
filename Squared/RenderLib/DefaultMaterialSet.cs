@@ -259,8 +259,10 @@ namespace Squared.Render {
         public Material ScreenSpaceBitmapToSRGB, WorldSpaceBitmapToSRGB;
         public Material ScreenSpaceBitmapWithLUT, WorldSpaceBitmapWithLUT;
         public Material ScreenSpaceShadowedBitmap, WorldSpaceShadowedBitmap;
+        public Material ScreenSpacePalettedBitmap, WorldSpacePalettedBitmap;
         public Material ScreenSpaceShadowedBitmapWithDiscard, WorldSpaceShadowedBitmapWithDiscard;
         public Material ScreenSpaceBitmapWithDiscard, WorldSpaceBitmapWithDiscard;
+        public Material ScreenSpacePalettedBitmapWithDiscard, WorldSpacePalettedBitmapWithDiscard;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
@@ -348,6 +350,7 @@ namespace Squared.Render {
             var bitmapShader = BuiltInShaders.Load("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load("SquaredGeometryShader");
             var rasterShapesShader = BuiltInShaders.Load("RasterShapes");
+            var palettedShader = BuiltInShaders.Load("PalettedBitmap");
             
             ScreenSpaceBitmap = new Material(
                 bitmapShader,
@@ -411,6 +414,26 @@ namespace Squared.Render {
             WorldSpaceBitmapWithDiscard = new Material(
                 bitmapShader,
                 "WorldSpaceBitmapWithDiscardTechnique"
+            );
+
+            ScreenSpacePalettedBitmap = new Material(
+                palettedShader,
+                "ScreenSpacePalettedBitmapTechnique"
+            );
+
+            WorldSpacePalettedBitmap = new Material(
+                palettedShader,
+                "WorldSpacePalettedBitmapTechnique"
+            );
+
+            ScreenSpacePalettedBitmapWithDiscard = new Material(
+                palettedShader,
+                "ScreenSpacePalettedBitmapWithDiscardTechnique"
+            );
+
+            WorldSpacePalettedBitmapWithDiscard = new Material(
+                palettedShader,
+                "WorldSpacePalettedBitmapWithDiscardTechnique"
             );
 
             ScreenSpaceGeometry = new Material(
@@ -735,6 +758,7 @@ namespace Squared.Render {
         public readonly EffectParameter Time, FrameIndex, DitherStrength;
         public readonly EffectParameter HalfPixelOffset;
         public readonly EffectParameter RenderTargetDimensions;
+        public readonly EffectParameter Palette;
 
         public DefaultMaterialSetEffectParameters (Effect effect) {
             var viewport = effect.Parameters["Viewport"];
@@ -758,6 +782,7 @@ namespace Squared.Render {
             DitherStrength = effect.Parameters["DitherStrength"];
             HalfPixelOffset = effect.Parameters["HalfPixelOffset"];
             RenderTargetDimensions = effect.Parameters["__RenderTargetDimensions__"];
+            Palette = effect.Parameters["Palette"];
         }
     }
 
