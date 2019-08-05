@@ -436,13 +436,16 @@ namespace Squared.Render {
                     Z = call.SortKey.Order * zBufferFactor
                 },
                 Texture1Region = call.TextureRegion.ToVector4(),
-                Texture2Region = call.TextureRegion2.GetValueOrDefault(call.TextureRegion).ToVector4(),
                 MultiplyColor = call.MultiplyColor,
                 AddColor = call.AddColor,
                 Scale = call.Scale,
                 Origin = call.Origin,
                 Rotation = call.Rotation
             };
+            if (call.TextureRegion2.TopLeft == call.TextureRegion2.BottomRight)
+                result.Texture2Region = result.Texture1Region;
+            else
+                result.Texture2Region = call.TextureRegion2.ToVector4();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -687,19 +690,28 @@ namespace Squared.Render {
     }
 
     public struct AbstractTextureReference {
-        public readonly IDynamicTexture Dynamic;
-        public readonly Texture2D Static;
+        private readonly object Reference;
+
+        public IDynamicTexture Dynamic {
+            get {
+                return Reference as IDynamicTexture;
+            }
+        }
+
+        public Texture2D Static {
+            get {
+                return Reference as Texture2D;
+            }
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public AbstractTextureReference (Texture2D tex) {
-            Dynamic = null;
-            Static = tex;
+            Reference = tex;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public AbstractTextureReference (IDynamicTexture tex) {
-            Dynamic = tex;
-            Static = null;
+            Reference = tex;
         }
 
         public bool IsDisposed {
@@ -716,33 +728,29 @@ namespace Squared.Render {
         // FIXME: Make this a method?
         public Texture2D Instance {
             get {
-                if (Dynamic != null)
-                    return Dynamic.Texture;
+                var dyn = Reference as IDynamicTexture;
+                if (dyn != null)
+                    return dyn.Texture;
                 else
-                    return Static;
+                    return (Texture2D)Reference;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
-            if (Dynamic != null)
-                return Dynamic.GetHashCode();
-            else if (Static != null)
-                return Static.GetHashCode();
-            else
-                return 0;
+            return Reference.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (AbstractTextureReference rhs) {
-            return (Static == rhs.Static) && (Dynamic == rhs.Dynamic);
+            return Object.ReferenceEquals(Reference, rhs.Reference);
         }
 
         public override bool Equals (object obj) {
             if (obj is AbstractTextureReference)
                 return Equals((AbstractTextureReference)obj);
             else
-                return false;
+                return Object.ReferenceEquals(Reference, obj);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -884,7 +892,7 @@ namespace Squared.Render {
         public Vector4    UserData;
         public Color      MultiplyColor, AddColor;
         public Bounds     TextureRegion;
-        public Bounds?    TextureRegion2;
+        public Bounds     TextureRegion2;
         public TextureSet Textures;
         public DrawCallSortKey SortKey;
 
@@ -955,7 +963,7 @@ namespace Squared.Render {
             Textures = textures;
             Position = position;
             TextureRegion = textureRegion;
-            TextureRegion2 = null;
+            TextureRegion2 = default(Bounds);
             MultiplyColor = color;
             AddColor = default(Color);
             Scale = scale;
@@ -1125,10 +1133,10 @@ namespace Squared.Render {
                         return false;
                     if (!TextureRegion.BottomRight.IsFinite())
                         return false;
-                    if (TextureRegion2.HasValue) {
-                        if (!TextureRegion2.Value.TopLeft.IsFinite())
+                    if (TextureRegion2.TopLeft != TextureRegion2.BottomRight) {
+                        if (!TextureRegion2.TopLeft.IsFinite())
                             return false;
-                        if (!TextureRegion2.Value.BottomRight.IsFinite())
+                        if (!TextureRegion2.BottomRight.IsFinite())
                             return false;
                     }
                     if (!Arithmetic.IsFinite(Rotation))
