@@ -631,7 +631,7 @@ namespace Squared.Render.Convenience {
             bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null, 
             BlendState blendState = null, SamplerState samplerState = null,
-            Material material = null
+            Material material = null, Color userData = default(Color)
         ) {
             var drawCall = new BitmapDrawCall(texture, position);
             if (sourceRectangle.HasValue)
@@ -641,6 +641,7 @@ namespace Squared.Render.Convenience {
             drawCall.Rotation = rotation;
             drawCall.Scale = scale.GetValueOrDefault(Vector2.One);
             drawCall.Origin = origin;
+            drawCall.UserData = userData;
             if (mirrorX || mirrorY)
                 drawCall.Mirror(mirrorX, mirrorY);
 
@@ -658,7 +659,7 @@ namespace Squared.Render.Convenience {
             bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null,
-            Material material = null
+            Material material = null, Color userData = default(Color)
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(x, y));
             if (sourceRectangle.HasValue)
@@ -666,6 +667,7 @@ namespace Squared.Render.Convenience {
             drawCall.MultiplyColor = multiplyColor.GetValueOrDefault(Color.White);
             drawCall.AddColor = addColor;
             drawCall.Rotation = rotation;
+            drawCall.UserData = userData;
             drawCall.Scale = new Vector2(scaleX, scaleY);
             drawCall.Origin = new Vector2(originX, originY);
             if (mirrorX || mirrorY)
@@ -685,7 +687,7 @@ namespace Squared.Render.Convenience {
             bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null,
-            Material material = null
+            Material material = null, Color userData = default(Color)
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(destRectangle.X, destRectangle.Y));
             if (sourceRectangle.HasValue) {
@@ -699,6 +701,7 @@ namespace Squared.Render.Convenience {
             drawCall.AddColor = addColor;
             drawCall.Rotation = rotation;
             drawCall.Origin = new Vector2(originX, originY);
+            drawCall.UserData = userData;
             if (mirrorX || mirrorY)
                 drawCall.Mirror(mirrorX, mirrorY);
 

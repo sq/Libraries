@@ -758,7 +758,7 @@ namespace Squared.Render {
         public readonly EffectParameter Time, FrameIndex, DitherStrength;
         public readonly EffectParameter HalfPixelOffset;
         public readonly EffectParameter RenderTargetDimensions;
-        public readonly EffectParameter Palette;
+        public readonly EffectParameter Palette, PaletteSize;
 
         public DefaultMaterialSetEffectParameters (Effect effect) {
             var viewport = effect.Parameters["Viewport"];
@@ -783,6 +783,12 @@ namespace Squared.Render {
             HalfPixelOffset = effect.Parameters["HalfPixelOffset"];
             RenderTargetDimensions = effect.Parameters["__RenderTargetDimensions__"];
             Palette = effect.Parameters["Palette"];
+            PaletteSize = effect.Parameters["PaletteSize"];
+        }
+
+        public void SetPalette (Texture2D palette) {
+            Palette?.SetValue(palette);
+            PaletteSize?.SetValue(new Vector2(palette.Width, palette.Height));
         }
     }
 
