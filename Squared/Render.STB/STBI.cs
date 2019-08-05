@@ -59,8 +59,9 @@ namespace Squared.Render.STB {
                     throw new ArgumentException("Cannot load paletted image as floating point");
                 else if (premultiply)
                     throw new ArgumentException("FIXME: Cannot premultiply paletted image");
+                ChannelCount = 1;
                 fixed (UInt32 * pPalette = palette)
-                    Data = Native.API.stbi_load_from_callbacks_with_palette(ref callbacks, null, out Width, out Height, out ChannelCount, 1, pPalette, palette.Length);
+                    Data = Native.API.stbi_load_from_callbacks_with_palette(ref callbacks, null, out Width, out Height, pPalette, palette.Length);
             } else if (asFloatingPoint)
                 Data = Native.API.stbi_loadf_from_callbacks(ref callbacks, null, out Width, out Height, out ChannelCount, 4);
             else

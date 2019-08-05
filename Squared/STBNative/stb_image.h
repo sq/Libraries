@@ -4990,7 +4990,9 @@ static void *stbi__do_png(stbi__png *p, int *x, int *y, int *n, int req_comp, un
       result = p->out;
       p->out = NULL;
       if (req_comp && req_comp != p->s->img_out_n) {
-         if (ri->bits_per_channel == 8)
+         if (palette_buffer)
+            ;
+         else if (ri->bits_per_channel == 8)
             result = stbi__convert_format((unsigned char *) result, p->s->img_out_n, req_comp, p->s->img_x, p->s->img_y);
          else
             result = stbi__convert_format16((stbi__uint16 *) result, p->s->img_out_n, req_comp, p->s->img_x, p->s->img_y);
@@ -4999,7 +5001,12 @@ static void *stbi__do_png(stbi__png *p, int *x, int *y, int *n, int req_comp, un
       }
       *x = p->s->img_x;
       *y = p->s->img_y;
-      if (n) *n = p->s->img_n;
+      if (n) {
+         if (palette_buffer)
+            *n = 1;
+         else
+            *n = p->s->img_n;
+      }
    }
    STBI_FREE(p->out);      p->out      = NULL;
    STBI_FREE(p->expanded); p->expanded = NULL;
