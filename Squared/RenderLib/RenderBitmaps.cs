@@ -95,10 +95,12 @@ namespace Squared.Render {
             var result = Comparer.Compare(x, y);
 
             if (result == 0) {
-                result = (x.Textures.HashCode > y.Textures.HashCode)
+                var hashX = x.Textures.GetHashCode();
+                var hashY = y.Textures.GetHashCode();
+                result = (hashX > hashY)
                 ? 1
                 : (
-                    (x.Textures.HashCode < y.Textures.HashCode)
+                    (hashX < hashY)
                     ? -1
                     : 0
                 );
@@ -118,7 +120,7 @@ namespace Squared.Render {
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             var result = FastMath.CompareF(x.SortKey.Order, y.SortKey.Order);
             if (result == 0)
-                result = (x.Textures.HashCode - y.Textures.HashCode);
+                result = (x.Textures.GetHashCode() - y.Textures.GetHashCode());
             return result;
         }
 
@@ -131,10 +133,12 @@ namespace Squared.Render {
     public sealed class BitmapDrawCallTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
-            return (x.Textures.HashCode > y.Textures.HashCode)
+            var hashX = x.Textures.GetHashCode();
+            var hashY = y.Textures.GetHashCode();
+            return (hashX > hashY)
                 ? 1
                 : (
-                    (x.Textures.HashCode < y.Textures.HashCode)
+                    (hashX < hashY)
                     ? -1
                     : 0
                 );
@@ -771,34 +775,34 @@ namespace Squared.Render {
 
     public struct TextureSet {
         public readonly AbstractTextureReference Texture1, Texture2;
-        public readonly int HashCode;
+        private int HashCode;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (AbstractTextureReference texture1) {
             Texture1 = texture1;
             Texture2 = default(AbstractTextureReference);
-            HashCode = texture1.GetHashCode();
+            HashCode = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (AbstractTextureReference texture1, AbstractTextureReference texture2) {
             Texture1 = texture1;
             Texture2 = texture2;
-            HashCode = texture1.GetHashCode() ^ texture2.GetHashCode();
+            HashCode = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1) {
             Texture1 = texture1;
             Texture2 = default(AbstractTextureReference);
-            HashCode = texture1.GetHashCode();
+            HashCode = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1, Texture2D texture2) {
             Texture1 = texture1;
             Texture2 = texture2;
-            HashCode = texture1.GetHashCode() ^ texture2.GetHashCode();
+            HashCode = 0;
         }
 
         public Texture2D this[int index] {
@@ -846,6 +850,13 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
+            if (HashCode == 0) {
+                HashCode = Texture1.GetHashCode();
+                if (Texture2 != null)
+                    HashCode ^= Texture2.GetHashCode();
+                if (HashCode == 0)
+                    HashCode = 1;
+            }
             return HashCode;
         }
     }

@@ -56,7 +56,7 @@ namespace Squared.Render {
                     result = lhs.Material.MaterialID.CompareTo(rhs.Material.MaterialID);
 
                 if (result == 0)
-                    result = lhs.DrawCall.Textures.HashCode.CompareTo(rhs.DrawCall.Textures.HashCode);
+                    result = lhs.DrawCall.Textures.GetHashCode().CompareTo(rhs.DrawCall.Textures.GetHashCode());
 
                 return result;
             }
