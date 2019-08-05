@@ -250,7 +250,6 @@ namespace Squared.Render {
             try {
                 OnBeforeDraw(gameTime);
                 var frame = RenderCoordinator.BeginFrame();
-                RenderCoordinator.SynchronousDrawsEnabled = false;
                 Draw(gameTime, frame);
             } catch (Exception exc) {
                 Console.WriteLine("Caught {0} in Draw", exc);

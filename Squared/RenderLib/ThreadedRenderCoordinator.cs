@@ -31,8 +31,24 @@ namespace Squared.Render {
         }
     }
 
+    public delegate void PendingDrawHandler (IBatchContainer container, DefaultMaterialSet materials, object userData);
+
     public class RenderCoordinator : IDisposable {
         private static ThreadLocal<bool> IsDrawingOnThisThread = new ThreadLocal<bool>(false);
+
+        struct CompletedPendingDraw {
+            public object UserData;
+            public Exception Exception;
+            public IFuture OnComplete;
+        }
+
+        class PendingDraw {
+            public RenderTarget2D RenderTarget;
+            public DefaultMaterialSet Materials;
+            public object UserData;
+            public PendingDrawHandler Handler;
+            public IFuture OnComplete;
+        }
 
         struct DrawTask : IWorkItem {
             public readonly Action<Frame> Callback;
@@ -113,6 +129,8 @@ namespace Squared.Render {
         //  using multithreaded rendering
         private bool _DeviceLost = false, _DeviceIsDisposed = false;
 
+        private readonly UnorderedList<PendingDraw> PendingDrawQueue = new UnorderedList<PendingDraw>();
+        private readonly UnorderedList<CompletedPendingDraw> CompletedPendingDrawQueue = new UnorderedList<CompletedPendingDraw>();
         private readonly ConcurrentQueue<Action> BeforePrepareQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> BeforeIssueQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
@@ -389,7 +407,84 @@ namespace Squared.Render {
         }
 
         public Frame BeginFrame () {
-            return _FrameBeingPrepared = Manager.CreateFrame();
+            SynchronousDrawsEnabled = false;
+            var frame = _FrameBeingPrepared = Manager.CreateFrame();
+            RunPendingDraws(frame);
+            return _FrameBeingPrepared;
+        }
+
+        private void PendingDrawSetupHandler (DeviceManager dm, object _pd) {
+            var pd = (PendingDraw)_pd;
+            pd.Materials.PushViewTransform(ViewTransform.CreateOrthographic(pd.RenderTarget.Width, pd.RenderTarget.Height));
+            dm.Device.Clear(Color.Transparent);
+        }
+
+        private void PendingDrawTeardownHandler (DeviceManager dm, object _pd) {
+            var pd = (PendingDraw)_pd;
+            pd.Materials.PopViewTransform();
+        }
+
+        private void RunPendingDraws (Frame frame) {
+            lock (PendingDrawQueue)
+                if (PendingDrawQueue.Count == 0)
+                    return;
+
+            int i = 0;
+            BatchGroup bg = null;
+
+            while (true) {
+                PendingDraw pd;
+                lock (PendingDrawQueue) {
+                    if (PendingDrawQueue.Count == 0)
+                        return;
+                    pd = PendingDrawQueue.DangerousGetItem(0);
+                    PendingDrawQueue.DangerousRemoveAt(0);
+                }
+
+                if (bg == null)
+                    bg = BatchGroup.New(frame, int.MinValue + 1);
+
+                PerformPendingDraw(bg, i++, pd);
+            }
+        }
+
+        private void PerformPendingDraw (IBatchContainer container, int layer, PendingDraw pd) {
+            Exception exc = null;
+            using (var subGroup = BatchGroup.ForRenderTarget(
+                container, layer, pd.RenderTarget, name: "Pending Draw", 
+                before: PendingDrawSetupHandler,
+                after: PendingDrawTeardownHandler,
+                userData: pd
+            )) {
+                try {
+                    pd.Handler(subGroup, pd.Materials, pd.UserData);
+                } catch (Exception _) {
+                    if (pd.OnComplete != null)
+                        exc = _;
+                    else
+                        throw;
+                }
+            }
+
+            if (pd.OnComplete != null)
+            lock (CompletedPendingDrawQueue)
+                CompletedPendingDrawQueue.Add(new CompletedPendingDraw {
+                    UserData = pd.UserData,
+                    Exception = exc,
+                    OnComplete = pd.OnComplete
+                });
+        }
+
+        private void NotifyPendingDrawCompletions () {
+            lock (CompletedPendingDrawQueue) {
+                foreach (var cpd in CompletedPendingDrawQueue) {
+                    if (cpd.Exception != null)
+                        cpd.OnComplete.SetResult(null, cpd.Exception);
+                    else
+                        cpd.OnComplete.SetResult(cpd.UserData, null);
+                }
+                CompletedPendingDrawQueue.Clear();
+            }
         }
 
         public bool IsWaitingForDeviceToSettle {
@@ -639,6 +734,8 @@ namespace Squared.Render {
         }
 
         protected void RunAfterPresentHandlers () {
+            NotifyPendingDrawCompletions();
+
             while (AfterPresentQueue.Count > 0) {
                 Action afterPresent;
                 if (!AfterPresentQueue.TryDequeue(out afterPresent))
@@ -755,17 +852,52 @@ namespace Squared.Render {
             }
         }
 
+        private bool ValidateDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials) {
+            if (renderTarget == null)
+                throw new ArgumentNullException("renderTarget");
+            if (renderTarget.IsDisposed)
+                return false;
+            if (materials == null)
+                throw new ArgumentNullException("materials");
+
+            return true;
+        }
+
+        /// <summary>
+        /// Queues a draw operation to the specified render target.
+        /// The draw operation will occur at the start of the next frame before the frame itself has been rendered.
+        /// </summary>
+        /// <param name="onComplete">A Future instance that will have userData stored into it when rendering is complete.</param>
+        public bool QueueDrawToRenderTarget (
+            RenderTarget2D renderTarget, DefaultMaterialSet materials, 
+            PendingDrawHandler handler, object userData = null, IFuture onComplete = null
+        ) {
+            if (!ValidateDrawToRenderTarget(renderTarget, materials))
+                return false;
+
+            lock (PendingDrawQueue)
+                PendingDrawQueue.Add(new PendingDraw {
+                    RenderTarget = renderTarget,
+                    Handler = handler,
+                    Materials = materials,
+                    UserData = userData,
+                    OnComplete = onComplete
+                });
+            return true;
+        }
+
         /// <summary>
         /// Synchronously renders a complete frame to the specified render target.
         /// Automatically sets up the device's viewport and the view transform of your materials and restores them afterwards.
         /// </summary>
-        public bool SynchronousDrawToRenderTarget (RenderTarget2D renderTarget, DefaultMaterialSet materials, Action<Frame> drawBehavior) {
-            if (renderTarget == null)
-                throw new ArgumentNullException("renderTarget");
-            if (materials == null)
-                throw new ArgumentNullException("materials");
-            if (renderTarget.IsDisposed)
+        public bool SynchronousDrawToRenderTarget (
+            RenderTarget2D renderTarget, 
+            DefaultMaterialSet materials, 
+            Action<Frame> drawBehavior
+        ) {
+            if (!ValidateDrawToRenderTarget(renderTarget, materials))
                 return false;
+
             if (!SynchronousDrawsEnabled)
                 throw new InvalidOperationException("Synchronous draws not available inside of Game.Draw");
 
@@ -789,6 +921,8 @@ namespace Squared.Render {
                     materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
 
                     try {
+                        // FIXME: Should queued draws run here? They are probably meant to run in the next real frame
+
                         drawBehavior(frame);
 
                         RunBeforePrepareHandlers();
