@@ -33,11 +33,8 @@ namespace RenderPrecisionTest {
             Materials = new DefaultMaterialSet(RenderCoordinator);
         }
 
-        protected override void LoadContent () {
+        protected override void OnLoadContent (bool isReloading) {
             TestTexture = Content.Load<Texture2D>("test");
-        }
-
-        protected override void UnloadContent () {
         }
 
         protected override void Update (GameTime gameTime) {

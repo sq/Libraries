@@ -46,7 +46,7 @@ namespace LargeBufferTest {
             Materials = new DefaultMaterialSet(RenderCoordinator);
         }
 
-        protected override void LoadContent () {
+        protected override void OnLoadContent (bool isReloading) {
             Font = new FreeTypeFont(
                 RenderCoordinator,
                 Environment.GetFolderPath(Environment.SpecialFolder.Windows) + "\\Fonts\\arial.ttf"
@@ -62,9 +62,6 @@ namespace LargeBufferTest {
 
             if (UseSpriteBatch)
                 SpriteBatch = new SpriteBatch(GraphicsDevice);
-        }
-
-        protected override void UnloadContent () {
         }
 
         protected override void Update (GameTime gameTime) {

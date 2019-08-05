@@ -854,8 +854,8 @@ namespace Squared.Render {
     }
 
     public struct DrawCallSortKey {
-        public Tags  Tags;
         public float Order;
+        public Tags  Tags;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public DrawCallSortKey (Tags tags = default(Tags), float order = 0) {
@@ -871,18 +871,21 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator DrawCallSortKey (float order) {
             return new DrawCallSortKey(order: order);
+            
         }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
     public struct BitmapDrawCall {
-        public TextureSet Textures;
         public Vector2    Position;
         public Vector2    Scale;
         public Vector2    Origin;
+        public float      Rotation;
+        public Vector4    UserData;
+        public Color      MultiplyColor, AddColor;
         public Bounds     TextureRegion;
         public Bounds?    TextureRegion2;
-        public float      Rotation;
-        public Color      MultiplyColor, AddColor;
+        public TextureSet Textures;
         public DrawCallSortKey SortKey;
 
 #if DEBUG
@@ -954,10 +957,11 @@ namespace Squared.Render {
             TextureRegion = textureRegion;
             TextureRegion2 = null;
             MultiplyColor = color;
-            AddColor = new Color(0, 0, 0, 0);
+            AddColor = default(Color);
             Scale = scale;
             Origin = origin;
             Rotation = rotation;
+            UserData = default(Vector4);
 
             SortKey = default(DrawCallSortKey);
         }

@@ -54,7 +54,7 @@ namespace ThreadedPlatformer {
         /// LoadContent will be called once per game and is the place to load
         /// all of your content.
         /// </summary>
-        protected override void LoadContent () {
+        protected override void OnLoadContent (bool isReloading) {
             // Create a new SpriteBatch, which can be used to draw textures.
             spriteBatch = new SpriteBatch(GraphicsDevice);
 

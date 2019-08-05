@@ -53,7 +53,7 @@ namespace Pong {
             ResetPlayfield(0);
         }
 
-        protected override void LoadContent() {
+        protected override void OnLoadContent (bool isReloading) {
             Materials = new PongMaterials(RenderCoordinator) {
                 ViewportScale = new Vector2(1, 1),
                 ViewportPosition = new Vector2(0, 0),
@@ -100,9 +100,6 @@ namespace Pong {
                 Playfield = this.Playfield,
                 Radius = 8.0f
             };
-        }
-
-        protected override void UnloadContent() {
         }
 
         protected override void Update(GameTime gameTime) {

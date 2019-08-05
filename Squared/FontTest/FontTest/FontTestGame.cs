@@ -100,7 +100,7 @@ namespace FontTest {
             };
         }
 
-        protected override void LoadContent () {
+        protected override void OnLoadContent (bool isReloading) {
             SpriteFont = new SpriteFontGlyphSource(Content.Load<SpriteFont>("font"));
             LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") {
                 SizePoints = 40, DPIPercent = 200, GlyphMargin = 4, Gamma = 1.6
@@ -131,9 +131,6 @@ namespace FontTest {
                 Scale = TextScale,
                 ReverseOrder = true
             };
-        }
-
-        protected override void UnloadContent () {
         }
 
         protected override void Update (GameTime gameTime) {

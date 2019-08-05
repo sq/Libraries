@@ -85,7 +85,7 @@ namespace RenderStressTest {
             RNGs.Add(rng);
         }
 
-        protected override void LoadContent () {
+        protected override void OnLoadContent (bool isReloading) {
             // Load the default materials provided with the rendering library
             //  and provide a projection matrix
             Materials = new DefaultMaterialSet(RenderCoordinator) {
@@ -96,9 +96,6 @@ namespace RenderStressTest {
 
             // Attach a blend state setter to the geometry material so that we get alpha blending
             Materials.WorldSpaceGeometry = Materials.WorldSpaceGeometry.SetStates(blendState: BlendState.AlphaBlend);
-        }
-
-        protected override void UnloadContent () {
         }
 
         protected override void Update (GameTime gameTime) {

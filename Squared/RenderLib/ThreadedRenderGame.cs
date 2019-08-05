@@ -175,7 +175,8 @@ namespace Squared.Render {
         }
 
         protected abstract void OnLoadContent (bool isReloading);
-        protected abstract void OnUnloadContent ();
+        protected virtual void OnUnloadContent () {
+        }
 
         sealed protected override void LoadContent () {
             if (IsLoadingContent)
