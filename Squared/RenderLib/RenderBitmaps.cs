@@ -889,8 +889,7 @@ namespace Squared.Render {
         public Vector2    Scale;
         public Vector2    Origin;
         public float      Rotation;
-        public Vector4    UserData;
-        public Color      MultiplyColor, AddColor;
+        public Color      MultiplyColor, AddColor, UserData;
         public Bounds     TextureRegion;
         public Bounds     TextureRegion2;
         public TextureSet Textures;
@@ -969,7 +968,7 @@ namespace Squared.Render {
             Scale = scale;
             Origin = origin;
             Rotation = rotation;
-            UserData = default(Vector4);
+            UserData = default(Color);
 
             SortKey = default(DrawCallSortKey);
         }
