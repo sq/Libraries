@@ -795,14 +795,18 @@ namespace Squared.Render {
         public TextureSet (Texture2D texture1) {
             Texture1 = texture1;
             Texture2 = default(AbstractTextureReference);
-            HashCode = 0;
+            HashCode = Texture1.GetHashCode();
+            if (Texture2 != null)
+                HashCode ^= Texture2.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (Texture2D texture1, Texture2D texture2) {
             Texture1 = texture1;
             Texture2 = texture2;
-            HashCode = 0;
+            HashCode = Texture1.GetHashCode();
+            if (Texture2 != null)
+                HashCode ^= Texture2.GetHashCode();
         }
 
         public Texture2D this[int index] {
@@ -850,13 +854,6 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
-            if (HashCode == 0) {
-                HashCode = Texture1.GetHashCode();
-                if (Texture2 != null)
-                    HashCode ^= Texture2.GetHashCode();
-                if (HashCode == 0)
-                    HashCode = 1;
-            }
             return HashCode;
         }
     }

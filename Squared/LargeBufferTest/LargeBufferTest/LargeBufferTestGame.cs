@@ -133,6 +133,7 @@ namespace LargeBufferTest {
                         Materials.ScreenSpaceBitmap,
                         capacity: width * height / 8
                     );
+                    bb.DisableSortKeys = true;
                     return bb;
                 },
                 (y, loopState, bb) => {

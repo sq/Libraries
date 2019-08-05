@@ -95,7 +95,14 @@ namespace Squared.Render {
             get; set;
         }
 
+        /// <summary>
+        /// Performs no sorting on the draw calls. This usually will be slower but hey, you're the boss.
+        /// </summary>
         public bool DisableSorting = false;
+        /// <summary>
+        /// A lighter-touch version of DisableSorting: Ignores the SortKey field for better performance. Texture sorting still happens.
+        /// </summary>
+        public bool DisableSortKeys = false;
 
         public SamplerState SamplerState;
         public SamplerState SamplerState2;
@@ -254,7 +261,7 @@ namespace Squared.Render {
                 var comparer = DrawCallSorterComparer.Value;
                 comparer.Comparer = Sorter.GetComparer(true);
                 _DrawCalls.Sort(comparer, indexArray);
-            } else if (UseZBuffer) {
+            } else if (UseZBuffer || DisableSortKeys) {
                 _DrawCalls.Sort(DrawCallTextureComparer, indexArray);
             } else {
                 _DrawCalls.Sort(DrawCallComparer, indexArray);
