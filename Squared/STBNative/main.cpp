@@ -1,15 +1,16 @@
+// @#*(%@#K% sprintf
+#include <stdio.h>
+
 #define STBIDEF  extern "C" __declspec(dllexport)
 #define STBIWDEF extern "C" __declspec(dllexport)
 
 #define STBI_NO_STDIO
 #define STBI_WRITE_NO_STDIO
 
-#define STBI_WRITE_NO_HDR
 #define STBI_BUFFER_SIZE 40960
 
 #define STBI_NO_BMP
 #define STBI_NO_GIF
-#define STBI_NO_HDR
 #define STBI_NO_PIC
 #define STBI_NO_PNM
 

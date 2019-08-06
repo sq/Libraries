@@ -23,13 +23,29 @@ namespace Squared.Render.STB {
             }
         }
 
-        public static byte[] GetTextureData (Texture2D tex, int numComponents) {
-            if (tex.Format != SurfaceFormat.Color)
-                throw new ArgumentException("Only SurfaceFormat.Color is implemented");
-            if (numComponents != 4)
-                throw new ArgumentOutOfRangeException("numComponents");
+        private static int GetBytesPerPixelAndComponents (SurfaceFormat format, out int numComponents) {
+            switch (format) {
+                case SurfaceFormat.Alpha8:
+                    numComponents = 1;
+                    return 1;
+                case SurfaceFormat.Color:
+                    numComponents = 4;
+                    return 4;
+                case SurfaceFormat.Rgba64:
+                    numComponents = 4;
+                    return 8;
+                case SurfaceFormat.Vector4:
+                    numComponents = 4;
+                    return 16;
+                default:
+                    throw new ArgumentException("Surface format " + format + " not implemented");
+            }
+        }
 
-            var count = tex.Width * tex.Height * numComponents;
+        public static byte[] GetTextureData (Texture2D tex) {
+            int numComponents;
+            var bytesPerPixel = GetBytesPerPixelAndComponents(tex.Format, out numComponents);
+            var count = tex.Width * tex.Height * bytesPerPixel * 2;
             var buffer = new byte[count];
             GetTextureData(tex, buffer);
             return buffer;
@@ -51,16 +67,20 @@ namespace Squared.Render.STB {
             Texture2D tex, Stream stream, 
             ImageWriteFormat format = ImageWriteFormat.PNG, int jpegQuality = 75
         ) {
-            int numComponents = 4;
-            var buffer = GetTextureData(tex, numComponents);
-            WriteImage(buffer, tex.Width, tex.Height, numComponents, stream, format);
+            var buffer = GetTextureData(tex);
+            WriteImage(buffer, tex.Width, tex.Height, tex.Format, stream, format);
         }
 
         public static unsafe void WriteImage (
-            byte[] buffer, int width, int height, int numComponents, Stream stream, 
+            byte[] buffer, int width, int height, 
+            SurfaceFormat sourceFormat, Stream stream, 
             ImageWriteFormat format = ImageWriteFormat.PNG, int jpegQuality = 75
         ) {
-            var bytesPerPixel = buffer.Length / (width * height);
+            int numComponents;
+            var bytesPerPixel = GetBytesPerPixelAndComponents(sourceFormat, out numComponents);
+
+            if (buffer.Length < (bytesPerPixel * width * height))
+                throw new ArgumentException("buffer");
 
             using (var scratch = BufferPool<byte>.Allocate(1024 * 64))
             fixed (byte * pBuffer = buffer)
@@ -77,16 +97,29 @@ namespace Squared.Render.STB {
                 };
 
                 switch (format) {
+                    case ImageWriteFormat.HDR:
+                        if (bytesPerPixel != 16)
+                            throw new NotImplementedException("Non-vector4");
+                        Native.API.stbi_write_hdr_to_func(callback, _pScratch, width, height, numComponents, (float*)(void*)pBuffer);
+                        break;
                     case ImageWriteFormat.PNG:
+                        if (bytesPerPixel != 4)
+                            throw new NotImplementedException("Non-rgba32");
                         Native.API.stbi_write_png_to_func(callback, _pScratch, width, height, numComponents, pBuffer, width * bytesPerPixel);
                         break;
                     case ImageWriteFormat.BMP:
+                        if (bytesPerPixel != 4)
+                            throw new NotImplementedException("Non-rgba32");
                         Native.API.stbi_write_bmp_to_func(callback, _pScratch, width, height, numComponents, pBuffer);
                         break;
                     case ImageWriteFormat.TGA:
+                        if (bytesPerPixel != 4)
+                            throw new NotImplementedException("Non-rgba32");
                         Native.API.stbi_write_tga_to_func(callback, _pScratch, width, height, numComponents, pBuffer);
                         break;
                     case ImageWriteFormat.JPEG:
+                        if (bytesPerPixel != 4)
+                            throw new NotImplementedException("Non-rgba32");
                         Native.API.stbi_write_jpg_to_func(callback, _pScratch, width, height, numComponents, pBuffer, jpegQuality);
                         break;
                     default:
@@ -100,6 +133,10 @@ namespace Squared.Render.STB {
         PNG = 0,
         BMP,
         TGA,
-        JPEG
+        JPEG,
+        /// <summary>
+        /// Linear floating-point RGBA (Vector4)
+        /// </summary>
+        HDR
     }
 }

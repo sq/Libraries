@@ -686,7 +686,7 @@ static int stbi_write_hdr_core(stbi__write_context *s, int x, int y, int comp, f
       return 0;
    else {
       // Each component is stored separately. Allocate scratch space for full output scanline.
-      unsigned char *scratch = (unsigned char *) STBIW_MALLOC(x*4);
+      unsigned char *scratch = (unsigned char *) STBIW_MALLOC(x*4*comp);
       int i, len;
       char buffer[128];
       char header[] = "#?RADIANCE\n# Written by stb_image_write.h\nFORMAT=32-bit_rle_rgbe\n";
@@ -700,7 +700,7 @@ static int stbi_write_hdr_core(stbi__write_context *s, int x, int y, int comp, f
       s->func(s->context, buffer, len);
 
       for(i=0; i < y; i++)
-         stbiw__write_hdr_scanline(s, x, comp, scratch, data + comp*x*(stbi__flip_vertically_on_write ? y-1-i : i)*x);
+         stbiw__write_hdr_scanline(s, x, comp, scratch, data + comp*x+ ((stbi__flip_vertically_on_write ? y-1-i : i)*x));
       STBIW_FREE(scratch);
       return 1;
    }
