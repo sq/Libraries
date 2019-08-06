@@ -24,9 +24,15 @@ sampler PaletteSampler : register(s4) {
     MagFilter = LINEAR;
 };
 
-float4 readPalette (float index, float4 paletteSelector4) {
+float4 readPalette (float4 index4, float4 paletteSelector4) {
     float2 paletteSize = PaletteSize > 0 ? PaletteSize : float2(256, 1);
     float paletteSelector = paletteSelector4.r;
+    // HACK
+#if FNA
+    float index = index4.r;
+#else
+    float index = index4.a;
+#endif
     float2 selector = float2(floor(index * paletteSize.x) / paletteSize.x, paletteSelector - (0.5f / paletteSize.y));
     return tex2Dlod(PaletteSampler, float4(selector, 0, 0));
 }
@@ -39,7 +45,7 @@ void BasicPixelShader(
     in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
-    float paletteIndexF = tex2D(TextureSamplerPoint, clamp2(texCoord, texRgn.xy, texRgn.zw)).a;
+    float4 paletteIndexF = tex2D(TextureSamplerPoint, clamp2(texCoord, texRgn.xy, texRgn.zw));
     float4 paletteColor = readPalette(paletteIndexF, paletteSelector);
 
     addColor.rgb *= addColor.a;
@@ -57,7 +63,7 @@ void BasicPixelShaderWithDiscard (
     in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
-    float paletteIndexF = tex2D(TextureSamplerPoint, clamp2(texCoord, texRgn.xy, texRgn.zw)).a;
+    float4 paletteIndexF = tex2D(TextureSamplerPoint, clamp2(texCoord, texRgn.xy, texRgn.zw));
     float4 paletteColor = readPalette(paletteIndexF, paletteSelector);
 
     addColor.rgb *= addColor.a;
