@@ -4,6 +4,9 @@
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
 
+#define LUT_BITMAP
+#include "LUTCommon.fxh"
+
 uniform float2 LightmapUVOffset;
 
 float4 LightmappedPixelShaderCore(
@@ -69,6 +72,25 @@ void sRGBLightmappedPixelShader(
     clip(result.a - discardThreshold);
 }
 
+void LightmappedPixelShaderWithLUT(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float2 texCoord1 : TEXCOORD0,
+    in float4 texRgn1 : TEXCOORD1,
+    in float2 texCoord2 : TEXCOORD2,
+    in float4 texRgn2 : TEXCOORD3,
+    ACCEPTS_VPOS,
+    out float4 result : COLOR0
+) {
+    result = LightmappedPixelShaderCore(multiplyColor, addColor, texCoord1, texRgn1, texCoord2, texRgn2);
+
+    result.rgb = ApplyLUT(result.rgb, LUT2Weight);
+    result.rgb = ApplyDither(result.rgb, GET_VPOS);
+
+    const float discardThreshold = (1.0 / 255.0);
+    clip(result.a - discardThreshold);
+}
+
 technique ScreenSpaceLightmappedBitmap
 {
     pass P0
@@ -102,5 +124,23 @@ technique WorldSpaceLightmappedsRGBBitmap
     {
         vertexShader = compile vs_3_0 WorldSpaceVertexShader();
         pixelShader = compile ps_3_0 sRGBLightmappedPixelShader();
+    }
+}
+
+technique ScreenSpaceLightmappedBitmapWithLUT
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        pixelShader = compile ps_3_0 LightmappedPixelShaderWithLUT();
+    }
+}
+
+technique WorldSpaceLightmappedBitmapWithLUT
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
+        pixelShader = compile ps_3_0 LightmappedPixelShaderWithLUT();
     }
 }
