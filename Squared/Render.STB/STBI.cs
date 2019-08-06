@@ -183,7 +183,11 @@ namespace Squared.Render.STB {
 
             var pin = GCHandle.Alloc(Palette, GCHandleType.Pinned);
             lock (coordinator.UseResourceLock)
+#if FNA
                 result.SetDataPointerEXT(0, new Rectangle(0, 0, Palette.Length, 1), pin.AddrOfPinnedObject(), Palette.Length * sizeof(UInt32));
+#else
+                Render.Evil.TextureUtils.SetDataFast(result, 0, (void*)pin.AddrOfPinnedObject(), Palette.Length, height, (uint)(Palette.Length * sizeof(UInt32)));
+#endif
             pin.Free();
 
             return result;
@@ -208,7 +212,8 @@ namespace Squared.Render.STB {
 
         internal int SizeofPixel {
             get {
-                return 4 * (IsFloatingPoint ? 4 : 1);
+                int components;
+                return STB.ImageWrite.GetBytesPerPixelAndComponents(Format, out components);
             }
         }
 

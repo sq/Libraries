@@ -23,7 +23,7 @@ namespace Squared.Render.STB {
             }
         }
 
-        private static int GetBytesPerPixelAndComponents (SurfaceFormat format, out int numComponents) {
+        public static int GetBytesPerPixelAndComponents (SurfaceFormat format, out int numComponents) {
             switch (format) {
                 case SurfaceFormat.Alpha8:
                     numComponents = 1;
@@ -45,7 +45,7 @@ namespace Squared.Render.STB {
         public static byte[] GetTextureData (Texture2D tex) {
             int numComponents;
             var bytesPerPixel = GetBytesPerPixelAndComponents(tex.Format, out numComponents);
-            var count = tex.Width * tex.Height * bytesPerPixel * 2;
+            var count = tex.Width * tex.Height * bytesPerPixel;
             var buffer = new byte[count];
             GetTextureData(tex, buffer);
             return buffer;
