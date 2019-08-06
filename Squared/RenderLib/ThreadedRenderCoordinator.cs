@@ -40,6 +40,7 @@ namespace Squared.Render {
             public object UserData;
             public Exception Exception;
             public IFuture OnComplete;
+            public RenderTarget2D RenderTarget;
         }
 
         class PendingDraw {
@@ -474,17 +475,31 @@ namespace Squared.Render {
                 CompletedPendingDrawQueue.Add(new CompletedPendingDraw {
                     UserData = pd.UserData,
                     Exception = exc,
-                    OnComplete = pd.OnComplete
+                    OnComplete = pd.OnComplete,
+                    RenderTarget = pd.RenderTarget
                 });
         }
 
         private void NotifyPendingDrawCompletions () {
             lock (CompletedPendingDrawQueue) {
                 foreach (var cpd in CompletedPendingDrawQueue) {
-                    if (cpd.Exception != null)
+                    if (cpd.Exception != null) {
                         cpd.OnComplete.SetResult(null, cpd.Exception);
-                    else
+                        continue;
+                    }
+
+                    if (
+                        (cpd.OnComplete.ResultType == cpd.UserData.GetType()) ||
+                        (cpd.OnComplete.ResultType == typeof(object))
+                    )
                         cpd.OnComplete.SetResult(cpd.UserData, null);
+                    else if (
+                        (cpd.OnComplete.ResultType == typeof(RenderTarget2D)) ||
+                        (cpd.OnComplete.ResultType == typeof(Texture2D))
+                    )
+                        cpd.OnComplete.SetResult(cpd.RenderTarget, null);
+                    else
+                        cpd.OnComplete.SetResult(null, new Exception("No way to generate completion result for type " + cpd.OnComplete.ResultType));
                 }
                 CompletedPendingDrawQueue.Clear();
             }
