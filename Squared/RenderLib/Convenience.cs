@@ -451,6 +451,8 @@ namespace Squared.Render.Convenience {
         private DrawCallSortKey NextSortKey;
         private CachedBatches Cache;
 
+        private float RasterOutlineGammaMinusOne;
+
         public ImperativeRenderer (
             IBatchContainer container,
             DefaultMaterialSet materials,
@@ -487,6 +489,16 @@ namespace Squared.Render.Convenience {
             Cache = new CachedBatches();
             LowPriorityMaterialOrdering = lowPriorityMaterialOrdering;
             DeclarativeSorter = declarativeSorter;
+            RasterOutlineGammaMinusOne = 0;
+        }
+
+        public float RasterOutlineGamma {
+            get {
+                return RasterOutlineGammaMinusOne + 1;
+            }
+            set {
+                RasterOutlineGammaMinusOne = value - 1;
+            }
         }
 
         public Tags DefaultTags {
@@ -1160,6 +1172,7 @@ namespace Squared.Render.Convenience {
 
                 cacheEntry.Batch = RasterShapeBatch.New(Container, actualLayer, material);
                 Cache.InsertAtFront(ref cacheEntry, null);
+                material.Parameters.OutlineGammaMinusOne?.SetValue(RasterOutlineGammaMinusOne);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)

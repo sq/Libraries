@@ -194,16 +194,17 @@ void RasterShapePixelShader(
         float  outlineDistance = (distance - radiusLength) / outlineSize;
         float  outlineWeight = saturate(outlineDistance);
         float  outlineGamma = OutlineGammaMinusOne + 1;
-        float4 gradientToOutline = lerp(gradient, outlineColor, outlineWeight);
+        float4 gradientToOutline = lerp(gradient, outlineColor, pow(outlineWeight, outlineGamma));
         float transparentWeight = saturate(outlineDistance - 1);
         if (transparentWeight > (1 - threshold)) {
             discard;
             return;
         }
 
-        float4 outlineToTransparent = float4(
-            LinearToSRGB(gradientToOutline.rgb),
-            lerp(gradientToOutline.a, 0, transparentWeight)
+        transparentWeight = 1 - pow(1 - transparentWeight, outlineGamma);
+        float4 outlineToTransparent = lerp(
+            float4(LinearToSRGB(gradientToOutline.rgb), gradientToOutline.a), 
+            0, transparentWeight
         );
         result = outlineToTransparent;
     } else if (gradient.a >= threshold) {
@@ -214,7 +215,6 @@ void RasterShapePixelShader(
     }
 
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
-    result.rgb *= result.a;
 }
 
 technique WorldSpaceRasterShape
