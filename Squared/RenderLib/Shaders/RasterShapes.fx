@@ -49,8 +49,7 @@ float3 LinearToSRGB(float3 rgb) {
     float4 position = float4(ab_in.x, ab_in.y, 0, 1); \
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
     float outlineSize = outlineSizeMiterAndType.x, miter = outlineSizeMiterAndType.y; \
-    int type = outlineSizeMiterAndType.z; \
-    DEFINE_QuadCorners
+    int type = outlineSizeMiterAndType.z;
 
 #define RASTERSHAPE_FS_ARGS \
     in float2 screenPosition : NORMAL0, \
@@ -92,13 +91,41 @@ void computeTLBR (
     if (type == TYPE_Ellipse) {
         tl = a - totalRadius;
         br = a + totalRadius;
-    } else if (
-        (type == TYPE_LineSegment) ||
-        (type == TYPE_Rectangle)
-    ) {
-        // FIXME: Edge-fit a hull better instead of using a massive quad
+    } else if (type == TYPE_LineSegment) {
+        tl = min(a, b);
+        br = max(a, b);
+    } else if (type == TYPE_Rectangle) {
         tl = min(a, b) - totalRadius;
         br = max(a, b) + totalRadius;
+    }
+}
+
+void computePosition (
+    int type, float2 totalRadius, 
+    float2 a, float2 b, float2 c,
+    float2 tl, float2 br, int cornerIndex,
+    out float2 xy
+) {
+    DEFINE_QuadCorners
+        
+    if (type == TYPE_LineSegment) {
+        // Axis-aligned bounding box around the line segment
+        float2 along = b - a,
+            alongNorm = normalize(along) * totalRadius,
+            left = alongNorm.yx * float2(-1, 1),
+            right = alongNorm.yx * float2(1, -1);
+
+        if (cornerIndex.x == 0)
+            xy = a + left - alongNorm;
+        else if (cornerIndex.x == 1)
+            xy = b + left + alongNorm;
+        else if (cornerIndex.x == 2)
+            xy = b + right + alongNorm;
+        else
+            xy = a + right - alongNorm;
+    }
+    else {
+        xy = lerp(tl, br, QuadCorners[cornerIndex.x]);
     }
 }
 
@@ -110,8 +137,8 @@ void ScreenSpaceRasterShapeVertexShader (
     float2 tl, br;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
+    computePosition(type, totalRadius, a, b, c, tl, br, cornerIndex.x, position.xy);
 
-    position.xy = lerp(tl, br, QuadCorners[cornerIndex.x]);
     result = TransformPosition(
         float4(position.xy, position.z, 1), true
     );
@@ -126,8 +153,8 @@ void WorldSpaceRasterShapeVertexShader(
     float2 tl, br;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
+    computePosition(type, totalRadius, a, b, c, tl, br, cornerIndex.x, position.xy);
 
-    position.xy = lerp(tl, br, QuadCorners[cornerIndex.x]);
     result = TransformPosition(
         float4(position.xy * GetViewportScale().xy, position.z, 1), true
     );
