@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using Microsoft.Xna.Framework;
@@ -38,7 +39,7 @@ namespace Squared.Render {
 
         struct CompletedPendingDraw {
             public object UserData;
-            public Exception Exception;
+            public ExceptionDispatchInfo Exception;
             public IFuture OnComplete;
             public RenderTarget2D RenderTarget;
         }
@@ -408,15 +409,20 @@ namespace Squared.Render {
             return true;
         }
 
-        public Frame BeginFrame () {
+        internal Frame BeginFrame (bool flushPendingDraws) {
+            if (flushPendingDraws)
+                RunPendingDraws();
             SynchronousDrawsEnabled = false;
             var frame = _FrameBeingPrepared = Manager.CreateFrame();
-            RunPendingDraws(frame);
             return _FrameBeingPrepared;
         }
 
         private void PendingDrawSetupHandler (DeviceManager dm, object _pd) {
             var pd = (PendingDraw)_pd;
+
+            if (!AutoRenderTarget.IsRenderTargetValid(pd.RenderTarget))
+                throw new ObjectDisposedException("Render target for pending draw was disposed between prepare and issue");
+
             var vt = pd.ViewTransform ??
                 ViewTransform.CreateOrthographic(pd.RenderTarget.Width, pd.RenderTarget.Height);
             pd.Materials.PushViewTransform(ref vt);
@@ -428,7 +434,7 @@ namespace Squared.Render {
             pd.Materials.PopViewTransform();
         }
 
-        private void RunPendingDraws (Frame frame) {
+        private void RunPendingDraws () {
             lock (PendingDrawQueue)
                 if (PendingDrawQueue.Count == 0)
                     return;
@@ -445,46 +451,37 @@ namespace Squared.Render {
                     PendingDrawQueue.DangerousRemoveAt(0);
                 }
 
-                if (bg == null)
-                    bg = BatchGroup.New(frame, int.MinValue + 1);
-
-                PerformPendingDraw(bg, i++, pd);
-            }
-        }
-
-        private void PerformPendingDraw (IBatchContainer container, int layer, PendingDraw pd) {
-            Exception exc = null;
-            using (var subGroup = BatchGroup.ForRenderTarget(
-                container, layer, pd.RenderTarget, name: "Pending Draw", 
-                before: PendingDrawSetupHandler,
-                after: PendingDrawTeardownHandler,
-                userData: pd
-            )) {
+                ExceptionDispatchInfo excInfo = null;
                 try {
-                    pd.Handler(subGroup, pd.Materials, pd.UserData);
-                } catch (Exception _) {
-                    if (pd.OnComplete != null)
-                        exc = _;
-                    else
-                        throw;
+                    if (!AutoRenderTarget.IsRenderTargetValid(pd.RenderTarget))
+                        throw new Exception("Render target for pending draw was disposed between queue and prepare");
+
+                    if (!DoSynchronousDrawToRenderTarget(pd.RenderTarget, pd.Materials, pd.Handler, pd.UserData, "Pending Draw"))
+                        throw new Exception("Unknown failure performing pending draw");
+                } catch (Exception exc) {
+                    excInfo = ExceptionDispatchInfo.Capture(exc);
+                }
+                    // throw new Exception("Unexpected error performing pending draw");
+
+                if (pd.OnComplete != null) {
+                    lock (CompletedPendingDrawQueue)
+                        CompletedPendingDrawQueue.Add(new CompletedPendingDraw {
+                            UserData = pd.UserData,
+                            Exception = excInfo,
+                            OnComplete = pd.OnComplete,
+                            RenderTarget = pd.RenderTarget
+                        });
+                } else if (excInfo != null) {
+                } else {
                 }
             }
-
-            if (pd.OnComplete != null)
-            lock (CompletedPendingDrawQueue)
-                CompletedPendingDrawQueue.Add(new CompletedPendingDraw {
-                    UserData = pd.UserData,
-                    Exception = exc,
-                    OnComplete = pd.OnComplete,
-                    RenderTarget = pd.RenderTarget
-                });
         }
 
         private void NotifyPendingDrawCompletions () {
             lock (CompletedPendingDrawQueue) {
                 foreach (var cpd in CompletedPendingDrawQueue) {
                     if (cpd.Exception != null) {
-                        cpd.OnComplete.SetResult(null, cpd.Exception);
+                        cpd.OnComplete.SetResult2(null, cpd.Exception);
                         continue;
                     }
 
@@ -906,6 +903,53 @@ namespace Squared.Render {
             return true;
         }
 
+        private bool DoSynchronousDrawToRenderTarget (
+            RenderTarget2D renderTarget, 
+            DefaultMaterialSet materials,
+            Delegate drawBehavior,
+            object userData, string description
+        ) {
+            var oldLazyState = materials.LazyViewTransformChanges;
+            try {
+                materials.LazyViewTransformChanges = false;
+                materials.ApplyViewTransform(materials.ViewTransform, true);
+                using (var frame = Manager.CreateFrame()) {
+                    frame.ChangeRenderTargets = false;
+                    frame.Label = description;
+                    materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
+
+                    try {
+                        // FIXME: Should queued draws run here? They are probably meant to run in the next real frame
+
+                        var singleBehavior = drawBehavior as Action<Frame>;
+                        var multiBehavior = drawBehavior as PendingDrawHandler;
+                        if (singleBehavior != null)
+                            singleBehavior(frame);
+                        else if (multiBehavior != null)
+                            multiBehavior(frame, materials, userData);
+                        else
+                            throw new ArgumentException("Draw behavior was not of a compatible type");
+
+                        RunBeforePrepareHandlers();
+                        PrepareNextFrame(frame, false);
+
+                        Manager.DeviceManager.SetRenderTarget(renderTarget);
+                        RenderManager.ResetDeviceState(Device);
+                        Device.Clear(Color.Transparent);
+
+                        RenderFrameToDraw(frame, false);
+                        // We don't have to push/pop anymore because the stacks are cleared at the end of a frame.
+
+                        return true;
+                    } finally {
+                        materials.PopViewTransform();
+                    }
+                }
+            } finally {
+                materials.LazyViewTransformChanges = oldLazyState;
+            }
+        }
+
         /// <summary>
         /// Synchronously renders a complete frame to the specified render target.
         /// Automatically sets up the device's viewport and the view transform of your materials and restores them afterwards.
@@ -914,6 +958,27 @@ namespace Squared.Render {
             RenderTarget2D renderTarget, 
             DefaultMaterialSet materials, 
             Action<Frame> drawBehavior
+        ) {
+            return SynchronousDrawToRenderTargetSetup(renderTarget, materials, drawBehavior, null);
+        }
+
+        /// <summary>
+        /// Synchronously renders a complete frame to the specified render target.
+        /// Automatically sets up the device's viewport and the view transform of your materials and restores them afterwards.
+        /// </summary>
+        public bool SynchronousDrawToRenderTarget (
+            RenderTarget2D renderTarget, 
+            DefaultMaterialSet materials, 
+            PendingDrawHandler drawBehavior,
+            object userData = null
+        ) {
+            return SynchronousDrawToRenderTargetSetup(renderTarget, materials, drawBehavior, userData);
+        }
+
+        private bool SynchronousDrawToRenderTargetSetup (
+            RenderTarget2D renderTarget, 
+            DefaultMaterialSet materials, 
+            Delegate drawBehavior, object userData
         ) {
             if (!ValidateDrawToRenderTarget(renderTarget, materials))
                 return false;
@@ -931,37 +996,9 @@ namespace Squared.Render {
 
             WaitForActiveDraw();
 
-            var oldLazyState = materials.LazyViewTransformChanges;
             try {
-                materials.LazyViewTransformChanges = false;
-                materials.ApplyViewTransform(materials.ViewTransform, true);
-                using (var frame = Manager.CreateFrame()) {
-                    frame.ChangeRenderTargets = false;
-                    frame.Label = "Synchronous Draw";
-                    materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
-
-                    try {
-                        // FIXME: Should queued draws run here? They are probably meant to run in the next real frame
-
-                        drawBehavior(frame);
-
-                        RunBeforePrepareHandlers();
-                        PrepareNextFrame(frame, false);
-
-                        Manager.DeviceManager.SetRenderTarget(renderTarget);
-                        RenderManager.ResetDeviceState(Device);
-                        Device.Clear(Color.Transparent);
-
-                        RenderFrameToDraw(frame, false);
-                        // We don't have to push/pop anymore because the stacks are cleared at the end of a frame.
-                    } finally {
-                        materials.PopViewTransform();
-                    }
-                }
-
-                return true;
+                return DoSynchronousDrawToRenderTarget(renderTarget, materials, drawBehavior, userData, "Synchronous Draw");
             } finally {
-                materials.LazyViewTransformChanges = oldLazyState;
                 _SynchronousDrawFinishedSignal.Set();
                 Interlocked.Exchange(ref _SynchronousDrawIsActive, 0);
             }

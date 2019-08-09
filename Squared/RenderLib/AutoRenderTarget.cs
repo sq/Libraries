@@ -54,8 +54,11 @@ namespace Squared.Render {
                 DisposedStackTrace = new StackTrace(1, true);
         }
 
-        public static bool IsRenderTargetValid (RenderTarget2D rt) {
-            return (rt != null) && !rt.IsDisposed && !rt.IsContentLost;
+        public static bool IsRenderTargetValid (Texture rt) {
+            var rt2d = rt as RenderTarget2D;
+            if (rt2d?.IsContentLost == true)
+                return false;
+            return (rt != null) && !rt.IsDisposed;
         }
 
         protected RenderTarget2D CreateInstance () {

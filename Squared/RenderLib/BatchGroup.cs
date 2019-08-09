@@ -214,10 +214,16 @@ namespace Squared.Render {
             if (SingleAuto != null)
                 single = SingleAuto.Get();
 
-            if (Multiple != null)
+            if (Multiple != null) {
+                foreach (var rt in Multiple)
+                    if (!AutoRenderTarget.IsRenderTargetValid(rt.RenderTarget))
+                        throw new ObjectDisposedException("Invalid render target for batch group " + Name);
                 manager.PushRenderTargets(Multiple);
-            else
+            } else {
+                if (single != null && (!AutoRenderTarget.IsRenderTargetValid(single)))
+                    throw new ObjectDisposedException("Invalid render target for batch group " + Name);
                 manager.PushRenderTarget(single);
+            }
 
             try {
                 base.Issue(manager);
