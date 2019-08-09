@@ -50,7 +50,8 @@ namespace Squared.Render {
 
     public enum RasterShapeType : int {
         Ellipse = 0,
-        LineSegment = 1
+        LineSegment = 1,
+        Rectangle = 2
     }
 
     public struct RasterShapeDrawCall {

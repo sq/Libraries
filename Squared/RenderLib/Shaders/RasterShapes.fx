@@ -19,6 +19,7 @@ float3 LinearToSRGB(float3 rgb) {
 
 #define TYPE_Ellipse 0
 #define TYPE_LineSegment 1
+#define TYPE_Rectangle 2
 
 #define DEFINE_QuadCorners const float2 QuadCorners[] = { \
     {0, 0}, \
@@ -86,7 +87,10 @@ void computeTLBR (
     if (type == TYPE_Ellipse) {
         tl = a - totalRadius;
         br = a + totalRadius;
-    } else if (type == TYPE_LineSegment) {
+    } else if (
+        (type == TYPE_LineSegment) ||
+        (type == TYPE_Rectangle)
+    ) {
         // FIXME: Edge-fit a hull better instead of using a massive quad
         tl = min(a, b) - totalRadius;
         br = max(a, b) + totalRadius;
@@ -148,6 +152,8 @@ void RasterShapePixelShader(
 ) {
     RASTERSHAPE_FS_PROLOGUE;
 
+    const float threshold = (1 / 512.0);
+
     float  radiusLength = max(length(radius), 0.1);
     float2 invRadius = 1.0 / max(radius, float2(0.1, 0.1));
 
@@ -156,31 +162,50 @@ void RasterShapePixelShader(
 
     if (type == TYPE_Ellipse) {
         distanceXy = screenPosition - a;
+        distanceF = length(distanceXy * invRadius);
+        distance = distanceF * radiusLength;
     } else if (type == TYPE_LineSegment) {
         float t;
         float2 closestPoint = closestPointOnLineSegment2(a, b, screenPosition, t);
         distanceXy = screenPosition - closestPoint;
+        distanceF = length(distanceXy * invRadius);
+        distance = distanceF * radiusLength;
+    } else if (type == TYPE_Rectangle) {
+        float2 tl = min(a, b), br = max(a, b), center = (a + b) * 0.5;
+        float2 position = screenPosition - center;
+        float2 size = (br - tl) * 0.5;
+
+        float2 d = abs(position) - size;
+        distance = min(
+            max(d.x, d.y),
+            0.0    
+        ) + length(max(d, 0.0)) + radius;
+        distanceF = distance / size;
     }
 
-    distanceF = length(distanceXy * invRadius);
-    distance = distanceF * radiusLength;
     float4 gradient = lerp(centerColor, edgeColor, saturate(distanceF));
     if (outlineSize > 0.001) {
         float  outlineDistance = (distance - radiusLength) / outlineSize;
         float4 gradientToOutline = lerp(gradient, outlineColor, saturate(outlineDistance));
+        float transparentWeight = saturate(outlineDistance - 1);
+        if (transparentWeight > (1 - threshold)) {
+            discard;
+            return;
+        }
+
         float4 outlineToTransparent = lerp(
             float4(LinearToSRGB(gradientToOutline.rgb), gradientToOutline.a), 
-            0, saturate(outlineDistance - 1)
+            0, transparentWeight
         );
         result = outlineToTransparent;
-    } else {
+    } else if (gradient.a >= threshold) {
         result = float4(LinearToSRGB(gradient.rgb), gradient.a);
+    } else {
+        discard;
+        return;
     }
 
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
-
-    if (result.a <= (1 / 512.0))
-        discard;
 }
 
 technique WorldSpaceRasterShape
