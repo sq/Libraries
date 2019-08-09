@@ -4,6 +4,8 @@
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
 
+uniform float OutlineGammaMinusOne = 0;
+
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
 float3 SRGBToLinear(float3 srgb) {
@@ -190,16 +192,18 @@ void RasterShapePixelShader(
     float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
     if (outlineSize > 0.001) {
         float  outlineDistance = (distance - radiusLength) / outlineSize;
-        float4 gradientToOutline = lerp(gradient, outlineColor, saturate(outlineDistance));
+        float  outlineWeight = saturate(outlineDistance);
+        float  outlineGamma = OutlineGammaMinusOne + 1;
+        float4 gradientToOutline = lerp(gradient, outlineColor, outlineWeight);
         float transparentWeight = saturate(outlineDistance - 1);
         if (transparentWeight > (1 - threshold)) {
             discard;
             return;
         }
 
-        float4 outlineToTransparent = lerp(
-            float4(LinearToSRGB(gradientToOutline.rgb), gradientToOutline.a), 
-            0, transparentWeight
+        float4 outlineToTransparent = float4(
+            LinearToSRGB(gradientToOutline.rgb),
+            lerp(gradientToOutline.a, 0, transparentWeight)
         );
         result = outlineToTransparent;
     } else if (gradient.a >= threshold) {
@@ -210,6 +214,7 @@ void RasterShapePixelShader(
     }
 
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
+    result.rgb *= result.a;
 }
 
 technique WorldSpaceRasterShape
