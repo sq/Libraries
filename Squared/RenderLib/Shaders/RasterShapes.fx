@@ -4,6 +4,7 @@
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
 
+uniform float BlendInLinearSpace = 1;
 uniform float OutlineGammaMinusOne = 0;
 
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
@@ -66,9 +67,11 @@ float3 LinearToSRGB(float3 rgb) {
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
     float outlineSize = outlineSizeMiterAndType.x, miter = outlineSizeMiterAndType.y; \
     int type = outlineSizeMiterAndType.z; \
-    centerColor.rgb = SRGBToLinear(centerColor.rgb); \
-    edgeColor.rgb = SRGBToLinear(edgeColor.rgb); \
-    outlineColor.rgb = SRGBToLinear(outlineColor.rgb);
+    if (BlendInLinearSpace) { \
+        centerColor.rgb = SRGBToLinear(centerColor.rgb); \
+        edgeColor.rgb = SRGBToLinear(edgeColor.rgb); \
+        outlineColor.rgb = SRGBToLinear(outlineColor.rgb); \
+    };
 
 uniform float HalfPixelOffset;
 
@@ -202,13 +205,14 @@ void RasterShapePixelShader(
         }
 
         transparentWeight = 1 - pow(1 - transparentWeight, outlineGamma);
+        float3 colorRgb = BlendInLinearSpace ? LinearToSRGB(gradientToOutline.rgb) : gradientToOutline.rgb;
         float4 outlineToTransparent = lerp(
-            float4(LinearToSRGB(gradientToOutline.rgb), gradientToOutline.a), 
+            float4(colorRgb, gradientToOutline.a),
             0, transparentWeight
         );
         result = outlineToTransparent;
     } else if (gradient.a >= threshold) {
-        result = float4(LinearToSRGB(gradient.rgb), gradient.a);
+        result = float4(BlendInLinearSpace ? LinearToSRGB(gradient.rgb) : gradient.rgb, gradient.a);
     } else {
         discard;
         return;

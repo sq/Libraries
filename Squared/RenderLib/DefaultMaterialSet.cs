@@ -759,7 +759,7 @@ namespace Squared.Render {
         public readonly EffectParameter HalfPixelOffset;
         public readonly EffectParameter RenderTargetDimensions;
         public readonly EffectParameter Palette, PaletteSize;
-        public readonly EffectParameter OutlineGammaMinusOne;
+        public readonly EffectParameter OutlineGammaMinusOne, BlendInLinearSpace;
 
         public DefaultMaterialSetEffectParameters (Effect effect) {
             var viewport = effect.Parameters["Viewport"];
@@ -786,6 +786,7 @@ namespace Squared.Render {
             Palette = effect.Parameters["Palette"];
             PaletteSize = effect.Parameters["PaletteSize"];
             OutlineGammaMinusOne = effect.Parameters["OutlineGammaMinusOne"];
+            BlendInLinearSpace = effect.Parameters["BlendInLinearSpace"];
         }
 
         public void SetOutlineGamma (float gamma) {

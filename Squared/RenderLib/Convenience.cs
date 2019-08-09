@@ -453,6 +453,13 @@ namespace Squared.Render.Convenience {
 
         private float RasterOutlineGammaMinusOne;
 
+        /// <summary>
+        /// If true, raster shape colors will be converted from sRGB to linear space before
+        ///  blending and then converted back to sRGB for rendering.
+        /// If false, colors will be directly blended. This might look bad.
+        /// </summary>
+        public bool RasterBlendInLinearSpace;
+
         public ImperativeRenderer (
             IBatchContainer container,
             DefaultMaterialSet materials,
@@ -490,8 +497,12 @@ namespace Squared.Render.Convenience {
             LowPriorityMaterialOrdering = lowPriorityMaterialOrdering;
             DeclarativeSorter = declarativeSorter;
             RasterOutlineGammaMinusOne = 0;
+            RasterBlendInLinearSpace = true;
         }
 
+        /// <summary>
+        /// Applies gamma correction to outlines to make them look sharper.
+        /// </summary>
         public float RasterOutlineGamma {
             get {
                 return RasterOutlineGammaMinusOne + 1;
@@ -939,7 +950,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeEllipse (
-            Vector2 center, Vector2 radius, float outlineSize,
+            Vector2 center, Vector2 radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
@@ -951,7 +962,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Ellipse,
                     A = center,
                     Radius = radius,
-                    OutlineSize = outlineSize,
+                    OutlineSize = outlineRadius * 2,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
                     OutlineColor = outlineColor
@@ -978,7 +989,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeLineSegment (
-            Vector2 a, Vector2 b, Vector2 radius, float outlineSize,
+            Vector2 a, Vector2 b, Vector2 radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
@@ -990,7 +1001,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.LineSegment,
                     A = a, B = b,
                     Radius = radius,
-                    OutlineSize = outlineSize,
+                    OutlineSize = outlineRadius * 2,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
                     OutlineColor = outlineColor
@@ -1018,7 +1029,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeRectangle (
-            Vector2 tl, Vector2 br, Vector2 radius, float outlineSize,
+            Vector2 tl, Vector2 br, Vector2 radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
@@ -1030,7 +1041,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Rectangle,
                     A = tl, B = br,
                     Radius = radius,
-                    OutlineSize = outlineSize,
+                    OutlineSize = outlineRadius * 2,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
                     OutlineColor = outlineColor
@@ -1172,7 +1183,10 @@ namespace Squared.Render.Convenience {
 
                 cacheEntry.Batch = RasterShapeBatch.New(Container, actualLayer, material);
                 Cache.InsertAtFront(ref cacheEntry, null);
+
+                // FIXME: This is very wrong. This should be done later
                 material.Parameters.OutlineGammaMinusOne?.SetValue(RasterOutlineGammaMinusOne);
+                material.Parameters.BlendInLinearSpace?.SetValue(RasterBlendInLinearSpace ? 1.0f : 0.0f);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
