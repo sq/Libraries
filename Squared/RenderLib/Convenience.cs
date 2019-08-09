@@ -986,6 +986,26 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeRectangle (
+            Vector2 tl, Vector2 br, Vector2 radius,
+            Color innerColor, Color outerColor,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var eb = GetRasterShapeBatch(
+                layer, worldSpace, blendState
+            ))
+                eb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.Rectangle,
+                    A = tl, B = br,
+                    Radius = radius,
+                    OutlineSize = 0,
+                    CenterColor = innerColor,
+                    EdgeColor = outerColor,
+                    OutlineColor = Color.Transparent
+                });
+        }
+
+        public void RasterizeRectangle (
             Vector2 tl, Vector2 br, Vector2 radius, float outlineSize,
             Color innerColor, Color outerColor, Color outlineColor,
             int? layer = null, bool? worldSpace = null,

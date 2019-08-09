@@ -157,19 +157,21 @@ void RasterShapePixelShader(
     float  radiusLength = max(length(radius), 0.1);
     float2 invRadius = 1.0 / max(radius, float2(0.1, 0.1));
 
-    float distanceF, distance;
+    float distanceF, distance, gradientWeight;
     float2 distanceXy;
 
     if (type == TYPE_Ellipse) {
         distanceXy = screenPosition - a;
         distanceF = length(distanceXy * invRadius);
         distance = distanceF * radiusLength;
+        gradientWeight = saturate(distanceF);
     } else if (type == TYPE_LineSegment) {
         float t;
         float2 closestPoint = closestPointOnLineSegment2(a, b, screenPosition, t);
         distanceXy = screenPosition - closestPoint;
         distanceF = length(distanceXy * invRadius);
         distance = distanceF * radiusLength;
+        gradientWeight = saturate(distanceF);
     } else if (type == TYPE_Rectangle) {
         float2 tl = min(a, b), br = max(a, b), center = (a + b) * 0.5;
         float2 position = screenPosition - center;
@@ -180,10 +182,12 @@ void RasterShapePixelShader(
             max(d.x, d.y),
             0.0    
         ) + length(max(d, 0.0)) + radius;
+
         distanceF = distance / size;
+        gradientWeight = 1 - saturate(-(distance - radius) / size);
     }
 
-    float4 gradient = lerp(centerColor, edgeColor, saturate(distanceF));
+    float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
     if (outlineSize > 0.001) {
         float  outlineDistance = (distance - radiusLength) / outlineSize;
         float4 gradientToOutline = lerp(gradient, outlineColor, saturate(outlineDistance));
