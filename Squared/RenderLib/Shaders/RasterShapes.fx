@@ -262,14 +262,16 @@ void RasterShapePixelShader(
 
         // FIXME: What is the correct divisor here?
         float2 center = (a + b + c) / 3;
-        float2 c_ab = (a + b) / 2, c_bc = (b + c) / 2, c_ca = (c + a) / 2;
-        float2 gradientScale = max(max(length(c_ab - center), length(c_bc - center)), length(c_ca - center));
+        float gradientScale = max(max(length(a - center), length(b - center)), length(c - center)) / 2;
         gradientWeight = saturate(-distanceF / gradientScale);
     }
 
     float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
 
     if (outlineSize <= 0.0001)
+        // This eliminates a dark halo around the edges of some shapes but has the downside
+        //  of making everything look rounded instead of sharp-edged.
+        // outlineColor = gradient;
         outlineColor = 0;
 
     float  outlineDistance = (distance - radiusLength) / max(outlineSize, 1);
@@ -284,19 +286,19 @@ void RasterShapePixelShader(
 
     transparentWeight = 1 - pow(1 - transparentWeight, outlineGamma);
     float4 color = BlendInLinearSpace ? LinearToSRGB(gradientToOutline) : gradientToOutline;
-    float4 outlineToTransparent = lerp(
-        color, 0, transparentWeight
-    );
-    result = outlineToTransparent;
+    float newAlpha = lerp(color.a, 0, transparentWeight);
 
-    if (result.a <= threshold) {
+    if (newAlpha <= threshold) {
         discard;
         return;
     }
 
-    result.rgb = ApplyDither(result.rgb, GET_VPOS);
-    if (BlendInLinearSpace)
-        result.rgb *= result.a;
+    if (BlendInLinearSpace) {
+        result = float4(ApplyDither(color.rgb * newAlpha, GET_VPOS), newAlpha);
+    } else {
+        result = lerp(color, 0, transparentWeight);
+        result.rgb = ApplyDither(result.rgb, GET_VPOS);
+    }
 }
 
 technique WorldSpaceRasterShape

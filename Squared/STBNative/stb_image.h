@@ -745,7 +745,7 @@ typedef struct
 
    int read_from_callbacks;
    int buflen;
-   stbi_uc buffer_start[128];
+   stbi_uc buffer_start[STBI_BUFFER_SIZE];
 
    stbi_uc *img_buffer, *img_buffer_end;
    stbi_uc *img_buffer_original, *img_buffer_original_end;
