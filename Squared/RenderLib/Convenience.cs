@@ -945,7 +945,9 @@ namespace Squared.Render.Convenience {
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineColor = outerColor.GetValueOrDefault(innerColor)
+                    OutlineColor = outerColor.GetValueOrDefault(innerColor),
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = RasterBlendInLinearSpace
                 });
         }
 
@@ -965,7 +967,9 @@ namespace Squared.Render.Convenience {
                     OutlineSize = outlineRadius * 2,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
-                    OutlineColor = outlineColor
+                    OutlineColor = outlineColor,
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = RasterBlendInLinearSpace
                 });
         }
 
@@ -986,7 +990,9 @@ namespace Squared.Render.Convenience {
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineColor = outerColor.GetValueOrDefault(innerColor)
+                    OutlineColor = outerColor.GetValueOrDefault(innerColor),
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = RasterBlendInLinearSpace
                 });
         }
 
@@ -1008,7 +1014,9 @@ namespace Squared.Render.Convenience {
                     OutlineSize = outlineRadius * 2,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
-                    OutlineColor = outlineColor
+                    OutlineColor = outlineColor,
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = RasterBlendInLinearSpace
                 });
         }
 
@@ -1030,7 +1038,9 @@ namespace Squared.Render.Convenience {
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
-                    OutlineColor = Color.Transparent
+                    OutlineColor = Color.Transparent,
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = RasterBlendInLinearSpace
                 });
         }
 
@@ -1052,7 +1062,9 @@ namespace Squared.Render.Convenience {
                     OutlineSize = outlineRadius * 2,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
-                    OutlineColor = outlineColor
+                    OutlineColor = outlineColor,
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = RasterBlendInLinearSpace
                 });
         }
 
@@ -1071,7 +1083,9 @@ namespace Squared.Render.Convenience {
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
-                    OutlineColor = outerColor.GetValueOrDefault(innerColor)
+                    OutlineColor = outerColor.GetValueOrDefault(innerColor),
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = RasterBlendInLinearSpace
                 });
         }
 
@@ -1091,12 +1105,12 @@ namespace Squared.Render.Convenience {
                     OutlineSize = outlineRadius * 2,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
-                    OutlineColor = outlineColor
+                    OutlineColor = outlineColor,
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = RasterBlendInLinearSpace
                 });
         }
 
-        // FIXME: NYI
-        /*
         public void RasterizeQuadraticBezier (
             Vector2 a, Vector2 b, Vector2 c, Vector2 radius, Color color,
             int? layer = null, bool? worldSpace = null,
@@ -1106,13 +1120,15 @@ namespace Squared.Render.Convenience {
                 layer, worldSpace, blendState
             ))
                 rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Triangle,
+                    Type = RasterShapeType.QuadraticBezier,
                     A = a, B = b, C = c,
                     Radius = radius - Vector2.One,
                     OutlineSize = 0,
                     CenterColor = color,
                     EdgeColor = color,
-                    OutlineColor = color
+                    OutlineColor = color,
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = RasterBlendInLinearSpace
                 });
         }
 
@@ -1126,17 +1142,17 @@ namespace Squared.Render.Convenience {
                 layer, worldSpace, blendState
             ))
                 rsb.Add(new RasterShapeDrawCall {
-                    Type = RasterShapeType.Triangle,
+                    Type = RasterShapeType.QuadraticBezier,
                     A = a, B = b, C = c,
                     Radius = radius,
                     OutlineSize = outlineRadius * 2,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
-                    OutlineColor = outlineColor
+                    OutlineColor = outlineColor,
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = RasterBlendInLinearSpace
                 });
         }
-
-        */
 
         public IBitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, Material customMaterial = null) {
             if (Materials == null)
@@ -1273,10 +1289,6 @@ namespace Squared.Render.Convenience {
 
                 cacheEntry.Batch = RasterShapeBatch.New(Container, actualLayer, material);
                 Cache.InsertAtFront(ref cacheEntry, null);
-
-                // FIXME: This is very wrong. This should be done later
-                material.Parameters.OutlineGammaMinusOne?.SetValue(RasterOutlineGammaMinusOne);
-                material.Parameters.BlendInLinearSpace?.SetValue(RasterBlendInLinearSpace ? 1.0f : 0.0f);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)

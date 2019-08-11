@@ -17,7 +17,7 @@ namespace Squared.Render {
     public struct RasterShapeVertex : IVertexType {
         public Vector4 PointsAB, PointsCD;
         public Color CenterColor, EdgeColor, OutlineColor;
-        public Vector2 OutlineSizeAndType;
+        public Vector4 Parameters;
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -30,8 +30,8 @@ namespace Squared.Render {
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "PointsCD").ToInt32(), 
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 1 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "OutlineSizeAndType").ToInt32(), 
-                    VertexElementFormat.Vector2, VertexElementUsage.TextureCoordinate, 0 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "Parameters").ToInt32(), 
+                    VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "CenterColor").ToInt32(), 
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "EdgeColor").ToInt32(), 
@@ -97,6 +97,14 @@ namespace Squared.Render {
         /// The thickness of the shape's outline.
         /// </summary>
         public float OutlineSize;
+        /// <summary>
+        /// Applies gamma correction to the outline to make it appear softer or sharper.
+        /// </summary>
+        public float OutlineGammaMinusOne;
+        /// <summary>
+        /// If set, blending between inner/outer/outline colors occurs in linear space.
+        /// </summary>
+        public bool BlendInLinearSpace;
     }
 
     public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
@@ -138,7 +146,7 @@ namespace Squared.Render {
                         CenterColor = dc.CenterColor,
                         OutlineColor = dc.OutlineColor,
                         EdgeColor = dc.EdgeColor,
-                        OutlineSizeAndType = new Vector2(dc.OutlineSize, (int)dc.Type)
+                        Parameters = new Vector4(dc.OutlineSize, (int)dc.Type, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne)
                     };
                     vw.Write(vert);
                 }

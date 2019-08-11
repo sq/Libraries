@@ -4,9 +4,6 @@
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
 
-uniform float BlendInLinearSpace = 1;
-uniform float OutlineGammaMinusOne = 0;
-
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
 // Input is premultiplied, output is not
@@ -34,6 +31,7 @@ float4 LinearToSRGB(float4 rgba) {
 #define TYPE_LineSegment 1
 #define TYPE_Rectangle 2
 #define TYPE_Triangle 3
+#define TYPE_QuadraticBezier 4
 
 #define DEFINE_QuadCorners const float2 QuadCorners[] = { \
     {0, 0}, \
@@ -46,7 +44,7 @@ float4 LinearToSRGB(float4 rgba) {
     in int2 cornerIndex : BLENDINDICES0, \
     in float4 ab_in : POSITION0, \
     in float4 cd_in : POSITION1, \
-    inout float2 outlineSizeAndType : TEXCOORD0, \
+    inout float4 params : TEXCOORD0, \
     inout float4 centerColor : COLOR0, \
     inout float4 edgeColor : COLOR1, \
     inout float4 outlineColor : COLOR2, \
@@ -59,14 +57,14 @@ float4 LinearToSRGB(float4 rgba) {
     ab = ab_in; cd = cd_in; \
     float4 position = float4(ab_in.x, ab_in.y, 0, 1); \
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
-    float outlineSize = outlineSizeAndType.x; \
-    int type = outlineSizeAndType.y;
+    float outlineSize = params.x; \
+    int type = params.y;
 
 #define RASTERSHAPE_FS_ARGS \
     in float2 screenPosition : NORMAL0, \
     in float4 ab : TEXCOORD1, \
     in float4 cd : TEXCOORD2, \
-    in float2 outlineSizeAndType : TEXCOORD0, \
+    in float4 params : TEXCOORD0, \
     in float4 centerColor : COLOR0, \
     in float4 edgeColor : COLOR1, \
     in float4 outlineColor : COLOR2, \
@@ -75,13 +73,15 @@ float4 LinearToSRGB(float4 rgba) {
 
 #define RASTERSHAPE_FS_PROLOGUE \
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
-    float outlineSize = outlineSizeAndType.x; \
-    int type = outlineSizeAndType.y; \
+    float outlineSize = params.x; \
+    int type = params.y; \
+    float BlendInLinearSpace = params.z; \
     if (BlendInLinearSpace) { \
         centerColor = pSRGBToLinear(centerColor); \
         edgeColor = pSRGBToLinear(edgeColor); \
         outlineColor = pSRGBToLinear(outlineColor); \
-    };
+    }; \
+    float OutlineGammaMinusOne = params.w;
 
 uniform float HalfPixelOffset;
 
@@ -112,6 +112,21 @@ void computeTLBR (
         totalRadius += 1;
         tl = min(min(a, b), c) - totalRadius;
         br = max(max(a, b), c) + totalRadius;
+    } else if (type == TYPE_QuadraticBezier) {
+        float2 mi = min(a, c);
+        float2 ma = max(a, c);
+
+        if (b.x<mi.x || b.x>ma.x || b.y<mi.y || b.y>ma.y)
+        {
+            float2 t = clamp((a - b) / (a - 2.0*b + c), 0.0, 1.0);
+            float2 s = 1.0 - t;
+            float2 q = s*s*a + 2.0*s*t*b + t*t*c;
+            mi = min(mi, q);
+            ma = max(ma, q);
+        }
+
+        tl = mi - totalRadius;
+        br = ma + totalRadius;
     }
 }
 
@@ -194,6 +209,49 @@ float2 closestPointOnLineSegment2(float2 a, float2 b, float2 pt, out float t) {
     return a + t * ab;
 }
 
+float sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C)
+{
+    float2 a = B - A;
+    float2 b = A - 2.0*B + C;
+    float2 c = a * 2.0;
+    float2 d = A - pos;
+    float kk = 1.0 / dot(b, b);
+    float kx = kk * dot(a, b);
+    float ky = kk * (2.0*dot(a, a) + dot(d, b)) / 3.0;
+    float kz = kk * dot(d, a);
+    float res = 0.0;
+    float p = ky - kx*kx;
+    float p3 = p*p*p;
+    float q = kx*(2.0*kx*kx - 3.0*ky) + kz;
+    float h = q*q + 4.0*p3;
+    if (h >= 0.0)
+    {
+        h = sqrt(h);
+        float2 x = (float2(h, -h) - q) / 2.0;
+        float2 uv = sign(x)*pow(abs(x), 1.0 / 3.0);
+        float t = uv.x + uv.y - kx;
+        t = clamp(t, 0.0, 1.0);
+        float2 qos = d + (c + b*t)*t;
+        res = dot(qos, qos);
+    }
+    else
+    {
+        float z = sqrt(-p);
+        float v = acos(q / (p*z*2.0)) / 3.0;
+        float m = cos(v);
+        float n = sin(v)*1.732050808;
+        float3 t = float3(m + m, -n - m, n - m) * z - kx;
+        t = clamp(t, 0.0, 1.0);
+        float2 qos = d + (c + b*t.x)*t.x;
+        res = dot(qos, qos);
+        qos = d + (c + b*t.y)*t.y;
+        res = min(res, dot(qos, qos));
+        qos = d + (c + b*t.z)*t.z;
+        res = min(res, dot(qos, qos));
+    }
+    return sqrt(res);
+}
+
 void RasterShapePixelShader(
     RASTERSHAPE_FS_ARGS
 ) {
@@ -264,6 +322,10 @@ void RasterShapePixelShader(
         float2 center = (a + b + c) / 3;
         float gradientScale = max(max(length(a - center), length(b - center)), length(c - center)) / 2;
         gradientWeight = saturate(-distanceF / gradientScale);
+    } else if (type == TYPE_QuadraticBezier) {
+        distanceF = sdBezier(screenPosition, a, b, c);
+        distance = float2(distanceF, 0);
+        gradientWeight = saturate(distanceF);
     }
 
     float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
