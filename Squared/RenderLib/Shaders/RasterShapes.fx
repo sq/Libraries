@@ -113,6 +113,7 @@ void computeTLBR (
         tl = min(min(a, b), c) - totalRadius;
         br = max(max(a, b), c) + totalRadius;
     } else if (type == TYPE_QuadraticBezier) {
+        totalRadius += 1;
         float2 mi = min(a, c);
         float2 ma = max(a, c);
 
@@ -215,7 +216,10 @@ float sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C)
     float2 b = A - 2.0*B + C;
     float2 c = a * 2.0;
     float2 d = A - pos;
-    float kk = 1.0 / dot(b, b);
+    float dotB = dot(b, b);
+    if (abs(dotB) < 0.0001)
+        dotB = 0.0001 * sign(dotB);
+    float kk = 1.0 / dotB;
     float kx = kk * dot(a, b);
     float ky = kk * (2.0*dot(a, a) + dot(d, b)) / 3.0;
     float kz = kk * dot(d, a);
@@ -237,7 +241,10 @@ float sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C)
     else
     {
         float z = sqrt(-p);
-        float v = acos(q / (p*z*2.0)) / 3.0;
+        float pz2 = (p*z*2.0);
+        if (abs(pz2) < 0.0001)
+            pz2 = 0.0001 * sign(pz2);
+        float v = acos(q / pz2) / 3.0;
         float m = cos(v);
         float n = sin(v)*1.732050808;
         float3 t = float3(m + m, -n - m, n - m) * z - kx;
@@ -323,9 +330,15 @@ void RasterShapePixelShader(
         float gradientScale = max(max(length(a - center), length(b - center)), length(c - center)) / 2;
         gradientWeight = saturate(-distanceF / gradientScale);
     } else if (type == TYPE_QuadraticBezier) {
+        // FIXME: There's a lot wrong here
         distanceF = sdBezier(screenPosition, a, b, c);
+        gradientWeight = saturate(distanceF / radius);
+        // HACK: I randomly guessed that I need to bias the distance value by sqrt(2)
+        // Doing this makes the thickness of the line and its outline roughly match that
+        //  of a regular line segment. No, I don't know why this works
+        // Also we need to compute the gradient weight before doing this for some reason
+        distanceF *= sqrt(2);
         distance = float2(distanceF, 0);
-        gradientWeight = saturate(distanceF);
     }
 
     float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
