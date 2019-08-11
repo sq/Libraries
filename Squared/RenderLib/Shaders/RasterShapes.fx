@@ -307,7 +307,7 @@ void RasterShapePixelShader(
         float2 gradientSize = size + (radius * 0.5);
 
         if (c.x >= 0.5)
-            gradientWeight = length(position / gradientSize);
+            gradientWeight = saturate(length(position / gradientSize));
         else
             gradientWeight = max(abs(position.x / gradientSize.x), abs(position.y / gradientSize.y));
     } else if (type == TYPE_Triangle) {
@@ -328,7 +328,8 @@ void RasterShapePixelShader(
         // FIXME: What is the correct divisor here?
         float2 center = (a + b + c) / 3;
         float gradientScale = max(max(length(a - center), length(b - center)), length(c - center)) / 2;
-        gradientWeight = saturate(-distanceF / gradientScale);
+        // HACK: The - 1 here gets the start of the gradient closer to the outside of the triangle
+        gradientWeight = saturate(-(distanceF - 1) / gradientScale);
     } else if (type == TYPE_QuadraticBezier) {
         // FIXME: There's a lot wrong here
         distanceF = sdBezier(screenPosition, a, b, c);
