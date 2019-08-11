@@ -420,7 +420,7 @@ void RasterShapeTextured (
     float2 texCoord = ((posRelative / sizePx) * texSize) + texRgn.xy;
     texCoord = clamp(texCoord, texRgn.xy, texRgn.zw);
 
-    float4 texColor = tex2Dlod(TextureSampler, float4(texCoord, 0, 0));
+    float4 texColor = tex2D(TextureSampler, texCoord);
     result *= texColor;
     
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
