@@ -942,7 +942,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Ellipse,
                     A = center,
                     Radius = radius - Vector2.One,
-                    OutlineSize = 1,
+                    OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor)
@@ -983,7 +983,7 @@ namespace Squared.Render.Convenience {
                     A = a, B = b,
                     C = new Vector2(gradientAlongLine ? 1 : 0, 0),
                     Radius = radius - Vector2.One,
-                    OutlineSize = 1,
+                    OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor)
@@ -997,10 +997,10 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
-            using (var eb = GetRasterShapeBatch(
+            using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState
             ))
-                eb.Add(new RasterShapeDrawCall {
+                rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.LineSegment,
                     A = a, B = b,
                     C = new Vector2(gradientAlongLine ? 1 : 0, 0),
@@ -1019,10 +1019,10 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
-            using (var eb = GetRasterShapeBatch(
+            using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState
             ))
-                eb.Add(new RasterShapeDrawCall {
+                rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
                     A = tl, B = br,
                     C = new Vector2(radialGradient ? 1 : 0, 0),
@@ -1041,10 +1041,10 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
-            using (var eb = GetRasterShapeBatch(
+            using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState
             ))
-                eb.Add(new RasterShapeDrawCall {
+                rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
                     A = tl, B = br,
                     C = new Vector2(radialGradient ? 1 : 0, 0),
@@ -1055,6 +1055,88 @@ namespace Squared.Render.Convenience {
                     OutlineColor = outlineColor
                 });
         }
+
+        public void RasterizeTriangle (
+            Vector2 a, Vector2 b, Vector2 c, Vector2 radius, Color innerColor, Color? outerColor = null,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var rsb = GetRasterShapeBatch(
+                layer, worldSpace, blendState
+            ))
+                rsb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.Triangle,
+                    A = a, B = b, C = c,
+                    Radius = radius - Vector2.One,
+                    OutlineSize = 0,
+                    CenterColor = innerColor,
+                    EdgeColor = outerColor.GetValueOrDefault(innerColor),
+                    OutlineColor = outerColor.GetValueOrDefault(innerColor)
+                });
+        }
+
+        public void RasterizeTriangle (
+            Vector2 a, Vector2 b, Vector2 c, Vector2 radius, float outlineRadius,
+            Color innerColor, Color outerColor, Color outlineColor,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var rsb = GetRasterShapeBatch(
+                layer, worldSpace, blendState
+            ))
+                rsb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.Triangle,
+                    A = a, B = b, C = c,
+                    Radius = radius,
+                    OutlineSize = outlineRadius * 2,
+                    CenterColor = innerColor,
+                    EdgeColor = outerColor,
+                    OutlineColor = outlineColor
+                });
+        }
+
+        // FIXME: NYI
+        /*
+        public void RasterizeQuadraticBezier (
+            Vector2 a, Vector2 b, Vector2 c, Vector2 radius, Color color,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var rsb = GetRasterShapeBatch(
+                layer, worldSpace, blendState
+            ))
+                rsb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.Triangle,
+                    A = a, B = b, C = c,
+                    Radius = radius - Vector2.One,
+                    OutlineSize = 0,
+                    CenterColor = color,
+                    EdgeColor = color,
+                    OutlineColor = color
+                });
+        }
+
+        public void RasterizeQuadraticBezier (
+            Vector2 a, Vector2 b, Vector2 c, Vector2 radius, float outlineRadius,
+            Color innerColor, Color outerColor, Color outlineColor,
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null
+        ) {
+            using (var rsb = GetRasterShapeBatch(
+                layer, worldSpace, blendState
+            ))
+                rsb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.Triangle,
+                    A = a, B = b, C = c,
+                    Radius = radius,
+                    OutlineSize = outlineRadius * 2,
+                    CenterColor = innerColor,
+                    EdgeColor = outerColor,
+                    OutlineColor = outlineColor
+                });
+        }
+
+        */
 
         public IBitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, Material customMaterial = null) {
             if (Materials == null)

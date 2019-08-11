@@ -9,20 +9,31 @@ uniform float OutlineGammaMinusOne = 0;
 
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
-float3 SRGBToLinear(float3 srgb) {
-    return srgb * (srgb * (srgb * 0.305306011 + 0.682171111) + 0.012522878);
+// Input is premultiplied, output is not
+float4 pSRGBToLinear(float4 srgba) {
+    float3 srgb = srgba.rgb / max(srgba.a, 0.0001);
+    float3 result = srgb * (srgb * (srgb * 0.305306011 + 0.682171111) + 0.012522878);
+    return float4(result, srgba.a);
 }
 
-float3 LinearToSRGB(float3 rgb) {
+// Neither input or output are premultiplied!
+float4 LinearToSRGB(float4 rgba) {
+    float3 rgb = rgba.rgb;
     float3 S1 = sqrt(rgb);
     float3 S2 = sqrt(S1);
     float3 S3 = sqrt(S2);
-    return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * rgb;
+    float3 result = 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * rgb;
+    return float4(result, rgba.a);
 }
+
+// A bunch of the distance formulas in here are thanks to inigo quilez
+// http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
+// http://iquilezles.org/www/articles/distfunctions/distfunctions.htm
 
 #define TYPE_Ellipse 0
 #define TYPE_LineSegment 1
 #define TYPE_Rectangle 2
+#define TYPE_Triangle 3
 
 #define DEFINE_QuadCorners const float2 QuadCorners[] = { \
     {0, 0}, \
@@ -67,9 +78,9 @@ float3 LinearToSRGB(float3 rgb) {
     float outlineSize = outlineSizeAndType.x; \
     int type = outlineSizeAndType.y; \
     if (BlendInLinearSpace) { \
-        centerColor.rgb = SRGBToLinear(centerColor.rgb); \
-        edgeColor.rgb = SRGBToLinear(edgeColor.rgb); \
-        outlineColor.rgb = SRGBToLinear(outlineColor.rgb); \
+        centerColor = pSRGBToLinear(centerColor); \
+        edgeColor = pSRGBToLinear(edgeColor); \
+        outlineColor = pSRGBToLinear(outlineColor); \
     };
 
 uniform float HalfPixelOffset;
@@ -97,6 +108,9 @@ void computeTLBR (
     } else if (type == TYPE_Rectangle) {
         tl = min(a, b) - totalRadius;
         br = max(a, b) + totalRadius;
+    } else if (type == TYPE_Triangle) {
+        tl = min(min(a, b), c) - totalRadius;
+        br = max(max(a, b), c) + totalRadius;
     }
 }
 
@@ -109,7 +123,7 @@ void computePosition (
     DEFINE_QuadCorners
         
     if (type == TYPE_LineSegment) {
-        // Axis-aligned bounding box around the line segment
+        // Oriented bounding box around the line segment
         float2 along = b - a,
             alongNorm = normalize(along) * totalRadius,
             left = alongNorm.yx * float2(-1, 1),
@@ -123,8 +137,8 @@ void computePosition (
             xy = b + right + alongNorm;
         else
             xy = a + right - alongNorm;
-    }
-    else {
+    } else {
+        // FIXME: Fit a better hull around triangles. Oriented bounding box?
         xy = lerp(tl, br, QuadCorners[cornerIndex.x]);
     }
 }
@@ -186,11 +200,15 @@ void RasterShapePixelShader(
 
     const float threshold = (1 / 512.0);
 
+    float2 totalRadius = radius + (outlineSize * 2) + 1;
     float  radiusLength = max(length(radius), 0.1);
     float2 invRadius = 1.0 / max(radius, float2(0.1, 0.1));
 
     float distanceF, distance, gradientWeight;
     float2 distanceXy;
+
+    float2 tl, br;
+    computeTLBR(type, totalRadius, a, b, c, tl, br);
 
     if (type == TYPE_Ellipse) {
         distanceXy = screenPosition - a;
@@ -226,35 +244,55 @@ void RasterShapePixelShader(
             gradientWeight = length(position / gradientSize);
         else
             gradientWeight = max(abs(position.x / gradientSize.x), abs(position.y / gradientSize.y));
+    } else if (type == TYPE_Triangle) {
+        // FIXME: Transform to origin?
+        float2 p = screenPosition;
+        float2 e0 = b - a, e1 = c - b, e2 = a - c;
+        float2 v0 = p - a, v1 = p - b, v2 = p - c;
+        float2 pq0 = v0 - e0 * clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);
+        float2 pq1 = v1 - e1 * clamp(dot(v1, e1) / dot(e1, e1), 0.0, 1.0);
+        float2 pq2 = v2 - e2 * clamp(dot(v2, e2) / dot(e2, e2), 0.0, 1.0);
+        float s = sign(e0.x*e2.y - e0.y*e2.x);
+        float2 d = min(min(float2(dot(pq0, pq0), s*(v0.x*e0.y - v0.y*e0.x)),
+            float2(dot(pq1, pq1), s*(v1.x*e1.y - v1.y*e1.x))),
+            float2(dot(pq2, pq2), s*(v2.x*e2.y - v2.y*e2.x)));
+        distanceF = -sqrt(d.x)*sign(d.y);
+        distance = float2(distanceF, 0);
+
+        // FIXME: What is the correct divisor here?
+        float2 center = (a + b + c) / 3;
+        float2 c_ab = (a + b) / 2, c_bc = (b + c) / 2, c_ca = (c + a) / 2;
+        float2 gradientScale = max(max(length(c_ab - center), length(c_bc - center)), length(c_ca - center));
+        gradientWeight = saturate(-distanceF / gradientScale);
     }
 
     float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
-    if (outlineSize > 0.001) {
-        float  outlineDistance = (distance - radiusLength) / outlineSize;
-        float  outlineWeight = saturate(outlineDistance);
-        float  outlineGamma = OutlineGammaMinusOne + 1;
-        float4 gradientToOutline = lerp(gradient, outlineColor, pow(outlineWeight, outlineGamma));
-        float transparentWeight = saturate(outlineDistance - 1);
-        if (transparentWeight > (1 - threshold)) {
-            discard;
-            return;
-        }
 
-        transparentWeight = 1 - pow(1 - transparentWeight, outlineGamma);
-        float3 colorRgb = BlendInLinearSpace ? LinearToSRGB(gradientToOutline.rgb) : gradientToOutline.rgb;
-        float4 outlineToTransparent = lerp(
-            float4(colorRgb, gradientToOutline.a),
-            0, transparentWeight
-        );
-        result = outlineToTransparent;
-    } else if (gradient.a >= threshold) {
-        result = float4(BlendInLinearSpace ? LinearToSRGB(gradient.rgb) : gradient.rgb, gradient.a);
-    } else {
+    float  outlineDistance = (distance - radiusLength) / max(outlineSize, 1);
+    float  outlineWeight = saturate(outlineDistance);
+    float  outlineGamma = OutlineGammaMinusOne + 1;
+    float4 gradientToOutline = lerp(gradient, outlineColor, pow(outlineWeight, outlineGamma));
+    float  transparentWeight = saturate(outlineDistance - 1);
+    if (transparentWeight > (1 - threshold)) {
+        discard;
+        return;
+    }
+
+    transparentWeight = 1 - pow(1 - transparentWeight, outlineGamma);
+    float4 color = BlendInLinearSpace ? LinearToSRGB(gradientToOutline) : gradientToOutline;
+    float4 outlineToTransparent = lerp(
+        color, 0, transparentWeight
+    );
+    result = outlineToTransparent;
+
+    if (result.a <= threshold) {
         discard;
         return;
     }
 
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
+    if (BlendInLinearSpace)
+        result.rgb *= result.a;
 }
 
 technique WorldSpaceRasterShape

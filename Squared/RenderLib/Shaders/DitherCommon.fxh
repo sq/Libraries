@@ -65,7 +65,11 @@ float3 ApplyDither (float3 rgb, float2 vpos) {
     float3 threshold3 = threshold;
     const float offset = 0.05;
 
-    float3 rgb8 = rgb * DitheringGetUnit();
+    // HACK: The dithering seems to bias values down slightly, so bias the input up
+    // Without this you get unusually large dark areas at the center of a black->white radial gradient
+    const float colorOffset = 0.5 / 255;
+    float3 rgb8 = (rgb + colorOffset) * DitheringGetUnit();
+
     float3 a = trunc(rgb8), b = ceil(rgb8);
     float3 distanceFromA = rgb8 - a;
     float3 mask = 1.0 - step(distanceFromA, threshold3);
