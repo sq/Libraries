@@ -278,7 +278,7 @@ namespace Squared.Render.Convenience {
             Bitmap,
             MultimaterialBitmap,
             Geometry,
-            Ellipse
+            RasterShape
         }
 
         private struct CachedBatches {
@@ -933,10 +933,11 @@ namespace Squared.Render.Convenience {
         public void RasterizeEllipse (
             Vector2 center, Vector2 radius, Color innerColor, Color? outerColor = null,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState
+                layer, worldSpace, blendState, texture, samplerState
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Ellipse,
@@ -947,7 +948,9 @@ namespace Squared.Render.Convenience {
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = RasterBlendInLinearSpace
+                    BlendInLinearSpace = RasterBlendInLinearSpace,
+                    // FIXME
+                    TextureBounds = Bounds.Unit
                 });
         }
 
@@ -955,10 +958,11 @@ namespace Squared.Render.Convenience {
             Vector2 center, Vector2 radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
             using (var eb = GetRasterShapeBatch(
-                layer, worldSpace, blendState
+                layer, worldSpace, blendState, texture, samplerState
             ))
                 eb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Ellipse,
@@ -969,7 +973,9 @@ namespace Squared.Render.Convenience {
                     EdgeColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = RasterBlendInLinearSpace
+                    BlendInLinearSpace = RasterBlendInLinearSpace,
+                    // FIXME
+                    TextureBounds = Bounds.Unit
                 });
         }
 
@@ -977,10 +983,11 @@ namespace Squared.Render.Convenience {
             Vector2 a, Vector2 b, Vector2 radius, Color innerColor, Color? outerColor = null,
             bool gradientAlongLine = false,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState
+                layer, worldSpace, blendState, texture, samplerState
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.LineSegment,
@@ -992,7 +999,9 @@ namespace Squared.Render.Convenience {
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = RasterBlendInLinearSpace
+                    BlendInLinearSpace = RasterBlendInLinearSpace,
+                    // FIXME
+                    TextureBounds = Bounds.Unit
                 });
         }
 
@@ -1001,10 +1010,11 @@ namespace Squared.Render.Convenience {
             Color innerColor, Color outerColor, Color outlineColor,
             bool gradientAlongLine = false,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState
+                layer, worldSpace, blendState, texture, samplerState
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.LineSegment,
@@ -1016,7 +1026,9 @@ namespace Squared.Render.Convenience {
                     EdgeColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = RasterBlendInLinearSpace
+                    BlendInLinearSpace = RasterBlendInLinearSpace,
+                    // FIXME
+                    TextureBounds = Bounds.Unit
                 });
         }
 
@@ -1025,10 +1037,11 @@ namespace Squared.Render.Convenience {
             Color innerColor, Color outerColor,
             bool radialGradient = false,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState
+                layer, worldSpace, blendState, texture, samplerState
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
@@ -1040,7 +1053,9 @@ namespace Squared.Render.Convenience {
                     EdgeColor = outerColor,
                     OutlineColor = Color.Transparent,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = RasterBlendInLinearSpace
+                    BlendInLinearSpace = RasterBlendInLinearSpace,
+                    // FIXME
+                    TextureBounds = Bounds.Unit
                 });
         }
 
@@ -1049,10 +1064,11 @@ namespace Squared.Render.Convenience {
             Color innerColor, Color outerColor, Color outlineColor,
             bool radialGradient = false,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState
+                layer, worldSpace, blendState, texture, samplerState
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
@@ -1064,17 +1080,20 @@ namespace Squared.Render.Convenience {
                     EdgeColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = RasterBlendInLinearSpace
+                    BlendInLinearSpace = RasterBlendInLinearSpace,
+                    // FIXME
+                    TextureBounds = Bounds.Unit
                 });
         }
 
         public void RasterizeTriangle (
             Vector2 a, Vector2 b, Vector2 c, Vector2 radius, Color innerColor, Color? outerColor = null,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState
+                layer, worldSpace, blendState, texture, samplerState
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Triangle,
@@ -1085,7 +1104,9 @@ namespace Squared.Render.Convenience {
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = RasterBlendInLinearSpace
+                    BlendInLinearSpace = RasterBlendInLinearSpace,
+                    // FIXME
+                    TextureBounds = Bounds.Unit
                 });
         }
 
@@ -1093,10 +1114,11 @@ namespace Squared.Render.Convenience {
             Vector2 a, Vector2 b, Vector2 c, Vector2 radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState
+                layer, worldSpace, blendState, texture, samplerState
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Triangle,
@@ -1107,17 +1129,20 @@ namespace Squared.Render.Convenience {
                     EdgeColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = RasterBlendInLinearSpace
+                    BlendInLinearSpace = RasterBlendInLinearSpace,
+                    // FIXME
+                    TextureBounds = Bounds.Unit
                 });
         }
 
         public void RasterizeQuadraticBezier (
             Vector2 a, Vector2 b, Vector2 c, Vector2 radius, Color color,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState
+                layer, worldSpace, blendState, texture, samplerState
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.QuadraticBezier,
@@ -1128,7 +1153,9 @@ namespace Squared.Render.Convenience {
                     EdgeColor = color,
                     OutlineColor = color,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = RasterBlendInLinearSpace
+                    BlendInLinearSpace = RasterBlendInLinearSpace,
+                    // FIXME
+                    TextureBounds = Bounds.Unit
                 });
         }
 
@@ -1136,10 +1163,11 @@ namespace Squared.Render.Convenience {
             Vector2 a, Vector2 b, Vector2 c, Vector2 radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             int? layer = null, bool? worldSpace = null,
-            BlendState blendState = null
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
             using (var rsb = GetRasterShapeBatch(
-                layer, worldSpace, blendState
+                layer, worldSpace, blendState, texture, samplerState
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.QuadraticBezier,
@@ -1150,7 +1178,9 @@ namespace Squared.Render.Convenience {
                     EdgeColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
-                    BlendInLinearSpace = RasterBlendInLinearSpace
+                    BlendInLinearSpace = RasterBlendInLinearSpace,
+                    // FIXME
+                    TextureBounds = Bounds.Unit
                 });
         }
 
@@ -1258,36 +1288,44 @@ namespace Squared.Render.Convenience {
             return (GeometryBatch)cacheEntry.Batch;
         }
 
-        public RasterShapeBatch GetRasterShapeBatch (int? layer, bool? worldSpace, BlendState blendState) {
+        public RasterShapeBatch GetRasterShapeBatch (int? layer, bool? worldSpace, BlendState blendState, Texture2D texture, SamplerState samplerState) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
             var actualLayer = layer.GetValueOrDefault(Layer);
             var actualWorldSpace = worldSpace.GetValueOrDefault(WorldSpace);
             var desiredBlendState = blendState ?? BlendState;
+            var desiredSamplerState = samplerState ?? SamplerState;
 
             CachedBatch cacheEntry;
             if (!Cache.TryGet<RasterShapeBatch>(
                 out cacheEntry,
-                CachedBatchType.Ellipse,
+                CachedBatchType.RasterShape,
                 container: Container,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,
                 rasterizerState: RasterizerState,
                 depthStencilState: DepthStencilState,
                 blendState: desiredBlendState,
-                samplerState: null,
+                samplerState: desiredSamplerState,
                 customMaterial: null,
                 useZBuffer: UseZBuffer
-            )) {
+            ) || (((RasterShapeBatch)cacheEntry.Batch).Texture != texture)) {
                 var material = Materials.Get(
-                    actualWorldSpace ? Materials.WorldSpaceRasterShape : Materials.ScreenSpaceRasterShape,
+                    (texture == null)
+                        ?
+                            actualWorldSpace ? Materials.WorldSpaceRasterShape : Materials.ScreenSpaceRasterShape
+                        :
+                            actualWorldSpace ? Materials.WorldSpaceTexturedRasterShape : Materials.ScreenSpaceTexturedRasterShape
+                    ,
                     rasterizerState: RasterizerState,
                     depthStencilState: DepthStencilState,
                     blendState: desiredBlendState
                 );
 
-                cacheEntry.Batch = RasterShapeBatch.New(Container, actualLayer, material);
+                // FIXME: The way this works will cause churn when mixing textured and untextured shape batches
+                //  oh well
+                cacheEntry.Batch = RasterShapeBatch.New(Container, actualLayer, material, texture, desiredSamplerState);
                 Cache.InsertAtFront(ref cacheEntry, null);
             }
 

@@ -267,6 +267,7 @@ namespace Squared.Render {
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
         public Material ScreenSpaceRasterShape, WorldSpaceRasterShape;
+        public Material ScreenSpaceTexturedRasterShape, WorldSpaceTexturedRasterShape;
         /// <summary>
         /// Make sure to resolve your lightmap to sRGB before using it with this, otherwise your lighting
         ///  will have really terrible banding in dark areas.
@@ -464,6 +465,16 @@ namespace Squared.Render {
             WorldSpaceRasterShape = new Material(
                 rasterShapesShader,
                 "WorldSpaceRasterShape"
+            );
+
+            ScreenSpaceTexturedRasterShape = new Material(
+                rasterShapesShader,
+                "ScreenSpaceTexturedRasterShape"
+            );
+
+            WorldSpaceTexturedRasterShape = new Material(
+                rasterShapesShader,
+                "WorldSpaceTexturedRasterShape"
             );
             
             var lightmapShader = BuiltInShaders.Load("Lightmap");

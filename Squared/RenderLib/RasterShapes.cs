@@ -16,8 +16,9 @@ namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct RasterShapeVertex : IVertexType {
         public Vector4 PointsAB, PointsCD;
-        public Color CenterColor, EdgeColor, OutlineColor;
         public Vector4 Parameters;
+        public Vector4 TextureRegion;
+        public Color CenterColor, EdgeColor, OutlineColor;
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -32,6 +33,8 @@ namespace Squared.Render {
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Parameters").ToInt32(), 
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 0 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "TextureRegion").ToInt32(), 
+                    VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "CenterColor").ToInt32(), 
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "EdgeColor").ToInt32(), 
@@ -105,6 +108,13 @@ namespace Squared.Render {
         /// If set, blending between inner/outer/outline colors occurs in linear space.
         /// </summary>
         public bool BlendInLinearSpace;
+        
+        /// <summary>
+        /// Specifies the region of the texture to apply to the shape.
+        /// The top-left part of this region will be aligned with the top-left
+        ///  corner of the shape's bounding box.
+        /// </summary>
+        public Bounds TextureBounds;
     }
 
     public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
@@ -117,10 +127,15 @@ namespace Squared.Render {
         internal ArrayPoolAllocator<RasterShapeVertex> VertexAllocator;
         internal ISoftwareBuffer _SoftwareBuffer;
 
+        public Texture2D Texture;
+        public SamplerState SamplerState;
+
         const int MaxVertexCount = 65535;
 
         public void Initialize (IBatchContainer container, int layer, Material material) {
             base.Initialize(container, layer, material, true);
+
+            Texture = null;
 
             if (VertexAllocator == null)
                 VertexAllocator = container.RenderManager.GetArrayAllocator<RasterShapeVertex>();
@@ -146,7 +161,8 @@ namespace Squared.Render {
                         CenterColor = dc.CenterColor,
                         OutlineColor = dc.OutlineColor,
                         EdgeColor = dc.EdgeColor,
-                        Parameters = new Vector4(dc.OutlineSize, (int)dc.Type, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne)
+                        Parameters = new Vector4(dc.OutlineSize, (int)dc.Type, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne),
+                        TextureRegion = dc.TextureBounds.ToVector4()
                     };
                     vw.Write(vert);
                 }
@@ -182,6 +198,9 @@ namespace Squared.Render {
                 scratchBindings[0] = cornerVb;
                 scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
 
+                Material.Effect.Parameters["Texture"]?.SetValue(Texture);
+                device.SamplerStates[0] = SamplerState ?? SamplerState.LinearWrap;
+
                 device.SetVertexBuffers(scratchBindings);
                 device.DrawInstancedPrimitives(
                     PrimitiveType.TriangleList, 
@@ -189,6 +208,8 @@ namespace Squared.Render {
                     _CornerBuffer.HardwareIndexOffset, 2, 
                     _DrawCalls.Count
                 );
+
+                Material.Effect.Parameters["Texture"]?.SetValue((Texture2D)null);
 
                 NativeBatch.RecordCommands(1);
                 hwb.SetInactive();
@@ -210,7 +231,7 @@ namespace Squared.Render {
             _DrawCalls.Add(ref dc);
         }
 
-        public static RasterShapeBatch New (IBatchContainer container, int layer, Material material) {
+        public static RasterShapeBatch New (IBatchContainer container, int layer, Material material, Texture2D texture = null, SamplerState desiredSamplerState = null) {
             if (container == null)
                 throw new ArgumentNullException("container");
             if (material == null)
@@ -218,6 +239,8 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<RasterShapeBatch>();
             result.Initialize(container, layer, material);
+            result.Texture = texture;
+            result.SamplerState = desiredSamplerState;
             result.CaptureStack(0);
             return result;
         }

@@ -4,6 +4,15 @@
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
 
+Texture2D Texture : register(t0);
+
+sampler TextureSampler : register(s0) {
+    Texture = (Texture);
+};
+
+// HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
+#define OutlineSizeCompensation sqrt(2)
+
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
 // Input is premultiplied, output is not
@@ -49,27 +58,35 @@ float4 LinearToSRGB(float4 rgba) {
     inout float4 edgeColor : COLOR1, \
     inout float4 outlineColor : COLOR2, \
     out float4 result : POSITION0, \
-    out float4 ab : TEXCOORD1, \
-    out float4 cd : TEXCOORD2, \
-    out float2 screenPosition : NORMAL0
+    out float4 ab : TEXCOORD2, \
+    out float4 cd : TEXCOORD3, \
+    inout float4 texRgn : TEXCOORD1, \
+    out float2 worldPosition : NORMAL0
 
 #define RASTERSHAPE_VS_PROLOGUE \
     ab = ab_in; cd = cd_in; \
     float4 position = float4(ab_in.x, ab_in.y, 0, 1); \
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
+    params.x *= OutlineSizeCompensation; \
     float outlineSize = params.x; \
     int type = params.y;
 
 #define RASTERSHAPE_FS_ARGS \
-    in float2 screenPosition : NORMAL0, \
-    in float4 ab : TEXCOORD1, \
-    in float4 cd : TEXCOORD2, \
+    in float2 worldPosition : NORMAL0, \
+    in float4 ab : TEXCOORD2, \
+    in float4 cd : TEXCOORD3, \
     in float4 params : TEXCOORD0, \
     in float4 centerColor : COLOR0, \
     in float4 edgeColor : COLOR1, \
     in float4 outlineColor : COLOR2, \
+    in float4 texRgn : TEXCOORD1, \
     ACCEPTS_VPOS, \
-    out float4 result : COLOR0 \
+    out float4 result : COLOR0
+
+#define RASTERSHAPE_FS_PASS_ARGS \
+    worldPosition, ab, cd, \
+    params, centerColor, edgeColor, outlineColor, \
+    texRgn, RAW_VPOS, result
 
 #define RASTERSHAPE_FS_PROLOGUE \
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
@@ -173,7 +190,7 @@ void ScreenSpaceRasterShapeVertexShader (
     result = TransformPosition(
         float4(position.xy, position.z, 1), true
     );
-    screenPosition = position.xy;
+    worldPosition = position.xy;
 }
 
 void WorldSpaceRasterShapeVertexShader(
@@ -189,7 +206,7 @@ void WorldSpaceRasterShapeVertexShader(
     result = TransformPosition(
         float4(position.xy * GetViewportScale().xy, position.z, 1), true
     );
-    screenPosition = position.xy;
+    worldPosition = position.xy;
 }
 
 float2 closestPointOnLine2(float2 a, float2 b, float2 pt, out float t) {
@@ -259,8 +276,9 @@ float sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C)
     return sqrt(res);
 }
 
-void RasterShapePixelShader(
-    RASTERSHAPE_FS_ARGS
+void rasterShapeCommon (
+    RASTERSHAPE_FS_ARGS,
+    out float2 tl, out float2 br
 ) {
     RASTERSHAPE_FS_PROLOGUE;
 
@@ -273,18 +291,17 @@ void RasterShapePixelShader(
     float distanceF, distance, gradientWeight;
     float2 distanceXy;
 
-    float2 tl, br;
     computeTLBR(type, totalRadius, a, b, c, tl, br);
 
     if (type == TYPE_Ellipse) {
-        distanceXy = screenPosition - a;
+        distanceXy = worldPosition - a;
         distanceF = length(distanceXy * invRadius);
         distance = distanceF * radiusLength;
         gradientWeight = saturate(distanceF);
     } else if (type == TYPE_LineSegment) {
         float t;
-        float2 closestPoint = closestPointOnLineSegment2(a, b, screenPosition, t);
-        distanceXy = screenPosition - closestPoint;
+        float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
+        distanceXy = worldPosition - closestPoint;
         distanceF = length(distanceXy * invRadius);
         distance = distanceF * radiusLength;
         if (c.x >= 0.5)
@@ -293,7 +310,7 @@ void RasterShapePixelShader(
             gradientWeight = saturate(distanceF);
     } else if (type == TYPE_Rectangle) {
         float2 tl = min(a, b), br = max(a, b), center = (a + b) * 0.5;
-        float2 position = screenPosition - center;
+        float2 position = worldPosition - center;
         float2 size = (br - tl) * 0.5;
 
         float2 d = abs(position) - size;
@@ -312,7 +329,7 @@ void RasterShapePixelShader(
             gradientWeight = max(abs(position.x / gradientSize.x), abs(position.y / gradientSize.y));
     } else if (type == TYPE_Triangle) {
         // FIXME: Transform to origin?
-        float2 p = screenPosition;
+        float2 p = worldPosition;
         float2 e0 = b - a, e1 = c - b, e2 = a - c;
         float2 v0 = p - a, v1 = p - b, v2 = p - c;
         float2 pq0 = v0 - e0 * clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);
@@ -332,7 +349,7 @@ void RasterShapePixelShader(
         gradientWeight = saturate(-(distanceF - 1) / gradientScale);
     } else if (type == TYPE_QuadraticBezier) {
         // FIXME: There's a lot wrong here
-        distanceF = sdBezier(screenPosition, a, b, c);
+        distanceF = sdBezier(worldPosition, a, b, c);
         gradientWeight = saturate(distanceF / radius);
         // HACK: I randomly guessed that I need to bias the distance value by sqrt(2)
         // Doing this makes the thickness of the line and its outline roughly match that
@@ -370,11 +387,38 @@ void RasterShapePixelShader(
     }
 
     if (BlendInLinearSpace) {
-        result = float4(ApplyDither(color.rgb * newAlpha, GET_VPOS), newAlpha);
+        result = float4(color.rgb * newAlpha, newAlpha);
     } else {
         result = lerp(color, 0, transparentWeight);
-        result.rgb = ApplyDither(result.rgb, GET_VPOS);
     }
+}
+
+void RasterShapeUntextured (
+    RASTERSHAPE_FS_ARGS
+) {
+    float2 tl, br;
+    rasterShapeCommon(
+        RASTERSHAPE_FS_PASS_ARGS,
+        tl, br
+    );
+    result.rgb = ApplyDither(result.rgb, GET_VPOS);
+}
+
+void RasterShapeTextured (
+    RASTERSHAPE_FS_ARGS
+) {
+    float2 tl, br;
+    rasterShapeCommon(
+        RASTERSHAPE_FS_PASS_ARGS,
+        tl, br
+    );
+    
+    float2 texCoord = ((worldPosition - tl) / (br - tl)) * (texRgn.zw - texRgn.xy) + texRgn.xy;
+
+    float4 texColor = tex2Dlod(TextureSampler, float4(clamp(texCoord, texRgn.xy, texRgn.zw), 0, 0));
+    result *= texColor;
+    
+    result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
 
 technique WorldSpaceRasterShape
@@ -382,7 +426,7 @@ technique WorldSpaceRasterShape
     pass P0
     {
         vertexShader = compile vs_3_0 WorldSpaceRasterShapeVertexShader();
-        pixelShader = compile ps_3_0 RasterShapePixelShader();
+        pixelShader = compile ps_3_0 RasterShapeUntextured();
     }
 }
 
@@ -391,6 +435,24 @@ technique ScreenSpaceRasterShape
     pass P0
     {
         vertexShader = compile vs_3_0 ScreenSpaceRasterShapeVertexShader();
-        pixelShader = compile ps_3_0 RasterShapePixelShader();
+        pixelShader = compile ps_3_0 RasterShapeUntextured();
+    }
+}
+
+technique WorldSpaceTexturedRasterShape
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 WorldSpaceRasterShapeVertexShader();
+        pixelShader = compile ps_3_0 RasterShapeTextured();
+    }
+}
+
+technique ScreenSpaceTexturedRasterShape
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 ScreenSpaceRasterShapeVertexShader();
+        pixelShader = compile ps_3_0 RasterShapeTextured();
     }
 }
