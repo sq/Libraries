@@ -456,7 +456,7 @@ namespace Squared.Render {
                     if (!AutoRenderTarget.IsRenderTargetValid(pd.RenderTarget))
                         throw new Exception("Render target for pending draw was disposed between queue and prepare");
 
-                    if (!DoSynchronousDrawToRenderTarget(pd.RenderTarget, pd.Materials, pd.Handler, pd.UserData, "Pending Draw"))
+                    if (!DoSynchronousDrawToRenderTarget(pd.RenderTarget, pd.Materials, pd.Handler, pd.UserData, ref pd.ViewTransform, "Pending Draw"))
                         throw new Exception("Unknown failure performing pending draw");
                 } catch (Exception exc) {
                     excInfo = ExceptionDispatchInfo.Capture(exc);
@@ -906,8 +906,9 @@ namespace Squared.Render {
         private bool DoSynchronousDrawToRenderTarget (
             RenderTarget2D renderTarget, 
             DefaultMaterialSet materials,
-            Delegate drawBehavior,
-            object userData, string description
+            Delegate drawBehavior, object userData,
+            ref ViewTransform? viewTransform,
+            string description
         ) {
             var oldLazyState = materials.LazyViewTransformChanges;
             try {
@@ -916,7 +917,10 @@ namespace Squared.Render {
                 using (var frame = Manager.CreateFrame()) {
                     frame.ChangeRenderTargets = false;
                     frame.Label = description;
-                    materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
+                    if (viewTransform.HasValue)
+                        materials.PushViewTransform(viewTransform.Value);
+                    else
+                        materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
 
                     try {
                         // FIXME: Should queued draws run here? They are probably meant to run in the next real frame
@@ -997,7 +1001,8 @@ namespace Squared.Render {
             WaitForActiveDraw();
 
             try {
-                return DoSynchronousDrawToRenderTarget(renderTarget, materials, drawBehavior, userData, "Synchronous Draw");
+                ViewTransform? vt = null;
+                return DoSynchronousDrawToRenderTarget(renderTarget, materials, drawBehavior, userData, ref vt, "Synchronous Draw");
             } finally {
                 _SynchronousDrawFinishedSignal.Set();
                 Interlocked.Exchange(ref _SynchronousDrawIsActive, 0);

@@ -9,7 +9,7 @@ using Squared.Util;
 
 namespace Squared.Render.STB {
     public unsafe class Image : IDisposable {
-        public readonly int Width, Height, ChannelCount;
+        public int Width, Height, ChannelCount;
         public bool IsDisposed { get; private set; }
         public void* Data { get; private set; }
         public bool IsFloatingPoint { get; private set; }
@@ -25,55 +25,58 @@ namespace Squared.Render.STB {
         }
 
         public Image (Stream stream, bool ownsStream, bool premultiply = true, bool asFloatingPoint = false, UInt32[] palette = null) {
-            BufferPool<byte>.Buffer scratch = BufferPool<byte>.Allocate(10240);
-            var length = stream.Length;
+            var length = stream.Length - stream.Position;
 
             if (!stream.CanSeek)
                 throw new ArgumentException("Stream must be seekable");
             if (!stream.CanRead)
                 throw new ArgumentException("Stream must be readable");
 
-            var callbacks = new Native.STBI_IO_Callbacks {
-                eof = (user) => {
-                    return stream.Position >= length ? 1 : 0;
-                },
-                read = (user, buf, count) => {
-                    if (scratch.Data.Length < count) {
-                        scratch.Dispose();
-                        scratch = BufferPool<byte>.Allocate(count);
-                    }
+            byte[] buffer;
+            int readOffset;
+            var ms = stream as MemoryStream;
+            if (ms != null) {
+                buffer = ms.GetBuffer();
+                readOffset = (int)ms.Position;
+            } else {
+                buffer = new byte[length];
+                readOffset = 0;
+                stream.Read(buffer, 0, (int)length);
+            }
 
-                    var bytesRead = stream.Read(scratch.Data, 0, count);
-                    fixed (byte* pScratch = scratch.Data)
-                        Buffer.MemoryCopy(pScratch, buf, count, bytesRead);
-                    return bytesRead;
-                },
-                skip = (user, count) => {
-                    stream.Seek(count, SeekOrigin.Current);
-                }
-            };
+            InitializeFromBuffer(buffer, readOffset, (int)length, premultiply, asFloatingPoint, palette);
 
+            if (ownsStream)
+                stream.Dispose();
+        }
+
+        public Image (ArraySegment<byte> buffer, bool premultiply = true, bool asFloatingPoint = false, UInt32[] palette = null) {
+            InitializeFromBuffer(buffer.Array, buffer.Offset, buffer.Count, premultiply, asFloatingPoint, palette);
+        }
+
+        private void InitializeFromBuffer (
+            byte[] buffer, int offset, int length, 
+            bool premultiply = true, bool asFloatingPoint = false, UInt32[] palette = null
+        ) {
             IsFloatingPoint = asFloatingPoint;
 
             // FIXME: Don't request RGBA?
-            if (palette != null) {
-                if (asFloatingPoint)
-                    throw new ArgumentException("Cannot load paletted image as floating point");
-                else if (premultiply)
-                    throw new ArgumentException("FIXME: Cannot premultiply paletted image");
-                ChannelCount = 1;
-                fixed (UInt32 * pPalette = palette)
-                    Data = Native.API.stbi_load_from_callbacks_with_palette(ref callbacks, null, out Width, out Height, pPalette, palette.Length);
-                Palette = palette;
-                IsPaletted = true;
-            } else if (asFloatingPoint)
-                Data = Native.API.stbi_loadf_from_callbacks(ref callbacks, null, out Width, out Height, out ChannelCount, 4);
-            else
-                Data = Native.API.stbi_load_from_callbacks(ref callbacks, null, out Width, out Height, out ChannelCount, 4);
-
-            scratch.Dispose();
-            if (ownsStream)
-                stream.Dispose();
+            fixed (byte * pBuffer = buffer) {
+                if (palette != null) {
+                    if (asFloatingPoint)
+                        throw new ArgumentException("Cannot load paletted image as floating point");
+                    else if (premultiply)
+                        throw new ArgumentException("FIXME: Cannot premultiply paletted image");
+                    ChannelCount = 1;
+                    fixed (UInt32 * pPalette = palette)
+                        Data = Native.API.stbi_load_from_memory_with_palette(pBuffer + offset, length, out Width, out Height, pPalette, palette.Length);
+                    Palette = palette;
+                    IsPaletted = true;
+                } else if (asFloatingPoint)
+                    Data = Native.API.stbi_loadf_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
+                else
+                    Data = Native.API.stbi_load_from_memory(pBuffer + offset, length, out Width, out Height, out ChannelCount, 4);
+            }
 
             if (Data == null) {
                 var reason = STB.Native.API.stbi_failure_reason();
