@@ -216,7 +216,9 @@ void RasterShapePixelShader(
         ) + length(max(d, 0.0)) + radius;
 
         distanceF = distance / size;
-        gradientWeight = 1 - saturate(-(distance - radius) / size);
+        // gradientWeight = 1 - saturate(-(distance - radius) / size);
+        float2 gradientSize = size + radius;
+        gradientWeight = max(abs(position.x / gradientSize.x), abs(position.y / gradientSize.y));
     }
 
     float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
