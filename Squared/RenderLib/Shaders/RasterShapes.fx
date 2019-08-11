@@ -4,10 +4,10 @@
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
 
-Texture2D Texture : register(t0);
+Texture2D RasterTexture : register(t0);
 
 sampler TextureSampler : register(s0) {
-    Texture = (Texture);
+    Texture = (RasterTexture);
 };
 
 // HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
@@ -412,10 +412,15 @@ void RasterShapeTextured (
         RASTERSHAPE_FS_PASS_ARGS,
         tl, br
     );
-    
-    float2 texCoord = ((worldPosition - tl) / (br - tl)) * (texRgn.zw - texRgn.xy) + texRgn.xy;
 
-    float4 texColor = tex2Dlod(TextureSampler, float4(clamp(texCoord, texRgn.xy, texRgn.zw), 0, 0));
+    float2 sizePx = br - tl;
+    float2 posRelative = worldPosition - tl;
+    float2 texSize = (texRgn.zw - texRgn.xy);
+    
+    float2 texCoord = ((posRelative / sizePx) * texSize) + texRgn.xy;
+    texCoord = clamp(texCoord, texRgn.xy, texRgn.zw);
+
+    float4 texColor = tex2Dlod(TextureSampler, float4(texCoord, 0, 0));
     result *= texColor;
     
     result.rgb = ApplyDither(result.rgb, GET_VPOS);

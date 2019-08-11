@@ -198,7 +198,9 @@ namespace Squared.Render {
                 scratchBindings[0] = cornerVb;
                 scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
 
-                Material.Effect.Parameters["Texture"]?.SetValue(Texture);
+                // Material.Effect.Parameters["RasterTexture"]?.SetValue(Texture);
+                // FIXME: why the hell
+                device.Textures[0] = Texture;
                 device.SamplerStates[0] = SamplerState ?? SamplerState.LinearWrap;
 
                 device.SetVertexBuffers(scratchBindings);
@@ -209,7 +211,8 @@ namespace Squared.Render {
                     _DrawCalls.Count
                 );
 
-                Material.Effect.Parameters["Texture"]?.SetValue((Texture2D)null);
+                device.Textures[0] = null;
+                Material.Effect.Parameters["RasterTexture"]?.SetValue((Texture2D)null);
 
                 NativeBatch.RecordCommands(1);
                 hwb.SetInactive();
