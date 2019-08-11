@@ -17,7 +17,7 @@ namespace Squared.Render {
     public struct RasterShapeVertex : IVertexType {
         public Vector4 PointsAB, PointsCD;
         public Color CenterColor, EdgeColor, OutlineColor;
-        public Vector3 OutlineSizeMiterAndType;
+        public Vector2 OutlineSizeAndType;
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -30,8 +30,8 @@ namespace Squared.Render {
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "PointsCD").ToInt32(), 
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 1 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "OutlineSizeMiterAndType").ToInt32(), 
-                    VertexElementFormat.Vector3, VertexElementUsage.TextureCoordinate, 0 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "OutlineSizeAndType").ToInt32(), 
+                    VertexElementFormat.Vector2, VertexElementUsage.TextureCoordinate, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "CenterColor").ToInt32(), 
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "EdgeColor").ToInt32(), 
@@ -54,12 +54,47 @@ namespace Squared.Render {
         Rectangle = 2
     }
 
+    [StructLayout(LayoutKind.Sequential)]
     public struct RasterShapeDrawCall {
         public RasterShapeType Type;
-        public Vector2 A, B, C, Radius;
-        public float OutlineSize, Miter;
-        // These are sRGB colors that will be linear blended then converted back to sRGB
-        public Color CenterColor, EdgeColor, OutlineColor;
+
+        /// <summary>
+        /// The top-left or first coordinate of the shape.
+        /// </summary>
+        public Vector2 A;
+        /// <summary>
+        /// The bottom-right or second coordinate of the shape.
+        /// </summary>
+        public Vector2 B;
+        /// <summary>
+        /// The third coordinate of the shape, or control values for a 1-2 coordinate shape.
+        /// For lines, C.X controls whether the gradient is 'along' the line.
+        /// For rectangles, C.X controls whether the gradient is radial.
+        /// </summary>
+        public Vector2 C;
+        /// <summary>
+        /// The radius of the shape. 
+        /// This is in addition to any size implied by the coordinates (for shapes with volume)
+        /// </summary>
+        public Vector2 Radius;
+
+        /// <summary>
+        /// The sRGB color of the center of the shape (or the beginning for 'along' gradients)
+        /// </summary>
+        public Color CenterColor;
+        /// <summary>
+        /// The sRGB color for the outside of the shape (or the end for 'along' gradients)
+        /// </summary>
+        public Color EdgeColor;
+        /// <summary>
+        /// The sRGB color of the shape's outline.
+        /// </summary>
+        public Color OutlineColor;
+
+        /// <summary>
+        /// The thickness of the shape's outline.
+        /// </summary>
+        public float OutlineSize;
     }
 
     public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
@@ -101,7 +136,7 @@ namespace Squared.Render {
                         CenterColor = dc.CenterColor,
                         OutlineColor = dc.OutlineColor,
                         EdgeColor = dc.EdgeColor,
-                        OutlineSizeMiterAndType = new Vector3(dc.OutlineSize, dc.Miter, (int)dc.Type)
+                        OutlineSizeAndType = new Vector2(dc.OutlineSize, (int)dc.Type)
                     };
                     vw.Write(vert);
                 }

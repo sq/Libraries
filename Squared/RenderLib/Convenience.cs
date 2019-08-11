@@ -971,6 +971,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeLineSegment (
             Vector2 a, Vector2 b, Vector2 radius, Color innerColor, Color? outerColor = null,
+            bool gradientAlongLine = false,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
@@ -980,6 +981,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.LineSegment,
                     A = a, B = b,
+                    C = new Vector2(gradientAlongLine ? 1 : 0, 0),
                     Radius = radius - Vector2.One,
                     OutlineSize = 1,
                     CenterColor = innerColor,
@@ -991,6 +993,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeLineSegment (
             Vector2 a, Vector2 b, Vector2 radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
+            bool gradientAlongLine = false,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
@@ -1000,6 +1003,7 @@ namespace Squared.Render.Convenience {
                 eb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.LineSegment,
                     A = a, B = b,
+                    C = new Vector2(gradientAlongLine ? 1 : 0, 0),
                     Radius = radius,
                     OutlineSize = outlineRadius * 2,
                     CenterColor = innerColor,
@@ -1011,6 +1015,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeRectangle (
             Vector2 tl, Vector2 br, Vector2 radius,
             Color innerColor, Color outerColor,
+            bool radialGradient = false,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
@@ -1020,6 +1025,7 @@ namespace Squared.Render.Convenience {
                 eb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
                     A = tl, B = br,
+                    C = new Vector2(radialGradient ? 1 : 0, 0),
                     Radius = radius,
                     OutlineSize = 0,
                     CenterColor = innerColor,
@@ -1031,6 +1037,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeRectangle (
             Vector2 tl, Vector2 br, Vector2 radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
+            bool radialGradient = false,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null
         ) {
@@ -1040,6 +1047,7 @@ namespace Squared.Render.Convenience {
                 eb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
                     A = tl, B = br,
+                    C = new Vector2(radialGradient ? 1 : 0, 0),
                     Radius = radius,
                     OutlineSize = outlineRadius * 2,
                     CenterColor = innerColor,

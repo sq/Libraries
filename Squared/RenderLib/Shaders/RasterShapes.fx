@@ -35,7 +35,7 @@ float3 LinearToSRGB(float3 rgb) {
     in int2 cornerIndex : BLENDINDICES0, \
     in float4 ab_in : POSITION0, \
     in float4 cd_in : POSITION1, \
-    inout float3 outlineSizeMiterAndType : TEXCOORD0, \
+    inout float2 outlineSizeAndType : TEXCOORD0, \
     inout float4 centerColor : COLOR0, \
     inout float4 edgeColor : COLOR1, \
     inout float4 outlineColor : COLOR2, \
@@ -48,14 +48,14 @@ float3 LinearToSRGB(float3 rgb) {
     ab = ab_in; cd = cd_in; \
     float4 position = float4(ab_in.x, ab_in.y, 0, 1); \
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
-    float outlineSize = outlineSizeMiterAndType.x, miter = outlineSizeMiterAndType.y; \
-    int type = outlineSizeMiterAndType.z;
+    float outlineSize = outlineSizeAndType.x; \
+    int type = outlineSizeAndType.y;
 
 #define RASTERSHAPE_FS_ARGS \
     in float2 screenPosition : NORMAL0, \
     in float4 ab : TEXCOORD1, \
     in float4 cd : TEXCOORD2, \
-    in float3 outlineSizeMiterAndType : TEXCOORD0, \
+    in float2 outlineSizeAndType : TEXCOORD0, \
     in float4 centerColor : COLOR0, \
     in float4 edgeColor : COLOR1, \
     in float4 outlineColor : COLOR2, \
@@ -64,8 +64,8 @@ float3 LinearToSRGB(float3 rgb) {
 
 #define RASTERSHAPE_FS_PROLOGUE \
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
-    float outlineSize = outlineSizeMiterAndType.x, miter = outlineSizeMiterAndType.y; \
-    int type = outlineSizeMiterAndType.z; \
+    float outlineSize = outlineSizeAndType.x; \
+    int type = outlineSizeAndType.y; \
     if (BlendInLinearSpace) { \
         centerColor.rgb = SRGBToLinear(centerColor.rgb); \
         edgeColor.rgb = SRGBToLinear(edgeColor.rgb); \
@@ -203,7 +203,10 @@ void RasterShapePixelShader(
         distanceXy = screenPosition - closestPoint;
         distanceF = length(distanceXy * invRadius);
         distance = distanceF * radiusLength;
-        gradientWeight = saturate(distanceF);
+        if (c.x >= 0.5)
+            gradientWeight = saturate(t);
+        else
+            gradientWeight = saturate(distanceF);
     } else if (type == TYPE_Rectangle) {
         float2 tl = min(a, b), br = max(a, b), center = (a + b) * 0.5;
         float2 position = screenPosition - center;
@@ -217,8 +220,12 @@ void RasterShapePixelShader(
 
         distanceF = distance / size;
         // gradientWeight = 1 - saturate(-(distance - radius) / size);
-        float2 gradientSize = size + radius;
-        gradientWeight = max(abs(position.x / gradientSize.x), abs(position.y / gradientSize.y));
+        float2 gradientSize = size + (radius * 0.5);
+
+        if (c.x >= 0.5)
+            gradientWeight = length(position / gradientSize);
+        else
+            gradientWeight = max(abs(position.x / gradientSize.x), abs(position.y / gradientSize.y));
     }
 
     float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
