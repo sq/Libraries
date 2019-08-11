@@ -941,7 +941,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Ellipse,
                     A = center,
-                    Radius = radius - Vector2.One,
+                    Radius = radius,
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
@@ -982,7 +982,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.LineSegment,
                     A = a, B = b,
                     C = new Vector2(gradientAlongLine ? 1 : 0, 0),
-                    Radius = radius - Vector2.One,
+                    Radius = radius,
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
@@ -1067,7 +1067,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Triangle,
                     A = a, B = b, C = c,
-                    Radius = radius - Vector2.One,
+                    Radius = radius,
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),

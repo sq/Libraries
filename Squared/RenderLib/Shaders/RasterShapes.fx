@@ -109,6 +109,7 @@ void computeTLBR (
         tl = min(a, b) - totalRadius;
         br = max(a, b) + totalRadius;
     } else if (type == TYPE_Triangle) {
+        totalRadius += 1;
         tl = min(min(a, b), c) - totalRadius;
         br = max(max(a, b), c) + totalRadius;
     }
@@ -267,6 +268,9 @@ void RasterShapePixelShader(
     }
 
     float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
+
+    if (outlineSize <= 0.0001)
+        outlineColor = 0;
 
     float  outlineDistance = (distance - radiusLength) / max(outlineSize, 1);
     float  outlineWeight = saturate(outlineDistance);
