@@ -11,7 +11,7 @@ sampler TextureSampler : register(s0) {
 };
 
 // HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
-#define OutlineSizeCompensation 2.4
+#define OutlineSizeCompensation 2.5
 
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
@@ -97,8 +97,10 @@ float4 LinearToSRGB (float4 rgba) {
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
     float outlineSize = params.x; \
     int type = params.y; \
-    float BlendInLinearSpace = params.z; \
-    if (BlendInLinearSpace) { \
+    float OutlineGammaMinusOne = params.w;
+
+#define RASTERSHAPE_PREPROCESS_COLORS \
+    if (params.z) { \
         centerColor = pSRGBToLinear(centerColor); \
         edgeColor = pSRGBToLinear(edgeColor); \
         outlineColor = pSRGBToLinear(outlineColor); \
@@ -106,8 +108,7 @@ float4 LinearToSRGB (float4 rgba) {
         centerColor = Unpremultiply(centerColor); \
         edgeColor = Unpremultiply(edgeColor); \
         outlineColor = Unpremultiply(outlineColor); \
-    } \
-    float OutlineGammaMinusOne = params.w;
+    }
 
 uniform float HalfPixelOffset;
 
@@ -356,8 +357,13 @@ float getWindowAlpha (
 }
 
 void rasterShapeCommon (
-    RASTERSHAPE_FS_ARGS,
-    out float2 tl, out float2 br
+    in float2 worldPosition,
+    in float4 ab, in float4 cd,
+    in float4 params, 
+    in float4 centerColor, in float4 edgeColor,
+    out float2 tl, out float2 br,
+    out float4 fill, out float fillAlpha, 
+    out float outlineAlpha
 ) {
     RASTERSHAPE_FS_PROLOGUE;
 
@@ -371,7 +377,8 @@ void rasterShapeCommon (
 
     float distance = 0, gradientWeight = 0;
 
-    computeTLBR(type, totalRadius, a, b, c, tl, br);
+    tl = min(a, b);
+    br = max(a, b);
 
     if (type == TYPE_Ellipse) {
         // FIXME: sdEllipse is massively broken. What is wrong with it?
@@ -380,78 +387,105 @@ void rasterShapeCommon (
         float distanceF = length(distanceXy / b);
         distance = (distanceF - 1) * length(b);
         gradientWeight = saturate(distanceF);
+        tl = a - b;
+        br = a + b;
     } else if (type == TYPE_LineSegment) {
         float t;
         float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
-        distance = length(worldPosition - closestPoint) - totalRadius;
+        distance = length(worldPosition - closestPoint) - radius;
 
         if (c.x >= 0.5)
             gradientWeight = saturate(t);
         else
-            gradientWeight = 1 - saturate(-distance / totalRadius);
+            gradientWeight = 1 - saturate(-distance / radius);
     } else if (type == TYPE_QuadraticBezier) {
-        distance = sdBezier(worldPosition, a, b, c) - totalRadius;
-        gradientWeight = 1 - saturate(-distance / totalRadius);
+        distance = sdBezier(worldPosition, a, b, c) - radius;
+        gradientWeight = 1 - saturate(-distance / radius);
+
+        computeTLBR(type, totalRadius, a, b, c, tl, br);
     } else if (type == TYPE_Rectangle) {
         float2 center = (a + b) * 0.5;
         float2 boxSize = abs(b - a) * 0.5;
-        distance = sdBox(worldPosition - center, boxSize) - totalRadius;
+        distance = sdBox(worldPosition - center, boxSize) - radius;
 
-        float centerDistance = sdBox(0, boxSize) - totalRadius;
+        float centerDistance = sdBox(0, boxSize) - radius;
         // Radial gradient
         if (c.x >= 0.5)
-            gradientWeight = saturate(length((worldPosition - center) / (boxSize + totalRadius)));
+            gradientWeight = saturate(length((worldPosition - center) / (boxSize + radius)));
         else
             gradientWeight = 1 - saturate(distance / centerDistance);
     } else if (type == TYPE_Triangle) {
-        distance = sdTriangle(worldPosition, a, b, c) - totalRadius;
+        distance = sdTriangle(worldPosition, a, b, c) - radius;
 
         float2 center = (a + b + c) / 3;
-        float centroidDistance = sdTriangle(center, a, b, c) - totalRadius;
+        float centroidDistance = sdTriangle(center, a, b, c) - radius;
         gradientWeight = saturate(distance / centroidDistance);
+
+        tl = min(min(a, b), c);
+        br = max(max(a, b), c);
     }
 
-    float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
-
-    float outlineStartDistance = -(outlineSize * 0.5), 
+    float outlineStartDistance = -(outlineSize * 0.5) + 0.5, 
         outlineEndDistance = outlineStartDistance + outlineSize,
         fillStartDistance = -0.5,
         fillEndDistance = 0.5;
 
     float4 composited;
-    float fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
+    fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
+    fill = lerp(centerColor, edgeColor, gradientWeight);
+
     if (outlineSize > 0.001) {
-        float outlineAlpha = getWindowAlpha(distance, outlineStartDistance, outlineEndDistance, 0, 1, 0);
+        outlineAlpha = getWindowAlpha(distance, outlineStartDistance, outlineEndDistance, 0, 1, 0);
         float outlineGamma = OutlineGammaMinusOne + 1;
         outlineAlpha = saturate(pow(outlineAlpha, outlineGamma));
-
-        composited = lerp(gradient * fillAlpha, outlineColor, outlineAlpha);
     } else {
-        composited = gradient * fillAlpha;
+        outlineAlpha = 0;
     }
+}
 
-    if (composited.a <= threshold) {
-        result = 0;
-        discard;
-        return;
-    }
+// porter-duff A over B
+float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
+    top.a *= topOpacity;
+    bottom.a *= bottomOpacity;
 
-    if (BlendInLinearSpace)
-        composited = LinearToSRGB(composited);
+    float3 rgb = (top.rgb * top.a) + (bottom.rgb * (1 - top.a));
+    float a = top.a + (bottom.a * 1 - top.a);
+    return float4(rgb, a);
+}
 
-    result = composited;
+float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float convertToSRGB) {
+    float4 result;
+    result = over(outlineColor, outlineAlpha, fillColor, fillAlpha);
+
+    if (convertToSRGB)
+        result = LinearToSRGB(result);
+
+    result.rgb *= result.a;
+    return result;
 }
 
 void RasterShapeUntextured (
     RASTERSHAPE_FS_ARGS
 ) {
+    RASTERSHAPE_PREPROCESS_COLORS
+
     float2 tl, br;
+    float4 fill;
+    float  fillAlpha, outlineAlpha;
     rasterShapeCommon(
-        RASTERSHAPE_FS_PASS_ARGS,
-        tl, br
+        worldPosition,
+        ab, cd, params,
+        centerColor, edgeColor,
+        tl, br,
+        fill, fillAlpha, outlineAlpha
     );
 
-    // result += float4(0.3, 0, 0, 0.3);
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z);
+
+    if (result.a <= 0.5 / 255) {
+        discard;
+        return;
+    }
 
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
@@ -459,11 +493,24 @@ void RasterShapeUntextured (
 void RasterShapeTextured (
     RASTERSHAPE_FS_ARGS
 ) {
+    RASTERSHAPE_PREPROCESS_COLORS
+        
     float2 tl, br;
+    float4 fill;
+    float  fillAlpha, outlineAlpha;
     rasterShapeCommon(
-        RASTERSHAPE_FS_PASS_ARGS,
-        tl, br
+        worldPosition,
+        ab, cd, params,
+        centerColor, edgeColor,
+        tl, br,
+        fill, fillAlpha, outlineAlpha
     );
+
+    // HACK: Increasing the radius of shapes like rectangles
+    //  causes the shapes to expand, so we need to expand the
+    //  rectangular area the texture is being applied to
+    tl -= cd.zw;
+    br += cd.zw;
 
     float2 sizePx = br - tl;
     float2 posRelative = worldPosition - tl;
@@ -473,10 +520,18 @@ void RasterShapeTextured (
     texCoord = clamp(texCoord, texRgn.xy, texRgn.zw);
 
     float4 texColor = tex2D(TextureSampler, texCoord);
-    result *= texColor;
+    if (params.z)
+        texColor = pSRGBToLinear(texColor);
 
-    // result += float4(0.3, 0, 0, 0.3);
-    
+    fill *= texColor;
+
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z);
+
+    if (result.a <= 0.5 / 255) {
+        discard;
+        return;
+    }
+
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
 
