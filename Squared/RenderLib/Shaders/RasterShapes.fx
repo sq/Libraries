@@ -111,6 +111,12 @@ float4 TransformPosition(float4 position, bool halfPixelOffset) {
     return mul(modelViewPos, Viewport.Projection);
 }
 
+float2 computeTotalRadius (float2 radius, float outlineSize) {
+    // HACK: * 2 the outlineSize to compensate for falloff on the outside, then add 1px to ensure that
+    //  we get something approximating conservative rasterization
+    return radius + (outlineSize * 2) + 1;
+}
+
 void computeTLBR (
     int type, float2 totalRadius, 
     float2 a, float2 b, float2 c,
@@ -159,7 +165,7 @@ void computePosition (
     if (type == TYPE_LineSegment) {
         // Oriented bounding box around the line segment
         float2 along = b - a,
-            alongNorm = normalize(along) * totalRadius,
+            alongNorm = normalize(along) * (totalRadius + 0.5),
             left = alongNorm.yx * float2(-1, 1),
             right = alongNorm.yx * float2(1, -1);
 
@@ -181,7 +187,7 @@ void ScreenSpaceRasterShapeVertexShader (
     RASTERSHAPE_VS_ARGS
 ) {
     RASTERSHAPE_VS_PROLOGUE
-    float2 totalRadius = radius + (outlineSize * 2) + 1;
+    float2 totalRadius = computeTotalRadius(radius, outlineSize);
     float2 tl, br;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
@@ -197,7 +203,7 @@ void WorldSpaceRasterShapeVertexShader(
     RASTERSHAPE_VS_ARGS
 ) {
     RASTERSHAPE_VS_PROLOGUE
-    float2 totalRadius = radius + (outlineSize * 2) + 1;
+    float2 totalRadius = computeTotalRadius(radius, outlineSize);
     float2 tl, br;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
@@ -276,6 +282,19 @@ float sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C)
     return sqrt(res);
 }
 
+void pickClosest (
+    float2 a, float2 b, float2 position,
+    inout float2 resultPosition, inout float resultDistance
+) {
+    float newT;
+    float2 newPosition = closestPointOnLineSegment2(a, b, position, newT);
+    float newDistance = length(position - newPosition);
+    if (newDistance < resultDistance) {
+        resultPosition = newPosition;
+        resultDistance = newDistance;
+    }
+}
+
 void rasterShapeCommon (
     RASTERSHAPE_FS_ARGS,
     out float2 tl, out float2 br
@@ -284,49 +303,48 @@ void rasterShapeCommon (
 
     const float threshold = (1 / 512.0);
 
-    float2 totalRadius = radius + (outlineSize * 2) + 1;
+    float2 totalRadius = computeTotalRadius(radius, outlineSize);
     float  radiusLength = max(length(radius), 0.1);
     float2 invRadius = 1.0 / max(radius, float2(0.1, 0.1));
 
-    float distanceF, distance, gradientWeight;
+    float distance, gradientWeight;
     float2 distanceXy;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
 
     if (type == TYPE_Ellipse) {
         distanceXy = worldPosition - a;
-        distanceF = length(distanceXy * invRadius);
+        float distanceF = length(distanceXy * invRadius);
         distance = distanceF * radiusLength;
         gradientWeight = saturate(distanceF);
     } else if (type == TYPE_LineSegment) {
         float t;
         float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
         distanceXy = worldPosition - closestPoint;
-        distanceF = length(distanceXy * invRadius);
+        float distanceF = length(distanceXy * invRadius);
         distance = distanceF * radiusLength;
         if (c.x >= 0.5)
             gradientWeight = saturate(t);
         else
             gradientWeight = saturate(distanceF);
     } else if (type == TYPE_Rectangle) {
-        float2 tl = min(a, b), br = max(a, b), center = (a + b) * 0.5;
-        float2 position = worldPosition - center;
-        float2 size = (br - tl) * 0.5;
+        float2 tl = min(a, b), br = max(a, b);
+        float2 center = (tl + br) / 2;
+        float2 b = (br - tl) / 2;
+        float2 p = worldPosition - center;
+        distanceXy = abs(p) - b;
+        distanceXy -= radius * sign(distanceXy);
+        
+        distance = length(max(distanceXy, 0)) + min(max(distanceXy.x, distanceXy.y), 0.0);
+        float distanceF = distance / length(b);
+        gradientWeight = saturate(abs(distanceF) * 2);
 
-        float2 d = abs(position) - size;
-        distance = min(
-            max(d.x, d.y),
-            0.0    
-        ) + length(max(d, 0.0)) + radius;
-
-        distanceF = distance / size;
-        // gradientWeight = 1 - saturate(-(distance - radius) / size);
-        float2 gradientSize = size + (radius * 0.5);
-
+        /*
         if (c.x >= 0.5)
             gradientWeight = saturate(length(position / gradientSize));
         else
             gradientWeight = max(abs(position.x / gradientSize.x), abs(position.y / gradientSize.y));
+            */
     } else if (type == TYPE_Triangle) {
         // FIXME: Transform to origin?
         float2 p = worldPosition;
@@ -339,7 +357,7 @@ void rasterShapeCommon (
         float2 d = min(min(float2(dot(pq0, pq0), s*(v0.x*e0.y - v0.y*e0.x)),
             float2(dot(pq1, pq1), s*(v1.x*e1.y - v1.y*e1.x))),
             float2(dot(pq2, pq2), s*(v2.x*e2.y - v2.y*e2.x)));
-        distanceF = -sqrt(d.x)*sign(d.y);
+        float distanceF = -sqrt(d.x)*sign(d.y);
         distance = float2(distanceF, 0);
 
         // FIXME: What is the correct divisor here?
@@ -349,7 +367,7 @@ void rasterShapeCommon (
         gradientWeight = saturate(-(distanceF - 1) / gradientScale);
     } else if (type == TYPE_QuadraticBezier) {
         // FIXME: There's a lot wrong here
-        distanceF = sdBezier(worldPosition, a, b, c);
+        float distanceF = sdBezier(worldPosition, a, b, c);
         gradientWeight = saturate(distanceF / radius);
         // HACK: I randomly guessed that I need to bias the distance value by sqrt(2)
         // Doing this makes the thickness of the line and its outline roughly match that
@@ -373,7 +391,7 @@ void rasterShapeCommon (
     float4 gradientToOutline = lerp(gradient, outlineColor, pow(outlineWeight, outlineGamma));
     float  transparentWeight = saturate(outlineDistance - 1);
     if (transparentWeight > (1 - threshold)) {
-        discard;
+        // discard;
         return;
     }
 
@@ -382,7 +400,7 @@ void rasterShapeCommon (
     float newAlpha = lerp(color.a, 0, transparentWeight);
 
     if (newAlpha <= threshold) {
-        discard;
+        // discard;
         return;
     }
 
@@ -401,6 +419,9 @@ void RasterShapeUntextured (
         RASTERSHAPE_FS_PASS_ARGS,
         tl, br
     );
+
+    // result += float4(0.3, 0, 0, 0.3);
+
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
 
@@ -422,6 +443,8 @@ void RasterShapeTextured (
 
     float4 texColor = tex2D(TextureSampler, texCoord);
     result *= texColor;
+
+    // result += float4(0.3, 0, 0, 0.3);
     
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
