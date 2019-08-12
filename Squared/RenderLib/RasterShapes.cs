@@ -56,7 +56,8 @@ namespace Squared.Render {
         LineSegment = 1,
         Rectangle = 2,
         Triangle = 3,
-        QuadraticBezier = 4
+        QuadraticBezier = 4,
+        Arc = 5
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -80,8 +81,9 @@ namespace Squared.Render {
         /// <summary>
         /// The radius of the shape. 
         /// This is in addition to any size implied by the coordinates (for shapes with volume)
+        /// Most shapes only use .X
         /// </summary>
-        public float Radius;
+        public Vector2 Radius;
 
         /// <summary>
         /// The sRGB color of the center of the shape (or the beginning for 'along' gradients)
@@ -158,7 +160,7 @@ namespace Squared.Render {
                     var vert = new RasterShapeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         // FIXME: Fill this last space with a separate value?
-                        PointsCD = new Vector4(dc.C.X, dc.C.Y, dc.Radius, dc.Radius),
+                        PointsCD = new Vector4(dc.C.X, dc.C.Y, dc.Radius.X, dc.Radius.Y),
                         CenterColor = dc.CenterColor,
                         OutlineColor = dc.OutlineColor,
                         EdgeColor = dc.EdgeColor,

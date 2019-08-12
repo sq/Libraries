@@ -993,7 +993,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.LineSegment,
                     A = a, B = b,
                     C = new Vector2(gradientAlongLine ? 1 : 0, 0),
-                    Radius = radius,
+                    Radius = new Vector2(radius),
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
@@ -1020,7 +1020,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.LineSegment,
                     A = a, B = b,
                     C = new Vector2(gradientAlongLine ? 1 : 0, 0),
-                    Radius = radius,
+                    Radius = new Vector2(radius),
                     OutlineSize = outlineRadius,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
@@ -1047,7 +1047,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Rectangle,
                     A = tl, B = br,
                     C = new Vector2(radialGradient ? 1 : 0, 0),
-                    Radius = radius,
+                    Radius = new Vector2(radius),
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
@@ -1074,7 +1074,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Rectangle,
                     A = tl, B = br,
                     C = new Vector2(radialGradient ? 1 : 0, 0),
-                    Radius = radius,
+                    Radius = new Vector2(radius),
                     OutlineSize = outlineRadius,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
@@ -1098,7 +1098,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Triangle,
                     A = a, B = b, C = c,
-                    Radius = radius,
+                    Radius = new Vector2(radius),
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
@@ -1123,7 +1123,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Triangle,
                     A = a, B = b, C = c,
-                    Radius = radius,
+                    Radius = new Vector2(radius),
                     OutlineSize = outlineRadius,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
@@ -1147,7 +1147,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.QuadraticBezier,
                     A = a, B = b, C = c,
-                    Radius = radius - 1,
+                    Radius = new Vector2(radius),
                     OutlineSize = 0,
                     CenterColor = color,
                     EdgeColor = color,
@@ -1172,11 +1172,43 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.QuadraticBezier,
                     A = a, B = b, C = c,
-                    Radius = radius,
+                    Radius = new Vector2(radius),
                     OutlineSize = outlineRadius,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
                     OutlineColor = outlineColor,
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = RasterBlendInLinearSpace,
+                    // FIXME
+                    TextureBounds = Bounds.Unit
+                });
+        }
+
+        public void RasterizeArc (
+            Vector2 center, float startAngleDegrees, float sizeDegrees, 
+            float ringRadius, float fillRadius, float outlineRadius,
+            Color innerColor, Color? outerColor = null, Color? outlineColor = null, 
+            int? layer = null, bool? worldSpace = null,
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
+        ) {
+            var startAngleRadians = MathHelper.ToRadians(startAngleDegrees);
+            var sizeRadians = MathHelper.ToRadians(sizeDegrees);
+            var b = new Vector2((float)Math.Sin(startAngleRadians), (float)Math.Cos(startAngleRadians));
+            var c = new Vector2((float)Math.Sin(sizeRadians), (float)Math.Cos(sizeRadians));
+
+            using (var rsb = GetRasterShapeBatch(
+                layer, worldSpace, blendState, texture, samplerState
+            ))
+                rsb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.Arc,
+                    A = center, B = b, C = c,
+                    // HACK: Inverse order because the shader uses radius.x for bounding box math
+                    Radius = new Vector2(ringRadius, fillRadius),
+                    OutlineSize = outlineRadius,
+                    CenterColor = innerColor,
+                    EdgeColor = outerColor.GetValueOrDefault(innerColor),
+                    OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME

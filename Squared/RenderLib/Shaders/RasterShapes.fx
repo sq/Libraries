@@ -37,15 +37,18 @@ float4 LinearToSRGB (float4 rgba) {
     return float4(result, rgba.a);
 }
 
+
 // A bunch of the distance formulas in here are thanks to inigo quilez
 // http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
 // http://iquilezles.org/www/articles/distfunctions/distfunctions.htm
+
 
 #define TYPE_Ellipse 0
 #define TYPE_LineSegment 1
 #define TYPE_Rectangle 2
 #define TYPE_Triangle 3
 #define TYPE_QuadraticBezier 4
+#define TYPE_Arc 5
 
 #define DEFINE_QuadCorners const float2 QuadCorners[] = { \
     {0, 0}, \
@@ -110,155 +113,23 @@ float4 LinearToSRGB (float4 rgba) {
         outlineColor = Unpremultiply(outlineColor); \
     }
 
-uniform float HalfPixelOffset;
 
-float4 TransformPosition(float4 position, bool halfPixelOffset) {
-    // Transform to view space, then offset by half a pixel to align texels with screen pixels
-    float4 modelViewPos = mul(position, Viewport.ModelView);
-    if (halfPixelOffset && HalfPixelOffset)
-        modelViewPos.xy -= 0.5;
-    // Finally project after offsetting
-    return mul(modelViewPos, Viewport.Projection);
-}
-
-float computeTotalRadius (float radius, float outlineSize) {
-    return radius + outlineSize;
-}
-
-void computeTLBR (
-    int type, float totalRadius, 
-    float2 a, float2 b, float2 c,
-    out float2 tl, out float2 br
-) {
-    if (type == TYPE_Ellipse) {
-        tl = a - b - totalRadius;
-        br = a + b + totalRadius;
-    } else if (type == TYPE_LineSegment) {
-        tl = min(a, b);
-        br = max(a, b);
-    } else if (type == TYPE_Rectangle) {
-        tl = min(a, b) - totalRadius;
-        br = max(a, b) + totalRadius;
-    } else if (type == TYPE_Triangle) {
-        totalRadius += 1;
-        tl = min(min(a, b), c) - totalRadius;
-        br = max(max(a, b), c) + totalRadius;
-    } else if (type == TYPE_QuadraticBezier) {
-        totalRadius += 1;
-        float2 mi = min(a, c);
-        float2 ma = max(a, c);
-
-        if (b.x<mi.x || b.x>ma.x || b.y<mi.y || b.y>ma.y)
-        {
-            float2 t = clamp((a - b) / (a - 2.0*b + c), 0.0, 1.0);
-            float2 s = 1.0 - t;
-            float2 q = s*s*a + 2.0*s*t*b + t*t*c;
-            mi = min(mi, q);
-            ma = max(ma, q);
-        }
-
-        tl = mi - totalRadius;
-        br = ma + totalRadius;
-    }
-}
-
-void computePosition (
-    int type, float totalRadius, 
-    float2 a, float2 b, float2 c,
-    float2 tl, float2 br, int cornerIndex,
-    out float2 xy
-) {
-    DEFINE_QuadCorners
-        
-    if (type == TYPE_LineSegment) {
-        // Oriented bounding box around the line segment
-        float2 along = b - a,
-            alongNorm = normalize(along) * (totalRadius + 1),
-            left = alongNorm.yx * float2(-1, 1),
-            right = alongNorm.yx * float2(1, -1);
-
-        if (cornerIndex.x == 0)
-            xy = a + left - alongNorm;
-        else if (cornerIndex.x == 1)
-            xy = b + left + alongNorm;
-        else if (cornerIndex.x == 2)
-            xy = b + right + alongNorm;
-        else
-            xy = a + right - alongNorm;
-    } else {
-        // HACK: Padding
-        tl -= 1; br += 1;
-        // FIXME: Fit a better hull around triangles. Oriented bounding box?
-        xy = lerp(tl, br, QuadCorners[cornerIndex.x]);
-    }
-}
-
-void ScreenSpaceRasterShapeVertexShader (
-    RASTERSHAPE_VS_ARGS
-) {
-    RASTERSHAPE_VS_PROLOGUE
-    float totalRadius = computeTotalRadius(radius, outlineSize) + 1;
-    float2 tl, br;
-
-    computeTLBR(type, totalRadius, a, b, c, tl, br);
-    computePosition(type, totalRadius, a, b, c, tl, br, cornerIndex.x, position.xy);
-
-    result = TransformPosition(
-        float4(position.xy, position.z, 1), true
-    );
-    worldPosition = position.xy;
-}
-
-void WorldSpaceRasterShapeVertexShader(
-    RASTERSHAPE_VS_ARGS
-) {
-    RASTERSHAPE_VS_PROLOGUE
-    float totalRadius = computeTotalRadius(radius, outlineSize) + 1;
-    float2 tl, br;
-
-    computeTLBR(type, totalRadius, a, b, c, tl, br);
-    computePosition(type, totalRadius, a, b, c, tl, br, cornerIndex.x, position.xy);
-
-    result = TransformPosition(
-        float4(position.xy * GetViewportScale().xy, position.z, 1), true
-    );
-    worldPosition = position.xy;
-}
-
-float2 closestPointOnLine2(float2 a, float2 b, float2 pt, out float t) {
-    float2  ab = b - a;
-    float d = dot(ab, ab);
-    if (abs(d) < 0.001)
-        d = 0.001;
-    t = dot(pt - a, ab) / d;
-    return a + t * ab;
-}
-
-float2 closestPointOnLineSegment2(float2 a, float2 b, float2 pt, out float t) {
-    float2  ab = b - a;
-    float d = dot(ab, ab);
-    if (abs(d) < 0.001)
-        d = 0.001;
-    t = saturate(dot(pt - a, ab) / d);
-    return a + t * ab;
-}
-
-float sdBox (in float2 p, in float2 b) {
+float sdBox(in float2 p, in float2 b) {
     float2 d = abs(p) - b;
     return length(max(d, 0)) + min(max(d.x, d.y), 0.0);
 }
 
-float sdEllipse (in float2 p, in float2 ab) {
-    p = abs(p); 
-    if (p.x > p.y) { 
-        p = p.yx; ab = ab.yx; 
+float sdEllipse(in float2 p, in float2 ab) {
+    p = abs(p);
+    if (p.x > p.y) {
+        p = p.yx; ab = ab.yx;
     }
     float l = ab.y*ab.y - ab.x*ab.x;
     float m = ab.x*p.x / l;
     float m2 = m*m;
     float n = ab.y*p.y / l;
     float n2 = n*n;
-    float c = (m2 + n2 - 1.0) / 3.0; 
+    float c = (m2 + n2 - 1.0) / 3.0;
     float c3 = c*c*c;
     float q = c3 + m2*n2*2.0;
     float d = c3 + m2*n2;
@@ -271,7 +142,8 @@ float sdEllipse (in float2 p, in float2 ab) {
         float rx = sqrt(-c*(s + t + 2.0) + m2);
         float ry = sqrt(-c*(s - t + 2.0) + m2);
         co = (ry + sign(l)*rx + abs(g) / (rx*ry) - m) / 2.0;
-    } else {
+    }
+    else {
         float h = 2.0*m*n*sqrt(d);
         float s = sign(q + h)*pow(abs(q + h), 1.0 / 3.0);
         float u = sign(q - h)*pow(abs(q - h), 1.0 / 3.0);
@@ -284,7 +156,7 @@ float sdEllipse (in float2 p, in float2 ab) {
     return length(r - p) * sign(p.y - r.y);
 }
 
-float sdBezier (in float2 pos, in float2 A, in float2 B, in float2 C) {
+float sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C) {
     float2 a = B - A;
     float2 b = A - 2.0*B + C;
     float2 c = a * 2.0;
@@ -332,7 +204,7 @@ float sdBezier (in float2 pos, in float2 A, in float2 B, in float2 C) {
     return sqrt(res);
 }
 
-float sdTriangle (in float2 p, in float2 p0, in float2 p1, in float2 p2) {
+float sdTriangle(in float2 p, in float2 p0, in float2 p1, in float2 p2) {
     float2 e0 = p1 - p0, e1 = p2 - p1, e2 = p0 - p2;
     float2 v0 = p - p0, v1 = p - p1, v2 = p - p2;
     float2 pq0 = v0 - e0*clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);
@@ -343,6 +215,150 @@ float sdTriangle (in float2 p, in float2 p0, in float2 p1, in float2 p2) {
         float2(dot(pq1, pq1), s*(v1.x*e1.y - v1.y*e1.x))),
         float2(dot(pq2, pq2), s*(v2.x*e2.y - v2.y*e2.x)));
     return -sqrt(d.x)*sign(d.y);
+}
+
+float sdArc (in float2 p, in float2 sca, in float2 scb, in float ra, float rb) {
+    p = mul(p, float2x2(sca.x, sca.y, -sca.y, sca.x));
+    p.x = abs(p.x);
+    float k = (scb.y*p.x>scb.x*p.y) ? dot(p.xy, scb) : length(p.xy);
+    return sqrt(dot(p, p) + ra*ra - 2.0*ra*k) - rb;
+}
+
+
+uniform float HalfPixelOffset;
+
+float4 TransformPosition(float4 position, bool halfPixelOffset) {
+    // Transform to view space, then offset by half a pixel to align texels with screen pixels
+    float4 modelViewPos = mul(position, Viewport.ModelView);
+    if (halfPixelOffset && HalfPixelOffset)
+        modelViewPos.xy -= 0.5;
+    // Finally project after offsetting
+    return mul(modelViewPos, Viewport.Projection);
+}
+
+float computeTotalRadius (float2 radius, float outlineSize) {
+    return radius.x + outlineSize;
+}
+
+void computeTLBR (
+    int type, float2 radius, float totalRadius, 
+    float2 a, float2 b, float2 c,
+    out float2 tl, out float2 br
+) {
+    if (type == TYPE_Ellipse) {
+        tl = a - b - totalRadius;
+        br = a + b + totalRadius;
+    } else if (type == TYPE_LineSegment) {
+        tl = min(a, b);
+        br = max(a, b);
+    } else if (type == TYPE_Rectangle) {
+        tl = min(a, b) - totalRadius;
+        br = max(a, b) + totalRadius;
+    } else if (type == TYPE_Triangle) {
+        totalRadius += 1;
+        tl = min(min(a, b), c) - totalRadius;
+        br = max(max(a, b), c) + totalRadius;
+    } else if (type == TYPE_QuadraticBezier) {
+        totalRadius += 1;
+        float2 mi = min(a, c);
+        float2 ma = max(a, c);
+
+        if (b.x<mi.x || b.x>ma.x || b.y<mi.y || b.y>ma.y)
+        {
+            float2 t = clamp((a - b) / (a - 2.0*b + c), 0.0, 1.0);
+            float2 s = 1.0 - t;
+            float2 q = s*s*a + 2.0*s*t*b + t*t*c;
+            mi = min(mi, q);
+            ma = max(ma, q);
+        }
+
+        tl = mi - totalRadius;
+        br = ma + totalRadius;
+    } else if (type == TYPE_Arc) {
+        tl = a - totalRadius - radius.y;
+        br = a + totalRadius + radius.y;
+    }
+}
+
+void computePosition (
+    int type, float totalRadius, 
+    float2 a, float2 b, float2 c,
+    float2 tl, float2 br, int cornerIndex,
+    out float2 xy
+) {
+    DEFINE_QuadCorners
+        
+    if (type == TYPE_LineSegment) {
+        // Oriented bounding box around the line segment
+        float2 along = b - a,
+            alongNorm = normalize(along) * (totalRadius + 1),
+            left = alongNorm.yx * float2(-1, 1),
+            right = alongNorm.yx * float2(1, -1);
+
+        if (cornerIndex.x == 0)
+            xy = a + left - alongNorm;
+        else if (cornerIndex.x == 1)
+            xy = b + left + alongNorm;
+        else if (cornerIndex.x == 2)
+            xy = b + right + alongNorm;
+        else
+            xy = a + right - alongNorm;
+    } else {
+        // HACK: Padding
+        tl -= 1; br += 1;
+        // FIXME: Fit a better hull around triangles. Oriented bounding box?
+        xy = lerp(tl, br, QuadCorners[cornerIndex.x]);
+    }
+}
+
+void ScreenSpaceRasterShapeVertexShader (
+    RASTERSHAPE_VS_ARGS
+) {
+    RASTERSHAPE_VS_PROLOGUE
+    float totalRadius = computeTotalRadius(radius, outlineSize) + 1;
+    float2 tl, br;
+
+    computeTLBR(type, radius, totalRadius, a, b, c, tl, br);
+    computePosition(type, totalRadius, a, b, c, tl, br, cornerIndex.x, position.xy);
+
+    result = TransformPosition(
+        float4(position.xy, position.z, 1), true
+    );
+    worldPosition = position.xy;
+}
+
+void WorldSpaceRasterShapeVertexShader(
+    RASTERSHAPE_VS_ARGS
+) {
+    RASTERSHAPE_VS_PROLOGUE
+    float totalRadius = computeTotalRadius(radius, outlineSize) + 1;
+    float2 tl, br;
+
+    computeTLBR(type, radius, totalRadius, a, b, c, tl, br);
+    computePosition(type, totalRadius, a, b, c, tl, br, cornerIndex.x, position.xy);
+
+    result = TransformPosition(
+        float4(position.xy * GetViewportScale().xy, position.z, 1), true
+    );
+    worldPosition = position.xy;
+}
+
+float2 closestPointOnLine2(float2 a, float2 b, float2 pt, out float t) {
+    float2  ab = b - a;
+    float d = dot(ab, ab);
+    if (abs(d) < 0.001)
+        d = 0.001;
+    t = dot(pt - a, ab) / d;
+    return a + t * ab;
+}
+
+float2 closestPointOnLineSegment2(float2 a, float2 b, float2 pt, out float t) {
+    float2  ab = b - a;
+    float d = dot(ab, ab);
+    if (abs(d) < 0.001)
+        d = 0.001;
+    t = saturate(dot(pt - a, ab) / d);
+    return a + t * ab;
 }
 
 float getWindowAlpha (
@@ -373,7 +389,7 @@ void rasterShapeCommon (
     const float threshold = (1 / 512.0);
 
     float totalRadius = computeTotalRadius(radius, outlineSize);
-    float2 invRadius = 1.0 / max(radius, 0.0001);
+    float2 invRadius = 1.0 / max(radius.x, 0.0001);
 
     float distance = 0, gradientWeight = 0;
 
@@ -397,32 +413,34 @@ void rasterShapeCommon (
         if (c.x >= 0.5)
             gradientWeight = saturate(t);
         else
-            gradientWeight = 1 - saturate(-distance / radius);
+            gradientWeight = 1 - saturate(-distance / radius.x);
     } else if (type == TYPE_QuadraticBezier) {
-        distance = sdBezier(worldPosition, a, b, c) - radius;
-        gradientWeight = 1 - saturate(-distance / radius);
+        distance = sdBezier(worldPosition, a, b, c) - radius.x;
+        gradientWeight = 1 - saturate(-distance / radius.x);
 
-        computeTLBR(type, totalRadius, a, b, c, tl, br);
+        computeTLBR(type, radius, totalRadius, a, b, c, tl, br);
     } else if (type == TYPE_Rectangle) {
         float2 center = (a + b) * 0.5;
         float2 boxSize = abs(b - a) * 0.5;
-        distance = sdBox(worldPosition - center, boxSize) - radius;
+        distance = sdBox(worldPosition - center, boxSize) - radius.x;
 
-        float centerDistance = sdBox(0, boxSize) - radius;
+        float centerDistance = sdBox(0, boxSize) - radius.x;
         // Radial gradient
         if (c.x >= 0.5)
-            gradientWeight = saturate(length((worldPosition - center) / (boxSize + radius)));
+            gradientWeight = saturate(length((worldPosition - center) / (boxSize + radius.x)));
         else
             gradientWeight = 1 - saturate(distance / centerDistance);
     } else if (type == TYPE_Triangle) {
-        distance = sdTriangle(worldPosition, a, b, c) - radius;
+        distance = sdTriangle(worldPosition, a, b, c) - radius.x;
 
         float2 center = (a + b + c) / 3;
-        float centroidDistance = sdTriangle(center, a, b, c) - radius;
+        float centroidDistance = sdTriangle(center, a, b, c) - radius.x;
         gradientWeight = saturate(distance / centroidDistance);
 
         tl = min(min(a, b), c);
         br = max(max(a, b), c);
+    } else if (type == TYPE_Arc) {
+        distance = sdArc(worldPosition - a, b, c, radius.x, radius.y);
     }
 
     float outlineStartDistance = -(outlineSize * 0.5) + 0.5, 
@@ -459,6 +477,8 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
 
     if (convertToSRGB)
         result = LinearToSRGB(result);
+
+    result += float4(0.3, 0, 0, 0.3);
 
     result.rgb *= result.a;
     return result;
