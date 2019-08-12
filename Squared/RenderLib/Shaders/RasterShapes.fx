@@ -374,11 +374,12 @@ void rasterShapeCommon (
     computeTLBR(type, totalRadius, a, b, c, tl, br);
 
     if (type == TYPE_Ellipse) {
-        distance = sdEllipse(worldPosition - a, b);
-        /*
-        float centerDistance = sdEllipse(0, b);
-        gradientWeight = length((worldPosition - a) / b);
-        */
+        // FIXME: sdEllipse is massively broken. What is wrong with it?
+        // distance = sdEllipse(worldPosition - a, b);
+        float2 distanceXy = worldPosition - a;
+        float distanceF = length(distanceXy / b);
+        distance = (distanceF - 1) * length(b);
+        gradientWeight = saturate(distanceF);
     } else if (type == TYPE_LineSegment) {
         float t;
         float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
@@ -388,49 +389,23 @@ void rasterShapeCommon (
             gradientWeight = saturate(t);
         else
             gradientWeight = 1 - saturate(-distance / totalRadius);
-    }
-    else if (type == TYPE_QuadraticBezier) {
-        // FIXME: There's a lot wrong here
+    } else if (type == TYPE_QuadraticBezier) {
         distance = sdBezier(worldPosition, a, b, c) - totalRadius;
         gradientWeight = 1 - saturate(-distance / totalRadius);
-
-        // HACK: I randomly guessed that I need to bias the distance value by sqrt(2)
-        // Doing this makes the thickness of the line and its outline roughly match that
-        //  of a regular line segment. No, I don't know why this works
-        // Also we need to compute the gradient weight before doing this for some reason
-        // distance *= sqrt(2);
     } else if (type == TYPE_Rectangle) {
         float2 center = (a + b) * 0.5;
         float2 boxSize = abs(b - a) * 0.5;
         distance = sdBox(worldPosition - center, boxSize) - totalRadius;
 
         float centerDistance = sdBox(0, boxSize) - totalRadius;
-        // Implement radial gradient
+        // Radial gradient
         if (c.x >= 0.5)
             gradientWeight = saturate(length((worldPosition - center) / (boxSize + totalRadius)));
         else
             gradientWeight = 1 - saturate(distance / centerDistance);
-
-        // FIXME: Gradient
-        /*
-        float2 d = abs(position) - size;
-        distance = min(
-            max(d.x, d.y),
-            0.0    
-        ) + length(max(d, 0.0)) + radius;
-
-        float2 gradientSize = size + (radius * 0.5);
-
-        if (c.x >= 0.5)
-            gradientWeight = saturate(length(position / gradientSize));
-        else
-            gradientWeight = max(abs(position.x / gradientSize.x), abs(position.y / gradientSize.y));
-        */
     } else if (type == TYPE_Triangle) {
-        // FIXME: Transform to origin?
         distance = sdTriangle(worldPosition, a, b, c) - totalRadius;
 
-        // FIXME: What is the correct divisor here?
         float2 center = (a + b + c) / 3;
         float centroidDistance = sdTriangle(center, a, b, c) - totalRadius;
         gradientWeight = saturate(distance / centroidDistance);
