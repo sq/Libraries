@@ -11,7 +11,7 @@ sampler TextureSampler : register(s0) {
 };
 
 // HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
-#define OutlineSizeCompensation 2.5
+#define OutlineSizeCompensation (2 * sqrt(2))
 
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
@@ -449,7 +449,7 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     bottom.a *= bottomOpacity;
 
     float3 rgb = (top.rgb * top.a) + (bottom.rgb * (1 - top.a));
-    float a = top.a + (bottom.a * 1 - top.a);
+    float a = top.a + (bottom.a * (1 - top.a));
     return float4(rgb, a);
 }
 
