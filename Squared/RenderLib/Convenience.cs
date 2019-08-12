@@ -942,7 +942,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Ellipse,
                     A = center,
-                    Radius = radius,
+                    B = radius,
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
@@ -967,7 +967,7 @@ namespace Squared.Render.Convenience {
                 eb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Ellipse,
                     A = center,
-                    Radius = radius,
+                    B = radius,
                     OutlineSize = outlineRadius * 2,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
@@ -980,7 +980,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeLineSegment (
-            Vector2 a, Vector2 b, Vector2 radius, Color innerColor, Color? outerColor = null,
+            Vector2 a, Vector2 b, float radius, Color innerColor, Color? outerColor = null,
             bool gradientAlongLine = false,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
@@ -1006,7 +1006,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeLineSegment (
-            Vector2 a, Vector2 b, Vector2 radius, float outlineRadius,
+            Vector2 a, Vector2 b, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             bool gradientAlongLine = false,
             int? layer = null, bool? worldSpace = null,
@@ -1033,7 +1033,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeRectangle (
-            Vector2 tl, Vector2 br, Vector2 radius,
+            Vector2 tl, Vector2 br, float radius,
             Color innerColor, Color? outerColor = null,
             bool radialGradient = false,
             int? layer = null, bool? worldSpace = null,
@@ -1060,7 +1060,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeRectangle (
-            Vector2 tl, Vector2 br, Vector2 radius, float outlineRadius,
+            Vector2 tl, Vector2 br, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             bool radialGradient = false,
             int? layer = null, bool? worldSpace = null,
@@ -1087,7 +1087,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeTriangle (
-            Vector2 a, Vector2 b, Vector2 c, Vector2 radius, Color innerColor, Color? outerColor = null,
+            Vector2 a, Vector2 b, Vector2 c, float radius, Color innerColor, Color? outerColor = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1111,7 +1111,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeTriangle (
-            Vector2 a, Vector2 b, Vector2 c, Vector2 radius, float outlineRadius,
+            Vector2 a, Vector2 b, Vector2 c, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
@@ -1136,7 +1136,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeQuadraticBezier (
-            Vector2 a, Vector2 b, Vector2 c, Vector2 radius, Color color,
+            Vector2 a, Vector2 b, Vector2 c, float radius, Color color,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1147,7 +1147,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.QuadraticBezier,
                     A = a, B = b, C = c,
-                    Radius = radius - Vector2.One,
+                    Radius = radius - 1,
                     OutlineSize = 0,
                     CenterColor = color,
                     EdgeColor = color,
@@ -1160,7 +1160,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeQuadraticBezier (
-            Vector2 a, Vector2 b, Vector2 c, Vector2 radius, float outlineRadius,
+            Vector2 a, Vector2 b, Vector2 c, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,

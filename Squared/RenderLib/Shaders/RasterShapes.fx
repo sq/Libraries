@@ -123,8 +123,8 @@ void computeTLBR (
     out float2 tl, out float2 br
 ) {
     if (type == TYPE_Ellipse) {
-        tl = a - totalRadius;
-        br = a + totalRadius;
+        tl = a - b - totalRadius;
+        br = a + b + totalRadius;
     } else if (type == TYPE_LineSegment) {
         tl = min(a, b);
         br = max(a, b);
@@ -291,8 +291,8 @@ void rasterShapeCommon (
     const float threshold = (1 / 512.0);
 
     float2 totalRadius = computeTotalRadius(radius, outlineSize);
-    float  radiusLength = max(length(radius), 0.1);
-    float2 invRadius = 1.0 / max(radius, float2(0.1, 0.1));
+    float  radiusLength = max(length(radius), 0.001);
+    float2 invRadius = 1.0 / max(radius, float2(0.001, 0.001));
 
     float distance, gradientWeight;
     float2 distanceXy;
@@ -301,6 +301,8 @@ void rasterShapeCommon (
 
     if (type == TYPE_Ellipse) {
         distanceXy = worldPosition - a;
+        radiusLength = max(length(b), 0.001);
+        invRadius = 1.0 / max(b, float2(0.001, 0.001));
         float distanceF = length(distanceXy * invRadius);
         distance = distanceF * radiusLength;
         gradientWeight = saturate(distanceF);
