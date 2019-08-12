@@ -381,11 +381,11 @@ void rasterShapeCommon (
         float t;
         float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
         distance = length(worldPosition - closestPoint) - totalRadius;
-        float distanceF = distance / totalRadius;
+
         if (c.x >= 0.5)
             gradientWeight = saturate(t);
         else
-            gradientWeight = saturate(distanceF);
+            gradientWeight = 1 - saturate(-distance / totalRadius);
     } else if (type == TYPE_Rectangle) {
         float2 center = (a + b) * 0.5;
         distance = sdBox(worldPosition - center, abs(b - a) * 0.5);
@@ -437,16 +437,16 @@ void rasterShapeCommon (
     float fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
     if (outlineSize > 0.001) {
         float outlineAlpha = getWindowAlpha(distance, outlineStartDistance, outlineEndDistance, 0, 1, 0);
-        composited = lerp(lerp(gradient, 0, fillAlpha), outlineColor, outlineAlpha);
+        float outlineGamma = OutlineGammaMinusOne + 1;
+        outlineAlpha = saturate(pow(outlineAlpha, outlineGamma));
+
+        composited = lerp(gradient * fillAlpha, outlineColor, outlineAlpha);
     } else {
         composited = gradient * fillAlpha;
     }
 
     /*
-    float outlineGamma = OutlineGammaMinusOne + 1;
-
     float transparentWeight = 0;
-    transparentWeight = 1 - pow(1 - transparentWeight, outlineGamma);
     float4 color = BlendInLinearSpace ? LinearToSRGB(gradientToOutline) : gradientToOutline;
     float newAlpha = lerp(color.a, 0, transparentWeight);
     */
