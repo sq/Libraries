@@ -282,19 +282,6 @@ float sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C)
     return sqrt(res);
 }
 
-void pickClosest (
-    float2 a, float2 b, float2 position,
-    inout float2 resultPosition, inout float resultDistance
-) {
-    float newT;
-    float2 newPosition = closestPointOnLineSegment2(a, b, position, newT);
-    float newDistance = length(position - newPosition);
-    if (newDistance < resultDistance) {
-        resultPosition = newPosition;
-        resultDistance = newDistance;
-    }
-}
-
 void rasterShapeCommon (
     RASTERSHAPE_FS_ARGS,
     out float2 tl, out float2 br
@@ -328,23 +315,22 @@ void rasterShapeCommon (
         else
             gradientWeight = saturate(distanceF);
     } else if (type == TYPE_Rectangle) {
-        float2 tl = min(a, b), br = max(a, b);
-        float2 center = (tl + br) / 2;
-        float2 b = (br - tl) / 2;
-        float2 p = worldPosition - center;
-        distanceXy = abs(p) - b;
-        distanceXy -= radius * sign(distanceXy);
-        
-        distance = length(max(distanceXy, 0)) + min(max(distanceXy.x, distanceXy.y), 0.0);
-        float distanceF = distance / length(b);
-        gradientWeight = saturate(abs(distanceF) * 2);
+        float2 tl = min(a, b), br = max(a, b), center = (a + b) * 0.5;
+        float2 position = worldPosition - center;
+        float2 size = (br - tl) * 0.5;
 
-        /*
+        float2 d = abs(position) - size;
+        distance = min(
+            max(d.x, d.y),
+            0.0    
+        ) + length(max(d, 0.0)) + radius;
+
+        float2 gradientSize = size + (radius * 0.5);
+
         if (c.x >= 0.5)
             gradientWeight = saturate(length(position / gradientSize));
         else
             gradientWeight = max(abs(position.x / gradientSize.x), abs(position.y / gradientSize.y));
-            */
     } else if (type == TYPE_Triangle) {
         // FIXME: Transform to origin?
         float2 p = worldPosition;
