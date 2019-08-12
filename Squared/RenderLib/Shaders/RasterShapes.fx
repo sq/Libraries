@@ -441,6 +441,7 @@ void rasterShapeCommon (
         br = max(max(a, b), c);
     } else if (type == TYPE_Arc) {
         distance = sdArc(worldPosition - a, b, c, radius.x, radius.y);
+        gradientWeight = 1 - saturate(-distance / radius.y);
     }
 
     float outlineStartDistance = -(outlineSize * 0.5) + 0.5, 
@@ -477,8 +478,6 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
 
     if (convertToSRGB)
         result = LinearToSRGB(result);
-
-    result += float4(0.3, 0, 0, 0.3);
 
     result.rgb *= result.a;
     return result;

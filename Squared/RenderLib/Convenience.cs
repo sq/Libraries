@@ -1184,6 +1184,12 @@ namespace Squared.Render.Convenience {
                 });
         }
 
+        /// <param name="center">The center point of the shape.</param>
+        /// <param name="startAngleDegrees">The start angle of the arc (in degrees)</param>
+        /// <param name="sizeDegrees">The length of the arc (in degrees), relative to the start angle. A start of 80 + a length of 20 = an arc from 80 to 100.</param>
+        /// <param name="ringRadius">The distance from the center point at which the ring will be centered.</param>
+        /// <param name="fillRadius">The radius of the body of the ring (it will be centered around the circle located at ringRadius).</param>
+        /// <param name="outlineRadius">The radius of the outline at the outside of the body of the ring.</param>
         public void RasterizeArc (
             Vector2 center, float startAngleDegrees, float sizeDegrees, 
             float ringRadius, float fillRadius, float outlineRadius,
