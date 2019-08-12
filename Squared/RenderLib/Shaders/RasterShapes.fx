@@ -197,7 +197,7 @@ void ScreenSpaceRasterShapeVertexShader (
     RASTERSHAPE_VS_ARGS
 ) {
     RASTERSHAPE_VS_PROLOGUE
-    float totalRadius = computeTotalRadius(radius, outlineSize * 2);
+    float totalRadius = computeTotalRadius(radius, outlineSize) + 1;
     float2 tl, br;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
@@ -213,7 +213,7 @@ void WorldSpaceRasterShapeVertexShader(
     RASTERSHAPE_VS_ARGS
 ) {
     RASTERSHAPE_VS_PROLOGUE
-    float totalRadius = computeTotalRadius(radius, outlineSize * 2);
+    float totalRadius = computeTotalRadius(radius, outlineSize) + 1;
     float2 tl, br;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
