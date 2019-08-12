@@ -11,7 +11,7 @@ sampler TextureSampler : register(s0) {
 };
 
 // HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
-#define OutlineSizeCompensation sqrt(2)
+#define OutlineSizeCompensation 2.4
 
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
@@ -196,7 +196,7 @@ void ScreenSpaceRasterShapeVertexShader (
     RASTERSHAPE_VS_ARGS
 ) {
     RASTERSHAPE_VS_PROLOGUE
-    float totalRadius = computeTotalRadius(radius, outlineSize);
+    float totalRadius = computeTotalRadius(radius, outlineSize * 2);
     float2 tl, br;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
@@ -212,7 +212,7 @@ void WorldSpaceRasterShapeVertexShader(
     RASTERSHAPE_VS_ARGS
 ) {
     RASTERSHAPE_VS_PROLOGUE
-    float totalRadius = computeTotalRadius(radius, outlineSize);
+    float totalRadius = computeTotalRadius(radius, outlineSize * 2);
     float2 tl, br;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
@@ -375,8 +375,10 @@ void rasterShapeCommon (
 
     if (type == TYPE_Ellipse) {
         distance = sdEllipse(worldPosition - a, b);
+        /*
         float centerDistance = sdEllipse(0, b);
-        gradientWeight = saturate(distance / centerDistance);
+        gradientWeight = length((worldPosition - a) / b);
+        */
     } else if (type == TYPE_LineSegment) {
         float t;
         float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
@@ -386,9 +388,28 @@ void rasterShapeCommon (
             gradientWeight = saturate(t);
         else
             gradientWeight = 1 - saturate(-distance / totalRadius);
+    }
+    else if (type == TYPE_QuadraticBezier) {
+        // FIXME: There's a lot wrong here
+        distance = sdBezier(worldPosition, a, b, c) - totalRadius;
+        gradientWeight = 1 - saturate(-distance / totalRadius);
+
+        // HACK: I randomly guessed that I need to bias the distance value by sqrt(2)
+        // Doing this makes the thickness of the line and its outline roughly match that
+        //  of a regular line segment. No, I don't know why this works
+        // Also we need to compute the gradient weight before doing this for some reason
+        // distance *= sqrt(2);
     } else if (type == TYPE_Rectangle) {
         float2 center = (a + b) * 0.5;
-        distance = sdBox(worldPosition - center, abs(b - a) * 0.5);
+        float2 boxSize = abs(b - a) * 0.5;
+        distance = sdBox(worldPosition - center, boxSize) - totalRadius;
+
+        float centerDistance = sdBox(0, boxSize) - totalRadius;
+        // Implement radial gradient
+        if (c.x >= 0.5)
+            gradientWeight = saturate(length((worldPosition - center) / (boxSize + totalRadius)));
+        else
+            gradientWeight = 1 - saturate(distance / centerDistance);
 
         // FIXME: Gradient
         /*
@@ -407,23 +428,12 @@ void rasterShapeCommon (
         */
     } else if (type == TYPE_Triangle) {
         // FIXME: Transform to origin?
-        distance = sdTriangle(worldPosition, a, b, c);
+        distance = sdTriangle(worldPosition, a, b, c) - totalRadius;
 
         // FIXME: What is the correct divisor here?
         float2 center = (a + b + c) / 3;
-        float centroidDistance = sdTriangle(center, a, b, c);
+        float centroidDistance = sdTriangle(center, a, b, c) - totalRadius;
         gradientWeight = saturate(distance / centroidDistance);
-
-    } else if (type == TYPE_QuadraticBezier) {
-        // FIXME: There's a lot wrong here
-        float distanceF = sdBezier(worldPosition, a, b, c);
-        gradientWeight = saturate(distanceF / radius);
-        // HACK: I randomly guessed that I need to bias the distance value by sqrt(2)
-        // Doing this makes the thickness of the line and its outline roughly match that
-        //  of a regular line segment. No, I don't know why this works
-        // Also we need to compute the gradient weight before doing this for some reason
-        distanceF *= sqrt(2);
-        distance = float2(distanceF, 0);
     }
 
     float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
@@ -445,16 +455,14 @@ void rasterShapeCommon (
         composited = gradient * fillAlpha;
     }
 
-    /*
-    float transparentWeight = 0;
-    float4 color = BlendInLinearSpace ? LinearToSRGB(gradientToOutline) : gradientToOutline;
-    float newAlpha = lerp(color.a, 0, transparentWeight);
-    */
-
     if (composited.a <= threshold) {
-        // discard;
+        result = 0;
+        discard;
         return;
     }
+
+    if (BlendInLinearSpace)
+        composited = LinearToSRGB(composited);
 
     result = composited;
 }
