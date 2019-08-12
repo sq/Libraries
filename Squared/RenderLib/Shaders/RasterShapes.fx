@@ -16,14 +16,19 @@ sampler TextureSampler : register(s0) {
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
 // Input is premultiplied, output is not
-float4 pSRGBToLinear(float4 srgba) {
+float4 pSRGBToLinear (float4 srgba) {
     float3 srgb = srgba.rgb / max(srgba.a, 0.0001);
     float3 result = srgb * (srgb * (srgb * 0.305306011 + 0.682171111) + 0.012522878);
     return float4(result, srgba.a);
 }
 
+float4 Unpremultiply (float4 color) {
+    color.rgb /= max(color.a, 0.0001);
+    return color;
+}
+
 // Neither input or output are premultiplied!
-float4 LinearToSRGB(float4 rgba) {
+float4 LinearToSRGB (float4 rgba) {
     float3 rgb = rgba.rgb;
     float3 S1 = sqrt(rgb);
     float3 S2 = sqrt(S1);
@@ -97,7 +102,11 @@ float4 LinearToSRGB(float4 rgba) {
         centerColor = pSRGBToLinear(centerColor); \
         edgeColor = pSRGBToLinear(edgeColor); \
         outlineColor = pSRGBToLinear(outlineColor); \
-    }; \
+    } else { \
+        centerColor = Unpremultiply(centerColor); \
+        edgeColor = Unpremultiply(edgeColor); \
+        outlineColor = Unpremultiply(outlineColor); \
+    } \
     float OutlineGammaMinusOne = params.w;
 
 uniform float HalfPixelOffset;
@@ -111,14 +120,12 @@ float4 TransformPosition(float4 position, bool halfPixelOffset) {
     return mul(modelViewPos, Viewport.Projection);
 }
 
-float2 computeTotalRadius (float2 radius, float outlineSize) {
-    // HACK: * 2 the outlineSize to compensate for falloff on the outside, then add 1px to ensure that
-    //  we get something approximating conservative rasterization
-    return radius + (outlineSize * 2) + 1;
+float computeTotalRadius (float radius, float outlineSize) {
+    return radius + outlineSize;
 }
 
 void computeTLBR (
-    int type, float2 totalRadius, 
+    int type, float totalRadius, 
     float2 a, float2 b, float2 c,
     out float2 tl, out float2 br
 ) {
@@ -155,7 +162,7 @@ void computeTLBR (
 }
 
 void computePosition (
-    int type, float2 totalRadius, 
+    int type, float totalRadius, 
     float2 a, float2 b, float2 c,
     float2 tl, float2 br, int cornerIndex,
     out float2 xy
@@ -165,7 +172,7 @@ void computePosition (
     if (type == TYPE_LineSegment) {
         // Oriented bounding box around the line segment
         float2 along = b - a,
-            alongNorm = normalize(along) * (totalRadius + 0.5),
+            alongNorm = normalize(along) * (totalRadius + 1),
             left = alongNorm.yx * float2(-1, 1),
             right = alongNorm.yx * float2(1, -1);
 
@@ -178,6 +185,8 @@ void computePosition (
         else
             xy = a + right - alongNorm;
     } else {
+        // HACK: Padding
+        tl -= 1; br += 1;
         // FIXME: Fit a better hull around triangles. Oriented bounding box?
         xy = lerp(tl, br, QuadCorners[cornerIndex.x]);
     }
@@ -187,7 +196,7 @@ void ScreenSpaceRasterShapeVertexShader (
     RASTERSHAPE_VS_ARGS
 ) {
     RASTERSHAPE_VS_PROLOGUE
-    float2 totalRadius = computeTotalRadius(radius, outlineSize);
+    float totalRadius = computeTotalRadius(radius, outlineSize);
     float2 tl, br;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
@@ -203,7 +212,7 @@ void WorldSpaceRasterShapeVertexShader(
     RASTERSHAPE_VS_ARGS
 ) {
     RASTERSHAPE_VS_PROLOGUE
-    float2 totalRadius = computeTotalRadius(radius, outlineSize);
+    float totalRadius = computeTotalRadius(radius, outlineSize);
     float2 tl, br;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
@@ -233,8 +242,48 @@ float2 closestPointOnLineSegment2(float2 a, float2 b, float2 pt, out float t) {
     return a + t * ab;
 }
 
-float sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C)
-{
+float sdBox (in float2 p, in float2 b) {
+    float2 d = abs(p) - b;
+    return length(max(d, 0)) + min(max(d.x, d.y), 0.0);
+}
+
+float sdEllipse (in float2 p, in float2 ab) {
+    p = abs(p); 
+    if (p.x > p.y) { 
+        p = p.yx; ab = ab.yx; 
+    }
+    float l = ab.y*ab.y - ab.x*ab.x;
+    float m = ab.x*p.x / l;
+    float m2 = m*m;
+    float n = ab.y*p.y / l;
+    float n2 = n*n;
+    float c = (m2 + n2 - 1.0) / 3.0; 
+    float c3 = c*c*c;
+    float q = c3 + m2*n2*2.0;
+    float d = c3 + m2*n2;
+    float g = m + m*n2;
+    float co;
+    if (d<0.0) {
+        float h = acos(q / c3) / 3.0;
+        float s = cos(h);
+        float t = sin(h)*sqrt(3.0);
+        float rx = sqrt(-c*(s + t + 2.0) + m2);
+        float ry = sqrt(-c*(s - t + 2.0) + m2);
+        co = (ry + sign(l)*rx + abs(g) / (rx*ry) - m) / 2.0;
+    } else {
+        float h = 2.0*m*n*sqrt(d);
+        float s = sign(q + h)*pow(abs(q + h), 1.0 / 3.0);
+        float u = sign(q - h)*pow(abs(q - h), 1.0 / 3.0);
+        float rx = -s - u - c*4.0 + 2.0*m2;
+        float ry = (s - u)*sqrt(3.0);
+        float rm = sqrt(rx*rx + ry*ry);
+        co = (ry / sqrt(rm - rx) + 2.0*g / rm - m) / 2.0;
+    }
+    float2 r = ab * float2(co, sqrt(1.0 - co*co));
+    return length(r - p) * sign(p.y - r.y);
+}
+
+float sdBezier (in float2 pos, in float2 A, in float2 B, in float2 C) {
     float2 a = B - A;
     float2 b = A - 2.0*B + C;
     float2 c = a * 2.0;
@@ -282,45 +331,67 @@ float sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C)
     return sqrt(res);
 }
 
+float sdTriangle (in float2 p, in float2 p0, in float2 p1, in float2 p2) {
+    float2 e0 = p1 - p0, e1 = p2 - p1, e2 = p0 - p2;
+    float2 v0 = p - p0, v1 = p - p1, v2 = p - p2;
+    float2 pq0 = v0 - e0*clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);
+    float2 pq1 = v1 - e1*clamp(dot(v1, e1) / dot(e1, e1), 0.0, 1.0);
+    float2 pq2 = v2 - e2*clamp(dot(v2, e2) / dot(e2, e2), 0.0, 1.0);
+    float s = sign(e0.x*e2.y - e0.y*e2.x);
+    float2 d = min(min(float2(dot(pq0, pq0), s*(v0.x*e0.y - v0.y*e0.x)),
+        float2(dot(pq1, pq1), s*(v1.x*e1.y - v1.y*e1.x))),
+        float2(dot(pq2, pq2), s*(v2.x*e2.y - v2.y*e2.x)));
+    return -sqrt(d.x)*sign(d.y);
+}
+
+float getWindowAlpha (
+    float position, float windowStart, float windowEnd,
+    float startAlpha, float centerAlpha, float endAlpha
+) {
+    float t = (position - windowStart) / (windowEnd - windowStart);
+    if (t <= 0.5)
+        return lerp(startAlpha, centerAlpha, saturate(t * 2));
+    else
+        return lerp(centerAlpha, endAlpha, saturate((t - 0.5) * 2));
+}
+
 void rasterShapeCommon (
     RASTERSHAPE_FS_ARGS,
     out float2 tl, out float2 br
 ) {
     RASTERSHAPE_FS_PROLOGUE;
 
+    // HACK
+    outlineSize = max(abs(outlineSize), 0.0001);
+
     const float threshold = (1 / 512.0);
 
-    float2 totalRadius = computeTotalRadius(radius, outlineSize);
-    float  radiusLength = max(length(radius), 0.001);
-    float2 invRadius = 1.0 / max(radius, float2(0.001, 0.001));
+    float totalRadius = computeTotalRadius(radius, outlineSize);
+    float2 invRadius = 1.0 / max(radius, 0.0001);
 
-    float distance, gradientWeight;
-    float2 distanceXy;
+    float distance = 0, gradientWeight = 0;
 
     computeTLBR(type, totalRadius, a, b, c, tl, br);
 
     if (type == TYPE_Ellipse) {
-        distanceXy = worldPosition - a;
-        radiusLength = max(length(b), 0.001);
-        invRadius = 1.0 / max(b, float2(0.001, 0.001));
-        float distanceF = length(distanceXy * invRadius);
-        distance = distanceF * radiusLength;
-        gradientWeight = saturate(distanceF);
+        distance = sdEllipse(worldPosition - a, b);
+        float centerDistance = sdEllipse(0, b);
+        gradientWeight = saturate(distance / centerDistance);
     } else if (type == TYPE_LineSegment) {
         float t;
         float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
-        distanceXy = worldPosition - closestPoint;
-        float distanceF = length(distanceXy * invRadius);
-        distance = distanceF * radiusLength;
+        distance = length(worldPosition - closestPoint) - totalRadius;
+        float distanceF = distance / totalRadius;
         if (c.x >= 0.5)
             gradientWeight = saturate(t);
         else
             gradientWeight = saturate(distanceF);
     } else if (type == TYPE_Rectangle) {
-        float2 tl = min(a, b), br = max(a, b), center = (a + b) * 0.5;
-        float2 position = worldPosition - center;
-        float2 size = (br - tl) * 0.5;
+        float2 center = (a + b) * 0.5;
+        distance = sdBox(worldPosition - center, abs(b - a) * 0.5);
 
+        // FIXME: Gradient
+        /*
         float2 d = abs(position) - size;
         distance = min(
             max(d.x, d.y),
@@ -333,26 +404,16 @@ void rasterShapeCommon (
             gradientWeight = saturate(length(position / gradientSize));
         else
             gradientWeight = max(abs(position.x / gradientSize.x), abs(position.y / gradientSize.y));
+        */
     } else if (type == TYPE_Triangle) {
         // FIXME: Transform to origin?
-        float2 p = worldPosition;
-        float2 e0 = b - a, e1 = c - b, e2 = a - c;
-        float2 v0 = p - a, v1 = p - b, v2 = p - c;
-        float2 pq0 = v0 - e0 * clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);
-        float2 pq1 = v1 - e1 * clamp(dot(v1, e1) / dot(e1, e1), 0.0, 1.0);
-        float2 pq2 = v2 - e2 * clamp(dot(v2, e2) / dot(e2, e2), 0.0, 1.0);
-        float s = sign(e0.x*e2.y - e0.y*e2.x);
-        float2 d = min(min(float2(dot(pq0, pq0), s*(v0.x*e0.y - v0.y*e0.x)),
-            float2(dot(pq1, pq1), s*(v1.x*e1.y - v1.y*e1.x))),
-            float2(dot(pq2, pq2), s*(v2.x*e2.y - v2.y*e2.x)));
-        float distanceF = -sqrt(d.x)*sign(d.y);
-        distance = float2(distanceF, 0);
+        distance = sdTriangle(worldPosition, a, b, c);
 
         // FIXME: What is the correct divisor here?
         float2 center = (a + b + c) / 3;
-        float gradientScale = max(max(length(a - center), length(b - center)), length(c - center)) / 2;
-        // HACK: The - 1 here gets the start of the gradient closer to the outside of the triangle
-        gradientWeight = saturate(-(distanceF - 1) / gradientScale);
+        float centroidDistance = sdTriangle(center, a, b, c);
+        gradientWeight = saturate(distance / centroidDistance);
+
     } else if (type == TYPE_QuadraticBezier) {
         // FIXME: There's a lot wrong here
         float distanceF = sdBezier(worldPosition, a, b, c);
@@ -367,36 +428,35 @@ void rasterShapeCommon (
 
     float4 gradient = lerp(centerColor, edgeColor, gradientWeight);
 
-    if (outlineSize <= 0.0001)
-        // This eliminates a dark halo around the edges of some shapes but has the downside
-        //  of making everything look rounded instead of sharp-edged.
-        // outlineColor = gradient;
-        outlineColor = 0;
+    float outlineStartDistance = -(outlineSize * 0.5), 
+        outlineEndDistance = outlineStartDistance + outlineSize,
+        fillStartDistance = -0.5,
+        fillEndDistance = 0.5;
 
-    float  outlineDistance = (distance - radiusLength) / max(outlineSize, 1);
-    float  outlineWeight = saturate(outlineDistance);
-    float  outlineGamma = OutlineGammaMinusOne + 1;
-    float4 gradientToOutline = lerp(gradient, outlineColor, pow(outlineWeight, outlineGamma));
-    float  transparentWeight = saturate(outlineDistance - 1);
-    if (transparentWeight > (1 - threshold)) {
-        // discard;
-        return;
+    float4 composited;
+    float fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
+    if (outlineSize > 0.001) {
+        float outlineAlpha = getWindowAlpha(distance, outlineStartDistance, outlineEndDistance, 0, 1, 0);
+        composited = lerp(lerp(gradient, 0, fillAlpha), outlineColor, outlineAlpha);
+    } else {
+        composited = gradient * fillAlpha;
     }
 
+    /*
+    float outlineGamma = OutlineGammaMinusOne + 1;
+
+    float transparentWeight = 0;
     transparentWeight = 1 - pow(1 - transparentWeight, outlineGamma);
     float4 color = BlendInLinearSpace ? LinearToSRGB(gradientToOutline) : gradientToOutline;
     float newAlpha = lerp(color.a, 0, transparentWeight);
+    */
 
-    if (newAlpha <= threshold) {
+    if (composited.a <= threshold) {
         // discard;
         return;
     }
 
-    if (BlendInLinearSpace) {
-        result = float4(color.rgb * newAlpha, newAlpha);
-    } else {
-        result = lerp(color, 0, transparentWeight);
-    }
+    result = composited;
 }
 
 void RasterShapeUntextured (
