@@ -1198,9 +1198,10 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            var startAngleRadians = MathHelper.ToRadians(startAngleDegrees);
-            var sizeRadians = MathHelper.ToRadians(sizeDegrees);
-            var b = new Vector2((float)Math.Sin(startAngleRadians), (float)Math.Cos(startAngleRadians));
+            var centerAngleDegrees = startAngleDegrees + (sizeDegrees / 2);
+            var centerAngleRadians = MathHelper.ToRadians(centerAngleDegrees);
+            var sizeRadians = MathHelper.ToRadians(sizeDegrees / 2);
+            var b = new Vector2((float)Math.Sin(centerAngleRadians), (float)Math.Cos(centerAngleRadians));
             var c = new Vector2((float)Math.Sin(sizeRadians), (float)Math.Cos(sizeRadians));
 
             using (var rsb = GetRasterShapeBatch(
