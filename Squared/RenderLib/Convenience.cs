@@ -1034,7 +1034,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeRectangle (
             Vector2 tl, Vector2 br, Vector2 radius,
-            Color innerColor, Color outerColor,
+            Color innerColor, Color? outerColor = null,
             bool radialGradient = false,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
@@ -1050,8 +1050,8 @@ namespace Squared.Render.Convenience {
                     Radius = radius,
                     OutlineSize = 0,
                     CenterColor = innerColor,
-                    EdgeColor = outerColor,
-                    OutlineColor = Color.Transparent,
+                    EdgeColor = outerColor.GetValueOrDefault(innerColor),
+                    OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
