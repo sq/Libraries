@@ -18,7 +18,8 @@ namespace Squared.Render {
         public Vector4 PointsAB, PointsCD;
         public Vector4 Parameters;
         public Vector4 TextureRegion;
-        public Color CenterColor, EdgeColor, OutlineColor;
+        public Color   CenterColor, EdgeColor, OutlineColor;
+        public short   Type, Unused;
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -27,20 +28,22 @@ namespace Squared.Render {
             var tThis = typeof(RasterShapeVertex);
 
             Elements = new VertexElement[] {
-                new VertexElement( Marshal.OffsetOf(tThis, "PointsAB").ToInt32(), 
+                new VertexElement( Marshal.OffsetOf(tThis, "PointsAB").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 0 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "PointsCD").ToInt32(), 
+                new VertexElement( Marshal.OffsetOf(tThis, "PointsCD").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 1 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "Parameters").ToInt32(), 
+                new VertexElement( Marshal.OffsetOf(tThis, "Parameters").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 0 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "TextureRegion").ToInt32(), 
+                new VertexElement( Marshal.OffsetOf(tThis, "TextureRegion").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 1 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "CenterColor").ToInt32(), 
+                new VertexElement( Marshal.OffsetOf(tThis, "CenterColor").ToInt32(),
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "EdgeColor").ToInt32(), 
+                new VertexElement( Marshal.OffsetOf(tThis, "EdgeColor").ToInt32(),
                     VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "OutlineColor").ToInt32(), 
+                new VertexElement( Marshal.OffsetOf(tThis, "OutlineColor").ToInt32(),
                     VertexElementFormat.Color, VertexElementUsage.Color, 2 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "Type").ToInt32(),
+                    VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 1)
             };
 
             _VertexDeclaration = new VertexDeclaration(Elements);
@@ -164,8 +167,11 @@ namespace Squared.Render {
                         CenterColor = dc.CenterColor,
                         OutlineColor = dc.OutlineColor,
                         EdgeColor = dc.EdgeColor,
-                        Parameters = new Vector4(dc.OutlineSize, (int)dc.Type, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne),
-                        TextureRegion = dc.TextureBounds.ToVector4()
+                        // FIXME: Fill the 2nd spot with something?
+                        Parameters = new Vector4(dc.OutlineSize, 0, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne),
+                        TextureRegion = dc.TextureBounds.ToVector4(),
+                        Type = (short)dc.Type,
+                        Unused = (short)dc.Type
                     };
                     vw.Write(vert);
                 }

@@ -60,6 +60,7 @@ float4 pLinearToPSRGB (float4 pLinear) {
     inout float4 centerColor : COLOR0, \
     inout float4 edgeColor : COLOR1, \
     inout float4 outlineColor : COLOR2, \
+    inout int2 _type : BLENDINDICES1, \
     out float4 result : POSITION0, \
     out float4 ab : TEXCOORD2, \
     out float4 cd : TEXCOORD3, \
@@ -72,7 +73,7 @@ float4 pLinearToPSRGB (float4 pLinear) {
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
     params.x *= OutlineSizeCompensation; \
     float outlineSize = params.x; \
-    int type = params.y;
+    uint type = abs(_type.x);
 
 #define RASTERSHAPE_FS_ARGS \
     in float2 worldPosition : NORMAL0, \
@@ -82,19 +83,15 @@ float4 pLinearToPSRGB (float4 pLinear) {
     in float4 centerColor : COLOR0, \
     in float4 edgeColor : COLOR1, \
     in float4 outlineColor : COLOR2, \
+    in int2 _type : BLENDINDICES1, \
     in float4 texRgn : TEXCOORD1, \
     ACCEPTS_VPOS, \
     out float4 result : COLOR0
 
-#define RASTERSHAPE_FS_PASS_ARGS \
-    worldPosition, ab, cd, \
-    params, centerColor, edgeColor, outlineColor, \
-    texRgn, RAW_VPOS, result
-
 #define RASTERSHAPE_FS_PROLOGUE \
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
     float outlineSize = params.x; \
-    int type = params.y; \
+    uint type = abs(_type.x); \
     float OutlineGammaMinusOne = params.w;
 
 #define RASTERSHAPE_PREPROCESS_COLORS \
@@ -232,47 +229,59 @@ float computeTotalRadius (float2 radius, float outlineSize) {
 }
 
 void computeTLBR (
-    int type, float2 radius, float totalRadius, 
+    uint type, float2 radius, float totalRadius, 
     float2 a, float2 b, float2 c,
     out float2 tl, out float2 br
 ) {
-    if (type == TYPE_Ellipse) {
-        tl = a - b - totalRadius;
-        br = a + b + totalRadius;
-    } else if (type == TYPE_LineSegment) {
-        tl = min(a, b);
-        br = max(a, b);
-    } else if (type == TYPE_Rectangle) {
-        tl = min(a, b) - totalRadius;
-        br = max(a, b) + totalRadius;
-    } else if (type == TYPE_Triangle) {
-        totalRadius += 1;
-        tl = min(min(a, b), c) - totalRadius;
-        br = max(max(a, b), c) + totalRadius;
-    } else if (type == TYPE_QuadraticBezier) {
-        totalRadius += 1;
-        float2 mi = min(a, c);
-        float2 ma = max(a, c);
+    switch (type) {
+        case TYPE_Ellipse:
+            tl = a - b - totalRadius;
+            br = a + b + totalRadius;
+            break;
 
-        if (b.x<mi.x || b.x>ma.x || b.y<mi.y || b.y>ma.y)
-        {
-            float2 t = clamp((a - b) / (a - 2.0*b + c), 0.0, 1.0);
-            float2 s = 1.0 - t;
-            float2 q = s*s*a + 2.0*s*t*b + t*t*c;
-            mi = min(mi, q);
-            ma = max(ma, q);
-        }
+        case TYPE_LineSegment:
+            tl = min(a, b);
+            br = max(a, b);
+            break;
 
-        tl = mi - totalRadius;
-        br = ma + totalRadius;
-    } else if (type == TYPE_Arc) {
-        tl = a - totalRadius - radius.y;
-        br = a + totalRadius + radius.y;
+        case TYPE_Rectangle:
+            tl = min(a, b) - totalRadius;
+            br = max(a, b) + totalRadius;
+            break;
+
+        case TYPE_Triangle:
+            totalRadius += 1;
+            tl = min(min(a, b), c) - totalRadius;
+            br = max(max(a, b), c) + totalRadius;
+            break;
+
+        case TYPE_QuadraticBezier:
+            totalRadius += 1;
+            float2 mi = min(a, c);
+            float2 ma = max(a, c);
+
+            if (b.x<mi.x || b.x>ma.x || b.y<mi.y || b.y>ma.y)
+            {
+                float2 t = clamp((a - b) / (a - 2.0*b + c), 0.0, 1.0);
+                float2 s = 1.0 - t;
+                float2 q = s*s*a + 2.0*s*t*b + t*t*c;
+                mi = min(mi, q);
+                ma = max(ma, q);
+            }
+
+            tl = mi - totalRadius;
+            br = ma + totalRadius;
+            break;
+
+        case TYPE_Arc:
+            tl = a - totalRadius - radius.y;
+            br = a + totalRadius + radius.y;
+            break;
     }
 }
 
 void computePosition (
-    int type, float totalRadius, 
+    uint type, float totalRadius, 
     float2 a, float2 b, float2 c,
     float2 tl, float2 br, int cornerIndex,
     out float2 xy
@@ -366,7 +375,7 @@ float getWindowAlpha (
 void rasterShapeCommon (
     in float2 worldPosition,
     in float4 ab, in float4 cd,
-    in float4 params, 
+    in float4 params, in int2 _type,
     in float4 centerColor, in float4 edgeColor,
     out float2 tl, out float2 br,
     out float4 fill, out float fillAlpha, 
@@ -387,52 +396,71 @@ void rasterShapeCommon (
     tl = min(a, b);
     br = max(a, b);
 
-    if (type == TYPE_Ellipse) {
-        // FIXME: sdEllipse is massively broken. What is wrong with it?
-        // distance = sdEllipse(worldPosition - a, b);
-        float2 distanceXy = worldPosition - a;
-        float distanceF = length(distanceXy / b);
-        distance = (distanceF - 1) * length(b);
-        gradientWeight = saturate(distanceF);
-        tl = a - b;
-        br = a + b;
-    } else if (type == TYPE_LineSegment) {
-        float t;
-        float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
-        distance = length(worldPosition - closestPoint) - radius;
+    switch (type) {
+        case TYPE_Ellipse: {
+            // FIXME: sdEllipse is massively broken. What is wrong with it?
+            // distance = sdEllipse(worldPosition - a, b);
+            float2 distanceXy = worldPosition - a;
+            float distanceF = length(distanceXy / b);
+            distance = (distanceF - 1) * length(b);
+            gradientWeight = saturate(distanceF);
+            tl = a - b;
+            br = a + b;
 
-        if (c.x >= 0.5)
-            gradientWeight = saturate(t);
-        else
+            break;
+        }
+        case TYPE_LineSegment: {
+            float t;
+            float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
+            distance = length(worldPosition - closestPoint) - radius;
+
+            if (c.x >= 0.5)
+                gradientWeight = saturate(t);
+            else
+                gradientWeight = 1 - saturate(-distance / radius.x);
+
+            break;
+        }
+        case TYPE_QuadraticBezier: {
+            distance = sdBezier(worldPosition, a, b, c) - radius.x;
             gradientWeight = 1 - saturate(-distance / radius.x);
-    } else if (type == TYPE_QuadraticBezier) {
-        distance = sdBezier(worldPosition, a, b, c) - radius.x;
-        gradientWeight = 1 - saturate(-distance / radius.x);
 
-        computeTLBR(type, radius, totalRadius, a, b, c, tl, br);
-    } else if (type == TYPE_Rectangle) {
-        float2 center = (a + b) * 0.5;
-        float2 boxSize = abs(b - a) * 0.5;
-        distance = sdBox(worldPosition - center, boxSize) - radius.x;
+            computeTLBR(type, radius, totalRadius, a, b, c, tl, br);
 
-        float centerDistance = sdBox(0, boxSize) - radius.x;
-        // Radial gradient
-        if (c.x >= 0.5)
-            gradientWeight = saturate(length((worldPosition - center) / (boxSize + radius.x)));
-        else
-            gradientWeight = 1 - saturate(distance / centerDistance);
-    } else if (type == TYPE_Triangle) {
-        distance = sdTriangle(worldPosition, a, b, c) - radius.x;
+            break;
+        }
+        case TYPE_Rectangle: {
+            float2 center = (a + b) * 0.5;
+            float2 boxSize = abs(b - a) * 0.5;
+            distance = sdBox(worldPosition - center, boxSize) - radius.x;
 
-        float2 center = (a + b + c) / 3;
-        float centroidDistance = sdTriangle(center, a, b, c) - radius.x;
-        gradientWeight = saturate(distance / centroidDistance);
+            float centerDistance = sdBox(0, boxSize) - radius.x;
+            // Radial gradient
+            if (c.x >= 0.5)
+                gradientWeight = saturate(length((worldPosition - center) / (boxSize + radius.x)));
+            else
+                gradientWeight = 1 - saturate(distance / centerDistance);
 
-        tl = min(min(a, b), c);
-        br = max(max(a, b), c);
-    } else if (type == TYPE_Arc) {
-        distance = sdArc(worldPosition - a, b, c, radius.x, radius.y);
-        gradientWeight = 1 - saturate(-distance / radius.y);
+            break;
+        }
+        case TYPE_Triangle: {
+            distance = sdTriangle(worldPosition, a, b, c) - radius.x;
+
+            float2 center = (a + b + c) / 3;
+            float centroidDistance = sdTriangle(center, a, b, c) - radius.x;
+            gradientWeight = saturate(distance / centroidDistance);
+
+            tl = min(min(a, b), c);
+            br = max(max(a, b), c);
+
+            break;
+        }
+        case TYPE_Arc: {
+            distance = sdArc(worldPosition - a, b, c, radius.x, radius.y);
+            gradientWeight = 1 - saturate(-distance / radius.y);
+
+            break;
+        }
     }
 
     float outlineStartDistance = -(outlineSize * 0.5) + 0.5, 
@@ -483,7 +511,7 @@ void RasterShapeUntextured (
     float  fillAlpha, outlineAlpha;
     rasterShapeCommon(
         worldPosition,
-        ab, cd, params,
+        ab, cd, params, _type,
         centerColor, edgeColor,
         tl, br,
         fill, fillAlpha, outlineAlpha
@@ -509,7 +537,7 @@ void RasterShapeTextured (
     float  fillAlpha, outlineAlpha;
     rasterShapeCommon(
         worldPosition,
-        ab, cd, params,
+        ab, cd, params, _type,
         centerColor, edgeColor,
         tl, br,
         fill, fillAlpha, outlineAlpha
