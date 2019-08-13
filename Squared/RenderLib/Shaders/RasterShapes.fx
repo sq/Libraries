@@ -15,26 +15,21 @@ sampler TextureSampler : register(s0) {
 
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
-// Input is premultiplied, output is not
-float4 pSRGBToLinear (float4 srgba) {
-    float3 srgb = srgba.rgb / max(srgba.a, 0.0001);
-    float3 result = srgb * (srgb * (srgb * 0.305306011 + 0.682171111) + 0.012522878);
-    return float4(result, srgba.a);
+float4 pSRGBToPLinear (float4 psrgba) {
+    float3 srgb = psrgba.rgb / max(psrgba.a, 0.00001);
+    float3 linearRgb = srgb * (srgb * (srgb * 0.305306011 + 0.682171111) + 0.012522878);
+    float4 pLinear = float4(linearRgb * psrgba.a, psrgba.a);
+    return pLinear;
 }
 
-float4 Unpremultiply (float4 color) {
-    color.rgb /= max(color.a, 0.0001);
-    return color;
-}
-
-// Neither input or output are premultiplied!
-float4 LinearToSRGB (float4 rgba) {
-    float3 rgb = rgba.rgb;
+float4 pLinearToPSRGB (float4 pLinear) {
+    float3 rgb = pLinear.rgb / max(pLinear.a, 0.00001);
     float3 S1 = sqrt(rgb);
     float3 S2 = sqrt(S1);
     float3 S3 = sqrt(S2);
-    float3 result = 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * rgb;
-    return float4(result, rgba.a);
+    float3 srgb = 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * rgb;
+    float4 pSrgb = float4(srgb * pLinear.a, pLinear.a);
+    return pSrgb;
 }
 
 
@@ -104,13 +99,9 @@ float4 LinearToSRGB (float4 rgba) {
 
 #define RASTERSHAPE_PREPROCESS_COLORS \
     if (params.z) { \
-        centerColor = pSRGBToLinear(centerColor); \
-        edgeColor = pSRGBToLinear(edgeColor); \
-        outlineColor = pSRGBToLinear(outlineColor); \
-    } else { \
-        centerColor = Unpremultiply(centerColor); \
-        edgeColor = Unpremultiply(edgeColor); \
-        outlineColor = Unpremultiply(outlineColor); \
+        centerColor = pSRGBToPLinear(centerColor); \
+        edgeColor = pSRGBToPLinear(edgeColor); \
+        outlineColor = pSRGBToPLinear(outlineColor); \
     }
 
 
@@ -464,10 +455,10 @@ void rasterShapeCommon (
 
 // porter-duff A over B
 float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
-    top.a *= topOpacity;
-    bottom.a *= bottomOpacity;
+    top *= topOpacity;
+    bottom *= bottomOpacity;
 
-    float3 rgb = (top.rgb * top.a) + (bottom.rgb * (1 - top.a));
+    float3 rgb = top.rgb + (bottom.rgb * (1 - top.a));
     float a = top.a + (bottom.a * (1 - top.a));
     return float4(rgb, a);
 }
@@ -477,9 +468,8 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
     result = over(outlineColor, outlineAlpha, fillColor, fillAlpha);
 
     if (convertToSRGB)
-        result = LinearToSRGB(result);
+        result = pLinearToPSRGB(result);
 
-    result.rgb *= result.a;
     return result;
 }
 
@@ -540,7 +530,7 @@ void RasterShapeTextured (
 
     float4 texColor = tex2D(TextureSampler, texCoord);
     if (params.z)
-        texColor = pSRGBToLinear(texColor);
+        texColor = pSRGBToPLinear(texColor);
 
     fill *= texColor;
 
