@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Render.RasterShape;
 using Squared.Render.Text;
 using Squared.Util;
 using Squared.Util.DeclarativeSort;
@@ -1035,7 +1036,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeRectangle (
             Vector2 tl, Vector2 br, float radius,
             Color innerColor, Color? outerColor = null,
-            bool radialGradient = false,
+            RectangleFillMode fillMode = RectangleFillMode.Linear,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1046,7 +1047,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
                     A = tl, B = br,
-                    C = new Vector2(radialGradient ? 1 : 0, 0),
+                    C = new Vector2((int)fillMode, 0),
                     Radius = new Vector2(radius),
                     OutlineSize = 0,
                     CenterColor = innerColor,
@@ -1062,7 +1063,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeRectangle (
             Vector2 tl, Vector2 br, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
-            bool radialGradient = false,
+            RectangleFillMode fillMode = RectangleFillMode.Linear,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1073,7 +1074,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
                     A = tl, B = br,
-                    C = new Vector2(radialGradient ? 1 : 0, 0),
+                    C = new Vector2((int)fillMode, 0),
                     Radius = new Vector2(radius),
                     OutlineSize = outlineRadius,
                     CenterColor = innerColor,

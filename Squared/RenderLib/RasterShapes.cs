@@ -12,7 +12,7 @@ using Squared.Render.Internal;
 using Squared.Util;
 using GeometryVertex = Microsoft.Xna.Framework.Graphics.VertexPositionColor;
 
-namespace Squared.Render {
+namespace Squared.Render.RasterShape {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct RasterShapeVertex : IVertexType {
         public Vector4 PointsAB, PointsCD;
@@ -61,6 +61,13 @@ namespace Squared.Render {
         Triangle = 3,
         QuadraticBezier = 4,
         Arc = 5
+    }
+
+    public enum RectangleFillMode : int {
+        Linear = 0,
+        Radial = 1,
+        Horizontal = 2,
+        Vertical = 3
     }
 
     [StructLayout(LayoutKind.Sequential)]

@@ -435,11 +435,25 @@ void rasterShapeCommon (
             distance = sdBox(worldPosition - center, boxSize) - radius.x;
 
             float centerDistance = sdBox(0, boxSize) - radius.x;
-            // Radial gradient
-            if (c.x >= 0.5)
-                gradientWeight = saturate(length((worldPosition - center) / (boxSize + radius.x)));
-            else
-                gradientWeight = 1 - saturate(distance / centerDistance);
+            uint gradientType = abs(c.x);
+            switch (gradientType) {
+                // Linear
+                case 0:
+                    gradientWeight = 1 - saturate(distance / centerDistance);
+                    break;
+                // Radial
+                case 1:
+                    gradientWeight = saturate(length((worldPosition - center) / (boxSize + radius.x)));
+                    break;
+                // Horizontal
+                case 2:
+                    gradientWeight = saturate((worldPosition.x - tl.x) / boxSize.x / 2);
+                    break;
+                // Vertical
+                case 3:
+                    gradientWeight = saturate((worldPosition.y - tl.y) / boxSize.y / 2);
+                    break;
+            }
 
             break;
         }
