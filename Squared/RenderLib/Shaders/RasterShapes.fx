@@ -389,7 +389,7 @@ void rasterShapeCommon (
     const float threshold = (1 / 512.0);
 
     float totalRadius = computeTotalRadius(radius, outlineSize);
-    float2 invRadius = 1.0 / max(radius.x, 0.0001);
+    float2 invRadius = 1.0 / max(radius, 0.0001);
 
     float distance = 0, gradientWeight = 0;
 
@@ -412,7 +412,7 @@ void rasterShapeCommon (
         case TYPE_LineSegment: {
             float t;
             float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
-            distance = length(worldPosition - closestPoint) - radius;
+            distance = length(worldPosition - closestPoint) - radius.x;
 
             if (c.x >= 0.5)
                 gradientWeight = saturate(t);
