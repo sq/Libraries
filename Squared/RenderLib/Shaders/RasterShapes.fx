@@ -413,12 +413,13 @@ void rasterShapeCommon (
         case TYPE_LineSegment: {
             float t;
             float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
-            distance = length(worldPosition - closestPoint) - radius.x;
+            float localRadius = radius.x + lerp(c.y, radius.y, t);
+            distance = length(worldPosition - closestPoint) - localRadius;
 
             if (c.x >= 0.5)
                 gradientWeight = saturate(t);
             else
-                gradientWeight = 1 - saturate(-distance / radius.x);
+                gradientWeight = 1 - saturate(-distance / localRadius);
 
             break;
         }

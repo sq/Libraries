@@ -1013,21 +1013,24 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeLineSegment (
-            Vector2 a, Vector2 b, float radius, float outlineRadius,
+            Vector2 a, Vector2 b, float startRadius, float? endRadius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             bool gradientAlongLine = false,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
+            float _endRadius = endRadius.GetValueOrDefault(startRadius);
+            float maxRadius = Math.Max(startRadius, _endRadius);
+
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.LineSegment,
                     A = a, B = b,
-                    C = new Vector2(gradientAlongLine ? 1 : 0, 0),
-                    Radius = new Vector2(radius),
+                    C = new Vector2(gradientAlongLine ? 1 : 0, startRadius - maxRadius),
+                    Radius = new Vector2(maxRadius, _endRadius - maxRadius),
                     OutlineSize = outlineRadius,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
