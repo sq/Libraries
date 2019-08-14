@@ -11,7 +11,7 @@ sampler TextureSampler : register(s0) {
 };
 
 // HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
-#define OutlineSizeCompensation (2 * sqrt(2))
+#define OutlineSizeCompensation 1.75
 
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
@@ -478,6 +478,9 @@ void rasterShapeCommon (
         }
     }
 
+    float outlineSizeAlpha = saturate(outlineSize / 2);
+    float clampedOutlineSize = max(outlineSize / 2, sqrt(2)) * 2;
+
     float outlineStartDistance = -(outlineSize * 0.5) + 0.5, 
         outlineEndDistance = outlineStartDistance + outlineSize,
         fillStartDistance = -0.5,
@@ -488,13 +491,13 @@ void rasterShapeCommon (
     fill = lerp(centerColor, edgeColor, gradientWeight);
 
     if (outlineSize > 0.001) {
-        if (HardOutline >= 0.5) {
-            outlineAlpha = min(
-                getWindowAlpha(distance, outlineStartDistance, min(outlineStartDistance + 1.25, outlineEndDistance), 0, 1, 1),
-                getWindowAlpha(distance, max(outlineStartDistance, outlineEndDistance - 1.25), outlineEndDistance, 1, 1, 0)
+        if ((outlineSize >= sqrt(2)) && (HardOutline >= 0.5)) {
+            outlineAlpha = (
+                getWindowAlpha(distance, outlineStartDistance, min(outlineStartDistance + sqrt(2), outlineEndDistance), 0, 1, 1) *
+                getWindowAlpha(distance, max(outlineStartDistance, outlineEndDistance - sqrt(2)), outlineEndDistance, 1, 1, 0)
             );
         } else {
-            outlineAlpha = getWindowAlpha(distance, outlineStartDistance, outlineEndDistance, 0, 1, 0);
+            outlineAlpha = getWindowAlpha(distance, outlineStartDistance, outlineEndDistance, 0, 1, 0) * outlineSizeAlpha;
         }
         float outlineGamma = OutlineGammaMinusOne + 1;
         outlineAlpha = saturate(pow(outlineAlpha, outlineGamma));
