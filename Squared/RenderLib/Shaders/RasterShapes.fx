@@ -441,7 +441,7 @@ void rasterShapeCommon (
             switch (gradientType) {
                 // Linear
                 case 0:
-                    gradientWeight = 1 - saturate(distance / centerDistance + gradientOffset);
+                    gradientWeight = saturate(1 - saturate(distance / centerDistance) + gradientOffset);
                     break;
                 // Radial
                 case 1:
