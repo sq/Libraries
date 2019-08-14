@@ -1044,6 +1044,7 @@ namespace Squared.Render.Convenience {
             Vector2 tl, Vector2 br, float radius,
             Color innerColor, Color? outerColor = null,
             RectangleFillMode fillMode = RectangleFillMode.Linear,
+            float fillOffset = 0,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1054,7 +1055,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
                     A = tl, B = br,
-                    C = new Vector2((int)fillMode, 0),
+                    C = new Vector2((int)fillMode, fillOffset),
                     Radius = new Vector2(radius),
                     OutlineSize = 0,
                     CenterColor = innerColor,
@@ -1072,6 +1073,7 @@ namespace Squared.Render.Convenience {
             Vector2 tl, Vector2 br, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             RectangleFillMode fillMode = RectangleFillMode.Linear,
+            float fillOffset = 0,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1082,7 +1084,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
                     A = tl, B = br,
-                    C = new Vector2((int)fillMode, 0),
+                    C = new Vector2((int)fillMode, fillOffset),
                     Radius = new Vector2(radius),
                     OutlineSize = outlineRadius,
                     CenterColor = innerColor,

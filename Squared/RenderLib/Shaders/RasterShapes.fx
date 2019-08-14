@@ -11,7 +11,7 @@ sampler TextureSampler : register(s0) {
 };
 
 // HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
-#define OutlineSizeCompensation 1.75
+#define OutlineSizeCompensation 2.2
 
 // Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 
@@ -437,22 +437,23 @@ void rasterShapeCommon (
 
             float centerDistance = sdBox(0, boxSize) - radius.x;
             uint gradientType = abs(c.x);
+            float gradientOffset = c.y;
             switch (gradientType) {
                 // Linear
                 case 0:
-                    gradientWeight = 1 - saturate(distance / centerDistance);
+                    gradientWeight = 1 - saturate(distance / centerDistance + gradientOffset);
                     break;
                 // Radial
                 case 1:
-                    gradientWeight = saturate(length((worldPosition - center) / (boxSize + radius.x)));
+                    gradientWeight = saturate(length((worldPosition - center) / (boxSize + radius.x)) + gradientOffset);
                     break;
                 // Horizontal
                 case 2:
-                    gradientWeight = saturate((worldPosition.x - tl.x) / boxSize.x / 2);
+                    gradientWeight = saturate((worldPosition.x - tl.x) / boxSize.x / 2 + gradientOffset);
                     break;
                 // Vertical
                 case 3:
-                    gradientWeight = saturate((worldPosition.y - tl.y) / boxSize.y / 2);
+                    gradientWeight = saturate((worldPosition.y - tl.y) / boxSize.y / 2 + gradientOffset);
                     break;
             }
 
