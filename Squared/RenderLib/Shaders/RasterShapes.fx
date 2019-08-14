@@ -92,6 +92,7 @@ float4 pLinearToPSRGB (float4 pLinear) {
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
     float outlineSize = params.x; \
     uint type = abs(_type.x); \
+    float HardOutline = params.y; \
     float OutlineGammaMinusOne = params.w;
 
 #define RASTERSHAPE_PREPROCESS_COLORS \
@@ -487,7 +488,14 @@ void rasterShapeCommon (
     fill = lerp(centerColor, edgeColor, gradientWeight);
 
     if (outlineSize > 0.001) {
-        outlineAlpha = getWindowAlpha(distance, outlineStartDistance, outlineEndDistance, 0, 1, 0);
+        if (HardOutline >= 0.5) {
+            outlineAlpha = min(
+                getWindowAlpha(distance, outlineStartDistance, min(outlineStartDistance + 1.25, outlineEndDistance), 0, 1, 1),
+                getWindowAlpha(distance, max(outlineStartDistance, outlineEndDistance - 1.25), outlineEndDistance, 1, 1, 0)
+            );
+        } else {
+            outlineAlpha = getWindowAlpha(distance, outlineStartDistance, outlineEndDistance, 0, 1, 0);
+        }
         float outlineGamma = OutlineGammaMinusOne + 1;
         outlineAlpha = saturate(pow(outlineAlpha, outlineGamma));
     } else {

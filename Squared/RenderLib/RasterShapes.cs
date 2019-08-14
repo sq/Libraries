@@ -109,6 +109,10 @@ namespace Squared.Render.RasterShape {
         public Color OutlineColor;
 
         /// <summary>
+        /// If true, the outline has soft falloff instead of a sharp edge.
+        /// </summary>
+        public bool SoftOutline;
+        /// <summary>
         /// The thickness of the shape's outline.
         /// </summary>
         public float OutlineSize;
@@ -174,8 +178,7 @@ namespace Squared.Render.RasterShape {
                         CenterColor = dc.CenterColor,
                         OutlineColor = dc.OutlineColor,
                         EdgeColor = dc.EdgeColor,
-                        // FIXME: Fill the 2nd spot with something?
-                        Parameters = new Vector4(dc.OutlineSize, 0, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne),
+                        Parameters = new Vector4(dc.OutlineSize, dc.SoftOutline ? 0.0f : 1.0f, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne),
                         TextureRegion = dc.TextureBounds.ToVector4(),
                         Type = (short)dc.Type,
                         Unused = (short)dc.Type

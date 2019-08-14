@@ -454,6 +454,8 @@ namespace Squared.Render.Convenience {
 
         private float RasterOutlineGammaMinusOne;
 
+        public bool RasterSoftOutlines;
+
         /// <summary>
         /// If true, raster shape colors will be converted from sRGB to linear space before
         ///  blending and then converted back to sRGB for rendering.
@@ -499,6 +501,7 @@ namespace Squared.Render.Convenience {
             DeclarativeSorter = declarativeSorter;
             RasterOutlineGammaMinusOne = 0;
             RasterBlendInLinearSpace = true;
+            RasterSoftOutlines = false;
         }
 
         /// <summary>
@@ -951,7 +954,8 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
-                    TextureBounds = Bounds.Unit
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
                 });
         }
 
@@ -976,7 +980,8 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
-                    TextureBounds = Bounds.Unit
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
                 });
         }
 
@@ -1002,7 +1007,8 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
-                    TextureBounds = Bounds.Unit
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
                 });
         }
 
@@ -1029,7 +1035,8 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
-                    TextureBounds = Bounds.Unit
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
                 });
         }
 
@@ -1056,7 +1063,8 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
-                    TextureBounds = Bounds.Unit
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
                 });
         }
 
@@ -1083,7 +1091,8 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
-                    TextureBounds = Bounds.Unit
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
                 });
         }
 
@@ -1107,7 +1116,8 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
-                    TextureBounds = Bounds.Unit
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
                 });
         }
 
@@ -1132,7 +1142,8 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
-                    TextureBounds = Bounds.Unit
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
                 });
         }
 
@@ -1156,7 +1167,8 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
-                    TextureBounds = Bounds.Unit
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
                 });
         }
 
@@ -1181,7 +1193,8 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
-                    TextureBounds = Bounds.Unit
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
                 });
         }
 
@@ -1220,7 +1233,8 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = RasterBlendInLinearSpace,
                     // FIXME
-                    TextureBounds = Bounds.Unit
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
                 });
         }
 
