@@ -261,6 +261,7 @@ namespace Squared.Render {
         public Material ScreenSpaceShadowedBitmap, WorldSpaceShadowedBitmap;
         public Material ScreenSpacePalettedBitmap, WorldSpacePalettedBitmap;
         public Material ScreenSpaceHueBitmap, WorldSpaceHueBitmap;
+        public Material ScreenSpaceSepiaBitmap, WorldSpaceSepiaBitmap;
         public Material ScreenSpaceShadowedBitmapWithDiscard, WorldSpaceShadowedBitmapWithDiscard;
         public Material ScreenSpaceBitmapWithDiscard, WorldSpaceBitmapWithDiscard;
         public Material ScreenSpacePalettedBitmapWithDiscard, WorldSpacePalettedBitmapWithDiscard;
@@ -354,7 +355,7 @@ namespace Squared.Render {
             var geometryShader = BuiltInShaders.Load("SquaredGeometryShader");
             var rasterShapesShader = BuiltInShaders.Load("RasterShapes");
             var palettedShader = BuiltInShaders.Load("PalettedBitmap");
-            var hsvShader = BuiltInShaders.Load("HueBitmap");
+            var hslShader = BuiltInShaders.Load("HueBitmap");
             
             ScreenSpaceBitmap = new Material(
                 bitmapShader,
@@ -441,23 +442,33 @@ namespace Squared.Render {
             );
 
             ScreenSpaceHueBitmap = new Material(
-                hsvShader,
+                hslShader,
                 "ScreenSpaceHueBitmapTechnique"
             );
 
             WorldSpaceHueBitmap = new Material(
-                hsvShader,
+                hslShader,
                 "WorldSpaceHueBitmapTechnique"
             );
 
             ScreenSpaceHueBitmapWithDiscard = new Material(
-                hsvShader,
+                hslShader,
                 "ScreenSpaceHueBitmapWithDiscardTechnique"
             );
 
             WorldSpaceHueBitmapWithDiscard = new Material(
-                hsvShader,
+                hslShader,
                 "WorldSpaceHueBitmapWithDiscardTechnique"
+            );
+
+            ScreenSpaceSepiaBitmap = new Material(
+                hslShader,
+                "ScreenSpaceSepiaBitmapTechnique"
+            );
+
+            WorldSpaceSepiaBitmap = new Material(
+                hslShader,
+                "WorldSpaceSepiaBitmapTechnique"
             );
 
             ScreenSpaceGeometry = new Material(
