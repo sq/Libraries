@@ -1,9 +1,9 @@
 const float HueUnit = 1.0 / 6.0;
 
 float4 pRGBAFromHSVA (float4 hsva) {
-    float hue = hsva.x;
-    float saturation = hsva.y;
-    float value = hsva.z;
+    float hue = frac(hsva.x);
+    float saturation = saturate(hsva.y);
+    float value = saturate(hsva.z);
     float alpha = hsva.w;
 
     if (value <= 0)
@@ -17,7 +17,7 @@ float4 pRGBAFromHSVA (float4 hsva) {
     if (saturation <= 0)
         return float4(value, value, value, 1) * alpha;
 
-    uint segment = floor(hue / HueUnit);
+    uint segment = abs(floor(hue / HueUnit));
     float remainder = hue % HueUnit;
     float saturatedValue = saturation * value;
 
