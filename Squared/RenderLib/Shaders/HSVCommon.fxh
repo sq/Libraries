@@ -7,12 +7,14 @@ float convertHSVAComponent (float n, float k, float s, float v) {
 
 float4 pRGBAFromHSVA (float4 hsva) {
     float k = hsva.x / HueUnit;
+    float s = saturate(hsva.y);
+    float v = saturate(hsva.z);
     if (k < 0)
         k += (1 + floor(k / -6)) * 6;
     float4 rgba = float4(
-        convertHSVAComponent(5, k, hsva.y, hsva.z),
-        convertHSVAComponent(3, k, hsva.y, hsva.z),
-        convertHSVAComponent(1, k, hsva.y, hsva.z),
+        convertHSVAComponent(5, k, s, v),
+        convertHSVAComponent(3, k, s, v),
+        convertHSVAComponent(1, k, s, v),
         1
     );
     return rgba * hsva.a;
