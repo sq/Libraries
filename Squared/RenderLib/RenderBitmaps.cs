@@ -49,12 +49,12 @@ namespace Squared.Render {
         public Vector3 Position;
         public Vector4 Texture1Region;
         public Vector4 Texture2Region;
+        public Vector4 UserData;
         public Vector2 Scale;
         public Vector2 Origin;
         public float Rotation;
         public Color MultiplyColor;
         public Color AddColor;
-        public Color UserData;
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -79,7 +79,7 @@ namespace Squared.Render {
                 new VertexElement( Marshal.OffsetOf(tThis, "AddColor").ToInt32(), 
                     VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "UserData").ToInt32(), 
-                    VertexElementFormat.Color, VertexElementUsage.Color, 2 ),
+                    VertexElementFormat.Vector4, VertexElementUsage.Color, 2 ),
             };
 
             _VertexDeclaration = new VertexDeclaration(Elements);
@@ -901,7 +901,8 @@ namespace Squared.Render {
         public Vector2    Scale;
         public Vector2    Origin;
         public float      Rotation;
-        public Color      MultiplyColor, AddColor, UserData;
+        public Color      MultiplyColor, AddColor;
+        public Vector4    UserData;
         public Bounds     TextureRegion;
         public Bounds     TextureRegion2;
         public TextureSet Textures;
@@ -980,7 +981,7 @@ namespace Squared.Render {
             Scale = scale;
             Origin = origin;
             Rotation = rotation;
-            UserData = default(Color);
+            UserData = default(Vector4);
 
             SortKey = default(DrawCallSortKey);
         }

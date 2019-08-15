@@ -658,7 +658,7 @@ namespace Squared.Render.Convenience {
             bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null, 
             BlendState blendState = null, SamplerState samplerState = null,
-            Material material = null, Color userData = default(Color)
+            Material material = null, Vector4 userData = default(Vector4)
         ) {
             var drawCall = new BitmapDrawCall(texture, position);
             if (sourceRectangle.HasValue)
@@ -686,7 +686,7 @@ namespace Squared.Render.Convenience {
             bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null,
-            Material material = null, Color userData = default(Color)
+            Material material = null, Vector4 userData = default(Vector4)
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(x, y));
             if (sourceRectangle.HasValue)
@@ -714,7 +714,7 @@ namespace Squared.Render.Convenience {
             bool mirrorX = false, bool mirrorY = false, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null,
-            Material material = null, Color userData = default(Color)
+            Material material = null, Vector4 userData = default(Vector4)
         ) {
             var drawCall = new BitmapDrawCall(texture, new Vector2(destRectangle.X, destRectangle.Y));
             if (sourceRectangle.HasValue) {
@@ -744,7 +744,7 @@ namespace Squared.Render.Convenience {
             Vector2? offset = null, Color? multiplyColor = null, Color? addColor = null, DrawCallSortKey? sortKey = null,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, SamplerState samplerState = null, Vector2? scale = null,
-            Material material = null, Color? userData = null
+            Material material = null, Vector4? userData = null
         ) {
             using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, material)) {
                 if (LowPriorityMaterialOrdering) {
