@@ -1,9 +1,9 @@
-const float HueUnit = 1.0 / 6.0;
+const float HueUnit = 1.0 / 6;
 
 float4 pRGBAFromHSVA (float4 hsva) {
-    float hue = frac(hsva.x);
-    float saturation = saturate(hsva.y);
-    float value = saturate(hsva.z);
+    float hue = hsva.x;
+    float saturation = hsva.y;
+    float value = hsva.z;
     float alpha = hsva.w;
 
     if (value <= 0)
@@ -11,36 +11,34 @@ float4 pRGBAFromHSVA (float4 hsva) {
     if ((value >= 1) && (saturation <= 0))
         return alpha;
 
-    value = min(1, value);
-    saturation = min(1, saturation);
+    // value = min(1, value);
+    // saturation = min(1, saturation);
 
     if (saturation <= 0)
         return float4(value, value, value, 1) * alpha;
 
-    uint segment = abs(floor(hue / HueUnit));
-    float remainder = hue % HueUnit;
-    float saturatedValue = saturation * value;
+    float segment = hue / HueUnit % 6;
+    float c = saturation * value;
+    // FIXME: floor segment here?
+    float x = c * (1 - abs((segment % 2) - 1));
 
-    float c = (1 - saturation) * saturatedValue;
-    float b = (remainder * saturatedValue) / HueUnit + c;
-    float rb = saturatedValue - b + (c * 2);
-    float a = saturatedValue + c;
+    float3 selector;
 
-    switch (segment) {
-        case 0:
-            return float4(a, b, c, 1) * alpha;
-        case 1:
-            return float4(rb, a, c, 1) * alpha;
-        case 2:
-            return float4(c, a, b, 1) * alpha;
-        case 3:
-            return float4(c, rb, a, 1) * alpha;
-        case 4:
-            return float4(b, c, a, 1) * alpha;
-        case 5:
-        default:
-            return float4(a, c, rb, 1) * alpha;
-    }
+    if (segment <= 1)
+        selector = float3(c, x, 0);
+    else if (segment <= 2)
+        selector = float3(x, c, 0);
+    else if (segment <= 3)
+        selector = float3(0, c, x);
+    else if (segment <= 4)
+        selector = float3(0, x, c);
+    else if (segment <= 5)
+        selector = float3(x, 0, c);
+    else
+        selector = float3(c, 0, x);
+
+    float m = value - c;
+    return float4(selector + m, 1) * alpha;
 }
 
 float4 hsvaFromPRGBA (float4 rgba) {
@@ -50,11 +48,9 @@ float4 hsvaFromPRGBA (float4 rgba) {
     float minimum = min(rgba.r, min(rgba.g, rgba.b));
     float maximum = max(rgba.r, max(rgba.g, rgba.b));
 
-    if (maximum == minimum) {
+    // Covers grayscale, black, and white
+    if (maximum == minimum)
         return float4(0, 0, minimum, rgba.a);
-    } else if (maximum <= 0) {
-        return float4(0, 0, 0, rgba.a);
-    }
 
     float b = maximum - minimum, d, hue;
 
