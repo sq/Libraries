@@ -3,7 +3,7 @@
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
-#include "HSVCommon.fxh"
+#include "HueCommon.fxh"
 
 sampler TextureSamplerPoint : register(s5) {
     Texture = (BitmapTexture);
@@ -16,16 +16,16 @@ sampler TextureSamplerPoint : register(s5) {
 void BasicPixelShader(
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
-    in float4 hsvShift : COLOR2,
+    in float4 hslShift : COLOR2,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
     float4 texColor = tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
 
-    float4 hsva = hsvaFromPRGBA(texColor);
-    hsva += hsvShift;
-    float4 prgba = pRGBAFromHSVA(hsva);
+    float4 hsla = hslaFromPRGBA(texColor);
+    hsla += hslShift;
+    float4 prgba = pRGBAFromHSLA(hsla);
 
     addColor.rgb *= addColor.a;
     addColor.a = 0;
@@ -37,16 +37,16 @@ void BasicPixelShader(
 void BasicPixelShaderWithDiscard (
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
-    in float4 hsvShift : COLOR2,
+    in float4 hslShift : COLOR2,
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
     float4 texColor = tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
 
-    float4 hsva = hsvaFromPRGBA(texColor);
-    hsva += hsvShift;
-    float4 prgba = pRGBAFromHSVA(hsva);
+    float4 hsla = hslaFromPRGBA(texColor);
+    hsla += hslShift;
+    float4 prgba = pRGBAFromHSLA(hsla);
 
     addColor.rgb *= addColor.a;
     addColor.a = 0;
@@ -58,7 +58,7 @@ void BasicPixelShaderWithDiscard (
     clip(result.a - discardThreshold);
 }
 
-technique WorldSpaceHSVBitmapTechnique
+technique WorldSpaceHueBitmapTechnique
 {
     pass P0
     {
@@ -67,7 +67,7 @@ technique WorldSpaceHSVBitmapTechnique
     }
 }
 
-technique ScreenSpaceHSVBitmapTechnique
+technique ScreenSpaceHueBitmapTechnique
 {
     pass P0
     {
@@ -76,7 +76,7 @@ technique ScreenSpaceHSVBitmapTechnique
     }
 }
 
-technique WorldSpaceHSVBitmapWithDiscardTechnique
+technique WorldSpaceHueBitmapWithDiscardTechnique
 {
     pass P0
     {
@@ -85,7 +85,7 @@ technique WorldSpaceHSVBitmapWithDiscardTechnique
     }
 }
 
-technique ScreenSpaceHSVBitmapWithDiscardTechnique
+technique ScreenSpaceHueBitmapWithDiscardTechnique
 {
     pass P0
     {

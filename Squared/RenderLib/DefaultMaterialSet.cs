@@ -260,11 +260,11 @@ namespace Squared.Render {
         public Material ScreenSpaceBitmapWithLUT, WorldSpaceBitmapWithLUT;
         public Material ScreenSpaceShadowedBitmap, WorldSpaceShadowedBitmap;
         public Material ScreenSpacePalettedBitmap, WorldSpacePalettedBitmap;
-        public Material ScreenSpaceHSVBitmap, WorldSpaceHSVBitmap;
+        public Material ScreenSpaceHueBitmap, WorldSpaceHueBitmap;
         public Material ScreenSpaceShadowedBitmapWithDiscard, WorldSpaceShadowedBitmapWithDiscard;
         public Material ScreenSpaceBitmapWithDiscard, WorldSpaceBitmapWithDiscard;
         public Material ScreenSpacePalettedBitmapWithDiscard, WorldSpacePalettedBitmapWithDiscard;
-        public Material ScreenSpaceHSVBitmapWithDiscard, WorldSpaceHSVBitmapWithDiscard;
+        public Material ScreenSpaceHueBitmapWithDiscard, WorldSpaceHueBitmapWithDiscard;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
@@ -354,7 +354,7 @@ namespace Squared.Render {
             var geometryShader = BuiltInShaders.Load("SquaredGeometryShader");
             var rasterShapesShader = BuiltInShaders.Load("RasterShapes");
             var palettedShader = BuiltInShaders.Load("PalettedBitmap");
-            var hsvShader = BuiltInShaders.Load("HSVBitmap");
+            var hsvShader = BuiltInShaders.Load("HueBitmap");
             
             ScreenSpaceBitmap = new Material(
                 bitmapShader,
@@ -440,24 +440,24 @@ namespace Squared.Render {
                 "WorldSpacePalettedBitmapWithDiscardTechnique"
             );
 
-            ScreenSpaceHSVBitmap = new Material(
+            ScreenSpaceHueBitmap = new Material(
                 hsvShader,
-                "ScreenSpaceHSVBitmapTechnique"
+                "ScreenSpaceHueBitmapTechnique"
             );
 
-            WorldSpaceHSVBitmap = new Material(
+            WorldSpaceHueBitmap = new Material(
                 hsvShader,
-                "WorldSpaceHSVBitmapTechnique"
+                "WorldSpaceHueBitmapTechnique"
             );
 
-            ScreenSpaceHSVBitmapWithDiscard = new Material(
+            ScreenSpaceHueBitmapWithDiscard = new Material(
                 hsvShader,
-                "ScreenSpaceHSVBitmapWithDiscardTechnique"
+                "ScreenSpaceHueBitmapWithDiscardTechnique"
             );
 
-            WorldSpaceHSVBitmapWithDiscard = new Material(
+            WorldSpaceHueBitmapWithDiscard = new Material(
                 hsvShader,
-                "WorldSpaceHSVBitmapWithDiscardTechnique"
+                "WorldSpaceHueBitmapWithDiscardTechnique"
             );
 
             ScreenSpaceGeometry = new Material(
