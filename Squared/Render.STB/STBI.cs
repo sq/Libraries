@@ -196,13 +196,17 @@ namespace Squared.Render.STB {
             return result;
         }
 
-        public Texture2D CreateTexture (RenderCoordinator coordinator, bool generateMips = false) {
+        public Texture2D CreateTexture (RenderCoordinator coordinator, bool generateMips = false, bool padToPowerOfTwo = false) {
             if (IsDisposed)
                 throw new ObjectDisposedException("Image is disposed");
             // FIXME: Channel count
+
+            int width = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Width) : Width;
+            var height = padToPowerOfTwo ? Arithmetic.NextPowerOfTwo(Height) : Height;
+
             Texture2D result;
             lock (coordinator.CreateResourceLock)
-                result = new Texture2D(coordinator.Device, Width, Height, generateMips, Format);
+                result = new Texture2D(coordinator.Device, width, height, generateMips, Format);
 
             // FIXME: FP mips
             if (generateMips && !IsFloatingPoint)

@@ -12,9 +12,22 @@ namespace Squared.Render {
         public bool Premultiply = true;
         public bool FloatingPoint;
         public bool GenerateMips;
+        /// <summary>
+        /// Pads the bottom and right edges of the image so its width and height are a power of two.
+        /// The original width/height are stored in properties of this object.
+        /// </summary>
+        public bool PadToPowerOfTwo;
         public UInt32[] Palette;
         public int PaletteTextureHeight = 1;
+
+        /// <summary>
+        /// Contains the palette of the loaded image.
+        /// </summary>
         public Texture2D PaletteTexture;
+        /// <summary>
+        /// Contains the original dimensions of the loaded image.
+        /// </summary>
+        public int Width, Height;
     }
 
     public class EmbeddedTexture2DProvider : EmbeddedResourceProvider<Texture2D> {
@@ -47,7 +60,7 @@ namespace Squared.Render {
                 if (options.Palette != null)
                     options.PaletteTexture = img.CreatePaletteTexture(Coordinator, options.PaletteTextureHeight);
 
-                return img.CreateTexture(Coordinator, options.GenerateMips);
+                return img.CreateTexture(Coordinator, options.GenerateMips, options.PadToPowerOfTwo);
             }
         }
     }

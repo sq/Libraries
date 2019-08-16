@@ -330,6 +330,10 @@ namespace Squared.Util {
             else
                 return true;
         }
+    
+        public static int NextPowerOfTwo (int value) {
+            return (int)Math.Pow(2, Math.Ceiling(Math.Log(value, 2)));
+        }
 
 #if WINDOWS
         #region CompileExpression<T> overloads

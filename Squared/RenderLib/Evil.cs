@@ -570,10 +570,20 @@ namespace Squared.Render.Evil {
                     throw Marshal.GetExceptionForHR(lockHr);
                 if (lockedRect.pBits == null)
                     throw new Exception("LockRect did not return a data pointer");
-                else if (lockedRect.Pitch != pitch)
-                    throw new ArgumentException("Pitch of provided data does not match pitch of locked surface", "pitch");
 
-                Buffer.MemoryCopy(pData, lockedRect.pBits, lockedRect.Pitch * height, pitch * height);
+                if (lockedRect.Pitch < pitch) {
+                    throw new ArgumentException("Pitch of provided data is larger than pitch of locked surface", "pitch");
+                } else if (lockedRect.Pitch == pitch) {
+                    Buffer.MemoryCopy(pData, lockedRect.pBits, lockedRect.Pitch * height, pitch * height);
+                } else {
+                    // yuck                    
+                    for (int y = 0; y < height; y++) {
+                        var pSource = ((byte*)pData) + (y * pitch);
+                        var pDest = ((byte*)lockedRect.pBits) + (y * lockedRect.Pitch);
+                        Buffer.MemoryCopy(pSource, pDest, pitch, pitch);
+                        // FIXME: Zero out the other bytes
+                    }
+                }
             } finally {
                 if (lockedRect.pBits != null) {
                     var unlockHr = unlockRect(pTexture, level);
@@ -647,7 +657,7 @@ namespace Squared.Render.Evil {
             this Texture2D texture, uint level, void* pData,
             int width, int height, uint pitch
         ) {
-            texture.SetDataPointerEXT((int)level, null, new IntPtr(pData), (int)(pitch * height));
+            texture.SetDataPointerEXT((int)level, new Rectangle(0, 0, width, height), new IntPtr(pData), (int)(pitch * height));
         }
 
         public static void GetDataFast<T> (
