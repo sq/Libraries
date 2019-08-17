@@ -135,12 +135,16 @@ void StippledPixelShader(
     // HACK: Without this, even at an opacity of 1/255 everything will be dithered at the lowest level.
     // This ensures that extremely transparent pixels are just plain invisible
     const float discardThreshold = (6.0 / 255.0);
+    // HACK: Similar but for fully opaque
+    const float forceOpaqueThreshold = (251 / 255.0);
     // If userData.R >= 0.5, the dithering will shift from frame to frame. You probably don't want this
     int frameIndex = userData.r >= 0.5 ? (DitheringGetFrameIndex() % 4) : 0;
     float ditherGamma = (userData.y >= 0.1 ? userData.y : 1);
     if (
-        pow(result.a, ditherGamma) <= Dither64(vpos, frameIndex) || 
-        (result.a <= discardThreshold)
+        (result.a <= forceOpaqueThreshold) && (
+            pow(result.a, ditherGamma) <= Dither64(vpos, frameIndex) || 
+            (result.a <= discardThreshold)
+        )
     ) {
         result = 0;
         discard;
