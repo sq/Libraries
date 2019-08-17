@@ -70,13 +70,13 @@ void SepiaPixelShader(
 ) {
     float4 texColor = tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
     float3 texGray = texColor.rgb * RgbToGray;
-    float  gray = texGray.r + texGray.g + texGray.b;
+    float  gray = (texGray.r + texGray.g + texGray.b) * (1 + saturate(colorHSVAndBlend.a - 1));
 
     float3 sepiaColor = pRGBAFromHSLA(float4(colorHSVAndBlend.rgb, 1)).rgb * gray;
     // FIXME: Is converting the color to grayscale gonna mess up premultiplication? Does it matter?
-    float4 sepia = float4(sepiaColor, texColor.a);
+    float4 sepia = float4(sepiaColor, 1) * texColor.a;
 
-    float4 prgba = lerp(texColor, sepia, colorHSVAndBlend.a);
+    float4 prgba = lerp(texColor, sepia, saturate(colorHSVAndBlend.a));
 
     addColor.rgb *= addColor.a;
     addColor.a = 0;
