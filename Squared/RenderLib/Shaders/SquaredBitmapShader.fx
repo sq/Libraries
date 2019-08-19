@@ -131,6 +131,9 @@ void StippledPixelShader(
     result = multiplyColor * tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
     result += (addColor * result.a);
 
+    // Allows scaling the dither pattern up to larger sizes
+    float stippleRatio = userData.z + 1;
+
     float2 vpos = GET_VPOS;
     // HACK: Without this, even at an opacity of 1/255 everything will be dithered at the lowest level.
     // This ensures that extremely transparent pixels are just plain invisible
@@ -142,7 +145,7 @@ void StippledPixelShader(
     float ditherGamma = (userData.y >= 0.1 ? userData.y : 1);
     if (
         (result.a <= forceOpaqueThreshold) && (
-            pow(result.a, ditherGamma) <= Dither64(vpos, frameIndex) || 
+            pow(result.a, ditherGamma) <= Dither64(floor(vpos / stippleRatio), frameIndex) || 
             (result.a <= discardThreshold)
         )
     ) {

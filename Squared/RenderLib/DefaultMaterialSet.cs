@@ -277,8 +277,8 @@ namespace Squared.Render {
         ///  will have really terrible banding in dark areas.
         /// </summary>
         public Material ScreenSpaceLightmappedsRGBBitmap, WorldSpaceLightmappedsRGBBitmap;
-        public Material ScreenSpaceHorizontalGaussianBlur5Tap, ScreenSpaceVerticalGaussianBlur5Tap;
-        public Material WorldSpaceHorizontalGaussianBlur5Tap, WorldSpaceVerticalGaussianBlur5Tap;
+        public Material ScreenSpaceHorizontalGaussianBlur, ScreenSpaceVerticalGaussianBlur;
+        public Material WorldSpaceHorizontalGaussianBlur, WorldSpaceVerticalGaussianBlur;
         public Material Clear, SetScissor, SetViewport;
 
         private readonly Action<Material, FrameParams> _ApplyParamsDelegate;
@@ -546,24 +546,24 @@ namespace Squared.Render {
 
             var blurShader = BuiltInShaders.Load("GaussianBlur");
 
-            ScreenSpaceHorizontalGaussianBlur5Tap = new Material(
+            ScreenSpaceHorizontalGaussianBlur = new Material(
                 blurShader,
-                "ScreenSpaceHorizontalGaussianBlur5Tap"
+                "ScreenSpaceHorizontalGaussianBlur"
             );
 
-            ScreenSpaceVerticalGaussianBlur5Tap = new Material(
+            ScreenSpaceVerticalGaussianBlur = new Material(
                 blurShader,
-                "ScreenSpaceVerticalGaussianBlur5Tap"
+                "ScreenSpaceVerticalGaussianBlur"
             );
 
-            WorldSpaceHorizontalGaussianBlur5Tap = new Material(
+            WorldSpaceHorizontalGaussianBlur = new Material(
                 blurShader,
-                "WorldSpaceHorizontalGaussianBlur5Tap"
+                "WorldSpaceHorizontalGaussianBlur"
             );
 
-            WorldSpaceVerticalGaussianBlur5Tap = new Material(
+            WorldSpaceVerticalGaussianBlur = new Material(
                 blurShader,
-                "WorldSpaceVerticalGaussianBlur5Tap"
+                "WorldSpaceVerticalGaussianBlur"
             );
 
             AutoSetViewTransform();

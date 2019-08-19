@@ -4,9 +4,7 @@
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
 
-uniform float TapOffset[3] = { 0.0, 1.3846153846, 3.2307692308 };
-uniform float TapWeight[3] = { 0.2270270270, 0.3162162162, 0.0702702703 };
-uniform float MipOffset = 3;
+uniform float MipOffset = 0;
 
 sampler TapSampler : register(s0) {
     Texture = (BitmapTexture);
@@ -22,17 +20,28 @@ float4 tap(
     return tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MipOffset));
 }
 
-float4 GaussianBlur5TapPixelShaderCore(
-    in float2 step,
+float4 GaussianBlurPixelShaderCore(
+    in float2 halfTexel,
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1
 ) {
+    // http://dev.theomader.com/gaussian-kernel-calculator/
+    // Sigma 2, Kernel size 9
+
+    // FIXME: This creates a weird halo effect, which seems wrong
+    float2 stepSize = halfTexel * 2; 
+
+    const int taps = 5;
+    const float TapWeight[taps] = { 
+        0.20236, 0.179044, 0.124009, 0.067234, 0.028532
+    };
+
     float4 sum = tap(texCoord, texRgn) * TapWeight[0];
 
-    for (int i = 1; i < 3; i += 1) {
-        float2 offset2 = step * TapOffset[i];
+    for (int i = 1; i < taps; i += 1) {
+        float2 offset2 = stepSize * i;
 
         sum += tap(texCoord - offset2, texRgn) * TapWeight[i];
         sum += tap(texCoord + offset2, texRgn) * TapWeight[i];
@@ -46,15 +55,15 @@ float4 GaussianBlur5TapPixelShaderCore(
     return result;
 }
 
-void HorizontalGaussianBlur5TapPixelShader(
+void HorizontalGaussianBlurPixelShader(
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
-    result = GaussianBlur5TapPixelShaderCore(
-        float2(HalfTexel.x * 2, 0),
+    result = GaussianBlurPixelShaderCore(
+        float2(HalfTexel.x, 0),
         multiplyColor,
         addColor,
         texCoord,
@@ -62,15 +71,15 @@ void HorizontalGaussianBlur5TapPixelShader(
     );
 }
 
-void VerticalGaussianBlur5TapPixelShader(
+void VerticalGaussianBlurPixelShader(
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
-    result = GaussianBlur5TapPixelShaderCore(
-        float2(0, HalfTexel.y * 2),
+    result = GaussianBlurPixelShaderCore(
+        float2(0, HalfTexel.y),
         multiplyColor,
         addColor,
         texCoord,
@@ -78,38 +87,38 @@ void VerticalGaussianBlur5TapPixelShader(
     );
 }
 
-technique WorldSpaceHorizontalGaussianBlur5Tap
+technique WorldSpaceHorizontalGaussianBlur
 {
     pass P0
     {
         vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 HorizontalGaussianBlur5TapPixelShader();
+        pixelShader = compile ps_3_0 HorizontalGaussianBlurPixelShader();
     }
 }
 
-technique ScreenSpaceHorizontalGaussianBlur5Tap
+technique ScreenSpaceHorizontalGaussianBlur
 {
     pass P0
     {
         vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 HorizontalGaussianBlur5TapPixelShader();
+        pixelShader = compile ps_3_0 HorizontalGaussianBlurPixelShader();
     }
 }
 
-technique WorldSpaceVerticalGaussianBlur5Tap
+technique WorldSpaceVerticalGaussianBlur
 {
     pass P0
     {
         vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 VerticalGaussianBlur5TapPixelShader();
+        pixelShader = compile ps_3_0 VerticalGaussianBlurPixelShader();
     }
 }
 
-technique ScreenSpaceVerticalGaussianBlur5Tap
+technique ScreenSpaceVerticalGaussianBlur
 {
     pass P0
     {
         vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
-        pixelShader = compile ps_3_0 VerticalGaussianBlur5TapPixelShader();
+        pixelShader = compile ps_3_0 VerticalGaussianBlurPixelShader();
     }
 }
