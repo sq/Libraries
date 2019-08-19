@@ -726,7 +726,6 @@ namespace Squared.Render {
         /// </summary>
         /// <param name="sigma">Governs the strength of the blur. Lower values are sharper.</param>
         /// <param name="tapCount">The number of samples ('taps') that will be read vertically or horizontally from the texture to compute each blurred sample.</param>
-        /// <param name="mipBias">Biases towards a higher mip (lower resolution = artificially blurrier). You can use this to increase blurriness at the cost of mip artifacts.</param>
         public void SetGaussianBlurParameters (Material m, double sigma, int tapCount, float mipBias = 0) {
             int tapsMinusOne = tapCount - 1;
             int weightCount = 1 + (tapsMinusOne / 2);
@@ -755,7 +754,6 @@ namespace Squared.Render {
                 p["TapCount"]?.SetValue(weightCount);
                 p["TapWeights"]?.SetValue(WeightBuffer);
                 p["InverseTapDivisor"]?.SetValue((float)(1.0 / sum));
-                p["MipBias"]?.SetValue(mipBias);
             }
         }
 

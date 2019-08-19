@@ -15,20 +15,22 @@ uniform int TapCount = 5;
 uniform float TapWeights[7] = { 0.20236, 0.179044, 0.124009, 0.067234, 0.028532, 0, 0 };
 uniform float InverseTapDivisor = 1;
 
-uniform float MipBias = 0;
+// HACK: This used to be 2 (step in whole texels) but that produces gross ringing artifacts that
+//  shouldn't be there, so we step in half-texels instead. :(
+const float TapSpacingFactor = 1;
 
 sampler TapSampler : register(s0) {
     Texture = (BitmapTexture);
-    MipFilter = LINEAR;
-    MinFilter = POINT;
-    MagFilter = POINT;
+    MipFilter = POINT;
+    MinFilter = LINEAR;
+    MagFilter = LINEAR;
 };
 
 float4 tap(
     in float2 texCoord,
     in float4 texRgn
 ) {
-    return tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MipBias));
+    return tex2Dlod(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, 0));
 }
 
 float4 gaussianBlur1D(
@@ -70,7 +72,7 @@ void HorizontalGaussianBlurPixelShader(
     out float4 result : COLOR0
 ) {
     float4 centerTap = tap(texCoord, texRgn);
-    float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(2, 0), texCoord, texRgn);
+    float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(TapSpacingFactor, 0), texCoord, texRgn);
     result = psEpilogue(sum * InverseTapDivisor, multiplyColor, addColor);
 }
 
@@ -82,7 +84,7 @@ void VerticalGaussianBlurPixelShader(
     out float4 result : COLOR0
 ) {
     float4 centerTap = tap(texCoord, texRgn);
-    float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(0, 2), texCoord, texRgn);
+    float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(0, TapSpacingFactor), texCoord, texRgn);
     result = psEpilogue(sum * InverseTapDivisor, multiplyColor, addColor);
 }
 
@@ -93,7 +95,7 @@ void RadialGaussianBlurPixelShader(
     in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
-    float2 innerStepSize = HalfTexel * float2(2, 0), outerStepSize = HalfTexel * float2(0, 2);
+    float2 innerStepSize = HalfTexel * float2(TapSpacingFactor, 0), outerStepSize = HalfTexel * float2(0, TapSpacingFactor);
 
     float4 centerTap = tap(texCoord, texRgn);
     float4 centerValue = gaussianBlur1D(centerTap, innerStepSize, texCoord, texRgn);
