@@ -15,7 +15,7 @@ uniform int TapCount = 5;
 uniform float TapWeights[7] = { 0.20236, 0.179044, 0.124009, 0.067234, 0.028532, 0, 0 };
 uniform float InverseTapDivisor = 1;
 
-uniform float MipOffset = 0;
+uniform float MipBias = 0;
 
 sampler TapSampler : register(s0) {
     Texture = (BitmapTexture);
@@ -28,7 +28,7 @@ float4 tap(
     in float2 texCoord,
     in float4 texRgn
 ) {
-    return tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MipOffset));
+    return tex2Dbias(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MipBias));
 }
 
 float4 gaussianBlur1D(
