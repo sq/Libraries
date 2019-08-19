@@ -277,8 +277,8 @@ namespace Squared.Render {
         ///  will have really terrible banding in dark areas.
         /// </summary>
         public Material ScreenSpaceLightmappedsRGBBitmap, WorldSpaceLightmappedsRGBBitmap;
-        public Material ScreenSpaceHorizontalGaussianBlur, ScreenSpaceVerticalGaussianBlur;
-        public Material WorldSpaceHorizontalGaussianBlur, WorldSpaceVerticalGaussianBlur;
+        public Material ScreenSpaceHorizontalGaussianBlur, ScreenSpaceVerticalGaussianBlur, ScreenSpaceRadialGaussianBlur;
+        public Material WorldSpaceHorizontalGaussianBlur, WorldSpaceVerticalGaussianBlur, WorldSpaceRadialGaussianBlur;
         public Material Clear, SetScissor, SetViewport;
 
         private readonly Action<Material, FrameParams> _ApplyParamsDelegate;
@@ -556,6 +556,11 @@ namespace Squared.Render {
                 "ScreenSpaceVerticalGaussianBlur"
             );
 
+            ScreenSpaceRadialGaussianBlur = new Material(
+                blurShader,
+                "ScreenSpaceRadialGaussianBlur"
+            );
+
             WorldSpaceHorizontalGaussianBlur = new Material(
                 blurShader,
                 "WorldSpaceHorizontalGaussianBlur"
@@ -564,6 +569,11 @@ namespace Squared.Render {
             WorldSpaceVerticalGaussianBlur = new Material(
                 blurShader,
                 "WorldSpaceVerticalGaussianBlur"
+            );
+
+            WorldSpaceRadialGaussianBlur = new Material(
+                blurShader,
+                "WorldSpaceRadialGaussianBlur"
             );
 
             AutoSetViewTransform();
@@ -693,6 +703,7 @@ namespace Squared.Render {
                 ApplyViewTransform(ref vt, force || !LazyViewTransformChanges);
         }
 
+
         public void SetLUTs (Material m, ColorLUT lut1, ColorLUT lut2 = null, float lut2Weight = 0) {
             var p = m.Effect.Parameters;
             p["LUT1"].SetValue(lut1);
@@ -700,6 +711,45 @@ namespace Squared.Render {
             p["LUTResolutions"].SetValue(new Vector2(lut1 != null ? lut1.Resolution : 1, lut2 != null ? lut2.Resolution : 1));
             p["LUT2Weight"].SetValue(lut2Weight);
         }
+
+
+        private const int MaxWeightCount = 7;
+        private static readonly float[] WeightBuffer = new float[MaxWeightCount];
+
+        private static double GaussianDistribution (int x, int kernelRadius, double sigma) {
+            double a = ( x - kernelRadius ) / sigma;
+            return Math.Exp( -0.5 * a * a );
+        }
+
+        public void SetGaussianKernel (Material m, double sigma, int tapCount) {
+            int tapsMinusOne = tapCount - 1;
+            int weightCount = 1 + (tapsMinusOne / 2);
+            if ((weightCount < 1) || (weightCount > MaxWeightCount))
+                throw new ArgumentException("Tap count out of range");
+            if (tapCount / 2 * 2 == tapCount)
+                throw new ArgumentException("Tap count must be odd");
+
+            using (var scratch = BufferPool<double>.Allocate(tapCount)) {
+                Array.Clear(scratch.Data, 0, scratch.Data.Length);
+
+                double sum = 0;
+                for (int i = 0; i < tapCount; i++) {
+                    scratch.Data[i] = GaussianDistribution(i, (weightCount - 1), sigma);
+                    sum += scratch.Data[i];
+                }
+
+                for (int i = 0; i < weightCount; i++) {
+                    var unscaled = scratch.Data[weightCount - i - 1];
+                    var scaled = (float)(unscaled / sum);
+                    WeightBuffer[i] = scaled;
+                }
+
+                var p = m.Effect.Parameters;
+                p["TapCount"]?.SetValue(weightCount);
+                p["TapWeights"]?.SetValue(WeightBuffer);
+            }
+        }
+
 
         private void ApplyParamsToMaterial (Material m, FrameParams @params) {
             m.Parameters?.Time?.SetValue(@params.Seconds);
