@@ -741,12 +741,14 @@ namespace Squared.Render {
                 for (int i = 0; i < weightCount; i++) {
                     var unscaled = scratch.Data[weightCount - i - 1];
                     var scaled = (float)(unscaled / sum);
-                    WeightBuffer[i] = scaled;
+                    // HACK: Scale in shader
+                    WeightBuffer[i] = (float)unscaled;
                 }
 
                 var p = m.Effect.Parameters;
                 p["TapCount"]?.SetValue(weightCount);
                 p["TapWeights"]?.SetValue(WeightBuffer);
+                p["InverseTapDivisor"]?.SetValue((float)(1.0 / sum));
             }
         }
 

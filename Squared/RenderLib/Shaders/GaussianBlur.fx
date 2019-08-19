@@ -8,14 +8,15 @@
 // Sigma 2, Kernel size 9
 uniform int TapCount = 5;
 uniform float TapWeights[7] = { 0.20236, 0.179044, 0.124009, 0.067234, 0.028532, 0, 0 };
+uniform float InverseTapDivisor = 1;
 
 uniform float MipOffset = 0;
 
 sampler TapSampler : register(s0) {
     Texture = (BitmapTexture);
     MipFilter = LINEAR;
-    MinFilter = LINEAR;
-    MagFilter = LINEAR;
+    MinFilter = POINT;
+    MagFilter = POINT;
 };
 
 float4 tap(
@@ -64,8 +65,8 @@ void HorizontalGaussianBlurPixelShader(
     out float4 result : COLOR0
 ) {
     float4 centerTap = tap(texCoord, texRgn);
-    float4 texColor = gaussianBlur1D(centerTap, HalfTexel * float2(2, 0), texCoord, texRgn);
-    result = psEpilogue(texColor, multiplyColor, addColor);
+    float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(2, 0), texCoord, texRgn);
+    result = psEpilogue(sum * InverseTapDivisor, multiplyColor, addColor);
 }
 
 void VerticalGaussianBlurPixelShader(
@@ -76,8 +77,8 @@ void VerticalGaussianBlurPixelShader(
     out float4 result : COLOR0
 ) {
     float4 centerTap = tap(texCoord, texRgn);
-    float4 texColor = gaussianBlur1D(centerTap, HalfTexel * float2(0, 2), texCoord, texRgn);
-    result = psEpilogue(texColor, multiplyColor, addColor);
+    float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(0, 2), texCoord, texRgn);
+    result = psEpilogue(sum * InverseTapDivisor, multiplyColor, addColor);
 }
 
 void RadialGaussianBlurPixelShader(
@@ -87,9 +88,21 @@ void RadialGaussianBlurPixelShader(
     in float4 texRgn : TEXCOORD1,
     out float4 result : COLOR0
 ) {
+    float2 innerStepSize = HalfTexel * float2(2, 0), outerStepSize = HalfTexel * float2(0, 2);
+
     float4 centerTap = tap(texCoord, texRgn);
-    float4 texColor = gaussianBlur1D(centerTap, HalfTexel * float2(2, 2), texCoord, texRgn);
-    result = psEpilogue(texColor, multiplyColor, addColor);
+    float4 centerValue = gaussianBlur1D(centerTap, innerStepSize, texCoord, texRgn);
+
+    float4 sum = centerValue * TapWeights[0];
+
+    for (int i = 1; i < TapCount; i += 1) {
+        float2 outerOffset = outerStepSize * i;
+        
+        sum += gaussianBlur1D(centerTap, innerStepSize, texCoord - outerOffset, texRgn) * TapWeights[i];
+        sum += gaussianBlur1D(centerTap, innerStepSize, texCoord + outerOffset, texRgn) * TapWeights[i];
+    }
+
+    result = psEpilogue(sum * InverseTapDivisor * InverseTapDivisor, multiplyColor, addColor);
 }
 
 technique WorldSpaceHorizontalGaussianBlur
