@@ -1,3 +1,8 @@
+// HACK: We don't really care about running this in debug mode, since
+//  blur operations are so tex (and to a lesser degree arith) intensive
+//  that we want to optimize the hell out of them no matter what
+#pragma fxcparams(/O3 /Zi)
+
 #include "CompilerWorkarounds.fxh"
 #include "ViewTransformCommon.fxh"
 #include "BitmapCommon.fxh"
