@@ -3,6 +3,7 @@
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
+#include "sRGBCommon.fxh"
 
 #define LUT_BITMAP
 #include "LUTCommon.fxh"
@@ -56,8 +57,8 @@ void ToSRGBPixelShader(
 
     result = multiplyColor * tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
     result += (addColor * result.a);
-    // Fixme: Premultiplied alpha?
-    result.rgb = ApplyDither(LinearToSRGB(result.rgb), GET_VPOS);
+    result = pLinearToPSRGB(result);
+    result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
 
 void ShadowedPixelShader (

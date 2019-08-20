@@ -79,7 +79,15 @@
     <Compile Include="UniformBinding.cs" />
     <Compile Include="UniformBindingLayout.cs" />
     <None Include="Shaders\*.fx" />
-    <None Include="Shaders\*.fxh" />
+    <None Include="Shaders\BitmapCommon.fxh" />
+    <None Include="Shaders\CompilerWorkarounds.fxh" />
+    <None Include="Shaders\DitherCommon.fxh" />
+    <None Include="Shaders\GeometryCommon.fxh" />
+    <None Include="Shaders\HueCommon.fxh" />
+    <None Include="Shaders\LUTCommon.fxh" />
+    <None Include="Shaders\TargetInfo.fxh" />
+    <None Include="Shaders\ViewTransformCommon.fxh" />
+    <None Include="Shaders\sRGBCommon.fxh" />
   </ItemGroup>
   <PropertyGroup>
     <SquaredPath>..\..\</SquaredPath>

@@ -141,16 +141,3 @@ void WorldSpaceVertexShader (
     
     result = TransformPosition(float4(position.xy * GetViewportScale().xy, position.z, 1), true);
 }
-
-// Approximations from http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
-
-float3 SRGBToLinear (float3 srgb) {
-  return srgb * (srgb * (srgb * 0.305306011 + 0.682171111) + 0.012522878);
-}
-
-float3 LinearToSRGB (float3 rgb) {
-  float3 S1 = sqrt(rgb);
-  float3 S2 = sqrt(S1);
-  float3 S3 = sqrt(S2);
-  return 0.662002687 * S1 + 0.684122060 * S2 - 0.323583601 * S3 - 0.0225411470 * rgb;
-}

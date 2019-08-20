@@ -3,6 +3,7 @@
 #include "BitmapCommon.fxh"
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
+#include "sRGBCommon.fxh"
 
 #define LUT_BITMAP
 #include "LUTCommon.fxh"
@@ -64,7 +65,7 @@ void sRGBLightmappedPixelShader(
 ) {
     result = LightmappedPixelShaderCore(multiplyColor, addColor, texCoord1, texRgn1, texCoord2, texRgn2);
 
-    result.rgb = LinearToSRGB(result.rgb);
+    result = pLinearToPSRGB(result);
 
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
 
