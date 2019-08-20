@@ -7,6 +7,7 @@ using System.Reflection.Emit;
 using System.Linq.Expressions;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Squared.Util {
 #if WINDOWS
@@ -143,7 +144,20 @@ namespace Squared.Util {
             public Type T, U;
         }
 
-        private static readonly Dictionary<OperatorKey, Delegate> CachedDelegates = new Dictionary<OperatorKey, Delegate>();
+        private struct OperatorKeyComparer : IEqualityComparer<OperatorKey> {
+            public bool Equals (OperatorKey x, OperatorKey y) {
+                return (x.Operator == y.Operator) &&
+                    (x.T == y.T) &&
+                    (x.U == y.U);
+            }
+
+            public int GetHashCode (OperatorKey obj) {
+                return obj.GetHashCode();
+            }
+        }
+
+        private static readonly Dictionary<OperatorKey, Delegate> CachedDelegates = 
+            new Dictionary<OperatorKey, Delegate>(new OperatorKeyComparer());
 
 #if (WINDOWS || DYNAMICMETHOD) && (!NODYNAMICMETHOD)
         private static TDelegate GetOperatorDelegate<TDelegate> (Operators op, Type[] argumentTypes)
@@ -203,18 +217,26 @@ namespace Squared.Util {
             return _OperatorInfo[op].Sigil;
         }
 
+        private static ThreadLocal<Type[]> UnaryScratchArray = new ThreadLocal<Type[]>(() => new Type[1]);
+        private static ThreadLocal<Type[]> BinaryScratchArray = new ThreadLocal<Type[]>(() => new Type[2]);
+
         public static UnaryOperatorMethod<T> GetOperator<T> (Operators op) {
             if (!_OperatorInfo[op].IsUnary)
                 throw new InvalidOperationException("Operator is not unary");
 
-            return GetOperatorDelegate<UnaryOperatorMethod<T>>(op, new[] { typeof(T) });
+            var usa = UnaryScratchArray.Value;
+            usa[0] = typeof(T);
+            return GetOperatorDelegate<UnaryOperatorMethod<T>>(op, usa);
         }
 
         public static BinaryOperatorMethod<T, U> GetOperator<T, U> (Operators op) {
             if (_OperatorInfo[op].IsUnary)
                 throw new InvalidOperationException("Operator is not binary");
 
-            return GetOperatorDelegate<BinaryOperatorMethod<T, U>>(op, new[] { typeof(T), typeof(U) });
+            var bsa = BinaryScratchArray.Value;
+            bsa[0] = typeof(T);
+            bsa[1] = typeof(U);
+            return GetOperatorDelegate<BinaryOperatorMethod<T, U>>(op, bsa);
         }
 
         public static T InvokeOperator<T> (Operators op, T value) {
