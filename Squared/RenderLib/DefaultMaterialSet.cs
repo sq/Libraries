@@ -716,9 +716,19 @@ namespace Squared.Render {
         private const int MaxWeightCount = 10;
         private static readonly float[] WeightBuffer = new float[MaxWeightCount];
 
-        private static double GaussianDistribution (int x, int kernelRadius, double sigma) {
-            double a = ( x - kernelRadius ) / sigma;
-            return Math.Exp( -0.5 * a * a );
+        private static double Gaussian (double sigma, double x) {
+            double value = -(x * x) / (2.0 * sigma * sigma);
+            return Math.Exp( value );
+        }
+ 
+        private static double IntegrateGaussian (double sigma, double a, double b)
+        {
+            return ((b - a) / 6.0) *
+                (
+                    Gaussian(sigma, a) + 4.0 * 
+                    Gaussian(sigma, (a + b) / 2.0) + 
+                    Gaussian(sigma, b)
+                );
         }
 
         /// <summary>
@@ -739,21 +749,24 @@ namespace Squared.Render {
 
                 double sum = 0;
                 for (int i = 0; i < tapCount; i++) {
-                    scratch.Data[i] = GaussianDistribution(i, (weightCount - 1), sigma);
+                    double x = i - (tapsMinusOne / 2.0);
+                    double value = IntegrateGaussian(sigma, x - 0.5, x + 0.5);
+                    scratch.Data[i] = value;
                     sum += scratch.Data[i];
                 }
 
                 for (int i = 0; i < weightCount; i++) {
                     var unscaled = scratch.Data[weightCount - i - 1];
-                    var scaled = (float)(unscaled / sum);
-                    // HACK: Scale in shader
-                    WeightBuffer[i] = (float)unscaled;
+                    var scaled = unscaled * 10;
+                    // We reduce error in the shader (from small values becoming denormals) 
+                    //  by scaling the range up a bit
+                    WeightBuffer[i] = (float)scaled;
                 }
 
                 var p = m.Effect.Parameters;
                 p["TapCount"]?.SetValue(weightCount);
                 p["TapWeights"]?.SetValue(WeightBuffer);
-                p["InverseTapDivisor"]?.SetValue((float)(1.0 / sum));
+                p["InverseTapDivisor"]?.SetValue((float)(1.0 / (sum * 10)));
             }
         }
 

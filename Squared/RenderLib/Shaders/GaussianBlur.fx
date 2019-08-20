@@ -25,6 +25,8 @@ sampler TapSampler : register(s0) {
     MipFilter = POINT;
     MinFilter = LINEAR;
     MagFilter = LINEAR;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
 };
 
 float4 tap(
