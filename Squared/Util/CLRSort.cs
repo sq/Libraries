@@ -42,10 +42,9 @@ namespace Squared.Util {
             Items = items;
             RefComparer = comparer;
 
-            var rca = comparer as IRefComparerAdapter<TElement>;
-            if (rca != null)
-                NonRefComparer = rca.Comparer;
-            else
+            if (comparer is IRefComparerAdapter<TElement>) {
+                NonRefComparer = ((IRefComparerAdapter<TElement>)comparer).Comparer;
+            } else
                 NonRefComparer = null;
         }
 

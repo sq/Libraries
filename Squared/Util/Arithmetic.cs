@@ -138,10 +138,29 @@ namespace Squared.Util {
         };
 #endif
 
+        private struct OperatorKey {
+            public Operators Operator;
+            public Type T, U;
+        }
+
+        private static readonly Dictionary<OperatorKey, Delegate> CachedDelegates = new Dictionary<OperatorKey, Delegate>();
+
 #if (WINDOWS || DYNAMICMETHOD) && (!NODYNAMICMETHOD)
         private static TDelegate GetOperatorDelegate<TDelegate> (Operators op, Type[] argumentTypes)
             where TDelegate : class
         {
+            var key = new OperatorKey {
+                Operator = op,
+                T = argumentTypes[0]
+            };
+            if (argumentTypes.Length > 1)
+                key.U = argumentTypes[1];
+
+            Delegate result;
+            lock (CachedDelegates)
+                if (CachedDelegates.TryGetValue(key, out result))
+                    return (TDelegate)(object)result;
+
             Type delegateType = typeof(TDelegate);
 
             DynamicMethod dm = new DynamicMethod(
@@ -153,9 +172,12 @@ namespace Squared.Util {
 
             ILGenerator ilGenerator = dm.GetILGenerator();
             GenerateArithmeticIL(ilGenerator, argumentTypes, op);
-            object del = dm.CreateDelegate(delegateType);
+            result = dm.CreateDelegate(delegateType);
 
-            return (TDelegate)del;
+            lock (CachedDelegates)
+                CachedDelegates[key] = result;
+
+            return (TDelegate)(object)result;
         }
 #else
         private static TDelegate GetOperatorDelegate<TDelegate> (Operators op, Type[] argumentTypes)

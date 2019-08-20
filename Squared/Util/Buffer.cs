@@ -92,10 +92,10 @@ namespace Squared.Util {
             }
         }
 
-        private class PoolEntryComparer : IComparer<T[]> {
+        private class PoolEntryComparer : IRefComparer<T[]> {
             public static readonly PoolEntryComparer Instance = new PoolEntryComparer();
 
-            public int Compare (T[] x, T[] y) {
+            public int Compare (ref T[] x, ref T[] y) {
                 return x.Length.CompareTo(y.Length);
             }
         }
@@ -116,7 +116,7 @@ namespace Squared.Util {
                 }
 
                 Pool.Add(buffer);
-                Pool.FastCLRSort(PoolEntryComparer.Instance);
+                Pool.FastCLRSortRef(PoolEntryComparer.Instance);
             }
         }
 
