@@ -713,7 +713,7 @@ namespace Squared.Render {
         }
 
 
-        private const int MaxWeightCount = 7;
+        private const int MaxWeightCount = 10;
         private static readonly float[] WeightBuffer = new float[MaxWeightCount];
 
         private static double GaussianDistribution (int x, int kernelRadius, double sigma) {
