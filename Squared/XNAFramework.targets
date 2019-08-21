@@ -9,7 +9,7 @@
     <FNALibsPath Condition="'$(FNALibsPath)' == ''">$(FNAPath)\fnalibs</FNALibsPath>
     <EnableFNA Condition="'$(EnableFNA)' == ''">false</EnableFNA>
     <ShaderBinDirectory Condition="'$(ShaderBinDirectory)' == ''">$(ShaderDirectory)\bin</ShaderBinDirectory>
-    <ShaderLocalBinDirectory>$(ShaderBinDirectory)\$(Configuration)</ShaderLocalBinDirectory>
+    <ShaderLocalBinDirectory>$(ShaderBinDirectory)\$(Platform)\$(Configuration)</ShaderLocalBinDirectory>
     <ShaderCompilerPath>$(SquaredPath)\ShaderCompiler\bin\ShaderCompiler.exe</ShaderCompilerPath>
     <!-- workaround for wildcard includes breaking in VS -->
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
