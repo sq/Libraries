@@ -98,6 +98,8 @@ namespace Squared.Render {
 
         private bool _Running = true;
         private bool _ActualEnableThreading = true;
+        private bool _EnableThreadedPrepare = true;
+        private bool _EnableThreadedIssue = true;
         private object _FrameLock = new object();
         private Frame  _FrameBeingPrepared = null;
 
@@ -623,20 +625,21 @@ namespace Squared.Render {
                 PrepareFrame(newFrame, threaded);
         }
         
-        protected bool DoThreadedPrepare {
+        public bool DoThreadedPrepare {
             get {
-                return _ActualEnableThreading;
+                return _ActualEnableThreading && _EnableThreadedPrepare;
+            }
+            set {
+                _EnableThreadedPrepare = value;
             }
         }
         
-        protected bool DoThreadedIssue { 
+        public bool DoThreadedIssue { 
             get {
-#if FNA || SDL2 || MONOGAME
-                // Threaded OpenGL is literally never going to work.
-                return false;
-#else
-                return _ActualEnableThreading;
-#endif
+                return _ActualEnableThreading && _EnableThreadedIssue;
+            }
+            set {
+                _EnableThreadedIssue = value;
             }
         }
 

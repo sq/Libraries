@@ -26,10 +26,6 @@ namespace Squared.Render {
 
         public readonly ThreadGroup ThreadGroup;
 
-        public bool UseThreadedDraw {
-            get; protected set;
-        }
-
         public FrameTiming PreviousFrameTiming {
             get;
             private set;
@@ -52,8 +48,6 @@ namespace Squared.Render {
             ThreadGroup = new ThreadGroup(threadCount, threadCount, true, comThreadingModel: ApartmentState.MTA) {
                 NewThreadBusyThresholdMs = 2.0f
             };
-
-            UseThreadedDraw = true;
 
 #if !FNA
             if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA) {
@@ -135,7 +129,16 @@ namespace Squared.Render {
                     RenderManager, base.BeginDraw, base.EndDraw
                 );
             }
-            RenderCoordinator.EnableThreading = UseThreadedDraw;
+
+#if FNA || SDL2
+            RenderCoordinator.DoThreadedIssue = false;
+            // FIXME: Is this safe?
+            RenderCoordinator.DoThreadedPrepare = true;
+#else
+            RenderCoordinator.DoThreadedIssue = true;
+            RenderCoordinator.DoThreadedPrepare = true;
+#endif
+
             RenderCoordinator.DeviceReset += (s, e) => OnDeviceReset();
 
             gds.DeviceResetting += Gds_DeviceResetting;
@@ -290,8 +293,6 @@ namespace Squared.Render {
             }
 
             ThreadGroup.TryStepMainThreadUntilDrained();
-
-            RenderCoordinator.EnableThreading = UseThreadedDraw;
         }
 
         protected virtual void OnDeviceReset () {
