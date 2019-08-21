@@ -89,6 +89,7 @@
   </Choose>
 
   <Target Name="ValidateSquaredPaths" BeforeTargets="BeforeBuild">
+    <Message Text="No property overrides found at '$(SquaredPropertiesOverridePath)'" Condition="!Exists('$(SquaredPropertiesOverridePath)')" />
     <Message Importance="High"  Text="Loaded property overrides from '$(SquaredPropertiesOverridePath)'" Condition="Exists('$(SquaredPropertiesOverridePath)')" />
     
     <Message Importance="High" Text="Squared path: '$(SquaredPath)'" />

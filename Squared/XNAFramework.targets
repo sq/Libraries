@@ -103,6 +103,7 @@
   <Target Name="ValidateFNAPaths" BeforeTargets="BeforeBuild">
     <Message Text="Configuration: $(Configuration)" />
     <Message Text="Platform: $(Platform)" />
+    <Message Text="No property overrides found at '$(XNAPropertiesOverridePath)'" Condition="!Exists('$(XNAPropertiesOverridePath)')" />
     <Message Importance="High"  Text="Loaded property overrides from '$(XNAPropertiesOverridePath)'" Condition="Exists('$(XNAPropertiesOverridePath)')" />
     <Message Importance="High" Text="Automatic platforms enabled? $(AutoPlatforms)" />
     <Message Importance="High" Condition="'$(AutoPlatforms)' == 'true'" Text="Automatic platforms selected FNA? $(AutoEnableFNA)" />
