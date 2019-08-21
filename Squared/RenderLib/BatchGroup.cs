@@ -56,7 +56,7 @@ namespace Squared.Render {
         public static RenderTargetBatchGroup ForRenderTarget (
             IBatchContainer container, int layer, AutoRenderTarget renderTarget, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null, string name = null
+            object userData = null, string name = null, bool? ignoreInvalidTargets = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
@@ -70,6 +70,7 @@ namespace Squared.Render {
             result.Single = null;
             result.Multiple = null;
             result.Name = name;
+            result.IgnoreInvalidRenderTargets = ignoreInvalidTargets ?? result.IgnoreInvalidRenderTargets;
             result.CaptureStack(0);
 
             return result;
@@ -78,7 +79,7 @@ namespace Squared.Render {
         public static RenderTargetBatchGroup ForRenderTarget (
             IBatchContainer container, int layer, RenderTarget2D renderTarget, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null, string name = null
+            object userData = null, string name = null, bool? ignoreInvalidTargets = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
@@ -92,6 +93,7 @@ namespace Squared.Render {
             result.SingleAuto = null;
             result.Multiple = null;
             result.Name = name;
+            result.IgnoreInvalidRenderTargets = ignoreInvalidTargets ?? result.IgnoreInvalidRenderTargets;
             result.CaptureStack(0);
 
             return result;
@@ -100,19 +102,20 @@ namespace Squared.Render {
         public static RenderTargetBatchGroup ForRenderTargets (
             IBatchContainer container, int layer, RenderTarget2D[] renderTargets, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null, string name = null
+            object userData = null, string name = null, bool? ignoreInvalidTargets = null
         ) {
             var bindings = new RenderTargetBinding[renderTargets.Length];
             return ForRenderTargets(
                 container, layer, bindings,
-                before, after, userData
+                before, after, userData,
+                name, ignoreInvalidTargets
             );
         }
 
         public static RenderTargetBatchGroup ForRenderTargets (
             IBatchContainer container, int layer, RenderTargetBinding[] renderTargets, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null, string name = null
+            object userData = null, string name = null, bool? ignoreInvalidTargets = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
@@ -131,6 +134,7 @@ namespace Squared.Render {
             result.SingleAuto = null;
             result.Multiple = renderTargets;
             result.Name = name;
+            result.IgnoreInvalidRenderTargets = ignoreInvalidTargets ?? result.IgnoreInvalidRenderTargets;
             result.CaptureStack(0);
 
             return result;
@@ -205,6 +209,12 @@ namespace Squared.Render {
     }
 
     public class RenderTargetBatchGroup : BatchGroup {
+#if DEBUG
+        public bool IgnoreInvalidRenderTargets = false;
+#else
+        public bool IgnoreInvalidRenderTargets = true;
+#endif
+
         internal RenderTarget2D Single;
         internal AutoRenderTarget SingleAuto;
         internal RenderTargetBinding[] Multiple;
@@ -214,14 +224,34 @@ namespace Squared.Render {
             if (SingleAuto != null)
                 single = SingleAuto.Get();
 
+            var isValid = true;
+
             if (Multiple != null) {
                 foreach (var rt in Multiple)
                     if (!AutoRenderTarget.IsRenderTargetValid(rt.RenderTarget))
+                        isValid = false;
+
+                if (!isValid) {
+                    if (IgnoreInvalidRenderTargets) {
+                        MarkAsIssued();
+                        return;
+                    } else
                         throw new ObjectDisposedException("Invalid render target for batch group " + Name);
+                }
+
                 manager.PushRenderTargets(Multiple);
             } else {
                 if (single != null && (!AutoRenderTarget.IsRenderTargetValid(single)))
-                    throw new ObjectDisposedException("Invalid render target for batch group " + Name);
+                    isValid = false;
+
+                if (!isValid) {
+                    if (IgnoreInvalidRenderTargets) {
+                        MarkAsIssued();
+                        return;
+                    } else
+                        throw new ObjectDisposedException("Invalid render target for batch group " + Name);
+                }
+
                 manager.PushRenderTarget(single);
             }
 

@@ -213,6 +213,15 @@ namespace Squared.Render {
             OnPrepareDone();
         }
 
+        /// <summary>
+        /// Use this if you have to skip issuing the batch for some reason.
+        /// </summary>
+        protected virtual void MarkAsIssued () {
+            WaitForSuspend();
+
+            State.IsIssued = true;
+        }
+
         // This is where you send commands to the video card to render your batch.
         public virtual void Issue (DeviceManager manager) {
             WaitForSuspend();
