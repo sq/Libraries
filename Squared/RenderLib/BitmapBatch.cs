@@ -43,6 +43,9 @@ namespace Squared.Render {
                 if (bblhs.UseZBuffer != bbrhs.UseZBuffer)
                     return false;
 
+                if (bblhs.ZBufferOnlySorting != bbrhs.ZBufferOnlySorting)
+                    return false;
+
                 if (bblhs.SamplerState != bbrhs.SamplerState)
                     return false;
 
@@ -147,7 +150,7 @@ namespace Squared.Render {
         public void Initialize (
             IBatchContainer container, int layer, 
             Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, 
-            bool useZBuffer = false, int? capacity = null
+            bool useZBuffer = false, bool zBufferOnlySorting = false, int? capacity = null
         ) {
             base.Initialize(container, layer, material, true, capacity);
 
@@ -158,6 +161,7 @@ namespace Squared.Render {
             SamplerState2 = samplerState2 ?? samplerState ?? BitmapBatch.DefaultSamplerState;
 
             UseZBuffer = useZBuffer;
+            ZBufferOnlySorting = zBufferOnlySorting;
 
             var rm = container.RenderManager;
             _DrawCalls.ListPool.ThreadGroup = rm.ThreadGroup;
@@ -264,7 +268,7 @@ namespace Squared.Render {
                 var comparer = DrawCallSorterComparer.Value;
                 comparer.Comparer = Sorter.GetComparer(true);
                 _DrawCalls.Sort(comparer, indexArray);
-            } else if (UseZBuffer || DisableSortKeys) {
+            } else if ((UseZBuffer && ZBufferOnlySorting) || DisableSortKeys) {
                 _DrawCalls.Sort(DrawCallTextureComparer, indexArray);
             } else {
                 _DrawCalls.Sort(DrawCallComparer, indexArray);

@@ -306,10 +306,16 @@ namespace Squared.Render {
         protected static ThreadLocal<int[]> _SortIndexArray = new ThreadLocal<int[]>();
 
         /// <summary>
-        /// If set and no declarative sorter is provided, draw calls will only be sorted by texture,
-        ///  and the z-buffer will be relied on to provide sorting of individual draw calls.
+        /// If set, z-buffer values will be generated for each draw call.
         /// </summary>
         public bool UseZBuffer = false;
+
+        /// <summary>
+        /// If set and no declarative sorter is provided, draw calls will only be sorted by texture,
+        ///  and the z-buffer will be relied on to provide sorting of individual draw calls.
+        /// This only works if UseZBuffer is true.
+        /// </summary>
+        public bool ZBufferOnlySorting = false;
 
         protected int[] GetIndexArray (int minimumSize) {
             const int rounding = 4096;
