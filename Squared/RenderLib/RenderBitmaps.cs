@@ -677,10 +677,13 @@ namespace Squared.Render {
                             var forceTextureTransition = PerformNativeBatchTransition(manager, ref nb, ref cnbs);
                             PerformNativeBatchTextureTransition(manager, ref nb, ref cnbs, forceTextureTransition);
 
-                            if (UseZBuffer) {
+                            var actualUseZBuffer = UseZBuffer;
+
+                            if (actualUseZBuffer) {
                                 var dss = device.DepthStencilState;
                                 if (dss.DepthBufferEnable == false)
-                                    throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
+                                    actualUseZBuffer = false;
+//                                     throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
                             }
 
                             var swb = nb.SoftwareBuffer;
@@ -700,7 +703,7 @@ namespace Squared.Render {
 
                             device.SetVertexBuffers(scratchBindings);
 
-                            if ((TwoPassDraw || DepthPrePassOnly) && UseZBuffer) {
+                            if ((TwoPassDraw || DepthPrePassOnly) && actualUseZBuffer) {
                                 var bs = device.BlendState;
                                 var dss = device.DepthStencilState;
 
@@ -719,7 +722,10 @@ namespace Squared.Render {
                                 device.BlendState = bs;
                             }
 
-                            if (!DepthPrePassOnly || !UseZBuffer) {
+                            if (DepthPrePassOnly && !actualUseZBuffer) {
+                                // This means that for some reason they enabled depth pre-pass but then
+                                //  didn't configure the depth buffer right. Well, okay
+                            } else if (!DepthPrePassOnly || !actualUseZBuffer) {
                                 device.DrawInstancedPrimitives(
                                     PrimitiveType.TriangleList, 
                                     0, _CornerBuffer.HardwareVertexOffset, 4, 
