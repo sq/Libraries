@@ -384,8 +384,9 @@ void rasterShapeCommon (
             // distance = sdEllipse(worldPosition - a, b);
             float2 distanceXy = worldPosition - a;
             float distanceF = length(distanceXy / b);
+            float gradientOffset = c.y;
             distance = (distanceF - 1) * length(b);
-            gradientWeight = saturate(distanceF);
+            gradientWeight = saturate(distanceF + gradientOffset);
             tl = a - b;
             br = a + b;
 

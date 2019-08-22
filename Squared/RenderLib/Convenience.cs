@@ -949,6 +949,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeEllipse (
             Vector2 center, Vector2 radius, Color innerColor, Color? outerColor = null,
+            float fillOffset = 0,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -960,6 +961,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Ellipse,
                     A = center,
                     B = radius,
+                    C = new Vector2(0, fillOffset),
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
@@ -975,6 +977,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeEllipse (
             Vector2 center, Vector2 radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
+            float fillOffset = 0,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -986,6 +989,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Ellipse,
                     A = center,
                     B = radius,
+                    C = new Vector2(0, fillOffset),
                     OutlineSize = outlineRadius,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
