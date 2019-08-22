@@ -443,11 +443,12 @@ void rasterShapeCommon (
             break;
         }
         case TYPE_Triangle: {
+            float gradientOffset = radius.y;
             distance = sdTriangle(worldPosition, a, b, c) - radius.x;
 
             float2 center = (a + b + c) / 3;
             float centroidDistance = sdTriangle(center, a, b, c) - radius.x;
-            gradientWeight = saturate(distance / centroidDistance);
+            gradientWeight = saturate(distance / centroidDistance + gradientOffset);
 
             tl = min(min(a, b), c);
             br = max(max(a, b), c);

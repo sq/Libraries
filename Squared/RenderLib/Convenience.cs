@@ -1120,6 +1120,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeTriangle (
             Vector2 a, Vector2 b, Vector2 c, float radius, Color innerColor, Color? outerColor = null,
+            float fillOffset = 0,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1130,7 +1131,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Triangle,
                     A = a, B = b, C = c,
-                    Radius = new Vector2(radius),
+                    Radius = new Vector2(radius, fillOffset),
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
@@ -1146,6 +1147,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeTriangle (
             Vector2 a, Vector2 b, Vector2 c, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
+            float fillOffset = 0,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1156,7 +1158,7 @@ namespace Squared.Render.Convenience {
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Triangle,
                     A = a, B = b, C = c,
-                    Radius = new Vector2(radius),
+                    Radius = new Vector2(radius, fillOffset),
                     OutlineSize = outlineRadius,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
