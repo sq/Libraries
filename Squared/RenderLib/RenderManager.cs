@@ -811,14 +811,18 @@ namespace Squared.Render {
 
             int result = x.Layer.CompareTo(y.Layer);
             if (result == 0) {
-                int mx = 0, my = 0;
+                result = x.InternalSortOrdering.CompareTo(y.InternalSortOrdering);
 
-                if (x.Material != null)
-                    mx = x.Material.MaterialID;
-                if (y.Material != null)
-                    my = y.Material.MaterialID;
+                if (result == 0) {
+                    int mx = 0, my = 0;
 
-                result = mx.CompareTo(my);
+                    if (x.Material != null)
+                        mx = x.Material.MaterialID;
+                    if (y.Material != null)
+                        my = y.Material.MaterialID;
+
+                    result = mx.CompareTo(my);
+                }
             }
 
             return result;

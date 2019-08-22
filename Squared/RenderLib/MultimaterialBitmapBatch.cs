@@ -165,13 +165,14 @@ namespace Squared.Render {
 
         public static MultimaterialBitmapBatch New (
             IBatchContainer container, int layer, Material material, 
-            bool useZBuffer = false, Sorter<BitmapDrawCall> sorter = null
+            bool useZBuffer = false, bool depthPrePass = false, Sorter<BitmapDrawCall> sorter = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<MultimaterialBitmapBatch>();
             result.Initialize(container, layer, material, sorter, useZBuffer);
+            result.DepthPrePassOnly = depthPrePass;
             result.CaptureStack(0);
             return result;
         }

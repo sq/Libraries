@@ -92,6 +92,16 @@ namespace Squared.Render {
             State = new PrepareState();
         }
 
+        /// <summary>
+        /// You can manually generate different values for this in order to automatically sort specific batches against each other
+        /// For example, a depth pre-pass.
+        /// </summary>
+        public virtual int InternalSortOrdering {
+            get {
+                return 0;
+            }
+        }
+
         protected void Initialize (IBatchContainer container, int layer, Material material, bool addToContainer) {
             if (State.IsPrepareQueued)
                 throw new Exception("Batch currently queued for prepare");

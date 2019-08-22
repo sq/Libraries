@@ -46,6 +46,12 @@ namespace Squared.Render {
                 if (bblhs.ZBufferOnlySorting != bbrhs.ZBufferOnlySorting)
                     return false;
 
+                if (bblhs.TwoPassDraw != bbrhs.TwoPassDraw)
+                    return false;
+
+                if (bblhs.DepthPrePassOnly != bbrhs.DepthPrePassOnly)
+                    return false;
+
                 if (bblhs.SamplerState != bbrhs.SamplerState)
                     return false;
 
@@ -133,7 +139,12 @@ namespace Squared.Render {
             _NativePool.LargePoolCapacity = largePoolCapacity.GetValueOrDefault(_NativePool.LargePoolCapacity);
         }
 
-        public static BitmapBatch New (IBatchContainer container, int layer, Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, bool useZBuffer = false, int? capacity = null) {
+        public static BitmapBatch New (
+            IBatchContainer container, int layer, Material material, 
+            SamplerState samplerState = null, SamplerState samplerState2 = null, 
+            bool useZBuffer = false, bool depthPrePass = false,
+            int? capacity = null
+        ) {
             if (container == null)
                 throw new ArgumentNullException("container");
             if (material == null)
@@ -143,6 +154,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<BitmapBatch>();
             result.Initialize(container, layer, material, samplerState, samplerState2 ?? samplerState, useZBuffer, capacity: capacity);
+            result.DepthPrePassOnly = depthPrePass;
             result.CaptureStack(0);
             return result;
         }
@@ -150,7 +162,7 @@ namespace Squared.Render {
         public void Initialize (
             IBatchContainer container, int layer, 
             Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, 
-            bool useZBuffer = false, bool zBufferOnlySorting = false, int? capacity = null
+            bool useZBuffer = false, bool zBufferOnlySorting = false, bool depthPrePass = false, int? capacity = null
         ) {
             base.Initialize(container, layer, material, true, capacity);
 
@@ -162,6 +174,7 @@ namespace Squared.Render {
 
             UseZBuffer = useZBuffer;
             ZBufferOnlySorting = zBufferOnlySorting;
+            DepthPrePassOnly = depthPrePass;
 
             var rm = container.RenderManager;
             _DrawCalls.ListPool.ThreadGroup = rm.ThreadGroup;
@@ -268,7 +281,11 @@ namespace Squared.Render {
                 var comparer = DrawCallSorterComparer.Value;
                 comparer.Comparer = Sorter.GetComparer(true);
                 _DrawCalls.Sort(comparer, indexArray);
-            } else if ((UseZBuffer && ZBufferOnlySorting) || DisableSortKeys) {
+            } else if (
+                (UseZBuffer && ZBufferOnlySorting) || 
+                DisableSortKeys ||
+                (UseZBuffer && DepthPrePassOnly)
+            ) {
                 _DrawCalls.Sort(DrawCallTextureComparer, indexArray);
             } else {
                 _DrawCalls.Sort(DrawCallComparer, indexArray);

@@ -305,6 +305,19 @@ namespace Squared.Render {
             new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
         protected static ThreadLocal<int[]> _SortIndexArray = new ThreadLocal<int[]>();
 
+        protected static ThreadLocal<DepthStencilState> _DepthPrePass = new ThreadLocal<DepthStencilState>();
+        protected static BlendState PrePassBlend = new BlendState {
+            ColorWriteChannels = ColorWriteChannels.None,
+            ColorWriteChannels1 = ColorWriteChannels.None,
+            ColorWriteChannels2 = ColorWriteChannels.None,
+            ColorWriteChannels3 = ColorWriteChannels.None,
+            ColorDestinationBlend = Blend.Zero,
+            ColorSourceBlend = Blend.Zero,
+            AlphaDestinationBlend = Blend.Zero,
+            AlphaSourceBlend = Blend.Zero,
+            Name = "Depth Pre-pass"
+        };
+
         /// <summary>
         /// If set, z-buffer values will be generated for each draw call.
         /// </summary>
@@ -316,6 +329,28 @@ namespace Squared.Render {
         /// This only works if UseZBuffer is true.
         /// </summary>
         public bool ZBufferOnlySorting = false;
+
+        /// <summary>
+        /// If set and z-buffering is enabled, the bitmaps will be drawn in two passes -
+        ///  first a depth pass and then a color pass. This reduces overdraw.
+        /// </summary>
+        public bool TwoPassDraw = false;
+
+        /// <summary>
+        /// If set and z-buffering is enabled, only a depth pre-pass will be performed.
+        /// You'll have to draw your bitmaps in another batch later.
+        /// </summary>
+        public bool DepthPrePassOnly = false;
+
+        public override int InternalSortOrdering {
+            get {
+                // HACK: If a prepass and non-prepass batch exist with the same layer,
+                //  ensure the prepass issues first.
+                return UseZBuffer && DepthPrePassOnly
+                    ? -1
+                    : 0;
+            }
+        }
 
         protected int[] GetIndexArray (int minimumSize) {
             const int rounding = 4096;
@@ -648,7 +683,6 @@ namespace Squared.Render {
                                     throw new InvalidOperationException("UseZBuffer set to true but depth buffer is disabled");
                             }
 
-
                             var swb = nb.SoftwareBuffer;
                             var hwb = swb.HardwareBuffer;
                             if (previousHardwareBuffer != hwb) {
@@ -665,12 +699,34 @@ namespace Squared.Render {
                             scratchBindings[1] = new VertexBufferBinding(vb, swb.HardwareVertexOffset + nb.LocalVertexOffset, 1);
 
                             device.SetVertexBuffers(scratchBindings);
-                            device.DrawInstancedPrimitives(
-                                PrimitiveType.TriangleList, 
-                                0, _CornerBuffer.HardwareVertexOffset, 4, 
-                                _CornerBuffer.HardwareIndexOffset, 2, 
-                                nb.VertexCount
-                            );
+
+                            if ((TwoPassDraw || DepthPrePassOnly) && UseZBuffer) {
+                                var bs = device.BlendState;
+                                var dss = device.DepthStencilState;
+
+                                var dpp = GetDepthPrePass(dss);
+                                device.DepthStencilState = dpp;
+                                device.BlendState = PrePassBlend;
+
+                                device.DrawInstancedPrimitives(
+                                    PrimitiveType.TriangleList, 
+                                    0, _CornerBuffer.HardwareVertexOffset, 4, 
+                                    _CornerBuffer.HardwareIndexOffset, 2, 
+                                    nb.VertexCount
+                                );
+
+                                device.DepthStencilState = dss;
+                                device.BlendState = bs;
+                            }
+
+                            if (!DepthPrePassOnly || !UseZBuffer) {
+                                device.DrawInstancedPrimitives(
+                                    PrimitiveType.TriangleList, 
+                                    0, _CornerBuffer.HardwareVertexOffset, 4, 
+                                    _CornerBuffer.HardwareIndexOffset, 2, 
+                                    nb.VertexCount
+                                );
+                            }
 
                             totalDraws += nb.VertexCount;
                         }
@@ -700,6 +756,19 @@ namespace Squared.Render {
             }
 
             base.Issue(manager);
+        }
+
+        protected static DepthStencilState GetDepthPrePass (DepthStencilState dss) {
+            var result = _DepthPrePass.Value;
+            if (result == null)
+                _DepthPrePass.Value = result = new DepthStencilState();
+
+            result.DepthBufferEnable = true;
+            result.DepthBufferWriteEnable = true;
+            result.DepthBufferFunction = dss.DepthBufferFunction;
+            result.Name = "Depth pre-pass";
+
+            return result;
         }
     }
 

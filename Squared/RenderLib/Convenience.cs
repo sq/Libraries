@@ -185,14 +185,15 @@ namespace Squared.Render.Convenience {
             public readonly CachedBatchType BatchType;
             public readonly IBatchContainer Container;
             public readonly int Layer;
-            public readonly bool WorldSpace;
+            public readonly int HashCode;
             public readonly BlendState BlendState;
             public readonly SamplerState SamplerState;
-            public readonly bool UseZBuffer;
             public readonly RasterizerState RasterizerState;
             public readonly DepthStencilState DepthStencilState;
             public readonly Material CustomMaterial;
-            public readonly int HashCode;
+            public readonly bool WorldSpace;
+            public readonly bool UseZBuffer;
+            public readonly bool DepthPrePass;
 
             public CachedBatch (
                 CachedBatchType cbt,
@@ -204,7 +205,8 @@ namespace Squared.Render.Convenience {
                 BlendState blendState,
                 SamplerState samplerState,
                 Material customMaterial,
-                bool useZBuffer
+                bool useZBuffer,
+                bool depthPrePass
             ) {
                 Batch = null;
                 BatchType = cbt;
@@ -213,6 +215,7 @@ namespace Squared.Render.Convenience {
                 // FIXME: Mask if multimaterial?
                 WorldSpace = worldSpace;
                 UseZBuffer = useZBuffer;
+                DepthPrePass = depthPrePass;
 
                 if (cbt != CachedBatchType.MultimaterialBitmap) {
                     RasterizerState = rasterizerState;
@@ -251,7 +254,8 @@ namespace Squared.Render.Convenience {
                     (UseZBuffer == rhs.UseZBuffer) &&
                     (RasterizerState == rhs.RasterizerState) &&
                     (DepthStencilState == rhs.DepthStencilState) &&
-                    (CustomMaterial == rhs.CustomMaterial)                
+                    (CustomMaterial == rhs.CustomMaterial) &&
+                    (DepthPrePass == rhs.DepthPrePass)
                 );
 
                 return result;
@@ -299,7 +303,8 @@ namespace Squared.Render.Convenience {
                 BlendState blendState, 
                 SamplerState samplerState, 
                 Material customMaterial,
-                bool useZBuffer
+                bool useZBuffer,
+                bool depthPrePass
             ) {
                 CachedBatch itemAtIndex, searchKey;
 
@@ -313,7 +318,8 @@ namespace Squared.Render.Convenience {
                     blendState,
                     samplerState,
                     customMaterial,
-                    useZBuffer
+                    useZBuffer,
+                    depthPrePass
                 );
 
                 for (var i = 0; i < Count; i++) {
@@ -429,6 +435,11 @@ namespace Squared.Render.Convenience {
         public bool UseZBuffer;
 
         /// <summary>
+        /// If z-buffering is enabled, only a depth buffer generating pass will happen, not color rendering.
+        /// </summary>
+        public bool DepthPrePass;
+
+        /// <summary>
         /// Increments the Layer after each drawing operation.
         /// </summary>
         public bool AutoIncrementLayer;
@@ -476,6 +487,7 @@ namespace Squared.Render.Convenience {
             bool autoIncrementSortKey = false,
             bool autoIncrementLayer = false,
             bool lowPriorityMaterialOrdering = false,
+            bool depthPrePass = false,
             Sorter<BitmapDrawCall> declarativeSorter = null,
             Tags tags = default(Tags)
         ) {
@@ -492,6 +504,7 @@ namespace Squared.Render.Convenience {
             BlendState = blendState;
             SamplerState = samplerState;
             UseZBuffer = useZBuffer;
+            DepthPrePass = depthPrePass;
             WorldSpace = worldSpace;
             AutoIncrementSortKey = autoIncrementSortKey;
             AutoIncrementLayer = autoIncrementLayer;
@@ -1267,7 +1280,8 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState: desiredSamplerState,
                 customMaterial: customMaterial,
-                useZBuffer: UseZBuffer
+                useZBuffer: UseZBuffer,
+                depthPrePass: DepthPrePass
             )) {
                 Material material;
 
@@ -1284,9 +1298,9 @@ namespace Squared.Render.Convenience {
 
                 IBitmapBatch bb;
                 if (LowPriorityMaterialOrdering) {
-                    bb = MultimaterialBitmapBatch.New(Container, actualLayer, Material.Null, UseZBuffer);
+                    bb = MultimaterialBitmapBatch.New(Container, actualLayer, Material.Null, useZBuffer: UseZBuffer, depthPrePass: DepthPrePass);
                 } else {
-                    bb = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, UseZBuffer);
+                    bb = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, useZBuffer: UseZBuffer, depthPrePass: DepthPrePass);
                 }
 
                 bb.Sorter = DeclarativeSorter;
@@ -1320,7 +1334,8 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState: null,
                 customMaterial: customMaterial,
-                useZBuffer: UseZBuffer
+                useZBuffer: UseZBuffer,
+                depthPrePass: DepthPrePass
             )) {
                 Material material;
 
@@ -1368,7 +1383,8 @@ namespace Squared.Render.Convenience {
                 blendState: desiredBlendState,
                 samplerState: desiredSamplerState,
                 customMaterial: null,
-                useZBuffer: UseZBuffer
+                useZBuffer: UseZBuffer,
+                depthPrePass: DepthPrePass
             ) || (((RasterShapeBatch)cacheEntry.Batch).Texture != texture)) {
                 var material = Materials.Get(
                     (texture == null)
