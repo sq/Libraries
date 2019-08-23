@@ -1,3 +1,6 @@
+// O3 produces literally 1/3 the instructions of OD or O0 so let's just be kind to the driver
+#pragma fxcparams(/O3 /Zi)
+
 #define ENABLE_DITHERING 1
 
 #include "ViewTransformCommon.fxh"
@@ -378,19 +381,22 @@ void rasterShapeCommon (
     tl = min(a, b);
     br = max(a, b);
 
+    float gradientOffset = 0;
+    int gradientType = 999;
+
     switch (type) {
         case TYPE_Ellipse: {
             // FIXME: sdEllipse is massively broken. What is wrong with it?
             // distance = sdEllipse(worldPosition - a, b);
             float2 distanceXy = worldPosition - a;
             float distanceF = length(distanceXy / b);
-            float gradientOffset = c.y;
+            gradientOffset = c.y;
             distance = (distanceF - 1) * length(b);
             gradientWeight = saturate(distanceF + gradientOffset);
             tl = a - b;
             br = a + b;
 
-            uint gradientType = abs(c.x);
+            gradientType = abs(c.x);
             switch (gradientType) {
                 // Linear
                 case 0:
@@ -405,18 +411,11 @@ void rasterShapeCommon (
                             : 2
                     );
                     gradientWeight = saturate(max(distance2.x, distance2.y) + gradientOffset);
+                    gradientType = 999;
                     break;
                 // Radial
-                default:
                 case 1:
-                    break;
-                // Horizontal
-                case 2:
-                    gradientWeight = saturate((worldPosition.x - tl.x) / (br.x - tl.x) + gradientOffset);
-                    break;
-                // Vertical
-                case 3:
-                    gradientWeight = saturate((worldPosition.y - tl.y) / (br.y - tl.y) + gradientOffset);
+                    gradientType = 999;
                     break;
             }
 
@@ -449,32 +448,21 @@ void rasterShapeCommon (
             distance = sdBox(worldPosition - center, boxSize) - radius.x;
 
             float centerDistance = sdBox(0, boxSize) - radius.x;
-            uint gradientType = abs(c.x);
-            float gradientOffset = c.y;
+            gradientType = abs(c.x);
+            gradientOffset = c.y;
             switch (gradientType) {
                 // Linear
-                default:
                 case 0:
+                case 4:
                     gradientWeight = saturate(1 - saturate(distance / centerDistance) + gradientOffset);
-                    break;
-                // Radial
-                case 1:
-                    gradientWeight = saturate(length((worldPosition - center) / (boxSize + radius.x)) + gradientOffset);
-                    break;
-                // Horizontal
-                case 2:
-                    gradientWeight = saturate((worldPosition.x - tl.x) / boxSize.x / 2 + gradientOffset);
-                    break;
-                // Vertical
-                case 3:
-                    gradientWeight = saturate((worldPosition.y - tl.y) / boxSize.y / 2 + gradientOffset);
+                    gradientType = 999;
                     break;
             }
 
             break;
         }
         case TYPE_Triangle: {
-            float gradientOffset = radius.y;
+            gradientOffset = radius.y;
             distance = sdTriangle(worldPosition, a, b, c) - radius.x;
 
             float2 center = (a + b + c) / 3;
@@ -492,6 +480,22 @@ void rasterShapeCommon (
 
             break;
         }
+    }
+
+    switch (gradientType) {
+        // Radial
+        case 1:
+            float2 center = (tl + br) / 2;
+            gradientWeight = saturate(length((worldPosition - center) / ((br - tl) * 0.5)) + gradientOffset);
+            break;
+        // Horizontal
+        case 2:
+            gradientWeight = saturate((worldPosition.x - tl.x) / (br.x - tl.x) + gradientOffset);
+            break;
+        // Vertical
+        case 3:
+            gradientWeight = saturate((worldPosition.y - tl.y) / (br.y - tl.y) + gradientOffset);
+            break;
     }
 
     float outlineSizeAlpha = saturate(outlineSize / 2);
