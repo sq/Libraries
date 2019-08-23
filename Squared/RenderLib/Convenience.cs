@@ -949,6 +949,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeEllipse (
             Vector2 center, Vector2 radius, Color innerColor, Color? outerColor = null,
+            RasterFillMode fillMode = RasterFillMode.Radial,
             float fillOffset = 0,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
@@ -961,7 +962,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Ellipse,
                     A = center,
                     B = radius,
-                    C = new Vector2(0, fillOffset),
+                    C = new Vector2((int)fillMode, fillOffset),
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
@@ -977,6 +978,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeEllipse (
             Vector2 center, Vector2 radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
+            RasterFillMode fillMode = RasterFillMode.Radial,
             float fillOffset = 0,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
@@ -989,7 +991,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Ellipse,
                     A = center,
                     B = radius,
-                    C = new Vector2(0, fillOffset),
+                    C = new Vector2((int)fillMode, fillOffset),
                     OutlineSize = outlineRadius,
                     CenterColor = innerColor,
                     EdgeColor = outerColor,
@@ -1063,7 +1065,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeRectangle (
             Vector2 tl, Vector2 br, float radius,
             Color innerColor, Color? outerColor = null,
-            RectangleFillMode fillMode = RectangleFillMode.Linear,
+            RasterFillMode fillMode = RasterFillMode.Linear,
             float fillOffset = 0,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,
@@ -1092,7 +1094,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeRectangle (
             Vector2 tl, Vector2 br, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
-            RectangleFillMode fillMode = RectangleFillMode.Linear,
+            RasterFillMode fillMode = RasterFillMode.Linear,
             float fillOffset = 0,
             int? layer = null, bool? worldSpace = null,
             BlendState blendState = null, Texture2D texture = null,

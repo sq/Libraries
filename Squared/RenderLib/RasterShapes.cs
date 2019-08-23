@@ -63,11 +63,18 @@ namespace Squared.Render.RasterShape {
         Arc = 5
     }
 
-    public enum RectangleFillMode : int {
+    public enum RasterFillMode : int {
+        /// <summary>
+        /// A linear fill enclosing the shape.
+        /// </summary>
         Linear = 0,
         Radial = 1,
         Horizontal = 2,
-        Vertical = 3
+        Vertical = 3,
+        /// <summary>
+        /// Ellipse only: A linear fill enclosed by the ellipse instead of enclosing it.
+        /// </summary>
+        LinearEnclosed = 4
     }
 
     [StructLayout(LayoutKind.Sequential)]

@@ -390,6 +390,36 @@ void rasterShapeCommon (
             tl = a - b;
             br = a + b;
 
+            uint gradientType = abs(c.x);
+            switch (gradientType) {
+                // Linear
+                case 0:
+                case 4:
+                    float2 center = (tl + br) / 2;
+                    // Options:
+                    // * 2 = touches corners of a box enclosing the ellipse
+                    // * 2 * sqrt(2) == touches corners of a box enclosed by the ellipse
+                    float2 distance2 = abs(worldPosition - center) / (br - tl) * (
+                        (gradientType == 4) 
+                            ? (2 * sqrt(2)) 
+                            : 2
+                    );
+                    gradientWeight = saturate(max(distance2.x, distance2.y) + gradientOffset);
+                    break;
+                // Radial
+                default:
+                case 1:
+                    break;
+                // Horizontal
+                case 2:
+                    gradientWeight = saturate((worldPosition.x - tl.x) / (br.x - tl.x) + gradientOffset);
+                    break;
+                // Vertical
+                case 3:
+                    gradientWeight = saturate((worldPosition.y - tl.y) / (br.y - tl.y) + gradientOffset);
+                    break;
+            }
+
             break;
         }
         case TYPE_LineSegment: {
@@ -423,6 +453,7 @@ void rasterShapeCommon (
             float gradientOffset = c.y;
             switch (gradientType) {
                 // Linear
+                default:
                 case 0:
                     gradientWeight = saturate(1 - saturate(distance / centerDistance) + gradientOffset);
                     break;
