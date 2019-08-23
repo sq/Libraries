@@ -538,9 +538,15 @@ namespace Squared.Render.Convenience {
             }
         }
 
-        public ImperativeRenderer MakeSubgroup (bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null) {
+        public ImperativeRenderer MakeSubgroup (
+            bool nextLayer = true, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null,
+            DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, string name = null
+        ) {
             var result = this;
-            var group = BatchGroup.New(Container, Layer, before: before, after: after, userData: userData);
+            var group = BatchGroup.New(
+                Container, Layer, before: before, after: after, userData: userData,
+                materialSet: materialSet, viewTransform: viewTransform, name: name
+            );
             group.Dispose();
             result.Container = group;
             result.Layer = 0;
