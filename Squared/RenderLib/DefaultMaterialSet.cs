@@ -255,7 +255,7 @@ namespace Squared.Render {
             new MaterialCacheKeyComparer()
         );
 
-        public Material ScreenSpaceBitmap, WorldSpaceBitmap;
+        public Material Bitmap, BitmapWithDiscard;
         public Material ScreenSpaceBitmapToSRGB, WorldSpaceBitmapToSRGB;
         public Material ScreenSpaceBitmapWithLUT, WorldSpaceBitmapWithLUT;
         public Material ScreenSpaceShadowedBitmap, WorldSpaceShadowedBitmap;
@@ -263,7 +263,6 @@ namespace Squared.Render {
         public Material ScreenSpaceHueBitmap, WorldSpaceHueBitmap;
         public Material ScreenSpaceSepiaBitmap, WorldSpaceSepiaBitmap;
         public Material ScreenSpaceShadowedBitmapWithDiscard, WorldSpaceShadowedBitmapWithDiscard;
-        public Material ScreenSpaceBitmapWithDiscard, WorldSpaceBitmapWithDiscard;
         public Material ScreenSpaceStippledBitmap, WorldSpaceStippledBitmap;
         public Material ScreenSpacePalettedBitmapWithDiscard, WorldSpacePalettedBitmapWithDiscard;
         public Material ScreenSpaceHueBitmapWithDiscard, WorldSpaceHueBitmapWithDiscard;
@@ -302,6 +301,28 @@ namespace Squared.Render {
         internal readonly TypedUniform<DitheringSettings> uDithering;
 
         public readonly RenderCoordinator Coordinator;
+
+        // FIXME: Should we have separate materials?
+        public Material ScreenSpaceBitmap {
+            get {
+                return Bitmap;
+            }
+        }
+        public Material WorldSpaceBitmap {
+            get {
+                return Bitmap;
+            }
+        }
+        public Material ScreenSpaceBitmapWithDiscard {
+            get {
+                return BitmapWithDiscard;
+            }
+        }
+        public Material WorldSpaceBitmapWithDiscard {
+            get {
+                return BitmapWithDiscard;
+            }
+        }
 
         private struct FrameParams {
             public float Seconds;
@@ -357,14 +378,9 @@ namespace Squared.Render {
             var palettedShader = BuiltInShaders.Load("PalettedBitmap");
             var hslShader = BuiltInShaders.Load("HueBitmap");
             
-            ScreenSpaceBitmap = new Material(
+            Bitmap = new Material(
                 bitmapShader,
-                "ScreenSpaceBitmapTechnique"
-            );
-
-            WorldSpaceBitmap = new Material(
-                bitmapShader,
-                "WorldSpaceBitmapTechnique"
+                "BitmapTechnique"
             );
             
             ScreenSpaceBitmapWithLUT = new Material(
@@ -411,14 +427,9 @@ namespace Squared.Render {
             );
             WorldSpaceShadowedBitmapWithDiscard.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
 
-            ScreenSpaceBitmapWithDiscard = new Material(
+            BitmapWithDiscard = new Material(
                 bitmapShader,
-                "ScreenSpaceBitmapWithDiscardTechnique"
-            );
-
-            WorldSpaceBitmapWithDiscard = new Material(
-                bitmapShader,
-                "WorldSpaceBitmapWithDiscardTechnique"
+                "BitmapWithDiscardTechnique"
             );
 
             ScreenSpaceStippledBitmap = new Material(
@@ -638,6 +649,16 @@ namespace Squared.Render {
 
         /// <summary>
         /// Immediately changes the view transform of the material set, without waiting for a clear.
+        /// If the viewTransform argument is null, the current transform is pushed instead.
+        /// </summary>
+        public void PushViewTransform (ref ViewTransform? viewTransform) {
+            var vt = viewTransform ?? ViewTransformStack.Peek();
+            ViewTransformStack.Push(vt);
+            ApplyViewTransform(ref vt, !LazyViewTransformChanges);
+        }
+
+        /// <summary>
+        /// Immediately changes the view transform of the material set, without waiting for a clear.
         /// </summary>
         public void PushViewTransform (ViewTransform viewTransform) {
             ViewTransformStack.Push(viewTransform);
@@ -840,7 +861,7 @@ namespace Squared.Render {
 
         public Material GetBitmapMaterial (bool worldSpace, RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null) {
             return Get(
-                worldSpace ? WorldSpaceBitmap : ScreenSpaceBitmap,
+                Bitmap,
                 rasterizerState: rasterizerState,
                 depthStencilState: depthStencilState,
                 blendState: blendState

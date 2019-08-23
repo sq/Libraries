@@ -142,7 +142,7 @@ namespace Squared.Render {
         public static BitmapBatch New (
             IBatchContainer container, int layer, Material material, 
             SamplerState samplerState = null, SamplerState samplerState2 = null, 
-            bool useZBuffer = false, bool depthPrePass = false,
+            bool useZBuffer = false, bool depthPrePass = false, bool worldSpace = false,
             int? capacity = null
         ) {
             if (container == null)
@@ -153,8 +153,12 @@ namespace Squared.Render {
                 throw new ArgumentNullException("material.Effect");
 
             var result = container.RenderManager.AllocateBatch<BitmapBatch>();
-            result.Initialize(container, layer, material, samplerState, samplerState2 ?? samplerState, useZBuffer, capacity: capacity);
-            result.DepthPrePassOnly = depthPrePass;
+            result.Initialize(
+                container, layer, material, 
+                samplerState, samplerState2 ?? samplerState, 
+                useZBuffer: useZBuffer, capacity: capacity,
+                depthPrePass: depthPrePass, worldSpace: worldSpace
+            );
             result.CaptureStack(0);
             return result;
         }
@@ -162,7 +166,9 @@ namespace Squared.Render {
         public void Initialize (
             IBatchContainer container, int layer, 
             Material material, SamplerState samplerState = null, SamplerState samplerState2 = null, 
-            bool useZBuffer = false, bool zBufferOnlySorting = false, bool depthPrePass = false, int? capacity = null
+            bool useZBuffer = false, bool zBufferOnlySorting = false, 
+            bool depthPrePass = false, bool worldSpace = false,
+            int? capacity = null
         ) {
             base.Initialize(container, layer, material, true, capacity);
 
@@ -175,6 +181,7 @@ namespace Squared.Render {
             UseZBuffer = useZBuffer;
             ZBufferOnlySorting = zBufferOnlySorting;
             DepthPrePassOnly = depthPrePass;
+            WorldSpace = worldSpace;
 
             var rm = container.RenderManager;
             _DrawCalls.ListPool.ThreadGroup = rm.ThreadGroup;

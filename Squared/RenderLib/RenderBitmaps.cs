@@ -55,6 +55,7 @@ namespace Squared.Render {
         public float Rotation;
         public Color MultiplyColor;
         public Color AddColor;
+        public short WorldSpace, Unused;
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -80,6 +81,8 @@ namespace Squared.Render {
                     VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "UserData").ToInt32(), 
                     VertexElementFormat.Vector4, VertexElementUsage.Color, 2 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "WorldSpace").ToInt32(), 
+                    VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 1 ),
             };
 
             _VertexDeclaration = new VertexDeclaration(Elements);
@@ -342,6 +345,11 @@ namespace Squared.Render {
         /// </summary>
         public bool DepthPrePassOnly = false;
 
+        /// <summary>
+        /// Sets the default value for screen/world space
+        /// </summary>
+        public bool WorldSpace = false;
+
         public override int InternalSortOrdering {
             get {
                 // HACK: If a prepass and non-prepass batch exist with the same layer,
@@ -477,6 +485,7 @@ namespace Squared.Render {
             ref int vertCount, ref int vertOffset, float zBufferFactor
         ) {
             var p = call.Position;
+            var ws = (short)((call.WorldSpace ?? WorldSpace) ? 1 : 0);
             result = new BitmapVertex {
                 Position = {
                     X = p.X,
@@ -489,7 +498,9 @@ namespace Squared.Render {
                 UserData = call.UserData,
                 Scale = call.Scale,
                 Origin = call.Origin,
-                Rotation = call.Rotation
+                Rotation = call.Rotation,
+                WorldSpace = ws,
+                Unused = ws
             };
             if (call.TextureRegion2.TopLeft == call.TextureRegion2.BottomRight)
                 result.Texture2Region = result.Texture1Region;
@@ -988,6 +999,7 @@ namespace Squared.Render {
         public Bounds     TextureRegion2;
         public TextureSet Textures;
         public DrawCallSortKey SortKey;
+        public bool?      WorldSpace;
 
 #if DEBUG
         public static bool ValidateFields = false;
@@ -1063,6 +1075,7 @@ namespace Squared.Render {
             Origin = origin;
             Rotation = rotation;
             UserData = default(Vector4);
+            WorldSpace = default(bool?);
 
             SortKey = default(DrawCallSortKey);
         }

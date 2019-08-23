@@ -921,7 +921,7 @@ namespace Squared.Render {
                     frame.ChangeRenderTargets = false;
                     frame.Label = description;
                     if (viewTransform.HasValue)
-                        materials.PushViewTransform(viewTransform.Value);
+                        materials.PushViewTransform(ref viewTransform);
                     else
                         materials.PushViewTransform(ViewTransform.CreateOrthographic(renderTarget.Width, renderTarget.Height));
 

@@ -1317,9 +1317,15 @@ namespace Squared.Render.Convenience {
 
                 IBitmapBatch bb;
                 if (LowPriorityMaterialOrdering) {
-                    bb = MultimaterialBitmapBatch.New(Container, actualLayer, Material.Null, useZBuffer: UseZBuffer, depthPrePass: DepthPrePass);
+                    bb = MultimaterialBitmapBatch.New(
+                        Container, actualLayer, Material.Null, 
+                        useZBuffer: UseZBuffer, depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
+                    );
                 } else {
-                    bb = BitmapBatch.New(Container, actualLayer, material, desiredSamplerState, desiredSamplerState, useZBuffer: UseZBuffer, depthPrePass: DepthPrePass);
+                    bb = BitmapBatch.New(
+                        Container, actualLayer, material, desiredSamplerState, desiredSamplerState, 
+                        useZBuffer: UseZBuffer, depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
+                    );
                 }
 
                 bb.Sorter = DeclarativeSorter;

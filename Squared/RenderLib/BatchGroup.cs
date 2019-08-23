@@ -12,6 +12,16 @@ namespace Squared.Render {
         /// </summary>
         public string Name;
 
+        /// <summary>
+        /// A material set view transforms are pushed to.
+        /// </summary>
+        public DefaultMaterialSet MaterialSet;
+
+        /// <summary>
+        /// A view transform that is pushed for the duration of the batch group.
+        /// </summary>
+        public ViewTransform? ViewTransform;
+
         public OcclusionQuery OcclusionQuery;
 
         Action<DeviceManager, object> _Before, _After;
@@ -32,6 +42,9 @@ namespace Squared.Render {
             if (OcclusionQuery != null)
                 OcclusionQuery.Begin();
 
+            if (ViewTransform.HasValue)
+                MaterialSet?.PushViewTransform(ref ViewTransform);
+
             if (_Before != null)
                 _Before(manager, _UserData);
 
@@ -49,6 +62,9 @@ namespace Squared.Render {
 
                 base.Issue(manager);
 
+                if (ViewTransform.HasValue)
+                    MaterialSet?.PopViewTransform();
+
                 manager.BatchGroupStack.Pop();
             }
         }
@@ -56,7 +72,9 @@ namespace Squared.Render {
         public static RenderTargetBatchGroup ForRenderTarget (
             IBatchContainer container, int layer, AutoRenderTarget renderTarget, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null, string name = null, bool? ignoreInvalidTargets = null
+            object userData = null, 
+            DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
+            string name = null, bool? ignoreInvalidTargets = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
@@ -65,7 +83,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<RenderTargetBatchGroup>();
 
-            result.Initialize(container, layer, before, after, userData);
+            result.Initialize(container, layer, before, after, userData, materialSet, viewTransform);
             result.SingleAuto = renderTarget;
             result.Single = null;
             result.Multiple = null;
@@ -79,7 +97,9 @@ namespace Squared.Render {
         public static RenderTargetBatchGroup ForRenderTarget (
             IBatchContainer container, int layer, RenderTarget2D renderTarget, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null, string name = null, bool? ignoreInvalidTargets = null
+            object userData = null, 
+            DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
+            string name = null, bool? ignoreInvalidTargets = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
@@ -88,7 +108,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<RenderTargetBatchGroup>();
 
-            result.Initialize(container, layer, before, after, userData);
+            result.Initialize(container, layer, before, after, userData, materialSet, viewTransform);
             result.Single = renderTarget;
             result.SingleAuto = null;
             result.Multiple = null;
@@ -102,12 +122,15 @@ namespace Squared.Render {
         public static RenderTargetBatchGroup ForRenderTargets (
             IBatchContainer container, int layer, RenderTarget2D[] renderTargets, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null, string name = null, bool? ignoreInvalidTargets = null
+            object userData = null, 
+            DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
+            string name = null, bool? ignoreInvalidTargets = null
         ) {
             var bindings = new RenderTargetBinding[renderTargets.Length];
             return ForRenderTargets(
                 container, layer, bindings,
                 before, after, userData,
+                materialSet, viewTransform,
                 name, ignoreInvalidTargets
             );
         }
@@ -115,7 +138,9 @@ namespace Squared.Render {
         public static RenderTargetBatchGroup ForRenderTargets (
             IBatchContainer container, int layer, RenderTargetBinding[] renderTargets, 
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null, string name = null, bool? ignoreInvalidTargets = null
+            object userData = null, 
+            DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
+            string name = null, bool? ignoreInvalidTargets = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
@@ -129,7 +154,7 @@ namespace Squared.Render {
 
             var result = container.RenderManager.AllocateBatch<RenderTargetBatchGroup>();
 
-            result.Initialize(container, layer, before, after, userData);
+            result.Initialize(container, layer, before, after, userData, materialSet, viewTransform);
             result.Single = null;
             result.SingleAuto = null;
             result.Multiple = renderTargets;
@@ -142,14 +167,16 @@ namespace Squared.Render {
 
         public static BatchGroup New (
             IBatchContainer container, int layer, 
-            Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
-            object userData = null, string name = null
+            Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null,
+            object userData = null, 
+            DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
+            string name = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
-            result.Initialize(container, layer, before, after, userData);
+            result.Initialize(container, layer, before, after, userData, materialSet, viewTransform);
             result.Name = name;
             result.CaptureStack(0);
 
@@ -159,14 +186,20 @@ namespace Squared.Render {
         public void Initialize (
             IBatchContainer container, int layer, 
             Action<DeviceManager, object> before, Action<DeviceManager, object> after, 
-            object userData, bool addToContainer = true
+            object userData, DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
+            bool addToContainer = true
         ) {
             base.Initialize(container, layer, null, addToContainer);
+
+            if (viewTransform.HasValue && (materialSet == null))
+                throw new ArgumentException("No view transform can be applied without a material set");
 
             RenderManager = container.RenderManager;
             _Before = before;
             _After = after;
             _UserData = userData;
+            MaterialSet = materialSet;
+            ViewTransform = viewTransform;
             IsReleased = false;
             OcclusionQuery = null;
         }
@@ -176,7 +209,7 @@ namespace Squared.Render {
             private set;
         }
 
-        new public bool IsReleased { get; private set; }
+        new public bool IsReleased { get; private set; }        
 
         new public void Add (Batch batch) {
             if (batch == null)

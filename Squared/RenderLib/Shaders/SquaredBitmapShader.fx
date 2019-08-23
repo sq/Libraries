@@ -161,20 +161,11 @@ void StippledPixelShader(
     }
 }
 
-technique WorldSpaceBitmapTechnique
+technique BitmapTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 BasicPixelShader();
-    }
-}
-
-technique ScreenSpaceBitmapTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 BasicPixelShader();
     }
 }
@@ -233,20 +224,11 @@ technique ScreenSpaceShadowedBitmapWithDiscardTechnique
     }
 }
 
-technique WorldSpaceBitmapWithDiscardTechnique
+technique BitmapWithDiscardTechnique
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceVertexShader();
-        pixelShader = compile ps_3_0 BasicPixelShaderWithDiscard();
-    }
-}
-
-technique ScreenSpaceBitmapWithDiscardTechnique
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
+        vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 BasicPixelShaderWithDiscard();
     }
 }

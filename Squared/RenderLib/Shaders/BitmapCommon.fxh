@@ -141,3 +141,35 @@ void WorldSpaceVertexShader (
     
     result = TransformPosition(float4(position.xy * GetViewportScale().xy, position.z, 1), true);
 }
+
+void GenericVertexShader (
+    in float3 position : POSITION0, // x, y
+    in float4 texRgn1 : POSITION1, // x1, y1, x2, y2
+    in float4 texRgn2 : POSITION2, // x1, y1, x2, y2
+    in float4 scaleOrigin : POSITION3, // scalex, scaley, originx, originy
+    in float rotation : POSITION4,
+    inout float4 multiplyColor : COLOR0,
+    inout float4 addColor : COLOR1,
+    inout float4 userData : COLOR2,
+    in int2 cornerIndex : BLENDINDICES0, // 0-3
+    in int2 worldSpace : BLENDINDICES1,
+    out float2 texCoord1 : TEXCOORD0,
+    out float4 newTexRgn1 : TEXCOORD1,
+    out float2 texCoord2 : TEXCOORD2,
+    out float4 newTexRgn2 : TEXCOORD3,
+    out float4 result : POSITION0
+) {
+    float2 regionSize = ComputeRegionSize(texRgn1);
+    float2 corner = ComputeCorner(cornerIndex, regionSize);
+    texCoord1 = ComputeTexCoord(cornerIndex, corner, texRgn1, newTexRgn1);
+    texCoord2 = ComputeTexCoord(cornerIndex, corner, texRgn2, newTexRgn2);
+    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, rotation);
+    
+    float2 adjustedPosition = position.xy + rotatedCorner;
+    if (worldSpace.x > 0.5) {
+        position.xy -= GetViewportPosition().xy;
+        position.xy *= GetViewportScale().xy;
+    }
+    
+    result = TransformPosition(float4(adjustedPosition, position.z, 1), true);
+}
