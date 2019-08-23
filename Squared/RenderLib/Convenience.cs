@@ -960,6 +960,7 @@ namespace Squared.Render.Convenience {
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Ellipse,
+                    WorldSpace = worldSpace ?? WorldSpace,
                     A = center,
                     B = radius,
                     C = new Vector2((int)fillMode, fillOffset),
@@ -989,6 +990,7 @@ namespace Squared.Render.Convenience {
             ))
                 eb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Ellipse,
+                    WorldSpace = worldSpace ?? WorldSpace,
                     A = center,
                     B = radius,
                     C = new Vector2((int)fillMode, fillOffset),
@@ -1016,6 +1018,7 @@ namespace Squared.Render.Convenience {
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.LineSegment,
+                    WorldSpace = worldSpace ?? WorldSpace,
                     A = a, B = b,
                     C = new Vector2(gradientAlongLine ? 1 : 0, 0),
                     Radius = new Vector2(radius),
@@ -1047,6 +1050,7 @@ namespace Squared.Render.Convenience {
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.LineSegment,
+                    WorldSpace = worldSpace ?? WorldSpace,
                     A = a, B = b,
                     C = new Vector2(gradientAlongLine ? 1 : 0, startRadius - maxRadius),
                     Radius = new Vector2(maxRadius, _endRadius - maxRadius),
@@ -1076,6 +1080,7 @@ namespace Squared.Render.Convenience {
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
+                    WorldSpace = worldSpace ?? WorldSpace,
                     A = tl, B = br,
                     C = new Vector2((int)fillMode, fillOffset),
                     Radius = new Vector2(radius),
@@ -1105,6 +1110,7 @@ namespace Squared.Render.Convenience {
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Rectangle,
+                    WorldSpace = worldSpace ?? WorldSpace,
                     A = tl, B = br,
                     C = new Vector2((int)fillMode, fillOffset),
                     Radius = new Vector2(radius),
@@ -1132,6 +1138,7 @@ namespace Squared.Render.Convenience {
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Triangle,
+                    WorldSpace = worldSpace ?? WorldSpace,
                     A = a, B = b, C = c,
                     Radius = new Vector2(radius, fillOffset),
                     OutlineSize = 0,
@@ -1159,6 +1166,7 @@ namespace Squared.Render.Convenience {
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Triangle,
+                    WorldSpace = worldSpace ?? WorldSpace,
                     A = a, B = b, C = c,
                     Radius = new Vector2(radius, fillOffset),
                     OutlineSize = outlineRadius,
@@ -1184,6 +1192,7 @@ namespace Squared.Render.Convenience {
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.QuadraticBezier,
+                    WorldSpace = worldSpace ?? WorldSpace,
                     A = a, B = b, C = c,
                     Radius = new Vector2(radius),
                     OutlineSize = 0,
@@ -1210,6 +1219,7 @@ namespace Squared.Render.Convenience {
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.QuadraticBezier,
+                    WorldSpace = worldSpace ?? WorldSpace,
                     A = a, B = b, C = c,
                     Radius = new Vector2(radius),
                     OutlineSize = outlineRadius,
@@ -1249,6 +1259,7 @@ namespace Squared.Render.Convenience {
             ))
                 rsb.Add(new RasterShapeDrawCall {
                     Type = RasterShapeType.Arc,
+                    WorldSpace = worldSpace ?? WorldSpace,
                     A = center, B = b, C = c,
                     // HACK: Inverse order because the shader uses radius.x for bounding box math
                     Radius = new Vector2(ringRadius, fillRadius),

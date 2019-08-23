@@ -19,7 +19,7 @@ namespace Squared.Render.RasterShape {
         public Vector4 Parameters;
         public Vector4 TextureRegion;
         public Color   CenterColor, EdgeColor, OutlineColor;
-        public short   Type, Unused;
+        public short   Type, WorldSpace;
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -80,6 +80,7 @@ namespace Squared.Render.RasterShape {
     [StructLayout(LayoutKind.Sequential)]
     public struct RasterShapeDrawCall {
         public RasterShapeType Type;
+        public bool WorldSpace;
 
         /// <summary>
         /// The top-left or first coordinate of the shape.
@@ -188,7 +189,7 @@ namespace Squared.Render.RasterShape {
                         Parameters = new Vector4(dc.OutlineSize, dc.SoftOutline ? 0.0f : 1.0f, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne),
                         TextureRegion = dc.TextureBounds.ToVector4(),
                         Type = (short)dc.Type,
-                        Unused = (short)dc.Type
+                        WorldSpace = (short)(dc.WorldSpace ? 1 : 0)
                     };
                     vw.Write(vert);
                 }

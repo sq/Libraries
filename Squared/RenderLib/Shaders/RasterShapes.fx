@@ -303,8 +303,11 @@ void RasterShapeVertexShader (
     computePosition(type, totalRadius, a, b, c, tl, br, cornerIndex.x, position.xy);
 
     float2 adjustedPosition = position.xy;
-    if (typeAndWorldSpace.y > 0.5)
+    if (typeAndWorldSpace.y > 0.5) {
+        adjustedPosition -= GetViewportPosition().xy;
         adjustedPosition *= GetViewportScale().xy;
+    }
+
     result = TransformPosition(
         float4(adjustedPosition, position.z, 1), true
     );
