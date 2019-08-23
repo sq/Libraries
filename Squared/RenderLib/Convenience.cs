@@ -1396,10 +1396,8 @@ namespace Squared.Render.Convenience {
             ) || (((RasterShapeBatch)cacheEntry.Batch).Texture != texture)) {
                 var material = Materials.Get(
                     (texture == null)
-                        ?
-                            actualWorldSpace ? Materials.WorldSpaceRasterShape : Materials.ScreenSpaceRasterShape
-                        :
-                            actualWorldSpace ? Materials.WorldSpaceTexturedRasterShape : Materials.ScreenSpaceTexturedRasterShape
+                        ? Materials.RasterShape
+                        : Materials.TexturedRasterShape
                     ,
                     rasterizerState: RasterizerState,
                     depthStencilState: DepthStencilState,

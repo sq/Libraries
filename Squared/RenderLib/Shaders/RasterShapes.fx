@@ -37,29 +37,6 @@ sampler TextureSampler : register(s0) {
     {0, 1} \
 };
 
-#define RASTERSHAPE_VS_ARGS \
-    in int2 cornerIndex : BLENDINDICES0, \
-    in float4 ab_in : POSITION0, \
-    in float4 cd_in : POSITION1, \
-    inout float4 params : TEXCOORD0, \
-    inout float4 centerColor : COLOR0, \
-    inout float4 edgeColor : COLOR1, \
-    inout float4 outlineColor : COLOR2, \
-    inout int2 _type : BLENDINDICES1, \
-    out float4 result : POSITION0, \
-    out float4 ab : TEXCOORD2, \
-    out float4 cd : TEXCOORD3, \
-    inout float4 texRgn : TEXCOORD1, \
-    out float2 worldPosition : NORMAL0
-
-#define RASTERSHAPE_VS_PROLOGUE \
-    ab = ab_in; cd = cd_in; \
-    float4 position = float4(ab_in.x, ab_in.y, 0, 1); \
-    float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
-    params.x *= OutlineSizeCompensation; \
-    float outlineSize = params.x; \
-    uint type = abs(_type.x);
-
 #define RASTERSHAPE_FS_ARGS \
     in float2 worldPosition : NORMAL0, \
     in float4 ab : TEXCOORD2, \
@@ -297,34 +274,39 @@ void computePosition (
     }
 }
 
-void ScreenSpaceRasterShapeVertexShader (
-    RASTERSHAPE_VS_ARGS
+void RasterShapeVertexShader (
+    in int2 cornerIndex : BLENDINDICES0,
+    in float4 ab_in : POSITION0,
+    in float4 cd_in : POSITION1,
+    inout float4 params : TEXCOORD0,
+    inout float4 centerColor : COLOR0,
+    inout float4 edgeColor : COLOR1,
+    inout float4 outlineColor : COLOR2,
+    inout int2 typeAndWorldSpace : BLENDINDICES1,
+    out float4 result : POSITION0,
+    out float4 ab : TEXCOORD2,
+    out float4 cd : TEXCOORD3,
+    inout float4 texRgn : TEXCOORD1,
+    out float2 worldPosition : NORMAL0
 ) {
-    RASTERSHAPE_VS_PROLOGUE
+    ab = ab_in; cd = cd_in;
+    float4 position = float4(ab_in.x, ab_in.y, 0, 1);
+    float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw;
+    params.x *= OutlineSizeCompensation;
+    float outlineSize = params.x;
+    uint type = abs(typeAndWorldSpace.x);
+
     float totalRadius = computeTotalRadius(radius, outlineSize) + 1;
     float2 tl, br;
 
     computeTLBR(type, radius, totalRadius, a, b, c, tl, br);
     computePosition(type, totalRadius, a, b, c, tl, br, cornerIndex.x, position.xy);
 
+    float2 adjustedPosition = position.xy;
+    if (typeAndWorldSpace.y > 0.5)
+        adjustedPosition *= GetViewportScale().xy;
     result = TransformPosition(
-        float4(position.xy, position.z, 1), true
-    );
-    worldPosition = position.xy;
-}
-
-void WorldSpaceRasterShapeVertexShader(
-    RASTERSHAPE_VS_ARGS
-) {
-    RASTERSHAPE_VS_PROLOGUE
-    float totalRadius = computeTotalRadius(radius, outlineSize) + 1;
-    float2 tl, br;
-
-    computeTLBR(type, radius, totalRadius, a, b, c, tl, br);
-    computePosition(type, totalRadius, a, b, c, tl, br, cornerIndex.x, position.xy);
-
-    result = TransformPosition(
-        float4(position.xy * GetViewportScale().xy, position.z, 1), true
+        float4(adjustedPosition, position.z, 1), true
     );
     worldPosition = position.xy;
 }
@@ -524,7 +506,7 @@ void rasterShapeCommon (
             evaluateTriangle(
                 worldPosition, a, b, c,
                 radius, distance,
-                gradientOffset, tl, br
+                gradientWeight, tl, br
             );
 
             break;
@@ -674,38 +656,20 @@ void RasterShapeTextured (
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
 
-technique WorldSpaceRasterShape
+technique RasterShape
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 WorldSpaceRasterShapeVertexShader();
+        vertexShader = compile vs_3_0 RasterShapeVertexShader();
         pixelShader = compile ps_3_0 RasterShapeUntextured();
     }
 }
 
-technique ScreenSpaceRasterShape
+technique TexturedRasterShape
 {
     pass P0
     {
-        vertexShader = compile vs_3_0 ScreenSpaceRasterShapeVertexShader();
-        pixelShader = compile ps_3_0 RasterShapeUntextured();
-    }
-}
-
-technique WorldSpaceTexturedRasterShape
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 WorldSpaceRasterShapeVertexShader();
-        pixelShader = compile ps_3_0 RasterShapeTextured();
-    }
-}
-
-technique ScreenSpaceTexturedRasterShape
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 ScreenSpaceRasterShapeVertexShader();
+        vertexShader = compile vs_3_0 RasterShapeVertexShader();
         pixelShader = compile ps_3_0 RasterShapeTextured();
     }
 }
