@@ -59,7 +59,6 @@ namespace RenderStressTest {
             Graphics.PreferMultiSampling = false;
             Graphics.SynchronizeWithVerticalRetrace = true;
 
-            UseThreadedDraw = ThreadedPaint;
             IsFixedTimeStep = false;
             Content.RootDirectory = "Content";
 
@@ -83,6 +82,8 @@ namespace RenderStressTest {
             RNGSeed = rng.Next();
 
             RNGs.Add(rng);
+
+            RenderCoordinator.DoThreadedIssue = ThreadedPaint;
         }
 
         protected override void OnLoadContent (bool isReloading) {

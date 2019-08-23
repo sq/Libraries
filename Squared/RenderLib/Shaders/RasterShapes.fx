@@ -3,6 +3,7 @@
 
 #define ENABLE_DITHERING 1
 
+#include "CompilerWorkarounds.fxh"
 #include "ViewTransformCommon.fxh"
 #include "TargetInfo.fxh"
 #include "DitherCommon.fxh"
@@ -384,6 +385,7 @@ void rasterShapeCommon (
     float gradientOffset = 0;
     int gradientType = 999;
 
+    PREFER_BRANCH
     switch (type) {
         case TYPE_Ellipse: {
             // FIXME: sdEllipse is massively broken. What is wrong with it?
@@ -397,6 +399,8 @@ void rasterShapeCommon (
             br = a + b;
 
             gradientType = abs(c.x);
+
+            PREFER_FLATTEN
             switch (gradientType) {
                 // Linear
                 case 0:
@@ -427,6 +431,7 @@ void rasterShapeCommon (
             float localRadius = radius.x + lerp(c.y, radius.y, t);
             distance = length(worldPosition - closestPoint) - localRadius;
 
+            PREFER_FLATTEN
             if (c.x >= 0.5)
                 gradientWeight = saturate(t);
             else
@@ -450,6 +455,8 @@ void rasterShapeCommon (
             float centerDistance = sdBox(0, boxSize) - radius.x;
             gradientType = abs(c.x);
             gradientOffset = c.y;
+
+            PREFER_FLATTEN
             switch (gradientType) {
                 // Linear
                 case 0:
@@ -482,6 +489,7 @@ void rasterShapeCommon (
         }
     }
 
+    PREFER_FLATTEN
     switch (gradientType) {
         // Radial
         case 1:
@@ -510,6 +518,7 @@ void rasterShapeCommon (
     fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
     fill = lerp(centerColor, edgeColor, gradientWeight);
 
+    PREFER_BRANCH
     if (outlineSize > 0.001) {
         if ((outlineSize >= sqrt(2)) && (HardOutline >= 0.5)) {
             outlineAlpha = (

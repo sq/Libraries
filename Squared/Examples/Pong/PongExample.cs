@@ -26,8 +26,6 @@ namespace Pong {
             Graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
 
-            UseThreadedDraw = false;
-
             Graphics.SynchronizeWithVerticalRetrace = true;
             Graphics.PreferMultiSampling = true;
 
@@ -51,6 +49,8 @@ namespace Pong {
             };
 
             ResetPlayfield(0);
+
+            RenderCoordinator.DoThreadedIssue = false;
         }
 
         protected override void OnLoadContent (bool isReloading) {
