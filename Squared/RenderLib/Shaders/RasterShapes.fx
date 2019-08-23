@@ -358,6 +358,104 @@ float getWindowAlpha (
         return lerp(centerAlpha, endAlpha, saturate((t - 0.5) * 2));
 }
 
+void evaluateEllipse (
+    in float2 worldPosition, in float2 a, in float2 b, in float2 c,
+    out float distance, out float2 tl, out float2 br,
+    inout int gradientType, out float gradientWeight
+) {
+    // FIXME: sdEllipse is massively broken. What is wrong with it?
+    // distance = sdEllipse(worldPosition - a, b);
+    float2 distanceXy = worldPosition - a;
+    float distanceF = length(distanceXy / b);
+    float gradientOffset = c.y;
+    distance = (distanceF - 1) * length(b);
+    gradientWeight = saturate(distanceF + gradientOffset);
+    tl = a - b;
+    br = a + b;
+
+    gradientType = abs(c.x);
+
+    PREFER_FLATTEN
+    switch (gradientType) {
+        // Linear
+        case 0:
+        case 4:
+            float2 center = (tl + br) / 2;
+            // Options:
+            // * 2 = touches corners of a box enclosing the ellipse
+            // * 2 * sqrt(2) == touches corners of a box enclosed by the ellipse
+            float2 distance2 = abs(worldPosition - center) / (br - tl) * (
+                (gradientType == 4) 
+                    ? (2 * sqrt(2)) 
+                    : 2
+            );
+            gradientWeight = saturate(max(distance2.x, distance2.y) + gradientOffset);
+            gradientType = 999;
+            break;
+        // Radial
+        case 1:
+            gradientType = 999;
+            break;
+    }
+}
+
+void evaluateLineSegment (
+    in float2 worldPosition, in float2 a, in float2 b, in float2 c,
+    in float2 radius, out float distance,
+    out float gradientWeight
+) {
+    float t;
+    float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
+    float localRadius = radius.x + lerp(c.y, radius.y, t);
+    distance = length(worldPosition - closestPoint) - localRadius;
+
+    PREFER_FLATTEN
+    if (c.x >= 0.5)
+        gradientWeight = saturate(t);
+    else
+        gradientWeight = 1 - saturate(-distance / localRadius);
+}
+
+void evaluateRectangle (
+    in float2 worldPosition, in float2 a, in float2 b, in float2 c,
+    in float2 radius, out float distance,
+    inout int gradientType, out float gradientWeight
+) {
+    float2 center = (a + b) * 0.5;
+    float2 boxSize = abs(b - a) * 0.5;
+    distance = sdBox(worldPosition - center, boxSize) - radius.x;
+
+    float centerDistance = sdBox(0, boxSize) - radius.x;
+    gradientType = abs(c.x);
+    float gradientOffset = c.y;
+
+    PREFER_FLATTEN
+    switch (gradientType) {
+        // Linear
+        case 0:
+        case 4:
+            gradientWeight = saturate(1 - saturate(distance / centerDistance) + gradientOffset);
+            gradientType = 999;
+            break;
+    }
+}
+
+void evaluateTriangle (
+    in float2 worldPosition, in float2 a, in float2 b, in float2 c,
+    in float2 radius, out float distance,
+    out float gradientWeight, out float2 tl, out float2 br
+) {
+    float gradientOffset = radius.y;
+    distance = sdTriangle(worldPosition, a, b, c) - radius.x;
+
+    float2 center = (a + b + c) / 3;
+    float centroidDistance = sdTriangle(center, a, b, c) - radius.x;
+    gradientWeight = saturate(distance / centroidDistance + gradientOffset);
+
+    tl = min(min(a, b), c);
+    br = max(max(a, b), c);
+}
+
 void rasterShapeCommon (
     in float2 worldPosition,
     in float4 ab, in float4 cd,
@@ -388,54 +486,20 @@ void rasterShapeCommon (
     PREFER_BRANCH
     switch (type) {
         case TYPE_Ellipse: {
-            // FIXME: sdEllipse is massively broken. What is wrong with it?
-            // distance = sdEllipse(worldPosition - a, b);
-            float2 distanceXy = worldPosition - a;
-            float distanceF = length(distanceXy / b);
-            gradientOffset = c.y;
-            distance = (distanceF - 1) * length(b);
-            gradientWeight = saturate(distanceF + gradientOffset);
-            tl = a - b;
-            br = a + b;
-
-            gradientType = abs(c.x);
-
-            PREFER_FLATTEN
-            switch (gradientType) {
-                // Linear
-                case 0:
-                case 4:
-                    float2 center = (tl + br) / 2;
-                    // Options:
-                    // * 2 = touches corners of a box enclosing the ellipse
-                    // * 2 * sqrt(2) == touches corners of a box enclosed by the ellipse
-                    float2 distance2 = abs(worldPosition - center) / (br - tl) * (
-                        (gradientType == 4) 
-                            ? (2 * sqrt(2)) 
-                            : 2
-                    );
-                    gradientWeight = saturate(max(distance2.x, distance2.y) + gradientOffset);
-                    gradientType = 999;
-                    break;
-                // Radial
-                case 1:
-                    gradientType = 999;
-                    break;
-            }
+            evaluateEllipse(
+                worldPosition, a, b, c,
+                distance, tl, br,
+                gradientType, gradientWeight
+            );
 
             break;
         }
         case TYPE_LineSegment: {
-            float t;
-            float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
-            float localRadius = radius.x + lerp(c.y, radius.y, t);
-            distance = length(worldPosition - closestPoint) - localRadius;
-
-            PREFER_FLATTEN
-            if (c.x >= 0.5)
-                gradientWeight = saturate(t);
-            else
-                gradientWeight = 1 - saturate(-distance / localRadius);
+            evaluateLineSegment(
+                worldPosition, a, b, c,
+                radius, distance,
+                gradientWeight
+            );
 
             break;
         }
@@ -448,36 +512,20 @@ void rasterShapeCommon (
             break;
         }
         case TYPE_Rectangle: {
-            float2 center = (a + b) * 0.5;
-            float2 boxSize = abs(b - a) * 0.5;
-            distance = sdBox(worldPosition - center, boxSize) - radius.x;
-
-            float centerDistance = sdBox(0, boxSize) - radius.x;
-            gradientType = abs(c.x);
-            gradientOffset = c.y;
-
-            PREFER_FLATTEN
-            switch (gradientType) {
-                // Linear
-                case 0:
-                case 4:
-                    gradientWeight = saturate(1 - saturate(distance / centerDistance) + gradientOffset);
-                    gradientType = 999;
-                    break;
-            }
+            evaluateRectangle(
+                worldPosition, a, b, c,
+                radius, distance,
+                gradientType, gradientWeight
+            );
 
             break;
         }
         case TYPE_Triangle: {
-            gradientOffset = radius.y;
-            distance = sdTriangle(worldPosition, a, b, c) - radius.x;
-
-            float2 center = (a + b + c) / 3;
-            float centroidDistance = sdTriangle(center, a, b, c) - radius.x;
-            gradientWeight = saturate(distance / centroidDistance + gradientOffset);
-
-            tl = min(min(a, b), c);
-            br = max(max(a, b), c);
+            evaluateTriangle(
+                worldPosition, a, b, c,
+                radius, distance,
+                gradientOffset, tl, br
+            );
 
             break;
         }
