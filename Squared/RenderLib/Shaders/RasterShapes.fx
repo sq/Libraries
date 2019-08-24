@@ -1,5 +1,5 @@
 // O3 produces literally 1/3 the instructions of OD or O0 so let's just be kind to the driver
-#pragma fxcparams(/O3 /Zi)
+#pragma fxcparams(/Od /Zi)
 
 #define ENABLE_DITHERING 1
 
@@ -639,4 +639,3 @@ float4 texturedShapeCommon (
 #define SHAPE_TYPE TYPE_Ellipse
 
 #include "RasterShapeImpl.fxh"
-
