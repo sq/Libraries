@@ -628,7 +628,7 @@ float4 texturedShapeCommon (
 #define SHAPE_TYPE_NAME_TEX RasterRectangleTextured
 #define SHAPE_TYPE_TECHNIQUE_NAME RasterRectangleTechnique
 #define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterRectangleTechnique
-#define SHAPE_TYPE TYPE_Rectangle
+// #define SHAPE_TYPE TYPE_Rectangle
 
 #include "RasterShapeImpl.fxh"
 
@@ -636,7 +636,7 @@ float4 texturedShapeCommon (
 #define SHAPE_TYPE_NAME_TEX RasterEllipseTextured
 #define SHAPE_TYPE_TECHNIQUE_NAME RasterEllipseTechnique
 #define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterEllipseTechnique
-#define SHAPE_TYPE TYPE_Ellipse
+// #define SHAPE_TYPE TYPE_Ellipse
 
 #include "RasterShapeImpl.fxh"
 

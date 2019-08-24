@@ -261,7 +261,7 @@ namespace Squared.Render.RasterShape {
             }
         }
 
-        private Material PickBaseMaterial (RasterShapeType type) {
+        private Material PickBaseMaterial (RasterShapeType? type) {
             switch (type) {
                 case RasterShapeType.Ellipse:
                     return (Texture != null) ? Materials.TexturedRasterEllipse : Materials.RasterEllipse;
@@ -272,7 +272,7 @@ namespace Squared.Render.RasterShape {
             }
         }
 
-        private Material PickMaterial (RasterShapeType type) {
+        private Material PickMaterial (RasterShapeType? type) {
             var baseMaterial = PickBaseMaterial(type);
             return Materials.Get(
                 baseMaterial, RasterizerState, DepthStencilState, BlendState
@@ -306,7 +306,7 @@ namespace Squared.Render.RasterShape {
                 // scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
 
                 foreach (var sb in _SubBatches) {
-                    var material = UseUbershader ? Material : PickMaterial(sb.Type);
+                    var material = UseUbershader ? PickMaterial(null) : PickMaterial(sb.Type);
                     manager.ApplyMaterial(material);
 
                     // Material.Effect.Parameters["RasterTexture"]?.SetValue(Texture);
