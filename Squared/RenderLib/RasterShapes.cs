@@ -171,7 +171,7 @@ namespace Squared.Render.RasterShape {
         public Texture2D Texture;
         public SamplerState SamplerState;
 
-        public bool UseUbershader = true;
+        public bool UseUbershader = false;
 
         private readonly RasterShapeTypeSorter ShapeTypeSorter = new RasterShapeTypeSorter();
 
@@ -262,6 +262,8 @@ namespace Squared.Render.RasterShape {
         }
 
         private Material PickBaseMaterial (RasterShapeType? type) {
+            return (Texture != null) ? Materials.TexturedRasterShape : Materials.RasterShape;
+
             switch (type) {
                 case RasterShapeType.Ellipse:
                     return (Texture != null) ? Materials.TexturedRasterEllipse : Materials.RasterEllipse;
@@ -314,7 +316,9 @@ namespace Squared.Render.RasterShape {
                     if (RasterizerState != null)
                         device.RasterizerState = RasterizerState;
 
-                    // Material.Effect.Parameters["RasterTexture"]?.SetValue(Texture);
+                    material.Effect.Parameters["RasterTexture"]?.SetValue(Texture);
+                    material.Flush();
+
                     // FIXME: why the hell
                     device.Textures[0] = Texture;
                     device.SamplerStates[0] = SamplerState ?? SamplerState.LinearWrap;
@@ -336,7 +340,7 @@ namespace Squared.Render.RasterShape {
                     material.Effect.Parameters["RasterTexture"]?.SetValue((Texture2D)null);
                 }
 
-                NativeBatch.RecordCommands(1);
+                NativeBatch.RecordCommands(_SubBatches.Count);
                 hwb.SetInactive();
                 cornerHwb.SetInactive();
 
