@@ -53,7 +53,6 @@ sampler TextureSampler : register(s0) {
 #define RASTERSHAPE_FS_PROLOGUE \
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
     float outlineSize = params.x; \
-    uint type = abs(_type.x); \
     float HardOutline = params.y; \
     float OutlineGammaMinusOne = params.w;
 
@@ -444,7 +443,7 @@ void evaluateTriangle (
 void rasterShapeCommon (
     in float2 worldPosition,
     in float4 ab, in float4 cd,
-    in float4 params, in int2 _type,
+    in float4 params, in uint type,
     in float4 centerColor, in float4 edgeColor,
     out float2 tl, out float2 br,
     out float4 fill, out float fillAlpha, 
@@ -588,48 +587,13 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
     return result;
 }
 
-void RasterShapeUntextured (
-    RASTERSHAPE_FS_ARGS
+float4 texturedShapeCommon (
+    in float2 worldPosition, in float4 texRgn,
+    in float4 ab, in float4 cd,
+    in float4 fill, in float4 outlineColor,
+    in float fillAlpha, in float outlineAlpha,
+    in float4 params, in float2 tl, in float2 br
 ) {
-    RASTERSHAPE_PREPROCESS_COLORS
-
-    float2 tl, br;
-    float4 fill;
-    float  fillAlpha, outlineAlpha;
-    rasterShapeCommon(
-        worldPosition,
-        ab, cd, params, _type,
-        centerColor, edgeColor,
-        tl, br,
-        fill, fillAlpha, outlineAlpha
-    );
-
-    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z);
-
-    if (result.a <= 0.5 / 255) {
-        discard;
-        return;
-    }
-
-    result.rgb = ApplyDither(result.rgb, GET_VPOS);
-}
-
-void RasterShapeTextured (
-    RASTERSHAPE_FS_ARGS
-) {
-    RASTERSHAPE_PREPROCESS_COLORS
-        
-    float2 tl, br;
-    float4 fill;
-    float  fillAlpha, outlineAlpha;
-    rasterShapeCommon(
-        worldPosition,
-        ab, cd, params, _type,
-        centerColor, edgeColor,
-        tl, br,
-        fill, fillAlpha, outlineAlpha
-    );
-
     // HACK: Increasing the radius of shapes like rectangles
     //  causes the shapes to expand, so we need to expand the
     //  rectangular area the texture is being applied to
@@ -649,30 +613,30 @@ void RasterShapeTextured (
 
     fill *= texColor;
 
-    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z);
-
-    if (result.a <= 0.5 / 255) {
-        discard;
-        return;
-    }
-
-    result.rgb = ApplyDither(result.rgb, GET_VPOS);
+    return composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z);
 }
 
-technique RasterShape
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 RasterShapeVertexShader();
-        pixelShader = compile ps_3_0 RasterShapeUntextured();
-    }
-}
+#define SHAPE_TYPE_NAME RasterShapeUntextured
+#define SHAPE_TYPE_NAME_TEX RasterShapeTextured
+#define SHAPE_TYPE_TECHNIQUE_NAME RasterShapeTechnique
+#define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterShapeTechnique
+#define SHAPE_TYPE abs(_type.x)
 
-technique TexturedRasterShape
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 RasterShapeVertexShader();
-        pixelShader = compile ps_3_0 RasterShapeTextured();
-    }
-}
+#include "RasterShapeImpl.fxh"
+
+#define SHAPE_TYPE_NAME RasterRectangleUntextured
+#define SHAPE_TYPE_NAME_TEX RasterRectangleTextured
+#define SHAPE_TYPE_TECHNIQUE_NAME RasterRectangleTechnique
+#define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterRectangleTechnique
+#define SHAPE_TYPE TYPE_Rectangle
+
+#include "RasterShapeImpl.fxh"
+
+#define SHAPE_TYPE_NAME RasterEllipseUntextured
+#define SHAPE_TYPE_NAME_TEX RasterEllipseTextured
+#define SHAPE_TYPE_TECHNIQUE_NAME RasterEllipseTechnique
+#define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterEllipseTechnique
+#define SHAPE_TYPE TYPE_Ellipse
+
+#include "RasterShapeImpl.fxh"
+

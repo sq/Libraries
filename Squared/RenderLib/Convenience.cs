@@ -1429,7 +1429,10 @@ namespace Squared.Render.Convenience {
 
                 // FIXME: The way this works will cause churn when mixing textured and untextured shape batches
                 //  oh well
-                cacheEntry.Batch = RasterShapeBatch.New(Container, actualLayer, material, texture, desiredSamplerState);
+                cacheEntry.Batch = RasterShapeBatch.New(
+                    Container, actualLayer, Materials, texture, desiredSamplerState,
+                    RasterizerState, DepthStencilState, desiredBlendState
+                );
                 Cache.InsertAtFront(ref cacheEntry, null);
             }
 

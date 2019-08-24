@@ -139,9 +139,25 @@ namespace Squared.Render.RasterShape {
         ///  corner of the shape's bounding box.
         /// </summary>
         public Bounds TextureBounds;
+
+        internal int Index;
     }
 
     public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
+        private class RasterShapeTypeSorter : IRefComparer<RasterShapeDrawCall> {
+            public int Compare (ref RasterShapeDrawCall lhs, ref RasterShapeDrawCall rhs) {
+                var result = lhs.Type.CompareTo(rhs.Type);
+                if (result == 0)
+                    result = lhs.Index.CompareTo(rhs.Index);
+                return result;
+            }
+        }
+
+        private struct SubBatch {
+            public RasterShapeType Type;
+            public int InstanceOffset, InstanceCount;
+        }
+
         private BufferGenerator<RasterShapeVertex> _BufferGenerator = null;
         private BufferGenerator<CornerVertex>.SoftwareBuffer _CornerBuffer = null;
 
@@ -151,13 +167,37 @@ namespace Squared.Render.RasterShape {
         internal ArrayPoolAllocator<RasterShapeVertex> VertexAllocator;
         internal ISoftwareBuffer _SoftwareBuffer;
 
+        public DefaultMaterialSet Materials;
         public Texture2D Texture;
         public SamplerState SamplerState;
 
+        public bool UseUbershader = true;
+
+        private readonly RasterShapeTypeSorter ShapeTypeSorter = new RasterShapeTypeSorter();
+
+        private DenseList<SubBatch> _SubBatches = new DenseList<SubBatch>();
+
+        private static ListPool<SubBatch> _SubListPool = new ListPool<SubBatch>(
+            64, 4, 16, 64, 256
+        );
+
         const int MaxVertexCount = 65535;
 
-        public void Initialize (IBatchContainer container, int layer, Material material) {
-            base.Initialize(container, layer, material, true);
+        public DepthStencilState DepthStencilState;
+        public BlendState BlendState;
+        public RasterizerState RasterizerState;
+
+        public void Initialize (IBatchContainer container, int layer, DefaultMaterialSet materials) {
+            base.Initialize(container, layer, materials.RasterShape, true);
+
+            Materials = materials;
+
+            _SubBatches.ListPool = _SubListPool;
+            _SubBatches.Clear();
+
+            DepthStencilState = null;
+            BlendState = null;
+            RasterizerState = null;
 
             Texture = null;
 
@@ -169,6 +209,9 @@ namespace Squared.Render.RasterShape {
             var count = _DrawCalls.Count;
             var vertexCount = count;
             if (count > 0) {
+                if (!UseUbershader)
+                    _DrawCalls.Sort(ShapeTypeSorter);
+
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<RasterShapeVertex>>();
                 _CornerBuffer = QuadUtils.CreateCornerBuffer(Container);
                 var swb = _BufferGenerator.Allocate(vertexCount, 1);
@@ -177,8 +220,22 @@ namespace Squared.Render.RasterShape {
                 var vb = new Internal.VertexBuffer<RasterShapeVertex>(swb.Vertices);
                 var vw = vb.GetWriter(count);
 
+                var lastType = _DrawCalls[0].Type;
+                var lastOffset = 0;
+
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     var dc = _DrawCalls[i];
+
+                    if ((dc.Type != lastType) && !UseUbershader) {
+                        _SubBatches.Add(new SubBatch {
+                            InstanceOffset = lastOffset,
+                            InstanceCount = (i - lastOffset) + 1,
+                            Type = lastType
+                        });
+                        lastOffset = i;
+                        lastType = dc.Type;
+                    }
+
                     var vert = new RasterShapeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         // FIXME: Fill this last space with a separate value?
@@ -194,15 +251,38 @@ namespace Squared.Render.RasterShape {
                     vw.Write(vert);
                 }
 
+                _SubBatches.Add(new SubBatch {
+                    InstanceOffset = lastOffset,
+                    InstanceCount = (count - lastOffset),
+                    Type = lastType
+                });
+
                 NativeBatch.RecordPrimitives(count * 2);
             }
+        }
+
+        private Material PickBaseMaterial (RasterShapeType type) {
+            switch (type) {
+                case RasterShapeType.Ellipse:
+                    return (Texture != null) ? Materials.TexturedRasterEllipse : Materials.RasterEllipse;
+                case RasterShapeType.Rectangle:
+                    return (Texture != null) ? Materials.TexturedRasterRectangle : Materials.RasterRectangle;
+                default:
+                    return (Texture != null) ? Materials.TexturedRasterShape : Materials.RasterShape;
+            }
+        }
+
+        private Material PickMaterial (RasterShapeType type) {
+            var baseMaterial = PickBaseMaterial(type);
+            return Materials.Get(
+                baseMaterial, RasterizerState, DepthStencilState, BlendState
+            );
         }
 
         public override void Issue (DeviceManager manager) {
             var count = _DrawCalls.Count;
             if (count > 0) {
                 var device = manager.Device;
-                manager.ApplyMaterial(Material);
 
                 VertexBuffer vb, cornerVb;
                 DynamicIndexBuffer ib, cornerIb;
@@ -223,23 +303,33 @@ namespace Squared.Render.RasterShape {
                 var scratchBindings = _ScratchBindingArray.Value;
 
                 scratchBindings[0] = cornerVb;
-                scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
+                // scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
 
-                // Material.Effect.Parameters["RasterTexture"]?.SetValue(Texture);
-                // FIXME: why the hell
-                device.Textures[0] = Texture;
-                device.SamplerStates[0] = SamplerState ?? SamplerState.LinearWrap;
+                foreach (var sb in _SubBatches) {
+                    var material = UseUbershader ? Material : PickMaterial(sb.Type);
+                    manager.ApplyMaterial(material);
 
-                device.SetVertexBuffers(scratchBindings);
-                device.DrawInstancedPrimitives(
-                    PrimitiveType.TriangleList, 
-                    0, _CornerBuffer.HardwareVertexOffset, 4, 
-                    _CornerBuffer.HardwareIndexOffset, 2, 
-                    _DrawCalls.Count
-                );
+                    // Material.Effect.Parameters["RasterTexture"]?.SetValue(Texture);
+                    // FIXME: why the hell
+                    device.Textures[0] = Texture;
+                    device.SamplerStates[0] = SamplerState ?? SamplerState.LinearWrap;
 
-                device.Textures[0] = null;
-                Material.Effect.Parameters["RasterTexture"]?.SetValue((Texture2D)null);
+                    scratchBindings[1] = new VertexBufferBinding(
+                        vb, _SoftwareBuffer.HardwareVertexOffset + sb.InstanceOffset, 1
+                    );
+
+                    device.SetVertexBuffers(scratchBindings);
+
+                    device.DrawInstancedPrimitives(
+                        PrimitiveType.TriangleList, 
+                        0, _CornerBuffer.HardwareVertexOffset, 4, 
+                        _CornerBuffer.HardwareIndexOffset, 2, 
+                        sb.InstanceCount
+                    );
+
+                    device.Textures[0] = null;
+                    material.Effect.Parameters["RasterTexture"]?.SetValue((Texture2D)null);
+                }
 
                 NativeBatch.RecordCommands(1);
                 hwb.SetInactive();
@@ -254,25 +344,39 @@ namespace Squared.Render.RasterShape {
         }
 
         new public void Add (RasterShapeDrawCall dc) {
+            dc.Index = _DrawCalls.Count;
             _DrawCalls.Add(ref dc);
         }
 
         new public void Add (ref RasterShapeDrawCall dc) {
+            // FIXME
+            dc.Index = _DrawCalls.Count;
             _DrawCalls.Add(ref dc);
         }
 
-        public static RasterShapeBatch New (IBatchContainer container, int layer, Material material, Texture2D texture = null, SamplerState desiredSamplerState = null) {
+        public static RasterShapeBatch New (
+            IBatchContainer container, int layer, DefaultMaterialSet materials, Texture2D texture = null, SamplerState desiredSamplerState = null,
+            RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null
+        ) {
             if (container == null)
                 throw new ArgumentNullException("container");
-            if (material == null)
-                throw new ArgumentNullException("material");
+            if (materials == null)
+                throw new ArgumentNullException("materials");
 
             var result = container.RenderManager.AllocateBatch<RasterShapeBatch>();
-            result.Initialize(container, layer, material);
+            result.Initialize(container, layer, materials);
+            result.RasterizerState = rasterizerState;
+            result.DepthStencilState = depthStencilState;
+            result.BlendState = blendState;
             result.Texture = texture;
             result.SamplerState = desiredSamplerState;
             result.CaptureStack(0);
             return result;
+        }
+
+        protected override void OnReleaseResources () {
+            _SubBatches.Dispose();
+            base.OnReleaseResources();
         }
     }
 }
