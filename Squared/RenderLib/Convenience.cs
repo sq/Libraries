@@ -1417,16 +1417,6 @@ namespace Squared.Render.Convenience {
                 useZBuffer: UseZBuffer,
                 depthPrePass: DepthPrePass
             ) || (((RasterShapeBatch)cacheEntry.Batch).Texture != texture)) {
-                var material = Materials.Get(
-                    (texture == null)
-                        ? Materials.RasterShape
-                        : Materials.TexturedRasterShape
-                    ,
-                    rasterizerState: RasterizerState,
-                    depthStencilState: DepthStencilState,
-                    blendState: desiredBlendState
-                );
-
                 // FIXME: The way this works will cause churn when mixing textured and untextured shape batches
                 //  oh well
                 cacheEntry.Batch = RasterShapeBatch.New(

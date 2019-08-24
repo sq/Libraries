@@ -274,9 +274,7 @@ namespace Squared.Render.RasterShape {
 
         private Material PickMaterial (RasterShapeType? type) {
             var baseMaterial = PickBaseMaterial(type);
-            return Materials.Get(
-                baseMaterial, RasterizerState, DepthStencilState, BlendState
-            );
+            return baseMaterial;
         }
 
         public override void Issue (DeviceManager manager) {
@@ -308,6 +306,13 @@ namespace Squared.Render.RasterShape {
                 foreach (var sb in _SubBatches) {
                     var material = UseUbershader ? PickMaterial(null) : PickMaterial(sb.Type);
                     manager.ApplyMaterial(material);
+
+                    if (BlendState != null)
+                        device.BlendState = BlendState;
+                    if (DepthStencilState != null)
+                        device.DepthStencilState = DepthStencilState;
+                    if (RasterizerState != null)
+                        device.RasterizerState = RasterizerState;
 
                     // Material.Effect.Parameters["RasterTexture"]?.SetValue(Texture);
                     // FIXME: why the hell
