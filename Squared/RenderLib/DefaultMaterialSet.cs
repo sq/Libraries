@@ -375,7 +375,6 @@ namespace Squared.Render {
    
             var bitmapShader = BuiltInShaders.Load("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load("SquaredGeometryShader");
-            var rasterShapesShader = BuiltInShaders.Load("RasterShapes");
             var palettedShader = BuiltInShaders.Load("PalettedBitmap");
             var hslShader = BuiltInShaders.Load("HueBitmap");
             
@@ -513,33 +512,37 @@ namespace Squared.Render {
                 "WorldSpaceTextured"
             );
 
+            var rasterShapeUbershader = BuiltInShaders.Load("RasterShapeUbershader");
+            var rasterShapeEllipse = BuiltInShaders.Load("RasterShapeEllipse");
+            var rasterShapeRectangle = BuiltInShaders.Load("RasterShapeRectangle");
+
             RasterShape = new Material(
-                rasterShapesShader,
+                rasterShapeUbershader,
                 "RasterShapeTechnique"
             );
 
             TexturedRasterShape = new Material(
-                rasterShapesShader,
+                rasterShapeUbershader,
                 "TexturedRasterShapeTechnique"
             );
 
             RasterRectangle = new Material(
-                rasterShapesShader,
+                rasterShapeRectangle,
                 "RasterRectangleTechnique"
             );
 
             TexturedRasterRectangle = new Material(
-                rasterShapesShader,
+                rasterShapeRectangle,
                 "TexturedRasterRectangleTechnique"
             );
 
             RasterEllipse = new Material(
-                rasterShapesShader,
+                rasterShapeEllipse,
                 "RasterEllipseTechnique"
             );
 
             TexturedRasterEllipse = new Material(
-                rasterShapesShader,
+                rasterShapeEllipse,
                 "TexturedRasterEllipseTechnique"
             );
             

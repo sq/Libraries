@@ -262,8 +262,6 @@ namespace Squared.Render.RasterShape {
         }
 
         private Material PickBaseMaterial (RasterShapeType? type) {
-            return (Texture != null) ? Materials.TexturedRasterShape : Materials.RasterShape;
-
             switch (type) {
                 case RasterShapeType.Ellipse:
                     return (Texture != null) ? Materials.TexturedRasterEllipse : Materials.RasterEllipse;
