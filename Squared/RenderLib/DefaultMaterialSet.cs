@@ -841,6 +841,9 @@ namespace Squared.Render {
         }
 
         public void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
+            // HACK: Ensure all materials have this instance for lazy transform updates
+            m.ActiveViewTransform = ActiveViewTransform;
+
             uViewport.TrySet(m, ref viewTransform);
 
             /*
