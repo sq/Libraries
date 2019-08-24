@@ -5,7 +5,8 @@
 #define SHAPE_TYPE_NAME_TEX RasterRectangleTextured
 #define SHAPE_TYPE_TECHNIQUE_NAME RasterRectangleTechnique
 #define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterRectangleTechnique
-#define SHAPE_TYPE abs(_type.x)
+
+#define INCLUDE_RECTANGLE
 
 #include "RasterShapeSkeleton.fxh"
 #include "RasterShapeImpl.fxh"

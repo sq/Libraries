@@ -103,6 +103,7 @@ float sdEllipse(in float2 p, in float2 ab) {
     return length(r - p) * sign(p.y - r.y);
 }
 
+#ifdef INCLUDE_BEZIER
 float sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C) {
     float2 a = B - A;
     float2 b = A - 2.0*B + C;
@@ -150,6 +151,7 @@ float sdBezier(in float2 pos, in float2 A, in float2 B, in float2 C) {
     }
     return sqrt(res);
 }
+#endif
 
 float sdTriangle(in float2 p, in float2 p0, in float2 p1, in float2 p2) {
     float2 e0 = p1 - p0, e1 = p2 - p1, e2 = p0 - p2;
@@ -214,6 +216,7 @@ void computeTLBR (
             br = max(max(a, b), c) + totalRadius;
             break;
 
+#ifdef INCLUDE_BEZIER
         case TYPE_QuadraticBezier:
             totalRadius += 1;
             float2 mi = min(a, c);
@@ -231,6 +234,7 @@ void computeTLBR (
             tl = mi - totalRadius;
             br = ma + totalRadius;
             break;
+#endif
 
         case TYPE_Arc:
             tl = a - totalRadius - radius.y;
@@ -466,6 +470,7 @@ void rasterShapeCommon (
 
     PREFER_BRANCH
     switch (type) {
+#ifdef INCLUDE_ELLIPSE
         case TYPE_Ellipse: {
             evaluateEllipse(
                 worldPosition, a, b, c,
@@ -475,6 +480,9 @@ void rasterShapeCommon (
 
             break;
         }
+#endif
+
+#ifdef INCLUDE_LINE
         case TYPE_LineSegment: {
             evaluateLineSegment(
                 worldPosition, a, b, c,
@@ -484,6 +492,9 @@ void rasterShapeCommon (
 
             break;
         }
+#endif
+
+#ifdef INCLUDE_BEZIER
         case TYPE_QuadraticBezier: {
             distance = sdBezier(worldPosition, a, b, c) - radius.x;
             gradientWeight = 1 - saturate(-distance / radius.x);
@@ -492,6 +503,9 @@ void rasterShapeCommon (
 
             break;
         }
+#endif
+
+#ifdef INCLUDE_RECTANGLE
         case TYPE_Rectangle: {
             evaluateRectangle(
                 worldPosition, a, b, c,
@@ -501,6 +515,9 @@ void rasterShapeCommon (
 
             break;
         }
+#endif
+
+#ifdef INCLUDE_TRIANGLE
         case TYPE_Triangle: {
             evaluateTriangle(
                 worldPosition, a, b, c,
@@ -510,12 +527,16 @@ void rasterShapeCommon (
 
             break;
         }
+#endif
+
+#ifdef INCLUDE_ARC
         case TYPE_Arc: {
             distance = sdArc(worldPosition - a, b, c, radius.x, radius.y);
             gradientWeight = 1 - saturate(-distance / radius.y);
 
             break;
         }
+#endif
     }
 
     PREFER_FLATTEN

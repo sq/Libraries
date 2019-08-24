@@ -229,7 +229,7 @@ namespace Squared.Render.RasterShape {
                     if ((dc.Type != lastType) && !UseUbershader) {
                         _SubBatches.Add(new SubBatch {
                             InstanceOffset = lastOffset,
-                            InstanceCount = (i - lastOffset) + 1,
+                            InstanceCount = (i - lastOffset),
                             Type = lastType
                         });
                         lastOffset = i;
@@ -267,6 +267,10 @@ namespace Squared.Render.RasterShape {
                     return (Texture != null) ? Materials.TexturedRasterEllipse : Materials.RasterEllipse;
                 case RasterShapeType.Rectangle:
                     return (Texture != null) ? Materials.TexturedRasterRectangle : Materials.RasterRectangle;
+                case RasterShapeType.LineSegment:
+                    return (Texture != null) ? Materials.TexturedRasterLine : Materials.RasterLine;
+                case RasterShapeType.Triangle:
+                    return (Texture != null) ? Materials.TexturedRasterTriangle : Materials.RasterTriangle;
                 default:
                     return (Texture != null) ? Materials.TexturedRasterShape : Materials.RasterShape;
             }

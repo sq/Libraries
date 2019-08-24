@@ -5,7 +5,8 @@
 #define SHAPE_TYPE_NAME_TEX RasterEllipseTextured
 #define SHAPE_TYPE_TECHNIQUE_NAME RasterEllipseTechnique
 #define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterEllipseTechnique
-#define SHAPE_TYPE abs(_type.x)
+
+#define INCLUDE_ELLIPSE
 
 #include "RasterShapeSkeleton.fxh"
 #include "RasterShapeImpl.fxh"

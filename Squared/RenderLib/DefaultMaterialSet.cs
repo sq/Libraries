@@ -269,8 +269,8 @@ namespace Squared.Render {
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
-        public Material RasterShape, RasterRectangle, RasterEllipse;
-        public Material TexturedRasterShape, TexturedRasterRectangle, TexturedRasterEllipse;
+        public Material RasterShape, RasterRectangle, RasterEllipse, RasterTriangle, RasterLine;
+        public Material TexturedRasterShape, TexturedRasterRectangle, TexturedRasterEllipse, TexturedRasterTriangle, TexturedRasterLine;
         /// <summary>
         /// Make sure to resolve your lightmap to sRGB before using it with this, otherwise your lighting
         ///  will have really terrible banding in dark areas.
@@ -515,6 +515,8 @@ namespace Squared.Render {
             var rasterShapeUbershader = BuiltInShaders.Load("RasterShapeUbershader");
             var rasterShapeEllipse = BuiltInShaders.Load("RasterShapeEllipse");
             var rasterShapeRectangle = BuiltInShaders.Load("RasterShapeRectangle");
+            var rasterShapeLine = BuiltInShaders.Load("RasterShapeLine");
+            var rasterShapeTriangle = BuiltInShaders.Load("RasterShapeTriangle");
 
             RasterShape = new Material(
                 rasterShapeUbershader,
@@ -544,6 +546,26 @@ namespace Squared.Render {
             TexturedRasterEllipse = new Material(
                 rasterShapeEllipse,
                 "TexturedRasterEllipseTechnique"
+            );
+
+            RasterLine = new Material(
+                rasterShapeLine,
+                "RasterLineTechnique"
+            );
+
+            TexturedRasterLine = new Material(
+                rasterShapeLine,
+                "TexturedRasterLineTechnique"
+            );
+
+            RasterTriangle = new Material(
+                rasterShapeTriangle,
+                "RasterTriangleTechnique"
+            );
+
+            TexturedRasterTriangle = new Material(
+                rasterShapeTriangle,
+                "TexturedRasterTriangleTechnique"
             );
             
             var lightmapShader = BuiltInShaders.Load("Lightmap");

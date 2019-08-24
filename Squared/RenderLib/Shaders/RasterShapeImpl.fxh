@@ -8,7 +8,7 @@ void SHAPE_TYPE_NAME (
     float  fillAlpha, outlineAlpha;
     rasterShapeCommon(
         worldPosition,
-        ab, cd, params, SHAPE_TYPE,
+        ab, cd, params, abs(_type.x),
         centerColor, edgeColor,
         tl, br,
         fill, fillAlpha, outlineAlpha
@@ -34,7 +34,7 @@ void SHAPE_TYPE_NAME_TEX (
     float  fillAlpha, outlineAlpha;
     rasterShapeCommon(
         worldPosition,
-        ab, cd, params, SHAPE_TYPE,
+        ab, cd, params, abs(_type.x),
         centerColor, edgeColor,
         tl, br,
         fill, fillAlpha, outlineAlpha

@@ -5,7 +5,13 @@
 #define SHAPE_TYPE_NAME_TEX RasterShapeTextured
 #define SHAPE_TYPE_TECHNIQUE_NAME RasterShapeTechnique
 #define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterShapeTechnique
-#define SHAPE_TYPE abs(_type.x)
+
+#define INCLUDE_ELLIPSE
+#define INCLUDE_LINE
+#define INCLUDE_BEZIER
+#define INCLUDE_RECTANGLE
+#define INCLUDE_TRIANGLE
+#define INCLUDE_ARC
 
 #include "RasterShapeSkeleton.fxh"
 #include "RasterShapeImpl.fxh"
