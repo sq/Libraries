@@ -229,7 +229,7 @@ namespace Squared.Render {
                 VertexBuffer tempVb;
                 lock (coordinator.CreateResourceLock)
                     tempVb = new VertexBuffer(deviceManager.Device, hint.VertexFormats[i], hint.HasIndices ? 4 : 6, BufferUsage.WriteOnly);
-                bindings[i] = new VertexBufferBinding(tempVb);
+                bindings[i] = new VertexBufferBinding(tempVb, 0, (i == 0) ? 0 : 1);
                 coordinator.DisposeResource(tempVb);
             }
             if ((hint.VertexTextureFormats?.Length ?? 0) >= 1) {

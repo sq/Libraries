@@ -656,6 +656,8 @@ namespace Squared.Render {
                 lock (_FrameLock)
                     newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
+                var sw = Stopwatch.StartNew();
+
                 RunBeforePrepareHandlers();
                 PrepareNextFrame(newFrame, true);
             
@@ -677,6 +679,9 @@ namespace Squared.Render {
                         _DeviceLost = IsDeviceLost;
                     }
                 }
+
+                if (false && sw.Elapsed.TotalMilliseconds >= 17)
+                    Console.WriteLine("Prepare + draw took {0:00.00}ms", sw.Elapsed.TotalMilliseconds);
 
                 FlushPendingDisposes();
             } finally {
