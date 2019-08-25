@@ -2,13 +2,6 @@
 #define MIP_BIAS 0
 #endif
 
-#ifndef BitmapZMin
-    #define BitmapZMin 0
-#endif
-#ifndef BitmapZMax
-    #define BitmapZMax 1
-#endif
-
 #define ENABLE_DITHERING
 
 uniform float HalfPixelOffset;
@@ -119,7 +112,7 @@ void ScreenSpaceVertexShader (
     
     position.xy += rotatedCorner;
 
-    float z = clamp(position.z, BitmapZMin, BitmapZMax);
+    float z = ScaleZIntoViewTransformSpace(position.z);
     result = TransformPosition(float4(position.xy, z, 1), true);
 }
 
@@ -147,7 +140,7 @@ void WorldSpaceVertexShader (
     
     position.xy += rotatedCorner - GetViewportPosition().xy;
     
-    float z = clamp(position.z, BitmapZMin, BitmapZMax);
+    float z = ScaleZIntoViewTransformSpace(position.z);
     result = TransformPosition(float4(position.xy * GetViewportScale().xy, z, 1), true);
 }
 
@@ -180,6 +173,6 @@ void GenericVertexShader (
         adjustedPosition.xy *= GetViewportScale().xy;
     }
     
-    float z = clamp(position.z, BitmapZMin, BitmapZMax);
+    float z = ScaleZIntoViewTransformSpace(position.z);
     result = TransformPosition(float4(adjustedPosition, z, 1), true);
 }

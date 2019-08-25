@@ -16,7 +16,47 @@ namespace Squared.Render {
     public struct ViewTransform {
         public Matrix Projection;
         public Matrix ModelView;
-        private Vector4 ScaleAndPosition;
+
+        internal Vector4 ScaleAndPosition;
+        internal Vector4 InputAndOutputZRanges;
+
+        public float MinimumZ {
+            get {
+                return InputAndOutputZRanges.X;
+            }
+            set {
+                InputAndOutputZRanges.X = value;
+            }
+        }
+
+        public float MaximumZ {
+            get {
+                return InputAndOutputZRanges.Y + 1;
+            }
+            set {
+                InputAndOutputZRanges.Y = value - 1;
+            }
+        }
+
+        public Vector2 ZRange {
+            get {
+                return new Vector2(InputAndOutputZRanges.X, InputAndOutputZRanges.Y + 1);
+            }
+            set {
+                InputAndOutputZRanges.X = value.X;
+                InputAndOutputZRanges.Y = value.Y - 1;
+            }
+        }
+
+        public Vector2 OutputZRange {
+            get {
+                return new Vector2(InputAndOutputZRanges.Z, InputAndOutputZRanges.W + 1);
+            }
+            set {
+                InputAndOutputZRanges.Z = value.X;
+                InputAndOutputZRanges.W = value.Y - 1;
+            }
+        }
 
         public Vector2 Scale {
             get {
@@ -42,7 +82,8 @@ namespace Squared.Render {
             Scale = Vector2.One,
             Position = Vector2.Zero,
             Projection = Matrix.Identity,
-            ModelView = Matrix.Identity
+            ModelView = Matrix.Identity,
+            InputAndOutputZRanges = Vector4.Zero
         };
 
         public static ViewTransform CreateOrthographic (Viewport viewport) {
@@ -73,7 +114,8 @@ namespace Squared.Render {
             return (Scale == rhs.Scale) &&
                 (Position == rhs.Position) &&
                 (Projection == rhs.Projection) &&
-                (ModelView == rhs.ModelView);
+                (ModelView == rhs.ModelView) &&
+                (InputAndOutputZRanges == rhs.InputAndOutputZRanges);
         }
 
         public override bool Equals (object obj) {
@@ -649,6 +691,17 @@ namespace Squared.Render {
                 ViewTransformStack.Pop();
                 ViewTransformStack.Push(value);
                 ApplyViewTransform(value, !LazyViewTransformChanges);
+            }
+        }
+
+        public Vector2 ViewportZRange {
+            get {
+                return ViewTransform.ZRange;
+            }
+            set {
+                var vt = ViewTransformStack.Peek();
+                vt.ZRange = value;
+                ViewTransform = vt;
             }
         }
 
