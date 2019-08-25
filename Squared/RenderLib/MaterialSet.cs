@@ -331,8 +331,12 @@ namespace Squared.Render {
 
             // HACK: Applying a shader does an on-demand compile
             var tempIb = new IndexBuffer(dm.Device, IndexElementSize.SixteenBits, 6, BufferUsage.WriteOnly);
-            foreach (var m in AllMaterials)
+            foreach (var m in AllMaterials) {
+                if (m.HintPipeline == null && m.DelegatedHintPipeline?.HintPipeline == null)
+                    continue;
+
                 m.Preload(coordinator, dm, tempIb);
+            }
 
             coordinator.DisposeResource(tempIb);
 

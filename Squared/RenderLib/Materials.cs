@@ -39,7 +39,7 @@ namespace Squared.Render {
         public readonly Action<DeviceManager>[] BeginHandlers;
         public readonly Action<DeviceManager>[] EndHandlers;
 
-        public PipelineHint HintPipeline = PipelineHint.Default;
+        public PipelineHint HintPipeline = null;
         public Material DelegatedHintPipeline = null;
 
         private static int _NextMaterialID;
@@ -217,9 +217,12 @@ namespace Squared.Render {
 
             PipelineHint hint;
             if (DelegatedHintPipeline != null)
-                hint = DelegatedHintPipeline.HintPipeline ?? HintPipeline ?? PipelineHint.Default;
+                hint = DelegatedHintPipeline.HintPipeline ?? HintPipeline;
             else
-                hint = HintPipeline ?? PipelineHint.Default;
+                hint = HintPipeline;
+
+            if (hint == null)
+                return;
 
             var bindings = new VertexBufferBinding[hint.VertexFormats.Length];
             for (int i = 0; i < bindings.Length; i++) {

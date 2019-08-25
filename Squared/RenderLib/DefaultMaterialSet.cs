@@ -417,6 +417,14 @@ namespace Squared.Render {
             SetViewport = new Material(
                 null, null
             );
+
+            var bitmapHint = new Material.PipelineHint {
+                HasIndices = true,
+                VertexFormats = new Type[] {
+                    typeof(CornerVertex),
+                    typeof(BitmapVertex)
+                }
+            };
    
             var bitmapShader = BuiltInShaders.Load("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load("SquaredGeometryShader");
@@ -536,6 +544,34 @@ namespace Squared.Render {
                 hslShader,
                 "WorldSpaceSepiaBitmapTechnique"
             );
+
+            var bitmapMaterials = new[] {
+                Bitmap,
+                ScreenSpaceBitmapWithLUT,
+                WorldSpaceBitmapWithLUT,
+                ScreenSpaceBitmapToSRGB,
+                WorldSpaceBitmapToSRGB,
+                ScreenSpaceShadowedBitmap,
+                WorldSpaceShadowedBitmap,
+                ScreenSpaceShadowedBitmapWithDiscard,
+                WorldSpaceShadowedBitmapWithDiscard,
+                BitmapWithDiscard,
+                ScreenSpaceStippledBitmap,
+                WorldSpaceStippledBitmap,
+                ScreenSpacePalettedBitmap,
+                WorldSpacePalettedBitmap,
+                ScreenSpacePalettedBitmapWithDiscard,
+                WorldSpacePalettedBitmapWithDiscard,
+                ScreenSpaceHueBitmap,
+                WorldSpaceHueBitmap,
+                ScreenSpaceHueBitmapWithDiscard,
+                WorldSpaceHueBitmapWithDiscard,
+                ScreenSpaceSepiaBitmap,
+                WorldSpaceSepiaBitmap
+            };
+
+            foreach (var m in bitmapMaterials)
+                m.HintPipeline = bitmapHint;
 
             ScreenSpaceGeometry = new Material(
                 geometryShader,
