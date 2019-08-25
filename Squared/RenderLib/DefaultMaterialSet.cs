@@ -912,9 +912,9 @@ namespace Squared.Render {
             return result;
         }
 
-        public Material GetBitmapMaterial (bool worldSpace, RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null) {
+        public Material GetBitmapMaterial (bool worldSpace, RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null, bool discard = false) {
             return Get(
-                Bitmap,
+                discard ? BitmapWithDiscard : Bitmap,
                 rasterizerState: rasterizerState,
                 depthStencilState: depthStencilState,
                 blendState: blendState

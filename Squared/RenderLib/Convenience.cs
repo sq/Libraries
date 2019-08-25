@@ -463,10 +463,22 @@ namespace Squared.Render.Convenience {
         private DrawCallSortKey NextSortKey;
         private CachedBatches Cache;
 
+        /// <summary>
+        /// Bitmaps will use a shader with discard by default. Discard ensures transparent pixels are not drawn.
+        /// </summary>
+        public bool UseDiscard;
+
         private float RasterOutlineGammaMinusOne;
 
+        /// <summary>
+        /// If set, outlines on raster shapes will be soft instead of hard.
+        /// </summary>
         public bool RasterSoftOutlines;
 
+        /// <summary>
+        /// If set, raster shapes will be drawn using the generic ubershader in a single large pass.
+        /// This is slower for large shapes but produces fewer draw calls.
+        /// </summary>
         public bool RasterUseUbershader;
 
         /// <summary>
@@ -518,6 +530,7 @@ namespace Squared.Render.Convenience {
             RasterBlendInLinearSpace = true;
             RasterSoftOutlines = false;
             RasterUseUbershader = false;
+            UseDiscard = false;
         }
 
         /// <summary>
@@ -633,7 +646,7 @@ namespace Squared.Render.Convenience {
                     if (material != null)
                         material = Materials.Get(material, RasterizerState, DepthStencilState, blendState ?? BlendState);
                     else
-                        material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, RasterizerState, DepthStencilState, blendState ?? BlendState);
+                        material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, RasterizerState, DepthStencilState, blendState ?? BlendState, UseDiscard);
 
                     var mmbb = (MultimaterialBitmapBatch)batch;
                     mmbb.Add(ref drawCall, material, samplerState, samplerState);
@@ -777,7 +790,7 @@ namespace Squared.Render.Convenience {
                     if (material != null)
                         material = Materials.Get(material, RasterizerState, DepthStencilState, blendState ?? BlendState);
                     else
-                        material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, RasterizerState, DepthStencilState, blendState ?? BlendState);
+                        material = Materials.GetBitmapMaterial(worldSpace ?? WorldSpace, RasterizerState, DepthStencilState, blendState ?? BlendState, UseDiscard);
 
                     var mmbb = (MultimaterialBitmapBatch)batch;
                     mmbb.AddRange(
@@ -1324,7 +1337,7 @@ namespace Squared.Render.Convenience {
                 } else {
                     material = Materials.GetBitmapMaterial(
                         actualWorldSpace,
-                        RasterizerState, DepthStencilState, desiredBlendState
+                        RasterizerState, DepthStencilState, desiredBlendState, UseDiscard
                     );
                 }
 
