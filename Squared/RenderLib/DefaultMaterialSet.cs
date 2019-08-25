@@ -58,10 +58,13 @@ namespace Squared.Render {
             float offsetY = -0.0f;
             float offsetX2 = offsetX;
             float offsetY2 = offsetY;
+            var projection = Matrix.CreateOrthographicOffCenter(offsetX, width + offsetX2, height + offsetY2, offsetY, zNearPlane, zFarPlane);
+            // FIXME: Why the heck is the default -1????? This makes no sense
+            projection.M33 = 1;
             return new ViewTransform {
                 Scale = Vector2.One,
                 Position = Vector2.Zero,
-                Projection = Matrix.CreateOrthographicOffCenter(offsetX, width + offsetX2, height + offsetY2, offsetY, zNearPlane, zFarPlane),
+                Projection = projection,
                 ModelView = Matrix.Identity
             };
         }
