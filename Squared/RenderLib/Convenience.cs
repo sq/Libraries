@@ -621,6 +621,10 @@ namespace Squared.Render.Convenience {
             else if (Container.IsReleased)
                 throw new ObjectDisposedException("The container this ImperativeRenderer is drawing into has been disposed.");
 
+            // FIXME: Mutates the argument :(
+            if (worldSpace.HasValue)
+                drawCall.WorldSpace = worldSpace;
+
             using (var batch = GetBitmapBatch(
                 layer, worldSpace,
                 blendState, samplerState, material
