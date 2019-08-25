@@ -467,6 +467,8 @@ namespace Squared.Render.Convenience {
 
         public bool RasterSoftOutlines;
 
+        public bool RasterUseUbershader;
+
         /// <summary>
         /// If true, raster shape colors will be converted from sRGB to linear space before
         ///  blending and then converted back to sRGB for rendering.
@@ -515,6 +517,7 @@ namespace Squared.Render.Convenience {
             RasterOutlineGammaMinusOne = 0;
             RasterBlendInLinearSpace = true;
             RasterSoftOutlines = false;
+            RasterUseUbershader = false;
         }
 
         /// <summary>
@@ -1419,10 +1422,13 @@ namespace Squared.Render.Convenience {
             ) || (((RasterShapeBatch)cacheEntry.Batch).Texture != texture)) {
                 // FIXME: The way this works will cause churn when mixing textured and untextured shape batches
                 //  oh well
-                cacheEntry.Batch = RasterShapeBatch.New(
+                var batch = RasterShapeBatch.New(
                     Container, actualLayer, Materials, texture, desiredSamplerState,
                     RasterizerState, DepthStencilState, desiredBlendState
                 );
+                // FIXME: why the hell
+                batch.UseUbershader = RasterUseUbershader;
+                cacheEntry.Batch = batch;
                 Cache.InsertAtFront(ref cacheEntry, null);
             }
 
