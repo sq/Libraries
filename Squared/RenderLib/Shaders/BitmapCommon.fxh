@@ -167,8 +167,8 @@ void GenericVertexShader (
     
     float2 adjustedPosition = position.xy + rotatedCorner;
     if (worldSpace.x > 0.5) {
-        position.xy -= GetViewportPosition().xy;
-        position.xy *= GetViewportScale().xy;
+        adjustedPosition.xy -= GetViewportPosition().xy;
+        adjustedPosition.xy *= GetViewportScale().xy;
     }
     
     result = TransformPosition(float4(adjustedPosition, position.z, 1), true);
