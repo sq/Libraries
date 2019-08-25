@@ -537,13 +537,13 @@ namespace Squared.Render {
             return result;
         }
 
-        private static readonly BlendState ResetBlendState = new BlendState {
+        public static readonly BlendState ResetBlendState = new BlendState {
             AlphaDestinationBlend = Blend.Zero,
             ColorDestinationBlend = Blend.Zero,
             Name = "ResetBlendState"
         };
 
-        private static readonly SamplerState ResetSamplerState = new SamplerState {
+        public static readonly SamplerState ResetSamplerState = new SamplerState {
             Filter = TextureFilter.Point,
             AddressU = TextureAddressMode.Clamp,
             AddressV = TextureAddressMode.Clamp,

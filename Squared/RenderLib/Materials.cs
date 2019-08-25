@@ -10,9 +10,21 @@ using System.Reflection;
 using Squared.Render.Convenience;
 using Squared.Util;
 using Squared.Render.Evil;
+using System.Diagnostics;
 
 namespace Squared.Render {
     public sealed class Material : IDisposable {
+        public class PipelineHint {
+            public static readonly PipelineHint Default = new PipelineHint {
+                HasIndices = true,
+                VertexFormats = new[] { typeof(CornerVertex) }
+            };
+
+            public bool HasIndices = true;
+            public Type[] VertexFormats;
+            public SurfaceFormat[] VertexTextureFormats;
+        }
+
         internal readonly UniformBindingTable UniformBindings = new UniformBindingTable();
 
         public static readonly Material Null = new Material(null);
@@ -26,6 +38,9 @@ namespace Squared.Render {
 
         public readonly Action<DeviceManager>[] BeginHandlers;
         public readonly Action<DeviceManager>[] EndHandlers;
+
+        public PipelineHint HintPipeline = PipelineHint.Default;
+        public Material DelegatedHintPipeline = null;
 
         private static int _NextMaterialID;
         public readonly int MaterialID;
@@ -87,20 +102,23 @@ namespace Squared.Render {
             else if (additionalEndHandlers != null)
                 newEndHandlers = Enumerable.Concat(additionalEndHandlers, EndHandlers).ToArray();
 
-            return new Material(
+            var result = new Material(
                 Effect, null,
                 newBeginHandlers, newEndHandlers
             );
+            result.DelegatedHintPipeline = this;
+            return result;
         }
 
         public Material Clone () {
             var newEffect = Effect.Clone();
             newEffect.CurrentTechnique = newEffect.Techniques[Effect.CurrentTechnique.Name];
 
-            return new Material(
+            var result = new Material(
                 newEffect, null,
                 BeginHandlers, EndHandlers
-            );
+            ) { HintPipeline = HintPipeline };
+            return result;
         }
 
         internal bool AutoApplyCurrentViewTransform () {
@@ -191,6 +209,63 @@ namespace Squared.Render {
                         : "DelegateEffectMaterial"
                 );
             }
+        }
+
+        public void Preload (RenderCoordinator coordinator, DeviceManager deviceManager, IndexBuffer tempIb) {
+            if (Effect == null)
+                return;
+
+            PipelineHint hint;
+            if (DelegatedHintPipeline != null)
+                hint = DelegatedHintPipeline.HintPipeline ?? HintPipeline ?? PipelineHint.Default;
+            else
+                hint = HintPipeline ?? PipelineHint.Default;
+
+            var bindings = new VertexBufferBinding[hint.VertexFormats.Length];
+            for (int i = 0; i < bindings.Length; i++) {
+                VertexBuffer tempVb;
+                lock (coordinator.CreateResourceLock)
+                    tempVb = new VertexBuffer(deviceManager.Device, hint.VertexFormats[i], hint.HasIndices ? 4 : 6, BufferUsage.WriteOnly);
+                bindings[i] = new VertexBufferBinding(tempVb);
+                coordinator.DisposeResource(tempVb);
+            }
+            if ((hint.VertexTextureFormats?.Length ?? 0) >= 1) {
+                for (int i = 0; i < hint.VertexTextureFormats.Length; i++) {
+                    Texture2D tempTexture;
+                    lock (coordinator.CreateResourceLock)
+                        tempTexture = new Texture2D(deviceManager.Device, 1, 1, false, hint.VertexTextureFormats[i]);
+                    deviceManager.Device.VertexTextures[i] = tempTexture;
+                    deviceManager.Device.VertexSamplerStates[i] = SamplerState.PointClamp;
+                    coordinator.DisposeResource(tempTexture);
+                }
+            } else {
+                for (int i = 0; i < 4; i++) {
+                    deviceManager.Device.VertexTextures[i] = null;
+                    deviceManager.Device.VertexSamplerStates[i] = RenderManager.ResetSamplerState;
+                }
+            }
+
+            deviceManager.Device.BlendState = RenderManager.ResetBlendState;
+
+            lock (coordinator.UseResourceLock) {
+                deviceManager.Device.Indices = hint.HasIndices ? tempIb : null;
+                deviceManager.Device.SetVertexBuffers(bindings);
+            }
+
+            // FIXME: This currently generates a bunch of recompile warnings but might actually fix stalls?
+
+            Begin(deviceManager);
+
+            // FIXME: If we skip drawing we still spend like ~100ms precompiling shaders, but it doesn't seem to help
+
+            if (hint.VertexFormats.Length > 1)
+                deviceManager.Device.DrawInstancedPrimitives(
+                    PrimitiveType.TriangleList, 0, 0, 4, 0, 2, 1
+                );
+            else if (hint.HasIndices)
+                deviceManager.Device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, 4, 0, 2);
+            else
+                deviceManager.Device.DrawPrimitives(PrimitiveType.TriangleList, 0, 2);
         }
     }
 }

@@ -10,6 +10,7 @@ using System.Reflection;
 using Squared.Render.Convenience;
 using Squared.Util;
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 namespace Squared.Render {
     public interface IMaterialCollection {
@@ -322,6 +323,22 @@ namespace Squared.Render {
         }
 
         internal void UnregisterUniform (ITypedUniform uniform) {
+        }
+
+        public virtual void PreloadShaders (RenderCoordinator coordinator) {
+            var sw = Stopwatch.StartNew();
+            var dm = coordinator.Manager.DeviceManager;
+
+            // HACK: Applying a shader does an on-demand compile
+            var tempIb = new IndexBuffer(dm.Device, IndexElementSize.SixteenBits, 6, BufferUsage.WriteOnly);
+            foreach (var m in AllMaterials)
+                m.Preload(coordinator, dm, tempIb);
+
+            coordinator.DisposeResource(tempIb);
+
+            var elapsed = sw.Elapsed.TotalMilliseconds;
+            Debug.WriteLine(string.Format("Shader preload took {0:000.00}ms", elapsed));
+            Console.WriteLine("Shader preload took {0:000.00}ms", elapsed);
         }
     }
 }
