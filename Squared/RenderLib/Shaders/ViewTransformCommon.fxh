@@ -29,10 +29,11 @@ float ScaleZIntoViewTransformSpace (
     float2 inputRange = Viewport.InputAndOutputZRanges.xy + float2(0, 1);
     float zDivisor = max(
         abs(inputRange.y - inputRange.x), 0.5
-    ) * ((inputRange.y >= inputRange.x) ? 1 : -1);
-    float viewSpaceZ = (worldSpaceZ - inputRange.x) / zDivisor;
+    );
+    float scaledWorldSpaceZ = (worldSpaceZ - inputRange.x) / zDivisor;
     float2 outputRange = Viewport.InputAndOutputZRanges.zw + float2(0, 1);
-    viewSpaceZ = outputRange.x + (viewSpaceZ * (outputRange.y - outputRange.x));
+
+    float viewSpaceZ = outputRange.x + (scaledWorldSpaceZ * (outputRange.y - outputRange.x));
 
     return clamp(viewSpaceZ, outputRange.x, outputRange.y);
 }

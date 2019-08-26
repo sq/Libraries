@@ -38,6 +38,10 @@ namespace Squared.Render {
             }
         }
 
+        public void ResetZRanges () {
+            InputAndOutputZRanges = Vector4.Zero;
+        }
+
         public Vector2 ZRange {
             get {
                 return new Vector2(InputAndOutputZRanges.X, InputAndOutputZRanges.Y + 1);
