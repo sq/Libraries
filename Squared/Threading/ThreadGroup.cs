@@ -79,7 +79,7 @@ namespace Squared.Threading {
             float stepLengthLimitMs = (MainThreadStepLengthLimitMs ?? 999999) - (currentElapsedMs ?? 0);
 
             // FIXME: This will deadlock if you create a new queue while it's stepping the main thread
-            var sw = Stopwatch.StartNew();
+            var started = Time.Ticks;
             lock (MainThreadQueueList)
             foreach (var q in MainThreadQueueList) {
                 bool exhausted;
@@ -88,8 +88,9 @@ namespace Squared.Threading {
                 if (!exhausted)
                     allExhausted = false;
 
+                var elapsedTicks = (Time.Ticks - started) / Time.MillisecondInTicks;
                 if (
-                    sw.ElapsedMilliseconds > stepLengthLimitMs
+                    elapsedTicks > stepLengthLimitMs
                 )
                     return false;
             }
@@ -99,12 +100,18 @@ namespace Squared.Threading {
 
         public bool TryStepMainThreadUntilDrained () {
             float stepLengthLimitMs = MainThreadStepLengthLimitMs ?? 999999;
-            var sw = Stopwatch.StartNew();
+            var started = Time.Ticks;
 
-            while (!StepMainThread(sw.ElapsedMilliseconds)) {
-                Thread.Yield();
-                if (sw.ElapsedMilliseconds >= stepLengthLimitMs)
+            while (true) {
+                var elapsedMs = (Time.Ticks - started) / Time.MillisecondInTicks;
+                if (elapsedMs >= stepLengthLimitMs)
                     return false;
+
+                bool ok = !StepMainThread(elapsedMs);
+                if (!ok)
+                    break;
+
+                Thread.Yield();
             }
 
             return true;
