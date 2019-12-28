@@ -64,6 +64,10 @@ namespace Squared.Render {
             return Load(name, DefaultOptions, true);
         }
 
+        public T Load (string name, bool cached) {
+            return Load(name, DefaultOptions, cached);
+        }
+
         public virtual void Dispose () {
             foreach (var value in Cache.Values)
                 Coordinator.DisposeResource(value);

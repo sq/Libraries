@@ -305,6 +305,9 @@ namespace Squared.Render.Evil {
 #endif
 
         public static Effect EffectFromFxcOutput (GraphicsDevice device, Stream stream) {
+            if (device == null)
+                throw new NullReferenceException("device");
+
             var bytes = new byte[stream.Length];
             stream.Read(bytes, 0, bytes.Length);
             return EffectFromFxcOutput(device, bytes);
@@ -340,6 +343,9 @@ namespace Squared.Render.Evil {
             return typedObject;
         }
 #else
+            if (device == null)
+                throw new NullReferenceException("device");
+
             return new Effect(device, bytes);
         }
 #endif

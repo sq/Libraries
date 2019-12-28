@@ -87,6 +87,8 @@ namespace Squared.Render {
 
         public readonly Thread OwningThread;
 
+        public bool IsDisposed { get; private set; }
+
         public MaterialSetBase() 
             : base() {
 
@@ -175,6 +177,9 @@ namespace Squared.Render {
         }
 
         public void ForEachMaterial<T> (Action<Material, T> action, T userData) {
+            if (IsDisposed)
+                return;
+
             lock (Lock) {
                 foreach (var field in AllMaterialFields) {
                     var material = field();
@@ -193,6 +198,9 @@ namespace Squared.Render {
         }
 
         public void ForEachMaterial<T> (RefMaterialAction<T> action, ref T userData) {
+            if (IsDisposed)
+                return;
+
             lock (Lock) {
                 foreach (var field in AllMaterialFields) {
                     var material = field();
@@ -212,6 +220,9 @@ namespace Squared.Render {
 
         public IEnumerable<Material> AllMaterials {
             get {
+                if (IsDisposed)
+                    throw new ObjectDisposedException("MaterialSetBase");
+
                 foreach (var field in AllMaterialFields) {
                     var material = field();
                     if (material != null)
@@ -264,6 +275,9 @@ namespace Squared.Render {
         internal UniformBinding<T> GetUniformBinding<T> (Material material, TypedUniform<T> uniform)
             where T: struct 
         {
+            if (IsDisposed)
+                throw new ObjectDisposedException("MaterialSetBase");
+
             IUniformBinding existing;
             if (material.UniformBindings.TryGetValue(uniform.ID, out existing))
                 return existing.Cast<T>();
@@ -274,6 +288,9 @@ namespace Squared.Render {
         }
 
         public void Add (Material extraMaterial) {
+            if (IsDisposed)
+                throw new ObjectDisposedException("MaterialSetBase");
+
             List<ITypedUniform> ru;
             lock (RegisteredUniforms)
                 ru = RegisteredUniforms.ToList();
@@ -286,11 +303,19 @@ namespace Squared.Render {
         }
 
         public bool Remove (Material extraMaterial) {
+            if (IsDisposed)
+                throw new ObjectDisposedException("MaterialSetBase");
+
             lock (Lock)
                 return ExtraMaterials.Remove(extraMaterial);
         }
 
         public virtual void Dispose () {
+            if (IsDisposed)
+                return;
+
+            IsDisposed = true;
+
             lock (UniformBindings) {
                 foreach (var kvp in UniformBindings) {
                     if (kvp.Value != null)
@@ -307,10 +332,16 @@ namespace Squared.Render {
         public TypedUniform<T> NewTypedUniform<T> (string uniformName)
             where T : struct
         {
+            if (IsDisposed)
+                throw new ObjectDisposedException("MaterialSetBase");
+
             return new TypedUniform<T>(this, uniformName);
         }
 
         internal void RegisterUniform (ITypedUniform uniform) {
+            if (IsDisposed)
+                throw new ObjectDisposedException("MaterialSetBase");
+
             bool needQueue;
             lock (PendingUniformRegistrations) {
                 needQueue = PendingUniformRegistrations.Count == 0;
@@ -326,6 +357,9 @@ namespace Squared.Render {
         }
 
         public virtual void PreloadShaders (RenderCoordinator coordinator) {
+            if (IsDisposed)
+                throw new ObjectDisposedException("MaterialSetBase");
+
             var sw = Stopwatch.StartNew();
             var dm = coordinator.Manager.DeviceManager;
 

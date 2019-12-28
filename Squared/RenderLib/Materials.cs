@@ -29,6 +29,9 @@ namespace Squared.Render {
 
         public static readonly Material Null = new Material(null);
 
+        // We have to retain this to prevent finalization
+        private readonly Effect BaseEffect;
+
         public readonly Effect Effect;
         public readonly bool   OwnsEffect;
 
@@ -48,6 +51,8 @@ namespace Squared.Render {
         internal DefaultMaterialSet.ActiveViewTransformInfo ActiveViewTransform;
         internal uint ActiveViewTransformId;
 
+        public string Name;
+
         private bool _IsDisposed;
 
         private Material () {
@@ -59,10 +64,18 @@ namespace Squared.Render {
         public Material (
             Effect effect, string techniqueName = null, 
             Action<DeviceManager>[] beginHandlers = null,
-            Action<DeviceManager>[] endHandlers = null
+            Action<DeviceManager>[] endHandlers = null,
+            bool requiresClone = true
         ) : this() {
             if (techniqueName != null) {
-                Effect = effect.Clone();
+                if (requiresClone) {
+                    BaseEffect = effect;
+                    Effect = effect.Clone();
+                } else
+                    Effect = effect;
+
+                if (Effect.GraphicsDevice == null)
+                    throw new Exception();
                 var technique = Effect.Techniques[techniqueName];
                 
                 if (technique != null)
@@ -73,6 +86,8 @@ namespace Squared.Render {
             } else {
                 Effect = effect;
             }
+
+            Name = Effect?.CurrentTechnique?.Name;
 
             OwningThread = Thread.CurrentThread;
 
@@ -112,6 +127,8 @@ namespace Squared.Render {
 
         public Material Clone () {
             var newEffect = Effect.Clone();
+            if (newEffect.GraphicsDevice == null)
+                throw new Exception();
             newEffect.CurrentTechnique = newEffect.Techniques[Effect.CurrentTechnique.Name];
 
             var result = new Material(
@@ -202,8 +219,8 @@ namespace Squared.Render {
                 return "NullEffect #" + MaterialID;
             } else {
                 return string.Format(
-                    "{3} #{0} ({1}.{2})", 
-                    MaterialID, Effect.Name, Effect.CurrentTechnique.Name, 
+                    "{3} #{0} ({1}: {2})", 
+                    MaterialID, Effect.Name, Name ?? Effect.CurrentTechnique?.Name, 
                     ((BeginHandlers == null) && (EndHandlers == null))
                         ? "EffectMaterial"
                         : "DelegateEffectMaterial"
