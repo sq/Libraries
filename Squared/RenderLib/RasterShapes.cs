@@ -146,7 +146,7 @@ namespace Squared.Render.RasterShape {
     public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
         private class RasterShapeTypeSorter : IRefComparer<RasterShapeDrawCall> {
             public int Compare (ref RasterShapeDrawCall lhs, ref RasterShapeDrawCall rhs) {
-                var result = lhs.Type.CompareTo(rhs.Type);
+                var result = ((int)lhs.Type).CompareTo((int)(rhs.Type));
                 if (result == 0)
                     result = lhs.Index.CompareTo(rhs.Index);
                 return result;
