@@ -1047,7 +1047,7 @@ namespace Squared.Render.Convenience {
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = a, B = b,
                     C = new Vector2(gradientAlongLine ? 1 : 0, 0),
-                    Radius = new Vector2(radius),
+                    Radius = new Vector2(radius, 0),
                     OutlineSize = 0,
                     CenterColor = innerColor,
                     EdgeColor = outerColor.GetValueOrDefault(innerColor),
