@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
@@ -24,7 +24,6 @@ namespace RenderPrecisionTest {
             Graphics = new GraphicsDeviceManager(this);
             Graphics.PreferredBackBufferWidth = 820;
             Graphics.PreferredBackBufferHeight = 860;
-            Content.RootDirectory = "Content";
         }
 
         protected override void Initialize () {
@@ -34,7 +33,8 @@ namespace RenderPrecisionTest {
         }
 
         protected override void OnLoadContent (bool isReloading) {
-            TestTexture = Content.Load<Texture2D>("test");
+            using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("test.png"))
+                TestTexture = Texture2D.FromStream(Graphics.GraphicsDevice, s);
         }
 
         protected override void Update (GameTime gameTime) {
@@ -43,9 +43,13 @@ namespace RenderPrecisionTest {
 
         public override void Draw (GameTime gameTime, Frame frame) {
             var ir = new ImperativeRenderer(frame, Materials);
-            ir.AutoIncrementLayer = true;
+            
+            // Set to true to draw each quad in a separate batch... for no sensible reason
+            if (false)
+                ir.AutoIncrementLayer = true;
 
             ir.Clear(color: ClearColor);
+            ir.Layer += 1;
 
             var rect1 = new Rectangle(0, 0, 32, 32);
             var rect2 = new Rectangle(1, 1, 30, 30);

@@ -41,8 +41,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CurveTester", "Examples\Cur
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderPrecisionTest", "RenderPrecisionTest\RenderPrecisionTest\RenderPrecisionTest.csproj", "{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderPrecisionTestContent", "RenderPrecisionTest\RenderPrecisionTestContent\RenderPrecisionTestContent.contentproj", "{7D0E8E01-408A-475C-9540-28F21F3C9E3F}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LargeBufferTest", "LargeBufferTest\LargeBufferTest\LargeBufferTest.csproj", "{8500D1B4-4BD9-4ED2-A7E6-AA64CCF4C73F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HttpServerTest", "HttpServerTest\HttpServerTest.csproj", "{0B4E5FD7-63D7-455B-870E-28357E004304}"
@@ -67,6 +65,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BasisNative", "BasisNative\BasisNative.vcxproj", "{82960120-664F-4D6C-9DA5-140077DDB6C2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Squared.Render.Basis", "Render.Basis\Squared.Render.Basis.csproj", "{CFB603C1-8371-460D-BA60-91E697EAE1B5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FNA", "..\..\FNA\FNA.csproj", "{35253CE1-C864-4CD3-8249-4D1319748E8F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -248,20 +248,18 @@ Global
 		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Release|FNA-x64.ActiveCfg = Release|x86
 		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Release|x86.ActiveCfg = Release|x86
 		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Release|x86.Build.0 = Release|x86
-		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Debug|FNA.ActiveCfg = Debug|x86
+		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Debug|FNA.ActiveCfg = Debug|FNA
+		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Debug|FNA.Build.0 = Debug|FNA
 		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Debug|FNA-x64.ActiveCfg = Debug|x86
+		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Debug|FNA-x64.Build.0 = Debug|x86
 		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Debug|x86.ActiveCfg = Debug|x86
 		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Debug|x86.Build.0 = Debug|x86
 		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Release|FNA.ActiveCfg = Release|x86
+		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Release|FNA.Build.0 = Release|x86
 		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Release|FNA-x64.ActiveCfg = Release|x86
+		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Release|FNA-x64.Build.0 = Release|x86
 		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Release|x86.ActiveCfg = Release|x86
 		{5A055035-0C3C-400E-AF41-3D1F7EB6E1AE}.Release|x86.Build.0 = Release|x86
-		{7D0E8E01-408A-475C-9540-28F21F3C9E3F}.Debug|FNA.ActiveCfg = Debug|x86
-		{7D0E8E01-408A-475C-9540-28F21F3C9E3F}.Debug|FNA-x64.ActiveCfg = Debug|x86
-		{7D0E8E01-408A-475C-9540-28F21F3C9E3F}.Debug|x86.ActiveCfg = Debug|x86
-		{7D0E8E01-408A-475C-9540-28F21F3C9E3F}.Release|FNA.ActiveCfg = Release|x86
-		{7D0E8E01-408A-475C-9540-28F21F3C9E3F}.Release|FNA-x64.ActiveCfg = Release|x86
-		{7D0E8E01-408A-475C-9540-28F21F3C9E3F}.Release|x86.ActiveCfg = Release|x86
 		{8500D1B4-4BD9-4ED2-A7E6-AA64CCF4C73F}.Debug|FNA.ActiveCfg = Debug|FNA
 		{8500D1B4-4BD9-4ED2-A7E6-AA64CCF4C73F}.Debug|FNA.Build.0 = Debug|FNA
 		{8500D1B4-4BD9-4ED2-A7E6-AA64CCF4C73F}.Debug|FNA-x64.ActiveCfg = Debug|FNA-x64
@@ -376,6 +374,17 @@ Global
 		{CFB603C1-8371-460D-BA60-91E697EAE1B5}.Release|FNA-x64.Build.0 = Release|FNA-x64
 		{CFB603C1-8371-460D-BA60-91E697EAE1B5}.Release|x86.ActiveCfg = Release|x86
 		{CFB603C1-8371-460D-BA60-91E697EAE1B5}.Release|x86.Build.0 = Release|x86
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Debug|FNA.ActiveCfg = Debug|x86
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Debug|FNA.Build.0 = Debug|x86
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Debug|FNA-x64.ActiveCfg = Debug|Any CPU
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Debug|FNA-x64.Build.0 = Debug|Any CPU
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Debug|x86.ActiveCfg = Debug|x86
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Release|FNA.ActiveCfg = Release|Any CPU
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Release|FNA.Build.0 = Release|Any CPU
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Release|FNA-x64.ActiveCfg = Release|Any CPU
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Release|FNA-x64.Build.0 = Release|Any CPU
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Release|x86.ActiveCfg = Release|x86
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
