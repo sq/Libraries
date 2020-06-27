@@ -205,7 +205,7 @@ namespace Squared.Render.Text {
                     flags |= LoadFlags.Color;
 
                 Font.Face.LoadGlyph(
-                    index, flags, LoadTarget.Normal
+                    index, flags, Font.Monochrome ? LoadTarget.Mono : LoadTarget.Normal
                 );
 
                 var ftgs = Font.Face.Glyph;

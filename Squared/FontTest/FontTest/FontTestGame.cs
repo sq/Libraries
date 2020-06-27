@@ -3,12 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Audio;
-using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Media;
 using Squared.Game;
 using Squared.Render;
 using Squared.Render.Convenience;
@@ -29,7 +25,7 @@ namespace FontTest {
             "\r\nはいはい！おつかれさまでした！" +
             "\r\n\tIndented\tText";
 
-        IGlyphSource SpriteFont, LatinFont, UniFont, FallbackFont;
+        IGlyphSource LatinFont, UniFont, FallbackFont;
 
         IGlyphSource ActiveFont;
 
@@ -52,12 +48,12 @@ namespace FontTest {
         PressableKey Which = new PressableKey(Keys.Space);
         PressableKey Margin = new PressableKey(Keys.M);
         PressableKey Indent = new PressableKey(Keys.I);
+        PressableKey Monochrome = new PressableKey(Keys.R);
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
             Graphics.PreferredBackBufferWidth = 1024;
             Graphics.PreferredBackBufferHeight = 1024;
-            Content.RootDirectory = "Content";
             IsMouseVisible = true;
         }
 
@@ -74,12 +70,6 @@ namespace FontTest {
             };
             WordWrap.Pressed += (s, e) => {
                 Text2.WordWrap = Text.WordWrap = !Text.WordWrap;
-            };
-            FreeType.Pressed += (s, e) => {
-                if (Text.GlyphSource == SpriteFont)
-                    Text2.GlyphSource = Text.GlyphSource = FallbackFont;
-                else
-                    Text2.GlyphSource = Text.GlyphSource = SpriteFont;
             };
             Hinting.Pressed += (s, e) => {
                 var ftf = (FreeTypeFont)LatinFont;
@@ -98,10 +88,19 @@ namespace FontTest {
                 Text.Invalidate();
                 Text2.Invalidate();
             };
+            Monochrome.Pressed += (s, e) => {
+                var ftf = (FreeTypeFont)LatinFont;
+                ftf.Monochrome = !ftf.Monochrome;
+                ftf.Invalidate();
+                ftf = (FreeTypeFont)UniFont;
+                ftf.Monochrome = !ftf.Monochrome;
+                ftf.Invalidate();
+                Text.Invalidate();
+                Text2.Invalidate();
+            };
         }
 
         protected override void OnLoadContent (bool isReloading) {
-            SpriteFont = new SpriteFontGlyphSource(Content.Load<SpriteFont>("font"));
             LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") {
                 SizePoints = 40, DPIPercent = 200, GlyphMargin = 4, Gamma = 1.6
             };
@@ -155,6 +154,7 @@ namespace FontTest {
             Which.Update(ref ks);
             Margin.Update(ref ks);
             Indent.Update(ref ks);
+            Monochrome.Update(ref ks);
 
             var newSize = Arithmetic.Clamp(20 + (ms.ScrollWheelValue / 56f), 6, 200);
             newSize = Arithmetic.Clamp(9 + (ms.ScrollWheelValue / 100f), 4, 200);
