@@ -54,16 +54,22 @@ sampler TextureSampler : register(s0) {
     float OutlineGammaMinusOne = params.w;
 
 #define RASTERSHAPE_PREPROCESS_COLORS \
-    if (params.z) { \
-        centerColor = pSRGBToPLinear(centerColor); \
-        edgeColor = pSRGBToPLinear(edgeColor); \
-        outlineColor = pSRGBToPLinear(outlineColor); \
+    centerColor = pSRGBToPLinear(centerColor); \
+    edgeColor = pSRGBToPLinear(edgeColor); \
+    outlineColor = pSRGBToPLinear(outlineColor); \
+    // FIXME: Why is this necessary? Is it an fxc bug? \
+    // It only seems to be needed when using certain blend modes \
+    // Maybe mojoshader? Driver bug? \
+    if (params.z < 0.5) { \
+        centerColor = pLinearToPSRGB(centerColor); \
+        edgeColor = pLinearToPSRGB(edgeColor); \
+        outlineColor = pLinearToPSRGB(outlineColor); \
     }
 
 
 float sdBox(in float2 p, in float2 b) {
     float2 d = abs(p) - b;
-    return length(max(d, 0)) + min(max(d.x, d.y), 0.0);
+    return length(max(d, 0.0001)) + min(max(d.x, d.y), 0.0001);
 }
 
 float sdEllipse(in float2 p, in float2 ab) {
