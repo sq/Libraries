@@ -36,14 +36,15 @@ sampler TextureSampler : register(s0) {
 
 #define RASTERSHAPE_FS_ARGS \
     in float2 worldPosition : NORMAL0, \
-    in float4 ab : TEXCOORD2, \
-    in float4 cd : TEXCOORD3, \
+    in float4 ab : TEXCOORD3, \
+    in float4 cd : TEXCOORD4, \
     in float4 params : TEXCOORD0, \
+    in float4 params2 : TEXCOORD1, \
+    in float4 texRgn : TEXCOORD2, \
     in float4 centerColor : COLOR0, \
     in float4 edgeColor : COLOR1, \
     in float4 outlineColor : COLOR2, \
     in int2 _type : BLENDINDICES1, \
-    in float4 texRgn : TEXCOORD1, \
     ACCEPTS_VPOS, \
     out float4 result : COLOR0
 
@@ -285,14 +286,15 @@ void RasterShapeVertexShader (
     in float4 ab_in : POSITION0,
     in float4 cd_in : POSITION1,
     inout float4 params : TEXCOORD0,
+    inout float4 params2 : TEXCOORD1,
+    inout float4 texRgn : TEXCOORD2,
     inout float4 centerColor : COLOR0,
     inout float4 edgeColor : COLOR1,
     inout float4 outlineColor : COLOR2,
     inout int2 typeAndWorldSpace : BLENDINDICES1,
     out float4 result : POSITION0,
-    out float4 ab : TEXCOORD2,
-    out float4 cd : TEXCOORD3,
-    inout float4 texRgn : TEXCOORD1,
+    out float4 ab : TEXCOORD3,
+    out float4 cd : TEXCOORD4,
     out float2 worldPosition : NORMAL0
 ) {
     ab = ab_in; cd = cd_in;
@@ -450,7 +452,7 @@ void evaluateTriangle (
 void rasterShapeCommon (
     in float2 worldPosition,
     in float4 ab, in float4 cd,
-    in float4 params, in uint type,
+    in float4 params, in float4 params2, in uint type,
     in float4 centerColor, in float4 edgeColor,
     out float2 tl, out float2 br,
     out float4 fill, out float fillAlpha, 
@@ -562,6 +564,9 @@ void rasterShapeCommon (
             break;
     }
 
+    gradientWeight = saturate(pow(gradientWeight, max(params2.x, 0.001)));
+    gradientWeight = 1 - saturate(pow(1 - gradientWeight, max(params2.y, 0.001)));
+
     float outlineSizeAlpha = saturate(outlineSize / 2);
     float clampedOutlineSize = max(outlineSize / 2, sqrt(2)) * 2;
 
@@ -616,7 +621,7 @@ float4 texturedShapeCommon (
     in float4 ab, in float4 cd,
     in float4 fill, in float4 outlineColor,
     in float fillAlpha, in float outlineAlpha,
-    in float4 params, in float2 tl, in float2 br
+    in float4 params, in float4 params2, in float2 tl, in float2 br
 ) {
     // HACK: Increasing the radius of shapes like rectangles
     //  causes the shapes to expand, so we need to expand the

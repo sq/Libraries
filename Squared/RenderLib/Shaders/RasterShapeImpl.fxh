@@ -8,7 +8,7 @@ void SHAPE_TYPE_NAME (
     float  fillAlpha, outlineAlpha;
     rasterShapeCommon(
         worldPosition,
-        ab, cd, params, abs(_type.x),
+        ab, cd, params, params2, abs(_type.x),
         centerColor, edgeColor,
         tl, br,
         fill, fillAlpha, outlineAlpha
@@ -34,7 +34,7 @@ void SHAPE_TYPE_NAME_TEX (
     float  fillAlpha, outlineAlpha;
     rasterShapeCommon(
         worldPosition,
-        ab, cd, params, abs(_type.x),
+        ab, cd, params, params2, abs(_type.x),
         centerColor, edgeColor,
         tl, br,
         fill, fillAlpha, outlineAlpha
@@ -45,7 +45,7 @@ void SHAPE_TYPE_NAME_TEX (
         ab, cd, 
         fill, outlineColor,
         fillAlpha, outlineAlpha,
-        params, tl, br
+        params, params2, tl, br
     );
 
     if (result.a <= 0.5 / 255) {
