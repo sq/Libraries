@@ -425,6 +425,11 @@ namespace Squared.Render.Convenience {
         public SamplerState SamplerState;
 
         /// <summary>
+        /// Overrides the default material used to draw bitmaps if no custom material has been specified.
+        /// </summary>
+        public Material DefaultBitmapMaterial;
+
+        /// <summary>
         /// Uses world-space coordinates.
         /// </summary>
         public bool WorldSpace;
@@ -531,6 +536,7 @@ namespace Squared.Render.Convenience {
             RasterSoftOutlines = false;
             RasterUseUbershader = false;
             UseDiscard = false;
+            DefaultBitmapMaterial = null;
         }
 
         /// <summary>
@@ -640,7 +646,7 @@ namespace Squared.Render.Convenience {
 
             using (var batch = GetBitmapBatch(
                 layer, worldSpace,
-                blendState, samplerState, material
+                blendState, samplerState, material ?? DefaultBitmapMaterial
             )) {
                 if (LowPriorityMaterialOrdering) {
                     if (material != null)
@@ -785,7 +791,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, SamplerState samplerState = null, Vector2? scale = null,
             Material material = null, Vector4? userData = null
         ) {
-            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, material)) {
+            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, material ?? DefaultBitmapMaterial)) {
                 if (LowPriorityMaterialOrdering) {
                     if (material != null)
                         material = Materials.Get(material, RasterizerState, DepthStencilState, blendState ?? BlendState);

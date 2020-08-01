@@ -153,12 +153,14 @@ void GenericVertexShader (
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
     inout float4 userData : COLOR2,
-    in int2 cornerIndex : BLENDINDICES0, // 0-3
-    in int2 worldSpace : BLENDINDICES1,
+    inout int2 cornerIndex : BLENDINDICES0, // 0-3
+    inout int2 worldSpace : BLENDINDICES1,
     out float2 texCoord1 : TEXCOORD0,
     out float4 newTexRgn1 : TEXCOORD1,
     out float2 texCoord2 : TEXCOORD2,
     out float4 newTexRgn2 : TEXCOORD3,
+    // originX, originY, vertexX, vertexY
+    out float4 originalPositionData : TEXCOORD7,
     out float4 result : POSITION0
 ) {
     float2 regionSize = ComputeRegionSize(texRgn1);
@@ -168,6 +170,8 @@ void GenericVertexShader (
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, rotation);
     
     float2 adjustedPosition = position.xy + rotatedCorner;
+    originalPositionData = float4(position.xy, adjustedPosition.xy);
+
     if (worldSpace.x > 0.5) {
         adjustedPosition.xy -= GetViewportPosition().xy;
         adjustedPosition.xy *= GetViewportScale().xy;
