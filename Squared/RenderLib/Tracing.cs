@@ -19,6 +19,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -178,7 +179,7 @@ namespace Squared.Render.Tracing {
         }
 
         public override void Issue(DeviceManager manager) {
-            RenderTrace.ImmediateMarker(Text);
+            RenderTrace.ImmediateMarker(manager.Device, Text);
 
             base.Issue(manager);
         }
@@ -188,20 +189,18 @@ namespace Squared.Render.Tracing {
         private static volatile int TracingBroken = 0;
         private static volatile bool Cached_IsCurrentlyProfiled = false;
 
+        private static bool? _EnableTracing;
+
         public static bool EnableTracing {
             get {
-#if SDL2 || FNA // StringMarkerGREMEDY -flibit
-                return (TracingBroken == 0);
-#else
-                return (TracingBroken == 0) && (Cached_IsCurrentlyProfiled);
-#endif
+                if (!_EnableTracing.HasValue)
+                    _EnableTracing = Environment.GetCommandLineArgs().Any(arg => arg.Equals("--rendertrace", StringComparison.OrdinalIgnoreCase));
+
+                return _EnableTracing.Value && (TracingBroken == 0);
             }
         }
 
         public static void BeforeFrame () {
-#if !SDL2 && !FNA // StringMarkerGREMEDY -flibit
-            Cached_IsCurrentlyProfiled = D3D9.IsCurrentlyProfiled;
-#endif
         }
 
         public static void Marker (IBatchContainer container, int layer, string format, params object[] values) {
@@ -219,25 +218,22 @@ namespace Squared.Render.Tracing {
             container.Add(batch);
         }
 
-        public static void ImmediateMarker (string format, params object[] values) {
+        public static void ImmediateMarker (Microsoft.Xna.Framework.Graphics.GraphicsDevice device, string format, params object[] values) {
             if (!EnableTracing)
                 return;
 
-            ImmediateMarker(String.Format(format, values));
+            ImmediateMarker(device, String.Format(format, values));
         }
 
-        public static void ImmediateMarker (string name) {
+        public static void ImmediateMarker (Microsoft.Xna.Framework.Graphics.GraphicsDevice device, string name) {
             if (!EnableTracing)
                 return;
 
             try {
-#if SDL2 || FNA // StringMarkerGREMEDY -flibit
-                // FIXME: FNA SetStringMarkerEXT! -flibit
-                if (!GetGLProcAddress())
-                    return;
-                var chars = Encoding.ASCII.GetBytes(name);
-                glStringMarkerGREMEDY(chars.Length, chars);
+#if FNA
+                device.SetStringMarkerEXT(name);
 #else
+                // FIXME
                 D3D9.SetMarker(0, name);
 #endif
             } catch (Exception exc) {
@@ -245,28 +241,5 @@ namespace Squared.Render.Tracing {
                 TracingBroken = 1;
             }
         }
-
-#if SDL2 || FNA // StringMarkerGREMEDY -flibit
-        private delegate void StringMarkerGREMEDY(int len, byte[] strang);
-        private static StringMarkerGREMEDY glStringMarkerGREMEDY;
-        private static bool gotAddress = false;
-        private static bool GetGLProcAddress()
-        {
-            if (gotAddress)
-                return true;
-            gotAddress = true;
-
-            var pFn = SDL2.SDL.SDL_GL_GetProcAddress("glStringMarkerGREMEDY");
-            if (pFn == IntPtr.Zero) {
-                glStringMarkerGREMEDY = null;
-                TracingBroken = 1;
-                return false;
-            } else {
-                glStringMarkerGREMEDY = (StringMarkerGREMEDY) Marshal.GetDelegateForFunctionPointer(pFn, typeof(StringMarkerGREMEDY));
-                TracingBroken = 0;
-                return true;
-            }
-        }
-#endif
     }
 }

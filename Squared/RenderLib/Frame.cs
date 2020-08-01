@@ -111,12 +111,12 @@ namespace Squared.Render {
             if (Interlocked.Exchange(ref State, (int)States.Drawing) != (int)States.Prepared)
                 throw new InvalidOperationException();
 
-            if (Tracing.RenderTrace.EnableTracing)
-                Tracing.RenderTrace.ImmediateMarker("{1} {0:0000} : Begin Draw", Index, Label);
-
             var dm = RenderManager.DeviceManager;
             dm.FrameIndex = Index;
             var device = dm.Device;
+
+            if (Tracing.RenderTrace.EnableTracing)
+                Tracing.RenderTrace.ImmediateMarker(device, "{1} {0:0000} : Begin Draw", Index, Label);
 
             dm.Begin(ChangeRenderTargets);
 
@@ -131,7 +131,7 @@ namespace Squared.Render {
             dm.Finish();
 
             if (Tracing.RenderTrace.EnableTracing)
-                Tracing.RenderTrace.ImmediateMarker("Frame {0:0000} : End Draw", Index);
+                Tracing.RenderTrace.ImmediateMarker(device, "Frame {0:0000} : End Draw", Index);
 
             if (Interlocked.Exchange(ref State, (int)States.Drawn) != (int)States.Drawing)
                 throw new InvalidOperationException();
