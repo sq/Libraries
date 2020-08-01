@@ -91,8 +91,6 @@
   </ItemGroup>
   <PropertyGroup>
     <SquaredPath>..\..\</SquaredPath>
-    <FNAPath>..\..\..\FNA\</FNAPath>
-    <FNALibPath>..\..\..\FNA\fnalibs</FNALibPath>
     <ShaderDirectory>Shaders</ShaderDirectory>
     <IncludeSquaredRender>false</IncludeSquaredRender>
   </PropertyGroup>

@@ -60,8 +60,6 @@
   </ItemGroup>
   <PropertyGroup>
     <SquaredPath>..\..\</SquaredPath>
-    <FNAPath>..\..\..\FNA\</FNAPath>
-    <FNALibPath>..\..\..\FNA\fnalibs</FNALibPath>
     <IncludeSquaredGame>false</IncludeSquaredGame>
     <IncludeSquaredRender>false</IncludeSquaredRender>
     <IncludeSquaredTask>false</IncludeSquaredTask>

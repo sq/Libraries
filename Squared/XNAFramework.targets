@@ -6,15 +6,33 @@
   <Import Project="$(XNAPropertiesOverridePath)" Condition="Exists('$(XNAPropertiesOverridePath)')" />
 
   <PropertyGroup>
-    <FNALibsPath Condition="'$(FNALibsPath)' == ''">$(FNAPath)\fnalibs</FNALibsPath>
-    <EnableFNA Condition="'$(EnableFNA)' == ''">false</EnableFNA>
-    <ShaderBinDirectory Condition="'$(ShaderBinDirectory)' == ''">$(ShaderDirectory)\bin</ShaderBinDirectory>
-    <ShaderLocalBinDirectory>$(ShaderBinDirectory)\$(Platform)\$(Configuration)</ShaderLocalBinDirectory>
-    <ShaderCompilerPath>$(SquaredPath)\ShaderCompiler\bin\ShaderCompiler.exe</ShaderCompilerPath>
     <!-- workaround for wildcard includes breaking in VS -->
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
     <!-- Squared libraries use Unsafe so just enable it -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <EnableFNA Condition="'$(EnableFNA)' == ''">false</EnableFNA>
+    <!-- workaround for common typo in project files -->
+    <FNALibsPath Condition="'$(FNALibsPath)' == ''">$(FNALibPath)</FNALibsPath>
+
+    <!-- auto-sense FNA in nearby folders if no explicit path provided -->
+    <FNAPathWasAutoselected Condition="'$(FNAPath)' == ''">true</FNAPathWasAutoselected>
+    <FNAPath Condition="('$(FNAPathWasAutoselected)' == 'true') and Exists('$(ProjectDir)\FNA')">$(ProjectDir)\FNA</FNAPath>
+    <FNAPath Condition="('$(FNAPathWasAutoselected)' == 'true') and Exists('$(ProjectDir)\..\FNA')">$(ProjectDir)\..\FNA</FNAPath>
+    <FNAPath Condition="('$(FNAPathWasAutoselected)' == 'true') and Exists('$(SolutionDir)\FNA')">$(SolutionDir)\FNA</FNAPath>
+    <FNAPath Condition="('$(FNAPathWasAutoselected)' == 'true') and Exists('$(SquaredPath)\..\FNA')">$(SquaredPath)\..\FNA</FNAPath>
+
+    <FNALibsPathWasAutoselected Condition="'$(FNALibsPath)' == ''">true</FNALibsPathWasAutoselected>
+    <FNALibsPath Condition="('$(FNALibsPathWasAutoselected)' == 'true') and Exists('$(FNAPath)\fnalibs')">$(FNAPath)\fnalibs</FNALibsPath>
+    <FNALibsPath Condition="('$(FNALibsPathWasAutoselected)' == 'true') and Exists('$(ProjectDir)\fnalibs')">$(ProjectDir)\fnalibs</FNALibsPath>
+    <FNALibsPath Condition="('$(FNALibsPathWasAutoselected)' == 'true') and Exists('$(ProjectDir)\..\fnalibs')">$(ProjectDir)\..\fnalibs</FNALibsPath>
+    <FNALibsPath Condition="('$(FNALibsPathWasAutoselected)' == 'true') and Exists('$(SolutionDir)\fnalibs')">$(SolutionDir)\fnalibs</FNALibsPath>
+    <FNALibsPath Condition="('$(FNALibsPathWasAutoselected)' == 'true') and Exists('$(FNAPath)\..\FNALibs')">$(FNAPath)\..\FNALibs</FNALibsPath>
+
+    <ShaderBinDirectory Condition="'$(ShaderBinDirectory)' == ''">$(ShaderDirectory)\bin</ShaderBinDirectory>
+    <ShaderLocalBinDirectory>$(ShaderBinDirectory)\$(Platform)\$(Configuration)</ShaderLocalBinDirectory>
+    <ShaderCompilerPath>$(SquaredPath)\ShaderCompiler\bin\ShaderCompiler.exe</ShaderCompilerPath>
+
     <AutoPlatforms Condition="'$(AutoPlatforms)' == ''">false</AutoPlatforms>
     <TestParsePath Condition="'$(GenerateShaderDisassembly)' != 'false'">$(FNALibsPath)\x86\testparse.exe</TestParsePath>
     <TestParsePath Condition="!Exists('$(TestParsePath)')"></TestParsePath>
@@ -104,19 +122,21 @@
     <Message Text="Configuration: $(Configuration)" />
     <Message Text="Platform: $(Platform)" />
     <Message Text="No property overrides found at '$(XNAPropertiesOverridePath)'" Condition="!Exists('$(XNAPropertiesOverridePath)')" />
-    <Message Importance="High"  Text="Loaded property overrides from '$(XNAPropertiesOverridePath)'" Condition="Exists('$(XNAPropertiesOverridePath)')" />
+    <Message Importance="High" Text="Loaded property overrides from '$(XNAPropertiesOverridePath)'" Condition="Exists('$(XNAPropertiesOverridePath)')" />
     <Message Importance="High" Text="Automatic platforms enabled? $(AutoPlatforms)" />
     <Message Importance="High" Condition="'$(AutoPlatforms)' == 'true'" Text="Automatic platforms selected FNA? $(AutoEnableFNA)" />
     <Message Importance="High" Text="FNA enabled? $(EnableFNA)" />
     <Message Importance="High" Condition="'$(EnableFNA)' == 'true'" Text="FNA path: '$(FNAPath)'" />
+    <Message Importance="High" Condition="'$(FNAPathWasAutoselected)' == 'true'" Text="FNA path was auto-selected" />
     <Message Importance="High" Condition="'$(EnableFNA)' == 'true'" Text="FNAlibs path: '$(FNALibsPath)'" />
+    <Message Importance="High" Condition="'$(FNALibsPathWasAutoselected)' == 'true'" Text="FNALibs path was auto-selected" />
     <Message Importance="High" Text="testparse.exe path: '$(TestParsePath)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader compiler path: '$(ShaderCompilerPath)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader directory: '$(ShaderDirectory)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader output directory: '$(ShaderLocalBinDirectory)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader optimization level: $(ShaderOptimizationLevel)" />    
 
-    <Error Text="You must set FNAPath" Condition=" ('$(FNAPath)' == '') And ('$(EnableFNA)' == 'true') " />
+    <Error Text="EnableFNA is set and FNAPath could not be automatically detected after searching nearby folders." Condition=" ('$(FNAPath)' == '') And ('$(EnableFNA)' == 'true') " />
 
     <Error Text="FNALibsPath '$(FNALibsPath)' does not exist or is not set" Condition=" !Exists('$(FNALibsPath)') And ('$(EnableFNA)' == 'true') " />
   </Target>
