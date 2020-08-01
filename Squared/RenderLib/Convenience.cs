@@ -193,6 +193,7 @@ namespace Squared.Render.Convenience {
             public readonly Material CustomMaterial;
             public readonly bool WorldSpace;
             public readonly bool UseZBuffer;
+            public readonly bool ZBufferOnlySorting;
             public readonly bool DepthPrePass;
 
             public CachedBatch (
@@ -206,6 +207,7 @@ namespace Squared.Render.Convenience {
                 SamplerState samplerState,
                 Material customMaterial,
                 bool useZBuffer,
+                bool zBufferOnlySorting,
                 bool depthPrePass
             ) {
                 Batch = null;
@@ -215,6 +217,7 @@ namespace Squared.Render.Convenience {
                 // FIXME: Mask if multimaterial?
                 WorldSpace = worldSpace;
                 UseZBuffer = useZBuffer;
+                ZBufferOnlySorting = zBufferOnlySorting;
                 DepthPrePass = depthPrePass;
 
                 if (cbt != CachedBatchType.MultimaterialBitmap) {
@@ -252,6 +255,7 @@ namespace Squared.Render.Convenience {
                     (WorldSpace == rhs.WorldSpace) &&
                     (BlendState == rhs.BlendState) &&
                     (UseZBuffer == rhs.UseZBuffer) &&
+                    (ZBufferOnlySorting == rhs.ZBufferOnlySorting) &&
                     (RasterizerState == rhs.RasterizerState) &&
                     (DepthStencilState == rhs.DepthStencilState) &&
                     (CustomMaterial == rhs.CustomMaterial) &&
@@ -304,6 +308,7 @@ namespace Squared.Render.Convenience {
                 SamplerState samplerState, 
                 Material customMaterial,
                 bool useZBuffer,
+                bool zBufferOnlySorting,
                 bool depthPrePass
             ) {
                 CachedBatch itemAtIndex, searchKey;
@@ -319,6 +324,7 @@ namespace Squared.Render.Convenience {
                     samplerState,
                     customMaterial,
                     useZBuffer,
+                    zBufferOnlySorting,
                     depthPrePass
                 );
 
@@ -440,6 +446,11 @@ namespace Squared.Render.Convenience {
         public bool UseZBuffer;
 
         /// <summary>
+        /// Disables draw call sorting and relies on the z buffer to maintain ordering.
+        /// </summary>
+        public bool ZBufferOnlySorting;
+
+        /// <summary>
         /// If z-buffering is enabled, only a depth buffer generating pass will happen, not color rendering.
         /// </summary>
         public bool DepthPrePass;
@@ -506,6 +517,7 @@ namespace Squared.Render.Convenience {
             bool autoIncrementSortKey = false,
             bool autoIncrementLayer = false,
             bool lowPriorityMaterialOrdering = false,
+            bool zBufferOnlySorting = false,
             bool depthPrePass = false,
             Sorter<BitmapDrawCall> declarativeSorter = null,
             Tags tags = default(Tags)
@@ -523,6 +535,7 @@ namespace Squared.Render.Convenience {
             BlendState = blendState;
             SamplerState = samplerState;
             UseZBuffer = useZBuffer;
+            ZBufferOnlySorting = zBufferOnlySorting;
             DepthPrePass = depthPrePass;
             WorldSpace = worldSpace;
             AutoIncrementSortKey = autoIncrementSortKey;
@@ -1348,7 +1361,8 @@ namespace Squared.Render.Convenience {
                 samplerState: desiredSamplerState,
                 customMaterial: customMaterial,
                 useZBuffer: UseZBuffer,
-                depthPrePass: DepthPrePass
+                depthPrePass: DepthPrePass,
+                zBufferOnlySorting: ZBufferOnlySorting
             )) {
                 Material material;
 
@@ -1372,7 +1386,8 @@ namespace Squared.Render.Convenience {
                 } else {
                     bb = BitmapBatch.New(
                         Container, actualLayer, material, desiredSamplerState, desiredSamplerState, 
-                        useZBuffer: UseZBuffer, depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
+                        useZBuffer: UseZBuffer, zBufferOnlySorting: ZBufferOnlySorting, 
+                        depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
                     );
                 }
 
@@ -1408,6 +1423,7 @@ namespace Squared.Render.Convenience {
                 samplerState: null,
                 customMaterial: customMaterial,
                 useZBuffer: UseZBuffer,
+                zBufferOnlySorting: ZBufferOnlySorting,
                 depthPrePass: DepthPrePass
             )) {
                 Material material;
@@ -1457,6 +1473,7 @@ namespace Squared.Render.Convenience {
                 samplerState: desiredSamplerState,
                 customMaterial: null,
                 useZBuffer: UseZBuffer,
+                zBufferOnlySorting: ZBufferOnlySorting,
                 depthPrePass: DepthPrePass
             ) || (((RasterShapeBatch)cacheEntry.Batch).Texture != texture)) {
                 // FIXME: The way this works will cause churn when mixing textured and untextured shape batches

@@ -142,7 +142,8 @@ namespace Squared.Render {
         public static BitmapBatch New (
             IBatchContainer container, int layer, Material material, 
             SamplerState samplerState = null, SamplerState samplerState2 = null, 
-            bool useZBuffer = false, bool depthPrePass = false, bool worldSpace = false,
+            bool useZBuffer = false, bool zBufferOnlySorting = false, 
+            bool depthPrePass = false, bool worldSpace = false,
             int? capacity = null
         ) {
             if (container == null)
@@ -156,8 +157,9 @@ namespace Squared.Render {
             result.Initialize(
                 container, layer, material, 
                 samplerState, samplerState2 ?? samplerState, 
-                useZBuffer: useZBuffer, capacity: capacity,
-                depthPrePass: depthPrePass, worldSpace: worldSpace
+                useZBuffer: useZBuffer, zBufferOnlySorting: zBufferOnlySorting, 
+                depthPrePass: depthPrePass, worldSpace: worldSpace,
+                capacity: capacity
             );
             result.CaptureStack(0);
             return result;
