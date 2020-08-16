@@ -424,7 +424,8 @@ namespace Squared.Render {
         public void Sort<TComparer> (TComparer comparer, int[] indices = null)
             where TComparer : IRefComparer<T>
         {
-            if (_HasList) {
+            if (_HasList || (indices != null)) {
+                EnsureList ();
                 if (indices != null)
                     Items.IndexedSortRef(comparer, indices);
                 else
