@@ -6,9 +6,13 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using Squared.Util;
 
-namespace Squared.Render {
+namespace Squared.Util {
+    public interface IListPool<T> {
+        UnorderedList<T> Allocate (int? capacity, bool capacityIsHint);
+        void Release (ref UnorderedList<T> items);
+    }
+
     public struct DenseList<T> : IDisposable, IEnumerable<T> {
         [StructLayout(LayoutKind.Sequential)]
         internal struct InlineStorage {
@@ -151,7 +155,7 @@ namespace Squared.Render {
             }
         }
 
-        public ListPool<T> ListPool;
+        public IListPool<T> ListPool;
         public int? ListCapacity;
 
         internal InlineStorage Storage;
@@ -203,7 +207,7 @@ namespace Squared.Render {
 
             _HasList = true;
             if (ListPool != null)
-                Items = ListPool.Allocate(capacity);
+                Items = ListPool.Allocate(capacity, false);
             else if (capacity.HasValue)
                 Items = new UnorderedList<T>(capacity.Value);
             else
@@ -428,10 +432,42 @@ namespace Squared.Render {
             }
         }
 
+        private struct IndexAndValue {
+            public bool Valid;
+            public int Index;
+            public T Value;
+
+            public IndexAndValue (ref DenseList<T> list, int[] indices, int index) {
+                if (indices != null)
+                    Index = indices[index];
+                else
+                    Index = index;
+                Valid = list.TryGetItem(Index, out Value);
+            }
+        }
+
+        private int CompareValues<TComparer> (TComparer comparer, ref IndexAndValue a, ref IndexAndValue b) 
+            where TComparer : IRefComparer<T>
+        {
+            return comparer.Compare(ref a.Value, ref b.Value);
+        }
+
+        private void FlushValueOrIndex (ref IndexAndValue value, int index, ref T field, int[] indices) {
+            if (indices != null)
+                indices[index] = value.Index;
+            else
+                field = value.Value;
+        }
+
+        /// <summary>
+        /// Performs an in-place sort of the DenseList.
+        /// NOTE: If the list is small this method may sort the values instead of the indices.
+        /// </summary>
+        /// <param name="indices">The element indices to use for sorting.</param>
         public void Sort<TComparer> (TComparer comparer, int[] indices = null)
             where TComparer : IRefComparer<T>
         {
-            if (_HasList || (indices != null)) {
+            if (_HasList) {
                 EnsureList ();
                 if (indices != null)
                     Items.IndexedSortRef(comparer, indices);
@@ -441,67 +477,82 @@ namespace Squared.Render {
                 return;
             }
 
-            if (Storage.Count <= 1)
+            var count = Storage.Count;
+            if (count <= 1)
                 return;
 
-            T a, b;
-            if (comparer.Compare(ref Storage.Item1, ref Storage.Item2) <= 0) {
-                a = Storage.Item1; b = Storage.Item2;
+            if ((indices != null) && (indices.Length < count))
+                throw new ArgumentOutOfRangeException("indices", "index array length must must match or exceed number of elements");
+
+            IndexAndValue v1 = new IndexAndValue(ref this, indices, 0),
+                v2 = new IndexAndValue(ref this, indices, 1),
+                v3 = new IndexAndValue(ref this, indices, 2),
+                v4 = new IndexAndValue(ref this, indices, 3);
+
+            IndexAndValue va, vb;
+            if (CompareValues(comparer, ref v1, ref v2) <= 0) {
+                va = v1; vb = v2;
             } else {
-                a = Storage.Item2; b = Storage.Item1;
+                va = v2; vb = v1;
             }
 
-            if (Storage.Count == 2) {
-                Storage.Item1 = a;
-                Storage.Item2 = b;
-                return;
+            if (count == 2) {
+                ;
             } else if (Storage.Count == 3) {
-                if (comparer.Compare(ref b, ref Storage.Item3) <= 0) {
-                    Storage.Item1 = a;
-                    Storage.Item2 = b;
-                } else if (comparer.Compare(ref a, ref Storage.Item3) <= 0) {
-                    Storage.Item1 = a;
-                    Storage.Item2 = Storage.Item3;
-                    Storage.Item3 = b;
+                if (CompareValues(comparer, ref vb, ref v3) <= 0) {
+                    v1 = va;
+                    v2 = vb;
+                } else if (CompareValues(comparer, ref va, ref v3) <= 0) {
+                    v1 = va;
+                    v2 = v3;
+                    v3 = vb;
                 } else {
-                    Storage.Item1 = Storage.Item3;
-                    Storage.Item2 = a;
-                    Storage.Item3 = b;
+                    v1 = v3;
+                    v2 = va;
+                    v3 = vb;
                 }
+                ;
             } else {
-                T c, d;
-                if (comparer.Compare(ref Storage.Item3, ref Storage.Item4) <= 0) {
-                    c = Storage.Item3; d = Storage.Item4;
+                IndexAndValue vc, vd;
+                if (CompareValues(comparer, ref v3, ref v4) <= 0) {
+                    vc = v3; vd = v4;
                 } else {
-                    c = Storage.Item4; d = Storage.Item3;
+                    vc = v4; vd = v3;
                 }
 
-                T m1;
-                if (comparer.Compare(ref a, ref c) <= 0) {
-                    Storage.Item1 = a;
-                    m1 = c;
+                IndexAndValue vm1, vm2;
+                if (CompareValues(comparer, ref va, ref vc) <= 0) {
+                    v1 = va;
+                    vm1 = vc;
                 } else {
-                    Storage.Item1 = c;
-                    m1 = a;
+                    v1 = vc;
+                    vm1 = va;
                 }
 
-                T m2;
-                if (comparer.Compare(ref b, ref d) >= 0) {
-                    Storage.Item4 = b;
-                    m2 = d;
+                if (CompareValues(comparer, ref vb, ref vd) >= 0) {
+                    v4 = vb;
+                    vm2 = vd;
                 } else {
-                    Storage.Item4 = d;
-                    m2 = b;
+                    v4 = vd;
+                    vm2 = vb;
                 }
 
-                if (comparer.Compare(ref m1, ref m2) <= 0) {
-                    Storage.Item2 = m1;
-                    Storage.Item3 = m2;
+                if (CompareValues(comparer, ref vm1, ref vm2) <= 0) {
+                    v2 = vm1;
+                    v3 = vm2;
                 } else {
-                    Storage.Item2 = m2;
-                    Storage.Item3 = m1;
+                    v2 = vm2;
+                    v3 = vm1;
                 }
+                ;
             }
+
+            FlushValueOrIndex(ref v1, 0, ref Storage.Item1, indices);
+            FlushValueOrIndex(ref v2, 1, ref Storage.Item2, indices);
+            if (count > 2)
+                FlushValueOrIndex(ref v3, 2, ref Storage.Item3, indices);
+            if (count > 3)
+                FlushValueOrIndex(ref v4, 3, ref Storage.Item4, indices);
         }
 
         public void Dispose () {

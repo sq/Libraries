@@ -193,8 +193,9 @@ namespace Squared.Render {
                 RangeReservations.Clear();
 
             var rm = container.RenderManager;
-            _DrawCalls.ListPool.ThreadGroup = rm.ThreadGroup;
-            rm.AddDrainRequiredListPool(_DrawCalls.ListPool);
+            var lp = (ListPool<BitmapDrawCall>)_DrawCalls.ListPool;
+            lp.ThreadGroup = rm.ThreadGroup;
+            rm.AddDrainRequiredListPool(lp);
 
             var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)BitmapBatchPrepareState.NotPrepared);
             if ((prior == BitmapBatchPrepareState.Issuing) || (prior == BitmapBatchPrepareState.Preparing))

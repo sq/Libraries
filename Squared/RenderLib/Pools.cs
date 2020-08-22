@@ -87,7 +87,7 @@ namespace Squared.Render {
         void WaitForWorkItems ();
     }
 
-    public class ListPool<T> : IDrainable {
+    public class ListPool<T> : IDrainable, IListPool<T> {
         private struct ListClearWorkItem : IWorkItem {
             public UnorderedList<T> List;
             public UnorderedList<UnorderedList<T>> Pool;
@@ -145,17 +145,20 @@ namespace Squared.Render {
             if (
                 (LargePoolCapacity > 0) && isBig
             ) {
-                lock (_LargePool)
-                    _LargePool.TryPopFront(out result);
+                if (_LargePool.Count > 0)
+                    lock (_LargePool)
+                        _LargePool.TryPopFront(out result);
             }
 
             if (capacityIsHint || !isBig || (LargePoolCapacity <= 0)) {
-                lock (_Pool)
-                    _Pool.TryPopFront(out result);
+                if (_Pool.Count > 0)
+                    lock (_Pool)
+                        _Pool.TryPopFront(out result);
 
                 if (
                     (LargePoolCapacity > 0) &&
-                    (result == null)
+                    (result == null) &&
+                    (_LargePool.Count > 0)
                 ) {
                     lock (_LargePool)
                         _LargePool.TryPopFront(out result);

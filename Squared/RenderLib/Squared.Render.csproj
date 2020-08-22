@@ -54,7 +54,6 @@
     <Compile Include="ColorLUT.cs" />
     <Compile Include="Convenience.cs" />
     <Compile Include="DefaultMaterialSet.cs" />
-    <Compile Include="DenseList.cs" />
     <Compile Include="DynamicAtlas.cs" />
     <Compile Include="EmbeddedResourceProvider.cs" />
     <Compile Include="Frame.cs" />
