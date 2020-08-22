@@ -21,6 +21,13 @@ namespace Squared.Render {
     public class BitmapBatch : BitmapBatchBase<BitmapDrawCall>, IBitmapBatch {
         public static readonly SamplerState DefaultSamplerState = SamplerState.LinearClamp;
 
+        static BitmapBatch () {
+            // HACK: BitmapDrawCall is big so the default first grow target of 1024 is going to bump it into the large object heap. No good.
+            UnorderedList<BitmapDrawCall>.FirstGrowTarget = 512;
+
+            BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
+        }
+
         class BitmapBatchCombiner : IBatchCombiner {
             public bool CanCombine (Batch lhs, Batch rhs) {
                 if ((lhs == null) || (rhs == null))
@@ -122,10 +129,6 @@ namespace Squared.Render {
         internal static ThreadLocal<BitmapDrawCallSorterComparer> DrawCallSorterComparer = new ThreadLocal<BitmapDrawCallSorterComparer>(
             () => new BitmapDrawCallSorterComparer()
         );
-
-        static BitmapBatch () {
-            BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
-        }
 
         new public static void AdjustPoolCapacities (
             int? smallItemSizeLimit, int? largeItemSizeLimit,

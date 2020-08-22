@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
@@ -181,20 +182,20 @@ namespace Squared.Render.Convenience {
     public struct ImperativeRenderer {
         private struct CachedBatch {
             public IBatch Batch;
-
-            public readonly CachedBatchType BatchType;
-            public readonly IBatchContainer Container;
-            public readonly int Layer;
             public readonly int HashCode;
-            public readonly BlendState BlendState;
-            public readonly SamplerState SamplerState;
-            public readonly RasterizerState RasterizerState;
-            public readonly DepthStencilState DepthStencilState;
-            public readonly Material CustomMaterial;
-            public readonly bool WorldSpace;
-            public readonly bool UseZBuffer;
-            public readonly bool ZBufferOnlySorting;
-            public readonly bool DepthPrePass;
+
+            private CachedBatchType BatchType;
+            private IBatchContainer Container;
+            private int Layer;
+            private BlendState BlendState;
+            private SamplerState SamplerState;
+            private RasterizerState RasterizerState;
+            private DepthStencilState DepthStencilState;
+            private Material CustomMaterial;
+            private bool WorldSpace;
+            private bool UseZBuffer;
+            private bool ZBufferOnlySorting;
+            private bool DepthPrePass;
 
             public CachedBatch (
                 CachedBatchType cbt,
@@ -265,6 +266,7 @@ namespace Squared.Render.Convenience {
                 return result;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public override bool Equals (object obj) {
                 if (obj is CachedBatch) {
                     var cb = (CachedBatch)obj;
@@ -278,6 +280,7 @@ namespace Squared.Render.Convenience {
                 return string.Format("{0} (layer={1} material={2})", Batch, Layer, CustomMaterial);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]        
             public override int GetHashCode() {
                 return HashCode;
             }
@@ -294,7 +297,7 @@ namespace Squared.Render.Convenience {
             public const int Capacity = 4;
 
             public int Count;
-            public CachedBatch Batch0, Batch1, Batch2, Batch3;
+            private CachedBatch Batch0, Batch1, Batch2, Batch3;
 
             public bool TryGet<T> (
                 out CachedBatch result,
@@ -311,7 +314,7 @@ namespace Squared.Render.Convenience {
                 bool zBufferOnlySorting,
                 bool depthPrePass
             ) {
-                CachedBatch itemAtIndex, searchKey;
+                CachedBatch searchKey;
 
                 searchKey = new CachedBatch(
                     cbt,
@@ -328,24 +331,30 @@ namespace Squared.Render.Convenience {
                     depthPrePass
                 );
 
-                for (var i = 0; i < Count; i++) {
-                    GetItemAtIndex(i, out itemAtIndex);
-
-                    if (itemAtIndex.HashCode != searchKey.HashCode)
-                        continue;
-
-                    if (itemAtIndex.KeysEqual(ref searchKey)) {
-                        result = itemAtIndex;
-                        InsertAtFront(ref itemAtIndex, i);
-                        return (result.Batch != null);
-                    }
+                int i;
+                if ((Batch0.HashCode == searchKey.HashCode) && Batch0.KeysEqual(ref searchKey)) {
+                    result = Batch0;
+                    i = 0;
+                } else if ((Batch1.HashCode == searchKey.HashCode) && Batch1.KeysEqual(ref searchKey)) {
+                    result = Batch1;
+                    i = 1;
+                } else if ((Batch2.HashCode == searchKey.HashCode) && Batch2.KeysEqual(ref searchKey)) {
+                    result = Batch2;
+                    i = 2;
+                } else if ((Batch3.HashCode == searchKey.HashCode) && Batch3.KeysEqual(ref searchKey)) {
+                    result = Batch3;
+                    i = 3;
+                } else {
+                    result = searchKey;
+                    return false;
                 }
 
-                result = searchKey;
-                return false;
+                InsertAtFront(ref result, i);
+                return (result.Batch != null);
             }
 
-            public void InsertAtFront (ref CachedBatch item, int? previousIndex) {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void InsertAtFront (ref CachedBatch item, int previousIndex) {
                 // No-op
                 if (previousIndex == 0)
                     return;
@@ -355,6 +364,10 @@ namespace Squared.Render.Convenience {
                     return;
                 }
 
+                InsertAtFront_Slow(ref item, previousIndex);
+            }
+
+            private void InsertAtFront_Slow (ref CachedBatch item, int previousIndex) {
                 // Move items back to create space for the item at the front
                 int writePosition;
                 if (Count == Capacity) {
@@ -376,47 +389,47 @@ namespace Squared.Render.Convenience {
 
                 SetItemAtIndex(0, ref item);
 
-                if (!previousIndex.HasValue) {
+                if (previousIndex < 0) {
                     if (Count < Capacity)
                         Count += 1;
                 }
             }
 
-            private void GetItemAtIndex(int index, out CachedBatch result) {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool GetItemAtIndex(int index, out CachedBatch result) {
                 switch (index) {
-                    case 0:
+                    default:
                         result = Batch0;
-                        break;
+                        return (index == 0);
                     case 1:
                         result = Batch1;
-                        break;
+                        return true;
                     case 2:
                         result = Batch2;
-                        break;
+                        return true;
                     case 3:
                         result = Batch3;
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException("index");
+                        return true;
                 }
             }
 
-            private void SetItemAtIndex (int index, ref CachedBatch value) {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+            private bool SetItemAtIndex (int index, ref CachedBatch value) {
                 switch (index) {
                     case 0:
                         Batch0 = value;
-                        break;
+                        return true;
                     case 1:
                         Batch1 = value;
-                        break;
+                        return true;
                     case 2:
                         Batch2 = value;
-                        break;
+                        return true;
                     case 3:
                         Batch3 = value;
-                        break;
+                        return true;
                     default:
-                        throw new ArgumentOutOfRangeException("index");
+                        return false;
                 }
             }
         }
@@ -504,6 +517,13 @@ namespace Squared.Render.Convenience {
         /// </summary>
         public bool RasterBlendInLinearSpace;
 
+        /// <summary>
+        /// If set, newly created batches will be expanded to have capacity for this many items once they
+        ///  contain more than a handful of items. If you know you will be drawing large numbers of items this 
+        ///  can reduce overhead, as long as the vast majority of them end up in the same batch (via layer + state sorting).
+        /// </summary>
+        public int? BitmapBatchInitialCapacity;
+
         public ImperativeRenderer (
             IBatchContainer container,
             DefaultMaterialSet materials,
@@ -550,6 +570,7 @@ namespace Squared.Render.Convenience {
             RasterUseUbershader = false;
             UseDiscard = false;
             DefaultBitmapMaterial = null;
+            BitmapBatchInitialCapacity = null;
         }
 
         /// <summary>
@@ -1389,11 +1410,13 @@ namespace Squared.Render.Convenience {
                         useZBuffer: UseZBuffer, zBufferOnlySorting: ZBufferOnlySorting, 
                         depthPrePass: DepthPrePass, worldSpace: actualWorldSpace
                     );
+                    if (BitmapBatchInitialCapacity.HasValue)
+                        ((BitmapBatch)bb).EnsureCapacity(BitmapBatchInitialCapacity.Value, true);
                 }
 
                 bb.Sorter = DeclarativeSorter;
                 cacheEntry.Batch = bb;
-                Cache.InsertAtFront(ref cacheEntry, null);
+                Cache.InsertAtFront(ref cacheEntry, -1);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
@@ -1442,7 +1465,7 @@ namespace Squared.Render.Convenience {
                 }
                 
                 cacheEntry.Batch = GeometryBatch.New(Container, actualLayer, material);
-                Cache.InsertAtFront(ref cacheEntry, null);
+                Cache.InsertAtFront(ref cacheEntry, -1);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
@@ -1485,13 +1508,29 @@ namespace Squared.Render.Convenience {
                 // FIXME: why the hell
                 batch.UseUbershader = RasterUseUbershader;
                 cacheEntry.Batch = batch;
-                Cache.InsertAtFront(ref cacheEntry, null);
+                Cache.InsertAtFront(ref cacheEntry, -1);
             }
 
             if (AutoIncrementLayer && !layer.HasValue)
                 Layer += 1;
 
             return (RasterShapeBatch)cacheEntry.Batch;
+        }
+
+        public override string ToString () {
+            var callCount = 0;
+            for (int i = 0; i < Cache.Count; i++) {
+                CachedBatch cb;
+                if (Cache.GetItemAtIndex(i, out cb)) {
+                    var lb = cb.Batch as IListBatch;
+                    if (lb == null)
+                        continue;
+
+                    callCount += lb.Count;
+                }
+            }
+
+            return string.Format("ImperativeRenderer [{0}:{1}] {2} batch(es) {3} drawcall(s)", Container, Layer, Cache.Count, callCount);
         }
     }
 }

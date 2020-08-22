@@ -324,7 +324,11 @@ namespace Squared.Render {
         }
     }
 
-    public abstract class ListBatch<T> : Batch {
+    public interface IListBatch {
+        int Count { get; }
+    }
+
+    public abstract class ListBatch<T> : Batch, IListBatch {
         public const int BatchCapacityLimit = 512;
 
         private static ListPool<T> _ListPool = new ListPool<T>(
@@ -352,8 +356,14 @@ namespace Squared.Render {
             _ListPool.LargePoolCapacity = largePoolCapacity.GetValueOrDefault(_ListPool.LargePoolCapacity);
         }
 
-        public void EnsureCapacity (int capacity) {
-            _DrawCalls.EnsureCapacity(capacity);
+        public int Count {
+            get {
+                return _DrawCalls.Count;
+            }
+        }
+
+        public void EnsureCapacity (int capacity, bool lazy = false) {
+            _DrawCalls.EnsureCapacity(capacity, lazy);
         }
 
         protected void Add (T item) {

@@ -158,12 +158,16 @@ namespace Squared.Render {
         internal UnorderedList<T> Items;
         internal bool _HasList;
 
-        public void EnsureCapacity (int capacity) {
+        public void EnsureCapacity (int capacity, bool lazy = false) {
             if (capacity <= 4)
                 return;
 
-            EnsureList();
-            Items.EnsureCapacity(capacity);
+            if (lazy && !_HasList) {
+                ListCapacity = Math.Max(capacity, ListCapacity.GetValueOrDefault(0));
+            } else {
+                EnsureList();
+                Items.EnsureCapacity(capacity);
+            }
         }
 
         public void Clear () {
@@ -192,7 +196,10 @@ namespace Squared.Render {
 
         private void CreateList (int? capacity = null) {
             if (!capacity.HasValue)
-                capacity = ListCapacity;
+                // Sensible minimum
+                capacity = Math.Max(ListCapacity.GetValueOrDefault(16), 16);
+            else
+                capacity = Math.Max(capacity.Value, ListCapacity.Value);
 
             _HasList = true;
             if (ListPool != null)

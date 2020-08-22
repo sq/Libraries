@@ -8,7 +8,8 @@ using System.Runtime.CompilerServices;
 
 namespace Squared.Util {
     public class UnorderedList<T> : IEnumerable<T> {
-        public const int DefaultSize = 128;
+        public static int DefaultSize = 128;
+        public static int FirstGrowTarget = 1024;
 
         protected T[] _Items;
         protected int _Count;
@@ -110,6 +111,16 @@ namespace Squared.Util {
         }
 
         private void Grow (int targetCapacity) {
+            if (targetCapacity <= FirstGrowTarget) {
+                Array.Resize(ref _Items, FirstGrowTarget);
+                return;
+            }
+
+            // Intended behavior:
+            // Start at X (128), first grow after that goes to Y (2048),
+            //  any growths after that double up to the 'slow threshold' Z (102400),
+            //  at which point we grow incrementally by fixed amounts instead of doubling
+            //  because doubling will exhaust available memory (especially in 32-bit processes)
             const int slowThreshold = 102400;
             const int slowSize = 65536;
             var newCapacity = 1 << (int)Math.Ceiling(Math.Log(targetCapacity, 2));
