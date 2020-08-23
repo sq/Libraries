@@ -223,11 +223,13 @@ namespace Squared.Util {
         }
 
         private void CreateList (int? capacity = null) {
-            if (!capacity.HasValue)
+            const int absoluteMinimum = 16;
+
+            if (capacity.HasValue)
+                capacity = Math.Max(capacity.Value, absoluteMinimum);
+            else if (!capacity.HasValue && ListCapacity.HasValue)
                 // Sensible minimum
-                capacity = Math.Max(ListCapacity.GetValueOrDefault(16), 16);
-            else
-                capacity = Math.Max(capacity.Value, ListCapacity.Value);
+                capacity = Math.Max(ListCapacity.Value, absoluteMinimum);
 
             _HasList = true;
             if (ListPool != null)
@@ -245,8 +247,8 @@ namespace Squared.Util {
                 Items.Add(ref Storage.Item3);
             if (Storage.Count > 3)
                 Items.Add(ref Storage.Item4);
-            Storage.Item1 = Storage.Item2 = Storage.Item3 = Storage.Item4 = default(T);
-            Storage.Count = 0;
+
+            Storage = default(InlineStorage);
         }
 
         public int Count {
@@ -411,22 +413,27 @@ namespace Squared.Util {
         }
 
         public void OverwriteWith (T[] data) {
-            var count = data.Length;
+            OverwriteWith(data, 0, data.Length);
+        }
+
+        public void OverwriteWith (T[] data, int sourceOffset, int count) {
+            if ((count > data.Length) || (count < 0))
+                throw new ArgumentOutOfRangeException("count");
 
             if ((count > 4) || _HasList) {
                 EnsureList(count);
                 Items.Clear();
-                Items.AddRange(data);
+                Items.AddRange(data, sourceOffset, count);
             } else {
                 Storage.Count = count;
-                if (data.Length > 0)
-                    Storage.Item1 = data[0];
-                if (data.Length > 1)
-                    Storage.Item2 = data[1];
-                if (data.Length > 2)
-                    Storage.Item3 = data[2];
-                if (data.Length > 3)
-                    Storage.Item4 = data[3];
+                if (count > 0)
+                    Storage.Item1 = data[sourceOffset];
+                if (count > 1)
+                    Storage.Item2 = data[sourceOffset + 1];
+                if (count > 2)
+                    Storage.Item3 = data[sourceOffset + 2];
+                if (count > 3)
+                    Storage.Item4 = data[sourceOffset + 3];
             }
         }
 
@@ -479,9 +486,14 @@ namespace Squared.Util {
             public T Value;
 
             public IndexAndValue (ref DenseList<T> list, int[] indices, int index) {
-                if (indices != null)
-                    Index = indices[index];
-                else
+                if (indices != null) {
+                    if (index >= indices.Length) {
+                        Index = -1;
+                        Valid = false;
+                    } else {
+                        Index = indices[index];
+                    }
+                } else
                     Index = index;
                 Valid = list.TryGetItem(Index, out Value);
             }

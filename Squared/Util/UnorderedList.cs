@@ -270,14 +270,11 @@ namespace Squared.Util {
             if ((index + count) > _Count)
                 throw new ArgumentOutOfRangeException("count");
 
-            var replacementCount = Math.Min(count, _Count - (index + count));
-
-            if (replacementCount > 0)
-                Array.Copy(_Items, index + count, _Items, index, replacementCount);
-
-            Array.Clear(_Items, index + replacementCount, count);
-
             _Count -= count;
+            if (index < _Count)
+                Array.Copy(_Items, index + count, _Items, index, _Count - index);
+
+            Array.Clear(_Items, _Count, count);
         }
 
         public bool TryPopFront (out T result) {
