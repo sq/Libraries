@@ -226,7 +226,7 @@ namespace Squared.Util.DeclarativeSort {
         public Tag A, B, C, D;
         public Sorter<Taggable> Sorter;
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void SetUp () {
             Tag.AutoCreate(this);
 
@@ -285,7 +285,7 @@ namespace Squared.Util.DeclarativeSort {
         public Tag A, B, C;
         public Sorter<TaggableWithIndex> Sorter;
 
-        [TestFixtureSetUp]
+        [OneTimeSetUp]
         public void SetUp () {
             Tag.AutoCreate(this);
 
