@@ -162,6 +162,30 @@ namespace Squared.Util {
         internal UnorderedList<T> Items;
         internal bool _HasList;
 
+        public DenseList (T[] items) 
+            : this (items, 0, items.Length) {
+        }
+
+        public DenseList (T[] items, int offset, int count) {
+            this = default(DenseList<T>);
+
+            for (int i = 0; i < count; i++)
+                Add(ref items[offset + i]);
+        }
+
+        public DenseList (IEnumerable<T> items) {
+            this = default(DenseList<T>);
+
+            foreach (var item in items)
+                Add(item);
+        }
+
+        public bool HasList {
+            get {
+                return _HasList;
+            }
+        }
+
         public void EnsureCapacity (int capacity, bool lazy = false) {
             if (capacity <= 4)
                 return;
@@ -429,6 +453,23 @@ namespace Squared.Util {
                     BufferPoolAllocation = alloc,
                     Count = Storage.Count
                 };
+            }
+        }
+
+        public T[] ToArray () {
+            if (_HasList)
+                return Items.ToArray();
+            else {
+                var result = new T[Storage.Count];
+                if (Storage.Count > 0)
+                    result[0] = Storage.Item1;
+                if (Storage.Count > 1)
+                    result[1] = Storage.Item2;
+                if (Storage.Count > 2)
+                    result[2] = Storage.Item3;
+                if (Storage.Count > 3)
+                    result[3] = Storage.Item4;
+                return result;
             }
         }
 

@@ -122,6 +122,7 @@
     <Compile Include="Tests\LRUCacheTests.cs" />
     <Compile Include="Tests\ParserTests.cs" />
     <Compile Include="Tests\PriorityQueueTests.cs" />
+    <Compile Include="Tests\DenseListTests.cs" />
     <Compile Include="Tests\SortTests.cs" />
     <Compile Include="Tests\TimeTests.cs" />
     <Compile Include="Tests\TupleTests.cs" />
