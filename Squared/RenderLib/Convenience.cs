@@ -182,7 +182,6 @@ namespace Squared.Render.Convenience {
     public struct ImperativeRenderer {
         private struct CachedBatch {
             public IBatch Batch;
-            public readonly int HashCode;
 
             private CachedBatchType BatchType;
             private IBatchContainer Container;
@@ -234,18 +233,6 @@ namespace Squared.Render.Convenience {
                     SamplerState = null;
                     CustomMaterial = null;
                 }
-
-                HashCode = Container.GetHashCode() ^ 
-                    Layer.GetHashCode();
-
-                if (BlendState != null)
-                    HashCode ^= BlendState.GetHashCode();
-
-                if (SamplerState != null)
-                    HashCode ^= SamplerState.GetHashCode();
-
-                if (CustomMaterial != null)
-                    HashCode ^= CustomMaterial.GetHashCode();
             }
 
             public bool KeysEqual (ref CachedBatch rhs) {
@@ -278,11 +265,6 @@ namespace Squared.Render.Convenience {
 
             public override string ToString () {
                 return string.Format("{0} (layer={1} material={2})", Batch, Layer, CustomMaterial);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]        
-            public override int GetHashCode() {
-                return HashCode;
             }
         }
 
@@ -332,16 +314,16 @@ namespace Squared.Render.Convenience {
                 );
 
                 int i;
-                if ((Batch0.HashCode == searchKey.HashCode) && Batch0.KeysEqual(ref searchKey)) {
+                if (Batch0.KeysEqual(ref searchKey)) {
                     result = Batch0;
                     i = 0;
-                } else if ((Batch1.HashCode == searchKey.HashCode) && Batch1.KeysEqual(ref searchKey)) {
+                } else if (Batch1.KeysEqual(ref searchKey)) {
                     result = Batch1;
                     i = 1;
-                } else if ((Batch2.HashCode == searchKey.HashCode) && Batch2.KeysEqual(ref searchKey)) {
+                } else if (Batch2.KeysEqual(ref searchKey)) {
                     result = Batch2;
                     i = 2;
-                } else if ((Batch3.HashCode == searchKey.HashCode) && Batch3.KeysEqual(ref searchKey)) {
+                } else if (Batch3.KeysEqual(ref searchKey)) {
                     result = Batch3;
                     i = 3;
                 } else {
