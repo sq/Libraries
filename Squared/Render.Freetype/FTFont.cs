@@ -370,6 +370,10 @@ namespace Squared.Render.Text {
             GlyphMargin = 0;
             DefaultSize = new FontSize(this, 12);
             TabSize = 4;
+
+            if (Face.GlyphCount <= 0)
+                throw new Exception("Loaded font contains no glyphs or is corrupt.");
+
         }
 
         public void Invalidate () {
