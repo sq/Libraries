@@ -165,7 +165,7 @@ void computePosition (
 }
 
 void RasterShapeVertexShader (
-    in int2 cornerIndex : BLENDINDICES0,
+    in float3 cornerWeights : NORMAL2,
     in float4 ab_in : POSITION0,
     in float4 cd_in : POSITION1,
     inout float4 params : TEXCOORD0,
@@ -191,7 +191,7 @@ void RasterShapeVertexShader (
     float2 tl, br;
 
     computeTLBR(type, radius, totalRadius, a, b, c, tl, br);
-    computePosition(type, totalRadius, a, b, c, tl, br, cornerIndex.x, position.xy);
+    computePosition(type, totalRadius, a, b, c, tl, br, cornerWeights.xyz, position.xy);
 
     float2 adjustedPosition = position.xy;
     if (typeAndWorldSpace.y > 0.5) {
