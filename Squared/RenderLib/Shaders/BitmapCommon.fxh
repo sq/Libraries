@@ -32,13 +32,6 @@ sampler TextureSampler2 : register(s1) {
     Texture = (SecondTexture);
 };
 
-#define DEFINE_QuadCorners const float2 QuadCorners[] = { \
-    {0, 0}, \
-    {1, 0}, \
-    {1, 1}, \
-    {0, 1} \
-};
-
 inline float2 ComputeRegionSize (
     in float4 texRgn : POSITION1
 ) {
@@ -46,16 +39,13 @@ inline float2 ComputeRegionSize (
 }
 
 inline float2 ComputeCorner (
-    in int2 cornerIndex : BLENDINDICES0,
+    in float3 cornerWeights : NORMAL2,
     in float2 regionSize
 ) {
-    DEFINE_QuadCorners
-    float2 corner = QuadCorners[cornerIndex.x];
-    return corner * regionSize;
+    return cornerWeights.xy * regionSize;
 }
 
 inline float2 ComputeTexCoord (
-    in int2 cornerIndex,
     in float2 corner,
     in float4 texRgn,
     out float4 newTexRgn
@@ -97,7 +87,7 @@ void ScreenSpaceVertexShader (
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
     inout float4 userData : COLOR2,
-    in int2 cornerIndex : BLENDINDICES0, // 0-3
+    in float3 cornerWeights : NORMAL2,
     out float2 texCoord1 : TEXCOORD0,
     out float4 newTexRgn1 : TEXCOORD1,
     out float2 texCoord2 : TEXCOORD2,
@@ -105,9 +95,9 @@ void ScreenSpaceVertexShader (
     out float4 result : POSITION0
 ) {
     float2 regionSize = ComputeRegionSize(texRgn1);
-    float2 corner = ComputeCorner(cornerIndex, regionSize);
-    texCoord1 = ComputeTexCoord(cornerIndex, corner, texRgn1, newTexRgn1);
-    texCoord2 = ComputeTexCoord(cornerIndex, corner, texRgn2, newTexRgn2);
+    float2 corner = ComputeCorner(cornerWeights, regionSize);
+    texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
+    texCoord2 = ComputeTexCoord(corner, texRgn2, newTexRgn2);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, rotation);
     
     position.xy += rotatedCorner;
@@ -125,7 +115,7 @@ void WorldSpaceVertexShader (
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
     inout float4 userData : COLOR2,
-    in int2 cornerIndex : BLENDINDICES0, // 0-3
+    in float3 cornerWeights : NORMAL2,
     out float2 texCoord1 : TEXCOORD0,
     out float4 newTexRgn1 : TEXCOORD1,
     out float2 texCoord2 : TEXCOORD2,
@@ -133,9 +123,9 @@ void WorldSpaceVertexShader (
     out float4 result : POSITION0
 ) {
     float2 regionSize = ComputeRegionSize(texRgn1);
-    float2 corner = ComputeCorner(cornerIndex, regionSize);
-    texCoord1 = ComputeTexCoord(cornerIndex, corner, texRgn1, newTexRgn1);
-    texCoord2 = ComputeTexCoord(cornerIndex, corner, texRgn2, newTexRgn2);
+    float2 corner = ComputeCorner(cornerWeights, regionSize);
+    texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
+    texCoord2 = ComputeTexCoord(corner, texRgn2, newTexRgn2);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, rotation);
     
     position.xy += rotatedCorner - GetViewportPosition().xy;
@@ -153,7 +143,7 @@ void GenericVertexShader (
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
     inout float4 userData : COLOR2,
-    inout int2 cornerIndex : BLENDINDICES0, // 0-3
+    in float3 cornerWeights : NORMAL2,
     inout int2 worldSpace : BLENDINDICES1,
     out float2 texCoord1 : TEXCOORD0,
     out float4 newTexRgn1 : TEXCOORD1,
@@ -164,9 +154,9 @@ void GenericVertexShader (
     out float4 result : POSITION0
 ) {
     float2 regionSize = ComputeRegionSize(texRgn1);
-    float2 corner = ComputeCorner(cornerIndex, regionSize);
-    texCoord1 = ComputeTexCoord(cornerIndex, corner, texRgn1, newTexRgn1);
-    texCoord2 = ComputeTexCoord(cornerIndex, corner, texRgn2, newTexRgn2);
+    float2 corner = ComputeCorner(cornerWeights, regionSize);
+    texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
+    texCoord2 = ComputeTexCoord(corner, texRgn2, newTexRgn2);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, rotation);
     
     float2 adjustedPosition = position.xy + rotatedCorner;

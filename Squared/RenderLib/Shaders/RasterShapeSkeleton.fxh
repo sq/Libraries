@@ -28,13 +28,6 @@ sampler TextureSampler : register(s0) {
 #define TYPE_QuadraticBezier 4
 #define TYPE_Arc 5
 
-#define DEFINE_QuadCorners const float2 QuadCorners[] = { \
-    {0, 0}, \
-    {1, 0}, \
-    {1, 1}, \
-    {0, 1} \
-};
-
 #define RASTERSHAPE_FS_ARGS \
     in float2 worldPosition : NORMAL0, \
     in float4 ab : TEXCOORD3, \
@@ -140,11 +133,9 @@ void computeTLBR (
 void computePosition (
     uint type, float totalRadius, 
     float2 a, float2 b, float2 c,
-    float2 tl, float2 br, int cornerIndex,
+    float2 tl, float2 br, float3 cornerWeights,
     out float2 xy
 ) {
-    DEFINE_QuadCorners
-        
     if (type == TYPE_LineSegment) {
         // Oriented bounding box around the line segment
         float2 along = b - a,
@@ -152,6 +143,10 @@ void computePosition (
             left = alongNorm.yx * float2(-1, 1),
             right = alongNorm.yx * float2(1, -1);
 
+        // FIXME
+        xy = lerp(a - alongNorm, b + alongNorm, cornerWeights.x) + lerp(left, right, cornerWeights.y);
+
+        /*
         if (cornerIndex.x == 0)
             xy = a + left - alongNorm;
         else if (cornerIndex.x == 1)
@@ -160,11 +155,12 @@ void computePosition (
             xy = b + right + alongNorm;
         else
             xy = a + right - alongNorm;
+        */
     } else {
         // HACK: Padding
         tl -= 1; br += 1;
         // FIXME: Fit a better hull around triangles. Oriented bounding box?
-        xy = lerp(tl, br, QuadCorners[cornerIndex.x]);
+        xy = lerp(tl, br, cornerWeights.xy);
     }
 }
 

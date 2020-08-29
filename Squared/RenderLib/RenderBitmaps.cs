@@ -24,6 +24,7 @@ namespace Squared.Render {
     public struct CornerVertex : IVertexType {
         public short Corner;
         public short Unused;
+        public Vector3 CornerWeights;
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -33,7 +34,9 @@ namespace Squared.Render {
 
             Elements = new VertexElement[] {
                 new VertexElement( Marshal.OffsetOf(tThis, "Corner").ToInt32(), 
-                    VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 )
+                    VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "CornerWeights").ToInt32(),
+                    VertexElementFormat.Vector3, VertexElementUsage.Normal, 2)
             };
 
             _VertexDeclaration = new VertexDeclaration(Elements);
@@ -190,6 +193,11 @@ namespace Squared.Render {
                 v.Corner = v.Unused = (short)i;
                 verts.Array[verts.Offset + i] = v;
             }
+
+            verts.Array[verts.Offset + 0].CornerWeights = new Vector3(0, 0, 0);
+            verts.Array[verts.Offset + 1].CornerWeights = new Vector3(1, 0, 0);
+            verts.Array[verts.Offset + 2].CornerWeights = new Vector3(1, 1, 0);
+            verts.Array[verts.Offset + 3].CornerWeights = new Vector3(0, 1, 0);
 
             for (var i = 0; i < QuadIndices.Length; i++)
                 indices.Array[indices.Offset + i] = QuadIndices[i];
