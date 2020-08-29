@@ -1010,7 +1010,7 @@ namespace Squared.Render {
             var key = new MaterialCacheKey(baseMaterial, rasterizerState, depthStencilState, blendState);
             Material result;
             if (!MaterialCache.TryGetValue(key, out result)) {
-                result = baseMaterial.SetStates(rasterizerState, depthStencilState, blendState);
+                result = baseMaterial.SetStates(blendState: blendState, depthStencilState: depthStencilState, rasterizerState: rasterizerState);
                 MaterialCache.Add(key, result);
             }
             return result;

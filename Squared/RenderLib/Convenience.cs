@@ -111,6 +111,29 @@ namespace Squared.Render.Convenience {
         };
     }
 
+    public class MaterialStateSet {
+        public BlendState BlendState;
+        public DepthStencilState DepthStencilState;
+        public RasterizerState RasterizerState;
+        public SamplerState SamplerState1, SamplerState2, SamplerState3;
+
+        public void Apply (DeviceManager dm) {
+            var dev = dm.Device;
+            if (BlendState != null)
+                dev.BlendState = BlendState;
+            if (DepthStencilState != null)
+                dev.DepthStencilState = DepthStencilState;
+            if (RasterizerState != null)
+                dev.RasterizerState = RasterizerState;
+            if (SamplerState1 != null)
+                dev.SamplerStates[0] = SamplerState1;
+            if (SamplerState2 != null)
+                dev.SamplerStates[1] = SamplerState2;
+            if (SamplerState3 != null)
+                dev.SamplerStates[2] = SamplerState3;
+        }
+    }
+
     public static class MaterialUtil {
         public static void ClearTexture (this EffectParameterCollection p, string parameterName) {
             if (p == null)
@@ -136,46 +159,71 @@ namespace Squared.Render.Convenience {
             return (dm) => { dm.Device.SamplerStates[index] = state; };
         }
 
-        public static Action<DeviceManager> MakeDelegate (RasterizerState state) {
-            return (dm) => { dm.Device.RasterizerState = state; };
-        }
-
-        public static Action<DeviceManager> MakeDelegate (DepthStencilState state) {
-            return (dm) => { dm.Device.DepthStencilState = state; };
-        }
-
-        public static Action<DeviceManager> MakeDelegate (BlendState state) {
-            return (dm) => { dm.Device.BlendState = state; };
-        }
-
         public static Action<DeviceManager> MakeDelegate (
-            RasterizerState rasterizerState = null, 
+            BlendState blendState = null,
             DepthStencilState depthStencilState = null, 
-            BlendState blendState = null
+            RasterizerState rasterizerState = null, 
+            SamplerState samplerState1 = null,
+            SamplerState samplerState2 = null,
+            SamplerState samplerState3 = null
         ) {
-            return (dm) => {
-                if (rasterizerState != null)
-                    dm.Device.RasterizerState = rasterizerState;
-
-                if (depthStencilState != null)
-                    dm.Device.DepthStencilState = depthStencilState;
-
-                if (blendState != null)
-                    dm.Device.BlendState = blendState;
+            var mss = new MaterialStateSet {
+                RasterizerState = rasterizerState,
+                DepthStencilState = depthStencilState,
+                BlendState = blendState,
+                SamplerState1 = samplerState1,
+                SamplerState2 = samplerState2,
+                SamplerState3 = samplerState3
             };
+            return mss.Apply;
         }
 
         public static Material SetStates (
             this Material inner, 
-            RasterizerState rasterizerState = null,
-            DepthStencilState depthStencilState = null,
-            BlendState blendState = null
+            BlendState blendState = null,
+            DepthStencilState depthStencilState = null, 
+            RasterizerState rasterizerState = null, 
+            SamplerState samplerState1 = null,
+            SamplerState samplerState2 = null,
+            SamplerState samplerState3 = null
         ) {
-            return inner.WrapWithHandlers(
-                new [] {
-                    MakeDelegate(rasterizerState, depthStencilState, blendState)
+            var mss = new MaterialStateSet();
+
+            var numBeginHandlers = (inner.BeginHandlers != null) ? inner.BeginHandlers.Length + 1 : 1;
+            var handlers = new List<Action<DeviceManager>>(numBeginHandlers);
+            if (inner.BeginHandlers != null)
+            foreach (var bh in inner.BeginHandlers) {
+                var bhs = bh.Target as MaterialStateSet;
+
+                if (bhs != null) {
+                    mss.RasterizerState = bhs.RasterizerState ?? mss.RasterizerState;
+                    mss.DepthStencilState = bhs.DepthStencilState ?? mss.DepthStencilState;
+                    mss.BlendState = bhs.BlendState ?? mss.BlendState;
+                    mss.SamplerState1 = bhs.SamplerState1 ?? mss.SamplerState1;
+                    mss.SamplerState2 = bhs.SamplerState2 ?? mss.SamplerState2;
+                    mss.SamplerState3 = bhs.SamplerState3 ?? mss.SamplerState3;
+                } else {
+                    handlers.Add(bh);
                 }
-            );
+            }
+
+            mss.BlendState = blendState ?? mss.BlendState;
+            mss.DepthStencilState = depthStencilState ?? mss.DepthStencilState;
+            mss.RasterizerState = rasterizerState ?? mss.RasterizerState;
+            mss.SamplerState1 = samplerState1 ?? mss.SamplerState1;
+            mss.SamplerState2 = samplerState2 ?? mss.SamplerState2;
+            mss.SamplerState3 = samplerState3 ?? mss.SamplerState3;
+
+            handlers.Add(mss.Apply);
+
+            var result = new Material(
+                inner.Effect, null,
+                handlers.ToArray(), inner.EndHandlers
+            ) {
+                DelegatedHintPipeline = inner,
+                Name = inner.Name
+            };
+            return result;
         }
     }
 
