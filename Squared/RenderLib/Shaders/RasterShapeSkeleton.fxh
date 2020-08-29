@@ -241,15 +241,15 @@ float getWindowAlpha (
 void evaluateEllipse (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     out float distance, out float2 tl, out float2 br,
-    inout int gradientType, out float gradientWeight
+    inout int gradientType, out float gradientWeight, out float gradientOffset
 ) {
     // FIXME: sdEllipse is massively broken. What is wrong with it?
     // distance = sdEllipse(worldPosition - a, b);
     float2 distanceXy = worldPosition - a;
     float distanceF = length(distanceXy / b);
-    float gradientOffset = c.y;
+    gradientOffset = c.y;
     distance = (distanceF - 1) * length(b);
-    gradientWeight = saturate(distanceF + gradientOffset);
+    gradientWeight = saturate(distanceF);
     tl = a - b;
     br = a + b;
 
@@ -269,7 +269,7 @@ void evaluateEllipse (
                     ? (2 * sqrt(2)) 
                     : 2
             );
-            gradientWeight = saturate(max(distance2.x, distance2.y) + gradientOffset);
+            gradientWeight = saturate(max(distance2.x, distance2.y));
             gradientType = 999;
             break;
         // Radial
@@ -299,7 +299,7 @@ void evaluateLineSegment (
 void evaluateRectangle (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    inout int gradientType, out float gradientWeight
+    inout int gradientType, out float gradientWeight, out float gradientOffset
 ) {
     float2 center = (a + b) * 0.5;
     float2 boxSize = abs(b - a) * 0.5;
@@ -307,14 +307,14 @@ void evaluateRectangle (
 
     float centerDistance = sdBox(0, boxSize) - radius.x;
     gradientType = abs(c.x);
-    float gradientOffset = c.y;
+    gradientOffset = c.y;
 
     PREFER_FLATTEN
     switch (gradientType) {
         // Linear
         case 0:
         case 4:
-            gradientWeight = saturate(1 - saturate(distance / centerDistance) + gradientOffset);
+            gradientWeight = saturate(1 - saturate(distance / centerDistance));
             gradientType = 999;
             break;
     }
@@ -323,14 +323,14 @@ void evaluateRectangle (
 void evaluateTriangle (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    out float gradientWeight, out float2 tl, out float2 br
+    out float gradientWeight, out float2 tl, out float2 br, out float gradientOffset
 ) {
-    float gradientOffset = radius.y;
+    gradientOffset = radius.y;
     distance = sdTriangle(worldPosition, a, b, c) - radius.x;
 
     float2 center = (a + b + c) / 3;
     float centroidDistance = sdTriangle(center, a, b, c) - radius.x;
-    gradientWeight = saturate(distance / centroidDistance + gradientOffset);
+    gradientWeight = saturate(distance / centroidDistance);
 
     tl = min(min(a, b), c);
     br = max(max(a, b), c);
@@ -370,7 +370,7 @@ void rasterShapeCommon (
             evaluateEllipse(
                 worldPosition, a, b, c,
                 distance, tl, br,
-                gradientType, gradientWeight
+                gradientType, gradientWeight, gradientOffset
             );
 
             break;
@@ -405,7 +405,7 @@ void rasterShapeCommon (
             evaluateRectangle(
                 worldPosition, a, b, c,
                 radius, distance,
-                gradientType, gradientWeight
+                gradientType, gradientWeight, gradientOffset
             );
 
             break;
@@ -417,7 +417,7 @@ void rasterShapeCommon (
             evaluateTriangle(
                 worldPosition, a, b, c,
                 radius, distance,
-                gradientWeight, tl, br
+                gradientWeight, tl, br, gradientOffset
             );
 
             break;
@@ -439,20 +439,22 @@ void rasterShapeCommon (
         // Radial
         case 1:
             float2 center = (tl + br) / 2;
-            gradientWeight = saturate(length((worldPosition - center) / ((br - tl) * 0.5)) + gradientOffset);
+            gradientWeight = saturate(length((worldPosition - center) / ((br - tl) * 0.5)));
             break;
         // Horizontal
         case 2:
-            gradientWeight = saturate((worldPosition.x - tl.x) / (br.x - tl.x) + gradientOffset);
+            gradientWeight = saturate((worldPosition.x - tl.x) / (br.x - tl.x));
             break;
         // Vertical
         case 3:
-            gradientWeight = saturate((worldPosition.y - tl.y) / (br.y - tl.y) + gradientOffset);
+            gradientWeight = saturate((worldPosition.y - tl.y) / (br.y - tl.y));
             break;
     }
 
     gradientWeight = saturate(pow(gradientWeight, max(params2.x, 0.001)));
     gradientWeight = 1 - saturate(pow(1 - gradientWeight, max(params2.y, 0.001)));
+
+    gradientWeight = saturate(gradientWeight + gradientOffset);
 
     float outlineSizeAlpha = saturate(outlineSize / 2);
     float clampedOutlineSize = max(outlineSize / 2, sqrt(2)) * 2;
