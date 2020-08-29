@@ -22,8 +22,6 @@ using System.Runtime.CompilerServices;
 namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct CornerVertex : IVertexType {
-        public short Corner;
-        public short Unused;
         public Vector3 CornerWeights;
 
         public static readonly VertexElement[] Elements;
@@ -33,8 +31,6 @@ namespace Squared.Render {
             var tThis = typeof(CornerVertex);
 
             Elements = new VertexElement[] {
-                new VertexElement( Marshal.OffsetOf(tThis, "Corner").ToInt32(), 
-                    VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "CornerWeights").ToInt32(),
                     VertexElementFormat.Vector3, VertexElementUsage.Normal, 2)
             };
@@ -187,12 +183,6 @@ namespace Squared.Render {
 
             var verts = result.Vertices;
             var indices = result.Indices;
-
-            var v = new CornerVertex();
-            for (var i = 0; i < 4; i++) {
-                v.Corner = v.Unused = (short)i;
-                verts.Array[verts.Offset + i] = v;
-            }
 
             verts.Array[verts.Offset + 0].CornerWeights = new Vector3(0, 0, 0);
             verts.Array[verts.Offset + 1].CornerWeights = new Vector3(1, 0, 0);
