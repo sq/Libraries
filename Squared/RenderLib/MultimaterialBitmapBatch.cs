@@ -193,7 +193,7 @@ namespace Squared.Render {
                 RangeReservations.Clear();
 
             var rm = container.RenderManager;
-            var lp = (ListPool<BitmapDrawCall>)_DrawCalls.ListPool;
+            var lp = (ListPool<MaterialBitmapDrawCall>)_DrawCalls.ListPool;
             lp.ThreadGroup = rm.ThreadGroup;
             rm.AddDrainRequiredListPool(lp);
 
