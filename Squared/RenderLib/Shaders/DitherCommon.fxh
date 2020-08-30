@@ -88,6 +88,8 @@ float3 ApplyDither (float3 rgb, float2 vpos) {
 
 #endif
 
+#ifdef ENABLE_STIPPLE
+
 uniform const float thresholdMatrix[] = {
     1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
     13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
@@ -102,3 +104,5 @@ bool StippleReject (float index, float stippleFactor) {
     float stippleThreshold = thresholdMatrix[index % 16];
     return (stippleFactor - stippleThreshold) <= 0;
 }
+
+#endif

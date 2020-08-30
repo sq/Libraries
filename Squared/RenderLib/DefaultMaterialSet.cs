@@ -435,6 +435,7 @@ namespace Squared.Render {
             var geometryShader = BuiltInShaders.Load("SquaredGeometryShader");
             var palettedShader = BuiltInShaders.Load("PalettedBitmap");
             var hslShader = BuiltInShaders.Load("HueBitmap");
+            var stippledShader = BuiltInShaders.Load("StippledBitmap");
             
             Bitmap = new Material(
                 bitmapShader,
@@ -491,12 +492,12 @@ namespace Squared.Render {
             );
 
             ScreenSpaceStippledBitmap = new Material(
-                bitmapShader,
+                stippledShader,
                 "ScreenSpaceStippledBitmapTechnique"
             );
 
             WorldSpaceStippledBitmap = new Material(
-                bitmapShader,
+                stippledShader,
                 "WorldSpaceStippledBitmapTechnique"
             );
 
