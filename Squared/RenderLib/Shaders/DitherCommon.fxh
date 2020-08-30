@@ -88,13 +88,16 @@ float3 ApplyDither (float3 rgb, float2 vpos) {
 
 #endif
 
+uniform const float thresholdMatrix[] = {
+    1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
+    13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
+    4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
+    16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
+};
+
 bool StippleReject (float index, float stippleFactor) {
-    const float thresholdMatrix[] = {
-        1.0 / 17.0,  9.0 / 17.0,  3.0 / 17.0, 11.0 / 17.0,
-        13.0 / 17.0,  5.0 / 17.0, 15.0 / 17.0,  7.0 / 17.0,
-        4.0 / 17.0, 12.0 / 17.0,  2.0 / 17.0, 10.0 / 17.0,
-        16.0 / 17.0,  8.0 / 17.0, 14.0 / 17.0,  6.0 / 17.0
-    };
+    if (stippleFactor >= 1)
+        return false;
 
     float stippleThreshold = thresholdMatrix[index % 16];
     return (stippleFactor - stippleThreshold) <= 0;
