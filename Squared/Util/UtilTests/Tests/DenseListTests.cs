@@ -144,6 +144,53 @@ namespace Squared.Util {
             }
         }
 
+        public class Batch {
+            public int Layer;
+            public int MaterialID;
+        }
+
+        public sealed class BatchComparer : IRefComparer<Batch>, IComparer<Batch> {
+            public int Compare (ref Batch x, ref Batch y) {
+                if (x == null) {
+                    if (y == null)
+                        return 0;
+                    else
+                        return 1;
+                } else if (y == null) {
+                    return -1;
+                }
+
+                int result = x.Layer.CompareTo(y.Layer);
+                if (result == 0) {
+                    int mx = 0, my = 0;
+
+                    mx = x.MaterialID;
+                    my = y.MaterialID;
+
+                    result = mx.CompareTo(my);
+                }
+
+                return result;
+            }
+
+            public int Compare (Batch x, Batch y) {
+                return Compare(ref x, ref y);
+            }
+        }
+
+        [Test]
+        public void SortTwoSpecificItemsWithCustomComparer () {
+            var items = new DenseList<Batch> {
+                new Batch { Layer = 0, MaterialID = 1 },
+                new Batch { Layer = -9999, MaterialID = 0 }
+            };
+
+            items.Sort(new BatchComparer());
+
+            Assert.AreEqual(items[0].Layer, -9999);
+            Assert.AreEqual(items[1].Layer, 0);
+        }
+
         [Test]
         public void AddItemsAndTransition () {
             var l = new DenseList<int>();

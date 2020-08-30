@@ -550,7 +550,8 @@ namespace Squared.Util {
             }
 
             if (count == 2) {
-                ;
+                v1 = va;
+                v2 = vb;
             } else if (Storage.Count == 3) {
                 if (CompareValues(comparer, ref vb, ref v3) <= 0) {
                     v1 = va;
