@@ -156,15 +156,6 @@ namespace Squared.Render {
                 if (_Pool.Count > 0)
                     lock (_Pool)
                         _Pool.TryPopFront(out result);
-
-                if (
-                    (LargePoolCapacity > 0) &&
-                    (result == null) &&
-                    (_LargePool.Count > 0)
-                ) {
-                    lock (_LargePool)
-                        _LargePool.TryPopFront(out result);
-                }
             }
 
             if (result == null)
@@ -205,7 +196,7 @@ namespace Squared.Render {
                 return;
 
             if (list.Capacity > SmallPoolMaxItemSize) {
-                if (list.Capacity < LargePoolMaxItemSize) {
+                if (list.Capacity <= LargePoolMaxItemSize) {
                     lock (_LargePool) {
                         if (_LargePool.Count >= LargePoolCapacity)
                             return;
