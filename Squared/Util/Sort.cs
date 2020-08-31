@@ -56,7 +56,7 @@ namespace Squared.Util {
 
     public static class Sort {
         public static void FastCLRSort<TElement, TComparer>(
-            TElement[] data, TComparer comparer, int? offset = null, int? count = null
+            ArraySegment<TElement> data, TComparer comparer, int? offset = null, int? count = null
         )
             where TComparer : IComparer<TElement>
         {
@@ -74,12 +74,12 @@ namespace Squared.Util {
         }
 
         public static void FastCLRSortRef<TElement, TComparer>(
-            TElement[] data, TComparer comparer, int? offset = null, int? count = null
+            ArraySegment<TElement> data, TComparer comparer, int? offset = null, int? count = null
         )
             where TComparer : IRefComparer<TElement>
         {
             int actualOffset = offset.GetValueOrDefault(0),
-                actualCount = count.GetValueOrDefault(data.Length - actualOffset);
+                actualCount = count.GetValueOrDefault(data.Count - actualOffset);
 
             var sorter = new FastCLRSorter<TElement, TComparer>(data, comparer);
 

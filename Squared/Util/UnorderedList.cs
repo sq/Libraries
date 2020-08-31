@@ -395,7 +395,8 @@ namespace Squared.Util {
         public void FastCLRSort<TComparer> (TComparer comparer)
             where TComparer : IComparer<T>
         {
-            Util.Sort.FastCLRSort(_Items, comparer, _BufferOffset, _Count);
+            var items = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
+            Util.Sort.FastCLRSort(items, comparer, 0, _Count);
         }
 
         public void IndexedSort<TComparer> (TComparer comparer, int[] indices)
@@ -409,7 +410,8 @@ namespace Squared.Util {
         public void FastCLRSortRef<TComparer> (TComparer comparer)
             where TComparer : IRefComparer<T>
         {
-            Util.Sort.FastCLRSortRef(_Items, comparer, _BufferOffset, _Count);
+            var items = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
+            Util.Sort.FastCLRSortRef(items, comparer, 0, _Count);
         }
 
         public void IndexedSortRef<TComparer> (TComparer comparer, int[] indices)
