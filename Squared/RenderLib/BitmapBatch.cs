@@ -82,10 +82,10 @@ namespace Squared.Render {
                     var drawCallsRhsBuffer = b.Data;
 
                     for (int i = 0, l = b.Count; i < l; i++) {
-                        if (!drawCallsRhsBuffer[i].IsValid)
+                        if (!drawCallsRhsBuffer[i + b.Offset].IsValid)
                             throw new Exception("Invalid draw call in batch");
 
-                        bl._DrawCalls.Add(ref drawCallsRhsBuffer[i]);
+                        bl._DrawCalls.Add(ref drawCallsRhsBuffer[i + b.Offset]);
                     }
                 }
 
@@ -308,7 +308,7 @@ namespace Squared.Render {
             _CornerBuffer = QuadUtils.CreateCornerBuffer(Container);
 
             using (var callBuffer = _DrawCalls.GetBuffer(false)) {
-                var callSegment = new ArraySegment<BitmapDrawCall>(callBuffer.Data, 0, callBuffer.Count);
+                var callSegment = new ArraySegment<BitmapDrawCall>(callBuffer.Data, callBuffer.Offset, callBuffer.Count);
                 int drawCallsPrepared = 0;
                 while (drawCallsPrepared < count)
                     FillOneSoftwareBuffer(

@@ -85,7 +85,7 @@ namespace Squared.Threading {
             IWorkQueue[] queues;
             lock (strongSelf.Queues) {
                 queueCount = strongSelf.Queues.Count;
-                queues = strongSelf.Queues.GetBuffer();
+                queues = strongSelf.Queues.GetBufferArray();
             }
 
             strongSelf.Owner.ThreadBeganWorking();

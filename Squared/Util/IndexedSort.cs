@@ -23,6 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -33,12 +34,12 @@ namespace Squared.Util {
         internal const int IntrosortSizeThreshold = 16;
         internal const int QuickSortDepthThreshold = 32;
 
-        private readonly TElement[] Items;
-        private readonly int[]      Indices;
+        private readonly ArraySegment<TElement> Items;
+        private readonly ArraySegment<int>      Indices;
         private readonly TComparer  Comparer;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal IndexedSorter (TElement[] items, int[] indices, TComparer comparer) {
+        internal IndexedSorter (ArraySegment<TElement> items, ArraySegment<int> indices, TComparer comparer) {
             Items = items;
             Indices = indices;
             Comparer = comparer;
@@ -46,26 +47,26 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal int Compare (int i, int j) {
-            int a = Indices[i], b = Indices[j];
-            return Comparer.Compare(ref Items[a], ref Items[b]);
+            int a = Indices.Array[Indices.Offset + i], b = Indices.Array[Indices.Offset + j];
+            return Comparer.Compare(ref Items.Array[Items.Offset + a], ref Items.Array[Items.Offset + b]);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SwapIfGreaterWithItems (int i, int j) {
             if (i != j) {
                 if (Compare(i, j) > 0) {
-                    var temp = Indices[i];
-                    Indices[i] = Indices[j];
-                    Indices[j] = temp;
+                    var temp = Indices.Array[Indices.Offset + i];
+                    Indices.Array[Indices.Offset + i] = Indices.Array[Indices.Offset + j];
+                    Indices.Array[Indices.Offset + j] = temp;
                 }
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Swap (int i, int j) {
-            var temp = Indices[i];
-            Indices[i] = Indices[j];
-            Indices[j] = temp;
+            var temp = Indices.Array[Indices.Offset + i];
+            Indices.Array[Indices.Offset + i] = Indices.Array[Indices.Offset + j];
+            Indices.Array[Indices.Offset + j] = temp;
         }
 
         internal void Sort(int left, int length) {
@@ -76,7 +77,7 @@ namespace Squared.Util {
             if (length < 2)
                 return;
 
-            IntroSort(left, length + left - 1, 2 * FastMath.FloorLog2(Items.Length));
+            IntroSort(left, length + left - 1, 2 * FastMath.FloorLog2(Items.Count));
         }
 
         private void IntroSort(int lo, int hi, int depthLimit) {
@@ -124,13 +125,13 @@ namespace Squared.Util {
             SwapIfGreaterWithItems(mid, hi);
 
             var pivotIndex = mid;
-            var pivot = Items[Indices[pivotIndex]];
+            var pivot = Items.Array[Items.Offset + Indices.Array[Indices.Offset + pivotIndex]];
             Swap(mid, hi - 1);
             int left = lo, right = hi - 1;  // We already partitioned lo and hi and put the pivot in hi - 1.  And we pre-increment & decrement below.
                 
             while (left < right) {
-                while (Comparer.Compare(ref Items[Indices[++left]], ref pivot) < 0) ;
-                while (Comparer.Compare(ref pivot, ref Items[Indices[--right]]) < 0) ;
+                while (Comparer.Compare(ref Items.Array[Items.Offset + Indices.Array[Indices.Offset + ++left]], ref pivot) < 0) ;
+                while (Comparer.Compare(ref pivot, ref Items.Array[Items.Offset + Indices.Array[Indices.Offset + --right]]) < 0) ;
 
                 if (left >= right)
                     break;
@@ -158,8 +159,8 @@ namespace Squared.Util {
 
         private void DownHeap(int i, int n, int lo) {
             var dIndex = lo + i - 1;
-            var dRawIndex = Indices[dIndex];
-            var d = Items[dIndex];
+            var dRawIndex = Indices.Array[Indices.Offset + dIndex];
+            var d = Items.Array[Items.Offset + dIndex];
             int child;
 
             while (i <= n / 2) {
@@ -171,11 +172,11 @@ namespace Squared.Util {
                 if (!(Compare(dIndex, lo + child - 1) < 0))
                     break;
 
-                Indices[lo + i - 1] = Indices[lo + child - 1];
+                Indices.Array[Indices.Offset + lo + i - 1] = Indices.Array[Indices.Offset + lo + child - 1];
                 i = child;
             }
 
-            Indices[lo + i - 1] = dRawIndex;
+            Indices.Array[Indices.Offset + lo + i - 1] = dRawIndex;
         }
 
         private void InsertionSort (int lo, int hi) {
@@ -184,16 +185,16 @@ namespace Squared.Util {
             {
                 j = i;
                 tIndex = i + 1;
-                t = Indices[tIndex];
+                t = Indices.Array[Indices.Offset + tIndex];
 
-                while (j >= lo && Comparer.Compare(ref Items[t], ref Items[Indices[j]]) < 0)
+                while (j >= lo && Comparer.Compare(ref Items.Array[Items.Offset + t], ref Items.Array[Items.Offset + Indices.Array[Indices.Offset + j]]) < 0)
                 {
-                    Indices[j + 1] = Indices[j];
-                    Indices[j + 1] = Indices[j];
+                    Indices.Array[Indices.Offset + j + 1] = Indices.Array[Indices.Offset + j];
+                    Indices.Array[Indices.Offset + j + 1] = Indices.Array[Indices.Offset + j];
                     j--;
                 }
 
-                Indices[j + 1] = t;
+                Indices.Array[Indices.Offset + j + 1] = t;
             }
         }
     }

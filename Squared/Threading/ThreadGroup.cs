@@ -218,7 +218,7 @@ namespace Squared.Threading {
             // Skip locking 'Threads' here since it's expensive.
             // This means we might fail to wake a brand new thread,
             //  but that's fine.
-            var threads = Threads.GetBuffer();
+            var threads = Threads.GetBufferArray();
             for (int i = 0; i < CurrentThreadCount; i++) {
                 var thread = threads[i];
 

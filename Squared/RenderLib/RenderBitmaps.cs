@@ -439,6 +439,8 @@ namespace Squared.Render {
                     if (callIndex >= callCount)
                         break;
 
+                    callIndex += drawCalls.Offset;
+
                     bool texturesEqual = callArray[callIndex].Textures.Equals(ref currentTextures);
 
                     if (!texturesEqual) {

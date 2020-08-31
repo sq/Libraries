@@ -26,7 +26,7 @@ namespace Squared.Util {
             private readonly T Item1, Item2, Item3, Item4;
             private readonly bool HasList;
             private readonly T[] Items;
-            private readonly int Count;
+            private readonly int Offset, Count;
 
             internal Enumerator (ref DenseList<T> list) {
                 Index = -1;
@@ -35,8 +35,11 @@ namespace Squared.Util {
 
                 if (HasList) {
                     Item1 = Item2 = Item3 = Item4 = default(T);
-                    Items = list.Items.GetBuffer();
+                    var buffer = list.Items.GetBuffer();
+                    Offset = buffer.Offset;
+                    Items = buffer.Array;
                 } else {
+                    Offset = 0;
                     Item1 = list.Storage.Item1;
                     Item2 = list.Storage.Item2;
                     Item3 = list.Storage.Item3;
@@ -135,15 +138,16 @@ namespace Squared.Util {
             internal BufferPool<T>.Buffer BufferPoolAllocation;
             internal bool IsTemporary;
 
+            public int Offset;
             public int Count;
             public T[] Data;
 
             public T this[int index] {
                 get {
-                    return Data[index];
+                    return Data[Offset + index];
                 }
                 set {
-                    Data[index] = value;
+                    Data[Offset + index] = value;
                 }
             }            
 
@@ -155,6 +159,7 @@ namespace Squared.Util {
             }
         }
 
+        public UnorderedList<T>.Allocator Allocator;
         public IListPool<T> ListPool;
         public int? ListCapacity;
 
@@ -235,9 +240,9 @@ namespace Squared.Util {
             if (ListPool != null)
                 Items = ListPool.Allocate(capacity, false);
             else if (capacity.HasValue)
-                Items = new UnorderedList<T>(capacity.Value);
+                Items = new UnorderedList<T>(capacity.Value, Allocator);
             else
-                Items = new UnorderedList<T>(); 
+                Items = new UnorderedList<T>(Allocator); 
 
             if (Storage.Count > 0)
                 Items.Add(ref Storage.Item1);
@@ -441,13 +446,15 @@ namespace Squared.Util {
             if (writable)
                 EnsureList();
 
-            if (_HasList)
+            if (_HasList) {
+                var segment = Items.GetBuffer();
                 return new Buffer {
                     IsTemporary = false,
-                    Data = Items.GetBuffer(),
+                    Offset = segment.Offset,
+                    Data = segment.Array,
                     Count = Items.Count
                 };
-            else {
+            } else {
                 var alloc = BufferPool<T>.Allocate(4);
                 var buf = alloc.Data;
                 buf[0] = Storage.Item1;

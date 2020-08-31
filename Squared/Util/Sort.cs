@@ -65,13 +65,12 @@ namespace Squared.Util {
         }
 
         public static void IndexedSort<TElement, TComparer>(
-            TElement[] data, int[] indices,
-            TComparer comparer, int? offset = null, int? count = null
+            ArraySegment<TElement> data, ArraySegment<int> indices, TComparer comparer
         )
             where TComparer : IComparer<TElement>
         {
             var adapter = new RefComparerAdapter<TComparer, TElement>(comparer);
-            IndexedSortRef(data, indices, adapter, offset, count);
+            IndexedSortRef(data, indices, adapter);
         }
 
         public static void FastCLRSortRef<TElement, TComparer>(
@@ -88,20 +87,15 @@ namespace Squared.Util {
         }
 
         public static void IndexedSortRef<TElement, TComparer>(
-            TElement[] data, int[] indices,
-            TComparer comparer, int? offset = null, int? count = null
+            ArraySegment<TElement> data, ArraySegment<int> indices, TComparer comparer
         )
             where TComparer : IRefComparer<TElement>
         {
-            int actualOffset = offset.GetValueOrDefault(0),
-                actualCount = count.GetValueOrDefault(data.Length - actualOffset);
-
-            var sorter = new IndexedSorter<TElement, TComparer>(data, indices, comparer);
-
-            sorter.Sort(
-                actualOffset,
-                actualCount
+            var sorter = new IndexedSorter<TElement, TComparer>(
+                data, indices, comparer
             );
+
+            sorter.Sort(0, data.Count);
         }
     }
 }

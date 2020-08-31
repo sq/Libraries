@@ -111,6 +111,8 @@ namespace Squared.Render {
         private UnorderedList<UnorderedList<T>> _Pool = new UnorderedList<UnorderedList<T>>();
         private UnorderedList<UnorderedList<T>> _LargePool = new UnorderedList<UnorderedList<T>>();
 
+        public UnorderedList<T>.Allocator Allocator = UnorderedList<T>.Allocator.Default;
+
         public          int SmallPoolCapacity;
         public          int LargePoolCapacity;
         public readonly int InitialItemSize;
@@ -166,7 +168,7 @@ namespace Squared.Render {
             }
 
             if (result == null)
-                result = new UnorderedList<T>(capacity.GetValueOrDefault(InitialItemSize));
+                result = new UnorderedList<T>(capacity.GetValueOrDefault(InitialItemSize), Allocator);
 
             return result;
         }

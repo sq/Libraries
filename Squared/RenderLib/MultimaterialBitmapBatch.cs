@@ -250,7 +250,7 @@ namespace Squared.Render {
                     comparer.DrawCallComparer = BitmapBatch.DrawCallComparer;
 
                 Sort.FastCLRSortRef(
-                    drawCalls, comparer, 0, count
+                    drawCalls, comparer, b.Offset, count
                 );
 
                 Material currentMaterial = null;
@@ -259,7 +259,7 @@ namespace Squared.Render {
                 int currentRangeStart = -1;
 
                 for (var i = 0; i < count; i++) {
-                    var dc = drawCalls[i];
+                    var dc = drawCalls[i + b.Offset];
                     var material = dc.Material;
                     if (material == null)
                         throw new Exception("Missing material for draw call");
@@ -278,7 +278,7 @@ namespace Squared.Render {
                     if ((startNewRange) || (currentRangeStart == -1)) {
                         if (currentRangeStart != -1) {
                             int rangeCount = (i - currentRangeStart);
-                            PrepareNativeBatchForRange(drawCalls, null, currentRangeStart, rangeCount);
+                            PrepareNativeBatchForRange(drawCalls, null, currentRangeStart + b.Offset, rangeCount);
                         }
 
                         currentRangeStart = i;
@@ -291,7 +291,7 @@ namespace Squared.Render {
 
                 if (currentRangeStart != -1) {
                     int rangeCount = (count - currentRangeStart);
-                    PrepareNativeBatchForRange(drawCalls, null, currentRangeStart, rangeCount);
+                    PrepareNativeBatchForRange(drawCalls, null, currentRangeStart + b.Offset, rangeCount);
                 }
             }
         }

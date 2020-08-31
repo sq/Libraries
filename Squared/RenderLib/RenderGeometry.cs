@@ -216,8 +216,8 @@ namespace Squared.Render {
 
                     var _l = l.GetBuffer();
                     for (int i = 0; i < c; i++) {
-                        var dc = _l[i];
-                        dc.Preparer(ref vb, ref ib, ref dc);
+                        var idx = i + _l.Offset;
+                        _l.Array[idx].Preparer(ref vb, ref ib, ref _l.Array[idx]);
                     }
 
                     vertexCount = vb.Count - vertexCount;

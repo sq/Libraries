@@ -15,7 +15,7 @@ namespace Squared.Util {
             public abstract ArraySegment<T> Resize (ArraySegment<T> buffer, int minimumSize);
         }
 
-        public sealed class DefaultAllocator : Allocator {
+        public class DefaultAllocator : Allocator {
             public override ArraySegment<T> Allocate (int minimumSize) {
                 return new ArraySegment<T>(new T[minimumSize]);
             }
@@ -29,9 +29,9 @@ namespace Squared.Util {
                     Array.Resize(ref array, minimumSize);
                     return new ArraySegment<T>(array);
                 }  else {
-                    var newBuffer = new T[minimumSize];
-                    Array.Copy(array, buffer.Offset, newBuffer, 0, buffer.Count);
-                    return new ArraySegment<T>(newBuffer, 0, minimumSize);
+                    var newBuffer = Allocate(minimumSize);
+                    Array.Copy(array, buffer.Offset, newBuffer.Array, newBuffer.Offset, buffer.Count);
+                    return newBuffer;
                 }
             }
         }
@@ -261,7 +261,8 @@ namespace Squared.Util {
             } else if (list != null) {
                 AddRange(list);
             } else if (ulist != null) {
-                AddRange(ulist.GetBuffer(), 0, ulist.Count);
+                var buffer = ulist.GetBuffer();
+                AddRange(buffer.Array, buffer.Offset, ulist.Count);
             } else {
                 foreach (var item in items)
                     Add(item);
@@ -363,8 +364,15 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T[] GetBuffer () {
+        public T[] GetBufferArray () {
+            if (_BufferOffset != 0)
+                throw new InvalidOperationException("This buffer is a subregion of an array. Use GetBuffer.");
             return _Items;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ArraySegment<T> GetBuffer () {
+            return new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
         }
 
         public T[] ToArray () {
@@ -393,7 +401,9 @@ namespace Squared.Util {
         public void IndexedSort<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IComparer<T>
         {
-            Util.Sort.IndexedSort(_Items, indices, comparer, _BufferOffset, _Count);
+            var items = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
+            var _indices = new ArraySegment<int>(indices);
+            Util.Sort.IndexedSort(items, _indices, comparer);
         }
 
         public void FastCLRSortRef<TComparer> (TComparer comparer)
@@ -405,7 +415,9 @@ namespace Squared.Util {
         public void IndexedSortRef<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IRefComparer<T>
         {
-            Util.Sort.IndexedSortRef(_Items, indices, comparer, _BufferOffset, _Count);
+            var items = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
+            var _indices = new ArraySegment<int>(indices);
+            Util.Sort.IndexedSortRef(items, _indices, comparer);
         }
 
         public ArraySegment<T> ReserveSpace (int count) {

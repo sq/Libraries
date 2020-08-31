@@ -337,6 +337,10 @@ namespace Squared.Render {
 
         protected DenseList<T> _DrawCalls = new DenseList<T>();
 
+        public static void SetAllocator (UnorderedList<T>.Allocator allocator) {
+            _ListPool.Allocator = allocator ?? UnorderedList<T>.Allocator.Default;
+        }
+
         protected void Initialize (
             IBatchContainer container, int layer, Material material,
             bool addToContainer, int? capacity = null

@@ -51,8 +51,8 @@ namespace Squared.Render {
             try {
                 using (var b = _DrawCalls.GetBuffer(false)) {
                     for (int i = 0; i < b.Count; i++)
-                        if (b.Data[i] != null)
-                            b.Data[i].IssueAndWrapExceptions(manager);
+                        if (b[i] != null)
+                            b[i].IssueAndWrapExceptions(manager);
                 }
             } finally {
                 if (_After != null)
