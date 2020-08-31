@@ -56,6 +56,14 @@ namespace Squared.Util {
 
     public static class Sort {
         public static void FastCLRSort<TElement, TComparer>(
+            TElement[] data, TComparer comparer
+        )
+            where TComparer : IComparer<TElement>
+        {
+            FastCLRSort(new ArraySegment<TElement>(data), comparer);
+        }
+
+        public static void FastCLRSort<TElement, TComparer>(
             ArraySegment<TElement> data, TComparer comparer, int? offset = null, int? count = null
         )
             where TComparer : IComparer<TElement>
