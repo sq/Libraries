@@ -8,10 +8,40 @@ using System.Runtime.CompilerServices;
 
 namespace Squared.Util {
     public class UnorderedList<T> : IEnumerable<T> {
+        public abstract class Allocator {
+            public static readonly DefaultAllocator Default = new DefaultAllocator();
+
+            public abstract ArraySegment<T> Allocate (int minimumSize);
+            public abstract ArraySegment<T> Resize (ArraySegment<T> buffer, int minimumSize);
+        }
+
+        public sealed class DefaultAllocator : Allocator {
+            public override ArraySegment<T> Allocate (int minimumSize) {
+                return new ArraySegment<T>(new T[minimumSize]);
+            }
+
+            public override ArraySegment<T> Resize (ArraySegment<T> buffer, int minimumSize) {
+                if (minimumSize < buffer.Count)
+                    return buffer;
+
+                var array = buffer.Array;
+                if (buffer.Offset == 0) {
+                    Array.Resize(ref array, minimumSize);
+                    return new ArraySegment<T>(array);
+                }  else {
+                    var newBuffer = new T[minimumSize];
+                    Array.Copy(array, buffer.Offset, newBuffer, 0, buffer.Count);
+                    return new ArraySegment<T>(newBuffer, 0, minimumSize);
+                }
+            }
+        }
+
         public static int DefaultSize = 128;
         public static int FirstGrowTarget = 1024;
 
+        protected Allocator _Allocator;
         protected T[] _Items;
+        protected int _BufferOffset, _BufferSize;
         protected int _Count;
 
         public struct Enumerator : IEnumerator<T>{
@@ -73,67 +103,92 @@ namespace Squared.Util {
             }
         }
 
+        private void AllocateNewBuffer (int size) {
+            var buffer = _Allocator.Allocate(size);
+            _Items = buffer.Array;
+            _BufferOffset = buffer.Offset;
+            _BufferSize = buffer.Count;
+        }
+
         public UnorderedList () {
-            _Items = new T[DefaultSize];
+            _Allocator = Allocator.Default;
             _Count = 0;
+            AllocateNewBuffer(DefaultSize);
+        }
+
+        public UnorderedList (Allocator allocator) {
+            _Allocator = allocator ?? Allocator.Default;
+            _Count = 0;
+            AllocateNewBuffer(DefaultSize);
         }
 
         public UnorderedList (int size) {
-            _Items = new T[Math.Max(DefaultSize, size)];
+            _Allocator = Allocator.Default;
             _Count = 0;
+            AllocateNewBuffer(Math.Max(DefaultSize, size));
         }
 
-        public UnorderedList (T[] values) {
-            _Items = new T[Math.Max(DefaultSize, values.Length)];
+        public UnorderedList (int size, Allocator allocator) {
+            _Allocator = allocator ?? Allocator.Default;
+            _Count = 0;
+            AllocateNewBuffer(Math.Max(DefaultSize, size));
+        }
+
+        public UnorderedList (T[] values, Allocator allocator = null) {
+            _Allocator = allocator ?? Allocator.Default;
+            AllocateNewBuffer(Math.Max(DefaultSize, values.Length));
             _Count = values.Length;
-            Array.Copy(values, _Items, _Count);
+            Array.Copy(values, 0, _Items, _BufferOffset, _Count);
         }
 
         public Enumerator GetParallelEnumerator (int partitionIndex, int partitionCount) {
             int partitionSize = (int)Math.Ceiling(_Count / (float)partitionCount);
             int start = partitionIndex * partitionSize;
-            return new Enumerator(this, start, Math.Min(_Count - start, partitionSize));
+            return new Enumerator(this, start + _BufferOffset, Math.Min(_Count - start, partitionSize));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator () {
-            return new Enumerator(this, 0, _Count);
+            return new Enumerator(this, _BufferOffset, _Count);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         IEnumerator<T> IEnumerable<T>.GetEnumerator () {
-            return new Enumerator(this, 0, _Count);
+            return new Enumerator(this, _BufferOffset, _Count);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         IEnumerator IEnumerable.GetEnumerator () {
-            return new Enumerator(this, 0, _Count);
+            return new Enumerator(this, _BufferOffset, _Count);
         }
 
         private void Grow (int targetCapacity) {
+            ArraySegment<T> newBuffer, oldBuffer = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
             if (targetCapacity <= FirstGrowTarget) {
-                Array.Resize(ref _Items, FirstGrowTarget);
-                return;
+                newBuffer = _Allocator.Resize(oldBuffer, FirstGrowTarget);
+            } else {
+                // Intended behavior:
+                // Start at X (128), first grow after that goes to Y (2048),
+                //  any growths after that double up to the 'slow threshold' Z (102400),
+                //  at which point we grow incrementally by fixed amounts instead of doubling
+                //  because doubling will exhaust available memory (especially in 32-bit processes)
+                const int slowThreshold = 102400;
+                const int slowSize = 65536;
+                var newCapacity = 1 << (int)Math.Ceiling(Math.Log(targetCapacity, 2));
+                if (newCapacity >= slowThreshold)
+                    newCapacity = ((targetCapacity + slowSize - 1) / slowSize) * slowSize;
+
+                newBuffer = _Allocator.Resize(oldBuffer,  newCapacity);
             }
 
-            // Intended behavior:
-            // Start at X (128), first grow after that goes to Y (2048),
-            //  any growths after that double up to the 'slow threshold' Z (102400),
-            //  at which point we grow incrementally by fixed amounts instead of doubling
-            //  because doubling will exhaust available memory (especially in 32-bit processes)
-            const int slowThreshold = 102400;
-            const int slowSize = 65536;
-            var newCapacity = 1 << (int)Math.Ceiling(Math.Log(targetCapacity, 2));
-            if (newCapacity >= slowThreshold)
-                newCapacity = ((targetCapacity + slowSize - 1) / slowSize) * slowSize;
-
-            if (newCapacity > _Items.Length)
-                Array.Resize(ref _Items, newCapacity);
+            _Items = newBuffer.Array;
+            _BufferOffset = newBuffer.Offset;
+            _BufferSize = newBuffer.Count;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureCapacity (int capacity) {
-            if (_Items.Length >= capacity)
+            if (_BufferSize >= capacity)
                 return;
 
             Grow(capacity);
@@ -144,7 +199,7 @@ namespace Squared.Util {
             int newCount = _Count + 1;
             EnsureCapacity(newCount);
 
-            _Items[newCount - 1] = item;
+            _Items[_BufferOffset + newCount - 1] = item;
             _Count = newCount;
         }
 
@@ -153,7 +208,7 @@ namespace Squared.Util {
             int newCount = _Count + 1;
             EnsureCapacity(newCount);
 
-            _Items[newCount - 1] = item;
+            _Items[_BufferOffset + newCount - 1] = item;
             _Count = newCount;
         }
 
@@ -162,7 +217,7 @@ namespace Squared.Util {
             int newCount = _Count + count;
             EnsureCapacity(newCount);
 
-            int insertOffset = newCount - count;
+            int insertOffset = _BufferOffset + newCount - count;
             /*
             for (var i = 0; i < count; i++)
                 _Items[insertOffset + i] = items[i + sourceOffset];
@@ -188,7 +243,7 @@ namespace Squared.Util {
             int newCount = _Count + listCount;
             EnsureCapacity(newCount);
 
-            int insertOffset = newCount - listCount;
+            int insertOffset = _BufferOffset + newCount - listCount;
             for (var i = 0; i < listCount; i++)
                 _Items[insertOffset + i] = items[i];
 
@@ -214,7 +269,7 @@ namespace Squared.Util {
         }
 
         public bool Contains (T item) {
-            var index = Array.IndexOf(_Items, item, 0, _Count);
+            var index = Array.IndexOf(_Items, item, _BufferOffset, _Count);
             return (index >= 0);
         }
 
@@ -223,7 +278,7 @@ namespace Squared.Util {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();
 
-            return _Items[index];
+            return _Items[_BufferOffset + index];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -231,7 +286,7 @@ namespace Squared.Util {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();
 
-            result = _Items[index];
+            result = _Items[_BufferOffset + index];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -242,7 +297,7 @@ namespace Squared.Util {
                 throw new IndexOutOfRangeException();
             }
 
-            result = _Items[index];
+            result = _Items[_BufferOffset + index];
             return true;
         }
 
@@ -253,10 +308,10 @@ namespace Squared.Util {
             var newCount = _Count - 1;
 
             if (index < newCount) {
-                _Items[index] = _Items[newCount];
-                _Items[newCount] = default(T);
+                _Items[_BufferOffset + index] = _Items[_BufferOffset + newCount];
+                _Items[_BufferOffset + newCount] = default(T);
             } else {
-                _Items[index] = default(T);
+                _Items[_BufferOffset + index] = default(T);
             }
 
             _Count = newCount;
@@ -272,9 +327,9 @@ namespace Squared.Util {
 
             _Count -= count;
             if (index < _Count)
-                Array.Copy(_Items, index + count, _Items, index, _Count - index);
+                Array.Copy(_Items, _BufferOffset + index + count, _Items, _BufferOffset + index, _Count - index);
 
-            Array.Clear(_Items, _Count, count);
+            Array.Clear(_Items, _BufferOffset + _Count, count);
         }
 
         public bool TryPopFront (out T result) {
@@ -283,7 +338,7 @@ namespace Squared.Util {
                 return false;
             }
 
-            result = _Items[0];
+            result = _Items[_BufferOffset + 0];
             DangerousRemoveAt(0);
             return true;
         }
@@ -298,12 +353,12 @@ namespace Squared.Util {
         public int Capacity {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return _Items.Length;
+                return _BufferSize;
             }
         }
 
         public void Clear () {
-            Array.Clear(_Items, 0, _Count);
+            Array.Clear(_Items, _BufferOffset, _Count);
             _Count = 0;
         }
 
@@ -314,7 +369,7 @@ namespace Squared.Util {
 
         public T[] ToArray () {
             var result = new T[_Count];
-            Array.Copy(_Items, result, _Count);
+            Array.Copy(_Items, _BufferOffset, result, 0, _Count);
             return result;
         }
 
@@ -322,35 +377,35 @@ namespace Squared.Util {
             if (count > _Count)
                 count = _Count;
 
-            Array.Copy(_Items, 0, buffer, offset, count);
+            Array.Copy(_Items, _BufferOffset, buffer, offset, count);
         }
 
         public void Sort (IComparer<T> comparer = null) {
-            Array.Sort(_Items, 0, _Count, comparer);
+            Array.Sort(_Items, _BufferOffset, _Count, comparer);
         }
 
         public void FastCLRSort<TComparer> (TComparer comparer)
             where TComparer : IComparer<T>
         {
-            Util.Sort.FastCLRSort(_Items, comparer, 0, _Count);
+            Util.Sort.FastCLRSort(_Items, comparer, _BufferOffset, _Count);
         }
 
         public void IndexedSort<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IComparer<T>
         {
-            Util.Sort.IndexedSort(_Items, indices, comparer, 0, _Count);
+            Util.Sort.IndexedSort(_Items, indices, comparer, _BufferOffset, _Count);
         }
 
         public void FastCLRSortRef<TComparer> (TComparer comparer)
             where TComparer : IRefComparer<T>
         {
-            Util.Sort.FastCLRSortRef(_Items, comparer, 0, _Count);
+            Util.Sort.FastCLRSortRef(_Items, comparer, _BufferOffset, _Count);
         }
 
         public void IndexedSortRef<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IRefComparer<T>
         {
-            Util.Sort.IndexedSortRef(_Items, indices, comparer, 0, _Count);
+            Util.Sort.IndexedSortRef(_Items, indices, comparer, _BufferOffset, _Count);
         }
 
         public ArraySegment<T> ReserveSpace (int count) {
@@ -358,7 +413,7 @@ namespace Squared.Util {
             EnsureCapacity(newCount);
             var oldCount = _Count;
             _Count = newCount;
-            return new ArraySegment<T>(_Items, oldCount, count);
+            return new ArraySegment<T>(_Items, oldCount + _BufferOffset, count);
         }
     }
 }
