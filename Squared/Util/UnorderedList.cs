@@ -36,6 +36,52 @@ namespace Squared.Util {
             }
         }
 
+        public class BasicSlabAllocator : DefaultAllocator {
+            public int SlabSize = 1024 * 64;
+
+            private T[] PreviousSlab = null, CurrentSlab = null;
+            private int PreviousSlabOffset = -1, CurrentSlabOffset = -1;
+
+            private void AllocateNewSlab () {
+                PreviousSlab = CurrentSlab;
+                PreviousSlabOffset = CurrentSlabOffset;
+                CurrentSlab = new T[SlabSize];
+                CurrentSlabOffset = 0;
+            }
+
+            private bool TryAllocateFromSlab (int minimumSize, T[] slab, ref int slabOffset, out ArraySegment<T> result) {
+                result = default(ArraySegment<T>);
+
+                if (slab == null)
+                    return false;
+
+                var remainingSpace = slab.Length - slabOffset;
+                if (minimumSize > remainingSpace)
+                    return false;
+
+                var offset = slabOffset;
+                slabOffset += minimumSize;
+                result = new ArraySegment<T>(slab, offset, minimumSize);
+                return true;
+            }
+
+            public override ArraySegment<T> Allocate (int minimumSize) {
+                if (minimumSize > SlabSize)
+                    return new ArraySegment<T>(new T[minimumSize]);
+
+                ArraySegment<T> result;
+                if (TryAllocateFromSlab(minimumSize, PreviousSlab, ref PreviousSlabOffset, out result))
+                    return result;
+                else if (TryAllocateFromSlab(minimumSize, CurrentSlab, ref CurrentSlabOffset, out result))
+                    return result;
+
+                AllocateNewSlab();
+                if (!TryAllocateFromSlab(minimumSize, CurrentSlab, ref CurrentSlabOffset, out result))
+                    throw new Exception("Failed to allocate from slab");
+                return result;
+            }
+        }
+
         public static int DefaultSize = 128;
         public static int FirstGrowTarget = 1024;
 
