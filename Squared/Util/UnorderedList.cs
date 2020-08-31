@@ -395,30 +395,30 @@ namespace Squared.Util {
         public void FastCLRSort<TComparer> (TComparer comparer)
             where TComparer : IComparer<T>
         {
-            var items = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
+            var items = new ArraySegment<T>(_Items, _BufferOffset, _Count);
             Util.Sort.FastCLRSort(items, comparer, 0, _Count);
         }
 
         public void IndexedSort<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IComparer<T>
         {
-            var items = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
-            var _indices = new ArraySegment<int>(indices);
+            var items = new ArraySegment<T>(_Items, _BufferOffset, _Count);
+            var _indices = new ArraySegment<int>(indices, 0, _Count);
             Util.Sort.IndexedSort(items, _indices, comparer);
         }
 
         public void FastCLRSortRef<TComparer> (TComparer comparer)
             where TComparer : IRefComparer<T>
         {
-            var items = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
+            var items = new ArraySegment<T>(_Items, _BufferOffset, _Count);
             Util.Sort.FastCLRSortRef(items, comparer, 0, _Count);
         }
 
         public void IndexedSortRef<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IRefComparer<T>
         {
-            var items = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
-            var _indices = new ArraySegment<int>(indices);
+            var items = new ArraySegment<T>(_Items, _BufferOffset, _Count);
+            var _indices = new ArraySegment<int>(indices, 0, _Count);
             Util.Sort.IndexedSortRef(items, _indices, comparer);
         }
 
