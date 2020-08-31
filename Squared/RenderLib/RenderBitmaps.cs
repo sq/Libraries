@@ -439,9 +439,7 @@ namespace Squared.Render {
                     if (callIndex >= callCount)
                         break;
 
-                    callIndex += drawCalls.Offset;
-
-                    bool texturesEqual = callArray[callIndex].Textures.Equals(ref currentTextures);
+                    bool texturesEqual = callArray[callIndex + drawCalls.Offset].Textures.Equals(ref currentTextures);
 
                     if (!texturesEqual) {
                         if (vertCount > 0)
@@ -450,11 +448,11 @@ namespace Squared.Render {
                                 material, samplerState1, samplerState2
                             );
 
-                        currentTextures = callArray[callIndex].Textures;
+                        currentTextures = callArray[callIndex + drawCalls.Offset].Textures;
                     }
 
                     FillOneBitmapVertex(
-                        softwareBuffer, ref callArray[callIndex], out pVertices[vertexWritePosition],
+                        softwareBuffer, ref callArray[callIndex + drawCalls.Offset], out pVertices[vertexWritePosition],
                         ref vertCount, ref vertOffset, zBufferFactor
                     );
 
