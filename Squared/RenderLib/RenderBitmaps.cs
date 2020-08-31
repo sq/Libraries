@@ -231,7 +231,7 @@ namespace Squared.Render {
             }
         }
 
-        protected struct NativeBatch {
+        public struct NativeBatch {
             public readonly Material Material;
 
             public SamplerState SamplerState;

@@ -130,6 +130,11 @@ namespace Squared.Render {
             () => new BitmapDrawCallSorterComparer()
         );
 
+        public static void SetAllocators (UnorderedList<BitmapDrawCall>.Allocator drawCallAllocator, UnorderedList<NativeBatch>.Allocator nativeBatchAllocator) {
+            ListBatch<BitmapDrawCall>.SetAllocator(drawCallAllocator);
+            _NativePool.Allocator = nativeBatchAllocator;
+        }
+
         new public static void AdjustPoolCapacities (
             int? smallItemSizeLimit, int? largeItemSizeLimit,
             int? smallPoolCapacity, int? largePoolCapacity
