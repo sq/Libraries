@@ -135,6 +135,21 @@ namespace Squared.Render {
         }
     }
 
+    public sealed class BitmapDrawCallTextureAndReverseOrderComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
+            var result = (x.Textures.GetHashCode() - y.Textures.GetHashCode());
+            if (result == 0)
+                result = FastMath.CompareF(y.SortKey.Order, x.SortKey.Order);
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Compare (BitmapDrawCall x, BitmapDrawCall y) {
+            return Compare(ref x, ref y);
+        }
+    }
+
     public sealed class BitmapDrawCallTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
@@ -641,6 +656,8 @@ namespace Squared.Render {
             StateTransition(BitmapBatchPrepareState.Preparing, BitmapBatchPrepareState.Prepared);
         }
 
+        private static bool PrintedDPPWarning, PrintedMiscWarning;
+
         public override void Issue (DeviceManager manager) {
             if (_DrawCalls.Count > 0) {
                 StateTransition(BitmapBatchPrepareState.Prepared, BitmapBatchPrepareState.Issuing);
@@ -688,7 +705,7 @@ namespace Squared.Render {
 
                             var actualUseZBuffer = UseZBuffer;
 
-                            if (actualUseZBuffer) {
+                            if (actualUseZBuffer && !DepthPrePassOnly) {
                                 var dss = device.DepthStencilState;
                                 if (dss.DepthBufferEnable == false)
                                     actualUseZBuffer = false;
@@ -729,11 +746,13 @@ namespace Squared.Render {
 
                                 device.DepthStencilState = dss;
                                 device.BlendState = bs;
-                            }
-
-                            if (DepthPrePassOnly && !actualUseZBuffer) {
+                            } else if (DepthPrePassOnly && !actualUseZBuffer) {
                                 // This means that for some reason they enabled depth pre-pass but then
                                 //  didn't configure the depth buffer right. Well, okay
+                                if (!PrintedDPPWarning) {
+                                    PrintedDPPWarning = true;
+                                    Console.Error.WriteLine("WARNING: Depth prepass misconfigured, not drawing");
+                                }
                             } else if (!DepthPrePassOnly || !actualUseZBuffer) {
                                 device.DrawInstancedPrimitives(
                                     PrimitiveType.TriangleList, 
@@ -741,6 +760,11 @@ namespace Squared.Render {
                                     _CornerBuffer.HardwareIndexOffset, 2, 
                                     nb.VertexCount
                                 );
+                            } else {
+                                if (!PrintedMiscWarning) {
+                                    PrintedMiscWarning = true;
+                                    Console.Error.WriteLine("WARNING: Bitmap batch misconfigured, not drawing");
+                                }
                             }
 
                             totalDraws += nb.VertexCount;
@@ -780,7 +804,12 @@ namespace Squared.Render {
 
             result.DepthBufferEnable = true;
             result.DepthBufferWriteEnable = true;
-            result.DepthBufferFunction = dss.DepthBufferFunction;
+            if (dss.DepthBufferEnable) {
+                result.DepthBufferFunction = dss.DepthBufferFunction;
+            } else {
+                // HACK: If the current depth-stencil state is None, just pick a sensible default. This is usually right
+                result.DepthBufferFunction = CompareFunction.GreaterEqual;
+            }
             result.Name = "Depth pre-pass";
 
             return result;
@@ -1269,7 +1298,7 @@ namespace Squared.Render {
             else if (!ObjectNames.TryGetName(Texture, out name))
                 name = string.Format("{2:X4} {0}x{1}", Texture.Width, Texture.Height, Texture.GetHashCode());
 
-            return string.Format("tex {0} pos {1}", name, Position);
+            return string.Format("tex {0} pos {1} sort {2}", name, Position, SortKey.Order);
         }
     }
 }

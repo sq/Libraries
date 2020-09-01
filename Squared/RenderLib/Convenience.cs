@@ -712,7 +712,7 @@ namespace Squared.Render.Convenience {
 
             using (var batch = GetBitmapBatch(
                 layer, worldSpace,
-                blendState, samplerState, material ?? DefaultBitmapMaterial
+                blendState, samplerState, depthStencilState ?? DepthStencilState, rasterizerState ?? RasterizerState, material ?? DefaultBitmapMaterial
             )) {
                 if (LowPriorityMaterialOrdering) {
                     if (material != null)
@@ -862,7 +862,7 @@ namespace Squared.Render.Convenience {
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null, Vector2? scale = null, Vector4? userData = null
         ) {
-            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, material ?? DefaultBitmapMaterial)) {
+            using (var batch = GetBitmapBatch(layer, worldSpace, blendState, samplerState, depthStencilState ?? DepthStencilState, rasterizerState ?? RasterizerState, material ?? DefaultBitmapMaterial)) {
                 if (LowPriorityMaterialOrdering) {
                     if (material != null)
                         material = Materials.Get(material, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, blendState ?? BlendState);
@@ -1394,7 +1394,7 @@ namespace Squared.Render.Convenience {
                 });
         }
 
-        public IBitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, Material customMaterial = null) {
+        public IBitmapBatch GetBitmapBatch (int? layer, bool? worldSpace, BlendState blendState, SamplerState samplerState, DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null, Material customMaterial = null) {
             if (Materials == null)
                 throw new InvalidOperationException("You cannot use the argumentless ImperativeRenderer constructor.");
 
@@ -1413,8 +1413,8 @@ namespace Squared.Render.Convenience {
                 container: Container,
                 layer: actualLayer,
                 worldSpace: actualWorldSpace,
-                rasterizerState: RasterizerState,
-                depthStencilState: DepthStencilState,
+                rasterizerState: rasterizerState ?? RasterizerState,
+                depthStencilState: depthStencilState ?? DepthStencilState,
                 blendState: desiredBlendState,
                 samplerState: desiredSamplerState,
                 customMaterial: customMaterial,
@@ -1426,12 +1426,12 @@ namespace Squared.Render.Convenience {
 
                 if (customMaterial != null) {
                     material = Materials.Get(
-                        customMaterial, RasterizerState, DepthStencilState, desiredBlendState
+                        customMaterial, rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, desiredBlendState
                     );
                 } else {
                     material = Materials.GetBitmapMaterial(
                         actualWorldSpace,
-                        RasterizerState, DepthStencilState, desiredBlendState, UseDiscard
+                        rasterizerState ?? RasterizerState, depthStencilState ?? DepthStencilState, desiredBlendState, UseDiscard
                     );
                 }
 

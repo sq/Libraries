@@ -125,6 +125,7 @@ namespace Squared.Render {
 
         internal static BitmapDrawCallOrderAndTextureComparer DrawCallComparer = new BitmapDrawCallOrderAndTextureComparer();
         internal static BitmapDrawCallTextureComparer DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
+        internal static BitmapDrawCallTextureAndReverseOrderComparer DrawCallTextureAndReverseOrderComparer = new BitmapDrawCallTextureAndReverseOrderComparer();
 
         internal static ThreadLocal<BitmapDrawCallSorterComparer> DrawCallSorterComparer = new ThreadLocal<BitmapDrawCallSorterComparer>(
             () => new BitmapDrawCallSorterComparer()
@@ -304,7 +305,13 @@ namespace Squared.Render {
                 DisableSortKeys ||
                 (UseZBuffer && DepthPrePassOnly)
             ) {
-                _DrawCalls.Sort(DrawCallTextureComparer, indexArray);
+                // If sort keys are enabled, we want to try to draw back-to-front to maximize the effectiveness of the z-buffer
+                _DrawCalls.Sort(
+                    DisableSortKeys 
+                        ? (IRefComparer<BitmapDrawCall>)DrawCallTextureComparer 
+                        : DrawCallTextureAndReverseOrderComparer, 
+                    indexArray
+                );
             } else {
                 _DrawCalls.Sort(DrawCallComparer, indexArray);
             }
