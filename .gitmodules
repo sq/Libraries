@@ -4,3 +4,6 @@
 [submodule "Ext/Dependencies"]
 	path = Ext/Dependencies
 	url = https://github.com/sq/SquaredDependencies.git
+[submodule "Ext/layout"]
+	path = Ext/layout
+	url = https://github.com/randrew/layout.git
