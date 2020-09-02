@@ -90,6 +90,8 @@ _ReSharper.*
 /Squared/Render.STB/bin
 /Squared/PRGUI/obj
 /Squared/PRGUI/bin
+/Squared/PRGUI.Demo/bin
+/Squared/PRGUI.Demo/obj
 /Ext/fxc
 /ShaderCompiler/obj
 /ShaderCompiler/bin/*.pdb
@@ -104,3 +106,4 @@ params.txt
 /Squared/BasisNative/bin
 /Squared/Render.Basis/obj
 /Squared/Render.Basis/bin
+/Squared/PRGUI.Demo/Fonts/FiraSans-Medium.otf
