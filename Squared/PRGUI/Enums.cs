@@ -3,8 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Squared.Game;
 
 namespace Squared.PRGUI {
+    public enum Dimensions : int {
+        X = 0,
+        Y = 1
+    }
+
     [Flags]
     public enum ControlFlags : uint {
         Layout_Row = 0x02,
@@ -40,9 +46,45 @@ namespace Squared.PRGUI {
             Fixed = ControlFlags.HFixed | ControlFlags.VFixed;
     }
 
-    public static class ControlFlagExtensions {
+    public static class PRGUIExtensions {
         public static bool HasFlag (this ControlFlags flags, ControlFlags flag) {
             return (flags & flag) != 0;
+        }
+
+        public static float GetOrigin (this Bounds bounds, Dimensions dimension) {
+            return (dimension == Dimensions.X) ? bounds.TopLeft.X : bounds.TopLeft.Y;
+        }
+
+        public static float GetSize (this Bounds bounds, Dimensions dimension) {
+            return (dimension == Dimensions.X) ? bounds.Size.X : bounds.Size.Y;
+        }
+
+        public static float GetExtent (this Bounds bounds, Dimensions dimension) {
+            return (dimension == Dimensions.X) ? bounds.BottomRight.X : bounds.BottomRight.Y;
+        }
+
+        public static Bounds SetOrigin (this Bounds bounds, Dimensions dimension, float value) {
+            if (dimension == Dimensions.X)
+                bounds.TopLeft.X = value;
+            else
+                bounds.TopLeft.Y = value;
+            return bounds;
+        }
+
+        public static Bounds SetSize (this Bounds bounds, Dimensions dimension, float value) {
+            if (dimension == Dimensions.X)
+                bounds.BottomRight.X = value + bounds.TopLeft.X;
+            else
+                bounds.BottomRight.Y = value + bounds.TopLeft.Y;
+            return bounds;
+        }
+
+        public static Bounds SetExtent (this Bounds bounds, Dimensions dimension, float value) {
+            if (dimension == Dimensions.X)
+                bounds.BottomRight.X = value;
+            else
+                bounds.BottomRight.Y = value;
+            return bounds;
         }
     }
 }

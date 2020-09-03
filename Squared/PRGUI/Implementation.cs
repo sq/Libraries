@@ -18,16 +18,13 @@ namespace Squared.PRGUI {
         }
 
         private unsafe bool Update (ControlKey key) {
-            var data = LayoutPtr(key);
+            if (key.IsInvalid)
+                return false;
 
-            if (!CalcSize(data, false))
-                return false;
-            if (!Arrange (data, false))
-                return false;
-            if (!CalcSize(data, true))
-                return false;
-            if (!Arrange (data, true))
-                return false;
+            CalcSize(key, Dimensions.X);
+            Arrange (key, Dimensions.X);
+            CalcSize(key, Dimensions.Y);
+            Arrange (key, Dimensions.Y);
 
             return true;
         }
@@ -177,6 +174,38 @@ namespace Squared.PRGUI {
         public unsafe Vector4 GetMargins (ControlKey key) {
             var pItem = LayoutPtr(key);
             return pItem->Margins;
+        }
+
+        private unsafe float CalcWrappedOverlaySize (ControlKey key, Dimensions dim) {
+            throw new NotImplementedException();
+        }
+
+        private unsafe float CalcWrappedStackedSize (ControlKey key, Dimensions dim) {
+            throw new NotImplementedException();
+        }
+
+        public unsafe float CalcSize (ControlKey key, Dimensions dim) {
+            throw new NotImplementedException();
+        }
+
+        private unsafe void ArrangeStacked (ControlKey key, Dimensions dim, bool wrap) {
+            throw new NotImplementedException();
+        }
+
+        private unsafe void ArrangeOverlay (ControlKey key, Dimensions dim) {
+            throw new NotImplementedException();
+        }
+
+        private unsafe void ArrangeOverlaySqueezedRange (Dimensions dim, ControlKey startItem, ControlKey endItem, float offset, float space) {
+            throw new NotImplementedException();
+        }
+
+        private unsafe void ArrangeWrappedOverlaySqueezed (ControlKey item, Dimensions dim) {
+            throw new NotImplementedException();
+        }
+
+        public unsafe void Arrange (ControlKey item, Dimensions dim) {
+            throw new NotImplementedException();
         }
     }
 }
