@@ -401,7 +401,7 @@ namespace Squared.PRGUI {
                         ix1 = x1;
 
                     childRect[idim] = ix0;
-                    childRect[wdim] = ix1;
+                    childRect[wdim] = ix1 - ix0;
                     SetRect(child, ref childRect);
                     x = x1 + childMargins.GetElement(wdim);
                     child = pChild->NextSibling;
