@@ -90,6 +90,14 @@ namespace Squared.PRGUI {
         }
 
         public static float GetElement (this Vector2 v, uint index) {
+            return GetElement(v, (int)index);
+        }
+
+        public static float GetElement (this Vector4 v, uint index) {
+            return GetElement(v, (int)index);
+        }
+
+        public static float GetElement (this Vector2 v, int index) {
             switch (index) {
                 case 0:
                     return v.X;
@@ -100,7 +108,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        public static float GetElement (this Vector4 v, uint index) {
+        public static float GetElement (this Vector4 v, int index) {
             switch (index) {
                 case 0:
                     return v.X;

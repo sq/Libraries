@@ -12,6 +12,38 @@ namespace Squared.PRGUI {
             Initialize();
         }
 
+        private void InvalidState () {
+            throw new Exception("Invalid internal state");
+        }
+
+        private void Assert (bool b, string message = null) {
+            if (b)
+                return;
+
+            throw new Exception(
+                message != null
+                    ? $"Assertion failed: {message}"
+                    : "Assertion failed"
+                );
+        }
+
+        private void AssertNotRoot (ControlKey key) {
+            if (key.IsInvalid)
+                throw new Exception("Invalid key");
+            else if (key == Root)
+                throw new Exception("Key must not be the root");
+        }
+
+        private void AssertNotEqual (ControlKey lhs, ControlKey rhs) {
+            if (lhs == rhs)
+                throw new Exception("Keys must not be equal");
+        }
+
+        private void AssertMasked (ControlFlags flags, ControlFlags mask, string maskName) {
+            if ((flags & mask) != flags)
+                throw new Exception("Flags must be compatible with mask " + maskName);
+        }
+
         public void Update () {
             if (!Update(Root))
                 InvalidState();
@@ -33,7 +65,7 @@ namespace Squared.PRGUI {
         public ControlKey CreateItem () {
             var key = new ControlKey(Count);
             var newData = new ControlLayout(key);
-            var newBox = default(Bounds);
+            var newBox = default(RectF);
 
             Layout.Add(ref newData);
             Boxes.Add(ref newBox);
@@ -184,7 +216,7 @@ namespace Squared.PRGUI {
                 var pChild = LayoutPtr(child);
                 var rect = GetRect(child);
                 // FIXME: Is this a bug?
-                var childSize = rect.GetOrigin(dim) + rect.GetSize(dim) + pChild->Margins.GetElement((uint)dim + 2);
+                var childSize = rect[(uint)dim] + rect[(uint)dim + 2] + pChild->Margins.GetElement((uint)dim + 2);
                 result = Math.Max(result, childSize);
                 child = pChild->NextSibling;
             }
@@ -192,7 +224,17 @@ namespace Squared.PRGUI {
         }
 
         private unsafe float CalcStackedSize (ControlLayout * pItem, Dimensions dim) {
-            throw new NotImplementedException();
+            float result = 0;
+            var idim = (int)dim;
+            var wdim = (int)dim + 2;
+            var child = pItem->FirstChild;
+            while (!child.IsInvalid) {
+                var pChild = LayoutPtr(child);
+                var rect = GetRect(child);
+                result += rect[idim] + rect[wdim] + pChild->Margins.GetElement(wdim);
+                child = pChild->NextSibling;
+            }
+            return result;
         }
 
         private unsafe float CalcWrappedOverlaySize (ControlLayout * pItem, Dimensions dim) {
@@ -213,12 +255,13 @@ namespace Squared.PRGUI {
             }
 
             var pRect = BoxPtr(pItem->Key);
+            var idim = (int)dim;
 
             // Start by setting size to top/left margin
-            *pRect = pRect->SetOrigin(dim, pItem->Margins.GetElement((uint)dim));
+            (*pRect)[idim] = pItem->Margins.GetElement(idim);
 
-            if (pItem->Size.GetElement((uint)dim) > 0) {
-                *pRect = pRect->SetSize(dim + 2, pItem->Size.GetElement((uint)dim));
+            if (pItem->Size.GetElement(idim) > 0) {
+                (*pRect)[idim + 2] = pItem->Size.GetElement(idim);
                 return;
             }
 
@@ -248,7 +291,7 @@ namespace Squared.PRGUI {
                     break;
             }
 
-            *pRect = pRect->SetSize(dim, result);
+            (*pRect)[idim] = result;
         }
 
         private unsafe void ArrangeStacked (ControlLayout * pItem, Dimensions dim, bool wrap) {
@@ -256,7 +299,7 @@ namespace Squared.PRGUI {
             var rect = GetRect(pItem->Key);
             var wdim = ((uint)dim) + 2;
             var idim = (int)(uint)dim;
-            float space = rect.GetSize(dim), max_x2 = rect.GetExtent(dim);
+            float space = rect[wdim], max_x2 = rect[idim] + space;
 
             var startChild = pItem->FirstChild;
             while (!startChild.IsInvalid) {
@@ -276,11 +319,11 @@ namespace Squared.PRGUI {
 
                     if (flags.IsFlagged(ControlFlags.Layout_Fill_Row)) {
                         ++count;
-                        extend += childRect.GetOrigin(dim) + childMargins.GetElement(wdim);
+                        extend += childRect[idim] + childMargins.GetElement(wdim);
                     } else {
                         if (!fFlags.IsFlagged(ControlFlags.HFixed))
                             ++squeezedCount;
-                        extend += childRect.GetExtent(dim) + childMargins.GetElement(wdim);
+                        extend += childRect[idim] + childMargins.GetElement(wdim);
                     }
 
                     if (
@@ -329,7 +372,7 @@ namespace Squared.PRGUI {
                     eater = extraSpace / squeezedCount;
                 }
 
-                float x = rect.GetOrigin(dim), x1 = 0;
+                float x = rect[idim], x1 = 0;
                 child = startChild;
 
                 while (child != endChild) {
@@ -343,13 +386,13 @@ namespace Squared.PRGUI {
                     var childMargins = pChild->Margins;
                     var childRect = GetRect(child);
 
-                    x += childRect.GetOrigin(dim) + extraMargin;
+                    x += childRect[idim] + extraMargin;
                     if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
                         x1 = x + filler;
                     else if (fFlags.IsFlagged(ControlFlags.HFixed))
-                        x1 = x + childRect.GetSize((Dimensions)wdim);
+                        x1 = x + childRect[wdim];
                     else
-                        x1 = x + Math.Max(0f, childRect.GetSize((Dimensions)wdim) + eater);
+                        x1 = x + Math.Max(0f, childRect[wdim] + eater);
 
                     ix0 = x;
                     if (wrap)
@@ -357,8 +400,8 @@ namespace Squared.PRGUI {
                     else
                         ix1 = x1;
 
-                    childRect = childRect.SetOrigin(dim, ix0);
-                    childRect = childRect.SetExtent(dim, ix1);
+                    childRect[idim] = ix0;
+                    childRect[wdim] = ix1;
                     SetRect(child, ref childRect);
                     x = x1 + childMargins.GetElement(wdim);
                     child = pChild->NextSibling;
@@ -370,11 +413,76 @@ namespace Squared.PRGUI {
         }
 
         private unsafe void ArrangeOverlay (ControlLayout * pItem, Dimensions dim) {
-            throw new NotImplementedException();
+            var wdim = (int)dim + 2;
+            var idim = (int)dim;
+
+            var rect = GetRect(pItem->Key);
+            var offset = rect[idim];
+            var space = rect[wdim];
+
+            var child = pItem->FirstChild;
+            while (!child.IsInvalid) {
+                var pChild = LayoutPtr(child);
+                var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
+                var childMargins = pChild->Margins;
+                var childRect = GetRect(child);
+
+                switch (bFlags & ControlFlags.Layout_Fill_Row) {
+                    case ControlFlags.Layout_Center:
+                        childRect[idim] += (space - childRect[wdim]) / 2 - childMargins.GetElement(wdim);
+                        break;
+                    case ControlFlags.Layout_Right:
+                        childRect[idim] += space - childRect[wdim] - childMargins.GetElement(idim) - childMargins.GetElement(wdim);
+                        break;
+                    case ControlFlags.Layout_Fill_Row:
+                        childRect[wdim] = Math.Max(0, space - childRect[idim] - childMargins.GetElement(wdim));
+                        break;
+                }
+
+                childRect[idim] += offset;
+                SetRect(child, ref childRect);
+                child = pChild->NextSibling;
+            }
         }
 
         private unsafe void ArrangeOverlaySqueezedRange (Dimensions dim, ControlKey startItem, ControlKey endItem, float offset, float space) {
-            throw new NotImplementedException();
+            if (startItem == endItem)
+                return;
+
+            Assert(!startItem.IsInvalid);
+
+            var wdim = (int)dim + 2;
+            var idim = (int)dim;
+
+            var item = startItem;
+            while (item != endItem) {
+                var pItem = LayoutPtr(item);
+                var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
+                var margins = pItem->Margins;
+                var rect = GetRect(item);
+                var minSize = Math.Max(0, space - rect[idim] - margins.GetElement((uint)dim));
+
+                switch (bFlags & ControlFlags.Layout_Fill_Row) {
+                    case ControlFlags.Layout_Center:
+                        rect[wdim] = Math.Min(rect[wdim], minSize);
+                        rect[idim] += (space - rect[wdim]) / 2 - margins.GetElement(wdim);
+                        break;
+                    case ControlFlags.Layout_Right:
+                        rect[wdim] = Math.Min(rect[wdim], minSize);
+                        rect[idim] = space - rect[wdim] - margins.GetElement(wdim);
+                        break;
+                    case ControlFlags.Layout_Fill_Row:
+                        rect[wdim] = minSize;
+                        break;
+                    default:
+                        rect[wdim] = Math.Min(rect[wdim], minSize);
+                        break;
+                }
+
+                rect[idim] += offset;
+                SetRect(item, ref rect);
+                item = pItem->NextSibling;
+            }
         }
 
         private unsafe float ArrangeWrappedOverlaySqueezed (ControlLayout * pItem, Dimensions dim) {
@@ -384,13 +492,14 @@ namespace Squared.PRGUI {
         private unsafe void Arrange (ControlLayout * pItem, Dimensions dim) {
             var flags = pItem->Flags;
             var pRect = BoxPtr(pItem->Key);
+            var idim = (int)dim;
 
             switch (flags & ControlFlagMask.BoxModel) {
                 case ControlFlags.Container_Column | ControlFlags.Container_Wrap:
                     if (dim != Dimensions.X) {
                         ArrangeStacked(pItem, Dimensions.Y, true);
                         var offset = ArrangeWrappedOverlaySqueezed(pItem, Dimensions.X);
-                        pRect->SetSize(Dimensions.X, offset - pRect->GetOrigin(Dimensions.X));
+                        (*pRect)[0] = offset - (*pRect)[0];
                     }
                     break;
                 case ControlFlags.Container_Row | ControlFlags.Container_Wrap:
@@ -406,7 +515,7 @@ namespace Squared.PRGUI {
                     } else {
                         ArrangeOverlaySqueezedRange(
                             dim, pItem->FirstChild, ControlKey.Invalid,
-                            pRect->GetOrigin(dim), pRect->GetSize(dim)
+                            (*pRect)[idim], (*pRect)[idim + 2]
                         );
                     }
                     break;

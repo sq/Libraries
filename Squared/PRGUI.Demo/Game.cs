@@ -146,6 +146,9 @@ namespace PRGUI.Demo {
         protected override void Update (GameTime gameTime) {
             Context.Update();
 
+            // FIXME
+            LastTimeOverUI = Time.Ticks;
+
             PreviousKeyboardState = KeyboardState;
             PreviousMouseState = MouseState;
             KeyboardState = Keyboard.GetState();
@@ -187,19 +190,20 @@ namespace PRGUI.Demo {
                 ir = new ImperativeRenderer(group, Materials, -1) {
                     AutoIncrementLayer = true
                 };
-                ir.Clear();
+                ir.Clear(color: Color.Transparent);
 
-                var masterListRect = Context.GetRect(MasterList);
-                var contentViewRect = Context.GetRect(ContentView);
+                float radius = 6;
+                var masterListRect = ((Bounds)Context.GetRect(MasterList)).Expand(-radius, -radius);
+                var contentViewRect = ((Bounds)Context.GetRect(ContentView)).Expand(-radius, -radius);
 
                 ir.RasterizeRectangle(
                     masterListRect.TopLeft, masterListRect.BottomRight,
-                    radius: 2, innerColor: Color.DarkRed
+                    radius: radius, innerColor: Color.DarkRed
                 );
 
                 ir.RasterizeRectangle(
                     contentViewRect.TopLeft, contentViewRect.BottomRight,
-                    radius: 2, innerColor: Color.ForestGreen
+                    radius: radius, innerColor: Color.ForestGreen
                 );
             }
 

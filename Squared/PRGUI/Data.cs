@@ -97,6 +97,61 @@ namespace Squared.PRGUI {
         }
     }
 
+    public struct RectF {
+        public float Left, Top, Width, Height;
+
+        public float this [uint index] {
+            get {
+                return this[(int)index];
+            }
+            set {
+                this[(int)index] = value;
+            }
+        }
+
+        public float this [int index] { 
+            get {
+                switch (index) {
+                    case 0:
+                        return Left;
+                    case 1:
+                        return Top;
+                    case 2:
+                        return Width;
+                    case 3:
+                        return Height;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(index));
+                }
+            }
+            set {
+                switch (index) {
+                    case 0:
+                        Left = value;
+                        break;
+                    case 1:
+                        Top = value;
+                        break;
+                    case 2:
+                        Width = value;
+                        break;
+                    case 3:
+                        Height = value;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(index));
+                }
+            }
+        }
+
+        public static explicit operator Bounds (RectF self) {
+            return new Bounds(
+                new Vector2(self.Left, self.Top),
+                new Vector2(self.Left + self.Width, self.Top + self.Height)
+            );
+        }
+    }
+
     public partial class PRGUIContext : IDisposable {
         public const int DefaultCapacity = 1024;
 
@@ -114,7 +169,7 @@ namespace Squared.PRGUI {
 
         private GCHandle LayoutPin, BoxesPin;
         private readonly UnorderedList<ControlLayout> Layout = new UnorderedList<ControlLayout>(DefaultCapacity);
-        private readonly UnorderedList<Bounds> Boxes = new UnorderedList<Bounds>(DefaultCapacity);
+        private readonly UnorderedList<RectF> Boxes = new UnorderedList<RectF>(DefaultCapacity);
 
         public void EnsureCapacity (int capacity) {
             if (LayoutPin.IsAllocated)
@@ -123,38 +178,6 @@ namespace Squared.PRGUI {
                 BoxesPin.Free();
             Layout.EnsureCapacity(capacity);
             Boxes.EnsureCapacity(capacity);
-        }
-
-        private void InvalidState () {
-            throw new Exception("Invalid internal state");
-        }
-
-        private void Assert (bool b, string message = null) {
-            if (b)
-                return;
-
-            throw new Exception(
-                message != null
-                    ? $"Assertion failed: {message}"
-                    : "Assertion failed"
-                );
-        }
-
-        private void AssertNotRoot (ControlKey key) {
-            if (key.IsInvalid)
-                throw new Exception("Invalid key");
-            else if (key == Root)
-                throw new Exception("Key must not be the root");
-        }
-
-        private void AssertNotEqual (ControlKey lhs, ControlKey rhs) {
-            if (lhs == rhs)
-                throw new Exception("Keys must not be equal");
-        }
-
-        private void AssertMasked (ControlFlags flags, ControlFlags mask, string maskName) {
-            if ((flags & mask) != flags)
-                throw new Exception("Flags must be compatible with mask " + maskName);
         }
 
         public ControlLayout this [ControlKey key] {
@@ -185,28 +208,27 @@ namespace Squared.PRGUI {
             return Layout.DangerousTryGetItem(nextSibling.ID, out result);
         }
 
-        public Bounds GetRect (ControlKey key) {
+        public RectF GetRect (ControlKey key) {
             return Boxes.DangerousGetItem(key.ID);
         }
 
-        private void SetRect (ControlKey key, ref Bounds newRect) {
+        private void SetRect (ControlKey key, ref RectF newRect) {
             Boxes.DangerousSetItem(key.ID, ref newRect);
         }
 
-        public bool TryGetRect (ControlKey key, out Bounds result) {
+        public bool TryGetRect (ControlKey key, out RectF result) {
             return Boxes.DangerousTryGetItem(key.ID, out result);
         }
 
         public bool TryGetRect (ControlKey key, out float x, out float y, out float width, out float height) {
             x = y = width = height = 0;
-            Bounds result;
+            RectF result;
             if (!Boxes.DangerousTryGetItem(key.ID, out result))
                 return false;
-            x = result.TopLeft.X;
-            y = result.TopLeft.Y;
-            var size = result.Size;
-            width = size.X;
-            height = size.Y;
+            x = result.Left;
+            y = result.Top;
+            width = result.Width;
+            height = result.Height;
             return true;
         }
 
@@ -230,17 +252,17 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        private unsafe Bounds * BoxesPtr () {
+        private unsafe RectF * BoxesPtr () {
             var buffer = Boxes.GetBuffer();
             if (!BoxesPin.IsAllocated || (buffer.Array != BoxesPin.Target)) {
                 if (BoxesPin.IsAllocated)
                     BoxesPin.Free();
                 BoxesPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
             }
-            return ((Bounds *)BoxesPin.AddrOfPinnedObject()) + buffer.Offset;
+            return ((RectF *)BoxesPin.AddrOfPinnedObject()) + buffer.Offset;
         }
 
-        private unsafe Bounds * BoxPtr (ControlKey key) {
+        private unsafe RectF * BoxPtr (ControlKey key) {
             if ((key.ID < 0) || (key.ID >= Boxes.Count))
                 throw new ArgumentOutOfRangeException(nameof(key));
 
