@@ -7,8 +7,8 @@ using Microsoft.Xna.Framework;
 using Squared.Game;
 
 namespace Squared.PRGUI {
-    public partial class Context : IDisposable {
-        public Context () {
+    public partial class PRGUIContext : IDisposable {
+        public PRGUIContext () {
             Initialize();
         }
 
@@ -30,7 +30,7 @@ namespace Squared.PRGUI {
         }
 
         public ControlKey CreateItem () {
-            var key = new ControlKey(Count + 1);
+            var key = new ControlKey(Count);
             var newData = new ControlLayout(key);
             var newBox = default(Bounds);
 
@@ -47,7 +47,7 @@ namespace Squared.PRGUI {
         }
 
         private unsafe void ClearItemBreak (ControlLayout * data) {
-            data->Flags = data->Flags & ~ControlFlags.Child_Break;
+            data->Flags = data->Flags & ~ControlFlags.Layout_Break;
         }
 
         public unsafe ControlKey LastChild (ControlKey key) {
@@ -85,7 +85,7 @@ namespace Squared.PRGUI {
 
             var pParent = LayoutPtr(parent);
             var pChild = LayoutPtr(child);
-            Assert(!pChild->Flags.HasFlag(ControlFlags.Inserted));
+            Assert(!pChild->Flags.Flagged(ControlFlags.Inserted), "is not inserted");
 
             if (pParent->FirstChild.IsInvalid) {
                 pParent->FirstChild = child;
@@ -109,7 +109,7 @@ namespace Squared.PRGUI {
             var pParent = LayoutPtr(parent);
             var oldChild = pParent->FirstChild;
             var pChild = LayoutPtr(newChild);
-            Assert(!pChild->Flags.HasFlag(ControlFlags.Inserted));
+            Assert(!pChild->Flags.Flagged(ControlFlags.Inserted));
             pParent->FirstChild = newChild;
             pChild->Flags |= ControlFlags.Inserted;
             pChild->NextSibling = oldChild;
@@ -143,20 +143,20 @@ namespace Squared.PRGUI {
             pItem->Flags = flags;
         }
 
-        public void SetSizeXY (ControlKey key, float width, float height) {
+        public void SetSizeXY (ControlKey key, float width = 0, float height = 0) {
             SetSize(key, new Vector2(width, height));
+        }
+
+        public unsafe void SetContainerFlags (ControlKey key, ControlFlags flags) {
+            AssertMasked(flags, ControlFlagMask.Container, nameof(ControlFlagMask.Container));
+            var pItem = LayoutPtr(key);
+            pItem->Flags = (pItem->Flags & ~ControlFlagMask.Container) | flags;
         }
 
         public unsafe void SetLayoutFlags (ControlKey key, ControlFlags flags) {
             AssertMasked(flags, ControlFlagMask.Layout, nameof(ControlFlagMask.Layout));
             var pItem = LayoutPtr(key);
             pItem->Flags = (pItem->Flags & ~ControlFlagMask.Layout) | flags;
-        }
-
-        public unsafe void SetBoxFlags (ControlKey key, ControlFlags flags) {
-            AssertMasked(flags, ControlFlagMask.Box, nameof(ControlFlagMask.Box));
-            var pItem = LayoutPtr(key);
-            pItem->Flags = (pItem->Flags & ~ControlFlagMask.Box) | flags;
         }
 
         public unsafe void SetMargins (ControlKey key, Vector4 ltrb) {

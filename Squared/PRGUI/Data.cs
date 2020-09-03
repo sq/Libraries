@@ -97,7 +97,7 @@ namespace Squared.PRGUI {
         }
     }
 
-    public partial class Context : IDisposable {
+    public partial class PRGUIContext : IDisposable {
         public const int DefaultCapacity = 1024;
 
         public int Count {
@@ -113,15 +113,31 @@ namespace Squared.PRGUI {
         public ControlKey Root = ControlKey.Invalid;
 
         private GCHandle LayoutPin, BoxesPin;
-        private readonly UnorderedList<ControlLayout> Layout = new UnorderedList<ControlLayout>();
-        private readonly UnorderedList<Bounds> Boxes = new UnorderedList<Bounds>();
+        private readonly UnorderedList<ControlLayout> Layout = new UnorderedList<ControlLayout>(DefaultCapacity);
+        private readonly UnorderedList<Bounds> Boxes = new UnorderedList<Bounds>(DefaultCapacity);
+
+        public void EnsureCapacity (int capacity) {
+            if (LayoutPin.IsAllocated)
+                LayoutPin.Free();
+            if (BoxesPin.IsAllocated)
+                BoxesPin.Free();
+            Layout.EnsureCapacity(capacity);
+            Boxes.EnsureCapacity(capacity);
+        }
 
         private void InvalidState () {
             throw new Exception("Invalid internal state");
         }
 
-        private void Assert (bool b) {
-            throw new Exception("Assertion failed");
+        private void Assert (bool b, string message = null) {
+            if (b)
+                return;
+
+            throw new Exception(
+                message != null
+                    ? $"Assertion failed: {message}"
+                    : "Assertion failed"
+                );
         }
 
         private void AssertNotRoot (ControlKey key) {
@@ -137,7 +153,7 @@ namespace Squared.PRGUI {
         }
 
         private void AssertMasked (ControlFlags flags, ControlFlags mask, string maskName) {
-            if ((flags & mask) != mask)
+            if ((flags & mask) != flags)
                 throw new Exception("Flags must be compatible with mask " + maskName);
         }
 
@@ -193,7 +209,8 @@ namespace Squared.PRGUI {
         private unsafe ControlLayout * LayoutPtr () {
             var buffer = Layout.GetBuffer();
             if (!LayoutPin.IsAllocated || (buffer.Array != LayoutPin.Target)) {
-                LayoutPin.Free();
+                if (LayoutPin.IsAllocated)
+                    LayoutPin.Free();
                 LayoutPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
             }
             return ((ControlLayout*)LayoutPin.AddrOfPinnedObject()) + buffer.Offset;
@@ -212,7 +229,8 @@ namespace Squared.PRGUI {
         private unsafe Bounds * BoxesPtr () {
             var buffer = Boxes.GetBuffer();
             if (!BoxesPin.IsAllocated || (buffer.Array != BoxesPin.Target)) {
-                BoxesPin.Free();
+                if (BoxesPin.IsAllocated)
+                    BoxesPin.Free();
                 BoxesPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
             }
             return ((Bounds *)BoxesPin.AddrOfPinnedObject()) + buffer.Offset;
@@ -232,8 +250,10 @@ namespace Squared.PRGUI {
 
             IsDisposed = true;
             Root = ControlKey.Invalid;
-            LayoutPin.Free();
-            BoxesPin.Free();
+            if (LayoutPin.IsAllocated)
+                LayoutPin.Free();
+            if (BoxesPin.IsAllocated)
+                BoxesPin.Free();
             Layout.Clear();
             Boxes.Clear();
         }

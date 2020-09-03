@@ -11,6 +11,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Squared.Game;
+using Squared.PRGUI;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
@@ -18,6 +19,8 @@ using Squared.Util;
 
 namespace PRGUI.Demo {
     public class DemoGame : MultithreadedGame {
+        public PRGUIContext Context;
+
         public GraphicsDeviceManager Graphics;
         public DefaultMaterialSet Materials { get; private set; }
 
@@ -35,6 +38,8 @@ namespace PRGUI.Demo {
 
         public bool IsMouseOverUI = false, TearingTest = false;
         public long LastTimeOverUI;
+
+        public ControlKey MasterList, ContentView;
 
         public DemoGame () {
             // UniformBinding.ForceCompatibilityMode = true;
@@ -66,6 +71,25 @@ namespace PRGUI.Demo {
             base.Initialize();
 
             Window.AllowUserResizing = false;
+
+            Context = new PRGUIContext();
+            var root = Context.Root;
+            Context.SetSizeXY(root, 1280, 720);
+
+            Context.SetContainerFlags(root, ControlFlags.Container_Row);
+
+            MasterList = Context.CreateItem();
+            Context.Insert(root, MasterList);
+
+            Context.SetSizeXY(MasterList, width: 400);
+
+            Context.SetContainerFlags(MasterList, ControlFlags.Container_Column);
+            Context.SetLayoutFlags(MasterList, ControlFlags.Layout_Fill_Column);
+
+            ContentView = Context.CreateItem();
+            Context.Insert(root, ContentView);
+
+            Context.SetLayoutFlags(ContentView, ControlFlags.Layout_Fill);
         }
 
         public bool LeftMouse {
@@ -120,6 +144,8 @@ namespace PRGUI.Demo {
         }
 
         protected override void Update (GameTime gameTime) {
+            Context.Update();
+
             PreviousKeyboardState = KeyboardState;
             PreviousMouseState = MouseState;
             KeyboardState = Keyboard.GetState();
@@ -151,18 +177,35 @@ namespace PRGUI.Demo {
 
             KeyboardInputHandler.Buffer.Clear();
 
+            ImperativeRenderer ir;
+
             using (KeyboardInputHandler.Deactivate())
             using (var group = BatchGroup.ForRenderTarget(
                 frame, -9990, UIRenderTarget,
                 name: "Render UI"
             )) {
-                ClearBatch.AddNew(group, -1, Materials.Clear, clearColor: Color.Transparent);
-                // Nuklear.Render(gameTime.ElapsedGameTime.Seconds, group, 1);
+                ir = new ImperativeRenderer(group, Materials, -1) {
+                    AutoIncrementLayer = true
+                };
+                ir.Clear();
+
+                var masterListRect = Context.GetRect(MasterList);
+                var contentViewRect = Context.GetRect(ContentView);
+
+                ir.RasterizeRectangle(
+                    masterListRect.TopLeft, masterListRect.BottomRight,
+                    radius: 2, innerColor: Color.DarkRed
+                );
+
+                ir.RasterizeRectangle(
+                    contentViewRect.TopLeft, contentViewRect.BottomRight,
+                    radius: 2, innerColor: Color.ForestGreen
+                );
             }
 
             ClearBatch.AddNew(frame, -1, Materials.Clear, Color.Black);
 
-            var ir = new ImperativeRenderer(
+            ir = new ImperativeRenderer(
                 frame, Materials, 
                 blendState: BlendState.AlphaBlend,
                 samplerState: SamplerState.LinearClamp,

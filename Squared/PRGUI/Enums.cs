@@ -13,26 +13,26 @@ namespace Squared.PRGUI {
 
     [Flags]
     public enum ControlFlags : uint {
-        Layout_Row = 0x02,
-        Layout_Column = 0x03,
-        Layout_Wrap_None = 0x00,
-        Layout_Wrap_LeftToRight = 0x04,
-        Layout_Align_Start = 0x08,
-        Layout_Align_Middle = 0x00,
-        Layout_Align_End = 0x10,
-        Layout_Align_Justify = 0x18,
-        Layout_Free = 0x00,
-        Layout_Flex = Layout_Row,
+        Container_Row = 0x02,
+        Container_Column = 0x03,
+        Container_Wrap_None = 0x00,
+        Container_Wrap_LeftToRight = 0x04,
+        Container_Align_Start = 0x08,
+        Container_Align_Middle = 0x00,
+        Container_Align_End = 0x10,
+        Container_Align_Justify = 0x18,
+        Container_Free = 0x00,
+        Container_Flex = Container_Row,
 
-        Child_Left = 0x020,
-        Child_Top = 0x040,
-        Child_Right = 0x080,
-        Child_Bottom = 0x100,
-        Child_Fill_Row = 0x0a0,
-        Child_Fill_Column = 0x140,
-        Child_Center = 0x000,
-        Child_Fill = 0x1e0,
-        Child_Break = 0x200,
+        Layout_Left = 0x020,
+        Layout_Top = 0x040,
+        Layout_Right = 0x080,
+        Layout_Bottom = 0x100,
+        Layout_Fill_Row = 0x0a0,
+        Layout_Fill_Column = 0x140,
+        Layout_Center = 0x000,
+        Layout_Fill = 0x1e0,
+        Layout_Break = 0x200,
 
         Inserted = 0x400,
         HFixed = 0x800,
@@ -41,14 +41,15 @@ namespace Squared.PRGUI {
 
     public static class ControlFlagMask {
         public const ControlFlags BoxModel = (ControlFlags)0x7,
-            Box = (ControlFlags)0x1f,
+            Container = (ControlFlags)0x1f,
             Layout = (ControlFlags)0x3e0,
             Fixed = ControlFlags.HFixed | ControlFlags.VFixed;
     }
 
     public static class PRGUIExtensions {
-        public static bool HasFlag (this ControlFlags flags, ControlFlags flag) {
-            return (flags & flag) != 0;
+        public static bool Flagged (this ControlFlags flags, ControlFlags flag) {
+            var masked = (uint)(flags & flag);
+            return masked != 0;
         }
 
         public static float GetOrigin (this Bounds bounds, Dimensions dimension) {
