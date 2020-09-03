@@ -42,7 +42,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Implementation.cs" />
     <Compile Include="Enums.cs" />
+    <Compile Include="Data.cs" />
   </ItemGroup>
   <PropertyGroup>
     <SquaredPath>..\..\</SquaredPath>
