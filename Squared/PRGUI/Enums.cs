@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
 using Squared.Game;
 
 namespace Squared.PRGUI {
-    public enum Dimensions : int {
+    public enum Dimensions : uint {
         X = 0,
         Y = 1
     }
@@ -15,8 +16,8 @@ namespace Squared.PRGUI {
     public enum ControlFlags : uint {
         Container_Row = 0x02,
         Container_Column = 0x03,
-        Container_Wrap_None = 0x00,
-        Container_Wrap_LeftToRight = 0x04,
+        Container_NoWrap = 0x00,
+        Container_Wrap = 0x04,
         Container_Align_Start = 0x08,
         Container_Align_Middle = 0x00,
         Container_Align_End = 0x10,
@@ -47,7 +48,7 @@ namespace Squared.PRGUI {
     }
 
     public static class PRGUIExtensions {
-        public static bool Flagged (this ControlFlags flags, ControlFlags flag) {
+        public static bool IsFlagged (this ControlFlags flags, ControlFlags flag) {
             var masked = (uint)(flags & flag);
             return masked != 0;
         }
@@ -86,6 +87,32 @@ namespace Squared.PRGUI {
             else
                 bounds.BottomRight.Y = value;
             return bounds;
+        }
+
+        public static float GetElement (this Vector2 v, uint index) {
+            switch (index) {
+                case 0:
+                    return v.X;
+                case 1:
+                    return v.Y;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index));
+            }
+        }
+
+        public static float GetElement (this Vector4 v, uint index) {
+            switch (index) {
+                case 0:
+                    return v.X;
+                case 1:
+                    return v.Y;
+                case 2:
+                    return v.Z;
+                case 3:
+                    return v.W;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(index));
+            }
         }
     }
 }

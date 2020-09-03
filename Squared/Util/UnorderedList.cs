@@ -348,6 +348,14 @@ namespace Squared.Util {
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void DangerousSetItem (int index, ref T newValue) {
+            if ((index < 0) || (index >= _Count))
+                throw new IndexOutOfRangeException();
+
+            _Items[_BufferOffset + index] = newValue;
+        }
+
         public void DangerousRemoveAt (int index) {
             if ((index < 0) || (index >= _Count))
                 throw new IndexOutOfRangeException();

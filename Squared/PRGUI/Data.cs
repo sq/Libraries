@@ -189,6 +189,10 @@ namespace Squared.PRGUI {
             return Boxes.DangerousGetItem(key.ID);
         }
 
+        private void SetRect (ControlKey key, ref Bounds newRect) {
+            Boxes.DangerousSetItem(key.ID, ref newRect);
+        }
+
         public bool TryGetRect (ControlKey key, out Bounds result) {
             return Boxes.DangerousTryGetItem(key.ID, out result);
         }
