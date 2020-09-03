@@ -323,7 +323,7 @@ namespace Squared.PRGUI {
                     } else {
                         if (!fFlags.IsFlagged(ControlFlags.HFixed))
                             ++squeezedCount;
-                        extend += childRect[idim] + childMargins.GetElement(wdim);
+                        extend += childRect[idim] + childRect[wdim] + childMargins.GetElement(wdim);
                     }
 
                     if (
