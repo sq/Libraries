@@ -73,11 +73,24 @@ namespace Squared.PRGUI {
             return key;
         }
 
-        private unsafe void Insert (ControlLayout * pEarlier, ControlLayout * pNewItem) {
+        private unsafe void InsertBefore (ControlLayout * pNewItem, ControlLayout * pLater) {
+            var pPreviousSibling = LayoutPtr(pLater->PreviousSibling);
+
+            pNewItem->NextSibling = pPreviousSibling->NextSibling;
+            pNewItem->PreviousSibling = pLater->PreviousSibling;
+            pNewItem->Flags = pNewItem->Flags | ControlFlags.Inserted;
+
+            pPreviousSibling->NextSibling = pNewItem->Key;
+            pLater->PreviousSibling = pNewItem->Key;
+        }
+
+        private unsafe void InsertAfter (ControlLayout * pEarlier, ControlLayout * pNewItem) {
             var pNextSibling = LayoutPtr(pEarlier->NextSibling);
+
             pNewItem->PreviousSibling = pEarlier->Key;
             pNewItem->NextSibling = pEarlier->NextSibling;
             pNewItem->Flags = pNewItem->Flags | ControlFlags.Inserted;
+
             pEarlier->NextSibling = pNewItem->Key;
             pNextSibling->PreviousSibling = pNewItem->Key;
         }
@@ -107,15 +120,26 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        public unsafe void Insert (ControlKey earlier, ControlKey later) {
-            AssertNotRoot(later);
-            Assert(!earlier.IsInvalid);
+        public unsafe void InsertBefore (ControlKey newSibling, ControlKey later) {
+            AssertNotRoot(newSibling);
             Assert(!later.IsInvalid);
-            AssertNotEqual(earlier, later);
+            Assert(!newSibling.IsInvalid);
+            AssertNotEqual(later, newSibling);
+
+            var pLater = LayoutPtr(later);
+            var pNewSibling = LayoutPtr(newSibling);
+            InsertBefore(pNewSibling, pLater);
+        }
+
+        public unsafe void InsertAfter (ControlKey earlier, ControlKey newSibling) {
+            AssertNotRoot(newSibling);
+            Assert(!earlier.IsInvalid);
+            Assert(!newSibling.IsInvalid);
+            AssertNotEqual(earlier, newSibling);
 
             var pEarlier = LayoutPtr(earlier);
-            var pLater = LayoutPtr(later);
-            Insert(pEarlier, pLater);
+            var pLater = LayoutPtr(newSibling);
+            InsertAfter(pEarlier, pLater);
         }
 
         public unsafe void InsertAtEnd (ControlKey parent, ControlKey child) {
@@ -142,7 +166,7 @@ namespace Squared.PRGUI {
                     pNext = LayoutPtr(next);
                 }
                 */
-                Insert(pLastChild, pChild);
+                InsertAfter(pLastChild, pChild);
             }
         }
 
