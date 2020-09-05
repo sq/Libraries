@@ -82,7 +82,7 @@ namespace Squared.PRGUI {
         public readonly ControlKey Key;
 
         public ControlFlags Flags;
-        public ControlKey FirstChild;
+        public ControlKey Parent, FirstChild;
         public ControlKey PreviousSibling, NextSibling;
         public Vector4 Margins;
         public Vector2 Size;
@@ -90,7 +90,7 @@ namespace Squared.PRGUI {
         public LayoutItem (ControlKey key) {
             Key = key;
             Flags = default(ControlFlags);
-            FirstChild = PreviousSibling = NextSibling = ControlKey.Invalid;
+            Parent = FirstChild = PreviousSibling = NextSibling = ControlKey.Invalid;
             Margins = default(Vector4);
             Size = default(Vector2);
         }
@@ -148,6 +148,23 @@ namespace Squared.PRGUI {
                 new Vector2(self.Left, self.Top),
                 new Vector2(self.Left + self.Width, self.Top + self.Height)
             );
+        }
+    }
+
+    public struct ComputedLayout {
+        public readonly ControlKey Key;
+        public readonly RectF Rect, ParentRect;
+
+        public Bounds ParentBounds {
+            get {
+                return (Bounds)ParentRect;
+            }
+        }
+
+        public Bounds Bounds {
+            get {
+                return (Bounds)Rect;
+            }
         }
     }
 
@@ -283,6 +300,11 @@ namespace Squared.PRGUI {
 
             var result = &BoxesPtr()[key.ID];
             return result;
+        }
+
+        public void Clear () {
+            Dispose();
+            Initialize();
         }
 
         public void Dispose () {

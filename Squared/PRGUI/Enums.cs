@@ -35,7 +35,6 @@ namespace Squared.PRGUI {
         Layout_Fill = 0x1e0,
         Layout_Break = 0x200,
 
-        Inserted = 0x400,
         HFixed = 0x800,
         VFixed = 0x1000,
     }

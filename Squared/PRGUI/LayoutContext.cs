@@ -180,6 +180,8 @@ namespace Squared.PRGUI {
         }
 
         private unsafe void InsertBefore (LayoutItem * pNewItem, LayoutItem * pLater) {
+            AssertNotRoot(pNewItem->Key);
+
             var pPreviousSibling = LayoutPtr(pLater->PreviousSibling, true);
 
             if (pPreviousSibling != null)
@@ -187,8 +189,8 @@ namespace Squared.PRGUI {
             else
                 pNewItem->NextSibling = ControlKey.Invalid;
 
+            pNewItem->Parent = pLater->Parent;
             pNewItem->PreviousSibling = pLater->PreviousSibling;
-            pNewItem->Flags = pNewItem->Flags | ControlFlags.Inserted;
 
             if (pPreviousSibling != null)
                 pPreviousSibling->NextSibling = pNewItem->Key;
@@ -197,11 +199,13 @@ namespace Squared.PRGUI {
         }
 
         private unsafe void InsertAfter (LayoutItem * pEarlier, LayoutItem * pNewItem) {
+            AssertNotRoot(pNewItem->Key);
+
             var pNextSibling = LayoutPtr(pEarlier->NextSibling, true);
 
+            pNewItem->Parent = pEarlier->Parent;
             pNewItem->PreviousSibling = pEarlier->Key;
             pNewItem->NextSibling = pEarlier->NextSibling;
-            pNewItem->Flags = pNewItem->Flags | ControlFlags.Inserted;
 
             pEarlier->NextSibling = pNewItem->Key;
 
@@ -213,8 +217,24 @@ namespace Squared.PRGUI {
             data->Flags = data->Flags & ~ControlFlags.Layout_Break;
         }
 
+        public unsafe ControlKey GetParent (ControlKey child) {
+            if (child.IsInvalid)
+                return ControlKey.Invalid;
+
+            var ptr = LayoutPtr(child);
+            return ptr->Parent;
+        }
+
+        public unsafe ControlKey GetFirstChild (ControlKey parent) {
+            if (parent.IsInvalid)
+                return ControlKey.Invalid;
+
+            var ptr = LayoutPtr(parent);
+            return ptr->FirstChild;
+        }
+
         // TODO: Optimize this
-        public unsafe ControlKey LastChild (ControlKey parent) {
+        public ControlKey GetLastChild (ControlKey parent) {
             if (parent.IsInvalid)
                 return ControlKey.Invalid;
 
@@ -247,19 +267,27 @@ namespace Squared.PRGUI {
             InsertAfter(pEarlier, pLater);
         }
 
+        /// <summary>
+        /// Alias for InsertAtEnd
+        /// </summary>
+        public void Append (ControlKey parent, ControlKey child) {
+            InsertAtEnd(parent, child);
+        }
+
         public unsafe void InsertAtEnd (ControlKey parent, ControlKey child) {
             AssertNotRoot(child);
             AssertNotEqual(parent, child);
 
             var pParent = LayoutPtr(parent);
             var pChild = LayoutPtr(child);
-            Assert(!pChild->Flags.IsFlagged(ControlFlags.Inserted), "is not inserted");
+
+            Assert(pChild->Parent.IsInvalid, "is not inserted");
 
             if (pParent->FirstChild.IsInvalid) {
                 pParent->FirstChild = child;
-                pChild->Flags |= ControlFlags.Inserted;
+                pChild->Parent = parent;
             } else {
-                var lastChild = LastChild(parent);
+                var lastChild = GetLastChild(parent);
                 var pLastChild = LayoutPtr(lastChild);
                 InsertAfter(pLastChild, pChild);
             }
@@ -272,11 +300,14 @@ namespace Squared.PRGUI {
             var oldChild = pParent->FirstChild;
             var pOldChild = LayoutPtr(oldChild);
             var pChild = LayoutPtr(newFirstChild);
-            Assert(!pChild->Flags.IsFlagged(ControlFlags.Inserted));
-            pParent->FirstChild = newFirstChild;
+
+            Assert(pChild->Parent.IsInvalid, "is not inserted");
+
+            pChild->Parent = parent;
             pChild->PreviousSibling = ControlKey.Invalid;
-            pChild->Flags |= ControlFlags.Inserted;
             pChild->NextSibling = oldChild;
+
+            pParent->FirstChild = newFirstChild;
             pOldChild->PreviousSibling = newFirstChild;
         }
 
