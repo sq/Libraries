@@ -7,8 +7,8 @@ using Microsoft.Xna.Framework;
 using Squared.Game;
 
 namespace Squared.PRGUI {
-    public partial class PRGUIContext : IDisposable {
-        public PRGUIContext () {
+    public partial class LayoutContext : IDisposable {
+        public LayoutContext () {
             Initialize();
         }
 
@@ -225,8 +225,7 @@ namespace Squared.PRGUI {
 
         private unsafe float CalcStackedSize (ControlLayout * pItem, Dimensions dim) {
             float result = 0;
-            var idim = (int)dim;
-            var wdim = (int)dim + 2;
+            int idim = (int)dim, wdim = idim + 2;
             var child = pItem->FirstChild;
             while (!child.IsInvalid) {
                 var pChild = LayoutPtr(child);
@@ -237,12 +236,43 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        private unsafe float CalcWrappedOverlaySize (ControlLayout * pItem, Dimensions dim) {
-            throw new NotImplementedException();
+        private unsafe float CalcWrappedSizeImpl (ControlLayout * pItem, Dimensions dim, bool overlaid) {
+            int idim = (int)dim, wdim = idim + 2;
+            float needSize = 0, needSize2 = 0;
+            var child = pItem->FirstChild;
+            while (!child.IsInvalid) {
+                var pChild = LayoutPtr(child);
+                var rect = GetRect(child);
+                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Break)) {
+                    if (overlaid)
+                        needSize2 += needSize;
+                    else
+                        needSize2 = Math.Max(needSize2, needSize);
+
+                    needSize = 0;
+                }
+
+                var childSize = rect[idim] + rect[wdim] + pChild->Margins.GetElement(wdim);
+                if (overlaid)
+                    needSize = Math.Max(needSize, childSize);
+                else
+                    needSize += childSize;
+
+                child = pChild->NextSibling;
+            }
+
+            if (overlaid)
+                return needSize + needSize2;
+            else
+                return Math.Max(needSize, needSize2);
+        }
+
+        private unsafe float CalcWrappedOverlaidSize (ControlLayout * pItem, Dimensions dim) {
+            return CalcWrappedSizeImpl(pItem, dim, true);
         }
 
         private unsafe float CalcWrappedStackedSize (ControlLayout * pItem, Dimensions dim) {
-            throw new NotImplementedException();
+            return CalcWrappedSizeImpl(pItem, dim, false);
         }
 
         private unsafe void CalcSize (ControlLayout * pItem, Dimensions dim) {
@@ -277,7 +307,7 @@ namespace Squared.PRGUI {
                     if (dim == Dimensions.X)
                         result = CalcWrappedStackedSize(pItem, dim);
                     else
-                        result = CalcWrappedOverlaySize(pItem, dim);
+                        result = CalcWrappedOverlaidSize(pItem, dim);
                     break;
                 case ControlFlags.Container_Row:
                 case ControlFlags.Container_Column:
@@ -297,8 +327,7 @@ namespace Squared.PRGUI {
         private unsafe void ArrangeStacked (ControlLayout * pItem, Dimensions dim, bool wrap) {
             var itemFlags = pItem->Flags;
             var rect = GetRect(pItem->Key);
-            var wdim = ((uint)dim) + 2;
-            var idim = (int)(uint)dim;
+            int idim = (int)dim, wdim = idim + 2;
             float space = rect[wdim], max_x2 = rect[idim] + space;
 
             var startChild = pItem->FirstChild;
@@ -413,8 +442,7 @@ namespace Squared.PRGUI {
         }
 
         private unsafe void ArrangeOverlay (ControlLayout * pItem, Dimensions dim) {
-            var wdim = (int)dim + 2;
-            var idim = (int)dim;
+            int idim = (int)dim, wdim = idim + 2;
 
             var rect = GetRect(pItem->Key);
             var offset = rect[idim];
@@ -451,8 +479,7 @@ namespace Squared.PRGUI {
 
             Assert(!startItem.IsInvalid);
 
-            var wdim = (int)dim + 2;
-            var idim = (int)dim;
+            int idim = (int)dim, wdim = idim + 2;
 
             var item = startItem;
             while (item != endItem) {
@@ -486,7 +513,29 @@ namespace Squared.PRGUI {
         }
 
         private unsafe float ArrangeWrappedOverlaySqueezed (ControlLayout * pItem, Dimensions dim) {
-            throw new NotImplementedException();
+            int idim = (int)dim, wdim = idim + 2;
+            float offset = GetRect(pItem->Key)[idim], needSize = 0;
+            var child = pItem->FirstChild;
+            var startChild = child;
+
+            while (!child.IsInvalid) {
+                var pChild = LayoutPtr(child);
+                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Break)) {
+                    ArrangeOverlaySqueezedRange(dim, startChild, child, offset, needSize);
+                    offset += needSize;
+                    startChild = child;
+                    needSize = 0;
+                }
+
+                var rect = GetRect(child);
+                var childSize = rect[idim] + rect[wdim] + pChild->Margins.GetElement(wdim);
+                needSize = Math.Max(needSize, childSize);
+                child = pChild->NextSibling;
+            }
+
+            ArrangeOverlaySqueezedRange(dim, startChild, ControlKey.Invalid, offset, needSize);
+            offset += needSize;
+            return offset;
         }
 
         private unsafe void Arrange (ControlLayout * pItem, Dimensions dim) {

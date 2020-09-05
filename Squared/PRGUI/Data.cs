@@ -152,7 +152,7 @@ namespace Squared.PRGUI {
         }
     }
 
-    public partial class PRGUIContext : IDisposable {
+    public partial class LayoutContext : IDisposable {
         public const int DefaultCapacity = 1024;
 
         public int Count {

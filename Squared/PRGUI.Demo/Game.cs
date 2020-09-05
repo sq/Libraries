@@ -19,7 +19,7 @@ using Squared.Util;
 
 namespace PRGUI.Demo {
     public class DemoGame : MultithreadedGame {
-        public PRGUIContext Context;
+        public LayoutContext Context;
 
         public GraphicsDeviceManager Graphics;
         public DefaultMaterialSet Materials { get; private set; }
@@ -72,7 +72,7 @@ namespace PRGUI.Demo {
 
             Window.AllowUserResizing = false;
 
-            Context = new PRGUIContext();
+            Context = new LayoutContext();
             var root = Context.Root;
             Context.SetSizeXY(root, 1280, 720);
 
