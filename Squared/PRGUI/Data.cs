@@ -83,15 +83,14 @@ namespace Squared.PRGUI {
 
         public ControlFlags Flags;
         public ControlKey FirstChild;
-        public ControlKey NextSibling;
+        public ControlKey PreviousSibling, NextSibling;
         public Vector4 Margins;
         public Vector2 Size;
 
         public ControlLayout (ControlKey key) {
             Key = key;
             Flags = default(ControlFlags);
-            FirstChild = ControlKey.Invalid;
-            NextSibling = ControlKey.Invalid;
+            FirstChild = PreviousSibling = NextSibling = ControlKey.Invalid;
             Margins = default(Vector4);
             Size = default(Vector2);
         }
@@ -199,6 +198,13 @@ namespace Squared.PRGUI {
                 return false;
             var firstChild = result.FirstChild;
             return Layout.DangerousTryGetItem(firstChild.ID, out result);
+        }
+
+        public bool TryGetPreviousSibling (ControlKey key, out ControlLayout result) {
+            if (!Layout.DangerousTryGetItem(key.ID, out result))
+                return false;
+            var previousSibling = result.PreviousSibling;
+            return Layout.DangerousTryGetItem(previousSibling.ID, out result);
         }
 
         public bool TryGetNextSibling (ControlKey key, out ControlLayout result) {

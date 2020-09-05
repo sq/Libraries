@@ -79,7 +79,7 @@ namespace PRGUI.Demo {
             Context.SetContainerFlags(root, ControlFlags.Container_Row);
 
             MasterList = Context.CreateItem();
-            Context.Insert(root, MasterList);
+            Context.InsertAtEnd(root, MasterList);
 
             Context.SetSizeXY(MasterList, width: 400);
 
@@ -87,7 +87,7 @@ namespace PRGUI.Demo {
             Context.SetLayoutFlags(MasterList, ControlFlags.Layout_Fill_Column);
 
             ContentView = Context.CreateItem();
-            Context.Insert(root, ContentView);
+            Context.InsertAtEnd(root, ContentView);
 
             Context.SetLayoutFlags(ContentView, ControlFlags.Layout_Fill);
         }

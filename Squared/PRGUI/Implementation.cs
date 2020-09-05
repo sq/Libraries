@@ -73,16 +73,20 @@ namespace Squared.PRGUI {
             return key;
         }
 
-        private unsafe void Append (ControlLayout * pEarlier, ControlLayout * pLater) {
-            pLater->NextSibling = pEarlier->NextSibling;
-            pLater->Flags = pLater->Flags | ControlFlags.Inserted;
-            pEarlier->NextSibling = pLater->Key;
+        private unsafe void Insert (ControlLayout * pEarlier, ControlLayout * pNewItem) {
+            var pNextSibling = LayoutPtr(pEarlier->NextSibling);
+            pNewItem->PreviousSibling = pEarlier->Key;
+            pNewItem->NextSibling = pEarlier->NextSibling;
+            pNewItem->Flags = pNewItem->Flags | ControlFlags.Inserted;
+            pEarlier->NextSibling = pNewItem->Key;
+            pNextSibling->PreviousSibling = pNewItem->Key;
         }
 
         private unsafe void ClearItemBreak (ControlLayout * data) {
             data->Flags = data->Flags & ~ControlFlags.Layout_Break;
         }
 
+        // TODO: Optimize this
         public unsafe ControlKey LastChild (ControlKey key) {
             if (key.IsInvalid)
                 return ControlKey.Invalid;
@@ -103,16 +107,18 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        public unsafe void Append (ControlKey earlier, ControlKey later) {
+        public unsafe void Insert (ControlKey earlier, ControlKey later) {
             AssertNotRoot(later);
+            Assert(!earlier.IsInvalid);
+            Assert(!later.IsInvalid);
             AssertNotEqual(earlier, later);
 
             var pEarlier = LayoutPtr(earlier);
             var pLater = LayoutPtr(later);
-            Append(pEarlier, pLater);
+            Insert(pEarlier, pLater);
         }
 
-        public unsafe void Insert (ControlKey parent, ControlKey child) {
+        public unsafe void InsertAtEnd (ControlKey parent, ControlKey child) {
             AssertNotRoot(child);
             AssertNotEqual(parent, child);
 
@@ -124,6 +130,9 @@ namespace Squared.PRGUI {
                 pParent->FirstChild = child;
                 pChild->Flags |= ControlFlags.Inserted;
             } else {
+                var lastChild = LastChild(parent);
+                var pLastChild = LayoutPtr(lastChild);
+                /*
                 var next = pParent->FirstChild;
                 var pNext = LayoutPtr(next);
                 for (;;) {
@@ -132,20 +141,24 @@ namespace Squared.PRGUI {
                         break;
                     pNext = LayoutPtr(next);
                 }
-                Append(pNext, pChild);
+                */
+                Insert(pLastChild, pChild);
             }
         }
 
-        public unsafe void Push (ControlKey parent, ControlKey newChild) {
-            AssertNotRoot(newChild);
-            AssertNotEqual(parent, newChild);
+        public unsafe void InsertAtStart (ControlKey parent, ControlKey newFirstChild) {
+            AssertNotRoot(newFirstChild);
+            AssertNotEqual(parent, newFirstChild);
             var pParent = LayoutPtr(parent);
             var oldChild = pParent->FirstChild;
-            var pChild = LayoutPtr(newChild);
+            var pOldChild = LayoutPtr(oldChild);
+            var pChild = LayoutPtr(newFirstChild);
             Assert(!pChild->Flags.IsFlagged(ControlFlags.Inserted));
-            pParent->FirstChild = newChild;
+            pParent->FirstChild = newFirstChild;
+            pChild->PreviousSibling = ControlKey.Invalid;
             pChild->Flags |= ControlFlags.Inserted;
             pChild->NextSibling = oldChild;
+            pOldChild->PreviousSibling = newFirstChild;
         }
 
         public unsafe Vector2 GetSize (ControlKey key) {
