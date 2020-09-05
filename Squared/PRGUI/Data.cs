@@ -78,7 +78,7 @@ namespace Squared.PRGUI {
         }
     }
 
-    public struct ControlLayout {
+    public struct LayoutItem {
         public readonly ControlKey Key;
 
         public ControlFlags Flags;
@@ -87,7 +87,7 @@ namespace Squared.PRGUI {
         public Vector4 Margins;
         public Vector2 Size;
 
-        public ControlLayout (ControlKey key) {
+        public LayoutItem (ControlKey key) {
             Key = key;
             Flags = default(ControlFlags);
             FirstChild = PreviousSibling = NextSibling = ControlKey.Invalid;
@@ -168,7 +168,7 @@ namespace Squared.PRGUI {
 
         private int Version;
         private GCHandle LayoutPin, BoxesPin;
-        private readonly UnorderedList<ControlLayout> Layout = new UnorderedList<ControlLayout>(DefaultCapacity);
+        private readonly UnorderedList<LayoutItem> Layout = new UnorderedList<LayoutItem>(DefaultCapacity);
         private readonly UnorderedList<RectF> Boxes = new UnorderedList<RectF>(DefaultCapacity);
 
         public void EnsureCapacity (int capacity) {
@@ -182,35 +182,35 @@ namespace Squared.PRGUI {
             Boxes.EnsureCapacity(capacity);
         }
 
-        public ControlLayout this [ControlKey key] {
+        public LayoutItem this [ControlKey key] {
             get {
                 return Layout.DangerousGetItem(key.ID);
             }
         }
 
-        public bool TryGetItem (ref ControlKey key, out ControlLayout result) {
+        public bool TryGetItem (ref ControlKey key, out LayoutItem result) {
             return Layout.DangerousTryGetItem(key.ID, out result);
         }
 
-        public bool TryGetItem (ControlKey key, out ControlLayout result) {
+        public bool TryGetItem (ControlKey key, out LayoutItem result) {
             return Layout.DangerousTryGetItem(key.ID, out result);
         }
 
-        public bool TryGetFirstChild (ControlKey key, out ControlLayout result) {
+        public bool TryGetFirstChild (ControlKey key, out LayoutItem result) {
             if (!Layout.DangerousTryGetItem(key.ID, out result))
                 return false;
             var firstChild = result.FirstChild;
             return Layout.DangerousTryGetItem(firstChild.ID, out result);
         }
 
-        public bool TryGetPreviousSibling (ControlKey key, out ControlLayout result) {
+        public bool TryGetPreviousSibling (ControlKey key, out LayoutItem result) {
             if (!Layout.DangerousTryGetItem(key.ID, out result))
                 return false;
             var previousSibling = result.PreviousSibling;
             return Layout.DangerousTryGetItem(previousSibling.ID, out result);
         }
 
-        public bool TryGetNextSibling (ControlKey key, out ControlLayout result) {
+        public bool TryGetNextSibling (ControlKey key, out LayoutItem result) {
             if (!Layout.DangerousTryGetItem(key.ID, out result))
                 return false;
             var nextSibling = result.NextSibling;
@@ -241,17 +241,17 @@ namespace Squared.PRGUI {
             return true;
         }
 
-        private unsafe ControlLayout * LayoutPtr () {
+        private unsafe LayoutItem * LayoutPtr () {
             var buffer = Layout.GetBuffer();
             if (!LayoutPin.IsAllocated || (buffer.Array != LayoutPin.Target)) {
                 if (LayoutPin.IsAllocated)
                     LayoutPin.Free();
                 LayoutPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
             }
-            return ((ControlLayout*)LayoutPin.AddrOfPinnedObject()) + buffer.Offset;
+            return ((LayoutItem*)LayoutPin.AddrOfPinnedObject()) + buffer.Offset;
         }
 
-        private unsafe ControlLayout * LayoutPtr (ControlKey key, bool optional = false) {
+        private unsafe LayoutItem * LayoutPtr (ControlKey key, bool optional = false) {
             if (optional && key.IsInvalid)
                 return null;
 

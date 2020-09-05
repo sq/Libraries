@@ -14,7 +14,7 @@ namespace Squared.PRGUI {
             public readonly ControlKey Parent;
             private readonly ControlKey FirstChild;
             private int Version;
-            private unsafe ControlLayout* pCurrent;
+            private unsafe LayoutItem* pCurrent;
 
             public ChildrenEnumerator (LayoutContext context, ControlKey parent) {
                 Context = context;
@@ -24,7 +24,7 @@ namespace Squared.PRGUI {
                 FirstChild = ControlKey.Invalid;
             }
 
-            internal ChildrenEnumerator (LayoutContext context, ControlLayout *pParent) {
+            internal ChildrenEnumerator (LayoutContext context, LayoutItem *pParent) {
                 Context = context;
                 Version = context.Version;
                 Parent = pParent->Key;
@@ -145,7 +145,7 @@ namespace Squared.PRGUI {
                 InvalidState();
         }
 
-        private unsafe ChildrenEnumerable Children (ControlLayout *pParent) {
+        private unsafe ChildrenEnumerable Children (LayoutItem *pParent) {
             Assert(pParent != null);
             return new ChildrenEnumerable(this, pParent->Key);
         }
@@ -170,7 +170,7 @@ namespace Squared.PRGUI {
 
         public ControlKey CreateItem () {
             var key = new ControlKey(Count);
-            var newData = new ControlLayout(key);
+            var newData = new LayoutItem(key);
             var newBox = default(RectF);
 
             Layout.Add(ref newData);
@@ -179,7 +179,7 @@ namespace Squared.PRGUI {
             return key;
         }
 
-        private unsafe void InsertBefore (ControlLayout * pNewItem, ControlLayout * pLater) {
+        private unsafe void InsertBefore (LayoutItem * pNewItem, LayoutItem * pLater) {
             var pPreviousSibling = LayoutPtr(pLater->PreviousSibling, true);
 
             if (pPreviousSibling != null)
@@ -196,7 +196,7 @@ namespace Squared.PRGUI {
             pLater->PreviousSibling = pNewItem->Key;
         }
 
-        private unsafe void InsertAfter (ControlLayout * pEarlier, ControlLayout * pNewItem) {
+        private unsafe void InsertAfter (LayoutItem * pEarlier, LayoutItem * pNewItem) {
             var pNextSibling = LayoutPtr(pEarlier->NextSibling, true);
 
             pNewItem->PreviousSibling = pEarlier->Key;
@@ -209,7 +209,7 @@ namespace Squared.PRGUI {
                 pNextSibling->PreviousSibling = pNewItem->Key;
         }
 
-        private unsafe void ClearItemBreak (ControlLayout * data) {
+        private unsafe void ClearItemBreak (LayoutItem * data) {
             data->Flags = data->Flags & ~ControlFlags.Layout_Break;
         }
 
@@ -341,7 +341,7 @@ namespace Squared.PRGUI {
             return pItem->Margins;
         }
 
-        private unsafe float CalcOverlaySize (ControlLayout * pItem, Dimensions dim) {
+        private unsafe float CalcOverlaySize (LayoutItem * pItem, Dimensions dim) {
             float result = 0;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
@@ -353,7 +353,7 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        private unsafe float CalcStackedSize (ControlLayout * pItem, Dimensions dim) {
+        private unsafe float CalcStackedSize (LayoutItem * pItem, Dimensions dim) {
             float result = 0;
             int idim = (int)dim, wdim = idim + 2;
             foreach (var child in Children(pItem)) {
@@ -364,7 +364,7 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        private unsafe float CalcWrappedSizeImpl (ControlLayout * pItem, Dimensions dim, bool overlaid) {
+        private unsafe float CalcWrappedSizeImpl (LayoutItem * pItem, Dimensions dim, bool overlaid) {
             int idim = (int)dim, wdim = idim + 2;
             float needSize = 0, needSize2 = 0;
             foreach (var child in Children(pItem)) {
@@ -392,15 +392,15 @@ namespace Squared.PRGUI {
                 return Math.Max(needSize, needSize2);
         }
 
-        private unsafe float CalcWrappedOverlaidSize (ControlLayout * pItem, Dimensions dim) {
+        private unsafe float CalcWrappedOverlaidSize (LayoutItem * pItem, Dimensions dim) {
             return CalcWrappedSizeImpl(pItem, dim, true);
         }
 
-        private unsafe float CalcWrappedStackedSize (ControlLayout * pItem, Dimensions dim) {
+        private unsafe float CalcWrappedStackedSize (LayoutItem * pItem, Dimensions dim) {
             return CalcWrappedSizeImpl(pItem, dim, false);
         }
 
-        private unsafe void CalcSize (ControlLayout * pItem, Dimensions dim) {
+        private unsafe void CalcSize (LayoutItem * pItem, Dimensions dim) {
             foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);
@@ -447,7 +447,7 @@ namespace Squared.PRGUI {
             (*pRect)[idim] = result;
         }
 
-        private unsafe void ArrangeStacked (ControlLayout * pItem, Dimensions dim, bool wrap) {
+        private unsafe void ArrangeStacked (LayoutItem * pItem, Dimensions dim, bool wrap) {
             var itemFlags = pItem->Flags;
             var rect = GetRect(pItem->Key);
             int idim = (int)dim, wdim = idim + 2;
@@ -564,7 +564,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        private unsafe void ArrangeOverlay (ControlLayout * pItem, Dimensions dim) {
+        private unsafe void ArrangeOverlay (LayoutItem * pItem, Dimensions dim) {
             int idim = (int)dim, wdim = idim + 2;
 
             var rect = GetRect(pItem->Key);
@@ -633,7 +633,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        private unsafe float ArrangeWrappedOverlaySqueezed (ControlLayout * pItem, Dimensions dim) {
+        private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, Dimensions dim) {
             int idim = (int)dim, wdim = idim + 2;
             float offset = GetRect(pItem->Key)[idim], needSize = 0;
 
@@ -657,7 +657,7 @@ namespace Squared.PRGUI {
             return offset;
         }
 
-        private unsafe void Arrange (ControlLayout * pItem, Dimensions dim) {
+        private unsafe void Arrange (LayoutItem * pItem, Dimensions dim) {
             var flags = pItem->Flags;
             var pRect = BoxPtr(pItem->Key);
             var idim = (int)dim;
