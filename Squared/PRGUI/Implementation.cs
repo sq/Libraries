@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,101 @@ using Squared.Game;
 
 namespace Squared.PRGUI {
     public partial class LayoutContext : IDisposable {
+        public unsafe struct ChildrenEnumerator : IEnumerator<ControlKey> {
+            public readonly LayoutContext Context;
+            public readonly ControlKey Parent;
+            private readonly ControlKey FirstChild;
+            private int Version;
+            private unsafe ControlLayout* pCurrent;
+
+            public ChildrenEnumerator (LayoutContext context, ControlKey parent) {
+                Context = context;
+                Version = context.Version;
+                Parent = parent;
+                pCurrent = null;
+                FirstChild = ControlKey.Invalid;
+            }
+
+            internal ChildrenEnumerator (LayoutContext context, ControlLayout *pParent) {
+                Context = context;
+                Version = context.Version;
+                Parent = pParent->Key;
+                pCurrent = null;
+                FirstChild = pParent->FirstChild;
+            }
+
+            private void CheckVersion () {
+                if (Version <= -1)
+                    throw new ObjectDisposedException("enumerator");
+
+                Context.Assert(Version == Context.Version, "Context was modified");
+            }
+
+            private void CheckValid (void * ptr) {
+                CheckVersion();
+                Context.Assert(ptr != null, "No current item");
+            }
+
+            public ControlKey Current {
+                get {
+                    CheckVersion();
+                    CheckValid(pCurrent);
+                    return pCurrent->Key;
+                }
+            }
+
+            object IEnumerator.Current => Current;
+
+            public void Dispose () {
+                pCurrent = null;
+                Version = -1;
+            }
+
+            public bool MoveNext () {
+                CheckVersion();
+
+                if (pCurrent == null) {
+                    if (FirstChild.IsInvalid) {
+                        var pParent = Context.LayoutPtr(Parent);
+                        pCurrent = Context.LayoutPtr(pParent->FirstChild, true);
+                    } else {
+                        pCurrent = Context.LayoutPtr(FirstChild);
+                    }
+                } else {
+                    pCurrent = Context.LayoutPtr(pCurrent->NextSibling, true);
+                }
+
+                return (pCurrent != null);
+            }
+
+            void IEnumerator.Reset () {
+                CheckVersion();
+                pCurrent = null;
+            }
+        }
+
+        public struct ChildrenEnumerable : IEnumerable<ControlKey> {
+            public readonly LayoutContext Context;
+            public readonly ControlKey Parent;
+
+            internal ChildrenEnumerable (LayoutContext context, ControlKey parent) {
+                Context = context;
+                Parent = parent;
+            }
+
+            public ChildrenEnumerator GetEnumerator () {
+                return new ChildrenEnumerator(Context, Parent);
+            }
+
+            IEnumerator<ControlKey> IEnumerable<ControlKey>.GetEnumerator () {
+                return GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator () {
+                return GetEnumerator();
+            }
+        }
+
         public LayoutContext () {
             Initialize();
         }
@@ -49,6 +145,16 @@ namespace Squared.PRGUI {
                 InvalidState();
         }
 
+        private unsafe ChildrenEnumerable Children (ControlLayout *pParent) {
+            Assert(pParent != null);
+            return new ChildrenEnumerable(this, pParent->Key);
+        }
+
+        public ChildrenEnumerable Children (ControlKey parent) {
+            Assert(!parent.IsInvalid);
+            return new ChildrenEnumerable(this, parent);
+        }
+
         private unsafe bool Update (ControlKey key) {
             if (key.IsInvalid)
                 return false;
@@ -74,25 +180,33 @@ namespace Squared.PRGUI {
         }
 
         private unsafe void InsertBefore (ControlLayout * pNewItem, ControlLayout * pLater) {
-            var pPreviousSibling = LayoutPtr(pLater->PreviousSibling);
+            var pPreviousSibling = LayoutPtr(pLater->PreviousSibling, true);
 
-            pNewItem->NextSibling = pPreviousSibling->NextSibling;
+            if (pPreviousSibling != null)
+                pNewItem->NextSibling = pPreviousSibling->NextSibling;
+            else
+                pNewItem->NextSibling = ControlKey.Invalid;
+
             pNewItem->PreviousSibling = pLater->PreviousSibling;
             pNewItem->Flags = pNewItem->Flags | ControlFlags.Inserted;
 
-            pPreviousSibling->NextSibling = pNewItem->Key;
+            if (pPreviousSibling != null)
+                pPreviousSibling->NextSibling = pNewItem->Key;
+
             pLater->PreviousSibling = pNewItem->Key;
         }
 
         private unsafe void InsertAfter (ControlLayout * pEarlier, ControlLayout * pNewItem) {
-            var pNextSibling = LayoutPtr(pEarlier->NextSibling);
+            var pNextSibling = LayoutPtr(pEarlier->NextSibling, true);
 
             pNewItem->PreviousSibling = pEarlier->Key;
             pNewItem->NextSibling = pEarlier->NextSibling;
             pNewItem->Flags = pNewItem->Flags | ControlFlags.Inserted;
 
             pEarlier->NextSibling = pNewItem->Key;
-            pNextSibling->PreviousSibling = pNewItem->Key;
+
+            if (pNextSibling != null)
+                pNextSibling->PreviousSibling = pNewItem->Key;
         }
 
         private unsafe void ClearItemBreak (ControlLayout * data) {
@@ -100,24 +214,15 @@ namespace Squared.PRGUI {
         }
 
         // TODO: Optimize this
-        public unsafe ControlKey LastChild (ControlKey key) {
-            if (key.IsInvalid)
+        public unsafe ControlKey LastChild (ControlKey parent) {
+            if (parent.IsInvalid)
                 return ControlKey.Invalid;
 
-            var parent = LayoutPtr(key);
-            if (parent->FirstChild.IsInvalid)
-                return ControlKey.Invalid;
+            var lastChild = ControlKey.Invalid;
+            foreach (var child in Children(parent))
+                lastChild = child;
 
-            var child = LayoutPtr(parent->FirstChild);
-            var result = parent->FirstChild;
-            for (;;) {
-                var next = child->NextSibling;
-                if (next.IsInvalid)
-                    break;
-                result = next;
-                child = LayoutPtr(next);
-            }
-            return result;
+            return lastChild;
         }
 
         public unsafe void InsertBefore (ControlKey newSibling, ControlKey later) {
@@ -156,16 +261,6 @@ namespace Squared.PRGUI {
             } else {
                 var lastChild = LastChild(parent);
                 var pLastChild = LayoutPtr(lastChild);
-                /*
-                var next = pParent->FirstChild;
-                var pNext = LayoutPtr(next);
-                for (;;) {
-                    next = pNext->NextSibling;
-                    if (next.IsInvalid)
-                        break;
-                    pNext = LayoutPtr(next);
-                }
-                */
                 InsertAfter(pLastChild, pChild);
             }
         }
@@ -248,14 +343,12 @@ namespace Squared.PRGUI {
 
         private unsafe float CalcOverlaySize (ControlLayout * pItem, Dimensions dim) {
             float result = 0;
-            var child = pItem->FirstChild;
-            while (!child.IsInvalid) {
+            foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var rect = GetRect(child);
                 // FIXME: Is this a bug?
                 var childSize = rect[(uint)dim] + rect[(uint)dim + 2] + pChild->Margins.GetElement((uint)dim + 2);
                 result = Math.Max(result, childSize);
-                child = pChild->NextSibling;
             }
             return result;
         }
@@ -263,12 +356,10 @@ namespace Squared.PRGUI {
         private unsafe float CalcStackedSize (ControlLayout * pItem, Dimensions dim) {
             float result = 0;
             int idim = (int)dim, wdim = idim + 2;
-            var child = pItem->FirstChild;
-            while (!child.IsInvalid) {
+            foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var rect = GetRect(child);
                 result += rect[idim] + rect[wdim] + pChild->Margins.GetElement(wdim);
-                child = pChild->NextSibling;
             }
             return result;
         }
@@ -276,8 +367,7 @@ namespace Squared.PRGUI {
         private unsafe float CalcWrappedSizeImpl (ControlLayout * pItem, Dimensions dim, bool overlaid) {
             int idim = (int)dim, wdim = idim + 2;
             float needSize = 0, needSize2 = 0;
-            var child = pItem->FirstChild;
-            while (!child.IsInvalid) {
+            foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var rect = GetRect(child);
                 if (pChild->Flags.IsFlagged(ControlFlags.Layout_Break)) {
@@ -294,8 +384,6 @@ namespace Squared.PRGUI {
                     needSize = Math.Max(needSize, childSize);
                 else
                     needSize += childSize;
-
-                child = pChild->NextSibling;
             }
 
             if (overlaid)
@@ -313,12 +401,10 @@ namespace Squared.PRGUI {
         }
 
         private unsafe void CalcSize (ControlLayout * pItem, Dimensions dim) {
-            var child = pItem->FirstChild;
-            while (!child.IsInvalid) {
+            foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);
                 CalcSize(pChild, dim);
-                child = pChild->NextSibling;
             }
 
             var pRect = BoxPtr(pItem->Key);
@@ -485,8 +571,7 @@ namespace Squared.PRGUI {
             var offset = rect[idim];
             var space = rect[wdim];
 
-            var child = pItem->FirstChild;
-            while (!child.IsInvalid) {
+            foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
                 var childMargins = pChild->Margins;
@@ -506,7 +591,6 @@ namespace Squared.PRGUI {
 
                 childRect[idim] += offset;
                 SetRect(child, ref childRect);
-                child = pChild->NextSibling;
             }
         }
 
@@ -552,10 +636,9 @@ namespace Squared.PRGUI {
         private unsafe float ArrangeWrappedOverlaySqueezed (ControlLayout * pItem, Dimensions dim) {
             int idim = (int)dim, wdim = idim + 2;
             float offset = GetRect(pItem->Key)[idim], needSize = 0;
-            var child = pItem->FirstChild;
-            var startChild = child;
 
-            while (!child.IsInvalid) {
+            var startChild = pItem->FirstChild;
+            foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 if (pChild->Flags.IsFlagged(ControlFlags.Layout_Break)) {
                     ArrangeOverlaySqueezedRange(dim, startChild, child, offset, needSize);
@@ -567,7 +650,6 @@ namespace Squared.PRGUI {
                 var rect = GetRect(child);
                 var childSize = rect[idim] + rect[wdim] + pChild->Margins.GetElement(wdim);
                 needSize = Math.Max(needSize, childSize);
-                child = pChild->NextSibling;
             }
 
             ArrangeOverlaySqueezedRange(dim, startChild, ControlKey.Invalid, offset, needSize);
@@ -610,12 +692,10 @@ namespace Squared.PRGUI {
                     break;
             }
 
-            var child = pItem->FirstChild;
-            while (!child.IsInvalid) {
+            foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
                 var pChild = LayoutPtr(child);
                 Arrange(pChild, dim);
-                child = pChild->NextSibling;
             }
         }
     }

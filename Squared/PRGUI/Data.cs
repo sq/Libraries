@@ -166,11 +166,14 @@ namespace Squared.PRGUI {
 
         public ControlKey Root = ControlKey.Invalid;
 
+        private int Version;
         private GCHandle LayoutPin, BoxesPin;
         private readonly UnorderedList<ControlLayout> Layout = new UnorderedList<ControlLayout>(DefaultCapacity);
         private readonly UnorderedList<RectF> Boxes = new UnorderedList<RectF>(DefaultCapacity);
 
         public void EnsureCapacity (int capacity) {
+            Version++;
+
             if (LayoutPin.IsAllocated)
                 LayoutPin.Free();
             if (BoxesPin.IsAllocated)
@@ -248,7 +251,10 @@ namespace Squared.PRGUI {
             return ((ControlLayout*)LayoutPin.AddrOfPinnedObject()) + buffer.Offset;
         }
 
-        private unsafe ControlLayout * LayoutPtr (ControlKey key) {
+        private unsafe ControlLayout * LayoutPtr (ControlKey key, bool optional = false) {
+            if (optional && key.IsInvalid)
+                return null;
+
             if ((key.ID < 0) || (key.ID >= Layout.Count))
                 throw new ArgumentOutOfRangeException(nameof(key));
 
@@ -268,7 +274,10 @@ namespace Squared.PRGUI {
             return ((RectF *)BoxesPin.AddrOfPinnedObject()) + buffer.Offset;
         }
 
-        private unsafe RectF * BoxPtr (ControlKey key) {
+        private unsafe RectF * BoxPtr (ControlKey key, bool optional = false) {
+            if (optional && key.IsInvalid)
+                return null;
+
             if ((key.ID < 0) || (key.ID >= Boxes.Count))
                 throw new ArgumentOutOfRangeException(nameof(key));
 
@@ -277,6 +286,8 @@ namespace Squared.PRGUI {
         }
 
         public void Dispose () {
+            Version++;
+
             if (IsDisposed)
                 return;
 
@@ -291,6 +302,8 @@ namespace Squared.PRGUI {
         }
 
         public void Initialize () {
+            Version++;
+
             IsDisposed = false;
             Root = CreateItem();
         }
