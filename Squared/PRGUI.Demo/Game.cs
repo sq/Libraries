@@ -134,15 +134,17 @@ namespace PRGUI.Demo {
                                 AutoSizeWidth = false,
                                 FixedWidth = 400,
                                 Text = "Button 1",
+                                // LayoutFlags = ControlFlags.Layout_Fill_Row
                             },
                             new Button {
                                 AutoSizeWidth = false,
                                 Text = "Button 2",
+                                LayoutFlags = ControlFlags.Layout_Fill_Row
                             },
                             new StaticText {
                                 AutoSizeWidth = false,
                                 Text = "Static Text",
-                                // LayoutFlags = ControlFlags.Layout_ForceBreak
+                                LayoutFlags = ControlFlags.Layout_ForceBreak
                             }
                         }
                     },

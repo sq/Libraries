@@ -552,6 +552,7 @@ namespace Squared.PRGUI.Layout {
                     else if (total > 0) {
                         switch (itemFlags & ControlFlags.Container_Align_Justify) {
                             case ControlFlags.Container_Align_Justify:
+                                // justify when not wrapping or not in last line, or not manually breaking
                                 if (!wrap || (!endChild.IsInvalid && !hardBreak))
                                     spacer = extraSpace / (total - 1);
                                 break;
@@ -566,15 +567,18 @@ namespace Squared.PRGUI.Layout {
                         }
                     }
 
+                // oui.h
+                // } else if (!wrap && (extraSpace < 0)) {
+                // layout.h
                 } else if (!wrap && (squeezedCount > 0)) {
                     eater = extraSpace / squeezedCount;
                 }
 
-                float x = rect[idim], x1 = 0;
+                float x = rect[idim];
                 child = startChild;
 
                 while (child != endChild) {
-                    float ix0 = 0, ix1 = 0;
+                    float ix0 = 0, ix1 = 0, x1;
 
                     // FIXME: Duplication
                     var pChild = LayoutPtr(child);
@@ -583,6 +587,9 @@ namespace Squared.PRGUI.Layout {
                     var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
                     var childMargins = pChild->Margins;
                     var childRect = GetRect(child);
+
+                    // Diagnostic
+                    var originalChildRect = childRect;
 
                     x += childRect[idim] + extraMargin;
                     if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
@@ -654,7 +661,7 @@ namespace Squared.PRGUI.Layout {
                 var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
                 var margins = pItem->Margins;
                 var rect = GetRect(item);
-                var minSize = Math.Max(0, space - rect[idim] - margins.GetElement((uint)dim));
+                var minSize = Math.Max(0, space - rect[idim] - margins.GetElement((uint)wdim));
 
                 switch (bFlags & ControlFlags.Layout_Fill_Row) {
                     case 0: // ControlFlags.Layout_Center:
