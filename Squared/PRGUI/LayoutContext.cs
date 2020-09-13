@@ -480,7 +480,7 @@ namespace Squared.PRGUI.Layout {
                     break;
             }
 
-            (*pRect)[idim] = result;
+            (*pRect)[2 + idim] = result;
         }
 
         private unsafe void ArrangeStacked (LayoutItem * pItem, Dimensions dim, bool wrap) {
