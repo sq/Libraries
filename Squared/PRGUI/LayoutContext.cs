@@ -213,8 +213,18 @@ namespace Squared.PRGUI.Layout {
                 pNextSibling->PreviousSibling = pNewItem->Key;
         }
 
-        private unsafe void ClearItemBreak (LayoutItem * data) {
-            data->Flags = data->Flags & ~ControlFlags.Layout_Break;
+        public unsafe void SetItemSyntheticBreak (ControlKey key, bool newState) {
+            var pItem = LayoutPtr(key);
+            pItem->Flags = pItem->Flags & ~ControlFlags.Internal_Break;
+            if (newState)
+                pItem->Flags |= ControlFlags.Internal_Break;
+        }
+
+        public unsafe void SetItemForceBreak (ControlKey key, bool newState) {
+            var pItem = LayoutPtr(key);
+            pItem->Flags = pItem->Flags & ~ControlFlags.Layout_ForceBreak;
+            if (newState)
+                pItem->Flags |= ControlFlags.Layout_ForceBreak;
         }
 
         public unsafe ControlKey GetParent (ControlKey child) {
@@ -328,24 +338,19 @@ namespace Squared.PRGUI.Layout {
 
             var flags = pItem->Flags;
             if (size.X <= 0)
-                flags &= ~ControlFlags.FixedWidth;
+                flags &= ~ControlFlags.Internal_FixedWidth;
             else
-                flags |= ControlFlags.FixedWidth;
+                flags |= ControlFlags.Internal_FixedWidth;
 
             if (size.Y <= 0)
-                flags &= ~ControlFlags.FixedHeight;
+                flags &= ~ControlFlags.Internal_FixedHeight;
             else
-                flags |= ControlFlags.FixedHeight;
+                flags |= ControlFlags.Internal_FixedHeight;
             pItem->Flags = flags;
         }
 
         public void SetSizeXY (ControlKey key, float width = 0, float height = 0) {
             SetSize(key, new Vector2(width, height));
-        }
-
-        public unsafe void ClearItemBreak (ControlKey key) {
-            var pItem = LayoutPtr(key);
-            pItem->Flags = (pItem->Flags & ~ControlFlags.Layout_Break);
         }
 
         public unsafe void SetContainerFlags (ControlKey key, ControlFlags flags) {
@@ -406,7 +411,11 @@ namespace Squared.PRGUI.Layout {
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 var rect = GetRect(child);
-                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Break)) {
+
+                if (
+                    pChild->Flags.IsFlagged(ControlFlags.Layout_ForceBreak) ||
+                    pChild->Flags.IsFlagged(ControlFlags.Internal_Break)
+                ) {
                     if (overlaid)
                         needSize2 += needSize;
                     else
@@ -509,21 +518,24 @@ namespace Squared.PRGUI.Layout {
                         ++count;
                         extend += childRect[idim] + childMargins.GetElement(wdim);
                     } else {
-                        if (!fFlags.IsFlagged(ControlFlags.FixedWidth))
+                        if (!fFlags.IsFlagged(ControlFlags.Internal_FixedWidth))
                             ++squeezedCount;
                         extend += childRect[idim] + childRect[wdim] + childMargins.GetElement(wdim);
                     }
 
                     if (
-                        wrap &&
                         (total != 0) && (
-                            (extend > space) ||
-                            childFlags.IsFlagged(ControlFlags.Layout_Break)
+                            (
+                                wrap && (
+                                    (extend > space) ||
+                                    childFlags.IsFlagged(ControlFlags.Internal_Break)
+                                )
+                            ) || childFlags.IsFlagged(ControlFlags.Layout_ForceBreak)
                         )
                     ) {
                         endChild = child;
-                        hardBreak = childFlags.IsFlagged(ControlFlags.Layout_Break);
-                        pChild->Flags |= ControlFlags.Layout_Break;
+                        hardBreak = childFlags.IsFlagged(ControlFlags.Internal_Break) || childFlags.IsFlagged(ControlFlags.Layout_ForceBreak);
+                        pChild->Flags |= ControlFlags.Internal_Break;
                         break;
                     } else {
                         used = extend;
@@ -577,7 +589,7 @@ namespace Squared.PRGUI.Layout {
                     x += childRect[idim] + extraMargin;
                     if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
                         x1 = x + filler;
-                    else if (fFlags.IsFlagged(ControlFlags.FixedWidth))
+                    else if (fFlags.IsFlagged(ControlFlags.Internal_FixedWidth))
                         x1 = x + childRect[wdim];
                     else
                         x1 = x + Math.Max(0f, childRect[wdim] + eater);
@@ -676,7 +688,10 @@ namespace Squared.PRGUI.Layout {
             var startChild = pItem->FirstChild;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
-                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Break)) {
+                if (
+                    pChild->Flags.IsFlagged(ControlFlags.Internal_Break) ||
+                    pChild->Flags.IsFlagged(ControlFlags.Layout_ForceBreak)
+                ) {
                     ArrangeOverlaySqueezedRange(dim, startChild, child, offset, needSize);
                     offset += needSize;
                     startChild = child;

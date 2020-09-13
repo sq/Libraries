@@ -102,17 +102,18 @@ namespace Squared.PRGUI.Layout {
         /// <summary>
         /// When wrapping, place this item on a new line
         /// </summary>
-        Layout_Break = 0x200,
+        Layout_ForceBreak = 0x2000,
 
-        FixedWidth = 0x800,
-        FixedHeight = 0x1000,
+        Internal_FixedWidth = 0x800,
+        Internal_FixedHeight = 0x1000,
+        Internal_Break = 0x200,
     }
 
     public static class ControlFlagMask {
         public const ControlFlags BoxModel = (ControlFlags)0x7,
             Container = (ControlFlags)0x1f,
-            Layout = (ControlFlags)0x3e0,
-            Fixed = ControlFlags.FixedWidth | ControlFlags.FixedHeight;
+            Layout = (ControlFlags)0x23e0,
+            Fixed = ControlFlags.Internal_FixedWidth | ControlFlags.Internal_FixedHeight;
     }
 
     public static class PRGUIExtensions {

@@ -131,15 +131,18 @@ namespace PRGUI.Demo {
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Justify,
                         Children = {
                             new Button {
+                                AutoSizeWidth = false,
                                 FixedWidth = 400,
                                 Text = "Button 1",
                             },
                             new Button {
+                                AutoSizeWidth = false,
                                 Text = "Button 2",
                             },
                             new StaticText {
+                                AutoSizeWidth = false,
                                 Text = "Static Text",
-                                LayoutFlags = ControlFlags.Layout_Break
+                                LayoutFlags = ControlFlags.Layout_ForceBreak
                             }
                         }
                     },
