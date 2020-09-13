@@ -19,8 +19,18 @@ namespace Squared.PRGUI {
 
         public List<Control> Controls = new List<Control>();
 
+        public Control MouseCaptured { get; private set; }
         public Control Hovering { get; private set; }
-        public Control Focused { get; set; }
+
+        private Control _Focused;
+        public Control Focused {
+            get => _Focused;
+            set {
+                if (value != null && !value.AcceptsFocus)
+                    throw new InvalidOperationException();
+                _Focused = value;
+            }
+        }
 
         public void Update () {
             var context = new UIOperationContext {
@@ -38,8 +48,49 @@ namespace Squared.PRGUI {
             Layout.Update();
         }
 
-        public void UpdateInput (Vector2 mousePosition) {
+        public void UpdateInput (Vector2 mousePosition, bool isButtonPressed, bool wasButtonPressed) {
+            var previouslyHovering = Hovering;
             Hovering = HitTest(mousePosition);
+
+            if (Hovering != previouslyHovering)
+                HandleHoverTransition(previouslyHovering, Hovering);
+
+            if (!wasButtonPressed && isButtonPressed) {
+                HandlePress(Hovering);
+            } else if (wasButtonPressed && !isButtonPressed) {
+                if (MouseCaptured != null) {
+                    if (Hovering == MouseCaptured)
+                        HandleClick(MouseCaptured);
+                    else
+                        HandleDrag(MouseCaptured, Hovering);
+                }
+
+                HandleRelease(Hovering);
+
+                MouseCaptured = null;
+            } else if (!isButtonPressed) {
+                // Shouldn't be necessary but whatever
+                MouseCaptured = null;
+            }
+        }
+
+        private void HandleHoverTransition (Control previous, Control current) {
+        }
+
+        private void HandlePress (Control target) {
+            if (target != null && target.AcceptsCapture)
+                MouseCaptured = target;
+            if (target == null || target.AcceptsFocus)
+                Focused = target;
+        }
+
+        private void HandleRelease (Control target) {
+        }
+
+        private void HandleClick (Control target) {
+        }
+
+        private void HandleDrag (Control originalTarget, Control finalTarget) {
         }
 
         // Position is relative to the top-left corner of the canvas

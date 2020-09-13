@@ -19,6 +19,7 @@ namespace Squared.PRGUI.Decorations {
     public interface IDecorator {
         Margins Margins { get; }
         Margins Padding { get; }
+        Vector2 PressedInset { get; }
         void Rasterize (UIOperationContext context, RectF box, ControlStates state);
         Material GetTextMaterial (UIOperationContext context, ControlStates state);
     }
@@ -26,6 +27,7 @@ namespace Squared.PRGUI.Decorations {
     public sealed class DelegateDecorator : IDecorator {
         public Margins Margins { get; set; }
         public Margins Padding { get; set; }
+        public Vector2 PressedInset { get; set; }
         public Action<UIOperationContext, RectF, ControlStates> Below, Content, Above;
         public Func<UIOperationContext, ControlStates, Material> GetTextMaterial;
 
@@ -55,8 +57,15 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public class DefaultDecorations : DecorationProvider {
-        public float CornerRadius = 4f;
-        public float InactiveOutlineThickness = 1f, ActiveOutlineThickness = 1.33f;
+        public float InteractableCornerRadius = 6f, InertCornerRadius = 3f;
+        public float InactiveOutlineThickness = 1f, ActiveOutlineThickness = 1.33f, PressedOutlineThickness = 2f,
+            InertOutlineThickness = 1f;
+
+        public Color FocusedColor = new Color(200, 230, 255),
+            ActiveColor = Color.White,
+            InactiveColor = new Color(180, 180, 180),
+            InertOutlineColor = new Color(255, 255, 255) * 0.33f,
+            InertFillColor = Color.Transparent;
 
         public DefaultDecorations () {
             Func<UIOperationContext, ControlStates, Material> getTextMaterial =
@@ -67,16 +76,31 @@ namespace Squared.PRGUI.Decorations {
             Button = new DelegateDecorator {
                 Margins = new Margins(4),
                 Padding = new Margins(6),
+                PressedInset = new Vector2(0, 1),
                 GetTextMaterial = getTextMaterial,
                 Below = (context, box, state) => {
-                    var alpha = state.HasFlag(ControlStates.Hovering) ? 1.0f : 0.66f;
-                    var thickness = state.HasFlag(ControlStates.Hovering) ? ActiveOutlineThickness : InactiveOutlineThickness;
-                    var offset = new Vector2(CornerRadius);
+                    float alpha, thickness;
+                    var baseColor = state.HasFlag(ControlStates.Focused)
+                        ? FocusedColor
+                        : InactiveColor;
+
+                    if (state.HasFlag(ControlStates.Pressed)) {
+                        alpha = 1f;
+                        thickness = PressedOutlineThickness;
+                        baseColor = ActiveColor;
+                    } else if (state.HasFlag(ControlStates.Hovering)) {
+                        alpha = 0.85f;
+                        thickness = ActiveOutlineThickness;
+                    } else {
+                        alpha = state.HasFlag(ControlStates.Focused) ? 0.7f : 0.6f;
+                        thickness = state.HasFlag(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
+                    }
+                    var offset = new Vector2(InteractableCornerRadius);
                     context.Renderer.RasterizeRectangle(
                         box.Position + offset, box.Extent - offset,
-                        radius: CornerRadius,
-                        outlineRadius: thickness, outlineColor: Color.White * alpha,
-                        innerColor: Color.White * 0.3f * alpha, outerColor: Color.White * 0.2f * alpha,
+                        radius: InteractableCornerRadius,
+                        outlineRadius: thickness, outlineColor: baseColor * alpha,
+                        innerColor: baseColor * 0.3f * alpha, outerColor: baseColor * 0.2f * alpha,
                         fillMode: Render.RasterShape.RasterFillMode.Linear
                     );
                 },
@@ -86,12 +110,12 @@ namespace Squared.PRGUI.Decorations {
                 Margins = new Margins(4),
                 GetTextMaterial = getTextMaterial,
                 Below = (context, box, state) => {
-                    var offset = new Vector2(CornerRadius);
+                    var offset = new Vector2(InertCornerRadius);
                     context.Renderer.RasterizeRectangle(
                         box.Position + offset, box.Extent - offset,
-                        radius: CornerRadius,
-                        outlineRadius: InactiveOutlineThickness, outlineColor: Color.White * 0.2f,
-                        innerColor: Color.Transparent, outerColor: Color.Transparent
+                        radius: InertCornerRadius,
+                        outlineRadius: InertOutlineThickness, outlineColor: InertOutlineColor,
+                        innerColor: InertFillColor, outerColor: InertFillColor
                     );
                 }
             };

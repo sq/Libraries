@@ -527,5 +527,9 @@ float4 texturedShapeCommon (
 
     fill *= texColor;
 
-    return composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z);
+    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z);
+    // It's important to use discard here because it allows using raster shapes to generate stencil masks
+    if (result.a < (1 / 255))
+        discard;
+    return result;
 }

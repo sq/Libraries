@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Text;
@@ -13,23 +14,27 @@ namespace Squared.PRGUI {
         public IDecorator CustomDecorations;
         public Margins Margins, Padding;
         public ControlFlags LayoutFlags;
-        public Vector2? FixedSize;
+        public float? FixedWidth, FixedHeight;
 
         public ControlStates State;
 
         internal ControlKey LayoutKey;
 
+        public bool AcceptsCapture { get; protected set; }
+        public bool AcceptsFocus { get; protected set; }
+
         public void GenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             LayoutKey = OnGenerateLayoutTree(context, parent);
         }
 
-        protected Vector2? GetFixedInteriorSpace () {
-            if (!FixedSize.HasValue)
-                return null;
-
+        protected Vector2 GetFixedInteriorSpace () {
             return new Vector2(
-                Math.Max(0, FixedSize.Value.X - Margins.Left - Margins.Right),
-                Math.Max(0, FixedSize.Value.Y - Margins.Top - Margins.Bottom)
+                FixedWidth.HasValue
+                    ? Math.Max(0, FixedWidth.Value - Margins.Left - Margins.Right)
+                    : -1,
+                FixedHeight.HasValue
+                    ? Math.Max(0, FixedHeight.Value - Margins.Top - Margins.Bottom)
+                    : -1
             );
         }
 
@@ -55,8 +60,7 @@ namespace Squared.PRGUI {
 
             context.Layout.SetLayoutFlags(result, LayoutFlags);
             context.Layout.SetMargins(result, computedMargins);
-            if (FixedSize.HasValue)
-                context.Layout.SetSize(result, FixedSize.Value);
+            context.Layout.SetSizeXY(result, FixedWidth ?? -1, FixedHeight ?? -1);
 
             if (!parent.IsInvalid)
                 context.Layout.InsertAtEnd(parent, result);
@@ -78,6 +82,8 @@ namespace Squared.PRGUI {
                 result |= ControlStates.Hovering;
             if (context.UIContext.Focused == this)
                 result |= ControlStates.Focused;
+            if (context.UIContext.MouseCaptured == this)
+                result |= ControlStates.Pressed;
             return result;
         }
 
@@ -97,7 +103,26 @@ namespace Squared.PRGUI {
 
     public class StaticText : Control {
         public DynamicStringLayout Content = new DynamicStringLayout();
-        public bool AutoSize = true;
+        public bool AutoSizeWidth = true, AutoSizeHeight = true;
+
+        public StaticText ()
+            : base () {
+        }
+
+        public bool AutoSize {
+            set {
+                AutoSizeWidth = AutoSizeHeight = value;
+            }
+        }
+
+        public HorizontalAlignment TextAlignment {
+            get {
+                return Content.Alignment;
+            }
+            set {
+                Content.Alignment = value;
+            }
+        }
 
         public string Text {
             set {
@@ -114,10 +139,10 @@ namespace Squared.PRGUI {
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             var result = base.OnGenerateLayoutTree(context, parent);
-            if (AutoSize) {
+            if (AutoSizeWidth || AutoSizeHeight) {
                 var interiorSpace = GetFixedInteriorSpace();
-                if (interiorSpace.HasValue)
-                    Content.LineBreakAtX = interiorSpace.Value.X;
+                if (interiorSpace.X > 0)
+                    Content.LineBreakAtX = interiorSpace.X;
                 else
                     Content.LineBreakAtX = null;
 
@@ -126,8 +151,15 @@ namespace Squared.PRGUI {
 
                 var decorations = GetDecorations(context);
                 var computedPadding = ComputePadding(decorations);
-                var computedSize = Content.Get().Size + new Vector2(computedPadding.Left + computedPadding.Right, computedPadding.Top + computedPadding.Bottom);
-                context.Layout.SetSize(result, computedSize);
+                var layoutSize = Content.Get().Size;
+                var computedWidth = layoutSize.X + computedPadding.Left + computedPadding.Right;
+                var computedHeight = layoutSize.Y + computedPadding.Top + computedPadding.Bottom;
+
+                context.Layout.SetSizeXY(
+                    result, 
+                    FixedWidth ?? (AutoSizeWidth ? computedWidth : -1), 
+                    FixedHeight ?? (AutoSizeHeight ? computedHeight : -1)
+                );
             }
 
             return result;
@@ -140,8 +172,8 @@ namespace Squared.PRGUI {
                 return;
 
             var interiorSpace = GetFixedInteriorSpace();
-            if (interiorSpace.HasValue)
-                Content.LineBreakAtX = interiorSpace.Value.X;
+            if (interiorSpace.X > 0)
+                Content.LineBreakAtX = interiorSpace.X;
             else
                 Content.LineBreakAtX = null;
 
@@ -149,16 +181,26 @@ namespace Squared.PRGUI {
                 Content.GlyphSource = context.UIContext.DefaultGlyphSource;
 
             var computedPadding = ComputePadding(decorations);
+            var textOffset = box.Position + new Vector2(computedPadding.Left, computedPadding.Top);
+            if (state.HasFlag(ControlStates.Pressed))
+                textOffset += decorations.PressedInset;
 
             var layout = Content.Get();
             context.Renderer.DrawMultiple(
-                layout.DrawCalls, offset: box.Position + new Vector2(computedPadding.Left, computedPadding.Top),
+                layout.DrawCalls, offset: textOffset.Floor(),
                 material: decorations?.GetTextMaterial(context, state)
             );
         }
     }
 
     public class Button : StaticText {
+        public Button ()
+            : base () {
+            Content.Alignment = HorizontalAlignment.Center;
+            AcceptsCapture = true;
+            AcceptsFocus = true;
+        }
+
         protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
             return context.DecorationProvider?.Button;
         }

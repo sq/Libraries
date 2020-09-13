@@ -614,7 +614,7 @@ namespace Squared.PRGUI.Layout {
                 var childRect = GetRect(child);
 
                 switch (bFlags & ControlFlags.Layout_Fill_Row) {
-                    case ControlFlags.Layout_Center:
+                    case 0: // ControlFlags.Layout_Center:
                         childRect[idim] += (space - childRect[wdim]) / 2 - childMargins.GetElement(wdim);
                         break;
                     case ControlFlags.Layout_Anchor_Right:
@@ -647,7 +647,7 @@ namespace Squared.PRGUI.Layout {
                 var minSize = Math.Max(0, space - rect[idim] - margins.GetElement((uint)dim));
 
                 switch (bFlags & ControlFlags.Layout_Fill_Row) {
-                    case ControlFlags.Layout_Center:
+                    case 0: // ControlFlags.Layout_Center:
                         rect[wdim] = Math.Min(rect[wdim], minSize);
                         rect[idim] += (space - rect[wdim]) / 2 - margins.GetElement(wdim);
                         break;

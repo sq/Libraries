@@ -131,13 +131,15 @@ namespace PRGUI.Demo {
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Justify,
                         Children = {
                             new Button {
-                                Text = "Button 1"
+                                FixedWidth = 400,
+                                Text = "Button 1",
                             },
                             new Button {
-                                Text = "Button 2"
+                                Text = "Button 2",
                             },
                             new StaticText {
-                                Text = "Static Text"
+                                Text = "Static Text",
+                                LayoutFlags = ControlFlags.Layout_Break
                             }
                         }
                     },
@@ -179,7 +181,11 @@ namespace PRGUI.Demo {
             var mousePosition = new Vector2(MouseState.X, MouseState.Y);
 
             Context.Update();
-            Context.UpdateInput(mousePosition);
+            Context.UpdateInput(
+                mousePosition, 
+                MouseState.LeftButton == ButtonState.Pressed, 
+                PreviousMouseState.LeftButton == ButtonState.Pressed
+            );
 
             if (Context.Hovering != null)
                 LastTimeOverUI = Time.Ticks;

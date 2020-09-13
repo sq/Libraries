@@ -23,12 +23,14 @@ namespace Squared.PRGUI.Layout {
         /// </summary>
         Container_Column = 0x03,
 
+        /*
         /// <summary>
         /// Arrange all child elements within a single row/column
         /// </summary>
         Container_NoWrap = 0x00,
+        */
         /// <summary>
-        /// Wrap child elements to additional rows/columns when running out of space
+        /// Wrap child elements to additional rows/columns when running out of space.
         /// </summary>
         Container_Wrap = 0x04,
 
@@ -36,19 +38,23 @@ namespace Squared.PRGUI.Layout {
         /// Place child elements against the start of the row/column
         /// </summary>
         Container_Align_Start = 0x08,
+        /*
         /// <summary>
         /// Center child elements within the row/column
         /// </summary>
         Container_Align_Middle = 0x00,
+        */
         /// <summary>
         /// Place child elements against the end of the row/column
         /// </summary>
         Container_Align_End = 0x10,
         /// <summary>
-        /// Spread child elements across the entire row/column by inserting empty space
+        /// Spread child elements across the entire row/column by inserting empty space.
+        /// Incompatible with Container_Wrap.
         /// </summary>
         Container_Align_Justify = 0x18,
 
+        /*
         /// <summary>
         /// Free layout
         /// </summary>
@@ -57,6 +63,7 @@ namespace Squared.PRGUI.Layout {
         /// Flex-box model
         /// </summary>
         Container_Flex = Container_Row,
+        */
 
         /// <summary>
         /// Anchor to left side
@@ -82,10 +89,12 @@ namespace Squared.PRGUI.Layout {
         /// Anchor to both top and bottom
         /// </summary>
         Layout_Fill_Column = 0x140,
+        /*
         /// <summary>
         /// Center vertically and horizontally (unless otherwise specified), using left/top margins as position offset
         /// </summary>
         Layout_Center = 0x000,
+        */
         /// <summary>
         /// Anchor in all four directions
         /// </summary>
