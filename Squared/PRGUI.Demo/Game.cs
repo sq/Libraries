@@ -142,7 +142,7 @@ namespace PRGUI.Demo {
                             new StaticText {
                                 AutoSizeWidth = false,
                                 Text = "Static Text",
-                                LayoutFlags = ControlFlags.Layout_ForceBreak
+                                // LayoutFlags = ControlFlags.Layout_ForceBreak
                             }
                         }
                     },

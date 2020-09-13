@@ -117,6 +117,11 @@ namespace Squared.PRGUI.Layout {
     }
 
     public static class PRGUIExtensions {
+        public static bool IsBreak (this ControlFlags flags) {
+            return IsFlagged(flags, ControlFlags.Internal_Break) ||
+                IsFlagged(flags, ControlFlags.Layout_ForceBreak);
+        }
+
         public static bool IsFlagged (this ControlFlags flags, ControlFlags flag) {
             var masked = (uint)(flags & flag);
             return masked != 0;

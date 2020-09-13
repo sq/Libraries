@@ -413,8 +413,7 @@ namespace Squared.PRGUI.Layout {
                 var rect = GetRect(child);
 
                 if (
-                    pChild->Flags.IsFlagged(ControlFlags.Layout_ForceBreak) ||
-                    pChild->Flags.IsFlagged(ControlFlags.Internal_Break)
+                    pChild->Flags.IsBreak()
                 ) {
                     if (overlaid)
                         needSize2 += needSize;
@@ -525,17 +524,15 @@ namespace Squared.PRGUI.Layout {
                     }
 
                     if (
-                        (wrap || childFlags.IsFlagged(ControlFlags.Layout_ForceBreak)) && (
+                        (wrap) && (
                             (total > 0) && (
                                 (extend > space) ||
-                                childFlags.IsFlagged(ControlFlags.Layout_ForceBreak) ||
-                                // FIXME: Should this be here?
-                                childFlags.IsFlagged(ControlFlags.Internal_Break)
+                                childFlags.IsBreak()
                             )
                         )
                     ) {
                         endChild = child;
-                        hardBreak = childFlags.IsFlagged(ControlFlags.Layout_ForceBreak) || childFlags.IsFlagged(ControlFlags.Internal_Break);
+                        hardBreak = childFlags.IsBreak();
                         pChild->Flags |= ControlFlags.Internal_Break;
                         break;
                     } else {
@@ -690,8 +687,7 @@ namespace Squared.PRGUI.Layout {
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 if (
-                    pChild->Flags.IsFlagged(ControlFlags.Internal_Break) ||
-                    pChild->Flags.IsFlagged(ControlFlags.Layout_ForceBreak)
+                    pChild->Flags.IsBreak()
                 ) {
                     ArrangeOverlaySqueezedRange(dim, startChild, child, offset, needSize);
                     offset += needSize;
