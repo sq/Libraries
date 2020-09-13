@@ -504,6 +504,7 @@ namespace Squared.PRGUI.Layout {
                 uint count = 0, squeezedCount = 0, total = 0;
                 bool hardBreak = false;
 
+                // first pass: count items that need to be expanded, and the space that is used
                 ControlKey child = startChild, endChild = ControlKey.Invalid;
                 while (!child.IsInvalid) {
                     var pChild = LayoutPtr(child);
@@ -524,17 +525,17 @@ namespace Squared.PRGUI.Layout {
                     }
 
                     if (
-                        (total != 0) && (
-                            (
-                                wrap && (
-                                    (extend > space) ||
-                                    childFlags.IsFlagged(ControlFlags.Internal_Break)
-                                )
-                            ) || childFlags.IsFlagged(ControlFlags.Layout_ForceBreak)
+                        (wrap || childFlags.IsFlagged(ControlFlags.Layout_ForceBreak)) && (
+                            (total > 0) && (
+                                (extend > space) ||
+                                childFlags.IsFlagged(ControlFlags.Layout_ForceBreak) ||
+                                // FIXME: Should this be here?
+                                childFlags.IsFlagged(ControlFlags.Internal_Break)
+                            )
                         )
                     ) {
                         endChild = child;
-                        hardBreak = childFlags.IsFlagged(ControlFlags.Internal_Break) || childFlags.IsFlagged(ControlFlags.Layout_ForceBreak);
+                        hardBreak = childFlags.IsFlagged(ControlFlags.Layout_ForceBreak) || childFlags.IsFlagged(ControlFlags.Internal_Break);
                         pChild->Flags |= ControlFlags.Internal_Break;
                         break;
                     } else {

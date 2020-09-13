@@ -128,7 +128,7 @@ namespace PRGUI.Demo {
                 Controls = {
                     new Container {
                         LayoutFlags = ControlFlags.Layout_Fill,
-                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Justify,
+                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start,
                         Children = {
                             new Button {
                                 AutoSizeWidth = false,
