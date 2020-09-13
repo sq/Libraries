@@ -14,25 +14,85 @@ namespace Squared.PRGUI.Layout {
 
     [Flags]
     public enum ControlFlags : uint {
+        /// <summary>
+        /// Arrange child elements left-to-right
+        /// </summary>
         Container_Row = 0x02,
+        /// <summary>
+        /// Arrange child elements top-to-bottom
+        /// </summary>
         Container_Column = 0x03,
+
+        /// <summary>
+        /// Arrange all child elements within a single row/column
+        /// </summary>
         Container_NoWrap = 0x00,
+        /// <summary>
+        /// Wrap child elements to additional rows/columns when running out of space
+        /// </summary>
         Container_Wrap = 0x04,
+
+        /// <summary>
+        /// Place child elements against the start of the row/column
+        /// </summary>
         Container_Align_Start = 0x08,
+        /// <summary>
+        /// Center child elements within the row/column
+        /// </summary>
         Container_Align_Middle = 0x00,
+        /// <summary>
+        /// Place child elements against the end of the row/column
+        /// </summary>
         Container_Align_End = 0x10,
+        /// <summary>
+        /// Spread child elements across the entire row/column by inserting empty space
+        /// </summary>
         Container_Align_Justify = 0x18,
+
+        /// <summary>
+        /// Free layout
+        /// </summary>
         Container_Free = 0x00,
+        /// <summary>
+        /// Flex-box model
+        /// </summary>
         Container_Flex = Container_Row,
 
-        Layout_Left = 0x020,
-        Layout_Top = 0x040,
-        Layout_Right = 0x080,
-        Layout_Bottom = 0x100,
+        /// <summary>
+        /// Anchor to left side
+        /// </summary>
+        Layout_Anchor_Left = 0x020,
+        /// <summary>
+        /// Anchor to top side
+        /// </summary>
+        Layout_Anchor_Top = 0x040,
+        /// <summary>
+        /// Anchor to right side
+        /// </summary>
+        Layout_Anchor_Right = 0x080,
+        /// <summary>
+        /// Anchor to bottom side
+        /// </summary>
+        Layout_Anchor_Bottom = 0x100,
+        /// <summary>
+        /// Anchor to both left and right
+        /// </summary>
         Layout_Fill_Row = 0x0a0,
+        /// <summary>
+        /// Anchor to both top and bottom
+        /// </summary>
         Layout_Fill_Column = 0x140,
+        /// <summary>
+        /// Center vertically and horizontally (unless otherwise specified), using left/top margins as position offset
+        /// </summary>
         Layout_Center = 0x000,
+        /// <summary>
+        /// Anchor in all four directions
+        /// </summary>
         Layout_Fill = 0x1e0,
+        /// <summary>
+        /// When wrapping, place this item on a new line
+        /// </summary>
         Layout_Break = 0x200,
 
         FixedWidth = 0x800,
