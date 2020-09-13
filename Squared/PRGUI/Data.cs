@@ -387,4 +387,37 @@ namespace Squared.PRGUI {
             return $"({Left}, {Top}) {Width}x{Height}";
         }
     }
+
+    public struct Margins {
+        public float Left, Top, Right, Bottom;
+
+        public Margins (float value) {
+            Left = Top = Right = Bottom = value;
+        }
+
+        public Margins (float x, float y) {
+            Left = Right = x;
+            Top = Bottom = y;
+        }
+
+        public Margins (float left, float top, float right, float bottom) {
+            Left = left;
+            Top = top;
+            Right = right;
+            Bottom = bottom;
+        }
+
+        public static Margins operator + (Margins lhs, Margins rhs) {
+            return new Margins {
+                Left = lhs.Left + rhs.Left,
+                Top = lhs.Top + rhs.Top,
+                Right = lhs.Right + rhs.Right,
+                Bottom = lhs.Bottom + rhs.Bottom
+            };
+        }
+
+        public static implicit operator Vector4 (Margins margins) {
+            return new Vector4(margins.Left, margins.Top, margins.Right, margins.Bottom);
+        }
+    }
 }

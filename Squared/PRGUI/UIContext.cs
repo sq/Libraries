@@ -80,4 +80,12 @@ namespace Squared.PRGUI {
             Layout.Dispose();
         }
     }
+
+    public class UIOperationContext {
+        public UIContext UIContext;
+        public DecorationProvider DecorationProvider => UIContext.Decorations;
+        public LayoutContext Layout => UIContext.Layout;
+        public ImperativeRenderer Renderer;
+        public RasterizePasses Pass;
+    }
 }
