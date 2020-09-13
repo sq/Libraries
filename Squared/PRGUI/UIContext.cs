@@ -15,6 +15,7 @@ namespace Squared.PRGUI {
         public Vector2 CanvasSize;
         public readonly LayoutContext Layout = new LayoutContext();
         public DecorationProvider Decorations = new DefaultDecorations();
+        public IGlyphSource DefaultGlyphSource;
 
         public List<Control> Controls = new List<Control>();
 

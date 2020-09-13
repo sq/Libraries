@@ -97,7 +97,13 @@ namespace Squared.PRGUI {
 
     public class StaticText : Control {
         public DynamicStringLayout Content = new DynamicStringLayout();
-        public bool AutoSize;
+        public bool AutoSize = true;
+
+        public string Text {
+            set {
+                Content.Text = value;
+            }
+        }
 
         protected Margins ComputePadding (IDecorator decorations) {
             var computedPadding = Padding;
@@ -114,6 +120,9 @@ namespace Squared.PRGUI {
                     Content.LineBreakAtX = interiorSpace.Value.X;
                 else
                     Content.LineBreakAtX = null;
+
+                if (Content.GlyphSource == null)
+                    Content.GlyphSource = context.UIContext.DefaultGlyphSource;
 
                 var decorations = GetDecorations(context);
                 var computedPadding = ComputePadding(decorations);
@@ -135,6 +144,9 @@ namespace Squared.PRGUI {
                 Content.LineBreakAtX = interiorSpace.Value.X;
             else
                 Content.LineBreakAtX = null;
+
+            if (Content.GlyphSource == null)
+                Content.GlyphSource = context.UIContext.DefaultGlyphSource;
 
             var computedPadding = ComputePadding(decorations);
 

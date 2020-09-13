@@ -124,31 +124,20 @@ namespace PRGUI.Demo {
 
             Context = new UIContext {
                 CanvasSize = new Vector2(1280, 720),
+                DefaultGlyphSource = Font,
                 Controls = {
                     new Container {
                         LayoutFlags = ControlFlags.Layout_Fill,
-                        ContainerFlags = ControlFlags.Container_Row,
+                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Justify,
                         Children = {
                             new Button {
-                                AutoSize = true,
-                                Content = {
-                                    GlyphSource = Font,
-                                    Text = "Button 1"
-                                }
+                                Text = "Button 1"
                             },
                             new Button {
-                                AutoSize = true,
-                                Content = {
-                                    GlyphSource = Font,
-                                    Text = "Button 2"
-                                }
+                                Text = "Button 2"
                             },
                             new StaticText {
-                                AutoSize = true,
-                                Content = {
-                                    GlyphSource = Font,
-                                    Text = "Static Text"
-                                }
+                                Text = "Static Text"
                             }
                         }
                     },
