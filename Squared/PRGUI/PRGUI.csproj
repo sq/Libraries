@@ -42,9 +42,13 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Decorations.cs" />
+    <Compile Include="Instances.cs" />
     <Compile Include="LayoutContext.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Data.cs" />
+    <Compile Include="Controls.cs" />
+    <Compile Include="UIContext.cs" />
   </ItemGroup>
   <PropertyGroup>
     <SquaredPath>..\..\</SquaredPath>

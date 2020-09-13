@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
 
-namespace Squared.PRGUI {
+namespace Squared.PRGUI.Layout {
     public partial class LayoutContext : IDisposable {
         public unsafe struct ChildrenEnumerator : IEnumerator<ControlKey> {
             public readonly LayoutContext Context;
@@ -155,7 +155,7 @@ namespace Squared.PRGUI {
             return new ChildrenEnumerable(this, parent);
         }
 
-        private unsafe bool Update (ControlKey key) {
+        public unsafe bool Update (ControlKey key) {
             if (key.IsInvalid)
                 return false;
 
@@ -328,19 +328,24 @@ namespace Squared.PRGUI {
 
             var flags = pItem->Flags;
             if (size.X <= 0)
-                flags &= ~ControlFlags.HFixed;
+                flags &= ~ControlFlags.FixedWidth;
             else
-                flags |= ControlFlags.HFixed;
+                flags |= ControlFlags.FixedWidth;
 
             if (size.Y <= 0)
-                flags &= ~ControlFlags.VFixed;
+                flags &= ~ControlFlags.FixedHeight;
             else
-                flags |= ControlFlags.VFixed;
+                flags |= ControlFlags.FixedHeight;
             pItem->Flags = flags;
         }
 
         public void SetSizeXY (ControlKey key, float width = 0, float height = 0) {
             SetSize(key, new Vector2(width, height));
+        }
+
+        public unsafe void ClearItemBreak (ControlKey key) {
+            var pItem = LayoutPtr(key);
+            pItem->Flags = (pItem->Flags & ~ControlFlags.Layout_Break);
         }
 
         public unsafe void SetContainerFlags (ControlKey key, ControlFlags flags) {
@@ -504,7 +509,7 @@ namespace Squared.PRGUI {
                         ++count;
                         extend += childRect[idim] + childMargins.GetElement(wdim);
                     } else {
-                        if (!fFlags.IsFlagged(ControlFlags.HFixed))
+                        if (!fFlags.IsFlagged(ControlFlags.FixedWidth))
                             ++squeezedCount;
                         extend += childRect[idim] + childRect[wdim] + childMargins.GetElement(wdim);
                     }
@@ -572,7 +577,7 @@ namespace Squared.PRGUI {
                     x += childRect[idim] + extraMargin;
                     if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
                         x1 = x + filler;
-                    else if (fFlags.IsFlagged(ControlFlags.HFixed))
+                    else if (fFlags.IsFlagged(ControlFlags.FixedWidth))
                         x1 = x + childRect[wdim];
                     else
                         x1 = x + Math.Max(0f, childRect[wdim] + eater);

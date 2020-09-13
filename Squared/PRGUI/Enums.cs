@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
 
-namespace Squared.PRGUI {
+namespace Squared.PRGUI.Layout {
     public enum Dimensions : uint {
         X = 0,
         Y = 1
@@ -35,15 +35,15 @@ namespace Squared.PRGUI {
         Layout_Fill = 0x1e0,
         Layout_Break = 0x200,
 
-        HFixed = 0x800,
-        VFixed = 0x1000,
+        FixedWidth = 0x800,
+        FixedHeight = 0x1000,
     }
 
     public static class ControlFlagMask {
         public const ControlFlags BoxModel = (ControlFlags)0x7,
             Container = (ControlFlags)0x1f,
             Layout = (ControlFlags)0x3e0,
-            Fixed = ControlFlags.HFixed | ControlFlags.VFixed;
+            Fixed = ControlFlags.FixedWidth | ControlFlags.FixedHeight;
     }
 
     public static class PRGUIExtensions {
@@ -121,5 +121,13 @@ namespace Squared.PRGUI {
                     throw new ArgumentOutOfRangeException(nameof(index));
             }
         }
+    }
+}
+
+namespace Squared.PRGUI {
+    public enum RasterizePasses {
+        Below,
+        Content,
+        Above
     }
 }

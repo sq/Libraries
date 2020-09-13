@@ -12,6 +12,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI;
+using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
@@ -19,7 +20,7 @@ using Squared.Util;
 
 namespace PRGUI.Demo {
     public class DemoGame : MultithreadedGame {
-        public LayoutContext Context;
+        public UIContext Context;
 
         public GraphicsDeviceManager Graphics;
         public DefaultMaterialSet Materials { get; private set; }
@@ -72,24 +73,25 @@ namespace PRGUI.Demo {
 
             Window.AllowUserResizing = false;
 
-            Context = new LayoutContext();
-            var root = Context.Root;
-            Context.SetSizeXY(root, 1280, 720);
+            Context = new UIContext();
+            var layout = Context.Layout;
+            var root = layout.Root;
+            layout.SetSizeXY(root, 1280, 720);
 
-            Context.SetContainerFlags(root, ControlFlags.Container_Row);
+            layout.SetContainerFlags(root, ControlFlags.Container_Row);
 
-            MasterList = Context.CreateItem();
-            Context.InsertAtEnd(root, MasterList);
+            MasterList = layout.CreateItem();
+            layout.InsertAtEnd(root, MasterList);
 
-            Context.SetSizeXY(MasterList, width: 400);
+            layout.SetSizeXY(MasterList, width: 400);
 
-            Context.SetContainerFlags(MasterList, ControlFlags.Container_Column);
-            Context.SetLayoutFlags(MasterList, ControlFlags.Layout_Fill_Column);
+            layout.SetContainerFlags(MasterList, ControlFlags.Container_Column);
+            layout.SetLayoutFlags(MasterList, ControlFlags.Layout_Fill_Column);
 
-            ContentView = Context.CreateItem();
-            Context.InsertAtEnd(root, ContentView);
+            ContentView = layout.CreateItem();
+            layout.InsertAtEnd(root, ContentView);
 
-            Context.SetLayoutFlags(ContentView, ControlFlags.Layout_Fill);
+            layout.SetLayoutFlags(ContentView, ControlFlags.Layout_Fill);
         }
 
         public bool LeftMouse {
@@ -193,8 +195,8 @@ namespace PRGUI.Demo {
                 ir.Clear(color: Color.Transparent);
 
                 float radius = 6;
-                var masterListRect = ((Bounds)Context.GetRect(MasterList)).Expand(-radius, -radius);
-                var contentViewRect = ((Bounds)Context.GetRect(ContentView)).Expand(-radius, -radius);
+                var masterListRect = ((Bounds)Context.Layout.GetRect(MasterList)).Expand(-radius, -radius);
+                var contentViewRect = ((Bounds)Context.Layout.GetRect(ContentView)).Expand(-radius, -radius);
 
                 ir.RasterizeRectangle(
                     masterListRect.TopLeft, masterListRect.BottomRight,

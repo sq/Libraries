@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework;
 using Squared.Game;
 using Squared.Util;
 
-namespace Squared.PRGUI {
+namespace Squared.PRGUI.Layout {
     public struct ControlKey {
         public static readonly ControlKey Invalid = new ControlKey(-1);
 
@@ -93,61 +93,6 @@ namespace Squared.PRGUI {
             Parent = FirstChild = PreviousSibling = NextSibling = ControlKey.Invalid;
             Margins = default(Vector4);
             Size = default(Vector2);
-        }
-    }
-
-    public struct RectF {
-        public float Left, Top, Width, Height;
-
-        public float this [uint index] {
-            get {
-                return this[(int)index];
-            }
-            set {
-                this[(int)index] = value;
-            }
-        }
-
-        public float this [int index] { 
-            get {
-                switch (index) {
-                    case 0:
-                        return Left;
-                    case 1:
-                        return Top;
-                    case 2:
-                        return Width;
-                    case 3:
-                        return Height;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(index));
-                }
-            }
-            set {
-                switch (index) {
-                    case 0:
-                        Left = value;
-                        break;
-                    case 1:
-                        Top = value;
-                        break;
-                    case 2:
-                        Width = value;
-                        break;
-                    case 3:
-                        Height = value;
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(index));
-                }
-            }
-        }
-
-        public static explicit operator Bounds (RectF self) {
-            return new Bounds(
-                new Vector2(self.Left, self.Top),
-                new Vector2(self.Left + self.Width, self.Top + self.Height)
-            );
         }
     }
 
@@ -328,6 +273,96 @@ namespace Squared.PRGUI {
 
             IsDisposed = false;
             Root = CreateItem();
+        }
+    }
+}
+
+namespace Squared.PRGUI {
+    public struct RectF {
+        public float Left, Top, Width, Height;
+
+        public float this [uint index] {
+            get {
+                return this[(int)index];
+            }
+            set {
+                this[(int)index] = value;
+            }
+        }
+
+        public float this [int index] { 
+            get {
+                switch (index) {
+                    case 0:
+                        return Left;
+                    case 1:
+                        return Top;
+                    case 2:
+                        return Width;
+                    case 3:
+                        return Height;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(index));
+                }
+            }
+            set {
+                switch (index) {
+                    case 0:
+                        Left = value;
+                        break;
+                    case 1:
+                        Top = value;
+                        break;
+                    case 2:
+                        Width = value;
+                        break;
+                    case 3:
+                        Height = value;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(index));
+                }
+            }
+        }
+
+        public Vector2 Position {
+            get {
+                return new Vector2(Left, Top);
+            }
+            set {
+                Left = value.X;
+                Top = value.Y;
+            }
+        }
+
+        public Vector2 Size {
+            get {
+                return new Vector2(Width, Height);
+            }
+            set {
+                Width = value.X;
+                Height = value.Y;
+            }
+        }
+
+        public Vector2 Extent {
+            get {
+                return new Vector2(Left + Width, Top + Height);
+            }
+        }
+
+        public bool Contains (Vector2 position) {
+            return (position.X >= Left) &&
+                (position.X < (Left + Width)) &&
+                (position.Y >= Top) &&
+                (position.Y < (Top + Height));
+        }
+
+        public static explicit operator Bounds (RectF self) {
+            return new Bounds(
+                new Vector2(self.Left, self.Top),
+                new Vector2(self.Left + self.Width, self.Top + self.Height)
+            );
         }
     }
 }
