@@ -40,7 +40,7 @@ namespace PRGUI.Demo {
         public bool IsMouseOverUI = false, TearingTest = false;
         public long LastTimeOverUI;
 
-        public ControlKey MasterList, ContentView;
+        // public ControlKey MasterList, ContentView;
 
         public DemoGame () {
             // UniformBinding.ForceCompatibilityMode = true;
@@ -73,7 +73,7 @@ namespace PRGUI.Demo {
 
             Window.AllowUserResizing = false;
 
-            Context = new UIContext();
+            /*
             var layout = Context.Layout;
             var root = layout.Root;
             layout.SetSizeXY(root, 1280, 720);
@@ -92,6 +92,7 @@ namespace PRGUI.Demo {
             layout.InsertAtEnd(root, ContentView);
 
             layout.SetLayoutFlags(ContentView, ControlFlags.Layout_Fill);
+            */
         }
 
         public bool LeftMouse {
@@ -121,6 +122,38 @@ namespace PRGUI.Demo {
             Font.SizePoints = 16f;
             Font.GlyphMargin = 2;
 
+            Context = new UIContext {
+                CanvasSize = new Vector2(1280, 720),
+                Controls = {
+                    new Container {
+                        LayoutFlags = ControlFlags.Layout_Fill,
+                        ContainerFlags = ControlFlags.Container_Align_End,
+                        Children = {
+                            new Button {
+                                AutoSize = true,
+                                Content = {
+                                    GlyphSource = Font,
+                                    Text = "Button 1"
+                                }
+                            },
+                            new Button {
+                                AutoSize = true,
+                                Content = {
+                                    GlyphSource = Font,
+                                    Text = "Button 2"
+                                }
+                            },
+                            new StaticText {
+                                Content = {
+                                    GlyphSource = Font,
+                                    Text = "Static Text"
+                                }
+                            }
+                        }
+                    },
+                }
+            };
+
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
             TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
@@ -146,15 +179,20 @@ namespace PRGUI.Demo {
         }
 
         protected override void Update (GameTime gameTime) {
-            Context.Update();
-
-            // FIXME
-            LastTimeOverUI = Time.Ticks;
-
             PreviousKeyboardState = KeyboardState;
             PreviousMouseState = MouseState;
             KeyboardState = Keyboard.GetState();
             MouseState = Mouse.GetState();
+
+            this.IsMouseVisible = true;
+
+            var mousePosition = new Vector2(MouseState.X, MouseState.Y);
+
+            Context.Update();
+            Context.UpdateInput(mousePosition);
+
+            if (Context.Hovering != null)
+                LastTimeOverUI = Time.Ticks;
 
             if (IsActive) {
                 var alt = KeyboardState.IsKeyDown(Keys.LeftAlt) || KeyboardState.IsKeyDown(Keys.RightAlt);
@@ -189,10 +227,14 @@ namespace PRGUI.Demo {
                 frame, -9990, UIRenderTarget,
                 name: "Render UI"
             )) {
-                ir = new ImperativeRenderer(group, Materials, -1) {
-                    AutoIncrementLayer = true
-                };
+                ir = new ImperativeRenderer(group, Materials, -1, blendState: BlendState.AlphaBlend);
                 ir.Clear(color: Color.Transparent);
+
+                ir.Layer = 1;
+
+                Context.Rasterize(ref ir);
+
+                /*
 
                 float radius = 6;
                 var masterListRect = ((Bounds)Context.Layout.GetRect(MasterList)).Expand(-radius, -radius);
@@ -207,6 +249,7 @@ namespace PRGUI.Demo {
                     contentViewRect.TopLeft, contentViewRect.BottomRight,
                     radius: radius, innerColor: Color.ForestGreen
                 );
+                */
             }
 
             ClearBatch.AddNew(frame, -1, Materials.Clear, Color.Black);

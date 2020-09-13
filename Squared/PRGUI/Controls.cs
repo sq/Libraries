@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
 
@@ -38,8 +39,9 @@ namespace Squared.PRGUI {
     }
 
     public class RasterizeContext {
-        public DecorationProvider DecorationProvider;
-        public LayoutContext Layout;
+        public UIContext UIContext;
+        public DecorationProvider DecorationProvider => UIContext.Decorations;
+        public LayoutContext Layout => UIContext.Layout;
         public ImperativeRenderer Renderer;
         public RasterizePasses Pass;
     }

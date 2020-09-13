@@ -4,17 +4,20 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Text;
 
 namespace Squared.PRGUI {
     public abstract class Control {
-        public IDecorationRenderer Decorations;
+        public IDecorator CustomDecorations;
         public Margins Margins;
         public ControlFlags LayoutFlags;
         public Vector2? FixedSize;
 
-        private ControlKey LayoutKey;
+        public ControlStates State;
+
+        internal ControlKey LayoutKey;
 
         public void GenerateLayoutTree (LayoutContext context, ControlKey parent) {
             LayoutKey = OnGenerateLayoutTree(context, parent);
@@ -50,31 +53,46 @@ namespace Squared.PRGUI {
 
         protected virtual ControlKey OnGenerateLayoutTree (LayoutContext context, ControlKey parent) {
             var result = context.CreateItem();
+
             context.SetLayoutFlags(result, LayoutFlags);
-            context.InsertAtEnd(parent, result);
             context.SetMargins(result, Margins);
             if (FixedSize.HasValue)
                 context.SetSize(result, FixedSize.Value);
+
+            if (!parent.IsInvalid)
+                context.InsertAtEnd(parent, result);
+
             return result;
         }
 
-        protected virtual IDecorationRenderer GetDefaultDecorations (RasterizeContext context) {
+        protected virtual IDecorator GetDefaultDecorations (RasterizeContext context) {
             return null;
         }
 
-        protected IDecorationRenderer GetDecorations (RasterizeContext context) {
-            return Decorations ?? GetDefaultDecorations(context);
+        protected IDecorator GetDecorations (RasterizeContext context) {
+            return CustomDecorations ?? GetDefaultDecorations(context);
         }
 
-        protected virtual void OnRasterize (RasterizeContext context, RectF box) {
-            GetDecorations(context)?.Rasterize(context, box);
+        protected ControlStates GetCurrentState (RasterizeContext context) {
+            var result = State;
+            if (context.UIContext.Hovering == this)
+                result |= ControlStates.Hovering;
+            if (context.UIContext.Focused == this)
+                result |= ControlStates.Focused;
+            return result;
+        }
+
+        protected virtual void OnRasterize (RasterizeContext context, RectF box, ControlStates state, IDecorator decorations) {
+            decorations?.Rasterize(context, box, state);
         }
 
         public void Rasterize (RasterizeContext context, Vector2 offset) {
             var box = context.Layout.GetRect(LayoutKey);
             box.Left += offset.X;
             box.Top += offset.Y;
-            OnRasterize(context, box);
+            var decorations = GetDecorations(context);
+            var state = GetCurrentState(context);
+            OnRasterize(context, box, state, decorations);
         }
     }
 
@@ -98,8 +116,8 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        protected override void OnRasterize (RasterizeContext context, RectF box) {
-            base.OnRasterize(context, box);
+        protected override void OnRasterize (RasterizeContext context, RectF box, ControlStates state, IDecorator decorations) {
+            base.OnRasterize(context, box, state, decorations);
 
             if (context.Pass != RasterizePasses.Content)
                 return;
@@ -111,17 +129,20 @@ namespace Squared.PRGUI {
                 Content.LineBreakAtX = null;
 
             var layout = Content.Get();
-            context.Renderer.DrawMultiple(layout.DrawCalls, offset: box.Position);
+            context.Renderer.DrawMultiple(
+                layout.DrawCalls, offset: box.Position, 
+                material: decorations?.GetTextMaterial(context, state)
+            );
         }
     }
 
     public class Button : StaticText {
-        protected override IDecorationRenderer GetDefaultDecorations (RasterizeContext context) {
+        protected override IDecorator GetDefaultDecorations (RasterizeContext context) {
             return context.DecorationProvider?.Button;
         }
 
-        protected override void OnRasterize (RasterizeContext context, RectF box) {
-            base.OnRasterize(context, box);
+        protected override void OnRasterize (RasterizeContext context, RectF box, ControlStates state, IDecorator decorations) {
+            base.OnRasterize(context, box, state, decorations);
         }
     }
 
@@ -138,12 +159,12 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        protected override IDecorationRenderer GetDefaultDecorations (RasterizeContext context) {
+        protected override IDecorator GetDefaultDecorations (RasterizeContext context) {
             return context.DecorationProvider?.Container;
         }
 
-        protected override void OnRasterize (RasterizeContext context, RectF box) {
-            base.OnRasterize(context, box);
+        protected override void OnRasterize (RasterizeContext context, RectF box, ControlStates state, IDecorator decorations) {
+            base.OnRasterize(context, box, state, decorations);
 
             // FIXME
             int layer = context.Renderer.Layer, maxLayer = layer;
@@ -158,17 +179,15 @@ namespace Squared.PRGUI {
         }
 
         protected override Control OnHitTest (LayoutContext context, RectF box, Vector2 position) {
-            var result = base.OnHitTest(context, box, position);
-            if (result == null)
-                return result;
-
+            // FIXME: Should we only perform the hit test if the position is within our boundaries?
+            // This doesn't produce the right outcome when a container's computed size is zero
             foreach (var item in Children) {
-                result = item.HitTest(context, position) ?? result;
-                if (result != this)
+                var result = item.HitTest(context, position);
+                if (result != null)
                     return result;
             }
 
-            return result;
+            return base.OnHitTest(context, box, position);
         }
     }
 }
