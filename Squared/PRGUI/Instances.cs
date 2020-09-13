@@ -11,7 +11,7 @@ using Squared.Render.Text;
 namespace Squared.PRGUI {
     public abstract class Control {
         public IDecorator CustomDecorations;
-        public Margins Margins;
+        public Margins Margins, Padding;
         public ControlFlags LayoutFlags;
         public Vector2? FixedSize;
 
@@ -19,14 +19,8 @@ namespace Squared.PRGUI {
 
         internal ControlKey LayoutKey;
 
-        public void GenerateLayoutTree (LayoutContext context, ControlKey parent) {
+        public void GenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             LayoutKey = OnGenerateLayoutTree(context, parent);
-        }
-
-        public Vector2 TotalMargins {
-            get {
-                return new Vector2(Margins.Left + Margins.Right, Margins.Top + Margins.Bottom);
-            }
         }
 
         protected Vector2? GetFixedInteriorSpace () {
@@ -51,29 +45,34 @@ namespace Squared.PRGUI {
             return OnHitTest(context, box, position);
         }
 
-        protected virtual ControlKey OnGenerateLayoutTree (LayoutContext context, ControlKey parent) {
-            var result = context.CreateItem();
+        protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
+            var result = context.Layout.CreateItem();
 
-            context.SetLayoutFlags(result, LayoutFlags);
-            context.SetMargins(result, Margins);
+            var decorations = GetDecorations(context);
+            var computedMargins = Margins;
+            if (decorations != null)
+                computedMargins += decorations.Margins;
+
+            context.Layout.SetLayoutFlags(result, LayoutFlags);
+            context.Layout.SetMargins(result, computedMargins);
             if (FixedSize.HasValue)
-                context.SetSize(result, FixedSize.Value);
+                context.Layout.SetSize(result, FixedSize.Value);
 
             if (!parent.IsInvalid)
-                context.InsertAtEnd(parent, result);
+                context.Layout.InsertAtEnd(parent, result);
 
             return result;
         }
 
-        protected virtual IDecorator GetDefaultDecorations (RasterizeContext context) {
+        protected virtual IDecorator GetDefaultDecorations (UIOperationContext context) {
             return null;
         }
 
-        protected IDecorator GetDecorations (RasterizeContext context) {
+        protected IDecorator GetDecorations (UIOperationContext context) {
             return CustomDecorations ?? GetDefaultDecorations(context);
         }
 
-        protected ControlStates GetCurrentState (RasterizeContext context) {
+        protected ControlStates GetCurrentState (UIOperationContext context) {
             var result = State;
             if (context.UIContext.Hovering == this)
                 result |= ControlStates.Hovering;
@@ -82,11 +81,11 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        protected virtual void OnRasterize (RasterizeContext context, RectF box, ControlStates state, IDecorator decorations) {
+        protected virtual void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
             decorations?.Rasterize(context, box, state);
         }
 
-        public void Rasterize (RasterizeContext context, Vector2 offset) {
+        public void Rasterize (UIOperationContext context, Vector2 offset) {
             var box = context.Layout.GetRect(LayoutKey);
             box.Left += offset.X;
             box.Top += offset.Y;
@@ -100,7 +99,14 @@ namespace Squared.PRGUI {
         public DynamicStringLayout Content = new DynamicStringLayout();
         public bool AutoSize;
 
-        protected override ControlKey OnGenerateLayoutTree (LayoutContext context, ControlKey parent) {
+        protected Margins ComputePadding (IDecorator decorations) {
+            var computedPadding = Padding;
+            if (decorations != null)
+                computedPadding += decorations.Padding;
+            return computedPadding;
+        }
+
+        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             var result = base.OnGenerateLayoutTree(context, parent);
             if (AutoSize) {
                 var interiorSpace = GetFixedInteriorSpace();
@@ -109,14 +115,16 @@ namespace Squared.PRGUI {
                 else
                     Content.LineBreakAtX = null;
 
-                var computedSize = Content.Get().Size + TotalMargins;
-                context.SetSize(result, computedSize);
+                var decorations = GetDecorations(context);
+                var computedPadding = ComputePadding(decorations);
+                var computedSize = Content.Get().Size + new Vector2(computedPadding.Left + computedPadding.Right, computedPadding.Top + computedPadding.Bottom);
+                context.Layout.SetSize(result, computedSize);
             }
 
             return result;
         }
 
-        protected override void OnRasterize (RasterizeContext context, RectF box, ControlStates state, IDecorator decorations) {
+        protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
             base.OnRasterize(context, box, state, decorations);
 
             if (context.Pass != RasterizePasses.Content)
@@ -128,20 +136,22 @@ namespace Squared.PRGUI {
             else
                 Content.LineBreakAtX = null;
 
+            var computedPadding = ComputePadding(decorations);
+
             var layout = Content.Get();
             context.Renderer.DrawMultiple(
-                layout.DrawCalls, offset: box.Position, 
+                layout.DrawCalls, offset: box.Position + new Vector2(computedPadding.Left, computedPadding.Top),
                 material: decorations?.GetTextMaterial(context, state)
             );
         }
     }
 
     public class Button : StaticText {
-        protected override IDecorator GetDefaultDecorations (RasterizeContext context) {
+        protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
             return context.DecorationProvider?.Button;
         }
 
-        protected override void OnRasterize (RasterizeContext context, RectF box, ControlStates state, IDecorator decorations) {
+        protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
             base.OnRasterize(context, box, state, decorations);
         }
     }
@@ -151,19 +161,19 @@ namespace Squared.PRGUI {
 
         public readonly List<Control> Children = new List<Control>();
 
-        protected override ControlKey OnGenerateLayoutTree (LayoutContext context, ControlKey parent) {
+        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             var result = base.OnGenerateLayoutTree(context, parent);
-            context.SetContainerFlags(result, ContainerFlags);
+            context.Layout.SetContainerFlags(result, ContainerFlags);
             foreach (var item in Children)
                 item.GenerateLayoutTree(context, result);
             return result;
         }
 
-        protected override IDecorator GetDefaultDecorations (RasterizeContext context) {
+        protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
             return context.DecorationProvider?.Container;
         }
 
-        protected override void OnRasterize (RasterizeContext context, RectF box, ControlStates state, IDecorator decorations) {
+        protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
             base.OnRasterize(context, box, state, decorations);
 
             // FIXME

@@ -28,6 +28,15 @@ namespace Squared.PRGUI {
             Bottom = bottom;
         }
 
+        public static Margins operator + (Margins lhs, Margins rhs) {
+            return new Margins {
+                Left = lhs.Left + rhs.Left,
+                Top = lhs.Top + rhs.Top,
+                Right = lhs.Right + rhs.Right,
+                Bottom = lhs.Bottom + rhs.Bottom
+            };
+        }
+
         public static implicit operator Vector4 (Margins margins) {
             return new Vector4(margins.Left, margins.Top, margins.Right, margins.Bottom);
         }
@@ -38,7 +47,7 @@ namespace Squared.PRGUI {
         public Vector2? Size;
     }
 
-    public class RasterizeContext {
+    public class UIOperationContext {
         public UIContext UIContext;
         public DecorationProvider DecorationProvider => UIContext.Decorations;
         public LayoutContext Layout => UIContext.Layout;

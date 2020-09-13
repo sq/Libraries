@@ -18,23 +18,25 @@ namespace Squared.PRGUI.Decorations {
 
     public interface IDecorator {
         Margins Margins { get; }
-        void Rasterize (RasterizeContext context, RectF box, ControlStates state);
-        Material GetTextMaterial (RasterizeContext context, ControlStates state);
+        Margins Padding { get; }
+        void Rasterize (UIOperationContext context, RectF box, ControlStates state);
+        Material GetTextMaterial (UIOperationContext context, ControlStates state);
     }
 
     public sealed class DelegateDecorator : IDecorator {
         public Margins Margins { get; set; }
-        public Action<RasterizeContext, RectF, ControlStates> Below, Content, Above;
-        public Func<RasterizeContext, ControlStates, Material> GetTextMaterial;
+        public Margins Padding { get; set; }
+        public Action<UIOperationContext, RectF, ControlStates> Below, Content, Above;
+        public Func<UIOperationContext, ControlStates, Material> GetTextMaterial;
 
-        Material IDecorator.GetTextMaterial (RasterizeContext context, ControlStates state) {
+        Material IDecorator.GetTextMaterial (UIOperationContext context, ControlStates state) {
             if (GetTextMaterial != null)
                 return GetTextMaterial(context, state);
             else
                 return null;
         }
 
-        void IDecorator.Rasterize (RasterizeContext context, RectF box, ControlStates state) {
+        void IDecorator.Rasterize (UIOperationContext context, RectF box, ControlStates state) {
             switch (context.Pass) {
                 case RasterizePasses.Below:
                     if (Below != null)
@@ -53,24 +55,27 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public class DefaultDecorations : DecorationProvider {
-        public float CornerRadius = 3f;
-        public float OutlineThickness = 1.25f;
+        public float CornerRadius = 4f;
+        public float InactiveOutlineThickness = 1f, ActiveOutlineThickness = 1.33f;
 
         public DefaultDecorations () {
-            Func<RasterizeContext, ControlStates, Material> getTextMaterial =
+            Func<UIOperationContext, ControlStates, Material> getTextMaterial =
                 (context, state) => context.Renderer.Materials.Get(
                     context.Renderer.Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend
                 );
 
             Button = new DelegateDecorator {
-                Margins = new Margins(2),
+                Margins = new Margins(4),
+                Padding = new Margins(6),
                 GetTextMaterial = getTextMaterial,
                 Below = (context, box, state) => {
-                    float alpha = state.HasFlag(ControlStates.Hovering) ? 1.0f : 0.66f;
+                    var alpha = state.HasFlag(ControlStates.Hovering) ? 1.0f : 0.66f;
+                    var thickness = state.HasFlag(ControlStates.Hovering) ? ActiveOutlineThickness : InactiveOutlineThickness;
+                    var offset = new Vector2(CornerRadius);
                     context.Renderer.RasterizeRectangle(
-                        box.Position, box.Extent,
+                        box.Position + offset, box.Extent - offset,
                         radius: CornerRadius,
-                        outlineRadius: OutlineThickness, outlineColor: Color.White * alpha,
+                        outlineRadius: thickness, outlineColor: Color.White * alpha,
                         innerColor: Color.White * 0.3f * alpha, outerColor: Color.White * 0.2f * alpha,
                         fillMode: Render.RasterShape.RasterFillMode.Linear
                     );
@@ -78,13 +83,14 @@ namespace Squared.PRGUI.Decorations {
             };
 
             Container = new DelegateDecorator {
-                Margins = new Margins(2),
+                Margins = new Margins(4),
                 GetTextMaterial = getTextMaterial,
                 Below = (context, box, state) => {
+                    var offset = new Vector2(CornerRadius);
                     context.Renderer.RasterizeRectangle(
-                        box.Position, box.Extent,
+                        box.Position + offset, box.Extent - offset,
                         radius: CornerRadius,
-                        outlineRadius: OutlineThickness, outlineColor: Color.White * 0.2f,
+                        outlineRadius: InactiveOutlineThickness, outlineColor: Color.White * 0.2f,
                         innerColor: Color.Transparent, outerColor: Color.Transparent
                     );
                 }

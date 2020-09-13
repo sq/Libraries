@@ -22,13 +22,17 @@ namespace Squared.PRGUI {
         public Control Focused { get; set; }
 
         public void Update () {
+            var context = new UIOperationContext {
+                UIContext = this
+            };
+
             Layout.Clear();
 
             Layout.SetSize(Layout.Root, CanvasSize);
             Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row);
 
             foreach (var control in Controls)
-                control.GenerateLayoutTree(Layout, Layout.Root);
+                control.GenerateLayoutTree(context, Layout.Root);
 
             Layout.Update();
         }
@@ -48,7 +52,7 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        private void RasterizePass (RasterizeContext context, RasterizePasses pass) {
+        private void RasterizePass (UIOperationContext context, RasterizePasses pass) {
             context.Pass = pass;
 
             foreach (var control in Controls)
@@ -58,7 +62,7 @@ namespace Squared.PRGUI {
         }
 
         public void Rasterize (ref ImperativeRenderer renderer) {
-            var context = new RasterizeContext {
+            var context = new UIOperationContext {
                 UIContext = this,
                 Renderer = renderer
             };
