@@ -128,7 +128,7 @@ namespace PRGUI.Demo {
                 Controls = {
                     new Container {
                         LayoutFlags = ControlFlags.Layout_Fill,
-                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start,
+                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap,
                         Children = {
                             new Button {
                                 AutoSizeWidth = false,
@@ -137,6 +137,7 @@ namespace PRGUI.Demo {
                             },
                             new Button {
                                 AutoSizeWidth = false,
+                                FixedWidth = 900,
                                 Text = "Button 2",
                             },
                             new StaticText {

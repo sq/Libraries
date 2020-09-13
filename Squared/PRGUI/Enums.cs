@@ -31,6 +31,7 @@ namespace Squared.PRGUI.Layout {
         */
         /// <summary>
         /// Wrap child elements to additional rows/columns when running out of space.
+        /// This also enables Layout_ForceBreak on child elements to work.
         /// </summary>
         Container_Wrap = 0x04,
 
@@ -38,12 +39,10 @@ namespace Squared.PRGUI.Layout {
         /// Place child elements against the start of the row/column
         /// </summary>
         Container_Align_Start = 0x08,
-        /*
         /// <summary>
         /// Center child elements within the row/column
         /// </summary>
         Container_Align_Middle = 0x00,
-        */
         /// <summary>
         /// Place child elements against the end of the row/column
         /// </summary>
@@ -100,7 +99,8 @@ namespace Squared.PRGUI.Layout {
         /// </summary>
         Layout_Fill = 0x1e0,
         /// <summary>
-        /// When wrapping, place this item on a new line
+        /// When wrapping, place this item on a new line.
+        /// This only works if The container has Container_Wrap set.
         /// </summary>
         Layout_ForceBreak = 0x2000,
 

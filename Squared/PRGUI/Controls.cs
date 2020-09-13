@@ -171,6 +171,10 @@ namespace Squared.PRGUI {
             return result;
         }
 
+        protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
+            return context.DecorationProvider?.Button;
+        }
+
         protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
             base.OnRasterize(context, box, state, decorations);
 
