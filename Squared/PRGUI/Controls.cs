@@ -50,6 +50,9 @@ namespace Squared.PRGUI {
             return OnHitTest(context, box, position);
         }
 
+        protected virtual bool HasFixedWidth => FixedWidth.HasValue;
+        protected virtual bool HasFixedHeight => FixedHeight.HasValue;
+
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             var result = context.Layout.CreateItem();
 
@@ -59,9 +62,9 @@ namespace Squared.PRGUI {
                 computedMargins += decorations.Margins;
 
             var actualLayoutFlags = LayoutFlags;
-            if (FixedWidth.HasValue)
+            if (HasFixedWidth)
                 actualLayoutFlags &= ~ControlFlags.Layout_Fill_Row;
-            if (FixedHeight.HasValue)
+            if (HasFixedHeight)
                 actualLayoutFlags &= ~ControlFlags.Layout_Fill_Column;
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
@@ -143,6 +146,9 @@ namespace Squared.PRGUI {
             return computedPadding;
         }
 
+        protected override bool HasFixedWidth => base.HasFixedWidth || AutoSizeWidth;
+        protected override bool HasFixedHeight => base.HasFixedHeight || AutoSizeHeight;
+
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             var result = base.OnGenerateLayoutTree(context, parent);
             if (AutoSizeWidth || AutoSizeHeight) {
@@ -196,6 +202,18 @@ namespace Squared.PRGUI {
                 textOffset += decorations.PressedInset;
 
             var layout = Content.Get();
+            var xSpace = box.Width - layout.Size.X;
+            switch (Content.Alignment) {
+                case HorizontalAlignment.Left:
+                    break;
+                case HorizontalAlignment.Center:
+                    textOffset.X += (xSpace / 2f);
+                    break;
+                case HorizontalAlignment.Right:
+                    textOffset.X += xSpace;
+                    break;
+            }
+
             context.Renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
                 material: decorations?.GetTextMaterial(context, state)

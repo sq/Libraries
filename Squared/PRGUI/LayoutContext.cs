@@ -597,9 +597,6 @@ namespace Squared.PRGUI.Layout {
                     var childMargins = pChild->Margins;
                     var childRect = GetRect(child);
 
-                    // Diagnostic
-                    var originalChildRect = childRect;
-
                     x += childRect[idim] + extraMargin;
                     if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
                         x1 = x + filler;
@@ -695,17 +692,15 @@ namespace Squared.PRGUI.Layout {
             }
         }
 
-        private unsafe float ArrangeOverlaySqueezed (LayoutItem * pItem, Dimensions dim, bool autoWrap, float offset = 0, float needSize = 0) {
+        private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, Dimensions dim) {
             int idim = (int)dim, wdim = idim + 2;
-            offset += GetRect(pItem->Key)[idim];
+            float offset = GetRect(pItem->Key)[idim], needSize = 0;
 
             var startChild = pItem->FirstChild;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 if (
-                    (autoWrap && pChild->Flags.IsBreak()) ||
-                    // This makes force break in unwrapped containers work
-                    pChild->Flags.IsFlagged(ControlFlags.Layout_ForceBreak)
+                    pChild->Flags.IsBreak()
                 ) {
                     ArrangeOverlaySqueezedRange(dim, startChild, child, offset, needSize);
                     offset += needSize;
@@ -732,7 +727,7 @@ namespace Squared.PRGUI.Layout {
                 case ControlFlags.Container_Column | ControlFlags.Container_Wrap:
                     if (dim != Dimensions.X) {
                         ArrangeStacked(pItem, Dimensions.Y, true);
-                        var offset = ArrangeOverlaySqueezed(pItem, Dimensions.X, true);
+                        var offset = ArrangeWrappedOverlaySqueezed(pItem, Dimensions.X);
                         (*pRect)[0] = offset - (*pRect)[0];
                     }
                     break;
@@ -740,25 +735,17 @@ namespace Squared.PRGUI.Layout {
                     if (dim == Dimensions.X)
                         ArrangeStacked(pItem, Dimensions.X, true);
                     else
-                        ArrangeOverlaySqueezed(pItem, Dimensions.Y, true);
+                        ArrangeWrappedOverlaySqueezed(pItem, Dimensions.Y);
                     break;
                 case ControlFlags.Container_Column:
                 case ControlFlags.Container_Row:
                     if (((uint)flags & 1) == (uint)dim) {
                         ArrangeStacked(pItem, dim, false);
                     } else {
-                        var offset = (*pRect)[idim];
-                        var space = (*pRect)[idim + 2];
-                        if (false)
-                            // This doesn't shift items to the next row when you force break them
-                            ArrangeOverlaySqueezedRange(
-                                dim, pItem->FirstChild, ControlKey.Invalid,
-                                offset, space
-                            );
-                        else
-                            // Doing this fixes force break not shifting the item to the next row,
-                            // but it gets shifted too far
-                            ArrangeOverlaySqueezed(pItem, dim, false, offset: offset, needSize: space);
+                        ArrangeOverlaySqueezedRange(
+                            dim, pItem->FirstChild, ControlKey.Invalid,
+                            (*pRect)[idim], (*pRect)[idim + 2]
+                        );
                     }
                     break;
                 default:
