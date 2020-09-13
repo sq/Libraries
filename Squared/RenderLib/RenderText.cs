@@ -152,7 +152,6 @@ namespace Squared.Render.Text {
             wordWrapSuppressed = false;
             currentLineSpacing = null;
             maxLineSpacing = 0;
-            alignToPixels = GlyphPixelAlignment.Default;
 
             IsInitialized = true;
         }
@@ -196,33 +195,29 @@ namespace Squared.Render.Text {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Snap (Vector2 pos, out Vector2 result) {
-            float x, y;
-
             switch (alignToPixels.Horizontal) {
                 case PixelAlignmentMode.Floor:
-                    x = (float)Math.Floor(pos.X);
+                    result.X = (float)Math.Floor(pos.X);
                     break;
                 case PixelAlignmentMode.FloorHalf:
-                    x = (float)Math.Floor(pos.X * 2) / 2;
+                    result.X = (float)Math.Floor(pos.X * 2) / 2;
                     break;
                 default:
-                    x = pos.X;
+                    result.X = pos.X;
                     break;
             }
 
             switch (alignToPixels.Vertical) {
                 case PixelAlignmentMode.Floor:
-                    y = (float)Math.Floor(pos.Y);
+                    result.Y = (float)Math.Floor(pos.Y);
                     break;
                 case PixelAlignmentMode.FloorHalf:
-                    y = (float)Math.Floor(pos.Y * 2) / 2;
+                    result.Y = (float)Math.Floor(pos.Y * 2) / 2;
                     break;
                 default:
-                    y = pos.Y;
+                    result.Y = pos.Y;
                     break;
             }
-
-            result = new Vector2(x, y);
         }
 
         private void AlignLine (
@@ -253,7 +248,9 @@ namespace Squared.Render.Text {
                 whitespace /= 2;
 
             for (var j = firstIndex; j <= lastIndex; j++) {
-                buffer.Array[buffer.Offset + j].Position.X += whitespace;
+                var newPosition = buffer.Array[buffer.Offset + j].Position;
+                newPosition.X += whitespace;
+                Snap(newPosition, out buffer.Array[buffer.Offset + j].Position);
                 // We used the sortkey to store line numbers, now we put the right data there
                 var key = sortKey;
                 if (reverseOrder)
@@ -265,8 +262,6 @@ namespace Squared.Render.Text {
         private void AlignLines (
             ArraySegment<BitmapDrawCall> buffer, HorizontalAlignment alignment
         ) {
-            if (alignment == HorizontalAlignment.Left)
-                return;
             if (buffer.Count == 0)
                 return;
 
@@ -285,6 +280,11 @@ namespace Squared.Render.Text {
             }
 
             AlignLine(buffer, alignment, lineStartIndex, buffer.Count - 1);
+        }
+
+        private void SnapPositions (ArraySegment<BitmapDrawCall> buffer) {
+            for (var i = 0; i < buffer.Count; i++)
+                Snap(buffer.Array[buffer.Offset + i].Position, out buffer.Array[buffer.Offset + i].Position);
         }
 
         private void EnsureBufferCapacity (int count) {
@@ -474,13 +474,13 @@ namespace Squared.Render.Text {
                         actualPosition.Y + (glyph.YOffset + characterOffset.Y) * effectiveScale
                     );
 
-                    if (!isWhiteSpace) {                    
+                    if (!isWhiteSpace) {
                         if (bufferWritePosition >= buffer.Count)
                             EnsureBufferCapacity(bufferWritePosition);
 
                         drawCall.Textures = new TextureSet(glyph.Texture);
                         drawCall.TextureRegion = glyph.BoundsInTexture;
-                        Snap(glyphPosition, out drawCall.Position);
+                        drawCall.Position = glyphPosition;
 
                         // HACK so that the alignment pass can detect rows. We strip this later.
                         if (alignment != HorizontalAlignment.Left)
@@ -532,6 +532,8 @@ namespace Squared.Render.Text {
 
             if (alignment != HorizontalAlignment.Left)
                 AlignLines(result, alignment);
+            else
+                SnapPositions(result);
 
             if (reverseOrder) {
                 int i = result.Offset;

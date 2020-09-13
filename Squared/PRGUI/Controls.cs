@@ -113,7 +113,9 @@ namespace Squared.PRGUI {
     public class StaticText : Control {
         public const bool DiagnosticText = false;
 
-        public DynamicStringLayout Content = new DynamicStringLayout();
+        public DynamicStringLayout Content = new DynamicStringLayout {
+            AlignToPixels = new GlyphPixelAlignment(PixelAlignmentMode.None, PixelAlignmentMode.Floor)
+        };
         public bool AutoSizeWidth = true, AutoSizeHeight = true;
         public float? MinimumWidth = null, MinimumHeight = null;
 

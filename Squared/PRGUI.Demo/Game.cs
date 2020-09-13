@@ -119,6 +119,7 @@ namespace PRGUI.Demo {
             FontLoader = new EmbeddedFreeTypeFontProvider(RenderCoordinator);
 
             Font = FontLoader.Load("FiraSans-Medium");
+            // Font.Monochrome = true;
             Font.SizePoints = 16f;
             Font.GlyphMargin = 2;
 
