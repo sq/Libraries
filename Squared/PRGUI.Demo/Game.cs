@@ -123,7 +123,7 @@ namespace PRGUI.Demo {
             Font.GlyphMargin = 2;
 
             Context = new UIContext {
-                CanvasSize = new Vector2(1280, 720),
+                // CanvasSize = new Vector2(1280, 720),
                 Controls = {
                     new Container {
                         LayoutFlags = ControlFlags.Layout_Fill,

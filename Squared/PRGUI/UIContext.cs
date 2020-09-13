@@ -23,6 +23,7 @@ namespace Squared.PRGUI {
 
         public void Update () {
             Layout.Clear();
+
             Layout.SetSize(Layout.Root, CanvasSize);
             Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row);
 

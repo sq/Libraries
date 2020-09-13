@@ -147,7 +147,7 @@ namespace Squared.PRGUI {
     }
 
     public class Container : Control {
-        public ControlFlags ContainerFlags;
+        public ControlFlags ContainerFlags = ControlFlags.Container_Row;
 
         public readonly List<Control> Children = new List<Control>();
 

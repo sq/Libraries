@@ -364,5 +364,27 @@ namespace Squared.PRGUI {
                 new Vector2(self.Left + self.Width, self.Top + self.Height)
             );
         }
+
+        public bool Equals (RectF rhs) {
+            return (Left == rhs.Left) &&
+                (Top == rhs.Top) &&
+                (Width == rhs.Width) &&
+                (Height == rhs.Height);
+        }
+
+        public override bool Equals (object obj) {
+            if (!(obj is RectF))
+                return false;
+
+            return Equals((RectF)obj);
+        }
+
+        public override int GetHashCode () {
+            return Left.GetHashCode() ^ Top.GetHashCode() ^ Width.GetHashCode() ^ Height.GetHashCode();
+        }
+
+        public override string ToString () {
+            return $"({Left}, {Top}) {Width}x{Height}";
+        }
     }
 }
