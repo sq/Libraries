@@ -13,7 +13,7 @@ namespace Squared.PRGUI {
     public abstract class Control {
         public IDecorator CustomDecorations;
         public Margins Margins, Padding;
-        public ControlFlags LayoutFlags;
+        public ControlFlags LayoutFlags = ControlFlags.Layout_Fill_Row;
         public float? FixedWidth, FixedHeight;
 
         public ControlStates State;
@@ -58,7 +58,13 @@ namespace Squared.PRGUI {
             if (decorations != null)
                 computedMargins += decorations.Margins;
 
-            context.Layout.SetLayoutFlags(result, LayoutFlags);
+            var actualLayoutFlags = LayoutFlags;
+            if (FixedWidth.HasValue)
+                actualLayoutFlags &= ~ControlFlags.Layout_Fill_Row;
+            if (FixedHeight.HasValue)
+                actualLayoutFlags &= ~ControlFlags.Layout_Fill_Column;
+
+            context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetMargins(result, computedMargins);
             context.Layout.SetSizeXY(result, FixedWidth ?? -1, FixedHeight ?? -1);
 
