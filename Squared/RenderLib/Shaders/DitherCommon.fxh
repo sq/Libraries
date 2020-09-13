@@ -54,29 +54,22 @@ float Dither64 (float2 vpos, float frameIndexMod4) {
 }
 
 float3 ApplyDither (float3 rgb, float2 vpos) {
-    // FIXME: This flickers every few frames in OpenGL
-    // float threshold = Dither32(vpos, (DitheringGetFrameIndex() % 4) + 0.5);
-    // So does this
-    // float threshold = Dither64(vpos, (DitheringGetFrameIndex() % 4) + 0.5);
-    // This does not
     float threshold = Dither17(vpos, (DitheringGetFrameIndex() % 4) + 0.5);
 
     threshold = (DitheringGetBandSizeMinus1() + 1) * threshold;
     float3 threshold3 = threshold;
-    const float offset = 0.05;
 
-    // HACK: The dithering seems to bias values down slightly, so bias the input up
-    // Without this you get unusually large dark areas at the center of a black->white radial gradient
-    const float colorOffset = 0.5 / 255;
-    float3 rgb8 = rgb * DitheringGetUnit();
+    const float strengthOffset = 0.05;
+    const float offset = 0.0 / 255.0;
 
-    float3 a = trunc(rgb8), b = ceil(rgb8);
-    float3 distanceFromA = rgb8 - a;
-    float3 mask = 1.0 - step(distanceFromA, threshold3);
+    float3 rgb8 = (rgb + offset) * DitheringGetUnit();
+    float3 a = floor(rgb8), b = ceil(rgb8);
+    float3 error = (b - rgb8);
+    float3 mask = step(abs(error), threshold3);
     float3 result = lerp(a, b, mask);
     float3 strength3 = DitheringGetStrength() * 
-        smoothstep(DitheringGetRangeMin() - offset, DitheringGetRangeMin(), rgb) *
-        1 - smoothstep(DitheringGetRangeMaxMinus1() + 1, DitheringGetRangeMaxMinus1() + 1 + offset, rgb);
+        smoothstep(DitheringGetRangeMin() - strengthOffset, DitheringGetRangeMin(), rgb) *
+        1 - smoothstep(DitheringGetRangeMaxMinus1() + 1, DitheringGetRangeMaxMinus1() + 1 + strengthOffset, rgb);
     return lerp(rgb, result * DitheringGetInvUnit(), strength3);
 }
 

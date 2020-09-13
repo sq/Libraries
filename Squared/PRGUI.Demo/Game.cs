@@ -239,6 +239,7 @@ namespace PRGUI.Demo {
                 name: "Render UI"
             )) {
                 ir = new ImperativeRenderer(group, Materials, -1, blendState: BlendState.AlphaBlend);
+                // ir.RasterBlendInLinearSpace = false;
                 ir.Clear(color: Color.Transparent);
 
                 ir.Layer = 1;

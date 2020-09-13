@@ -48,7 +48,16 @@ sampler TextureSampler : register(s0) {
     float HardOutline = params.y; \
     float OutlineGammaMinusOne = params.w;
 
+// We use the _Accurate conversion function here because the approximation introduces
+//  visible noise for values like (64, 64, 64) when they are dithered
 #define RASTERSHAPE_PREPROCESS_COLORS \
+    if (params.z > 0.5) { \
+        centerColor = pSRGBToPLinear_Accurate(centerColor); \
+        edgeColor = pSRGBToPLinear_Accurate(edgeColor); \
+        outlineColor = pSRGBToPLinear_Accurate(outlineColor); \
+    }
+
+    /*
     centerColor = pSRGBToPLinear(centerColor); \
     edgeColor = pSRGBToPLinear(edgeColor); \
     outlineColor = pSRGBToPLinear(outlineColor); \
@@ -60,6 +69,7 @@ sampler TextureSampler : register(s0) {
         edgeColor = pLinearToPSRGB(edgeColor); \
         outlineColor = pLinearToPSRGB(outlineColor); \
     }
+    */
 
 uniform float HalfPixelOffset;
 
@@ -528,8 +538,5 @@ float4 texturedShapeCommon (
     fill *= texColor;
 
     float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z);
-    // It's important to use discard here because it allows using raster shapes to generate stencil masks
-    if (result.a < (1 / 255))
-        discard;
     return result;
 }
