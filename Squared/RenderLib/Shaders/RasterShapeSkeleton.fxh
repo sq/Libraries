@@ -213,6 +213,10 @@ void RasterShapeVertexShader (
         float4(adjustedPosition, position.z, 1), true
     );
     worldPosition = position.xy;
+
+    // If we're not using an approximate Linear-sRGB conversion here it could add
+    //  measurable overhead to the fragment shader, so why not do it here in the VS instead
+    RASTERSHAPE_PREPROCESS_COLORS
 }
 
 float2 closestPointOnLine2(float2 a, float2 b, float2 pt, out float t) {
@@ -506,7 +510,7 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
     result = over(outlineColor, outlineAlpha, fillColor, fillAlpha);
 
     if (convertToSRGB)
-        result = pLinearToPSRGB(result);
+        result = pLinearToPSRGB_Accurate(result);
 
     return result;
 }

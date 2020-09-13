@@ -6,6 +6,12 @@ float3 SRGBToLinear (float3 srgb) {
     return lerp(low, high, step(0.04045, srgb));
 }
 
+float3 LinearToSRGB (float3 rgb) {
+    float3 low = rgb * 12.92;
+    float3 high = 1.055 * pow(rgb, 1.0 / 2.4) - 0.055;
+    return lerp(low, high, step(0.0031308, rgb));
+}
+
 float3 approxSRGBToLinear (float3 srgb) {
     return srgb * (srgb * (srgb * 0.305306011 + 0.682171111) + 0.012522878);
 }
@@ -21,6 +27,13 @@ float4 pSRGBToPLinear_Accurate (float4 psrgba) {
     float3 srgb = psrgba.rgb / max(psrgba.a, 0.00001);
     float3 linearRgb = SRGBToLinear(srgb);
     return float4(linearRgb * psrgba.a, psrgba.a);
+}
+
+float4 pLinearToPSRGB_Accurate (float4 pLinear) {
+    float3 rgb = pLinear.rgb / max(pLinear.a, 0.00001);
+    float3 srgb = LinearToSRGB(rgb);
+    float4 pSrgb = float4(srgb * pLinear.a, pLinear.a);
+    return pSrgb;
 }
 
 float4 pSRGBToPLinear (float4 psrgba) {

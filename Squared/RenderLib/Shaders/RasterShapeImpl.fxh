@@ -1,8 +1,6 @@
 void SHAPE_TYPE_NAME (
     RASTERSHAPE_FS_ARGS
 ) {
-    RASTERSHAPE_PREPROCESS_COLORS
-
     float2 tl, br;
     float4 fill;
     float  fillAlpha, outlineAlpha;
@@ -27,8 +25,6 @@ void SHAPE_TYPE_NAME (
 void SHAPE_TYPE_NAME_TEX (
     RASTERSHAPE_FS_ARGS
 ) {
-    RASTERSHAPE_PREPROCESS_COLORS
-        
     float2 tl, br;
     float4 fill;
     float  fillAlpha, outlineAlpha;
