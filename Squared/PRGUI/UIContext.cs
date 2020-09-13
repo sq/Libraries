@@ -32,7 +32,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        public void Update () {
+        public void UpdateLayout () {
             var context = new UIOperationContext {
                 UIContext = this
             };

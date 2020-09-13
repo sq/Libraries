@@ -128,27 +128,37 @@ namespace PRGUI.Demo {
                 Controls = {
                     new Container {
                         LayoutFlags = ControlFlags.Layout_Fill,
-                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap,
+                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap,
                         Children = {
                             new Button {
                                 AutoSizeWidth = false,
                                 FixedWidth = 400,
                                 Text = "Button 1",
                             },
+                            new StaticText {
+                                // AutoSizeWidth = false,
+                                Text = "A Button:",
+                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                            },
                             new Button {
-                                AutoSizeWidth = false,
-                                FixedWidth = 900,
+                                MinimumWidth = 200,
                                 Text = "Button 2",
                             },
                             new StaticText {
                                 AutoSizeWidth = false,
-                                Text = "Static Text",
-                                LayoutFlags = ControlFlags.Layout_ForceBreak
+                                Text = "Static Text 2",
+                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                            },
+                            new StaticText {
+                                AutoSizeWidth = false,
+                                Text = "Static Text 3",
                             }
                         }
                     },
                 }
             };
+
+            Context.UpdateLayout();
 
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
@@ -184,7 +194,7 @@ namespace PRGUI.Demo {
 
             var mousePosition = new Vector2(MouseState.X, MouseState.Y);
 
-            Context.Update();
+            // Context.Update();
             Context.UpdateInput(
                 mousePosition, 
                 MouseState.LeftButton == ButtonState.Pressed, 

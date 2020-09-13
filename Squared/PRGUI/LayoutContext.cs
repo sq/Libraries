@@ -504,66 +504,31 @@ namespace Squared.PRGUI.Layout {
 
             var startChild = pItem->FirstChild;
             while (!startChild.IsInvalid) {
-                float used = 0;
-                uint count = 0, squeezedCount = 0, total = 0;
-                bool hardBreak = false;
+                float used;
+                uint fillerCount, squeezedCount, total;
+                bool hardBreak;
+                ControlKey child, endChild;
 
-                // first pass: count items that need to be expanded, and the space that is used
-                ControlKey child = startChild, endChild = ControlKey.Invalid;
-                while (!child.IsInvalid) {
-                    var pChild = LayoutPtr(child);
-                    var childFlags = pChild->Flags;
-                    var flags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Layout) >> idim);
-                    var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
-                    var childMargins = pChild->Margins;
-                    var childRect = GetRect(child);
-                    var extend = used;
-
-                    if (flags.IsFlagged(ControlFlags.Layout_Fill_Row)) {
-                        ++count;
-                        extend += childRect[idim] + childMargins.GetElement(wdim);
-                    } else {
-                        if (!fFlags.IsFlagged(ControlFlags.Internal_FixedWidth))
-                            ++squeezedCount;
-                        extend += childRect[idim] + childRect[wdim] + childMargins.GetElement(wdim);
-                    }
-
-                    if (
-                        (
-                            wrap || 
-                            // Force break should reset the item to the start position
-                            childFlags.IsFlagged(ControlFlags.Layout_ForceBreak)
-                        ) && (
-                            (total > 0) && (
-                                (extend > space) ||
-                                childFlags.IsBreak()
-                            )
-                        )
-                    ) {
-                        endChild = child;
-                        hardBreak = childFlags.IsBreak();
-                        pChild->Flags |= ControlFlags.Internal_Break;
-                        break;
-                    } else {
-                        used = extend;
-                        child = pChild->NextSibling;
-                    }
-
-                    ++total;
-                }
+                BuildStackedRow(
+                    wrap, idim, wdim, space, startChild,
+                    out used, out fillerCount, out squeezedCount, out total,
+                    out hardBreak, out child, out endChild
+                );
 
                 var extraSpace = space - used;
                 float filler = 0, spacer = 0, extraMargin = 0, eater = 0;
 
                 if (extraSpace > 0) {
-                    if (count > 0)
-                        filler = extraSpace / count;
+                    if (fillerCount > 0)
+                        filler = extraSpace / fillerCount;
                     else if (total > 0) {
                         switch (itemFlags & ControlFlags.Container_Align_Justify) {
                             case ControlFlags.Container_Align_Justify:
                                 // justify when not wrapping or not in last line, or not manually breaking
                                 if (!wrap || (!endChild.IsInvalid && !hardBreak))
                                     spacer = extraSpace / (total - 1);
+                                else
+                                    ;
                                 break;
                             case ControlFlags.Container_Align_Start:
                                 break;
@@ -574,52 +539,119 @@ namespace Squared.PRGUI.Layout {
                                 extraMargin = extraSpace / 2;
                                 break;
                         }
-                    }
+                    } else
+                        ;
 
-                // oui.h
-                // } else if (!wrap && (extraSpace < 0)) {
-                // layout.h
+                    // oui.h
+                    // } else if (!wrap && (extraSpace < 0)) {
+                    // layout.h
                 } else if (!wrap && (squeezedCount > 0)) {
                     eater = extraSpace / squeezedCount;
                 }
 
                 float x = rect[idim];
                 child = startChild;
-
-                while (child != endChild) {
-                    float ix0 = 0, ix1 = 0, x1;
-
-                    // FIXME: Duplication
-                    var pChild = LayoutPtr(child);
-                    var childFlags = pChild->Flags;
-                    var flags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Layout) >> idim);
-                    var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
-                    var childMargins = pChild->Margins;
-                    var childRect = GetRect(child);
-
-                    x += childRect[idim] + extraMargin;
-                    if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
-                        x1 = x + filler;
-                    else if (fFlags.IsFlagged(ControlFlags.Internal_FixedWidth))
-                        x1 = x + childRect[wdim];
-                    else
-                        x1 = x + Math.Max(0f, childRect[wdim] + eater);
-
-                    ix0 = x;
-                    if (wrap)
-                        ix1 = Math.Min(max_x2 - childMargins.GetElement(wdim), x1);
-                    else
-                        ix1 = x1;
-
-                    childRect[idim] = ix0;
-                    childRect[wdim] = ix1 - ix0;
-                    SetRect(child, ref childRect);
-                    x = x1 + childMargins.GetElement(wdim);
-                    child = pChild->NextSibling;
-                    extraMargin = spacer;
-                }
+                ArrangeStackedRow(
+                    wrap, idim, wdim, max_x2, 
+                    ref child, endChild, 
+                    filler, spacer, 
+                    extraMargin, eater, x
+                );
 
                 startChild = endChild;
+            }
+        }
+
+        private unsafe void ArrangeStackedRow (bool wrap, int idim, int wdim, float max_x2, ref ControlKey child, ControlKey endChild, float filler, float spacer, float extraMargin, float eater, float x) {
+            ;
+            // Distribute and rescale items
+            while (child != endChild) {
+                float ix0 = 0, ix1 = 0, x1;
+
+                // FIXME: Duplication
+                var pChild = LayoutPtr(child);
+                var childFlags = pChild->Flags;
+                var flags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Layout) >> idim);
+                var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
+                var childMargins = pChild->Margins;
+                var childRect = GetRect(child);
+
+                x += childRect[idim] + extraMargin;
+                if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
+                    x1 = x + filler;
+                else if (fFlags.IsFlagged(ControlFlags.Internal_FixedWidth))
+                    x1 = x + childRect[wdim];
+                else
+                    x1 = x + Math.Max(0f, childRect[wdim] + eater);
+
+                ix0 = x;
+                if (wrap)
+                    ix1 = Math.Min(max_x2 - childMargins.GetElement(wdim), x1);
+                else
+                    ix1 = x1;
+
+                childRect[idim] = ix0;
+                childRect[wdim] = ix1 - ix0;
+                SetRect(child, ref childRect);
+                x = x1 + childMargins.GetElement(wdim);
+                child = pChild->NextSibling;
+                extraMargin = spacer;
+            }
+        }
+
+        private unsafe void BuildStackedRow (
+            bool wrap, int idim, int wdim, float space, ControlKey startChild, 
+            out float used, out uint fillerCount, out uint squeezedCount, out uint total, 
+            out bool hardBreak, out ControlKey child, out ControlKey endChild
+        ) {
+            used = 0;
+            fillerCount = squeezedCount = total = 0;
+            hardBreak = false;
+
+            // first pass: count items that need to be expanded, and the space that is used
+            child = startChild;
+            endChild = ControlKey.Invalid;
+            while (!child.IsInvalid) {
+                var pChild = LayoutPtr(child);
+                var childFlags = pChild->Flags;
+                var flags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Layout) >> idim);
+                var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
+                var childMargins = pChild->Margins;
+                var childRect = GetRect(child);
+                var extend = used;
+
+                if (
+                    childFlags.IsFlagged(ControlFlags.Layout_ForceBreak) &&
+                    (child != startChild)
+                ) {
+                    endChild = child;
+                    break;
+                } else if (flags.IsFlagged(ControlFlags.Layout_Fill_Row)) {
+                    ++fillerCount;
+                    extend += childRect[idim] + childMargins.GetElement(wdim);
+                } else {
+                    if (!fFlags.IsFlagged(ControlFlags.Internal_FixedWidth))
+                        ++squeezedCount;
+                    extend += childRect[idim] + childRect[wdim] + childMargins.GetElement(wdim);
+                }
+
+                if (
+                    wrap &&
+                    (total != 0) && (
+                        (extend > space) ||
+                        childFlags.IsBreak()
+                    )
+                ) {
+                    endChild = child;
+                    hardBreak = childFlags.IsBreak();
+                    pChild->Flags |= ControlFlags.Internal_Break;
+                    break;
+                } else {
+                    used = extend;
+                    child = pChild->NextSibling;
+                }
+
+                ++total;
             }
         }
 

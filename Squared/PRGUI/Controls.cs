@@ -111,8 +111,11 @@ namespace Squared.PRGUI {
     }
 
     public class StaticText : Control {
+        public const bool DiagnosticText = false;
+
         public DynamicStringLayout Content = new DynamicStringLayout();
         public bool AutoSizeWidth = true, AutoSizeHeight = true;
+        public float? MinimumWidth = null, MinimumHeight = null;
 
         public StaticText ()
             : base () {
@@ -166,6 +169,10 @@ namespace Squared.PRGUI {
                 var layoutSize = Content.Get().Size;
                 var computedWidth = layoutSize.X + computedPadding.Left + computedPadding.Right;
                 var computedHeight = layoutSize.Y + computedPadding.Top + computedPadding.Bottom;
+                if (MinimumWidth.HasValue)
+                    computedWidth = Math.Max(MinimumWidth.Value, computedWidth);
+                if (MinimumHeight.HasValue)
+                    computedHeight = Math.Max(MinimumHeight.Value, computedHeight);
 
                 context.Layout.SetSizeXY(
                     result, 
@@ -174,11 +181,14 @@ namespace Squared.PRGUI {
                 );
             }
 
+            if (DiagnosticText)
+                Content.Text = $"#{result.ID} size {context.Layout.GetSize(result)}";
+
             return result;
         }
 
         protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
-            return context.DecorationProvider?.Button;
+            return context.DecorationProvider?.StaticText;
         }
 
         protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
@@ -202,7 +212,7 @@ namespace Squared.PRGUI {
                 textOffset += decorations.PressedInset;
 
             var layout = Content.Get();
-            var xSpace = box.Width - layout.Size.X;
+            var xSpace = box.Width - layout.Size.X - computedPadding.Left - computedPadding.Right;
             switch (Content.Alignment) {
                 case HorizontalAlignment.Left:
                     break;

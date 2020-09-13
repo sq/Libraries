@@ -64,6 +64,8 @@ namespace Squared.PRGUI.Decorations {
         public Color FocusedColor = new Color(200, 230, 255),
             ActiveColor = Color.White,
             InactiveColor = new Color(180, 180, 180),
+            ContainerOutlineColor = new Color(32, 32, 32),
+            ContainerFillColor = new Color(48, 48, 48),
             InertOutlineColor = new Color(255, 255, 255) * 0.33f,
             InertFillColor = Color.Transparent;
 
@@ -114,6 +116,36 @@ namespace Squared.PRGUI.Decorations {
                     context.Renderer.RasterizeRectangle(
                         box.Position + offset, box.Extent - offset,
                         radius: InertCornerRadius,
+                        outlineRadius: InertOutlineThickness, outlineColor: ContainerOutlineColor,
+                        innerColor: ContainerFillColor, outerColor: ContainerFillColor
+                    );
+                }
+            };
+
+            StaticText = new DelegateDecorator {
+                Margins = new Margins(2, 4),
+                Padding = new Margins(6),
+                GetTextMaterial = getTextMaterial,
+                Below = (context, box, state) => {
+                    var offset = new Vector2(InertCornerRadius);
+                    context.Renderer.RasterizeRectangle(
+                        box.Position + offset, box.Extent - offset,
+                        radius: InertCornerRadius,
+                        outlineRadius: InertOutlineThickness, outlineColor: InertOutlineColor,
+                        innerColor: InertFillColor, outerColor: InertFillColor
+                    );
+                }
+            };
+
+            StaticText = new DelegateDecorator {
+                Margins = new Margins(2, 4),
+                Padding = new Margins(6),
+                GetTextMaterial = getTextMaterial,
+                Below = (context, box, state) => {
+                    var offset = new Vector2(InertCornerRadius);
+                    context.Renderer.RasterizeRectangle(
+                        box.Position + offset, box.Extent - offset,
+                        radius: InertCornerRadius,
                         outlineRadius: InertOutlineThickness, outlineColor: InertOutlineColor,
                         innerColor: InertFillColor, outerColor: InertFillColor
                     );
@@ -123,7 +155,8 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public abstract class DecorationProvider {
-        public DelegateDecorator Button { get; set; }
         public DelegateDecorator Container { get; set; }
+        public DelegateDecorator StaticText { get; set; }
+        public DelegateDecorator Button { get; set; }
     }
 }
