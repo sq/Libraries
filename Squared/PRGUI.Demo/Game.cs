@@ -119,9 +119,11 @@ namespace PRGUI.Demo {
             FontLoader = new EmbeddedFreeTypeFontProvider(RenderCoordinator);
 
             Font = FontLoader.Load("FiraSans-Medium");
-            // Font.Monochrome = true;
             Font.SizePoints = 16f;
-            Font.GlyphMargin = 2;
+            // High-DPI offscreen surface so the text is sharp even at subpixel positions
+            Font.DPIPercent = 200;
+            // Big margin on glyphs so shadows aren't clipped
+            Font.GlyphMargin = 4;
 
             Context = new UIContext {
                 CanvasSize = new Vector2(1280, 720),
