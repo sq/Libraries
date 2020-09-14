@@ -18,7 +18,7 @@ namespace Squared.Render.RasterShape {
         public Vector4 PointsAB, PointsCD;
         public Vector4 Parameters, Parameters2;
         public Vector4 TextureRegion;
-        public Color   CenterColor, EdgeColor, OutlineColor;
+        public Color   InnerColor, OuterColor, OutlineColor;
         public short   Type, WorldSpace;
 
         public static readonly VertexElement[] Elements;
@@ -38,9 +38,9 @@ namespace Squared.Render.RasterShape {
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "TextureRegion").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 2 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "CenterColor").ToInt32(),
+                new VertexElement( Marshal.OffsetOf(tThis, "InnerColor").ToInt32(),
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "EdgeColor").ToInt32(),
+                new VertexElement( Marshal.OffsetOf(tThis, "OuterColor").ToInt32(),
                     VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "OutlineColor").ToInt32(),
                     VertexElementFormat.Color, VertexElementUsage.Color, 2 ),
@@ -108,11 +108,11 @@ namespace Squared.Render.RasterShape {
         /// <summary>
         /// The sRGB color of the center of the shape (or the beginning for 'along' gradients)
         /// </summary>
-        public Color CenterColor;
+        public Color InnerColor;
         /// <summary>
         /// The sRGB color for the outside of the shape (or the end for 'along' gradients)
         /// </summary>
-        public Color EdgeColor;
+        public Color OuterColor;
         /// <summary>
         /// The sRGB color of the shape's outline.
         /// </summary>
@@ -139,6 +139,8 @@ namespace Squared.Render.RasterShape {
         /// Adjusting x and y away from 1 allows you to adjust the shape of the curve
         /// </summary>
         public Vector2 FillGradientPowerMinusOne;
+        public float FillOffset;
+        public float FillSize;
         
         /// <summary>
         /// Specifies the region of the texture to apply to the shape.
@@ -247,11 +249,11 @@ namespace Squared.Render.RasterShape {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         // FIXME: Fill this last space with a separate value?
                         PointsCD = new Vector4(dc.C.X, dc.C.Y, dc.Radius.X, dc.Radius.Y),
-                        CenterColor = dc.CenterColor,
+                        InnerColor = dc.InnerColor,
                         OutlineColor = dc.OutlineColor,
-                        EdgeColor = dc.EdgeColor,
+                        OuterColor = dc.OuterColor,
                         Parameters = new Vector4(dc.OutlineSize, dc.SoftOutline ? 0.0f : 1.0f, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne),
-                        Parameters2 = new Vector4(dc.FillGradientPowerMinusOne.X + 1, dc.FillGradientPowerMinusOne.Y + 1, 0, 0),
+                        Parameters2 = new Vector4(dc.FillGradientPowerMinusOne.X + 1, dc.FillGradientPowerMinusOne.Y + 1, dc.FillOffset, dc.FillSize),
                         TextureRegion = dc.TextureBounds.ToVector4(),
                         Type = (short)dc.Type,
                         WorldSpace = (short)(dc.WorldSpace ? 1 : 0)

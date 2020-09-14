@@ -1080,7 +1080,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeEllipse (
             Vector2 center, Vector2 radius, Color innerColor, Color? outerColor = null,
             RasterFillMode fillMode = RasterFillMode.Radial,
-            float fillOffset = 0, Vector2? fillGradientPower = null,
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1093,14 +1093,16 @@ namespace Squared.Render.Convenience {
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = center,
                     B = radius,
-                    C = new Vector2((int)fillMode, fillOffset),
+                    C = new Vector2((int)fillMode, 0),
                     OutlineSize = 0,
-                    CenterColor = innerColor,
-                    EdgeColor = outerColor.GetValueOrDefault(innerColor),
+                    InnerColor = innerColor,
+                    OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
                     // FIXME
                     TextureBounds = Bounds.Unit,
                     SoftOutline = RasterSoftOutlines
@@ -1111,7 +1113,7 @@ namespace Squared.Render.Convenience {
             Vector2 center, Vector2 radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             RasterFillMode fillMode = RasterFillMode.Radial,
-            float fillOffset = 0, Vector2? fillGradientPower = null,
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1126,12 +1128,14 @@ namespace Squared.Render.Convenience {
                     B = radius,
                     C = new Vector2((int)fillMode, fillOffset),
                     OutlineSize = outlineRadius,
-                    CenterColor = innerColor,
-                    EdgeColor = outerColor,
+                    InnerColor = innerColor,
+                    OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
                     // FIXME
                     TextureBounds = Bounds.Unit,
                     SoftOutline = RasterSoftOutlines
@@ -1141,6 +1145,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeLineSegment (
             Vector2 a, Vector2 b, float radius, Color innerColor, Color? outerColor = null,
             bool gradientAlongLine = false,
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1155,13 +1160,14 @@ namespace Squared.Render.Convenience {
                     C = new Vector2(gradientAlongLine ? 1 : 0, 0),
                     Radius = new Vector2(radius, 0),
                     OutlineSize = 0,
-                    CenterColor = innerColor,
-                    EdgeColor = outerColor.GetValueOrDefault(innerColor),
+                    InnerColor = innerColor,
+                    OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
-                    // FIXME
-                    FillGradientPowerMinusOne = Vector2.One,
+                    FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
                     // FIXME
                     TextureBounds = Bounds.Unit,
                     SoftOutline = RasterSoftOutlines
@@ -1172,6 +1178,7 @@ namespace Squared.Render.Convenience {
             Vector2 a, Vector2 b, float startRadius, float? endRadius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             bool gradientAlongLine = false,
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1189,13 +1196,14 @@ namespace Squared.Render.Convenience {
                     C = new Vector2(gradientAlongLine ? 1 : 0, startRadius - maxRadius),
                     Radius = new Vector2(maxRadius, _endRadius - maxRadius),
                     OutlineSize = outlineRadius,
-                    CenterColor = innerColor,
-                    EdgeColor = outerColor,
+                    InnerColor = innerColor,
+                    OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
-                    // FIXME
-                    FillGradientPowerMinusOne = Vector2.One,
+                    FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
                     // FIXME
                     TextureBounds = Bounds.Unit,
                     SoftOutline = RasterSoftOutlines
@@ -1206,7 +1214,7 @@ namespace Squared.Render.Convenience {
             Vector2 tl, Vector2 br, float radius,
             Color innerColor, Color? outerColor = null,
             RasterFillMode fillMode = RasterFillMode.Linear,
-            float fillOffset = 0, Vector2? fillGradientPower = null,
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1221,12 +1229,14 @@ namespace Squared.Render.Convenience {
                     C = new Vector2((int)fillMode, fillOffset),
                     Radius = new Vector2(radius),
                     OutlineSize = 0,
-                    CenterColor = innerColor,
-                    EdgeColor = outerColor.GetValueOrDefault(innerColor),
+                    InnerColor = innerColor,
+                    OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
                     // FIXME
                     TextureBounds = Bounds.Unit,
                     SoftOutline = RasterSoftOutlines
@@ -1237,7 +1247,7 @@ namespace Squared.Render.Convenience {
             Vector2 tl, Vector2 br, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
             RasterFillMode fillMode = RasterFillMode.Linear,
-            float fillOffset = 0, Vector2? fillGradientPower = null,
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1252,12 +1262,14 @@ namespace Squared.Render.Convenience {
                     C = new Vector2((int)fillMode, fillOffset),
                     Radius = new Vector2(radius),
                     OutlineSize = outlineRadius,
-                    CenterColor = innerColor,
-                    EdgeColor = outerColor,
+                    InnerColor = innerColor,
+                    OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
                     // FIXME
                     TextureBounds = Bounds.Unit,
                     SoftOutline = RasterSoftOutlines
@@ -1266,7 +1278,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeTriangle (
             Vector2 a, Vector2 b, Vector2 c, float radius, Color innerColor, Color? outerColor = null,
-            float fillOffset = 0, Vector2? fillGradientPower = null,
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1280,12 +1292,14 @@ namespace Squared.Render.Convenience {
                     A = a, B = b, C = c,
                     Radius = new Vector2(radius, fillOffset),
                     OutlineSize = 0,
-                    CenterColor = innerColor,
-                    EdgeColor = outerColor.GetValueOrDefault(innerColor),
+                    InnerColor = innerColor,
+                    OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
                     // FIXME
                     TextureBounds = Bounds.Unit,
                     SoftOutline = RasterSoftOutlines
@@ -1295,7 +1309,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeTriangle (
             Vector2 a, Vector2 b, Vector2 c, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
-            float fillOffset = 0, Vector2? fillGradientPower = null,
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1309,12 +1323,14 @@ namespace Squared.Render.Convenience {
                     A = a, B = b, C = c,
                     Radius = new Vector2(radius, fillOffset),
                     OutlineSize = outlineRadius,
-                    CenterColor = innerColor,
-                    EdgeColor = outerColor,
+                    InnerColor = innerColor,
+                    OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
                     // FIXME
                     TextureBounds = Bounds.Unit,
                     SoftOutline = RasterSoftOutlines
@@ -1323,6 +1339,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeQuadraticBezier (
             Vector2 a, Vector2 b, Vector2 c, float radius, Color color,
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1336,13 +1353,14 @@ namespace Squared.Render.Convenience {
                     A = a, B = b, C = c,
                     Radius = new Vector2(radius),
                     OutlineSize = 0,
-                    CenterColor = color,
-                    EdgeColor = color,
+                    InnerColor = color,
+                    OuterColor = color,
                     OutlineColor = color,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
-                    // FIXME
-                    FillGradientPowerMinusOne = Vector2.One,
+                    FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
                     // FIXME
                     TextureBounds = Bounds.Unit,
                     SoftOutline = RasterSoftOutlines
@@ -1352,6 +1370,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeQuadraticBezier (
             Vector2 a, Vector2 b, Vector2 c, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1365,13 +1384,14 @@ namespace Squared.Render.Convenience {
                     A = a, B = b, C = c,
                     Radius = new Vector2(radius),
                     OutlineSize = outlineRadius,
-                    CenterColor = innerColor,
-                    EdgeColor = outerColor,
+                    InnerColor = innerColor,
+                    OuterColor = outerColor,
                     OutlineColor = outlineColor,
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
-                    // FIXME
-                    FillGradientPowerMinusOne = Vector2.One,
+                    FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
                     // FIXME
                     TextureBounds = Bounds.Unit,
                     SoftOutline = RasterSoftOutlines
@@ -1388,6 +1408,7 @@ namespace Squared.Render.Convenience {
             Vector2 center, float startAngleDegrees, float sizeDegrees, 
             float ringRadius, float fillRadius, float outlineRadius,
             Color innerColor, Color? outerColor = null, Color? outlineColor = null, 
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
@@ -1408,13 +1429,14 @@ namespace Squared.Render.Convenience {
                     // HACK: Inverse order because the shader uses radius.x for bounding box math
                     Radius = new Vector2(ringRadius, fillRadius),
                     OutlineSize = outlineRadius,
-                    CenterColor = innerColor,
-                    EdgeColor = outerColor.GetValueOrDefault(innerColor),
+                    InnerColor = innerColor,
+                    OuterColor = outerColor.GetValueOrDefault(innerColor),
                     OutlineColor = outlineColor.GetValueOrDefault(Color.Transparent),
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
-                    // FIXME
-                    FillGradientPowerMinusOne = Vector2.One,
+                    FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
                     // FIXME
                     TextureBounds = Bounds.Unit,
                     SoftOutline = RasterSoftOutlines

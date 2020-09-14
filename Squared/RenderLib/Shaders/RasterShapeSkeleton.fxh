@@ -251,13 +251,12 @@ float getWindowAlpha (
 void evaluateEllipse (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     out float distance, out float2 tl, out float2 br,
-    inout int gradientType, out float gradientWeight, out float gradientOffset
+    inout int gradientType, out float gradientWeight
 ) {
     // FIXME: sdEllipse is massively broken. What is wrong with it?
     // distance = sdEllipse(worldPosition - a, b);
     float2 distanceXy = worldPosition - a;
     float distanceF = length(distanceXy / b);
-    gradientOffset = c.y;
     distance = (distanceF - 1) * length(b);
     gradientWeight = saturate(distanceF);
     tl = a - b;
@@ -309,7 +308,7 @@ void evaluateLineSegment (
 void evaluateRectangle (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    inout int gradientType, out float gradientWeight, out float gradientOffset
+    inout int gradientType, out float gradientWeight
 ) {
     float2 center = (a + b) * 0.5;
     float2 boxSize = abs(b - a) * 0.5;
@@ -317,7 +316,6 @@ void evaluateRectangle (
 
     float centerDistance = sdBox(0, boxSize) - radius.x;
     gradientType = abs(c.x);
-    gradientOffset = c.y;
 
     PREFER_FLATTEN
     switch (gradientType) {
@@ -333,14 +331,13 @@ void evaluateRectangle (
 void evaluateTriangle (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    out float gradientWeight, out float2 tl, out float2 br, out float gradientOffset
+    out float gradientWeight, out float2 tl, out float2 br
 ) {
-    gradientOffset = radius.y;
     distance = sdTriangle(worldPosition, a, b, c) - radius.x;
 
     float2 center = (a + b + c) / 3;
     float centroidDistance = sdTriangle(center, a, b, c) - radius.x;
-    gradientWeight = saturate(distance / centroidDistance);
+    gradientWeight = 1 - saturate(distance / centroidDistance);
 
     tl = min(min(a, b), c);
     br = max(max(a, b), c);
@@ -370,7 +367,7 @@ void rasterShapeCommon (
     tl = min(a, b);
     br = max(a, b);
 
-    float gradientOffset = 0;
+    float gradientOffset = params2.z, gradientSize = params2.w;
     int gradientType = 999;
 
     PREFER_BRANCH
@@ -380,7 +377,7 @@ void rasterShapeCommon (
             evaluateEllipse(
                 worldPosition, a, b, c,
                 distance, tl, br,
-                gradientType, gradientWeight, gradientOffset
+                gradientType, gradientWeight
             );
 
             break;
@@ -415,7 +412,7 @@ void rasterShapeCommon (
             evaluateRectangle(
                 worldPosition, a, b, c,
                 radius, distance,
-                gradientType, gradientWeight, gradientOffset
+                gradientType, gradientWeight
             );
 
             break;
@@ -427,7 +424,7 @@ void rasterShapeCommon (
             evaluateTriangle(
                 worldPosition, a, b, c,
                 radius, distance,
-                gradientWeight, tl, br, gradientOffset
+                gradientWeight, tl, br
             );
 
             break;
@@ -464,7 +461,7 @@ void rasterShapeCommon (
     gradientWeight = saturate(pow(gradientWeight, max(params2.x, 0.001)));
     gradientWeight = 1 - saturate(pow(1 - gradientWeight, max(params2.y, 0.001)));
 
-    gradientWeight = saturate(gradientWeight + gradientOffset);
+    gradientWeight = saturate((gradientWeight + gradientOffset) / gradientSize);
 
     float outlineSizeAlpha = saturate(outlineSize / 2);
     float clampedOutlineSize = max(outlineSize / 2, sqrt(2)) * 2;
