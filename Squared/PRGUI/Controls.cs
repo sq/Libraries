@@ -349,15 +349,19 @@ namespace Squared.PRGUI {
         }
 
         protected override Control OnHitTest (LayoutContext context, RectF box, Vector2 position) {
+            var result = base.OnHitTest(context, box, position);
+            if (result != this)
+                return result;
+
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
             foreach (var item in Children) {
-                var result = item.HitTest(context, position);
+                result = item.HitTest(context, position);
                 if (result != null)
                     return result;
             }
 
-            return base.OnHitTest(context, box, position);
+            return this;
         }
     }
 }
