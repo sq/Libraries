@@ -350,7 +350,7 @@ void rasterShapeCommon (
     in float2 worldPosition,
     in float4 ab, in float4 cd,
     in float4 params, in float4 params2, in uint type,
-    in float4 centerColor, in float4 edgeColor,
+    in float4 centerColor, in float4 edgeColor, in float2 vpos,
     out float2 tl, out float2 br,
     out float4 fill, out float fillAlpha, 
     out float outlineAlpha
@@ -474,7 +474,6 @@ void rasterShapeCommon (
         fillStartDistance = -0.5,
         fillEndDistance = 0.5;
 
-    float4 composited;
     fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
     fill = lerp(centerColor, edgeColor, gradientWeight);
 
@@ -505,14 +504,18 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return float4(rgb, a);
 }
 
-float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float convertToSRGB) {
+float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float convertToSRGB, float2 vpos) {
     float4 result;
     result = over(outlineColor, outlineAlpha, fillColor, fillAlpha);
 
-    if (convertToSRGB)
-        result = pLinearToPSRGB_Accurate(result);
+    result.rgb = float4(result.rgb / max(result.a, 0.0001), result.a);
 
-    return result;
+    if (convertToSRGB)
+        result.rgb = LinearToSRGB(result.rgb);
+
+    float4 ditheredResult = ApplyDither4(result, vpos);
+    ditheredResult.rgb *= ditheredResult.a;
+    return ditheredResult;
 }
 
 float4 texturedShapeCommon (
@@ -520,7 +523,8 @@ float4 texturedShapeCommon (
     in float4 ab, in float4 cd,
     in float4 fill, in float4 outlineColor,
     in float fillAlpha, in float outlineAlpha,
-    in float4 params, in float4 params2, in float2 tl, in float2 br
+    in float4 params, in float4 params2, in float2 tl, in float2 br,
+    in float2 vpos
 ) {
     // HACK: Increasing the radius of shapes like rectangles
     //  causes the shapes to expand, so we need to expand the
@@ -541,6 +545,6 @@ float4 texturedShapeCommon (
 
     fill *= texColor;
 
-    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z);
+    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z, vpos);
     return result;
 }

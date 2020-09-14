@@ -7,19 +7,17 @@ void SHAPE_TYPE_NAME (
     rasterShapeCommon(
         worldPosition,
         ab, cd, params, params2, abs(_type.x),
-        centerColor, edgeColor,
+        centerColor, edgeColor, GET_VPOS,
         tl, br,
         fill, fillAlpha, outlineAlpha
     );
 
-    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z);
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z, GET_VPOS);
 
     if (result.a <= 0.5 / 255) {
         discard;
         return;
     }
-
-    result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
 
 void SHAPE_TYPE_NAME_TEX (
@@ -31,7 +29,7 @@ void SHAPE_TYPE_NAME_TEX (
     rasterShapeCommon(
         worldPosition,
         ab, cd, params, params2, abs(_type.x),
-        centerColor, edgeColor,
+        centerColor, edgeColor, GET_VPOS,
         tl, br,
         fill, fillAlpha, outlineAlpha
     );
@@ -41,15 +39,13 @@ void SHAPE_TYPE_NAME_TEX (
         ab, cd, 
         fill, outlineColor,
         fillAlpha, outlineAlpha,
-        params, params2, tl, br
+        params, params2, tl, br, GET_VPOS
     );
 
     if (result.a <= 0.5 / 255) {
         discard;
         return;
     }
-
-    result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
 
 technique SHAPE_TYPE_TECHNIQUE_NAME
