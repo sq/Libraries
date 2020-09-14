@@ -150,11 +150,16 @@ namespace PRGUI.Demo {
                             new StaticText {
                                 AutoSizeWidth = false,
                                 Text = "Static Text 2",
-                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                                MaximumWidth = 150
                             },
                             new StaticText {
                                 AutoSizeWidth = false,
                                 Text = "Static Text 3",
+                            },
+                            new StaticText {
+                                AutoSizeWidth = false,
+                                Text = "Static Text 4",
                             },
                             new Container {
                                 ClipChildren = true,

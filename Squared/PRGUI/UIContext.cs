@@ -40,7 +40,7 @@ namespace Squared.PRGUI {
 
             Layout.Clear();
 
-            Layout.SetSize(Layout.Root, CanvasSize);
+            Layout.SetFixedSize(Layout.Root, CanvasSize);
             Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row);
 
             foreach (var control in Controls)

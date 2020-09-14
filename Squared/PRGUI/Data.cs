@@ -79,20 +79,22 @@ namespace Squared.PRGUI.Layout {
     }
 
     public struct LayoutItem {
+        public static readonly Vector2 NoSize = new Vector2(-1);
+
         public readonly ControlKey Key;
 
         public ControlFlags Flags;
         public ControlKey Parent, FirstChild;
         public ControlKey PreviousSibling, NextSibling;
         public Vector4 Margins;
-        public Vector2 Size;
+        public Vector2 FixedSize, MinimumSize, MaximumSize;
 
         public LayoutItem (ControlKey key) {
             Key = key;
             Flags = default(ControlFlags);
             Parent = FirstChild = PreviousSibling = NextSibling = ControlKey.Invalid;
             Margins = default(Vector4);
-            Size = default(Vector2);
+            FixedSize = MinimumSize = MaximumSize = NoSize;
         }
     }
 
@@ -363,6 +365,18 @@ namespace Squared.PRGUI {
                 new Vector2(self.Left, self.Top),
                 new Vector2(self.Left + self.Width, self.Top + self.Height)
             );
+        }
+
+        public void SnapAndInset (out Vector2 a, out Vector2 b, float inset = 0) {
+            a = new Vector2(Left + inset, Top + inset);
+            b = new Vector2(Left + Width - inset, Top + Height - inset);
+            // HACK: Snap to integral pixels so that edges don't look uneven
+            a = a.Round();
+            b = b.Round();
+            if (a.X > b.X)
+                a.X = b.X = Left;
+            if (a.Y > b.Y)
+                a.Y = b.Y = Top;
         }
 
         public bool Equals (RectF rhs) {

@@ -321,20 +321,14 @@ namespace Squared.PRGUI.Layout {
             pOldChild->PreviousSibling = newFirstChild;
         }
 
-        public unsafe Vector2 GetSize (ControlKey key) {
+        public unsafe Vector2 GetFixedSize (ControlKey key) {
             var pItem = LayoutPtr(key);
-            return pItem->Size;
+            return pItem->FixedSize;
         }
 
-        public unsafe void GetSizeXY (ControlKey key, out float x, out float y) {
+        public unsafe void SetFixedSize (ControlKey key, Vector2 size) {
             var pItem = LayoutPtr(key);
-            x = pItem->Size.X;
-            y = pItem->Size.Y;
-        }
-
-        public unsafe void SetSize (ControlKey key, Vector2 size) {
-            var pItem = LayoutPtr(key);
-            pItem->Size = size;
+            pItem->FixedSize = size;
 
             var flags = pItem->Flags;
             if (size.X <= 0)
@@ -349,8 +343,18 @@ namespace Squared.PRGUI.Layout {
             pItem->Flags = flags;
         }
 
-        public void SetSizeXY (ControlKey key, float width = 0, float height = 0) {
-            SetSize(key, new Vector2(width, height));
+        public void SetFixedSize (ControlKey key, float width = 0, float height = 0) {
+            SetFixedSize(key, new Vector2(width, height));
+        }
+
+        public unsafe void SetSizeConstraints (ControlKey key, Vector2? minimumSize = null, Vector2? maximumSize = null) {
+            var pItem = LayoutPtr(key);
+            pItem->MinimumSize = minimumSize ?? LayoutItem.NoSize;
+            pItem->MaximumSize = maximumSize ?? LayoutItem.NoSize;
+        }
+
+        public void SetSizeConstraints (ControlKey key, float? minimumWidth = null, float? minimumHeight = null, float? maximumWidth = null, float? maximumHeight = null) {
+            SetSizeConstraints(key, new Vector2(minimumWidth ?? -1, minimumHeight ?? -1), new Vector2(maximumWidth ?? -1, maximumHeight ?? -1));
         }
 
         public unsafe void SetContainerFlags (ControlKey key, ControlFlags flags) {
@@ -447,6 +451,18 @@ namespace Squared.PRGUI.Layout {
             return CalcWrappedSizeImpl(pItem, dim, false, false);
         }
 
+        private float Constrain (float value, float maybeMin, float maybeMax) {
+            if (maybeMin >= 0)
+                value = Math.Max(value, maybeMin);
+            if (maybeMax >= 0)
+                value = Math.Min(value, maybeMax);
+            return value;
+        }
+
+        private unsafe float Constrain (float value, LayoutItem * pItem, int dimension) {
+            return Constrain(value, pItem->MinimumSize.GetElement(dimension), pItem->MaximumSize.GetElement(dimension));
+        }
+
         private unsafe void CalcSize (LayoutItem * pItem, Dimensions dim) {
             foreach (var child in Children(pItem)) {
                 // NOTE: Potentially unbounded recursion
@@ -460,8 +476,8 @@ namespace Squared.PRGUI.Layout {
             // Start by setting size to top/left margin
             (*pRect)[idim] = pItem->Margins.GetElement(idim);
 
-            if (pItem->Size.GetElement(idim) > 0) {
-                (*pRect)[idim + 2] = pItem->Size.GetElement(idim);
+            if (pItem->FixedSize.GetElement(idim) > 0) {
+                (*pRect)[idim + 2] = Constrain(pItem->FixedSize.GetElement(idim), pItem, idim);
                 return;
             }
 
@@ -493,7 +509,7 @@ namespace Squared.PRGUI.Layout {
                     break;
             }
 
-            (*pRect)[2 + idim] = result;
+            (*pRect)[2 + idim] = Constrain(result, pItem, idim);
         }
 
         private unsafe void ArrangeStacked (LayoutItem * pItem, Dimensions dim, bool wrap) {
@@ -553,7 +569,8 @@ namespace Squared.PRGUI.Layout {
                 child = startChild;
                 ArrangeStackedRow(
                     wrap, idim, wdim, max_x2, 
-                    ref child, endChild, 
+                    ref child, endChild,
+                    fillerCount, squeezedCount, total,
                     filler, spacer, 
                     extraMargin, eater, x
                 );
@@ -562,11 +579,18 @@ namespace Squared.PRGUI.Layout {
             }
         }
 
-        private unsafe void ArrangeStackedRow (bool wrap, int idim, int wdim, float max_x2, ref ControlKey child, ControlKey endChild, float filler, float spacer, float extraMargin, float eater, float x) {
-            ;
+        private unsafe void ArrangeStackedRow (
+            bool wrap, int idim, int wdim, float max_x2, 
+            ref ControlKey child, ControlKey endChild, 
+            uint fillerCount, uint squeezedCount, uint total,
+            float filler, float spacer, float extraMargin, 
+            float eater, float x
+        ) {
+            float extraFromConstraints = 0;
+
             // Distribute and rescale items
             while (child != endChild) {
-                float ix0 = 0, ix1 = 0, x1;
+                float ix0 = 0, ix1 = 0;
 
                 // FIXME: Duplication
                 var pChild = LayoutPtr(child);
@@ -577,23 +601,34 @@ namespace Squared.PRGUI.Layout {
                 var childRect = GetRect(child);
 
                 x += childRect[idim] + extraMargin;
+
+                float computedSize;
                 if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
-                    x1 = x + filler;
+                    computedSize = filler;
                 else if (fFlags.IsFlagged(ControlFlags.Internal_FixedWidth))
-                    x1 = x + childRect[wdim];
+                    computedSize = childRect[wdim];
                 else
-                    x1 = x + Math.Max(0f, childRect[wdim] + eater);
+                    computedSize = Math.Max(0f, childRect[wdim] + eater);
+
+                if (fillerCount > 1)
+                    computedSize += (extraFromConstraints / (fillerCount - 1));
+
+                // FIXME: Size constraints applied here won't adjust layout appropriately
+                float constrainedSize = Constrain(computedSize, pChild, idim);
+
+                extraFromConstraints += (computedSize - constrainedSize);
 
                 ix0 = x;
                 if (wrap)
-                    ix1 = Math.Min(max_x2 - childMargins.GetElement(wdim), x1);
+                    ix1 = Math.Min(max_x2 - childMargins.GetElement(wdim), x + constrainedSize);
                 else
-                    ix1 = x1;
+                    ix1 = x + constrainedSize;
 
                 childRect[idim] = ix0;
                 childRect[wdim] = ix1 - ix0;
+
                 SetRect(child, ref childRect);
-                x = x1 + childMargins.GetElement(wdim);
+                x = x + constrainedSize + childMargins.GetElement(wdim);
                 child = pChild->NextSibling;
                 extraMargin = spacer;
             }
@@ -676,7 +711,7 @@ namespace Squared.PRGUI.Layout {
                         childRect[idim] += space - childRect[wdim] - childMargins.GetElement(idim) - childMargins.GetElement(wdim);
                         break;
                     case ControlFlags.Layout_Fill_Row:
-                        childRect[wdim] = Math.Max(0, space - childRect[idim] - childMargins.GetElement(wdim));
+                        childRect[wdim] = Constrain(Math.Max(0, space - childRect[idim] - childMargins.GetElement(wdim)), pChild, idim);
                         break;
                 }
 

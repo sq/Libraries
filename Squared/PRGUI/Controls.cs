@@ -17,6 +17,8 @@ namespace Squared.PRGUI {
         public Margins Margins, Padding;
         public ControlFlags LayoutFlags = ControlFlags.Layout_Fill_Row;
         public float? FixedWidth, FixedHeight;
+        public float? MinimumWidth, MinimumHeight;
+        public float? MaximumWidth, MaximumHeight;
 
         public ControlStates State;
 
@@ -72,7 +74,8 @@ namespace Squared.PRGUI {
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetMargins(result, computedMargins);
-            context.Layout.SetSizeXY(result, FixedWidth ?? -1, FixedHeight ?? -1);
+            context.Layout.SetFixedSize(result, FixedWidth ?? -1, FixedHeight ?? -1);
+            context.Layout.SetSizeConstraints(result, MinimumWidth, MinimumHeight, MaximumWidth, MaximumHeight);
 
             if (!parent.IsInvalid)
                 context.Layout.InsertAtEnd(parent, result);
@@ -156,7 +159,6 @@ namespace Squared.PRGUI {
 
         public DynamicStringLayout Content = new DynamicStringLayout();
         public bool AutoSizeWidth = true, AutoSizeHeight = true;
-        public float? MinimumWidth = null, MinimumHeight = null;
 
         public StaticText ()
             : base () {
@@ -215,7 +217,7 @@ namespace Squared.PRGUI {
                 if (MinimumHeight.HasValue)
                     computedHeight = Math.Max(MinimumHeight.Value, computedHeight);
 
-                context.Layout.SetSizeXY(
+                context.Layout.SetFixedSize(
                     result, 
                     FixedWidth ?? (AutoSizeWidth ? computedWidth : -1), 
                     FixedHeight ?? (AutoSizeHeight ? computedHeight : -1)
@@ -223,7 +225,7 @@ namespace Squared.PRGUI {
             }
 
             if (DiagnosticText)
-                Content.Text = $"#{result.ID} size {context.Layout.GetSize(result)}";
+                Content.Text = $"#{result.ID} size {context.Layout.GetFixedSize(result)}";
 
             return result;
         }
@@ -252,13 +254,15 @@ namespace Squared.PRGUI {
             if (Content.GlyphSource == null)
                 Content.GlyphSource = context.UIContext.DefaultGlyphSource;
 
+            box.SnapAndInset(out Vector2 a, out Vector2 b);
+
             var computedPadding = ComputePadding(decorations);
-            var textOffset = box.Position + new Vector2(computedPadding.Left, computedPadding.Top);
+            var textOffset = a + new Vector2(computedPadding.Left, computedPadding.Top);
             if (state.HasFlag(ControlStates.Pressed))
                 textOffset += decorations.PressedInset;
 
             var layout = Content.Get();
-            var xSpace = box.Width - layout.Size.X - computedPadding.Left - computedPadding.Right;
+            var xSpace = (b.X - a.X) - layout.Size.X - computedPadding.Left - computedPadding.Right;
             switch (Content.Alignment) {
                 case HorizontalAlignment.Left:
                     break;

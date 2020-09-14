@@ -94,9 +94,10 @@ namespace Squared.PRGUI.Decorations {
                         alpha = state.HasFlag(ControlStates.Focused) ? 0.7f : 0.6f;
                         thickness = state.HasFlag(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
                     }
-                    var offset = new Vector2(InteractableCornerRadius);
+
+                    box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
                     context.Renderer.RasterizeRectangle(
-                        box.Position + offset, box.Extent - offset,
+                        a, b,
                         radius: InteractableCornerRadius,
                         outlineRadius: thickness, outlineColor: baseColor * alpha,
                         innerColor: baseColor * 0.3f * alpha, outerColor: baseColor * 0.2f * alpha,
@@ -109,19 +110,19 @@ namespace Squared.PRGUI.Decorations {
                 Margins = new Margins(4),
                 GetTextMaterial = getTextMaterial,
                 Below = (context, box, state) => {
-                    var offset = new Vector2(InertCornerRadius);
+                    box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
                     // FIXME: Should we draw the outline in Above?
                     context.Renderer.RasterizeRectangle(
-                        box.Position + offset, box.Extent - offset,
+                        a, b,
                         radius: InertCornerRadius,
                         outlineRadius: InertOutlineThickness, outlineColor: ContainerOutlineColor,
                         innerColor: ContainerFillColor, outerColor: ContainerFillColor
                     );
                 },
                 ContentClip = (context, box, state) => {
-                    var offset = new Vector2(InertCornerRadius);
+                    box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
                     context.Renderer.RasterizeRectangle(
-                        box.Position + offset, box.Extent - offset,
+                        a, b,
                         radius: InertCornerRadius,
                         outlineRadius: 0, outlineColor: Color.Transparent,
                         innerColor: Color.White, outerColor: Color.White,
@@ -135,9 +136,9 @@ namespace Squared.PRGUI.Decorations {
                 Padding = new Margins(6),
                 GetTextMaterial = getTextMaterial,
                 Below = (context, box, state) => {
-                    var offset = new Vector2(InertCornerRadius);
+                    box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
                     context.Renderer.RasterizeRectangle(
-                        box.Position + offset, box.Extent - offset,
+                        a, b,
                         radius: InertCornerRadius,
                         outlineRadius: InertOutlineThickness, outlineColor: InertOutlineColor,
                         innerColor: InertFillColor, outerColor: InertFillColor
@@ -150,9 +151,9 @@ namespace Squared.PRGUI.Decorations {
                 Padding = new Margins(6),
                 GetTextMaterial = getTextMaterial,
                 Below = (context, box, state) => {
-                    var offset = new Vector2(InertCornerRadius);
+                    box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
                     context.Renderer.RasterizeRectangle(
-                        box.Position + offset, box.Extent - offset,
+                        a, b,
                         radius: InertCornerRadius,
                         outlineRadius: InertOutlineThickness, outlineColor: InertOutlineColor,
                         innerColor: InertFillColor, outerColor: InertFillColor
