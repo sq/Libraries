@@ -451,7 +451,7 @@ void rasterShapeCommon (
         // Radial
         case 1:
             float2 center = (tl + br) / 2;
-            gradientWeight = saturate(length((worldPosition - center) / ((br - tl) * 0.5)));
+            gradientWeight = length((worldPosition - center) / ((br - tl) * 0.5));
             break;
         // Horizontal
         case 2:
@@ -463,16 +463,19 @@ void rasterShapeCommon (
             break;
     }
 
-    gradientWeight = saturate(pow(gradientWeight, max(params2.x, 0.001)));
-    gradientWeight = 1 - saturate(pow(1 - gradientWeight, max(params2.y, 0.001)));
-
     gradientWeight += gradientOffset;
+
     if (gradientSize > 0) {
         gradientWeight = saturate(gradientWeight / gradientSize);
     } else {
         gradientSize = max(abs(gradientSize), 0.0001);
-        gradientWeight = frac(gradientWeight / gradientSize);
+        gradientWeight /= gradientSize;
+        gradientWeight = (gradientWeight % 2);
+        gradientWeight = 1 - abs(gradientWeight - 1);
     }
+
+    gradientWeight = saturate(pow(gradientWeight, max(params2.x, 0.001)));
+    gradientWeight = 1 - saturate(pow(1 - gradientWeight, max(params2.y, 0.001)));
 
     float outlineSizeAlpha = saturate(outlineSize / 2);
     float clampedOutlineSize = max(outlineSize / 2, sqrt(2)) * 2;
