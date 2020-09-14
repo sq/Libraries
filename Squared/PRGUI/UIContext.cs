@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render;
@@ -105,10 +106,14 @@ namespace Squared.PRGUI {
         }
 
         private void RasterizePass (UIOperationContext context, RasterizePasses pass) {
-            context.Pass = pass;
+            context.Renderer.Layer++;
+
+            var subContext = context.Clone();
+            subContext.Renderer = context.Renderer.MakeSubgroup();
+            subContext.Pass = pass;
 
             foreach (var control in Controls)
-                control.Rasterize(context, Vector2.Zero);
+                control.Rasterize(subContext, Vector2.Zero);
 
             context.Renderer.Layer++;
         }
@@ -118,6 +123,8 @@ namespace Squared.PRGUI {
                 UIContext = this,
                 Renderer = renderer
             };
+
+            context.Renderer.DepthStencilState = DepthStencilState.None;
 
             RasterizePass(context, RasterizePasses.Below);
             RasterizePass(context, RasterizePasses.Content);
@@ -138,5 +145,13 @@ namespace Squared.PRGUI {
         public LayoutContext Layout => UIContext.Layout;
         public ImperativeRenderer Renderer;
         public RasterizePasses Pass;
+
+        public UIOperationContext Clone () {
+            return new UIOperationContext {
+                UIContext = UIContext,
+                Renderer = Renderer,
+                Pass = Pass
+            };
+        }
     }
 }

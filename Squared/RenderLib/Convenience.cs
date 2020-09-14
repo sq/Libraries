@@ -99,6 +99,33 @@ namespace Squared.Render.Convenience {
             ScissorTestEnable = true
         };
 
+        public static readonly DepthStencilState StencilWrite = new DepthStencilState {
+            StencilEnable = true,
+            StencilFunction = CompareFunction.Always,
+            StencilPass = StencilOperation.Replace,
+            ReferenceStencil = 1,
+            DepthBufferEnable = false
+        };
+
+        public static readonly DepthStencilState StencilIntersection = new DepthStencilState {
+            StencilEnable = true,
+            StencilFunction = CompareFunction.Equal,
+            StencilPass = StencilOperation.Keep,
+            StencilFail = StencilOperation.Zero,
+            ReferenceStencil = 1,
+            DepthBufferEnable = false
+        };
+
+        public static readonly DepthStencilState StencilTest = new DepthStencilState {
+            StencilEnable = true,
+            StencilFunction = CompareFunction.NotEqual,
+            StencilWriteMask = 0,
+            StencilPass = StencilOperation.Keep,
+            ReferenceStencil = 0,
+            StencilFail = StencilOperation.Keep,
+            DepthBufferEnable = false
+        };
+
         /// <summary>
         /// Provides a sampler state appropriate for rendering text. The mip bias is adjusted to preserve sharpness.
         /// </summary>

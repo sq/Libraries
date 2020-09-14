@@ -161,6 +161,12 @@ namespace Squared.Render {
             State = (int)States.Disposed;
         }
 
+        bool IBatchContainer.IsEmpty {
+            get {
+                return Batches.Count == 0;
+            }
+        }
+
         public bool IsReleased {
             get {
                 return State == (int)States.Disposed;

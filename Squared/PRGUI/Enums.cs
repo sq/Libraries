@@ -200,9 +200,18 @@ namespace Squared.PRGUI.Layout {
 }
 
 namespace Squared.PRGUI {
+    [Flags]
+    public enum ControlStates : int {
+        Disabled = 0b1,
+        Hovering = 0b10,
+        Focused = 0b100,
+        Pressed = 0b1000
+    }
+
     public enum RasterizePasses {
         Below,
         Content,
-        Above
+        Above,
+        Clip
     }
 }

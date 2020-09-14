@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.Render.Convenience;
 using Squared.Render.Text;
 
 namespace Squared.PRGUI {
@@ -194,6 +196,11 @@ namespace Squared.PRGUI {
         }
 
         protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
+            if (MinimumWidth.HasValue)
+                box.Width = Math.Max(MinimumWidth.Value, box.Width);
+            if (MinimumHeight.HasValue)
+                box.Height = Math.Max(MinimumHeight.Value, box.Height);
+
             base.OnRasterize(context, box, state, decorations);
 
             if (context.Pass != RasterizePasses.Content)
@@ -251,6 +258,8 @@ namespace Squared.PRGUI {
     }
 
     public class Container : Control {
+        public bool ClipChildren = false;
+
         public ControlFlags ContainerFlags = ControlFlags.Container_Row;
 
         public readonly List<Control> Children = new List<Control>();
@@ -270,16 +279,48 @@ namespace Squared.PRGUI {
         protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
             base.OnRasterize(context, box, state, decorations);
 
-            // FIXME
-            int layer = context.Renderer.Layer, maxLayer = layer;
+            if (Children.Count == 0)
+                return;
 
-            foreach (var item in Children) {
-                context.Renderer.Layer = layer;
-                item.Rasterize(context, Vector2.Zero);
-                maxLayer = Math.Max(maxLayer, context.Renderer.Layer);
+            var childContext = context;
+
+            // For clipping we need to create a separate batch group that contains all the rasterization work
+            //  for our children. At the start of it we'll generate the stencil mask that will be used for our
+            //  rendering operation(s).
+            if (ClipChildren) {
+                childContext = context.Clone();
+                childContext.Renderer = context.Renderer.MakeSubgroup();
+
+                childContext.Renderer.Layer = 0;
+                childContext.Renderer.DepthStencilState = RenderStates.StencilTest;
             }
 
-            context.Renderer.Layer = maxLayer;
+            // FIXME
+            int layer = childContext.Renderer.Layer, maxLayer = layer;
+
+            foreach (var item in Children) {
+                childContext.Renderer.Layer = layer;
+                item.Rasterize(childContext, Vector2.Zero);
+                maxLayer = Math.Max(maxLayer, childContext.Renderer.Layer);
+            }
+
+            childContext.Renderer.Layer = maxLayer;
+
+            if (ClipChildren) {
+                // GROSS OPTIMIZATION HACK: Detect that any rendering operation(s) occurred inside the
+                //  group and if so, set up the stencil mask so that they will be clipped.
+                if (!childContext.Renderer.Container.IsEmpty) {
+                    childContext.Renderer.Clear(stencil: 0, layer: -9999);
+
+                    childContext.Renderer.DepthStencilState = RenderStates.StencilWrite;
+                    // FIXME: This is gross
+                    childContext.Pass = RasterizePasses.Clip;
+                    childContext.Renderer.Layer = -999;
+                    decorations.Rasterize(childContext, box, default(ControlStates));
+                    childContext.Pass = context.Pass;
+                }
+                context.Renderer.Layer += 1;
+            }
         }
 
         protected override Control OnHitTest (LayoutContext context, RectF box, Vector2 position) {

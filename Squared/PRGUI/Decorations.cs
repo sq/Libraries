@@ -6,16 +6,9 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render;
+using Squared.Render.Convenience;
 
 namespace Squared.PRGUI.Decorations {
-    [Flags]
-    public enum ControlStates : int {
-        Disabled = 0b1,
-        Hovering = 0b10,
-        Focused = 0b100,
-        Pressed = 0b1000
-    }
-
     public interface IDecorator {
         Margins Margins { get; }
         Margins Padding { get; }
@@ -28,7 +21,7 @@ namespace Squared.PRGUI.Decorations {
         public Margins Margins { get; set; }
         public Margins Padding { get; set; }
         public Vector2 PressedInset { get; set; }
-        public Action<UIOperationContext, RectF, ControlStates> Below, Content, Above;
+        public Action<UIOperationContext, RectF, ControlStates> Below, Content, Above, Clip;
         public Func<UIOperationContext, ControlStates, Material> GetTextMaterial;
 
         Material IDecorator.GetTextMaterial (UIOperationContext context, ControlStates state) {
@@ -51,6 +44,10 @@ namespace Squared.PRGUI.Decorations {
                 case RasterizePasses.Above:
                     if (Above != null)
                         Above(context, box, state);
+                    return;
+                case RasterizePasses.Clip:
+                    if (Clip != null)
+                        Clip(context, box, state);
                     return;
             }
         }
@@ -113,13 +110,25 @@ namespace Squared.PRGUI.Decorations {
                 GetTextMaterial = getTextMaterial,
                 Below = (context, box, state) => {
                     var offset = new Vector2(InertCornerRadius);
+                    // FIXME: Should we draw the outline in Above?
                     context.Renderer.RasterizeRectangle(
                         box.Position + offset, box.Extent - offset,
                         radius: InertCornerRadius,
                         outlineRadius: InertOutlineThickness, outlineColor: ContainerOutlineColor,
                         innerColor: ContainerFillColor, outerColor: ContainerFillColor
                     );
-                }
+                },
+                Clip = (context, box, state) => {
+                    var offset = new Vector2(InertCornerRadius);
+                    context.Renderer.RasterizeRectangle(
+                        box.Position + offset, box.Extent - offset,
+                        radius: InertCornerRadius,
+                        // FIXME: Should outline radius be 0?
+                        outlineRadius: InertOutlineThickness, outlineColor: Color.Transparent,
+                        innerColor: Color.White, outerColor: Color.White,
+                        blendState: RenderStates.DrawNone
+                    );
+                },
             };
 
             StaticText = new DelegateDecorator {

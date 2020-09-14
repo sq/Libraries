@@ -209,6 +209,12 @@ namespace Squared.Render {
             private set;
         }
 
+        bool IBatchContainer.IsEmpty {
+            get {
+                return Count == 0;
+            }
+        }
+
         new public bool IsReleased { get; private set; }        
 
         new public void Add (Batch batch) {

@@ -153,6 +153,22 @@ namespace PRGUI.Demo {
                             new StaticText {
                                 AutoSizeWidth = false,
                                 Text = "Static Text 3",
+                            },
+                            new Container {
+                                ClipChildren = true,
+                                ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
+                                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                                Children = {
+                                    new StaticText {
+                                        Text = "Clipped container"
+                                    },
+                                    new Button {
+                                        Text = "Clipped huge button",
+                                        MinimumWidth = 2048,
+                                        MinimumHeight = 512,
+                                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                                    }
+                                }
                             }
                         }
                     },
@@ -170,7 +186,7 @@ namespace PRGUI.Demo {
             UIRenderTarget = new AutoRenderTarget(
                 RenderCoordinator,
                 Graphics.PreferredBackBufferWidth, Graphics.PreferredBackBufferHeight, 
-                false, SurfaceFormat.Color, DepthFormat.None, 1
+                false, SurfaceFormat.Color, DepthFormat.Depth24Stencil8, 1
             );
 
             LastTimeOverUI = Time.Ticks;
