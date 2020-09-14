@@ -333,11 +333,16 @@ void evaluateTriangle (
     in float2 radius, out float distance,
     out float gradientWeight, out float2 tl, out float2 br
 ) {
-    distance = sdTriangle(worldPosition, a, b, c) - radius.x;
+    distance = sdTriangle(worldPosition, a, b, c);
 
     float2 center = (a + b + c) / 3;
-    float centroidDistance = sdTriangle(center, a, b, c) - radius.x;
-    gradientWeight = 1 - saturate(distance / centroidDistance);
+    // float centroidDistance = sdTriangle(center, a, b, c);
+    // FIXME: Why is this necessary?
+    float ac = length(a - center), bc = length(b - center), cc = length(c - center);
+    float targetDistance = (min(ac, min(bc, cc)) + max(ac, max(bc, cc))) * -0.25;
+    gradientWeight = 1 - saturate(distance / targetDistance);
+
+    distance -= radius;
 
     tl = min(min(a, b), c);
     br = max(max(a, b), c);
@@ -461,7 +466,13 @@ void rasterShapeCommon (
     gradientWeight = saturate(pow(gradientWeight, max(params2.x, 0.001)));
     gradientWeight = 1 - saturate(pow(1 - gradientWeight, max(params2.y, 0.001)));
 
-    gradientWeight = saturate((gradientWeight + gradientOffset) / gradientSize);
+    gradientWeight += gradientOffset;
+    if (gradientSize > 0) {
+        gradientWeight = saturate(gradientWeight / gradientSize);
+    } else {
+        gradientSize = max(abs(gradientSize), 0.0001);
+        gradientWeight = frac(gradientWeight / gradientSize);
+    }
 
     float outlineSizeAlpha = saturate(outlineSize / 2);
     float clampedOutlineSize = max(outlineSize / 2, sqrt(2)) * 2;
