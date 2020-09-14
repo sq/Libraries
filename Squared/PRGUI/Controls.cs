@@ -128,28 +128,26 @@ namespace Squared.PRGUI {
 
             OnRasterize(contentContext, box, state, decorations);
 
-            if (ShouldClipContent && hasNestedContext) {
+            if (hasNestedContext) {
                 // GROSS OPTIMIZATION HACK: Detect that any rendering operation(s) occurred inside the
                 //  group and if so, set up the stencil mask so that they will be clipped.
-                if (!contentContext.Renderer.Container.IsEmpty) {
+                if (ShouldClipContent && !contentContext.Renderer.Container.IsEmpty) {
+                    contentContext.Renderer.DepthStencilState = RenderStates.StencilWrite;
+
                     // FIXME: Because we're doing Write here and clearing first, nested clips won't work right.
                     // The solution is probably a combination of test-and-increment when entering the clip,
                     //  and then a test-and-decrement when exiting to restore the previous clip region.
                     contentContext.Renderer.Clear(stencil: 0, layer: -9999);
-                    contentContext.Renderer.DepthStencilState = RenderStates.StencilWrite;
 
                     // FIXME: Separate context?
-                    if (contentContext.Pass == RasterizePasses.Content)
-                        contentContext.Pass = RasterizePasses.ContentClip;
+                    contentContext.Pass = RasterizePasses.ContentClip;
 
                     contentContext.Renderer.Layer = -999;
                     decorations.Rasterize(contentContext, box, default(ControlStates));
-                    contentContext.Pass = context.Pass;
                 }
-            }
 
-            if (hasNestedContext)
                 context.Renderer.Layer += 1;
+            }
         }
     }
 
