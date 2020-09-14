@@ -586,51 +586,67 @@ namespace Squared.PRGUI.Layout {
             float filler, float spacer, float extraMargin, 
             float eater, float x
         ) {
-            float extraFromConstraints = 0;
+            int constrainedCount = 0;
+            float extraFromConstraints = 0, originalExtraMargin = extraMargin, originalX = x;
 
-            // Distribute and rescale items
-            while (child != endChild) {
-                float ix0 = 0, ix1 = 0;
+            var startChild = child;
 
-                // FIXME: Duplication
-                var pChild = LayoutPtr(child);
-                var childFlags = pChild->Flags;
-                var flags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Layout) >> idim);
-                var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
-                var childMargins = pChild->Margins;
-                var childRect = GetRect(child);
+            // Perform initial size calculation for items, and then arrange items and calculate final sizes
+            for (int pass = 0; pass < 2; pass++) {
+                child = startChild;
+                extraMargin = originalExtraMargin;
+                x = originalX;
 
-                x += childRect[idim] + extraMargin;
+                while (child != endChild) {
+                    float ix0 = 0, ix1 = 0;
 
-                float computedSize;
-                if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
-                    computedSize = filler;
-                else if (fFlags.IsFlagged(ControlFlags.Internal_FixedWidth))
-                    computedSize = childRect[wdim];
-                else
-                    computedSize = Math.Max(0f, childRect[wdim] + eater);
+                    // FIXME: Duplication
+                    var pChild = LayoutPtr(child);
+                    var childFlags = pChild->Flags;
+                    var flags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Layout) >> idim);
+                    var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
+                    var childMargins = pChild->Margins;
+                    var childRect = GetRect(child);
 
-                if (fillerCount > 1)
-                    computedSize += (extraFromConstraints / (fillerCount - 1));
+                    x += childRect[idim] + extraMargin;
 
-                // FIXME: Size constraints applied here won't adjust layout appropriately
-                float constrainedSize = Constrain(computedSize, pChild, idim);
+                    float computedSize;
+                    if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
+                        computedSize = filler;
+                    else if (fFlags.IsFlagged(ControlFlags.Internal_FixedWidth))
+                        computedSize = childRect[wdim];
+                    else
+                        computedSize = Math.Max(0f, childRect[wdim] + eater);
 
-                extraFromConstraints += (computedSize - constrainedSize);
+                    if ((pass == 1) && (fillerCount > constrainedCount) && (constrainedCount > 0))
+                        computedSize += extraFromConstraints / (fillerCount - constrainedCount);
 
-                ix0 = x;
-                if (wrap)
-                    ix1 = Math.Min(max_x2 - childMargins.GetElement(wdim), x + constrainedSize);
-                else
-                    ix1 = x + constrainedSize;
+                    float constrainedSize = Constrain(computedSize, pChild, idim);
+                    if (pass == 0) {
+                        float constraintDelta = (computedSize - constrainedSize);
+                        // FIXME: Epsilon too big?
+                        if (Math.Abs(constraintDelta) >= 0.1) {
+                            extraFromConstraints += constraintDelta;
+                            constrainedCount++;
+                        }
+                    }
 
-                childRect[idim] = ix0;
-                childRect[wdim] = ix1 - ix0;
+                    ix0 = x;
+                    if (wrap)
+                        ix1 = Math.Min(max_x2 - childMargins.GetElement(wdim), x + constrainedSize);
+                    else
+                        ix1 = x + constrainedSize;
 
-                SetRect(child, ref childRect);
-                x = x + constrainedSize + childMargins.GetElement(wdim);
-                child = pChild->NextSibling;
-                extraMargin = spacer;
+                    if (pass == 1) {
+                        childRect[idim] = ix0;
+                        childRect[wdim] = ix1 - ix0;
+                        SetRect(child, ref childRect);
+                    }
+
+                    x = x + constrainedSize + childMargins.GetElement(wdim);
+                    child = pChild->NextSibling;
+                    extraMargin = spacer;
+                }
             }
         }
 

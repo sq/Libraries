@@ -160,6 +160,7 @@ namespace PRGUI.Demo {
                             new StaticText {
                                 AutoSizeWidth = false,
                                 Text = "Static Text 4",
+                                MaximumWidth = 200
                             },
                             new Container {
                                 ClipChildren = true,
