@@ -24,6 +24,10 @@ namespace Squared.PRGUI {
 
         public bool AcceptsCapture { get; protected set; }
         public bool AcceptsFocus { get; protected set; }
+        protected virtual bool HasNestedContent => false;
+        protected virtual bool ShouldClipContent => false;
+        protected virtual bool HasFixedWidth => FixedWidth.HasValue;
+        protected virtual bool HasFixedHeight => FixedHeight.HasValue;
 
         public void GenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             LayoutKey = OnGenerateLayoutTree(context, parent);
@@ -51,9 +55,6 @@ namespace Squared.PRGUI {
             var box = context.GetRect(LayoutKey);
             return OnHitTest(context, box, position);
         }
-
-        protected virtual bool HasFixedWidth => FixedWidth.HasValue;
-        protected virtual bool HasFixedHeight => FixedHeight.HasValue;
 
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             var result = context.Layout.CreateItem();
@@ -108,7 +109,47 @@ namespace Squared.PRGUI {
             box.Top += offset.Y;
             var decorations = GetDecorations(context);
             var state = GetCurrentState(context);
-            OnRasterize(context, box, state, decorations);
+
+            var contentContext = context;
+            var hasNestedContext = (context.Pass == RasterizePasses.Content) && (ShouldClipContent || HasNestedContent);
+
+            // For clipping we need to create a separate batch group that contains all the rasterization work
+            //  for our children. At the start of it we'll generate the stencil mask that will be used for our
+            //  rendering operation(s).
+            if (hasNestedContext) {
+                context.Renderer.Layer += 1;
+                contentContext = context.Clone();
+                contentContext.Renderer = context.Renderer.MakeSubgroup();
+                contentContext.Renderer.Layer = 0;
+
+                if (ShouldClipContent)
+                    contentContext.Renderer.DepthStencilState = RenderStates.StencilTest;
+            }
+
+            OnRasterize(contentContext, box, state, decorations);
+
+            if (ShouldClipContent && hasNestedContext) {
+                // GROSS OPTIMIZATION HACK: Detect that any rendering operation(s) occurred inside the
+                //  group and if so, set up the stencil mask so that they will be clipped.
+                if (!contentContext.Renderer.Container.IsEmpty) {
+                    // FIXME: Because we're doing Write here and clearing first, nested clips won't work right.
+                    // The solution is probably a combination of test-and-increment when entering the clip,
+                    //  and then a test-and-decrement when exiting to restore the previous clip region.
+                    contentContext.Renderer.Clear(stencil: 0, layer: -9999);
+                    contentContext.Renderer.DepthStencilState = RenderStates.StencilWrite;
+
+                    // FIXME: Separate context?
+                    if (contentContext.Pass == RasterizePasses.Content)
+                        contentContext.Pass = RasterizePasses.ContentClip;
+
+                    contentContext.Renderer.Layer = -999;
+                    decorations.Rasterize(contentContext, box, default(ControlStates));
+                    contentContext.Pass = context.Pass;
+                }
+            }
+
+            if (hasNestedContext)
+                context.Renderer.Layer += 1;
         }
     }
 
@@ -258,6 +299,9 @@ namespace Squared.PRGUI {
     }
 
     public class Container : Control {
+        /// <summary>
+        /// If set, children will only be rendered within the volume of this container
+        /// </summary>
         public bool ClipChildren = false;
 
         public ControlFlags ContainerFlags = ControlFlags.Container_Row;
@@ -276,51 +320,36 @@ namespace Squared.PRGUI {
             return context.DecorationProvider?.Container;
         }
 
+        protected override bool ShouldClipContent => ClipChildren && (Children.Count > 0);
+        // FIXME: Always true?
+        protected override bool HasNestedContent => (Children.Count > 0);
+
+        private void RasterizeChildren (UIOperationContext context, RasterizePasses pass) {
+            context.Pass = pass;
+            // FIXME
+            int layer = context.Renderer.Layer, maxLayer = layer;
+
+            foreach (var item in Children) {
+                context.Renderer.Layer = layer;
+                item.Rasterize(context, Vector2.Zero);
+                maxLayer = Math.Max(maxLayer, context.Renderer.Layer);
+            }
+
+            context.Renderer.Layer = maxLayer;
+        }
+
         protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
             base.OnRasterize(context, box, state, decorations);
+
+            if (context.Pass != RasterizePasses.Content)
+                return;
 
             if (Children.Count == 0)
                 return;
 
-            var childContext = context;
-
-            // For clipping we need to create a separate batch group that contains all the rasterization work
-            //  for our children. At the start of it we'll generate the stencil mask that will be used for our
-            //  rendering operation(s).
-            if (ClipChildren) {
-                childContext = context.Clone();
-                childContext.Renderer = context.Renderer.MakeSubgroup();
-
-                childContext.Renderer.Layer = 0;
-                childContext.Renderer.DepthStencilState = RenderStates.StencilTest;
-            }
-
-            // FIXME
-            int layer = childContext.Renderer.Layer, maxLayer = layer;
-
-            foreach (var item in Children) {
-                childContext.Renderer.Layer = layer;
-                item.Rasterize(childContext, Vector2.Zero);
-                maxLayer = Math.Max(maxLayer, childContext.Renderer.Layer);
-            }
-
-            childContext.Renderer.Layer = maxLayer;
-
-            if (ClipChildren) {
-                // GROSS OPTIMIZATION HACK: Detect that any rendering operation(s) occurred inside the
-                //  group and if so, set up the stencil mask so that they will be clipped.
-                if (!childContext.Renderer.Container.IsEmpty) {
-                    childContext.Renderer.Clear(stencil: 0, layer: -9999);
-
-                    childContext.Renderer.DepthStencilState = RenderStates.StencilWrite;
-                    // FIXME: This is gross
-                    childContext.Pass = RasterizePasses.Clip;
-                    childContext.Renderer.Layer = -999;
-                    decorations.Rasterize(childContext, box, default(ControlStates));
-                    childContext.Pass = context.Pass;
-                }
-                context.Renderer.Layer += 1;
-            }
+            RasterizeChildren(context, RasterizePasses.Below);
+            RasterizeChildren(context, RasterizePasses.Content);
+            RasterizeChildren(context, RasterizePasses.Above);
         }
 
         protected override Control OnHitTest (LayoutContext context, RectF box, Vector2 position) {

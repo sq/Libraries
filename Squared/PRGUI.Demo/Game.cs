@@ -156,6 +156,7 @@ namespace PRGUI.Demo {
                             },
                             new Container {
                                 ClipChildren = true,
+                                FixedHeight = 512,
                                 ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
                                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                                 Children = {
@@ -165,7 +166,7 @@ namespace PRGUI.Demo {
                                     new Button {
                                         Text = "Clipped huge button",
                                         MinimumWidth = 2048,
-                                        MinimumHeight = 512,
+                                        MinimumHeight = 1024,
                                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
                                     }
                                 }

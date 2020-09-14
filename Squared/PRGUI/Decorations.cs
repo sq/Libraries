@@ -21,7 +21,7 @@ namespace Squared.PRGUI.Decorations {
         public Margins Margins { get; set; }
         public Margins Padding { get; set; }
         public Vector2 PressedInset { get; set; }
-        public Action<UIOperationContext, RectF, ControlStates> Below, Content, Above, Clip;
+        public Action<UIOperationContext, RectF, ControlStates> Below, Content, Above, ContentClip;
         public Func<UIOperationContext, ControlStates, Material> GetTextMaterial;
 
         Material IDecorator.GetTextMaterial (UIOperationContext context, ControlStates state) {
@@ -45,9 +45,9 @@ namespace Squared.PRGUI.Decorations {
                     if (Above != null)
                         Above(context, box, state);
                     return;
-                case RasterizePasses.Clip:
-                    if (Clip != null)
-                        Clip(context, box, state);
+                case RasterizePasses.ContentClip:
+                    if (ContentClip != null)
+                        ContentClip(context, box, state);
                     return;
             }
         }
@@ -118,13 +118,12 @@ namespace Squared.PRGUI.Decorations {
                         innerColor: ContainerFillColor, outerColor: ContainerFillColor
                     );
                 },
-                Clip = (context, box, state) => {
+                ContentClip = (context, box, state) => {
                     var offset = new Vector2(InertCornerRadius);
                     context.Renderer.RasterizeRectangle(
                         box.Position + offset, box.Extent - offset,
                         radius: InertCornerRadius,
-                        // FIXME: Should outline radius be 0?
-                        outlineRadius: InertOutlineThickness, outlineColor: Color.Transparent,
+                        outlineRadius: 0, outlineColor: Color.Transparent,
                         innerColor: Color.White, outerColor: Color.White,
                         blendState: RenderStates.DrawNone
                     );

@@ -212,6 +212,6 @@ namespace Squared.PRGUI {
         Below,
         Content,
         Above,
-        Clip
+        ContentClip
     }
 }
