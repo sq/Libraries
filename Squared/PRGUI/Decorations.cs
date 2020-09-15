@@ -127,54 +127,61 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
+        private void Button_Below (UIOperationContext context, RectF box, ControlStates state) {
+            float alpha, thickness;
+            var baseColor = state.HasFlag(ControlStates.Focused)
+                ? FocusedColor
+                : InactiveColor;
+
+            if (state.HasFlag(ControlStates.Pressed)) {
+                alpha = 1f;
+                thickness = PressedOutlineThickness;
+                baseColor = ActiveColor;
+            } else if (state.HasFlag(ControlStates.Hovering)) {
+                alpha = 0.85f;
+                thickness = ActiveOutlineThickness;
+            } else {
+                alpha = state.HasFlag(ControlStates.Focused) ? 0.7f : 0.6f;
+                thickness = state.HasFlag(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
+            }
+
+            box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: InteractableCornerRadius,
+                outlineRadius: thickness, outlineColor: baseColor * alpha,
+                innerColor: baseColor * 0.3f * alpha, outerColor: baseColor * 0.2f * alpha,
+                fillMode: RasterFillMode.Linear
+            );
+        }
+
+        private void Button_Above (UIOperationContext context, RectF box, ControlStates state) {
+            if (!state.HasFlag(ControlStates.Hovering))
+                return;
+
+            box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
+            float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / box.Height));
+
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: InteractableCornerRadius,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
+                fillMode: RasterFillMode.Vertical,
+                fillSize: fillSize,
+                annularRadius: 1.2f,
+                blendState: BlendState.Additive
+            );
+        }
+
         public DefaultDecorations () {
             Button = new DelegateDecorator {
                 Margins = new Margins(4),
                 Padding = new Margins(6),
                 PressedInset = new Vector2(0, 1),
                 GetTextMaterial = GetTextMaterial,
-                Below = (context, box, state) => {
-                    float alpha, thickness;
-                    var baseColor = state.HasFlag(ControlStates.Focused)
-                        ? FocusedColor
-                        : InactiveColor;
-
-                    if (state.HasFlag(ControlStates.Pressed)) {
-                        alpha = 1f;
-                        thickness = PressedOutlineThickness;
-                        baseColor = ActiveColor;
-                    } else if (state.HasFlag(ControlStates.Hovering)) {
-                        alpha = 0.85f;
-                        thickness = ActiveOutlineThickness;
-                    } else {
-                        alpha = state.HasFlag(ControlStates.Focused) ? 0.7f : 0.6f;
-                        thickness = state.HasFlag(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
-                    }
-
-                    box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
-                    context.Renderer.RasterizeRectangle(
-                        a, b,
-                        radius: InteractableCornerRadius,
-                        outlineRadius: thickness, outlineColor: baseColor * alpha,
-                        innerColor: baseColor * 0.3f * alpha, outerColor: baseColor * 0.2f * alpha,
-                        fillMode: RasterFillMode.Linear
-                    );
-                },
-                Above = (context, box, state) => {
-                    if (!state.HasFlag(ControlStates.Hovering))
-                        return;
-
-                    box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
-                    context.Renderer.RasterizeRectangle(
-                        a, b,
-                        radius: InteractableCornerRadius,
-                        outlineRadius: 0, outlineColor: Color.Transparent,
-                        innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
-                        fillMode: RasterFillMode.Vertical,
-                        annularRadius: 1.1f,
-                        blendState: BlendState.Additive
-                    );
-                }
+                Below = Button_Below,
+                Above = Button_Above
             };
 
             Container = new DelegateDecorator {
