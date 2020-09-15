@@ -168,17 +168,18 @@ namespace PRGUI.Demo {
                                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                                 MaximumWidth = 1100,
                                 MaximumHeight = 500,
+                                Scrollable = true,
                                 ShowHorizontalScrollbar = true,
                                 ShowVerticalScrollbar = true,
-                                ScrollOffset = new Vector2(64, 16),
+                                ScrollOffset = new Vector2(0, 20),
                                 Children = {
                                     new StaticText {
                                         Text = "Clipped container"
                                     },
                                     new Button {
                                         Text = "Clipped huge button",
-                                        MinimumWidth = 1800,
-                                        MinimumHeight = 1024,
+                                        FixedWidth = 1600,
+                                        FixedHeight = 1024,
                                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
                                     }
                                 }
@@ -224,11 +225,11 @@ namespace PRGUI.Demo {
 
             var mousePosition = new Vector2(MouseState.X, MouseState.Y);
 
-            // Context.Update();
             Context.UpdateInput(
-                mousePosition, 
-                MouseState.LeftButton == ButtonState.Pressed, 
-                PreviousMouseState.LeftButton == ButtonState.Pressed
+                mousePosition,
+                mouseWheelDelta: (MouseState.ScrollWheelValue - PreviousMouseState.ScrollWheelValue) / 4f,
+                isButtonPressed: MouseState.LeftButton == ButtonState.Pressed,
+                wasButtonPressed: PreviousMouseState.LeftButton == ButtonState.Pressed
             );
 
             if (Context.Hovering != null)

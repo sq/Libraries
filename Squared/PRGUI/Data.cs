@@ -238,7 +238,7 @@ namespace Squared.PRGUI.Layout {
             return ((RectF *)BoxesPin.AddrOfPinnedObject()) + buffer.Offset;
         }
 
-        private unsafe RectF * BoxPtr (ControlKey key, bool optional = false) {
+        private unsafe RectF * RectPtr (ControlKey key, bool optional = false) {
             if (optional && key.IsInvalid)
                 return null;
 
@@ -282,6 +282,13 @@ namespace Squared.PRGUI.Layout {
 namespace Squared.PRGUI {
     public struct RectF {
         public float Left, Top, Width, Height;
+
+        public RectF (float left, float top, float width, float height) {
+            Left = left;
+            Top = top;
+            Width = width;
+            Height = height;
+        }
 
         public float this [uint index] {
             get {

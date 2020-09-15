@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -32,6 +33,8 @@ namespace Squared.PRGUI {
         protected virtual bool HasFixedWidth => FixedWidth.HasValue;
         protected virtual bool HasFixedHeight => FixedHeight.HasValue;
 
+        protected WeakReference<Control> WeakParent = null;
+
         public void GenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             LayoutKey = OnGenerateLayoutTree(context, parent);
         }
@@ -56,6 +59,13 @@ namespace Squared.PRGUI {
 
         public RectF GetRect (LayoutContext context) {
             var result = context.GetRect(LayoutKey);
+
+            // HACK
+            if (FixedWidth.HasValue)
+                result.Width = FixedWidth.Value;
+            if (FixedHeight.HasValue)
+                result.Height = FixedHeight.Value;
+
             if (MinimumWidth.HasValue)
                 result.Width = Math.Max(MinimumWidth.Value, result.Width);
             if (MinimumHeight.HasValue)
@@ -167,6 +177,41 @@ namespace Squared.PRGUI {
 
                 context.Renderer.Layer += 1;
             }
+        }
+
+        public bool TryGetParent (out Control parent) {
+            if (WeakParent == null) {
+                parent = null;
+                return false;
+            }
+
+            return WeakParent.TryGetTarget(out parent);
+        }
+
+        internal void SetParent (Control parent) {
+            Control actualParent;
+            if ((WeakParent != null) && WeakParent.TryGetTarget(out actualParent)) {
+                if (actualParent != parent)
+                    throw new Exception("This control already has a parent");
+                else
+                    return;
+            }
+
+            WeakParent = new WeakReference<Control>(parent, false);
+        }
+
+        internal void UnsetParent (Control oldParent) {
+            if (WeakParent == null)
+                return;
+
+            Control actualParent;
+            if (!WeakParent.TryGetTarget(out actualParent))
+                return;
+
+            if (actualParent != oldParent)
+                throw new Exception("Parent mismatch");
+
+            WeakParent = null;
         }
     }
 
@@ -310,19 +355,30 @@ namespace Squared.PRGUI {
     }
 
     public class Container : Control {
+        public readonly ControlCollection Children;
+
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
         /// </summary>
         public bool ClipChildren = false;
 
-        public bool ShowVerticalScrollbar, ShowHorizontalScrollbar;
-        public Vector2 ScrollOffset = Vector2.Zero;
+        public bool Scrollable = false;
+        public bool ShowVerticalScrollbar = true, ShowHorizontalScrollbar = true;
+
+        public Vector2 ScrollOffset;
 
         public ControlFlags ContainerFlags = ControlFlags.Container_Row;
 
-        public readonly List<Control> Children = new List<Control>();
+        protected bool HasContentBounds;
+        protected RectF ContentBounds;
+
+        public Container () 
+            : base () {
+            Children = new ControlCollection(this);
+        }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
+            HasContentBounds = false;
             var result = base.OnGenerateLayoutTree(context, parent);
             context.Layout.SetContainerFlags(result, ContainerFlags);
             foreach (var item in Children)
@@ -355,24 +411,49 @@ namespace Squared.PRGUI {
         protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
             base.OnRasterize(context, box, state, decorations);
 
-            // FIXME
-            var hstate = new ScrollbarState {
-                ContentSize = 1024,
-                ViewportSize = box.Width,
-                Position = ScrollOffset.X,
-                DragInitialPosition = null
-            };
-            var vstate = new ScrollbarState {
-                ContentSize = 1024,
-                ViewportSize = box.Height,
-                Position = ScrollOffset.Y,
-                DragInitialPosition = null
-            };
+            // FIXME: This should be done somewhere else
+            if (Scrollable) {
+                var hscroll = context.DecorationProvider?.HorizontalScrollbar;
+                var vscroll = context.DecorationProvider?.VerticalScrollbar;
+                float viewportWidth = box.Width - (vscroll?.MinimumSize.X ?? 0),
+                    viewportHeight = box.Height - (hscroll?.MinimumSize.Y ?? 0);
 
-            if (ShowHorizontalScrollbar)
-                context.DecorationProvider?.HorizontalScrollbar?.Rasterize(context, box, state, ref hstate);
-            if (ShowVerticalScrollbar)
-                context.DecorationProvider?.VerticalScrollbar?.Rasterize(context, box, state, ref vstate);
+                if (!HasContentBounds)
+                    HasContentBounds = context.Layout.TryMeasureContent(LayoutKey, out ContentBounds);
+
+                if (HasContentBounds) {
+                    float maxScrollX = ContentBounds.Width - viewportWidth, maxScrollY = ContentBounds.Height - viewportHeight;
+                    maxScrollX = Math.Max(0, maxScrollX);
+                    maxScrollY = Math.Max(0, maxScrollY);
+                    ScrollOffset.X = Arithmetic.Clamp(ScrollOffset.X, 0, maxScrollX);
+                    ScrollOffset.Y = Arithmetic.Clamp(ScrollOffset.Y, 0, maxScrollY);
+                }
+
+                var hstate = new ScrollbarState {
+                    ContentSize = ContentBounds.Width,
+                    ViewportSize = box.Width,
+                    Position = ScrollOffset.X,
+                    DragInitialPosition = null
+                };
+                var vstate = new ScrollbarState {
+                    ContentSize = ContentBounds.Height,
+                    ViewportSize = box.Height,
+                    Position = ScrollOffset.Y,
+                    DragInitialPosition = null
+                };
+
+                var shouldHorzScroll = ShowHorizontalScrollbar && hstate.ContentSize > hstate.ViewportSize;
+                var shouldVertScroll = ShowVerticalScrollbar && vstate.ContentSize > vstate.ViewportSize;
+
+                hstate.HasCounterpart = vstate.HasCounterpart = (shouldHorzScroll && shouldVertScroll);
+
+                if (shouldHorzScroll)
+                    hscroll?.Rasterize(context, box, state, ref hstate);
+                if (shouldVertScroll)
+                    vscroll?.Rasterize(context, box, state, ref vstate);
+            } else {
+                ScrollOffset = Vector2.Zero;
+            }
 
             if (context.Pass != RasterizePasses.Content)
                 return;
@@ -408,6 +489,49 @@ namespace Squared.PRGUI {
             }
 
             return this;
+        }
+    }
+
+    public class ControlCollection : IEnumerable<Control> {
+        private List<Control> Items = new List<Control>();
+
+        public int Count => Items.Count;
+        public Control Parent { get; private set; }
+
+        public ControlCollection (Control parent) {
+            Parent = parent;
+        }
+
+        public void Add (Control control) {
+            if (Items.Contains(control))
+                throw new InvalidOperationException("Control already in collection");
+
+            Items.Add(control);
+            control.SetParent(Parent);
+        }
+
+        public void Remove (Control control) {
+            control.UnsetParent(Parent);
+            Items.Remove(control);
+        }
+
+        public void Clear () {
+            foreach (var control in Items)
+                control.UnsetParent(Parent);
+
+            Items.Clear();
+        }
+
+        public List<Control>.Enumerator GetEnumerator () {
+            return Items.GetEnumerator();
+        }
+
+        IEnumerator<Control> IEnumerable<Control>.GetEnumerator () {
+            return ((IEnumerable<Control>)Items).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return ((IEnumerable)Items).GetEnumerator();
         }
     }
 }

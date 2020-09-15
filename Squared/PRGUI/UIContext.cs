@@ -49,7 +49,11 @@ namespace Squared.PRGUI {
             Layout.Update();
         }
 
-        public void UpdateInput (Vector2 mousePosition, bool isButtonPressed, bool wasButtonPressed) {
+        public void UpdateInput (
+            Vector2 mousePosition, 
+            bool isButtonPressed, bool wasButtonPressed,
+            float mouseWheelDelta = 0
+        ) {
             var previouslyHovering = Hovering;
             Hovering = HitTest(mousePosition);
 
@@ -72,6 +76,23 @@ namespace Squared.PRGUI {
             } else if (!isButtonPressed) {
                 // Shouldn't be necessary but whatever
                 MouseCaptured = null;
+            }
+
+            if (mouseWheelDelta != 0)
+                HandleScroll(MouseCaptured ?? Hovering, mouseWheelDelta);
+        }
+
+        private void HandleScroll (Control control, float delta) {
+            while (control != null) {
+                // FIXME
+                var container = control as Container;
+                if (container == null) {
+                    control.TryGetParent(out control);
+                    continue;
+                }
+
+                container.ScrollOffset.Y -= delta;
+                return;
             }
         }
 

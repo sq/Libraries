@@ -377,6 +377,43 @@ namespace Squared.PRGUI.Layout {
             SetSizeConstraints(key, new Vector2(minimumWidth ?? -1, minimumHeight ?? -1), new Vector2(maximumWidth ?? -1, maximumHeight ?? -1));
         }
 
+        public unsafe void GetSizeConstraints (ControlKey key, out Vector2 minimumSize, out Vector2 maximumSize) {
+            var pItem = LayoutPtr(key);
+            minimumSize = pItem->MinimumSize;
+            maximumSize = pItem->MaximumSize;
+        }
+
+        public unsafe bool TryMeasureContent (ControlKey container, out RectF result) {
+            var pItem = LayoutPtr(container);
+            float minX = 999999, minY = 999999,
+                maxX = -999999, maxY = -999999;
+
+            if (pItem->FirstChild.IsInvalid) {
+                result = default(RectF);
+                return false;
+            }
+
+            foreach (var child in Children(pItem)) {
+                var pChild = LayoutPtr(child);
+                var childRect = GetRect(child);
+
+                // HACK: The arrange algorithms will clip an element to its containing box, which
+                //  hinders attempts to measure all of the content inside a container for scrolling
+                if (pChild->Flags.IsFlagged(ControlFlags.Internal_FixedWidth))
+                    childRect.Width = pChild->FixedSize.X;
+                if (pChild->Flags.IsFlagged(ControlFlags.Internal_FixedHeight))
+                    childRect.Height = pChild->FixedSize.Y;
+
+                minX = Math.Min(minX, childRect.Left - pChild->Margins.X);
+                maxX = Math.Max(maxX, childRect.Left + childRect.Width + pChild->Margins.Z);
+                minY = Math.Min(minY, childRect.Top - pChild->Margins.Y);
+                maxY = Math.Max(maxY, childRect.Top + childRect.Height + pChild->Margins.W);
+            }
+
+            result = new RectF(minX, minY, maxX - minX, maxY - minY);
+            return true;
+        }
+
         public unsafe void SetContainerFlags (ControlKey key, ControlFlags flags) {
             AssertMasked(flags, ControlFlagMask.Container, nameof(ControlFlagMask.Container));
             var pItem = LayoutPtr(key);
@@ -490,7 +527,7 @@ namespace Squared.PRGUI.Layout {
                 CalcSize(pChild, dim);
             }
 
-            var pRect = BoxPtr(pItem->Key);
+            var pRect = RectPtr(pItem->Key);
             var idim = (int)dim;
 
             // Start by setting size to top/left margin
@@ -823,7 +860,7 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe void Arrange (LayoutItem * pItem, Dimensions dim) {
             var flags = pItem->Flags;
-            var pRect = BoxPtr(pItem->Key);
+            var pRect = RectPtr(pItem->Key);
             var idim = (int)dim;
 
             switch (flags & ControlFlagMask.BoxModel) {
