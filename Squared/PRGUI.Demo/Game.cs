@@ -164,16 +164,20 @@ namespace PRGUI.Demo {
                             },
                             new Container {
                                 ClipChildren = true,
-                                FixedHeight = 512,
                                 ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
                                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                                MaximumWidth = 1100,
+                                MaximumHeight = 500,
+                                ShowHorizontalScrollbar = true,
+                                ShowVerticalScrollbar = true,
+                                ScrollOffset = new Vector2(64, 16),
                                 Children = {
                                     new StaticText {
                                         Text = "Clipped container"
                                     },
                                     new Button {
                                         Text = "Clipped huge button",
-                                        MinimumWidth = 2048,
+                                        MinimumWidth = 1800,
                                         MinimumHeight = 1024,
                                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
                                     }

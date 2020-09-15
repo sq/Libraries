@@ -10,6 +10,7 @@ using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
+using Squared.Util;
 
 namespace Squared.PRGUI {
     public abstract class Control {
@@ -106,6 +107,9 @@ namespace Squared.PRGUI {
             decorations?.Rasterize(context, box, state);
         }
 
+        protected virtual void ApplyClipMargins (UIOperationContext context, ref RectF box) {
+        }
+
         public void Rasterize (UIOperationContext context, Vector2 offset) {
             var box = context.Layout.GetRect(LayoutKey);
             box.Left += offset.X;
@@ -144,6 +148,8 @@ namespace Squared.PRGUI {
 
                     // FIXME: Separate context?
                     contentContext.Pass = RasterizePasses.ContentClip;
+
+                    ApplyClipMargins(context, ref box);
 
                     contentContext.Renderer.Layer = -999;
                     decorations.Rasterize(contentContext, box, default(ControlStates));
@@ -304,6 +310,9 @@ namespace Squared.PRGUI {
         /// </summary>
         public bool ClipChildren = false;
 
+        public bool ShowVerticalScrollbar, ShowHorizontalScrollbar;
+        public Vector2 ScrollOffset = Vector2.Zero;
+
         public ControlFlags ContainerFlags = ControlFlags.Container_Row;
 
         public readonly List<Control> Children = new List<Control>();
@@ -331,7 +340,7 @@ namespace Squared.PRGUI {
 
             foreach (var item in Children) {
                 context.Renderer.Layer = layer;
-                item.Rasterize(context, Vector2.Zero);
+                item.Rasterize(context, -ScrollOffset);
                 maxLayer = Math.Max(maxLayer, context.Renderer.Layer);
             }
 
@@ -340,6 +349,25 @@ namespace Squared.PRGUI {
 
         protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
             base.OnRasterize(context, box, state, decorations);
+
+            // FIXME
+            var hstate = new ScrollbarState {
+                ContentSize = 1024,
+                ViewportSize = box.Width,
+                Position = ScrollOffset.X,
+                DragInitialPosition = null
+            };
+            var vstate = new ScrollbarState {
+                ContentSize = 1024,
+                ViewportSize = box.Height,
+                Position = ScrollOffset.Y,
+                DragInitialPosition = null
+            };
+
+            if (ShowHorizontalScrollbar)
+                context.DecorationProvider?.HorizontalScrollbar?.Rasterize(context, box, state, ref hstate);
+            if (ShowVerticalScrollbar)
+                context.DecorationProvider?.VerticalScrollbar?.Rasterize(context, box, state, ref vstate);
 
             if (context.Pass != RasterizePasses.Content)
                 return;
@@ -352,6 +380,15 @@ namespace Squared.PRGUI {
             RasterizeChildren(context, RasterizePasses.Above);
         }
 
+        protected override void ApplyClipMargins (UIOperationContext context, ref RectF box) {
+            var vscroll = context.DecorationProvider?.VerticalScrollbar;
+            var hscroll = context.DecorationProvider?.HorizontalScrollbar;
+            if (ShowHorizontalScrollbar && (hscroll != null))
+                box.Height -= hscroll.MinimumSize.Y;
+            if (ShowVerticalScrollbar && (vscroll != null))
+                box.Width -= vscroll.MinimumSize.X;
+        }
+
         protected override Control OnHitTest (LayoutContext context, RectF box, Vector2 position) {
             var result = base.OnHitTest(context, box, position);
             if (result != this)
@@ -360,7 +397,7 @@ namespace Squared.PRGUI {
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
             foreach (var item in Children) {
-                result = item.HitTest(context, position);
+                result = item.HitTest(context, position + ScrollOffset);
                 if (result != null)
                     return result;
             }

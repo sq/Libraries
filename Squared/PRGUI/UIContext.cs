@@ -15,7 +15,7 @@ namespace Squared.PRGUI {
     public class UIContext : IDisposable {
         public Vector2 CanvasSize;
         public readonly LayoutContext Layout = new LayoutContext();
-        public DecorationProvider Decorations = new DefaultDecorations();
+        public IDecorationProvider Decorations = new DefaultDecorations();
         public IGlyphSource DefaultGlyphSource;
 
         public List<Control> Controls = new List<Control>();
@@ -141,7 +141,7 @@ namespace Squared.PRGUI {
 
     public class UIOperationContext {
         public UIContext UIContext;
-        public DecorationProvider DecorationProvider => UIContext.Decorations;
+        public IDecorationProvider DecorationProvider => UIContext.Decorations;
         public LayoutContext Layout => UIContext.Layout;
         public ImperativeRenderer Renderer;
         public RasterizePasses Pass;
