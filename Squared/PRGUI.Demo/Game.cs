@@ -70,29 +70,6 @@ namespace PRGUI.Demo {
 
         protected override void Initialize () {
             base.Initialize();
-
-            Window.AllowUserResizing = false;
-
-            /*
-            var layout = Context.Layout;
-            var root = layout.Root;
-            layout.SetSizeXY(root, 1280, 720);
-
-            layout.SetContainerFlags(root, ControlFlags.Container_Row);
-
-            MasterList = layout.CreateItem();
-            layout.InsertAtEnd(root, MasterList);
-
-            layout.SetSizeXY(MasterList, width: 400);
-
-            layout.SetContainerFlags(MasterList, ControlFlags.Container_Column);
-            layout.SetLayoutFlags(MasterList, ControlFlags.Layout_Fill_Column);
-
-            ContentView = layout.CreateItem();
-            layout.InsertAtEnd(root, ContentView);
-
-            layout.SetLayoutFlags(ContentView, ControlFlags.Layout_Fill);
-            */
         }
 
         public bool LeftMouse {
@@ -126,7 +103,6 @@ namespace PRGUI.Demo {
             Font.GlyphMargin = 4;
 
             Context = new UIContext {
-                CanvasSize = new Vector2(1280, 720),
                 DefaultGlyphSource = Font,
                 Controls = {
                     new Container {
@@ -166,8 +142,7 @@ namespace PRGUI.Demo {
                                 ClipChildren = true,
                                 ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
                                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
-                                MaximumWidth = 1100,
-                                MaximumHeight = 500,
+                                MaximumHeight = 800,
                                 Scrollable = true,
                                 ShowHorizontalScrollbar = true,
                                 ShowVerticalScrollbar = true,
@@ -189,8 +164,6 @@ namespace PRGUI.Demo {
                 }
             };
 
-            Context.UpdateLayout();
-
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
             TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
@@ -204,6 +177,19 @@ namespace PRGUI.Demo {
             );
 
             LastTimeOverUI = Time.Ticks;
+
+            Window.AllowUserResizing = true;
+            Window.ClientSizeChanged += Window_ClientSizeChanged;
+            Window_ClientSizeChanged(null, EventArgs.Empty);
+        }
+
+        private void Window_ClientSizeChanged (object sender, EventArgs e) {
+            var pp = GraphicsDevice.PresentationParameters;
+            RenderCoordinator.WaitForActiveDraws();
+            Materials.ViewTransform = ViewTransform.CreateOrthographic(pp.BackBufferWidth, pp.BackBufferHeight);
+            Context.CanvasSize = new Vector2(pp.BackBufferWidth, pp.BackBufferHeight);
+            Context.UpdateLayout();
+            UIRenderTarget.Resize(pp.BackBufferWidth, pp.BackBufferHeight);
         }
 
         protected override void OnUnloadContent () {
@@ -257,6 +243,14 @@ namespace PRGUI.Demo {
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {
+            var pp = GraphicsDevice.PresentationParameters;
+            if (
+                (pp.BackBufferWidth != UIRenderTarget.Width) ||
+                (pp.BackBufferHeight != UIRenderTarget.Height)
+            ) {
+                Window_ClientSizeChanged(null, EventArgs.Empty);
+            }
+
             // Nuklear.UpdateInput(IsActive, PreviousMouseState, MouseState, PreviousKeyboardState, KeyboardState, IsMouseOverUI, KeyboardInputHandler.Buffer);
 
             KeyboardInputHandler.Buffer.Clear();

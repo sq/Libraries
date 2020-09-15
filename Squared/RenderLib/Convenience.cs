@@ -1591,6 +1591,10 @@ namespace Squared.Render.Convenience {
             var desiredBlendState = blendState ?? BlendState;
             var desiredSamplerState = samplerState ?? SamplerState;
 
+            // HACK: Look, alright, it's complicated
+            if ((desiredBlendState == BlendState.AlphaBlend) || (desiredBlendState == null))
+                desiredBlendState = BlendState.NonPremultiplied;
+
             CachedBatch cacheEntry;
             if (!Cache.TryGet<RasterShapeBatch>(
                 out cacheEntry,

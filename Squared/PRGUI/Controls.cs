@@ -413,10 +413,9 @@ namespace Squared.PRGUI {
 
             // FIXME: This should be done somewhere else
             if (Scrollable) {
-                var hscroll = context.DecorationProvider?.HorizontalScrollbar;
-                var vscroll = context.DecorationProvider?.VerticalScrollbar;
-                float viewportWidth = box.Width - (vscroll?.MinimumSize.X ?? 0),
-                    viewportHeight = box.Height - (hscroll?.MinimumSize.Y ?? 0);
+                var scrollbar = context.DecorationProvider?.Scrollbar;
+                float viewportWidth = box.Width - (scrollbar?.MinimumSize.X ?? 0),
+                    viewportHeight = box.Height - (scrollbar?.MinimumSize.Y ?? 0);
 
                 if (!HasContentBounds)
                     HasContentBounds = context.Layout.TryMeasureContent(LayoutKey, out ContentBounds);
@@ -433,7 +432,8 @@ namespace Squared.PRGUI {
                     ContentSize = ContentBounds.Width,
                     ViewportSize = box.Width,
                     Position = ScrollOffset.X,
-                    DragInitialPosition = null
+                    DragInitialPosition = null,
+                    Horizontal = true
                 };
                 var vstate = new ScrollbarState {
                     ContentSize = ContentBounds.Height,
@@ -448,9 +448,9 @@ namespace Squared.PRGUI {
                 hstate.HasCounterpart = vstate.HasCounterpart = (shouldHorzScroll && shouldVertScroll);
 
                 if (shouldHorzScroll)
-                    hscroll?.Rasterize(context, box, state, ref hstate);
+                    scrollbar?.Rasterize(context, box, state, ref hstate);
                 if (shouldVertScroll)
-                    vscroll?.Rasterize(context, box, state, ref vstate);
+                    scrollbar?.Rasterize(context, box, state, ref vstate);
             } else {
                 ScrollOffset = Vector2.Zero;
             }
@@ -467,12 +467,13 @@ namespace Squared.PRGUI {
         }
 
         protected override void ApplyClipMargins (UIOperationContext context, ref RectF box) {
-            var vscroll = context.DecorationProvider?.VerticalScrollbar;
-            var hscroll = context.DecorationProvider?.HorizontalScrollbar;
-            if (ShowHorizontalScrollbar && (hscroll != null))
-                box.Height -= hscroll.MinimumSize.Y;
-            if (ShowVerticalScrollbar && (vscroll != null))
-                box.Width -= vscroll.MinimumSize.X;
+            var scroll = context.DecorationProvider?.Scrollbar;
+            if (scroll != null) {
+                if (ShowHorizontalScrollbar)
+                    box.Height -= scroll.MinimumSize.Y;
+                if (ShowVerticalScrollbar)
+                    box.Width -= scroll.MinimumSize.X;
+            }
         }
 
         protected override Control OnHitTest (LayoutContext context, RectF box, Vector2 position) {

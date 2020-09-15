@@ -535,7 +535,22 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
         result.rgb = LinearToSRGB(result.rgb);
 
     float4 ditheredResult = ApplyDither4(result, vpos);
+
+    // You know what, whatever. The output of this isn't premultiplied anymore.
+    /*
+     * HACK: The ideal outcome is that we just premultiply by our random alpha value
+     *  and that everything looks good. Unfortunately, it seems like what the GPU does
+     *  with overly-precise alpha values is "eh, whatever" so we get weird artifacts and
+     *  uneven brightness on alpha gradients unless we snap the alpha first.
+     * An alternative is to not premultiply the output (and let the GPU do it in the
+     *  blending stage at the end), which looks great, but then we're not using
+     *  premultiplied alpha anymore, which is not so great.
+     * Note the disgusting +0.5 offset. Without this it still looks awful on my RTX card.
+    float snappedResultAlpha = (round(ditheredResult.a * 255) + 0.5) / 255;
+    ditheredResult.a = snappedResultAlpha;
     ditheredResult.rgb *= ditheredResult.a;
+    */
+
     return ditheredResult;
 }
 

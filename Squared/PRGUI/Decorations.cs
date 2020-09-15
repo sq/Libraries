@@ -31,8 +31,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Container { get; }
         IDecorator StaticText { get; }
         IDecorator Button { get; }
-        IWidgetDecorator<ScrollbarState> HorizontalScrollbar { get; }
-        IWidgetDecorator<ScrollbarState> VerticalScrollbar { get; }
+        IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
     public abstract class DelegateBaseDecorator : IBaseDecorator {
@@ -106,8 +105,7 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator Button { get; set; }
         public IDecorator Container { get; set; }
         public IDecorator StaticText { get; set; }
-        public IWidgetDecorator<ScrollbarState> HorizontalScrollbar { get; set; }
-        public IWidgetDecorator<ScrollbarState> VerticalScrollbar { get; set; }
+        public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public float InteractableCornerRadius = 6f, InertCornerRadius = 3f, ContainerCornerRadius = 3f;
         public float InactiveOutlineThickness = 1f, ActiveOutlineThickness = 1.33f, PressedOutlineThickness = 2f,
@@ -222,8 +220,8 @@ namespace Squared.PRGUI.Decorations {
             const float scrollbarSize = 12;
             const float scrollbarRadius = 4;
 
-            VerticalScrollbar = new DelegateWidgetDecorator<ScrollbarState> {
-                MinimumSize = new Vector2(scrollbarSize, 0),
+            Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
+                MinimumSize = new Vector2(scrollbarSize, scrollbarSize),
                 Above = (UIOperationContext context, RectF box, ControlStates state, ref ScrollbarState data) => {
                     var vRadius = new Vector2(scrollbarRadius);
                     var totalOverflow = Math.Max(data.ContentSize - data.ViewportSize, 0.1f);
@@ -231,10 +229,12 @@ namespace Squared.PRGUI.Decorations {
                     float size = data.ViewportSize / Math.Max(data.ContentSize, 0.1f);
                     float max = Math.Min(1.0f, min + size);
 
-                    var height = box.Height - 1;
+                    var sizePx = data.Horizontal ? box.Width - 1 : box.Height - 1;
                     if (data.HasCounterpart)
-                        height -= scrollbarSize;
-                    var a = new Vector2(box.Extent.X - scrollbarSize, box.Top + 1);
+                        sizePx -= scrollbarSize;
+                    var a = data.Horizontal
+                        ? new Vector2(box.Left + 1, box.Extent.Y - scrollbarSize)
+                        : new Vector2(box.Extent.X - scrollbarSize, box.Top + 1);
                     var b = box.Extent;
 
                     context.Renderer.RasterizeRectangle(
@@ -245,44 +245,13 @@ namespace Squared.PRGUI.Decorations {
                         fillMode: RasterFillMode.Vertical
                     );
 
-                    a.Y += (height * min);
-                    b.Y = box.Top + (height * max);
-
-                    context.Renderer.RasterizeRectangle(
-                        a + vRadius, b - vRadius,
-                        radius: scrollbarRadius,
-                        outlineRadius: 0, outlineColor: Color.Transparent,
-                        innerColor: ScrollbarThumbColor, outerColor: ScrollbarThumbColor * 0.8f,
-                        fillMode: RasterFillMode.Radial
-                    );
-                }
-            };
-
-            HorizontalScrollbar = new DelegateWidgetDecorator<ScrollbarState> {
-                MinimumSize = new Vector2(0, scrollbarSize),
-                Above = (UIOperationContext context, RectF box, ControlStates state, ref ScrollbarState data) => {
-                    var vRadius = new Vector2(scrollbarRadius);
-                    var totalOverflow = Math.Max(data.ContentSize - data.ViewportSize, 0.1f);
-                    float min = Math.Max(data.Position / data.ContentSize, 0f);
-                    float size = data.ViewportSize / Math.Max(data.ContentSize, 0.1f);
-                    float max = Math.Min(1.0f, min + size);
-
-                    var width = box.Width - 1;
-                    if (data.HasCounterpart)
-                        width -= scrollbarSize;
-                    var a = new Vector2(box.Left + 1, box.Extent.Y - scrollbarSize);
-                    var b = box.Extent;
-
-                    context.Renderer.RasterizeRectangle(
-                        a + vRadius, b - vRadius,
-                        radius: scrollbarRadius,
-                        outlineRadius: 0, outlineColor: Color.Transparent,
-                        innerColor: ScrollbarTrackColor, outerColor: ScrollbarTrackColor,
-                        fillMode: RasterFillMode.Horizontal
-                    );
-
-                    a.X += (width * min);
-                    b.X = box.Left + (width * max);
+                    if (data.Horizontal) {
+                        a.X += (sizePx * min);
+                        b.X = box.Left + (sizePx * max);
+                    } else {
+                        a.Y += (sizePx * min);
+                        b.Y = box.Top + (sizePx * max);
+                    }
 
                     context.Renderer.RasterizeRectangle(
                         a + vRadius, b - vRadius,
@@ -300,6 +269,6 @@ namespace Squared.PRGUI.Decorations {
         public float Position;
         public float ContentSize, ViewportSize;
         public float? DragInitialPosition;
-        public bool HasCounterpart;
+        public bool HasCounterpart, Horizontal;
     }
 }
