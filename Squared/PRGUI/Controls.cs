@@ -54,8 +54,18 @@ namespace Squared.PRGUI {
             return null;
         }
 
+        public RectF GetRect (LayoutContext context) {
+            var result = context.GetRect(LayoutKey);
+            if (MinimumWidth.HasValue)
+                result.Width = Math.Max(MinimumWidth.Value, result.Width);
+            if (MinimumHeight.HasValue)
+                result.Height = Math.Max(MinimumHeight.Value, result.Height);
+
+            return result;
+        }
+
         public Control HitTest (LayoutContext context, Vector2 position) {
-            var box = context.GetRect(LayoutKey);
+            var box = GetRect(context);
             return OnHitTest(context, box, position);
         }
 
@@ -111,7 +121,7 @@ namespace Squared.PRGUI {
         }
 
         public void Rasterize (UIOperationContext context, Vector2 offset) {
-            var box = context.Layout.GetRect(LayoutKey);
+            var box = GetRect(context.Layout);
             box.Left += offset.X;
             box.Top += offset.Y;
             var decorations = GetDecorations(context);
@@ -241,11 +251,6 @@ namespace Squared.PRGUI {
         }
 
         protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
-            if (MinimumWidth.HasValue)
-                box.Width = Math.Max(MinimumWidth.Value, box.Width);
-            if (MinimumHeight.HasValue)
-                box.Height = Math.Max(MinimumHeight.Value, box.Height);
-
             base.OnRasterize(context, box, state, decorations);
 
             if (context.Pass != RasterizePasses.Content)
