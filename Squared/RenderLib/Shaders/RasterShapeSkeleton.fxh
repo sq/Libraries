@@ -44,8 +44,8 @@ sampler TextureSampler : register(s0) {
 
 #define RASTERSHAPE_FS_PROLOGUE \
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
-    float outlineSize = params.x; \
-    float HardOutline = params.y; \
+    float outlineSize = abs(params.x); \
+    bool HardOutline = (params.x >= 0); \
     float OutlineGammaMinusOne = params.w;
 
 // We use the _Accurate conversion function here because the approximation introduces
@@ -87,7 +87,7 @@ float computeTotalRadius (float2 radius, float outlineSize) {
 }
 
 void computeTLBR (
-    uint type, float2 radius, float totalRadius, 
+    uint type, float2 radius, float totalRadius, float4 params,
     float2 a, float2 b, float2 c,
     out float2 tl, out float2 br
 ) {
@@ -137,6 +137,12 @@ void computeTLBR (
             tl = a - totalRadius - radius.y;
             br = a + totalRadius + radius.y;
             break;
+    }
+
+    float annularRadius = params.y;
+    if (annularRadius > 0) {
+        tl -= annularRadius;
+        br += annularRadius;
     }
 }
 
@@ -194,13 +200,13 @@ void RasterShapeVertexShader (
     float4 position = float4(ab_in.x, ab_in.y, 0, 1);
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw;
     params.x *= OutlineSizeCompensation;
-    float outlineSize = params.x;
+    float outlineSize = abs(params.x);
     uint type = abs(typeAndWorldSpace.x);
 
     float totalRadius = computeTotalRadius(radius, outlineSize) + 1;
     float2 tl, br;
 
-    computeTLBR(type, radius, totalRadius, a, b, c, tl, br);
+    computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
     computePosition(type, totalRadius, a, b, c, tl, br, cornerWeights.xyz, position.xy);
 
     float2 adjustedPosition = position.xy;
@@ -406,7 +412,7 @@ void rasterShapeCommon (
             distance = sdBezier(worldPosition, a, b, c) - radius.x;
             gradientWeight = 1 - saturate(-distance / radius.x);
 
-            computeTLBR(type, radius, totalRadius, a, b, c, tl, br);
+            computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
 
             break;
         }
@@ -484,13 +490,17 @@ void rasterShapeCommon (
         outlineEndDistance = outlineStartDistance + outlineSize,
         fillStartDistance = -0.5,
         fillEndDistance = 0.5;
+    
+    float annularRadius = params.y;
+    if (annularRadius > 0.001)
+        distance = abs(distance) - annularRadius;
 
     fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
     fill = lerp(centerColor, edgeColor, gradientWeight);
 
     PREFER_BRANCH
     if (outlineSize > 0.001) {
-        if ((outlineSize >= sqrt(2)) && (HardOutline >= 0.5)) {
+        if ((outlineSize >= sqrt(2)) && HardOutline) {
             outlineAlpha = (
                 getWindowAlpha(distance, outlineStartDistance, min(outlineStartDistance + sqrt(2), outlineEndDistance), 0, 1, 1) *
                 getWindowAlpha(distance, max(outlineStartDistance, outlineEndDistance - sqrt(2)), outlineEndDistance, 1, 1, 0)

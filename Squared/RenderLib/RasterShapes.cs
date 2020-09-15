@@ -139,8 +139,11 @@ namespace Squared.Render.RasterShape {
         /// Adjusting x and y away from 1 allows you to adjust the shape of the curve
         /// </summary>
         public Vector2 FillGradientPowerMinusOne;
+
         public float FillOffset;
         public float FillSize;
+
+        public float AnnularRadius;
         
         /// <summary>
         /// Specifies the region of the texture to apply to the shape.
@@ -252,7 +255,7 @@ namespace Squared.Render.RasterShape {
                         InnerColor = dc.InnerColor,
                         OutlineColor = dc.OutlineColor,
                         OuterColor = dc.OuterColor,
-                        Parameters = new Vector4(dc.OutlineSize, dc.SoftOutline ? 0.0f : 1.0f, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne),
+                        Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne),
                         Parameters2 = new Vector4(dc.FillGradientPowerMinusOne.X + 1, dc.FillGradientPowerMinusOne.Y + 1, dc.FillOffset, dc.FillSize),
                         TextureRegion = dc.TextureBounds.ToVector4(),
                         Type = (short)dc.Type,
