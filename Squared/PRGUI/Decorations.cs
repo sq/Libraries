@@ -159,9 +159,24 @@ namespace Squared.PRGUI.Decorations {
                         radius: InteractableCornerRadius,
                         outlineRadius: thickness, outlineColor: baseColor * alpha,
                         innerColor: baseColor * 0.3f * alpha, outerColor: baseColor * 0.2f * alpha,
-                        fillMode: Render.RasterShape.RasterFillMode.Linear
+                        fillMode: RasterFillMode.Linear
                     );
                 },
+                Above = (context, box, state) => {
+                    if (!state.HasFlag(ControlStates.Hovering))
+                        return;
+
+                    box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
+                    context.Renderer.RasterizeRectangle(
+                        a, b,
+                        radius: InteractableCornerRadius,
+                        outlineRadius: 0, outlineColor: Color.Transparent,
+                        innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
+                        fillMode: RasterFillMode.Vertical,
+                        annularRadius: 1.1f,
+                        blendState: BlendState.Additive
+                    );
+                }
             };
 
             Container = new DelegateDecorator {
@@ -205,7 +220,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             const float scrollbarSize = 12;
-            const float scrollbarRadius = 3;
+            const float scrollbarRadius = 4;
 
             VerticalScrollbar = new DelegateWidgetDecorator<ScrollbarState> {
                 MinimumSize = new Vector2(scrollbarSize, 0),
