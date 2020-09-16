@@ -12,7 +12,7 @@ void SHAPE_TYPE_NAME (
         fill, fillAlpha, outlineAlpha
     );
 
-    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z, GET_VPOS);
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, BlendInLinearSpace, GET_VPOS);
 
     if (result.a <= 0.5 / 255) {
         discard;

@@ -16,10 +16,12 @@ sampler TextureSampler : register(s0) {
 // HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
 #define OutlineSizeCompensation 2.2
 
+#define PI 3.1415926535897931
+#define DEG_TO_RAD (PI / 180.0)
+
 // A bunch of the distance formulas in here are thanks to inigo quilez
 // http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
 // http://iquilezles.org/www/articles/distfunctions/distfunctions.htm
-
 
 #define TYPE_Ellipse 0
 #define TYPE_LineSegment 1
@@ -27,6 +29,16 @@ sampler TextureSampler : register(s0) {
 #define TYPE_Triangle 3
 #define TYPE_QuadraticBezier 4
 #define TYPE_Arc 5
+
+#define GRADIENT_TYPE_Other -1
+#define GRADIENT_TYPE_Linear 0
+#define GRADIENT_TYPE_Linear_Enclosed 1
+#define GRADIENT_TYPE_Radial 2
+#define GRADIENT_TYPE_Radial_Enclosing 3
+#define GRADIENT_TYPE_Radial_Enclosed 4
+#define GRADIENT_TYPE_Angular 512
+
+#define ANGULAR_GRADIENT_BASE 512
 
 #define RASTERSHAPE_FS_ARGS \
     in float2 worldPosition : NORMAL0, \
@@ -51,7 +63,7 @@ sampler TextureSampler : register(s0) {
 // We use the _Accurate conversion function here because the approximation introduces
 //  visible noise for values like (64, 64, 64) when they are dithered
 #define RASTERSHAPE_PREPROCESS_COLORS \
-    if (params.z > 0.5) { \
+    if (BlendInLinearSpace) { \
         centerColor = pSRGBToPLinear_Accurate(centerColor); \
         edgeColor = pSRGBToPLinear_Accurate(edgeColor); \
         outlineColor = pSRGBToPLinear_Accurate(outlineColor); \
@@ -64,13 +76,14 @@ sampler TextureSampler : register(s0) {
     // FIXME: Why is this necessary? Is it an fxc bug? \
     // It only seems to be needed when using certain blend modes \
     // Maybe mojoshader? Driver bug? \
-    if (params.z < 0.5) { \
+    if (!BlendInLinearSpace) { \
         centerColor = pLinearToPSRGB(centerColor); \
         edgeColor = pLinearToPSRGB(edgeColor); \
         outlineColor = pLinearToPSRGB(outlineColor); \
     }
     */
 
+uniform bool BlendInLinearSpace;
 uniform float HalfPixelOffset;
 
 float4 TransformPosition(float4 position, bool halfPixelOffset) {
@@ -268,28 +281,21 @@ void evaluateEllipse (
     tl = a - b;
     br = a + b;
 
-    gradientType = abs(c.x);
-
     PREFER_FLATTEN
     switch (gradientType) {
-        // Linear
-        case 0:
-        case 4:
+        case GRADIENT_TYPE_Linear:
+        case GRADIENT_TYPE_Linear_Enclosed:
             float2 center = (tl + br) / 2;
             // Options:
             // * 2 = touches corners of a box enclosing the ellipse
             // * 2 * sqrt(2) == touches corners of a box enclosed by the ellipse
             float2 distance2 = abs(worldPosition - center) / (br - tl) * (
-                (gradientType == 4) 
+                (gradientType == GRADIENT_TYPE_Linear_Enclosed) 
                     ? (2 * sqrt(2)) 
                     : 2
             );
             gradientWeight = saturate(max(distance2.x, distance2.y));
-            gradientType = 999;
-            break;
-        // Radial
-        case 1:
-            gradientType = 999;
+            gradientType = GRADIENT_TYPE_Other;
             break;
     }
 }
@@ -321,15 +327,14 @@ void evaluateRectangle (
     distance = sdBox(worldPosition - center, boxSize) - radius.x;
 
     float centerDistance = sdBox(0, boxSize) - radius.x;
-    gradientType = abs(c.x);
 
     PREFER_FLATTEN
     switch (gradientType) {
         // Linear
-        case 0:
-        case 4:
+        case GRADIENT_TYPE_Linear:
+        case GRADIENT_TYPE_Linear_Enclosed:
             gradientWeight = saturate(1 - saturate(distance / centerDistance));
-            gradientType = 999;
+            gradientType = GRADIENT_TYPE_Other;
             break;
     }
 }
@@ -337,7 +342,8 @@ void evaluateRectangle (
 void evaluateTriangle (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    out float gradientWeight, out float2 tl, out float2 br
+    inout int gradientType, out float gradientWeight,
+    out float2 tl, out float2 br
 ) {
     distance = sdTriangle(worldPosition, a, b, c);
 
@@ -346,7 +352,16 @@ void evaluateTriangle (
     // FIXME: Why is this necessary?
     float ac = length(a - center), bc = length(b - center), cc = length(c - center);
     float targetDistance = (min(ac, min(bc, cc)) + max(ac, max(bc, cc))) * -0.25;
-    gradientWeight = 1 - saturate(distance / targetDistance);
+
+    PREFER_FLATTEN
+    switch (abs(gradientType)) {
+        // Linear
+        case GRADIENT_TYPE_Linear:
+        case GRADIENT_TYPE_Linear_Enclosed:
+            gradientWeight = 1 - saturate(distance / targetDistance);
+            gradientType = GRADIENT_TYPE_Other;
+            break;
+    }
 
     distance -= radius;
 
@@ -378,8 +393,16 @@ void rasterShapeCommon (
     tl = min(a, b);
     br = max(a, b);
 
-    float gradientOffset = params2.z, gradientSize = params2.w;
-    int gradientType = 999;
+    float gradientOffset = params2.z, gradientSize = params2.w, gradientAngle;
+    int gradientType;
+
+    if (params.z >= ANGULAR_GRADIENT_BASE) {
+        gradientType = GRADIENT_TYPE_Angular;
+        gradientAngle = (params.z - ANGULAR_GRADIENT_BASE) * DEG_TO_RAD;
+    } else {
+        gradientType = abs(trunc(params.z));
+        gradientAngle = 0;
+    }
 
     PREFER_BRANCH
     switch (type) {
@@ -435,7 +458,8 @@ void rasterShapeCommon (
             evaluateTriangle(
                 worldPosition, a, b, c,
                 radius, distance,
-                gradientWeight, tl, br
+                gradientType, gradientWeight, 
+                tl, br
             );
 
             break;
@@ -452,20 +476,28 @@ void rasterShapeCommon (
 #endif
     }
 
+    float2 gradientCenter = (tl + br) / 2;
+
     PREFER_FLATTEN
-    switch (gradientType) {
+    switch (abs(gradientType)) {
         // Radial
-        case 1:
-            float2 center = (tl + br) / 2;
-            gradientWeight = length((worldPosition - center) / ((br - tl) * 0.5));
+        case GRADIENT_TYPE_Radial:
+        case GRADIENT_TYPE_Radial_Enclosing:
+        case GRADIENT_TYPE_Radial_Enclosed:
+            float2 radialSize2 = (br - tl) * 0.5;
+            float2 radialSize = (gradientType == GRADIENT_TYPE_Radial_Enclosing)
+                ? max(radialSize2.x, radialSize2.y)
+                : (
+                    (gradientType == GRADIENT_TYPE_Radial_Enclosed)
+                        ? min(radialSize2.x, radialSize2.y)
+                        : radialSize2
+                );
+            gradientWeight = length((worldPosition - gradientCenter) / radialSize);
             break;
-        // Horizontal
-        case 2:
-            gradientWeight = saturate((worldPosition.x - tl.x) / (br.x - tl.x));
-            break;
-        // Vertical
-        case 3:
-            gradientWeight = saturate((worldPosition.y - tl.y) / (br.y - tl.y));
+        case GRADIENT_TYPE_Angular:
+            float2 scaled = (worldPosition - gradientCenter) / ((br - tl) * 0.5);
+            gradientAngle += atan2(scaled.y, scaled.x);
+            gradientWeight = ((sin(gradientAngle) * length(scaled)) / 2) + 0.5;
             break;
     }
 
@@ -476,7 +508,7 @@ void rasterShapeCommon (
     } else {
         gradientSize = max(abs(gradientSize), 0.0001);
         gradientWeight /= gradientSize;
-        gradientWeight = (gradientWeight % 2);
+        gradientWeight = gradientWeight % 2;
         gradientWeight = 1 - abs(gradientWeight - 1);
     }
 
@@ -525,7 +557,7 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return float4(rgb, a);
 }
 
-float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float convertToSRGB, float2 vpos) {
+float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, bool convertToSRGB, float2 vpos) {
     float4 result;
     result = over(outlineColor, outlineAlpha, fillColor, fillAlpha);
 
@@ -576,11 +608,11 @@ float4 texturedShapeCommon (
     texCoord = clamp(texCoord, texRgn.xy, texRgn.zw);
 
     float4 texColor = tex2D(TextureSampler, texCoord);
-    if (params.z)
+    if (BlendInLinearSpace)
         texColor = pSRGBToPLinear(texColor);
 
     fill *= texColor;
 
-    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, params.z, vpos);
+    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, BlendInLinearSpace, vpos);
     return result;
 }

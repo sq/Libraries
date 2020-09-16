@@ -70,13 +70,34 @@ namespace Squared.Render.RasterShape {
         /// A linear fill enclosing the shape.
         /// </summary>
         Linear = 0,
-        Radial = 1,
-        Horizontal = 2,
-        Vertical = 3,
         /// <summary>
         /// Ellipse only: A linear fill enclosed by the ellipse instead of enclosing it.
         /// </summary>
-        LinearEnclosed = 4
+        LinearEnclosed = 1,
+        /// <summary>
+        /// A radial fill across the shape.
+        /// </summary>
+        Radial = 2,
+        /// <summary>
+        /// A radial fill enclosing the shape.
+        /// </summary>
+        RadialEnclosing = 3,
+        /// <summary>
+        /// A radial fill enclosed by the shape instead of enclosing it.
+        /// </summary>
+        RadialEnclosed = 4,
+        /// <summary>
+        /// A linear gradient with a configurable angle.
+        /// </summary>
+        Angular = 512,
+        /// <summary>
+        /// A linear gradient that goes top-to-bottom.
+        /// </summary>
+        Vertical = Angular,
+        /// <summary>
+        /// A linear gradient that goes left-to-right.
+        /// </summary>
+        Horizontal = Angular + 90,
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -139,12 +160,26 @@ namespace Squared.Render.RasterShape {
         /// Adjusting x and y away from 1 allows you to adjust the shape of the curve
         /// </summary>
         public Vector2 FillGradientPowerMinusOne;
-
+        /// <summary>
+        /// The fill mode to use for the interior, (+ an angle in degrees if the mode is Angular).
+        /// </summary>
+        public float FillMode;
+        /// <summary>
+        /// Offsets the gradient towards or away from the beginning.
+        /// </summary>
         public float FillOffset;
+        /// <summary>
+        /// Sets the size of the gradient, with 1.0 filling the entire shape.
+        /// </summary>
         public float FillSize;
-
+        /// <summary>
+        /// For angular gradients, set the angle of the gradient (in degrees).
+        /// </summary>
+        public float FillAngle;
+        /// <summary>
+        /// If above zero, the shape becomes annular (hollow) instead of solid, with a border this size in pixels.
+        /// </summary>
         public float AnnularRadius;
-        
         /// <summary>
         /// Specifies the region of the texture to apply to the shape.
         /// The top-left part of this region will be aligned with the top-left
@@ -160,6 +195,8 @@ namespace Squared.Render.RasterShape {
             public int Compare (ref RasterShapeDrawCall lhs, ref RasterShapeDrawCall rhs) {
                 var result = ((int)lhs.Type).CompareTo((int)(rhs.Type));
                 if (result == 0)
+                    result = lhs.BlendInLinearSpace.CompareTo(rhs.BlendInLinearSpace);
+                if (result == 0)
                     result = lhs.Index.CompareTo(rhs.Index);
                 return result;
             }
@@ -167,6 +204,7 @@ namespace Squared.Render.RasterShape {
 
         private struct SubBatch {
             public RasterShapeType Type;
+            public bool BlendInLinearSpace;
             public int InstanceOffset, InstanceCount;
         }
 
@@ -233,15 +271,17 @@ namespace Squared.Render.RasterShape {
                 var vw = vb.GetWriter(count);
 
                 var lastType = _DrawCalls[0].Type;
+                var lastBlend = _DrawCalls[0].BlendInLinearSpace;
                 var lastOffset = 0;
 
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     var dc = _DrawCalls[i];
 
-                    if ((dc.Type != lastType) && !UseUbershader) {
+                    if (((dc.Type != lastType) && !UseUbershader) || (dc.BlendInLinearSpace != lastBlend)) {
                         _SubBatches.Add(new SubBatch {
                             InstanceOffset = lastOffset,
                             InstanceCount = (i - lastOffset),
+                            BlendInLinearSpace = lastBlend,
                             Type = lastType
                         });
                         lastOffset = i;
@@ -255,7 +295,7 @@ namespace Squared.Render.RasterShape {
                         InnerColor = dc.InnerColor,
                         OutlineColor = dc.OutlineColor,
                         OuterColor = dc.OuterColor,
-                        Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, dc.BlendInLinearSpace ? 1.0f : 0.0f, dc.OutlineGammaMinusOne),
+                        Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, dc.FillMode, dc.OutlineGammaMinusOne),
                         Parameters2 = new Vector4(dc.FillGradientPowerMinusOne.X + 1, dc.FillGradientPowerMinusOne.Y + 1, dc.FillOffset, dc.FillSize),
                         TextureRegion = dc.TextureBounds.ToVector4(),
                         Type = (short)dc.Type,
@@ -267,6 +307,7 @@ namespace Squared.Render.RasterShape {
                 _SubBatches.Add(new SubBatch {
                     InstanceOffset = lastOffset,
                     InstanceCount = (count - lastOffset),
+                    BlendInLinearSpace = lastBlend,
                     Type = lastType
                 });
 
@@ -331,6 +372,7 @@ namespace Squared.Render.RasterShape {
                     if (RasterizerState != null)
                         device.RasterizerState = RasterizerState;
 
+                    material.Effect.Parameters["BlendInLinearSpace"].SetValue(sb.BlendInLinearSpace);
                     material.Effect.Parameters["RasterTexture"]?.SetValue(Texture);
                     material.Flush();
 

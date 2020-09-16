@@ -1081,11 +1081,15 @@ namespace Squared.Render.Convenience {
             Vector2 center, Vector2 radius, Color innerColor, Color? outerColor = null,
             RasterFillMode fillMode = RasterFillMode.Radial,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
-            float? annularRadius = null,
+            float fillAngle = 0, float? annularRadius = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
+            float fillModeF = (int)fillMode;
+            if (fillMode >= RasterFillMode.Angular)
+                fillModeF += (float)(fillAngle);
+
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1094,7 +1098,7 @@ namespace Squared.Render.Convenience {
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = center,
                     B = radius,
-                    C = new Vector2((int)fillMode, 0),
+                    C = new Vector2(fillModeF, 0),
                     OutlineSize = 0,
                     InnerColor = innerColor,
                     OuterColor = outerColor.GetValueOrDefault(innerColor),
@@ -1102,6 +1106,7 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillMode = fillModeF,
                     FillOffset = fillOffset,
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
@@ -1116,11 +1121,15 @@ namespace Squared.Render.Convenience {
             Color innerColor, Color outerColor, Color outlineColor,
             RasterFillMode fillMode = RasterFillMode.Radial,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
-            float? annularRadius = null,
+            float fillAngle = 0, float? annularRadius = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
+            float fillModeF = (int)fillMode;
+            if (fillMode >= RasterFillMode.Angular)
+                fillModeF += (float)(fillAngle);
+
             using (var eb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1129,7 +1138,7 @@ namespace Squared.Render.Convenience {
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = center,
                     B = radius,
-                    C = new Vector2((int)fillMode, fillOffset),
+                    C = new Vector2(fillModeF, fillOffset),
                     OutlineSize = outlineRadius,
                     InnerColor = innerColor,
                     OuterColor = outerColor,
@@ -1137,6 +1146,7 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillMode = fillModeF,
                     FillOffset = fillOffset,
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
@@ -1223,11 +1233,15 @@ namespace Squared.Render.Convenience {
             Color innerColor, Color? outerColor = null,
             RasterFillMode fillMode = RasterFillMode.Linear,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
-            float? annularRadius = null,
+            float fillAngle = 0, float? annularRadius = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
+            float fillModeF = (int)fillMode;
+            if (fillMode >= RasterFillMode.Angular)
+                fillModeF += (float)(fillAngle);
+
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1235,7 +1249,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Rectangle,
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = tl, B = br,
-                    C = new Vector2((int)fillMode, fillOffset),
+                    C = new Vector2(fillModeF, fillOffset),
                     Radius = new Vector2(radius),
                     OutlineSize = 0,
                     InnerColor = innerColor,
@@ -1244,6 +1258,7 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillMode = fillModeF,
                     FillOffset = fillOffset,
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
@@ -1258,11 +1273,15 @@ namespace Squared.Render.Convenience {
             Color innerColor, Color outerColor, Color outlineColor,
             RasterFillMode fillMode = RasterFillMode.Linear,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
-            float? annularRadius = null,
+            float fillAngle = 0, float? annularRadius = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
+            float fillModeF = (int)fillMode;
+            if (fillMode >= RasterFillMode.Angular)
+                fillModeF += (float)(fillAngle);
+
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1270,7 +1289,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Rectangle,
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = tl, B = br,
-                    C = new Vector2((int)fillMode, fillOffset),
+                    C = new Vector2(fillModeF, fillOffset),
                     Radius = new Vector2(radius),
                     OutlineSize = outlineRadius,
                     InnerColor = innerColor,
@@ -1279,6 +1298,7 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillMode = fillModeF,
                     FillOffset = fillOffset,
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
@@ -1290,12 +1310,17 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeTriangle (
             Vector2 a, Vector2 b, Vector2 c, float radius, Color innerColor, Color? outerColor = null,
+            RasterFillMode fillMode = RasterFillMode.Linear,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
-            float? annularRadius = null,
+            float fillAngle = 0, float? annularRadius = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
+            float fillModeF = (int)fillMode;
+            if (fillMode >= RasterFillMode.Angular)
+                fillModeF += (float)(fillAngle);
+
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1311,6 +1336,7 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillMode = fillModeF,
                     FillOffset = fillOffset,
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
@@ -1323,12 +1349,17 @@ namespace Squared.Render.Convenience {
         public void RasterizeTriangle (
             Vector2 a, Vector2 b, Vector2 c, float radius, float outlineRadius,
             Color innerColor, Color outerColor, Color outlineColor,
+            RasterFillMode fillMode = RasterFillMode.Linear,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
-            float? annularRadius = null,
+            float fillAngle = 0, float? annularRadius = null,
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
+            float fillModeF = (int)fillMode;
+            if (fillMode >= RasterFillMode.Angular)
+                fillModeF += (float)(fillAngle);
+
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1344,6 +1375,7 @@ namespace Squared.Render.Convenience {
                     OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
                     BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
                     FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillMode = fillModeF,
                     FillOffset = fillOffset,
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
