@@ -107,11 +107,11 @@ float computeTotalRadius (float2 radius, float outlineSize) {
 }
 
 void computeTLBR (
-    uint type, float2 radius, float totalRadius, float4 params,
+    int type, float2 radius, float totalRadius, float4 params,
     float2 a, float2 b, float2 c,
     out float2 tl, out float2 br
 ) {
-    switch (type) {
+    switch (abs(type)) {
         case TYPE_Ellipse:
             tl = a - b - totalRadius;
             br = a + b + totalRadius;
@@ -157,6 +157,10 @@ void computeTLBR (
             tl = a - totalRadius - radius.y;
             br = a + totalRadius + radius.y;
             break;
+
+        default:
+            tl = -1; br = 1;
+            return;
     }
 
     float annularRadius = params.y;
@@ -167,7 +171,7 @@ void computeTLBR (
 }
 
 void computePosition (
-    uint type, float totalRadius, 
+    int type, float totalRadius, 
     float2 a, float2 b, float2 c,
     float2 tl, float2 br, float3 cornerWeights,
     out float2 xy
@@ -221,7 +225,7 @@ void RasterShapeVertexShader (
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw;
     params.x *= OutlineSizeCompensation;
     float outlineSize = abs(params.x);
-    uint type = abs(typeAndWorldSpace.x);
+    int type = abs(typeAndWorldSpace.x);
 
     float totalRadius = computeTotalRadius(radius, outlineSize) + 1;
     float2 tl, br;
@@ -426,42 +430,13 @@ float evaluateGradient (
     return gradientWeight;
 }
 
-void rasterShapeCommon (
-    in float2 worldPosition,
-    in float4 ab, in float4 cd,
-    in float4 params, in float4 params2, in uint type,
-    in float4 centerColor, in float4 edgeColor, in float2 vpos,
-    out float2 tl, out float2 br,
-    out float4 fill, out float fillAlpha, 
-    out float outlineAlpha
+void evaluateRasterShape (
+    int type, float2 radius, float totalRadius, float4 params,
+    in float2 worldPosition, in float2 a, in float2 b, in float2 c,
+    out float distance, inout float2 tl, inout float2 br,
+    inout int gradientType, out float gradientWeight
 ) {
-    RASTERSHAPE_FS_PROLOGUE;
-
-    // HACK
-    outlineSize = max(abs(outlineSize), 0.0001);
-
-    const float threshold = (1 / 512.0);
-
-    float totalRadius = computeTotalRadius(radius, outlineSize);
-    float2 invRadius = 1.0 / max(radius, 0.0001);
-
-    float distance = 0, gradientWeight = 0;
-
-    tl = min(a, b);
-    br = max(a, b);
-
-    float gradientOffset = params2.z, gradientSize = params2.w, gradientAngle;
-    int gradientType;
-
-    if (params.z >= ANGULAR_GRADIENT_BASE) {
-        gradientType = GRADIENT_TYPE_Angular;
-        gradientAngle = (params.z - ANGULAR_GRADIENT_BASE) * DEG_TO_RAD;
-    } else {
-        gradientType = abs(trunc(params.z));
-        gradientAngle = 0;
-    }
-
-    PREFER_BRANCH
+PREFER_BRANCH
     switch (type) {
 #ifdef INCLUDE_ELLIPSE
         case TYPE_Ellipse: {
@@ -482,6 +457,8 @@ void rasterShapeCommon (
                 radius, distance,
                 gradientType, gradientWeight
             );
+
+            computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
 
             break;
         }
@@ -528,13 +505,56 @@ void rasterShapeCommon (
             distance = sdArc(worldPosition - a, b, c, radius.x, radius.y);
             if (gradientType == GRADIENT_TYPE_Natural)
                 gradientWeight = 1 - saturate(-distance / radius.y);
-            else
-                computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
+
+            computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
 
             break;
         }
 #endif
     }
+}
+
+void rasterShapeCommon (
+    in float2 worldPosition,
+    in float4 ab, in float4 cd,
+    in float4 params, in float4 params2, in int type,
+    in float4 centerColor, in float4 edgeColor, in float2 vpos,
+    out float2 tl, out float2 br,
+    out float4 fill, out float fillAlpha, 
+    out float outlineAlpha
+) {
+    RASTERSHAPE_FS_PROLOGUE;
+
+    // HACK
+    outlineSize = max(abs(outlineSize), 0.0001);
+
+    const float threshold = (1 / 512.0);
+
+    float totalRadius = computeTotalRadius(radius, outlineSize);
+    float2 invRadius = 1.0 / max(radius, 0.0001);
+
+    float distance = 0, gradientWeight = 0;
+
+    tl = min(a, b);
+    br = max(a, b);
+
+    float gradientOffset = params2.z, gradientSize = params2.w, gradientAngle;
+    int gradientType;
+
+    if (params.z >= ANGULAR_GRADIENT_BASE) {
+        gradientType = GRADIENT_TYPE_Angular;
+        gradientAngle = (params.z - ANGULAR_GRADIENT_BASE) * DEG_TO_RAD;
+    } else {
+        gradientType = abs(trunc(params.z));
+        gradientAngle = 0;
+    }
+
+    evaluateRasterShape(
+        type, radius, totalRadius, params,
+        worldPosition, a, b, c,
+        distance, tl, br,
+        gradientType, gradientWeight
+    );
 
     gradientWeight = evaluateGradient(
         gradientType, gradientAngle, gradientWeight, 

@@ -151,8 +151,8 @@ namespace Squared.PRGUI.Decorations {
                 a, b,
                 radius: InteractableCornerRadius,
                 outlineRadius: thickness, outlineColor: baseColor * alpha,
-                innerColor: baseColor * 0.3f * alpha, outerColor: baseColor * 0.2f * alpha,
-                fillMode: RasterFillMode.Linear
+                innerColor: baseColor * 0.3f * alpha, outerColor: baseColor * 0.1f * alpha,
+                fillMode: RasterFillMode.RadialEnclosing
             );
         }
 
