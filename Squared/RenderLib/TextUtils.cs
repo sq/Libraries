@@ -132,6 +132,7 @@ namespace Squared.Render.Text {
         private char _WrapCharacter = '\0';
         private int _Alignment = (int)HorizontalAlignment.Left;
         private bool _ReverseOrder = false;
+        private int _LineLimit = int.MaxValue;
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _GlyphSource = new SpriteFontGlyphSource(font);
@@ -292,6 +293,15 @@ namespace Squared.Render.Text {
             }
         }
 
+        public int LineLimit {
+            get {
+                return _LineLimit;
+            }
+            set {
+                InvalidatingValueAssignment(ref _LineLimit, value);
+            }
+        }
+
         public bool WordWrap {
             get {
                 return _WordWrap;
@@ -418,7 +428,8 @@ namespace Squared.Render.Text {
                         wordWrap = _WordWrap,
                         wrapCharacter = _WrapCharacter,
                         alignment = (HorizontalAlignment)_Alignment,
-                        reverseOrder = _ReverseOrder
+                        reverseOrder = _ReverseOrder,
+                        lineLimit = _LineLimit
                     }
                 ) {
                     le.Initialize();

@@ -115,7 +115,6 @@ namespace PRGUI.Demo {
                                 Text = "Button 1",
                             },
                             new StaticText {
-                                // AutoSizeWidth = false,
                                 Text = "A Button:",
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
                             },
@@ -127,7 +126,11 @@ namespace PRGUI.Demo {
                                 AutoSizeWidth = false,
                                 Text = "Static Text 2",
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                                MaximumWidth = 225
+                                MaximumWidth = 50,
+                                Content = {
+                                    CharacterWrap = true,
+                                    LineLimit = 1
+                                }
                             },
                             new StaticText {
                                 AutoSizeWidth = false,

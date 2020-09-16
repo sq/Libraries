@@ -117,6 +117,7 @@ namespace Squared.Render.Text {
         public bool     wordWrap;
         public char     wrapCharacter;
         public bool     reverseOrder;
+        public int?     lineLimit;
         public GlyphPixelAlignment alignToPixels;
         public HorizontalAlignment alignment;
         public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
@@ -339,6 +340,9 @@ namespace Squared.Render.Text {
             float? defaultLineSpacing = null;
 
             for (int i = 0, l = text.Length; i < l; i++) {
+                if (lineLimit.HasValue && lineLimit.Value <= 0)
+                    break;
+
                 var ch = text[i];
                 bool isWhiteSpace = char.IsWhiteSpace(ch),
                      forcedWrap = false, lineBreak = false,
@@ -353,6 +357,13 @@ namespace Squared.Render.Text {
                     lineBreak = true;
                 } else if (ch == '\n') {
                     lineBreak = true;
+                }
+
+                if (lineBreak) {
+                    if (lineLimit.HasValue)
+                        lineLimit--;
+                    if (lineLimit.HasValue && lineLimit.Value <= 0)
+                        break;
                 }
 
                 if (isWhiteSpace) {
@@ -405,10 +416,18 @@ namespace Squared.Render.Text {
                     var currentWordSize = x - wordStartOffset.X;
 
                     if (wordWrap && !wordWrapSuppressed && (currentWordSize * effectiveScale <= lineBreakAtX)) {
+                        if (lineLimit.HasValue)
+                            lineLimit--;
                         WrapWord(buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, effectiveScale, effectiveLineSpacing);
                         wordWrapSuppressed = true;
                         lineBreak = true;
+
+                        // FIXME: While this will abort when the line limit is reached, we need to erase the word we wrapped to the next line
+                        if (lineLimit.HasValue && lineLimit.Value <= 0)
+                            break;
                     } else if (characterWrap) {
+                        if (lineLimit.HasValue)
+                            lineLimit--;
                         characterOffset.X = xOffsetOfWrappedLine;
                         characterOffset.Y += effectiveLineSpacing;
 
@@ -416,6 +435,9 @@ namespace Squared.Render.Text {
                         wordStartWritePosition = bufferWritePosition;
                         wordStartOffset = characterOffset;
                         lineBreak = true;
+
+                        if (lineLimit.HasValue && lineLimit.Value <= 0)
+                            break;
                     }
                 }
 

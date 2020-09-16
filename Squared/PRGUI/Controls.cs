@@ -223,6 +223,16 @@ namespace Squared.PRGUI {
 
         public StaticText ()
             : base () {
+            Content.LineLimit = 1;
+        }
+
+        public bool Multiline {
+            get {
+                return Content.LineLimit > 1;
+            }
+            set {
+                Content.LineLimit = value ? int.MaxValue : 1;
+            }
         }
 
         public bool AutoSize {
@@ -301,11 +311,7 @@ namespace Squared.PRGUI {
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            var interiorSpace = GetFixedInteriorSpace();
-            if (interiorSpace.X > 0)
-                Content.LineBreakAtX = interiorSpace.X;
-            else
-                Content.LineBreakAtX = null;
+            Content.LineBreakAtX = box.Width;
 
             if (Content.GlyphSource == null)
                 Content.GlyphSource = context.UIContext.DefaultGlyphSource;
