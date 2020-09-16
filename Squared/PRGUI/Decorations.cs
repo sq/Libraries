@@ -110,6 +110,7 @@ namespace Squared.PRGUI.Decorations {
         public float InteractableCornerRadius = 6f, InertCornerRadius = 3f, ContainerCornerRadius = 3f;
         public float InactiveOutlineThickness = 1f, ActiveOutlineThickness = 1.33f, PressedOutlineThickness = 2f,
             InertOutlineThickness = 1f;
+        public float ScrollbarSize = 14f, ScrollbarRadius = 3f;
 
         public Color FocusedColor = new Color(200, 230, 255),
             ActiveColor = Color.White,
@@ -174,6 +175,68 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
+        private void Container_Below (UIOperationContext context, RectF box, ControlStates state) {
+            box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
+            // FIXME: Should we draw the outline in Above?
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: ContainerCornerRadius,
+                outlineRadius: InertOutlineThickness, outlineColor: ContainerOutlineColor,
+                innerColor: ContainerFillColor, outerColor: ContainerFillColor
+            );
+        }
+
+        private void Container_ContentClip (UIOperationContext context, RectF box, ControlStates state) {
+            box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: ContainerCornerRadius,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: Color.White, outerColor: Color.White,
+                blendState: RenderStates.DrawNone
+            );
+        }
+
+        private void Scrollbar_Above (UIOperationContext context, RectF box, ControlStates state, ref ScrollbarState data) {
+            var vRadius = new Vector2(ScrollbarRadius);
+            var totalOverflow = Math.Max(data.ContentSize - data.ViewportSize, 0.1f);
+            float min = Math.Max(data.Position / data.ContentSize, 0f);
+            float size = data.ViewportSize / Math.Max(data.ContentSize, 0.1f);
+            float max = Math.Min(1.0f, min + size);
+
+            var sizePx = data.Horizontal ? box.Width - 1 : box.Height - 1;
+            if (data.HasCounterpart)
+                sizePx -= ScrollbarSize;
+            var a = data.Horizontal
+                ? new Vector2(box.Left + 1, box.Extent.Y - ScrollbarSize)
+                : new Vector2(box.Extent.X - ScrollbarSize, box.Top + 1);
+            var b = box.Extent;
+
+            context.Renderer.RasterizeRectangle(
+                a + vRadius, b - vRadius,
+                radius: ScrollbarRadius,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: ScrollbarTrackColor, outerColor: ScrollbarTrackColor,
+                fillMode: RasterFillMode.Vertical
+            );
+
+            if (data.Horizontal) {
+                a.X += (sizePx * min);
+                b.X = box.Left + (sizePx * max);
+            } else {
+                a.Y += (sizePx * min);
+                b.Y = box.Top + (sizePx * max);
+            }
+
+            context.Renderer.RasterizeRectangle(
+                a + vRadius, b - vRadius,
+                radius: ScrollbarRadius,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: ScrollbarThumbColor, outerColor: ScrollbarThumbColor * 0.8f,
+                fillMode: RasterFillMode.Radial
+            );
+        }
+
         public DefaultDecorations () {
             Button = new DelegateDecorator {
                 Margins = new Margins(4),
@@ -187,87 +250,19 @@ namespace Squared.PRGUI.Decorations {
             Container = new DelegateDecorator {
                 Margins = new Margins(4),
                 GetTextMaterial = GetTextMaterial,
-                Below = (context, box, state) => {
-                    box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
-                    // FIXME: Should we draw the outline in Above?
-                    context.Renderer.RasterizeRectangle(
-                        a, b,
-                        radius: ContainerCornerRadius,
-                        outlineRadius: InertOutlineThickness, outlineColor: ContainerOutlineColor,
-                        innerColor: ContainerFillColor, outerColor: ContainerFillColor
-                    );
-                },
-                ContentClip = (context, box, state) => {
-                    box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
-                    context.Renderer.RasterizeRectangle(
-                        a, b,
-                        radius: ContainerCornerRadius,
-                        outlineRadius: 0, outlineColor: Color.Transparent,
-                        innerColor: Color.White, outerColor: Color.White,
-                        blendState: RenderStates.DrawNone
-                    );
-                },
+                Below = Container_Below,
+                ContentClip = Container_ContentClip,
             };
 
             StaticText = new DelegateDecorator {
                 Margins = new Margins(2, 4),
                 Padding = new Margins(6),
-                GetTextMaterial = GetTextMaterial,
-                Below = (context, box, state) => {
-                    box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
-                    context.Renderer.RasterizeRectangle(
-                        a, b,
-                        radius: InertCornerRadius,
-                        outlineRadius: InertOutlineThickness, outlineColor: InertOutlineColor,
-                        innerColor: InertFillColor, outerColor: InertFillColor
-                    );
-                }
+                GetTextMaterial = GetTextMaterial
             };
 
-            const float scrollbarSize = 12;
-            const float scrollbarRadius = 4;
-
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
-                MinimumSize = new Vector2(scrollbarSize, scrollbarSize),
-                Above = (UIOperationContext context, RectF box, ControlStates state, ref ScrollbarState data) => {
-                    var vRadius = new Vector2(scrollbarRadius);
-                    var totalOverflow = Math.Max(data.ContentSize - data.ViewportSize, 0.1f);
-                    float min = Math.Max(data.Position / data.ContentSize, 0f);
-                    float size = data.ViewportSize / Math.Max(data.ContentSize, 0.1f);
-                    float max = Math.Min(1.0f, min + size);
-
-                    var sizePx = data.Horizontal ? box.Width - 1 : box.Height - 1;
-                    if (data.HasCounterpart)
-                        sizePx -= scrollbarSize;
-                    var a = data.Horizontal
-                        ? new Vector2(box.Left + 1, box.Extent.Y - scrollbarSize)
-                        : new Vector2(box.Extent.X - scrollbarSize, box.Top + 1);
-                    var b = box.Extent;
-
-                    context.Renderer.RasterizeRectangle(
-                        a + vRadius, b - vRadius,
-                        radius: scrollbarRadius,
-                        outlineRadius: 0, outlineColor: Color.Transparent,
-                        innerColor: ScrollbarTrackColor, outerColor: ScrollbarTrackColor,
-                        fillMode: RasterFillMode.Vertical
-                    );
-
-                    if (data.Horizontal) {
-                        a.X += (sizePx * min);
-                        b.X = box.Left + (sizePx * max);
-                    } else {
-                        a.Y += (sizePx * min);
-                        b.Y = box.Top + (sizePx * max);
-                    }
-
-                    context.Renderer.RasterizeRectangle(
-                        a + vRadius, b - vRadius,
-                        radius: scrollbarRadius,
-                        outlineRadius: 0, outlineColor: Color.Transparent,
-                        innerColor: ScrollbarThumbColor, outerColor: ScrollbarThumbColor * 0.8f,
-                        fillMode: RasterFillMode.Radial
-                    );
-                }
+                MinimumSize = new Vector2(ScrollbarSize, ScrollbarSize),
+                Above = Scrollbar_Above
             };
         }
     }

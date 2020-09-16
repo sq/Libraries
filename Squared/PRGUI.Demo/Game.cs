@@ -127,14 +127,13 @@ namespace PRGUI.Demo {
                                 AutoSizeWidth = false,
                                 Text = "Static Text 2",
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                                MaximumWidth = 150
+                                MaximumWidth = 225
                             },
                             new StaticText {
                                 AutoSizeWidth = false,
                                 Text = "Static Text 3",
                             },
                             new StaticText {
-                                AutoSizeWidth = false,
                                 Text = "Static Text 4",
                                 MaximumWidth = 200
                             },
@@ -142,7 +141,7 @@ namespace PRGUI.Demo {
                                 ClipChildren = true,
                                 ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
                                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
-                                MaximumHeight = 1600,
+                                MaximumHeight = 1200,
                                 Scrollable = true,
                                 ShowHorizontalScrollbar = true,
                                 ShowVerticalScrollbar = true,
@@ -154,7 +153,7 @@ namespace PRGUI.Demo {
                                     new Button {
                                         Text = "Clipped huge button",
                                         FixedWidth = 1600,
-                                        FixedHeight = 2048,
+                                        FixedHeight = 1800,
                                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
                                     }
                                 }
