@@ -314,7 +314,7 @@ void evaluateEllipse (
 void evaluateLineSegment (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    out float gradientWeight
+    inout int gradientType, out float gradientWeight
 ) {
     float t;
     float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t);
@@ -480,7 +480,7 @@ void rasterShapeCommon (
             evaluateLineSegment(
                 worldPosition, a, b, c,
                 radius, distance,
-                gradientWeight
+                gradientType, gradientWeight
             );
 
             break;
@@ -526,7 +526,10 @@ void rasterShapeCommon (
 #ifdef INCLUDE_ARC
         case TYPE_Arc: {
             distance = sdArc(worldPosition - a, b, c, radius.x, radius.y);
-            gradientWeight = 1 - saturate(-distance / radius.y);
+            if (gradientType == GRADIENT_TYPE_Natural)
+                gradientWeight = 1 - saturate(-distance / radius.y);
+            else
+                computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
 
             break;
         }
