@@ -67,25 +67,33 @@ namespace Squared.Render.RasterShape {
 
     public enum RasterFillMode : int {
         /// <summary>
-        /// A linear fill enclosing the shape.
+        /// The default fill mode for the shape.
         /// </summary>
-        Linear = 0,
+        Natural = 0,
         /// <summary>
-        /// Ellipse only: A linear fill enclosed by the ellipse instead of enclosing it.
+        /// A linear fill across the shape's bounding box.
         /// </summary>
-        LinearEnclosed = 1,
+        Linear = 1,
         /// <summary>
-        /// A radial fill across the shape.
+        /// A linear fill enclosing the shape's bounding box.
         /// </summary>
-        Radial = 2,
+        LinearEnclosing = 2,
         /// <summary>
-        /// A radial fill enclosing the shape.
+        /// A linear fill enclosed by the shape's bounding box.
         /// </summary>
-        RadialEnclosing = 3,
+        LinearEnclosed = 3,
         /// <summary>
-        /// A radial fill enclosed by the shape instead of enclosing it.
+        /// A radial fill across the shape's bounding box.
         /// </summary>
-        RadialEnclosed = 4,
+        Radial = 4,
+        /// <summary>
+        /// A radial fill enclosing the shape's bounding box.
+        /// </summary>
+        RadialEnclosing = 5,
+        /// <summary>
+        /// A radial fill enclosed by the shape's bounding box.
+        /// </summary>
+        RadialEnclosed = 6,
         /// <summary>
         /// A linear gradient with a configurable angle.
         /// </summary>

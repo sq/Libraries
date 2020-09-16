@@ -30,12 +30,19 @@ sampler TextureSampler : register(s0) {
 #define TYPE_QuadraticBezier 4
 #define TYPE_Arc 5
 
-#define GRADIENT_TYPE_Other -1
-#define GRADIENT_TYPE_Linear 0
-#define GRADIENT_TYPE_Linear_Enclosed 1
-#define GRADIENT_TYPE_Radial 2
-#define GRADIENT_TYPE_Radial_Enclosing 3
-#define GRADIENT_TYPE_Radial_Enclosed 4
+// Generic gradient types that operate on the bounding box or something
+//  similar to it
+#define GRADIENT_TYPE_Natural 0
+#define GRADIENT_TYPE_Linear 1
+#define GRADIENT_TYPE_Linear_Enclosing 2
+#define GRADIENT_TYPE_Linear_Enclosed 3
+#define GRADIENT_TYPE_Radial 4
+#define GRADIENT_TYPE_Radial_Enclosing 5
+#define GRADIENT_TYPE_Radial_Enclosed 6
+// The gradient weight has already been computed by the evaluate function
+#define GRADIENT_TYPE_Other 500
+// Generic gradient that operates on the bounding box, with the angle added
+//  to the base
 #define GRADIENT_TYPE_Angular 512
 
 #define ANGULAR_GRADIENT_BASE 512
@@ -283,13 +290,17 @@ void evaluateEllipse (
 
     PREFER_FLATTEN
     switch (gradientType) {
+        case GRADIENT_TYPE_Natural:
+            gradientType = GRADIENT_TYPE_Radial;
+            break;
         case GRADIENT_TYPE_Linear:
+            // FIXME
+        case GRADIENT_TYPE_Linear_Enclosing:
         case GRADIENT_TYPE_Linear_Enclosed:
-            float2 center = (tl + br) / 2;
             // Options:
             // * 2 = touches corners of a box enclosing the ellipse
             // * 2 * sqrt(2) == touches corners of a box enclosed by the ellipse
-            float2 distance2 = abs(worldPosition - center) / (br - tl) * (
+            float2 distance2 = abs(worldPosition - a) / (br - tl) * (
                 (gradientType == GRADIENT_TYPE_Linear_Enclosed) 
                     ? (2 * sqrt(2)) 
                     : 2
@@ -327,14 +338,12 @@ void evaluateRectangle (
     distance = sdBox(worldPosition - center, boxSize) - radius.x;
 
     float centerDistance = sdBox(0, boxSize) - radius.x;
+    gradientWeight = 0;
 
     PREFER_FLATTEN
     switch (gradientType) {
-        // Linear
-        case GRADIENT_TYPE_Linear:
-        case GRADIENT_TYPE_Linear_Enclosed:
-            gradientWeight = saturate(1 - saturate(distance / centerDistance));
-            gradientType = GRADIENT_TYPE_Other;
+        case GRADIENT_TYPE_Natural:
+            gradientType = GRADIENT_TYPE_Linear;
             break;
     }
 }
@@ -348,25 +357,73 @@ void evaluateTriangle (
     distance = sdTriangle(worldPosition, a, b, c);
 
     float2 center = (a + b + c) / 3;
-    // float centroidDistance = sdTriangle(center, a, b, c);
+    // float centerDistance = sdTriangle(center, a, b, c);
     // FIXME: Why is this necessary?
     float ac = length(a - center), bc = length(b - center), cc = length(c - center);
-    float targetDistance = (min(ac, min(bc, cc)) + max(ac, max(bc, cc))) * -0.25;
+    float targetDistance = ((min(ac, min(bc, cc)) + max(ac, max(bc, cc))) * -0.25);
+
+    tl = min(min(a, b), c);
+    br = max(max(a, b), c);
+
+    // FIXME: Recenter non-natural gradients around our centerpoint instead of the
+    //  center of our bounding box
 
     PREFER_FLATTEN
     switch (abs(gradientType)) {
-        // Linear
-        case GRADIENT_TYPE_Linear:
-        case GRADIENT_TYPE_Linear_Enclosed:
-            gradientWeight = 1 - saturate(distance / targetDistance);
+        case GRADIENT_TYPE_Natural:
+            gradientWeight = 1 - saturate((distance - radius.x) / targetDistance);
             gradientType = GRADIENT_TYPE_Other;
+            break;
+        default:
+            gradientWeight = 0;
             break;
     }
 
     distance -= radius;
+}
 
-    tl = min(min(a, b), c);
-    br = max(max(a, b), c);
+float evaluateGradient (
+    int gradientType, float gradientAngle, float gradientWeight,
+    float2 worldPosition, float2 tl, float2 br, float radius
+) {
+    float2 gradientCenter = (tl + br) / 2;
+    float2 radialSize2 = ((br - tl) + (radius * 2)) * 0.5;
+
+    PREFER_FLATTEN
+    switch (abs(gradientType)) {
+        case GRADIENT_TYPE_Natural:
+        case GRADIENT_TYPE_Other:
+            break;
+        case GRADIENT_TYPE_Linear:
+        case GRADIENT_TYPE_Linear_Enclosing:
+        case GRADIENT_TYPE_Linear_Enclosed:
+            float2 linearRadialSize2 = (gradientType == GRADIENT_TYPE_Linear_Enclosing)
+                ? max(radialSize2.x, radialSize2.y)
+                : (
+                    (gradientType == GRADIENT_TYPE_Linear_Enclosed)
+                        ? min(radialSize2.x, radialSize2.y)
+                        : radialSize2
+                );
+            float2 linearDist2 = abs(worldPosition - gradientCenter) / linearRadialSize2;
+            return max(linearDist2.x, linearDist2.y);
+        case GRADIENT_TYPE_Radial:
+        case GRADIENT_TYPE_Radial_Enclosing:
+        case GRADIENT_TYPE_Radial_Enclosed:
+            float2 radialSize = (gradientType == GRADIENT_TYPE_Radial_Enclosing)
+                ? max(radialSize2.x, radialSize2.y)
+                : (
+                    (gradientType == GRADIENT_TYPE_Radial_Enclosed)
+                        ? min(radialSize2.x, radialSize2.y)
+                        : radialSize2
+                );
+            return length((worldPosition - gradientCenter) / max(radialSize, 0.0001));
+        case GRADIENT_TYPE_Angular:
+            float2 scaled = (worldPosition - gradientCenter) / ((br - tl) * 0.5);
+            gradientAngle += atan2(scaled.y, scaled.x);
+            return ((sin(gradientAngle) * length(scaled)) / 2) + 0.5;
+    }
+
+    return gradientWeight;
 }
 
 void rasterShapeCommon (
@@ -476,30 +533,10 @@ void rasterShapeCommon (
 #endif
     }
 
-    float2 gradientCenter = (tl + br) / 2;
-
-    PREFER_FLATTEN
-    switch (abs(gradientType)) {
-        // Radial
-        case GRADIENT_TYPE_Radial:
-        case GRADIENT_TYPE_Radial_Enclosing:
-        case GRADIENT_TYPE_Radial_Enclosed:
-            float2 radialSize2 = (br - tl) * 0.5;
-            float2 radialSize = (gradientType == GRADIENT_TYPE_Radial_Enclosing)
-                ? max(radialSize2.x, radialSize2.y)
-                : (
-                    (gradientType == GRADIENT_TYPE_Radial_Enclosed)
-                        ? min(radialSize2.x, radialSize2.y)
-                        : radialSize2
-                );
-            gradientWeight = length((worldPosition - gradientCenter) / radialSize);
-            break;
-        case GRADIENT_TYPE_Angular:
-            float2 scaled = (worldPosition - gradientCenter) / ((br - tl) * 0.5);
-            gradientAngle += atan2(scaled.y, scaled.x);
-            gradientWeight = ((sin(gradientAngle) * length(scaled)) / 2) + 0.5;
-            break;
-    }
+    gradientWeight = evaluateGradient(
+        gradientType, gradientAngle, gradientWeight, 
+        worldPosition, tl, br, radius
+    );
 
     gradientWeight += gradientOffset;
 
