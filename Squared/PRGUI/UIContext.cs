@@ -10,6 +10,7 @@ using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
+using Squared.Util;
 
 namespace Squared.PRGUI {
     public class UIContext : IDisposable {
@@ -35,7 +36,8 @@ namespace Squared.PRGUI {
 
         public void UpdateLayout () {
             var context = new UIOperationContext {
-                UIContext = this
+                UIContext = this,
+                AnimationTime = (float)Time.Seconds
             };
 
             Layout.Clear();
@@ -142,7 +144,8 @@ namespace Squared.PRGUI {
         public void Rasterize (ref ImperativeRenderer renderer) {
             var context = new UIOperationContext {
                 UIContext = this,
-                Renderer = renderer
+                Renderer = renderer,
+                AnimationTime = (float)Time.Seconds
             };
 
             context.Renderer.DepthStencilState = DepthStencilState.None;
@@ -166,12 +169,14 @@ namespace Squared.PRGUI {
         public LayoutContext Layout => UIContext.Layout;
         public ImperativeRenderer Renderer;
         public RasterizePasses Pass;
+        public float AnimationTime;
 
         public UIOperationContext Clone () {
             return new UIOperationContext {
                 UIContext = UIContext,
                 Renderer = Renderer,
-                Pass = Pass
+                Pass = Pass,
+                AnimationTime = AnimationTime
             };
         }
     }

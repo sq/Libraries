@@ -1077,6 +1077,15 @@ namespace Squared.Render.Convenience {
                 gb.AddFilledRing(center, innerRadius, outerRadius, innerColorStart, outerColorStart, innerColorEnd, outerColorEnd, startAngle, endAngle, quality);
         }
 
+        private float ConvertFillMode (RasterFillMode fillMode, float fillAngle) {
+            float fillModeF = (int)fillMode;
+            if (fillMode >= RasterFillMode.Angular) {
+                fillAngle = Arithmetic.Wrap(fillAngle, 0, 360);
+                fillModeF += (float)(fillAngle);
+            }
+            return fillModeF;
+        }
+
         public void RasterizeEllipse (
             Vector2 center, Vector2 radius, Color innerColor, Color? outerColor = null,
             RasterFillMode fillMode = RasterFillMode.Natural,
@@ -1086,10 +1095,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            float fillModeF = (int)fillMode;
-            if (fillMode >= RasterFillMode.Angular)
-                fillModeF += (float)(fillAngle);
-
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1126,10 +1132,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            float fillModeF = (int)fillMode;
-            if (fillMode >= RasterFillMode.Angular)
-                fillModeF += (float)(fillAngle);
-
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var eb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1165,10 +1168,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            float fillModeF = (int)fillMode;
-            if (fillMode >= RasterFillMode.Angular)
-                fillModeF += (float)(fillAngle);
-
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1205,10 +1205,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            float fillModeF = (int)fillMode;
-            if (fillMode >= RasterFillMode.Angular)
-                fillModeF += (float)(fillAngle);
-
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
             float _endRadius = endRadius.GetValueOrDefault(startRadius);
             float maxRadius = Math.Max(startRadius, _endRadius);
 
@@ -1248,10 +1245,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            float fillModeF = (int)fillMode;
-            if (fillMode >= RasterFillMode.Angular)
-                fillModeF += (float)(fillAngle);
-
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1288,10 +1282,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            float fillModeF = (int)fillMode;
-            if (fillMode >= RasterFillMode.Angular)
-                fillModeF += (float)(fillAngle);
-
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1327,10 +1318,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            float fillModeF = (int)fillMode;
-            if (fillMode >= RasterFillMode.Angular)
-                fillModeF += (float)(fillAngle);
-
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1366,10 +1354,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            float fillModeF = (int)fillMode;
-            if (fillMode >= RasterFillMode.Angular)
-                fillModeF += (float)(fillAngle);
-
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1404,10 +1389,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            float fillModeF = (int)fillMode;
-            if (fillMode >= RasterFillMode.Angular)
-                fillModeF += (float)(fillAngle);
-
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1443,10 +1425,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            float fillModeF = (int)fillMode;
-            if (fillMode >= RasterFillMode.Angular)
-                fillModeF += (float)(fillAngle);
-
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState
             ))
@@ -1489,10 +1468,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null
         ) {
-            float fillModeF = (int)fillMode;
-            if (fillMode >= RasterFillMode.Angular)
-                fillModeF += (float)(fillAngle);
-
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
             var centerAngleDegrees = startAngleDegrees + (sizeDegrees / 2);
             var centerAngleRadians = MathHelper.ToRadians(centerAngleDegrees);
             var sizeRadians = MathHelper.ToRadians(sizeDegrees / 2);

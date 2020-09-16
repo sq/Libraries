@@ -134,6 +134,7 @@ namespace Squared.PRGUI.Decorations {
                 ? FocusedColor
                 : InactiveColor;
 
+            float pulse = 0;
             if (state.HasFlag(ControlStates.Pressed)) {
                 alpha = 1f;
                 thickness = PressedOutlineThickness;
@@ -141,6 +142,7 @@ namespace Squared.PRGUI.Decorations {
             } else if (state.HasFlag(ControlStates.Hovering)) {
                 alpha = 0.85f;
                 thickness = ActiveOutlineThickness;
+                pulse = Arithmetic.PulseSine(context.AnimationTime / 3.33f, 0f, 0.05f);
             } else {
                 alpha = state.HasFlag(ControlStates.Focused) ? 0.7f : 0.6f;
                 thickness = state.HasFlag(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
@@ -151,7 +153,7 @@ namespace Squared.PRGUI.Decorations {
                 a, b,
                 radius: InteractableCornerRadius,
                 outlineRadius: thickness, outlineColor: baseColor * alpha,
-                innerColor: baseColor * 0.3f * alpha, outerColor: baseColor * 0.1f * alpha,
+                innerColor: baseColor * ((0.3f + pulse) * alpha), outerColor: baseColor * ((0.1f + pulse) * alpha),
                 fillMode: RasterFillMode.RadialEnclosing
             );
         }
@@ -168,8 +170,10 @@ namespace Squared.PRGUI.Decorations {
                 radius: InteractableCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
-                fillMode: RasterFillMode.Vertical,
+                fillMode: RasterFillMode.Angular,
                 fillSize: fillSize,
+                fillOffset: -Arithmetic.PulseSine(context.AnimationTime / 4f, 0f, 0.05f),
+                fillAngle: Arithmetic.PulseCyclicExp(context.AnimationTime / 2f, 3),
                 annularRadius: 1.2f,
                 blendState: BlendState.Additive
             );
