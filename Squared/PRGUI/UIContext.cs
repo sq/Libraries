@@ -41,7 +41,7 @@ namespace Squared.PRGUI {
             Layout.Clear();
 
             Layout.SetFixedSize(Layout.Root, CanvasSize);
-            Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row);
+            Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row | ControlFlags.Container_Constrain_Size);
 
             foreach (var control in Controls)
                 control.GenerateLayoutTree(context, Layout.Root);

@@ -494,10 +494,15 @@ namespace Squared.PRGUI.Layout {
                     needSize += childSize;
             }
 
+            float result;
             if (overlaid)
-                return needSize + needSize2;
+                result = needSize + needSize2;
             else
-                return Math.Max(needSize, needSize2);
+                result = Math.Max(needSize, needSize2);
+
+            // FIXME: Is this actually necessary?
+            result = Constrain(result, pItem->MinimumSize.GetElement(idim), pItem->MaximumSize.GetElement(idim));
+            return result;
         }
 
         private unsafe float CalcWrappedOverlaidSize (LayoutItem * pItem, Dimensions dim) {
@@ -784,7 +789,8 @@ namespace Squared.PRGUI.Layout {
                         childRect[idim] += space - childRect[wdim] - childMargins.GetElement(idim) - childMargins.GetElement(wdim);
                         break;
                     case ControlFlags.Layout_Fill_Row:
-                        childRect[wdim] = Constrain(Math.Max(0, space - childRect[idim] - childMargins.GetElement(wdim)), pChild, idim);
+                        var fillValue = Constrain(Math.Max(0, space - childRect[idim] - childMargins.GetElement(wdim)), pChild, idim);
+                        childRect[wdim] = fillValue;
                         break;
                 }
 
@@ -793,11 +799,13 @@ namespace Squared.PRGUI.Layout {
             }
         }
 
-        private unsafe void ArrangeOverlaySqueezedRange (Dimensions dim, ControlKey startItem, ControlKey endItem, float offset, float space) {
+        private unsafe void ArrangeOverlaySqueezedRange (LayoutItem *pParent, Dimensions dim, ControlKey startItem, ControlKey endItem, float offset, float space) {
             if (startItem == endItem)
                 return;
 
             Assert(!startItem.IsInvalid);
+
+            var parentRect = GetRect(pParent->Key);
 
             int idim = (int)dim, wdim = idim + 2;
 
@@ -827,6 +835,15 @@ namespace Squared.PRGUI.Layout {
                 }
 
                 rect[idim] += offset;
+
+                if (pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size)) {
+                    // rect[idim] = Constrain(rect[idim], parentRect[idim], parentRect[wdim]);
+                    float extent = rect[idim] + rect[wdim], parentExtent = parentRect[idim] + parentRect[wdim];
+                    extent = Constrain(extent, -1, parentExtent);
+                    rect[wdim] = extent - rect[idim];
+                    ;
+                }
+
                 SetRect(item, ref rect);
                 item = pItem->NextSibling;
             }
@@ -842,7 +859,7 @@ namespace Squared.PRGUI.Layout {
                 if (
                     pChild->Flags.IsBreak()
                 ) {
-                    ArrangeOverlaySqueezedRange(dim, startChild, child, offset, needSize);
+                    ArrangeOverlaySqueezedRange(pItem, dim, startChild, child, offset, needSize);
                     offset += needSize;
                     startChild = child;
                     needSize = 0;
@@ -853,7 +870,7 @@ namespace Squared.PRGUI.Layout {
                 needSize = Math.Max(needSize, childSize);
             }
 
-            ArrangeOverlaySqueezedRange(dim, startChild, ControlKey.Invalid, offset, needSize);
+            ArrangeOverlaySqueezedRange(pItem, dim, startChild, ControlKey.Invalid, offset, needSize);
             offset += needSize;
             return offset;
         }
@@ -883,7 +900,7 @@ namespace Squared.PRGUI.Layout {
                         ArrangeStacked(pItem, dim, false);
                     } else {
                         ArrangeOverlaySqueezedRange(
-                            dim, pItem->FirstChild, ControlKey.Invalid,
+                            pItem, dim, pItem->FirstChild, ControlKey.Invalid,
                             (*pRect)[idim], (*pRect)[idim + 2]
                         );
                     }

@@ -52,6 +52,10 @@ namespace Squared.PRGUI.Layout {
         /// Incompatible with Container_Wrap.
         /// </summary>
         Container_Align_Justify = 0x18,
+        /// <summary>
+        /// Prevents child elements from growing past the boundaries of this container.
+        /// </summary>
+        Container_Constrain_Size = 0x400,
 
         /*
         /// <summary>
@@ -111,7 +115,7 @@ namespace Squared.PRGUI.Layout {
 
     public static class ControlFlagMask {
         public const ControlFlags BoxModel = (ControlFlags)0x7,
-            Container = (ControlFlags)0x1f,
+            Container = (ControlFlags)0x41f,
             Layout = (ControlFlags)0x23e0,
             Fixed = ControlFlags.Internal_FixedWidth | ControlFlags.Internal_FixedHeight;
     }

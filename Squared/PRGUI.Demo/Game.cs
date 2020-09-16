@@ -107,7 +107,7 @@ namespace PRGUI.Demo {
                 Controls = {
                     new Container {
                         LayoutFlags = ControlFlags.Layout_Fill,
-                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap,
+                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                         Children = {
                             new Button {
                                 AutoSizeWidth = false,
@@ -142,7 +142,7 @@ namespace PRGUI.Demo {
                                 ClipChildren = true,
                                 ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
                                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
-                                MaximumHeight = 800,
+                                MaximumHeight = 1600,
                                 Scrollable = true,
                                 ShowHorizontalScrollbar = true,
                                 ShowVerticalScrollbar = true,
@@ -154,7 +154,7 @@ namespace PRGUI.Demo {
                                     new Button {
                                         Text = "Clipped huge button",
                                         FixedWidth = 1600,
-                                        FixedHeight = 1024,
+                                        FixedHeight = 2048,
                                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
                                     }
                                 }
