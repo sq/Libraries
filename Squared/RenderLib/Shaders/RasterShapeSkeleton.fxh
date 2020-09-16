@@ -360,7 +360,7 @@ void evaluateTriangle (
     // float centerDistance = sdTriangle(center, a, b, c);
     // FIXME: Why is this necessary?
     float ac = length(a - center), bc = length(b - center), cc = length(c - center);
-    float targetDistance = ((min(ac, min(bc, cc)) + max(ac, max(bc, cc))) * -0.25);
+    float targetDistance = ((min(ac, min(bc, cc)) + max(ac, max(bc, cc))) * -0.25) - radius.x;
 
     tl = min(min(a, b), c);
     br = max(max(a, b), c);
@@ -379,7 +379,7 @@ void evaluateTriangle (
             break;
     }
 
-    distance -= radius;
+    distance -= radius.x;
 }
 
 float evaluateGradient (
@@ -535,7 +535,7 @@ void rasterShapeCommon (
 
     gradientWeight = evaluateGradient(
         gradientType, gradientAngle, gradientWeight, 
-        worldPosition, tl, br, radius
+        worldPosition, tl, br, radius.x
     );
 
     gradientWeight += gradientOffset;
