@@ -1048,7 +1048,7 @@ namespace Squared.Render {
         public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
         public readonly EffectParameter BitmapTextureSize, HalfTexel;
         public readonly EffectParameter BitmapTextureSize2, HalfTexel2;
-        public readonly EffectParameter ShadowColor, ShadowOffset, LightmapUVOffset;
+        public readonly EffectParameter ShadowColor, ShadowOffset, ShadowMipBias, ShadowedTopMipBias, LightmapUVOffset;
         public readonly EffectParameter Time, FrameIndex, DitherStrength;
         public readonly EffectParameter HalfPixelOffset;
         public readonly EffectParameter RenderTargetDimensions;
@@ -1072,6 +1072,8 @@ namespace Squared.Render {
             FrameIndex = effect.Parameters["FrameIndex"];
             ShadowColor = effect.Parameters["GlobalShadowColor"];
             ShadowOffset = effect.Parameters["ShadowOffset"];
+            ShadowMipBias = effect.Parameters["ShadowMipBias"];
+            ShadowedTopMipBias = effect.Parameters["ShadowedTopMipBias"];
             LightmapUVOffset = effect.Parameters["LightmapUVOffset"];
             DitherStrength = effect.Parameters["DitherStrength"];
             HalfPixelOffset = effect.Parameters["HalfPixelOffset"];
@@ -1105,5 +1107,6 @@ namespace Squared.Render {
         public Texture2D SecondTexture;
         public Vector4   ShadowColor;
         public Vector2   ShadowOffset;
+        public float     ShadowMipBias;
     }
 }

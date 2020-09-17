@@ -102,8 +102,9 @@ void adjustTLBR (
         br += annularRadius;
     }
 
-    tl -= ShadowSoftness;
-    br += ShadowSoftness;
+    float halfSoftness = ShadowSoftness * 0.6;
+    tl -= halfSoftness;
+    br += halfSoftness;
     if (ShadowOffset.x >= 0)
         br.x += ShadowOffset.x;
     else 
@@ -511,6 +512,10 @@ PREFER_BRANCH
         }
 #endif
     }
+    
+    float annularRadius = params.y;
+    if (annularRadius > 0.001)
+        distance = abs(distance) - annularRadius;
 }
 
 float computeShadowAlpha (
@@ -531,7 +536,7 @@ float computeShadowAlpha (
     );
 
     float result = getWindowAlpha(
-        distance, shadowEndDistance - 0.5, shadowEndDistance + ShadowSoftness,
+        distance, shadowEndDistance - (0.5 + (ShadowSoftness * 0.5)), shadowEndDistance + (ShadowSoftness * 0.5),
         1, 1, 0
     );
     return result;
@@ -610,10 +615,6 @@ void rasterShapeCommon (
         outlineEndDistance = outlineStartDistance + outlineSize,
         fillStartDistance = -0.5,
         fillEndDistance = 0.5;
-    
-    float annularRadius = params.y;
-    if (annularRadius > 0.001)
-        distance = abs(distance) - annularRadius;
 
     fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
     fill = lerp(centerColor, edgeColor, gradientWeight);

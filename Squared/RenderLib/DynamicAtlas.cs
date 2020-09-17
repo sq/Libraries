@@ -192,6 +192,8 @@ namespace Squared.Render {
             RowHeight = 0;
             _BeforeIssue = Flush;
 
+            GenerateMip = mipGenerator;
+
             EnsureValidResource();
 
             Pixels = new T[width * height];
@@ -202,7 +204,6 @@ namespace Squared.Render {
                 MipBuffer2 = new T[Math.Max(mipSize2, 1)];
             }
 
-            GenerateMip = mipGenerator;
             MipLevelCount = Texture.LevelCount;
 
             Invalidate();

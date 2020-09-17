@@ -112,6 +112,9 @@ namespace Squared.PRGUI.Decorations {
             InertOutlineThickness = 1f;
         public float ScrollbarSize = 14f, ScrollbarRadius = 3f;
 
+        public RasterShadowSettings? InteractableShadow, 
+            ContainerShadow;
+
         public Color FocusedColor = new Color(200, 230, 255),
             ActiveColor = Color.White,
             InactiveColor = new Color(180, 180, 180),
@@ -156,7 +159,8 @@ namespace Squared.PRGUI.Decorations {
                 radius: InteractableCornerRadius,
                 outlineRadius: thickness, outlineColor: baseColor * alpha,
                 innerColor: baseColor * ((0.3f + pulse) * alpha), outerColor: baseColor * ((0.1f + pulse) * alpha),
-                fillMode: RasterFillMode.RadialEnclosing
+                fillMode: RasterFillMode.RadialEnclosing,
+                shadow: InteractableShadow
             );
         }
 
@@ -188,7 +192,8 @@ namespace Squared.PRGUI.Decorations {
                 a, b,
                 radius: ContainerCornerRadius,
                 outlineRadius: InertOutlineThickness, outlineColor: ContainerOutlineColor,
-                innerColor: ContainerFillColor, outerColor: ContainerFillColor
+                innerColor: ContainerFillColor, outerColor: ContainerFillColor,
+                shadow: ContainerShadow
             );
         }
 
@@ -244,6 +249,14 @@ namespace Squared.PRGUI.Decorations {
         }
 
         public DefaultDecorations () {
+            InteractableShadow = new RasterShadowSettings {
+                Color = Color.Black * 0.25f,
+                Offset = new Vector2(1.5f, 2f),
+                Softness = 5f
+            };
+
+            ContainerShadow = null;
+
             Button = new DelegateDecorator {
                 Margins = new Margins(4),
                 Padding = new Margins(6),

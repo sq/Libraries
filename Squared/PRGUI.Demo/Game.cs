@@ -101,6 +101,8 @@ namespace PRGUI.Demo {
             Font.DPIPercent = 200;
             // Big margin on glyphs so shadows aren't clipped
             Font.GlyphMargin = 4;
+            // Enable mips for soft shadows
+            Font.MipMapping = true;
 
             Context = new UIContext {
                 DefaultGlyphSource = Font,
@@ -169,8 +171,9 @@ namespace PRGUI.Demo {
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
             TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
-            TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.5f));
-            TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One);
+            TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.66f));
+            TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.5f);
+            TextMaterial.Parameters.ShadowMipBias.SetValue(1f);
 
             UIRenderTarget = new AutoRenderTarget(
                 RenderCoordinator,

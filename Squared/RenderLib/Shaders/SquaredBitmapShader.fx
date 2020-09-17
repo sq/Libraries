@@ -8,8 +8,13 @@
 #define LUT_BITMAP
 #include "LUTCommon.fxh"
 
+// HACK: The default mip bias for things like text atlases is unnecessarily blurry, especially if
+//  the atlas is high-DPI
+#define DefaultShadowedTopMipBias -0.8
+
 uniform const float4 GlobalShadowColor;
 uniform const float2 ShadowOffset;
+uniform const float  ShadowedTopMipBias, ShadowMipBias;
 
 void BasicPixelShader(
     in float4 multiplyColor : COLOR0, 
@@ -73,8 +78,8 @@ void ShadowedPixelShader (
     addColor.a = 0;
 
     float2 shadowTexCoord = clamp2(texCoord - (ShadowOffset * HalfTexel * 2), texRgn.xy, texRgn.zw);
-    float4 texColor = tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
-    float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2D(TextureSampler, shadowTexCoord);
+    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
+    float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias));
     float shadowAlpha = 1 - texColor.a;
     result = ((shadowColor * shadowAlpha) + (addColor * texColor.a)) * multiplyColor.a + (texColor * multiplyColor);
 }
@@ -108,8 +113,8 @@ void ShadowedPixelShaderWithDiscard (
     addColor.a = 0;
 
     float2 shadowTexCoord = clamp2(texCoord - (ShadowOffset * HalfTexel * 2), texRgn.xy, texRgn.zw);
-    float4 texColor = tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
-    float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2D(TextureSampler, shadowTexCoord);
+    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, ShadowedTopMipBias + DefaultShadowedTopMipBias));
+    float4 shadowColor = lerp(GlobalShadowColor, shadowColorIn, shadowColorIn.a > 0 ? 1 : 0) * tex2Dbias(TextureSampler, float4(shadowTexCoord, 0, ShadowMipBias));
     float shadowAlpha = 1 - texColor.a;
     result = ((shadowColor * shadowAlpha) + (addColor * texColor.a)) * multiplyColor.a + (texColor * multiplyColor);
 

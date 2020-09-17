@@ -591,11 +591,18 @@ namespace Squared.Render.RasterShape {
 
                     // HACK: If the shadow color is fully transparent, suppress the offset and softness.
                     // If we don't do this, the bounding box of the shapes will be pointlessly expanded.
-                    var shadowColor = sb.Shadow.Color.ToPLinear();
+                    var shadowColor = sb.BlendInLinearSpace ? sb.Shadow.Color.ToPLinear() : sb.Shadow.Color.ToVector4();
                     var shadowOffset = (shadowColor.W > 0) ? sb.Shadow.Offset : Vector2.Zero;
+                    var shadowSoftness = (shadowColor.W > 0) ? sb.Shadow.Softness : 0;
+                    // Also suppress the shadow entirely if the parameters are such that it would basically be invisible
+                    if ((shadowOffset.LengthSquared() < 0.5) && (shadowSoftness < 0.1)) {
+                        shadowOffset = Vector2.Zero;
+                        shadowColor = Vector4.Zero;
+                        shadowSoftness = 0;
+                    }
                     material.Effect.Parameters["ShadowOptions"].SetValue(new Vector4(
                         shadowOffset.X, shadowOffset.Y,
-                        (shadowColor.W > 0) ? sb.Shadow.Softness : 0, sb.Shadow.FillSuppression
+                        shadowSoftness, sb.Shadow.FillSuppression
                     ));
 
                     material.Effect.Parameters["ShadowColorLinear"].SetValue(shadowColor);
