@@ -48,7 +48,7 @@ sampler TextureSampler : register(s0) {
 #define ANGULAR_GRADIENT_BASE 512
 
 #define RASTERSHAPE_FS_ARGS \
-    in float2 worldPosition : NORMAL0, \
+    in float4 worldPositionTypeAndWorldSpace : NORMAL0, \
     in float4 ab : TEXCOORD3, \
     in float4 cd : TEXCOORD4, \
     in float4 params : TEXCOORD0, \
@@ -57,15 +57,8 @@ sampler TextureSampler : register(s0) {
     in float4 centerColor : COLOR0, \
     in float4 edgeColor : COLOR1, \
     in float4 outlineColor : COLOR2, \
-    in int2 _type : BLENDINDICES1, \
     ACCEPTS_VPOS, \
     out float4 result : COLOR0
-
-#define RASTERSHAPE_FS_PROLOGUE \
-    float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw; \
-    float outlineSize = abs(params.x); \
-    bool HardOutline = (params.x >= 0); \
-    float OutlineGammaMinusOne = params.w;
 
 // We use the _Accurate conversion function here because the approximation introduces
 //  visible noise for values like (64, 64, 64) when they are dithered
@@ -214,11 +207,11 @@ void RasterShapeVertexShader (
     inout float4 centerColor : COLOR0,
     inout float4 edgeColor : COLOR1,
     inout float4 outlineColor : COLOR2,
-    inout int2 typeAndWorldSpace : BLENDINDICES1,
+    in  int2 typeAndWorldSpace : BLENDINDICES1,
     out float4 result : POSITION0,
     out float4 ab : TEXCOORD3,
     out float4 cd : TEXCOORD4,
-    out float2 worldPosition : NORMAL0
+    out float4 worldPositionTypeAndWorldSpace : NORMAL0
 ) {
     ab = ab_in; cd = cd_in;
     float4 position = float4(ab_in.x, ab_in.y, 0, 1);
@@ -242,7 +235,7 @@ void RasterShapeVertexShader (
     result = TransformPosition(
         float4(adjustedPosition, position.z, 1), true
     );
-    worldPosition = position.xy;
+    worldPositionTypeAndWorldSpace = float4(position.xy, typeAndWorldSpace.x, typeAndWorldSpace.y);
 
     // If we're not using an approximate Linear-sRGB conversion here it could add
     //  measurable overhead to the fragment shader, so why not do it here in the VS instead
@@ -515,15 +508,20 @@ PREFER_BRANCH
 }
 
 void rasterShapeCommon (
-    in float2 worldPosition,
+    in float4 worldPositionTypeAndWorldSpace,
     in float4 ab, in float4 cd,
-    in float4 params, in float4 params2, in int type,
+    in float4 params, in float4 params2,
     in float4 centerColor, in float4 edgeColor, in float2 vpos,
     out float2 tl, out float2 br,
     out float4 fill, out float fillAlpha, 
     out float outlineAlpha
 ) {
-    RASTERSHAPE_FS_PROLOGUE;
+    float2 worldPosition = worldPositionTypeAndWorldSpace.xy;
+    int type = abs(worldPositionTypeAndWorldSpace.z);
+    float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw;
+    float outlineSize = abs(params.x);
+    bool HardOutline = (params.x >= 0);
+    float OutlineGammaMinusOne = params.w;
 
     // HACK
     outlineSize = max(abs(outlineSize), 0.0001);

@@ -5,8 +5,8 @@ void SHAPE_TYPE_NAME (
     float4 fill;
     float  fillAlpha, outlineAlpha;
     rasterShapeCommon(
-        worldPosition,
-        ab, cd, params, params2, abs(_type.x),
+        worldPositionTypeAndWorldSpace,
+        ab, cd, params, params2,
         centerColor, edgeColor, GET_VPOS,
         tl, br,
         fill, fillAlpha, outlineAlpha
@@ -27,15 +27,15 @@ void SHAPE_TYPE_NAME_TEX (
     float4 fill;
     float  fillAlpha, outlineAlpha;
     rasterShapeCommon(
-        worldPosition,
-        ab, cd, params, params2, abs(_type.x),
+        worldPositionTypeAndWorldSpace,
+        ab, cd, params, params2,
         centerColor, edgeColor, GET_VPOS,
         tl, br,
         fill, fillAlpha, outlineAlpha
     );
 
     result = texturedShapeCommon(
-        worldPosition, texRgn,
+        worldPositionTypeAndWorldSpace.xy, texRgn,
         ab, cd, 
         fill, outlineColor,
         fillAlpha, outlineAlpha,
