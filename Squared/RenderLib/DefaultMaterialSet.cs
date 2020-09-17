@@ -219,6 +219,38 @@ namespace Squared.Render {
     }
 
     public class DefaultMaterialSet : MaterialSetBase {
+        public struct RasterShaderKey {
+            public class Comparer : IEqualityComparer<RasterShaderKey> {
+                public bool Equals (RasterShaderKey x, RasterShaderKey y) {
+                    return x.Equals(y);
+                }
+
+                public int GetHashCode (RasterShaderKey obj) {
+                    return obj.GetHashCode();
+                }
+            }
+
+            public RasterShape.RasterShapeType? Type;
+            public bool Shadowed, Textured;
+
+            public bool Equals (RasterShaderKey rhs) {
+                return (Type == rhs.Type) &&
+                    (Shadowed == rhs.Shadowed) &&
+                    (Textured == rhs.Textured);
+            }
+
+            public override bool Equals (object obj) {
+                if (obj is RasterShaderKey)
+                    return Equals((RasterShaderKey)obj);
+                else
+                    return false;
+            }
+
+            public override int GetHashCode () {
+                return Type.GetHashCode() ^ Shadowed.GetHashCode() ^ Textured.GetHashCode();
+            }
+        }
+
         internal class ActiveViewTransformInfo {
             public readonly DefaultMaterialSet MaterialSet;
             public ViewTransform ViewTransform;
@@ -319,8 +351,9 @@ namespace Squared.Render {
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
-        public Material RasterShape, RasterRectangle, RasterEllipse, RasterTriangle, RasterLine;
-        public Material TexturedRasterShape, TexturedRasterRectangle, TexturedRasterEllipse, TexturedRasterTriangle, TexturedRasterLine;
+        public Material RasterShapeUbershader;
+        public readonly MaterialDictionary<RasterShaderKey> RasterShapeMaterials =
+            new MaterialDictionary<RasterShaderKey>(new RasterShaderKey.Comparer());
         /// <summary>
         /// Make sure to resolve your lightmap to sRGB before using it with this, otherwise your lighting
         ///  will have really terrible banding in dark areas.
@@ -395,7 +428,7 @@ namespace Squared.Render {
             Coordinator = coordinator;
             ActiveViewTransform = new ActiveViewTransformInfo(this);
             _ApplyViewTransformDelegate = ApplyViewTransformToMaterial;
-            _ApplyParamsDelegate        = ApplyParamsToMaterial;
+            _ApplyParamsDelegate = ApplyParamsToMaterial;
 
             uViewport = NewTypedUniform<ViewTransform>("Viewport");
             uDithering = NewTypedUniform<DitheringSettings>("Dithering");
@@ -411,7 +444,7 @@ namespace Squared.Render {
             BuiltInShaders = new EmbeddedEffectProvider(coordinator);
 
             Clear = new Material(
-                null, null, 
+                null, null,
                 new Action<DeviceManager>[] { (dm) => ApplyShaderVariables(false, dm.FrameIndex) }
             );
 
@@ -430,18 +463,18 @@ namespace Squared.Render {
                     typeof(BitmapVertex)
                 }
             };
-   
+
             var bitmapShader = BuiltInShaders.Load("SquaredBitmapShader");
             var geometryShader = BuiltInShaders.Load("SquaredGeometryShader");
             var palettedShader = BuiltInShaders.Load("PalettedBitmap");
             var hslShader = BuiltInShaders.Load("HueBitmap");
             var stippledShader = BuiltInShaders.Load("StippledBitmap");
-            
+
             Bitmap = new Material(
                 bitmapShader,
                 "BitmapTechnique"
             );
-            
+
             ScreenSpaceBitmapWithLUT = new Material(
                 bitmapShader,
                 "ScreenSpaceBitmapWithLUTTechnique"
@@ -451,7 +484,7 @@ namespace Squared.Render {
                 bitmapShader,
                 "WorldSpaceBitmapWithLUTTechnique"
             );
-            
+
             ScreenSpaceBitmapToSRGB = new Material(
                 bitmapShader,
                 "ScreenSpaceBitmapToSRGBTechnique"
@@ -461,7 +494,7 @@ namespace Squared.Render {
                 bitmapShader,
                 "WorldSpaceBitmapToSRGBTechnique"
             );
-            
+
             ScreenSpaceShadowedBitmap = new Material(
                 bitmapShader,
                 "ScreenSpaceShadowedBitmapTechnique"
@@ -473,7 +506,7 @@ namespace Squared.Render {
                 "WorldSpaceShadowedBitmapTechnique"
             );
             WorldSpaceShadowedBitmap.Parameters.ShadowOffset.SetValue(new Vector2(1, 1));
-            
+
             ScreenSpaceShadowedBitmapWithDiscard = new Material(
                 bitmapShader,
                 "ScreenSpaceShadowedBitmapWithDiscardTechnique"
@@ -521,45 +554,7 @@ namespace Squared.Render {
                 "WorldSpacePalettedBitmapWithDiscardTechnique"
             );
 
-            ScreenSpaceHueBitmap = new Material(
-                hslShader,
-                "ScreenSpaceHueBitmapTechnique"
-            );
-
-            WorldSpaceHueBitmap = new Material(
-                hslShader,
-                "WorldSpaceHueBitmapTechnique"
-            );
-
-            ScreenSpaceHueBitmapWithDiscard = new Material(
-                hslShader,
-                "ScreenSpaceHueBitmapWithDiscardTechnique"
-            );
-
-            WorldSpaceHueBitmapWithDiscard = new Material(
-                hslShader,
-                "WorldSpaceHueBitmapWithDiscardTechnique"
-            );
-
-            ScreenSpaceSepiaBitmap = new Material(
-                hslShader,
-                "ScreenSpaceSepiaBitmapTechnique"
-            );
-
-            WorldSpaceSepiaBitmap = new Material(
-                hslShader,
-                "WorldSpaceSepiaBitmapTechnique"
-            );
-
-            ScreenSpaceSepiaBitmapWithDiscard = new Material(
-                hslShader,
-                "ScreenSpaceSepiaBitmapWithDiscardTechnique"
-            );
-
-            WorldSpaceSepiaBitmapWithDiscard = new Material(
-                hslShader,
-                "WorldSpaceSepiaBitmapWithDiscardTechnique"
-            );
+            LoadHSLMaterials(hslShader);
 
             var bitmapMaterials = new[] {
                 Bitmap,
@@ -609,62 +604,8 @@ namespace Squared.Render {
                 "WorldSpaceTextured"
             );
 
-            var rasterShapeUbershader = BuiltInShaders.Load("RasterShapeUbershader");
-            var rasterShapeEllipse = BuiltInShaders.Load("RasterShapeEllipse");
-            var rasterShapeRectangle = BuiltInShaders.Load("RasterShapeRectangle");
-            var rasterShapeLine = BuiltInShaders.Load("RasterShapeLine");
-            var rasterShapeTriangle = BuiltInShaders.Load("RasterShapeTriangle");
+            LoadRasterShapeMaterials();
 
-            RasterShape = new Material(
-                rasterShapeUbershader,
-                "RasterShapeTechnique"
-            );
-
-            TexturedRasterShape = new Material(
-                rasterShapeUbershader,
-                "TexturedRasterShapeTechnique"
-            );
-
-            RasterRectangle = new Material(
-                rasterShapeRectangle,
-                "RasterRectangleTechnique"
-            );
-
-            TexturedRasterRectangle = new Material(
-                rasterShapeRectangle,
-                "TexturedRasterRectangleTechnique"
-            );
-
-            RasterEllipse = new Material(
-                rasterShapeEllipse,
-                "RasterEllipseTechnique"
-            );
-
-            TexturedRasterEllipse = new Material(
-                rasterShapeEllipse,
-                "TexturedRasterEllipseTechnique"
-            );
-
-            RasterLine = new Material(
-                rasterShapeLine,
-                "RasterLineTechnique"
-            );
-
-            TexturedRasterLine = new Material(
-                rasterShapeLine,
-                "TexturedRasterLineTechnique"
-            );
-
-            RasterTriangle = new Material(
-                rasterShapeTriangle,
-                "RasterTriangleTechnique"
-            );
-
-            TexturedRasterTriangle = new Material(
-                rasterShapeTriangle,
-                "TexturedRasterTriangleTechnique"
-            );
-            
             var lightmapShader = BuiltInShaders.Load("Lightmap");
 
             ScreenSpaceLightmappedBitmap = new Material(
@@ -687,6 +628,54 @@ namespace Squared.Render {
                 "WorldSpaceLightmappedsRGBBitmap"
             );
 
+            LoadBlurMaterials();
+
+            AutoSetViewTransform();
+        }
+
+        private void LoadHSLMaterials (Effect hslShader) {
+            ScreenSpaceHueBitmap = new Material(
+                            hslShader,
+                            "ScreenSpaceHueBitmapTechnique"
+                        );
+
+            WorldSpaceHueBitmap = new Material(
+                hslShader,
+                "WorldSpaceHueBitmapTechnique"
+            );
+
+            ScreenSpaceHueBitmapWithDiscard = new Material(
+                hslShader,
+                "ScreenSpaceHueBitmapWithDiscardTechnique"
+            );
+
+            WorldSpaceHueBitmapWithDiscard = new Material(
+                hslShader,
+                "WorldSpaceHueBitmapWithDiscardTechnique"
+            );
+
+            ScreenSpaceSepiaBitmap = new Material(
+                hslShader,
+                "ScreenSpaceSepiaBitmapTechnique"
+            );
+
+            WorldSpaceSepiaBitmap = new Material(
+                hslShader,
+                "WorldSpaceSepiaBitmapTechnique"
+            );
+
+            ScreenSpaceSepiaBitmapWithDiscard = new Material(
+                hslShader,
+                "ScreenSpaceSepiaBitmapWithDiscardTechnique"
+            );
+
+            WorldSpaceSepiaBitmapWithDiscard = new Material(
+                hslShader,
+                "WorldSpaceSepiaBitmapWithDiscardTechnique"
+            );
+        }
+
+        private void LoadBlurMaterials () {
             var blurShader = BuiltInShaders.Load("GaussianBlur");
 
             ScreenSpaceHorizontalGaussianBlur = new Material(
@@ -718,8 +707,53 @@ namespace Squared.Render {
                 blurShader,
                 "WorldSpaceRadialGaussianBlur"
             );
+        }
 
-            AutoSetViewTransform();
+        private void LoadRasterShapeVariant (
+            Effect shader, string techniqueName, RasterShape.RasterShapeType? type, bool shadowed, bool textured
+        ) {
+            var key = new RasterShaderKey {
+                Type = type,
+                Shadowed = shadowed,
+                Textured = textured
+            };
+            var material = new Material(shader, techniqueName);
+            RasterShapeMaterials[key] = material;
+        }
+
+        private void LoadRasterShapeVariants (
+            Effect shader, string techniqueSubstring, RasterShape.RasterShapeType? type
+        ) {
+            LoadRasterShapeVariant(shader, techniqueSubstring + "Technique", type, false, false);
+            LoadRasterShapeVariant(shader, "Textured" + techniqueSubstring + "Technique", type, false, true);
+            LoadRasterShapeVariant(shader, "Shadowed" + techniqueSubstring + "Technique", type, true, false);
+            LoadRasterShapeVariant(shader, "ShadowedTextured" + techniqueSubstring + "Technique", type, true, true);
+        }
+
+        private void LoadRasterShapeMaterials () {
+            var rasterShapeUbershader = BuiltInShaders.Load("RasterShapeUbershader");
+            var rasterShapeEllipse = BuiltInShaders.Load("RasterShapeEllipse");
+            var rasterShapeRectangle = BuiltInShaders.Load("RasterShapeRectangle");
+            var rasterShapeLine = BuiltInShaders.Load("RasterShapeLine");
+            var rasterShapeTriangle = BuiltInShaders.Load("RasterShapeTriangle");
+
+            LoadRasterShapeVariants(
+                rasterShapeUbershader, "RasterShape", null
+            );
+            LoadRasterShapeVariants(
+                rasterShapeRectangle, "RasterRectangle", RasterShape.RasterShapeType.Rectangle
+            );
+            LoadRasterShapeVariants(
+                rasterShapeEllipse, "RasterEllipse", RasterShape.RasterShapeType.Ellipse
+            );
+            LoadRasterShapeVariants(
+                rasterShapeLine, "RasterLine", RasterShape.RasterShapeType.LineSegment
+            );
+            LoadRasterShapeVariants(
+                rasterShapeTriangle, "RasterTriangle", RasterShape.RasterShapeType.Triangle
+            );
+
+            RasterShapeUbershader = RasterShapeMaterials[new RasterShaderKey { Type = null, Shadowed = false, Textured = false }];
         }
 
         protected override void QueuePendingRegistrationHandler () {

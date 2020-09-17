@@ -5,6 +5,10 @@
 #define SHAPE_TYPE_NAME_TEX RasterLineTextured
 #define SHAPE_TYPE_TECHNIQUE_NAME RasterLineTechnique
 #define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterLineTechnique
+#define SHAPE_TYPE_NAME_SHADOWED ShadowedRasterLineUntextured
+#define SHAPE_TYPE_NAME_TEX_SHADOWED ShadowedRasterLineTextured
+#define SHAPE_TYPE_TECHNIQUE_NAME_SHADOWED ShadowedRasterLineTechnique
+#define SHAPE_TYPE_TECHNIQUE_NAME_TEX_SHADOWED ShadowedTexturedRasterLineTechnique
 
 #define INCLUDE_LINE
 

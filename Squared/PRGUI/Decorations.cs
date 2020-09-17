@@ -113,7 +113,8 @@ namespace Squared.PRGUI.Decorations {
         public float ScrollbarSize = 14f, ScrollbarRadius = 3f;
 
         public RasterShadowSettings? InteractableShadow, 
-            ContainerShadow;
+            ContainerShadow,
+            ScrollbarThumbShadow;
 
         public Color FocusedColor = new Color(200, 230, 255),
             ActiveColor = Color.White,
@@ -244,7 +245,8 @@ namespace Squared.PRGUI.Decorations {
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: ScrollbarThumbColor, outerColor: ScrollbarThumbColor * 0.8f,
-                fillMode: RasterFillMode.Radial
+                fillMode: RasterFillMode.Radial,
+                shadow: ScrollbarThumbShadow
             );
         }
 
@@ -256,6 +258,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             ContainerShadow = null;
+            ScrollbarThumbShadow = null;
 
             Button = new DelegateDecorator {
                 Margins = new Margins(4),

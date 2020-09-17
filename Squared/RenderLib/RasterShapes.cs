@@ -144,6 +144,15 @@ namespace Squared.Render.RasterShape {
             return new pSRGBColor(c);
         }
 
+        public bool IsTransparent {
+            get {
+                if (IsVector4)
+                    return Vector4.W <= 0;
+                else
+                    return Color.A <= 0;
+            }
+        }
+
         public bool Equals (pSRGBColor rhs) {
             var a = ToVector4();
             var b = rhs.ToVector4();
@@ -410,6 +419,7 @@ namespace Squared.Render.RasterShape {
             public RasterShapeType Type;
             public bool BlendInLinearSpace;
             public RasterShadowSettings Shadow;
+            public bool Shadowed;
             public int InstanceOffset, InstanceCount;
         }
 
@@ -444,7 +454,7 @@ namespace Squared.Render.RasterShape {
         public RasterShadowSettings ShadowSettings;
 
         public void Initialize (IBatchContainer container, int layer, DefaultMaterialSet materials) {
-            base.Initialize(container, layer, materials.RasterShape, true);
+            base.Initialize(container, layer, materials.RasterShapeUbershader, true);
 
             Materials = materials;
 
@@ -459,6 +469,13 @@ namespace Squared.Render.RasterShape {
 
             if (VertexAllocator == null)
                 VertexAllocator = container.RenderManager.GetArrayAllocator<RasterShapeVertex>();
+        }
+
+        private static bool ShouldBeShadowed (ref RasterShadowSettings shadow) {
+            return !shadow.Color.IsTransparent && (
+                (shadow.Softness >= 0.1) || 
+                (shadow.Offset.Length() > 0.1)
+            );
         }
 
         protected override void Prepare (PrepareManager manager) {
@@ -494,7 +511,8 @@ namespace Squared.Render.RasterShape {
                             InstanceCount = (i - lastOffset),
                             BlendInLinearSpace = lastBlend,
                             Type = lastType,
-                            Shadow = lastShadow
+                            Shadow = lastShadow,
+                            Shadowed = ShouldBeShadowed(ref lastShadow)
                         });
                         lastOffset = i;
                         lastType = dc.Type;
@@ -522,30 +540,33 @@ namespace Squared.Render.RasterShape {
                     InstanceCount = (count - lastOffset),
                     BlendInLinearSpace = lastBlend,
                     Type = lastType,
-                    Shadow = lastShadow
+                    Shadow = lastShadow,
+                    Shadowed = ShouldBeShadowed(ref lastShadow)
                 });
 
                 NativeBatch.RecordPrimitives(count * 2);
             }
         }
 
-        private Material PickBaseMaterial (RasterShapeType? type) {
-            switch (type) {
-                case RasterShapeType.Ellipse:
-                    return (Texture != null) ? Materials.TexturedRasterEllipse : Materials.RasterEllipse;
-                case RasterShapeType.Rectangle:
-                    return (Texture != null) ? Materials.TexturedRasterRectangle : Materials.RasterRectangle;
-                case RasterShapeType.LineSegment:
-                    return (Texture != null) ? Materials.TexturedRasterLine : Materials.RasterLine;
-                case RasterShapeType.Triangle:
-                    return (Texture != null) ? Materials.TexturedRasterTriangle : Materials.RasterTriangle;
-                default:
-                    return (Texture != null) ? Materials.TexturedRasterShape : Materials.RasterShape;
+        private Material PickBaseMaterial (RasterShapeType? type, bool shadowed) {
+            var key = new DefaultMaterialSet.RasterShaderKey {
+                Type = type,
+                Shadowed = shadowed,
+                Textured = (Texture != null)
+            };
+
+            Material result;
+            if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {
+                key.Type = null;
+                if (!Materials.RasterShapeMaterials.TryGetValue(key, out result))
+                    throw new Exception($"Shader not found for raster shape {type} (shadowed={shadowed}, textured={Texture != null})");
             }
+
+            return result;
         }
 
-        private Material PickMaterial (RasterShapeType? type) {
-            var baseMaterial = PickBaseMaterial(type);
+        private Material PickMaterial (RasterShapeType? type, bool shadowed) {
+            var baseMaterial = PickBaseMaterial(type, shadowed);
             return baseMaterial;
         }
 
@@ -576,7 +597,7 @@ namespace Squared.Render.RasterShape {
                 // scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
 
                 foreach (var sb in _SubBatches) {
-                    var material = UseUbershader ? PickMaterial(null) : PickMaterial(sb.Type);
+                    var material = UseUbershader ? PickMaterial(null, sb.Shadowed) : PickMaterial(sb.Type, sb.Shadowed);
                     manager.ApplyMaterial(material);
 
                     if (BlendState != null)
@@ -592,10 +613,10 @@ namespace Squared.Render.RasterShape {
                     // HACK: If the shadow color is fully transparent, suppress the offset and softness.
                     // If we don't do this, the bounding box of the shapes will be pointlessly expanded.
                     var shadowColor = sb.BlendInLinearSpace ? sb.Shadow.Color.ToPLinear() : sb.Shadow.Color.ToVector4();
-                    var shadowOffset = (shadowColor.W > 0) ? sb.Shadow.Offset : Vector2.Zero;
-                    var shadowSoftness = (shadowColor.W > 0) ? sb.Shadow.Softness : 0;
+                    var shadowOffset = sb.Shadowed ? sb.Shadow.Offset : Vector2.Zero;
+                    var shadowSoftness = sb.Shadowed ? sb.Shadow.Softness : 0;
                     // Also suppress the shadow entirely if the parameters are such that it would basically be invisible
-                    if ((shadowOffset.LengthSquared() < 0.5) && (shadowSoftness < 0.1)) {
+                    if (!sb.Shadowed) {
                         shadowOffset = Vector2.Zero;
                         shadowColor = Vector4.Zero;
                         shadowSoftness = 0;

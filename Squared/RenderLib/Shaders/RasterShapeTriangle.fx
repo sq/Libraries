@@ -5,6 +5,10 @@
 #define SHAPE_TYPE_NAME_TEX RasterTriangleTextured
 #define SHAPE_TYPE_TECHNIQUE_NAME RasterTriangleTechnique
 #define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterTriangleTechnique
+#define SHAPE_TYPE_NAME_SHADOWED ShadowedRasterTriangleUntextured
+#define SHAPE_TYPE_NAME_TEX_SHADOWED ShadowedRasterTriangleTextured
+#define SHAPE_TYPE_TECHNIQUE_NAME_SHADOWED ShadowedRasterTriangleTechnique
+#define SHAPE_TYPE_TECHNIQUE_NAME_TEX_SHADOWED ShadowedTexturedRasterTriangleTechnique
 
 #define INCLUDE_TRIANGLE
 

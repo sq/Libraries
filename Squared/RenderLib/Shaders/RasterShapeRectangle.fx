@@ -5,6 +5,10 @@
 #define SHAPE_TYPE_NAME_TEX RasterRectangleTextured
 #define SHAPE_TYPE_TECHNIQUE_NAME RasterRectangleTechnique
 #define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterRectangleTechnique
+#define SHAPE_TYPE_NAME_SHADOWED ShadowedRasterRectangleUntextured
+#define SHAPE_TYPE_NAME_TEX_SHADOWED ShadowedRasterRectangleTextured
+#define SHAPE_TYPE_TECHNIQUE_NAME_SHADOWED ShadowedRasterRectangleTechnique
+#define SHAPE_TYPE_TECHNIQUE_NAME_TEX_SHADOWED ShadowedTexturedRasterRectangleTechnique
 
 #define INCLUDE_RECTANGLE
 

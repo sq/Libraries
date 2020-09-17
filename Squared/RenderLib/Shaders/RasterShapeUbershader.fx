@@ -5,6 +5,10 @@
 #define SHAPE_TYPE_NAME_TEX RasterShapeTextured
 #define SHAPE_TYPE_TECHNIQUE_NAME RasterShapeTechnique
 #define SHAPE_TYPE_TECHNIQUE_NAME_TEX TexturedRasterShapeTechnique
+#define SHAPE_TYPE_NAME_SHADOWED ShadowedRasterShapeUntextured
+#define SHAPE_TYPE_NAME_TEX_SHADOWED ShadowedRasterShapeTextured
+#define SHAPE_TYPE_TECHNIQUE_NAME_SHADOWED ShadowedRasterShapeTechnique
+#define SHAPE_TYPE_TECHNIQUE_NAME_TEX_SHADOWED ShadowedTexturedRasterShapeTechnique
 
 #define INCLUDE_ELLIPSE
 #define INCLUDE_LINE

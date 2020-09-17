@@ -543,7 +543,7 @@ float computeShadowAlpha (
 }
 
 void rasterShapeCommon (
-    in float4 worldPositionTypeAndWorldSpace,
+    in float4 worldPositionTypeAndWorldSpace, in bool enableShadow,
     in float4 ab, in float4 cd,
     in float4 params, in float4 params2,
     in float4 centerColor, in float4 edgeColor, in float2 vpos,
@@ -635,15 +635,20 @@ void rasterShapeCommon (
         outlineAlpha = 0;
     }
 
-    shadowAlpha = computeShadowAlpha(
-        type, radius, totalRadius, params,
-        worldPosition - ShadowOffset, a, b, c,
-        max(outlineEndDistance, fillEndDistance)
-    );
-    // HACK: We don't want to composite the fill on top of the shadow (this will look awful if the fill is semiopaque),
-    //  but it makes some amount of sense to allow blending outline and shadow pixels.
-    // This is not going to be 100% right for fills without outlines...
-    shadowAlpha = saturate (shadowAlpha - (fillAlpha * ShadowFillSuppression));
+    PREFER_BRANCH
+    if (enableShadow) {
+        shadowAlpha = computeShadowAlpha(
+            type, radius, totalRadius, params,
+            worldPosition - ShadowOffset, a, b, c,
+            max(outlineEndDistance, fillEndDistance)
+        );
+        // HACK: We don't want to composite the fill on top of the shadow (this will look awful if the fill is semiopaque),
+        //  but it makes some amount of sense to allow blending outline and shadow pixels.
+        // This is not going to be 100% right for fills without outlines...
+        shadowAlpha = saturate (shadowAlpha - (fillAlpha * ShadowFillSuppression));
+    } else {
+        shadowAlpha = 0;
+    }
 }
 
 // porter-duff A over B
