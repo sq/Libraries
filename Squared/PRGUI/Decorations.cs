@@ -130,9 +130,11 @@ namespace Squared.PRGUI.Decorations {
 
         private void Button_Below (UIOperationContext context, RectF box, ControlStates state) {
             float alpha, thickness;
-            var baseColor = state.HasFlag(ControlStates.Focused)
-                ? FocusedColor
-                : InactiveColor;
+            var baseColor = (RasterShapePremultipliedColor)(
+                state.HasFlag(ControlStates.Focused)
+                    ? FocusedColor
+                    : InactiveColor
+            );
 
             float pulse = 0;
             if (state.HasFlag(ControlStates.Pressed)) {

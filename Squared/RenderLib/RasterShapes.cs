@@ -18,7 +18,7 @@ namespace Squared.Render.RasterShape {
         public Vector4 PointsAB, PointsCD;
         public Vector4 Parameters, Parameters2;
         public Vector4 TextureRegion;
-        public Color   InnerColor, OuterColor, OutlineColor;
+        public Vector4 InnerColor, OuterColor, OutlineColor;
         public short   Type, WorldSpace;
 
         public static readonly VertexElement[] Elements;
@@ -39,11 +39,11 @@ namespace Squared.Render.RasterShape {
                 new VertexElement( Marshal.OffsetOf(tThis, "TextureRegion").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 2 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "InnerColor").ToInt32(),
-                    VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
+                    VertexElementFormat.Vector4, VertexElementUsage.Color, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "OuterColor").ToInt32(),
-                    VertexElementFormat.Color, VertexElementUsage.Color, 1 ),
+                    VertexElementFormat.Vector4, VertexElementUsage.Color, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "OutlineColor").ToInt32(),
-                    VertexElementFormat.Color, VertexElementUsage.Color, 2 ),
+                    VertexElementFormat.Vector4, VertexElementUsage.Color, 2 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Type").ToInt32(),
                     VertexElementFormat.Short2, VertexElementUsage.BlendIndices, 1)
             };
@@ -63,6 +63,51 @@ namespace Squared.Render.RasterShape {
         Triangle = 3,
         QuadraticBezier = 4,
         Arc = 5
+    }
+
+    public struct RasterShapePremultipliedColor {
+        public bool IsVector4;
+        public Vector4 Vector4;
+        public Color Color;
+
+        public RasterShapePremultipliedColor (Color c) {
+            IsVector4 = false;
+            Vector4 = default(Vector4);
+            Color = c;
+        }
+
+        public RasterShapePremultipliedColor (Vector4 v4, bool isPremultiplied = true) {
+            IsVector4 = true;
+            if (!isPremultiplied) {
+                float a = v4.W;
+                Vector4 = v4 * a;
+                Vector4.W = a;
+            } else {
+                Vector4 = v4;
+            }
+            Color = default(Color);
+        }
+
+        public Vector4 ToVector4 () {
+            if (IsVector4)
+                return Vector4;
+            else
+                return new Vector4(Color.R / 255f, Color.G / 255f, Color.B / 255f, Color.A / 255f);
+        }
+
+        public static RasterShapePremultipliedColor operator * (RasterShapePremultipliedColor color, float alpha) {
+            var result = color.ToVector4();
+            result *= alpha;
+            return new RasterShapePremultipliedColor(result, true);
+        }
+
+        public static implicit operator RasterShapePremultipliedColor (Vector4 v4) {
+            return new RasterShapePremultipliedColor(v4);
+        }
+
+        public static implicit operator RasterShapePremultipliedColor (Color c) {
+            return new RasterShapePremultipliedColor(c);
+        }
     }
 
     public enum RasterFillMode : int {
@@ -135,17 +180,44 @@ namespace Squared.Render.RasterShape {
         public Vector2 Radius;
 
         /// <summary>
-        /// The sRGB color of the center of the shape (or the beginning for 'along' gradients)
+        /// The premultiplied sRGB color of the center of the shape (or the beginning for 'along' gradients)
         /// </summary>
-        public Color InnerColor;
+        public Vector4 InnerColor4;
         /// <summary>
-        /// The sRGB color for the outside of the shape (or the end for 'along' gradients)
+        /// The premultiplied sRGB color for the outside of the shape (or the end for 'along' gradients)
         /// </summary>
-        public Color OuterColor;
+        public Vector4 OuterColor4;
         /// <summary>
-        /// The sRGB color of the shape's outline.
+        /// The premultiplied sRGB color of the shape's outline.
         /// </summary>
-        public Color OutlineColor;
+        public Vector4 OutlineColor4;
+
+        public RasterShapePremultipliedColor InnerColor {
+            get {
+                return new RasterShapePremultipliedColor(InnerColor4);
+            }
+            set {
+                InnerColor4 = value.ToVector4();
+            }
+        }
+
+        public RasterShapePremultipliedColor OuterColor {
+            get {
+                return new RasterShapePremultipliedColor(OuterColor4);
+            }
+            set {
+                OuterColor4 = value.ToVector4();
+            }
+        }
+
+        public RasterShapePremultipliedColor OutlineColor {
+            get {
+                return new RasterShapePremultipliedColor(OutlineColor4);
+            }
+            set {
+                OutlineColor4 = value.ToVector4();
+            }
+        }
 
         /// <summary>
         /// If true, the outline has soft falloff instead of a sharp edge.
@@ -300,9 +372,9 @@ namespace Squared.Render.RasterShape {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         // FIXME: Fill this last space with a separate value?
                         PointsCD = new Vector4(dc.C.X, dc.C.Y, dc.Radius.X, dc.Radius.Y),
-                        InnerColor = dc.InnerColor,
-                        OutlineColor = dc.OutlineColor,
-                        OuterColor = dc.OuterColor,
+                        InnerColor = dc.InnerColor.ToVector4(),
+                        OutlineColor = dc.OutlineColor.ToVector4(),
+                        OuterColor = dc.OuterColor.ToVector4(),
                         Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, dc.FillMode, dc.OutlineGammaMinusOne),
                         Parameters2 = new Vector4(dc.FillGradientPowerMinusOne.X + 1, dc.FillGradientPowerMinusOne.Y + 1, dc.FillOffset, dc.FillSize),
                         TextureRegion = dc.TextureBounds.ToVector4(),

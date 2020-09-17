@@ -1087,7 +1087,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeEllipse (
-            Vector2 center, Vector2 radius, Color innerColor, Color? outerColor = null,
+            Vector2 center, Vector2 radius, RasterShapePremultipliedColor innerColor, RasterShapePremultipliedColor? outerColor = null,
             RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
@@ -1124,7 +1124,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeEllipse (
             Vector2 center, Vector2 radius, float outlineRadius,
-            Color innerColor, Color outerColor, Color outlineColor,
+            RasterShapePremultipliedColor innerColor, RasterShapePremultipliedColor outerColor, RasterShapePremultipliedColor outlineColor,
             RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
@@ -1160,7 +1160,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeLineSegment (
-            Vector2 a, Vector2 b, float radius, Color innerColor, Color? outerColor = null,
+            Vector2 a, Vector2 b, float radius, RasterShapePremultipliedColor innerColor, RasterShapePremultipliedColor? outerColor = null,
             bool gradientAlongLine = false, RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
@@ -1197,7 +1197,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeLineSegment (
             Vector2 a, Vector2 b, float startRadius, float? endRadius, float outlineRadius,
-            Color innerColor, Color outerColor, Color outlineColor,
+            RasterShapePremultipliedColor innerColor, RasterShapePremultipliedColor outerColor, RasterShapePremultipliedColor outlineColor,
             bool gradientAlongLine = false, RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
@@ -1237,7 +1237,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeRectangle (
             Vector2 tl, Vector2 br, float radius,
-            Color innerColor, Color? outerColor = null,
+            RasterShapePremultipliedColor innerColor, RasterShapePremultipliedColor? outerColor = null,
             RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
@@ -1274,7 +1274,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeRectangle (
             Vector2 tl, Vector2 br, float radius, float outlineRadius,
-            Color innerColor, Color outerColor, Color outlineColor,
+            RasterShapePremultipliedColor innerColor, RasterShapePremultipliedColor outerColor, RasterShapePremultipliedColor outlineColor,
             RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
@@ -1310,7 +1310,8 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeTriangle (
-            Vector2 a, Vector2 b, Vector2 c, float radius, Color innerColor, Color? outerColor = null,
+            Vector2 a, Vector2 b, Vector2 c, float radius, 
+            RasterShapePremultipliedColor innerColor, RasterShapePremultipliedColor? outerColor = null,
             RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
@@ -1346,7 +1347,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeTriangle (
             Vector2 a, Vector2 b, Vector2 c, float radius, float outlineRadius,
-            Color innerColor, Color outerColor, Color outlineColor,
+            RasterShapePremultipliedColor innerColor, RasterShapePremultipliedColor outerColor, RasterShapePremultipliedColor outlineColor,
             RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
@@ -1381,7 +1382,7 @@ namespace Squared.Render.Convenience {
         }
 
         public void RasterizeQuadraticBezier (
-            Vector2 a, Vector2 b, Vector2 c, float radius, Color color,
+            Vector2 a, Vector2 b, Vector2 c, float radius, RasterShapePremultipliedColor color,
             RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
@@ -1417,7 +1418,7 @@ namespace Squared.Render.Convenience {
 
         public void RasterizeQuadraticBezier (
             Vector2 a, Vector2 b, Vector2 c, float radius, float outlineRadius,
-            Color innerColor, Color outerColor, Color outlineColor,
+            RasterShapePremultipliedColor innerColor, RasterShapePremultipliedColor outerColor, RasterShapePremultipliedColor outlineColor,
             RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
@@ -1460,7 +1461,7 @@ namespace Squared.Render.Convenience {
         public void RasterizeArc (
             Vector2 center, float startAngleDegrees, float sizeDegrees, 
             float ringRadius, float fillRadius, float outlineRadius,
-            Color innerColor, Color? outerColor = null, Color? outlineColor = null, 
+            RasterShapePremultipliedColor innerColor, RasterShapePremultipliedColor? outerColor = null, RasterShapePremultipliedColor? outlineColor = null, 
             RasterFillMode fillMode = RasterFillMode.Natural,
             float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
             float fillAngle = 0, float? annularRadius = null,
