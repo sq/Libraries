@@ -65,18 +65,18 @@ namespace Squared.Render.RasterShape {
         Arc = 5
     }
 
-    public struct RasterShapePremultipliedColor {
+    public struct pSRGBColor {
         public bool IsVector4;
         public Vector4 Vector4;
         public Color Color;
 
-        public RasterShapePremultipliedColor (Color c) {
+        public pSRGBColor (Color c) {
             IsVector4 = false;
             Vector4 = default(Vector4);
             Color = c;
         }
 
-        public RasterShapePremultipliedColor (Vector4 v4, bool isPremultiplied = true) {
+        public pSRGBColor (Vector4 v4, bool isPremultiplied = true) {
             IsVector4 = true;
             if (!isPremultiplied) {
                 float a = v4.W;
@@ -95,18 +95,77 @@ namespace Squared.Render.RasterShape {
                 return new Vector4(Color.R / 255f, Color.G / 255f, Color.B / 255f, Color.A / 255f);
         }
 
-        public static RasterShapePremultipliedColor operator * (RasterShapePremultipliedColor color, float alpha) {
+        public Vector4 ToPLinear () {
+            var v4 = ToVector4();
+            float alpha = v4.W;
+            if (alpha <= 0)
+                return Vector4.Zero;
+
+            // Unpremultiply
+            v4 *= (1.0f / alpha);
+
+            // Compute low/high linear pairs from the sRGB values
+            var low = v4 / 12.92f;
+            var preHigh = (v4 + new Vector4(0.055f)) / 1.055f;
+            var high = new Vector3(
+                (float)Math.Pow(preHigh.X, 2.4),
+                (float)Math.Pow(preHigh.Y, 2.4),
+                (float)Math.Pow(preHigh.Z, 2.4)
+            );
+            // Select low/high value based on threshold
+            var result = new Vector4(
+                v4.X <= 0.04045f ? low.X : high.X,
+                v4.Y <= 0.04045f ? low.Y : high.Y,
+                v4.Z <= 0.04045f ? low.Z : high.Z,
+                1
+            );
+
+            result *= alpha;
+            return result;
+        }
+
+        public static pSRGBColor operator * (pSRGBColor color, float alpha) {
             var result = color.ToVector4();
             result *= alpha;
-            return new RasterShapePremultipliedColor(result, true);
+            return new pSRGBColor(result, true);
         }
 
-        public static implicit operator RasterShapePremultipliedColor (Vector4 v4) {
-            return new RasterShapePremultipliedColor(v4);
+        public static implicit operator pSRGBColor (Vector4 v4) {
+            return new pSRGBColor(v4);
         }
 
-        public static implicit operator RasterShapePremultipliedColor (Color c) {
-            return new RasterShapePremultipliedColor(c);
+        public static implicit operator pSRGBColor (Color c) {
+            return new pSRGBColor(c);
+        }
+
+        public bool Equals (pSRGBColor rhs) {
+            var a = ToVector4();
+            var b = rhs.ToVector4();
+            return (a == b);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is pSRGBColor)
+                return Equals((pSRGBColor)obj);
+            else if (obj is Vector4)
+                return Equals((pSRGBColor)(Vector4)obj);
+            else if (obj is Color)
+                return Equals((pSRGBColor)(Color)obj);
+            else
+                return false;
+        }
+
+        public static bool operator == (pSRGBColor lhs, pSRGBColor rhs) {
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator != (pSRGBColor lhs, pSRGBColor rhs) {
+            return !lhs.Equals(rhs);
+        }
+
+        // FIXME
+        public override int GetHashCode () {
+            return 0;
         }
     }
 
@@ -192,27 +251,27 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         public Vector4 OutlineColor4;
 
-        public RasterShapePremultipliedColor InnerColor {
+        public pSRGBColor InnerColor {
             get {
-                return new RasterShapePremultipliedColor(InnerColor4);
+                return new pSRGBColor(InnerColor4);
             }
             set {
                 InnerColor4 = value.ToVector4();
             }
         }
 
-        public RasterShapePremultipliedColor OuterColor {
+        public pSRGBColor OuterColor {
             get {
-                return new RasterShapePremultipliedColor(OuterColor4);
+                return new pSRGBColor(OuterColor4);
             }
             set {
                 OuterColor4 = value.ToVector4();
             }
         }
 
-        public RasterShapePremultipliedColor OutlineColor {
+        public pSRGBColor OutlineColor {
             get {
-                return new RasterShapePremultipliedColor(OutlineColor4);
+                return new pSRGBColor(OutlineColor4);
             }
             set {
                 OutlineColor4 = value.ToVector4();
@@ -267,7 +326,66 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         public Bounds TextureBounds;
 
+        /// <summary>
+        /// Configures the shadow for the raster shape, if any.
+        /// </summary>
+        public RasterShadowSettings Shadow;
+
         internal int Index;
+    }
+
+    public struct RasterShadowSettings {
+        /// <summary>
+        /// Configures the position of the shadow relative to the shape.
+        /// </summary>
+        public Vector2 Offset;
+
+        /// <summary>
+        /// Configures the softness of the shadow. Larger values provide softer falloff and a larger shadow.
+        /// </summary>
+        public float Softness;
+
+        private float FillSuppressionMinusOne;
+        /// <summary>
+        /// Configures how much of the shadow is visible behind the fill of the shape (if the fill is not opaque).
+        /// A value of 1 fully suppresses the shadow within the shape's fill region.
+        /// </summary>
+        public float FillSuppression {
+            get {
+                return FillSuppressionMinusOne + 1;
+            }
+            set {
+                FillSuppressionMinusOne = value - 1;
+            }
+        }
+
+        /// <summary>
+        /// The shadow color (premultiplied sRGB).
+        /// </summary>
+        public pSRGBColor Color;
+
+        public bool Equals (ref RasterShadowSettings rhs) {
+            return (Offset == rhs.Offset) &&
+                (Softness == rhs.Softness) &&
+                (FillSuppressionMinusOne == rhs.FillSuppressionMinusOne) &&
+                (Color == rhs.Color);
+        }
+
+        public bool Equals (RasterShadowSettings rhs) {
+            return Equals(ref rhs);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is RasterShadowSettings)
+                return Equals((RasterShadowSettings)obj);
+            else
+                return false;
+        }
+
+        // FIXME
+        public override int GetHashCode () {
+            return 0;
+        }
     }
 
     public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
@@ -285,6 +403,7 @@ namespace Squared.Render.RasterShape {
         private struct SubBatch {
             public RasterShapeType Type;
             public bool BlendInLinearSpace;
+            public RasterShadowSettings Shadow;
             public int InstanceOffset, InstanceCount;
         }
 
@@ -316,6 +435,7 @@ namespace Squared.Render.RasterShape {
         public DepthStencilState DepthStencilState;
         public BlendState BlendState;
         public RasterizerState RasterizerState;
+        public RasterShadowSettings ShadowSettings;
 
         public void Initialize (IBatchContainer container, int layer, DefaultMaterialSet materials) {
             base.Initialize(container, layer, materials.RasterShape, true);
@@ -352,20 +472,27 @@ namespace Squared.Render.RasterShape {
 
                 var lastType = _DrawCalls[0].Type;
                 var lastBlend = _DrawCalls[0].BlendInLinearSpace;
+                var lastShadow = _DrawCalls[0].Shadow;
                 var lastOffset = 0;
 
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     var dc = _DrawCalls[i];
 
-                    if (((dc.Type != lastType) && !UseUbershader) || (dc.BlendInLinearSpace != lastBlend)) {
+                    if (
+                        ((dc.Type != lastType) && !UseUbershader) || 
+                        (dc.BlendInLinearSpace != lastBlend) ||
+                        !dc.Shadow.Equals(ref lastShadow)
+                    ) {
                         _SubBatches.Add(new SubBatch {
                             InstanceOffset = lastOffset,
                             InstanceCount = (i - lastOffset),
                             BlendInLinearSpace = lastBlend,
-                            Type = lastType
+                            Type = lastType,
+                            Shadow = lastShadow
                         });
                         lastOffset = i;
                         lastType = dc.Type;
+                        lastShadow = dc.Shadow;
                     }
 
                     var vert = new RasterShapeVertex {
@@ -388,7 +515,8 @@ namespace Squared.Render.RasterShape {
                     InstanceOffset = lastOffset,
                     InstanceCount = (count - lastOffset),
                     BlendInLinearSpace = lastBlend,
-                    Type = lastType
+                    Type = lastType,
+                    Shadow = lastShadow
                 });
 
                 NativeBatch.RecordPrimitives(count * 2);
@@ -454,6 +582,11 @@ namespace Squared.Render.RasterShape {
 
                     material.Effect.Parameters["BlendInLinearSpace"].SetValue(sb.BlendInLinearSpace);
                     material.Effect.Parameters["RasterTexture"]?.SetValue(Texture);
+                    material.Effect.Parameters["ShadowOptions"].SetValue(new Vector4(
+                        sb.Shadow.Offset.X, sb.Shadow.Offset.Y,
+                        sb.Shadow.Softness, sb.Shadow.FillSuppression
+                    ));
+                    material.Effect.Parameters["ShadowColorLinear"].SetValue(sb.Shadow.Color.ToPLinear());
                     material.Flush();
 
                     // FIXME: why the hell

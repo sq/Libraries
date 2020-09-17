@@ -108,7 +108,7 @@ namespace Squared.PRGUI.Decorations {
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public float InteractableCornerRadius = 6f, InertCornerRadius = 3f, ContainerCornerRadius = 3f;
-        public float InactiveOutlineThickness = 1f, ActiveOutlineThickness = 1.33f, PressedOutlineThickness = 2f,
+        public float InactiveOutlineThickness = 1f, ActiveOutlineThickness = 1.2f, PressedOutlineThickness = 2f,
             InertOutlineThickness = 1f;
         public float ScrollbarSize = 14f, ScrollbarRadius = 3f;
 
@@ -130,7 +130,7 @@ namespace Squared.PRGUI.Decorations {
 
         private void Button_Below (UIOperationContext context, RectF box, ControlStates state) {
             float alpha, thickness;
-            var baseColor = (RasterShapePremultipliedColor)(
+            var baseColor = (pSRGBColor)(
                 state.HasFlag(ControlStates.Focused)
                     ? FocusedColor
                     : InactiveColor

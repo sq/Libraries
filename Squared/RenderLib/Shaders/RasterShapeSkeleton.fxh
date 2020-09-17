@@ -69,22 +69,16 @@ sampler TextureSampler : register(s0) {
         outlineColor = pSRGBToPLinear_Accurate(outlineColor); \
     }
 
-    /*
-    centerColor = pSRGBToPLinear(centerColor); \
-    edgeColor = pSRGBToPLinear(edgeColor); \
-    outlineColor = pSRGBToPLinear(outlineColor); \
-    // FIXME: Why is this necessary? Is it an fxc bug? \
-    // It only seems to be needed when using certain blend modes \
-    // Maybe mojoshader? Driver bug? \
-    if (!BlendInLinearSpace) { \
-        centerColor = pLinearToPSRGB(centerColor); \
-        edgeColor = pLinearToPSRGB(edgeColor); \
-        outlineColor = pLinearToPSRGB(outlineColor); \
-    }
-    */
-
 uniform bool BlendInLinearSpace;
 uniform float HalfPixelOffset;
+
+// offsetx, offsety, softness, fillSuppression
+uniform float4 ShadowOptions;
+uniform float4 ShadowColorLinear;
+
+#define ShadowSoftness ShadowOptions.z
+#define ShadowOffset ShadowOptions.xy
+#define ShadowFillSuppression ShadowOptions.w
 
 float4 TransformPosition(float4 position, bool halfPixelOffset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
@@ -161,6 +155,18 @@ void computeTLBR (
         tl -= annularRadius;
         br += annularRadius;
     }
+
+    tl -= ShadowSoftness;
+    br += ShadowSoftness;
+    if (ShadowOffset.x >= 0)
+        br.x += ShadowOffset.x;
+    else 
+        tl.x += ShadowOffset.x;
+
+    if (ShadowOffset.y >= 0)
+        br.y += ShadowOffset.y;
+    else
+        tl.y += ShadowOffset.y;
 }
 
 void computePosition (
@@ -507,6 +513,30 @@ PREFER_BRANCH
     }
 }
 
+float computeShadowAlpha (
+    int type, float2 radius, float totalRadius, float4 params,
+    float2 worldPosition, float2 a, float2 b, float2 c,
+    float shadowEndDistance
+) {
+    float2 tl, br;
+    int gradientType = 0;
+    float gradientWeight = 0;
+
+    float distance;
+    evaluateRasterShape(
+        abs(type), radius, totalRadius, params,
+        worldPosition, a, b, c,
+        distance, tl, br,
+        gradientType, gradientWeight
+    );
+
+    float result = getWindowAlpha(
+        distance, shadowEndDistance - 0.5, shadowEndDistance + ShadowSoftness,
+        1, 1, 0
+    );
+    return result;
+}
+
 void rasterShapeCommon (
     in float4 worldPositionTypeAndWorldSpace,
     in float4 ab, in float4 cd,
@@ -514,7 +544,7 @@ void rasterShapeCommon (
     in float4 centerColor, in float4 edgeColor, in float2 vpos,
     out float2 tl, out float2 br,
     out float4 fill, out float fillAlpha, 
-    out float outlineAlpha
+    out float outlineAlpha, out float shadowAlpha
 ) {
     float2 worldPosition = worldPositionTypeAndWorldSpace.xy;
     int type = abs(worldPositionTypeAndWorldSpace.z);
@@ -603,6 +633,16 @@ void rasterShapeCommon (
     } else {
         outlineAlpha = 0;
     }
+
+    shadowAlpha = computeShadowAlpha(
+        type, radius, totalRadius, params,
+        worldPosition - ShadowOffset, a, b, c,
+        max(outlineEndDistance, fillEndDistance)
+    );
+    // HACK: We don't want to composite the fill on top of the shadow (this will look awful if the fill is semiopaque),
+    //  but it makes some amount of sense to allow blending outline and shadow pixels.
+    // This is not going to be 100% right for fills without outlines...
+    shadowAlpha = saturate (shadowAlpha - (fillAlpha * ShadowFillSuppression));
 }
 
 // porter-duff A over B
@@ -615,40 +655,24 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return float4(rgb, a);
 }
 
-float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, bool convertToSRGB, float2 vpos) {
+float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool convertToSRGB, float2 vpos) {
     float4 result;
     result = over(outlineColor, outlineAlpha, fillColor, fillAlpha);
+    result = over(result, 1, ShadowColorLinear, shadowAlpha);
 
     result.rgb = float4(result.rgb / max(result.a, 0.0001), result.a);
 
     if (convertToSRGB)
         result.rgb = LinearToSRGB(result.rgb);
 
-    float4 ditheredResult = ApplyDither4(result, vpos);
-
-    // You know what, whatever. The output of this isn't premultiplied anymore.
-    /*
-     * HACK: The ideal outcome is that we just premultiply by our random alpha value
-     *  and that everything looks good. Unfortunately, it seems like what the GPU does
-     *  with overly-precise alpha values is "eh, whatever" so we get weird artifacts and
-     *  uneven brightness on alpha gradients unless we snap the alpha first.
-     * An alternative is to not premultiply the output (and let the GPU do it in the
-     *  blending stage at the end), which looks great, but then we're not using
-     *  premultiplied alpha anymore, which is not so great.
-     * Note the disgusting +0.5 offset. Without this it still looks awful on my RTX card.
-    float snappedResultAlpha = (round(ditheredResult.a * 255) + 0.5) / 255;
-    ditheredResult.a = snappedResultAlpha;
-    ditheredResult.rgb *= ditheredResult.a;
-    */
-
-    return ditheredResult;
+    return ApplyDither4(result, vpos);
 }
 
 float4 texturedShapeCommon (
     in float2 worldPosition, in float4 texRgn,
     in float4 ab, in float4 cd,
     in float4 fill, in float4 outlineColor,
-    in float fillAlpha, in float outlineAlpha,
+    in float fillAlpha, in float outlineAlpha, in float shadowAlpha,
     in float4 params, in float4 params2, in float2 tl, in float2 br,
     in float2 vpos
 ) {
@@ -671,6 +695,6 @@ float4 texturedShapeCommon (
 
     fill *= texColor;
 
-    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, BlendInLinearSpace, vpos);
+    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, vpos);
     return result;
 }

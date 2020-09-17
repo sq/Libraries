@@ -3,16 +3,16 @@ void SHAPE_TYPE_NAME (
 ) {
     float2 tl, br;
     float4 fill;
-    float  fillAlpha, outlineAlpha;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace,
         ab, cd, params, params2,
         centerColor, edgeColor, GET_VPOS,
         tl, br,
-        fill, fillAlpha, outlineAlpha
+        fill, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, BlendInLinearSpace, GET_VPOS);
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, GET_VPOS);
 
     if (result.a <= 0.5 / 255) {
         discard;
@@ -25,20 +25,20 @@ void SHAPE_TYPE_NAME_TEX (
 ) {
     float2 tl, br;
     float4 fill;
-    float  fillAlpha, outlineAlpha;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace,
         ab, cd, params, params2,
         centerColor, edgeColor, GET_VPOS,
         tl, br,
-        fill, fillAlpha, outlineAlpha
+        fill, fillAlpha, outlineAlpha, shadowAlpha
     );
 
     result = texturedShapeCommon(
         worldPositionTypeAndWorldSpace.xy, texRgn,
         ab, cd, 
         fill, outlineColor,
-        fillAlpha, outlineAlpha,
+        fillAlpha, outlineAlpha, shadowAlpha,
         params, params2, tl, br, GET_VPOS
     );
 
