@@ -1659,6 +1659,8 @@ namespace Squared.Render.Convenience {
             // HACK: Look, alright, it's complicated
             if ((desiredBlendState == BlendState.AlphaBlend) || (desiredBlendState == null))
                 desiredBlendState = BlendState.NonPremultiplied;
+            else if (desiredBlendState == BlendState.Additive)
+                desiredBlendState = RenderStates.AdditiveBlendNonPremultiplied;
 
             CachedBatch cacheEntry;
             if (!Cache.TryGet<RasterShapeBatch>(

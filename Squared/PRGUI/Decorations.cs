@@ -180,7 +180,7 @@ namespace Squared.PRGUI.Decorations {
                 fillSize: fillSize,
                 fillOffset: -Arithmetic.PulseSine(context.AnimationTime / 4f, 0f, 0.05f),
                 fillAngle: Arithmetic.PulseCyclicExp(context.AnimationTime / 2f, 3),
-                annularRadius: 1.2f,
+                annularRadius: 1.1f,
                 blendState: BlendState.Additive
             );
         }
