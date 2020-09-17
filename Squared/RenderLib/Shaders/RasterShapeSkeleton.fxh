@@ -93,6 +93,28 @@ float computeTotalRadius (float2 radius, float outlineSize) {
     return radius.x + outlineSize;
 }
 
+void adjustTLBR (
+    inout float2 tl, inout float2 br, float4 params
+) {
+    float annularRadius = params.y;
+    if (annularRadius > 0) {
+        tl -= annularRadius;
+        br += annularRadius;
+    }
+
+    tl -= ShadowSoftness;
+    br += ShadowSoftness;
+    if (ShadowOffset.x >= 0)
+        br.x += ShadowOffset.x;
+    else 
+        tl.x += ShadowOffset.x;
+
+    if (ShadowOffset.y >= 0)
+        br.y += ShadowOffset.y;
+    else
+        tl.y += ShadowOffset.y;
+}
+
 void computeTLBR (
     int type, float2 radius, float totalRadius, float4 params,
     float2 a, float2 b, float2 c,
@@ -149,33 +171,21 @@ void computeTLBR (
             tl = -1; br = 1;
             return;
     }
-
-    float annularRadius = params.y;
-    if (annularRadius > 0) {
-        tl -= annularRadius;
-        br += annularRadius;
-    }
-
-    tl -= ShadowSoftness;
-    br += ShadowSoftness;
-    if (ShadowOffset.x >= 0)
-        br.x += ShadowOffset.x;
-    else 
-        tl.x += ShadowOffset.x;
-
-    if (ShadowOffset.y >= 0)
-        br.y += ShadowOffset.y;
-    else
-        tl.y += ShadowOffset.y;
 }
 
 void computePosition (
     int type, float totalRadius, 
     float2 a, float2 b, float2 c,
     float2 tl, float2 br, float3 cornerWeights,
+    float4 params,
     out float2 xy
 ) {
     if (type == TYPE_LineSegment) {
+        // HACK: Too hard to calculate precise offsets here so just pad it out.
+        // FIXME: This is bad for performance!
+        totalRadius += length(ShadowOffset);
+        totalRadius += ShadowSoftness;
+
         // Oriented bounding box around the line segment
         float2 along = b - a,
             alongNorm = normalize(along) * (totalRadius + 1),
@@ -184,18 +194,8 @@ void computePosition (
 
         // FIXME
         xy = lerp(a - alongNorm, b + alongNorm, cornerWeights.x) + lerp(left, right, cornerWeights.y);
-
-        /*
-        if (cornerIndex.x == 0)
-            xy = a + left - alongNorm;
-        else if (cornerIndex.x == 1)
-            xy = b + left + alongNorm;
-        else if (cornerIndex.x == 2)
-            xy = b + right + alongNorm;
-        else
-            xy = a + right - alongNorm;
-        */
     } else {
+        adjustTLBR(tl, br, params);
         // HACK: Padding
         tl -= 1; br += 1;
         // FIXME: Fit a better hull around triangles. Oriented bounding box?
@@ -230,7 +230,7 @@ void RasterShapeVertexShader (
     float2 tl, br;
 
     computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
-    computePosition(type, totalRadius, a, b, c, tl, br, cornerWeights.xyz, position.xy);
+    computePosition(type, totalRadius, a, b, c, tl, br, cornerWeights.xyz, params, position.xy);
 
     float2 adjustedPosition = position.xy;
     if (typeAndWorldSpace.y > 0.5) {

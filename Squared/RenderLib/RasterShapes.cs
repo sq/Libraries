@@ -70,6 +70,12 @@ namespace Squared.Render.RasterShape {
         public Vector4 Vector4;
         public Color Color;
 
+        public pSRGBColor (float r, float g, float b, float a) {
+            IsVector4 = true;
+            Vector4 = new Vector4(r * a, g * a, b * a, a);
+            Color = default(Color);
+        }
+
         public pSRGBColor (Color c) {
             IsVector4 = false;
             Vector4 = default(Vector4);
@@ -582,11 +588,17 @@ namespace Squared.Render.RasterShape {
 
                     material.Effect.Parameters["BlendInLinearSpace"].SetValue(sb.BlendInLinearSpace);
                     material.Effect.Parameters["RasterTexture"]?.SetValue(Texture);
+
+                    // HACK: If the shadow color is fully transparent, suppress the offset and softness.
+                    // If we don't do this, the bounding box of the shapes will be pointlessly expanded.
+                    var shadowColor = sb.Shadow.Color.ToPLinear();
+                    var shadowOffset = (shadowColor.W > 0) ? sb.Shadow.Offset : Vector2.Zero;
                     material.Effect.Parameters["ShadowOptions"].SetValue(new Vector4(
-                        sb.Shadow.Offset.X, sb.Shadow.Offset.Y,
-                        sb.Shadow.Softness, sb.Shadow.FillSuppression
+                        shadowOffset.X, shadowOffset.Y,
+                        (shadowColor.W > 0) ? sb.Shadow.Softness : 0, sb.Shadow.FillSuppression
                     ));
-                    material.Effect.Parameters["ShadowColorLinear"].SetValue(sb.Shadow.Color.ToPLinear());
+
+                    material.Effect.Parameters["ShadowColorLinear"].SetValue(shadowColor);
                     material.Flush();
 
                     // FIXME: why the hell
