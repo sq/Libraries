@@ -10,7 +10,7 @@
 
 // HACK: The default mip bias for things like text atlases is unnecessarily blurry, especially if
 //  the atlas is high-DPI
-#define DefaultShadowedTopMipBias -0.8
+#define DefaultShadowedTopMipBias (MIP_BIAS - 0.1)
 
 uniform const float4 GlobalShadowColor;
 uniform const float2 ShadowOffset;

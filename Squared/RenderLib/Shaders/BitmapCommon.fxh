@@ -1,5 +1,6 @@
 #ifndef MIP_BIAS
-#define MIP_BIAS 0
+// HACK: If mips are enabled, by default 2d bitmaps will be unnecessarily blurry
+#define MIP_BIAS -0.6
 #endif
 
 #define ENABLE_DITHERING

@@ -477,7 +477,10 @@ namespace Squared.PRGUI {
         }
 
         protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
-            return context.DecorationProvider?.Container;
+            if (LayoutFlags.IsFlagged(ControlFlags.Layout_Floating))
+                return context.DecorationProvider?.FloatingContainer ?? context.DecorationProvider?.Container;
+            else
+                return context.DecorationProvider?.Container;
         }
 
         protected override bool ShouldClipContent => ClipChildren && (Children.Count > 0);

@@ -35,6 +35,7 @@ namespace Squared.PRGUI.Decorations {
 
     public interface IDecorationProvider {
         IDecorator Container { get; }
+        IDecorator FloatingContainer { get; }
         IDecorator StaticText { get; }
         IDecorator Button { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
@@ -110,27 +111,33 @@ namespace Squared.PRGUI.Decorations {
     public class DefaultDecorations : IDecorationProvider {
         public IDecorator Button { get; set; }
         public IDecorator Container { get; set; }
+        public IDecorator FloatingContainer { get; set; }
         public IDecorator StaticText { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public float InteractableCornerRadius = 6f, InertCornerRadius = 3f, ContainerCornerRadius = 3f;
+        public float? FloatingContainerCornerRadius = null;
         public float InactiveOutlineThickness = 1f, ActiveOutlineThickness = 1.3f, PressedOutlineThickness = 2f,
             InertOutlineThickness = 1f;
         public float ScrollbarSize = 14f, ScrollbarRadius = 3f;
 
         public RasterShadowSettings? InteractableShadow, 
             ContainerShadow,
+            FloatingContainerShadow,
             ScrollbarThumbShadow;
 
         public Color FocusedColor = new Color(200, 230, 255),
             ActiveColor = Color.White,
             InactiveColor = new Color(180, 180, 180),
             ContainerOutlineColor = new Color(32, 32, 32),
-            ContainerFillColor = new Color(48, 48, 48),
+            ContainerFillColor = Color.Transparent,
             InertOutlineColor = new Color(255, 255, 255) * 0.33f,
             InertFillColor = Color.Transparent,
             ScrollbarThumbColor = new Color(220, 220, 220),
             ScrollbarTrackColor = new Color(64, 64, 64);
+
+        public Color? FloatingContainerOutlineColor, 
+            FloatingContainerFillColor;
 
         public Material GetTextMaterial (UIOperationContext context, ControlStates state) {
             return context.Renderer.Materials.Get(
@@ -205,6 +212,19 @@ namespace Squared.PRGUI.Decorations {
                 innerColor: settings.BackgroundColor ?? ContainerFillColor, 
                 outerColor: settings.BackgroundColor ?? ContainerFillColor,
                 shadow: ContainerShadow
+            );
+        }
+
+        private void FloatingContainer_Below (UIOperationContext context, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, FloatingContainerCornerRadius ?? ContainerCornerRadius);
+            // FIXME: Should we draw the outline in Above?
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: FloatingContainerCornerRadius ?? ContainerCornerRadius,
+                outlineRadius: InertOutlineThickness, outlineColor: FloatingContainerOutlineColor ?? ContainerOutlineColor,
+                innerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor, 
+                outerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor,
+                shadow: FloatingContainerShadow ?? ContainerShadow
             );
         }
 
@@ -284,6 +304,11 @@ namespace Squared.PRGUI.Decorations {
             };
 
             ContainerShadow = null;
+            FloatingContainerShadow = new RasterShadowSettings {
+                Color = Color.Black * 0.33f,
+                Offset = new Vector2(2.5f, 3f),
+                Softness = 8f
+            };
             ScrollbarThumbShadow = null;
 
             Button = new DelegateDecorator {
@@ -299,6 +324,14 @@ namespace Squared.PRGUI.Decorations {
                 Margins = new Margins(4),
                 GetTextMaterial = GetTextMaterial,
                 Below = Container_Below,
+                ContentClip = Container_ContentClip,
+            };
+
+            FloatingContainer = new DelegateDecorator {
+                Margins = new Margins(4),
+                GetTextMaterial = GetTextMaterial,
+                Below = FloatingContainer_Below,
+                // FIXME: Separate routine?
                 ContentClip = Container_ContentClip,
             };
 

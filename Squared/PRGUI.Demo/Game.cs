@@ -99,7 +99,7 @@ namespace PRGUI.Demo {
             Font = FontLoader.Load("FiraSans-Medium");
             Font.SizePoints = 20f;
             // High-DPI offscreen surface so the text is sharp even at subpixel positions
-            Font.DPIPercent = 200;
+            Font.DPIPercent = 150;
             // Big margin on glyphs so shadows aren't clipped
             Font.GlyphMargin = 4;
             // Enable mips for soft shadows
@@ -116,6 +116,7 @@ namespace PRGUI.Demo {
                 DefaultGlyphSource = Font,
                 Controls = {
                     new Container {
+                        BackgroundColor = new Color(48, 48, 48),
                         LayoutFlags = ControlFlags.Layout_Fill,
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                         Children = {
@@ -180,7 +181,10 @@ namespace PRGUI.Demo {
                     },
                     new Container {
                         BackgroundColor = Color.AntiqueWhite,
-                        Margins = new Margins(240, 240, 0, 0),
+                        // For floating controls, the margins specify its position
+                        Margins = new Margins(220, 120, 0, 0),
+                        MinimumWidth = 400,
+                        MinimumHeight = 240,
                         ContainerFlags = (ControlFlags)0,
                         LayoutFlags = ControlFlags.Layout_Floating,
                         Children = {
