@@ -170,6 +170,18 @@ namespace PRGUI.Demo {
                             }
                         }
                     },
+                    new Container {
+                        BackgroundColor = Color.AntiqueWhite,
+                        Margins = new Margins(240, 240, 0, 0),
+                        ContainerFlags = (ControlFlags)0,
+                        LayoutFlags = ControlFlags.Layout_Floating,
+                        Children = {
+                            new StaticText {
+                                Text = "Floating Panel",
+                                Color = Color.Black,
+                            }
+                        }
+                    }
                 }
             };
 

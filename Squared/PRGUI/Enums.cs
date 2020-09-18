@@ -107,6 +107,10 @@ namespace Squared.PRGUI.Layout {
         /// This only works if The container has Container_Wrap set.
         /// </summary>
         Layout_ForceBreak = 0x2000,
+        /// <summary>
+        /// This control does not contribute to its parent's size calculations or its siblings' layout.
+        /// </summary>
+        Layout_Floating = 0x4000,
 
         Internal_FixedWidth = 0x800,
         Internal_FixedHeight = 0x1000,
@@ -116,7 +120,7 @@ namespace Squared.PRGUI.Layout {
     public static class ControlFlagMask {
         public const ControlFlags BoxModel = (ControlFlags)0x7,
             Container = (ControlFlags)0x41f,
-            Layout = (ControlFlags)0x23e0,
+            Layout = (ControlFlags)0x63e0,
             Fixed = ControlFlags.Internal_FixedWidth | ControlFlags.Internal_FixedHeight;
     }
 

@@ -262,8 +262,20 @@ namespace Squared.PRGUI {
         }
 
         public string Text {
+            get {
+                return Content.Text.ToString();
+            }
             set {
                 Content.Text = value;
+            }
+        }
+
+        public Color Color {
+            get {
+                return Content.Color;
+            }
+            set {
+                Content.Color = value;
             }
         }
 

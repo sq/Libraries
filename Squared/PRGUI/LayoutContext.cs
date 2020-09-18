@@ -447,6 +447,9 @@ namespace Squared.PRGUI.Layout {
             float result = 0;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
+                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating))
+                    continue;
+
                 var rect = GetRect(child);
                 // FIXME: Is this a bug?
                 var childSize = rect[(uint)dim] + rect[(uint)dim + 2] + pChild->Margins.GetElement((uint)dim + 2);
@@ -460,6 +463,9 @@ namespace Squared.PRGUI.Layout {
             int idim = (int)dim, wdim = idim + 2;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
+                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating))
+                    continue;
+
                 var rect = GetRect(child);
                 result += rect[idim] + rect[wdim] + pChild->Margins.GetElement(wdim);
             }
@@ -473,6 +479,9 @@ namespace Squared.PRGUI.Layout {
             float needSize = 0, needSize2 = 0;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
+                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating))
+                    continue;
+
                 var rect = GetRect(child);
 
                 if (
@@ -665,6 +674,12 @@ namespace Squared.PRGUI.Layout {
                     // FIXME: Duplication
                     var pChild = LayoutPtr(child);
                     var childFlags = pChild->Flags;
+                    if (childFlags.IsFlagged(ControlFlags.Layout_Floating)) {
+                        // FIXME: Set position?
+                        child = pChild->NextSibling;
+                        continue;
+                    }
+
                     var flags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Layout) >> idim);
                     var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
                     var childMargins = pChild->Margins;
@@ -727,6 +742,11 @@ namespace Squared.PRGUI.Layout {
             while (!child.IsInvalid) {
                 var pChild = LayoutPtr(child);
                 var childFlags = pChild->Flags;
+                if (childFlags.IsFlagged(ControlFlags.Layout_Floating)) {
+                    child = pChild->NextSibling;
+                    continue;
+                }
+
                 var flags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Layout) >> idim);
                 var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
                 var childMargins = pChild->Margins;
@@ -777,6 +797,9 @@ namespace Squared.PRGUI.Layout {
 
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
+                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating))
+                    continue;
+
                 var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
                 var childMargins = pChild->Margins;
                 var childRect = GetRect(child);
@@ -812,6 +835,11 @@ namespace Squared.PRGUI.Layout {
             var item = startItem;
             while (item != endItem) {
                 var pItem = LayoutPtr(item);
+                if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating)) {
+                    item = pItem->NextSibling;
+                    continue;
+                }
+
                 var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
                 var margins = pItem->Margins;
                 var rect = GetRect(item);
@@ -856,6 +884,9 @@ namespace Squared.PRGUI.Layout {
             var startChild = pItem->FirstChild;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
+                if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating))
+                    continue;
+
                 if (
                     pChild->Flags.IsBreak()
                 ) {

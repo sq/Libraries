@@ -128,34 +128,28 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        private void RasterizePass (UIOperationContext context, RasterizePasses pass) {
-            context.Renderer.Layer++;
-
-            var subContext = context.Clone();
-            subContext.Renderer = context.Renderer.MakeSubgroup();
-            subContext.Pass = pass;
-
-            foreach (var control in Controls)
-                control.Rasterize(subContext, Vector2.Zero);
-
-            context.Renderer.Layer++;
+        private void RasterizePass (UIOperationContext context, Control control, RasterizePasses pass) {
+            var passContext = context.Clone();
+            passContext.Renderer = context.Renderer.MakeSubgroup();
+            passContext.Pass = pass;
+            control.Rasterize(passContext, Vector2.Zero);
         }
 
         public void Rasterize (ref ImperativeRenderer renderer) {
             var context = new UIOperationContext {
                 UIContext = this,
-                Renderer = renderer,
                 AnimationTime = (float)Time.Seconds
             };
 
-            context.Renderer.DepthStencilState = DepthStencilState.None;
-
-            RasterizePass(context, RasterizePasses.Below);
-            RasterizePass(context, RasterizePasses.Content);
-            RasterizePass(context, RasterizePasses.Above);
-
-            // HACK
-            renderer.Layer = context.Renderer.Layer;
+            // Ensure each control is rasterized in its own group of passes, so that top level controls can
+            //  properly overlap each other
+            foreach (var control in Controls) {
+                context.Renderer = renderer.MakeSubgroup();
+                context.Renderer.DepthStencilState = DepthStencilState.None;
+                RasterizePass(context, control, RasterizePasses.Below);
+                RasterizePass(context, control, RasterizePasses.Content);
+                RasterizePass(context, control, RasterizePasses.Above);
+            }
         }
 
         public void Dispose () {
