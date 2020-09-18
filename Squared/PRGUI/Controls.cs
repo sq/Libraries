@@ -392,7 +392,8 @@ namespace Squared.PRGUI {
 
             context.Renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
-                material: GetTextMaterial(context, decorations, settings.State)
+                material: GetTextMaterial(context, decorations, settings.State),
+                samplerState: RenderStates.Text
             );
         }
 

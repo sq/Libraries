@@ -99,7 +99,7 @@ namespace PRGUI.Demo {
             Font = FontLoader.Load("FiraSans-Medium");
             Font.SizePoints = 20f;
             // High-DPI offscreen surface so the text is sharp even at subpixel positions
-            Font.DPIPercent = 150;
+            Font.DPIPercent = 100;
             // Big margin on glyphs so shadows aren't clipped
             Font.GlyphMargin = 4;
             // Enable mips for soft shadows

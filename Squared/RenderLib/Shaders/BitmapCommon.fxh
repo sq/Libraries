@@ -1,6 +1,5 @@
 #ifndef MIP_BIAS
-// HACK: If mips are enabled, by default 2d bitmaps will be unnecessarily blurry
-#define MIP_BIAS -0.5
+#define MIP_BIAS 0
 #endif
 
 #define ENABLE_DITHERING
@@ -24,7 +23,6 @@ Texture2D BitmapTexture : register(t0);
 
 sampler TextureSampler : register(s0) {
     Texture = (BitmapTexture);
-    MipLODBias = MIP_BIAS;
 };
 
 Texture2D SecondTexture : register(t1);
