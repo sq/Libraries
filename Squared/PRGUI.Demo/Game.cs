@@ -15,6 +15,7 @@ using Squared.PRGUI;
 using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
+using Squared.Render.RasterShape;
 using Squared.Render.Text;
 using Squared.Util;
 
@@ -162,7 +163,7 @@ namespace PRGUI.Demo {
                                 Scrollable = true,
                                 ShowHorizontalScrollbar = true,
                                 ShowVerticalScrollbar = true,
-                                ScrollOffset = new Vector2(0, 20),
+                                ScrollOffset = new Vector2(0, 22),
                                 Children = {
                                     new StaticText {
                                         Text = "Clipped container"
@@ -242,7 +243,7 @@ namespace PRGUI.Demo {
                 wasButtonPressed: PreviousMouseState.LeftButton == ButtonState.Pressed
             );
 
-            if (Context.Hovering != null)
+            if (Context.MouseOver != null)
                 LastTimeOverUI = Time.Ticks;
 
             if (IsActive) {
@@ -275,8 +276,6 @@ namespace PRGUI.Demo {
                 Window_ClientSizeChanged(null, EventArgs.Empty);
             }
 
-            // Nuklear.UpdateInput(IsActive, PreviousMouseState, MouseState, PreviousKeyboardState, KeyboardState, IsMouseOverUI, KeyboardInputHandler.Buffer);
-
             KeyboardInputHandler.Buffer.Clear();
 
             ImperativeRenderer ir;
@@ -293,6 +292,22 @@ namespace PRGUI.Demo {
                 ir.Layer = 1;
 
                 Context.Rasterize(ref ir);
+
+                ir.Layer += 1;
+
+                var hoveringControl = Context.HitTest(new Vector2(MouseState.X, MouseState.Y), false);
+                if (hoveringControl != null) {
+                    var hoveringBox = hoveringControl.GetRect(Context.Layout);
+
+                    ir.RasterizeRectangle(
+                        hoveringBox.Position, hoveringBox.Extent,
+                        innerColor: new Color(64, 64, 64), outerColor: Color.Black, radius: 4f,
+                        fillMode: RasterFillMode.Angular, fillOffset: (float)(Time.Seconds / 6), 
+                        fillSize: -0.2f, fillAngle: 55,
+                        annularRadius: 1.75f, outlineRadius: 0f, outlineColor: Color.Transparent,
+                        blendState: BlendState.Additive, blendInLinearSpace: false
+                    );
+                }
 
                 /*
 

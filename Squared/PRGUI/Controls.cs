@@ -24,6 +24,9 @@ namespace Squared.PRGUI {
         public float? MaximumWidth, MaximumHeight;
         public Color? BackgroundColor;
 
+        // Accumulates scroll offset(s) from parent controls
+        private Vector2 _AbsoluteDisplayOffset;
+
         public ControlStates State;
 
         internal ControlKey LayoutKey;
@@ -36,6 +39,21 @@ namespace Squared.PRGUI {
         protected virtual bool HasFixedHeight => FixedHeight.HasValue;
 
         protected WeakReference<Control> WeakParent = null;
+
+        public Vector2 AbsoluteDisplayOffset {
+            get {
+                return _AbsoluteDisplayOffset;
+            }
+            set {
+                if (value == _AbsoluteDisplayOffset)
+                    return;
+                _AbsoluteDisplayOffset = value;
+                OnDisplayOffsetChanged();
+            }
+        }
+
+        protected virtual void OnDisplayOffsetChanged () {
+        }
 
         public void GenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             LayoutKey = OnGenerateLayoutTree(context, parent);
@@ -52,15 +70,22 @@ namespace Squared.PRGUI {
             );
         }
 
-        protected virtual Control OnHitTest (LayoutContext context, RectF box, Vector2 position) {
-            if (box.Contains(position))
-                return this;
+        protected virtual bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsCaptureOnly, ref Control result) {
+            if (!AcceptsCapture && acceptsCaptureOnly)
+                return false;
 
-            return null;
+            if (box.Contains(position)) {
+                result = this;
+                return true;
+            }
+
+            return false;
         }
 
-        public RectF GetRect (LayoutContext context) {
+        public RectF GetRect (LayoutContext context, bool includeOffset = true) {
             var result = context.GetRect(LayoutKey);
+            result.Left += _AbsoluteDisplayOffset.X;
+            result.Top += _AbsoluteDisplayOffset.Y;
 
             // HACK
             if (FixedWidth.HasValue)
@@ -72,13 +97,17 @@ namespace Squared.PRGUI {
                 result.Width = Math.Max(MinimumWidth.Value, result.Width);
             if (MinimumHeight.HasValue)
                 result.Height = Math.Max(MinimumHeight.Value, result.Height);
-
+            
             return result;
         }
 
-        public Control HitTest (LayoutContext context, Vector2 position) {
+        public Control HitTest (LayoutContext context, Vector2 position, bool acceptsCaptureOnly) {
+            var result = this;
             var box = GetRect(context);
-            return OnHitTest(context, box, position);
+            if (OnHitTest(context, box, position, acceptsCaptureOnly, ref result))
+                return result;
+
+            return null;
         }
 
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
@@ -402,7 +431,8 @@ namespace Squared.PRGUI {
         public bool Scrollable = false;
         public bool ShowVerticalScrollbar = true, ShowHorizontalScrollbar = true;
 
-        public Vector2 ScrollOffset;
+        private Vector2 _ScrollOffset;
+        protected Vector2 AbsoluteDisplayOffsetOfChildren;
 
         public ControlFlags ContainerFlags = ControlFlags.Container_Row;
 
@@ -415,12 +445,34 @@ namespace Squared.PRGUI {
             AcceptsCapture = true;
         }
 
+        public Vector2 ScrollOffset {
+            get {
+                return _ScrollOffset;
+            }
+            set {
+                if (value == _ScrollOffset)
+                    return;
+
+                _ScrollOffset = value;
+                OnDisplayOffsetChanged();
+            }
+        }
+
+        protected override void OnDisplayOffsetChanged () {
+            AbsoluteDisplayOffsetOfChildren = AbsoluteDisplayOffset - _ScrollOffset;
+
+            foreach (var child in Children)
+                child.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
+        }
+
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             HasContentBounds = false;
             var result = base.OnGenerateLayoutTree(context, parent);
             context.Layout.SetContainerFlags(result, ContainerFlags);
-            foreach (var item in Children)
+            foreach (var item in Children) {
+                item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
                 item.GenerateLayoutTree(context, result);
+            }
             return result;
         }
 
@@ -439,7 +491,7 @@ namespace Squared.PRGUI {
 
             foreach (var item in Children) {
                 context.Renderer.Layer = layer;
-                item.Rasterize(context, -ScrollOffset);
+                item.Rasterize(context, Vector2.Zero);
                 maxLayer = Math.Max(maxLayer, context.Renderer.Layer);
             }
 
@@ -463,8 +515,10 @@ namespace Squared.PRGUI {
                     float maxScrollX = ContentBounds.Width - viewportWidth, maxScrollY = ContentBounds.Height - viewportHeight;
                     maxScrollX = Math.Max(0, maxScrollX);
                     maxScrollY = Math.Max(0, maxScrollY);
-                    ScrollOffset.X = Arithmetic.Clamp(ScrollOffset.X, 0, maxScrollX);
-                    ScrollOffset.Y = Arithmetic.Clamp(ScrollOffset.Y, 0, maxScrollY);
+                    ScrollOffset = new Vector2(
+                        Arithmetic.Clamp(ScrollOffset.X, 0, maxScrollX),
+                        Arithmetic.Clamp(ScrollOffset.Y, 0, maxScrollY)
+                    );
                 }
 
                 var hstate = new ScrollbarState {
@@ -515,21 +569,23 @@ namespace Squared.PRGUI {
             }
         }
 
-        protected override Control OnHitTest (LayoutContext context, RectF box, Vector2 position) {
-            var result = base.OnHitTest(context, box, position);
-            if (result != this)
-                return result;
+        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsCaptureOnly, ref Control result) {
+            if (!base.OnHitTest(context, box, position, false, ref result))
+                return false;
 
+            bool success = AcceptsCapture || !acceptsCaptureOnly;
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
             for (int i = Children.Count - 1; i >= 0; i--) {
                 var item = Children[i];
-                result = item.HitTest(context, position + ScrollOffset);
-                if (result != null)
-                    return result;
+                var newResult = item.HitTest(context, position, acceptsCaptureOnly);
+                if (newResult != null) {
+                    result = newResult;
+                    success = true;
+                }
             }
 
-            return this;
+            return success;
         }
     }
 

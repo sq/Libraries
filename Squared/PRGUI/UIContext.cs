@@ -21,8 +21,18 @@ namespace Squared.PRGUI {
 
         public List<Control> Controls = new List<Control>();
 
+        /// <summary>
+        /// The control that currently has the mouse captured (if a button is pressed)
+        /// </summary>
         public Control MouseCaptured { get; private set; }
+        /// <summary>
+        /// The control currently underneath the mouse cursor, as long as the mouse is not captured by another control
+        /// </summary>
         public Control Hovering { get; private set; }
+        /// <summary>
+        /// The control currently underneath the mouse cursor
+        /// </summary>
+        public Control MouseOver { get; private set; }
 
         private Control _Focused;
         public Control Focused {
@@ -57,7 +67,12 @@ namespace Squared.PRGUI {
             float mouseWheelDelta = 0
         ) {
             var previouslyHovering = Hovering;
-            Hovering = HitTest(mousePosition);
+            MouseOver = HitTest(mousePosition);
+
+            if ((MouseOver != MouseCaptured) && (MouseCaptured != null))
+                Hovering = null;
+            else
+                Hovering = MouseOver;
 
             if (Hovering != previouslyHovering)
                 HandleHoverTransition(previouslyHovering, Hovering);
@@ -93,7 +108,7 @@ namespace Squared.PRGUI {
                     continue;
                 }
 
-                container.ScrollOffset.Y -= delta;
+                container.ScrollOffset = container.ScrollOffset - new Vector2(0, delta);
                 return;
             }
         }
@@ -118,10 +133,10 @@ namespace Squared.PRGUI {
         }
 
         // Position is relative to the top-left corner of the canvas
-        public Control HitTest (Vector2 position) {
+        public Control HitTest (Vector2 position, bool acceptsCaptureOnly = false) {
             for (var i = Controls.Count - 1; i >= 0; i--) {
                 var control = Controls[i];
-                var result = control.HitTest(Layout, position);
+                var result = control.HitTest(Layout, position, acceptsCaptureOnly);
                 if (result != null)
                     return result;
             }
