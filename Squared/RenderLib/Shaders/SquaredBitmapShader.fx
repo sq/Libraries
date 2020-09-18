@@ -10,7 +10,7 @@
 
 // HACK: The default mip bias for things like text atlases is unnecessarily blurry, especially if
 //  the atlas is high-DPI
-#define DefaultShadowedTopMipBias (MIP_BIAS - 0.1)
+#define DefaultShadowedTopMipBias MIP_BIAS
 
 uniform const float4 GlobalShadowColor;
 uniform const float2 ShadowOffset;
@@ -26,7 +26,7 @@ void BasicPixelShader(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    result = multiplyColor * tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
+    result = multiplyColor * tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     result += (addColor * result.a);
 }
 
@@ -41,7 +41,7 @@ void BasicPixelShaderWithLUT(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    float4 texColor = tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
+    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     texColor.rgb = ApplyLUT(texColor.rgb, LUT2Weight);
     texColor.rgb = ApplyDither(texColor.rgb, GET_VPOS);
 
@@ -60,7 +60,7 @@ void ToSRGBPixelShader(
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    result = multiplyColor * tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
+    result = multiplyColor * tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     result += (addColor * result.a);
     result = pLinearToPSRGB(result);
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
@@ -94,7 +94,7 @@ void BasicPixelShaderWithDiscard (
     addColor.rgb *= addColor.a;
     addColor.a = 0;
 
-    result = multiplyColor * tex2D(TextureSampler, clamp2(texCoord, texRgn.xy, texRgn.zw));
+    result = multiplyColor * tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     result += (addColor * result.a);
 
     const float discardThreshold = (1.0 / 255.0);
