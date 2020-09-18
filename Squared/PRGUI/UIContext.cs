@@ -119,7 +119,8 @@ namespace Squared.PRGUI {
 
         // Position is relative to the top-left corner of the canvas
         public Control HitTest (Vector2 position) {
-            foreach (var control in Controls) {
+            for (var i = Controls.Count - 1; i >= 0; i--) {
+                var control = Controls[i];
                 var result = control.HitTest(Layout, position);
                 if (result != null)
                     return result;

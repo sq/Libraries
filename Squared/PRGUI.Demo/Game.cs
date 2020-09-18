@@ -104,6 +104,13 @@ namespace PRGUI.Demo {
             // Enable mips for soft shadows
             Font.MipMapping = true;
 
+            Materials = new DefaultMaterialSet(RenderCoordinator);
+
+            TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
+            TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.66f));
+            TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.5f * Font.DPIPercent / 200f);
+            TextMaterial.Parameters.ShadowMipBias.SetValue(1f);
+
             Context = new UIContext {
                 DefaultGlyphSource = Font,
                 Controls = {
@@ -179,18 +186,13 @@ namespace PRGUI.Demo {
                             new StaticText {
                                 Text = "Floating Panel",
                                 Color = Color.Black,
+                                // Suppress shadow for black text
+                                TextMaterial = Materials.ScreenSpaceBitmap
                             }
                         }
                     }
                 }
             };
-
-            Materials = new DefaultMaterialSet(RenderCoordinator);
-
-            TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
-            TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.66f));
-            TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.5f * Font.DPIPercent / 200f);
-            TextMaterial.Parameters.ShadowMipBias.SetValue(1f);
 
             UIRenderTarget = new AutoRenderTarget(
                 RenderCoordinator,

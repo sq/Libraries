@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
 using Squared.Util;
@@ -229,6 +230,7 @@ namespace Squared.PRGUI {
     public class StaticText : Control {
         public const bool DiagnosticText = false;
 
+        public Material TextMaterial = null;
         public DynamicStringLayout Content = new DynamicStringLayout();
         public bool AutoSizeWidth = true, AutoSizeHeight = true;
 
@@ -361,8 +363,12 @@ namespace Squared.PRGUI {
 
             context.Renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
-                material: decorations?.GetTextMaterial(context, settings.State)
+                material: GetTextMaterial(context, decorations, settings.State)
             );
+        }
+
+        protected Material GetTextMaterial (UIOperationContext context, IDecorator decorations, ControlStates state) {
+            return TextMaterial ?? decorations.GetTextMaterial(context, state);
         }
     }
 
@@ -406,6 +412,7 @@ namespace Squared.PRGUI {
         public Container () 
             : base () {
             Children = new ControlCollection(this);
+            AcceptsCapture = true;
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
@@ -515,7 +522,8 @@ namespace Squared.PRGUI {
 
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
-            foreach (var item in Children) {
+            for (int i = Children.Count - 1; i >= 0; i--) {
+                var item = Children[i];
                 result = item.HitTest(context, position + ScrollOffset);
                 if (result != null)
                     return result;
@@ -557,6 +565,15 @@ namespace Squared.PRGUI {
 
         public List<Control>.Enumerator GetEnumerator () {
             return Items.GetEnumerator();
+        }
+
+        public Control this[int index] {
+            get {
+                return Items[index];
+            }
+            set {
+                Items[index] = value;
+            }
         }
 
         IEnumerator<Control> IEnumerable<Control>.GetEnumerator () {
