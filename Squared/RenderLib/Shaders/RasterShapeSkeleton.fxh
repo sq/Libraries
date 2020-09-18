@@ -436,6 +436,8 @@ void evaluateRasterShape (
     out float distance, inout float2 tl, inout float2 br,
     inout int gradientType, out float gradientWeight
 ) {
+    bool needTLBR = false;
+
 PREFER_BRANCH
     switch (type) {
 #ifdef INCLUDE_ELLIPSE
@@ -457,9 +459,7 @@ PREFER_BRANCH
                 radius, distance,
                 gradientType, gradientWeight
             );
-
-            computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
-
+            needTLBR = true;
             break;
         }
 #endif
@@ -506,8 +506,7 @@ PREFER_BRANCH
             if (gradientType == GRADIENT_TYPE_Natural)
                 gradientWeight = 1 - saturate(-distance / radius.y);
 
-            computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
-
+            needTLBR = true;
             break;
         }
 #endif
@@ -516,6 +515,9 @@ PREFER_BRANCH
     float annularRadius = params.y;
     if (annularRadius > 0.001)
         distance = abs(distance) - annularRadius;
+
+    if (needTLBR)
+        computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
 }
 
 float computeShadowAlpha (

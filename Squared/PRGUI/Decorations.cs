@@ -11,6 +11,12 @@ using Squared.Render.RasterShape;
 using Squared.Util;
 
 namespace Squared.PRGUI.Decorations {
+    public struct DecorationSettings {
+        public RectF Box;
+        public ControlStates State;
+        public pSRGBColor? BackgroundColor;
+    }
+
     public interface IBaseDecorator {
         Margins Margins { get; }
         Margins Padding { get; }
@@ -20,11 +26,11 @@ namespace Squared.PRGUI.Decorations {
 
     public interface IWidgetDecorator<TData> : IBaseDecorator {
         Vector2 MinimumSize { get; }
-        void Rasterize (UIOperationContext context, RectF box, ControlStates state, ref TData data);
+        void Rasterize (UIOperationContext context, DecorationSettings settings, ref TData data);
     }
 
     public interface IDecorator : IBaseDecorator {
-        void Rasterize (UIOperationContext context, RectF box, ControlStates state);
+        void Rasterize (UIOperationContext context, DecorationSettings settings);
     }
 
     public interface IDecorationProvider {
@@ -49,53 +55,53 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public sealed class DelegateDecorator : DelegateBaseDecorator, IDecorator {
-        public Action<UIOperationContext, RectF, ControlStates> Below, Content, Above, ContentClip;
+        public Action<UIOperationContext, DecorationSettings> Below, Content, Above, ContentClip;
 
-        void IDecorator.Rasterize (UIOperationContext context, RectF box, ControlStates state) {
+        void IDecorator.Rasterize (UIOperationContext context, DecorationSettings settings) {
             switch (context.Pass) {
                 case RasterizePasses.Below:
                     if (Below != null)
-                        Below(context, box, state);
+                        Below(context, settings);
                     return;
                 case RasterizePasses.Content:
                     if (Content != null)
-                        Content(context, box, state);
+                        Content(context, settings);
                     return;
                 case RasterizePasses.Above:
                     if (Above != null)
-                        Above(context, box, state);
+                        Above(context, settings);
                     return;
                 case RasterizePasses.ContentClip:
                     if (ContentClip != null)
-                        ContentClip(context, box, state);
+                        ContentClip(context, settings);
                     return;
             }
         }
     }
 
-    public delegate void WidgetDecoratorRasterizer<TData> (UIOperationContext context, RectF box, ControlStates state, ref TData data);
+    public delegate void WidgetDecoratorRasterizer<TData> (UIOperationContext context, DecorationSettings settings, ref TData data);
 
     public sealed class DelegateWidgetDecorator<TData> : DelegateBaseDecorator, IWidgetDecorator<TData> {
         public Vector2 MinimumSize { get; set; }
         public WidgetDecoratorRasterizer<TData> Below, Content, Above, ContentClip;
 
-        void IWidgetDecorator<TData>.Rasterize (UIOperationContext context, RectF box, ControlStates state, ref TData data) {
+        void IWidgetDecorator<TData>.Rasterize (UIOperationContext context, DecorationSettings settings, ref TData data) {
             switch (context.Pass) {
                 case RasterizePasses.Below:
                     if (Below != null)
-                        Below(context, box, state, ref data);
+                        Below(context, settings, ref data);
                     return;
                 case RasterizePasses.Content:
                     if (Content != null)
-                        Content(context, box, state, ref data);
+                        Content(context, settings, ref data);
                     return;
                 case RasterizePasses.Above:
                     if (Above != null)
-                        Above(context, box, state, ref data);
+                        Above(context, settings, ref data);
                     return;
                 case RasterizePasses.ContentClip:
                     if (ContentClip != null)
-                        ContentClip(context, box, state, ref data);
+                        ContentClip(context, settings, ref data);
                     return;
             }
         }
@@ -108,7 +114,7 @@ namespace Squared.PRGUI.Decorations {
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public float InteractableCornerRadius = 6f, InertCornerRadius = 3f, ContainerCornerRadius = 3f;
-        public float InactiveOutlineThickness = 1f, ActiveOutlineThickness = 1.2f, PressedOutlineThickness = 2f,
+        public float InactiveOutlineThickness = 1f, ActiveOutlineThickness = 1.3f, PressedOutlineThickness = 2f,
             InertOutlineThickness = 1f;
         public float ScrollbarSize = 14f, ScrollbarRadius = 3f;
 
@@ -132,9 +138,11 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void Button_Below (UIOperationContext context, RectF box, ControlStates state) {
+        private void Button_Below (UIOperationContext context, DecorationSettings settings) {
+            var state = settings.State;
+
             float alpha, thickness;
-            var baseColor = (pSRGBColor)(
+            var baseColor = settings.BackgroundColor ?? (pSRGBColor)(
                 state.HasFlag(ControlStates.Focused)
                     ? FocusedColor
                     : InactiveColor
@@ -144,17 +152,18 @@ namespace Squared.PRGUI.Decorations {
             if (state.HasFlag(ControlStates.Pressed)) {
                 alpha = 1f;
                 thickness = PressedOutlineThickness;
+                // FIXME: Should this override the background color property? Maybe?
                 baseColor = ActiveColor;
             } else if (state.HasFlag(ControlStates.Hovering)) {
                 alpha = 0.85f;
                 thickness = ActiveOutlineThickness;
                 pulse = Arithmetic.PulseSine(context.AnimationTime / 3.33f, 0f, 0.05f);
             } else {
-                alpha = state.HasFlag(ControlStates.Focused) ? 0.7f : 0.6f;
+                alpha = state.HasFlag(ControlStates.Focused) ? 0.75f : 0.6f;
                 thickness = state.HasFlag(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
             }
 
-            box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
             context.Renderer.RasterizeRectangle(
                 a, b,
                 radius: InteractableCornerRadius,
@@ -165,12 +174,12 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void Button_Above (UIOperationContext context, RectF box, ControlStates state) {
-            if (!state.HasFlag(ControlStates.Hovering))
+        private void Button_Above (UIOperationContext context, DecorationSettings settings) {
+            if (!settings.State.HasFlag(ControlStates.Hovering))
                 return;
 
-            box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
-            float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / box.Height));
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
+            float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / settings.Box.Height));
 
             context.Renderer.RasterizeRectangle(
                 a, b,
@@ -186,20 +195,35 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void Container_Below (UIOperationContext context, RectF box, ControlStates state) {
-            box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
+        private void Container_Below (UIOperationContext context, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
             // FIXME: Should we draw the outline in Above?
             context.Renderer.RasterizeRectangle(
                 a, b,
                 radius: ContainerCornerRadius,
                 outlineRadius: InertOutlineThickness, outlineColor: ContainerOutlineColor,
-                innerColor: ContainerFillColor, outerColor: ContainerFillColor,
+                innerColor: settings.BackgroundColor ?? ContainerFillColor, 
+                outerColor: settings.BackgroundColor ?? ContainerFillColor,
                 shadow: ContainerShadow
             );
         }
 
-        private void Container_ContentClip (UIOperationContext context, RectF box, ControlStates state) {
-            box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
+        private void StaticText_Below (UIOperationContext context, DecorationSettings settings) {
+            if (!settings.BackgroundColor.HasValue)
+                return;
+
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
+            // FIXME: Should we draw the outline in Above?
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: InertCornerRadius,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: settings.BackgroundColor.Value, outerColor: settings.BackgroundColor.Value
+            );
+        }
+
+        private void Container_ContentClip (UIOperationContext context, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
             context.Renderer.RasterizeRectangle(
                 a, b,
                 radius: ContainerCornerRadius,
@@ -209,7 +233,9 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void Scrollbar_Above (UIOperationContext context, RectF box, ControlStates state, ref ScrollbarState data) {
+        private void Scrollbar_Above (UIOperationContext context, DecorationSettings settings, ref ScrollbarState data) {
+            var box = settings.Box;
+
             var vRadius = new Vector2(ScrollbarRadius);
             var totalOverflow = Math.Max(data.ContentSize - data.ViewportSize, 0.1f);
             float min = Math.Max(data.Position / data.ContentSize, 0f);
@@ -279,7 +305,8 @@ namespace Squared.PRGUI.Decorations {
             StaticText = new DelegateDecorator {
                 Margins = new Margins(2, 4),
                 Padding = new Margins(6),
-                GetTextMaterial = GetTextMaterial
+                GetTextMaterial = GetTextMaterial,
+                Below = StaticText_Below,
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {

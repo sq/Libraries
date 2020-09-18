@@ -21,6 +21,7 @@ namespace Squared.PRGUI {
         public float? FixedWidth, FixedHeight;
         public float? MinimumWidth, MinimumHeight;
         public float? MaximumWidth, MaximumHeight;
+        public Color? BackgroundColor;
 
         public ControlStates State;
 
@@ -123,11 +124,19 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        protected virtual void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
-            decorations?.Rasterize(context, box, state);
+        protected virtual void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+            decorations?.Rasterize(context, settings);
         }
 
         protected virtual void ApplyClipMargins (UIOperationContext context, ref RectF box) {
+        }
+
+        protected virtual DecorationSettings MakeDecorationSettings (ref RectF box, ControlStates state) {
+            return new DecorationSettings {
+                Box = box,
+                State = state,
+                BackgroundColor = BackgroundColor
+            };
         }
 
         public void Rasterize (UIOperationContext context, Vector2 offset) {
@@ -153,7 +162,8 @@ namespace Squared.PRGUI {
                     contentContext.Renderer.DepthStencilState = RenderStates.StencilTest;
             }
 
-            OnRasterize(contentContext, box, state, decorations);
+            var settings = MakeDecorationSettings(ref box, state);
+            OnRasterize(contentContext, settings, decorations);
 
             if (hasNestedContext) {
                 // GROSS OPTIMIZATION HACK: Detect that any rendering operation(s) occurred inside the
@@ -172,7 +182,8 @@ namespace Squared.PRGUI {
                     ApplyClipMargins(context, ref box);
 
                     contentContext.Renderer.Layer = -999;
-                    decorations.Rasterize(contentContext, box, default(ControlStates));
+                    settings.State = default(ControlStates);
+                    decorations.Rasterize(contentContext, settings);
                 }
 
                 context.Renderer.Layer += 1;
@@ -305,22 +316,22 @@ namespace Squared.PRGUI {
             return context.DecorationProvider?.StaticText;
         }
 
-        protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
-            base.OnRasterize(context, box, state, decorations);
+        protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, settings, decorations);
 
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            Content.LineBreakAtX = box.Width;
+            Content.LineBreakAtX = settings.Box.Width;
 
             if (Content.GlyphSource == null)
                 Content.GlyphSource = context.UIContext.DefaultGlyphSource;
 
-            box.SnapAndInset(out Vector2 a, out Vector2 b);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
 
             var computedPadding = ComputePadding(decorations);
             var textOffset = a + new Vector2(computedPadding.Left, computedPadding.Top);
-            if (state.HasFlag(ControlStates.Pressed))
+            if (settings.State.HasFlag(ControlStates.Pressed))
                 textOffset += decorations.PressedInset;
 
             var layout = Content.Get();
@@ -338,7 +349,7 @@ namespace Squared.PRGUI {
 
             context.Renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
-                material: decorations?.GetTextMaterial(context, state)
+                material: decorations?.GetTextMaterial(context, settings.State)
             );
         }
     }
@@ -355,9 +366,11 @@ namespace Squared.PRGUI {
             return context.DecorationProvider?.Button;
         }
 
-        protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
-            base.OnRasterize(context, box, state, decorations);
+        /*
+        protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, settings, decorations);
         }
+        */
     }
 
     public class Container : Control {
@@ -414,11 +427,12 @@ namespace Squared.PRGUI {
             context.Renderer.Layer = maxLayer;
         }
 
-        protected override void OnRasterize (UIOperationContext context, RectF box, ControlStates state, IDecorator decorations) {
-            base.OnRasterize(context, box, state, decorations);
+        protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, settings, decorations);
 
             // FIXME: This should be done somewhere else
             if (Scrollable) {
+                var box = settings.Box;
                 var scrollbar = context.DecorationProvider?.Scrollbar;
                 float viewportWidth = box.Width - (scrollbar?.MinimumSize.X ?? 0),
                     viewportHeight = box.Height - (scrollbar?.MinimumSize.Y ?? 0);
@@ -454,9 +468,9 @@ namespace Squared.PRGUI {
                 hstate.HasCounterpart = vstate.HasCounterpart = (shouldHorzScroll && shouldVertScroll);
 
                 if (shouldHorzScroll)
-                    scrollbar?.Rasterize(context, box, state, ref hstate);
+                    scrollbar?.Rasterize(context, settings, ref hstate);
                 if (shouldVertScroll)
-                    scrollbar?.Rasterize(context, box, state, ref vstate);
+                    scrollbar?.Rasterize(context, settings, ref vstate);
             } else {
                 ScrollOffset = Vector2.Zero;
             }

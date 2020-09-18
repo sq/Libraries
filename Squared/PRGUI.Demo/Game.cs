@@ -96,7 +96,7 @@ namespace PRGUI.Demo {
             FontLoader = new EmbeddedFreeTypeFontProvider(RenderCoordinator);
 
             Font = FontLoader.Load("FiraSans-Medium");
-            Font.SizePoints = 16f;
+            Font.SizePoints = 20f;
             // High-DPI offscreen surface so the text is sharp even at subpixel positions
             Font.DPIPercent = 200;
             // Big margin on glyphs so shadows aren't clipped
@@ -123,6 +123,7 @@ namespace PRGUI.Demo {
                             new Button {
                                 MinimumWidth = 200,
                                 Text = "Button 2",
+                                BackgroundColor = Color.LightSeaGreen
                             },
                             new StaticText {
                                 AutoSizeWidth = false,
@@ -132,15 +133,19 @@ namespace PRGUI.Demo {
                                 Content = {
                                     CharacterWrap = true,
                                     LineLimit = 1
-                                }
+                                },
+                                BackgroundColor = Color.DarkRed
                             },
                             new StaticText {
                                 AutoSizeWidth = false,
                                 Text = "Static Text 3",
+                                TextAlignment = HorizontalAlignment.Center,
+                                BackgroundColor = Color.DarkGreen
                             },
                             new StaticText {
                                 Text = "Static Text 4",
-                                MaximumWidth = 200
+                                MinimumWidth = 400,
+                                BackgroundColor = Color.DarkBlue
                             },
                             new Container {
                                 ClipChildren = true,
@@ -172,7 +177,7 @@ namespace PRGUI.Demo {
 
             TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
             TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.66f));
-            TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.5f);
+            TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.5f * Font.DPIPercent / 200f);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1f);
 
             UIRenderTarget = new AutoRenderTarget(
