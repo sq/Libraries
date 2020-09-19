@@ -107,7 +107,7 @@ namespace Squared.Util.Event {
     }
 
     public delegate void EventSubscriber (EventInfo e);
-    public delegate void TypedEventSubscriber<in T> (EventInfo e, T arguments) where T : class;
+    public delegate void TypedEventSubscriber<in T> (EventInfo e, T arguments);
 
     public class EventSubscriberList : List<EventSubscriber> {
     }
@@ -165,7 +165,7 @@ namespace Squared.Util.Event {
             Type = type;
         }
 
-        public void Broadcast (object arguments) {
+        public void Broadcast<T> (T arguments) {
             EventBus.Broadcast(Source, Type, arguments);
         }
 
@@ -201,7 +201,7 @@ namespace Squared.Util.Event {
         }
     }
 
-    public class EventBus : IDisposable {
+    public sealed class EventBus : IDisposable {
         public struct CategoryCollection {
             public readonly EventBus EventBus;
 
@@ -219,11 +219,16 @@ namespace Squared.Util.Event {
         public static readonly object AnySource = "<Any Source>";
         public static readonly string AnyType = "<Any Type>";
 
-        protected readonly Dictionary<string, EventCategoryToken> _Categories = 
+        private readonly Dictionary<string, EventCategoryToken> _Categories = 
             new Dictionary<string, EventCategoryToken>();
 
-        protected readonly Dictionary<EventFilter, EventSubscriberList> _Subscribers =
+        private readonly Dictionary<EventFilter, EventSubscriberList> _Subscribers =
             new Dictionary<EventFilter, EventSubscriberList>(new EventFilterComparer());
+
+        /// <summary>
+        /// Return false to suppress broadcast of this event
+        /// </summary>
+        public Func<object, string, object, bool> OnBroadcast;
 
         private static void CreateFilter (object source, string type, out EventFilter filter, bool weak) {
             filter = new EventFilter(source ?? AnySource, type ?? AnyType, weak);
@@ -284,12 +289,7 @@ namespace Squared.Util.Event {
             return false;
         }
 
-        // Return false to suppress dispatch of the event to subscribers
-        protected virtual bool OnBroadcast (object source, string type, object arguments) {
-            return true;
-        }
-
-        protected void BroadcastToSubscribers (object source, string type, object arguments) {
+        private void BroadcastToSubscribers<T> (object source, string type, T arguments) {
             EventInfo info = null;
             EventSubscriberList subscribers;
             EventFilter filter;
@@ -345,7 +345,11 @@ namespace Squared.Util.Event {
                     subscribers.CopyTo(temp);
 
                     for (int j = count - 1; j >= 0; j--) {
-                        temp[j](info);
+                        var ts = temp[j] as TypedEventSubscriber<T>;
+                        if (ts != null)
+                            ts(info, arguments);
+                        else
+                            temp[j](info);
 
                         if (info.IsConsumed)
                             return;
@@ -362,7 +366,19 @@ namespace Squared.Util.Event {
             if (type == null)
                 throw new ArgumentNullException("type");
 
-            if (!OnBroadcast(source, type, arguments))
+            if ((OnBroadcast != null) && !OnBroadcast(source, type, arguments))
+                return;
+
+            BroadcastToSubscribers(source, type, arguments);
+        }
+
+        public void Broadcast<T> (object source, string type, T arguments) {
+            if (source == null)
+                throw new ArgumentNullException("source");
+            if (type == null)
+                throw new ArgumentNullException("type");
+
+            if ((OnBroadcast != null) && !OnBroadcast(source, type, arguments))
                 return;
 
             BroadcastToSubscribers(source, type, arguments);
@@ -387,7 +403,7 @@ namespace Squared.Util.Event {
             return new EventThunk(this, sender, type);
         }
 
-        public virtual void Dispose () {
+        public void Dispose () {
             _Subscribers.Clear();
         }
     }

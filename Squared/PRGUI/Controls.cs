@@ -292,9 +292,9 @@ namespace Squared.PRGUI {
             }
         }
 
-        public string Text {
+        public AbstractString Text {
             get {
-                return Content.Text.ToString();
+                return Content.Text;
             }
             set {
                 Content.Text = value;

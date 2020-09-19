@@ -11,10 +11,12 @@ using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
 using Squared.Util;
+using Squared.Util.Event;
 
 namespace Squared.PRGUI {
     public class UIContext : IDisposable {
         public Vector2 CanvasSize;
+        public EventBus EventBus = new EventBus();
         public readonly LayoutContext Layout = new LayoutContext();
         public IDecorationProvider Decorations = new DefaultDecorations();
         public IGlyphSource DefaultGlyphSource;
@@ -40,8 +42,19 @@ namespace Squared.PRGUI {
             set {
                 if (value != null && !value.AcceptsFocus)
                     throw new InvalidOperationException();
+                var previous = _Focused;
                 _Focused = value;
+                if (previous != null)
+                    FireEvent("LostFocus", previous, _Focused);
+                if (_Focused != null)
+                    FireEvent("GotFocus", _Focused, previous);
             }
+        }
+
+        internal void FireEvent<T> (string name, object target, T args)
+            where T : class
+        {
+            EventBus?.Broadcast(target, name, args);
         }
 
         public void UpdateLayout () {
