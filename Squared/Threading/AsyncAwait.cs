@@ -11,7 +11,7 @@ using Squared.Util.Event;
 
 using tTask = System.Threading.Tasks.Task;
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
-using EventInfo = Squared.Util.Event.EventInfo;
+using IEventInfo = Squared.Util.Event.IEventInfo;
 using Squared.Threading;
 using Squared.Threading.AsyncAwait;
 using System.Runtime.ExceptionServices;
@@ -187,10 +187,10 @@ namespace Squared.Threading {
             T                 Result;
             Future<T>         _Future;
 
-            protected abstract bool TryExtractResult (EventInfo e, out T result);
+            protected abstract bool TryExtractResult (IEventInfo e, out T result);
             protected abstract EventSubscription Subscribe (EventSubscriber subscriber);
 
-            protected void EventHandler (EventInfo e) {
+            protected void EventHandler (IEventInfo e) {
                 if (_IsCompleted)
                     return;
 
@@ -258,14 +258,14 @@ namespace Squared.Threading {
         }
 
         public struct WaitableEvent {
-            public class Awaiter : WaitableEventAwaiterBase<EventInfo> {
+            public class Awaiter : WaitableEventAwaiterBase<IEventInfo> {
                 readonly WaitableEvent Parent;
 
                 public Awaiter (ref WaitableEvent parent) {
                     Parent = parent;
                 }
 
-                protected override bool TryExtractResult (EventInfo e, out EventInfo result) {
+                protected override bool TryExtractResult (IEventInfo e, out IEventInfo result) {
                     result = e;
                     return true;
                 }
@@ -298,8 +298,11 @@ namespace Squared.Threading {
                     Parent = parent;
                 }
 
-                protected override bool TryExtractResult (EventInfo e, out T result) {
-                    if (e.Arguments is T) {
+                protected override bool TryExtractResult (IEventInfo e, out T result) {
+                    var eit = e as IEventInfo<T>;
+                    if (eit != null) {
+                        result = eit.Arguments;
+                    } else if (e.Arguments is T) {
                         result = (T)e.Arguments;
                         return true;
                     }

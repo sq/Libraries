@@ -31,6 +31,7 @@ namespace Squared.PRGUI {
 
         internal ControlKey LayoutKey;
 
+        public bool Enabled { get; set; } = true;
         public bool AcceptsCapture { get; protected set; }
         public bool AcceptsFocus { get; protected set; }
         public virtual bool AcceptsScroll => false;
@@ -79,8 +80,12 @@ namespace Squared.PRGUI {
             );
         }
 
-        protected virtual bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsCaptureOnly, ref Control result) {
+        protected virtual bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsCaptureOnly, bool acceptsFocusOnly, ref Control result) {
             if (!AcceptsCapture && acceptsCaptureOnly)
+                return false;
+            if (!AcceptsFocus && acceptsFocusOnly)
+                return false;
+            if ((acceptsFocusOnly || acceptsCaptureOnly) && !Enabled)
                 return false;
 
             if (box.Contains(position)) {
@@ -110,10 +115,10 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        public Control HitTest (LayoutContext context, Vector2 position, bool acceptsCaptureOnly) {
+        public Control HitTest (LayoutContext context, Vector2 position, bool acceptsCaptureOnly, bool acceptsFocusOnly) {
             var result = this;
             var box = GetRect(context);
-            if (OnHitTest(context, box, position, acceptsCaptureOnly, ref result))
+            if (OnHitTest(context, box, position, acceptsCaptureOnly, acceptsFocusOnly, ref result))
                 return result;
 
             return null;
@@ -154,12 +159,19 @@ namespace Squared.PRGUI {
 
         protected ControlStates GetCurrentState (UIOperationContext context) {
             var result = State;
-            if (context.UIContext.Hovering == this)
-                result |= ControlStates.Hovering;
-            if (context.UIContext.Focused == this)
-                result |= ControlStates.Focused;
+
+            if (!Enabled) {
+                result |= ControlStates.Disabled;
+            } else {
+                if (context.UIContext.Hovering == this)
+                    result |= ControlStates.Hovering;
+                if (context.UIContext.Focused == this)
+                    result |= ControlStates.Focused;
+            }
+
             if (context.UIContext.MouseCaptured == this)
                 result |= ControlStates.Pressed;
+
             return result;
         }
 
@@ -267,6 +279,7 @@ namespace Squared.PRGUI {
 
     public class StaticText : Control {
         public const bool DiagnosticText = false;
+        public const float DisabledAlpha = 0.66f;
 
         public Material TextMaterial = null;
         public DynamicStringLayout Content = new DynamicStringLayout();
@@ -399,10 +412,14 @@ namespace Squared.PRGUI {
                     break;
             }
 
+            var overrideColor = settings.State.HasFlag(ControlStates.Disabled)
+                ? Content.Color.ToGrayscale(DisabledAlpha)
+                : (Color?)null;
+
             context.Renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
                 material: GetTextMaterial(context, decorations, settings.State),
-                samplerState: RenderStates.Text
+                samplerState: RenderStates.Text, multiplyColor: overrideColor
             );
         }
 
@@ -589,8 +606,8 @@ namespace Squared.PRGUI {
             }
         }
 
-        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsCaptureOnly, ref Control result) {
-            if (!base.OnHitTest(context, box, position, false, ref result))
+        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsCaptureOnly, bool acceptsFocusOnly, ref Control result) {
+            if (!base.OnHitTest(context, box, position, false, false, ref result))
                 return false;
 
             bool success = AcceptsCapture || !acceptsCaptureOnly;
@@ -598,7 +615,7 @@ namespace Squared.PRGUI {
             // This doesn't produce the right outcome when a container's computed size is zero
             for (int i = Children.Count - 1; i >= 0; i--) {
                 var item = Children[i];
-                var newResult = item.HitTest(context, position, acceptsCaptureOnly);
+                var newResult = item.HitTest(context, position, acceptsCaptureOnly, acceptsFocusOnly);
                 if (newResult != null) {
                     result = newResult;
                     success = true;

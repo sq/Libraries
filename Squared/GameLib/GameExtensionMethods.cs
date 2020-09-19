@@ -109,5 +109,17 @@ namespace Squared.Game {
                 Arithmetic.IsFinite(v.Z) &&
                 Arithmetic.IsFinite(v.W);
         }
+
+        const float ToGrayR = 0.299f / 255,
+            ToGrayG = 0.587f / 255,
+            ToGrayB = 0.144f / 255;
+
+        public static Color ToGrayscale (this Color c, float alphaMultiplier = 1) {
+            var sum = (c.R * ToGrayR + c.G * ToGrayG + c.B * ToGrayB) * alphaMultiplier;
+            return new Color(
+                sum, sum, sum, 
+                c.A * alphaMultiplier
+            );
+        }
     }
 }

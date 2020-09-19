@@ -49,7 +49,7 @@ namespace Squared.PRGUI {
         public Control Focused {
             get => _Focused;
             set {
-                if (value != null && !value.AcceptsFocus)
+                if (value != null && (!value.AcceptsFocus || !value.Enabled))
                     throw new InvalidOperationException();
                 var previous = _Focused;
                 _Focused = value;
@@ -92,6 +92,9 @@ namespace Squared.PRGUI {
         ) {
             var previouslyHovering = Hovering;
             MouseOver = HitTest(mousePosition);
+
+            if ((Focused != null) && !Focused.Enabled)
+                Focused = null;
 
             if ((MouseOver != MouseCaptured) && (MouseCaptured != null))
                 Hovering = null;
@@ -142,9 +145,9 @@ namespace Squared.PRGUI {
         private void HandlePress (Control target) {
             // FIXME: Position
             FireEvent(Events.MouseDown, target);
-            if (target != null && target.AcceptsCapture)
+            if (target != null && (target.AcceptsCapture && target.Enabled))
                 MouseCaptured = target;
-            if (target == null || target.AcceptsFocus)
+            if (target == null || (target.AcceptsFocus && target.Enabled))
                 Focused = target;
         }
 
@@ -153,17 +156,18 @@ namespace Squared.PRGUI {
         }
 
         private void HandleClick (Control target) {
-            FireEvent(Events.Click, target);
+            if (target.Enabled)
+                FireEvent(Events.Click, target);
         }
 
         private void HandleDrag (Control originalTarget, Control finalTarget) {
         }
 
         // Position is relative to the top-left corner of the canvas
-        public Control HitTest (Vector2 position, bool acceptsCaptureOnly = false) {
+        public Control HitTest (Vector2 position, bool acceptsCaptureOnly = false, bool acceptsFocusOnly = false) {
             for (var i = Controls.Count - 1; i >= 0; i--) {
                 var control = Controls[i];
-                var result = control.HitTest(Layout, position, acceptsCaptureOnly);
+                var result = control.HitTest(Layout, position, acceptsCaptureOnly, acceptsFocusOnly);
                 if (result != null)
                     return result;
             }

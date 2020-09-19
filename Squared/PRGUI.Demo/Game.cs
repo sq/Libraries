@@ -99,7 +99,7 @@ namespace PRGUI.Demo {
             Font = FontLoader.Load("FiraSans-Medium");
             Font.SizePoints = 20f;
             // High-DPI offscreen surface so the text is sharp even at subpixel positions
-            Font.DPIPercent = 100;
+            Font.DPIPercent = 150;
             // Big margin on glyphs so shadows aren't clipped
             Font.GlyphMargin = 4;
             // Enable mips for soft shadows
@@ -112,6 +112,12 @@ namespace PRGUI.Demo {
             TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.5f * Font.DPIPercent / 200f);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1f);
 
+            var lastPressedCtl = new StaticText {
+                LayoutFlags = ControlFlags.Layout_Fill_Row,
+                AutoSize = false,
+                Text = "Last Pressed: None"
+            };
+
             Context = new UIContext {
                 DefaultGlyphSource = Font,
                 Controls = {
@@ -120,6 +126,7 @@ namespace PRGUI.Demo {
                         LayoutFlags = ControlFlags.Layout_Fill,
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                         Children = {
+                            lastPressedCtl,
                             new Button {
                                 AutoSizeWidth = false,
                                 FixedWidth = 400,
@@ -133,6 +140,13 @@ namespace PRGUI.Demo {
                                 MinimumWidth = 200,
                                 Text = "Button 2",
                                 BackgroundColor = Color.LightSeaGreen
+                            },
+                            new Button {
+                                MinimumWidth = 200,
+                                Text = "Disabled Button",
+                                Enabled = false,
+                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                                BackgroundColor = Color.LightPink
                             },
                             new StaticText {
                                 AutoSizeWidth = false,
@@ -148,7 +162,7 @@ namespace PRGUI.Demo {
                             new StaticText {
                                 AutoSizeWidth = false,
                                 Text = "Static Text 3",
-                                TextAlignment = HorizontalAlignment.Center,
+                                TextAlignment = HorizontalAlignment.Right,
                                 BackgroundColor = Color.DarkGreen
                             },
                             new StaticText {
@@ -198,6 +212,13 @@ namespace PRGUI.Demo {
                     }
                 }
             };
+
+            Context.EventBus.Subscribe(null, UIContext.Events.Click, (ei) => {
+                var st = ei.Source as StaticText;
+                if (st == null)
+                    return;
+                lastPressedCtl.Text = "Last Pressed: " + st.Text;
+            });
 
             UIRenderTarget = new AutoRenderTarget(
                 RenderCoordinator,
