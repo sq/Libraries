@@ -71,43 +71,60 @@ namespace Squared.Util.Event {
         }
     }
 
-    public class EventInfo {
-        public readonly EventBus Bus;
-        public readonly object Source;
-        public readonly EventCategoryToken Category;
-        public readonly string CategoryName;
-        public readonly string Type;
-        public readonly object Arguments;
+    public interface IEventInfo {
+        EventBus Bus { get; }
+        object Source { get; }
+        EventCategoryToken Category { get; }
+        string CategoryName { get; }
+        string Type { get; }
+        object Arguments { get; }
+        bool IsConsumed { get; }
 
-        private bool _IsConsumed;
+        void Consume ();
+    }
 
-        public bool IsConsumed {
+    public interface IEventInfo<out T> : IEventInfo {
+        T Arguments { get; }
+    }
+
+    // FIXME: Make this a struct?
+    public class EventInfo<T> : IEventInfo<T> {
+        public EventBus Bus { private set; get; }
+        public object Source { private set; get; }
+        public EventCategoryToken Category { private set; get; }
+        public string CategoryName { private set; get; }
+        public string Type { private set; get; }
+        public T Arguments { internal set; get; }
+
+        object IEventInfo.Arguments {
             get {
-                return _IsConsumed;
+                return Arguments;
             }
         }
 
+        public bool IsConsumed { private set; get; }
+
         public void Consume () {
-            _IsConsumed = true;
+            IsConsumed = true;
         }
 
-        public EventInfo (EventBus bus, object source, EventCategoryToken categoryToken, string categoryName, string type, object arguments) {
+        public EventInfo (EventBus bus, object source, EventCategoryToken categoryToken, string categoryName, string type, T arguments) {
             Bus = bus;
             Source = source;
             Category = categoryToken;
             CategoryName = categoryName;
             Type = type;
             Arguments = arguments;
-            _IsConsumed = false;
+            IsConsumed = false;
         }
 
-        public EventInfo Clone () {
-            return new EventInfo(Bus, Source, Category, CategoryName, Type, Arguments);
+        public virtual EventInfo<T> Clone () {
+            return new EventInfo<T>(Bus, Source, Category, CategoryName, Type, Arguments);
         }
     }
 
-    public delegate void EventSubscriber (EventInfo e);
-    public delegate void TypedEventSubscriber<in T> (EventInfo e, T arguments);
+    public delegate void EventSubscriber (IEventInfo e);
+    public delegate void TypedEventSubscriber<in T> (IEventInfo<T> e, T arguments);
 
     public class EventSubscriberList : List<EventSubscriber> {
     }
@@ -269,9 +286,9 @@ namespace Squared.Util.Event {
         public EventSubscription Subscribe<T> (object source, string type, TypedEventSubscriber<T> subscriber) 
             where T : class {
             return Subscribe(source, type, (e) => {
-                var args = e.Arguments as T;
-                if (args != null)
-                    subscriber(e, args);
+                var info = e as IEventInfo<T>;
+                if (info != null)
+                    subscriber(info, info.Arguments);
             });
         }
 
@@ -290,7 +307,7 @@ namespace Squared.Util.Event {
         }
 
         private void BroadcastToSubscribers<T> (object source, string type, T arguments) {
-            EventInfo info = null;
+            EventInfo<T> info = null;
             EventSubscriberList subscribers;
             EventFilter filter;
             EventCategoryToken categoryToken = null;
@@ -338,7 +355,7 @@ namespace Squared.Util.Event {
                     continue;
 
                 if (info == null)
-                    info = new EventInfo(this, source, categoryToken, categoryName, type, arguments);
+                    info = new EventInfo<T>(this, source, categoryToken, categoryName, type, arguments);
 
                 using (var b = BufferPool<EventSubscriber>.Allocate(count)) {
                     var temp = b.Data;

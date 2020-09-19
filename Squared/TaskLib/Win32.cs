@@ -283,11 +283,11 @@ namespace Squared.Task {
             OwnedSubscriptions.Add(eventBus.Subscribe(source, type, subscriber));
         }
 
-        public void SubscribeTo (EventBus eventBus, object source, string type, Func<EventInfo, IEnumerator<object>> subscriber) {
+        public void SubscribeTo (EventBus eventBus, object source, string type, Func<IEventInfo, IEnumerator<object>> subscriber) {
             OwnedSubscriptions.Add(eventBus.Subscribe(source, type, Scheduler, subscriber));
         }
 
-        public void SubscribeTo<T> (EventBus eventBus, object source, string type, Func<EventInfo, T, IEnumerator<object>> subscriber)
+        public void SubscribeTo<T> (EventBus eventBus, object source, string type, Func<IEventInfo<T>, T, IEnumerator<object>> subscriber)
             where T : class {
             OwnedSubscriptions.Add(eventBus.Subscribe(source, type, Scheduler, subscriber));
         }

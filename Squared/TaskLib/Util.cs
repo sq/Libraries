@@ -865,22 +865,22 @@ namespace Squared.Task {
     }
 
     public static class TaskEventSubscriber {
-        public static EventSubscriber New (TaskScheduler scheduler, Func<EventInfo, IEnumerator<object>> task) {
+        public static EventSubscriber New (TaskScheduler scheduler, Func<IEventInfo, IEnumerator<object>> task) {
             return (e) =>
                 scheduler.Start(task(e), TaskExecutionPolicy.RunAsBackgroundTask);
         }
 
-        public static TypedEventSubscriber<T> New<T> (TaskScheduler scheduler, Func<EventInfo, T, IEnumerator<object>> task)
+        public static TypedEventSubscriber<T> New<T> (TaskScheduler scheduler, Func<IEventInfo<T>, T, IEnumerator<object>> task)
             where T : class {
             return (e, args) =>
                 scheduler.Start(task(e, args), TaskExecutionPolicy.RunAsBackgroundTask);
         }
 
-        public static EventSubscription Subscribe (this EventBus eventBus, object source, string type, TaskScheduler scheduler, Func<EventInfo, IEnumerator<object>> task) {
+        public static EventSubscription Subscribe (this EventBus eventBus, object source, string type, TaskScheduler scheduler, Func<IEventInfo, IEnumerator<object>> task) {
             return eventBus.Subscribe(source, type, TaskEventSubscriber.New(scheduler, task));
         }
 
-        public static EventSubscription Subscribe<T> (this EventBus eventBus, object source, string type, TaskScheduler scheduler, Func<EventInfo, T, IEnumerator<object>> task)
+        public static EventSubscription Subscribe<T> (this EventBus eventBus, object source, string type, TaskScheduler scheduler, Func<IEventInfo<T>, T, IEnumerator<object>> task)
             where T : class {
             return eventBus.Subscribe<T>(source, type, TaskEventSubscriber.New<T>(scheduler, task));
         }

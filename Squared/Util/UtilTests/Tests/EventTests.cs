@@ -175,7 +175,7 @@ namespace Squared.Util.Event {
         class EventTracer {
             public List<String> Trace = new List<string>();
 
-            public void EventHandler (EventInfo e) {
+            public void EventHandler (IEventInfo e) {
                 Trace.Add(e.Arguments.ToString());
             }
         }

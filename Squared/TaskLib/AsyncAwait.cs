@@ -11,7 +11,7 @@ using Squared.Util.Event;
 
 using tTask = System.Threading.Tasks.Task;
 using CallContext = System.Runtime.Remoting.Messaging.CallContext;
-using EventInfo = Squared.Util.Event.EventInfo;
+using IEventInfo = Squared.Util.Event.IEventInfo;
 using Squared.Threading;
 using Squared.Threading.AsyncAwait;
 using System.Runtime.ExceptionServices;
