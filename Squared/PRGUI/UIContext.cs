@@ -15,6 +15,15 @@ using Squared.Util.Event;
 
 namespace Squared.PRGUI {
     public class UIContext : IDisposable {
+        public static class Events {
+            public static readonly string LostFocus = string.Intern("LostFocus"),
+                GotFocus = string.Intern("GotFocus"),
+                MouseDown = string.Intern("MouseDown"),
+                MouseUp = string.Intern("MouseUp"),
+                Click = string.Intern("Click"),
+                Scroll = string.Intern("Scroll");
+        }
+
         public Vector2 CanvasSize;
         public EventBus EventBus = new EventBus();
         public readonly LayoutContext Layout = new LayoutContext();
@@ -45,16 +54,18 @@ namespace Squared.PRGUI {
                 var previous = _Focused;
                 _Focused = value;
                 if (previous != null)
-                    FireEvent("LostFocus", previous, _Focused);
+                    FireEvent(Events.LostFocus, previous, _Focused);
                 if (_Focused != null)
-                    FireEvent("GotFocus", _Focused, previous);
+                    FireEvent(Events.GotFocus, _Focused, previous);
             }
         }
 
-        internal void FireEvent<T> (string name, object target, T args)
-            where T : class
-        {
+        internal void FireEvent<T> (string name, object target, T args) {
             EventBus?.Broadcast(target, name, args);
+        }
+
+        internal void FireEvent (string name, object target) {
+            EventBus?.Broadcast<object>(target, name, null);
         }
 
         public void UpdateLayout () {
@@ -114,15 +125,14 @@ namespace Squared.PRGUI {
 
         private void HandleScroll (Control control, float delta) {
             while (control != null) {
-                // FIXME
-                var container = control as Container;
-                if (container == null) {
+                FireEvent(Events.Scroll, control, delta);
+
+                if (!control.AcceptsScroll || !control.HandleScroll(delta)) {
                     control.TryGetParent(out control);
                     continue;
                 }
 
-                container.ScrollOffset = container.ScrollOffset - new Vector2(0, delta);
-                return;
+                break;
             }
         }
 
@@ -130,6 +140,8 @@ namespace Squared.PRGUI {
         }
 
         private void HandlePress (Control target) {
+            // FIXME: Position
+            FireEvent(Events.MouseDown, target);
             if (target != null && target.AcceptsCapture)
                 MouseCaptured = target;
             if (target == null || target.AcceptsFocus)
@@ -137,9 +149,11 @@ namespace Squared.PRGUI {
         }
 
         private void HandleRelease (Control target) {
+            FireEvent(Events.MouseUp, target);
         }
 
         private void HandleClick (Control target) {
+            FireEvent(Events.Click, target);
         }
 
         private void HandleDrag (Control originalTarget, Control finalTarget) {

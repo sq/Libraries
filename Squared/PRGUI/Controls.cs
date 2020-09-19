@@ -33,6 +33,7 @@ namespace Squared.PRGUI {
 
         public bool AcceptsCapture { get; protected set; }
         public bool AcceptsFocus { get; protected set; }
+        public virtual bool AcceptsScroll => false;
         protected virtual bool HasNestedContent => false;
         protected virtual bool ShouldClipContent => false;
         protected virtual bool HasFixedWidth => FixedWidth.HasValue;
@@ -53,6 +54,14 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void OnDisplayOffsetChanged () {
+        }
+
+        internal bool HandleScroll (float delta) {
+            return OnScroll(delta);
+        }
+
+        protected virtual bool OnScroll (float delta) {
+            return false;
         }
 
         public void GenerateLayoutTree (UIOperationContext context, ControlKey parent) {
@@ -446,6 +455,8 @@ namespace Squared.PRGUI {
             AcceptsCapture = true;
         }
 
+        public override bool AcceptsScroll => Scrollable;
+
         public Vector2 ScrollOffset {
             get {
                 return _ScrollOffset;
@@ -457,6 +468,11 @@ namespace Squared.PRGUI {
                 _ScrollOffset = value;
                 OnDisplayOffsetChanged();
             }
+        }
+
+        protected override bool OnScroll (float delta) {
+            ScrollOffset = new Vector2(ScrollOffset.X, ScrollOffset.Y - delta);
+            return true;
         }
 
         protected override void OnDisplayOffsetChanged () {
