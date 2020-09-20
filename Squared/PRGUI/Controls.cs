@@ -71,10 +71,10 @@ namespace Squared.PRGUI {
         protected Vector2 GetFixedInteriorSpace () {
             return new Vector2(
                 FixedWidth.HasValue
-                    ? Math.Max(0, FixedWidth.Value - Margins.Left - Margins.Right)
+                    ? Math.Max(0, FixedWidth.Value - Margins.X)
                     : LayoutItem.NoValue,
                 FixedHeight.HasValue
-                    ? Math.Max(0, FixedHeight.Value - Margins.Top - Margins.Bottom)
+                    ? Math.Max(0, FixedHeight.Value - Margins.Y)
                     : LayoutItem.NoValue
             );
         }
@@ -147,6 +147,16 @@ namespace Squared.PRGUI {
             fixedHeight = FixedHeight;
         }
 
+        protected virtual void ComputeSizeConstraints (
+            out float? minimumWidth, out float? minimumHeight,
+            out float? maximumWidth, out float? maximumHeight
+        ) {
+            minimumWidth = MinimumWidth;
+            minimumHeight = MinimumHeight;
+            maximumWidth = MaximumWidth;
+            maximumHeight = MaximumHeight;
+        }
+
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             var result = context.Layout.CreateItem();
 
@@ -161,10 +171,15 @@ namespace Squared.PRGUI {
             context.Layout.SetMargins(result, computedMargins);
             context.Layout.SetPadding(result, computedPadding);
             context.Layout.SetFixedSize(result, fixedWidth ?? LayoutItem.NoValue, fixedHeight ?? LayoutItem.NoValue);
+
+            ComputeSizeConstraints(
+                out float? minimumWidth, out float? minimumHeight,
+                out float? maximumWidth, out float? maximumHeight
+            );
             context.Layout.SetSizeConstraints(
                 result, 
-                MinimumWidth, MinimumHeight, 
-                MaximumWidth, MaximumHeight
+                minimumWidth, minimumHeight, 
+                maximumWidth, maximumHeight
             );
 
             if (!parent.IsInvalid)
@@ -390,17 +405,12 @@ namespace Squared.PRGUI {
 
             var computedPadding = ComputePadding(context, decorations);
             var layoutSize = Content.Get().Size;
-            var computedWidth = layoutSize.X + computedPadding.Left + computedPadding.Right;
-            var computedHeight = layoutSize.Y + computedPadding.Top + computedPadding.Bottom;
-            if (MinimumWidth.HasValue)
-                computedWidth = Math.Max(MinimumWidth.Value, computedWidth);
-            if (MinimumHeight.HasValue)
-                computedHeight = Math.Max(MinimumHeight.Value, computedHeight);
+            var computedSize = layoutSize + computedPadding.Size;
 
             if (AutoSizeWidth)
-                AutoSizeComputedWidth = computedWidth;
+                AutoSizeComputedWidth = computedSize.X;
             if (AutoSizeHeight)
-                AutoSizeComputedHeight = computedHeight;
+                AutoSizeComputedHeight = computedSize.Y;
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
@@ -433,7 +443,7 @@ namespace Squared.PRGUI {
                 textOffset += decorations.PressedInset;
 
             var layout = Content.Get();
-            var xSpace = (b.X - a.X) - layout.Size.X - computedPadding.Left - computedPadding.Right;
+            var xSpace = (b.X - a.X) - layout.Size.X - computedPadding.X;
             switch (Content.Alignment) {
                 case HorizontalAlignment.Left:
                     break;
@@ -474,6 +484,84 @@ namespace Squared.PRGUI {
 
         public override string ToString () {
             return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText()}'";
+        }
+    }
+
+    public class EditableText : Control {
+        public bool Multiline = false;
+
+        protected DynamicStringLayout TextLayout = new DynamicStringLayout();
+        protected StringBuilder Builder = new StringBuilder();
+        protected Margins CachedPadding;
+
+        public EditableText ()
+            : base () {
+            TextLayout.Text = Builder;
+            AcceptsCapture = true;
+            AcceptsFocus = true;
+        }
+
+        public string Text {
+            get {
+                return Builder.ToString();
+            }
+            set {
+                // FIXME: Optimize the 'value hasn't changed' case
+                Builder.Clear();
+                Builder.Append(value);
+                Invalidate();
+            }
+        }
+
+        public void Invalidate () {
+            TextLayout.Invalidate();
+        }
+
+        protected StringLayout UpdateLayout (
+            UIOperationContext context, DecorationSettings settings, IDecorator decorations, out Material material
+        ) {
+            Color? color = null;
+            decorations.GetTextSettings(context, settings.State, out material, out IGlyphSource font, ref color);
+            CachedPadding = ComputePadding(context, decorations);
+
+            TextLayout.GlyphSource = font;
+            TextLayout.LineLimit = Multiline ? int.MaxValue : 1;
+            TextLayout.Color = color ?? Color.White;
+
+            return TextLayout.Get();
+        }
+
+        protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
+            return context.DecorationProvider?.EditableText;
+        }
+
+        protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
+            base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
+            if (TextLayout.GlyphSource == null)
+                return;
+
+            var lineHeight = TextLayout.GlyphSource.LineSpacing;
+            var contentMinimumHeight = lineHeight * (Multiline ? 2 : 1) + CachedPadding.Y; // FIXME: Include padding
+            minimumHeight = Math.Max(minimumHeight ?? 0, contentMinimumHeight);
+        }
+
+        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
+            // HACK: Populate various fields that we will use to compute minimum size
+            UpdateLayout(context, new DecorationSettings(), context.DecorationProvider.EditableText, out Material temp);
+            return base.OnGenerateLayoutTree(context, parent);
+        }
+
+        protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, settings, decorations);
+
+            if (context.Pass != RasterizePasses.Content)
+                return;
+
+            var layout = UpdateLayout(context, settings, decorations, out Material textMaterial);
+            context.Renderer.DrawMultiple(
+                layout.DrawCalls, offset: settings.ContentBox.Position,
+                material: textMaterial
+            );
         }
     }
 
@@ -764,7 +852,7 @@ namespace Squared.PRGUI {
                 var titleContentBox = titleBox;
                 titleContentBox.Left += titleDecorator.Padding.Left;
                 titleContentBox.Top += titleDecorator.Padding.Top;
-                titleContentBox.Width -= (titleDecorator.Padding.Left + titleDecorator.Padding.Right);
+                titleContentBox.Width -= titleDecorator.Padding.X;
 
                 var offsetX = (titleContentBox.Width - layout.Size.X) / 2f;
 

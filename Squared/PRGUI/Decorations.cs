@@ -41,6 +41,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Window { get; }
         IDecorator WindowTitle { get; }
         IDecorator StaticText { get; }
+        IDecorator EditableText { get; }
         IDecorator Button { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
@@ -137,6 +138,7 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator Window { get; set; }
         public IDecorator WindowTitle { get; set; }
         public IDecorator StaticText { get; set; }
+        public IDecorator EditableText { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public IGlyphSource DefaultFont,
@@ -281,6 +283,45 @@ namespace Squared.PRGUI.Decorations {
                 radius: InertCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: settings.BackgroundColor.Value, outerColor: settings.BackgroundColor.Value
+            );
+        }
+
+        private void EditableText_Below (UIOperationContext context, DecorationSettings settings) {
+            bool isFocused = settings.State.HasFlag(ControlStates.Focused),
+                isHovering = settings.State.HasFlag(ControlStates.Hovering);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: InertCornerRadius,
+                outlineRadius: (isFocused || isHovering)
+                    ? ActiveOutlineThickness 
+                    : InactiveOutlineThickness, 
+                outlineColor: isFocused
+                    ? FocusedColor
+                    : ContainerOutlineColor,
+                innerColor: settings.BackgroundColor.Value, 
+                outerColor: settings.BackgroundColor.Value
+            );
+        }
+
+        private void EditableText_Above (UIOperationContext context, DecorationSettings settings) {
+            if (!settings.State.HasFlag(ControlStates.Focused))
+                return;
+
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
+            float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / settings.Box.Height));
+
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: InertCornerRadius,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
+                fillMode: RasterFillMode.Angular,
+                fillSize: fillSize,
+                fillOffset: -Arithmetic.PulseSine(context.AnimationTime / 4f, 0f, 0.05f),
+                fillAngle: Arithmetic.PulseCyclicExp(context.AnimationTime / 2f, 3),
+                annularRadius: 1.1f,
+                blendState: BlendState.Additive
             );
         }
 
@@ -449,6 +490,15 @@ namespace Squared.PRGUI.Decorations {
                 Padding = new Margins(6),
                 GetTextSettings = GetTextSettings,
                 Below = StaticText_Below,
+            };
+
+            EditableText = new DelegateDecorator {
+                Margins = new Margins(4),
+                Padding = new Margins(6),
+                GetTextSettings = GetTextSettings,
+                // FIXME
+                Below = EditableText_Below,
+                // Above = EditableText_Above
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {

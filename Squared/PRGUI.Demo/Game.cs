@@ -130,11 +130,19 @@ namespace PRGUI.Demo {
                 Text = ""
             };
 
+            var textfield = new EditableText {
+                Text = "Editable Text",
+                BackgroundColor = new Color(16, 128, 16),
+                // FIXME: This should be at least partially automatic
+                MinimumWidth = 400
+            };
+
             var hideButton = new Button {
                 Text = "Hide",
                 AutoSizeWidth = false,
+                MaximumWidth = 150,
                 Margins = default(Margins),
-                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                LayoutFlags = ControlFlags.Layout_Anchor_Right | ControlFlags.Layout_Fill_Column | ControlFlags.Layout_ForceBreak,
                 BackgroundColor = new Color(128, 16, 16)
             };
 
@@ -146,12 +154,7 @@ namespace PRGUI.Demo {
                 Title = "Floating Panel",
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start | ControlFlags.Container_Wrap,
                 Children = {
-                    new StaticText {
-                        Text = "Panel content",
-                        Margins = default(Margins),
-                        LayoutFlags = ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_Anchor_Left,
-                        BackgroundColor = new Color(16, 128, 16)
-                    },
+                    textfield,
                     hideButton,
                 }
             };

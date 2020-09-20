@@ -193,8 +193,8 @@ namespace Squared.PRGUI.Layout {
             var pItem = LayoutPtr(key);
             interior.Left = Math.Min(extent.X, interior.Left + pItem->Padding.Left);
             interior.Top = Math.Min(extent.Y, interior.Top + pItem->Padding.Top);
-            interior.Width = Math.Max(0, exterior.Width - pItem->Padding.Left - pItem->Padding.Right);
-            interior.Height = Math.Max(0, exterior.Height - pItem->Padding.Top - pItem->Padding.Bottom);
+            interior.Width = Math.Max(0, exterior.Width - pItem->Padding.X);
+            interior.Height = Math.Max(0, exterior.Height - pItem->Padding.Y);
             return interior;
         }
 
@@ -493,6 +493,10 @@ namespace Squared.PRGUI {
                 Bottom = lhs.Bottom + rhs.Bottom
             };
         }
+
+        public float X => Left + Right;
+        public float Y => Top + Bottom;
+        public Vector2 Size => new Vector2(Left + Right, Top + Bottom);
 
         public static implicit operator Vector4 (Margins margins) {
             return new Vector4(margins.Left, margins.Top, margins.Right, margins.Bottom);
