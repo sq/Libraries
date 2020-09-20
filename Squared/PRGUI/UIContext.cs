@@ -30,6 +30,8 @@ namespace Squared.PRGUI {
         public IDecorationProvider Decorations = new DefaultDecorations();
         public IGlyphSource DefaultGlyphSource;
 
+        private bool LastMouseButtonState = false;
+
         public List<Control> Controls = new List<Control>();
 
         /// <summary>
@@ -86,8 +88,7 @@ namespace Squared.PRGUI {
         }
 
         public void UpdateInput (
-            Vector2 mousePosition, 
-            bool isButtonPressed, bool wasButtonPressed,
+            Vector2 mousePosition, bool leftButtonPressed,
             float mouseWheelDelta = 0
         ) {
             var previouslyHovering = Hovering;
@@ -104,9 +105,9 @@ namespace Squared.PRGUI {
             if (Hovering != previouslyHovering)
                 HandleHoverTransition(previouslyHovering, Hovering);
 
-            if (!wasButtonPressed && isButtonPressed) {
-                HandlePress(Hovering);
-            } else if (wasButtonPressed && !isButtonPressed) {
+            if (!LastMouseButtonState && leftButtonPressed) {
+                HandleMouseDown(Hovering);
+            } else if (LastMouseButtonState && !leftButtonPressed) {
                 if (MouseCaptured != null) {
                     if (Hovering == MouseCaptured)
                         HandleClick(MouseCaptured);
@@ -114,16 +115,19 @@ namespace Squared.PRGUI {
                         HandleDrag(MouseCaptured, Hovering);
                 }
 
-                HandleRelease(Hovering);
+                if (Hovering != null)
+                    HandleMouseUp(Hovering);
 
                 MouseCaptured = null;
-            } else if (!isButtonPressed) {
+            } else if (!leftButtonPressed) {
                 // Shouldn't be necessary but whatever
                 MouseCaptured = null;
             }
 
             if (mouseWheelDelta != 0)
                 HandleScroll(MouseCaptured ?? Hovering, mouseWheelDelta);
+
+            LastMouseButtonState = leftButtonPressed;
         }
 
         private void HandleScroll (Control control, float delta) {
@@ -140,18 +144,20 @@ namespace Squared.PRGUI {
         }
 
         private void HandleHoverTransition (Control previous, Control current) {
+            // FIXME
         }
 
-        private void HandlePress (Control target) {
+        private void HandleMouseDown (Control target) {
             // FIXME: Position
-            FireEvent(Events.MouseDown, target);
+            if (target != null)
+                FireEvent(Events.MouseDown, target);
             if (target != null && (target.AcceptsCapture && target.Enabled))
                 MouseCaptured = target;
             if (target == null || (target.AcceptsFocus && target.Enabled))
                 Focused = target;
         }
 
-        private void HandleRelease (Control target) {
+        private void HandleMouseUp (Control target) {
             FireEvent(Events.MouseUp, target);
         }
 
@@ -161,6 +167,7 @@ namespace Squared.PRGUI {
         }
 
         private void HandleDrag (Control originalTarget, Control finalTarget) {
+            // FIXME
         }
 
         // Position is relative to the top-left corner of the canvas

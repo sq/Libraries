@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Game;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.RasterShape;
@@ -21,7 +22,7 @@ namespace Squared.PRGUI.Decorations {
         Margins Margins { get; }
         Margins Padding { get; }
         Vector2 PressedInset { get; }
-        Material GetTextMaterial (UIOperationContext context, ControlStates state);
+        bool GetTextSettings (UIOperationContext context, ControlStates state, out Material material, ref Color? color);
     }
 
     public interface IWidgetDecorator<TData> : IBaseDecorator {
@@ -36,27 +37,46 @@ namespace Squared.PRGUI.Decorations {
     public interface IDecorationProvider {
         IDecorator Container { get; }
         IDecorator FloatingContainer { get; }
+        IDecorator Window { get; }
+        IDecorator WindowTitle { get; }
         IDecorator StaticText { get; }
         IDecorator Button { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
+    public delegate bool TextSettingsGetter (UIOperationContext context, ControlStates state, out Material material, ref Color? color);
+
     public abstract class DelegateBaseDecorator : IBaseDecorator {
         public Margins Margins { get; set; }
         public Margins Padding { get; set; }
         public Vector2 PressedInset { get; set; }
-        public Func<UIOperationContext, ControlStates, Material> GetTextMaterial;
+        public TextSettingsGetter GetTextSettings;
 
-        Material IBaseDecorator.GetTextMaterial (UIOperationContext context, ControlStates state) {
-            if (GetTextMaterial != null)
-                return GetTextMaterial(context, state);
-            else
-                return null;
+        bool IBaseDecorator.GetTextSettings (UIOperationContext context, ControlStates state, out Material material, ref Color? color) {
+            if (GetTextSettings != null)
+                return GetTextSettings(context, state, out material, ref color);
+            else {
+                material = default(Material);
+                return false;
+            }
         }
     }
 
     public sealed class DelegateDecorator : DelegateBaseDecorator, IDecorator {
         public Action<UIOperationContext, DecorationSettings> Below, Content, Above, ContentClip;
+
+        public DelegateDecorator Clone () {
+            return new DelegateDecorator {
+                Below = Below,
+                Content = Content,
+                Above = Above,
+                ContentClip = ContentClip,
+                Margins = Margins,
+                Padding = Padding,
+                GetTextSettings = GetTextSettings,
+                PressedInset = PressedInset
+            };
+        }
 
         void IDecorator.Rasterize (UIOperationContext context, DecorationSettings settings) {
             switch (context.Pass) {
@@ -112,19 +132,28 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator Button { get; set; }
         public IDecorator Container { get; set; }
         public IDecorator FloatingContainer { get; set; }
+        public IDecorator Window { get; set; }
+        public IDecorator WindowTitle { get; set; }
         public IDecorator StaticText { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
-        public float InteractableCornerRadius = 6f, InertCornerRadius = 3f, ContainerCornerRadius = 3f;
+        public float InteractableCornerRadius = 6f, 
+            InertCornerRadius = 3f, 
+            ContainerCornerRadius = 3f, 
+            TitleCornerRadius = 2f;
         public float? FloatingContainerCornerRadius = null;
-        public float InactiveOutlineThickness = 1f, ActiveOutlineThickness = 1.3f, PressedOutlineThickness = 2f,
+        public float InactiveOutlineThickness = 1f, 
+            ActiveOutlineThickness = 1.3f, 
+            PressedOutlineThickness = 2f,
             InertOutlineThickness = 1f;
-        public float ScrollbarSize = 14f, ScrollbarRadius = 3f;
+        public float ScrollbarSize = 14f, 
+            ScrollbarRadius = 3f;
 
         public RasterShadowSettings? InteractableShadow, 
             ContainerShadow,
             FloatingContainerShadow,
-            ScrollbarThumbShadow;
+            ScrollbarThumbShadow,
+            TitleShadow;
 
         public Color FocusedColor = new Color(200, 230, 255),
             ActiveColor = Color.White,
@@ -134,15 +163,29 @@ namespace Squared.PRGUI.Decorations {
             InertOutlineColor = new Color(255, 255, 255) * 0.33f,
             InertFillColor = Color.Transparent,
             ScrollbarThumbColor = new Color(220, 220, 220),
-            ScrollbarTrackColor = new Color(64, 64, 64);
+            ScrollbarTrackColor = new Color(64, 64, 64),
+            TitleColor = new Color(64, 160, 180),
+            TextColor = Color.White;
+
+        public float DisabledTextAlpha = 0.5f;
 
         public Color? FloatingContainerOutlineColor, 
             FloatingContainerFillColor;
 
-        public Material GetTextMaterial (UIOperationContext context, ControlStates state) {
-            return context.Renderer.Materials.Get(
+        public bool GetTextSettings (
+            UIOperationContext context, ControlStates state, 
+            out Material material, ref Color? color
+        ) {
+            if (color == null)
+                color = TextColor;
+
+            if (state.HasFlag(ControlStates.Disabled))
+                color = color.Value.ToGrayscale(DisabledTextAlpha);
+
+            material = context.Renderer.Materials.Get(
                 context.Renderer.Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend
             );
+            return true;
         }
 
         private void Button_Below (UIOperationContext context, DecorationSettings settings) {
@@ -296,6 +339,18 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
+        private void WindowTitle_Below (UIOperationContext context, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, TitleCornerRadius);
+            // FIXME: Should we draw the outline in Above?
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: TitleCornerRadius,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: TitleColor, outerColor: TitleColor,
+                shadow: TitleShadow
+            );
+        }
+
         public DefaultDecorations () {
             InteractableShadow = new RasterShadowSettings {
                 Color = Color.Black * 0.25f,
@@ -315,30 +370,38 @@ namespace Squared.PRGUI.Decorations {
                 Margins = new Margins(4),
                 Padding = new Margins(6),
                 PressedInset = new Vector2(0, 1),
-                GetTextMaterial = GetTextMaterial,
+                GetTextSettings = GetTextSettings,
                 Below = Button_Below,
                 Above = Button_Above
             };
 
             Container = new DelegateDecorator {
                 Margins = new Margins(4),
-                GetTextMaterial = GetTextMaterial,
+                GetTextSettings = GetTextSettings,
                 Below = Container_Below,
                 ContentClip = Container_ContentClip,
             };
 
             FloatingContainer = new DelegateDecorator {
                 Margins = new Margins(4),
-                GetTextMaterial = GetTextMaterial,
+                GetTextSettings = GetTextSettings,
                 Below = FloatingContainer_Below,
                 // FIXME: Separate routine?
                 ContentClip = Container_ContentClip,
             };
 
+            Window = ((DelegateDecorator)FloatingContainer).Clone();
+
+            WindowTitle = new DelegateDecorator {
+                Padding = new Margins(2),
+                GetTextSettings = GetTextSettings,
+                Below = WindowTitle_Below
+            };
+
             StaticText = new DelegateDecorator {
                 Margins = new Margins(2, 4),
                 Padding = new Margins(6),
-                GetTextMaterial = GetTextMaterial,
+                GetTextSettings = GetTextSettings,
                 Below = StaticText_Below,
             };
 

@@ -114,7 +114,7 @@ namespace PRGUI.Demo {
 
             var lastPressedCtl = new StaticText {
                 LayoutFlags = ControlFlags.Layout_Fill_Row,
-                AutoSize = false,
+                AutoSizeWidth = false,
                 Text = "Last Pressed: None"
             };
 
@@ -193,22 +193,13 @@ namespace PRGUI.Demo {
                             }
                         }
                     },
-                    new Container {
+                    new Window {
                         BackgroundColor = Color.AntiqueWhite,
                         // For floating controls, the margins specify its position
-                        Margins = new Margins(220, 120, 0, 0),
+                        Position = new Vector2(220, 140),
                         MinimumWidth = 400,
                         MinimumHeight = 240,
-                        ContainerFlags = (ControlFlags)0,
-                        LayoutFlags = ControlFlags.Layout_Floating,
-                        Children = {
-                            new StaticText {
-                                Text = "Floating Panel",
-                                Color = Color.Black,
-                                // Suppress shadow for black text
-                                TextMaterial = Materials.ScreenSpaceBitmap
-                            }
-                        }
+                        Title = "Floating Panel"
                     }
                 }
             };
@@ -263,9 +254,8 @@ namespace PRGUI.Demo {
 
             Context.UpdateInput(
                 mousePosition,
-                mouseWheelDelta: (MouseState.ScrollWheelValue - PreviousMouseState.ScrollWheelValue) / 4f,
-                isButtonPressed: MouseState.LeftButton == ButtonState.Pressed,
-                wasButtonPressed: PreviousMouseState.LeftButton == ButtonState.Pressed
+                mouseWheelDelta: (MouseState.ScrollWheelValue - PreviousMouseState.ScrollWheelValue) / 3.2f,
+                leftButtonPressed: MouseState.LeftButton == ButtonState.Pressed
             );
 
             if (Context.MouseOver != null)

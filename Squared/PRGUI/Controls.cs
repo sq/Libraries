@@ -279,8 +279,8 @@ namespace Squared.PRGUI {
 
     public class StaticText : Control {
         public const bool DiagnosticText = false;
-        public const float DisabledAlpha = 0.66f;
 
+        public Color? TextColor = null;
         public Material TextMaterial = null;
         public DynamicStringLayout Content = new DynamicStringLayout();
         public bool AutoSizeWidth = true, AutoSizeHeight = true;
@@ -320,15 +320,6 @@ namespace Squared.PRGUI {
             }
             set {
                 Content.Text = value;
-            }
-        }
-
-        public Color Color {
-            get {
-                return Content.Color;
-            }
-            set {
-                Content.Color = value;
             }
         }
 
@@ -412,19 +403,20 @@ namespace Squared.PRGUI {
                     break;
             }
 
-            var overrideColor = settings.State.HasFlag(ControlStates.Disabled)
-                ? Content.Color.ToGrayscale(DisabledAlpha)
-                : (Color?)null;
+            Color? overrideColor = TextColor;
+            Material material;
+            GetTextSettings(context, decorations, settings.State, out material, ref overrideColor);
 
             context.Renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
-                material: GetTextMaterial(context, decorations, settings.State),
-                samplerState: RenderStates.Text, multiplyColor: overrideColor
+                material: material, samplerState: RenderStates.Text, multiplyColor: overrideColor
             );
         }
 
-        protected Material GetTextMaterial (UIOperationContext context, IDecorator decorations, ControlStates state) {
-            return TextMaterial ?? decorations.GetTextMaterial(context, state);
+        protected void GetTextSettings (UIOperationContext context, IDecorator decorations, ControlStates state, out Material material, ref Color? color) {
+            decorations.GetTextSettings(context, state, out material, ref color);
+            if (TextMaterial != null)
+                material = TextMaterial;
         }
     }
 
@@ -623,6 +615,26 @@ namespace Squared.PRGUI {
             }
 
             return success;
+        }
+    }
+
+    public class Window : Container {
+        public Vector2 Position {
+            get {
+                return new Vector2(Margins.Left, Margins.Top);
+            }
+            set {
+                Margins.Left = value.X;
+                Margins.Top = value.Y;
+            }
+        }
+
+        public string Title;
+
+        public Window ()
+            : base () {
+            ContainerFlags |= ControlFlags.Container_Constrain_Size;
+            LayoutFlags |= ControlFlags.Layout_Floating;
         }
     }
 
