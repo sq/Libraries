@@ -718,6 +718,7 @@ namespace Squared.PRGUI.Layout {
                         childRect[idim] = ix0;
                         childRect[wdim] = ix1 - ix0;
                         SetRect(child, ref childRect);
+                        CheckConstraints(child, idim);
                     }
 
                     x = x + constrainedSize + childMargins[wdim];
@@ -725,6 +726,20 @@ namespace Squared.PRGUI.Layout {
                     extraMargin = spacer;
                 }
             }
+        }
+
+        private unsafe void CheckConstraints (ControlKey control, int dimension) {
+            var pItem = LayoutPtr(control);
+            var rect = GetRect(control);
+            var wdim = dimension + 2;
+
+            var min = pItem->MinimumSize.GetElement(dimension);
+            var max = pItem->MaximumSize.GetElement(dimension);
+            if (
+                ((min >= 0) && (rect[wdim] < min)) ||
+                ((max >= 0) && (rect[wdim] > max))
+            )
+                System.Diagnostics.Debugger.Break();
         }
 
         private unsafe void BuildStackedRow (
@@ -819,6 +834,7 @@ namespace Squared.PRGUI.Layout {
 
                 childRect[idim] += offset;
                 SetRect(child, ref childRect);
+                CheckConstraints(child, idim);
             }
         }
 
@@ -873,6 +889,7 @@ namespace Squared.PRGUI.Layout {
                 }
 
                 SetRect(item, ref rect);
+                CheckConstraints(item, idim);
                 item = pItem->NextSibling;
             }
         }

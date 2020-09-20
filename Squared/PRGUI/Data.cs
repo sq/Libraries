@@ -79,7 +79,8 @@ namespace Squared.PRGUI.Layout {
     }
 
     public struct LayoutItem {
-        public static readonly Vector2 NoSize = new Vector2(-1);
+        public const float NoValue = -1;
+        public static readonly Vector2 NoSize = new Vector2(NoValue);
 
         public readonly ControlKey Key;
 

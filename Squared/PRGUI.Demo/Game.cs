@@ -213,7 +213,7 @@ namespace PRGUI.Demo {
                         // For floating controls, the margins specify its position
                         Position = new Vector2(220, 140),
                         MinimumWidth = 400,
-                        MinimumHeight = 240,
+                        // MinimumHeight = 240,
                         Title = "Floating Panel",
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start,
                         Children = {

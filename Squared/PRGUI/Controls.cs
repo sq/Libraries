@@ -37,8 +37,6 @@ namespace Squared.PRGUI {
         public virtual bool AcceptsScroll => false;
         protected virtual bool HasNestedContent => false;
         protected virtual bool ShouldClipContent => false;
-        protected virtual bool HasFixedWidth => FixedWidth.HasValue;
-        protected virtual bool HasFixedHeight => FixedHeight.HasValue;
 
         protected WeakReference<Control> WeakParent = null;
 
@@ -73,10 +71,10 @@ namespace Squared.PRGUI {
             return new Vector2(
                 FixedWidth.HasValue
                     ? Math.Max(0, FixedWidth.Value - Margins.Left - Margins.Right)
-                    : -1,
+                    : LayoutItem.NoValue,
                 FixedHeight.HasValue
                     ? Math.Max(0, FixedHeight.Value - Margins.Top - Margins.Bottom)
-                    : -1
+                    : LayoutItem.NoValue
             );
         }
 
@@ -140,6 +138,11 @@ namespace Squared.PRGUI {
             return result;
         }
 
+        protected virtual void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
+            fixedWidth = FixedWidth;
+            fixedHeight = FixedHeight;
+        }
+
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             var result = context.Layout.CreateItem();
 
@@ -147,12 +150,18 @@ namespace Squared.PRGUI {
             var computedMargins = ComputeMargins(context, decorations);
             var computedPadding = ComputePadding(context, decorations);
 
-            var actualLayoutFlags = ComputeLayoutFlags();
+            ComputeFixedSize(out float? fixedWidth, out float? fixedHeight);
+            var actualLayoutFlags = ComputeLayoutFlags(fixedWidth.HasValue, fixedHeight.HasValue);
+
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetMargins(result, computedMargins);
             context.Layout.SetPadding(result, computedPadding);
-            context.Layout.SetFixedSize(result, FixedWidth ?? -1, FixedHeight ?? -1);
-            context.Layout.SetSizeConstraints(result, MinimumWidth, MinimumHeight, MaximumWidth, MaximumHeight);
+            context.Layout.SetFixedSize(result, fixedWidth ?? LayoutItem.NoValue, fixedHeight ?? LayoutItem.NoValue);
+            context.Layout.SetSizeConstraints(
+                result, 
+                MinimumWidth, MinimumHeight, 
+                MaximumWidth, MaximumHeight
+            );
 
             if (!parent.IsInvalid)
                 context.Layout.InsertAtEnd(parent, result);
@@ -160,12 +169,12 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        protected virtual ControlFlags ComputeLayoutFlags () {
+        protected ControlFlags ComputeLayoutFlags (bool hasFixedWidth, bool hasFixedHeight) {
             var result = LayoutFlags;
             // FIXME: If we do this, fixed-size elements extremely are not fixed size
-            if (HasFixedWidth && result.IsFlagged(ControlFlags.Layout_Fill_Row))
+            if (hasFixedWidth && result.IsFlagged(ControlFlags.Layout_Fill_Row))
                 result &= ~ControlFlags.Layout_Fill_Row;
-            if (HasFixedHeight && result.IsFlagged(ControlFlags.Layout_Fill_Column))
+            if (hasFixedHeight && result.IsFlagged(ControlFlags.Layout_Fill_Column))
                 result &= ~ControlFlags.Layout_Fill_Column;
             return result;
         }
@@ -310,6 +319,8 @@ namespace Squared.PRGUI {
         public DynamicStringLayout Content = new DynamicStringLayout();
         public bool AutoSizeWidth = true, AutoSizeHeight = true;
 
+        private float? AutoSizeComputedWidth, AutoSizeComputedHeight;
+
         public StaticText ()
             : base () {
             Content.LineLimit = 1;
@@ -348,40 +359,47 @@ namespace Squared.PRGUI {
             }
         }
 
-        protected override bool HasFixedWidth => base.HasFixedWidth || AutoSizeWidth;
-        protected override bool HasFixedHeight => base.HasFixedHeight || AutoSizeHeight;
+        protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
+            base.ComputeFixedSize(out fixedWidth, out fixedHeight);
+            if (AutoSizeWidth)
+                fixedWidth = AutoSizeComputedWidth ?? fixedWidth;
+            if (AutoSizeHeight)
+                fixedHeight = AutoSizeComputedHeight ?? fixedHeight;
+        }
 
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
-            var result = base.OnGenerateLayoutTree(context, parent);
-            if (AutoSizeWidth || AutoSizeHeight) {
-                var interiorSpace = GetFixedInteriorSpace();
-                if (interiorSpace.X > 0)
-                    Content.LineBreakAtX = interiorSpace.X;
-                else
-                    Content.LineBreakAtX = null;
-
-                var decorations = GetDecorations(context);
-                UpdateFont(context, decorations);
-
-                var computedPadding = ComputePadding(context, decorations);
-                var layoutSize = Content.Get().Size;
-                var computedWidth = layoutSize.X + computedPadding.Left + computedPadding.Right;
-                var computedHeight = layoutSize.Y + computedPadding.Top + computedPadding.Bottom;
-                if (MinimumWidth.HasValue)
-                    computedWidth = Math.Max(MinimumWidth.Value, computedWidth);
-                if (MinimumHeight.HasValue)
-                    computedHeight = Math.Max(MinimumHeight.Value, computedHeight);
-
-                context.Layout.SetFixedSize(
-                    result, 
-                    FixedWidth ?? (AutoSizeWidth ? computedWidth : -1), 
-                    FixedHeight ?? (AutoSizeHeight ? computedHeight : -1)
-                );
+        private void ComputeAutoSize (UIOperationContext context) {
+            if (!AutoSizeWidth && !AutoSizeHeight) {
+                AutoSizeComputedHeight = AutoSizeComputedWidth = null;
+                return;
             }
 
-            if (DiagnosticText)
-                Content.Text = $"#{result.ID} size {context.Layout.GetFixedSize(result)}";
+            var interiorSpace = GetFixedInteriorSpace();
+            if (interiorSpace.X > 0)
+                Content.LineBreakAtX = interiorSpace.X;
+            else
+                Content.LineBreakAtX = null;
 
+            var decorations = GetDecorations(context);
+            UpdateFont(context, decorations);
+
+            var computedPadding = ComputePadding(context, decorations);
+            var layoutSize = Content.Get().Size;
+            var computedWidth = layoutSize.X + computedPadding.Left + computedPadding.Right;
+            var computedHeight = layoutSize.Y + computedPadding.Top + computedPadding.Bottom;
+            if (MinimumWidth.HasValue)
+                computedWidth = Math.Max(MinimumWidth.Value, computedWidth);
+            if (MinimumHeight.HasValue)
+                computedHeight = Math.Max(MinimumHeight.Value, computedHeight);
+
+            if (AutoSizeWidth)
+                AutoSizeComputedWidth = computedWidth;
+            if (AutoSizeHeight)
+                AutoSizeComputedHeight = computedHeight;
+        }
+
+        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
+            ComputeAutoSize(context);
+            var result = base.OnGenerateLayoutTree(context, parent);
             return result;
         }
 
