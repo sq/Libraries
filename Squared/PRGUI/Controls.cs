@@ -361,17 +361,16 @@ namespace Squared.PRGUI {
 
         protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
             base.ComputeFixedSize(out fixedWidth, out fixedHeight);
-            if (AutoSizeWidth)
+            if (AutoSizeWidth && !FixedWidth.HasValue)
                 fixedWidth = AutoSizeComputedWidth ?? fixedWidth;
-            if (AutoSizeHeight)
+            if (AutoSizeHeight && !FixedHeight.HasValue)
                 fixedHeight = AutoSizeComputedHeight ?? fixedHeight;
         }
 
         private void ComputeAutoSize (UIOperationContext context) {
-            if (!AutoSizeWidth && !AutoSizeHeight) {
-                AutoSizeComputedHeight = AutoSizeComputedWidth = null;
+            AutoSizeComputedHeight = AutoSizeComputedWidth = null;
+            if (!AutoSizeWidth && !AutoSizeHeight)
                 return;
-            }
 
             var interiorSpace = GetFixedInteriorSpace();
             if (interiorSpace.X > 0)

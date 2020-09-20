@@ -729,6 +729,8 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe void CheckConstraints (ControlKey control, int dimension) {
+            return;
+
             var pItem = LayoutPtr(control);
             var rect = GetRect(control);
             var wdim = dimension + 2;
