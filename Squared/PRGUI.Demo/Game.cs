@@ -207,7 +207,14 @@ namespace PRGUI.Demo {
                         Position = new Vector2(220, 140),
                         MinimumWidth = 400,
                         MinimumHeight = 240,
-                        Title = "Floating Panel"
+                        Title = "Floating Panel",
+                        Children = {
+                            new StaticText {
+                                Text = "Panel content",
+                                TextColor = Color.Black,
+                                TextMaterial = Materials.ScreenSpaceBitmap
+                            }
+                        }
                     }
                 }
             };

@@ -408,14 +408,20 @@ namespace Squared.PRGUI.Decorations {
             };
 
             FloatingContainer = new DelegateDecorator {
-                Margins = new Margins(4),
+                Padding = new Margins(4),
                 GetTextSettings = GetTextSettings,
                 Below = FloatingContainer_Below,
                 // FIXME: Separate routine?
                 ContentClip = Container_ContentClip,
             };
 
-            Window = ((DelegateDecorator)FloatingContainer).Clone();
+            Window = new DelegateDecorator {
+                Padding = new Margins(4, 32, 4, 4),
+                GetTextSettings = GetTextSettings,
+                Below = FloatingContainer_Below,
+                // FIXME: Separate routine?
+                ContentClip = Container_ContentClip,
+            };
 
             WindowTitle = new DelegateDecorator {
                 Padding = new Margins(2),
