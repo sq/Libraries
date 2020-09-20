@@ -105,6 +105,8 @@ namespace PRGUI.Demo {
             // Enable mips for soft shadows
             Font.MipMapping = true;
 
+            var titleFont = new FreeTypeFont.FontSize(Font, 12f);
+
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
             TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
@@ -112,21 +114,27 @@ namespace PRGUI.Demo {
             TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.5f * Font.DPIPercent / 200f);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1f);
 
-            var lastPressedCtl = new StaticText {
-                LayoutFlags = ControlFlags.Layout_Fill_Row,
-                AutoSizeWidth = false,
-                Text = "Last Pressed: None"
+            var hoveringCtl = new StaticText {
+                LayoutFlags = ControlFlags.Layout_Fill,
+                AutoSize = false,
+                Text = "Hovering: None"
             };
 
-            Context = new UIContext {
-                DefaultGlyphSource = Font,
+            var lastClickedCtl = new StaticText {
+                LayoutFlags = ControlFlags.Layout_Fill,
+                AutoSize = false,
+                Text = ""
+            };
+
+            Context = new UIContext(Font) {
                 Controls = {
                     new Container {
                         BackgroundColor = new Color(48, 48, 48),
                         LayoutFlags = ControlFlags.Layout_Fill,
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                         Children = {
-                            lastPressedCtl,
+                            hoveringCtl,
+                            lastClickedCtl,
                             new Button {
                                 AutoSizeWidth = false,
                                 FixedWidth = 400,
@@ -204,11 +212,12 @@ namespace PRGUI.Demo {
                 }
             };
 
+            Context.EventBus.Subscribe(null, UIContext.Events.MouseEnter, (ei) => {
+                hoveringCtl.Text = "Hovering: " + ei.Source;
+            });
+
             Context.EventBus.Subscribe(null, UIContext.Events.Click, (ei) => {
-                var st = ei.Source as StaticText;
-                if (st == null)
-                    return;
-                lastPressedCtl.Text = "Last Pressed: " + st.Text;
+                lastClickedCtl.Text = "Clicked: " + ei.Source;
             });
 
             UIRenderTarget = new AutoRenderTarget(

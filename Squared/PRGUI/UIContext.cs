@@ -20,6 +20,8 @@ namespace Squared.PRGUI {
                 GotFocus = string.Intern("GotFocus"),
                 MouseDown = string.Intern("MouseDown"),
                 MouseUp = string.Intern("MouseUp"),
+                MouseEnter = string.Intern("MouseEnter"),
+                MouseLeave = string.Intern("MouseLeave"),
                 Click = string.Intern("Click"),
                 Scroll = string.Intern("Scroll");
         }
@@ -27,8 +29,7 @@ namespace Squared.PRGUI {
         public Vector2 CanvasSize;
         public EventBus EventBus = new EventBus();
         public readonly LayoutContext Layout = new LayoutContext();
-        public IDecorationProvider Decorations = new DefaultDecorations();
-        public IGlyphSource DefaultGlyphSource;
+        public IDecorationProvider Decorations;
 
         private bool LastMouseButtonState = false;
 
@@ -60,6 +61,12 @@ namespace Squared.PRGUI {
                 if (_Focused != null)
                     FireEvent(Events.GotFocus, _Focused, previous);
             }
+        }
+
+        public UIContext (IGlyphSource font = null) {
+            Decorations = new DefaultDecorations {
+                DefaultFont = font
+            };
         }
 
         internal void FireEvent<T> (string name, object target, T args) {
@@ -144,7 +151,10 @@ namespace Squared.PRGUI {
         }
 
         private void HandleHoverTransition (Control previous, Control current) {
-            // FIXME
+            if (previous != null)
+                FireEvent(Events.MouseLeave, previous, current);
+            if (current != null)
+                FireEvent(Events.MouseEnter, current, previous);
         }
 
         private void HandleMouseDown (Control target) {

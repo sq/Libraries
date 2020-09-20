@@ -9,6 +9,7 @@ using Squared.Game;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.RasterShape;
+using Squared.Render.Text;
 using Squared.Util;
 
 namespace Squared.PRGUI.Decorations {
@@ -22,7 +23,7 @@ namespace Squared.PRGUI.Decorations {
         Margins Margins { get; }
         Margins Padding { get; }
         Vector2 PressedInset { get; }
-        bool GetTextSettings (UIOperationContext context, ControlStates state, out Material material, ref Color? color);
+        bool GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color);
     }
 
     public interface IWidgetDecorator<TData> : IBaseDecorator {
@@ -44,7 +45,7 @@ namespace Squared.PRGUI.Decorations {
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
-    public delegate bool TextSettingsGetter (UIOperationContext context, ControlStates state, out Material material, ref Color? color);
+    public delegate bool TextSettingsGetter (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color);
 
     public abstract class DelegateBaseDecorator : IBaseDecorator {
         public Margins Margins { get; set; }
@@ -52,11 +53,12 @@ namespace Squared.PRGUI.Decorations {
         public Vector2 PressedInset { get; set; }
         public TextSettingsGetter GetTextSettings;
 
-        bool IBaseDecorator.GetTextSettings (UIOperationContext context, ControlStates state, out Material material, ref Color? color) {
+        bool IBaseDecorator.GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color) {
             if (GetTextSettings != null)
-                return GetTextSettings(context, state, out material, ref color);
+                return GetTextSettings(context, state, out material, out font, ref color);
             else {
                 material = default(Material);
+                font = default(IGlyphSource);
                 return false;
             }
         }
@@ -137,6 +139,10 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator StaticText { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
+        public IGlyphSource DefaultFont,
+            ButtonFont,
+            TitleFont;
+
         public float InteractableCornerRadius = 6f, 
             InertCornerRadius = 3f, 
             ContainerCornerRadius = 3f, 
@@ -163,7 +169,7 @@ namespace Squared.PRGUI.Decorations {
             InertOutlineColor = new Color(255, 255, 255) * 0.33f,
             InertFillColor = Color.Transparent,
             ScrollbarThumbColor = new Color(220, 220, 220),
-            ScrollbarTrackColor = new Color(64, 64, 64),
+            ScrollbarTrackColor = new Color(32, 32, 32),
             TitleColor = new Color(64, 160, 180),
             TextColor = Color.White;
 
@@ -171,22 +177,6 @@ namespace Squared.PRGUI.Decorations {
 
         public Color? FloatingContainerOutlineColor, 
             FloatingContainerFillColor;
-
-        public bool GetTextSettings (
-            UIOperationContext context, ControlStates state, 
-            out Material material, ref Color? color
-        ) {
-            if (color == null)
-                color = TextColor;
-
-            if (state.HasFlag(ControlStates.Disabled))
-                color = color.Value.ToGrayscale(DisabledTextAlpha);
-
-            material = context.Renderer.Materials.Get(
-                context.Renderer.Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend
-            );
-            return true;
-        }
 
         private void Button_Below (UIOperationContext context, DecorationSettings settings) {
             var state = settings.State;
@@ -351,6 +341,41 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
+        public bool GetTextSettings (
+            UIOperationContext context, ControlStates state, 
+            out Material material, out IGlyphSource font, ref Color? color
+        ) {
+            if (color == null)
+                color = TextColor;
+
+            if (state.HasFlag(ControlStates.Disabled))
+                color = color.Value.ToGrayscale(DisabledTextAlpha);
+
+            font = DefaultFont;
+            material = context.Renderer.Materials?.Get(
+                context.Renderer.Materials?.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend
+            );
+            return true;
+        }
+
+        private bool GetTextSettings_Button (
+            UIOperationContext context, ControlStates state, 
+            out Material material, out IGlyphSource font, ref Color? color
+        ) {
+            GetTextSettings(context, state, out material, out font, ref color);
+            font = ButtonFont ?? font;
+            return true;
+        }
+
+        private bool GetTextSettings_Title (
+            UIOperationContext context, ControlStates state, 
+            out Material material, out IGlyphSource font, ref Color? color
+        ) {
+            GetTextSettings(context, state, out material, out font, ref color);
+            font = ButtonFont ?? font;
+            return true;
+        }
+
         public DefaultDecorations () {
             InteractableShadow = new RasterShadowSettings {
                 Color = Color.Black * 0.25f,
@@ -370,7 +395,7 @@ namespace Squared.PRGUI.Decorations {
                 Margins = new Margins(4),
                 Padding = new Margins(6),
                 PressedInset = new Vector2(0, 1),
-                GetTextSettings = GetTextSettings,
+                GetTextSettings = GetTextSettings_Button,
                 Below = Button_Below,
                 Above = Button_Above
             };
@@ -394,7 +419,7 @@ namespace Squared.PRGUI.Decorations {
 
             WindowTitle = new DelegateDecorator {
                 Padding = new Margins(2),
-                GetTextSettings = GetTextSettings,
+                GetTextSettings = GetTextSettings_Title,
                 Below = WindowTitle_Below
             };
 

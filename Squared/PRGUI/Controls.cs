@@ -275,6 +275,10 @@ namespace Squared.PRGUI {
 
             WeakParent = null;
         }
+
+        public override string ToString () {
+            return $"{GetType().Name} #{GetHashCode():X8}";
+        }
     }
 
     public class StaticText : Control {
@@ -342,10 +346,9 @@ namespace Squared.PRGUI {
                 else
                     Content.LineBreakAtX = null;
 
-                if (Content.GlyphSource == null)
-                    Content.GlyphSource = context.UIContext.DefaultGlyphSource;
-
                 var decorations = GetDecorations(context);
+                UpdateFont(context, decorations);
+
                 var computedPadding = ComputePadding(decorations);
                 var layoutSize = Content.Get().Size;
                 var computedWidth = layoutSize.X + computedPadding.Left + computedPadding.Right;
@@ -380,8 +383,9 @@ namespace Squared.PRGUI {
 
             Content.LineBreakAtX = settings.Box.Width;
 
-            if (Content.GlyphSource == null)
-                Content.GlyphSource = context.UIContext.DefaultGlyphSource;
+            Color? overrideColor = TextColor;
+            Material material;
+            GetTextSettings(context, decorations, settings.State, out material, ref overrideColor);
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
 
@@ -403,20 +407,35 @@ namespace Squared.PRGUI {
                     break;
             }
 
-            Color? overrideColor = TextColor;
-            Material material;
-            GetTextSettings(context, decorations, settings.State, out material, ref overrideColor);
-
             context.Renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
                 material: material, samplerState: RenderStates.Text, multiplyColor: overrideColor
             );
         }
 
+        protected void UpdateFont (UIOperationContext context, IDecorator decorations) {
+            Color? temp2 = null;
+            GetTextSettings(context, decorations, default(ControlStates), out Material temp, ref temp2);
+        }
+
         protected void GetTextSettings (UIOperationContext context, IDecorator decorations, ControlStates state, out Material material, ref Color? color) {
-            decorations.GetTextSettings(context, state, out material, ref color);
+            decorations.GetTextSettings(context, state, out material, out IGlyphSource font, ref color);
+            if (Content.GlyphSource == null)
+                Content.GlyphSource = font;
             if (TextMaterial != null)
                 material = TextMaterial;
+        }
+
+        private string GetTrimmedText () {
+            var s = Text.ToString() ?? "";
+            if (s.Length > 16)
+                return s.Substring(0, 16) + "...";
+            else
+                return s;
+        }
+
+        public override string ToString () {
+            return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText()}'";
         }
     }
 
@@ -630,6 +649,8 @@ namespace Squared.PRGUI {
         }
 
         public string Title;
+
+        protected DynamicStringLayout TitleLayout = new DynamicStringLayout();
 
         public Window ()
             : base () {
