@@ -31,6 +31,7 @@ namespace Squared.PRGUI {
 
         internal ControlKey LayoutKey;
 
+        public bool Visible { get; set; } = true;
         public bool Enabled { get; set; } = true;
         public bool AcceptsCapture { get; protected set; }
         public bool AcceptsFocus { get; protected set; }
@@ -116,6 +117,9 @@ namespace Squared.PRGUI {
         }
 
         public Control HitTest (LayoutContext context, Vector2 position, bool acceptsCaptureOnly, bool acceptsFocusOnly) {
+            if (!Visible)
+                return null;
+
             var result = this;
             var box = GetRect(context);
             if (OnHitTest(context, box, position, acceptsCaptureOnly, acceptsFocusOnly, ref result))
@@ -222,6 +226,9 @@ namespace Squared.PRGUI {
         }
 
         public void Rasterize (UIOperationContext context) {
+            if (!Visible)
+                return;
+
             var box = GetRect(context.Layout);
             var contentBox = GetRect(context.Layout, contentRect: true);
             var decorations = GetDecorations(context);
@@ -768,7 +775,7 @@ namespace Squared.PRGUI {
                 titleDecorator.Rasterize(context, subSettings);
                 context.Renderer.DrawMultiple(
                     layout.DrawCalls, new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top),
-                    multiplyColor: titleColor.Value
+                    samplerState: RenderStates.Text, multiplyColor: titleColor.Value
                 );
             }
         }

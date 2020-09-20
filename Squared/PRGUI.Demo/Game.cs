@@ -17,10 +17,12 @@ using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.RasterShape;
 using Squared.Render.Text;
+using Squared.Task;
 using Squared.Util;
 
 namespace PRGUI.Demo {
     public class DemoGame : MultithreadedGame {
+        public TaskScheduler Scheduler;
         public UIContext Context;
 
         public GraphicsDeviceManager Graphics;
@@ -67,6 +69,8 @@ namespace PRGUI.Demo {
 
             KeyboardInputHandler = new KeyboardInput();
             KeyboardInputHandler.Install();
+
+            Scheduler = new TaskScheduler(JobQueue.WindowsMessageBased);
         }
 
         protected override void Initialize () {
@@ -124,6 +128,32 @@ namespace PRGUI.Demo {
                 LayoutFlags = ControlFlags.Layout_Fill,
                 AutoSize = false,
                 Text = ""
+            };
+
+            var hideButton = new Button {
+                Text = "Hide",
+                AutoSizeWidth = false,
+                Margins = default(Margins),
+                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                BackgroundColor = new Color(128, 16, 16)
+            };
+
+            var floatingWindow = new Window {
+                BackgroundColor = new Color(128, 136, 140),
+                Position = new Vector2(220, 140),
+                // MinimumWidth = 400,
+                // MinimumHeight = 240,
+                Title = "Floating Panel",
+                ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start | ControlFlags.Container_Wrap,
+                Children = {
+                    new StaticText {
+                        Text = "Panel content",
+                        Margins = default(Margins),
+                        LayoutFlags = ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_Anchor_Left,
+                        BackgroundColor = new Color(16, 128, 16)
+                    },
+                    hideButton,
+                }
             };
 
             var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
@@ -208,24 +238,7 @@ namespace PRGUI.Demo {
                             }
                         }
                     },
-                    new Window {
-                        BackgroundColor = new Color(128, 136, 140),
-                        // For floating controls, the margins specify its position
-                        Position = new Vector2(220, 140),
-                        MinimumWidth = 400,
-                        // MinimumHeight = 240,
-                        Title = "Floating Panel",
-                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start,
-                        Children = {
-                            new StaticText {
-                                Text = "Panel content",
-                                // AutoSize = false,
-                                Margins = default(Margins),
-                                LayoutFlags = ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_Anchor_Left,
-                                BackgroundColor = new Color(128, 16, 16)
-                            }
-                        }
-                    }
+                    floatingWindow
                 }
             };
 
@@ -235,6 +248,12 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(null, UIContext.Events.Click, (ei) => {
                 lastClickedCtl.Text = "Clicked: " + ei.Source;
+            });
+
+            Context.EventBus.Subscribe(hideButton, UIContext.Events.Click, (ei) => {
+                floatingWindow.Visible = false;
+                var f = Scheduler.Start(new Sleep(3));
+                f.RegisterOnComplete((_) => { floatingWindow.Visible = true; });
             });
 
             UIRenderTarget = new AutoRenderTarget(

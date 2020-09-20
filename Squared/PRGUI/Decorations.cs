@@ -162,7 +162,7 @@ namespace Squared.PRGUI.Decorations {
             TitleShadow;
 
         public Color FocusedColor = new Color(200, 230, 255),
-            ActiveColor = Color.White,
+            ActiveColor = new Color(240, 240, 240),
             InactiveColor = new Color(180, 180, 180),
             ContainerOutlineColor = new Color(32, 32, 32),
             ContainerFillColor = Color.Transparent,
@@ -189,18 +189,26 @@ namespace Squared.PRGUI.Decorations {
                     : InactiveColor
             );
 
+            var hasColor = settings.BackgroundColor.HasValue;
+
             float pulse = 0;
             if (state.HasFlag(ControlStates.Pressed)) {
-                alpha = 1f;
+                alpha = hasColor ? 1f : 0.9f;
                 thickness = PressedOutlineThickness;
-                // FIXME: Should this override the background color property? Maybe?
-                baseColor = ActiveColor;
+                if (hasColor) {
+                    // Intensify the color if the button has a custom color
+                    baseColor = (settings.BackgroundColor.Value.ToVector4()) * 1.25f;
+                    baseColor.Vector4.W = 1;
+                } else
+                    baseColor = ActiveColor;
             } else if (state.HasFlag(ControlStates.Hovering)) {
-                alpha = 0.85f;
+                alpha = hasColor ? 0.9f : 0.75f;
                 thickness = ActiveOutlineThickness;
-                pulse = Arithmetic.PulseSine(context.AnimationTime / 3.33f, 0f, 0.05f);
+                pulse = Arithmetic.PulseSine(context.AnimationTime / 3.33f, 0f, 0.08f);
             } else {
-                alpha = state.HasFlag(ControlStates.Focused) ? 0.75f : 0.6f;
+                alpha = hasColor 
+                    ? (state.HasFlag(ControlStates.Focused) ? 0.9f : 0.8f)
+                    : (state.HasFlag(ControlStates.Focused) ? 0.5f : 0.35f);
                 thickness = state.HasFlag(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
             }
 
@@ -209,8 +217,8 @@ namespace Squared.PRGUI.Decorations {
                 a, b,
                 radius: InteractableCornerRadius,
                 outlineRadius: thickness, outlineColor: baseColor * alpha,
-                innerColor: baseColor * ((0.3f + pulse) * alpha), outerColor: baseColor * ((0.1f + pulse) * alpha),
-                fillMode: RasterFillMode.RadialEnclosing,
+                innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
+                fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
                 shadow: InteractableShadow
             );
         }
@@ -300,8 +308,8 @@ namespace Squared.PRGUI.Decorations {
             if (data.HasCounterpart)
                 sizePx -= ScrollbarSize;
             var a = data.Horizontal
-                ? new Vector2(box.Left + 1, box.Extent.Y - ScrollbarSize)
-                : new Vector2(box.Extent.X - ScrollbarSize, box.Top + 1);
+                ? new Vector2(box.Left, box.Extent.Y - ScrollbarSize)
+                : new Vector2(box.Extent.X - ScrollbarSize, box.Top);
             var b = box.Extent;
 
             context.Renderer.RasterizeRectangle(
