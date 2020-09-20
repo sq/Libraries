@@ -578,6 +578,8 @@ namespace Squared.PRGUI.Layout {
                     break;
             }
 
+            result += pItem->Padding[idim] + pItem->Padding[2 + idim];
+
             (*pRect)[2 + idim] = Constrain(result, pItem, idim);
         }
 

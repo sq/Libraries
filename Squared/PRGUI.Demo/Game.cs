@@ -196,7 +196,7 @@ namespace PRGUI.Demo {
                                     new StaticText {
                                         Text = "Clipped container",
                                         AutoSizeWidth = false,
-                                        BackgroundColor = new Color(48, 60, 48),
+                                        BackgroundColor = new Color(32, 60, 32),
                                     },
                                     new Button {
                                         Text = "Clipped huge button",
@@ -212,19 +212,15 @@ namespace PRGUI.Demo {
                         BackgroundColor = Color.AntiqueWhite,
                         // For floating controls, the margins specify its position
                         Position = new Vector2(220, 140),
-                        // Padding = new Margins(16, 32, 48, 48),
-                        MinimumWidth = 400,
-                        MinimumHeight = 240,
+                        // MinimumWidth = 400,
+                        // MinimumHeight = 240,
                         Title = "Floating Panel",
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start,
                         Children = {
                             new StaticText {
                                 Text = "Panel content",
-                                TextColor = Color.Black,
-                                TextMaterial = Materials.ScreenSpaceBitmap,
-                                AutoSize = false,
                                 Margins = default(Margins),
-                                LayoutFlags = ControlFlags.Layout_Fill,
+                                LayoutFlags = ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_Anchor_Left,
                                 BackgroundColor = new Color(128, 16, 16)
                             }
                         }
