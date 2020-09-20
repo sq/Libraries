@@ -907,6 +907,7 @@ namespace Squared.PRGUI.Layout {
         private unsafe void Arrange (LayoutItem * pItem, Dimensions dim) {
             var flags = pItem->Flags;
             var pRect = RectPtr(pItem->Key);
+            var contentRect = GetContentRect(pItem->Key);
             var idim = (int)dim;
 
             switch (flags & ControlFlagMask.BoxModel) {
@@ -914,6 +915,7 @@ namespace Squared.PRGUI.Layout {
                     if (dim != Dimensions.X) {
                         ArrangeStacked(pItem, Dimensions.Y, true);
                         var offset = ArrangeWrappedOverlaySqueezed(pItem, Dimensions.X);
+                        // FIXME: Content rect?
                         (*pRect)[0] = offset - (*pRect)[0];
                     }
                     break;
@@ -930,7 +932,7 @@ namespace Squared.PRGUI.Layout {
                     } else {
                         ArrangeOverlaySqueezedRange(
                             pItem, dim, pItem->FirstChild, ControlKey.Invalid,
-                            (*pRect)[idim], (*pRect)[idim + 2]
+                            contentRect[idim], contentRect[idim + 2]
                         );
                     }
                     break;

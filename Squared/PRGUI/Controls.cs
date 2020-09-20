@@ -96,8 +96,10 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        public RectF GetRect (LayoutContext context, bool includeOffset = true) {
-            var result = context.GetRect(LayoutKey);
+        public RectF GetRect (LayoutContext context, bool includeOffset = true, bool contentRect = false) {
+            var result = contentRect 
+                ? context.GetContentRect(LayoutKey) 
+                : context.GetRect(LayoutKey);
             result.Left += _AbsoluteDisplayOffset.X;
             result.Top += _AbsoluteDisplayOffset.Y;
 
@@ -124,14 +126,14 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        protected Margins ComputeMargins (IDecorator decorations) {
+        protected virtual Margins ComputeMargins (UIOperationContext context, IDecorator decorations) {
             var result = Margins;
             if (decorations != null)
                 result += decorations.Margins;
             return result;
         }
 
-        protected Margins ComputePadding (IDecorator decorations) {
+        protected virtual Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
             var result = Padding;
             if (decorations != null)
                 result += decorations.Padding;
@@ -142,8 +144,8 @@ namespace Squared.PRGUI {
             var result = context.Layout.CreateItem();
 
             var decorations = GetDecorations(context);
-            var computedMargins = ComputeMargins(decorations);
-            var computedPadding = ComputePadding(decorations);
+            var computedMargins = ComputeMargins(context, decorations);
+            var computedPadding = ComputePadding(context, decorations);
 
             var actualLayoutFlags = LayoutFlags;
             if (HasFixedWidth)
@@ -196,18 +198,18 @@ namespace Squared.PRGUI {
         protected virtual void ApplyClipMargins (UIOperationContext context, ref RectF box) {
         }
 
-        protected virtual DecorationSettings MakeDecorationSettings (ref RectF box, ControlStates state) {
+        protected virtual DecorationSettings MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state) {
             return new DecorationSettings {
                 Box = box,
+                ContentBox = contentBox,
                 State = state,
                 BackgroundColor = BackgroundColor
             };
         }
 
-        public void Rasterize (UIOperationContext context, Vector2 offset) {
+        public void Rasterize (UIOperationContext context) {
             var box = GetRect(context.Layout);
-            box.Left += offset.X;
-            box.Top += offset.Y;
+            var contentBox = GetRect(context.Layout, contentRect: true);
             var decorations = GetDecorations(context);
             var state = GetCurrentState(context);
 
@@ -227,7 +229,7 @@ namespace Squared.PRGUI {
                     contentContext.Renderer.DepthStencilState = RenderStates.StencilTest;
             }
 
-            var settings = MakeDecorationSettings(ref box, state);
+            var settings = MakeDecorationSettings(ref box, ref contentBox, state);
             OnRasterize(contentContext, settings, decorations);
 
             if (hasNestedContext) {
@@ -356,7 +358,7 @@ namespace Squared.PRGUI {
                 var decorations = GetDecorations(context);
                 UpdateFont(context, decorations);
 
-                var computedPadding = ComputePadding(decorations);
+                var computedPadding = ComputePadding(context, decorations);
                 var layoutSize = Content.Get().Size;
                 var computedWidth = layoutSize.X + computedPadding.Left + computedPadding.Right;
                 var computedHeight = layoutSize.Y + computedPadding.Top + computedPadding.Bottom;
@@ -396,7 +398,7 @@ namespace Squared.PRGUI {
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
 
-            var computedPadding = ComputePadding(decorations);
+            var computedPadding = ComputePadding(context, decorations);
             var textOffset = a + new Vector2(computedPadding.Left, computedPadding.Top);
             if (settings.State.HasFlag(ControlStates.Pressed))
                 textOffset += decorations.PressedInset;
@@ -481,6 +483,7 @@ namespace Squared.PRGUI {
 
         public ControlFlags ContainerFlags = ControlFlags.Container_Row;
 
+        protected ScrollbarState HScrollbar, VScrollbar;
         protected bool HasContentBounds;
         protected RectF ContentBounds;
 
@@ -488,6 +491,15 @@ namespace Squared.PRGUI {
             : base () {
             Children = new ControlCollection(this);
             AcceptsCapture = true;
+
+            HScrollbar = new ScrollbarState {
+                DragInitialPosition = null,
+                Horizontal = true
+            };
+            VScrollbar = new ScrollbarState {
+                DragInitialPosition = null,
+                Horizontal = false
+            };
         }
 
         public override bool AcceptsScroll => Scrollable;
@@ -546,11 +558,34 @@ namespace Squared.PRGUI {
 
             foreach (var item in Children) {
                 context.Renderer.Layer = layer;
-                item.Rasterize(context, Vector2.Zero);
+                item.Rasterize(context);
                 maxLayer = Math.Max(maxLayer, context.Renderer.Layer);
             }
 
             context.Renderer.Layer = maxLayer;
+        }
+
+        protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
+            var result = base.ComputePadding(context, decorations);
+            if (!Scrollable)
+                return result;
+            var scrollbar = context.DecorationProvider?.Scrollbar;
+            if (scrollbar == null)
+                return result;
+            result.Right += scrollbar.MinimumSize.X;
+            result.Bottom += scrollbar.MinimumSize.Y;
+            return result;
+        }
+
+        protected bool GetContentBounds (UIOperationContext context, out RectF contentBounds) {
+            if (!HasContentBounds)
+                HasContentBounds = context.Layout.TryMeasureContent(LayoutKey, out ContentBounds);
+
+            contentBounds = ContentBounds;
+            return HasContentBounds;
+        }
+
+        protected void UpdateScrollbars (UIOperationContext context, DecorationSettings settings) {
         }
 
         protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
@@ -563,8 +598,7 @@ namespace Squared.PRGUI {
                 float viewportWidth = box.Width - (scrollbar?.MinimumSize.X ?? 0),
                     viewportHeight = box.Height - (scrollbar?.MinimumSize.Y ?? 0);
 
-                if (!HasContentBounds)
-                    HasContentBounds = context.Layout.TryMeasureContent(LayoutKey, out ContentBounds);
+                GetContentBounds(context, out RectF contentBounds);
 
                 if (HasContentBounds) {
                     float maxScrollX = ContentBounds.Width - viewportWidth, maxScrollY = ContentBounds.Height - viewportHeight;
@@ -576,29 +610,19 @@ namespace Squared.PRGUI {
                     );
                 }
 
-                var hstate = new ScrollbarState {
-                    ContentSize = ContentBounds.Width,
-                    ViewportSize = box.Width,
-                    Position = ScrollOffset.X,
-                    DragInitialPosition = null,
-                    Horizontal = true
-                };
-                var vstate = new ScrollbarState {
-                    ContentSize = ContentBounds.Height,
-                    ViewportSize = box.Height,
-                    Position = ScrollOffset.Y,
-                    DragInitialPosition = null
-                };
+                HScrollbar.ContentSize = ContentBounds.Width;
+                HScrollbar.ViewportSize = box.Width;
+                HScrollbar.Position = ScrollOffset.X;
+                VScrollbar.ContentSize = ContentBounds.Height;
+                VScrollbar.ViewportSize = box.Height;
+                VScrollbar.Position = ScrollOffset.Y;
 
-                var shouldHorzScroll = ShowHorizontalScrollbar && hstate.ContentSize > hstate.ViewportSize;
-                var shouldVertScroll = ShowVerticalScrollbar && vstate.ContentSize > vstate.ViewportSize;
+                HScrollbar.HasCounterpart = VScrollbar.HasCounterpart = (ShowHorizontalScrollbar && ShowVerticalScrollbar);
 
-                hstate.HasCounterpart = vstate.HasCounterpart = (shouldHorzScroll && shouldVertScroll);
-
-                if (shouldHorzScroll)
-                    scrollbar?.Rasterize(context, settings, ref hstate);
-                if (shouldVertScroll)
-                    scrollbar?.Rasterize(context, settings, ref vstate);
+                if (ShowHorizontalScrollbar)
+                    scrollbar?.Rasterize(context, settings, ref HScrollbar);
+                if (ShowVerticalScrollbar)
+                    scrollbar?.Rasterize(context, settings, ref VScrollbar);
             } else {
                 ScrollOffset = Vector2.Zero;
             }
@@ -657,12 +681,74 @@ namespace Squared.PRGUI {
 
         public string Title;
 
-        protected DynamicStringLayout TitleLayout = new DynamicStringLayout();
+        protected DynamicStringLayout TitleLayout = new DynamicStringLayout {
+            LineLimit = 1
+        };
 
         public Window ()
             : base () {
             ContainerFlags |= ControlFlags.Container_Constrain_Size;
             LayoutFlags |= ControlFlags.Layout_Floating;
+        }
+
+        protected IDecorator UpdateTitle (UIOperationContext context, DecorationSettings settings, out Material material, ref Color? color) {
+            var decorations = context.DecorationProvider?.WindowTitle;
+            if (decorations == null) {
+                material = null;
+                return null;
+            }
+            decorations.GetTextSettings(context, settings.State, out material, out IGlyphSource font, ref color);
+            TitleLayout.Text = Title;
+            TitleLayout.GlyphSource = font;
+            TitleLayout.Color = color ?? Color.White;
+            TitleLayout.LineBreakAtX = settings.ContentBox.Width;
+            return decorations;
+        }
+
+        protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
+            var result = base.ComputePadding(context, decorations);
+            var titleDecorations = context.DecorationProvider?.WindowTitle;
+            if (titleDecorations == null)
+                return result;
+
+            Color? color = null;
+            titleDecorations.GetTextSettings(context, default(ControlStates), out Material temp, out IGlyphSource font, ref color);
+            result.Top += titleDecorations.Margins.Bottom;
+            result.Top += titleDecorations.Padding.Top;
+            result.Top += titleDecorations.Padding.Bottom;
+            result.Top += font.LineSpacing;
+            return result;
+        }
+
+        protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, settings, decorations);
+
+            IDecorator titleDecorator;
+            Color? titleColor = null;
+            if (
+                (context.Pass == RasterizePasses.Below) && 
+                (titleDecorator = UpdateTitle(context, settings, out Material titleMaterial, ref titleColor)) != null
+            ) {
+                var layout = TitleLayout.Get();
+                var titleBox = settings.Box;
+                titleBox.Height = titleDecorator.Padding.Top + titleDecorator.Padding.Bottom + TitleLayout.GlyphSource.LineSpacing;
+                var titleContentBox = titleBox;
+                titleContentBox.Left += titleDecorator.Padding.Left;
+                titleContentBox.Top += titleDecorator.Padding.Top;
+                titleContentBox.Width -= (titleDecorator.Padding.Left + titleDecorator.Padding.Right);
+
+                var offsetX = (titleContentBox.Width - layout.Size.X) / 2f;
+
+                var subSettings = settings;
+                subSettings.Box = titleBox;
+                subSettings.ContentBox = titleContentBox;
+
+                titleDecorator.Rasterize(context, subSettings);
+                context.Renderer.DrawMultiple(
+                    layout.DrawCalls, new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top),
+                    multiplyColor: titleColor.Value
+                );
+            }
         }
 
         public override string ToString () {

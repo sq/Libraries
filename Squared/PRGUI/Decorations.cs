@@ -14,7 +14,7 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Decorations {
     public struct DecorationSettings {
-        public RectF Box;
+        public RectF Box, ContentBox;
         public ControlStates State;
         public pSRGBColor? BackgroundColor;
     }
@@ -311,6 +311,9 @@ namespace Squared.PRGUI.Decorations {
                 fillMode: RasterFillMode.Vertical
             );
 
+            if (data.ContentSize <= data.ViewportSize)
+                return;
+
             if (data.Horizontal) {
                 a.X += (sizePx * min);
                 b.X = box.Left + (sizePx * max);
@@ -372,7 +375,7 @@ namespace Squared.PRGUI.Decorations {
             out Material material, out IGlyphSource font, ref Color? color
         ) {
             GetTextSettings(context, state, out material, out font, ref color);
-            font = ButtonFont ?? font;
+            font = TitleFont ?? font;
             return true;
         }
 
@@ -424,7 +427,8 @@ namespace Squared.PRGUI.Decorations {
             };
 
             WindowTitle = new DelegateDecorator {
-                Padding = new Margins(2),
+                Padding = new Margins(6, 4, 6, 6),
+                Margins = new Margins(0, 0, 0, 2),
                 GetTextSettings = GetTextSettings_Title,
                 Below = WindowTitle_Below
             };

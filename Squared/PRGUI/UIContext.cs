@@ -63,10 +63,16 @@ namespace Squared.PRGUI {
             }
         }
 
-        public UIContext (IGlyphSource font = null) {
-            Decorations = new DefaultDecorations {
-                DefaultFont = font
-            };
+        public UIContext (IGlyphSource font = null)
+            : this (
+                new DefaultDecorations {
+                    DefaultFont = font
+                }
+            ) {
+        }
+
+        public UIContext (IDecorationProvider decorations) {
+            Decorations = decorations;
         }
 
         internal void FireEvent<T> (string name, object target, T args) {
@@ -196,7 +202,7 @@ namespace Squared.PRGUI {
             var passContext = context.Clone();
             passContext.Renderer = context.Renderer.MakeSubgroup();
             passContext.Pass = pass;
-            control.Rasterize(passContext, Vector2.Zero);
+            control.Rasterize(passContext);
         }
 
         public void Rasterize (ref ImperativeRenderer renderer) {

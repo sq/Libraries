@@ -126,7 +126,12 @@ namespace PRGUI.Demo {
                 Text = ""
             };
 
-            Context = new UIContext(Font) {
+            var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
+                DefaultFont = Font,
+                TitleFont = titleFont
+            };
+
+            Context = new UIContext(decorations) {
                 Controls = {
                     new Container {
                         BackgroundColor = new Color(48, 48, 48),
@@ -189,7 +194,9 @@ namespace PRGUI.Demo {
                                 ScrollOffset = new Vector2(0, 22),
                                 Children = {
                                     new StaticText {
-                                        Text = "Clipped container"
+                                        Text = "Clipped container",
+                                        AutoSizeWidth = false,
+                                        BackgroundColor = new Color(48, 60, 48),
                                     },
                                     new Button {
                                         Text = "Clipped huge button",
@@ -205,14 +212,20 @@ namespace PRGUI.Demo {
                         BackgroundColor = Color.AntiqueWhite,
                         // For floating controls, the margins specify its position
                         Position = new Vector2(220, 140),
+                        // Padding = new Margins(16, 32, 48, 48),
                         MinimumWidth = 400,
                         MinimumHeight = 240,
                         Title = "Floating Panel",
+                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start,
                         Children = {
                             new StaticText {
                                 Text = "Panel content",
                                 TextColor = Color.Black,
-                                TextMaterial = Materials.ScreenSpaceBitmap
+                                TextMaterial = Materials.ScreenSpaceBitmap,
+                                AutoSize = false,
+                                Margins = default(Margins),
+                                LayoutFlags = ControlFlags.Layout_Fill,
+                                BackgroundColor = new Color(128, 16, 16)
                             }
                         }
                     }
