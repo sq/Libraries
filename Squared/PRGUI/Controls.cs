@@ -124,13 +124,26 @@ namespace Squared.PRGUI {
             return null;
         }
 
+        protected Margins ComputeMargins (IDecorator decorations) {
+            var result = Margins;
+            if (decorations != null)
+                result += decorations.Margins;
+            return result;
+        }
+
+        protected Margins ComputePadding (IDecorator decorations) {
+            var result = Padding;
+            if (decorations != null)
+                result += decorations.Padding;
+            return result;
+        }
+
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             var result = context.Layout.CreateItem();
 
             var decorations = GetDecorations(context);
-            var computedMargins = Margins;
-            if (decorations != null)
-                computedMargins += decorations.Margins;
+            var computedMargins = ComputeMargins(decorations);
+            var computedPadding = ComputePadding(decorations);
 
             var actualLayoutFlags = LayoutFlags;
             if (HasFixedWidth)
@@ -140,6 +153,7 @@ namespace Squared.PRGUI {
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetMargins(result, computedMargins);
+            context.Layout.SetPadding(result, computedPadding);
             context.Layout.SetFixedSize(result, FixedWidth ?? -1, FixedHeight ?? -1);
             context.Layout.SetSizeConstraints(result, MinimumWidth, MinimumHeight, MaximumWidth, MaximumHeight);
 
@@ -325,13 +339,6 @@ namespace Squared.PRGUI {
             set {
                 Content.Text = value;
             }
-        }
-
-        protected Margins ComputePadding (IDecorator decorations) {
-            var computedPadding = Padding;
-            if (decorations != null)
-                computedPadding += decorations.Padding;
-            return computedPadding;
         }
 
         protected override bool HasFixedWidth => base.HasFixedWidth || AutoSizeWidth;

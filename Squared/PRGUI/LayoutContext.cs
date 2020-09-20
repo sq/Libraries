@@ -583,7 +583,7 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe void ArrangeStacked (LayoutItem * pItem, Dimensions dim, bool wrap) {
             var itemFlags = pItem->Flags;
-            var rect = GetRect(pItem->Key);
+            var rect = GetContentRect(pItem->Key);
             int idim = (int)dim, wdim = idim + 2;
             float space = rect[wdim], max_x2 = rect[idim] + space;
 
@@ -789,7 +789,7 @@ namespace Squared.PRGUI.Layout {
         private unsafe void ArrangeOverlay (LayoutItem * pItem, Dimensions dim) {
             int idim = (int)dim, wdim = idim + 2;
 
-            var rect = GetRect(pItem->Key);
+            var rect = GetContentRect(pItem->Key);
             var offset = rect[idim];
             var space = rect[wdim];
 
@@ -826,7 +826,7 @@ namespace Squared.PRGUI.Layout {
 
             Assert(!startItem.IsInvalid);
 
-            var parentRect = GetRect(pParent->Key);
+            var parentRect = GetContentRect(pParent->Key);
 
             int idim = (int)dim, wdim = idim + 2;
 
@@ -877,7 +877,7 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, Dimensions dim) {
             int idim = (int)dim, wdim = idim + 2;
-            float offset = GetRect(pItem->Key)[idim], needSize = 0;
+            float offset = GetContentRect(pItem->Key)[idim], needSize = 0;
 
             var startChild = pItem->FirstChild;
             foreach (var child in Children(pItem)) {

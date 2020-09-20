@@ -185,6 +185,18 @@ namespace Squared.PRGUI.Layout {
             return Boxes.DangerousGetItem(key.ID);
         }
 
+        public unsafe RectF GetContentRect (ControlKey key) {
+            var exterior = Boxes.DangerousGetItem(key.ID);
+            var extent = exterior.Extent;
+            var interior = exterior;
+            var pItem = LayoutPtr(key);
+            interior.Left = Math.Min(extent.X, interior.Left + pItem->Padding.Left);
+            interior.Top = Math.Min(extent.Y, interior.Top + pItem->Padding.Top);
+            interior.Width = Math.Max(0, exterior.Width - pItem->Padding.Left - pItem->Padding.Right);
+            interior.Height = Math.Max(0, exterior.Height - pItem->Padding.Top - pItem->Padding.Bottom);
+            return interior;
+        }
+
         private void SetRect (ControlKey key, ref RectF newRect) {
             Boxes.DangerousSetItem(key.ID, ref newRect);
         }
