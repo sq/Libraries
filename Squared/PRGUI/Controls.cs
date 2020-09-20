@@ -657,6 +657,10 @@ namespace Squared.PRGUI {
             ContainerFlags |= ControlFlags.Container_Constrain_Size;
             LayoutFlags |= ControlFlags.Layout_Floating;
         }
+
+        public override string ToString () {
+            return $"{GetType().Name} #{GetHashCode():X8} '{Title}'";
+        }
     }
 
     public class ControlCollection : IEnumerable<Control> {

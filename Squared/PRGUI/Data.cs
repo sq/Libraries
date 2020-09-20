@@ -86,14 +86,14 @@ namespace Squared.PRGUI.Layout {
         public ControlFlags Flags;
         public ControlKey Parent, FirstChild;
         public ControlKey PreviousSibling, NextSibling;
-        public Vector4 Margins;
+        public Margins Margins, Padding;
         public Vector2 FixedSize, MinimumSize, MaximumSize;
 
         public LayoutItem (ControlKey key) {
             Key = key;
             Flags = default(ControlFlags);
             Parent = FirstChild = PreviousSibling = NextSibling = ControlKey.Invalid;
-            Margins = default(Vector4);
+            Margins = Padding = default(Margins);
             FixedSize = MinimumSize = MaximumSize = NoSize;
         }
     }
@@ -426,6 +426,50 @@ namespace Squared.PRGUI {
             Top = top;
             Right = right;
             Bottom = bottom;
+        }
+
+        public float this[int index] {
+            get {
+                return this[(uint)index];
+            }
+            set {
+                this[(uint)index] = value;
+            }
+        }
+
+        public float this[uint index] {
+            get {
+                switch (index) {
+                    case 0:
+                        return Left;
+                    case 1:
+                        return Top;
+                    case 2:
+                        return Right;
+                    case 3:
+                        return Bottom;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            set {
+                switch (index) {
+                    case 0:
+                        Left = value;
+                        return;
+                    case 1:
+                        Top = value;
+                        return;
+                    case 2:
+                        Right = value;
+                        return;
+                    case 3:
+                        Bottom = value;
+                        return;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
         }
 
         public static Margins operator + (Margins lhs, Margins rhs) {
