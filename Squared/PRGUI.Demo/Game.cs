@@ -209,16 +209,17 @@ namespace PRGUI.Demo {
                         }
                     },
                     new Window {
-                        BackgroundColor = Color.AntiqueWhite,
+                        BackgroundColor = new Color(128, 136, 140),
                         // For floating controls, the margins specify its position
                         Position = new Vector2(220, 140),
-                        // MinimumWidth = 400,
-                        // MinimumHeight = 240,
+                        MinimumWidth = 400,
+                        MinimumHeight = 240,
                         Title = "Floating Panel",
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start,
                         Children = {
                             new StaticText {
                                 Text = "Panel content",
+                                // AutoSize = false,
                                 Margins = default(Margins),
                                 LayoutFlags = ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_Anchor_Left,
                                 BackgroundColor = new Color(128, 16, 16)

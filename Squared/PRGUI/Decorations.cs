@@ -146,7 +146,7 @@ namespace Squared.PRGUI.Decorations {
         public float InteractableCornerRadius = 6f, 
             InertCornerRadius = 3f, 
             ContainerCornerRadius = 3f, 
-            TitleCornerRadius = 2f;
+            TitleCornerRadius = 4f;
         public float? FloatingContainerCornerRadius = null;
         public float InactiveOutlineThickness = 1f, 
             ActiveOutlineThickness = 1.3f, 
@@ -170,7 +170,8 @@ namespace Squared.PRGUI.Decorations {
             InertFillColor = Color.Transparent,
             ScrollbarThumbColor = new Color(220, 220, 220),
             ScrollbarTrackColor = new Color(32, 32, 32),
-            TitleColor = new Color(64, 160, 180),
+            TitleColor = new Color(50, 120, 160),
+            TitleTextColor = Color.White,
             TextColor = Color.White;
 
         public float DisabledTextAlpha = 0.5f;
@@ -374,6 +375,8 @@ namespace Squared.PRGUI.Decorations {
             UIOperationContext context, ControlStates state, 
             out Material material, out IGlyphSource font, ref Color? color
         ) {
+            if (color == null)
+                color = TitleTextColor;
             GetTextSettings(context, state, out material, out font, ref color);
             font = TitleFont ?? font;
             return true;

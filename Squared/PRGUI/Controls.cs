@@ -147,12 +147,7 @@ namespace Squared.PRGUI {
             var computedMargins = ComputeMargins(context, decorations);
             var computedPadding = ComputePadding(context, decorations);
 
-            var actualLayoutFlags = LayoutFlags;
-            if (HasFixedWidth)
-                actualLayoutFlags &= ~ControlFlags.Layout_Fill_Row;
-            if (HasFixedHeight)
-                actualLayoutFlags &= ~ControlFlags.Layout_Fill_Column;
-
+            var actualLayoutFlags = ComputeLayoutFlags();
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetMargins(result, computedMargins);
             context.Layout.SetPadding(result, computedPadding);
@@ -162,6 +157,16 @@ namespace Squared.PRGUI {
             if (!parent.IsInvalid)
                 context.Layout.InsertAtEnd(parent, result);
 
+            return result;
+        }
+
+        protected virtual ControlFlags ComputeLayoutFlags () {
+            var result = LayoutFlags;
+            // FIXME: If we do this, fixed-size elements extremely are not fixed size
+            if (HasFixedWidth && result.IsFlagged(ControlFlags.Layout_Fill_Row))
+                result &= ~ControlFlags.Layout_Fill_Row;
+            if (HasFixedHeight && result.IsFlagged(ControlFlags.Layout_Fill_Column))
+                result &= ~ControlFlags.Layout_Fill_Column;
             return result;
         }
 

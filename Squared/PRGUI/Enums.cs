@@ -87,17 +87,15 @@ namespace Squared.PRGUI.Layout {
         /// <summary>
         /// Anchor to both left and right
         /// </summary>
-        Layout_Fill_Row = 0x0a0,
+        Layout_Fill_Row = Layout_Anchor_Left | Layout_Anchor_Right,
         /// <summary>
         /// Anchor to both top and bottom
         /// </summary>
-        Layout_Fill_Column = 0x140,
-        /*
+        Layout_Fill_Column = Layout_Anchor_Top | Layout_Anchor_Bottom,
         /// <summary>
         /// Center vertically and horizontally (unless otherwise specified), using left/top margins as position offset
         /// </summary>
         Layout_Center = 0x000,
-        */
         /// <summary>
         /// Anchor in all four directions
         /// </summary>
