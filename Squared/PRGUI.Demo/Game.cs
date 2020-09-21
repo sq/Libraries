@@ -134,7 +134,8 @@ namespace PRGUI.Demo {
                 Text = "Editable Text",
                 BackgroundColor = new Color(16, 128, 16),
                 // FIXME: This should be at least partially automatic
-                MinimumWidth = 400
+                MinimumWidth = 400,
+                Selection = new Pair<int>(1, 3)
             };
 
             var hideButton = new Button {

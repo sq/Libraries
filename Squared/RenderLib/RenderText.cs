@@ -99,6 +99,38 @@ namespace Squared.Render.Text {
     }
 
     public struct StringLayoutEngine : IDisposable {
+        public struct Marker {
+            public class Comparer : IRefComparer<Marker> {
+                public static readonly Comparer Instance = new Comparer();
+
+                public int Compare (ref Marker lhs, ref Marker rhs) {
+                    return lhs.CharacterIndex.CompareTo(rhs.CharacterIndex);
+                }
+            }
+
+            public int CharacterIndex;
+            public Bounds? Result;
+        }
+
+        public struct HitTest {
+            public class Comparer : IRefComparer<HitTest> {
+                public static readonly Comparer Instance = new Comparer();
+
+                public int Compare (ref HitTest lhs, ref HitTest rhs) {
+                    var result = lhs.Position.X.CompareTo(rhs.Position.X);
+                    if (result == 0)
+                        result = lhs.Position.Y.CompareTo(rhs.Position.Y);
+                    return result;
+                }
+            }
+
+            public Vector2 Position;
+            public int? CharacterIndex;
+        }
+
+        public DenseList<Marker> Markers;
+        public DenseList<HitTest> HitTests;
+
         public const int DefaultBufferPadding = 64;
 
         // Parameters
@@ -139,6 +171,9 @@ namespace Squared.Render.Text {
         Vector2 wordStartOffset;
         private bool ownsBuffer;
 
+        int currentCharacterIndex;
+        int nextMarkerIndex, nextMarkerCharacterIndex;
+
         private bool IsInitialized;
 
         public void Initialize () {
@@ -154,7 +189,54 @@ namespace Squared.Render.Text {
             currentLineSpacing = null;
             maxLineSpacing = 0;
 
+            HitTests.Sort(HitTest.Comparer.Instance);
+            Markers.Sort(Marker.Comparer.Instance);
+
+            currentCharacterIndex = 0;
+            nextMarkerIndex = -1;
+            MoveToNextMarker();
+
             IsInitialized = true;
+        }
+
+        private void ProcessHitTests (ref Bounds bounds) {
+            var characterIndex = currentCharacterIndex;
+            for (int i = 0; i < HitTests.Count; i++) {
+                var ht = HitTests[i];
+                if (bounds.Contains(ht.Position)) {
+                    ht.CharacterIndex = characterIndex;
+                    HitTests[i] = ht;
+                }
+            }
+        }
+
+        private bool MoveToNextMarker () {
+            nextMarkerIndex++;
+            if (nextMarkerIndex < Markers.Count) {
+                nextMarkerCharacterIndex = Markers[nextMarkerIndex].CharacterIndex;
+                return true;
+            } else {
+                nextMarkerCharacterIndex = int.MaxValue;
+                return false;
+            }
+        }
+
+        private void AdvanceMarker (ref Bounds result) {
+            if (nextMarkerIndex >= Markers.Count) {
+                nextMarkerCharacterIndex = int.MaxValue;
+                return;
+            }
+
+            while (nextMarkerCharacterIndex <= currentCharacterIndex) {
+                if ((nextMarkerIndex >= 0) && (nextMarkerCharacterIndex == currentCharacterIndex)) {
+                    var m = Markers[nextMarkerIndex];
+                    m.Result = result;
+                    Markers[nextMarkerIndex] = m;
+                }
+
+                if (!MoveToNextMarker())
+                    break;
+            }
         }
 
         private void WrapWord (
@@ -456,19 +538,31 @@ namespace Squared.Render.Text {
                     colIndex = 0;
                 }
 
-                if (deadGlyph) {
-                    characterSkipCount--;
-                    if (characterLimit.HasValue)
-                        characterLimit--;
-                    continue;
-                }
-
                 // HACK: Recompute after wrapping
                 x = 
                     characterOffset.X + 
                     glyph.LeftSideBearing + 
                     glyph.RightSideBearing + 
                     glyph.Width + glyph.CharacterSpacing;
+
+                if (deadGlyph || isWhiteSpace) {
+                    var whitespaceBounds = Bounds.FromPositionAndSize(
+                        characterOffset * effectiveScale,
+                        new Vector2(x - characterOffset.X, glyph.LineSpacing) * effectiveScale
+                    );
+
+                    ProcessHitTests(ref whitespaceBounds);
+                    // if (currentCharacterIndex >= nextMarkerCharacterIndex)
+                    AdvanceMarker(ref whitespaceBounds);
+                }
+
+                if (deadGlyph) {
+                    currentCharacterIndex++;
+                    characterSkipCount--;
+                    if (characterLimit.HasValue)
+                        characterLimit--;
+                    continue;
+                }
 
                 characterOffset.X += glyph.CharacterSpacing;
 
@@ -478,6 +572,10 @@ namespace Squared.Render.Text {
                         glyph.LineSpacing
                     ) * effectiveScale
                 );
+
+                ProcessHitTests(ref lastCharacterBounds);
+                // if (currentCharacterIndex >= nextMarkerCharacterIndex)
+                AdvanceMarker(ref lastCharacterBounds);
 
                 if ((rowIndex == 0) && (colIndex == 0))
                     firstCharacterBounds = lastCharacterBounds;
@@ -531,6 +629,7 @@ namespace Squared.Render.Text {
                 currentLineSpacing = glyph.LineSpacing;
                 maxLineSpacing = Math.Max(maxLineSpacing, effectiveLineSpacing);
 
+                currentCharacterIndex++;
                 colIndex += 1;
             }
 

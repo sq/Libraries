@@ -273,9 +273,15 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void GetItem (int index, out T result) {
-            if (_HasList)
+            if (_HasList) {
                 Items.DangerousGetItem(index, out result);
-            else switch (index) {
+                return;
+            }
+
+            if (index >= Count)
+                throw new IndexOutOfRangeException();
+
+            switch (index) {
                 case 0:
                     result = Storage.Item1;
                     return;
@@ -297,7 +303,13 @@ namespace Squared.Util {
         public bool TryGetItem (int index, out T result) {
             if (_HasList)
                 return Items.DangerousTryGetItem(index, out result);
-            else switch (index) {
+
+            if (index >= Count) {
+                result = default(T);
+                return false;
+            }
+
+            switch (index) {
                 case 0:
                     result = Storage.Item1;
                     return true;
@@ -322,6 +334,9 @@ namespace Squared.Util {
                 if (_HasList)
                     return Items.DangerousGetItem(index);
 
+                if (index >= Count)
+                    throw new IndexOutOfRangeException();
+
                 switch (index) {
                     case 0:
                         return Storage.Item1;
@@ -331,6 +346,33 @@ namespace Squared.Util {
                         return Storage.Item3;
                     case 3:
                         return Storage.Item4;
+                    default:
+                        throw new IndexOutOfRangeException();
+                }
+            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set {
+                if (_HasList) {
+                    Items.DangerousSetItem(index, ref value);
+                    return;
+                }
+
+                if (index >= Count)
+                    throw new IndexOutOfRangeException();
+
+                switch (index) {
+                    case 0:
+                        Storage.Item1 = value;
+                        return;
+                    case 1:
+                        Storage.Item2 = value;
+                        return;
+                    case 2:
+                        Storage.Item3 = value;
+                        return;
+                    case 3:
+                        Storage.Item4 = value;
+                        return;
                     default:
                         throw new IndexOutOfRangeException();
                 }

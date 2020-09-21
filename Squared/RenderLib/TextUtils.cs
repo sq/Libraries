@@ -134,6 +134,9 @@ namespace Squared.Render.Text {
         private bool _ReverseOrder = false;
         private int _LineLimit = int.MaxValue;
 
+        private readonly Dictionary<int, Bounds?> _Markers = new Dictionary<int, Bounds?>();
+        private readonly Dictionary<Vector2, int?> _HitTests = new Dictionary<Vector2, int?>();
+
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _GlyphSource = new SpriteFontGlyphSource(font);
             _Text = text;
@@ -142,6 +145,35 @@ namespace Squared.Render.Text {
         public DynamicStringLayout (IGlyphSource font = null, string text = "") {
             _GlyphSource = font;
             _Text = text;
+        }
+
+        public void ResetMarkersAndHitTests () {
+            if ((_Markers.Count > 0) || (_HitTests.Count > 0))
+                Invalidate();
+            _Markers.Clear();
+            _HitTests.Clear();
+        }
+
+        public Bounds? Mark (int characterIndex) {
+            Bounds? result;
+            if (!_Markers.TryGetValue(characterIndex, out result)) {
+                _Markers[characterIndex] = result = null;
+                Invalidate();
+            }
+            return result;
+        }
+
+        // FIXME: Garbage
+        public IReadOnlyDictionary<int, Bounds?> Markers => _Markers;
+        public IReadOnlyDictionary<Vector2, int?> HitTests => _HitTests;
+
+        public int? HitTest (Vector2 position) {
+            int? result;
+            if (!_HitTests.TryGetValue(position, out result)) {
+                _HitTests[position] = result = null;
+                Invalidate();
+            }
+            return result;
         }
 
         private void InvalidatingNullableAssignment<T> (ref Nullable<T> destination, Nullable<T> newValue)
@@ -410,33 +442,52 @@ namespace Squared.Render.Text {
                 if (_Buffer.Count < capacity)
                     throw new InvalidOperationException("Buffer too small");
 
-                using (
-                    var le = new StringLayoutEngine {
-                        buffer = _Buffer,
-                        position = _Position,
-                        color = _Color,
-                        scale = _Scale,
-                        sortKey = _SortKey,
-                        characterSkipCount = _CharacterSkipCount,
-                        characterLimit = _CharacterLimit,
-                        xOffsetOfFirstLine = _XOffsetOfFirstLine,
-                        xOffsetOfWrappedLine = _XOffsetOfNewLine + _WrapIndentation,
-                        xOffsetOfNewLine = _XOffsetOfNewLine,
-                        lineBreakAtX = _LineBreakAtX,
-                        alignToPixels = _AlignToPixels,
-                        characterWrap = _CharacterWrap,
-                        wordWrap = _WordWrap,
-                        wrapCharacter = _WrapCharacter,
-                        alignment = (HorizontalAlignment)_Alignment,
-                        reverseOrder = _ReverseOrder,
-                        lineLimit = _LineLimit
-                    }
-                ) {
+                var le = new StringLayoutEngine {
+                    buffer = _Buffer,
+                    position = _Position,
+                    color = _Color,
+                    scale = _Scale,
+                    sortKey = _SortKey,
+                    characterSkipCount = _CharacterSkipCount,
+                    characterLimit = _CharacterLimit,
+                    xOffsetOfFirstLine = _XOffsetOfFirstLine,
+                    xOffsetOfWrappedLine = _XOffsetOfNewLine + _WrapIndentation,
+                    xOffsetOfNewLine = _XOffsetOfNewLine,
+                    lineBreakAtX = _LineBreakAtX,
+                    alignToPixels = _AlignToPixels,
+                    characterWrap = _CharacterWrap,
+                    wordWrap = _WordWrap,
+                    wrapCharacter = _WrapCharacter,
+                    alignment = (HorizontalAlignment)_Alignment,
+                    reverseOrder = _ReverseOrder,
+                    lineLimit = _LineLimit
+                };
+
+                try {
+                    // FIXME: Why is this necessary???
+                    var m = le.Markers;
+                    var h = le.HitTests;
+
+                    foreach (var kvp in _Markers)
+                        m.Add(new StringLayoutEngine.Marker { CharacterIndex = kvp.Key });
+                    foreach (var kvp in _HitTests)
+                        h.Add(new StringLayoutEngine.HitTest { Position = kvp.Key });
+
+                    le.Markers = m;
+                    le.HitTests = h;
+
                     le.Initialize();
                     le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
 
                     _CachedGlyphVersion = _GlyphSource.Version;
                     _CachedStringLayout = le.Finish();
+
+                    foreach (var kvp in le.Markers)
+                        _Markers[kvp.CharacterIndex] = kvp.Result;
+                    foreach (var kvp in le.HitTests)
+                        _HitTests[kvp.Position] = kvp.CharacterIndex;
+                } finally {
+                    le.Dispose();
                 }
             }
 

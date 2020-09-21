@@ -31,6 +31,7 @@ namespace Squared.PRGUI {
         public readonly LayoutContext Layout = new LayoutContext();
         public IDecorationProvider Decorations;
 
+        private Vector2 LastMousePosition;
         private bool LastMouseButtonState = false;
 
         public List<Control> Controls = new List<Control>();
@@ -86,7 +87,8 @@ namespace Squared.PRGUI {
         public void UpdateLayout () {
             var context = new UIOperationContext {
                 UIContext = this,
-                AnimationTime = (float)Time.Seconds
+                AnimationTime = (float)Time.Seconds,
+                MousePosition = LastMousePosition
             };
 
             Layout.Clear();
@@ -141,6 +143,7 @@ namespace Squared.PRGUI {
                 HandleScroll(MouseCaptured ?? Hovering, mouseWheelDelta);
 
             LastMouseButtonState = leftButtonPressed;
+            LastMousePosition = mousePosition;
         }
 
         private void HandleScroll (Control control, float delta) {
@@ -208,7 +211,8 @@ namespace Squared.PRGUI {
         public void Rasterize (ref ImperativeRenderer renderer) {
             var context = new UIOperationContext {
                 UIContext = this,
-                AnimationTime = (float)Time.Seconds
+                AnimationTime = (float)Time.Seconds,
+                MousePosition = LastMousePosition
             };
 
             // Ensure each control is rasterized in its own group of passes, so that top level controls can
@@ -234,13 +238,15 @@ namespace Squared.PRGUI {
         public ImperativeRenderer Renderer;
         public RasterizePasses Pass;
         public float AnimationTime;
+        public Vector2 MousePosition;
 
         public UIOperationContext Clone () {
             return new UIOperationContext {
                 UIContext = UIContext,
                 Renderer = Renderer,
                 Pass = Pass,
-                AnimationTime = AnimationTime
+                AnimationTime = AnimationTime,
+                MousePosition = MousePosition
             };
         }
     }

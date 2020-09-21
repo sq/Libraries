@@ -490,13 +490,30 @@ namespace Squared.PRGUI {
     public class EditableText : Control {
         public bool Multiline = false;
 
-        protected DynamicStringLayout TextLayout = new DynamicStringLayout();
+        private Pair<int> _Selection;
+
+        public Pair<int> Selection {
+            get => _Selection;
+            set {
+                if (_Selection == value)
+                    return;
+                value.First = Arithmetic.Clamp(value.First, 0, Builder.Length);
+                value.Second = Arithmetic.Clamp(value.Second, value.First, Builder.Length);
+                if (_Selection == value)
+                    return;
+                _Selection = value;
+                // Console.WriteLine("New selection is {0}", value);
+                Invalidate();
+            }
+        }
+
+        protected DynamicStringLayout DynamicLayout = new DynamicStringLayout();
         protected StringBuilder Builder = new StringBuilder();
         protected Margins CachedPadding;
 
         public EditableText ()
             : base () {
-            TextLayout.Text = Builder;
+            DynamicLayout.Text = Builder;
             AcceptsCapture = true;
             AcceptsFocus = true;
         }
@@ -514,21 +531,36 @@ namespace Squared.PRGUI {
         }
 
         public void Invalidate () {
-            TextLayout.Invalidate();
+            DynamicLayout.ResetMarkersAndHitTests();
+            UpdateLayoutSettings();
+            DynamicLayout.Invalidate();
+        }
+
+        private void UpdateLayoutSettings () {
+            DynamicLayout.LineLimit = Multiline ? int.MaxValue : 1;
+            DynamicLayout.Mark(Selection.First);
+            DynamicLayout.Mark(Selection.Second - 1);
+            DynamicLayout.Mark(Selection.Second);
         }
 
         protected StringLayout UpdateLayout (
             UIOperationContext context, DecorationSettings settings, IDecorator decorations, out Material material
         ) {
+            // HACK: Avoid accumulating too many extra hit tests from previous mouse positions
+            // This will invalidate the layout periodically as the mouse moves, but whatever
+            if (DynamicLayout.HitTests.Count > 8)
+                DynamicLayout.ResetMarkersAndHitTests();
+
+            UpdateLayoutSettings();
+
             Color? color = null;
             decorations.GetTextSettings(context, settings.State, out material, out IGlyphSource font, ref color);
             CachedPadding = ComputePadding(context, decorations);
 
-            TextLayout.GlyphSource = font;
-            TextLayout.LineLimit = Multiline ? int.MaxValue : 1;
-            TextLayout.Color = color ?? Color.White;
+            DynamicLayout.GlyphSource = font;
+            DynamicLayout.Color = color ?? Color.White;
 
-            return TextLayout.Get();
+            return DynamicLayout.Get();
         }
 
         protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
@@ -537,10 +569,10 @@ namespace Squared.PRGUI {
 
         protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
             base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
-            if (TextLayout.GlyphSource == null)
+            if (DynamicLayout.GlyphSource == null)
                 return;
 
-            var lineHeight = TextLayout.GlyphSource.LineSpacing;
+            var lineHeight = DynamicLayout.GlyphSource.LineSpacing;
             var contentMinimumHeight = lineHeight * (Multiline ? 2 : 1) + CachedPadding.Y; // FIXME: Include padding
             minimumHeight = Math.Max(minimumHeight ?? 0, contentMinimumHeight);
         }
@@ -557,11 +589,35 @@ namespace Squared.PRGUI {
             if (context.Pass != RasterizePasses.Content)
                 return;
 
+            var shouldHitTest = settings.Box.Contains(context.MousePosition);
+            if (shouldHitTest)
+                DynamicLayout.HitTest(context.MousePosition - settings.ContentBox.Position);
+
             var layout = UpdateLayout(context, settings, decorations, out Material textMaterial);
             context.Renderer.DrawMultiple(
                 layout.DrawCalls, offset: settings.ContentBox.Position,
                 material: textMaterial
             );
+
+            if (shouldHitTest) {
+                var mouseOverIndex = DynamicLayout.HitTest(context.MousePosition - settings.ContentBox.Position);
+                if (mouseOverIndex.HasValue)
+                    Selection = new Pair<int>(mouseOverIndex.Value, mouseOverIndex.Value);
+            }
+
+            var selStart = DynamicLayout.Mark(_Selection.First);
+            var selEnd = DynamicLayout.Mark(_Selection.Second) ?? DynamicLayout.Mark(_Selection.Second - 1);
+
+            if (selStart.HasValue) {
+                // FIXME: Multiline
+                Bounds b = new Bounds(selStart.Value.TopLeft, (selEnd ?? selStart).Value.BottomRight);
+                b = b.Translate(settings.ContentBox.Position);
+                // FIXME: Use a decorator for this
+                context.Renderer.RasterizeRectangle(
+                    b.TopLeft, b.BottomRight, radius: 0f, outlineRadius: 1f,
+                    innerColor: Color.White * 0.33f, outerColor: Color.White * 0.33f, outlineColor: Color.White
+                );
+            }
         }
     }
 
