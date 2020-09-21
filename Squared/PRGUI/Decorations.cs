@@ -372,6 +372,8 @@ namespace Squared.PRGUI.Decorations {
                 b.Y = box.Top + (sizePx * max);
             }
 
+            context.Renderer.Layer += 1;
+
             context.Renderer.RasterizeRectangle(
                 a + vRadius, b - vRadius,
                 radius: ScrollbarRadius,
