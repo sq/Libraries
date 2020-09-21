@@ -231,12 +231,13 @@ namespace Squared.Render {
             }
 
             public RasterShape.RasterShapeType? Type;
-            public bool Shadowed, Textured;
+            public bool Shadowed, Textured, Simple;
 
             public bool Equals (RasterShaderKey rhs) {
                 return (Type == rhs.Type) &&
                     (Shadowed == rhs.Shadowed) &&
-                    (Textured == rhs.Textured);
+                    (Textured == rhs.Textured) &&
+                    (Simple == rhs.Simple);
             }
 
             public override bool Equals (object obj) {
@@ -247,7 +248,8 @@ namespace Squared.Render {
             }
 
             public override int GetHashCode () {
-                return Type.GetHashCode() ^ Shadowed.GetHashCode() ^ Textured.GetHashCode();
+                return Type.GetHashCode() ^ Shadowed.GetHashCode() 
+                    ^ Textured.GetHashCode() ^ Simple.GetHashCode();
             }
         }
 
@@ -710,12 +712,16 @@ namespace Squared.Render {
         }
 
         private void LoadRasterShapeVariant (
-            Effect shader, string techniqueName, RasterShape.RasterShapeType? type, bool shadowed, bool textured
+            Effect shader, string techniqueName, RasterShape.RasterShapeType? type, bool shadowed, bool textured, bool simple = false
         ) {
+            if (simple && !shader.Techniques.Any(t => t.Name == techniqueName))
+                return;
+
             var key = new RasterShaderKey {
                 Type = type,
                 Shadowed = shadowed,
-                Textured = textured
+                Textured = textured,
+                Simple = simple
             };
             var material = new Material(shader, techniqueName);
             RasterShapeMaterials[key] = material;
@@ -728,6 +734,7 @@ namespace Squared.Render {
             LoadRasterShapeVariant(shader, "Textured" + techniqueSubstring + "Technique", type, false, true);
             LoadRasterShapeVariant(shader, "Shadowed" + techniqueSubstring + "Technique", type, true, false);
             LoadRasterShapeVariant(shader, "ShadowedTextured" + techniqueSubstring + "Technique", type, true, true);
+            LoadRasterShapeVariant(shader, techniqueSubstring + "SimpleTechnique", type, false, false, simple: true);
         }
 
         private void LoadRasterShapeMaterials () {

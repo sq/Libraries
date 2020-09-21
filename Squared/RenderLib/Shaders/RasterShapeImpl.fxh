@@ -5,7 +5,7 @@ void SHAPE_TYPE_NAME (
     float4 fill;
     float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
-        worldPositionTypeAndWorldSpace, false,
+        worldPositionTypeAndWorldSpace, false, false,
         ab, cd, params, params2,
         centerColor, edgeColor, GET_VPOS,
         tl, br,
@@ -27,7 +27,7 @@ void SHAPE_TYPE_NAME_TEX (
     float4 fill;
     float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
-        worldPositionTypeAndWorldSpace, false,
+        worldPositionTypeAndWorldSpace, false, false,
         ab, cd, params, params2,
         centerColor, edgeColor, GET_VPOS,
         tl, br,
@@ -55,7 +55,7 @@ void SHAPE_TYPE_NAME_SHADOWED (
     float4 fill;
     float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
-        worldPositionTypeAndWorldSpace, true,
+        worldPositionTypeAndWorldSpace, true, false,
         ab, cd, params, params2,
         centerColor, edgeColor, GET_VPOS,
         tl, br,
@@ -77,7 +77,7 @@ void SHAPE_TYPE_NAME_TEX_SHADOWED (
     float4 fill;
     float  fillAlpha, outlineAlpha, shadowAlpha;
     rasterShapeCommon(
-        worldPositionTypeAndWorldSpace, true,
+        worldPositionTypeAndWorldSpace, true, false,
         ab, cd, params, params2,
         centerColor, edgeColor, GET_VPOS,
         tl, br,
@@ -133,3 +133,38 @@ technique SHAPE_TYPE_TECHNIQUE_NAME_TEX_SHADOWED
         pixelShader = compile ps_3_0 SHAPE_TYPE_NAME_TEX_SHADOWED ();
     }
 }
+
+#ifdef SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE
+
+void SHAPE_TYPE_NAME_SIMPLE (
+    RASTERSHAPE_FS_ARGS
+) {
+    float2 tl, br;
+    float4 fill;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
+    rasterShapeCommon(
+        worldPositionTypeAndWorldSpace, false, true,
+        ab, cd, params, params2,
+        centerColor, edgeColor, GET_VPOS,
+        tl, br,
+        fill, fillAlpha, outlineAlpha, shadowAlpha
+    );
+
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, GET_VPOS);
+
+    if (result.a <= 0.5 / 255) {
+        discard;
+        return;
+    }
+}
+
+technique SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 RasterShapeVertexShader();
+        pixelShader = compile ps_3_0 SHAPE_TYPE_NAME_SIMPLE ();
+    }
+}
+
+#endif

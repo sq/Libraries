@@ -40,7 +40,7 @@ sampler TextureSampler : register(s0) {
 #define GRADIENT_TYPE_Radial_Enclosing 5
 #define GRADIENT_TYPE_Radial_Enclosed 6
 // The gradient weight has already been computed by the evaluate function
-#define GRADIENT_TYPE_Other 500
+#define GRADIENT_TYPE_Other 8
 // Generic gradient that operates on the bounding box, with the angle added
 //  to the base
 #define GRADIENT_TYPE_Angular 512
@@ -279,7 +279,7 @@ float getWindowAlpha (
 }
 
 void evaluateEllipse (
-    in float2 worldPosition, in float2 a, in float2 b, in float2 c,
+    in float2 worldPosition, in float2 a, in float2 b, in float2 c, in bool simple,
     out float distance, out float2 tl, out float2 br,
     inout int gradientType, out float gradientWeight
 ) {
@@ -288,10 +288,15 @@ void evaluateEllipse (
     float2 distanceXy = worldPosition - a;
     float distanceF = length(distanceXy / b);
     distance = (distanceF - 1) * length(b);
-    gradientWeight = saturate(distanceF);
     tl = a - b;
     br = a + b;
 
+    if (simple) {
+        gradientWeight = 0;
+        return;
+    }
+
+    gradientWeight = saturate(distanceF);
     PREFER_FLATTEN
     switch (gradientType) {
         case GRADIENT_TYPE_Natural:
@@ -397,7 +402,7 @@ float evaluateGradient (
     switch (abs(gradientType)) {
         case GRADIENT_TYPE_Natural:
         case GRADIENT_TYPE_Other:
-            break;
+            return gradientWeight;
         case GRADIENT_TYPE_Linear:
         case GRADIENT_TYPE_Linear_Enclosing:
         case GRADIENT_TYPE_Linear_Enclosed:
@@ -432,7 +437,7 @@ float evaluateGradient (
 
 void evaluateRasterShape (
     int type, float2 radius, float totalRadius, float4 params,
-    in float2 worldPosition, in float2 a, in float2 b, in float2 c,
+    in float2 worldPosition, in float2 a, in float2 b, in float2 c, in bool simple,
     out float distance, inout float2 tl, inout float2 br,
     inout int gradientType, out float gradientWeight
 ) {
@@ -443,7 +448,7 @@ PREFER_BRANCH
 #ifdef INCLUDE_ELLIPSE
         case TYPE_Ellipse: {
             evaluateEllipse(
-                worldPosition, a, b, c,
+                worldPosition, a, b, c, simple,
                 distance, tl, br,
                 gradientType, gradientWeight
             );
@@ -532,7 +537,8 @@ float computeShadowAlpha (
     float distance;
     evaluateRasterShape(
         abs(type), radius, totalRadius, params,
-        worldPosition, a, b, c,
+        // Force simple on since we don't use gradient value in shadow calc
+        worldPosition, a, b, c, true,
         distance, tl, br,
         gradientType, gradientWeight
     );
@@ -545,7 +551,7 @@ float computeShadowAlpha (
 }
 
 void rasterShapeCommon (
-    in float4 worldPositionTypeAndWorldSpace, in bool enableShadow,
+    in float4 worldPositionTypeAndWorldSpace, in bool enableShadow, in bool simple,
     in float4 ab, in float4 cd,
     in float4 params, in float4 params2,
     in float4 centerColor, in float4 edgeColor, in float2 vpos,
@@ -576,7 +582,9 @@ void rasterShapeCommon (
     float gradientOffset = params2.z, gradientSize = params2.w, gradientAngle;
     int gradientType;
 
-    if (params.z >= ANGULAR_GRADIENT_BASE) {
+    if (simple) {
+        gradientType = GRADIENT_TYPE_Other;
+    } else if (params.z >= ANGULAR_GRADIENT_BASE) {
         gradientType = GRADIENT_TYPE_Angular;
         gradientAngle = (params.z - ANGULAR_GRADIENT_BASE) * DEG_TO_RAD;
     } else {
@@ -586,29 +594,33 @@ void rasterShapeCommon (
 
     evaluateRasterShape(
         type, radius, totalRadius, params,
-        worldPosition, a, b, c,
+        worldPosition, a, b, c, simple,
         distance, tl, br,
         gradientType, gradientWeight
     );
 
-    gradientWeight = evaluateGradient(
-        gradientType, gradientAngle, gradientWeight, 
-        worldPosition, tl, br, radius.x
-    );
-
-    gradientWeight += gradientOffset;
-
-    if (gradientSize > 0) {
-        gradientWeight = saturate(gradientWeight / gradientSize);
+    if (simple) {
+        gradientWeight = 0;
     } else {
-        gradientSize = max(abs(gradientSize), 0.0001);
-        gradientWeight /= gradientSize;
-        gradientWeight = gradientWeight % 2;
-        gradientWeight = 1 - abs(gradientWeight - 1);
-    }
+        gradientWeight = evaluateGradient(
+            gradientType, gradientAngle, gradientWeight, 
+            worldPosition, tl, br, radius.x
+        );
 
-    gradientWeight = saturate(pow(gradientWeight, max(params2.x, 0.001)));
-    gradientWeight = 1 - saturate(pow(1 - gradientWeight, max(params2.y, 0.001)));
+        gradientWeight += gradientOffset;
+
+        if (gradientSize > 0) {
+            gradientWeight = saturate(gradientWeight / gradientSize);
+        } else {
+            gradientSize = max(abs(gradientSize), 0.0001);
+            gradientWeight /= gradientSize;
+            gradientWeight = gradientWeight % 2;
+            gradientWeight = 1 - abs(gradientWeight - 1);
+        }
+
+        gradientWeight = saturate(pow(gradientWeight, max(params2.x, 0.001)));
+        gradientWeight = 1 - saturate(pow(1 - gradientWeight, max(params2.y, 0.001)));
+    }
 
     float outlineSizeAlpha = saturate(outlineSize / 2);
     float clampedOutlineSize = max(outlineSize / 2, sqrt(2)) * 2;

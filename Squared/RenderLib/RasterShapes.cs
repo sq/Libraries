@@ -346,6 +346,13 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         public RasterShadowSettings Shadow;
 
+        public bool IsSimple {
+            get {
+                return (OuterColor4 == InnerColor4) &&
+                    Shadow.Color.IsTransparent;
+            }
+        }
+
         internal int Index;
     }
 
@@ -408,6 +415,10 @@ namespace Squared.Render.RasterShape {
             public int Compare (ref RasterShapeDrawCall lhs, ref RasterShapeDrawCall rhs) {
                 var result = ((int)lhs.Type).CompareTo((int)(rhs.Type));
                 if (result == 0)
+                    result = lhs.IsSimple.CompareTo(rhs.IsSimple);
+                if (result == 0)
+                    result = lhs.Shadow.Color.IsTransparent.CompareTo(rhs.Shadow.Color.IsTransparent);
+                if (result == 0)
                     result = lhs.BlendInLinearSpace.CompareTo(rhs.BlendInLinearSpace);
                 if (result == 0)
                     result = lhs.Index.CompareTo(rhs.Index);
@@ -419,7 +430,7 @@ namespace Squared.Render.RasterShape {
             public RasterShapeType Type;
             public bool BlendInLinearSpace;
             public RasterShadowSettings Shadow;
-            public bool Shadowed;
+            public bool Shadowed, Simple;
             public int InstanceOffset, InstanceCount;
         }
 
@@ -497,14 +508,16 @@ namespace Squared.Render.RasterShape {
                 var lastBlend = _DrawCalls[0].BlendInLinearSpace;
                 var lastShadow = _DrawCalls[0].Shadow;
                 var lastOffset = 0;
+                var lastIsSimple = _DrawCalls[0].IsSimple;
 
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     var dc = _DrawCalls[i];
 
                     if (
-                        ((dc.Type != lastType) && !UseUbershader) || 
+                        ((dc.Type != lastType) && !UseUbershader) ||
                         (dc.BlendInLinearSpace != lastBlend) ||
-                        !dc.Shadow.Equals(ref lastShadow)
+                        !dc.Shadow.Equals(ref lastShadow) ||
+                        (dc.IsSimple != lastIsSimple)
                     ) {
                         _SubBatches.Add(new SubBatch {
                             InstanceOffset = lastOffset,
@@ -512,11 +525,13 @@ namespace Squared.Render.RasterShape {
                             BlendInLinearSpace = lastBlend,
                             Type = lastType,
                             Shadow = lastShadow,
-                            Shadowed = ShouldBeShadowed(ref lastShadow)
+                            Shadowed = ShouldBeShadowed(ref lastShadow),
+                            Simple = lastIsSimple
                         });
                         lastOffset = i;
                         lastType = dc.Type;
                         lastShadow = dc.Shadow;
+                        lastIsSimple = dc.IsSimple;
                     }
 
                     var vert = new RasterShapeVertex {
@@ -541,32 +556,37 @@ namespace Squared.Render.RasterShape {
                     BlendInLinearSpace = lastBlend,
                     Type = lastType,
                     Shadow = lastShadow,
-                    Shadowed = ShouldBeShadowed(ref lastShadow)
+                    Shadowed = ShouldBeShadowed(ref lastShadow),
+                    Simple = lastIsSimple
                 });
 
                 NativeBatch.RecordPrimitives(count * 2);
             }
         }
 
-        private Material PickBaseMaterial (RasterShapeType? type, bool shadowed) {
+        private Material PickBaseMaterial (RasterShapeType? type, bool shadowed, bool simple) {
             var key = new DefaultMaterialSet.RasterShaderKey {
                 Type = type,
+                Simple = simple,
                 Shadowed = shadowed,
                 Textured = (Texture != null)
             };
 
             Material result;
             if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {
-                key.Type = null;
-                if (!Materials.RasterShapeMaterials.TryGetValue(key, out result))
-                    throw new Exception($"Shader not found for raster shape {type} (shadowed={shadowed}, textured={Texture != null})");
+                key.Simple = false;
+                if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {
+                    key.Type = null;
+                    if (!Materials.RasterShapeMaterials.TryGetValue(key, out result))
+                        throw new Exception($"Shader not found for raster shape {type} (shadowed={shadowed}, textured={Texture != null}, simple={simple})");
+                }
             }
 
             return result;
         }
 
-        private Material PickMaterial (RasterShapeType? type, bool shadowed) {
-            var baseMaterial = PickBaseMaterial(type, shadowed);
+        private Material PickMaterial (RasterShapeType? type, bool shadowed, bool simple) {
+            var baseMaterial = PickBaseMaterial(type, shadowed, simple);
             return baseMaterial;
         }
 
@@ -597,7 +617,7 @@ namespace Squared.Render.RasterShape {
                 // scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
 
                 foreach (var sb in _SubBatches) {
-                    var material = UseUbershader ? PickMaterial(null, sb.Shadowed) : PickMaterial(sb.Type, sb.Shadowed);
+                    var material = UseUbershader ? PickMaterial(null, sb.Shadowed, sb.Simple) : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
                     manager.ApplyMaterial(material);
 
                     if (BlendState != null)
