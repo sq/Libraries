@@ -589,9 +589,10 @@ namespace Squared.PRGUI {
             if (context.Pass != RasterizePasses.Content)
                 return;
 
+            var hitTestPosition = context.MousePosition - settings.ContentBox.Position;
             var shouldHitTest = settings.Box.Contains(context.MousePosition);
             if (shouldHitTest)
-                DynamicLayout.HitTest(context.MousePosition - settings.ContentBox.Position);
+                DynamicLayout.HitTest(hitTestPosition);
 
             var layout = UpdateLayout(context, settings, decorations, out Material textMaterial);
             context.Renderer.DrawMultiple(
@@ -599,23 +600,48 @@ namespace Squared.PRGUI {
                 material: textMaterial
             );
 
-            if (shouldHitTest) {
-                var mouseOverIndex = DynamicLayout.HitTest(context.MousePosition - settings.ContentBox.Position);
+            // FIXME
+            if (shouldHitTest && false) {
+                var mouseOverIndex = DynamicLayout.HitTest(hitTestPosition);
+                int newIndex;
                 if (mouseOverIndex.HasValue)
-                    Selection = new Pair<int>(mouseOverIndex.Value, mouseOverIndex.Value);
+                    newIndex = mouseOverIndex.Value;
+                else if (hitTestPosition.X <= 0)
+                    newIndex = 0;
+                else if (hitTestPosition.X > layout.Size.X)
+                    newIndex = Builder.Length;
+                else
+                    newIndex = -1;
+
+                if (newIndex >= 0)
+                    Selection = new Pair<int>(newIndex, newIndex);
             }
 
             var selStart = DynamicLayout.Mark(_Selection.First);
-            var selEnd = DynamicLayout.Mark(_Selection.Second) ?? DynamicLayout.Mark(_Selection.Second - 1);
+            var selBeforeEnd = DynamicLayout.Mark(_Selection.Second - 1);
+            var selEnd = DynamicLayout.Mark(_Selection.Second);
 
-            if (selStart.HasValue) {
+            if (selStart.HasValue || selBeforeEnd.HasValue) {
                 // FIXME: Multiline
-                Bounds b = new Bounds(selStart.Value.TopLeft, (selEnd ?? selStart).Value.BottomRight);
+                Bounds b;
+                if (_Selection.First == _Selection.Second) {
+                    b = new Bounds((selEnd ?? selBeforeEnd).Value.TopLeft, (selEnd ?? selBeforeEnd).Value.BottomRight).Expand(-1f, -1f);
+                    if (_Selection.First >= Builder.Length)
+                        b.TopLeft.X = b.BottomRight.X;
+                    else
+                        b.BottomRight.X = b.TopLeft.X;
+                } else {
+                    b = new Bounds(selStart.Value.TopLeft, (selEnd ?? selStart).Value.BottomRight).Expand(-1f, -1f);
+                }
                 b = b.Translate(settings.ContentBox.Position);
+                var fillColor = Color.White *
+                    (settings.State.HasFlag(ControlStates.Focused)
+                        ? Arithmetic.Pulse(context.AnimationTime, 0.5f, 0.66f)
+                        : 0.2f);
                 // FIXME: Use a decorator for this
                 context.Renderer.RasterizeRectangle(
-                    b.TopLeft, b.BottomRight, radius: 0f, outlineRadius: 1f,
-                    innerColor: Color.White * 0.33f, outerColor: Color.White * 0.33f, outlineColor: Color.White
+                    b.TopLeft, b.BottomRight, radius: 1.5f, outlineRadius: 0f,
+                    innerColor: fillColor, outerColor: fillColor, outlineColor: Color.Transparent
                 );
             }
         }
