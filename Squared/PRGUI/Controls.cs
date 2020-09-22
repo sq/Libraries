@@ -634,8 +634,8 @@ namespace Squared.PRGUI {
             if (name == UIContext.Events.MouseDown) {
                 ClickStartPosition = position;
                 var currentCharacter = MapPositionToCharacterIndex(position, null);
-                // Console.WriteLine(currentCharacter);
-                if (currentCharacter.HasValue)
+                // If we're double-clicking inside the selection don't update it yet
+                if (currentCharacter.HasValue && !args.DoubleClicking)
                     Selection = new Pair<int>(currentCharacter.Value, currentCharacter.Value);
                 return true;
             } else if (
