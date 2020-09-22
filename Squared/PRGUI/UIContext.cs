@@ -132,7 +132,8 @@ namespace Squared.PRGUI {
             var mouseEventTarget = MouseCaptured ?? Hovering;
 
             var localPosition = (mouseEventTarget != null)
-                ? mousePosition - mouseEventTarget.GetRect(Layout, true, false).Position
+                // FIXME: This is the content rect, which seems really wrong????
+                ? mousePosition - mouseEventTarget.GetRect(Layout, true, true).Position
                 : Vector2.Zero;
 
             if (LastMousePosition != mousePosition)
