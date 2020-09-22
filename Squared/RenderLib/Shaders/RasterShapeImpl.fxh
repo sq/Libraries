@@ -12,7 +12,7 @@ void SHAPE_TYPE_NAME (
         fill, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, GET_VPOS);
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, false, GET_VPOS);
 
     if (result.a <= 0.5 / 255) {
         discard;
@@ -39,7 +39,7 @@ void SHAPE_TYPE_NAME_TEX (
         ab, cd, 
         fill, outlineColor,
         fillAlpha, outlineAlpha, shadowAlpha,
-        params, params2, tl, br, GET_VPOS
+        params, params2, tl, br, false, GET_VPOS
     );
 
     if (result.a <= 0.5 / 255) {
@@ -62,7 +62,7 @@ void SHAPE_TYPE_NAME_SHADOWED (
         fill, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, GET_VPOS);
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, true, GET_VPOS);
 
     if (result.a <= 0.5 / 255) {
         discard;
@@ -89,7 +89,7 @@ void SHAPE_TYPE_NAME_TEX_SHADOWED (
         ab, cd, 
         fill, outlineColor,
         fillAlpha, outlineAlpha, shadowAlpha,
-        params, params2, tl, br, GET_VPOS
+        params, params2, tl, br, true, GET_VPOS
     );
 
     if (result.a <= 0.5 / 255) {
@@ -150,7 +150,7 @@ void SHAPE_TYPE_NAME_SIMPLE (
         fill, fillAlpha, outlineAlpha, shadowAlpha
     );
 
-    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, GET_VPOS);
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, false, GET_VPOS);
 
     if (result.a <= 0.5 / 255) {
         discard;

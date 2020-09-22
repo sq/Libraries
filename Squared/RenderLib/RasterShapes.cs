@@ -386,11 +386,17 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         public pSRGBColor Color;
 
+        /// <summary>
+        /// Shadow inside of the shape instead of outside
+        /// </summary>
+        public bool Inside;
+
         public bool Equals (ref RasterShadowSettings rhs) {
             return (Offset == rhs.Offset) &&
                 (Softness == rhs.Softness) &&
                 (FillSuppressionMinusOne == rhs.FillSuppressionMinusOne) &&
-                (Color == rhs.Color);
+                (Color == rhs.Color) &&
+                (Inside == rhs.Inside);
         }
 
         public bool Equals (RasterShadowSettings rhs) {
@@ -620,6 +626,8 @@ namespace Squared.Render.RasterShape {
                     var material = UseUbershader ? PickMaterial(null, sb.Shadowed, sb.Simple) : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
                     manager.ApplyMaterial(material);
 
+                    var p = material.Effect.Parameters;
+
                     if (BlendState != null)
                         device.BlendState = BlendState;
                     if (DepthStencilState != null)
@@ -627,8 +635,8 @@ namespace Squared.Render.RasterShape {
                     if (RasterizerState != null)
                         device.RasterizerState = RasterizerState;
 
-                    material.Effect.Parameters["BlendInLinearSpace"].SetValue(sb.BlendInLinearSpace);
-                    material.Effect.Parameters["RasterTexture"]?.SetValue(Texture);
+                    p["BlendInLinearSpace"].SetValue(sb.BlendInLinearSpace);
+                    p["RasterTexture"]?.SetValue(Texture);
 
                     // HACK: If the shadow color is fully transparent, suppress the offset and softness.
                     // If we don't do this, the bounding box of the shapes will be pointlessly expanded.
@@ -641,12 +649,14 @@ namespace Squared.Render.RasterShape {
                         shadowColor = Vector4.Zero;
                         shadowSoftness = 0;
                     }
-                    material.Effect.Parameters["ShadowOptions"].SetValue(new Vector4(
+
+                    p["ShadowOptions"].SetValue(new Vector4(
                         shadowOffset.X, shadowOffset.Y,
                         shadowSoftness, sb.Shadow.FillSuppression
                     ));
+                    p["ShadowColorLinear"].SetValue(shadowColor);
+                    p["ShadowInside"].SetValue(sb.Shadow.Inside);
 
-                    material.Effect.Parameters["ShadowColorLinear"].SetValue(shadowColor);
                     material.Flush();
 
                     // FIXME: why the hell

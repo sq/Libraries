@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Util;
 
 namespace Squared.Render.Text {
     public struct AbstractString : IEquatable<AbstractString> {
@@ -134,8 +135,8 @@ namespace Squared.Render.Text {
         private bool _ReverseOrder = false;
         private int _LineLimit = int.MaxValue;
 
-        private readonly Dictionary<int, Bounds?> _Markers = new Dictionary<int, Bounds?>();
-        private readonly Dictionary<Vector2, int?> _HitTests = new Dictionary<Vector2, int?>();
+        private readonly Dictionary<Util.Pair<int>, Bounds?> _Markers = new Dictionary<Util.Pair<int>, Bounds?>();
+        private readonly Dictionary<Vector2, Util.Pair<int>?> _HitTests = new Dictionary<Vector2, Util.Pair<int>?>();
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _GlyphSource = new SpriteFontGlyphSource(font);
@@ -155,20 +156,31 @@ namespace Squared.Render.Text {
         }
 
         public Bounds? Mark (int characterIndex) {
+            var key = new Pair<int>(characterIndex, characterIndex);
             Bounds? result;
-            if (!_Markers.TryGetValue(characterIndex, out result)) {
-                _Markers[characterIndex] = result = null;
+            if (!_Markers.TryGetValue(key, out result)) {
+                _Markers[key] = result = null;
+                Invalidate();
+            }
+            return result;
+        }
+
+        public Bounds? Mark (int firstCharacterIndex, int lastCharacterIndex) {
+            var key = new Pair<int>(firstCharacterIndex, lastCharacterIndex);
+            Bounds? result;
+            if (!_Markers.TryGetValue(key, out result)) {
+                _Markers[key] = result = null;
                 Invalidate();
             }
             return result;
         }
 
         // FIXME: Garbage
-        public IReadOnlyDictionary<int, Bounds?> Markers => _Markers;
-        public IReadOnlyDictionary<Vector2, int?> HitTests => _HitTests;
+        public IReadOnlyDictionary<Pair<int>, Bounds?> Markers => _Markers;
+        public IReadOnlyDictionary<Vector2, Pair<int>?> HitTests => _HitTests;
 
-        public int? HitTest (Vector2 position) {
-            int? result;
+        public Util.Pair<int>? HitTest (Vector2 position) {
+            Util.Pair<int>? result;
             if (!_HitTests.TryGetValue(position, out result)) {
                 _HitTests[position] = result = null;
                 Invalidate();
@@ -464,17 +476,10 @@ namespace Squared.Render.Text {
                 };
 
                 try {
-                    // FIXME: Why is this necessary???
-                    var m = le.Markers;
-                    var h = le.HitTests;
-
                     foreach (var kvp in _Markers)
-                        m.Add(new StringLayoutEngine.Marker { CharacterIndex = kvp.Key });
+                        le.Markers.Add(new StringLayoutEngine.Marker { FirstCharacterIndex = kvp.Key.First, LastCharacterIndex = kvp.Key.Second });
                     foreach (var kvp in _HitTests)
-                        h.Add(new StringLayoutEngine.HitTest { Position = kvp.Key });
-
-                    le.Markers = m;
-                    le.HitTests = h;
+                        le.HitTests.Add(new StringLayoutEngine.HitTest { Position = kvp.Key });
 
                     le.Initialize();
                     le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
@@ -483,9 +488,13 @@ namespace Squared.Render.Text {
                     _CachedStringLayout = le.Finish();
 
                     foreach (var kvp in le.Markers)
-                        _Markers[kvp.CharacterIndex] = kvp.Result;
-                    foreach (var kvp in le.HitTests)
-                        _HitTests[kvp.Position] = kvp.CharacterIndex;
+                        _Markers[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp.Result;
+                    foreach (var kvp in le.HitTests) {
+                        if (kvp.FirstCharacterIndex.HasValue)
+                            _HitTests[kvp.Position] = new Util.Pair<int>(kvp.FirstCharacterIndex.Value, kvp.LastCharacterIndex.Value);
+                        else
+                            _HitTests[kvp.Position] = null;
+                    }
                 } finally {
                     le.Dispose();
                 }

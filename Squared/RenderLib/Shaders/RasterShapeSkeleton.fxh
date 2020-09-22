@@ -72,6 +72,7 @@ sampler TextureSampler : register(s0) {
 uniform bool BlendInLinearSpace;
 uniform float HalfPixelOffset;
 
+uniform bool ShadowInside;
 // offsetx, offsety, softness, fillSuppression
 uniform float4 ShadowOptions;
 uniform float4 ShadowColorLinear;
@@ -543,10 +544,19 @@ float computeShadowAlpha (
         gradientType, gradientWeight
     );
 
-    float result = getWindowAlpha(
-        distance, shadowEndDistance - (0.5 + (ShadowSoftness * 0.5)), shadowEndDistance + (ShadowSoftness * 0.5),
-        1, 1, 0
-    );
+    float offset = (ShadowSoftness * 0.5);
+    float result;
+    if (ShadowInside) {
+        result = getWindowAlpha(
+            distance, -shadowEndDistance - 0.5 - offset, -shadowEndDistance + 0.5 + offset,
+            0, 1, 1
+        );
+    } else {
+        result = getWindowAlpha(
+            distance, shadowEndDistance - (0.5 + offset), shadowEndDistance + offset,
+            1, 1, 0
+        );
+    }
     return result;
 }
 
@@ -654,12 +664,18 @@ void rasterShapeCommon (
         shadowAlpha = computeShadowAlpha(
             type, radius, totalRadius, params,
             worldPosition - ShadowOffset, a, b, c,
-            max(outlineEndDistance, fillEndDistance)
+            ShadowInside ? fillEndDistance : max(outlineEndDistance, fillEndDistance)
         );
-        // HACK: We don't want to composite the fill on top of the shadow (this will look awful if the fill is semiopaque),
-        //  but it makes some amount of sense to allow blending outline and shadow pixels.
-        // This is not going to be 100% right for fills without outlines...
-        shadowAlpha = saturate (shadowAlpha - (fillAlpha * ShadowFillSuppression));
+
+        if (ShadowInside) {
+            shadowAlpha = saturate (shadowAlpha - saturate(1 - fillAlpha));
+        } else {
+            // HACK: We don't want to composite the fill on top of the shadow (this will look awful if the fill is semiopaque),
+            //  but it makes some amount of sense to allow blending outline and shadow pixels.
+            // This is not going to be 100% right for fills without outlines...
+            float suppressionValue = (fillAlpha * ShadowFillSuppression);
+            shadowAlpha = saturate (shadowAlpha - suppressionValue);
+        }
     } else {
         shadowAlpha = 0;
     }
@@ -675,10 +691,15 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return float4(rgb, a);
 }
 
-float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool convertToSRGB, float2 vpos) {
-    float4 result;
-    result = over(outlineColor, outlineAlpha, fillColor, fillAlpha);
-    result = over(result, 1, ShadowColorLinear, shadowAlpha);
+float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool convertToSRGB, bool enableShadow, float2 vpos) {
+    float4 result = fillColor * fillAlpha;
+    if (enableShadow) {
+        // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
+        float4 ca = ShadowInside ? ShadowColorLinear : result, cb = ShadowInside ? result : ShadowColorLinear;
+        float aa = ShadowInside ? shadowAlpha : 1, ab = ShadowInside ? 1 : shadowAlpha;
+        result = over(ca, aa, cb, ab);
+    }
+    result = over(outlineColor, outlineAlpha, result, 1);
 
     result.rgb = float4(result.rgb / max(result.a, 0.0001), result.a);
 
@@ -694,7 +715,7 @@ float4 texturedShapeCommon (
     in float4 fill, in float4 outlineColor,
     in float fillAlpha, in float outlineAlpha, in float shadowAlpha,
     in float4 params, in float4 params2, in float2 tl, in float2 br,
-    in float2 vpos
+    in bool enableShadow, in float2 vpos
 ) {
     // HACK: Increasing the radius of shapes like rectangles
     //  causes the shapes to expand, so we need to expand the
@@ -715,6 +736,6 @@ float4 texturedShapeCommon (
 
     fill *= texColor;
 
-    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, vpos);
+    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, enableShadow, vpos);
     return result;
 }

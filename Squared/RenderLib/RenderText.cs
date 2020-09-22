@@ -104,11 +104,14 @@ namespace Squared.Render.Text {
                 public static readonly Comparer Instance = new Comparer();
 
                 public int Compare (ref Marker lhs, ref Marker rhs) {
-                    return lhs.CharacterIndex.CompareTo(rhs.CharacterIndex);
+                    var result = lhs.FirstCharacterIndex.CompareTo(rhs.FirstCharacterIndex);
+                    if (result == 0)
+                        result = lhs.LastCharacterIndex.CompareTo(rhs.LastCharacterIndex);
+                    return result;
                 }
             }
 
-            public int CharacterIndex;
+            public int FirstCharacterIndex, LastCharacterIndex;
             public Bounds? Result;
         }
 
@@ -125,7 +128,7 @@ namespace Squared.Render.Text {
             }
 
             public Vector2 Position;
-            public int? CharacterIndex;
+            public int? FirstCharacterIndex, LastCharacterIndex;
         }
 
         public DenseList<Marker> Markers;
@@ -190,11 +193,21 @@ namespace Squared.Render.Text {
             maxLineSpacing = 0;
 
             HitTests.Sort(HitTest.Comparer.Instance);
+            for (int i = 0; i < HitTests.Count; i++) {
+                var ht = HitTests[i];
+                ht.FirstCharacterIndex = null;
+                ht.LastCharacterIndex = null;
+                HitTests[i] = ht;
+            }
+
             Markers.Sort(Marker.Comparer.Instance);
+            for (int i = 0; i < Markers.Count; i++) {
+                var m = Markers[i];
+                m.Result = null;
+                Markers[i] = m;
+            }
 
             currentCharacterIndex = 0;
-            nextMarkerIndex = -1;
-            MoveToNextMarker();
 
             IsInitialized = true;
         }
@@ -204,38 +217,26 @@ namespace Squared.Render.Text {
             for (int i = 0; i < HitTests.Count; i++) {
                 var ht = HitTests[i];
                 if (bounds.Contains(ht.Position)) {
-                    ht.CharacterIndex = characterIndex;
+                    ht.FirstCharacterIndex = ht.FirstCharacterIndex ?? characterIndex;
+                    ht.LastCharacterIndex = characterIndex;
                     HitTests[i] = ht;
                 }
             }
         }
 
-        private bool MoveToNextMarker () {
-            nextMarkerIndex++;
-            if (nextMarkerIndex < Markers.Count) {
-                nextMarkerCharacterIndex = Markers[nextMarkerIndex].CharacterIndex;
-                return true;
-            } else {
-                nextMarkerCharacterIndex = int.MaxValue;
-                return false;
-            }
-        }
-
-        private void AdvanceMarker (ref Bounds result) {
-            if (nextMarkerIndex >= Markers.Count) {
-                nextMarkerCharacterIndex = int.MaxValue;
-                return;
-            }
-
-            while (nextMarkerCharacterIndex <= currentCharacterIndex) {
-                if ((nextMarkerIndex >= 0) && (nextMarkerCharacterIndex == currentCharacterIndex)) {
-                    var m = Markers[nextMarkerIndex];
-                    m.Result = result;
-                    Markers[nextMarkerIndex] = m;
-                }
-
-                if (!MoveToNextMarker())
-                    break;
+        private void ProcessMarkers (ref Bounds bounds) {
+            var characterIndex = currentCharacterIndex;
+            for (int i = 0; i < Markers.Count; i++) {
+                var m = Markers[i];
+                if (m.FirstCharacterIndex > characterIndex)
+                    continue;
+                if (m.LastCharacterIndex < characterIndex)
+                    continue;
+                if (m.Result.HasValue)
+                    m.Result = Bounds.FromUnion(bounds, m.Result.Value);
+                else
+                    m.Result = bounds;
+                Markers[i] = m;
             }
         }
 
@@ -552,8 +553,7 @@ namespace Squared.Render.Text {
                     );
 
                     ProcessHitTests(ref whitespaceBounds);
-                    // if (currentCharacterIndex >= nextMarkerCharacterIndex)
-                    AdvanceMarker(ref whitespaceBounds);
+                    ProcessMarkers(ref whitespaceBounds);
                 }
 
                 if (deadGlyph) {
@@ -574,8 +574,7 @@ namespace Squared.Render.Text {
                 );
 
                 ProcessHitTests(ref lastCharacterBounds);
-                // if (currentCharacterIndex >= nextMarkerCharacterIndex)
-                AdvanceMarker(ref lastCharacterBounds);
+                ProcessMarkers(ref lastCharacterBounds);
 
                 if ((rowIndex == 0) && (colIndex == 0))
                     firstCharacterBounds = lastCharacterBounds;
@@ -667,6 +666,9 @@ namespace Squared.Render.Text {
                     j--;
                 }
             }
+
+            var endpointBounds = lastCharacterBounds;
+            ProcessMarkers(ref endpointBounds);
 
             return new StringLayout(
                 position.GetValueOrDefault(), 

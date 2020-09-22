@@ -19,6 +19,7 @@ namespace Squared.PRGUI {
             public static readonly string LostFocus = string.Intern("LostFocus"),
                 GotFocus = string.Intern("GotFocus"),
                 MouseDown = string.Intern("MouseDown"),
+                MouseMove = string.Intern("MouseMove"),
                 MouseUp = string.Intern("MouseUp"),
                 MouseEnter = string.Intern("MouseEnter"),
                 MouseLeave = string.Intern("MouseLeave"),
@@ -120,6 +121,9 @@ namespace Squared.PRGUI {
             if (Hovering != previouslyHovering)
                 HandleHoverTransition(previouslyHovering, Hovering);
 
+            if (LastMousePosition != mousePosition)
+                HandleMouseMove(MouseCaptured ?? Hovering, mousePosition);
+
             if (!LastMouseButtonState && leftButtonPressed) {
                 HandleMouseDown(Hovering);
             } else if (LastMouseButtonState && !leftButtonPressed) {
@@ -144,6 +148,13 @@ namespace Squared.PRGUI {
 
             LastMouseButtonState = leftButtonPressed;
             LastMousePosition = mousePosition;
+        }
+
+        private void HandleMouseMove (Control control, Vector2 position) {
+            /*
+            var localPosition = position - control.GetRect(Layout, true, false);
+            FireEvent(Events.MouseMove, control, localPosition);
+            */
         }
 
         private void HandleScroll (Control control, float delta) {
