@@ -702,15 +702,20 @@ namespace Squared.PRGUI {
             var selection = MarkSelection();
 
             if (selection.HasValue) {
+                var sel = selection.Value;
+                // If there's no text or something else bad happened, synthesize a selection rect
+                if (sel.Size.Length() < 1)
+                    sel.BottomRight = sel.TopLeft + new Vector2(1, DynamicLayout.GlyphSource.LineSpacing);
+
                 var hasRange = _Selection.First != _Selection.Second;
 
                 // FIXME: Multiline
-                var b = selection.Value.Expand(-1f, -1f).Translate(textOffset);
+                sel = sel.Expand(-1f, -1f).Translate(textOffset);
                 if (!hasRange) {
                     if (_Selection.First >= Builder.Length)
-                        b.TopLeft.X = b.BottomRight.X;
+                        sel.TopLeft.X = sel.BottomRight.X;
                     else
-                        b.BottomRight.X = b.TopLeft.X;
+                        sel.BottomRight.X = sel.TopLeft.X;
                 }
 
                 var isFocused = settings.State.HasFlag(ControlStates.Focused);
@@ -725,7 +730,7 @@ namespace Squared.PRGUI {
                     : Color.Transparent;
                 // FIXME: Use a decorator for this
                 context.Renderer.RasterizeRectangle(
-                    b.TopLeft, b.BottomRight, radius: 1.33f, outlineRadius: hasRange ? 0.75f : 0f,
+                    sel.TopLeft, sel.BottomRight, radius: 1.33f, outlineRadius: hasRange ? 0.75f : 0f,
                     innerColor: fillColor, outerColor: fillColor, outlineColor: outlineColor
                 );
             }
