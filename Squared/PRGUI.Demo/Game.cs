@@ -251,7 +251,7 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(null, UIContext.Events.Click, (ei) => {
-                lastClickedCtl.Text = "Clicked: " + ei.Source;
+                lastClickedCtl.Text = $"Clicked (#{ei.Arguments}): {ei.Source}";
             });
 
             Context.EventBus.Subscribe(hideButton, UIContext.Events.Click, (ei) => {

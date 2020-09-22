@@ -670,6 +670,18 @@ namespace Squared.PRGUI {
         protected override bool OnEvent<T> (string name, T args) {
             if (args is MouseEventArgs)
                 return OnMouseEvent(name, (MouseEventArgs)((object)args));
+            else if (name == UIContext.Events.Click)
+                return OnClick(Convert.ToInt32(args));
+            return false;
+        }
+
+        protected bool OnClick (int clickCount) {
+            // FIXME: Select current word, then entire textbox on triple click
+            if (clickCount >= 2) {
+                Selection = new Pair<int>(0, Builder.Length);
+                return true;
+            }
+
             return false;
         }
 

@@ -30,6 +30,11 @@ namespace Squared.PRGUI {
                 Scroll = string.Intern("Scroll");
         }
 
+        // Double-clicks will only be tracked if this far apart or less
+        public double DoubleClickWindowSize = 0.66;
+        // If the mouse is only moved less than this far, it will be treated as no movement
+        public float MinimumMovementDistance = 4;
+
         public Vector2 CanvasSize;
         public EventBus EventBus = new EventBus();
         public readonly LayoutContext Layout = new LayoutContext();
@@ -37,6 +42,11 @@ namespace Squared.PRGUI {
 
         private Vector2 LastMousePosition;
         private bool LastMouseButtonState = false;
+        private Vector2? MouseDownPosition;
+
+        private Control LastClickTarget;
+        private double LastClickTime;
+        private int SequentialClickCount;
 
         public List<Control> Controls = new List<Control>();
 
@@ -84,22 +94,22 @@ namespace Squared.PRGUI {
             // FIXME: Is this right?
             if (target == null)
                 return false;
-            if (target.HandleEvent(name, args))
-                return true;
             if (EventBus == null)
                 return true;
-            return EventBus.Broadcast(target, name, args);
+            if (EventBus.Broadcast(target, name, args))
+                return true;
+            return target.HandleEvent(name, args);
         }
 
         internal bool FireEvent (string name, Control target) {
             // FIXME: Is this right?
             if (target == null)
                 return false;
-            if (target.HandleEvent(name))
-                return true;
             if (EventBus == null)
                 return true;
-            return EventBus.Broadcast<object>(target, name, null);
+            if (EventBus.Broadcast<object>(target, name, null))
+                return true;
+            return target.HandleEvent(name);
         }
 
         public void UpdateLayout () {
@@ -151,15 +161,15 @@ namespace Squared.PRGUI {
                 // FIXME: This one should probably always be Hovering
                 HandleMouseDown(mouseEventTarget, mousePosition);
             } else if (LastMouseButtonState && !leftButtonPressed) {
+                if (Hovering != null)
+                    HandleMouseUp(mouseEventTarget, mousePosition);
+
                 if (MouseCaptured != null) {
                     if (Hovering == MouseCaptured)
                         HandleClick(MouseCaptured);
                     else
                         HandleDrag(MouseCaptured, Hovering);
                 }
-
-                if (Hovering != null)
-                    HandleMouseUp(mouseEventTarget, mousePosition);
 
                 MouseCaptured = null;
             } else if (!leftButtonPressed) {
@@ -180,6 +190,8 @@ namespace Squared.PRGUI {
 
             var box = target.GetRect(Layout, contentRect: false);
             var contentBox = target.GetRect(Layout, contentRect: true);
+            var mdp = MouseDownPosition ?? globalPosition;
+            var travelDistance = (globalPosition - mdp).Length();
             return new MouseEventArgs {
                 Focused = Focused,
                 MouseOver = MouseOver,
@@ -188,19 +200,25 @@ namespace Squared.PRGUI {
                 GlobalPosition = globalPosition,
                 LocalPosition = globalPosition - contentBox.Position,
                 Box = box,
-                ContentBox = contentBox
+                ContentBox = contentBox,
+                MouseDownPosition = mdp,
+                MovedSinceMouseDown = travelDistance >= MinimumMovementDistance
             };
         }
 
         private void HandleMouseDown (Control target, Vector2 globalPosition) {
+            MouseDownPosition = globalPosition;
             if (target != null && (target.AcceptsCapture && target.Enabled))
                 MouseCaptured = target;
             if (target == null || (target.AcceptsFocus && target.Enabled))
                 Focused = target;
+            // FIXME: Suppress if disabled?
             FireEvent(Events.MouseDown, target, MakeArgs(target, globalPosition));
         }
 
         private void HandleMouseUp (Control target, Vector2 globalPosition) {
+            MouseDownPosition = null;
+            // FIXME: Suppress if disabled?
             FireEvent(Events.MouseUp, target, MakeArgs(target, globalPosition));
         }
 
@@ -209,6 +227,7 @@ namespace Squared.PRGUI {
         }
 
         private void HandleMouseDrag (Control target, Vector2 globalPosition) {
+            // FIXME: Suppress if disabled?
             FireEvent(Events.MouseDrag, target, MakeArgs(target, globalPosition));
         }
 
@@ -230,8 +249,21 @@ namespace Squared.PRGUI {
         }
 
         private void HandleClick (Control target) {
-            if (target.Enabled)
-                FireEvent(Events.Click, target);
+            if (!target.Enabled)
+                return;
+
+            var now = Time.Seconds;
+            if (LastClickTarget == target) {
+                var elapsed = now - LastClickTime;
+                if (elapsed < DoubleClickWindowSize)
+                    SequentialClickCount++;
+            } else {
+                SequentialClickCount = 1;
+            }
+
+            LastClickTarget = target;
+            LastClickTime = now;
+            FireEvent(Events.Click, target, SequentialClickCount);
         }
 
         private void HandleDrag (Control originalTarget, Control finalTarget) {
@@ -303,6 +335,8 @@ namespace Squared.PRGUI {
     public struct MouseEventArgs {
         public Control MouseOver, MouseCaptured, Hovering, Focused;
         public Vector2 GlobalPosition, LocalPosition;
+        public Vector2 MouseDownPosition;
         public RectF Box, ContentBox;
+        public bool MovedSinceMouseDown;
     }
 }
