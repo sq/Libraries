@@ -153,7 +153,8 @@ namespace Squared.PRGUI.Decorations {
         public float InactiveOutlineThickness = 1f, 
             ActiveOutlineThickness = 1.3f, 
             PressedOutlineThickness = 2f,
-            InertOutlineThickness = 1f;
+            InertOutlineThickness = 1f,
+            EditableFocusedOutlineThickness = 1.2f;
         public float ScrollbarSize = 14f, 
             ScrollbarRadius = 3f;
 
@@ -161,7 +162,8 @@ namespace Squared.PRGUI.Decorations {
             ContainerShadow,
             FloatingContainerShadow,
             ScrollbarThumbShadow,
-            TitleShadow;
+            TitleShadow,
+            EditableShadow;
 
         public Color FocusedColor = new Color(200, 230, 255),
             ActiveColor = new Color(240, 240, 240),
@@ -293,14 +295,15 @@ namespace Squared.PRGUI.Decorations {
             context.Renderer.RasterizeRectangle(
                 a, b,
                 radius: InertCornerRadius,
-                outlineRadius: (isFocused || isHovering)
-                    ? ActiveOutlineThickness 
+                outlineRadius: isFocused
+                    ? EditableFocusedOutlineThickness 
                     : InactiveOutlineThickness, 
                 outlineColor: isFocused
                     ? FocusedColor
                     : ContainerOutlineColor,
                 innerColor: settings.BackgroundColor.Value, 
-                outerColor: settings.BackgroundColor.Value
+                outerColor: settings.BackgroundColor.Value,
+                shadow: EditableShadow
             );
         }
 
@@ -441,12 +444,20 @@ namespace Squared.PRGUI.Decorations {
             };
 
             ContainerShadow = null;
+            ScrollbarThumbShadow = null;
+
             FloatingContainerShadow = new RasterShadowSettings {
                 Color = Color.Black * 0.33f,
                 Offset = new Vector2(2.5f, 3f),
                 Softness = 8f
             };
-            ScrollbarThumbShadow = null;
+
+            EditableShadow = new RasterShadowSettings {
+                Color = Color.Black * 0.45f,
+                Offset = Vector2.Zero,
+                Softness = 9f,
+                Inside = true
+            };
 
             Button = new DelegateDecorator {
                 Margins = new Margins(4),

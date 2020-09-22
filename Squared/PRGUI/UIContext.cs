@@ -77,12 +77,20 @@ namespace Squared.PRGUI {
             Decorations = decorations;
         }
 
-        internal void FireEvent<T> (string name, object target, T args) {
-            EventBus?.Broadcast(target, name, args);
+        internal bool FireEvent<T> (string name, Control target, T args) {
+            if (target.HandleEvent(name, args))
+                return true;
+            if (EventBus == null)
+                return true;
+            return EventBus.Broadcast(target, name, args);
         }
 
-        internal void FireEvent (string name, object target) {
-            EventBus?.Broadcast<object>(target, name, null);
+        internal bool FireEvent (string name, Control target) {
+            if (target.HandleEvent(name))
+                return true;
+            if (EventBus == null)
+                return true;
+            return EventBus.Broadcast<object>(target, name, null);
         }
 
         public void UpdateLayout () {
@@ -121,11 +129,18 @@ namespace Squared.PRGUI {
             if (Hovering != previouslyHovering)
                 HandleHoverTransition(previouslyHovering, Hovering);
 
+            var mouseEventTarget = MouseCaptured ?? Hovering;
+
+            var localPosition = (mouseEventTarget != null)
+                ? mousePosition - mouseEventTarget.GetRect(Layout, true, false).Position
+                : Vector2.Zero;
+
             if (LastMousePosition != mousePosition)
-                HandleMouseMove(MouseCaptured ?? Hovering, mousePosition);
+                HandleMouseMove(mouseEventTarget, localPosition);
 
             if (!LastMouseButtonState && leftButtonPressed) {
-                HandleMouseDown(Hovering);
+                // FIXME: This one should probably always be Hovering
+                HandleMouseDown(mouseEventTarget, localPosition);
             } else if (LastMouseButtonState && !leftButtonPressed) {
                 if (MouseCaptured != null) {
                     if (Hovering == MouseCaptured)
@@ -135,7 +150,7 @@ namespace Squared.PRGUI {
                 }
 
                 if (Hovering != null)
-                    HandleMouseUp(Hovering);
+                    HandleMouseUp(mouseEventTarget, localPosition);
 
                 MouseCaptured = null;
             } else if (!leftButtonPressed) {
@@ -152,21 +167,17 @@ namespace Squared.PRGUI {
 
         private void HandleMouseMove (Control control, Vector2 position) {
             /*
-            var localPosition = position - control.GetRect(Layout, true, false);
             FireEvent(Events.MouseMove, control, localPosition);
             */
         }
 
         private void HandleScroll (Control control, float delta) {
             while (control != null) {
-                FireEvent(Events.Scroll, control, delta);
+                if (FireEvent(Events.Scroll, control, delta))
+                    return;
 
-                if (!control.AcceptsScroll || !control.HandleScroll(delta)) {
-                    control.TryGetParent(out control);
+                if (control.TryGetParent(out control))
                     continue;
-                }
-
-                break;
             }
         }
 
@@ -177,18 +188,18 @@ namespace Squared.PRGUI {
                 FireEvent(Events.MouseEnter, current, previous);
         }
 
-        private void HandleMouseDown (Control target) {
+        private void HandleMouseDown (Control target, Vector2 position) {
             // FIXME: Position
             if (target != null)
-                FireEvent(Events.MouseDown, target);
+                FireEvent(Events.MouseDown, target, position);
             if (target != null && (target.AcceptsCapture && target.Enabled))
                 MouseCaptured = target;
             if (target == null || (target.AcceptsFocus && target.Enabled))
                 Focused = target;
         }
 
-        private void HandleMouseUp (Control target) {
-            FireEvent(Events.MouseUp, target);
+        private void HandleMouseUp (Control target, Vector2 position) {
+            FireEvent(Events.MouseUp, target, position);
         }
 
         private void HandleClick (Control target) {

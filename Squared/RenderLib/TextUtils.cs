@@ -136,7 +136,7 @@ namespace Squared.Render.Text {
         private int _LineLimit = int.MaxValue;
 
         private readonly Dictionary<Util.Pair<int>, Bounds?> _Markers = new Dictionary<Util.Pair<int>, Bounds?>();
-        private readonly Dictionary<Vector2, Util.Pair<int>?> _HitTests = new Dictionary<Vector2, Util.Pair<int>?>();
+        private readonly Dictionary<Vector2, LayoutHitTest> _HitTests = new Dictionary<Vector2, LayoutHitTest>();
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
             _GlyphSource = new SpriteFontGlyphSource(font);
@@ -177,13 +177,16 @@ namespace Squared.Render.Text {
 
         // FIXME: Garbage
         public IReadOnlyDictionary<Pair<int>, Bounds?> Markers => _Markers;
-        public IReadOnlyDictionary<Vector2, Pair<int>?> HitTests => _HitTests;
+        public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _HitTests;
 
-        public Util.Pair<int>? HitTest (Vector2 position) {
-            Util.Pair<int>? result;
+        public LayoutHitTest? HitTest (Vector2 position) {
+            LayoutHitTest result;
             if (!_HitTests.TryGetValue(position, out result)) {
-                _HitTests[position] = result = null;
+                _HitTests[position] = new LayoutHitTest {
+                    Position = position
+                };
                 Invalidate();
+                return null;
             }
             return result;
         }
@@ -477,9 +480,9 @@ namespace Squared.Render.Text {
 
                 try {
                     foreach (var kvp in _Markers)
-                        le.Markers.Add(new StringLayoutEngine.Marker { FirstCharacterIndex = kvp.Key.First, LastCharacterIndex = kvp.Key.Second });
+                        le.Markers.Add(new LayoutMarker { FirstCharacterIndex = kvp.Key.First, LastCharacterIndex = kvp.Key.Second });
                     foreach (var kvp in _HitTests)
-                        le.HitTests.Add(new StringLayoutEngine.HitTest { Position = kvp.Key });
+                        le.HitTests.Add(new LayoutHitTest { Position = kvp.Key });
 
                     le.Initialize();
                     le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
@@ -489,12 +492,8 @@ namespace Squared.Render.Text {
 
                     foreach (var kvp in le.Markers)
                         _Markers[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp.Result;
-                    foreach (var kvp in le.HitTests) {
-                        if (kvp.FirstCharacterIndex.HasValue)
-                            _HitTests[kvp.Position] = new Util.Pair<int>(kvp.FirstCharacterIndex.Value, kvp.LastCharacterIndex.Value);
-                        else
-                            _HitTests[kvp.Position] = null;
-                    }
+                    foreach (var kvp in le.HitTests)
+                        _HitTests[kvp.Position] = kvp;
                 } finally {
                     le.Dispose();
                 }

@@ -98,41 +98,46 @@ namespace Squared.Render.Text {
         // Justify
     }
 
+    public struct LayoutMarker {
+        public class Comparer : IRefComparer<LayoutMarker> {
+            public static readonly Comparer Instance = new Comparer();
+
+            public int Compare (ref LayoutMarker lhs, ref LayoutMarker rhs) {
+                var result = lhs.FirstCharacterIndex.CompareTo(rhs.FirstCharacterIndex);
+                if (result == 0)
+                    result = lhs.LastCharacterIndex.CompareTo(rhs.LastCharacterIndex);
+                return result;
+            }
+        }
+
+        public int FirstCharacterIndex, LastCharacterIndex;
+        public Bounds? Result;
+    }
+
+    public struct LayoutHitTest {
+        public class Comparer : IRefComparer<LayoutHitTest> {
+            public static readonly Comparer Instance = new Comparer();
+
+            public int Compare (ref LayoutHitTest lhs, ref LayoutHitTest rhs) {
+                var result = lhs.Position.X.CompareTo(rhs.Position.X);
+                if (result == 0)
+                    result = lhs.Position.Y.CompareTo(rhs.Position.Y);
+                return result;
+            }
+        }
+
+        public Vector2 Position;
+        public int? FirstCharacterIndex, LastCharacterIndex;
+        public bool LeaningRight;
+
+        public override string ToString () {
+            return $"hitTest {Position} -> {FirstCharacterIndex} leaning {(LeaningRight ? "right" : "left")}";
+        }
+    }
+
     public struct StringLayoutEngine : IDisposable {
-        public struct Marker {
-            public class Comparer : IRefComparer<Marker> {
-                public static readonly Comparer Instance = new Comparer();
-
-                public int Compare (ref Marker lhs, ref Marker rhs) {
-                    var result = lhs.FirstCharacterIndex.CompareTo(rhs.FirstCharacterIndex);
-                    if (result == 0)
-                        result = lhs.LastCharacterIndex.CompareTo(rhs.LastCharacterIndex);
-                    return result;
-                }
-            }
-
-            public int FirstCharacterIndex, LastCharacterIndex;
-            public Bounds? Result;
-        }
-
-        public struct HitTest {
-            public class Comparer : IRefComparer<HitTest> {
-                public static readonly Comparer Instance = new Comparer();
-
-                public int Compare (ref HitTest lhs, ref HitTest rhs) {
-                    var result = lhs.Position.X.CompareTo(rhs.Position.X);
-                    if (result == 0)
-                        result = lhs.Position.Y.CompareTo(rhs.Position.Y);
-                    return result;
-                }
-            }
-
-            public Vector2 Position;
-            public int? FirstCharacterIndex, LastCharacterIndex;
-        }
-
-        public DenseList<Marker> Markers;
-        public DenseList<HitTest> HitTests;
+        public DenseList<LayoutMarker> Markers;
+        public DenseList<LayoutHitTest> HitTests;
 
         public const int DefaultBufferPadding = 64;
 
@@ -192,7 +197,7 @@ namespace Squared.Render.Text {
             currentLineSpacing = null;
             maxLineSpacing = 0;
 
-            HitTests.Sort(HitTest.Comparer.Instance);
+            HitTests.Sort(LayoutHitTest.Comparer.Instance);
             for (int i = 0; i < HitTests.Count; i++) {
                 var ht = HitTests[i];
                 ht.FirstCharacterIndex = null;
@@ -200,7 +205,7 @@ namespace Squared.Render.Text {
                 HitTests[i] = ht;
             }
 
-            Markers.Sort(Marker.Comparer.Instance);
+            Markers.Sort(LayoutMarker.Comparer.Instance);
             for (int i = 0; i < Markers.Count; i++) {
                 var m = Markers[i];
                 m.Result = null;
@@ -212,12 +217,16 @@ namespace Squared.Render.Text {
             IsInitialized = true;
         }
 
-        private void ProcessHitTests (ref Bounds bounds) {
+        private void ProcessHitTests (ref Bounds bounds, float centerX) {
             var characterIndex = currentCharacterIndex;
             for (int i = 0; i < HitTests.Count; i++) {
                 var ht = HitTests[i];
                 if (bounds.Contains(ht.Position)) {
-                    ht.FirstCharacterIndex = ht.FirstCharacterIndex ?? characterIndex;
+                    if (!ht.FirstCharacterIndex.HasValue) {
+                        ht.FirstCharacterIndex = characterIndex;
+                        // FIXME: Why is this literally always wrong?
+                        ht.LeaningRight = (ht.Position.X >= centerX);
+                    }
                     ht.LastCharacterIndex = characterIndex;
                     HitTests[i] = ht;
                 }
@@ -552,7 +561,8 @@ namespace Squared.Render.Text {
                         new Vector2(x - characterOffset.X, glyph.LineSpacing) * effectiveScale
                     );
 
-                    ProcessHitTests(ref whitespaceBounds);
+                    // FIXME: is the center X right?
+                    ProcessHitTests(ref whitespaceBounds, whitespaceBounds.Center.X);
                     ProcessMarkers(ref whitespaceBounds);
                 }
 
@@ -566,15 +576,20 @@ namespace Squared.Render.Text {
 
                 characterOffset.X += glyph.CharacterSpacing;
 
+                var scaledGlyphSize = new Vector2(
+                    glyph.LeftSideBearing + glyph.Width + glyph.RightSideBearing,
+                    glyph.LineSpacing
+                ) * effectiveScale;
+
                 lastCharacterBounds = Bounds.FromPositionAndSize(
-                    characterOffset * effectiveScale, new Vector2(
-                        glyph.LeftSideBearing + glyph.Width + glyph.RightSideBearing,
-                        glyph.LineSpacing
-                    ) * effectiveScale
+                    characterOffset * effectiveScale, scaledGlyphSize
                 );
 
-                ProcessHitTests(ref lastCharacterBounds);
-                ProcessMarkers(ref lastCharacterBounds);
+                var testBounds = lastCharacterBounds;
+                var centerX = ((characterOffset.X * effectiveScale) + scaledGlyphSize.X) * 0.5f;
+
+                ProcessHitTests(ref testBounds, testBounds.Center.X);
+                ProcessMarkers(ref testBounds);
 
                 if ((rowIndex == 0) && (colIndex == 0))
                     firstCharacterBounds = lastCharacterBounds;

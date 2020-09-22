@@ -35,7 +35,6 @@ namespace Squared.PRGUI {
         public bool Enabled { get; set; } = true;
         public bool AcceptsCapture { get; protected set; }
         public bool AcceptsFocus { get; protected set; }
-        public virtual bool AcceptsScroll => false;
         protected virtual bool HasNestedContent => false;
         protected virtual bool ShouldClipContent => false;
 
@@ -56,11 +55,19 @@ namespace Squared.PRGUI {
         protected virtual void OnDisplayOffsetChanged () {
         }
 
-        internal bool HandleScroll (float delta) {
-            return OnScroll(delta);
+        internal bool HandleEvent (string name) {
+            return OnEvent(name);
         }
 
-        protected virtual bool OnScroll (float delta) {
+        internal bool HandleEvent<T> (string name, T args) {
+            return OnEvent(name, args);
+        }
+
+        protected virtual bool OnEvent (string name) {
+            return false;
+        }
+
+        protected virtual bool OnEvent<T> (string name, T args) {
             return false;
         }
 
@@ -586,6 +593,41 @@ namespace Squared.PRGUI {
             return DynamicLayout.Mark(Selection.First, Math.Max(Selection.Second - 1, Selection.First));
         }
 
+        private LayoutHitTest? ImmediateHitTest (Vector2 position) {
+            DynamicLayout.HitTest(position);
+            DynamicLayout.Get();
+            return DynamicLayout.HitTest(position);
+        }
+
+        private bool OnPositionEvent (string name, Vector2 position) {
+            if (name == UIContext.Events.MouseDown)
+                return true;
+            else if (name == UIContext.Events.MouseUp) {
+                var result = ImmediateHitTest(position);
+                if (result.HasValue) {
+                    var rv = result.Value;
+                    Console.WriteLine(rv);
+                    var newIndex =
+                        rv.FirstCharacterIndex.HasValue
+                            ? (
+                                rv.LeaningRight
+                                    ? rv.LastCharacterIndex.Value + 1
+                                    : rv.FirstCharacterIndex.Value
+                            )
+                            : Builder.Length;
+                    Selection = new Pair<int>(newIndex, newIndex);
+                }
+                return true;
+            } else
+                return false;
+        }
+
+        protected override bool OnEvent<T> (string name, T args) {
+            if (args is Vector2)
+                return OnPositionEvent(name, (Vector2)((object)args));
+            return false;
+        }
+
         protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, settings, decorations);
 
@@ -594,11 +636,6 @@ namespace Squared.PRGUI {
 
             var textOffset = settings.ContentBox.Position.Floor();
 
-            var hitTestPosition = context.MousePosition - textOffset;
-            var shouldHitTest = settings.Box.Contains(context.MousePosition);
-            if (shouldHitTest)
-                DynamicLayout.HitTest(hitTestPosition);
-
             var layout = UpdateLayout(context, settings, decorations, out Material textMaterial);
             context.Renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset,
@@ -606,23 +643,6 @@ namespace Squared.PRGUI {
             );
 
             var selection = MarkSelection();
-
-            // FIXME
-            if (shouldHitTest && true) {
-                var mouseOverIndex = DynamicLayout.HitTest(hitTestPosition);
-                int newIndex;
-                if (mouseOverIndex.HasValue)
-                    newIndex = mouseOverIndex.Value.First;
-                else if (hitTestPosition.X <= 0)
-                    newIndex = 0;
-                else if (hitTestPosition.X > layout.Size.X)
-                    newIndex = Builder.Length;
-                else
-                    newIndex = -1;
-
-                if (newIndex >= 0)
-                    Selection = new Pair<int>(newIndex, newIndex + 1);
-            }
 
             if (selection.HasValue) {
                 var hasRange = _Selection.First != _Selection.Second;
@@ -709,8 +729,6 @@ namespace Squared.PRGUI {
             };
         }
 
-        public override bool AcceptsScroll => Scrollable;
-
         public Vector2 ScrollOffset {
             get {
                 return _ScrollOffset;
@@ -724,9 +742,17 @@ namespace Squared.PRGUI {
             }
         }
 
-        protected override bool OnScroll (float delta) {
+        protected void OnScroll (float delta) {
             ScrollOffset = new Vector2(ScrollOffset.X, ScrollOffset.Y - delta);
-            return true;
+        }
+
+        protected override bool OnEvent<T> (string name, T args) {
+            if (name == UIContext.Events.Scroll) {
+                OnScroll(Convert.ToSingle(args));
+                return true;
+            }
+
+            return false;
         }
 
         protected override void OnDisplayOffsetChanged () {

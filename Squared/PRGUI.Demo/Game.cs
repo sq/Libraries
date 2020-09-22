@@ -101,7 +101,7 @@ namespace PRGUI.Demo {
             FontLoader = new EmbeddedFreeTypeFontProvider(RenderCoordinator);
 
             Font = FontLoader.Load("FiraSans-Medium");
-            Font.SizePoints = 20f;
+            Font.SizePoints = 32f;
             // High-DPI offscreen surface so the text is sharp even at subpixel positions
             Font.DPIPercent = 150;
             // Big margin on glyphs so shadows aren't clipped

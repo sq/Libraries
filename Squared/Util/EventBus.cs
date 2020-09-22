@@ -306,7 +306,7 @@ namespace Squared.Util.Event {
             return false;
         }
 
-        private void BroadcastToSubscribers<T> (object source, string type, T arguments) {
+        private bool BroadcastToSubscribers<T> (object source, string type, T arguments) {
             EventInfo<T> info = null;
             EventSubscriberList subscribers;
             EventFilter filter;
@@ -369,36 +369,38 @@ namespace Squared.Util.Event {
                             temp[j](info);
 
                         if (info.IsConsumed)
-                            return;
+                            return true;
                     }
 
                     b.Clear();
                 }
             }
+
+            return false;
         }
 
-        public void Broadcast (object source, string type, object arguments) {
+        public bool Broadcast (object source, string type, object arguments) {
             if (source == null)
                 throw new ArgumentNullException("source");
             if (type == null)
                 throw new ArgumentNullException("type");
 
             if ((OnBroadcast != null) && !OnBroadcast(source, type, arguments))
-                return;
+                return true;
 
-            BroadcastToSubscribers(source, type, arguments);
+            return BroadcastToSubscribers(source, type, arguments);
         }
 
-        public void Broadcast<T> (object source, string type, T arguments) {
+        public bool Broadcast<T> (object source, string type, T arguments) {
             if (source == null)
                 throw new ArgumentNullException("source");
             if (type == null)
                 throw new ArgumentNullException("type");
 
             if ((OnBroadcast != null) && !OnBroadcast(source, type, arguments))
-                return;
+                return true;
 
-            BroadcastToSubscribers(source, type, arguments);
+            return BroadcastToSubscribers(source, type, arguments);
         }
 
         public int Compact () {
