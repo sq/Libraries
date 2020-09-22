@@ -510,7 +510,7 @@ namespace Squared.PRGUI {
                 if (_Selection == value)
                     return;
                 _Selection = value;
-                Console.WriteLine("New selection is {0}", value);
+                // Console.WriteLine("New selection is {0}", value);
                 Invalidate();
             }
         }
@@ -518,6 +518,8 @@ namespace Squared.PRGUI {
         protected DynamicStringLayout DynamicLayout = new DynamicStringLayout();
         protected StringBuilder Builder = new StringBuilder();
         protected Margins CachedPadding;
+
+        private Vector2? ClickStartPosition = null;
 
         public EditableText ()
             : base () {
@@ -599,32 +601,75 @@ namespace Squared.PRGUI {
             return DynamicLayout.HitTest(position);
         }
 
-        private bool OnPositionEvent (string name, Vector2 position) {
-            if (name == UIContext.Events.MouseDown)
+        private int? MapPositionToCharacterIndex (Vector2 position, bool? leanOverride) {
+            var result = ImmediateHitTest(position);
+            if (position.X < 0)
+                return 0;
+            else if (position.X > DynamicLayout.Get().Size.X)
+                return Builder.Length;
+
+            if (result.HasValue) {
+                var rv = result.Value;
+                var lean = leanOverride ?? rv.LeaningRight;
+                var newIndex =
+                    rv.FirstCharacterIndex.HasValue
+                        ? (
+                            lean
+                                ? rv.LastCharacterIndex.Value + 1
+                                : rv.FirstCharacterIndex.Value
+                        )
+                        : Builder.Length;
+                return newIndex;
+            }
+
+            return null;
+        }
+
+        private bool OnMouseEvent (string name, MouseEventArgs args) {
+            var position = new Vector2(
+                Arithmetic.Clamp(args.LocalPosition.X, 0, args.ContentBox.Width - 1),
+                Arithmetic.Clamp(args.LocalPosition.Y, 0, args.ContentBox.Height - 1)
+            );
+
+            if (name == UIContext.Events.MouseDown) {
+                ClickStartPosition = position;
+                var currentCharacter = MapPositionToCharacterIndex(position, null);
+                // Console.WriteLine(currentCharacter);
+                if (currentCharacter.HasValue)
+                    Selection = new Pair<int>(currentCharacter.Value, currentCharacter.Value);
                 return true;
-            else if (name == UIContext.Events.MouseUp) {
-                var result = ImmediateHitTest(position);
-                if (result.HasValue) {
-                    var rv = result.Value;
-                    Console.WriteLine(rv);
-                    var newIndex =
-                        rv.FirstCharacterIndex.HasValue
-                            ? (
-                                rv.LeaningRight
-                                    ? rv.LastCharacterIndex.Value + 1
-                                    : rv.FirstCharacterIndex.Value
-                            )
-                            : Builder.Length;
-                    Selection = new Pair<int>(newIndex, newIndex);
+            } else if (
+                (name == UIContext.Events.MouseDrag) ||
+                (name == UIContext.Events.MouseUp)
+            ) {
+                // FIXME: Ideally we would just clamp the mouse coordinates into our rectangle instead of rejecting
+                //  coordinates outside our rect. Maybe UIContext should do this?
+                if (ClickStartPosition.HasValue) {
+                    // If the user is drag-selecting multiple characters, we want to expand the selection
+                    //  to cover all the character hitboxes touched by the mouse drag instead of just picking
+                    //  the character(s) the positions were leaning towards. For clicks that just place the
+                    //  caret on one side of a character, we honor the leaning value
+                    var csp = ClickStartPosition.Value;
+                    var deltaBigEnough = Math.Abs(position.X - csp.X) >= 4;
+                    bool? leanA = deltaBigEnough ? (position.X < csp.X) : (bool?)null,
+                        leanB = deltaBigEnough ? (position.X >= csp.X) : (bool?)null;
+                    // FIXME: This -1 shouldn't be needed
+                    var a = MapPositionToCharacterIndex(csp, leanA) ?? -1;
+                    var b = MapPositionToCharacterIndex(position, leanB) ?? -1;
+                    
+                    Selection = new Pair<int>(Math.Min(a, b), Math.Max(a, b));
                 }
+
+                if (name == UIContext.Events.MouseUp)
+                    ClickStartPosition = null;
                 return true;
             } else
                 return false;
         }
 
         protected override bool OnEvent<T> (string name, T args) {
-            if (args is Vector2)
-                return OnPositionEvent(name, (Vector2)((object)args));
+            if (args is MouseEventArgs)
+                return OnMouseEvent(name, (MouseEventArgs)((object)args));
             return false;
         }
 

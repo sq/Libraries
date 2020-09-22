@@ -19,7 +19,10 @@ namespace Squared.PRGUI {
             public static readonly string LostFocus = string.Intern("LostFocus"),
                 GotFocus = string.Intern("GotFocus"),
                 MouseDown = string.Intern("MouseDown"),
+                // Mouse moved with no button(s) held
                 MouseMove = string.Intern("MouseMove"),
+                // Mouse moved with button(s) held
+                MouseDrag = string.Intern("MouseDrag"),
                 MouseUp = string.Intern("MouseUp"),
                 MouseEnter = string.Intern("MouseEnter"),
                 MouseLeave = string.Intern("MouseLeave"),
@@ -78,6 +81,9 @@ namespace Squared.PRGUI {
         }
 
         internal bool FireEvent<T> (string name, Control target, T args) {
+            // FIXME: Is this right?
+            if (target == null)
+                return false;
             if (target.HandleEvent(name, args))
                 return true;
             if (EventBus == null)
@@ -86,6 +92,9 @@ namespace Squared.PRGUI {
         }
 
         internal bool FireEvent (string name, Control target) {
+            // FIXME: Is this right?
+            if (target == null)
+                return false;
             if (target.HandleEvent(name))
                 return true;
             if (EventBus == null)
@@ -131,17 +140,16 @@ namespace Squared.PRGUI {
 
             var mouseEventTarget = MouseCaptured ?? Hovering;
 
-            var localPosition = (mouseEventTarget != null)
-                // FIXME: This is the content rect, which seems really wrong????
-                ? mousePosition - mouseEventTarget.GetRect(Layout, true, true).Position
-                : Vector2.Zero;
-
-            if (LastMousePosition != mousePosition)
-                HandleMouseMove(mouseEventTarget, localPosition);
+            if (LastMousePosition != mousePosition) {
+                if (leftButtonPressed)
+                    HandleMouseDrag(mouseEventTarget, mousePosition);
+                else
+                    HandleMouseMove(mouseEventTarget, mousePosition);
+            }
 
             if (!LastMouseButtonState && leftButtonPressed) {
                 // FIXME: This one should probably always be Hovering
-                HandleMouseDown(mouseEventTarget, localPosition);
+                HandleMouseDown(mouseEventTarget, mousePosition);
             } else if (LastMouseButtonState && !leftButtonPressed) {
                 if (MouseCaptured != null) {
                     if (Hovering == MouseCaptured)
@@ -151,7 +159,7 @@ namespace Squared.PRGUI {
                 }
 
                 if (Hovering != null)
-                    HandleMouseUp(mouseEventTarget, localPosition);
+                    HandleMouseUp(mouseEventTarget, mousePosition);
 
                 MouseCaptured = null;
             } else if (!leftButtonPressed) {
@@ -166,10 +174,42 @@ namespace Squared.PRGUI {
             LastMousePosition = mousePosition;
         }
 
-        private void HandleMouseMove (Control control, Vector2 position) {
-            /*
-            FireEvent(Events.MouseMove, control, localPosition);
-            */
+        private MouseEventArgs MakeArgs (Control target, Vector2 globalPosition) {
+            if (target == null)
+                return default(MouseEventArgs);
+
+            var box = target.GetRect(Layout, contentRect: false);
+            var contentBox = target.GetRect(Layout, contentRect: true);
+            return new MouseEventArgs {
+                Focused = Focused,
+                MouseOver = MouseOver,
+                Hovering = Hovering,
+                MouseCaptured = MouseCaptured,
+                GlobalPosition = globalPosition,
+                LocalPosition = globalPosition - contentBox.Position,
+                Box = box,
+                ContentBox = contentBox
+            };
+        }
+
+        private void HandleMouseDown (Control target, Vector2 globalPosition) {
+            if (target != null && (target.AcceptsCapture && target.Enabled))
+                MouseCaptured = target;
+            if (target == null || (target.AcceptsFocus && target.Enabled))
+                Focused = target;
+            FireEvent(Events.MouseDown, target, MakeArgs(target, globalPosition));
+        }
+
+        private void HandleMouseUp (Control target, Vector2 globalPosition) {
+            FireEvent(Events.MouseUp, target, MakeArgs(target, globalPosition));
+        }
+
+        private void HandleMouseMove (Control target, Vector2 globalPosition) {
+            FireEvent(Events.MouseMove, target, MakeArgs(target, globalPosition));
+        }
+
+        private void HandleMouseDrag (Control target, Vector2 globalPosition) {
+            FireEvent(Events.MouseDrag, target, MakeArgs(target, globalPosition));
         }
 
         private void HandleScroll (Control control, float delta) {
@@ -187,20 +227,6 @@ namespace Squared.PRGUI {
                 FireEvent(Events.MouseLeave, previous, current);
             if (current != null)
                 FireEvent(Events.MouseEnter, current, previous);
-        }
-
-        private void HandleMouseDown (Control target, Vector2 position) {
-            // FIXME: Position
-            if (target != null)
-                FireEvent(Events.MouseDown, target, position);
-            if (target != null && (target.AcceptsCapture && target.Enabled))
-                MouseCaptured = target;
-            if (target == null || (target.AcceptsFocus && target.Enabled))
-                Focused = target;
-        }
-
-        private void HandleMouseUp (Control target, Vector2 position) {
-            FireEvent(Events.MouseUp, target, position);
         }
 
         private void HandleClick (Control target) {
@@ -272,5 +298,11 @@ namespace Squared.PRGUI {
                 MousePosition = MousePosition
             };
         }
+    }
+
+    public struct MouseEventArgs {
+        public Control MouseOver, MouseCaptured, Hovering, Focused;
+        public Vector2 GlobalPosition, LocalPosition;
+        public RectF Box, ContentBox;
     }
 }
