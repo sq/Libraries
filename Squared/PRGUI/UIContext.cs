@@ -27,7 +27,8 @@ namespace Squared.PRGUI {
                 MouseEnter = string.Intern("MouseEnter"),
                 MouseLeave = string.Intern("MouseLeave"),
                 Click = string.Intern("Click"),
-                Scroll = string.Intern("Scroll");
+                Scroll = string.Intern("Scroll"),
+                KeyPress = string.Intern("KeyPress");
         }
 
         // Double-clicks will only be tracked if this far apart or less
@@ -73,6 +74,9 @@ namespace Squared.PRGUI {
                 _Focused = value;
                 if (previous != null)
                     FireEvent(Events.LostFocus, previous, _Focused);
+
+                HandleNewFocusTarget(_Focused);
+
                 if (_Focused != null)
                     FireEvent(Events.GotFocus, _Focused, previous);
             }
@@ -110,6 +114,15 @@ namespace Squared.PRGUI {
             if (EventBus.Broadcast<object>(target, name, null))
                 return true;
             return target.HandleEvent(name);
+        }
+
+        private void HandleNewFocusTarget (Control target) {
+            if (target?.AcceptsTextInput ?? false) {
+                Microsoft.Xna.Framework.Input.TextInputEXT.StartTextInput();
+                Microsoft.Xna.Framework.Input.TextInputEXT.SetInputRectangle(new Rectangle(16, 16, 200, 16));
+            } else {
+                Microsoft.Xna.Framework.Input.TextInputEXT.StopTextInput();
+            }
         }
 
         public void UpdateLayout () {
@@ -182,6 +195,19 @@ namespace Squared.PRGUI {
 
             LastMouseButtonState = leftButtonPressed;
             LastMousePosition = mousePosition;
+        }
+
+        public bool HandleKeyPress (char ch) {
+            if (Focused == null)
+                return false;
+
+            if (Focused.HandleEvent(Events.KeyPress, ch))
+                return true;
+
+            if (FireEvent(Events.KeyPress, Focused, ch))
+                return true;
+
+            return false;
         }
 
         private MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition) {

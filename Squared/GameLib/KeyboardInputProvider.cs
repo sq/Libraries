@@ -22,7 +22,7 @@ namespace Squared.Game {
         public readonly HashSet<char> BlockedCharacters = new HashSet<char>();
         public readonly List<char> Buffer = new List<char>();
 
-        public EventHandler<char> OnCharacter;
+        public Func<char, bool> OnCharacter;
 
         protected KeyboardInputProvider () {
         }
@@ -37,7 +37,9 @@ namespace Squared.Game {
         }
 
         protected void PushCharacter (char ch) {
-            OnCharacter?.Invoke(this, ch);
+            if (OnCharacter != null)
+                if (OnCharacter(ch))
+                    return;
 
             // Workaround for Nuklear losing its mind
             if (ch < 32)

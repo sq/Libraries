@@ -103,18 +103,20 @@ void adjustTLBR (
         br += annularRadius;
     }
 
-    float halfSoftness = ShadowSoftness * 0.6;
-    tl -= halfSoftness;
-    br += halfSoftness;
-    if (ShadowOffset.x >= 0)
-        br.x += ShadowOffset.x;
-    else 
-        tl.x += ShadowOffset.x;
+    if (!ShadowInside) {
+        float halfSoftness = ShadowSoftness * 0.6;
+        tl -= halfSoftness;
+        br += halfSoftness;
+        if (ShadowOffset.x >= 0)
+            br.x += ShadowOffset.x;
+        else 
+            tl.x += ShadowOffset.x;
 
-    if (ShadowOffset.y >= 0)
-        br.y += ShadowOffset.y;
-    else
-        tl.y += ShadowOffset.y;
+        if (ShadowOffset.y >= 0)
+            br.y += ShadowOffset.y;
+        else
+            tl.y += ShadowOffset.y;
+    }
 }
 
 void computeTLBR (
@@ -185,8 +187,13 @@ void computePosition (
     if (type == TYPE_LineSegment) {
         // HACK: Too hard to calculate precise offsets here so just pad it out.
         // FIXME: This is bad for performance!
-        totalRadius += length(ShadowOffset);
-        totalRadius += ShadowSoftness;
+        if (!ShadowInside) {
+            totalRadius += length(ShadowOffset);
+            totalRadius += ShadowSoftness;
+        }
+
+        float annularRadius = params.y;
+        totalRadius += annularRadius;
 
         // Oriented bounding box around the line segment
         float2 along = b - a,

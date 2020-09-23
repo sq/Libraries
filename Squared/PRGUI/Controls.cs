@@ -35,6 +35,7 @@ namespace Squared.PRGUI {
         public bool Enabled { get; set; } = true;
         public bool AcceptsCapture { get; protected set; }
         public bool AcceptsFocus { get; protected set; }
+        public bool AcceptsTextInput { get; protected set; }
         protected virtual bool HasNestedContent => false;
         protected virtual bool ShouldClipContent => false;
 
@@ -526,6 +527,7 @@ namespace Squared.PRGUI {
             DynamicLayout.Text = Builder;
             AcceptsCapture = true;
             AcceptsFocus = true;
+            AcceptsTextInput = true;
         }
 
         public string Text {
@@ -672,7 +674,14 @@ namespace Squared.PRGUI {
                 return OnMouseEvent(name, (MouseEventArgs)((object)args));
             else if (name == UIContext.Events.Click)
                 return OnClick(Convert.ToInt32(args));
+            else if (name == UIContext.Events.KeyPress)
+                return OnKeyPress(Convert.ToChar(args));
             return false;
+        }
+
+        protected bool OnKeyPress (char ch) {
+            Console.WriteLine("{0:X4} '{1}'", (int)ch, new String(ch, 1));
+            return true;
         }
 
         protected bool OnClick (int clickCount) {
