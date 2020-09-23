@@ -680,8 +680,6 @@ namespace Squared.PRGUI {
                     Selection = new Pair<int>(Math.Min(a, b), Math.Max(a, b));
                 }
 
-                if (name == UIContext.Events.MouseUp)
-                    ClickStartPosition = null;
                 return true;
             } else
                 return false;
@@ -702,11 +700,6 @@ namespace Squared.PRGUI {
             return true;
         }
 
-        private Pair<int> FindWordBoundaries (int centerIndex) {
-            // FIXME
-            return default(Pair<int>);
-        }
-
         protected bool OnClick (int clickCount) {
             // FIXME: Select current word, then entire textbox on triple click
             if (clickCount == 3) {
@@ -720,8 +713,8 @@ namespace Squared.PRGUI {
                 if (!centerIndex.HasValue)
                     return false;
 
-                var boundaries = FindWordBoundaries(centerIndex.Value);
-                Selection = boundaries;
+                var boundary = Unicode.FindWordBoundary(Builder, centerIndex.Value);
+                Selection = boundary;
                 return true;
             }
 
@@ -734,7 +727,10 @@ namespace Squared.PRGUI {
         ) {
             Color? selectedColor = DynamicLayout.Color;
             selectionDecorator.GetTextSettings(context, state, out Material temp, out IGlyphSource temp2, ref selectedColor);
-            var noColorizing = (selection == null) || (selection.Value.Bounds == null) || (_Selection.First == _Selection.Second);
+            var noColorizing = (selection == null) || 
+                (selection.Value.Bounds == null) || 
+                (_Selection.First == _Selection.Second) ||
+                (selection.Value.FirstCharacterIndex == selection.Value.LastCharacterIndex);
             for (int i = 0; i < drawCalls.Count; i++) {
                 var color = noColorizing || ((i < selection.Value.FirstDrawCallIndex) || (i > selection.Value.LastDrawCallIndex))
                     ? DynamicLayout.Color

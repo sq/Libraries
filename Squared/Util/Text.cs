@@ -59,15 +59,64 @@ namespace Squared.Util.Text {
         public static uint? NthCodepoint (AbstractString str, int codepointIndex, int relativeToCharacterIndex = 0) {
             foreach (var cp in str.Codepoints(relativeToCharacterIndex)) {
                 if (codepointIndex == 0)
-                    return cp;
+                    return cp.Codepoint;
                 codepointIndex--;
             }
 
             return null;
         }
+
+        public static bool IsWhiteSpace (uint codepoint) {
+            if (codepoint > 0xFFFF)
+                return false;
+            else
+                return char.IsWhiteSpace((char)codepoint);
+        }
+
+        public static Pair<int> FindWordBoundary (AbstractString str, int searchFromCodepointIndex, int relativeToCharacterIndex = 0) {
+            int firstWhitespaceCharacter = -1, 
+                lastWhitespaceCharacter = -1, 
+                firstWordCharacter = -1, 
+                lastWordCharacter = -1;
+
+            bool searchStartedInWhiteSpace = false, inWord = false;
+            foreach (var cp in str.Codepoints(relativeToCharacterIndex)) {
+                bool transitioned = false;
+                var isWhiteSpace = IsWhiteSpace(cp.Codepoint);
+                if (cp.CodepointIndex == searchFromCodepointIndex)
+                    searchStartedInWhiteSpace = isWhiteSpace;
+
+                if (isWhiteSpace) {
+                    if (inWord || firstWhitespaceCharacter < 0) {
+                        transitioned = inWord;
+                        inWord = false;
+                        firstWhitespaceCharacter = cp.CharacterIndex;
+                    }
+                    lastWhitespaceCharacter = cp.CharacterIndex;
+                } else {
+                    if (!inWord || firstWordCharacter < 0) {
+                        transitioned = !inWord;
+                        inWord = true;
+                        firstWordCharacter = cp.CharacterIndex;
+                    }
+                    lastWordCharacter = cp.CharacterIndex;
+                }
+
+                if (transitioned && (cp.CodepointIndex > searchFromCodepointIndex))
+                    break;
+            }
+
+            if (searchStartedInWhiteSpace)
+                return new Pair<int>(firstWhitespaceCharacter, lastWhitespaceCharacter + 1);
+            else {
+                if (char.IsHighSurrogate(str[lastWordCharacter]))
+                    lastWordCharacter++;
+                return new Pair<int>(firstWordCharacter, lastWordCharacter + 1);
+            }
+        }
     }
 
-    public struct CodepointEnumerable : IEnumerable<uint> {
+    public struct CodepointEnumerable : IEnumerable<CodepointEnumerant> {
         public AbstractString String;
         public int StartOffset;
 
@@ -84,32 +133,52 @@ namespace Squared.Util.Text {
             return new CodepointEnumerator(String, StartOffset);
         }
 
-        IEnumerator<uint> IEnumerable<uint>.GetEnumerator () {
+        IEnumerator<CodepointEnumerant> IEnumerable<CodepointEnumerant>.GetEnumerator () {
             return new CodepointEnumerator(String, StartOffset);
         }
     }
 
-    public struct CodepointEnumerator : IEnumerator<uint> {
+    public struct CodepointEnumerant {
+        public int CharacterIndex, CodepointIndex;
+        public uint Codepoint;
+
+        public static explicit operator uint (CodepointEnumerant value) {
+            return value.Codepoint;
+        }
+    }
+
+    public struct CodepointEnumerator : IEnumerator<CodepointEnumerant> {
         public AbstractString String;
         private int Length;
-        private int Offset, StartOffset;
-        private uint _Current;
+        private int Offset, StartOffset, _CurrentCharacterIndex, _CurrentCodepointIndex;
+        private uint _CurrentCodepoint;
+        private bool InSurrogatePair;
 
         public CodepointEnumerator (AbstractString str, int startOffset) {
             String = str;
             Length = str.Length;
             StartOffset = startOffset;
             Offset = startOffset - 1;
-            _Current = 0;
+            _CurrentCharacterIndex = -1;
+            _CurrentCodepointIndex = -1;
+            _CurrentCodepoint = 0;
+            InSurrogatePair = false;
         }
 
-        public uint Current => _Current;
+        public CodepointEnumerant Current => new CodepointEnumerant {
+            CharacterIndex = _CurrentCharacterIndex,
+            CodepointIndex = _CurrentCodepointIndex,
+            Codepoint = _CurrentCodepoint
+        };
         object IEnumerator.Current => Current;
 
         public void Dispose () {
             String = default(AbstractString);
             Offset = -1;
-            _Current = 0;
+            _CurrentCharacterIndex = -1;
+            _CurrentCodepointIndex = -1;
+            _CurrentCodepoint = 0;
+            InSurrogatePair = false;
         }
 
         public bool MoveNext () {
@@ -117,11 +186,21 @@ namespace Squared.Util.Text {
             if (Offset >= Length)
                 return false;
 
+            if (InSurrogatePair)
+                _CurrentCharacterIndex++;
+
             char ch1 = String[Offset],
                 ch2 = (Offset >= Length - 1)
                     ? '\0' : String[Offset + 1];
-            if (Unicode.DecodeSurrogatePair(ch1, ch2, out _Current))
+            if (Unicode.DecodeSurrogatePair(ch1, ch2, out _CurrentCodepoint)) {
                 Offset++;
+                InSurrogatePair = true;
+            } else {
+                InSurrogatePair = false;
+            }
+
+            _CurrentCodepointIndex++;
+            _CurrentCharacterIndex++;
 
             return true;
         }
@@ -129,7 +208,10 @@ namespace Squared.Util.Text {
         public void Reset () {
             Length = String.Length;
             Offset = StartOffset - 1;
-            _Current = 0;
+            _CurrentCharacterIndex = -1;
+            _CurrentCodepointIndex = -1;
+            _CurrentCodepoint = 0;
+            InSurrogatePair = false;
         }
     }
 
