@@ -11,6 +11,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Microsoft.Xna.Framework;
 using System.Reflection;
+using Squared.Util.Text;
 
 namespace Squared.Render.Text {
     public struct StringLayout {
@@ -234,13 +235,14 @@ namespace Squared.Render.Text {
             }
         }
 
-        private void ProcessMarkers (ref Bounds bounds, int? drawCallIndex) {
-            var characterIndex = currentCharacterIndex;
+        private void ProcessMarkers (ref Bounds bounds, int currentCodepointSize, int? drawCallIndex) {
+            var characterIndex1 = currentCharacterIndex - currentCodepointSize + 1;
+            var characterIndex2 = currentCharacterIndex;
             for (int i = 0; i < Markers.Count; i++) {
                 var m = Markers[i];
-                if (m.FirstCharacterIndex > characterIndex)
+                if (m.FirstCharacterIndex > characterIndex2)
                     continue;
-                if (m.LastCharacterIndex < characterIndex)
+                if (m.LastCharacterIndex < characterIndex1)
                     continue;
                 if (m.Bounds.HasValue)
                     m.Bounds = Bounds.FromUnion(bounds, m.Bounds.Value);
@@ -439,28 +441,24 @@ namespace Squared.Render.Text {
                     break;
 
                 var stringOffset = i;
-                char ch1 = text[i];
-                uint codepoint = ch1;
+                char ch1 = text[i], 
+                    ch2 = i < (text.Length - 1)
+                        ? text[i + 1]
+                        : '\0';
 
-                // Detect surrogate pairs and decode them
-                if ((codepoint >= 0xD800) && (codepoint <= 0xDBFF)) {
-                    if (i < text.Length - 1) {
-                        var ch2 = text[i + 1];
-                        codepoint = (uint)char.ConvertToUtf32(ch1, ch2);
-                        currentCharacterIndex++;
+                int currentCodepointSize = 1;
+                uint codepoint;
+                if (Unicode.DecodeSurrogatePair(ch1, ch2, out codepoint)) {
+                    currentCodepointSize = 2;
+                    currentCharacterIndex++;
+                    i++;
+                } else if (ch1 == '\r') {
+                    if (ch2 == '\n') {
+                        currentCodepointSize = 2;
+                        ch1 = ch2;
                         i++;
-                    }
-                }
-
-                if (ch1 == '\r') {
-                    if (i < text.Length - 1) {
-                        var ch2 = text[i + 1];
-                        if (ch2 == '\n') {
-                            ch1 = ch2;
-                            i++;
-                            currentCharacterIndex++;
-                            stringOffset++;
-                        }
+                        currentCharacterIndex++;
+                        stringOffset++;
                     }
                 }
 
@@ -586,7 +584,7 @@ namespace Squared.Render.Text {
 
                     // FIXME: is the center X right?
                     ProcessHitTests(ref whitespaceBounds, whitespaceBounds.Center.X);
-                    ProcessMarkers(ref whitespaceBounds, null);
+                    ProcessMarkers(ref whitespaceBounds, currentCodepointSize, null);
                 }
 
                 if (deadGlyph) {
@@ -649,7 +647,7 @@ namespace Squared.Render.Text {
                         currentLineMaxX = Math.Max(currentLineMaxX, x);
                         maxY = Math.Max(maxY, (characterOffset.Y + effectiveLineSpacing) * effectiveScale);
 
-                        ProcessMarkers(ref testBounds, bufferWritePosition);
+                        ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition);
 
                         bufferWritePosition += 1;
                         drawCallsWritten += 1;
@@ -657,7 +655,7 @@ namespace Squared.Render.Text {
                         currentLineWhitespaceMaxXLeft = Math.Max(currentLineWhitespaceMaxXLeft, characterOffset.X);
                         currentLineWhitespaceMaxX = Math.Max(currentLineWhitespaceMaxX, x);
 
-                        ProcessMarkers(ref testBounds, null);
+                        ProcessMarkers(ref testBounds, currentCodepointSize, null);
                     }
 
                     characterLimit--;
@@ -719,7 +717,8 @@ namespace Squared.Render.Text {
 
             var endpointBounds = lastCharacterBounds;
             // FIXME: Index of last draw call?
-            ProcessMarkers(ref endpointBounds, null);
+            // FIXME: Codepoint size?
+            ProcessMarkers(ref endpointBounds, 1, null);
 
             return new StringLayout(
                 position.GetValueOrDefault(), 

@@ -13,6 +13,7 @@ using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
 using Squared.Util;
+using Squared.Util.Text;
 
 namespace Squared.PRGUI {
     public abstract class Control {
@@ -508,10 +509,27 @@ namespace Squared.PRGUI {
                     return;
                 value.First = Arithmetic.Clamp(value.First, 0, Builder.Length);
                 value.Second = Arithmetic.Clamp(value.Second, value.First, Builder.Length);
+
+                if (value.First == value.Second) {
+                    if ((value.First < Builder.Length) && char.IsLowSurrogate(Builder[value.First])) {
+                        value.First--;
+                        // FIXME: Bump this forward?
+                        value.Second--;
+                    }
+                } else {
+                    // Expand selection outward if it rests in the middle of a surrogate pair
+                    if ((value.First > 0) && char.IsLowSurrogate(Builder[value.First]))
+                        value.First--;
+                    /*
+                    if ((value.Second < (Builder.Length - 1)) && char.IsHighSurrogate(Builder[value.Second]))
+                        value.Second++;
+                    */
+                }
+
                 if (_Selection == value)
                     return;
                 _Selection = value;
-                // Console.WriteLine("New selection is {0}", value);
+                Console.WriteLine("New selection is {0}", value);
                 Invalidate();
             }
         }
@@ -684,10 +702,26 @@ namespace Squared.PRGUI {
             return true;
         }
 
+        private Pair<int> FindWordBoundaries (int centerIndex) {
+            // FIXME
+            return default(Pair<int>);
+        }
+
         protected bool OnClick (int clickCount) {
             // FIXME: Select current word, then entire textbox on triple click
-            if (clickCount >= 2) {
+            if (clickCount == 3) {
                 Selection = new Pair<int>(0, Builder.Length);
+                return true;
+            } else if (clickCount == 2) {
+                if (!ClickStartPosition.HasValue)
+                    return false;
+
+                var centerIndex = MapPositionToCharacterIndex(ClickStartPosition.Value, null);
+                if (!centerIndex.HasValue)
+                    return false;
+
+                var boundaries = FindWordBoundaries(centerIndex.Value);
+                Selection = boundaries;
                 return true;
             }
 

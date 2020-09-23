@@ -130,6 +130,7 @@
     <Compile Include="PriorityQueue.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Sort.cs" />
+    <Compile Include="Text.cs" />
     <Compile Include="TimeProvider.cs" />
     <Compile Include="Tuples.cs" />
     <Compile Include="UnorderedList.cs" />

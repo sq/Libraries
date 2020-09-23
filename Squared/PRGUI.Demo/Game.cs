@@ -147,12 +147,14 @@ namespace PRGUI.Demo {
                 Text = ""
             };
 
+            var testString = "Hello Καλημέρα こんにちは \U0002F8B6\U0002F8CD\U0002F8D3";
+
             var textfield = new EditableText {
-                Text = "Hello Καλημέρα こんにちは \U0002F8B6\U0002F8CD\U0002F8D3",
+                Text = testString,
                 BackgroundColor = new Color(8, 64, 16),
                 // FIXME: This should be at least partially automatic
                 MinimumWidth = 400,
-                Selection = new Pair<int>(1, 3)
+                Selection = new Pair<int>(1, testString.Length - 4)
             };
 
             var hideButton = new Button {
