@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
@@ -687,16 +688,42 @@ namespace Squared.PRGUI {
 
         protected override bool OnEvent<T> (string name, T args) {
             if (args is MouseEventArgs)
-                return OnMouseEvent(name, (MouseEventArgs)((object)args));
+                return OnMouseEvent(name, (MouseEventArgs)(object)args);
             else if (name == UIContext.Events.Click)
                 return OnClick(Convert.ToInt32(args));
             else if (name == UIContext.Events.KeyPress)
-                return OnKeyPress(Convert.ToChar(args));
+                return OnKeyPress((KeyEventArgs)(object)args);
             return false;
         }
 
-        protected bool OnKeyPress (char ch) {
-            Console.WriteLine("{0:X4} '{1}'", (int)ch, new String(ch, 1));
+        protected bool OnKeyPress (KeyEventArgs evt) {
+            Console.WriteLine("{0:X4} '{1}' {2}", (int)(evt.Char ?? '\0'), new String(evt.Char ?? '\0', 1), evt.Key);
+
+            if (evt.Char.HasValue) {
+                if (Selection.Second != Selection.First)
+                    Builder.Remove(Selection.First, Selection.Second - Selection.First);
+                Builder.Insert(Selection.First, evt.Char);
+                Selection = new Pair<int>(Selection.First + 1, Selection.First + 1);
+                Invalidate();
+            } else if (evt.Key.HasValue) {
+                switch (evt.Key.Value) {
+                    case Keys.Back:
+                        if (Selection.Second != Selection.First) {
+                            Builder.Remove(Selection.First, Selection.Second - Selection.First);
+                            Selection = new Pair<int>(Selection.First, Selection.First);
+                        } else if (Selection.First > 0) {
+                            int pos = Selection.First - 1, count = 1;
+                            if (char.IsLowSurrogate(Builder[pos])) {
+                                pos--; count++;
+                            }
+                            Builder.Remove(pos, count);
+                            Selection = new Pair<int>(Selection.First - count, Selection.First - count);
+                        }
+                        Invalidate();
+                        break;
+                }
+            }
+
             return true;
         }
 

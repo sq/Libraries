@@ -323,7 +323,8 @@ namespace PRGUI.Demo {
             Context.UpdateInput(
                 mousePosition,
                 mouseWheelDelta: (MouseState.ScrollWheelValue - PreviousMouseState.ScrollWheelValue) / 3.2f,
-                leftButtonPressed: MouseState.LeftButton == ButtonState.Pressed
+                leftButtonPressed: MouseState.LeftButton == ButtonState.Pressed,
+                keyboardState: KeyboardState
             );
 
             if (Context.MouseOver != null)

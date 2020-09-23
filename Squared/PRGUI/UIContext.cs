@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render;
@@ -28,7 +29,9 @@ namespace Squared.PRGUI {
                 MouseLeave = string.Intern("MouseLeave"),
                 Click = string.Intern("Click"),
                 Scroll = string.Intern("Scroll"),
-                KeyPress = string.Intern("KeyPress");
+                KeyDown = string.Intern("KeyDown"),
+                KeyPress = string.Intern("KeyPress"),
+                KeyUp = string.Intern("KeyUp");
         }
 
         // Double-clicks will only be tracked if this far apart or less
@@ -44,6 +47,7 @@ namespace Squared.PRGUI {
         private Vector2 LastMousePosition;
         private bool LastMouseButtonState = false;
         private Vector2? MouseDownPosition;
+        private KeyboardState LastKeyboardState;
 
         private Vector2 LastClickPosition;
         private Control LastClickTarget;
@@ -76,7 +80,7 @@ namespace Squared.PRGUI {
                 if (previous != null)
                     FireEvent(Events.LostFocus, previous, _Focused);
 
-                HandleNewFocusTarget(_Focused);
+                HandleNewFocusTarget(previous, _Focused);
 
                 if (_Focused != null)
                     FireEvent(Events.GotFocus, _Focused, previous);
@@ -89,6 +93,14 @@ namespace Squared.PRGUI {
                     DefaultFont = font
                 }
             ) {
+        }
+
+        private void TextInputEXT_TextInput (char ch) {
+            // Control characters will be handled through the KeyboardState path
+            if (ch < ' ')
+                return;
+
+            HandleKeyEvent(Events.KeyPress, null, ch);
         }
 
         public UIContext (IDecorationProvider decorations) {
@@ -117,12 +129,16 @@ namespace Squared.PRGUI {
             return target.HandleEvent(name);
         }
 
-        private void HandleNewFocusTarget (Control target) {
+        private void HandleNewFocusTarget (Control previous, Control target) {
             if (target?.AcceptsTextInput ?? false) {
-                Microsoft.Xna.Framework.Input.TextInputEXT.StartTextInput();
-                Microsoft.Xna.Framework.Input.TextInputEXT.SetInputRectangle(new Rectangle(16, 16, 200, 16));
-            } else {
-                Microsoft.Xna.Framework.Input.TextInputEXT.StopTextInput();
+                if (previous?.AcceptsTextInput ?? false) {
+                } else {
+                    TextInputEXT.StartTextInput();
+                    TextInputEXT.TextInput += TextInputEXT_TextInput;
+                }
+            } else if (previous?.AcceptsTextInput ?? false) {
+                TextInputEXT.TextInput -= TextInputEXT_TextInput;
+                TextInputEXT.StopTextInput();
             }
         }
 
@@ -145,7 +161,7 @@ namespace Squared.PRGUI {
         }
 
         public void UpdateInput (
-            Vector2 mousePosition, bool leftButtonPressed,
+            Vector2 mousePosition, bool leftButtonPressed, KeyboardState keyboardState,
             float mouseWheelDelta = 0
         ) {
             var previouslyHovering = Hovering;
@@ -194,18 +210,48 @@ namespace Squared.PRGUI {
             if (mouseWheelDelta != 0)
                 HandleScroll(MouseCaptured ?? Hovering, mouseWheelDelta);
 
+            ProcessKeyboardState(ref LastKeyboardState, ref keyboardState);
+
+            LastKeyboardState = keyboardState;
             LastMouseButtonState = leftButtonPressed;
             LastMousePosition = mousePosition;
         }
 
-        public bool HandleKeyPress (char ch) {
+        private void ProcessKeyboardState (ref KeyboardState previous, ref KeyboardState current) {
+            for (int i = 0; i < 255; i++) {
+                var key = (Keys)i;
+
+                // Clumsily filter out keys that would generate textinput events
+                if ((key >= Keys.D0) && (key <= Keys.NumPad9))
+                    continue;
+                if ((key >= Keys.OemSemicolon) && (key <= Keys.OemBackslash))
+                    continue;
+
+                var wasPressed = previous.IsKeyDown(key);
+                var isPressed = current.IsKeyDown(key);
+
+                if (isPressed != wasPressed) {
+                    HandleKeyEvent(isPressed ? Events.KeyDown : Events.KeyUp, key, null);
+                    if (isPressed)
+                        HandleKeyEvent(Events.KeyPress, key, null);
+                }
+            }
+        }
+
+        public bool HandleKeyEvent (string name, Keys? key, char? ch) {
             if (Focused == null)
                 return false;
 
-            if (Focused.HandleEvent(Events.KeyPress, ch))
+            var evt = new KeyEventArgs {
+                Key = key,
+                Char = ch
+            };
+
+            // FIXME: Suppress events with a char if the target doesn't accept text input?
+            if (Focused.HandleEvent(name, evt))
                 return true;
 
-            if (FireEvent(Events.KeyPress, Focused, ch))
+            if (FireEvent(name, Focused, evt))
                 return true;
 
             return false;
@@ -375,5 +421,10 @@ namespace Squared.PRGUI {
         public Vector2 MouseDownPosition;
         public RectF Box, ContentBox;
         public bool MovedSinceMouseDown, DoubleClicking;
+    }
+
+    public struct KeyEventArgs {
+        public Keys? Key;
+        public char? Char;
     }
 }
