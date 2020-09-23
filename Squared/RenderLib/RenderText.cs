@@ -452,20 +452,26 @@ namespace Squared.Render.Text {
                     }
                 }
 
+                if (ch1 == '\r') {
+                    if (i < text.Length - 1) {
+                        var ch2 = text[i + 1];
+                        if (ch2 == '\n') {
+                            ch1 = ch2;
+                            i++;
+                            currentCharacterIndex++;
+                            stringOffset++;
+                        }
+                    }
+                }
+
                 bool isWhiteSpace = char.IsWhiteSpace(ch1),
                      forcedWrap = false, lineBreak = false,
                      deadGlyph = false;
                 Glyph glyph;
                 KerningAdjustment kerningAdjustment;
 
-                if (ch1 == '\r') {
-                    if (((stringOffset + 1) < l) && (text[stringOffset + 1] == '\n'))
-                        stringOffset += 1;
-
+                if (ch1 == '\n')
                     lineBreak = true;
-                } else if (ch1 == '\n') {
-                    lineBreak = true;
-                }
 
                 if (lineBreak) {
                     if (lineLimit.HasValue)
