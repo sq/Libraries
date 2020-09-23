@@ -144,7 +144,7 @@ namespace PRGUI.Demo {
 
             var textfield = new EditableText {
                 Text = "Hello Καλημέρα 𪜀𪜁𪜂𪜃𪜄𪜅　こんにちは",
-                BackgroundColor = new Color(16, 128, 16),
+                BackgroundColor = new Color(8, 64, 16),
                 // FIXME: This should be at least partially automatic
                 MinimumWidth = 400,
                 Selection = new Pair<int>(1, 3)

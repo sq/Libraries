@@ -718,7 +718,7 @@ namespace Squared.PRGUI {
             var sel = selection.Value.Bounds ?? default(Bounds);
             // If there's no text or something else bad happened, synthesize a selection rect
             if (sel.Size.Length() < 1)
-                sel.BottomRight = sel.TopLeft + new Vector2(1, DynamicLayout.GlyphSource.LineSpacing);
+                sel.BottomRight = sel.TopLeft + new Vector2(0, DynamicLayout.GlyphSource.LineSpacing);
 
             var hasRange = _Selection.First != _Selection.Second;
 

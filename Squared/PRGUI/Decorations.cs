@@ -167,7 +167,8 @@ namespace Squared.PRGUI.Decorations {
             FloatingContainerShadow,
             ScrollbarThumbShadow,
             TitleShadow,
-            EditableShadow;
+            EditableShadow,
+            SelectionShadow;
 
         public Color FocusedColor = new Color(200, 230, 255),
             ActiveColor = new Color(240, 240, 240),
@@ -407,22 +408,24 @@ namespace Squared.PRGUI.Decorations {
 
         private void Selection_Content (UIOperationContext context, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, SelectionCornerRadius - SelectionPadding);
+            var isCaret = (settings.Box.Width <= 0.5f);
             var isFocused = settings.State.HasFlag(ControlStates.Focused);
             var fillColor = SelectionFillColor *
                 (isFocused
-                    ? Arithmetic.Pulse(context.AnimationTime, 0.5f, 0.66f)
-                    : 0.5f
-                );
-            var outlineColor = isFocused
+                    ? Arithmetic.Pulse(context.AnimationTime, 0.65f, 0.8f)
+                    : 0.55f
+                ) * (isCaret ? 1.8f : 1f);
+            var outlineColor = (isFocused && !isCaret)
                 ? Color.White
                 : Color.Transparent;
 
             context.Renderer.RasterizeRectangle(
                 a, b,
                 radius: SelectionCornerRadius,
-                outlineRadius: isFocused ? 0.7f : 0f, 
+                outlineRadius: (isFocused && !isCaret) ? 0.7f : 0f, 
                 outlineColor: outlineColor,
-                innerColor: fillColor, outerColor: fillColor
+                innerColor: fillColor, outerColor: fillColor,
+                shadow: SelectionShadow
             );
         }
 
@@ -493,6 +496,12 @@ namespace Squared.PRGUI.Decorations {
                 Offset = new Vector2(1.25f, 1.5f),
                 Softness = 8f,
                 Inside = true
+            };
+
+            SelectionShadow = new RasterShadowSettings {
+                Color = Color.White * 0.2f,
+                Offset = new Vector2(1.25f, 1.5f),
+                Softness = 2f
             };
 
             Button = new DelegateDecorator {

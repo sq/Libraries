@@ -45,6 +45,7 @@ namespace Squared.PRGUI {
         private bool LastMouseButtonState = false;
         private Vector2? MouseDownPosition;
 
+        private Vector2 LastClickPosition;
         private Control LastClickTarget;
         private double LastClickTime;
         private int SequentialClickCount;
@@ -179,7 +180,7 @@ namespace Squared.PRGUI {
 
                 if (MouseCaptured != null) {
                     if (Hovering == MouseCaptured)
-                        HandleClick(MouseCaptured);
+                        HandleClick(MouseCaptured, mousePosition);
                     else
                         HandleDrag(MouseCaptured, Hovering);
                 }
@@ -229,7 +230,7 @@ namespace Squared.PRGUI {
                 ContentBox = contentBox,
                 MouseDownPosition = mdp,
                 MovedSinceMouseDown = travelDistance >= MinimumMovementDistance,
-                DoubleClicking = IsInDoubleClickWindow(target) && (MouseCaptured != null)
+                DoubleClicking = IsInDoubleClickWindow(target, globalPosition) && (MouseCaptured != null)
             };
         }
 
@@ -275,23 +276,28 @@ namespace Squared.PRGUI {
                 FireEvent(Events.MouseEnter, current, previous);
         }
 
-        private bool IsInDoubleClickWindow (Control target) {
-            if (LastClickTarget == target) {
+        private bool IsInDoubleClickWindow (Control target, Vector2 position) {
+            var movedDistance = (position - LastClickPosition).Length();
+            if (
+                (LastClickTarget == target) &&
+                (movedDistance < MinimumMovementDistance)
+            ) {
                 var elapsed = Time.Seconds - LastClickTime;
                 return elapsed < DoubleClickWindowSize;
             }
             return false;
         }
 
-        private void HandleClick (Control target) {
+        private void HandleClick (Control target, Vector2 mousePosition) {
             if (!target.Enabled)
                 return;
 
-            if (IsInDoubleClickWindow(target))
+            if (IsInDoubleClickWindow(target, mousePosition))
                 SequentialClickCount++;
             else
                 SequentialClickCount = 1;
 
+            LastClickPosition = mousePosition;
             LastClickTarget = target;
             LastClickTime = Time.Seconds;
             FireEvent(Events.Click, target, SequentialClickCount);
