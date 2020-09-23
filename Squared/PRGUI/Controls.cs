@@ -726,12 +726,12 @@ namespace Squared.PRGUI {
 
                     case Keys.Left:
                     case Keys.Right:
-                        HandleSelectionShift(evt.Key == Keys.Left ? -1 : 1);
+                        HandleSelectionShift(evt.Key == Keys.Left ? -1 : 1, evt.Modifiers.Shift);
                         break;
 
                     case Keys.Home:
                     case Keys.End:
-                        HandleSelectionShift(evt.Key == Keys.Home ? -99999 : 99999);
+                        HandleSelectionShift(evt.Key == Keys.Home ? -99999 : 99999, evt.Modifiers.Shift);
                         break;
                 }
             }
@@ -739,14 +739,20 @@ namespace Squared.PRGUI {
             return true;
         }
 
-        private void HandleSelectionShift (int direction) {
-            if (direction < 0)
-                Selection = new Pair<int>(Selection.First + direction, Selection.First + direction);
-            else {
+        private void HandleSelectionShift (int direction, bool grow) {
+            if (direction < 0) {
+                Selection = new Pair<int>(
+                    Selection.First + direction, 
+                    grow ? Selection.Second : Selection.First + direction
+                );
+            } else {
                 var newOffset = Selection.Second + direction;
                 if ((newOffset < Builder.Length) && char.IsLowSurrogate(Builder[newOffset]))
                     newOffset++;
-                Selection = new Pair<int>(newOffset, newOffset);
+                Selection = new Pair<int>(
+                    grow ? Selection.First : newOffset, 
+                    newOffset
+                );
             }
         }
 
@@ -780,7 +786,7 @@ namespace Squared.PRGUI {
             var noColorizing = (selection == null) || 
                 (selection.Value.Bounds == null) || 
                 (_Selection.First == _Selection.Second) ||
-                (selection.Value.FirstCharacterIndex == selection.Value.LastCharacterIndex);
+                (selection.Value.GlyphCount == 0);
             for (int i = 0; i < drawCalls.Count; i++) {
                 var color = noColorizing || ((i < selection.Value.FirstDrawCallIndex) || (i > selection.Value.LastDrawCallIndex))
                     ? DynamicLayout.Color

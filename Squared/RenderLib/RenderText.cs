@@ -113,6 +113,7 @@ namespace Squared.Render.Text {
 
         public int FirstCharacterIndex, LastCharacterIndex;
         public int? FirstDrawCallIndex, LastDrawCallIndex;
+        public int GlyphCount;
         public Bounds? Bounds;
     }
 
@@ -248,6 +249,8 @@ namespace Squared.Render.Text {
                     m.Bounds = Bounds.FromUnion(bounds, m.Bounds.Value);
                 else
                     m.Bounds = bounds;
+                if (drawCallIndex != null)
+                    m.GlyphCount++;
                 m.FirstDrawCallIndex = m.FirstDrawCallIndex ?? drawCallIndex;
                 m.LastDrawCallIndex = drawCallIndex ?? m.LastDrawCallIndex;
                 Markers[i] = m;

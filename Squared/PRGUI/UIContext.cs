@@ -47,6 +47,8 @@ namespace Squared.PRGUI {
         public readonly LayoutContext Layout = new LayoutContext();
         public IDecorationProvider Decorations;
 
+        private KeyboardModifiers CurrentModifiers;
+
         private Vector2 LastMousePosition;
         private bool LastMouseButtonState = false;
         private Vector2? MouseDownPosition;
@@ -186,6 +188,8 @@ namespace Squared.PRGUI {
 
             var mouseEventTarget = MouseCaptured ?? Hovering;
 
+            ProcessKeyboardState(ref LastKeyboardState, ref keyboardState);
+
             if (LastMousePosition != mousePosition) {
                 if (leftButtonPressed)
                     HandleMouseDrag(mouseEventTarget, mousePosition);
@@ -216,14 +220,21 @@ namespace Squared.PRGUI {
             if (mouseWheelDelta != 0)
                 HandleScroll(MouseCaptured ?? Hovering, mouseWheelDelta);
 
-            ProcessKeyboardState(ref LastKeyboardState, ref keyboardState);
-
             LastKeyboardState = keyboardState;
             LastMouseButtonState = leftButtonPressed;
             LastMousePosition = mousePosition;
         }
 
         private void ProcessKeyboardState (ref KeyboardState previous, ref KeyboardState current) {
+            CurrentModifiers = new KeyboardModifiers {
+                LeftControl = current.IsKeyDown(Keys.LeftControl),
+                RightControl = current.IsKeyDown(Keys.RightControl),
+                LeftShift = current.IsKeyDown(Keys.LeftShift),
+                RightShift = current.IsKeyDown(Keys.RightShift),
+                LeftAlt = current.IsKeyDown(Keys.LeftAlt),
+                RightAlt = current.IsKeyDown(Keys.RightAlt),
+            };
+
             var now = Time.Seconds;
             for (int i = 0; i < 255; i++) {
                 var key = (Keys)i;
@@ -262,6 +273,7 @@ namespace Squared.PRGUI {
                 return false;
 
             var evt = new KeyEventArgs {
+                Modifiers = CurrentModifiers,
                 Key = key,
                 Char = ch
             };
@@ -285,6 +297,7 @@ namespace Squared.PRGUI {
             var mdp = MouseDownPosition ?? globalPosition;
             var travelDistance = (globalPosition - mdp).Length();
             return new MouseEventArgs {
+                Modifiers = CurrentModifiers,
                 Focused = Focused,
                 MouseOver = MouseOver,
                 Hovering = Hovering,
@@ -435,7 +448,16 @@ namespace Squared.PRGUI {
         }
     }
 
+    public struct KeyboardModifiers {
+        public bool Control => LeftControl || RightControl;
+        public bool Shift => LeftShift || RightShift;
+        public bool Alt => LeftAlt || RightAlt;
+
+        public bool LeftControl, RightControl, LeftShift, RightShift, LeftAlt, RightAlt;
+    }
+
     public struct MouseEventArgs {
+        public KeyboardModifiers Modifiers;
         public Control MouseOver, MouseCaptured, Hovering, Focused;
         public Vector2 GlobalPosition, LocalPosition;
         public Vector2 MouseDownPosition;
@@ -444,6 +466,7 @@ namespace Squared.PRGUI {
     }
 
     public struct KeyEventArgs {
+        public KeyboardModifiers Modifiers;
         public Keys? Key;
         public char? Char;
     }
