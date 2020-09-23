@@ -593,7 +593,7 @@ namespace Squared.PRGUI {
             return base.OnGenerateLayoutTree(context, parent);
         }
 
-        protected Bounds? MarkSelection () {
+        protected LayoutMarker? MarkSelection () {
             return DynamicLayout.Mark(Selection.First, Math.Max(Selection.Second - 1, Selection.First));
         }
 
@@ -694,55 +694,82 @@ namespace Squared.PRGUI {
             return false;
         }
 
+        private void ColorizeSelection (
+            ArraySegment<BitmapDrawCall> drawCalls, LayoutMarker? selection,
+            UIOperationContext context, ControlStates state, IBaseDecorator selectionDecorator
+        ) {
+            Color? selectedColor = DynamicLayout.Color;
+            selectionDecorator.GetTextSettings(context, state, out Material temp, out IGlyphSource temp2, ref selectedColor);
+            var noColorizing = (selection == null) || (selection.Value.Bounds == null) || (_Selection.First == _Selection.Second);
+            for (int i = 0; i < drawCalls.Count; i++) {
+                var color = noColorizing || ((i < selection.Value.FirstDrawCallIndex) || (i > selection.Value.LastDrawCallIndex))
+                    ? DynamicLayout.Color
+                    : Color.Black;
+                drawCalls.Array[i + drawCalls.Offset].MultiplyColor = color;
+            }
+        }
+
+        private Bounds? GetBoundsForSelection (LayoutMarker? selection, Vector2 textOffset) {
+            if (selection == null)
+                return null;
+            else if (selection.Value.Bounds == null)
+                return null;
+
+            var sel = selection.Value.Bounds ?? default(Bounds);
+            // If there's no text or something else bad happened, synthesize a selection rect
+            if (sel.Size.Length() < 1)
+                sel.BottomRight = sel.TopLeft + new Vector2(1, DynamicLayout.GlyphSource.LineSpacing);
+
+            var hasRange = _Selection.First != _Selection.Second;
+
+            // FIXME: Multiline
+            sel = sel.Translate(textOffset);
+            if (!hasRange) {
+                if (_Selection.First >= Builder.Length)
+                    sel.TopLeft.X = sel.BottomRight.X;
+                else
+                    sel.BottomRight.X = sel.TopLeft.X;
+            }
+
+            return sel;
+        }
+
         protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, settings, decorations);
+
+            MarkSelection();
+
+            var textOffset = settings.ContentBox.Position.Floor();
+            var selectionDecorator = context.DecorationProvider.Selection;
+            var layout = UpdateLayout(context, settings, decorations, out Material textMaterial);
+            var selection = MarkSelection();
 
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            var textOffset = settings.ContentBox.Position.Floor();
+            var selBounds = GetBoundsForSelection(selection, textOffset);
+            if (selBounds.HasValue && 
+                (
+                    settings.State.HasFlag(ControlStates.Focused) || 
+                    (_Selection.First != _Selection.Second)
+                )
+            ) {
+                var selSettings = new DecorationSettings {
+                    BackgroundColor = settings.BackgroundColor,
+                    State = settings.State,
+                    Box = (RectF)selBounds.Value,
+                    ContentBox = (RectF)selBounds.Value
+                };
+                selectionDecorator.Rasterize(context, selSettings);
+                context.Renderer.Layer += 1;
+            }
 
-            var layout = UpdateLayout(context, settings, decorations, out Material textMaterial);
+            ColorizeSelection(layout.DrawCalls, selection, context, settings.State, selectionDecorator);
+
             context.Renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset,
                 material: textMaterial, samplerState: RenderStates.Text
             );
-
-            var selection = MarkSelection();
-
-            if (selection.HasValue) {
-                var sel = selection.Value;
-                // If there's no text or something else bad happened, synthesize a selection rect
-                if (sel.Size.Length() < 1)
-                    sel.BottomRight = sel.TopLeft + new Vector2(1, DynamicLayout.GlyphSource.LineSpacing);
-
-                var hasRange = _Selection.First != _Selection.Second;
-
-                // FIXME: Multiline
-                sel = sel.Expand(-1f, -1f).Translate(textOffset);
-                if (!hasRange) {
-                    if (_Selection.First >= Builder.Length)
-                        sel.TopLeft.X = sel.BottomRight.X;
-                    else
-                        sel.BottomRight.X = sel.TopLeft.X;
-                }
-
-                var isFocused = settings.State.HasFlag(ControlStates.Focused);
-                var fillColor = Color.White * (
-                        (isFocused
-                            ? Arithmetic.Pulse(context.AnimationTime, 0.5f, 0.66f)
-                            : 0.5f) *
-                        (hasRange ? 1f : 2f)
-                    );
-                var outlineColor = isFocused
-                    ? Color.White
-                    : Color.Transparent;
-                // FIXME: Use a decorator for this
-                context.Renderer.RasterizeRectangle(
-                    sel.TopLeft, sel.BottomRight, radius: 1.33f, outlineRadius: hasRange ? 0.75f : 0f,
-                    innerColor: fillColor, outerColor: fillColor, outlineColor: outlineColor
-                );
-            }
         }
     }
 

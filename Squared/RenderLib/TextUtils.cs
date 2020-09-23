@@ -135,7 +135,7 @@ namespace Squared.Render.Text {
         private bool _ReverseOrder = false;
         private int _LineLimit = int.MaxValue;
 
-        private readonly Dictionary<Util.Pair<int>, Bounds?> _Markers = new Dictionary<Util.Pair<int>, Bounds?>();
+        private readonly Dictionary<Pair<int>, LayoutMarker> _Markers = new Dictionary<Pair<int>, LayoutMarker>();
         private readonly Dictionary<Vector2, LayoutHitTest> _HitTests = new Dictionary<Vector2, LayoutHitTest>();
 
         public DynamicStringLayout (SpriteFont font, string text = "") {
@@ -155,28 +155,46 @@ namespace Squared.Render.Text {
             _HitTests.Clear();
         }
 
-        public Bounds? Mark (int characterIndex) {
+        public LayoutMarker? Mark (int characterIndex) {
             var key = new Pair<int>(characterIndex, characterIndex);
-            Bounds? result;
+
+            LayoutMarker result;
             if (!_Markers.TryGetValue(key, out result)) {
-                _Markers[key] = result = null;
+                _Markers[key] = new LayoutMarker {
+                    FirstCharacterIndex = characterIndex,
+                    LastCharacterIndex = characterIndex
+                };
                 Invalidate();
+                return null;
             }
-            return result;
+
+            if (result.Bounds.HasValue)
+                return result;
+            else
+                return null;
         }
 
-        public Bounds? Mark (int firstCharacterIndex, int lastCharacterIndex) {
+        public LayoutMarker? Mark (int firstCharacterIndex, int lastCharacterIndex) {
             var key = new Pair<int>(firstCharacterIndex, lastCharacterIndex);
-            Bounds? result;
+
+            LayoutMarker result;
             if (!_Markers.TryGetValue(key, out result)) {
-                _Markers[key] = result = null;
+                _Markers[key] = new LayoutMarker {
+                    FirstCharacterIndex = firstCharacterIndex,
+                    LastCharacterIndex = lastCharacterIndex
+                };
                 Invalidate();
+                return null;
             }
-            return result;
+
+            if (result.Bounds.HasValue)
+                return result;
+            else
+                return null;
         }
 
         // FIXME: Garbage
-        public IReadOnlyDictionary<Pair<int>, Bounds?> Markers => _Markers;
+        public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Markers;
         public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _HitTests;
 
         public LayoutHitTest? HitTest (Vector2 position) {
@@ -480,7 +498,7 @@ namespace Squared.Render.Text {
 
                 try {
                     foreach (var kvp in _Markers)
-                        le.Markers.Add(new LayoutMarker { FirstCharacterIndex = kvp.Key.First, LastCharacterIndex = kvp.Key.Second });
+                        le.Markers.Add(kvp.Value);
                     foreach (var kvp in _HitTests)
                         le.HitTests.Add(new LayoutHitTest { Position = kvp.Key });
 
@@ -491,7 +509,7 @@ namespace Squared.Render.Text {
                     _CachedStringLayout = le.Finish();
 
                     foreach (var kvp in le.Markers)
-                        _Markers[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp.Result;
+                        _Markers[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp;
                     foreach (var kvp in le.HitTests)
                         _HitTests[kvp.Position] = kvp;
                 } finally {

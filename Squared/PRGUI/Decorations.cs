@@ -42,6 +42,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator WindowTitle { get; }
         IDecorator StaticText { get; }
         IDecorator EditableText { get; }
+        IDecorator Selection { get; }
         IDecorator Button { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
@@ -139,6 +140,7 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator WindowTitle { get; set; }
         public IDecorator StaticText { get; set; }
         public IDecorator EditableText { get; set; }
+        public IDecorator Selection { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public IGlyphSource DefaultFont,
@@ -148,7 +150,9 @@ namespace Squared.PRGUI.Decorations {
         public float InteractableCornerRadius = 6f, 
             InertCornerRadius = 3f, 
             ContainerCornerRadius = 3f, 
-            TitleCornerRadius = 4f;
+            TitleCornerRadius = 4f,
+            SelectionCornerRadius = 1.33f,
+            SelectionPadding = 1f;
         public float? FloatingContainerCornerRadius = null;
         public float InactiveOutlineThickness = 1f, 
             ActiveOutlineThickness = 1.3f, 
@@ -176,7 +180,9 @@ namespace Squared.PRGUI.Decorations {
             ScrollbarTrackColor = new Color(32, 32, 32),
             TitleColor = new Color(50, 120, 160),
             TitleTextColor = Color.White,
-            TextColor = Color.White;
+            TextColor = Color.White,
+            SelectionFillColor = new Color(200, 230, 255),
+            SelectedTextColor = new Color(0, 30, 55);
 
         public float DisabledTextAlpha = 0.5f;
 
@@ -399,6 +405,27 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
+        private void Selection_Content (UIOperationContext context, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, SelectionCornerRadius - SelectionPadding);
+            var isFocused = settings.State.HasFlag(ControlStates.Focused);
+            var fillColor = SelectionFillColor *
+                (isFocused
+                    ? Arithmetic.Pulse(context.AnimationTime, 0.5f, 0.66f)
+                    : 0.5f
+                );
+            var outlineColor = isFocused
+                ? Color.White
+                : Color.Transparent;
+
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: SelectionCornerRadius,
+                outlineRadius: isFocused ? 0.7f : 0f, 
+                outlineColor: outlineColor,
+                innerColor: fillColor, outerColor: fillColor
+            );
+        }
+
         public bool GetTextSettings (
             UIOperationContext context, ControlStates state, 
             out Material material, out IGlyphSource font, ref Color? color
@@ -433,6 +460,15 @@ namespace Squared.PRGUI.Decorations {
                 color = TitleTextColor;
             GetTextSettings(context, state, out material, out font, ref color);
             font = TitleFont ?? font;
+            return true;
+        }
+
+        private bool GetTextSettings_Selection (
+            UIOperationContext context, ControlStates state, 
+            out Material material, out IGlyphSource font, ref Color? color
+        ) {
+            GetTextSettings(context, state, out material, out font, ref color);
+            color = SelectedTextColor;
             return true;
         }
 
@@ -512,6 +548,11 @@ namespace Squared.PRGUI.Decorations {
                 // FIXME
                 Below = EditableText_Below,
                 // Above = EditableText_Above
+            };
+
+            Selection = new DelegateDecorator {
+                GetTextSettings = GetTextSettings_Selection,
+                Content = Selection_Content,
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {

@@ -303,6 +303,13 @@ namespace Squared.PRGUI {
             Height = height;
         }
 
+        public RectF (Vector2 origin, Vector2 size) {
+            Left = origin.X;
+            Top = origin.Y;
+            Width = size.X;
+            Height = size.Y;
+        }
+
         public float this [uint index] {
             get {
                 return this[(int)index];
@@ -384,6 +391,13 @@ namespace Squared.PRGUI {
             return new Bounds(
                 new Vector2(self.Left, self.Top),
                 new Vector2(self.Left + self.Width, self.Top + self.Height)
+            );
+        }
+
+        public static explicit operator RectF (Bounds self) {
+            return new RectF(
+                self.TopLeft,
+                self.BottomRight - self.TopLeft
             );
         }
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -37,8 +37,10 @@ namespace PRGUI.Demo {
 
         public Material TextMaterial { get; private set; }
 
-        public FreeTypeFont Font;
+        public IGlyphSource Font;
         public AutoRenderTarget UIRenderTarget;
+
+        public const float DPIFactor = 0.5f;
 
         public bool IsMouseOverUI = false, TearingTest = false;
         public long LastTimeOverUI;
@@ -89,6 +91,18 @@ namespace PRGUI.Demo {
             }
         }
 
+        private FreeTypeFont LoadFont (string name, float size) {
+            var result = FontLoader.Load(name);
+            result.SizePoints = size;
+            // High-DPI offscreen surface so the text is sharp even at subpixel positions
+            result.DPIPercent = (int)(100f / DPIFactor);
+            // Big margin on glyphs so shadows aren't clipped
+            result.GlyphMargin = 4;
+            // Enable mips for soft shadows
+            result.MipMapping = true;
+            return result;
+        }
+
         protected override void OnLoadContent (bool isReloading) {
             RenderCoordinator.EnableThreading = false;
 
@@ -100,22 +114,20 @@ namespace PRGUI.Demo {
             };
             FontLoader = new EmbeddedFreeTypeFontProvider(RenderCoordinator);
 
-            Font = FontLoader.Load("FiraSans-Medium");
-            Font.SizePoints = 20f;
-            // High-DPI offscreen surface so the text is sharp even at subpixel positions
-            Font.DPIPercent = 150;
-            // Big margin on glyphs so shadows aren't clipped
-            Font.GlyphMargin = 4;
-            // Enable mips for soft shadows
-            Font.MipMapping = true;
+            var firaSans = LoadFont("FiraSans-Medium", 20f);
+            var jpFallback = LoadFont("NotoSansCJKjp-Regular", 20f);
 
-            var titleFont = new FreeTypeFont.FontSize(Font, 12f);
+            var titleFont = new FreeTypeFont.FontSize(firaSans, 12f);
+
+            Font = jpFallback;
+            // Font = new FallbackGlyphSource(firaSans, jpFallback);
+            // Font = firaSans;
 
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
             TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
             TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.66f));
-            TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.5f * Font.DPIPercent / 200f);
+            TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.5f * DPIFactor);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1f);
 
             var hoveringCtl = new StaticText {
@@ -131,7 +143,7 @@ namespace PRGUI.Demo {
             };
 
             var textfield = new EditableText {
-                Text = "Editable Text",
+                Text = "Hello Καλημέρα 𪜀𪜁𪜂𪜃𪜄𪜅　こんにちは",
                 BackgroundColor = new Color(16, 128, 16),
                 // FIXME: This should be at least partially automatic
                 MinimumWidth = 400,

@@ -111,7 +111,8 @@ namespace Squared.Render.Text {
         }
 
         public int FirstCharacterIndex, LastCharacterIndex;
-        public Bounds? Result;
+        public int? FirstDrawCallIndex, LastDrawCallIndex;
+        public Bounds? Bounds;
     }
 
     public struct LayoutHitTest {
@@ -208,7 +209,7 @@ namespace Squared.Render.Text {
             Markers.Sort(LayoutMarker.Comparer.Instance);
             for (int i = 0; i < Markers.Count; i++) {
                 var m = Markers[i];
-                m.Result = null;
+                m.Bounds = null;
                 Markers[i] = m;
             }
 
@@ -233,7 +234,7 @@ namespace Squared.Render.Text {
             }
         }
 
-        private void ProcessMarkers (ref Bounds bounds) {
+        private void ProcessMarkers (ref Bounds bounds, int? drawCallIndex) {
             var characterIndex = currentCharacterIndex;
             for (int i = 0; i < Markers.Count; i++) {
                 var m = Markers[i];
@@ -241,10 +242,12 @@ namespace Squared.Render.Text {
                     continue;
                 if (m.LastCharacterIndex < characterIndex)
                     continue;
-                if (m.Result.HasValue)
-                    m.Result = Bounds.FromUnion(bounds, m.Result.Value);
+                if (m.Bounds.HasValue)
+                    m.Bounds = Bounds.FromUnion(bounds, m.Bounds.Value);
                 else
-                    m.Result = bounds;
+                    m.Bounds = bounds;
+                m.FirstDrawCallIndex = m.FirstDrawCallIndex ?? drawCallIndex;
+                m.LastDrawCallIndex = drawCallIndex ?? m.LastDrawCallIndex;
                 Markers[i] = m;
             }
         }
@@ -563,7 +566,7 @@ namespace Squared.Render.Text {
 
                     // FIXME: is the center X right?
                     ProcessHitTests(ref whitespaceBounds, whitespaceBounds.Center.X);
-                    ProcessMarkers(ref whitespaceBounds);
+                    ProcessMarkers(ref whitespaceBounds, null);
                 }
 
                 if (deadGlyph) {
@@ -589,7 +592,6 @@ namespace Squared.Render.Text {
                 var centerX = ((characterOffset.X * effectiveScale) + scaledGlyphSize.X) * 0.5f;
 
                 ProcessHitTests(ref testBounds, testBounds.Center.X);
-                ProcessMarkers(ref testBounds);
 
                 if ((rowIndex == 0) && (colIndex == 0))
                     firstCharacterBounds = lastCharacterBounds;
@@ -627,11 +629,15 @@ namespace Squared.Render.Text {
                         currentLineMaxX = Math.Max(currentLineMaxX, x);
                         maxY = Math.Max(maxY, (characterOffset.Y + effectiveLineSpacing) * effectiveScale);
 
+                        ProcessMarkers(ref testBounds, bufferWritePosition);
+
                         bufferWritePosition += 1;
                         drawCallsWritten += 1;
                     } else {
                         currentLineWhitespaceMaxXLeft = Math.Max(currentLineWhitespaceMaxXLeft, characterOffset.X);
                         currentLineWhitespaceMaxX = Math.Max(currentLineWhitespaceMaxX, x);
+
+                        ProcessMarkers(ref testBounds, null);
                     }
 
                     characterLimit--;
@@ -683,7 +689,8 @@ namespace Squared.Render.Text {
             }
 
             var endpointBounds = lastCharacterBounds;
-            ProcessMarkers(ref endpointBounds);
+            // FIXME: Index of last draw call?
+            ProcessMarkers(ref endpointBounds, null);
 
             return new StringLayout(
                 position.GetValueOrDefault(), 
