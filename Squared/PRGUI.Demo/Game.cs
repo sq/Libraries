@@ -369,7 +369,7 @@ namespace PRGUI.Demo {
                 frame, -9990, UIRenderTarget,
                 name: "Render UI"
             )) {
-                ir = new ImperativeRenderer(group, Materials, -1, blendState: BlendState.AlphaBlend);
+                ir = new ImperativeRenderer(group, Materials, -1, blendState: BlendState.AlphaBlend, depthStencilState: DepthStencilState.None);
                 // ir.RasterBlendInLinearSpace = false;
                 ir.Clear(color: Color.Transparent);
 

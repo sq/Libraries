@@ -314,6 +314,19 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
+        private void EditableText_ContentClip (UIOperationContext context, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: InertCornerRadius,
+                outlineRadius: 0, 
+                outlineColor: Color.Transparent,
+                innerColor: Color.White, 
+                outerColor: Color.White,
+                blendState: RenderStates.DrawNone
+            );
+        }
+
         private void EditableText_Above (UIOperationContext context, DecorationSettings settings) {
             if (!settings.State.HasFlag(ControlStates.Focused))
                 return;
@@ -556,7 +569,7 @@ namespace Squared.PRGUI.Decorations {
                 GetTextSettings = GetTextSettings,
                 // FIXME
                 Below = EditableText_Below,
-                // Above = EditableText_Above
+                ContentClip = EditableText_ContentClip
             };
 
             Selection = new DelegateDecorator {

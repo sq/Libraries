@@ -541,6 +541,8 @@ namespace Squared.PRGUI {
 
         private Vector2? ClickStartPosition = null;
 
+        protected override bool ShouldClipContent => true;
+
         public EditableText ()
             : base () {
             DynamicLayout.Text = Builder;
@@ -721,10 +723,31 @@ namespace Squared.PRGUI {
                         }
                         Invalidate();
                         break;
+
+                    case Keys.Left:
+                    case Keys.Right:
+                        HandleSelectionShift(evt.Key == Keys.Left ? -1 : 1);
+                        break;
+
+                    case Keys.Home:
+                    case Keys.End:
+                        HandleSelectionShift(evt.Key == Keys.Home ? -99999 : 99999);
+                        break;
                 }
             }
 
             return true;
+        }
+
+        private void HandleSelectionShift (int direction) {
+            if (direction < 0)
+                Selection = new Pair<int>(Selection.First + direction, Selection.First + direction);
+            else {
+                var newOffset = Selection.Second + direction;
+                if ((newOffset < Builder.Length) && char.IsLowSurrogate(Builder[newOffset]))
+                    newOffset++;
+                Selection = new Pair<int>(newOffset, newOffset);
+            }
         }
 
         protected bool OnClick (int clickCount) {

@@ -40,7 +40,7 @@ namespace Squared.PRGUI {
         public float MinimumMovementDistance = 4;
 
         public double FirstKeyRepeatDelay = 0.4;
-        public double KeyRepeatInterval = 0.1;
+        public double KeyRepeatInterval = 0.08;
 
         public Vector2 CanvasSize;
         public EventBus EventBus = new EventBus();
@@ -387,6 +387,7 @@ namespace Squared.PRGUI {
         private void RasterizePass (UIOperationContext context, Control control, RasterizePasses pass) {
             var passContext = context.Clone();
             passContext.Renderer = context.Renderer.MakeSubgroup();
+            passContext.Renderer.DepthStencilState = DepthStencilState.None;
             passContext.Pass = pass;
             control.Rasterize(passContext);
         }
