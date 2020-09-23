@@ -39,6 +39,9 @@ namespace Squared.PRGUI {
         // If the mouse is only moved less than this far, it will be treated as no movement
         public float MinimumMovementDistance = 4;
 
+        public double FirstKeyRepeatDelay = 0.4;
+        public double KeyRepeatInterval = 0.1;
+
         public Vector2 CanvasSize;
         public EventBus EventBus = new EventBus();
         public readonly LayoutContext Layout = new LayoutContext();
@@ -53,6 +56,9 @@ namespace Squared.PRGUI {
         private Control LastClickTarget;
         private double LastClickTime;
         private int SequentialClickCount;
+
+        private Keys LastKeyEvent;
+        private double LastKeyEventFirstTime, LastKeyEventTime;
 
         public List<Control> Controls = new List<Control>();
 
@@ -218,6 +224,7 @@ namespace Squared.PRGUI {
         }
 
         private void ProcessKeyboardState (ref KeyboardState previous, ref KeyboardState current) {
+            var now = Time.Seconds;
             for (int i = 0; i < 255; i++) {
                 var key = (Keys)i;
 
@@ -232,8 +239,20 @@ namespace Squared.PRGUI {
 
                 if (isPressed != wasPressed) {
                     HandleKeyEvent(isPressed ? Events.KeyDown : Events.KeyUp, key, null);
-                    if (isPressed)
+                    if (isPressed) {
+                        LastKeyEvent = key;
+                        LastKeyEventTime = now;
+                        LastKeyEventFirstTime = now;
                         HandleKeyEvent(Events.KeyPress, key, null);
+                    }
+                } else if (isPressed && (LastKeyEvent == key)) {
+                    if (
+                        ((now - LastKeyEventFirstTime) >= FirstKeyRepeatDelay) &&
+                        ((now - LastKeyEventTime) >= KeyRepeatInterval)
+                    ) {
+                        LastKeyEventTime = now;
+                        HandleKeyEvent(Events.KeyPress, key, null);
+                    }
                 }
             }
         }
