@@ -294,8 +294,7 @@ void evaluateEllipse (
     // FIXME: sdEllipse is massively broken. What is wrong with it?
     // distance = sdEllipse(worldPosition - a, b);
     float2 distanceXy = worldPosition - a;
-    float nb = max(abs(b), 0.001) * sign(b);
-    float distanceF = length(distanceXy / nb);
+    float distanceF = length(distanceXy / b);
     distance = (distanceF - 1) * length(b);
     tl = a - b;
     br = a + b;
@@ -315,12 +314,10 @@ void evaluateEllipse (
             // FIXME
         case GRADIENT_TYPE_Linear_Enclosing:
         case GRADIENT_TYPE_Linear_Enclosed:
-            float boxSize = (br - tl);
-            boxSize = max(abs(boxSize), float2(0.001, 0.001)) * sign(boxSize);
             // Options:
             // * 2 = touches corners of a box enclosing the ellipse
             // * 2 * sqrt(2) == touches corners of a box enclosed by the ellipse
-            float2 distance2 = abs(worldPosition - a) / boxSize * (
+            float2 distance2 = abs(worldPosition - a) / (br - tl) * (
                 (gradientType == GRADIENT_TYPE_Linear_Enclosed) 
                     ? (2 * sqrt(2)) 
                     : 2
