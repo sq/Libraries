@@ -67,6 +67,24 @@ namespace Squared.Render.Convenience {
             ColorSourceBlend = Blend.SourceAlpha
         };
 
+        public static readonly BlendState RasterShapeSubtractiveBlend = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.ReverseSubtract,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.SourceAlpha
+        };
+
+        public static readonly BlendState RasterShapeMaxBlend = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Max,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.SourceAlpha
+        };
+
 
         public static readonly BlendState MaxBlendValue = new BlendState {
             AlphaBlendFunction = BlendFunction.Max,
@@ -1681,6 +1699,10 @@ namespace Squared.Render.Convenience {
                 desiredBlendState = RenderStates.RasterShapeAlphaBlend;
             else if (desiredBlendState == BlendState.Additive)
                 desiredBlendState = RenderStates.RasterShapeAdditiveBlend;
+            else if (desiredBlendState == RenderStates.SubtractiveBlend)
+                desiredBlendState = RenderStates.RasterShapeSubtractiveBlend;
+            else if (desiredBlendState == RenderStates.MaxBlendValue)
+                desiredBlendState = RenderStates.RasterShapeMaxBlend;
 
             CachedBatch cacheEntry;
             if (!Cache.TryGet<RasterShapeBatch>(

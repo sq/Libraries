@@ -294,7 +294,8 @@ void evaluateEllipse (
     // FIXME: sdEllipse is massively broken. What is wrong with it?
     // distance = sdEllipse(worldPosition - a, b);
     float2 distanceXy = worldPosition - a;
-    float distanceF = length(distanceXy / b);
+    float nb = max(abs(b), 0.001) * sign(b);
+    float distanceF = length(distanceXy / nb);
     distance = (distanceF - 1) * length(b);
     tl = a - b;
     br = a + b;
@@ -314,10 +315,12 @@ void evaluateEllipse (
             // FIXME
         case GRADIENT_TYPE_Linear_Enclosing:
         case GRADIENT_TYPE_Linear_Enclosed:
+            float boxSize = (br - tl);
+            boxSize = max(abs(boxSize), float2(0.001, 0.001)) * sign(boxSize);
             // Options:
             // * 2 = touches corners of a box enclosing the ellipse
             // * 2 * sqrt(2) == touches corners of a box enclosed by the ellipse
-            float2 distance2 = abs(worldPosition - a) / (br - tl) * (
+            float2 distance2 = abs(worldPosition - a) / boxSize * (
                 (gradientType == GRADIENT_TYPE_Linear_Enclosed) 
                     ? (2 * sqrt(2)) 
                     : 2
@@ -404,7 +407,9 @@ float evaluateGradient (
     float2 worldPosition, float2 tl, float2 br, float radius
 ) {
     float2 gradientCenter = (tl + br) / 2;
-    float2 radialSize2 = ((br - tl) + (radius * 2)) * 0.5;
+    float2 boxSize = (br - tl);
+    boxSize = max(abs(boxSize), 0.001) * sign(boxSize);
+    float2 radialSize2 = (boxSize + (radius * 2)) * 0.5;
 
     PREFER_FLATTEN
     switch (abs(gradientType)) {
@@ -435,9 +440,14 @@ float evaluateGradient (
                 );
             return length((worldPosition - gradientCenter) / max(radialSize, 0.0001));
         case GRADIENT_TYPE_Angular:
-            float2 scaled = (worldPosition - gradientCenter) / ((br - tl) * 0.5);
+            float2 scaled = (worldPosition - gradientCenter) / (boxSize * 0.5);
+            float scaledLength = length(scaled);
+            if (scaledLength < 0.001) {
+                scaled.x = 0.001;
+                scaledLength = 0.001;
+            }
             gradientAngle += atan2(scaled.y, scaled.x);
-            return ((sin(gradientAngle) * length(scaled)) / 2) + 0.5;
+            return ((sin(gradientAngle) * scaledLength) / 2) + 0.5;
     }
 
     return gradientWeight;
@@ -635,8 +645,10 @@ void rasterShapeCommon (
             gradientWeight = 1 - abs(gradientWeight - 1);
         }
 
-        gradientWeight = saturate(pow(gradientWeight, max(params2.x, 0.001)));
-        gradientWeight = 1 - saturate(pow(1 - gradientWeight, max(params2.y, 0.001)));
+        if (gradientWeight > 0)
+            gradientWeight = saturate(pow(gradientWeight, max(params2.x, 0.001)));
+        if (gradientWeight < 1)
+            gradientWeight = 1 - saturate(pow(1 - gradientWeight, max(params2.y, 0.001)));
     }
 
     float outlineSizeAlpha = saturate(outlineSize / 2);
@@ -661,7 +673,8 @@ void rasterShapeCommon (
             outlineAlpha = getWindowAlpha(distance, outlineStartDistance, outlineEndDistance, 0, 1, 0) * outlineSizeAlpha;
         }
         float outlineGamma = OutlineGammaMinusOne + 1;
-        outlineAlpha = saturate(pow(outlineAlpha, outlineGamma));
+        if ((outlineAlpha > 0) && (outlineGamma > 0))
+            outlineAlpha = saturate(pow(outlineAlpha, outlineGamma));
     } else {
         outlineAlpha = 0;
     }
@@ -731,6 +744,7 @@ float4 texturedShapeCommon (
     br += cd.zw;
 
     float2 sizePx = br - tl;
+    sizePx = max(abs(sizePx), 0.001) * sign(sizePx);
     float2 posRelative = worldPosition - tl;
     float2 texSize = (texRgn.zw - texRgn.xy);
     
