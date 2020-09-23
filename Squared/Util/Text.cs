@@ -14,9 +14,9 @@ namespace Squared.Util.Text {
             if (char.IsSurrogatePair(ch1, ch2)) {
                 codepoint = (uint)char.ConvertToUtf32(ch1, ch2);
                 return true;
-            } else if (char.IsHighSurrogate(ch1)) {
-                // if we have a corrupt partial surrogate pair, it's not meaningful to return the first half
-                codepoint = 0;
+            } else if (char.IsHighSurrogate(ch1) || char.IsLowSurrogate(ch1)) {
+                // if we have a corrupt partial surrogate pair, it's not meaningful to return the first half.
+                codepoint = 0xFFFD;
             }
 
             return false;
