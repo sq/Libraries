@@ -2,18 +2,42 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Squared.Util.Text {
     public static class Unicode {
-        public static bool DecodeSurrogatePair (char ch1, char? ch2, out uint codepoint) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool DecodeSurrogatePair (char ch1, char ch2, out uint codepoint) {
             codepoint = (uint)ch1;
-            if (char.IsSurrogatePair(ch1, ch2 ?? '\0')) {
-                codepoint = (uint)char.ConvertToUtf32(ch1, ch2.Value);
+            if (char.IsSurrogatePair(ch1, ch2)) {
+                codepoint = (uint)char.ConvertToUtf32(ch1, ch2);
                 return true;
-            } else
-                return false;
+            } else if (char.IsHighSurrogate(ch1)) {
+                // if we have a corrupt partial surrogate pair, it's not meaningful to return the first half
+                codepoint = 0;
+            }
+
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Next (this AbstractString str, int offset) {
+            var ch = str[offset];
+            if (char.IsHighSurrogate(ch))
+                return offset + 2;
+            else
+                return offset + 1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Previous (this AbstractString str, int offset) {
+            var ch = str[offset - 1];
+            if (char.IsLowSurrogate(ch))
+                return offset - 2;
+            else
+                return offset - 1;
         }
 
         public static CodepointEnumerable Codepoints (this AbstractString str, int startOffset = 0) {
@@ -32,15 +56,14 @@ namespace Squared.Util.Text {
             return new CodepointEnumerable(str, startOffset);
         }
 
-        public static uint CodepointAtIndex (AbstractString str, int index) {
-            foreach (var cp in str.Codepoints()) {
-                if (index == 0)
+        public static uint? NthCodepoint (AbstractString str, int codepointIndex, int relativeToCharacterIndex = 0) {
+            foreach (var cp in str.Codepoints(relativeToCharacterIndex)) {
+                if (codepointIndex == 0)
                     return cp;
-                index--;
+                codepointIndex--;
             }
 
-            // FIXME: Throw?
-            return 0;
+            return null;
         }
     }
 
