@@ -42,7 +42,7 @@ namespace Squared.Render.Text {
             internal List<DynamicAtlas<Color>> Atlases = new List<DynamicAtlas<Color>>();
             internal FreeTypeFont Font;
             internal SrGlyph[] LowCache = new SrGlyph[LowCacheSize];
-            internal Dictionary<char, SrGlyph> Cache = new Dictionary<char, SrGlyph>();
+            internal Dictionary<uint, SrGlyph> Cache = new Dictionary<uint, SrGlyph>();
             internal float _SizePoints;
             internal int _Version;
 
@@ -162,7 +162,7 @@ namespace Squared.Render.Text {
                 }
             }
 
-            public bool GetGlyph (char ch, out Glyph glyph) {
+            public bool GetGlyph (uint ch, out Glyph glyph) {
                 if (IsDisposed) {
                     glyph = default(Glyph);
                     return false;
@@ -252,9 +252,12 @@ namespace Squared.Render.Text {
                     glyph.BoundsInTexture = texRegion.Atlas.BoundsFromRectangle(ref rect);
                 }
 
-                // Some fonts have weirdly-sized space characters
-                if (Char.IsWhiteSpace(ch))
-                    glyph.RightSideBearing = (float)Math.Round(glyph.RightSideBearing);
+                // HACK
+                if (ch <= 0xCFFF) {
+                    // Some fonts have weirdly-sized space characters
+                    if (char.IsWhiteSpace((char)ch))
+                        glyph.RightSideBearing = (float)Math.Round(glyph.RightSideBearing);
+                }
 
                 if (ch < LowCacheSize)
                     LowCache[ch] = glyph;
@@ -404,7 +407,7 @@ namespace Squared.Render.Text {
             }
         }
 
-        public bool GetGlyph (char ch, out SrGlyph glyph) {
+        public bool GetGlyph (uint ch, out SrGlyph glyph) {
             return DefaultSize.GetGlyph(ch, out glyph);
         }
 

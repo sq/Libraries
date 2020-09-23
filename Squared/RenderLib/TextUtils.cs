@@ -536,7 +536,7 @@ namespace Squared.Render.Text {
             }
         }
 
-        public bool GetGlyph (char ch, out Glyph result) {
+        public bool GetGlyph (uint ch, out Glyph result) {
             foreach (var item in Sources) {
                 if (item.GetGlyph(ch, out result))
                     return true;
@@ -576,7 +576,7 @@ namespace Squared.Render.Text {
     }
 
     public interface IGlyphSource {
-        bool GetGlyph (char ch, out Glyph result);
+        bool GetGlyph (uint ch, out Glyph result);
         float LineSpacing { get; }
         float DPIScaleFactor { get; }
 
@@ -604,6 +604,10 @@ namespace Squared.Render.Text {
 
         private static FieldInfo GetPrivateField (Type type, string fieldName) {
             return type.GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        }
+
+        public static bool GetGlyph (this IGlyphSource source, char ch, out Glyph result) {
+            return source.GetGlyph((uint)ch, out result);
         }
 
         public static bool GetPrivateFields (this SpriteFont font, out FontFields result) {
@@ -665,7 +669,7 @@ namespace Squared.Render.Text {
             }
         }
 
-        private void MakeGlyphForCharacter (char ch, int characterIndex, out Glyph glyph) {
+        private void MakeGlyphForCharacter (uint ch, int characterIndex, out Glyph glyph) {
             var kerning = Fields.Kerning[characterIndex];
             var cropping = Fields.CropRectangles[characterIndex];
             var rect = Fields.GlyphRectangles[characterIndex];
@@ -685,8 +689,8 @@ namespace Squared.Render.Text {
             };
         }
 
-        public bool GetGlyph (char ch, out Glyph result) {
-            var characterIndex = Fields.Characters.BinarySearch(ch);
+        public bool GetGlyph (uint ch, out Glyph result) {
+            var characterIndex = Fields.Characters.BinarySearch((char)ch);
             if (characterIndex < 0)
                 characterIndex = DefaultCharacterIndex;
 
@@ -718,7 +722,7 @@ namespace Squared.Render.Text {
 
     public struct Glyph {
         public AbstractTextureReference Texture;
-        public char Character;
+        public uint Character;
         public Rectangle RectInTexture;
         public Bounds BoundsInTexture;
         public float XOffset, YOffset;
