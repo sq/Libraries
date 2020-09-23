@@ -676,6 +676,11 @@ namespace Squared.Render.Text {
             return segment;
         }
 
+        private void Scramble (ArraySegment<BitmapDrawCall> result) {
+            var rng = new Random();
+            FisherYates.Shuffle(rng, result);
+        }
+
         public StringLayout Finish () {
             ArraySegment<BitmapDrawCall> result;
             if (buffer.Array == null)
@@ -701,6 +706,10 @@ namespace Squared.Render.Text {
                     j--;
                 }
             }
+
+            // HACK: For troubleshooting sort issues
+            if (false)
+                Scramble(result);
 
             var endpointBounds = lastCharacterBounds;
             // FIXME: Index of last draw call?

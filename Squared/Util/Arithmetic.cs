@@ -803,3 +803,33 @@ namespace Squared.Util {
         }
     }
 }
+
+namespace Squared.Util {
+    public static class FisherYates {
+        public static void Shuffle<T> (
+            Random rng,
+            ArraySegment<T> values
+        ) {
+            var n = values.Count;
+            for (var i = 0; i < n; i += 1) {
+                var j = rng.Next(i, n);
+                var temp = values.Array[values.Offset + j];
+                values.Array[values.Offset + j] = values.Array[values.Offset + i];
+                values.Array[values.Offset + i] = temp;
+            }
+        }
+
+        public static void Shuffle<T> (
+            Random rng,
+            IList<T> values
+        ) {
+            var n = values.Count;
+            for (var i = 0; i < n; i += 1) {
+                var j = rng.Next(i, n);
+                var temp = values[j];
+                values[j] = values[i];
+                values[i] = temp;
+            }
+        }
+    }
+}

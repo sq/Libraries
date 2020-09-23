@@ -8,19 +8,6 @@ using NUnit.Framework;
 namespace Squared.Util {
     [TestFixture]
     public class DenseListTests {
-        private static void FisherYates<T> (
-            Random rng,
-            T[] values
-        ) {
-            var n = values.Length;
-            for (var i = 0; i < n; i += 1) {
-                var j = rng.Next(i, n);
-                var temp = values[j];
-                values[j] = values[i];
-                values[i] = temp;
-            }
-        }
-
         private int[] GenerateSequence (int length, int step = 1) {
             var result = new int[length];
             for (int i = 0; i < length; i++)

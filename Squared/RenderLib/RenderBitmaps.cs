@@ -865,6 +865,8 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode () {
+            if (Reference == null)
+                return 0;
             return Reference.GetHashCode();
         }
 
@@ -904,14 +906,16 @@ namespace Squared.Render {
         public TextureSet (AbstractTextureReference texture1) {
             Texture1 = texture1;
             Texture2 = default(AbstractTextureReference);
-            HashCode = 0;
+            HashCode = texture1.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (AbstractTextureReference texture1, AbstractTextureReference texture2) {
             Texture1 = texture1;
             Texture2 = texture2;
-            HashCode = 0;
+            HashCode = texture1.GetHashCode();
+            if (Texture2 != default(AbstractTextureReference))
+                HashCode ^= Texture2.GetHashCode();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
