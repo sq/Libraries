@@ -115,13 +115,18 @@ namespace PRGUI.Demo {
             FontLoader = new EmbeddedFreeTypeFontProvider(RenderCoordinator);
 
             var firaSans = LoadFont("FiraSans-Medium", 20f);
-            var jpFallback = LoadFont("NotoSansCJKjp-Regular", 20f);
+            var jpFallback = LoadFont("NotoSansCJKjp-Regular", 16f);
+
+            if (false)
+            foreach (var ch in jpFallback.SupportedCodepoints) {
+                if (ch <= 0xFFFF)
+                    continue;
+                Console.WriteLine("\\U00{0:X6}", ch);
+            }
 
             var titleFont = new FreeTypeFont.FontSize(firaSans, 12f);
 
-            Font = jpFallback;
-            // Font = new FallbackGlyphSource(firaSans, jpFallback);
-            // Font = firaSans;
+            Font = new FallbackGlyphSource(firaSans, jpFallback);
 
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
@@ -143,7 +148,7 @@ namespace PRGUI.Demo {
             };
 
             var textfield = new EditableText {
-                Text = "Hello Καλημέρα 𪜀𪜁𪜂𪜃𪜄𪜅　こんにちは",
+                Text = "Hello Καλημέρα こんにちは \U0002F8B6\U0002F8CD\U0002F8D3",
                 BackgroundColor = new Color(8, 64, 16),
                 // FIXME: This should be at least partially automatic
                 MinimumWidth = 400,

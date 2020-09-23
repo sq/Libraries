@@ -381,6 +381,22 @@ namespace Squared.Render.Text {
 
         }
 
+        public IEnumerable<uint> SupportedCodepoints {
+            get {
+                uint glyphIndex;
+                var charCode = Face.GetFirstChar(out glyphIndex);
+
+                if (glyphIndex != 0)
+                    yield return charCode;
+
+                while (glyphIndex != 0) {
+                    charCode = Face.GetNextChar(charCode, out glyphIndex);
+                    if (glyphIndex != 0)
+                        yield return charCode;
+                }
+            }
+        }
+
         public void Invalidate () {
             foreach (var size in Sizes)
                 size.Invalidate();
