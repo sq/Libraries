@@ -438,19 +438,32 @@ namespace Squared.Render.Text {
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
                     break;
 
-                var ch = text[i];
-                bool isWhiteSpace = char.IsWhiteSpace(ch),
+                var stringOffset = i;
+                char ch1 = text[i];
+                uint codepoint = ch1;
+
+                // Detect surrogate pairs and decode them
+                if ((codepoint >= 0xD800) && (codepoint <= 0xDBFF)) {
+                    if (i < text.Length - 1) {
+                        var ch2 = text[i + 1];
+                        codepoint = (uint)char.ConvertToUtf32(ch1, ch2);
+                        currentCharacterIndex++;
+                        i++;
+                    }
+                }
+
+                bool isWhiteSpace = char.IsWhiteSpace(ch1),
                      forcedWrap = false, lineBreak = false,
                      deadGlyph = false;
                 Glyph glyph;
                 KerningAdjustment kerningAdjustment;
 
-                if (ch == '\r') {
-                    if (((i + 1) < l) && (text[i + 1] == '\n'))
-                        i += 1;
+                if (ch1 == '\r') {
+                    if (((stringOffset + 1) < l) && (text[stringOffset + 1] == '\n'))
+                        stringOffset += 1;
 
                     lineBreak = true;
-                } else if (ch == '\n') {
+                } else if (ch1 == '\n') {
                     lineBreak = true;
                 }
 
@@ -471,7 +484,7 @@ namespace Squared.Render.Text {
                     }
                 }
 
-                deadGlyph = !font.GetGlyph(ch, out glyph);
+                deadGlyph = !font.GetGlyph(codepoint, out glyph);
 
                 float effectiveLineSpacing = glyph.LineSpacing;
                 if (deadGlyph) {
@@ -486,7 +499,8 @@ namespace Squared.Render.Text {
                     }
                 }
 
-                if ((kerningAdjustments != null) && kerningAdjustments.TryGetValue(ch, out kerningAdjustment)) {
+                // FIXME: Don't key kerning adjustments off 'char'
+                if ((kerningAdjustments != null) && kerningAdjustments.TryGetValue(ch1, out kerningAdjustment)) {
                     glyph.LeftSideBearing += kerningAdjustment.LeftSideBearing;
                     glyph.Width += kerningAdjustment.Width;
                     glyph.RightSideBearing += kerningAdjustment.RightSideBearing;
