@@ -11,6 +11,8 @@
 #define SHAPE_TYPE_TECHNIQUE_NAME_TEX_SHADOWED ShadowedTexturedRasterEllipseTechnique
 #define SHAPE_TYPE_NAME_SIMPLE RasterEllipseSimple
 #define SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE RasterEllipseSimpleTechnique
+#define SHAPE_TYPE_NAME_SIMPLE_SHADOWED ShadowedRasterEllipseSimple
+#define SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE_SHADOWED ShadowedRasterEllipseSimpleTechnique
 
 #define INCLUDE_ELLIPSE
 

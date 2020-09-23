@@ -158,12 +158,43 @@ void SHAPE_TYPE_NAME_SIMPLE (
     }
 }
 
+void SHAPE_TYPE_NAME_SIMPLE_SHADOWED (
+    RASTERSHAPE_FS_ARGS
+) {
+    float2 tl, br;
+    float4 fill;
+    float  fillAlpha, outlineAlpha, shadowAlpha;
+    rasterShapeCommon(
+        worldPositionTypeAndWorldSpace, true, true,
+        ab, cd, params, params2,
+        centerColor, edgeColor, GET_VPOS,
+        tl, br,
+        fill, fillAlpha, outlineAlpha, shadowAlpha
+    );
+
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, true, GET_VPOS);
+
+    if (result.a <= 0.5 / 255) {
+        discard;
+        return;
+    }
+}
+
 technique SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE
 {
     pass P0
     {
         vertexShader = compile vs_3_0 RasterShapeVertexShader();
         pixelShader = compile ps_3_0 SHAPE_TYPE_NAME_SIMPLE ();
+    }
+}
+
+technique SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE_SHADOWED
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 RasterShapeVertexShader();
+        pixelShader = compile ps_3_0 SHAPE_TYPE_NAME_SIMPLE_SHADOWED ();
     }
 }
 

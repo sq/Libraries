@@ -32,7 +32,9 @@ namespace Squared.Render.Text {
 
         public class FontSize : IGlyphSource, IDisposable {
             public const int LowCacheSize = 256;
-            public const int FirstAtlasWidth = 256, FirstAtlasHeight = 256;
+            public const int FirstAtlasWidth = 512, FirstAtlasHeight = 512;
+            // FIXME: Randomly selected value, probably too small or too big
+            public static float SmallFirstAtlasThreshold = 22;
             public const int AtlasWidth = 1024, AtlasHeight = 1024;
 
             public bool IsDisposed { get; private set; }
@@ -85,7 +87,7 @@ namespace Squared.Render.Text {
                 }
 
                 if (!foundRoom) {
-                    var isFirstAtlas = Atlases.Count == 0;
+                    var isFirstAtlas = (Atlases.Count == 0) && (_SizePoints < SmallFirstAtlasThreshold);
                     var newAtlas = new DynamicAtlas<Color>(
                         Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight, 
                         SurfaceFormat.Color, 4, Font.MipMapping ? PickMipGenerator(Font) : null

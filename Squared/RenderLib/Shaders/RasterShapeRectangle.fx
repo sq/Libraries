@@ -11,6 +11,8 @@
 #define SHAPE_TYPE_TECHNIQUE_NAME_TEX_SHADOWED ShadowedTexturedRasterRectangleTechnique
 #define SHAPE_TYPE_NAME_SIMPLE RasterRectangleSimple
 #define SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE RasterRectangleSimpleTechnique
+#define SHAPE_TYPE_NAME_SIMPLE_SHADOWED ShadowedRasterRectangleSimple
+#define SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE_SHADOWED ShadowedRasterRectangleSimpleTechnique
 
 #define INCLUDE_RECTANGLE
 

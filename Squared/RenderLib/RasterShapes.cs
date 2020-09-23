@@ -214,6 +214,10 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         RadialEnclosed = 6,
         /// <summary>
+        /// Solid fill with no gradient.
+        /// </summary>
+        None = 8,
+        /// <summary>
         /// A linear gradient with a configurable angle.
         /// </summary>
         Angular = 512,
@@ -348,8 +352,7 @@ namespace Squared.Render.RasterShape {
 
         public bool IsSimple {
             get {
-                return (OuterColor4 == InnerColor4) &&
-                    Shadow.Color.IsTransparent;
+                return (OuterColor4 == InnerColor4) || (FillMode == (float)RasterFillMode.None);
             }
         }
 

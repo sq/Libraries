@@ -48,6 +48,26 @@ namespace Squared.Render.Convenience {
         };
 
 
+        public static readonly BlendState RasterShapeAlphaBlend = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            // FIXME: Is this right? It's at least better than nothing
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.InverseSourceAlpha,
+            ColorSourceBlend = Blend.SourceAlpha
+        };
+
+        public static readonly BlendState RasterShapeAdditiveBlend = new BlendState {
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.Add,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.SourceAlpha
+        };
+
+
         public static readonly BlendState MaxBlendValue = new BlendState {
             AlphaBlendFunction = BlendFunction.Max,
             AlphaDestinationBlend = Blend.One,
@@ -1658,9 +1678,9 @@ namespace Squared.Render.Convenience {
 
             // HACK: Look, alright, it's complicated
             if ((desiredBlendState == BlendState.AlphaBlend) || (desiredBlendState == null))
-                desiredBlendState = BlendState.NonPremultiplied;
+                desiredBlendState = RenderStates.RasterShapeAlphaBlend;
             else if (desiredBlendState == BlendState.Additive)
-                desiredBlendState = RenderStates.AdditiveBlendNonPremultiplied;
+                desiredBlendState = RenderStates.RasterShapeAdditiveBlend;
 
             CachedBatch cacheEntry;
             if (!Cache.TryGet<RasterShapeBatch>(

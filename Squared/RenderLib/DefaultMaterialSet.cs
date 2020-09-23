@@ -734,7 +734,8 @@ namespace Squared.Render {
             LoadRasterShapeVariant(shader, "Textured" + techniqueSubstring + "Technique", type, false, true);
             LoadRasterShapeVariant(shader, "Shadowed" + techniqueSubstring + "Technique", type, true, false);
             LoadRasterShapeVariant(shader, "ShadowedTextured" + techniqueSubstring + "Technique", type, true, true);
-            LoadRasterShapeVariant(shader, techniqueSubstring + "SimpleTechnique", type, false, false, simple: true);
+            LoadRasterShapeVariant(shader, techniqueSubstring + "SimpleTechnique", type, shadowed: false, textured: false, simple: true);
+            LoadRasterShapeVariant(shader, "Shadowed" + techniqueSubstring + "SimpleTechnique", type, shadowed: true, textured: false, simple: true);
         }
 
         private void LoadRasterShapeMaterials () {
