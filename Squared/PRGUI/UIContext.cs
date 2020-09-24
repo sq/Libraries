@@ -258,10 +258,12 @@ namespace Squared.PRGUI {
                 var key = (Keys)i;
 
                 // Clumsily filter out keys that would generate textinput events
-                if ((key >= Keys.D0) && (key <= Keys.NumPad9))
-                    continue;
-                if ((key >= Keys.OemSemicolon) && (key <= Keys.OemBackslash))
-                    continue;
+                if (!CurrentModifiers.Control && !CurrentModifiers.Alt) {
+                    if ((key >= Keys.D0) && (key <= Keys.NumPad9))
+                        continue;
+                    if ((key >= Keys.OemSemicolon) && (key <= Keys.OemBackslash))
+                        continue;
+                }
 
                 var wasPressed = previous.IsKeyDown(key);
                 var isPressed = current.IsKeyDown(key);

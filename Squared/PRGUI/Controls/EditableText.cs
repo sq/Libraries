@@ -278,7 +278,7 @@ namespace Squared.PRGUI.Controls {
             DisableAutoscrollUntil = 0;
 
             if (evt.Char.HasValue) {
-                if (evt.Modifiers.Control)
+                if (evt.Modifiers.Control || evt.Modifiers.Alt)
                     return HandleHotKey(evt);
 
                 if (!evt.Context.TextInsertionMode) {
@@ -290,7 +290,7 @@ namespace Squared.PRGUI.Controls {
                 MoveCaret(Selection.First + 1, 1);
                 Invalidate();
                 return true;
-            } else if (evt.Key.HasValue) {
+            } else if (evt.Key.HasValue) {                
                 switch (evt.Key.Value) {
                     case Keys.Back:
                         if (Selection.Second != Selection.First) {
@@ -309,12 +309,12 @@ namespace Squared.PRGUI.Controls {
 
                     case Keys.Left:
                     case Keys.Right:
-                        HandleSelectionShift(evt.Key == Keys.Left ? -1 : 1, evt.Modifiers.Shift);
+                        HandleSelectionShift(evt.Key == Keys.Left ? -1 : 1, grow: evt.Modifiers.Shift, byWord: evt.Modifiers.Control);
                         return true;
 
                     case Keys.Home:
                     case Keys.End:
-                        HandleSelectionShift(evt.Key == Keys.Home ? -99999 : 99999, evt.Modifiers.Shift);
+                        HandleSelectionShift(evt.Key == Keys.Home ? -99999 : 99999, grow: evt.Modifiers.Shift, byWord: false);
                         return true;
 
                     case Keys.Insert:
@@ -322,7 +322,7 @@ namespace Squared.PRGUI.Controls {
                         return true;
 
                     default:
-                        if (evt.Modifiers.Control)
+                        if (evt.Modifiers.Control || evt.Modifiers.Alt)
                             return HandleHotKey(evt);
 
                         return false;
@@ -337,6 +337,9 @@ namespace Squared.PRGUI.Controls {
             keyString = keyString.ToLowerInvariant();
 
             switch (keyString) {
+                case "a":
+                    SetSelection(new Pair<int>(0, int.MaxValue), 1);
+                    return true;
                 default:
                     Console.WriteLine(keyString);
                     break;
@@ -345,27 +348,72 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        private void HandleSelectionShift (int delta, bool grow) {
-            if (grow) {
-                int anchor = (CurrentScrollBias < 0) ? Selection.Second : Selection.First;
-                int extent = (CurrentScrollBias < 0) ? Selection.First : Selection.Second;
-                extent += delta;
-                int newBias = Math.Sign(extent - anchor);
-                SetSelection(
-                    new Pair<int>(Math.Min(anchor, extent), Math.Max(anchor, extent)),
-                    newBias
-                );
-            } else {
-                if (delta < 0) {
-                    var newIndex = Selection.First + delta;
-                    SetSelection(new Pair<int>(newIndex, newIndex), -1);
-                } else {
-                    var newIndex = Selection.Second + delta;
-                    if ((newIndex < Builder.Length) && char.IsLowSurrogate(Builder[newIndex]))
-                        newIndex++;
-                    SetSelection(new Pair<int>(newIndex, newIndex), 1);
+        private int FindNextWordInDirection (int startingCharacter, int direction) {
+            int searchPosition = startingCharacter;
+            var boundary = new Pair<int>(0, Builder.Length);
+
+            for (int i = 0; i < 3; i++) {
+                boundary = Unicode.FindWordBoundary(Builder, searchFromCharacterIndex: searchPosition);
+                var ch = Builder[boundary.First];
+
+                if ((boundary.First == startingCharacter) || char.IsWhiteSpace(ch)) {
+                    if (direction < 0) {
+                        searchPosition = boundary.First - 1;
+                    } else {
+                        searchPosition = boundary.Second + 1;
+                    }
+                    // Console.WriteLine($"left==start || whitespace -> {searchPosition}");
+                    continue;
                 }
+
+                if (direction > 0) {
+                    if (boundary.First < startingCharacter) {
+                        searchPosition = boundary.Second + 1;
+                        // Console.WriteLine($"left<start -> {searchPosition}");
+                        continue;
+                    }
+                }
+
+                return boundary.First;
             }
+
+            return (direction > 0) ? boundary.Second : boundary.First;
+        }
+
+        private void HandleSelectionShift (int delta, bool grow, bool byWord) {
+            int anchor, extent;
+            if (grow) {
+                anchor = (CurrentScrollBias < 0) ? Selection.Second : Selection.First;
+                extent = (CurrentScrollBias < 0) ? Selection.First : Selection.Second;
+            } else {
+                anchor = (delta < 0) ? Selection.First : Selection.Second;
+                extent = anchor;
+            }
+
+            if (byWord) {
+                int s = extent;
+                extent = FindNextWordInDirection(extent, Math.Sign(delta));
+                Console.WriteLine($"FindNextWordInDirection({s}, {delta}) == {extent}");
+            } else {
+                extent += delta;
+                if ((extent < Builder.Length) && (extent > 0) && char.IsLowSurrogate(Builder[extent]))
+                    extent += delta;
+            }
+
+            int newBias = Math.Sign(extent - anchor);
+
+            if (!grow) {
+                // Pivoting from shift-arrow to arrow should reset the selection instead of moving the caret
+                if (Selection.Second != Selection.First) {
+                    extent = anchor;
+                } else
+                    anchor = extent;
+            }
+
+            SetSelection(
+                new Pair<int>(Math.Min(anchor, extent), Math.Max(anchor, extent)),
+                newBias
+            );
         }
 
         protected bool OnClick (int clickCount) {
