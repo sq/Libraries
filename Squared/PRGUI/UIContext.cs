@@ -34,6 +34,8 @@ namespace Squared.PRGUI {
                 KeyUp = string.Intern("KeyUp");
         }
 
+        public bool TextInsertionMode = true;
+
         // Double-clicks will only be tracked if this far apart or less
         public double DoubleClickWindowSize = 0.33;
         // If the mouse is only moved less than this far, it will be treated as no movement
@@ -105,7 +107,10 @@ namespace Squared.PRGUI {
 
         private void TextInputEXT_TextInput (char ch) {
             // Control characters will be handled through the KeyboardState path
-            if (ch < ' ')
+            if (
+                (ch < ' ') ||
+                (ch == 0x7F) // delete
+            )
                 return;
 
             HandleKeyEvent(Events.KeyPress, null, ch);
@@ -275,6 +280,7 @@ namespace Squared.PRGUI {
                 return false;
 
             var evt = new KeyEventArgs {
+                Context = this,
                 Modifiers = CurrentModifiers,
                 Key = key,
                 Char = ch
@@ -299,6 +305,7 @@ namespace Squared.PRGUI {
             var mdp = MouseDownPosition ?? globalPosition;
             var travelDistance = (globalPosition - mdp).Length();
             return new MouseEventArgs {
+                Context = this,
                 Modifiers = CurrentModifiers,
                 Focused = Focused,
                 MouseOver = MouseOver,
@@ -465,6 +472,8 @@ namespace Squared.PRGUI {
     }
 
     public struct MouseEventArgs {
+        public UIContext Context;
+
         public KeyboardModifiers Modifiers;
         public Control MouseOver, MouseCaptured, Hovering, Focused;
         public Vector2 GlobalPosition, LocalPosition;
@@ -474,6 +483,8 @@ namespace Squared.PRGUI {
     }
 
     public struct KeyEventArgs {
+        public UIContext Context;
+
         public KeyboardModifiers Modifiers;
         public Keys? Key;
         public char? Char;

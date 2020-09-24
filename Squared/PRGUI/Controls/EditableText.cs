@@ -21,7 +21,7 @@ namespace Squared.PRGUI.Controls {
         public static readonly bool Multiline = false;
 
         public const float SelectionHorizontalScrollPadding = 32;
-        public const float RightScrollMargin = 64;
+        public const float MinRightScrollMargin = 12, MaxRightScrollMargin = 64;
         public const float AutoscrollClickTimeout = 0.25f;
 
         public Vector2 ScrollOffset;
@@ -40,33 +40,39 @@ namespace Squared.PRGUI.Controls {
         public Pair<int> Selection {
             get => _Selection;
             set {
-                if (_Selection == value)
-                    return;
-                value.First = Arithmetic.Clamp(value.First, 0, Builder.Length);
-                value.Second = Arithmetic.Clamp(value.Second, value.First, Builder.Length);
-
-                if (value.First == value.Second) {
-                    if ((value.First < Builder.Length) && char.IsLowSurrogate(Builder[value.First])) {
-                        value.First--;
-                        // FIXME: Bump this forward?
-                        value.Second--;
-                    }
-                } else {
-                    // Expand selection outward if it rests in the middle of a surrogate pair
-                    if ((value.First > 0) && char.IsLowSurrogate(Builder[value.First]))
-                        value.First--;
-                    /*
-                    if ((value.Second < (Builder.Length - 1)) && char.IsHighSurrogate(Builder[value.Second]))
-                        value.Second++;
-                    */
-                }
-
-                if (_Selection == value)
-                    return;
-                _Selection = value;
-                Console.WriteLine("New selection is {0}", value);
-                Invalidate();
+                SetSelection(value, 0);
             }
+        }
+
+        private void SetSelection (Pair<int> value, int scrollBias) {
+            if (_Selection == value)
+                return;
+            value.First = Arithmetic.Clamp(value.First, 0, Builder.Length);
+            value.Second = Arithmetic.Clamp(value.Second, value.First, Builder.Length);
+
+            if (value.First == value.Second) {
+                if ((value.First < Builder.Length) && char.IsLowSurrogate(Builder[value.First])) {
+                    value.First--;
+                    // FIXME: Bump this forward?
+                    value.Second--;
+                }
+            } else {
+                // Expand selection outward if it rests in the middle of a surrogate pair
+                if ((value.First > 0) && char.IsLowSurrogate(Builder[value.First]))
+                    value.First--;
+                /*
+                if ((value.Second < (Builder.Length - 1)) && char.IsHighSurrogate(Builder[value.Second]))
+                    value.Second++;
+                */
+            }
+
+            if (_Selection == value)
+                return;
+
+            CurrentScrollBias = scrollBias;
+            _Selection = value;
+            Console.WriteLine("New selection is {0} biased {1}", value, scrollBias > 0 ? "right" : "left");
+            Invalidate();
         }
 
         protected override bool ShouldClipContent => true;
@@ -143,7 +149,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected LayoutMarker? MarkSelection () {
-            return DynamicLayout.Mark(Selection.First, Math.Max(Selection.Second - 1, Selection.First));
+            // FIXME: Insertion mode highlight?
+            var a = Selection.First;
+            var b = Math.Max(Selection.Second - 1, a);
+            return DynamicLayout.Mark(a, b);
         }
 
         private LayoutHitTest? ImmediateHitTest (Vector2 position) {
@@ -192,9 +201,9 @@ namespace Squared.PRGUI.Controls {
 
                 ClickStartVirtualPosition = virtualPosition;
                 var currentCharacter = MapVirtualPositionToCharacterIndex(virtualPosition, null);
-                // If we're double-clicking inside the selection don't update it yet
+                // If we're double-clicking inside the selection don't update it yet. FIXME: Bias
                 if (currentCharacter.HasValue && !args.DoubleClicking)
-                    Selection = new Pair<int>(currentCharacter.Value, currentCharacter.Value);
+                    SetSelection(new Pair<int>(currentCharacter.Value, currentCharacter.Value), 0);
                 return true;
             } else if (
                 (name == UIContext.Events.MouseDrag) ||
@@ -215,7 +224,8 @@ namespace Squared.PRGUI.Controls {
                     var a = MapVirtualPositionToCharacterIndex(csvp, leanA) ?? -1;
                     var b = MapVirtualPositionToCharacterIndex(virtualPosition, leanB) ?? -1;
                     
-                    Selection = new Pair<int>(Math.Min(a, b), Math.Max(a, b));
+                    // FIXME: bias
+                    SetSelection(new Pair<int>(Math.Min(a, b), Math.Max(a, b)), 0);
                 }
 
                 if (name != UIContext.Events.MouseUp)
@@ -236,30 +246,54 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
+        private void MoveCaret (int characterIndex, int scrollBias) {
+            SetSelection(new Pair<int>(characterIndex, characterIndex), scrollBias);
+        }
+
+        private void RemoveRange (Pair<int> range) {
+            if (range.First >= range.Second)
+                return;
+
+            Builder.Remove(range.First, range.Second - range.First);
+        }
+
+        private void ReplaceRange (Pair<int> range, char newText) {
+            RemoveRange(range);
+            Builder.Insert(range.First, newText);
+        }
+
+        private void ReplaceRange (Pair<int> range, string newText) {
+            RemoveRange(range);
+            Builder.Insert(range.First, newText);
+        }
+
         protected bool OnKeyPress (KeyEventArgs evt) {
             Console.WriteLine("{0:X4} '{1}' {2}", (int)(evt.Char ?? '\0'), new String(evt.Char ?? '\0', 1), evt.Key);
 
             DisableAutoscrollUntil = 0;
 
             if (evt.Char.HasValue) {
-                if (Selection.Second != Selection.First)
-                    Builder.Remove(Selection.First, Selection.Second - Selection.First);
-                Builder.Insert(Selection.First, evt.Char);
-                Selection = new Pair<int>(Selection.First + 1, Selection.First + 1);
+                if (!evt.Context.TextInsertionMode) {
+                    if (Selection.Second == Selection.First)
+                        Selection = new Pair<int>(Selection.First, Selection.First + 1);
+                }
+
+                ReplaceRange(Selection, evt.Char.Value);
+                MoveCaret(Selection.First + 1, 1);
                 Invalidate();
             } else if (evt.Key.HasValue) {
                 switch (evt.Key.Value) {
                     case Keys.Back:
                         if (Selection.Second != Selection.First) {
-                            Builder.Remove(Selection.First, Selection.Second - Selection.First);
-                            Selection = new Pair<int>(Selection.First, Selection.First);
+                            RemoveRange(Selection);
+                            MoveCaret(Selection.First, 1);
                         } else if (Selection.First > 0) {
                             int pos = Selection.First - 1, count = 1;
                             if (char.IsLowSurrogate(Builder[pos])) {
                                 pos--; count++;
                             }
                             Builder.Remove(pos, count);
-                            Selection = new Pair<int>(Selection.First - count, Selection.First - count);
+                            MoveCaret(Selection.First - count, -1);
                         }
                         Invalidate();
                         break;
@@ -273,6 +307,10 @@ namespace Squared.PRGUI.Controls {
                     case Keys.End:
                         HandleSelectionShift(evt.Key == Keys.Home ? -99999 : 99999, evt.Modifiers.Shift);
                         break;
+
+                    case Keys.Insert:
+                        evt.Context.TextInsertionMode = !evt.Context.TextInsertionMode;
+                        break;
                 }
             }
 
@@ -281,19 +319,21 @@ namespace Squared.PRGUI.Controls {
 
         private void HandleSelectionShift (int delta, bool grow) {
             if (delta < 0) {
-                CurrentScrollBias = -1;
-                Selection = new Pair<int>(
-                    Selection.First + delta, 
-                    grow ? Selection.Second : Selection.First + delta
+                SetSelection(
+                    new Pair<int>(
+                        Selection.First + delta, 
+                        grow ? Selection.Second : Selection.First + delta
+                    ), -1
                 );
             } else {
-                CurrentScrollBias = 1;
                 var newOffset = Selection.Second + delta;
                 if ((newOffset < Builder.Length) && char.IsLowSurrogate(Builder[newOffset]))
                     newOffset++;
-                Selection = new Pair<int>(
-                    grow ? Selection.First : newOffset, 
-                    newOffset
+                SetSelection(
+                    new Pair<int>(
+                        grow ? Selection.First : newOffset,
+                        newOffset
+                    ), 1
                 );
             }
         }
@@ -302,7 +342,7 @@ namespace Squared.PRGUI.Controls {
             // FIXME: Select current word, then entire textbox on triple click
             if (clickCount == 3) {
                 DisableAutoscrollUntil = 0;
-                Selection = new Pair<int>(0, Builder.Length);
+                SetSelection(new Pair<int>(0, Builder.Length), 1);
                 return true;
             } else if (clickCount == 2) {
                 if (!ClickStartVirtualPosition.HasValue)
@@ -314,7 +354,8 @@ namespace Squared.PRGUI.Controls {
 
                 var boundary = Unicode.FindWordBoundary(Builder, searchFromCharacterIndex: centerIndex.Value);
                 DisableAutoscrollUntil = 0;
-                Selection = boundary;
+                // FIXME: Pick scroll bias based on which side of the word center we clicked
+                SetSelection(boundary, 1);
                 return true;
             }
 
@@ -365,14 +406,34 @@ namespace Squared.PRGUI.Controls {
 
         void UpdateScrollOffset (RectF contentBox, Bounds? selectionBounds, StringLayout layout) {
             var scrollOffset = ScrollOffset;
-            float maxScrollValue = Math.Max(layout.Size.X - contentBox.Width + RightScrollMargin, 0);
+            float maxScrollValue = Math.Max(
+                layout.Size.X - contentBox.Width + 
+                    (
+                        layout.Size.X > (contentBox.Width + MinRightScrollMargin)
+                            ? MaxRightScrollMargin
+                            : MinRightScrollMargin
+                    ), 0
+            );
             var viewportBox = contentBox;
             viewportBox.Position = scrollOffset;
+            var squashedViewportBox = viewportBox;
+            squashedViewportBox.Left += SelectionHorizontalScrollPadding;
+            squashedViewportBox.Width -= SelectionHorizontalScrollPadding * 2;
+            if (squashedViewportBox.Width < 0)
+                squashedViewportBox.Width = 0;
 
             if (selectionBounds.HasValue) {
                 var selBounds = selectionBounds.Value;
-                var overflowX = Math.Max(selBounds.BottomRight.X + SelectionHorizontalScrollPadding - viewportBox.Extent.X, 0);
-                var underflowX = Math.Max(viewportBox.Left - selBounds.TopLeft.X + SelectionHorizontalScrollPadding, 0);
+                var overflowX = selBounds.BottomRight.X - squashedViewportBox.Extent.X;
+                var underflowX = squashedViewportBox.Left - selBounds.TopLeft.X;
+
+                // HACK: Suppress vibration for big selections, and bias the auto-fit to the edge that last changed
+                if (selBounds.Size.X >= squashedViewportBox.Width) {
+                    if (CurrentScrollBias > 0)
+                        underflowX = 0;
+                    else
+                        overflowX = 0;
+                }
 
                 if (overflowX > 0) {
                     if (underflowX <= 0) {
@@ -419,12 +480,17 @@ namespace Squared.PRGUI.Controls {
             ) {
                 var selBox = (RectF)selBounds.Value;
                 selBox.Position += textOffset;
+
+                if ((_Selection.First == _Selection.Second) && (context.UIContext.TextInsertionMode == false))
+                    selBox.Width = 4;
+
                 var selSettings = new DecorationSettings {
                     BackgroundColor = settings.BackgroundColor,
                     State = settings.State,
                     Box = selBox,
                     ContentBox = selBox
                 };
+
                 selectionDecorator.Rasterize(context, selSettings);
                 context.Renderer.Layer += 1;
             }
