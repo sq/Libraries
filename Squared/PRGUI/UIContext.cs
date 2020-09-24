@@ -154,6 +154,8 @@ namespace Squared.PRGUI {
             var context = new UIOperationContext {
                 UIContext = this,
                 AnimationTime = (float)Time.Seconds,
+                Modifiers = CurrentModifiers,
+                MouseButtonHeld = LastMouseButtonState,
                 MousePosition = LastMousePosition
             };
 
@@ -409,6 +411,8 @@ namespace Squared.PRGUI {
             var context = new UIOperationContext {
                 UIContext = this,
                 AnimationTime = (float)Time.Seconds,
+                Modifiers = CurrentModifiers,
+                MouseButtonHeld = LastMouseButtonState,
                 MousePosition = LastMousePosition
             };
 
@@ -435,6 +439,8 @@ namespace Squared.PRGUI {
         public ImperativeRenderer Renderer;
         public RasterizePasses Pass;
         public float AnimationTime;
+        public KeyboardModifiers Modifiers;
+        public bool MouseButtonHeld;
         public Vector2 MousePosition;
 
         public UIOperationContext Clone () {
@@ -443,6 +449,8 @@ namespace Squared.PRGUI {
                 Renderer = Renderer,
                 Pass = Pass,
                 AnimationTime = AnimationTime,
+                Modifiers = Modifiers,
+                MouseButtonHeld = MouseButtonHeld,
                 MousePosition = MousePosition
             };
         }

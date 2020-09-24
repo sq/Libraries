@@ -12,6 +12,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI;
+using Squared.PRGUI.Controls;
 using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
@@ -154,7 +155,8 @@ namespace PRGUI.Demo {
                 BackgroundColor = new Color(8, 64, 16),
                 // FIXME: This should be at least partially automatic
                 MinimumWidth = 400,
-                Selection = new Pair<int>(1, testString.Length - 4)
+                Selection = new Pair<int>(1, testString.Length - 4),
+                ScrollOffset = new Vector2(64, 16)
             };
 
             var hideButton = new Button {
