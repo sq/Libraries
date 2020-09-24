@@ -278,6 +278,9 @@ namespace Squared.PRGUI.Controls {
             DisableAutoscrollUntil = 0;
 
             if (evt.Char.HasValue) {
+                if (evt.Modifiers.Control)
+                    return HandleHotKey(evt);
+
                 if (!evt.Context.TextInsertionMode) {
                     if (Selection.Second == Selection.First)
                         Selection = new Pair<int>(Selection.First, Selection.First + 1);
@@ -286,6 +289,7 @@ namespace Squared.PRGUI.Controls {
                 ReplaceRange(Selection, evt.Char.Value);
                 MoveCaret(Selection.First + 1, 1);
                 Invalidate();
+                return true;
             } else if (evt.Key.HasValue) {
                 switch (evt.Key.Value) {
                     case Keys.Back:
@@ -301,25 +305,44 @@ namespace Squared.PRGUI.Controls {
                             MoveCaret(Selection.First - count, -1);
                         }
                         Invalidate();
-                        break;
+                        return true;
 
                     case Keys.Left:
                     case Keys.Right:
                         HandleSelectionShift(evt.Key == Keys.Left ? -1 : 1, evt.Modifiers.Shift);
-                        break;
+                        return true;
 
                     case Keys.Home:
                     case Keys.End:
                         HandleSelectionShift(evt.Key == Keys.Home ? -99999 : 99999, evt.Modifiers.Shift);
-                        break;
+                        return true;
 
                     case Keys.Insert:
                         evt.Context.TextInsertionMode = !evt.Context.TextInsertionMode;
-                        break;
+                        return true;
+
+                    default:
+                        if (evt.Modifiers.Control)
+                            return HandleHotKey(evt);
+
+                        return false;
                 }
             }
 
-            return true;
+            return false;
+        }
+
+        private bool HandleHotKey (KeyEventArgs evt) {
+            string keyString = (evt.Char.HasValue) ? new string(evt.Char.Value, 1) : evt.Key.ToString();
+            keyString = keyString.ToLowerInvariant();
+
+            switch (keyString) {
+                default:
+                    Console.WriteLine(keyString);
+                    break;
+            }
+
+            return false;
         }
 
         private void HandleSelectionShift (int delta, bool grow) {

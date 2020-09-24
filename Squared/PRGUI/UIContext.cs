@@ -34,6 +34,16 @@ namespace Squared.PRGUI {
     }
 
     public class UIContext : IDisposable {
+        private static readonly HashSet<Keys> SuppressRepeatKeys = new HashSet<Keys> {
+            Keys.LeftAlt,
+            Keys.LeftControl,
+            Keys.LeftShift,
+            Keys.RightAlt,
+            Keys.RightControl,
+            Keys.RightShift,
+            Keys.Escape
+        };
+
         public bool TextInsertionMode = true;
 
         // Double-clicks will only be tracked if this far apart or less
@@ -42,7 +52,8 @@ namespace Squared.PRGUI {
         public float MinimumMovementDistance = 4;
 
         public double FirstKeyRepeatDelay = 0.4;
-        public double KeyRepeatInterval = 0.08;
+        public double KeyRepeatIntervalSlow = 0.09, KeyRepeatIntervalFast = 0.04;
+        public double KeyRepeatAccelerationDelay = 4;
 
         public Vector2 CanvasSize;
         public EventBus EventBus = new EventBus();
@@ -264,9 +275,11 @@ namespace Squared.PRGUI {
                         HandleKeyEvent(UIEvents.KeyPress, key, null);
                     }
                 } else if (isPressed && (LastKeyEvent == key)) {
+                    double repeatSpeed = Arithmetic.Lerp(KeyRepeatIntervalSlow, KeyRepeatIntervalFast, (float)((now - LastKeyEventFirstTime) / KeyRepeatAccelerationDelay));
                     if (
                         ((now - LastKeyEventFirstTime) >= FirstKeyRepeatDelay) &&
-                        ((now - LastKeyEventTime) >= KeyRepeatInterval)
+                        ((now - LastKeyEventTime) >= repeatSpeed) &&
+                        !SuppressRepeatKeys.Contains(key)
                     ) {
                         LastKeyEventTime = now;
                         HandleKeyEvent(UIEvents.KeyPress, key, null);
