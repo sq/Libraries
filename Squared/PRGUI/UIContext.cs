@@ -15,25 +15,25 @@ using Squared.Util;
 using Squared.Util.Event;
 
 namespace Squared.PRGUI {
-    public class UIContext : IDisposable {
-        public static class Events {
-            public static readonly string LostFocus = string.Intern("LostFocus"),
-                GotFocus = string.Intern("GotFocus"),
-                MouseDown = string.Intern("MouseDown"),
-                // Mouse moved with no button(s) held
-                MouseMove = string.Intern("MouseMove"),
-                // Mouse moved with button(s) held
-                MouseDrag = string.Intern("MouseDrag"),
-                MouseUp = string.Intern("MouseUp"),
-                MouseEnter = string.Intern("MouseEnter"),
-                MouseLeave = string.Intern("MouseLeave"),
-                Click = string.Intern("Click"),
-                Scroll = string.Intern("Scroll"),
-                KeyDown = string.Intern("KeyDown"),
-                KeyPress = string.Intern("KeyPress"),
-                KeyUp = string.Intern("KeyUp");
-        }
+    public static class UIEvents {
+        public static readonly string LostFocus = string.Intern("LostFocus"),
+            GotFocus = string.Intern("GotFocus"),
+            MouseDown = string.Intern("MouseDown"),
+            // Mouse moved with no button(s) held
+            MouseMove = string.Intern("MouseMove"),
+            // Mouse moved with button(s) held
+            MouseDrag = string.Intern("MouseDrag"),
+            MouseUp = string.Intern("MouseUp"),
+            MouseEnter = string.Intern("MouseEnter"),
+            MouseLeave = string.Intern("MouseLeave"),
+            Click = string.Intern("Click"),
+            Scroll = string.Intern("Scroll"),
+            KeyDown = string.Intern("KeyDown"),
+            KeyPress = string.Intern("KeyPress"),
+            KeyUp = string.Intern("KeyUp");
+    }
 
+    public class UIContext : IDisposable {
         public bool TextInsertionMode = true;
 
         // Double-clicks will only be tracked if this far apart or less
@@ -58,7 +58,7 @@ namespace Squared.PRGUI {
 
         private Vector2 LastClickPosition;
         private Control LastClickTarget;
-        private double LastClickTime;
+        private double LastMouseDownTime, LastClickTime;
         private int SequentialClickCount;
 
         private Keys LastKeyEvent;
@@ -88,12 +88,12 @@ namespace Squared.PRGUI {
                 var previous = _Focused;
                 _Focused = value;
                 if (previous != null)
-                    FireEvent(Events.LostFocus, previous, _Focused);
+                    FireEvent(UIEvents.LostFocus, previous, _Focused);
 
                 HandleNewFocusTarget(previous, _Focused);
 
                 if (_Focused != null)
-                    FireEvent(Events.GotFocus, _Focused, previous);
+                    FireEvent(UIEvents.GotFocus, _Focused, previous);
             }
         }
 
@@ -113,7 +113,7 @@ namespace Squared.PRGUI {
             )
                 return;
 
-            HandleKeyEvent(Events.KeyPress, null, ch);
+            HandleKeyEvent(UIEvents.KeyPress, null, ch);
         }
 
         public UIContext (IDecorationProvider decorations) {
@@ -256,12 +256,12 @@ namespace Squared.PRGUI {
                 var isPressed = current.IsKeyDown(key);
 
                 if (isPressed != wasPressed) {
-                    HandleKeyEvent(isPressed ? Events.KeyDown : Events.KeyUp, key, null);
+                    HandleKeyEvent(isPressed ? UIEvents.KeyDown : UIEvents.KeyUp, key, null);
                     if (isPressed) {
                         LastKeyEvent = key;
                         LastKeyEventTime = now;
                         LastKeyEventFirstTime = now;
-                        HandleKeyEvent(Events.KeyPress, key, null);
+                        HandleKeyEvent(UIEvents.KeyPress, key, null);
                     }
                 } else if (isPressed && (LastKeyEvent == key)) {
                     if (
@@ -269,7 +269,7 @@ namespace Squared.PRGUI {
                         ((now - LastKeyEventTime) >= KeyRepeatInterval)
                     ) {
                         LastKeyEventTime = now;
-                        HandleKeyEvent(Events.KeyPress, key, null);
+                        HandleKeyEvent(UIEvents.KeyPress, key, null);
                     }
                 }
             }
@@ -328,27 +328,28 @@ namespace Squared.PRGUI {
             if (target == null || (target.AcceptsFocus && target.Enabled))
                 Focused = target;
             // FIXME: Suppress if disabled?
-            FireEvent(Events.MouseDown, target, MakeMouseEventArgs(target, globalPosition));
+            LastMouseDownTime = Time.Seconds;
+            FireEvent(UIEvents.MouseDown, target, MakeMouseEventArgs(target, globalPosition));
         }
 
         private void HandleMouseUp (Control target, Vector2 globalPosition) {
             MouseDownPosition = null;
             // FIXME: Suppress if disabled?
-            FireEvent(Events.MouseUp, target, MakeMouseEventArgs(target, globalPosition));
+            FireEvent(UIEvents.MouseUp, target, MakeMouseEventArgs(target, globalPosition));
         }
 
         private void HandleMouseMove (Control target, Vector2 globalPosition) {
-            FireEvent(Events.MouseMove, target, MakeMouseEventArgs(target, globalPosition));
+            FireEvent(UIEvents.MouseMove, target, MakeMouseEventArgs(target, globalPosition));
         }
 
         private void HandleMouseDrag (Control target, Vector2 globalPosition) {
             // FIXME: Suppress if disabled?
-            FireEvent(Events.MouseDrag, target, MakeMouseEventArgs(target, globalPosition));
+            FireEvent(UIEvents.MouseDrag, target, MakeMouseEventArgs(target, globalPosition));
         }
 
         private void HandleScroll (Control control, float delta) {
             while (control != null) {
-                if (FireEvent(Events.Scroll, control, delta))
+                if (FireEvent(UIEvents.Scroll, control, delta))
                     return;
 
                 if (control.TryGetParent(out control))
@@ -358,9 +359,9 @@ namespace Squared.PRGUI {
 
         private void HandleHoverTransition (Control previous, Control current) {
             if (previous != null)
-                FireEvent(Events.MouseLeave, previous, current);
+                FireEvent(UIEvents.MouseLeave, previous, current);
             if (current != null)
-                FireEvent(Events.MouseEnter, current, previous);
+                FireEvent(UIEvents.MouseEnter, current, previous);
         }
 
         private bool IsInDoubleClickWindow (Control target, Vector2 position) {
@@ -386,8 +387,8 @@ namespace Squared.PRGUI {
 
             LastClickPosition = mousePosition;
             LastClickTarget = target;
-            LastClickTime = Time.Seconds;
-            FireEvent(Events.Click, target, SequentialClickCount);
+            LastClickTime = LastMouseDownTime;
+            FireEvent(UIEvents.Click, target, SequentialClickCount);
         }
 
         private void HandleDrag (Control originalTarget, Control finalTarget) {

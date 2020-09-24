@@ -115,8 +115,9 @@ namespace PRGUI.Demo {
             };
             FontLoader = new EmbeddedFreeTypeFontProvider(RenderCoordinator);
 
-            var firaSans = LoadFont("FiraSans-Medium", 20f);
-            var jpFallback = LoadFont("NotoSansCJKjp-Regular", 16f);
+            float fontScale = 1.2f;
+            var firaSans = LoadFont("FiraSans-Medium", 20f * fontScale);
+            var jpFallback = LoadFont("NotoSansCJKjp-Regular", 16f * fontScale);
 
             if (false)
             foreach (var ch in jpFallback.SupportedCodepoints) {
@@ -148,7 +149,7 @@ namespace PRGUI.Demo {
                 Text = ""
             };
 
-            var testString = "Hello Καλημέρα こんにちは \U0002F8B6\U0002F8CD\U0002F8D3";
+            var testString = "Καλημέρα こんにちは \U0002F8B6\U0002F8CD\U0002F8D3 Hello";
 
             var textfield = new EditableText {
                 Text = testString,
@@ -267,15 +268,15 @@ namespace PRGUI.Demo {
                 }
             };
 
-            Context.EventBus.Subscribe(null, UIContext.Events.MouseEnter, (ei) => {
+            Context.EventBus.Subscribe(null, UIEvents.MouseEnter, (ei) => {
                 hoveringCtl.Text = "Hovering: " + ei.Source;
             });
 
-            Context.EventBus.Subscribe(null, UIContext.Events.Click, (ei) => {
+            Context.EventBus.Subscribe(null, UIEvents.Click, (ei) => {
                 lastClickedCtl.Text = $"Clicked (#{ei.Arguments}): {ei.Source}";
             });
 
-            Context.EventBus.Subscribe(hideButton, UIContext.Events.Click, (ei) => {
+            Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
                 floatingWindow.Visible = false;
                 var f = Scheduler.Start(new Sleep(3));
                 f.RegisterOnComplete((_) => { floatingWindow.Visible = true; });

@@ -23,6 +23,8 @@ namespace Squared.PRGUI.Controls {
         public const float SelectionHorizontalScrollPadding = 32;
         public const float MinRightScrollMargin = 12, MaxRightScrollMargin = 64;
         public const float AutoscrollClickTimeout = 0.25f;
+        public const float ScrollFastThreshold = 70f;
+        public const float ScrollLimitPerFrameSlow = 6f, ScrollLimitPerFrameFast = 40f;
 
         public Vector2 ScrollOffset;
 
@@ -166,10 +168,11 @@ namespace Squared.PRGUI.Controls {
 
         private int? MapVirtualPositionToCharacterIndex (Vector2 position, bool? leanOverride) {
             var result = ImmediateHitTest(position);
-            if (position.X < 0)
+            if (position.X < 0) {
                 return 0;
-            else if (position.X > DynamicLayout.Get().Size.X)
+            } else if (position.X > DynamicLayout.Get().Size.X) {
                 return Builder.Length;
+            }
 
             if (result.HasValue) {
                 var rv = result.Value;
@@ -190,13 +193,13 @@ namespace Squared.PRGUI.Controls {
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
             var position = new Vector2(
-                Arithmetic.Clamp(args.LocalPosition.X, 0, args.ContentBox.Width - 1),
+                args.LocalPosition.X,
                 Arithmetic.Clamp(args.LocalPosition.Y, 0, args.ContentBox.Height - 1)
             );
 
             var virtualPosition = position + ScrollOffset;
 
-            if (name == UIContext.Events.MouseDown) {
+            if (name == UIEvents.MouseDown) {
                 DisableAutoscrollUntil = (float)Time.Seconds + AutoscrollClickTimeout;
 
                 ClickStartVirtualPosition = virtualPosition;
@@ -206,8 +209,8 @@ namespace Squared.PRGUI.Controls {
                     SetSelection(new Pair<int>(currentCharacter.Value, currentCharacter.Value), 0);
                 return true;
             } else if (
-                (name == UIContext.Events.MouseDrag) ||
-                (name == UIContext.Events.MouseUp)
+                (name == UIEvents.MouseDrag) ||
+                (name == UIEvents.MouseUp)
             ) {
                 // FIXME: Ideally we would just clamp the mouse coordinates into our rectangle instead of rejecting
                 //  coordinates outside our rect. Maybe UIContext should do this?
@@ -218,17 +221,19 @@ namespace Squared.PRGUI.Controls {
                     //  caret on one side of a character, we honor the leaning value
                     var csvp = ClickStartVirtualPosition.Value;
                     var deltaBigEnough = Math.Abs(virtualPosition.X - csvp.X) >= 4;
-                    bool? leanA = deltaBigEnough ? (virtualPosition.X < csvp.X) : (bool?)null,
-                        leanB = deltaBigEnough ? (virtualPosition.X >= csvp.X) : (bool?)null;
+                    bool? leanA = null, // deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null,
+                        leanB = deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null;
                     // FIXME: This -1 shouldn't be needed
+                    // Console.WriteLine("leanA={0}, leanB={1}", leanA, leanB);
                     var a = MapVirtualPositionToCharacterIndex(csvp, leanA) ?? -1;
                     var b = MapVirtualPositionToCharacterIndex(virtualPosition, leanB) ?? -1;
-                    
+
                     // FIXME: bias
-                    SetSelection(new Pair<int>(Math.Min(a, b), Math.Max(a, b)), 0);
+                    int selectionBias = virtualPosition.X > csvp.X ? 1 : -1;
+                    SetSelection(new Pair<int>(Math.Min(a, b), Math.Max(a, b)), selectionBias);
                 }
 
-                if (name != UIContext.Events.MouseUp)
+                if (name != UIEvents.MouseUp)
                     DisableAutoscrollUntil = (float)Time.Seconds + AutoscrollClickTimeout;
 
                 return true;
@@ -239,9 +244,9 @@ namespace Squared.PRGUI.Controls {
         protected override bool OnEvent<T> (string name, T args) {
             if (args is MouseEventArgs)
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
-            else if (name == UIContext.Events.Click)
+            else if (name == UIEvents.Click)
                 return OnClick(Convert.ToInt32(args));
-            else if (name == UIContext.Events.KeyPress)
+            else if (name == UIEvents.KeyPress)
                 return OnKeyPress((KeyEventArgs)(object)args);
             return false;
         }
@@ -318,23 +323,25 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void HandleSelectionShift (int delta, bool grow) {
-            if (delta < 0) {
+            if (grow) {
+                int anchor = (CurrentScrollBias < 0) ? Selection.Second : Selection.First;
+                int extent = (CurrentScrollBias < 0) ? Selection.First : Selection.Second;
+                extent += delta;
+                int newBias = Math.Sign(extent - anchor);
                 SetSelection(
-                    new Pair<int>(
-                        Selection.First + delta, 
-                        grow ? Selection.Second : Selection.First + delta
-                    ), -1
+                    new Pair<int>(Math.Min(anchor, extent), Math.Max(anchor, extent)),
+                    newBias
                 );
             } else {
-                var newOffset = Selection.Second + delta;
-                if ((newOffset < Builder.Length) && char.IsLowSurrogate(Builder[newOffset]))
-                    newOffset++;
-                SetSelection(
-                    new Pair<int>(
-                        grow ? Selection.First : newOffset,
-                        newOffset
-                    ), 1
-                );
+                if (delta < 0) {
+                    var newIndex = Selection.First + delta;
+                    SetSelection(new Pair<int>(newIndex, newIndex), -1);
+                } else {
+                    var newIndex = Selection.Second + delta;
+                    if ((newIndex < Builder.Length) && char.IsLowSurrogate(Builder[newIndex]))
+                        newIndex++;
+                    SetSelection(new Pair<int>(newIndex, newIndex), 1);
+                }
             }
         }
 
@@ -435,14 +442,18 @@ namespace Squared.PRGUI.Controls {
                         overflowX = 0;
                 }
 
+                float scrollLimit = Math.Max(overflowX, underflowX) >= ScrollFastThreshold
+                    ? ScrollLimitPerFrameFast
+                    : ScrollLimitPerFrameSlow;
+
                 if (overflowX > 0) {
                     if (underflowX <= 0) {
-                        scrollOffset.X += overflowX;
+                        scrollOffset.X += Math.Min(overflowX, scrollLimit);
                     } else {
                         // FIXME: Do something sensible given the selection is too big for the viewport, like pick an appropriate edge to focus on
                     }
                 } else if (underflowX > 0) {
-                    scrollOffset.X -= underflowX;
+                    scrollOffset.X -= Math.Min(underflowX, scrollLimit);
                 }
             }
 

@@ -569,7 +569,7 @@ namespace Squared.PRGUI {
         }
 
         protected override bool OnEvent<T> (string name, T args) {
-            if (name == UIContext.Events.Scroll) {
+            if (name == UIEvents.Scroll) {
                 OnScroll(Convert.ToSingle(args));
                 return true;
             }
