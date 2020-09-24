@@ -260,16 +260,27 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             Builder.Remove(range.First, range.Second - range.First);
+            Invalidate();
+        }
+
+        private void Insert (int offset, char newText) {
+            Builder.Insert(offset, newText);
+            Invalidate();
+        }
+
+        private void Insert (int offset, string newText) {
+            Builder.Insert(offset, newText);
+            Invalidate();
         }
 
         private void ReplaceRange (Pair<int> range, char newText) {
             RemoveRange(range);
-            Builder.Insert(range.First, newText);
+            Insert(range.First, newText);
         }
 
         private void ReplaceRange (Pair<int> range, string newText) {
             RemoveRange(range);
-            Builder.Insert(range.First, newText);
+            Insert(range.First, newText);
         }
 
         protected bool OnKeyPress (KeyEventArgs evt) {
@@ -288,24 +299,45 @@ namespace Squared.PRGUI.Controls {
 
                 ReplaceRange(Selection, evt.Char.Value);
                 MoveCaret(Selection.First + 1, 1);
-                Invalidate();
                 return true;
-            } else if (evt.Key.HasValue) {                
+            } else if (evt.Key.HasValue) {
                 switch (evt.Key.Value) {
+                    case Keys.Delete:
                     case Keys.Back:
                         if (Selection.Second != Selection.First) {
                             RemoveRange(Selection);
                             MoveCaret(Selection.First, 1);
-                        } else if (Selection.First > 0) {
-                            int pos = Selection.First - 1, count = 1;
+                        } else {
+                            int pos = Selection.First, count = 1;
+                            if (evt.Key.Value == Keys.Back)
+                                pos -= 1;
+
+                            if (pos < 0)
+                                return true;
+                            else if (pos >= Builder.Length)
+                                return true;
+
                             if (char.IsLowSurrogate(Builder[pos])) {
-                                pos--; count++;
+                                if (evt.Key.Value == Keys.Back)
+                                    pos--;
+                                count++;
                             }
+
                             Builder.Remove(pos, count);
-                            MoveCaret(Selection.First - count, -1);
+                            if (evt.Key.Value == Keys.Back)
+                                MoveCaret(Selection.First - count, -1);
+
+                            Invalidate();
                         }
-                        Invalidate();
                         return true;
+
+                    case Keys.Up:
+                    case Keys.Down:
+                        if (evt.Modifiers.Control)
+                            HandleSelectionShift(evt.Key == Keys.Home ? -99999 : 99999, grow: evt.Modifiers.Shift, byWord: false);
+                        else
+                            ;// FIXME: Multiline
+                        break;
 
                     case Keys.Left:
                     case Keys.Right:
@@ -314,6 +346,8 @@ namespace Squared.PRGUI.Controls {
 
                     case Keys.Home:
                     case Keys.End:
+                        if (evt.Modifiers.Control)
+                            ; // FIXME: Multiline
                         HandleSelectionShift(evt.Key == Keys.Home ? -99999 : 99999, grow: evt.Modifiers.Shift, byWord: false);
                         return true;
 
