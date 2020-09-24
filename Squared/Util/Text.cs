@@ -73,17 +73,23 @@ namespace Squared.Util.Text {
                 return char.IsWhiteSpace((char)codepoint);
         }
 
-        public static Pair<int> FindWordBoundary (AbstractString str, int searchFromCodepointIndex, int relativeToCharacterIndex = 0) {
+        public static Pair<int> FindWordBoundary (AbstractString str, int? searchFromCodepointIndex = null, int? searchFromCharacterIndex = null) {
             int firstWhitespaceCharacter = -1, 
                 lastWhitespaceCharacter = -1, 
                 firstWordCharacter = -1, 
                 lastWordCharacter = -1;
 
+            if ((searchFromCharacterIndex == null) && (searchFromCodepointIndex == null))
+                throw new ArgumentException("Either a starting codepoint index or character index must be provided");
+
             bool searchStartedInWhiteSpace = false, inWord = false;
-            foreach (var cp in str.Codepoints(relativeToCharacterIndex)) {
+            foreach (var cp in str.Codepoints()) {
                 bool transitioned = false;
                 var isWhiteSpace = IsWhiteSpace(cp.Codepoint);
-                if (cp.CodepointIndex == searchFromCodepointIndex)
+                if (
+                    (cp.CodepointIndex == searchFromCodepointIndex) ||
+                    (cp.CharacterIndex == searchFromCharacterIndex)
+                )
                     searchStartedInWhiteSpace = isWhiteSpace;
 
                 if (isWhiteSpace) {
@@ -102,7 +108,12 @@ namespace Squared.Util.Text {
                     lastWordCharacter = cp.CharacterIndex;
                 }
 
-                if (transitioned && (cp.CodepointIndex > searchFromCodepointIndex))
+                if (transitioned && 
+                    (
+                        (searchFromCodepointIndex.HasValue && (cp.CodepointIndex > searchFromCodepointIndex)) ||
+                        (searchFromCharacterIndex.HasValue && (cp.CharacterIndex > searchFromCharacterIndex))
+                    )
+                )
                     break;
             }
 
@@ -159,7 +170,7 @@ namespace Squared.Util.Text {
             Length = str.Length;
             StartOffset = startOffset;
             Offset = startOffset - 1;
-            _CurrentCharacterIndex = -1;
+            _CurrentCharacterIndex = startOffset - 1;
             _CurrentCodepointIndex = -1;
             _CurrentCodepoint = 0;
             InSurrogatePair = false;
@@ -208,7 +219,7 @@ namespace Squared.Util.Text {
         public void Reset () {
             Length = String.Length;
             Offset = StartOffset - 1;
-            _CurrentCharacterIndex = -1;
+            _CurrentCharacterIndex = StartOffset - 1;
             _CurrentCodepointIndex = -1;
             _CurrentCodepoint = 0;
             InSurrogatePair = false;

@@ -312,7 +312,7 @@ namespace Squared.PRGUI.Controls {
                 if (!centerIndex.HasValue)
                     return false;
 
-                var boundary = Unicode.FindWordBoundary(Builder, centerIndex.Value);
+                var boundary = Unicode.FindWordBoundary(Builder, searchFromCharacterIndex: centerIndex.Value);
                 DisableAutoscrollUntil = 0;
                 Selection = boundary;
                 return true;
