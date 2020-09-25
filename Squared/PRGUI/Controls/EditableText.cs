@@ -35,11 +35,10 @@ namespace Squared.PRGUI.Controls {
         protected Margins CachedPadding;
 
         private float DisableAutoscrollUntil;
+        private int CurrentScrollBias = 1;
+        private bool NextScrollInstant = true;
 
         private Vector2? ClickStartVirtualPosition = null;
-
-        private int CurrentScrollBias = 1;
-
         private Pair<int> _Selection;
 
         protected override bool ShouldClipContent => true;
@@ -56,6 +55,7 @@ namespace Squared.PRGUI.Controls {
             get => _Selection;
             set {
                 SetSelection(value, 0);
+                NextScrollInstant = true;
             }
         }
 
@@ -69,6 +69,7 @@ namespace Squared.PRGUI.Controls {
             set {
                 var newRange = ReplaceRange(Selection, FilterInput(value));
                 SetSelection(new Pair<int>(newRange.Second, newRange.Second), 1);
+                NextScrollInstant = true;
             }
         }
 
@@ -80,6 +81,7 @@ namespace Squared.PRGUI.Controls {
                 // FIXME: Optimize the 'value hasn't changed' case
                 Builder.Clear();
                 Builder.Append(FilterInput(value));
+                NextScrollInstant = true;
                 Invalidate();
             }
         }
@@ -320,7 +322,7 @@ namespace Squared.PRGUI.Controls {
 
                 if (!evt.Context.TextInsertionMode) {
                     if (Selection.Second == Selection.First)
-                        Selection = new Pair<int>(Selection.First, Selection.First + 1);
+                        SetSelection(new Pair<int>(Selection.First, Selection.First + 1), 1);
                 }
 
                 ReplaceRange(Selection, evt.Char.Value);
@@ -577,16 +579,16 @@ namespace Squared.PRGUI.Controls {
 
                 // HACK: Suppress vibration for big selections, and bias the auto-fit to the edge that last changed
                 if (selBounds.Size.X >= squashedViewportBox.Width) {
-                    if (CurrentScrollBias > 0)
+                    if (CurrentScrollBias >= 0)
                         underflowX = 0;
                     else
                         overflowX = 0;
                 }
 
                 var distance = Math.Max(overflowX, underflowX);
-                float scrollLimit = distance >= ScrollFastThreshold
+                float scrollLimit = (NextScrollInstant || distance >= ScrollFastThreshold)
                     ? (
-                        distance >= ScrollTurboThreshold
+                        (NextScrollInstant || distance >= ScrollTurboThreshold)
                         ? 99999
                         : ScrollLimitPerFrameFast
                     )
@@ -595,11 +597,13 @@ namespace Squared.PRGUI.Controls {
                 if (overflowX > 0) {
                     if (underflowX <= 0) {
                         scrollOffset.X += Math.Min(overflowX, scrollLimit);
+                        NextScrollInstant = false;
                     } else {
                         // FIXME: Do something sensible given the selection is too big for the viewport, like pick an appropriate edge to focus on
                     }
                 } else if (underflowX > 0) {
                     scrollOffset.X -= Math.Min(underflowX, scrollLimit);
+                    NextScrollInstant = false;
                 }
             }
 

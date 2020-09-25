@@ -52,7 +52,7 @@ namespace Squared.PRGUI {
         public float MinimumMovementDistance = 4;
 
         public double FirstKeyRepeatDelay = 0.4;
-        public double KeyRepeatIntervalSlow = 0.09, KeyRepeatIntervalFast = 0.04;
+        public double KeyRepeatIntervalSlow = 0.09, KeyRepeatIntervalFast = 0.035;
         public double KeyRepeatAccelerationDelay = 4;
 
         public Vector2 CanvasSize;

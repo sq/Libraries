@@ -157,7 +157,7 @@ namespace PRGUI.Demo {
                 // FIXME: This should be at least partially automatic
                 MinimumWidth = 400,
                 Selection = new Pair<int>(1, testString.Length - 4),
-                ScrollOffset = new Vector2(64, 16)
+                ScrollOffset = new Vector2(128, 32)
             };
 
             var hideButton = new Button {
