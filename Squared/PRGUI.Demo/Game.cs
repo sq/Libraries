@@ -194,7 +194,8 @@ namespace PRGUI.Demo {
             var changePaintOrder = new Button {
                 MinimumWidth = 400,
                 Text = "Change Paint Order",
-                BackgroundColor = Color.LightSeaGreen
+                BackgroundColor = Color.LightSeaGreen,
+                TooltipContent = "Click this one"
             };
 
             Context = new UIContext(decorations) {
@@ -210,10 +211,12 @@ namespace PRGUI.Demo {
                                 AutoSizeWidth = false,
                                 FixedWidth = 220,
                                 Text = "Button 1",
+                                TooltipContent = "Hi"
                             },
                             new StaticText {
                                 Text = "A Button:",
-                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                                TooltipContent = "Nice label"
                             },
                             changePaintOrder,
                             new Button {

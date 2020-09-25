@@ -45,16 +45,45 @@ namespace Squared.PRGUI {
             Keys.Escape
         };
 
+        /// <summary>
+        /// Globally tracks whether text editing should be in insert or overwrite mode
+        /// </summary>
         public bool TextInsertionMode = true;
 
-        // Double-clicks will only be tracked if this far apart or less
+        /// <summary>
+        /// Tooltips will only appear after the mouse remains over a single control for this long (in seconds)
+        /// </summary>
+        public double TooltipAppearanceDelay = 0.4;
+        /// <summary>
+        /// If the mouse leaves tooltip-bearing controls for this long (in seconds) the tooltip appearance delay will reset
+        /// </summary>
+        public double TooltipDisappearDelay = 0.25;
+
+        /// <summary>
+        /// Double-clicks will only be tracked if this far apart or less (in seconds)
+        /// </summary>
         public double DoubleClickWindowSize = 0.33;
-        // If the mouse is only moved less than this far, it will be treated as no movement
+        /// <summary>
+        /// If the mouse is only moved this far (in pixels) it will be treated as no movement for the purposes of click detection
+        /// </summary>
         public float MinimumMovementDistance = 4;
 
+        /// <summary>
+        /// A key must be held for this long (in seconds) before repeating begins
+        /// </summary>
         public double FirstKeyRepeatDelay = 0.4;
-        public double KeyRepeatIntervalSlow = 0.09, KeyRepeatIntervalFast = 0.035;
-        public double KeyRepeatAccelerationDelay = 4;
+        /// <summary>
+        /// Key repeating begins at this rate (in seconds)
+        /// </summary>
+        public double KeyRepeatIntervalSlow = 0.09;
+        /// <summary>
+        /// Key repeating accelerates to this rate (in seconds) over time
+        /// </summary>
+        public double KeyRepeatIntervalFast = 0.03;
+        /// <summary>
+        /// The key repeating rate accelerates over this period of time (in seconds)
+        /// </summary>
+        public double KeyRepeatAccelerationDelay = 4.5;
 
         public Vector2 CanvasSize;
         public EventBus EventBus = new EventBus();
@@ -75,6 +104,8 @@ namespace Squared.PRGUI {
 
         private Keys LastKeyEvent;
         private double LastKeyEventFirstTime, LastKeyEventTime;
+        private double? FirstTooltipHoverTime;
+        private double LastTooltipHoverTime;
 
         private Tooltip CachedTooltip;
         // If we show the tooltip immediately after creating it, it won't have had layout performed before it's painted
@@ -123,10 +154,7 @@ namespace Squared.PRGUI {
 
         private void TextInputEXT_TextInput (char ch) {
             // Control characters will be handled through the KeyboardState path
-            if (
-                (ch < ' ') ||
-                (ch == 0x7F) // delete
-            )
+            if (char.IsControl(ch))
                 return;
 
             HandleKeyEvent(UIEvents.KeyPress, null, ch);
@@ -259,9 +287,56 @@ namespace Squared.PRGUI {
             if (mouseWheelDelta != 0)
                 HandleScroll(MouseCaptured ?? Hovering, mouseWheelDelta);
 
+            UpdateTooltip();
+
             LastKeyboardState = keyboardState;
             LastMouseButtonState = leftButtonPressed;
             LastMousePosition = mousePosition;
+        }
+
+        private bool IsTooltipActive {
+            get {
+                return (CachedTooltip != null) && (CachedTooltip.Visible || TooltipPending);
+            }
+        }
+
+        private void ResetTooltipShowTimer () {
+            FirstTooltipHoverTime = null;
+        }
+
+        private AbstractString GetTooltipContent (Control target) {
+            var ttc = target.TooltipContent;
+            var tooltipText = ttc.Text;
+            if (ttc.GetText != null)
+                tooltipText = ttc.GetText(target);
+            return tooltipText;
+        }
+
+        private void UpdateTooltip () {
+            var now = Time.Seconds;
+            var tooltipContent = default(AbstractString);
+            if (Hovering != null)
+                tooltipContent = GetTooltipContent(Hovering);
+
+            if (!tooltipContent.IsNull) {
+                if (!FirstTooltipHoverTime.HasValue)
+                    FirstTooltipHoverTime = now;
+
+                if (IsTooltipActive)
+                    LastTooltipHoverTime = now;
+
+                var hoveringFor = now - FirstTooltipHoverTime;
+                var disappearTimeout = now - LastTooltipHoverTime;
+
+                if ((hoveringFor >= TooltipAppearanceDelay) || (disappearTimeout < TooltipDisappearDelay))
+                    ShowTooltip(Hovering, tooltipContent);
+            } else {
+                ClearTooltip();
+
+                var elapsed = now - LastTooltipHoverTime;
+                if (elapsed >= TooltipDisappearDelay)
+                    ResetTooltipShowTimer();
+            }
         }
 
         private void ProcessKeyboardState (ref KeyboardState previous, ref KeyboardState current) {
@@ -403,11 +478,21 @@ namespace Squared.PRGUI {
         }
 
         private void ShowTooltip (Control anchor, AbstractString text) {
+            if (TooltipPending)
+                return;
+
             var instance = GetTooltipInstance();
-            instance.Text = text;
+
+            var textChanged = !instance.Text.Equals(text);
+
             var rect = Layout.GetRect(anchor.LayoutKey);
-            instance.MaximumWidth = CanvasSize.X * 0.75f;
             instance.Margins = new Margins(rect.Left, rect.Extent.Y + 8, 0, 0);
+
+            if (!textChanged && instance.Visible)
+                return;
+
+            instance.Text = text;
+            instance.MaximumWidth = CanvasSize.X * 0.75f;
             instance.Visible = false;
             TooltipPending = true;
         }
@@ -416,20 +501,10 @@ namespace Squared.PRGUI {
             if (previous != null)
                 FireEvent(UIEvents.MouseLeave, previous, current);
 
-            if (current != null) {
+            if (current != null)
                 FireEvent(UIEvents.MouseEnter, current, previous);
-                var ttc = current.TooltipContent;
-                var tooltipText = ttc.Text;
-                if (ttc.GetText != null)
-                    tooltipText = ttc.GetText(current);
 
-                if (!tooltipText.IsNull)
-                    ShowTooltip(current, tooltipText);
-                else
-                    ClearTooltip();
-            } else {
-                ClearTooltip();
-            }
+            ResetTooltipShowTimer();
         }
 
         private bool IsInDoubleClickWindow (Control target, Vector2 position) {
