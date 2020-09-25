@@ -179,12 +179,19 @@ namespace PRGUI.Demo {
                 Children = {
                     textfield,
                     hideButton,
-                }
+                },
+                PaintOrder = 1
             };
 
             var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
                 DefaultFont = Font,
                 TitleFont = titleFont
+            };
+
+            var changePaintOrder = new Button {
+                MinimumWidth = 400,
+                Text = "Change Paint Order",
+                BackgroundColor = Color.LightSeaGreen
             };
 
             Context = new UIContext(decorations) {
@@ -198,18 +205,14 @@ namespace PRGUI.Demo {
                             lastClickedCtl,
                             new Button {
                                 AutoSizeWidth = false,
-                                FixedWidth = 400,
+                                FixedWidth = 220,
                                 Text = "Button 1",
                             },
                             new StaticText {
                                 Text = "A Button:",
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
                             },
-                            new Button {
-                                MinimumWidth = 200,
-                                Text = "Button 2",
-                                BackgroundColor = Color.LightSeaGreen
-                            },
+                            changePaintOrder,
                             new Button {
                                 MinimumWidth = 200,
                                 Text = "Disabled Button",
@@ -274,6 +277,10 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(null, UIEvents.Click, (ei) => {
                 lastClickedCtl.Text = $"Clicked (#{ei.Arguments}): {ei.Source}";
+            });
+
+            Context.EventBus.Subscribe(changePaintOrder, UIEvents.Click, (ei) => {
+                floatingWindow.PaintOrder = -floatingWindow.PaintOrder;
             });
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {

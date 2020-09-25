@@ -18,6 +18,22 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI {
     public abstract class Control {
+        public class TabOrderComparer : IComparer<Control> {
+            public static readonly TabOrderComparer Instance = new TabOrderComparer();
+
+            public int Compare (Control x, Control y) {
+                return x.TabOrder.CompareTo(y.TabOrder);
+            }
+        }
+
+        public class PaintOrderComparer : IComparer<Control> {
+            public static readonly PaintOrderComparer Instance = new PaintOrderComparer();
+
+            public int Compare (Control x, Control y) {
+                return x.PaintOrder.CompareTo(y.PaintOrder);
+            }
+        }
+
         public IDecorator CustomDecorations;
         public Margins Margins, Padding;
         public ControlFlags LayoutFlags = ControlFlags.Layout_Fill_Row;
@@ -40,6 +56,8 @@ namespace Squared.PRGUI {
         public bool AcceptsTextInput { get; protected set; }
         protected virtual bool HasNestedContent => false;
         protected virtual bool ShouldClipContent => false;
+
+        public int TabOrder, PaintOrder;
 
         protected WeakReference<Control> WeakParent = null;
 
@@ -313,6 +331,11 @@ namespace Squared.PRGUI {
         }
 
         internal void SetParent (Control parent) {
+            if (parent == null) {
+                WeakParent = null;
+                return;
+            }
+
             Control actualParent;
             if ((WeakParent != null) && WeakParent.TryGetTarget(out actualParent)) {
                 if (actualParent != parent)
@@ -606,12 +629,12 @@ namespace Squared.PRGUI {
         // FIXME: Always true?
         protected override bool HasNestedContent => (Children.Count > 0);
 
-        private void RasterizeChildren (UIOperationContext context, RasterizePasses pass) {
+        private void RasterizeChildren (UIOperationContext context, RasterizePasses pass, UnorderedList<Control> sequence) {
             context.Pass = pass;
             // FIXME
             int layer = context.Renderer.Layer, maxLayer = layer;
 
-            foreach (var item in Children) {
+            foreach (var item in sequence) {
                 context.Renderer.Layer = layer;
                 item.Rasterize(context);
                 maxLayer = Math.Max(maxLayer, context.Renderer.Layer);
@@ -688,9 +711,10 @@ namespace Squared.PRGUI {
             if (Children.Count == 0)
                 return;
 
-            RasterizeChildren(context, RasterizePasses.Below);
-            RasterizeChildren(context, RasterizePasses.Content);
-            RasterizeChildren(context, RasterizePasses.Above);
+            var seq = Children.InOrder(PaintOrderComparer.Instance);
+            RasterizeChildren(context, RasterizePasses.Below, seq);
+            RasterizeChildren(context, RasterizePasses.Content, seq);
+            RasterizeChildren(context, RasterizePasses.Above, seq);
         }
 
         protected override void ApplyClipMargins (UIOperationContext context, ref RectF box) {
@@ -710,8 +734,9 @@ namespace Squared.PRGUI {
             bool success = AcceptsCapture || !acceptsCaptureOnly;
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
-            for (int i = Children.Count - 1; i >= 0; i--) {
-                var item = Children[i];
+            var sorted = Children.InOrder(PaintOrderComparer.Instance);
+            for (int i = sorted.Count - 1; i >= 0; i--) {
+                var item = sorted.DangerousGetItem(i);
                 var newResult = item.HitTest(context, position, acceptsCaptureOnly, acceptsFocusOnly);
                 if (newResult != null) {
                     result = newResult;
@@ -812,6 +837,7 @@ namespace Squared.PRGUI {
     }
 
     public class ControlCollection : IEnumerable<Control> {
+        private UnorderedList<Control> SortBuffer = new UnorderedList<Control>();
         private List<Control> Items = new List<Control>();
 
         public int Count => Items.Count;
@@ -852,6 +878,16 @@ namespace Squared.PRGUI {
             set {
                 Items[index] = value;
             }
+        }
+
+        internal UnorderedList<Control> InOrder<TComparer> (TComparer comparer)
+            where TComparer : IComparer<Control>
+        {
+            SortBuffer.Clear();
+            SortBuffer.EnsureCapacity(Items.Count);
+            SortBuffer.AddRange(Items);
+            SortBuffer.Sort(comparer);
+            return SortBuffer;
         }
 
         IEnumerator<Control> IEnumerable<Control>.GetEnumerator () {

@@ -75,7 +75,7 @@ namespace Squared.PRGUI {
         private Keys LastKeyEvent;
         private double LastKeyEventFirstTime, LastKeyEventTime;
 
-        public List<Control> Controls = new List<Control>();
+        public ControlCollection Controls = new ControlCollection(null);
 
         /// <summary>
         /// The control that currently has the mouse captured (if a button is pressed)
@@ -412,8 +412,9 @@ namespace Squared.PRGUI {
 
         // Position is relative to the top-left corner of the canvas
         public Control HitTest (Vector2 position, bool acceptsCaptureOnly = false, bool acceptsFocusOnly = false) {
-            for (var i = Controls.Count - 1; i >= 0; i--) {
-                var control = Controls[i];
+            var sorted = Controls.InOrder(Control.PaintOrderComparer.Instance);
+            for (var i = sorted.Count - 1; i >= 0; i--) {
+                var control = sorted.DangerousGetItem(i);
                 var result = control.HitTest(Layout, position, acceptsCaptureOnly, acceptsFocusOnly);
                 if (result != null)
                     return result;
@@ -441,7 +442,8 @@ namespace Squared.PRGUI {
 
             // Ensure each control is rasterized in its own group of passes, so that top level controls can
             //  properly overlap each other
-            foreach (var control in Controls) {
+            var seq = Controls.InOrder(Control.PaintOrderComparer.Instance);
+            foreach (var control in seq) {
                 context.Renderer = renderer.MakeSubgroup();
                 context.Renderer.DepthStencilState = DepthStencilState.None;
                 RasterizePass(context, control, RasterizePasses.Below);
