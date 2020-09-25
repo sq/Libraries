@@ -32,7 +32,7 @@ namespace Squared.PRGUI.Controls {
         public Container () 
             : base () {
             Children = new ControlCollection(this);
-            AcceptsCapture = true;
+            AcceptsMouseInput = true;
 
             HScrollbar = new ScrollbarState {
                 DragInitialPosition = null,
@@ -197,17 +197,17 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsCaptureOnly, bool acceptsFocusOnly, ref Control result) {
+        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
             if (!base.OnHitTest(context, box, position, false, false, ref result))
                 return false;
 
-            bool success = AcceptsCapture || !acceptsCaptureOnly;
+            bool success = AcceptsMouseInput || !acceptsMouseInputOnly;
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
             var sorted = Children.InOrder(PaintOrderComparer.Instance);
             for (int i = sorted.Count - 1; i >= 0; i--) {
                 var item = sorted.DangerousGetItem(i);
-                var newResult = item.HitTest(context, position, acceptsCaptureOnly, acceptsFocusOnly);
+                var newResult = item.HitTest(context, position, acceptsMouseInputOnly, acceptsFocusOnly);
                 if (newResult != null) {
                     result = newResult;
                     success = true;

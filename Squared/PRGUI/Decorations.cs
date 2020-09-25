@@ -44,6 +44,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator EditableText { get; }
         IDecorator Selection { get; }
         IDecorator Button { get; }
+        IDecorator Tooltip { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
@@ -141,11 +142,13 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator StaticText { get; set; }
         public IDecorator EditableText { get; set; }
         public IDecorator Selection { get; set; }
+        public IDecorator Tooltip { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public IGlyphSource DefaultFont,
             ButtonFont,
-            TitleFont;
+            TitleFont,
+            TooltipFont;
 
         public float InteractableCornerRadius = 6f, 
             InertCornerRadius = 3f, 
@@ -153,7 +156,8 @@ namespace Squared.PRGUI.Decorations {
             TitleCornerRadius = 4f,
             SelectionCornerRadius = 1.33f,
             SelectionPadding = 1f;
-        public float? FloatingContainerCornerRadius = null;
+        public float? FloatingContainerCornerRadius = null,
+            TooltipCornerRadius = null;
         public float InactiveOutlineThickness = 1f, 
             ActiveOutlineThickness = 1.3f, 
             PressedOutlineThickness = 2f,
@@ -168,22 +172,28 @@ namespace Squared.PRGUI.Decorations {
             ScrollbarThumbShadow,
             TitleShadow,
             EditableShadow,
-            SelectionShadow;
+            SelectionShadow,
+            TooltipShadow;
 
         public Color FocusedColor = new Color(200, 230, 255),
             ActiveColor = new Color(240, 240, 240),
             InactiveColor = new Color(180, 180, 180),
             ContainerOutlineColor = new Color(32, 32, 32),
-            ContainerFillColor = Color.Transparent,
             InertOutlineColor = new Color(255, 255, 255) * 0.33f,
-            InertFillColor = Color.Transparent,
+            TooltipOutlineColor = new Color(16, 16, 16) * 0.5f,
             ScrollbarThumbColor = new Color(220, 220, 220),
-            ScrollbarTrackColor = new Color(32, 32, 32),
-            TitleColor = new Color(50, 120, 160),
+            ScrollbarTrackColor = new Color(32, 32, 32);
+
+        public Color TitleFillColor = new Color(50, 120, 160),
+            ContainerFillColor = Color.Transparent,
+            InertFillColor = Color.Transparent,
+            SelectionFillColor = new Color(200, 230, 255),
+            TooltipFillColor = new Color(48, 48, 48);
+
+        public Color SelectedTextColor = new Color(0, 30, 55),
             TitleTextColor = Color.White,
             TextColor = Color.White,
-            SelectionFillColor = new Color(200, 230, 255),
-            SelectedTextColor = new Color(0, 30, 55);
+            TooltipTextColor = Color.White;
 
         public float DisabledTextAlpha = 0.5f;
 
@@ -278,6 +288,19 @@ namespace Squared.PRGUI.Decorations {
                 innerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor, 
                 outerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor,
                 shadow: FloatingContainerShadow ?? ContainerShadow
+            );
+        }
+
+        private void Tooltip_Below (UIOperationContext context, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, FloatingContainerCornerRadius ?? ContainerCornerRadius);
+            // FIXME: Should we draw the outline in Above?
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: TooltipCornerRadius ?? FloatingContainerCornerRadius ?? ContainerCornerRadius,
+                outlineRadius: InertOutlineThickness, outlineColor: TooltipOutlineColor,
+                innerColor: settings.BackgroundColor ?? TooltipFillColor, 
+                outerColor: settings.BackgroundColor ?? TooltipFillColor,
+                shadow: TooltipShadow ?? FloatingContainerShadow
             );
         }
 
@@ -414,7 +437,7 @@ namespace Squared.PRGUI.Decorations {
                 a, b,
                 radius: TitleCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: TitleColor, outerColor: TitleColor,
+                innerColor: TitleFillColor, outerColor: TitleFillColor,
                 shadow: TitleShadow
             );
         }
@@ -476,6 +499,17 @@ namespace Squared.PRGUI.Decorations {
                 color = TitleTextColor;
             GetTextSettings(context, state, out material, out font, ref color);
             font = TitleFont ?? font;
+            return true;
+        }
+
+        private bool GetTextSettings_Tooltip (
+            UIOperationContext context, ControlStates state, 
+            out Material material, out IGlyphSource font, ref Color? color
+        ) {
+            if (color == null)
+                color = TooltipTextColor;
+            GetTextSettings(context, state, out material, out font, ref color);
+            font = TooltipFont ?? font;
             return true;
         }
 
@@ -561,6 +595,12 @@ namespace Squared.PRGUI.Decorations {
                 Padding = new Margins(6),
                 GetTextSettings = GetTextSettings,
                 Below = StaticText_Below,
+            };
+
+            Tooltip = new DelegateDecorator {
+                Padding = new Margins(12, 8, 12, 8),
+                GetTextSettings = GetTextSettings_Tooltip,
+                Below = Tooltip_Below,
             };
 
             EditableText = new DelegateDecorator {

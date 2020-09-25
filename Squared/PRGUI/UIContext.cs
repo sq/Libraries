@@ -13,6 +13,7 @@ using Squared.Render.Convenience;
 using Squared.Render.Text;
 using Squared.Util;
 using Squared.Util.Event;
+using Squared.Util.Text;
 
 namespace Squared.PRGUI {
     public static class UIEvents {
@@ -74,6 +75,10 @@ namespace Squared.PRGUI {
 
         private Keys LastKeyEvent;
         private double LastKeyEventFirstTime, LastKeyEventTime;
+
+        private Tooltip CachedTooltip;
+        // If we show the tooltip immediately after creating it, it won't have had layout performed before it's painted
+        private bool TooltipPending;
 
         public ControlCollection Controls = new ControlCollection(null);
 
@@ -166,6 +171,17 @@ namespace Squared.PRGUI {
             }
         }
 
+        private Tooltip GetTooltipInstance () {
+            if (CachedTooltip == null) {
+                CachedTooltip = new Tooltip {
+                    PaintOrder = 9999
+                };
+                Controls.Add(CachedTooltip);
+            }
+
+            return CachedTooltip;
+        }
+
         public void UpdateLayout () {
             var context = new UIOperationContext {
                 UIContext = this,
@@ -184,6 +200,11 @@ namespace Squared.PRGUI {
                 control.GenerateLayoutTree(context, Layout.Root);
 
             Layout.Update();
+
+            if (TooltipPending) {
+                TooltipPending = false;
+                CachedTooltip.Visible = true;
+            }
         }
 
         public void UpdateInput (
@@ -338,7 +359,7 @@ namespace Squared.PRGUI {
 
         private void HandleMouseDown (Control target, Vector2 globalPosition) {
             MouseDownPosition = globalPosition;
-            if (target != null && (target.AcceptsCapture && target.Enabled))
+            if (target != null && (target.AcceptsMouseInput && target.Enabled))
                 MouseCaptured = target;
             if (target == null || (target.AcceptsFocus && target.Enabled))
                 Focused = target;
@@ -372,11 +393,43 @@ namespace Squared.PRGUI {
             }
         }
 
+        private void ClearTooltip () {
+            if (CachedTooltip == null)
+                return;
+
+            CachedTooltip.Text = "";
+            CachedTooltip.Visible = false;
+            TooltipPending = false;
+        }
+
+        private void ShowTooltip (Control anchor, AbstractString text) {
+            var instance = GetTooltipInstance();
+            instance.Text = text;
+            var rect = Layout.GetRect(anchor.LayoutKey);
+            instance.MaximumWidth = CanvasSize.X * 0.75f;
+            instance.Margins = new Margins(rect.Left, rect.Extent.Y + 8, 0, 0);
+            instance.Visible = false;
+            TooltipPending = true;
+        }
+
         private void HandleHoverTransition (Control previous, Control current) {
             if (previous != null)
                 FireEvent(UIEvents.MouseLeave, previous, current);
-            if (current != null)
+
+            if (current != null) {
                 FireEvent(UIEvents.MouseEnter, current, previous);
+                var ttc = current.TooltipContent;
+                var tooltipText = ttc.Text;
+                if (ttc.GetText != null)
+                    tooltipText = ttc.GetText(current);
+
+                if (!tooltipText.IsNull)
+                    ShowTooltip(current, tooltipText);
+                else
+                    ClearTooltip();
+            } else {
+                ClearTooltip();
+            }
         }
 
         private bool IsInDoubleClickWindow (Control target, Vector2 position) {
@@ -411,11 +464,11 @@ namespace Squared.PRGUI {
         }
 
         // Position is relative to the top-left corner of the canvas
-        public Control HitTest (Vector2 position, bool acceptsCaptureOnly = false, bool acceptsFocusOnly = false) {
+        public Control HitTest (Vector2 position, bool acceptsMouseInputOnly = false, bool acceptsFocusOnly = false) {
             var sorted = Controls.InOrder(Control.PaintOrderComparer.Instance);
             for (var i = sorted.Count - 1; i >= 0; i--) {
                 var control = sorted.DangerousGetItem(i);
-                var result = control.HitTest(Layout, position, acceptsCaptureOnly, acceptsFocusOnly);
+                var result = control.HitTest(Layout, position, acceptsMouseInputOnly, acceptsFocusOnly);
                 if (result != null)
                     return result;
             }

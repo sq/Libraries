@@ -127,6 +127,7 @@ namespace PRGUI.Demo {
             }
 
             var titleFont = new FreeTypeFont.FontSize(firaSans, 12f);
+            var tooltipFont = new FreeTypeFont.FontSize(firaSans, 16f);
 
             Font = new FallbackGlyphSource(firaSans, jpFallback);
 
@@ -166,7 +167,8 @@ namespace PRGUI.Demo {
                 MaximumWidth = 150,
                 Margins = default(Margins),
                 LayoutFlags = ControlFlags.Layout_Anchor_Right | ControlFlags.Layout_Fill_Column | ControlFlags.Layout_ForceBreak,
-                BackgroundColor = new Color(128, 16, 16)
+                BackgroundColor = new Color(128, 16, 16),
+                TooltipContent = "Hide this window temporarily"
             };
 
             var floatingWindow = new Window {
@@ -185,7 +187,8 @@ namespace PRGUI.Demo {
 
             var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
                 DefaultFont = Font,
-                TitleFont = titleFont
+                TitleFont = titleFont,
+                TooltipFont = tooltipFont
             };
 
             var changePaintOrder = new Button {

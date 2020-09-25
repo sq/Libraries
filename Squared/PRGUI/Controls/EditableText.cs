@@ -46,7 +46,7 @@ namespace Squared.PRGUI.Controls {
         public EditableText ()
             : base () {
             DynamicLayout.Text = Builder;
-            AcceptsCapture = true;
+            AcceptsMouseInput = true;
             AcceptsFocus = true;
             AcceptsTextInput = true;
         }

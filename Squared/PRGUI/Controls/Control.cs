@@ -39,17 +39,34 @@ namespace Squared.PRGUI {
 
         public ControlStates State;
 
-        internal ControlKey LayoutKey;
+        internal ControlKey LayoutKey = ControlKey.Invalid;
 
         public bool Visible { get; set; } = true;
         public bool Enabled { get; set; } = true;
-        public bool AcceptsCapture { get; protected set; }
+        /// <summary>
+        /// Can receive focus via user input
+        /// </summary>
         public bool AcceptsFocus { get; protected set; }
+        /// <summary>
+        /// Receives mouse events and can capture the mouse
+        /// </summary>
+        public bool AcceptsMouseInput { get; protected set; }
+        /// <summary>
+        /// Receives keyboard events while focused
+        /// </summary>
         public bool AcceptsTextInput { get; protected set; }
+        /// <summary>
+        /// Intangible controls are ignored by hit-tests
+        /// </summary>
+        public bool Intangible { get; protected set; }
+
+        public int TabOrder { get; set; } = 0;
+        public int PaintOrder { get; set; } = 0;
+
+        public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
+
         protected virtual bool HasNestedContent => false;
         protected virtual bool ShouldClipContent => false;
-
-        public int TabOrder, PaintOrder;
 
         protected WeakReference<Control> WeakParent = null;
 
@@ -99,12 +116,14 @@ namespace Squared.PRGUI {
             );
         }
 
-        protected virtual bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsCaptureOnly, bool acceptsFocusOnly, ref Control result) {
-            if (!AcceptsCapture && acceptsCaptureOnly)
+        protected virtual bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+            if (Intangible)
+                return false;
+            if (!AcceptsMouseInput && acceptsMouseInputOnly)
                 return false;
             if (!AcceptsFocus && acceptsFocusOnly)
                 return false;
-            if ((acceptsFocusOnly || acceptsCaptureOnly) && !Enabled)
+            if ((acceptsFocusOnly || acceptsMouseInputOnly) && !Enabled)
                 return false;
 
             if (box.Contains(position)) {
@@ -136,13 +155,15 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        public Control HitTest (LayoutContext context, Vector2 position, bool acceptsCaptureOnly, bool acceptsFocusOnly) {
+        public Control HitTest (LayoutContext context, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly) {
             if (!Visible)
+                return null;
+            if (LayoutKey.IsInvalid)
                 return null;
 
             var result = this;
             var box = GetRect(context);
-            if (OnHitTest(context, box, position, acceptsCaptureOnly, acceptsFocusOnly, ref result))
+            if (OnHitTest(context, box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result))
                 return result;
 
             return null;
@@ -263,6 +284,8 @@ namespace Squared.PRGUI {
         public void Rasterize (UIOperationContext context) {
             if (!Visible)
                 return;
+            if (LayoutKey.IsInvalid)
+                return;
 
             var box = GetRect(context.Layout);
             var contentBox = GetRect(context.Layout, contentRect: true);
@@ -323,6 +346,8 @@ namespace Squared.PRGUI {
         }
 
         internal void SetParent (Control parent) {
+            LayoutKey = ControlKey.Invalid;
+
             if (parent == null) {
                 WeakParent = null;
                 return;
