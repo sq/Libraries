@@ -12,6 +12,7 @@ using Squared.Game;
 using Microsoft.Xna.Framework;
 using System.Reflection;
 using Squared.Util.Text;
+using System.Globalization;
 
 namespace Squared.Render.Text {
     public struct StringLayout {
@@ -483,9 +484,17 @@ namespace Squared.Render.Text {
 
                 bool isWhiteSpace = char.IsWhiteSpace(ch1),
                      forcedWrap = false, lineBreak = false,
-                     deadGlyph = false;
+                     deadGlyph = false, isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1);
                 Glyph glyph;
                 KerningAdjustment kerningAdjustment;
+
+                if (codepoint > 255) {
+                    // HACK: Attempt to word-wrap at "other" punctuation in non-western character sets, which will include things like commas
+                    // This is less than ideal but .NET does not appear to expose the classification tables needed to do this correctly
+                    var category = CharUnicodeInfo.GetUnicodeCategory(ch1);
+                    if (category == UnicodeCategory.OtherPunctuation)
+                        isWordWrapPoint = true;
+                }
 
                 if (ch1 == '\n')
                     lineBreak = true;
@@ -497,7 +506,7 @@ namespace Squared.Render.Text {
                         suppress = true;
                 }
 
-                if (isWhiteSpace) {
+                if (isWordWrapPoint) {
                     wordStartWritePosition = -1;
                     wordWrapSuppressed = false;
                 } else {
@@ -539,7 +548,7 @@ namespace Squared.Render.Text {
                     if (
                         !deadGlyph &&
                         (colIndex > 0) &&
-                        !isWhiteSpace
+                        !isWordWrapPoint
                     )
                         forcedWrap = true;
                 }

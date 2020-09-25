@@ -42,6 +42,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Controls\Container.cs" />
+    <Compile Include="Controls\Control.cs" />
     <Compile Include="Controls\EditableText.cs" />
     <Compile Include="Decorations.cs" />
     <Compile Include="Controls.cs" />

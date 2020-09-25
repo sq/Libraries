@@ -121,7 +121,7 @@ namespace Squared.PRGUI.Controls {
 
             CurrentScrollBias = scrollBias;
             _Selection = value;
-            Console.WriteLine("New selection is {0} biased {1}", value, scrollBias > 0 ? "right" : "left");
+            // Console.WriteLine("New selection is {0} biased {1}", value, scrollBias > 0 ? "right" : "left");
             Invalidate();
         }
 
@@ -465,7 +465,7 @@ namespace Squared.PRGUI.Controls {
             if (byWord) {
                 int s = extent;
                 extent = FindNextWordInDirection(extent, Math.Sign(delta));
-                Console.WriteLine($"FindNextWordInDirection({s}, {delta}) == {extent}");
+                // Console.WriteLine($"FindNextWordInDirection({s}, {delta}) == {extent}");
             } else {
                 extent += delta;
                 if ((extent < Builder.Length) && (extent > 0) && char.IsLowSurrogate(Builder[extent]))
