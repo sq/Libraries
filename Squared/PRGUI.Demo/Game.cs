@@ -330,6 +330,8 @@ namespace PRGUI.Demo {
 
             var mousePosition = new Vector2(MouseState.X, MouseState.Y);
 
+            Context.UpdateLayout();
+
             Context.UpdateInput(
                 mousePosition,
                 mouseWheelDelta: (MouseState.ScrollWheelValue - PreviousMouseState.ScrollWheelValue) / 3.2f,

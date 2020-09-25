@@ -760,6 +760,11 @@ namespace Squared.PRGUI {
         }
 
         public string Title;
+        public bool Movable;
+
+        private bool Dragging;
+        private Vector2 DragStartMousePosition, DragStartWindowPosition;
+        private RectF MostRecentTitleBox;
 
         protected DynamicStringLayout TitleLayout = new DynamicStringLayout {
             LineLimit = 1
@@ -767,6 +772,7 @@ namespace Squared.PRGUI {
 
         public Window ()
             : base () {
+            AcceptsCapture = true;
             ContainerFlags |= ControlFlags.Container_Constrain_Size;
             LayoutFlags |= ControlFlags.Layout_Floating;
         }
@@ -812,6 +818,8 @@ namespace Squared.PRGUI {
                 var layout = TitleLayout.Get();
                 var titleBox = settings.Box;
                 titleBox.Height = titleDecorator.Padding.Top + titleDecorator.Padding.Bottom + TitleLayout.GlyphSource.LineSpacing;
+                MostRecentTitleBox = titleBox;
+
                 var titleContentBox = titleBox;
                 titleContentBox.Left += titleDecorator.Padding.Left;
                 titleContentBox.Top += titleDecorator.Padding.Top;
@@ -829,6 +837,50 @@ namespace Squared.PRGUI {
                     samplerState: RenderStates.Text, multiplyColor: titleColor.Value
                 );
             }
+        }
+
+        protected override bool OnEvent<T> (string name, T args) {
+            if (args is MouseEventArgs)
+                return OnMouseEvent(name, (MouseEventArgs)(object)args);
+            return false;
+        }
+
+        private bool OnMouseEvent (string name, MouseEventArgs args) {
+            if (name == UIEvents.MouseDown) {
+                if (MostRecentTitleBox.Contains(args.GlobalPosition)) {
+                    Dragging = true;
+                    DragStartMousePosition = args.GlobalPosition;
+                    DragStartWindowPosition = Position;
+                    return true;
+                } else {
+                    Dragging = false;
+                    return false;
+                }
+            } else if (
+                (name == UIEvents.MouseDrag) ||
+                (name == UIEvents.MouseUp)
+            ) {
+                if (!Dragging)
+                    return false;
+
+                var delta = args.GlobalPosition - DragStartMousePosition;
+                var newPosition = DragStartWindowPosition + delta;
+
+                newPosition = new Vector2(
+                    Arithmetic.Clamp(newPosition.X, 0, args.Context.CanvasSize.X - args.Box.Width),
+                    Arithmetic.Clamp(newPosition.Y, 0, args.Context.CanvasSize.Y - args.Box.Height)
+                );
+
+                Position = newPosition;
+
+                // args.Context.Invalidate();
+
+                if (name == UIEvents.MouseUp)
+                    Dragging = false;
+
+                return true;
+            } else
+                return false;
         }
 
         public override string ToString () {
