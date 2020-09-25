@@ -225,10 +225,7 @@ namespace PRGUI.Demo {
                                 Text = "Static Text 2",
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                                 MaximumWidth = 50,
-                                Content = {
-                                    CharacterWrap = true,
-                                    LineLimit = 1
-                                },
+                                Multiline = false,
                                 BackgroundColor = Color.DarkRed
                             },
                             new StaticText {

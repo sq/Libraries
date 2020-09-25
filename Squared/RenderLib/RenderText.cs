@@ -19,15 +19,20 @@ namespace Squared.Render.Text {
             new ConditionalWeakTable<SpriteFont, Dictionary<char, KerningAdjustment>>(); 
 
         public readonly Vector2 Position;
-        public readonly Vector2 Size;
+        public readonly Vector2 Size, UnwrappedSize;
         public readonly float LineHeight;
         public readonly Bounds FirstCharacterBounds;
         public readonly Bounds LastCharacterBounds;
         public readonly ArraySegment<BitmapDrawCall> DrawCalls;
 
-        public StringLayout (Vector2 position, Vector2 size, float lineHeight, Bounds firstCharacter, Bounds lastCharacter, ArraySegment<BitmapDrawCall> drawCalls) {
+        public StringLayout (
+            Vector2 position, Vector2 size, Vector2 unwrappedSize, 
+            float lineHeight, Bounds firstCharacter, Bounds lastCharacter, 
+            ArraySegment<BitmapDrawCall> drawCalls
+        ) {
             Position = position;
             Size = size;
+            UnwrappedSize = unwrappedSize;
             LineHeight = lineHeight;
             FirstCharacterBounds = firstCharacter;
             LastCharacterBounds = lastCharacter;
@@ -167,29 +172,28 @@ namespace Squared.Render.Text {
 
         // State
         public float    maxLineHeight;
-        public Vector2  actualPosition, characterOffset;
+        public Vector2  actualPosition, characterOffset, characterOffsetUnwrapped;
         public Bounds   firstCharacterBounds, lastCharacterBounds;
         public int      drawCallsWritten;
         float   initialLineXOffset;
         int     bufferWritePosition, wordStartWritePosition;
         int     rowIndex, colIndex;
         bool    wordWrapSuppressed;
-        float   currentLineMaxX;
+        float   currentLineMaxX, currentLineMaxXUnwrapped;
         float   currentLineWhitespaceMaxXLeft, currentLineWhitespaceMaxX;
-        float   maxX, maxY;
+        float   maxX, maxY, maxXUnwrapped, maxYUnwrapped;
         float?  currentLineSpacing;
         float   maxLineSpacing;
         Vector2 wordStartOffset;
         private bool ownsBuffer;
 
         int currentCharacterIndex;
-        int nextMarkerIndex, nextMarkerCharacterIndex;
 
         private bool IsInitialized;
 
         public void Initialize () {
             actualPosition = position.GetValueOrDefault(Vector2.Zero);
-            characterOffset = new Vector2(xOffsetOfFirstLine, 0);
+            characterOffsetUnwrapped = characterOffset = new Vector2(xOffsetOfFirstLine, 0);
             initialLineXOffset = characterOffset.X;
 
             bufferWritePosition = 0;
@@ -561,7 +565,12 @@ namespace Squared.Render.Text {
                     if (!forcedWrap) {
                         characterOffset.X = xOffsetOfNewLine;
                         characterOffset.Y += effectiveLineSpacing;
+                        characterOffsetUnwrapped.X = xOffsetOfNewLine;
+                        characterOffsetUnwrapped.Y += effectiveLineSpacing;
+
                         maxX = Math.Max(maxX, currentLineMaxX * effectiveScale);
+                        maxXUnwrapped = Math.Max(maxXUnwrapped, currentLineMaxXUnwrapped * effectiveScale);
+                        currentLineMaxXUnwrapped = 0;
                     }
 
                     initialLineXOffset = characterOffset.X;
@@ -578,6 +587,7 @@ namespace Squared.Render.Text {
                     glyph.LeftSideBearing + 
                     glyph.RightSideBearing + 
                     glyph.Width + glyph.CharacterSpacing;
+                var xUnwrapped = x - characterOffset.X + characterOffsetUnwrapped.X;
 
                 if (deadGlyph || isWhiteSpace) {
                     var whitespaceBounds = Bounds.FromPositionAndSize(
@@ -599,6 +609,7 @@ namespace Squared.Render.Text {
                 }
 
                 characterOffset.X += glyph.CharacterSpacing;
+                characterOffsetUnwrapped.X += glyph.CharacterSpacing;
 
                 var scaledGlyphSize = new Vector2(
                     glyph.LeftSideBearing + glyph.Width + glyph.RightSideBearing,
@@ -618,9 +629,12 @@ namespace Squared.Render.Text {
                     firstCharacterBounds = lastCharacterBounds;
 
                 characterOffset.X += glyph.LeftSideBearing;
+                characterOffsetUnwrapped.X += glyph.LeftSideBearing;
 
-                if (colIndex == 0)
+                if (colIndex == 0) {
                     characterOffset.X = Math.Max(characterOffset.X, 0);
+                    characterOffsetUnwrapped.X = Math.Max(characterOffsetUnwrapped.X, 0);
+                }
 
                 if (characterSkipCount <= 0) {
                     if (characterLimit.HasValue && characterLimit.Value <= 0)
@@ -648,7 +662,9 @@ namespace Squared.Render.Text {
                         buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
 
                         currentLineMaxX = Math.Max(currentLineMaxX, x);
+                        currentLineMaxXUnwrapped = Math.Max(currentLineMaxXUnwrapped, xUnwrapped);
                         maxY = Math.Max(maxY, (characterOffset.Y + effectiveLineSpacing) * effectiveScale);
+                        maxYUnwrapped = Math.Max(maxYUnwrapped, (characterOffsetUnwrapped.Y + effectiveLineSpacing) * effectiveScale);
 
                         ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition);
 
@@ -667,6 +683,7 @@ namespace Squared.Render.Text {
                 }
 
                 characterOffset.X += (glyph.Width + glyph.RightSideBearing);
+                characterOffsetUnwrapped.X += (glyph.Width + glyph.RightSideBearing);
                 currentLineSpacing = glyph.LineSpacing;
                 maxLineSpacing = Math.Max(maxLineSpacing, effectiveLineSpacing);
 
@@ -678,6 +695,7 @@ namespace Squared.Render.Text {
                 buffer.Array, buffer.Offset, drawCallsWritten
             );
 
+            maxXUnwrapped = Math.Max(maxXUnwrapped, currentLineMaxXUnwrapped * effectiveScale);
             maxX = Math.Max(maxX, currentLineMaxX * effectiveScale);
 
             return segment;
@@ -725,7 +743,7 @@ namespace Squared.Render.Text {
 
             return new StringLayout(
                 position.GetValueOrDefault(), 
-                new Vector2(maxX, maxY),
+                new Vector2(maxX, maxY), new Vector2(maxXUnwrapped, maxYUnwrapped),
                 maxLineSpacing,
                 firstCharacterBounds, lastCharacterBounds,
                 result

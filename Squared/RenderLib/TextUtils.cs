@@ -348,6 +348,12 @@ namespace Squared.Render.Text {
             }
         }
 
+        public bool IsValid {
+            get {
+                return (_CachedStringLayout.HasValue && (_CachedGlyphVersion >= _GlyphSource.Version));
+            }
+        }
+
         public void Invalidate () {
             // Hey, you're the boss
             _CachedStringLayout = null;

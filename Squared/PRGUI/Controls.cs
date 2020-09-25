@@ -372,27 +372,54 @@ namespace Squared.PRGUI {
         public Color? TextColor = null;
         public Material TextMaterial = null;
         public DynamicStringLayout Content = new DynamicStringLayout();
-        public bool AutoSizeWidth = true, AutoSizeHeight = true;
+        private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
 
         private float? AutoSizeComputedWidth, AutoSizeComputedHeight;
 
         public StaticText ()
             : base () {
-            Content.LineLimit = 1;
+            Multiline = false;
         }
 
         public bool Multiline {
-            get {
-                return Content.LineLimit > 1;
-            }
+            get => Content.LineLimit != 1;
             set {
                 Content.LineLimit = value ? int.MaxValue : 1;
+            }
+        }
+
+        public bool AutoSizeWidth {
+            get => _AutoSizeWidth;
+            set {
+                if (_AutoSizeWidth == value)
+                    return;
+                _AutoSizeWidth = value;
+                Content.Invalidate();
+            }
+        }
+
+        public bool AutoSizeHeight {
+            get => _AutoSizeHeight;
+            set {
+                if (_AutoSizeHeight == value)
+                    return;
+                _AutoSizeHeight = value;
+                Content.Invalidate();
             }
         }
 
         public bool AutoSize {
             set {
                 AutoSizeWidth = AutoSizeHeight = value;
+            }
+        }
+
+        public bool Wrap {
+            get {
+                return Content.WordWrap;
+            }
+            set {
+                Content.WordWrap = value;
             }
         }
 
@@ -427,23 +454,21 @@ namespace Squared.PRGUI {
             if (!AutoSizeWidth && !AutoSizeHeight)
                 return;
 
+            /*
             var interiorSpace = GetFixedInteriorSpace();
             if (interiorSpace.X > 0)
                 Content.LineBreakAtX = interiorSpace.X;
-            else
-                Content.LineBreakAtX = null;
+            */
 
             var decorations = GetDecorations(context);
             UpdateFont(context, decorations);
 
             var computedPadding = ComputePadding(context, decorations);
-            var layoutSize = Content.Get().Size;
-            var computedSize = layoutSize + computedPadding.Size;
-
+            var layout = Content.Get();
             if (AutoSizeWidth)
-                AutoSizeComputedWidth = computedSize.X;
+                AutoSizeComputedWidth = layout.UnwrappedSize.X + computedPadding.Size.X;
             if (AutoSizeHeight)
-                AutoSizeComputedHeight = computedSize.Y;
+                AutoSizeComputedHeight = layout.Size.Y + computedPadding.Size.Y;
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
@@ -462,7 +487,8 @@ namespace Squared.PRGUI {
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            Content.LineBreakAtX = settings.Box.Width;
+            if (!AutoSizeWidth)
+                Content.LineBreakAtX = settings.Box.Width;
 
             Color? overrideColor = TextColor;
             Material material;
