@@ -419,6 +419,7 @@ namespace Squared.PRGUI {
                 return Content.WordWrap;
             }
             set {
+                Content.CharacterWrap = value;
                 Content.WordWrap = value;
             }
         }

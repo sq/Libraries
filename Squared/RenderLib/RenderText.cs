@@ -193,6 +193,7 @@ namespace Squared.Render.Text {
         float   maxLineSpacing;
         Vector2 wordStartOffset;
         private bool ownsBuffer;
+        private bool suppress, suppressUntilNextLine;
 
         int currentCharacterIndex;
 
@@ -202,6 +203,8 @@ namespace Squared.Render.Text {
             actualPosition = position.GetValueOrDefault(Vector2.Zero);
             characterOffsetUnconstrained = characterOffset = new Vector2(xOffsetOfFirstLine, 0);
             initialLineXOffset = characterOffset.X;
+
+            suppress = suppressUntilNextLine = false;
 
             bufferWritePosition = 0;
             drawCallsWritten = 0;
@@ -451,7 +454,6 @@ namespace Squared.Render.Text {
 
             float x = 0;
             float? defaultLineSpacing = null;
-            var suppress = false;
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
@@ -568,6 +570,10 @@ namespace Squared.Render.Text {
 
                         if (lineLimit.HasValue && lineLimit.Value <= 0)
                             suppress = true;
+                    } else {
+                        // If wrapping is disabled but we've hit the line break boundary, we want to suppress glyphs from appearing
+                        //  until the beginning of the next line (i.e. hard line break), but continue performing layout
+                        suppressUntilNextLine = true;
                     }
                 }
 
@@ -581,6 +587,7 @@ namespace Squared.Render.Text {
                         maxX = Math.Max(maxX, currentLineMaxX * effectiveScale);
                         maxXUnconstrained = Math.Max(maxXUnconstrained, currentLineMaxXUnconstrained * effectiveScale);
                         currentLineMaxXUnconstrained = 0;
+                        suppressUntilNextLine = false;
                     }
 
                     initialLineXOffset = characterOffset.X;
@@ -618,7 +625,7 @@ namespace Squared.Render.Text {
                     continue;
                 }
 
-                if (!suppress)
+                if (!suppress && !suppressUntilNextLine)
                     characterOffset.X += glyph.CharacterSpacing;
                 characterOffsetUnconstrained.X += glyph.CharacterSpacing;
 
@@ -627,7 +634,7 @@ namespace Squared.Render.Text {
                     glyph.LineSpacing
                 ) * effectiveScale;
 
-                if (!suppress)
+                if (!suppress && !suppressUntilNextLine)
                     lastCharacterBounds = Bounds.FromPositionAndSize(
                         characterOffset * effectiveScale, scaledGlyphSize
                     );
@@ -640,7 +647,7 @@ namespace Squared.Render.Text {
                 if ((rowIndex == 0) && (colIndex == 0))
                     firstCharacterBounds = lastCharacterBounds;
 
-                if (!suppress)
+                if (!suppress && !suppressUntilNextLine)
                     characterOffset.X += glyph.LeftSideBearing;
                 characterOffsetUnconstrained.X += glyph.LeftSideBearing;
 
@@ -672,7 +679,7 @@ namespace Squared.Render.Text {
                         else if (reverseOrder)
                             drawCall.SortKey.Order += 1;
 
-                        if (!suppress) {
+                        if (!suppress && !suppressUntilNextLine) {
                             buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
                             ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition);
                             bufferWritePosition += 1;
@@ -697,7 +704,7 @@ namespace Squared.Render.Text {
                     characterSkipCount--;
                 }
 
-                if (!suppress)
+                if (!suppress && !suppressUntilNextLine)
                     characterOffset.X += (glyph.Width + glyph.RightSideBearing);
                 characterOffsetUnconstrained.X += (glyph.Width + glyph.RightSideBearing);
                 currentLineSpacing = glyph.LineSpacing;

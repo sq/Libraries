@@ -222,10 +222,11 @@ namespace PRGUI.Demo {
                             },
                             new StaticText {
                                 AutoSizeWidth = false,
-                                Text = "Static Text 2",
+                                Text = "Static Text 2\r\nLine 2",
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                                MaximumWidth = 50,
-                                Multiline = false,
+                                MaximumWidth = 120,
+                                Multiline = true,
+                                Wrap = false,
                                 BackgroundColor = Color.DarkRed
                             },
                             new StaticText {
