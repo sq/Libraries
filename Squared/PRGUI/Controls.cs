@@ -466,7 +466,7 @@ namespace Squared.PRGUI {
             var computedPadding = ComputePadding(context, decorations);
             var layout = Content.Get();
             if (AutoSizeWidth)
-                AutoSizeComputedWidth = layout.UnwrappedSize.X + computedPadding.Size.X;
+                AutoSizeComputedWidth = layout.UnconstrainedSize.X + computedPadding.Size.X;
             if (AutoSizeHeight)
                 AutoSizeComputedHeight = layout.Size.Y + computedPadding.Size.Y;
         }
