@@ -74,6 +74,9 @@ namespace Squared.Util {
         public void Load (string name) {
             var path = Path.Combine(GetDirectory(), name);
             using (var src = Assembly.GetManifestResourceStream(name)) {
+                if (src == null)
+                    throw new FileNotFoundException("No manifest resource stream named " + name + " found");
+
                 try {
                     var pdb = Assembly.GetManifestResourceStream(name.Replace(".dll", ".pdb"));
                     if (pdb != null) {

@@ -20,11 +20,13 @@ namespace Squared.PRGUI.Controls {
         // FIXME
         public static readonly bool Multiline = false;
 
-        public const float SelectionHorizontalScrollPadding = 32;
-        public const float MinRightScrollMargin = 12, MaxRightScrollMargin = 64;
+        public bool StripNewlines = true;
+
+        public const float SelectionHorizontalScrollPadding = 40;
+        public const float MinRightScrollMargin = 16, MaxRightScrollMargin = 64;
         public const float AutoscrollClickTimeout = 0.25f;
-        public const float ScrollFastThreshold = 70f;
-        public const float ScrollLimitPerFrameSlow = 6f, ScrollLimitPerFrameFast = 40f;
+        public const float ScrollTurboThreshold = 420f, ScrollFastThreshold = 96f;
+        public const float ScrollLimitPerFrameSlow = 6f, ScrollLimitPerFrameFast = 32f;
 
         public Vector2 ScrollOffset;
 
@@ -39,11 +41,55 @@ namespace Squared.PRGUI.Controls {
         private int CurrentScrollBias = 1;
 
         private Pair<int> _Selection;
+
+        protected override bool ShouldClipContent => true;
+
+        public EditableText ()
+            : base () {
+            DynamicLayout.Text = Builder;
+            AcceptsCapture = true;
+            AcceptsFocus = true;
+            AcceptsTextInput = true;
+        }
+
         public Pair<int> Selection {
             get => _Selection;
             set {
                 SetSelection(value, 0);
             }
+        }
+
+        public string SelectedText {
+            get {
+                if (Selection.First == Selection.Second)
+                    return "";
+
+                return Builder.ToString(Selection.First, Selection.Second - Selection.First);
+            }
+            set {
+                var newRange = ReplaceRange(Selection, FilterInput(value));
+                SetSelection(new Pair<int>(newRange.Second, newRange.Second), 1);
+            }
+        }
+
+        public string Text {
+            get {
+                return Builder.ToString();
+            }
+            set {
+                // FIXME: Optimize the 'value hasn't changed' case
+                Builder.Clear();
+                Builder.Append(FilterInput(value));
+                Invalidate();
+            }
+        }
+
+        private string FilterInput (string input) {
+            var idx = input.IndexOfAny(new[] { '\r', '\n' });
+            if (idx >= 0)
+                return input.Replace("\r", "").Replace("\n", " ");
+
+            return input;
         }
 
         private void SetSelection (Pair<int> value, int scrollBias) {
@@ -75,28 +121,6 @@ namespace Squared.PRGUI.Controls {
             _Selection = value;
             Console.WriteLine("New selection is {0} biased {1}", value, scrollBias > 0 ? "right" : "left");
             Invalidate();
-        }
-
-        protected override bool ShouldClipContent => true;
-
-        public EditableText ()
-            : base () {
-            DynamicLayout.Text = Builder;
-            AcceptsCapture = true;
-            AcceptsFocus = true;
-            AcceptsTextInput = true;
-        }
-
-        public string Text {
-            get {
-                return Builder.ToString();
-            }
-            set {
-                // FIXME: Optimize the 'value hasn't changed' case
-                Builder.Clear();
-                Builder.Append(value);
-                Invalidate();
-            }
         }
 
         public void Invalidate () {
@@ -263,24 +287,26 @@ namespace Squared.PRGUI.Controls {
             Invalidate();
         }
 
-        private void Insert (int offset, char newText) {
+        private Pair<int> Insert (int offset, char newText) {
             Builder.Insert(offset, newText);
             Invalidate();
+            return new Pair<int>(offset, offset + 1);
         }
 
-        private void Insert (int offset, string newText) {
+        private Pair<int> Insert (int offset, string newText) {
             Builder.Insert(offset, newText);
             Invalidate();
+            return new Pair<int>(offset, offset + newText.Length);
         }
 
-        private void ReplaceRange (Pair<int> range, char newText) {
+        private Pair<int> ReplaceRange (Pair<int> range, char newText) {
             RemoveRange(range);
-            Insert(range.First, newText);
+            return Insert(range.First, newText);
         }
 
-        private void ReplaceRange (Pair<int> range, string newText) {
+        private Pair<int> ReplaceRange (Pair<int> range, string newText) {
             RemoveRange(range);
-            Insert(range.First, newText);
+            return Insert(range.First, newText);
         }
 
         protected bool OnKeyPress (KeyEventArgs evt) {
@@ -374,6 +400,15 @@ namespace Squared.PRGUI.Controls {
                 case "a":
                     SetSelection(new Pair<int>(0, int.MaxValue), 1);
                     return true;
+                case "c":
+                case "x":
+                    SDL2.SDL.SDL_SetClipboardText(SelectedText);
+                    if (keyString == "x")
+                        SelectedText = "";
+                    return true;
+                case "v":
+                    SelectedText = SDL2.SDL.SDL_GetClipboardText();
+                    return true;
                 default:
                     Console.WriteLine(keyString);
                     break;
@@ -411,6 +446,7 @@ namespace Squared.PRGUI.Controls {
                 return boundary.First;
             }
 
+            // FIXME: If the text has leading whitespace we won't ever jump to the beginning
             return (direction > 0) ? boundary.Second : boundary.First;
         }
 
@@ -521,7 +557,7 @@ namespace Squared.PRGUI.Controls {
             float maxScrollValue = Math.Max(
                 layout.Size.X - contentBox.Width + 
                     (
-                        layout.Size.X > (contentBox.Width + MinRightScrollMargin)
+                        layout.Size.X > (contentBox.Width - MinRightScrollMargin)
                             ? MaxRightScrollMargin
                             : MinRightScrollMargin
                     ), 0
@@ -547,8 +583,13 @@ namespace Squared.PRGUI.Controls {
                         overflowX = 0;
                 }
 
-                float scrollLimit = Math.Max(overflowX, underflowX) >= ScrollFastThreshold
-                    ? ScrollLimitPerFrameFast
+                var distance = Math.Max(overflowX, underflowX);
+                float scrollLimit = distance >= ScrollFastThreshold
+                    ? (
+                        distance >= ScrollTurboThreshold
+                        ? 99999
+                        : ScrollLimitPerFrameFast
+                    )
                     : ScrollLimitPerFrameSlow;
 
                 if (overflowX > 0) {
