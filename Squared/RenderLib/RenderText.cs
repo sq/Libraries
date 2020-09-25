@@ -174,7 +174,7 @@ namespace Squared.Render.Text {
         public float    maxLineHeight;
         public Vector2  actualPosition, characterOffset, characterOffsetUnwrapped;
         public Bounds   firstCharacterBounds, lastCharacterBounds;
-        public int      drawCallsWritten;
+        public int      drawCallsWritten, drawCallsSuppressed;
         float   initialLineXOffset;
         int     bufferWritePosition, wordStartWritePosition;
         int     rowIndex, colIndex;
@@ -197,6 +197,8 @@ namespace Squared.Render.Text {
             initialLineXOffset = characterOffset.X;
 
             bufferWritePosition = 0;
+            drawCallsWritten = 0;
+            drawCallsSuppressed = 0;
             wordStartWritePosition = -1;
             wordStartOffset = Vector2.Zero;
             rowIndex = colIndex = 0;
@@ -442,10 +444,11 @@ namespace Squared.Render.Text {
 
             float x = 0;
             float? defaultLineSpacing = null;
+            var suppress = false;
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
-                    break;
+                    suppress = true;
 
                 var stringOffset = i;
                 char ch1 = text[i], 
@@ -482,7 +485,7 @@ namespace Squared.Render.Text {
                     if (lineLimit.HasValue)
                         lineLimit--;
                     if (lineLimit.HasValue && lineLimit.Value <= 0)
-                        break;
+                        suppress = true;
                 }
 
                 if (isWhiteSpace) {
@@ -544,7 +547,7 @@ namespace Squared.Render.Text {
 
                         // FIXME: While this will abort when the line limit is reached, we need to erase the word we wrapped to the next line
                         if (lineLimit.HasValue && lineLimit.Value <= 0)
-                            break;
+                            suppress = true;
                     } else if (characterWrap) {
                         if (lineLimit.HasValue)
                             lineLimit--;
@@ -557,7 +560,7 @@ namespace Squared.Render.Text {
                         lineBreak = true;
 
                         if (lineLimit.HasValue && lineLimit.Value <= 0)
-                            break;
+                            suppress = true;
                     }
                 }
 
@@ -638,7 +641,7 @@ namespace Squared.Render.Text {
 
                 if (characterSkipCount <= 0) {
                     if (characterLimit.HasValue && characterLimit.Value <= 0)
-                        break;
+                        suppress = true;
 
                     var glyphPosition = new Vector2(
                         actualPosition.X + (glyph.XOffset + characterOffset.X) * effectiveScale,
@@ -659,17 +662,19 @@ namespace Squared.Render.Text {
                         else if (reverseOrder)
                             drawCall.SortKey.Order += 1;
 
-                        buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
+                        if (!suppress) {
+                            buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
+                            ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition);
+                            bufferWritePosition += 1;
+                            drawCallsWritten += 1;
+                        } else {
+                            drawCallsSuppressed++;
+                        }
 
                         currentLineMaxX = Math.Max(currentLineMaxX, x);
                         currentLineMaxXUnwrapped = Math.Max(currentLineMaxXUnwrapped, xUnwrapped);
                         maxY = Math.Max(maxY, (characterOffset.Y + effectiveLineSpacing) * effectiveScale);
                         maxYUnwrapped = Math.Max(maxYUnwrapped, (characterOffsetUnwrapped.Y + effectiveLineSpacing) * effectiveScale);
-
-                        ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition);
-
-                        bufferWritePosition += 1;
-                        drawCallsWritten += 1;
                     } else {
                         currentLineWhitespaceMaxXLeft = Math.Max(currentLineWhitespaceMaxXLeft, characterOffset.X);
                         currentLineWhitespaceMaxX = Math.Max(currentLineWhitespaceMaxX, x);
