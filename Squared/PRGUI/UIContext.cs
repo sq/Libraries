@@ -313,6 +313,9 @@ namespace Squared.PRGUI {
         }
 
         private void UpdateTooltip () {
+            if (LastMouseButtonState)
+                return;
+
             var now = Time.Seconds;
             var tooltipContent = default(AbstractString);
             if (Hovering != null)
@@ -432,7 +435,17 @@ namespace Squared.PRGUI {
             };
         }
 
+        private void HideTooltipForMouseInput () {
+            ResetTooltipShowTimer();
+            ClearTooltip();
+            FirstTooltipHoverTime = null;
+            LastTooltipHoverTime = 0;
+            TooltipPending = false;
+        }
+
         private void HandleMouseDown (Control target, Vector2 globalPosition) {
+            HideTooltipForMouseInput();
+
             MouseDownPosition = globalPosition;
             if (target != null && (target.AcceptsMouseInput && target.Enabled))
                 MouseCaptured = target;
@@ -444,6 +457,7 @@ namespace Squared.PRGUI {
         }
 
         private void HandleMouseUp (Control target, Vector2 globalPosition) {
+            HideTooltipForMouseInput();
             MouseDownPosition = null;
             // FIXME: Suppress if disabled?
             FireEvent(UIEvents.MouseUp, target, MakeMouseEventArgs(target, globalPosition));
@@ -585,7 +599,7 @@ namespace Squared.PRGUI {
         }
     }
 
-    public class UIOperationContext {
+    public struct UIOperationContext {
         public UIContext UIContext;
         public IDecorationProvider DecorationProvider => UIContext.Decorations;
         public LayoutContext Layout => UIContext.Layout;

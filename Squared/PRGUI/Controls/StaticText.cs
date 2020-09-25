@@ -146,7 +146,7 @@ namespace Squared.PRGUI.Controls {
 
             var computedPadding = ComputePadding(context, decorations);
             var textOffset = a + new Vector2(computedPadding.Left, computedPadding.Top);
-            if (settings.State.HasFlag(ControlStates.Pressed))
+            if (settings.State.IsFlagged(ControlStates.Pressed))
                 textOffset += decorations.PressedInset;
 
             var layout = Content.Get();

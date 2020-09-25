@@ -111,9 +111,12 @@ namespace Squared.Render.Text {
             return result;
         }
 
-        private void InvalidatingNullableAssignment<T> (ref Nullable<T> destination, Nullable<T> newValue)
+        private void InvalidatingNullableAssignment<T> (ref T? destination, T? newValue)
             where T : struct, IEquatable<T> {
-            if (!destination.Equals(newValue)) {
+            if (
+                (destination.HasValue != newValue.HasValue) || 
+                !destination.Value.Equals(newValue.Value)
+            ) {
                 destination = newValue;
                 _CachedStringLayout = null;
             }

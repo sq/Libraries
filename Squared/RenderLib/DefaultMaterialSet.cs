@@ -248,7 +248,7 @@ namespace Squared.Render {
             }
 
             public override int GetHashCode () {
-                return Type.GetHashCode() ^ Shadowed.GetHashCode() 
+                return ((int)(Type ?? (RasterShape.RasterShapeType)(-1))).GetHashCode() ^ Shadowed.GetHashCode() 
                     ^ Textured.GetHashCode() ^ Simple.GetHashCode();
             }
         }

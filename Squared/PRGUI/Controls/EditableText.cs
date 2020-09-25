@@ -635,7 +635,7 @@ namespace Squared.PRGUI.Controls {
 
             if (selBounds.HasValue && 
                 (
-                    settings.State.HasFlag(ControlStates.Focused) || 
+                    settings.State.IsFlagged(ControlStates.Focused) || 
                     (_Selection.First != _Selection.Second)
                 )
             ) {

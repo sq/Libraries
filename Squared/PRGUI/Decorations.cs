@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.RasterShape;
@@ -205,7 +206,7 @@ namespace Squared.PRGUI.Decorations {
 
             float alpha, thickness;
             var baseColor = settings.BackgroundColor ?? (pSRGBColor)(
-                state.HasFlag(ControlStates.Focused)
+                state.IsFlagged(ControlStates.Focused)
                     ? FocusedColor
                     : InactiveColor
             );
@@ -213,7 +214,7 @@ namespace Squared.PRGUI.Decorations {
             var hasColor = settings.BackgroundColor.HasValue;
 
             float pulse = 0;
-            if (state.HasFlag(ControlStates.Pressed)) {
+            if (state.IsFlagged(ControlStates.Pressed)) {
                 alpha = hasColor ? 1f : 0.9f;
                 thickness = PressedOutlineThickness;
                 if (hasColor) {
@@ -222,15 +223,15 @@ namespace Squared.PRGUI.Decorations {
                     baseColor.Vector4.W = 1;
                 } else
                     baseColor = ActiveColor;
-            } else if (state.HasFlag(ControlStates.Hovering)) {
+            } else if (state.IsFlagged(ControlStates.Hovering)) {
                 alpha = hasColor ? 0.9f : 0.75f;
                 thickness = ActiveOutlineThickness;
                 pulse = Arithmetic.PulseSine(context.AnimationTime / 3.33f, 0f, 0.08f);
             } else {
                 alpha = hasColor 
-                    ? (state.HasFlag(ControlStates.Focused) ? 0.9f : 0.8f)
-                    : (state.HasFlag(ControlStates.Focused) ? 0.5f : 0.35f);
-                thickness = state.HasFlag(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
+                    ? (state.IsFlagged(ControlStates.Focused) ? 0.9f : 0.8f)
+                    : (state.IsFlagged(ControlStates.Focused) ? 0.5f : 0.35f);
+                thickness = state.IsFlagged(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
             }
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
@@ -245,7 +246,7 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void Button_Above (UIOperationContext context, DecorationSettings settings) {
-            if (!settings.State.HasFlag(ControlStates.Hovering))
+            if (!settings.State.IsFlagged(ControlStates.Hovering))
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
@@ -319,8 +320,8 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void EditableText_Below (UIOperationContext context, DecorationSettings settings) {
-            bool isFocused = settings.State.HasFlag(ControlStates.Focused),
-                isHovering = settings.State.HasFlag(ControlStates.Hovering);
+            bool isFocused = settings.State.IsFlagged(ControlStates.Focused),
+                isHovering = settings.State.IsFlagged(ControlStates.Hovering);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
             context.Renderer.RasterizeRectangle(
                 a, b,
@@ -351,7 +352,7 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void EditableText_Above (UIOperationContext context, DecorationSettings settings) {
-            if (!settings.State.HasFlag(ControlStates.Focused))
+            if (!settings.State.IsFlagged(ControlStates.Focused))
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
@@ -445,7 +446,7 @@ namespace Squared.PRGUI.Decorations {
         private void Selection_Content (UIOperationContext context, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, SelectionCornerRadius - SelectionPadding);
             var isCaret = (settings.Box.Width <= 0.5f);
-            var isFocused = settings.State.HasFlag(ControlStates.Focused);
+            var isFocused = settings.State.IsFlagged(ControlStates.Focused);
             var fillColor = SelectionFillColor *
                 (isFocused
                     ? Arithmetic.Pulse(context.AnimationTime, 0.65f, 0.8f)
@@ -472,7 +473,7 @@ namespace Squared.PRGUI.Decorations {
             if (color == null)
                 color = TextColor;
 
-            if (state.HasFlag(ControlStates.Disabled))
+            if (state.IsFlagged(ControlStates.Disabled))
                 color = color.Value.ToGrayscale(DisabledTextAlpha);
 
             font = DefaultFont;

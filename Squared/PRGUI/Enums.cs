@@ -133,6 +133,11 @@ namespace Squared.PRGUI.Layout {
             return masked != 0;
         }
 
+        public static bool IsFlagged (this ControlStates flags, ControlStates flag) {
+            var masked = (int)(flags & flag);
+            return masked != 0;
+        }
+
         public static float GetOrigin (this Bounds bounds, Dimensions dimension) {
             return (dimension == Dimensions.X) ? bounds.TopLeft.X : bounds.TopLeft.Y;
         }
