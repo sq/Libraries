@@ -140,7 +140,7 @@ namespace Squared.PRGUI.Controls {
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            if (!AutoSizeWidth)
+            if (!AutoSizeWidth || Wrap)
                 Content.LineBreakAtX = settings.Box.Width;
 
             Color? overrideColor = TextColor;

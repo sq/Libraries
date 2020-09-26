@@ -506,7 +506,7 @@ namespace Squared.PRGUI {
                 return;
 
             var rightEdge = CanvasSize.X - 8;
-            var idealMaxWidth = Math.Min(CanvasSize.X * 0.6f, rect.Width * 1.25f);
+            var idealMaxWidth = Math.Max(CanvasSize.X * 0.6f, rect.Width * 1.25f);
 
             instance.Text = text;
             // FIXME: Shift it around if it's already too close to the right side
