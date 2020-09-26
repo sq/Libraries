@@ -101,8 +101,8 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        public void GenerateLayoutTree (UIOperationContext context, ControlKey parent) {
-            LayoutKey = OnGenerateLayoutTree(context, parent);
+        internal void GenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey = null) {
+            LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
         }
 
         protected Vector2 GetFixedInteriorSpace () {
@@ -198,8 +198,8 @@ namespace Squared.PRGUI {
             maximumHeight = MaximumHeight;
         }
 
-        protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
-            var result = context.Layout.CreateItem();
+        protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            var result = existingKey ?? context.Layout.CreateItem();
 
             var decorations = GetDecorations(context);
             var computedMargins = ComputeMargins(context, decorations);
@@ -223,7 +223,7 @@ namespace Squared.PRGUI {
                 maximumWidth, maximumHeight
             );
 
-            if (!parent.IsInvalid)
+            if (!parent.IsInvalid && !existingKey.HasValue)
                 context.Layout.InsertAtEnd(parent, result);
 
             return result;

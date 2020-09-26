@@ -161,7 +161,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         public void Update () {
-            if (!Update(Root))
+            if (!UpdateSubtree(Root))
                 InvalidState();
         }
 
@@ -175,11 +175,18 @@ namespace Squared.PRGUI.Layout {
             return new ChildrenEnumerable(this, parent);
         }
 
-        public unsafe bool Update (ControlKey key) {
+        internal unsafe bool UpdateSubtree (ControlKey key) {
             if (key.IsInvalid)
                 return false;
 
             var pItem = LayoutPtr(key);
+            // HACK: Ensure its position is updated even if we don't fully lay out all controls
+            if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating)) {
+                var pRect = RectPtr(key);
+                pRect->Left = pItem->Margins.Left;
+                pRect->Top = pItem->Margins.Top;
+            }
+
             CalcSize(pItem, Dimensions.X);
             Arrange (pItem, Dimensions.X);
             CalcSize(pItem, Dimensions.Y);

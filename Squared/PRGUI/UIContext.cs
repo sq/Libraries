@@ -59,6 +59,8 @@ namespace Squared.PRGUI {
         /// </summary>
         public double TooltipDisappearDelay = 0.25;
 
+        public float TooltipSpacing = 8;
+
         /// <summary>
         /// Double-clicks will only be tracked if this far apart or less (in seconds)
         /// </summary>
@@ -108,8 +110,6 @@ namespace Squared.PRGUI {
         private double LastTooltipHoverTime;
 
         private Tooltip CachedTooltip;
-        // If we show the tooltip immediately after creating it, it won't have had layout performed before it's painted
-        private bool TooltipPending;
 
         public ControlCollection Controls = new ControlCollection(null);
 
@@ -228,11 +228,6 @@ namespace Squared.PRGUI {
                 control.GenerateLayoutTree(context, Layout.Root);
 
             Layout.Update();
-
-            if (TooltipPending) {
-                TooltipPending = false;
-                CachedTooltip.Visible = true;
-            }
         }
 
         public void UpdateInput (
@@ -296,7 +291,7 @@ namespace Squared.PRGUI {
 
         private bool IsTooltipActive {
             get {
-                return (CachedTooltip != null) && (CachedTooltip.Visible || TooltipPending);
+                return (CachedTooltip != null) && CachedTooltip.Visible;
             }
         }
 
@@ -440,7 +435,6 @@ namespace Squared.PRGUI {
             ClearTooltip();
             FirstTooltipHoverTime = null;
             LastTooltipHoverTime = 0;
-            TooltipPending = false;
         }
 
         private void HandleMouseDown (Control target, Vector2 globalPosition) {
@@ -488,32 +482,52 @@ namespace Squared.PRGUI {
 
             CachedTooltip.Text = "";
             CachedTooltip.Visible = false;
-            TooltipPending = false;
+        }
+
+        private void UpdateSubtreeLayout (Control subtreeRoot) {
+            ControlKey parentKey;
+            Control parent;
+            if (!subtreeRoot.TryGetParent(out parent))
+                parentKey = Layout.Root;
+            else if (!parent.LayoutKey.IsInvalid)
+                parentKey = parent.LayoutKey;
+            else {
+                // Just in case for some reason the control's parent also hasn't had layout happen...
+                UpdateSubtreeLayout(parent);
+                return;
+            }
+
+            var tempCtx = MakeOperationContext();
+            subtreeRoot.GenerateLayoutTree(tempCtx, parentKey, subtreeRoot.LayoutKey.IsInvalid ? (ControlKey?)null : subtreeRoot.LayoutKey);
+            Layout.UpdateSubtree(subtreeRoot.LayoutKey);
         }
 
         private void ShowTooltip (Control anchor, AbstractString text) {
-            if (TooltipPending)
-                return;
-
             var instance = GetTooltipInstance();
 
             var textChanged = !instance.Text.Equals(text);
 
             var rect = Layout.GetRect(anchor.LayoutKey);
-            instance.Margins = new Margins(rect.Left, rect.Extent.Y + 8, 0, 0);
 
-            if (!textChanged && instance.Visible)
-                return;
+            if (textChanged || !instance.Visible) {
+                var idealMaxWidth = CanvasSize.X * 0.5f;
 
-            var rightEdge = CanvasSize.X - 8;
-            var idealMaxWidth = Math.Max(CanvasSize.X * 0.6f, rect.Width * 1.25f);
+                instance.Text = text;
+                // FIXME: Shift it around if it's already too close to the right side
+                instance.MaximumWidth = idealMaxWidth;
+                instance.Invalidate();
 
-            instance.Text = text;
-            // FIXME: Shift it around if it's already too close to the right side
-            instance.MaximumWidth = Math.Min(idealMaxWidth, rightEdge - rect.Left);
-            instance.Visible = false;
-            instance.Invalidate();
-            TooltipPending = true;
+                UpdateSubtreeLayout(instance);
+            }
+
+            var instanceBox = instance.GetRect(Layout);
+            var newX = Arithmetic.Clamp(rect.Left, TooltipSpacing, CanvasSize.X - instanceBox.Width - (TooltipSpacing * 2));
+            var newY = rect.Extent.Y + TooltipSpacing;
+            if ((instanceBox.Height + rect.Extent.Y) >= CanvasSize.Y)
+                newY = rect.Top - instanceBox.Height - TooltipSpacing;
+            instance.Margins = new Margins(newX, newY, 0, 0);
+            instance.Visible = true;
+            UpdateSubtreeLayout(instance);
         }
 
         private void HandleHoverTransition (Control previous, Control current) {
@@ -578,14 +592,18 @@ namespace Squared.PRGUI {
             control.Rasterize(passContext);
         }
 
-        public void Rasterize (ref ImperativeRenderer renderer) {
-            var context = new UIOperationContext {
+        private UIOperationContext MakeOperationContext () {
+            return new UIOperationContext {
                 UIContext = this,
                 AnimationTime = (float)Time.Seconds,
                 Modifiers = CurrentModifiers,
                 MouseButtonHeld = LastMouseButtonState,
                 MousePosition = LastMousePosition
             };
+        }
+
+        public void Rasterize (ref ImperativeRenderer renderer) {
+            var context = MakeOperationContext();
 
             // Ensure each control is rasterized in its own group of passes, so that top level controls can
             //  properly overlap each other

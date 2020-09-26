@@ -170,10 +170,10 @@ namespace Squared.PRGUI.Controls {
             minimumHeight = Math.Max(minimumHeight ?? 0, contentMinimumHeight);
         }
 
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
+        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             // HACK: Populate various fields that we will use to compute minimum size
             UpdateLayout(context, new DecorationSettings(), context.DecorationProvider.EditableText, out Material temp);
-            return base.OnGenerateLayoutTree(context, parent);
+            return base.OnGenerateLayoutTree(context, parent, existingKey);
         }
 
         protected LayoutMarker? MarkSelection () {

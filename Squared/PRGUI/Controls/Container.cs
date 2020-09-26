@@ -77,9 +77,9 @@ namespace Squared.PRGUI.Controls {
                 child.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
         }
 
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
+        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             HasContentBounds = false;
-            var result = base.OnGenerateLayoutTree(context, parent);
+            var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             context.Layout.SetContainerFlags(result, ContainerFlags);
             foreach (var item in Children) {
                 item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
