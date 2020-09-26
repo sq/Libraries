@@ -42,7 +42,11 @@ namespace Squared.PRGUI {
             Keys.RightAlt,
             Keys.RightControl,
             Keys.RightShift,
-            Keys.Escape
+            Keys.Escape,
+            Keys.CapsLock,
+            Keys.Scroll,
+            Keys.NumLock,
+            Keys.Insert
         };
 
         /// <summary>
@@ -126,6 +130,9 @@ namespace Squared.PRGUI {
         /// </summary>
         public Control MouseOver { get; private set; }
 
+        private bool IsTextInputRegistered = false;
+        private bool IsCompositionActive = false;
+
         private Control _Focused;
         public Control Focused {
             get => _Focused;
@@ -160,6 +167,18 @@ namespace Squared.PRGUI {
             HandleKeyEvent(UIEvents.KeyPress, null, ch);
         }
 
+        private void TextInputEXT_TextEditing (string text, int start, int length) {
+            if ((text == null) || (text.Length == 0)) {
+                if (IsCompositionActive)
+                    Console.WriteLine("Terminating composition");
+                IsCompositionActive = false;
+                return;
+            }
+
+            IsCompositionActive = true;
+            Console.WriteLine($"Composition text '{text}' at offset {start}, length {length}");
+        }
+
         public UIContext (IDecorationProvider decorations) {
             Decorations = decorations;
         }
@@ -190,12 +209,16 @@ namespace Squared.PRGUI {
             if (target?.AcceptsTextInput ?? false) {
                 if (previous?.AcceptsTextInput ?? false) {
                 } else {
+                    if (!IsTextInputRegistered) {
+                        IsTextInputRegistered = true;
+                        TextInputEXT.TextInput += TextInputEXT_TextInput;
+                        TextInputEXT.TextEditing += TextInputEXT_TextEditing;
+                    }
                     TextInputEXT.StartTextInput();
-                    TextInputEXT.TextInput += TextInputEXT_TextInput;
                 }
             } else if (previous?.AcceptsTextInput ?? false) {
-                TextInputEXT.TextInput -= TextInputEXT_TextInput;
                 TextInputEXT.StopTextInput();
+                IsCompositionActive = false;
             }
         }
 
@@ -347,6 +370,9 @@ namespace Squared.PRGUI {
                 RightAlt = current.IsKeyDown(Keys.RightAlt),
             };
 
+            if (IsCompositionActive)
+                return;
+
             var now = Time.Seconds;
             for (int i = 0; i < 255; i++) {
                 var key = (Keys)i;
@@ -396,9 +422,6 @@ namespace Squared.PRGUI {
             };
 
             // FIXME: Suppress events with a char if the target doesn't accept text input?
-            if (Focused.HandleEvent(name, evt))
-                return true;
-
             if (FireEvent(name, Focused, evt))
                 return true;
 
