@@ -521,7 +521,7 @@ namespace Squared.PRGUI {
             }
 
             var instanceBox = instance.GetRect(Layout);
-            var newX = Arithmetic.Clamp(rect.Left, TooltipSpacing, CanvasSize.X - instanceBox.Width - (TooltipSpacing * 2));
+            var newX = Arithmetic.Clamp(rect.Left + (rect.Width / 2f) - (instanceBox.Width / 2f), TooltipSpacing, CanvasSize.X - instanceBox.Width - (TooltipSpacing * 2));
             var newY = rect.Extent.Y + TooltipSpacing;
             if ((instanceBox.Height + rect.Extent.Y) >= CanvasSize.Y)
                 newY = rect.Top - instanceBox.Height - TooltipSpacing;
@@ -622,7 +622,7 @@ namespace Squared.PRGUI {
         }
     }
 
-    public struct UIOperationContext {
+    public class UIOperationContext {
         public UIContext UIContext;
         public IDecorationProvider DecorationProvider => UIContext.Decorations;
         public LayoutContext Layout => UIContext.Layout;

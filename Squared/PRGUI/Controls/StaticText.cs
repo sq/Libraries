@@ -102,14 +102,14 @@ namespace Squared.PRGUI.Controls {
             if (!AutoSizeWidth && !AutoSizeHeight)
                 return;
 
-            /*
-            var interiorSpace = GetFixedInteriorSpace();
-            if (interiorSpace.X > 0)
-                Content.LineBreakAtX = interiorSpace.X;
-            */
-
             var decorations = GetDecorations(context);
             UpdateFont(context, decorations);
+
+            // HACK: If we know that our size is going to be constrained by layout settings, apply that in advance
+            //  when computing auto-size to reduce the odds that our layout will be changed once full UI layout happens
+            var textWidthLimit = ComputeTextWidthLimit(context, decorations);
+            if (textWidthLimit.HasValue)
+                Content.LineBreakAtX = textWidthLimit;
 
             var computedPadding = ComputePadding(context, decorations);
             var layout = Content.Get();
@@ -124,14 +124,23 @@ namespace Squared.PRGUI.Controls {
             Content.Invalidate();
         }
 
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
+        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             ComputeAutoSize(context);
-            var result = base.OnGenerateLayoutTree(context, parent);
+            var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             return result;
         }
 
         protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
             return context.DecorationProvider?.StaticText;
+        }
+
+        protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations) {
+            var limit = FixedWidth ?? MaximumWidth;
+            var computedPadding = ComputePadding(context, decorations);
+            if (limit.HasValue)
+                return limit.Value - computedPadding.X;
+            else
+                return null;
         }
 
         protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
@@ -140,8 +149,14 @@ namespace Squared.PRGUI.Controls {
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            if (!AutoSizeWidth || Wrap)
-                Content.LineBreakAtX = settings.Box.Width;
+            if (!AutoSizeWidth || Wrap) {
+                // If auto-size is disabled or wrapping is enabled, we need to enable wrapping/breaking at
+                //  our rightmost edge to ensure that our text doesn't overflow outside of our boundaries
+                // If wrapping is disabled entirely, the overflowing text will be suppressed by the text
+                //  layout engine, otherwise it will be wrapped (potentially changing our layout, oops)
+                var textWidthLimit = ComputeTextWidthLimit(context, decorations) ?? settings.ContentBox.Width;
+                Content.LineBreakAtX = textWidthLimit;
+            }
 
             Color? overrideColor = TextColor;
             Material material;

@@ -404,8 +404,7 @@ namespace Squared.PRGUI.Decorations {
                 a + vRadius, b - vRadius,
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: ScrollbarTrackColor, outerColor: ScrollbarTrackColor,
-                fillMode: RasterFillMode.Vertical
+                innerColor: ScrollbarTrackColor, outerColor: ScrollbarTrackColor
             );
 
             if (data.ContentSize <= data.ViewportSize)
