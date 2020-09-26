@@ -115,7 +115,7 @@ namespace Squared.Render.Text {
             where T : struct, IEquatable<T> {
             if (
                 (destination.HasValue != newValue.HasValue) || 
-                !destination.Value.Equals(newValue.Value)
+                (destination.HasValue && !destination.Value.Equals(newValue.Value))
             ) {
                 destination = newValue;
                 _CachedStringLayout = null;

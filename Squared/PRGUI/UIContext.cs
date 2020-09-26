@@ -505,9 +505,14 @@ namespace Squared.PRGUI {
             if (!textChanged && instance.Visible)
                 return;
 
+            var rightEdge = CanvasSize.X - 8;
+            var idealMaxWidth = Math.Min(CanvasSize.X * 0.6f, rect.Width * 1.25f);
+
             instance.Text = text;
-            instance.MaximumWidth = CanvasSize.X * 0.75f;
+            // FIXME: Shift it around if it's already too close to the right side
+            instance.MaximumWidth = Math.Min(idealMaxWidth, rightEdge - rect.Left);
             instance.Visible = false;
+            instance.Invalidate();
             TooltipPending = true;
         }
 

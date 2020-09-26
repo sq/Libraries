@@ -40,6 +40,8 @@ namespace Squared.PRGUI {
             AutoSize = true;
             Intangible = true;
             LayoutFlags = ControlFlags.Layout_Floating;
+            Wrap = true;
+            Multiline = true;
         }
 
         protected override IDecorator GetDefaultDecorations (UIOperationContext context) {

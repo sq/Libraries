@@ -119,6 +119,11 @@ namespace Squared.PRGUI.Controls {
                 AutoSizeComputedHeight = layout.Size.Y + computedPadding.Size.Y;
         }
 
+        public void Invalidate () {
+            Content.LineBreakAtX = null;
+            Content.Invalidate();
+        }
+
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent) {
             ComputeAutoSize(context);
             var result = base.OnGenerateLayoutTree(context, parent);
