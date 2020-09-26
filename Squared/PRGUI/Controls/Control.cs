@@ -58,7 +58,7 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Intangible controls are ignored by hit-tests
         /// </summary>
-        public bool Intangible { get; protected set; }
+        public bool Intangible { get; set; }
 
         public int TabOrder { get; set; } = 0;
         public int PaintOrder { get; set; } = 0;

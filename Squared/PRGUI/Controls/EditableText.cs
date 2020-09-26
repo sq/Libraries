@@ -38,6 +38,8 @@ namespace Squared.PRGUI.Controls {
         private int CurrentScrollBias = 1;
         private bool NextScrollInstant = true;
 
+        private Vector2 LastLocalCursorPosition;
+
         private Vector2? ClickStartVirtualPosition = null;
         private Pair<int> _Selection;
 
@@ -613,6 +615,10 @@ namespace Squared.PRGUI.Controls {
             ScrollOffset = scrollOffset;
         }
 
+        internal Vector2 GetCursorPosition () {
+            return LastLocalCursorPosition;
+        }
+
         protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, settings, decorations);
 
@@ -641,6 +647,8 @@ namespace Squared.PRGUI.Controls {
             ) {
                 var selBox = (RectF)selBounds.Value;
                 selBox.Position += textOffset;
+
+                LastLocalCursorPosition = selBox.Position - settings.Box.Position;
 
                 if ((_Selection.First == _Selection.Second) && (context.UIContext.TextInsertionMode == false))
                     selBox.Width = 4;

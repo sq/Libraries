@@ -114,6 +114,7 @@ namespace Squared.PRGUI {
         private double LastTooltipHoverTime;
 
         private Tooltip CachedTooltip;
+        private Controls.StaticText CachedCompositionPreview;
 
         public ControlCollection Controls = new ControlCollection(null);
 
@@ -167,16 +168,44 @@ namespace Squared.PRGUI {
             HandleKeyEvent(UIEvents.KeyPress, null, ch);
         }
 
-        private void TextInputEXT_TextEditing (string text, int start, int length) {
+        private void TerminateComposition () {
+            if (IsCompositionActive)
+                Console.WriteLine("Terminating composition");
+            IsCompositionActive = false;
+
+            if (CachedCompositionPreview != null) {
+                CachedCompositionPreview.Text = "";
+                CachedCompositionPreview.Visible = false;
+            }
+        }
+
+        private void UpdateComposition (string currentText, int cursorPosition, int selectionLength) {
+            IsCompositionActive = true;
+            Console.WriteLine($"Composition text '{currentText}' with cursor at offset {cursorPosition}, selection length {selectionLength}");
+
+            var instance = GetCompositionPreviewInstance();
+            instance.Text = currentText;
+            instance.Invalidate();
+
+            var offset = Layout.GetRect(Focused.LayoutKey).Position;
+            // HACK
+            var editable = Focused as Controls.EditableText;
+            if (editable != null) {
+                var compositionOffset = editable.GetCursorPosition();
+                offset += compositionOffset;
+            }
+
+            instance.Margins = new Margins(offset.X, offset.Y, 0, 0);
+            instance.Visible = true;
+        }
+
+        private void TextInputEXT_TextEditing (string text, int cursorPosition, int length) {
             if ((text == null) || (text.Length == 0)) {
-                if (IsCompositionActive)
-                    Console.WriteLine("Terminating composition");
-                IsCompositionActive = false;
+                TerminateComposition();
                 return;
             }
 
-            IsCompositionActive = true;
-            Console.WriteLine($"Composition text '{text}' at offset {start}, length {length}");
+            UpdateComposition(text, cursorPosition, length);
         }
 
         public UIContext (IDecorationProvider decorations) {
@@ -225,12 +254,32 @@ namespace Squared.PRGUI {
         private Tooltip GetTooltipInstance () {
             if (CachedTooltip == null) {
                 CachedTooltip = new Tooltip {
-                    PaintOrder = 9999
+                    PaintOrder = 9999,
+                    Wrap = true,
+                    Multiline = true
                 };
                 Controls.Add(CachedTooltip);
             }
 
             return CachedTooltip;
+        }
+
+        private Controls.StaticText GetCompositionPreviewInstance () {
+            if (CachedCompositionPreview == null) {
+                CachedCompositionPreview = new Controls.StaticText {
+                    PaintOrder = 9999,
+                    Wrap = false,
+                    Multiline = false,
+                    Intangible = true,
+                    LayoutFlags = ControlFlags.Layout_Floating,
+                    BackgroundColor = Color.White,
+                    TextColor = Color.Black,
+                    CustomDecorations = Decorations.CompositionPreview
+                };
+                Controls.Add(CachedCompositionPreview);
+            }
+
+            return CachedCompositionPreview;
         }
 
         public void UpdateLayout () {

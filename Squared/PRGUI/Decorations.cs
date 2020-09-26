@@ -46,6 +46,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Selection { get; }
         IDecorator Button { get; }
         IDecorator Tooltip { get; }
+        IDecorator CompositionPreview { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
@@ -144,6 +145,7 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator EditableText { get; set; }
         public IDecorator Selection { get; set; }
         public IDecorator Tooltip { get; set; }
+        public IDecorator CompositionPreview { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public IGlyphSource DefaultFont,
@@ -465,6 +467,21 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
+        private void CompositionPreview_Below (UIOperationContext context, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, SelectionCornerRadius - SelectionPadding);
+            var fillColor = SelectionFillColor;
+            var outlineColor = Color.White;
+
+            context.Renderer.RasterizeRectangle(
+                a, b,
+                radius: SelectionCornerRadius,
+                outlineRadius: 0.7f, 
+                outlineColor: outlineColor,
+                innerColor: fillColor, outerColor: fillColor,
+                shadow: SelectionShadow
+            );
+        }
+
         public bool GetTextSettings (
             UIOperationContext context, ControlStates state, 
             out Material material, out IGlyphSource font, ref Color? color
@@ -615,6 +632,11 @@ namespace Squared.PRGUI.Decorations {
             Selection = new DelegateDecorator {
                 GetTextSettings = GetTextSettings_Selection,
                 Content = Selection_Content,
+            };
+
+            CompositionPreview = new DelegateDecorator {
+                GetTextSettings = GetTextSettings_Selection,
+                Below = CompositionPreview_Below,
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
