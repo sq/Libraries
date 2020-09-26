@@ -141,13 +141,15 @@ namespace PRGUI.Demo {
             var hoveringCtl = new StaticText {
                 LayoutFlags = ControlFlags.Layout_Fill,
                 AutoSize = false,
-                Text = "Hovering: None"
+                Text = "Hovering: None",
+                TooltipContent = "The control the mouse is currently hovering over"
             };
 
             var lastClickedCtl = new StaticText {
                 LayoutFlags = ControlFlags.Layout_Fill,
                 AutoSize = false,
-                Text = ""
+                Text = "",
+                TooltipContent = "The control most recently clicked with the mouse"
             };
 
             var testString = "Καλημέρα こんにちは \U0002F8B6\U0002F8CD\U0002F8D3 Hello";
@@ -195,7 +197,7 @@ namespace PRGUI.Demo {
                 MinimumWidth = 400,
                 Text = "Change Paint Order",
                 BackgroundColor = Color.LightSeaGreen,
-                TooltipContent = "Click this one"
+                TooltipContent = "This button toggles whether the floating panel is above or below the main container"
             };
 
             Context = new UIContext(decorations) {
@@ -230,7 +232,7 @@ namespace PRGUI.Demo {
                                 AutoSizeWidth = false,
                                 Text = "Static Text 2\r\nLine 2",
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                                MaximumWidth = 120,
+                                MaximumWidth = 130,
                                 Multiline = true,
                                 Wrap = false,
                                 BackgroundColor = Color.DarkRed

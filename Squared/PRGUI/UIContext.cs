@@ -510,7 +510,7 @@ namespace Squared.PRGUI {
             var rect = Layout.GetRect(anchor.LayoutKey);
 
             if (textChanged || !instance.Visible) {
-                var idealMaxWidth = CanvasSize.X * 0.5f;
+                var idealMaxWidth = CanvasSize.X * 0.35f;
 
                 instance.Text = text;
                 // FIXME: Shift it around if it's already too close to the right side

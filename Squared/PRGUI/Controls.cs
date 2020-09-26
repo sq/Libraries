@@ -110,6 +110,9 @@ namespace Squared.PRGUI {
         protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, settings, decorations);
 
+            // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
+            UpdatePosition(Position, context.UIContext, settings.Box);
+
             IDecorator titleDecorator;
             Color? titleColor = null;
             if (
@@ -146,6 +149,15 @@ namespace Squared.PRGUI {
             return false;
         }
 
+        private void UpdatePosition (Vector2 newPosition, UIContext context, RectF box) {
+            newPosition = new Vector2(
+                Arithmetic.Clamp(newPosition.X, 0, context.CanvasSize.X - box.Width),
+                Arithmetic.Clamp(newPosition.Y, 0, context.CanvasSize.Y - box.Height)
+            );
+
+            Position = newPosition;
+        }
+
         private bool OnMouseEvent (string name, MouseEventArgs args) {
             if (name == UIEvents.MouseDown) {
                 if (MostRecentTitleBox.Contains(args.GlobalPosition)) {
@@ -167,12 +179,7 @@ namespace Squared.PRGUI {
                 var delta = args.GlobalPosition - DragStartMousePosition;
                 var newPosition = DragStartWindowPosition + delta;
 
-                newPosition = new Vector2(
-                    Arithmetic.Clamp(newPosition.X, 0, args.Context.CanvasSize.X - args.Box.Width),
-                    Arithmetic.Clamp(newPosition.Y, 0, args.Context.CanvasSize.Y - args.Box.Height)
-                );
-
-                Position = newPosition;
+                UpdatePosition(newPosition, args.Context, args.Box);
 
                 // args.Context.Invalidate();
 
