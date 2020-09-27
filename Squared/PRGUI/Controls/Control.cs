@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
@@ -314,14 +315,13 @@ namespace Squared.PRGUI {
             };
         }
 
-        private void RasterizeIntoContext (UIOperationContext context, bool compositing) {
-            var box = GetRect(context.Layout);
+        private void RasterizeIntoContext (UIOperationContext context, ref RectF box, bool compositing) {
             var contentBox = GetRect(context.Layout, contentRect: true);
             var decorations = GetDecorations(context);
             var state = GetCurrentState(context);
 
             var contentContext = context;
-            var hasNestedContext = (context.Pass == RasterizePasses.Content) && (ShouldClipContent || HasNestedContent);
+            var hasNestedContext = (context.Pass == RasterizePasses.Content) && (ShouldClipContent || HasNestedContent) && !compositing;
 
             // For clipping we need to create a separate batch group that contains all the rasterization work
             //  for our children. At the start of it we'll generate the stencil mask that will be used for our
@@ -331,10 +331,10 @@ namespace Squared.PRGUI {
                 contentContext = context.Clone();
                 contentContext.Renderer = context.Renderer.MakeSubgroup();
                 contentContext.Renderer.Layer = 0;
-
-                if (ShouldClipContent)
-                    contentContext.Renderer.DepthStencilState = RenderStates.StencilTest;
             }
+
+            if (ShouldClipContent && (hasNestedContext || compositing))
+                contentContext.Renderer.DepthStencilState = RenderStates.StencilTest;
 
             var settings = MakeDecorationSettings(ref box, ref contentBox, state);
             OnRasterize(contentContext, settings, decorations);
@@ -364,6 +364,15 @@ namespace Squared.PRGUI {
             }
         }
 
+        private void RasterizeAllPasses (UIOperationContext context, ref RectF box, bool compositing) {
+            context.Pass = RasterizePasses.Below;
+            RasterizeIntoContext(context, ref box, compositing);
+            context.Pass = RasterizePasses.Content;
+            RasterizeIntoContext(context, ref box, compositing);
+            context.Pass = RasterizePasses.Above;
+            RasterizeIntoContext(context, ref box, compositing);
+        }
+
         public void Rasterize (UIOperationContext context) {
             if (!Visible)
                 return;
@@ -374,28 +383,34 @@ namespace Squared.PRGUI {
             if (opacity <= 0)
                 return;
 
+            var tempContext = context.Clone();
+            tempContext.Renderer = context.Renderer.MakeSubgroup();
+            tempContext.Renderer.DepthStencilState = DepthStencilState.None;
+
+            var box = GetRect(context.Layout);
+
             if (opacity >= 1) {
-                RasterizeIntoContext(context, false);
+                RasterizeAllPasses(tempContext, ref box, false);
             } else {
                 var rt = context.UIContext.GetScratchRenderTarget(context.Renderer.Container.Coordinator);
                 try {
-                    var tempContext = context.Clone();
-                    tempContext.Renderer = context.Renderer.ForRenderTarget(rt, newContainer: context.Renderer.Container.Coordinator.Frame, layer: -9999, name: $"Composite {this.ToString()}");
-                    tempContext.Renderer.Clear(color: Color.Transparent);
-                    RasterizeIntoContext(tempContext, true);
+                    var compositionContext = tempContext.Clone();
+                    compositionContext.Renderer = context.PrepassRenderer.ForRenderTarget(rt, name: $"Composite control");
+                    compositionContext.Renderer.Clear(color: Color.Transparent, layer: -1);
+                    RasterizeAllPasses(compositionContext, ref box, true);
+                    compositionContext.Renderer.Layer += 1;
                     // FIXME: Don't composite unused parts of the RT
-                    var pos = Vector2.Zero; // settings.Box.Position.Floor();
+                    var pos = box.Position.Floor();
                     context.Renderer.Draw(
                         rt, position: pos,
-                        /*
                         sourceRectangle: new Rectangle(
-                            (int)settings.Box.Left, (int)settings.Box.Top,
-                            (int)(settings.Box.Width + 1), (int)settings.Box.Height + 1
+                            (int)box.Left, (int)box.Top,
+                            (int)box.Width + 1, (int)box.Height + 1
                         ),
-                        */
                         blendState: BlendState.AlphaBlend, 
                         multiplyColor: Color.White * opacity
                     );
+                    compositionContext.Renderer.Layer += 1;
                     context.Renderer.Layer += 1;
                 } finally {
                     context.UIContext.ReleaseScratchRenderTarget(rt);

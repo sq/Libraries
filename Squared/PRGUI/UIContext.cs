@@ -666,14 +666,6 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        private void RasterizePass (UIOperationContext context, Control control, RasterizePasses pass) {
-            var passContext = context.Clone();
-            passContext.Renderer = context.Renderer.MakeSubgroup();
-            passContext.Renderer.DepthStencilState = DepthStencilState.None;
-            passContext.Pass = pass;
-            control.Rasterize(passContext);
-        }
-
         private UIOperationContext MakeOperationContext () {
             return new UIOperationContext {
                 UIContext = this,
@@ -684,20 +676,21 @@ namespace Squared.PRGUI {
             };
         }
 
-        internal RenderTarget2D GetScratchRenderTarget (RenderCoordinator coordinator) {
+        internal AutoRenderTarget GetScratchRenderTarget (RenderCoordinator coordinator) {
             if (ScratchRenderTarget == null)
                 ScratchRenderTarget = new AutoRenderTarget(coordinator, (int)CanvasSize.X, (int)CanvasSize.Y, preferredDepthFormat: DepthFormat.Depth24Stencil8);
             else
                 ScratchRenderTarget.Resize((int)CanvasSize.X, (int)CanvasSize.Y);
-            return ScratchRenderTarget.Get();
+            return ScratchRenderTarget;
         }
 
-        internal void ReleaseScratchRenderTarget (RenderTarget2D rt) {
+        internal void ReleaseScratchRenderTarget (AutoRenderTarget rt) {
             // FIXME: Do we need to do anything here?
         }
 
         public void Rasterize (ref ImperativeRenderer renderer) {
             var context = MakeOperationContext();
+            context.PrepassRenderer = renderer.MakeSubgroup();
 
             // Ensure each control is rasterized in its own group of passes, so that top level controls can
             //  properly overlap each other
@@ -705,9 +698,7 @@ namespace Squared.PRGUI {
             foreach (var control in seq) {
                 context.Renderer = renderer.MakeSubgroup();
                 context.Renderer.DepthStencilState = DepthStencilState.None;
-                RasterizePass(context, control, RasterizePasses.Below);
-                RasterizePass(context, control, RasterizePasses.Content);
-                RasterizePass(context, control, RasterizePasses.Above);
+                control.Rasterize(context);
             }
         }
 
@@ -720,6 +711,7 @@ namespace Squared.PRGUI {
         public UIContext UIContext;
         public IDecorationProvider DecorationProvider => UIContext.Decorations;
         public LayoutContext Layout => UIContext.Layout;
+        public ImperativeRenderer PrepassRenderer;
         public ImperativeRenderer Renderer;
         public RasterizePasses Pass;
         public float Now { get; internal set; }
@@ -730,6 +722,7 @@ namespace Squared.PRGUI {
         public UIOperationContext Clone () {
             return new UIOperationContext {
                 UIContext = UIContext,
+                PrepassRenderer = PrepassRenderer,
                 Renderer = Renderer,
                 Pass = Pass,
                 Now = Now,
