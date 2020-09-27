@@ -324,7 +324,7 @@ namespace Squared.PRGUI {
             passContext.Pass = pass;
             passContext.Renderer = context.Renderer.MakeSubgroup();
             passContext.Renderer.DepthStencilState = DepthStencilState.None;
-            var hasNestedContext = (pass == RasterizePasses.Content) && (ShouldClipContent || HasNestedContent) && !compositing;
+            var hasNestedContext = (pass == RasterizePasses.Content) && (ShouldClipContent || HasNestedContent);
 
             var contentContext = passContext;
 
@@ -336,10 +336,9 @@ namespace Squared.PRGUI {
                 contentContext = passContext.Clone();
                 contentContext.Renderer = passContext.Renderer.MakeSubgroup();
                 contentContext.Renderer.Layer = 0;
+                if (ShouldClipContent)
+                    contentContext.Renderer.DepthStencilState = RenderStates.StencilTest;
             }
-
-            if (ShouldClipContent && (hasNestedContext || compositing))
-                contentContext.Renderer.DepthStencilState = RenderStates.StencilTest;
 
             var settings = MakeDecorationSettings(ref box, ref contentBox, state);
             OnRasterize(contentContext, settings, decorations);
