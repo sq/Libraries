@@ -99,8 +99,7 @@ namespace Squared.PRGUI.Controls {
         // FIXME: Always true?
         protected override bool HasNestedContent => (Children.Count > 0);
 
-        private void RasterizeChildren (UIOperationContext context, RasterizePasses pass, UnorderedList<Control> sequence) {
-            context.Pass = pass;
+        private void RasterizeChildren (UIOperationContext context, UnorderedList<Control> sequence) {
             // FIXME
             int layer = context.Renderer.Layer, maxLayer = layer;
 
@@ -182,9 +181,7 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             var seq = Children.InOrder(PaintOrderComparer.Instance);
-            RasterizeChildren(context, RasterizePasses.Below, seq);
-            RasterizeChildren(context, RasterizePasses.Content, seq);
-            RasterizeChildren(context, RasterizePasses.Above, seq);
+            RasterizeChildren(context, seq);
         }
 
         protected override void ApplyClipMargins (UIOperationContext context, ref RectF box) {
