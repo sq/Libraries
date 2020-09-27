@@ -304,11 +304,6 @@ namespace Squared.PRGUI {
         }
 
         protected virtual DecorationSettings MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state) {
-            if ((BackgroundColor != null) && (BackgroundColor.Value.From != BackgroundColor.Value.To)) {
-                var bgc = BackgroundColor.Value;
-                Console.WriteLine($"from {bgc.From} to {bgc.To} started {bgc.StartedWhen} ended {bgc.EndWhen} now {NowL} progress {bgc.GetProgress(NowL)}");
-            }
-
             return new DecorationSettings {
                 Box = box,
                 ContentBox = contentBox,

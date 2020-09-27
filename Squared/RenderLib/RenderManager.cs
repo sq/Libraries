@@ -53,6 +53,7 @@ namespace Squared.Render {
 
     public interface IBatchContainer {
         void Add (Batch batch);
+        RenderCoordinator Coordinator { get; }
         RenderManager RenderManager { get; }
         bool IsEmpty { get; }
         bool IsReleased { get; }
@@ -625,7 +626,7 @@ namespace Squared.Render {
             }
         }
 
-        public Frame CreateFrame () {
+        public Frame CreateFrame (RenderCoordinator coordinator) {
             lock (_FrameLock) {
                 /*
                 if (_FrameInUse)
@@ -640,7 +641,7 @@ namespace Squared.Render {
                     CollectAllocators();
                 _FrameInUse = true;
                 _Frame = new Frame();
-                _Frame.Initialize(this, PickFrameIndex());
+                _Frame.Initialize(coordinator, this, PickFrameIndex());
                 return _Frame;
             }
         }

@@ -118,6 +118,8 @@ namespace Squared.PRGUI {
         private Tooltip CachedTooltip;
         private Controls.StaticText CachedCompositionPreview;
 
+        private AutoRenderTarget ScratchRenderTarget;
+
         public ControlCollection Controls { get; private set; }
         public ITimeProvider TimeProvider;
 
@@ -680,6 +682,18 @@ namespace Squared.PRGUI {
                 MouseButtonHeld = LastMouseButtonState,
                 MousePosition = LastMousePosition
             };
+        }
+
+        internal RenderTarget2D GetScratchRenderTarget (RenderCoordinator coordinator) {
+            if (ScratchRenderTarget == null)
+                ScratchRenderTarget = new AutoRenderTarget(coordinator, (int)CanvasSize.X, (int)CanvasSize.Y);
+            else
+                ScratchRenderTarget.Resize((int)CanvasSize.X, (int)CanvasSize.Y);
+            return ScratchRenderTarget.Get();
+        }
+
+        internal void ReleaseScratchRenderTarget (RenderTarget2D rt) {
+            // FIXME: Do we need to do anything here?
         }
 
         public void Rasterize (ref ImperativeRenderer renderer) {

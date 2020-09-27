@@ -102,6 +102,9 @@ namespace Squared.Render {
             mipMap, preferredFormat, preferredDepthFormat, 
             preferredMultiSampleCount
         ) {
+            if (coordinator == null)
+                throw new ArgumentNullException(nameof(coordinator));
+
             GetOrCreateInstance(true);
         }
 

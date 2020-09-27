@@ -291,11 +291,9 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
-                floatingWindow.BackgroundColor = Tween<Color>.StartNow(windowBgColor, Color.Transparent, seconds: 1, now: Context.TimeProvider.Ticks);
-                Scheduler.Start(new Sleep(1))
-                    .RegisterOnComplete((_) => { floatingWindow.Visible = false; });
+                floatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.TimeProvider.Ticks);
                 Scheduler.Start(new Sleep(3))
-                    .RegisterOnComplete((_) => { floatingWindow.Visible = true; floatingWindow.BackgroundColor = windowBgColor; });
+                    .RegisterOnComplete((_) => { floatingWindow.Opacity = 1; });
             });
 
             UIRenderTarget = new AutoRenderTarget(

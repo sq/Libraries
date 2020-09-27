@@ -415,7 +415,7 @@ namespace Squared.Render {
             if (flushPendingDraws)
                 RunPendingDraws();
             SynchronousDrawsEnabled = false;
-            var frame = _FrameBeingPrepared = Manager.CreateFrame();
+            var frame = _FrameBeingPrepared = Manager.CreateFrame(this);
             return _FrameBeingPrepared;
         }
 
@@ -922,7 +922,7 @@ namespace Squared.Render {
             try {
                 materials.LazyViewTransformChanges = false;
                 materials.ApplyViewTransform(materials.ViewTransform, true);
-                using (var frame = Manager.CreateFrame()) {
+                using (var frame = Manager.CreateFrame(this)) {
                     frame.ChangeRenderTargets = false;
                     frame.Label = description;
                     if (viewTransform.HasValue)

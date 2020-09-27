@@ -30,7 +30,6 @@ namespace Squared.Render {
         public bool ChangeRenderTargets;
         public string Label;
 
-        public RenderManager RenderManager;
         public int Index;
         public long InitialBatchCount;
 
@@ -44,16 +43,14 @@ namespace Squared.Render {
         public Frame () {
         }
 
-        RenderManager IBatchContainer.RenderManager {
-            get {
-                return RenderManager;
-            }
-        }
+        public RenderCoordinator Coordinator { get; private set; }
+        public RenderManager RenderManager { get; private set; }
 
-        internal void Initialize (RenderManager renderManager, int index) {
+        internal void Initialize (RenderCoordinator coordinator, RenderManager renderManager, int index) {
             Batches.ListPool = _ListPool;
             Batches.Clear();
-            RenderManager = renderManager;
+            Coordinator = coordinator;
+            this.RenderManager = renderManager;
             Index = index;
             InitialBatchCount = Batch.LifetimeCount;
             State = (int)States.Initialized;

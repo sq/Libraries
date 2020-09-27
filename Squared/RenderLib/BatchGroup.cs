@@ -194,6 +194,7 @@ namespace Squared.Render {
             if (viewTransform.HasValue && (materialSet == null))
                 throw new ArgumentException("No view transform can be applied without a material set");
 
+            Coordinator = container.Coordinator;
             RenderManager = container.RenderManager;
             _Before = before;
             _After = after;
@@ -202,6 +203,11 @@ namespace Squared.Render {
             ViewTransform = viewTransform;
             IsReleased = false;
             OcclusionQuery = null;
+        }
+
+        public RenderCoordinator Coordinator {
+            get;
+            private set;
         }
 
         public RenderManager RenderManager {
@@ -215,7 +221,7 @@ namespace Squared.Render {
             }
         }
 
-        new public bool IsReleased { get; private set; }        
+        new public bool IsReleased { get; private set; }
 
         new public void Add (Batch batch) {
             if (batch == null)
