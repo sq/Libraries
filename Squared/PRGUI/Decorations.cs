@@ -29,11 +29,11 @@ namespace Squared.PRGUI.Decorations {
 
     public interface IWidgetDecorator<TData> : IBaseDecorator {
         Vector2 MinimumSize { get; }
-        void Rasterize (UIOperationContext context, DecorationSettings settings, ref TData data);
+        void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data);
     }
 
     public interface IDecorator : IBaseDecorator {
-        void Rasterize (UIOperationContext context, DecorationSettings settings);
+        void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
     }
 
     public interface IDecorationProvider {
@@ -69,8 +69,10 @@ namespace Squared.PRGUI.Decorations {
         }
     }
 
+    public delegate void DecoratorDelegate (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
+
     public sealed class DelegateDecorator : DelegateBaseDecorator, IDecorator {
-        public Action<UIOperationContext, DecorationSettings> Below, Content, Above, ContentClip;
+        public DecoratorDelegate Below, Content, Above, ContentClip;
 
         public DelegateDecorator Clone () {
             return new DelegateDecorator {
@@ -85,51 +87,51 @@ namespace Squared.PRGUI.Decorations {
             };
         }
 
-        void IDecorator.Rasterize (UIOperationContext context, DecorationSettings settings) {
+        void IDecorator.Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             switch (context.Pass) {
                 case RasterizePasses.Below:
                     if (Below != null)
-                        Below(context, settings);
+                        Below(context, ref renderer, settings);
                     return;
                 case RasterizePasses.Content:
                     if (Content != null)
-                        Content(context, settings);
+                        Content(context, ref renderer, settings);
                     return;
                 case RasterizePasses.Above:
                     if (Above != null)
-                        Above(context, settings);
+                        Above(context, ref renderer, settings);
                     return;
                 case RasterizePasses.ContentClip:
                     if (ContentClip != null)
-                        ContentClip(context, settings);
+                        ContentClip(context, ref renderer, settings);
                     return;
             }
         }
     }
 
-    public delegate void WidgetDecoratorRasterizer<TData> (UIOperationContext context, DecorationSettings settings, ref TData data);
+    public delegate void WidgetDecoratorRasterizer<TData> (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data);
 
     public sealed class DelegateWidgetDecorator<TData> : DelegateBaseDecorator, IWidgetDecorator<TData> {
         public Vector2 MinimumSize { get; set; }
         public WidgetDecoratorRasterizer<TData> Below, Content, Above, ContentClip;
 
-        void IWidgetDecorator<TData>.Rasterize (UIOperationContext context, DecorationSettings settings, ref TData data) {
+        void IWidgetDecorator<TData>.Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data) {
             switch (context.Pass) {
                 case RasterizePasses.Below:
                     if (Below != null)
-                        Below(context, settings, ref data);
+                        Below(context, ref renderer, settings, ref data);
                     return;
                 case RasterizePasses.Content:
                     if (Content != null)
-                        Content(context, settings, ref data);
+                        Content(context, ref renderer, settings, ref data);
                     return;
                 case RasterizePasses.Above:
                     if (Above != null)
-                        Above(context, settings, ref data);
+                        Above(context, ref renderer, settings, ref data);
                     return;
                 case RasterizePasses.ContentClip:
                     if (ContentClip != null)
-                        ContentClip(context, settings, ref data);
+                        ContentClip(context, ref renderer, settings, ref data);
                     return;
             }
         }
@@ -203,7 +205,7 @@ namespace Squared.PRGUI.Decorations {
         public Color? FloatingContainerOutlineColor, 
             FloatingContainerFillColor;
 
-        private void Button_Below (UIOperationContext context, DecorationSettings settings) {
+        private void Button_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             var state = settings.State;
 
             float alpha, thickness;
@@ -237,7 +239,7 @@ namespace Squared.PRGUI.Decorations {
             }
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: InteractableCornerRadius,
                 outlineRadius: thickness, outlineColor: baseColor * alpha,
@@ -247,14 +249,14 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void Button_Above (UIOperationContext context, DecorationSettings settings) {
+        private void Button_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             if (!settings.State.IsFlagged(ControlStates.Hovering))
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
             float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / settings.Box.Height));
 
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: InteractableCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
@@ -268,10 +270,10 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void Container_Below (UIOperationContext context, DecorationSettings settings) {
+        private void Container_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
             // FIXME: Should we draw the outline in Above?
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: ContainerCornerRadius,
                 outlineRadius: InertOutlineThickness, outlineColor: ContainerOutlineColor,
@@ -281,10 +283,10 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void FloatingContainer_Below (UIOperationContext context, DecorationSettings settings) {
+        private void FloatingContainer_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, FloatingContainerCornerRadius ?? ContainerCornerRadius);
             // FIXME: Should we draw the outline in Above?
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: FloatingContainerCornerRadius ?? ContainerCornerRadius,
                 outlineRadius: InertOutlineThickness, outlineColor: FloatingContainerOutlineColor ?? ContainerOutlineColor,
@@ -294,10 +296,10 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void Tooltip_Below (UIOperationContext context, DecorationSettings settings) {
+        private void Tooltip_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, FloatingContainerCornerRadius ?? ContainerCornerRadius);
             // FIXME: Should we draw the outline in Above?
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: TooltipCornerRadius ?? FloatingContainerCornerRadius ?? ContainerCornerRadius,
                 outlineRadius: InertOutlineThickness, outlineColor: TooltipOutlineColor,
@@ -307,13 +309,13 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void StaticText_Below (UIOperationContext context, DecorationSettings settings) {
+        private void StaticText_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             if (!settings.BackgroundColor.HasValue)
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
             // FIXME: Should we draw the outline in Above?
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: InertCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
@@ -321,11 +323,11 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void EditableText_Below (UIOperationContext context, DecorationSettings settings) {
+        private void EditableText_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             bool isFocused = settings.State.IsFlagged(ControlStates.Focused),
                 isHovering = settings.State.IsFlagged(ControlStates.Hovering);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: InertCornerRadius,
                 outlineRadius: isFocused
@@ -340,9 +342,9 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void EditableText_ContentClip (UIOperationContext context, DecorationSettings settings) {
+        private void EditableText_ContentClip (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: InertCornerRadius,
                 outlineRadius: 0, 
@@ -353,14 +355,14 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void EditableText_Above (UIOperationContext context, DecorationSettings settings) {
+        private void EditableText_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             if (!settings.State.IsFlagged(ControlStates.Focused))
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
             float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / settings.Box.Height));
 
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: InertCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
@@ -374,9 +376,9 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void Container_ContentClip (UIOperationContext context, DecorationSettings settings) {
+        private void Container_ContentClip (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: ContainerCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
@@ -385,7 +387,7 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void Scrollbar_Above (UIOperationContext context, DecorationSettings settings, ref ScrollbarState data) {
+        private void Scrollbar_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref ScrollbarState data) {
             var box = settings.Box;
 
             var vRadius = new Vector2(ScrollbarRadius);
@@ -402,7 +404,7 @@ namespace Squared.PRGUI.Decorations {
                 : new Vector2(box.Extent.X - ScrollbarSize, box.Top);
             var b = box.Extent;
 
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a + vRadius, b - vRadius,
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
@@ -420,9 +422,9 @@ namespace Squared.PRGUI.Decorations {
                 b.Y = box.Top + (sizePx * max);
             }
 
-            context.Renderer.Layer += 1;
+            renderer.Layer += 1;
 
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a + vRadius, b - vRadius,
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
@@ -432,10 +434,10 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void WindowTitle_Below (UIOperationContext context, DecorationSettings settings) {
+        private void WindowTitle_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, TitleCornerRadius);
             // FIXME: Should we draw the outline in Above?
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: TitleCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
@@ -444,7 +446,7 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void Selection_Content (UIOperationContext context, DecorationSettings settings) {
+        private void Selection_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, SelectionCornerRadius - SelectionPadding);
             var isCaret = (settings.Box.Width <= 0.5f);
             var isFocused = settings.State.IsFlagged(ControlStates.Focused);
@@ -457,7 +459,7 @@ namespace Squared.PRGUI.Decorations {
                 ? Color.White
                 : Color.Transparent;
 
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: SelectionCornerRadius,
                 outlineRadius: (isFocused && !isCaret) ? 0.7f : 0f, 
@@ -467,12 +469,12 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void CompositionPreview_Below (UIOperationContext context, DecorationSettings settings) {
+        private void CompositionPreview_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, SelectionCornerRadius - SelectionPadding);
             var fillColor = SelectionFillColor;
             var outlineColor = Color.White;
 
-            context.Renderer.RasterizeRectangle(
+            renderer.RasterizeRectangle(
                 a, b,
                 radius: SelectionCornerRadius,
                 outlineRadius: 0.7f, 
@@ -493,8 +495,8 @@ namespace Squared.PRGUI.Decorations {
                 color = color.Value.ToGrayscale(DisabledTextAlpha);
 
             font = DefaultFont;
-            material = context.Renderer.Materials?.Get(
-                context.Renderer.Materials?.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend
+            material = context.Materials.Get(
+                context.Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend
             );
             return true;
         }

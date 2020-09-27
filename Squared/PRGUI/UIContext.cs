@@ -121,6 +121,7 @@ namespace Squared.PRGUI {
         private AutoRenderTarget ScratchRenderTarget;
 
         public ControlCollection Controls { get; private set; }
+        public DefaultMaterialSet Materials { get; private set; }
         public ITimeProvider TimeProvider;
 
         /// <summary>
@@ -207,8 +208,9 @@ namespace Squared.PRGUI {
             UpdateComposition(text, cursorPosition, length);
         }
 
-        public UIContext (IGlyphSource font = null, ITimeProvider timeProvider = null)
+        public UIContext (DefaultMaterialSet materials, IGlyphSource font = null, ITimeProvider timeProvider = null)
             : this (
+                materials: materials,
                 decorations: new DefaultDecorations {
                     DefaultFont = font
                 },
@@ -216,10 +218,11 @@ namespace Squared.PRGUI {
             ) {
         }
 
-        public UIContext (IDecorationProvider decorations, ITimeProvider timeProvider = null) {
+        public UIContext (DefaultMaterialSet materials, IDecorationProvider decorations, ITimeProvider timeProvider = null) {
             Controls = new ControlCollection(this);
             Decorations = decorations;
             TimeProvider = TimeProvider ?? new DotNetTimeProvider();
+            Materials = materials;
         }
 
         internal bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false) {
@@ -690,15 +693,21 @@ namespace Squared.PRGUI {
 
         public void Rasterize (ref ImperativeRenderer renderer) {
             var context = MakeOperationContext();
-            context.PrepassRenderer = renderer.MakeSubgroup();
+            var passSet = new RasterizePassSet {
+                Prepass = renderer.MakeSubgroup()
+            };
 
-            // Ensure each control is rasterized in its own group of passes, so that top level controls can
-            //  properly overlap each other
             var seq = Controls.InOrder(Control.PaintOrderComparer.Instance);
             foreach (var control in seq) {
-                context.Renderer = renderer.MakeSubgroup();
-                context.Renderer.DepthStencilState = DepthStencilState.None;
-                control.Rasterize(context);
+                // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
+                //  overlap each other, at the cost of more draw calls.
+                passSet.Below = renderer.MakeSubgroup();
+                passSet.Content = renderer.MakeSubgroup();
+                passSet.Above = renderer.MakeSubgroup();
+                passSet.Below.DepthStencilState = 
+                    passSet.Content.DepthStencilState = 
+                    passSet.Above.DepthStencilState = DepthStencilState.None;
+                control.Rasterize(context, ref passSet);
             }
         }
 
@@ -707,12 +716,15 @@ namespace Squared.PRGUI {
         }
     }
 
+    public struct RasterizePassSet {
+        public ImperativeRenderer Prepass, Below, Content, Above;
+    }
+
     public class UIOperationContext {
         public UIContext UIContext;
+        public DefaultMaterialSet Materials => UIContext.Materials;
         public IDecorationProvider DecorationProvider => UIContext.Decorations;
         public LayoutContext Layout => UIContext.Layout;
-        public ImperativeRenderer PrepassRenderer;
-        public ImperativeRenderer Renderer;
         public RasterizePasses Pass;
         public float Now { get; internal set; }
         public KeyboardModifiers Modifiers { get; internal set; }
@@ -722,8 +734,6 @@ namespace Squared.PRGUI {
         public UIOperationContext Clone () {
             return new UIOperationContext {
                 UIContext = UIContext,
-                PrepassRenderer = PrepassRenderer,
-                Renderer = Renderer,
                 Pass = Pass,
                 Now = Now,
                 Modifiers = Modifiers,

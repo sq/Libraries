@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
@@ -97,19 +98,33 @@ namespace Squared.PRGUI.Controls {
 
         protected override bool ShouldClipContent => ClipChildren && (Children.Count > 0);
         // FIXME: Always true?
-        protected override bool HasNestedContent => (Children.Count > 0);
+        protected override bool HasChildren => (Children.Count > 0);
 
-        private void RasterizeChildren (UIOperationContext context, UnorderedList<Control> sequence) {
+        protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet) {
             // FIXME
-            int layer = context.Renderer.Layer, maxLayer = layer;
+            int layer1 = passSet.Below.Layer,
+                layer2 = passSet.Content.Layer,
+                layer3 = passSet.Above.Layer,
+                maxLayer1 = layer1,
+                maxLayer2 = layer2,
+                maxLayer3 = layer3;
 
+            var sequence = Children.InOrder(PaintOrderComparer.Instance);
             foreach (var item in sequence) {
-                context.Renderer.Layer = layer;
-                item.Rasterize(context);
-                maxLayer = Math.Max(maxLayer, context.Renderer.Layer);
+                passSet.Below.Layer = layer1;
+                passSet.Content.Layer = layer2;
+                passSet.Above.Layer = layer3;
+
+                item.Rasterize(context, ref passSet);
+
+                maxLayer1 = Math.Max(maxLayer1, passSet.Below.Layer);
+                maxLayer2 = Math.Max(maxLayer2, passSet.Content.Layer);
+                maxLayer3 = Math.Max(maxLayer3, passSet.Above.Layer);
             }
 
-            context.Renderer.Layer = maxLayer;
+            passSet.Below.Layer = maxLayer1;
+            passSet.Content.Layer = maxLayer2;
+            passSet.Above.Layer = maxLayer3;
         }
 
         protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
@@ -135,8 +150,8 @@ namespace Squared.PRGUI.Controls {
         protected void UpdateScrollbars (UIOperationContext context, DecorationSettings settings) {
         }
 
-        protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, settings, decorations);
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, ref renderer, settings, decorations);
 
             // FIXME: This should be done somewhere else
             if (Scrollable) {
@@ -167,21 +182,12 @@ namespace Squared.PRGUI.Controls {
                 HScrollbar.HasCounterpart = VScrollbar.HasCounterpart = (ShowHorizontalScrollbar && ShowVerticalScrollbar);
 
                 if (ShowHorizontalScrollbar)
-                    scrollbar?.Rasterize(context, settings, ref HScrollbar);
+                    scrollbar?.Rasterize(context, ref renderer, settings, ref HScrollbar);
                 if (ShowVerticalScrollbar)
-                    scrollbar?.Rasterize(context, settings, ref VScrollbar);
+                    scrollbar?.Rasterize(context, ref renderer, settings, ref VScrollbar);
             } else {
                 ScrollOffset = Vector2.Zero;
             }
-
-            if (context.Pass != RasterizePasses.Content)
-                return;
-
-            if (Children.Count == 0)
-                return;
-
-            var seq = Children.InOrder(PaintOrderComparer.Instance);
-            RasterizeChildren(context, seq);
         }
 
         protected override void ApplyClipMargins (UIOperationContext context, ref RectF box) {

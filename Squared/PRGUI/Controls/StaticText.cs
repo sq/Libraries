@@ -144,8 +144,8 @@ namespace Squared.PRGUI.Controls {
                 return null;
         }
 
-        protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, settings, decorations);
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, ref renderer, settings, decorations);
 
             if (context.Pass != RasterizePasses.Content)
                 return;
@@ -183,7 +183,7 @@ namespace Squared.PRGUI.Controls {
                     break;
             }
 
-            context.Renderer.DrawMultiple(
+            renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
                 material: material, samplerState: RenderStates.Text, multiplyColor: overrideColor
             );

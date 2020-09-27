@@ -105,8 +105,8 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, settings, decorations);
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, ref renderer, settings, decorations);
 
             // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
             UpdatePosition(Position, context.UIContext, settings.Box);
@@ -133,8 +133,8 @@ namespace Squared.PRGUI {
                 subSettings.Box = titleBox;
                 subSettings.ContentBox = titleContentBox;
 
-                titleDecorator.Rasterize(context, subSettings);
-                context.Renderer.DrawMultiple(
+                titleDecorator.Rasterize(context, ref renderer, subSettings);
+                renderer.DrawMultiple(
                     layout.DrawCalls, new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top),
                     samplerState: RenderStates.Text, multiplyColor: titleColor.Value
                 );

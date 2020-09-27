@@ -684,8 +684,8 @@ namespace Squared.PRGUI.Controls {
             return LastLocalCursorPosition;
         }
 
-        protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, settings, decorations);
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, ref renderer, settings, decorations);
 
             MarkSelection();
 
@@ -725,13 +725,13 @@ namespace Squared.PRGUI.Controls {
                     ContentBox = selBox
                 };
 
-                selectionDecorator.Rasterize(context, selSettings);
-                context.Renderer.Layer += 1;
+                selectionDecorator.Rasterize(context, ref renderer, selSettings);
+                renderer.Layer += 1;
             }
 
             ColorizeSelection(layout.DrawCalls, selection, context, settings.State, selectionDecorator);
 
-            context.Renderer.DrawMultiple(
+            renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset,
                 material: textMaterial, samplerState: RenderStates.Text
             );

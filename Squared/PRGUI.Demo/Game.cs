@@ -201,7 +201,7 @@ namespace PRGUI.Demo {
                 TooltipContent = "This button toggles whether the floating panel is above or below the main container"
             };
 
-            Context = new UIContext(decorations) {
+            Context = new UIContext(Materials, decorations) {
                 Controls = {
                     new Container {
                         BackgroundColor = new Color(48, 48, 48),
