@@ -15,7 +15,6 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-
     public class EditableText : Control {
         // FIXME
         public static readonly bool Multiline = false;
@@ -27,6 +26,15 @@ namespace Squared.PRGUI.Controls {
         public const float AutoscrollClickTimeout = 0.25f;
         public const float ScrollTurboThreshold = 420f, ScrollFastThreshold = 96f;
         public const float ScrollLimitPerFrameSlow = 6f, ScrollLimitPerFrameFast = 32f;
+
+        /// <summary>
+        /// Pre-processes any new text being inserted
+        /// </summary>
+        public Func<string, string> StringFilter = null;
+        /// <summary>
+        /// Pre-processes any new characters being inserted. Return null to block insertion.
+        /// </summary>
+        public Func<char, char?> CharacterFilter = null;
 
         public Vector2 ScrollOffset;
 
@@ -51,6 +59,32 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = true;
             AcceptsFocus = true;
             AcceptsTextInput = true;
+        }
+
+        public static EditableText Integer () {
+            return new EditableText {
+                CharacterFilter = (ch) =>
+                    (char.IsNumber(ch) || (ch == '-'))
+                        ? ch
+                        : (char?)null,
+                StringFilter = (str) =>
+                    int.TryParse(str, out int temp)
+                        ? str
+                        : null
+            };
+        }
+
+        public static EditableText Double () {
+            return new EditableText {
+                CharacterFilter = (ch) =>
+                    (char.IsNumber(ch) || (ch == '-') || (ch == '.'))
+                        ? ch
+                        : (char?)null,
+                StringFilter = (str) =>
+                    double.TryParse(str, out double temp)
+                        ? str
+                        : null
+            };
         }
 
         public Pair<int> Selection {
@@ -94,6 +128,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         private string FilterInput (string input) {
+            if (StringFilter != null)
+                input = StringFilter(input);
+
             if (!Multiline) {
                 var idx = input.IndexOfAny(new[] { '\r', '\n' });
                 if (idx >= 0)
@@ -101,6 +138,18 @@ namespace Squared.PRGUI.Controls {
             }
 
             return input;
+        }
+
+        private char? FilterInput (char input) {
+            char? result = input;
+
+            if (CharacterFilter != null)
+                result = CharacterFilter(input);
+
+            if (char.IsControl(result.Value))
+                result = null;
+
+            return result;
         }
 
         private void SetSelection (Pair<int> value, int scrollBias) {
@@ -235,7 +284,7 @@ namespace Squared.PRGUI.Controls {
             var virtualPosition = position + ScrollOffset;
 
             if (name == UIEvents.MouseDown) {
-                DisableAutoscrollUntil = (float)Time.Seconds + AutoscrollClickTimeout;
+                DisableAutoscrollUntil = Now + AutoscrollClickTimeout;
 
                 ClickStartVirtualPosition = virtualPosition;
                 var currentCharacter = MapVirtualPositionToCharacterIndex(virtualPosition, null);
@@ -269,7 +318,7 @@ namespace Squared.PRGUI.Controls {
                 }
 
                 if (name != UIEvents.MouseUp)
-                    DisableAutoscrollUntil = (float)Time.Seconds + AutoscrollClickTimeout;
+                    DisableAutoscrollUntil = Now + AutoscrollClickTimeout;
 
                 return true;
             } else
@@ -300,12 +349,20 @@ namespace Squared.PRGUI.Controls {
         }
 
         private Pair<int> Insert (int offset, char newText) {
+            var filtered = FilterInput(newText);
+            if (!filtered.HasValue)
+                return default(Pair<int>);
+
             Builder.Insert(offset, newText);
             ValueChanged();
             return new Pair<int>(offset, offset + 1);
         }
 
         private Pair<int> Insert (int offset, string newText) {
+            var filtered = FilterInput(newText);
+            if (filtered == null)
+                return default(Pair<int>);
+
             Builder.Insert(offset, newText);
             ValueChanged();
             return new Pair<int>(offset, offset + newText.Length);
@@ -637,7 +694,7 @@ namespace Squared.PRGUI.Controls {
             var selection = MarkSelection();
             var selBounds = GetBoundsForSelection(selection);
 
-            bool isAutoscrollTimeLocked = (context.AnimationTime < DisableAutoscrollUntil);
+            bool isAutoscrollTimeLocked = (context.Now < DisableAutoscrollUntil);
             bool isMouseInBounds = context.UIContext.MouseOver == this;
             if ((!isAutoscrollTimeLocked && !context.MouseButtonHeld) || !isMouseInBounds)
                 UpdateScrollOffset(settings.ContentBox, selBounds, layout);

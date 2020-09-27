@@ -159,8 +159,8 @@ namespace Squared.Util {
         private static readonly Dictionary<OperatorKey, Delegate> CachedDelegates = 
             new Dictionary<OperatorKey, Delegate>(new OperatorKeyComparer());
 
-#if (WINDOWS || DYNAMICMETHOD) && (!NODYNAMICMETHOD)
-        private static TDelegate GetOperatorDelegate<TDelegate> (Operators op, Type[] argumentTypes)
+#if !NODYNAMICMETHOD
+        private static TDelegate GetOperatorDelegate<TDelegate> (Operators op, Type[] argumentTypes, bool optional = false)
             where TDelegate : class
         {
             var key = new OperatorKey {
@@ -185,7 +185,13 @@ namespace Squared.Util {
             );
 
             ILGenerator ilGenerator = dm.GetILGenerator();
-            GenerateArithmeticIL(ilGenerator, argumentTypes, op);
+            var exc = GenerateArithmeticIL(ilGenerator, argumentTypes, op);
+            if (exc != null) {
+                if (optional)
+                    return null;
+                else
+                    throw exc;
+            }
             result = dm.CreateDelegate(delegateType);
 
             lock (CachedDelegates)
@@ -194,7 +200,7 @@ namespace Squared.Util {
             return (TDelegate)(object)result;
         }
 #else
-        private static TDelegate GetOperatorDelegate<TDelegate> (Operators op, Type[] argumentTypes)
+        private static TDelegate GetOperatorDelegate<TDelegate> (Operators op, Type[] argumentTypes, bool optional = false)
             where TDelegate : class {
             var name = _OperatorInfo[op].MethodName;
             var methodInfo = argumentTypes[0].GetMethod(name, argumentTypes);
@@ -205,8 +211,11 @@ namespace Squared.Util {
             if (methodInfo == null)
                 methodInfo = typeof(PrimitiveOperators).GetMethod(name, argumentTypes);
 
-            if (methodInfo == null)
+            if (methodInfo == null) {
+                if (optional)
+                    return null;
                 throw new InvalidOperationException(String.Format("No operator named {0} available for type {1}", name, argumentTypes[0].Name));
+            }
 
             object del = Delegate.CreateDelegate(typeof(TDelegate), null, methodInfo);
             return (TDelegate)del;
@@ -220,23 +229,23 @@ namespace Squared.Util {
         private static ThreadLocal<Type[]> UnaryScratchArray = new ThreadLocal<Type[]>(() => new Type[1]);
         private static ThreadLocal<Type[]> BinaryScratchArray = new ThreadLocal<Type[]>(() => new Type[2]);
 
-        public static UnaryOperatorMethod<T> GetOperator<T> (Operators op) {
+        public static UnaryOperatorMethod<T> GetOperator<T> (Operators op, bool optional = false) {
             if (!_OperatorInfo[op].IsUnary)
                 throw new InvalidOperationException("Operator is not unary");
 
             var usa = UnaryScratchArray.Value;
             usa[0] = typeof(T);
-            return GetOperatorDelegate<UnaryOperatorMethod<T>>(op, usa);
+            return GetOperatorDelegate<UnaryOperatorMethod<T>>(op, usa, optional: optional);
         }
 
-        public static BinaryOperatorMethod<T, U> GetOperator<T, U> (Operators op) {
+        public static BinaryOperatorMethod<T, U> GetOperator<T, U> (Operators op, bool optional = false) {
             if (_OperatorInfo[op].IsUnary)
                 throw new InvalidOperationException("Operator is not binary");
 
             var bsa = BinaryScratchArray.Value;
             bsa[0] = typeof(T);
             bsa[1] = typeof(U);
-            return GetOperatorDelegate<BinaryOperatorMethod<T, U>>(op, bsa);
+            return GetOperatorDelegate<BinaryOperatorMethod<T, U>>(op, bsa, optional: optional);
         }
 
         public static T InvokeOperator<T> (Operators op, T value) {
@@ -489,7 +498,7 @@ namespace Squared.Util {
 
             var oi = GetOperatorInfo(expr.NodeType);
 
-            GenerateOperatorIL(es.ILGenerator, new [] { typeLeft, typeRight }, GetOperator(expr.NodeType));
+            GenerateOperatorIL(es.ILGenerator, new [] { typeLeft, typeRight }, oi.MethodName, oi.OpCode);
 
             if (expr.Conversion != null)
                 return EmitExpression(expr.Conversion, es);
@@ -661,16 +670,18 @@ namespace Squared.Util {
             result = newMethod.CreateDelegate(t) as T;
         }
 
-        internal static void GenerateArithmeticIL (ILGenerator ilGenerator, Type[] argumentTypes, Operators op) {
+        internal static Exception GenerateArithmeticIL (ILGenerator ilGenerator, Type[] argumentTypes, Operators op) {
             if (argumentTypes.Length >= 1)
                 ilGenerator.Emit(OpCodes.Ldarg_0);
             
             if (argumentTypes.Length >= 2)
                 ilGenerator.Emit(OpCodes.Ldarg_1);
 
-            GenerateOperatorIL(ilGenerator, argumentTypes, op);
+            var oi = _OperatorInfo[op];
+            var result = GenerateOperatorIL(ilGenerator, argumentTypes, oi.MethodName, oi.OpCode);
 
             ilGenerator.Emit(OpCodes.Ret);
+            return result;
         }
 
         internal static Type GetPrimitiveResult (Type lhs, Type rhs) {
@@ -686,28 +697,27 @@ namespace Squared.Util {
             }
         }
 
-        internal static Type GenerateOperatorIL (ILGenerator ilGenerator, Type[] argumentTypes, Operators op) {
-            var oi = _OperatorInfo[op];
-
+        internal static Exception GenerateOperatorIL (ILGenerator ilGenerator, Type[] argumentTypes, string methodName, OpCode? opCode) {
             var lhs = argumentTypes[0];
             Type rhs = lhs;
 
             if (argumentTypes.Length > 1)
                 rhs = argumentTypes[1];
 
-            if (lhs.IsPrimitive && rhs.IsPrimitive) {
-                ilGenerator.Emit(oi.OpCode);
-                return GetPrimitiveResult(lhs, rhs);
+            if ((lhs.IsPrimitive && rhs.IsPrimitive) && opCode.HasValue) {
+                ilGenerator.Emit(opCode.Value);
+                GetPrimitiveResult(lhs, rhs);
+                return null;
             } else {
-                MethodInfo operatorMethod = lhs.GetMethod(oi.MethodName, new Type[] { lhs, rhs }, null);
+                MethodInfo operatorMethod = lhs.GetMethod(methodName, new Type[] { lhs, rhs }, null);
                 if (operatorMethod != null) {
                     ilGenerator.EmitCall(OpCodes.Call, operatorMethod, null);
-                    return operatorMethod.ReturnType;
+                    return null;
                 } else {
-                    throw new InvalidOperationException(
+                    return new InvalidOperationException(
                         String.Format(
                             "GenerateOperatorIL failed for operator {0} with operands {1}, {2}: operation not implemented",
-                            op, lhs, rhs
+                            methodName, lhs, rhs
                         )
                     );
                 }

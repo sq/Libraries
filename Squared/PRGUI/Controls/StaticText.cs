@@ -10,13 +10,14 @@ using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
+using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class StaticText : Control {
         public const bool DiagnosticText = false;
 
-        public Color? TextColor = null;
+        public Tween<Color>? TextColor = null;
         public Material TextMaterial = null;
         public DynamicStringLayout Content = new DynamicStringLayout();
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
@@ -158,7 +159,7 @@ namespace Squared.PRGUI.Controls {
                 Content.LineBreakAtX = textWidthLimit;
             }
 
-            Color? overrideColor = TextColor;
+            Color? overrideColor = TextColor?.Get(context.Now);
             Material material;
             GetTextSettings(context, decorations, settings.State, out material, ref overrideColor);
 

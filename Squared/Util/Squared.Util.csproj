@@ -133,6 +133,7 @@
     <Compile Include="Text.cs" />
     <Compile Include="TimeProvider.cs" />
     <Compile Include="Tuples.cs" />
+    <Compile Include="Tween.cs" />
     <Compile Include="UnorderedList.cs" />
   </ItemGroup>
   <ItemGroup>

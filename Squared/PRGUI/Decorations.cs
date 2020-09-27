@@ -228,7 +228,7 @@ namespace Squared.PRGUI.Decorations {
             } else if (state.IsFlagged(ControlStates.Hovering)) {
                 alpha = hasColor ? 0.9f : 0.75f;
                 thickness = ActiveOutlineThickness;
-                pulse = Arithmetic.PulseSine(context.AnimationTime / 3.33f, 0f, 0.08f);
+                pulse = Arithmetic.PulseSine(context.Now / 3.33f, 0f, 0.08f);
             } else {
                 alpha = hasColor 
                     ? (state.IsFlagged(ControlStates.Focused) ? 0.9f : 0.8f)
@@ -261,8 +261,8 @@ namespace Squared.PRGUI.Decorations {
                 innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
                 fillMode: RasterFillMode.Angular,
                 fillSize: fillSize,
-                fillOffset: -Arithmetic.PulseSine(context.AnimationTime / 4f, 0f, 0.05f),
-                fillAngle: Arithmetic.PulseCyclicExp(context.AnimationTime / 2f, 3),
+                fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
+                fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
                 annularRadius: 1.1f,
                 blendState: BlendState.Additive
             );
@@ -367,8 +367,8 @@ namespace Squared.PRGUI.Decorations {
                 innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
                 fillMode: RasterFillMode.Angular,
                 fillSize: fillSize,
-                fillOffset: -Arithmetic.PulseSine(context.AnimationTime / 4f, 0f, 0.05f),
-                fillAngle: Arithmetic.PulseCyclicExp(context.AnimationTime / 2f, 3),
+                fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
+                fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
                 annularRadius: 1.1f,
                 blendState: BlendState.Additive
             );
@@ -450,7 +450,7 @@ namespace Squared.PRGUI.Decorations {
             var isFocused = settings.State.IsFlagged(ControlStates.Focused);
             var fillColor = SelectionFillColor *
                 (isFocused
-                    ? Arithmetic.Pulse(context.AnimationTime, 0.65f, 0.8f)
+                    ? Arithmetic.Pulse(context.Now, 0.65f, 0.8f)
                     : 0.55f
                 ) * (isCaret ? 1.8f : 1f);
             var outlineColor = (isFocused && !isCaret)

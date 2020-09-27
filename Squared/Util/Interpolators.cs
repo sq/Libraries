@@ -26,23 +26,34 @@ namespace Squared.Util {
         private static HermiteFn _Hermite = null;
 
         static Interpolators () {
-            CompileFallbackExpressions();
-            CompileNativeExpressions();
+            var m_lerp = (typeof(T).GetMethod("Lerp", BindingFlags.Static | BindingFlags.Public)
+                ?.CreateDelegate(typeof(LinearFn))) as LinearFn;
+            CompileFallbackExpressions(m_lerp);
+            CompileNativeExpressions(m_lerp);
         }
 
-        private static void CompileFallbackExpressions () {
-            var m_sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract);
-            var m_add = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Add);
-            var m_mul_float = Arithmetic.GetOperator<T, float>(Arithmetic.Operators.Multiply);
+        private static void CompileFallbackExpressions (LinearFn m_lerp) {
+            var m_sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract, optional: m_lerp != null);
+            var m_add = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Add, optional: m_lerp != null);
+            var m_mul_float = Arithmetic.GetOperator<T, float>(Arithmetic.Operators.Multiply, optional: m_lerp != null);
 
-            _Linear = (a, b, x) => {
-                return m_add(a, m_mul_float(m_sub(b, a), x));
-            };
+            if (m_lerp != null)
+                _Linear = m_lerp;
+            else
+                _Linear = (a, b, x) => {
+                    return m_add(a, m_mul_float(m_sub(b, a), x));
+                };
 
-            _Cosine = (a, b, x) => {
-                var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
-                return m_add(a, m_mul_float(m_sub(b, a), temp));
-            };
+            if (m_lerp != null)
+                _Cosine = (a, b, x) => {
+                    var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
+                    return m_lerp(a, b, temp);
+                };
+            else
+                _Cosine = (a, b, x) => {
+                    var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
+                    return m_add(a, m_mul_float(m_sub(b, a), temp));
+                };
 
             _CubicP = (a, b, c, d) => {
                 return m_sub(m_sub(d, c), m_sub(a, b));
@@ -84,19 +95,22 @@ namespace Squared.Util {
             };
         }
 
-        private static void CompileNativeExpressions () {
-#if WINDOWS
-            Arithmetic.CompileExpression(
-                (a, b, x) =>
-                    a + ((b - a) * x),
-                out _Linear
-            );
+        private static void CompileNativeExpressions (LinearFn m_lerp) {
+#if !DYNAMICMETHOD
+            if (m_lerp == null)
+                Arithmetic.CompileExpression(
+                    (a, b, x) =>
+                        a + ((b - a) * x),
+                    out _Linear
+                );
 
-            Arithmetic.CompileExpression(
-                (a, b, x) =>
-                    a + ((b - a) * ((1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f)),
-                out _Cosine
-            );
+            // FIXME: This is the best we can do
+            if (m_lerp == null)
+                Arithmetic.CompileExpression(
+                    (a, b, x) =>
+                        a + ((b - a) * ((1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f)),
+                    out _Cosine
+                );
 
             Arithmetic.CompileExpression(
                 (a, b, c, d) =>

@@ -173,8 +173,9 @@ namespace PRGUI.Demo {
                 TooltipContent = "Hide this window temporarily"
             };
 
+            var windowBgColor = new Color(128, 136, 140);
             var floatingWindow = new Window {
-                BackgroundColor = new Color(128, 136, 140),
+                BackgroundColor = windowBgColor,
                 Position = new Vector2(220, 140),
                 // MinimumWidth = 400,
                 // MinimumHeight = 240,
@@ -290,9 +291,11 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
-                floatingWindow.Visible = false;
-                var f = Scheduler.Start(new Sleep(3));
-                f.RegisterOnComplete((_) => { floatingWindow.Visible = true; });
+                floatingWindow.BackgroundColor = Tween<Color>.StartNow(windowBgColor, Color.Transparent, seconds: 1, now: Context.TimeProvider.Ticks);
+                Scheduler.Start(new Sleep(1))
+                    .RegisterOnComplete((_) => { floatingWindow.Visible = false; });
+                Scheduler.Start(new Sleep(3))
+                    .RegisterOnComplete((_) => { floatingWindow.Visible = true; floatingWindow.BackgroundColor = windowBgColor; });
             });
 
             UIRenderTarget = new AutoRenderTarget(

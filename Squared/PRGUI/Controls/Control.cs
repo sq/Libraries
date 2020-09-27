@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
+using Squared.Util;
 
 namespace Squared.PRGUI {
     public abstract class Control {
@@ -32,7 +33,7 @@ namespace Squared.PRGUI {
         public float? FixedWidth, FixedHeight;
         public float? MinimumWidth, MinimumHeight;
         public float? MaximumWidth, MaximumHeight;
-        public Color? BackgroundColor;
+        public Tween<Color>? BackgroundColor;
 
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
@@ -71,11 +72,21 @@ namespace Squared.PRGUI {
         protected WeakReference<UIContext> WeakContext = null;
         protected WeakReference<Control> WeakParent = null;
 
+        protected float Now => Context?.Now ?? (float)Time.Seconds;
+        protected long NowL => Context?.TimeProvider?.Ticks ?? Time.Ticks;
+
         public UIContext Context {
             get {
-                if (WeakContext == null)
+                if (WeakContext == null) {
+                    if (TryGetParent(out Control parent)) {
+                        var result = parent.Context;
+                        if (result != null) {
+                            SetContext(result);
+                            return result;
+                        }
+                    }
                     return null;
-                else if (WeakContext.TryGetTarget(out UIContext result))
+                } else if (WeakContext.TryGetTarget(out UIContext result))
                     return result;
                 else
                     return null;
@@ -293,11 +304,16 @@ namespace Squared.PRGUI {
         }
 
         protected virtual DecorationSettings MakeDecorationSettings (ref RectF box, ref RectF contentBox, ControlStates state) {
+            if ((BackgroundColor != null) && (BackgroundColor.Value.From != BackgroundColor.Value.To)) {
+                var bgc = BackgroundColor.Value;
+                Console.WriteLine($"from {bgc.From} to {bgc.To} started {bgc.StartedWhen} ended {bgc.EndWhen} now {NowL} progress {bgc.GetProgress(NowL)}");
+            }
+
             return new DecorationSettings {
                 Box = box,
                 ContentBox = contentBox,
                 State = state,
-                BackgroundColor = BackgroundColor
+                BackgroundColor = BackgroundColor?.Get(NowL)
             };
         }
 
@@ -368,8 +384,9 @@ namespace Squared.PRGUI {
         internal void SetContext (UIContext context) {
             if (WeakContext != null)
                 throw new InvalidOperationException("UI context already set");
+            // HACK to handle scenarios where a tree of controls are created without a context
             if (context == null)
-                throw new ArgumentNullException(nameof(context));
+                return;
 
             WeakContext = new WeakReference<UIContext>(context, false);
         }

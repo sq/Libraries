@@ -118,7 +118,8 @@ namespace Squared.PRGUI {
         private Tooltip CachedTooltip;
         private Controls.StaticText CachedCompositionPreview;
 
-        public ControlCollection Controls;
+        public ControlCollection Controls { get; private set; }
+        public ITimeProvider TimeProvider;
 
         /// <summary>
         /// The control that currently has the mouse captured (if a button is pressed)
@@ -136,6 +137,8 @@ namespace Squared.PRGUI {
         private bool IsTextInputRegistered = false;
         private bool IsCompositionActive = false;
 
+        public float Now => (float)TimeProvider.Seconds;
+
         private Control _Focused;
         public Control Focused {
             get => _Focused;
@@ -152,15 +155,6 @@ namespace Squared.PRGUI {
                 if (_Focused != null)
                     FireEvent(UIEvents.GotFocus, _Focused, previous);
             }
-        }
-
-        public UIContext (IGlyphSource font = null)
-            : this (
-                new DefaultDecorations {
-                    DefaultFont = font
-                }
-            ) {
-            Controls = new ControlCollection(this);
         }
 
         private void TextInputEXT_TextInput (char ch) {
@@ -211,8 +205,19 @@ namespace Squared.PRGUI {
             UpdateComposition(text, cursorPosition, length);
         }
 
-        public UIContext (IDecorationProvider decorations) {
+        public UIContext (IGlyphSource font = null, ITimeProvider timeProvider = null)
+            : this (
+                decorations: new DefaultDecorations {
+                    DefaultFont = font
+                },
+                timeProvider: timeProvider
+            ) {
+        }
+
+        public UIContext (IDecorationProvider decorations, ITimeProvider timeProvider = null) {
+            Controls = new ControlCollection(this);
             Decorations = decorations;
+            TimeProvider = TimeProvider ?? new DotNetTimeProvider();
         }
 
         internal bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false) {
@@ -292,13 +297,7 @@ namespace Squared.PRGUI {
         }
 
         public void UpdateLayout () {
-            var context = new UIOperationContext {
-                UIContext = this,
-                AnimationTime = (float)Time.Seconds,
-                Modifiers = CurrentModifiers,
-                MouseButtonHeld = LastMouseButtonState,
-                MousePosition = LastMousePosition
-            };
+            var context = MakeOperationContext();
 
             Layout.Clear();
 
@@ -392,7 +391,7 @@ namespace Squared.PRGUI {
             if (LastMouseButtonState)
                 return;
 
-            var now = Time.Seconds;
+            var now = Now;
             var tooltipContent = default(AbstractString);
             if (Hovering != null)
                 tooltipContent = GetTooltipContent(Hovering);
@@ -431,7 +430,7 @@ namespace Squared.PRGUI {
             if (IsCompositionActive)
                 return;
 
-            var now = Time.Seconds;
+            var now = Now;
             for (int i = 0; i < 255; i++) {
                 var key = (Keys)i;
 
@@ -527,7 +526,7 @@ namespace Squared.PRGUI {
             if (target == null || (target.AcceptsFocus && target.Enabled))
                 Focused = target;
             // FIXME: Suppress if disabled?
-            LastMouseDownTime = Time.Seconds;
+            LastMouseDownTime = Now;
             FireEvent(UIEvents.MouseDown, target, MakeMouseEventArgs(target, globalPosition));
         }
 
@@ -627,7 +626,7 @@ namespace Squared.PRGUI {
                 (LastClickTarget == target) &&
                 (movedDistance < MinimumMovementDistance)
             ) {
-                var elapsed = Time.Seconds - LastClickTime;
+                var elapsed = Now - LastClickTime;
                 return elapsed < DoubleClickWindowSize;
             }
             return false;
@@ -676,7 +675,7 @@ namespace Squared.PRGUI {
         private UIOperationContext MakeOperationContext () {
             return new UIOperationContext {
                 UIContext = this,
-                AnimationTime = (float)Time.Seconds,
+                Now = Now,
                 Modifiers = CurrentModifiers,
                 MouseButtonHeld = LastMouseButtonState,
                 MousePosition = LastMousePosition
@@ -709,7 +708,7 @@ namespace Squared.PRGUI {
         public LayoutContext Layout => UIContext.Layout;
         public ImperativeRenderer Renderer;
         public RasterizePasses Pass;
-        public float AnimationTime { get; internal set; }
+        public float Now { get; internal set; }
         public KeyboardModifiers Modifiers { get; internal set; }
         public bool MouseButtonHeld { get; internal set; }
         public Vector2 MousePosition { get; internal set; }
@@ -719,7 +718,7 @@ namespace Squared.PRGUI {
                 UIContext = UIContext,
                 Renderer = Renderer,
                 Pass = Pass,
-                AnimationTime = AnimationTime,
+                Now = Now,
                 Modifiers = Modifiers,
                 MouseButtonHeld = MouseButtonHeld,
                 MousePosition = MousePosition

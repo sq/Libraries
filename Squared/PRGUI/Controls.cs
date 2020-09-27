@@ -218,8 +218,8 @@ namespace Squared.PRGUI {
             if (Items.Contains(control))
                 throw new InvalidOperationException("Control already in collection");
 
-            Items.Add(control);
             control.SetParent(Parent);
+            Items.Add(control);
         }
 
         public void Remove (Control control) {
