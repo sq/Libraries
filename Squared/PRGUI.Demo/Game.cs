@@ -123,7 +123,7 @@ namespace PRGUI.Demo {
                 Console.WriteLine("\\U00{0:X6}", ch);
             }
 
-            var titleFont = new FreeTypeFont.FontSize(firaSans, 12f);
+            var titleFont = new FreeTypeFont.FontSize(firaSans, 14f);
             var tooltipFont = new FreeTypeFont.FontSize(firaSans, 16f);
 
             Font = new FallbackGlyphSource(firaSans, jpFallback);
@@ -132,7 +132,7 @@ namespace PRGUI.Demo {
 
             TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
             TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.66f));
-            TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.5f * DPIFactor);
+            TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.75f * DPIFactor);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1f);
 
             var hoveringCtl = new StaticText {
@@ -153,7 +153,7 @@ namespace PRGUI.Demo {
 
             var textfield = new EditableText {
                 Text = testString,
-                BackgroundColor = new Color(8, 64, 16),
+                BackgroundColor = new Color(40, 56, 60),
                 // FIXME: This should be at least partially automatic
                 MinimumWidth = 400,
                 Selection = new Pair<int>(1, testString.Length - 4),
@@ -170,7 +170,7 @@ namespace PRGUI.Demo {
                 TooltipContent = "Hide this window temporarily"
             };
 
-            var windowBgColor = new Color(128, 136, 140);
+            var windowBgColor = new Color(80, 96, 100);
             var floatingWindow = new Window {
                 BackgroundColor = windowBgColor,
                 Position = new Vector2(220, 140),
@@ -288,9 +288,13 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
+                floatingWindow.Intangible = true;
                 floatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.TimeProvider.Ticks);
                 Scheduler.Start(new Sleep(2.5))
-                    .RegisterOnComplete((_) => { floatingWindow.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, now: Context.TimeProvider.Ticks); });
+                    .RegisterOnComplete((_) => {
+                        floatingWindow.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, now: Context.TimeProvider.Ticks);
+                        floatingWindow.Intangible = false;
+                    });
             });
 
             UIRenderTarget = new AutoRenderTarget(
@@ -390,14 +394,15 @@ namespace PRGUI.Demo {
             if (hoveringControl != null) {
                 var hoveringBox = hoveringControl.GetRect(Context.Layout);
 
-                ir.RasterizeRectangle(
-                    hoveringBox.Position, hoveringBox.Extent,
-                    innerColor: new Color(64, 64, 64), outerColor: Color.Black, radius: 4f,
-                    fillMode: RasterFillMode.Angular, fillOffset: (float)(Time.Seconds / 6),
-                    fillSize: -0.2f, fillAngle: 55,
-                    annularRadius: 1.75f, outlineRadius: 0f, outlineColor: Color.Transparent,
-                    blendState: BlendState.Additive, blendInLinearSpace: false
-                );
+                if (false)
+                    ir.RasterizeRectangle(
+                        hoveringBox.Position, hoveringBox.Extent,
+                        innerColor: new Color(64, 64, 64), outerColor: Color.Black, radius: 4f,
+                        fillMode: RasterFillMode.Angular, fillOffset: (float)(Time.Seconds / 6),
+                        fillSize: -0.2f, fillAngle: 55,
+                        annularRadius: 1.75f, outlineRadius: 0f, outlineColor: Color.Transparent,
+                        blendState: BlendState.Additive, blendInLinearSpace: false
+                    );
             }
 
             var elapsedSeconds = TimeSpan.FromTicks(Time.Ticks - LastTimeOverUI).TotalSeconds;
@@ -418,6 +423,8 @@ namespace PRGUI.Demo {
         private int LastPerformanceStatPrimCount;
 
         private void DrawPerformanceStats (ref ImperativeRenderer ir) {
+            return;
+
             const float scale = 0.5f;
             var text = PerformanceStats.GetText(-LastPerformanceStatPrimCount);
             text.AppendFormat("{0:000} pass(es)", Context.LastPassCount);

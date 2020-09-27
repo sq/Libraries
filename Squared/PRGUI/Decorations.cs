@@ -158,7 +158,7 @@ namespace Squared.PRGUI.Decorations {
         public float InteractableCornerRadius = 6f, 
             InertCornerRadius = 3f, 
             ContainerCornerRadius = 3f, 
-            TitleCornerRadius = 4f,
+            TitleCornerRadius = 3f,
             SelectionCornerRadius = 1.33f,
             SelectionPadding = 1f;
         public float? FloatingContainerCornerRadius = null,
@@ -189,7 +189,7 @@ namespace Squared.PRGUI.Decorations {
             ScrollbarThumbColor = new Color(220, 220, 220),
             ScrollbarTrackColor = new Color(32, 32, 32);
 
-        public Color TitleFillColor = new Color(50, 120, 160),
+        public Color TitleFillColor = new Color(40, 100, 120),
             ContainerFillColor = Color.Transparent,
             InertFillColor = Color.Transparent,
             SelectionFillColor = new Color(200, 230, 255),
@@ -299,12 +299,15 @@ namespace Squared.PRGUI.Decorations {
         private void Tooltip_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, FloatingContainerCornerRadius ?? ContainerCornerRadius);
             // FIXME: Should we draw the outline in Above?
+            var color1 = (pSRGBColor)TooltipFillColor;
+            var color2 = (color1.ToVector4() * 1.25f);
+            color2.W = 1;
             renderer.RasterizeRectangle(
                 a, b,
                 radius: TooltipCornerRadius ?? FloatingContainerCornerRadius ?? ContainerCornerRadius,
                 outlineRadius: InertOutlineThickness, outlineColor: TooltipOutlineColor,
-                innerColor: settings.BackgroundColor ?? TooltipFillColor, 
-                outerColor: settings.BackgroundColor ?? TooltipFillColor,
+                innerColor: settings.BackgroundColor ?? color2, 
+                outerColor: settings.BackgroundColor ?? color1,
                 shadow: TooltipShadow ?? FloatingContainerShadow
             );
         }
@@ -437,11 +440,15 @@ namespace Squared.PRGUI.Decorations {
         private void WindowTitle_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, TitleCornerRadius);
             // FIXME: Should we draw the outline in Above?
+            var color1 = (pSRGBColor)TitleFillColor;
+            var color2 = color1.ToVector4() * 0.7f;
+            color2.W = 1;
             renderer.RasterizeRectangle(
                 a, b,
                 radius: TitleCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: TitleFillColor, outerColor: TitleFillColor,
+                innerColor: color1, outerColor: color2,
+                fillMode: RasterFillMode.Vertical,
                 shadow: TitleShadow
             );
         }
@@ -603,7 +610,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             WindowTitle = new DelegateDecorator {
-                Padding = new Margins(6, 4, 6, 6),
+                Padding = new Margins(6, 3, 6, 4),
                 Margins = new Margins(0, 0, 0, 2),
                 GetTextSettings = GetTextSettings_Title,
                 Below = WindowTitle_Below

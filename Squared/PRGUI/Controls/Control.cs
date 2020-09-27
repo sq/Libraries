@@ -320,7 +320,7 @@ namespace Squared.PRGUI {
             };
         }
 
-        private void RasterizePass (UIOperationContext context, ref RectF box, bool compositing, ref RasterizePassSet passSet, ref ImperativeRenderer renderer, RasterizePasses pass) {
+        private void RasterizePass (UIOperationContext context, RectF box, bool compositing, ref RasterizePassSet passSet, ref ImperativeRenderer renderer, RasterizePasses pass) {
             var contentBox = GetRect(context.Layout, contentRect: true);
             var decorations = GetDecorations(context);
             var state = GetCurrentState(context);
@@ -382,9 +382,9 @@ namespace Squared.PRGUI {
         }
 
         private void RasterizeAllPasses (UIOperationContext context, ref RectF box, ref RasterizePassSet passSet, bool compositing) {
-            RasterizePass(context, ref box, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
-            RasterizePass(context, ref box, compositing, ref passSet, ref passSet.Content, RasterizePasses.Content);
-            RasterizePass(context, ref box, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
+            RasterizePass(context, box, compositing, ref passSet, ref passSet.Below, RasterizePasses.Below);
+            RasterizePass(context, box, compositing, ref passSet, ref passSet.Content, RasterizePasses.Content);
+            RasterizePass(context, box, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
         }
 
         public void Rasterize (UIOperationContext context, ref RasterizePassSet passSet) {
@@ -402,27 +402,30 @@ namespace Squared.PRGUI {
             if (opacity >= 1) {
                 RasterizeAllPasses(context, ref box, ref passSet, false);
             } else {
-                var rt = context.UIContext.GetScratchRenderTarget(passSet.Prepass.Container.Coordinator, ref box, out bool needClear);
+                // HACK: Create padding around the element for drop shadows
+                box.SnapAndInset(out Vector2 tl, out Vector2 br, -16);
+                var compositeBox = new RectF(tl, br - tl);
+                var rt = context.UIContext.GetScratchRenderTarget(passSet.Prepass.Container.Coordinator, ref compositeBox, out bool needClear);
                 try {
                     var compositionContext = context.Clone();
 
                     // Create nested prepass group before the RT group so that child controls have their prepass operations run before ours
                     var nestedPrepass = passSet.Prepass.MakeSubgroup();
                     var compositionRenderer = passSet.Prepass.ForRenderTarget(rt, name: $"Composite control");
+                    compositionRenderer.BlendState = BlendState.AlphaBlend;
                     if (needClear)
                         compositionRenderer.Clear(color: Color.Transparent, stencil: 0, layer: -1);
 
                     var newPassSet = new RasterizePassSet(ref nestedPrepass, ref compositionRenderer);
                     RasterizeAllPasses(compositionContext, ref box, ref newPassSet, true);
                     compositionRenderer.Layer += 1;
-                    // FIXME: Programmatically determine how big to make this margin
-                    var pos = box.Position.Floor() - new Vector2(16);
+                    var pos = compositeBox.Position.Floor();
                     // FIXME: Is this the right layer?
                     passSet.Above.Draw(
                         rt, position: pos,
                         sourceRectangle: new Rectangle(
-                            (int)box.Left - 16, (int)box.Top - 16,
-                            (int)box.Width + 33, (int)box.Height + 33
+                            (int)compositeBox.Left, (int)compositeBox.Top,
+                            (int)compositeBox.Width, (int)compositeBox.Height
                         ),
                         blendState: BlendState.AlphaBlend, 
                         multiplyColor: Color.White * opacity

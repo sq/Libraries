@@ -108,13 +108,15 @@ namespace Squared.PRGUI {
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
+            if (context.Pass != RasterizePasses.Below)
+                return;
+
             // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
             UpdatePosition(Position, context.UIContext, settings.Box);
 
             IDecorator titleDecorator;
             Color? titleColor = null;
             if (
-                (context.Pass == RasterizePasses.Below) && 
                 (titleDecorator = UpdateTitle(context, settings, out Material titleMaterial, ref titleColor)) != null
             ) {
                 var layout = TitleLayout.Get();
@@ -133,7 +135,10 @@ namespace Squared.PRGUI {
                 subSettings.Box = titleBox;
                 subSettings.ContentBox = titleContentBox;
 
+                renderer.Layer += 1;
                 titleDecorator.Rasterize(context, ref renderer, subSettings);
+
+                renderer.Layer += 1;
                 renderer.DrawMultiple(
                     layout.DrawCalls, new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top),
                     samplerState: RenderStates.Text, multiplyColor: titleColor.Value
