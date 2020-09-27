@@ -341,12 +341,7 @@ namespace Squared.PRGUI {
                 contentRenderer = renderer.MakeSubgroup();
                 if (ShouldClipContent)
                     contentRenderer.DepthStencilState = RenderStates.StencilTest;
-                childrenPassSet = new RasterizePassSet {
-                    Prepass = passSet.Prepass,
-                    Below = contentRenderer.MakeSubgroup(),
-                    Content = contentRenderer.MakeSubgroup(),
-                    Above = contentRenderer.MakeSubgroup()
-                };
+                childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer);
             }
 
             var settings = MakeDecorationSettings(ref box, ref contentBox, state);
@@ -411,12 +406,8 @@ namespace Squared.PRGUI {
                     // FIXME: Reorder these so that nested RTs come before outer ones
                     var compositionRenderer = passSet.Prepass.ForRenderTarget(rt, name: $"Composite control");
                     compositionRenderer.Clear(color: Color.Transparent, stencil: 0, layer: -1);
-                    var newPassSet = new RasterizePassSet {
-                        Prepass = passSet.Prepass.MakeSubgroup(),
-                        Below = compositionRenderer.MakeSubgroup(),
-                        Content = compositionRenderer.MakeSubgroup(),
-                        Above = compositionRenderer.MakeSubgroup(),
-                    };
+                    var prepass = passSet.Prepass.MakeSubgroup();
+                    var newPassSet = new RasterizePassSet(ref prepass, ref compositionRenderer);
                     RasterizeAllPasses(compositionContext, ref box, ref newPassSet, true);
                     compositionRenderer.Layer += 1;
                     // FIXME: Don't composite unused parts of the RT

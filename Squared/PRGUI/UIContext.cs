@@ -693,21 +693,19 @@ namespace Squared.PRGUI {
 
         public void Rasterize (ref ImperativeRenderer renderer) {
             var context = MakeOperationContext();
-            var passSet = new RasterizePassSet {
-                Prepass = renderer.MakeSubgroup()
-            };
+            var prepass = renderer.MakeSubgroup();
 
             var seq = Controls.InOrder(Control.PaintOrderComparer.Instance);
             foreach (var control in seq) {
                 // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
                 //  overlap each other, at the cost of more draw calls.
-                passSet.Below = renderer.MakeSubgroup();
-                passSet.Content = renderer.MakeSubgroup();
-                passSet.Above = renderer.MakeSubgroup();
+                var passSet = new RasterizePassSet(ref prepass, ref renderer);
                 passSet.Below.DepthStencilState = 
                     passSet.Content.DepthStencilState = 
                     passSet.Above.DepthStencilState = DepthStencilState.None;
                 control.Rasterize(context, ref passSet);
+                // HACK
+                prepass = passSet.Prepass;
             }
         }
 
@@ -718,6 +716,13 @@ namespace Squared.PRGUI {
 
     public struct RasterizePassSet {
         public ImperativeRenderer Prepass, Below, Content, Above;
+
+        public RasterizePassSet (ref ImperativeRenderer prepass, ref ImperativeRenderer container) {
+            Prepass = prepass;
+            Below = container.MakeSubgroup();
+            Content = container.MakeSubgroup();
+            Above = container.MakeSubgroup();
+        }
     }
 
     public class UIOperationContext {
