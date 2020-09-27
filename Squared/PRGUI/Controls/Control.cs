@@ -315,21 +315,26 @@ namespace Squared.PRGUI {
             };
         }
 
-        private void RasterizeIntoContext (UIOperationContext context, ref RectF box, bool compositing) {
+        private void RasterizePass (UIOperationContext context, ref RectF box, bool compositing, RasterizePasses pass) {
             var contentBox = GetRect(context.Layout, contentRect: true);
             var decorations = GetDecorations(context);
             var state = GetCurrentState(context);
 
-            var contentContext = context;
-            var hasNestedContext = (context.Pass == RasterizePasses.Content) && (ShouldClipContent || HasNestedContent) && !compositing;
+            var passContext = context.Clone();
+            passContext.Pass = pass;
+            passContext.Renderer = context.Renderer.MakeSubgroup();
+            passContext.Renderer.DepthStencilState = DepthStencilState.None;
+            var hasNestedContext = (pass == RasterizePasses.Content) && (ShouldClipContent || HasNestedContent) && !compositing;
+
+            var contentContext = passContext;
 
             // For clipping we need to create a separate batch group that contains all the rasterization work
             //  for our children. At the start of it we'll generate the stencil mask that will be used for our
             //  rendering operation(s).
             if (hasNestedContext) {
-                context.Renderer.Layer += 1;
-                contentContext = context.Clone();
-                contentContext.Renderer = context.Renderer.MakeSubgroup();
+                passContext.Renderer.Layer += 1;
+                contentContext = passContext.Clone();
+                contentContext.Renderer = passContext.Renderer.MakeSubgroup();
                 contentContext.Renderer.Layer = 0;
             }
 
@@ -353,24 +358,21 @@ namespace Squared.PRGUI {
                     // FIXME: Separate context?
                     contentContext.Pass = RasterizePasses.ContentClip;
 
-                    ApplyClipMargins(context, ref box);
+                    ApplyClipMargins(contentContext, ref box);
 
                     contentContext.Renderer.Layer = -999;
                     settings.State = default(ControlStates);
                     decorations.Rasterize(contentContext, settings);
                 }
 
-                context.Renderer.Layer += 1;
+                passContext.Renderer.Layer += 1;
             }
         }
 
         private void RasterizeAllPasses (UIOperationContext context, ref RectF box, bool compositing) {
-            context.Pass = RasterizePasses.Below;
-            RasterizeIntoContext(context, ref box, compositing);
-            context.Pass = RasterizePasses.Content;
-            RasterizeIntoContext(context, ref box, compositing);
-            context.Pass = RasterizePasses.Above;
-            RasterizeIntoContext(context, ref box, compositing);
+            RasterizePass(context, ref box, compositing, RasterizePasses.Below);
+            RasterizePass(context, ref box, compositing, RasterizePasses.Content);
+            RasterizePass(context, ref box, compositing, RasterizePasses.Above);
         }
 
         public void Rasterize (UIOperationContext context) {
@@ -383,20 +385,17 @@ namespace Squared.PRGUI {
             if (opacity <= 0)
                 return;
 
-            var tempContext = context.Clone();
-            tempContext.Renderer = context.Renderer.MakeSubgroup();
-            tempContext.Renderer.DepthStencilState = DepthStencilState.None;
-
             var box = GetRect(context.Layout);
 
             if (opacity >= 1) {
-                RasterizeAllPasses(tempContext, ref box, false);
+                RasterizeAllPasses(context, ref box, false);
             } else {
                 var rt = context.UIContext.GetScratchRenderTarget(context.Renderer.Container.Coordinator);
                 try {
-                    var compositionContext = tempContext.Clone();
+                    var compositionContext = context.Clone();
+                    // FIXME: Reorder these so that nested RTs come before outer ones
                     compositionContext.Renderer = context.PrepassRenderer.ForRenderTarget(rt, name: $"Composite control");
-                    compositionContext.Renderer.Clear(color: Color.Transparent, layer: -1);
+                    compositionContext.Renderer.Clear(color: Color.Transparent, stencil: 0, layer: -1);
                     RasterizeAllPasses(compositionContext, ref box, true);
                     compositionContext.Renderer.Layer += 1;
                     // FIXME: Don't composite unused parts of the RT
