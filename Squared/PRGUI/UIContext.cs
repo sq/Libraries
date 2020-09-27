@@ -64,6 +64,8 @@ namespace Squared.PRGUI {
         /// If the mouse leaves tooltip-bearing controls for this long (in seconds) the tooltip appearance delay will reset
         /// </summary>
         public double TooltipDisappearDelay = 0.25;
+        public float TooltipFadeDurationFast = 0.1f;
+        public float TooltipFadeDuration = 0.2f;
 
         public float TooltipSpacing = 8;
 
@@ -116,6 +118,8 @@ namespace Squared.PRGUI {
         private double LastTooltipHoverTime;
 
         private Tooltip CachedTooltip;
+        private Control PreviousTooltipAnchor;
+        private bool IsTooltipVisible;
         private Controls.StaticText CachedCompositionPreview;
 
         private AutoRenderTarget ScratchRenderTarget;
@@ -275,7 +279,8 @@ namespace Squared.PRGUI {
                 CachedTooltip = new Tooltip {
                     PaintOrder = 9999,
                     Wrap = true,
-                    Multiline = true
+                    Multiline = true,
+                    Opacity = 0
                 };
                 Controls.Add(CachedTooltip);
             }
@@ -414,7 +419,7 @@ namespace Squared.PRGUI {
                 if ((hoveringFor >= TooltipAppearanceDelay) || (disappearTimeout < TooltipDisappearDelay))
                     ShowTooltip(Hovering, tooltipContent);
             } else {
-                ClearTooltip();
+                HideTooltip();
 
                 var elapsed = now - LastTooltipHoverTime;
                 if (elapsed >= TooltipDisappearDelay)
@@ -517,7 +522,7 @@ namespace Squared.PRGUI {
 
         private void HideTooltipForMouseInput () {
             ResetTooltipShowTimer();
-            ClearTooltip();
+            HideTooltip();
             FirstTooltipHoverTime = null;
             LastTooltipHoverTime = 0;
         }
@@ -561,12 +566,12 @@ namespace Squared.PRGUI {
             }
         }
 
-        private void ClearTooltip () {
-            if (CachedTooltip == null)
+        private void HideTooltip () {
+            if (CachedTooltip == null || !IsTooltipVisible)
                 return;
 
-            CachedTooltip.Text = "";
-            CachedTooltip.Visible = false;
+            IsTooltipVisible = false;
+            CachedTooltip.Opacity = Tween<float>.StartNow(CachedTooltip.Opacity.Get(Now), 0, seconds: TooltipFadeDuration);
         }
 
         private void UpdateSubtreeLayout (Control subtreeRoot) {
@@ -594,7 +599,7 @@ namespace Squared.PRGUI {
 
             var rect = Layout.GetRect(anchor.LayoutKey);
 
-            if (textChanged || !instance.Visible) {
+            if (textChanged || !IsTooltipVisible) {
                 var idealMaxWidth = CanvasSize.X * 0.35f;
 
                 instance.Text = text;
@@ -611,7 +616,16 @@ namespace Squared.PRGUI {
             if ((instanceBox.Height + rect.Extent.Y) >= CanvasSize.Y)
                 newY = rect.Top - instanceBox.Height - TooltipSpacing;
             instance.Margins = new Margins(newX, newY, 0, 0);
-            instance.Visible = true;
+
+            var currentOpacity = instance.Opacity.Get(Now);
+            if (!IsTooltipVisible) {
+                instance.Opacity = Tween<float>.StartNow(currentOpacity, 1, (currentOpacity > 0.1 ? TooltipFadeDurationFast : TooltipFadeDuration));
+            }
+            if (anchor != PreviousTooltipAnchor)
+                instance.Opacity = 1;
+
+            PreviousTooltipAnchor = anchor;
+            IsTooltipVisible = true;
             UpdateSubtreeLayout(instance);
         }
 

@@ -410,14 +410,14 @@ namespace Squared.PRGUI {
                     var newPassSet = new RasterizePassSet(ref prepass, ref compositionRenderer);
                     RasterizeAllPasses(compositionContext, ref box, ref newPassSet, true);
                     compositionRenderer.Layer += 1;
-                    // FIXME: Don't composite unused parts of the RT
-                    var pos = box.Position.Floor();
+                    // FIXME: Programmatically determine how big to make this margin
+                    var pos = box.Position.Floor() - new Vector2(16);
                     // FIXME: Is this the right layer?
                     passSet.Above.Draw(
                         rt, position: pos,
                         sourceRectangle: new Rectangle(
-                            (int)box.Left, (int)box.Top,
-                            (int)box.Width + 1, (int)box.Height + 1
+                            (int)box.Left - 16, (int)box.Top - 16,
+                            (int)box.Width + 33, (int)box.Height + 33
                         ),
                         blendState: BlendState.AlphaBlend, 
                         multiplyColor: Color.White * opacity
