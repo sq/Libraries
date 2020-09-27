@@ -4,10 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
-using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
@@ -30,8 +28,6 @@ namespace Squared.PRGUI.Controls {
         protected ScrollbarState HScrollbar, VScrollbar;
         protected bool HasContentBounds;
         protected RectF ContentBounds;
-
-        public Tween<float> Opacity = 1;
 
         public Container () 
             : base () {
@@ -105,6 +101,7 @@ namespace Squared.PRGUI.Controls {
 
         private void RasterizeChildren (UIOperationContext context, RasterizePasses pass, UnorderedList<Control> sequence) {
             context.Pass = pass;
+            // FIXME
             int layer = context.Renderer.Layer, maxLayer = layer;
 
             foreach (var item in sequence) {
@@ -139,38 +136,9 @@ namespace Squared.PRGUI.Controls {
         protected void UpdateScrollbars (UIOperationContext context, DecorationSettings settings) {
         }
 
-        protected virtual void OnRasterizeDecorations (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
-        }
-
         protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
-            var opacity = Opacity.Get(context.Now);
+            base.OnRasterize(context, settings, decorations);
 
-            if (opacity <= 0)
-                return;
-
-            if (opacity >= 1) {
-                base.OnRasterize(context, settings, decorations);
-                RasterizeContent(context, settings);
-                OnRasterizeDecorations(context, settings, decorations);
-            } else {
-                var rt = context.UIContext.GetScratchRenderTarget(context.Renderer.Container.Coordinator);
-                try {
-                    var tempContext = context.Clone();
-                    tempContext.Renderer = context.Renderer.ForRenderTarget(rt);
-                    tempContext.Renderer.Clear(color: Color.Red);
-                    base.OnRasterize(tempContext, settings, decorations);
-                    RasterizeContent(tempContext, settings);
-                    OnRasterizeDecorations(tempContext, settings, decorations);
-                    // FIXME: BlendState
-                    context.Renderer.Draw(rt, position: Vector2.Zero, blendState: BlendState.Opaque);
-                    context.Renderer.Layer += 1;
-                } finally {
-                    context.UIContext.ReleaseScratchRenderTarget(rt);
-                }
-            }
-        }
-
-        private void RasterizeContent (UIOperationContext context, DecorationSettings settings) {
             // FIXME: This should be done somewhere else
             if (Scrollable) {
                 var box = settings.Box;

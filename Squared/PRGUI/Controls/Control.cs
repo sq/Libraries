@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
@@ -33,7 +34,8 @@ namespace Squared.PRGUI {
         public float? FixedWidth, FixedHeight;
         public float? MinimumWidth, MinimumHeight;
         public float? MaximumWidth, MaximumHeight;
-        public Tween<Color>? BackgroundColor;
+        public Tween<Color>? BackgroundColor = null;
+        public Tween<float> Opacity = 1;
 
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
@@ -312,12 +314,7 @@ namespace Squared.PRGUI {
             };
         }
 
-        public void Rasterize (UIOperationContext context) {
-            if (!Visible)
-                return;
-            if (LayoutKey.IsInvalid)
-                return;
-
+        private void RasterizeIntoContext (UIOperationContext context, bool compositing) {
             var box = GetRect(context.Layout);
             var contentBox = GetRect(context.Layout, contentRect: true);
             var decorations = GetDecorations(context);
@@ -364,6 +361,45 @@ namespace Squared.PRGUI {
                 }
 
                 context.Renderer.Layer += 1;
+            }
+        }
+
+        public void Rasterize (UIOperationContext context) {
+            if (!Visible)
+                return;
+            if (LayoutKey.IsInvalid)
+                return;
+            var opacity = Opacity.Get(context.Now);
+
+            if (opacity <= 0)
+                return;
+
+            if (opacity >= 1) {
+                RasterizeIntoContext(context, false);
+            } else {
+                var rt = context.UIContext.GetScratchRenderTarget(context.Renderer.Container.Coordinator);
+                try {
+                    var tempContext = context.Clone();
+                    tempContext.Renderer = context.Renderer.ForRenderTarget(rt, newContainer: context.Renderer.Container.Coordinator.Frame, layer: -9999, name: $"Composite {this.ToString()}");
+                    tempContext.Renderer.Clear(color: Color.Transparent);
+                    RasterizeIntoContext(tempContext, true);
+                    // FIXME: Don't composite unused parts of the RT
+                    var pos = Vector2.Zero; // settings.Box.Position.Floor();
+                    context.Renderer.Draw(
+                        rt, position: pos,
+                        /*
+                        sourceRectangle: new Rectangle(
+                            (int)settings.Box.Left, (int)settings.Box.Top,
+                            (int)(settings.Box.Width + 1), (int)settings.Box.Height + 1
+                        ),
+                        */
+                        blendState: BlendState.AlphaBlend, 
+                        multiplyColor: Color.White * opacity
+                    );
+                    context.Renderer.Layer += 1;
+                } finally {
+                    context.UIContext.ReleaseScratchRenderTarget(rt);
+                }
             }
         }
 

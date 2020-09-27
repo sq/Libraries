@@ -105,8 +105,8 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        protected override void OnRasterizeDecorations (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterizeDecorations(context, settings, decorations);
+        protected override void OnRasterize (UIOperationContext context, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, settings, decorations);
 
             // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
             UpdatePosition(Position, context.UIContext, settings.Box);

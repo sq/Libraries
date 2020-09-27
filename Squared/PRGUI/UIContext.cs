@@ -686,7 +686,7 @@ namespace Squared.PRGUI {
 
         internal RenderTarget2D GetScratchRenderTarget (RenderCoordinator coordinator) {
             if (ScratchRenderTarget == null)
-                ScratchRenderTarget = new AutoRenderTarget(coordinator, (int)CanvasSize.X, (int)CanvasSize.Y);
+                ScratchRenderTarget = new AutoRenderTarget(coordinator, (int)CanvasSize.X, (int)CanvasSize.Y, preferredDepthFormat: DepthFormat.Depth24Stencil8);
             else
                 ScratchRenderTarget.Resize((int)CanvasSize.X, (int)CanvasSize.Y);
             return ScratchRenderTarget.Get();

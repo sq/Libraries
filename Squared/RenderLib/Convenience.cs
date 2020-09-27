@@ -724,11 +724,15 @@ namespace Squared.Render.Convenience {
             return result;
         }
 
-        public ImperativeRenderer ForRenderTarget (RenderTarget2D renderTarget, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, object userData = null, string name = null) {
+        public ImperativeRenderer ForRenderTarget (
+            RenderTarget2D renderTarget, Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null, 
+            object userData = null, string name = null, int? layer = null, IBatchContainer newContainer = null
+        ) {
             var result = this;
-            var group = BatchGroup.ForRenderTarget(Container, Layer, renderTarget, before, after, userData, name: name);
+            var group = BatchGroup.ForRenderTarget(newContainer ?? Container, layer ?? Layer, renderTarget, before, after, userData, name: name);
             group.Dispose();
             result.Container = group;
+            // FIXME: is this ever correct?
             result.Layer = 0;
 
             Layer += 1;
