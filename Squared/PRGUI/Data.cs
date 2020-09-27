@@ -380,6 +380,15 @@ namespace Squared.PRGUI {
             }
         }
 
+        public bool Intersects (ref RectF rhs) {
+            Vector2 tl, br;
+            tl.X = Math.Max(Left, rhs.Left);
+            tl.Y = Math.Max(Top, rhs.Top);
+            br.X = Math.Min(Left + Width, rhs.Left + rhs.Width);
+            br.Y = Math.Min(Top + Height, rhs.Top + rhs.Height);
+            return (br.X > tl.X) && (br.Y > tl.Y);
+        }
+
         public bool Contains (Vector2 position) {
             return (position.X >= Left) &&
                 (position.X < (Left + Width)) &&

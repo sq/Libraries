@@ -37,6 +37,43 @@ namespace Squared.PRGUI {
     }
 
     public class UIContext : IDisposable {
+        private class ScratchRenderTarget : IDisposable {
+            public readonly UIContext Context;
+            public readonly AutoRenderTarget Instance;
+            public readonly UnorderedList<RectF> UsedRectangles = new UnorderedList<RectF>();
+            public bool NeedClear = true;
+
+            public ScratchRenderTarget (RenderCoordinator coordinator, UIContext context) {
+                Context = context;
+                Instance = new AutoRenderTarget(
+                    coordinator, (int)context.CanvasSize.X, (int)context.CanvasSize.Y, 
+                    false, SurfaceFormat.Color, DepthFormat.Depth24Stencil8
+                );
+            }
+
+            public void Update () {
+                Instance.Resize((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y);
+            }
+
+            public void Reset () {
+                UsedRectangles.Clear();
+                NeedClear = true;
+            }
+
+            public void Dispose () {
+                Instance?.Dispose();
+            }
+
+            internal bool IsSpaceAvailable (ref RectF rectangle) {
+                foreach (var used in UsedRectangles) {
+                    if (used.Intersects(ref rectangle))
+                        return false;
+                }
+
+                return true;
+            }
+        }
+
         private static readonly HashSet<Keys> SuppressRepeatKeys = new HashSet<Keys> {
             Keys.LeftAlt,
             Keys.LeftControl,
@@ -59,11 +96,11 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Tooltips will only appear after the mouse remains over a single control for this long (in seconds)
         /// </summary>
-        public double TooltipAppearanceDelay = 0.4;
+        public double TooltipAppearanceDelay = 0.3;
         /// <summary>
         /// If the mouse leaves tooltip-bearing controls for this long (in seconds) the tooltip appearance delay will reset
         /// </summary>
-        public double TooltipDisappearDelay = 0.25;
+        public double TooltipDisappearDelay = 0.2;
         public float TooltipFadeDurationFast = 0.1f;
         public float TooltipFadeDuration = 0.2f;
 
@@ -95,10 +132,73 @@ namespace Squared.PRGUI {
         /// </summary>
         public double KeyRepeatAccelerationDelay = 4.5;
 
+        /// <summary>
+        /// Performance stats
+        /// </summary>
+        public int LastPassCount;
+
+        /// <summary>
+        /// Configures the size of the rendering canvas
+        /// </summary>
         public Vector2 CanvasSize;
+
+        /// <summary>
+        /// Control events are broadcast on this bus
+        /// </summary>
         public EventBus EventBus = new EventBus();
+
+        /// <summary>
+        /// The layout engine used to compute control sizes and positions
+        /// </summary>
         public readonly LayoutContext Layout = new LayoutContext();
+
+        /// <summary>
+        /// Configures the appearance and size of controls
+        /// </summary>
         public IDecorationProvider Decorations;
+
+        /// <summary>
+        /// The top-level controls managed by the layout engine. Each one gets a separate rendering layer
+        /// </summary>
+        public ControlCollection Controls { get; private set; }
+
+        /// <summary>
+        /// The control that currently has the mouse captured (if a button is pressed)
+        /// </summary>
+        public Control MouseCaptured { get; private set; }
+
+        /// <summary>
+        /// The control currently underneath the mouse cursor, as long as the mouse is not captured by another control
+        /// </summary>
+        public Control Hovering { get; private set; }
+
+        /// <summary>
+        /// The control currently underneath the mouse cursor
+        /// </summary>
+        public Control MouseOver { get; private set; }
+
+        /// <summary>
+        /// The control that currently has keyboard input focus
+        /// </summary>
+        public Control Focused {
+            get => _Focused;
+            set {
+                if (value != null && (!value.AcceptsFocus || !value.Enabled))
+                    throw new InvalidOperationException();
+                var previous = _Focused;
+                _Focused = value;
+                if (previous != null)
+                    FireEvent(UIEvents.LostFocus, previous, _Focused);
+
+                HandleNewFocusTarget(previous, _Focused);
+
+                if (_Focused != null)
+                    FireEvent(UIEvents.GotFocus, _Focused, previous);
+            }
+        }
+
+        public DefaultMaterialSet Materials { get; private set; }
+        public ITimeProvider TimeProvider;
 
         private KeyboardModifiers CurrentModifiers;
 
@@ -122,24 +222,7 @@ namespace Squared.PRGUI {
         private bool IsTooltipVisible;
         private Controls.StaticText CachedCompositionPreview;
 
-        private AutoRenderTarget ScratchRenderTarget;
-
-        public ControlCollection Controls { get; private set; }
-        public DefaultMaterialSet Materials { get; private set; }
-        public ITimeProvider TimeProvider;
-
-        /// <summary>
-        /// The control that currently has the mouse captured (if a button is pressed)
-        /// </summary>
-        public Control MouseCaptured { get; private set; }
-        /// <summary>
-        /// The control currently underneath the mouse cursor, as long as the mouse is not captured by another control
-        /// </summary>
-        public Control Hovering { get; private set; }
-        /// <summary>
-        /// The control currently underneath the mouse cursor
-        /// </summary>
-        public Control MouseOver { get; private set; }
+        private UnorderedList<ScratchRenderTarget> ScratchRenderTargets = new UnorderedList<ScratchRenderTarget>();
 
         private bool IsTextInputRegistered = false;
         private bool IsCompositionActive = false;
@@ -147,22 +230,6 @@ namespace Squared.PRGUI {
         public float Now => (float)TimeProvider.Seconds;
 
         private Control _Focused;
-        public Control Focused {
-            get => _Focused;
-            set {
-                if (value != null && (!value.AcceptsFocus || !value.Enabled))
-                    throw new InvalidOperationException();
-                var previous = _Focused;
-                _Focused = value;
-                if (previous != null)
-                    FireEvent(UIEvents.LostFocus, previous, _Focused);
-
-                HandleNewFocusTarget(previous, _Focused);
-
-                if (_Focused != null)
-                    FireEvent(UIEvents.GotFocus, _Focused, previous);
-            }
-        }
 
         private void TextInputEXT_TextInput (char ch) {
             // Control characters will be handled through the KeyboardState path
@@ -618,11 +685,10 @@ namespace Squared.PRGUI {
             instance.Margins = new Margins(newX, newY, 0, 0);
 
             var currentOpacity = instance.Opacity.Get(Now);
-            if (!IsTooltipVisible) {
-                instance.Opacity = Tween<float>.StartNow(currentOpacity, 1, (currentOpacity > 0.1 ? TooltipFadeDurationFast : TooltipFadeDuration));
-            }
-            if (anchor != PreviousTooltipAnchor)
-                instance.Opacity = 1;
+            if (!IsTooltipVisible)
+                instance.Opacity = Tween<float>.StartNow(currentOpacity, 1f, (currentOpacity > 0.1 ? TooltipFadeDurationFast : TooltipFadeDuration));
+            if ((anchor != PreviousTooltipAnchor) && (currentOpacity > 0))
+                instance.Opacity = 1f;
 
             PreviousTooltipAnchor = anchor;
             IsTooltipVisible = true;
@@ -693,38 +759,69 @@ namespace Squared.PRGUI {
             };
         }
 
-        internal AutoRenderTarget GetScratchRenderTarget (RenderCoordinator coordinator) {
-            if (ScratchRenderTarget == null)
-                ScratchRenderTarget = new AutoRenderTarget(coordinator, (int)CanvasSize.X, (int)CanvasSize.Y, preferredDepthFormat: DepthFormat.Depth24Stencil8);
-            else
-                ScratchRenderTarget.Resize((int)CanvasSize.X, (int)CanvasSize.Y);
-            return ScratchRenderTarget;
+        internal AutoRenderTarget GetScratchRenderTarget (RenderCoordinator coordinator, ref RectF rectangle, out bool needClear) {
+            ScratchRenderTarget result = null;
+
+            foreach (var rt in ScratchRenderTargets) {
+                if (rt.IsSpaceAvailable(ref rectangle)) {
+                    result = rt;
+                    break;
+                }
+            }
+
+            if (result == null) {
+                result = new ScratchRenderTarget(coordinator, this);
+                ScratchRenderTargets.Add(result);
+            }
+
+            needClear = result.NeedClear;
+            result.NeedClear = false;
+            result.UsedRectangles.Add(ref rectangle);
+            return result.Instance;
         }
 
         internal void ReleaseScratchRenderTarget (AutoRenderTarget rt) {
             // FIXME: Do we need to do anything here?
         }
 
-        public void Rasterize (ref ImperativeRenderer renderer) {
+        public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer, int prepassLayer) {
             var context = MakeOperationContext();
-            var prepass = renderer.MakeSubgroup();
 
-            var seq = Controls.InOrder(Control.PaintOrderComparer.Instance);
-            foreach (var control in seq) {
-                // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
-                //  overlap each other, at the cost of more draw calls.
-                var passSet = new RasterizePassSet(ref prepass, ref renderer);
-                passSet.Below.DepthStencilState = 
-                    passSet.Content.DepthStencilState = 
-                    passSet.Above.DepthStencilState = DepthStencilState.None;
-                control.Rasterize(context, ref passSet);
-                // HACK
-                prepass = passSet.Prepass;
+            foreach (var srt in ScratchRenderTargets)
+                srt.Reset();
+
+            using (var prepassGroup = BatchGroup.New(frame, prepassLayer))
+            using (var rtBatch = BatchGroup.ForRenderTarget(frame, layer, renderTarget)) {
+                var prepass = new ImperativeRenderer(prepassGroup, Materials);
+                var renderer = new ImperativeRenderer(rtBatch, Materials) {
+                    BlendState = BlendState.AlphaBlend
+                };
+                renderer.Clear(color: Color.Transparent, layer: -999);
+
+                var seq = Controls.InOrder(Control.PaintOrderComparer.Instance);
+                foreach (var control in seq) {
+                    // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
+                    //  overlap each other, at the cost of more draw calls.
+                    var passSet = new RasterizePassSet(ref prepass, ref renderer);
+                    passSet.Below.DepthStencilState =
+                        passSet.Content.DepthStencilState =
+                        passSet.Above.DepthStencilState = DepthStencilState.None;
+                    control.Rasterize(context, ref passSet);
+                    // HACK
+                    prepass = passSet.Prepass;
+                }
+
+                LastPassCount = prepassGroup.Count + 1;
             }
         }
 
         public void Dispose () {
             Layout.Dispose();
+
+            foreach (var rt in ScratchRenderTargets)
+                rt.Dispose();
+
+            ScratchRenderTargets.Clear();
         }
     }
 

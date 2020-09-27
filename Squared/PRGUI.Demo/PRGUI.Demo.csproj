@@ -61,6 +61,7 @@
     <Compile Include="Game.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="PerformanceStats.cs" />
     <TTF Include="Fonts\*.otf;Fonts\*.ttf;Fonts\*.ttc">
       <Visible>false</Visible>
     </TTF>

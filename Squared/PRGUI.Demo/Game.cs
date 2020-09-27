@@ -7,6 +7,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using Framework;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -32,7 +33,6 @@ namespace PRGUI.Demo {
         public EmbeddedTexture2DProvider TextureLoader { get; private set; }
         public EmbeddedFreeTypeFontProvider FontLoader { get; private set; }
 
-        internal KeyboardInput KeyboardInputHandler;
         public KeyboardState PreviousKeyboardState, KeyboardState;
         public MouseState PreviousMouseState, MouseState;
 
@@ -69,9 +69,6 @@ namespace PRGUI.Demo {
                 TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 60);
 
             PreviousKeyboardState = Keyboard.GetState();
-
-            KeyboardInputHandler = new KeyboardInput();
-            KeyboardInputHandler.Install();
 
             Scheduler = new TaskScheduler(JobQueue.WindowsMessageBased);
         }
@@ -292,8 +289,8 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
                 floatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.TimeProvider.Ticks);
-                Scheduler.Start(new Sleep(3))
-                    .RegisterOnComplete((_) => { floatingWindow.Opacity = 1; });
+                Scheduler.Start(new Sleep(2.5))
+                    .RegisterOnComplete((_) => { floatingWindow.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, now: Context.TimeProvider.Ticks); });
             });
 
             UIRenderTarget = new AutoRenderTarget(
@@ -331,20 +328,7 @@ namespace PRGUI.Demo {
             WaitHistory = new List<double>();
 
         protected override void Update (GameTime gameTime) {
-            var perfStats = base.PreviousFrameTiming;
-            var elapsed = perfStats.BeginDraw + perfStats.Draw + perfStats.BeforePresent;
-            var wait = perfStats.Wait + perfStats.EndDraw;
-            DrawHistory.Add(elapsed.TotalMilliseconds);
-            WaitHistory.Add(wait.TotalMilliseconds);
-
-            const int averageWindow = 60;
-
-            while (DrawHistory.Count > averageWindow)
-                DrawHistory.RemoveAt(0);
-            while (WaitHistory.Count > averageWindow)
-                WaitHistory.RemoveAt(0);
-
-            Window.Title = $"draw: {DrawHistory.Average():00.000}ms/f wait: {WaitHistory.Average():00.000}ms/f";
+            PerformanceStats.Record(this.PreviousFrameTiming);
 
             PreviousKeyboardState = KeyboardState;
             PreviousMouseState = MouseState;
@@ -397,79 +381,63 @@ namespace PRGUI.Demo {
                 Window_ClientSizeChanged(null, EventArgs.Empty);
             }
 
-            KeyboardInputHandler.Buffer.Clear();
+            Context.Rasterize(frame, UIRenderTarget, -9990, -9991);
+            var ir = new ImperativeRenderer(frame, Materials);
+            ir.Clear(color: Color.Transparent);
+            ir.Layer += 1;
 
-            ImperativeRenderer ir;
-
-            using (KeyboardInputHandler.Deactivate())
-            using (var group = BatchGroup.ForRenderTarget(
-                frame, -9990, UIRenderTarget,
-                name: "Render UI"
-            )) {
-                ir = new ImperativeRenderer(group, Materials, -1, blendState: BlendState.AlphaBlend, depthStencilState: DepthStencilState.None);
-                // ir.RasterBlendInLinearSpace = false;
-                ir.Clear(color: Color.Transparent);
-
-                ir.Layer = 1;
-
-                Context.Rasterize(ref ir);
-
-                ir.Layer += 1;
-
-                var hoveringControl = Context.HitTest(new Vector2(MouseState.X, MouseState.Y), false);
-                if (hoveringControl != null) {
-                    var hoveringBox = hoveringControl.GetRect(Context.Layout);
-
-                    ir.RasterizeRectangle(
-                        hoveringBox.Position, hoveringBox.Extent,
-                        innerColor: new Color(64, 64, 64), outerColor: Color.Black, radius: 4f,
-                        fillMode: RasterFillMode.Angular, fillOffset: (float)(Time.Seconds / 6), 
-                        fillSize: -0.2f, fillAngle: 55,
-                        annularRadius: 1.75f, outlineRadius: 0f, outlineColor: Color.Transparent,
-                        blendState: BlendState.Additive, blendInLinearSpace: false
-                    );
-                }
-
-                /*
-
-                float radius = 6;
-                var masterListRect = ((Bounds)Context.Layout.GetRect(MasterList)).Expand(-radius, -radius);
-                var contentViewRect = ((Bounds)Context.Layout.GetRect(ContentView)).Expand(-radius, -radius);
+            var hoveringControl = Context.HitTest(new Vector2(MouseState.X, MouseState.Y), false);
+            if (hoveringControl != null) {
+                var hoveringBox = hoveringControl.GetRect(Context.Layout);
 
                 ir.RasterizeRectangle(
-                    masterListRect.TopLeft, masterListRect.BottomRight,
-                    radius: radius, innerColor: Color.DarkRed
+                    hoveringBox.Position, hoveringBox.Extent,
+                    innerColor: new Color(64, 64, 64), outerColor: Color.Black, radius: 4f,
+                    fillMode: RasterFillMode.Angular, fillOffset: (float)(Time.Seconds / 6),
+                    fillSize: -0.2f, fillAngle: 55,
+                    annularRadius: 1.75f, outlineRadius: 0f, outlineColor: Color.Transparent,
+                    blendState: BlendState.Additive, blendInLinearSpace: false
                 );
-
-                ir.RasterizeRectangle(
-                    contentViewRect.TopLeft, contentViewRect.BottomRight,
-                    radius: radius, innerColor: Color.ForestGreen
-                );
-                */
             }
-
-            ClearBatch.AddNew(frame, -1, Materials.Clear, Color.Black);
-
-            ir = new ImperativeRenderer(
-                frame, Materials, 
-                blendState: BlendState.AlphaBlend,
-                samplerState: SamplerState.LinearClamp,
-                worldSpace: false,
-                layer: 9999
-            );
 
             var elapsedSeconds = TimeSpan.FromTicks(Time.Ticks - LastTimeOverUI).TotalSeconds;
             float uiOpacity = Arithmetic.Lerp(1.0f, 0.66f, (float)((elapsedSeconds - 0.9) * 2.25f));
 
             ir.Draw(UIRenderTarget, Vector2.Zero, multiplyColor: Color.White * uiOpacity);
 
-            // DrawPerformanceStats(ref ir);
+            DrawPerformanceStats(ref ir);
 
             if (TearingTest) {
                 var x = (Time.Ticks / 20000) % Graphics.PreferredBackBufferWidth;
                 ir.FillRectangle(Bounds.FromPositionAndSize(
                     x, 0, 6, Graphics.PreferredBackBufferHeight
                 ), Color.Red);
+            }
+        }
+
+        private int LastPerformanceStatPrimCount;
+
+        private void DrawPerformanceStats (ref ImperativeRenderer ir) {
+            const float scale = 0.5f;
+            var text = PerformanceStats.GetText(-LastPerformanceStatPrimCount);
+            text.AppendFormat("{0:000} pass(es)", Context.LastPassCount);
+            text.AppendLine();
+
+            using (var buffer = BufferPool<BitmapDrawCall>.Allocate(text.Length)) {
+                var layout = Font.LayoutString(text, buffer, scale: scale);
+                var layoutSize = layout.Size;
+                var position = new Vector2(Graphics.PreferredBackBufferWidth - (240 * scale), Graphics.PreferredBackBufferHeight - (240 * scale)).Floor();
+                var dc = layout.DrawCalls;
+
+                // fill quad + text quads
+                LastPerformanceStatPrimCount = (layout.Count * 2) + 2;
+
+                ir.RasterizeRectangle(
+                    position, position + layoutSize,
+                    8, Color.Black * 0.4f, Color.Black * 0.4f
+                );
+                ir.Layer += 1;
+                ir.DrawMultiple(dc, position, material: Materials.ScreenSpaceBitmap, blendState: BlendState.AlphaBlend);
             }
         }
     }

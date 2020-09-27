@@ -194,6 +194,8 @@ namespace Squared.PRGUI {
                 return null;
             if (LayoutKey.IsInvalid)
                 return null;
+            if (Opacity.Get(Context.Now) <= 0)
+                return null;
 
             var result = this;
             var box = GetRect(context);
@@ -400,14 +402,17 @@ namespace Squared.PRGUI {
             if (opacity >= 1) {
                 RasterizeAllPasses(context, ref box, ref passSet, false);
             } else {
-                var rt = context.UIContext.GetScratchRenderTarget(passSet.Prepass.Container.Coordinator);
+                var rt = context.UIContext.GetScratchRenderTarget(passSet.Prepass.Container.Coordinator, ref box, out bool needClear);
                 try {
                     var compositionContext = context.Clone();
-                    // FIXME: Reorder these so that nested RTs come before outer ones
+
+                    // Create nested prepass group before the RT group so that child controls have their prepass operations run before ours
+                    var nestedPrepass = passSet.Prepass.MakeSubgroup();
                     var compositionRenderer = passSet.Prepass.ForRenderTarget(rt, name: $"Composite control");
-                    compositionRenderer.Clear(color: Color.Transparent, stencil: 0, layer: -1);
-                    var prepass = passSet.Prepass.MakeSubgroup();
-                    var newPassSet = new RasterizePassSet(ref prepass, ref compositionRenderer);
+                    if (needClear)
+                        compositionRenderer.Clear(color: Color.Transparent, stencil: 0, layer: -1);
+
+                    var newPassSet = new RasterizePassSet(ref nestedPrepass, ref compositionRenderer);
                     RasterizeAllPasses(compositionContext, ref box, ref newPassSet, true);
                     compositionRenderer.Layer += 1;
                     // FIXME: Programmatically determine how big to make this margin
