@@ -323,7 +323,6 @@ namespace Squared.PRGUI {
             var passContext = context.Clone();
             passContext.Pass = pass;
             passContext.Renderer = context.Renderer.MakeSubgroup();
-            passContext.Renderer.DepthStencilState = DepthStencilState.None;
             var hasNestedContext = (pass == RasterizePasses.Content) && (ShouldClipContent || HasNestedContent);
 
             var contentContext = passContext;
