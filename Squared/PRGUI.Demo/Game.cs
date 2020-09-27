@@ -57,7 +57,7 @@ namespace PRGUI.Demo {
             Graphics.PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8;
             Graphics.PreferredBackBufferWidth = 1920;
             Graphics.PreferredBackBufferHeight = 1080;
-            Graphics.SynchronizeWithVerticalRetrace = true;
+            Graphics.SynchronizeWithVerticalRetrace = false;
             Graphics.PreferMultiSampling = false;
             Graphics.IsFullScreen = false;
 
@@ -326,7 +326,25 @@ namespace PRGUI.Demo {
             RenderCoordinator.WaitForActiveDraws();
         }
 
+        private readonly List<double> DrawHistory = new List<double>(),
+            WaitHistory = new List<double>();
+
         protected override void Update (GameTime gameTime) {
+            var perfStats = base.PreviousFrameTiming;
+            var elapsed = perfStats.BeginDraw + perfStats.Draw + perfStats.BeforePresent;
+            var wait = perfStats.Wait + perfStats.EndDraw;
+            DrawHistory.Add(elapsed.TotalMilliseconds);
+            WaitHistory.Add(wait.TotalMilliseconds);
+
+            const int averageWindow = 60;
+
+            while (DrawHistory.Count > averageWindow)
+                DrawHistory.RemoveAt(0);
+            while (WaitHistory.Count > averageWindow)
+                WaitHistory.RemoveAt(0);
+
+            Window.Title = $"draw: {DrawHistory.Average():00.000}ms/f wait: {WaitHistory.Average():00.000}ms/f";
+
             PreviousKeyboardState = KeyboardState;
             PreviousMouseState = MouseState;
             KeyboardState = Keyboard.GetState();

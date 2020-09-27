@@ -179,6 +179,8 @@ namespace Squared.PRGUI {
 
                 UpdatePosition(newPosition, args.Context, args.Box);
 
+                FireEvent(UIEvents.Moved);
+
                 // args.Context.Invalidate();
 
                 if (name == UIEvents.MouseUp)
@@ -200,9 +202,16 @@ namespace Squared.PRGUI {
 
         public int Count => Items.Count;
         public Control Parent { get; private set; }
+        public UIContext Context { get; private set; }
+
+        internal ControlCollection (UIContext parent) {
+            Parent = null;
+            Context = parent;
+        }
 
         public ControlCollection (Control parent) {
             Parent = parent;
+            Context = parent.Context;
         }
 
         public void Add (Control control) {

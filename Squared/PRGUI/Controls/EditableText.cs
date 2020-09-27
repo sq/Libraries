@@ -84,14 +84,21 @@ namespace Squared.PRGUI.Controls {
                 Builder.Clear();
                 Builder.Append(FilterInput(value));
                 NextScrollInstant = true;
-                Invalidate();
+                ValueChanged();
             }
         }
 
+        private void ValueChanged () {
+            Invalidate();
+            FireEvent(UIEvents.ValueChanged);
+        }
+
         private string FilterInput (string input) {
-            var idx = input.IndexOfAny(new[] { '\r', '\n' });
-            if (idx >= 0)
-                return input.Replace("\r", "").Replace("\n", " ");
+            if (!Multiline) {
+                var idx = input.IndexOfAny(new[] { '\r', '\n' });
+                if (idx >= 0)
+                    return input.Replace("\r", "").Replace("\n", " ");
+            }
 
             return input;
         }
@@ -283,33 +290,34 @@ namespace Squared.PRGUI.Controls {
             SetSelection(new Pair<int>(characterIndex, characterIndex), scrollBias);
         }
 
-        private void RemoveRange (Pair<int> range) {
+        private void RemoveRange (Pair<int> range, bool fireEvent) {
             if (range.First >= range.Second)
                 return;
 
             Builder.Remove(range.First, range.Second - range.First);
-            Invalidate();
+            if (fireEvent)
+                ValueChanged();
         }
 
         private Pair<int> Insert (int offset, char newText) {
             Builder.Insert(offset, newText);
-            Invalidate();
+            ValueChanged();
             return new Pair<int>(offset, offset + 1);
         }
 
         private Pair<int> Insert (int offset, string newText) {
             Builder.Insert(offset, newText);
-            Invalidate();
+            ValueChanged();
             return new Pair<int>(offset, offset + newText.Length);
         }
 
         private Pair<int> ReplaceRange (Pair<int> range, char newText) {
-            RemoveRange(range);
+            RemoveRange(range, false);
             return Insert(range.First, newText);
         }
 
         private Pair<int> ReplaceRange (Pair<int> range, string newText) {
-            RemoveRange(range);
+            RemoveRange(range, false);
             return Insert(range.First, newText);
         }
 
@@ -335,7 +343,7 @@ namespace Squared.PRGUI.Controls {
                     case Keys.Delete:
                     case Keys.Back:
                         if (Selection.Second != Selection.First) {
-                            RemoveRange(Selection);
+                            RemoveRange(Selection, true);
                             MoveCaret(Selection.First, 1);
                         } else {
                             int pos = Selection.First, count = 1;
@@ -357,7 +365,7 @@ namespace Squared.PRGUI.Controls {
                             if (evt.Key.Value == Keys.Back)
                                 MoveCaret(Selection.First - count, -1);
 
-                            Invalidate();
+                            ValueChanged();
                         }
                         return true;
 

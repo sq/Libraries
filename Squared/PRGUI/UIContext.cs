@@ -31,7 +31,9 @@ namespace Squared.PRGUI {
             Scroll = string.Intern("Scroll"),
             KeyDown = string.Intern("KeyDown"),
             KeyPress = string.Intern("KeyPress"),
-            KeyUp = string.Intern("KeyUp");
+            KeyUp = string.Intern("KeyUp"),
+            Moved = string.Intern("Moved"),
+            ValueChanged = string.Intern("ValueChanged");
     }
 
     public class UIContext : IDisposable {
@@ -68,7 +70,7 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Double-clicks will only be tracked if this far apart or less (in seconds)
         /// </summary>
-        public double DoubleClickWindowSize = 0.33;
+        public double DoubleClickWindowSize = 0.4;
         /// <summary>
         /// If the mouse is only moved this far (in pixels) it will be treated as no movement for the purposes of click detection
         /// </summary>
@@ -116,7 +118,7 @@ namespace Squared.PRGUI {
         private Tooltip CachedTooltip;
         private Controls.StaticText CachedCompositionPreview;
 
-        public ControlCollection Controls = new ControlCollection(null);
+        public ControlCollection Controls;
 
         /// <summary>
         /// The control that currently has the mouse captured (if a button is pressed)
@@ -158,6 +160,7 @@ namespace Squared.PRGUI {
                     DefaultFont = font
                 }
             ) {
+            Controls = new ControlCollection(this);
         }
 
         private void TextInputEXT_TextInput (char ch) {
@@ -212,7 +215,7 @@ namespace Squared.PRGUI {
             Decorations = decorations;
         }
 
-        internal bool FireEvent<T> (string name, Control target, T args) {
+        internal bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false) {
             // FIXME: Is this right?
             if (target == null)
                 return false;
@@ -220,10 +223,13 @@ namespace Squared.PRGUI {
                 return true;
             if (EventBus.Broadcast(target, name, args))
                 return true;
-            return target.HandleEvent(name, args);
+            if (suppressHandler)
+                return false;
+            else
+                return target.HandleEvent(name, args);
         }
 
-        internal bool FireEvent (string name, Control target) {
+        internal bool FireEvent (string name, Control target, bool suppressHandler = false) {
             // FIXME: Is this right?
             if (target == null)
                 return false;
@@ -231,7 +237,10 @@ namespace Squared.PRGUI {
                 return true;
             if (EventBus.Broadcast<object>(target, name, null))
                 return true;
-            return target.HandleEvent(name);
+            if (suppressHandler)
+                return false;
+            else
+                return target.HandleEvent(name);
         }
 
         private void HandleNewFocusTarget (Control previous, Control target) {
@@ -700,10 +709,10 @@ namespace Squared.PRGUI {
         public LayoutContext Layout => UIContext.Layout;
         public ImperativeRenderer Renderer;
         public RasterizePasses Pass;
-        public float AnimationTime;
-        public KeyboardModifiers Modifiers;
-        public bool MouseButtonHeld;
-        public Vector2 MousePosition;
+        public float AnimationTime { get; internal set; }
+        public KeyboardModifiers Modifiers { get; internal set; }
+        public bool MouseButtonHeld { get; internal set; }
+        public Vector2 MousePosition { get; internal set; }
 
         public UIOperationContext Clone () {
             return new UIOperationContext {

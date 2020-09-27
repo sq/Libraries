@@ -68,7 +68,27 @@ namespace Squared.PRGUI {
         protected virtual bool HasNestedContent => false;
         protected virtual bool ShouldClipContent => false;
 
+        protected WeakReference<UIContext> WeakContext = null;
         protected WeakReference<Control> WeakParent = null;
+
+        public UIContext Context {
+            get {
+                if (WeakContext == null)
+                    return null;
+                else if (WeakContext.TryGetTarget(out UIContext result))
+                    return result;
+                else
+                    return null;
+            }
+        }
+
+        protected bool FireEvent<T> (string name, T args) {
+            return Context?.FireEvent(name, this, args, suppressHandler: true) ?? false;
+        }
+
+        protected bool FireEvent (string name) {
+            return Context?.FireEvent(name, this, suppressHandler: true) ?? false;
+        }
 
         public Vector2 AbsoluteDisplayOffset {
             get {
@@ -345,6 +365,15 @@ namespace Squared.PRGUI {
             return WeakParent.TryGetTarget(out parent);
         }
 
+        internal void SetContext (UIContext context) {
+            if (WeakContext != null)
+                throw new InvalidOperationException("UI context already set");
+            if (context == null)
+                throw new ArgumentNullException(nameof(context));
+
+            WeakContext = new WeakReference<UIContext>(context, false);
+        }
+
         internal void SetParent (Control parent) {
             LayoutKey = ControlKey.Invalid;
 
@@ -362,6 +391,7 @@ namespace Squared.PRGUI {
             }
 
             WeakParent = new WeakReference<Control>(parent, false);
+            SetContext(parent.Context);
         }
 
         internal void UnsetParent (Control oldParent) {
