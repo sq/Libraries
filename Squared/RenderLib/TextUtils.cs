@@ -362,6 +362,34 @@ namespace Squared.Render.Text {
             _CachedStringLayout = null;
         }
 
+        public void MakeLayoutEngine (out StringLayoutEngine result) {
+            result = new StringLayoutEngine {
+                buffer = _Buffer,
+                position = _Position,
+                color = _Color,
+                scale = _Scale,
+                sortKey = _SortKey,
+                characterSkipCount = _CharacterSkipCount,
+                characterLimit = _CharacterLimit,
+                xOffsetOfFirstLine = _XOffsetOfFirstLine,
+                xOffsetOfWrappedLine = _XOffsetOfNewLine + _WrapIndentation,
+                xOffsetOfNewLine = _XOffsetOfNewLine,
+                lineBreakAtX = _LineBreakAtX,
+                alignToPixels = _AlignToPixels,
+                characterWrap = _CharacterWrap,
+                wordWrap = _WordWrap,
+                wrapCharacter = _WrapCharacter,
+                alignment = (HorizontalAlignment)_Alignment,
+                reverseOrder = _ReverseOrder,
+                lineLimit = _LineLimit
+            };
+
+            foreach (var kvp in _Markers)
+                result.Markers.Add(kvp.Value);
+            foreach (var kvp in _HitTests)
+                result.HitTests.Add(new LayoutHitTest { Position = kvp.Key });
+        }
+
         public StringLayout Get () {
             if (_Text.IsNull)
                 return new StringLayout();
@@ -386,33 +414,10 @@ namespace Squared.Render.Text {
                 if (_Buffer.Count < capacity)
                     throw new InvalidOperationException("Buffer too small");
 
-                var le = new StringLayoutEngine {
-                    buffer = _Buffer,
-                    position = _Position,
-                    color = _Color,
-                    scale = _Scale,
-                    sortKey = _SortKey,
-                    characterSkipCount = _CharacterSkipCount,
-                    characterLimit = _CharacterLimit,
-                    xOffsetOfFirstLine = _XOffsetOfFirstLine,
-                    xOffsetOfWrappedLine = _XOffsetOfNewLine + _WrapIndentation,
-                    xOffsetOfNewLine = _XOffsetOfNewLine,
-                    lineBreakAtX = _LineBreakAtX,
-                    alignToPixels = _AlignToPixels,
-                    characterWrap = _CharacterWrap,
-                    wordWrap = _WordWrap,
-                    wrapCharacter = _WrapCharacter,
-                    alignment = (HorizontalAlignment)_Alignment,
-                    reverseOrder = _ReverseOrder,
-                    lineLimit = _LineLimit
-                };
+                StringLayoutEngine le;
+                MakeLayoutEngine(out le);
 
                 try {
-                    foreach (var kvp in _Markers)
-                        le.Markers.Add(kvp.Value);
-                    foreach (var kvp in _HitTests)
-                        le.HitTests.Add(new LayoutHitTest { Position = kvp.Key });
-
                     le.Initialize();
                     le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
 

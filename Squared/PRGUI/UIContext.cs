@@ -439,7 +439,7 @@ namespace Squared.PRGUI {
             if (mouseWheelDelta != 0)
                 HandleScroll(MouseCaptured ?? Hovering, mouseWheelDelta);
 
-            UpdateTooltip();
+            UpdateTooltip(leftButtonPressed);
 
             LastKeyboardState = keyboardState;
             LastMouseButtonState = leftButtonPressed;
@@ -464,8 +464,8 @@ namespace Squared.PRGUI {
             return tooltipText;
         }
 
-        private void UpdateTooltip () {
-            if (LastMouseButtonState)
+        private void UpdateTooltip (bool leftButtonPressed) {
+            if (leftButtonPressed)
                 return;
 
             var now = Now;
@@ -486,7 +486,7 @@ namespace Squared.PRGUI {
                 if ((hoveringFor >= TooltipAppearanceDelay) || (disappearTimeout < TooltipDisappearDelay))
                     ShowTooltip(Hovering, tooltipContent);
             } else {
-                HideTooltip();
+                HideTooltip(false);
 
                 var elapsed = now - LastTooltipHoverTime;
                 if (elapsed >= TooltipDisappearDelay)
@@ -589,7 +589,7 @@ namespace Squared.PRGUI {
 
         private void HideTooltipForMouseInput () {
             ResetTooltipShowTimer();
-            HideTooltip();
+            HideTooltip(true);
             FirstTooltipHoverTime = null;
             LastTooltipHoverTime = 0;
         }
@@ -633,12 +633,15 @@ namespace Squared.PRGUI {
             }
         }
 
-        private void HideTooltip () {
-            if (CachedTooltip == null || !IsTooltipVisible)
+        private void HideTooltip (bool instant) {
+            if (CachedTooltip == null)
                 return;
 
+            if (instant)
+                CachedTooltip.Opacity = 0;
+            else if (IsTooltipVisible)
+                CachedTooltip.Opacity = Tween<float>.StartNow(CachedTooltip.Opacity.Get(Now), 0, seconds: TooltipFadeDuration);
             IsTooltipVisible = false;
-            CachedTooltip.Opacity = Tween<float>.StartNow(CachedTooltip.Opacity.Get(Now), 0, seconds: TooltipFadeDuration);
         }
 
         private void UpdateSubtreeLayout (Control subtreeRoot) {

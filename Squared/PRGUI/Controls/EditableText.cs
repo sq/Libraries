@@ -25,7 +25,7 @@ namespace Squared.PRGUI.Controls {
         public const float MinRightScrollMargin = 16, MaxRightScrollMargin = 64;
         public const float AutoscrollClickTimeout = 0.25f;
         public const float ScrollTurboThreshold = 420f, ScrollFastThreshold = 96f;
-        public const float ScrollLimitPerFrameSlow = 6f, ScrollLimitPerFrameFast = 32f;
+        public const float ScrollLimitPerFrameSlow = 5.5f, ScrollLimitPerFrameFast = 32f;
 
         /// <summary>
         /// Pre-processes any new text being inserted
@@ -653,7 +653,12 @@ namespace Squared.PRGUI.Controls {
                 }
 
                 var distance = Math.Max(overflowX, underflowX);
-                float scrollLimit = (NextScrollInstant || distance >= ScrollFastThreshold)
+                float scrollLimit = (
+                    (NextScrollInstant || distance >= ScrollFastThreshold) && 
+                    // If the user is adjusting the selection with the mouse we want to scroll slow no matter what
+                    //  so that the selection doesn't get completely out of control
+                    Context.MouseCaptured != this
+                )
                     ? (
                         (NextScrollInstant || distance >= ScrollTurboThreshold)
                         ? 99999
