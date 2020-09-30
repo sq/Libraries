@@ -166,12 +166,18 @@ namespace Squared.PRGUI.Controls {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
 
             var computedPadding = ComputePadding(context, decorations);
-            var textOffset = a + new Vector2(computedPadding.Left, computedPadding.Top);
-            if (settings.State.IsFlagged(ControlStates.Pressed))
-                textOffset += decorations.PressedInset;
+
+            Vector2 textOffset = Vector2.Zero, textScale = Vector2.One;
+            decorations?.GetContentAdjustment(context, settings.State, out textOffset, out textScale);
+            textOffset += a + new Vector2(computedPadding.Left, computedPadding.Top);
 
             var layout = Content.Get();
-            var xSpace = (b.X - a.X) - layout.Size.X - computedPadding.X;
+            var scaledSize = layout.Size * textScale;
+
+            // Recenter the text if it's been scaled by the decorator
+            textOffset.Y += (layout.Size.Y - scaledSize.Y);
+
+            var xSpace = (b.X - a.X) - scaledSize.X - computedPadding.X;
             switch (Content.Alignment) {
                 case HorizontalAlignment.Left:
                     break;
@@ -185,7 +191,8 @@ namespace Squared.PRGUI.Controls {
 
             renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
-                material: material, samplerState: RenderStates.Text, multiplyColor: overrideColor
+                material: material, samplerState: RenderStates.Text, multiplyColor: overrideColor,
+                scale: textScale
             );
         }
 

@@ -23,7 +23,7 @@ namespace Squared.PRGUI.Decorations {
     public interface IBaseDecorator {
         Margins Margins { get; }
         Margins Padding { get; }
-        Vector2 PressedInset { get; }
+        void GetContentAdjustment (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
         bool GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color);
     }
 
@@ -51,12 +51,15 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public delegate bool TextSettingsGetter (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color);
+    public delegate void DecoratorDelegate (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
+    public delegate void ContentAdjustmentGetter (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
 
     public abstract class DelegateBaseDecorator : IBaseDecorator {
         public Margins Margins { get; set; }
         public Margins Padding { get; set; }
-        public Vector2 PressedInset { get; set; }
+
         public TextSettingsGetter GetTextSettings;
+        public ContentAdjustmentGetter GetContentAdjustment;
 
         bool IBaseDecorator.GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color) {
             if (GetTextSettings != null)
@@ -67,9 +70,16 @@ namespace Squared.PRGUI.Decorations {
                 return false;
             }
         }
-    }
 
-    public delegate void DecoratorDelegate (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
+        void IBaseDecorator.GetContentAdjustment (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale) {
+            if (GetContentAdjustment != null)
+                GetContentAdjustment(context, state, out offset, out scale);
+            else {
+                offset = Vector2.Zero;
+                scale = Vector2.One;
+            }
+        }
+    }
 
     public sealed class DelegateDecorator : DelegateBaseDecorator, IDecorator {
         public DecoratorDelegate Below, Content, Above, ContentClip;
@@ -83,7 +93,7 @@ namespace Squared.PRGUI.Decorations {
                 Margins = Margins,
                 Padding = Padding,
                 GetTextSettings = GetTextSettings,
-                PressedInset = PressedInset
+                GetContentAdjustment = GetContentAdjustment
             };
         }
 
@@ -517,6 +527,16 @@ namespace Squared.PRGUI.Decorations {
             return true;
         }
 
+        private void GetContentAdjustment_Button (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale) {
+            if (state.IsFlagged(ControlStates.Pressed)) {
+                offset = new Vector2(0, 2);
+                scale = Vector2.One * 0.97f;
+            } else {
+                offset = new Vector2(0, 0);
+                scale = Vector2.One;
+            }
+        }
+
         private bool GetTextSettings_Title (
             UIOperationContext context, ControlStates state, 
             out Material material, out IGlyphSource font, ref Color? color
@@ -580,7 +600,7 @@ namespace Squared.PRGUI.Decorations {
             Button = new DelegateDecorator {
                 Margins = new Margins(4),
                 Padding = new Margins(6),
-                PressedInset = new Vector2(0, 1),
+                GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
                 Below = Button_Below,
                 Above = Button_Above
