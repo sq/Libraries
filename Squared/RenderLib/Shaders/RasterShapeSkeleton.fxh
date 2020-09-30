@@ -90,17 +90,6 @@ float4 TransformPosition(float4 position, bool halfPixelOffset) {
     return mul(modelViewPos, Viewport.Projection);
 }
 
-float computeTotalRadius (int type, float2 radiusTLTR, float2 radiusBRBL, float outlineSize) {
-    if (type == TYPE_Rectangle) {
-        return max(
-            max(radiusTLTR.x, radiusTLTR.y),
-            max(radiusBRBL.x, radiusBRBL.y)
-        ) + outlineSize;
-    } else {
-        return radiusBRBL.x + outlineSize;
-    }
-}
-
 void adjustTLBR (
     inout float2 tl, inout float2 br, float4 params
 ) {
@@ -127,14 +116,14 @@ void adjustTLBR (
 }
 
 void computeTLBR (
-    int type, float2 radius, float totalRadius, float4 params,
+    int type, float2 radius, float outlineSize, float4 params,
     float2 a, float2 b, float2 c,
     out float2 tl, out float2 br
 ) {
     switch (abs(type)) {
         case TYPE_Ellipse:
-            tl = a - b - totalRadius;
-            br = a + b + totalRadius;
+            tl = a - b - outlineSize;
+            br = a + b + outlineSize;
             break;
 
         case TYPE_LineSegment:
@@ -143,19 +132,19 @@ void computeTLBR (
             break;
 
         case TYPE_Rectangle:
-            tl = min(a, b) - totalRadius;
-            br = max(a, b) + totalRadius;
+            tl = min(a, b) - outlineSize;
+            br = max(a, b) + outlineSize;
             break;
 
         case TYPE_Triangle:
-            totalRadius += 1;
-            tl = min(min(a, b), c) - totalRadius;
-            br = max(max(a, b), c) + totalRadius;
+            outlineSize += 1;
+            tl = min(min(a, b), c) - outlineSize;
+            br = max(max(a, b), c) + outlineSize;
             break;
 
 #ifdef INCLUDE_BEZIER
         case TYPE_QuadraticBezier:
-            totalRadius += 1;
+            outlineSize += 1;
             float2 mi = min(a, c);
             float2 ma = max(a, c);
 
@@ -168,14 +157,14 @@ void computeTLBR (
                 ma = max(ma, q);
             }
 
-            tl = mi - totalRadius;
-            br = ma + totalRadius;
+            tl = mi - outlineSize;
+            br = ma + outlineSize;
             break;
 #endif
 
         case TYPE_Arc:
-            tl = a - totalRadius - radius.y;
-            br = a + totalRadius + radius.y;
+            tl = a - outlineSize - radius.y;
+            br = a + outlineSize + radius.y;
             break;
 
         default:
@@ -185,13 +174,15 @@ void computeTLBR (
 }
 
 void computePosition (
-    int type, float totalRadius, 
-    float2 a, float2 b, float2 c,
+    int type, float outlineSize, 
+    float2 a, float2 b, float2 c, float2 radius,
     float2 tl, float2 br, float3 cornerWeights,
     float4 params,
     out float2 xy
 ) {
     if (type == TYPE_LineSegment) {
+        float totalRadius = radius.x;
+
         // HACK: Too hard to calculate precise offsets here so just pad it out.
         // FIXME: This is bad for performance!
         if (!ShadowInside) {
@@ -199,8 +190,13 @@ void computePosition (
             totalRadius += ShadowSoftness;
         }
 
+        totalRadius += outlineSize;
+
         float annularRadius = params.y;
         totalRadius += annularRadius;
+
+        // HACK
+        totalRadius += 1;
 
         // Oriented bounding box around the line segment
         float2 along = b - a,
@@ -242,11 +238,10 @@ void RasterShapeVertexShader (
     float outlineSize = abs(params.x);
     int type = abs(typeAndWorldSpace.x);
 
-    float totalRadius = computeTotalRadius(typeAndWorldSpace.x, c, radius, outlineSize) + 1;
     float2 tl, br;
 
-    computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
-    computePosition(type, totalRadius, a, b, c, tl, br, cornerWeights.xyz, params, position.xy);
+    computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
+    computePosition(type, outlineSize, a, b, c, radius, tl, br, cornerWeights.xyz, params, position.xy);
 
     float2 adjustedPosition = position.xy;
     if (typeAndWorldSpace.y > 0.5) {
@@ -463,7 +458,7 @@ float evaluateGradient (
 }
 
 void evaluateRasterShape (
-    int type, float2 radius, float totalRadius, float4 params,
+    int type, float2 radius, float outlineSize, float4 params,
     in float2 worldPosition, in float2 a, in float2 b, in float2 c, in bool simple,
     out float distance, inout float2 tl, inout float2 br,
     inout int gradientType, out float gradientWeight
@@ -501,7 +496,7 @@ PREFER_BRANCH
             distance = sdBezier(worldPosition, a, b, c) - radius.x;
             gradientWeight = 1 - saturate(-distance / radius.x);
 
-            computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
+            computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
 
             break;
         }
@@ -549,11 +544,11 @@ PREFER_BRANCH
         distance = abs(distance) - annularRadius;
 
     if (needTLBR)
-        computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
+        computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
 }
 
 float computeShadowAlpha (
-    int type, float2 radius, float totalRadius, float4 params,
+    int type, float2 radius, float4 params,
     float2 worldPosition, float2 a, float2 b, float2 c,
     float shadowEndDistance
 ) {
@@ -563,7 +558,7 @@ float computeShadowAlpha (
 
     float distance;
     evaluateRasterShape(
-        abs(type), radius, totalRadius, params,
+        abs(type), radius, 0 /* outlineSize, previously totalRadius */, params,
         // Force simple on since we don't use gradient value in shadow calc
         worldPosition, a, b, c, true,
         distance, tl, br,
@@ -607,7 +602,6 @@ void rasterShapeCommon (
 
     const float threshold = (1 / 512.0);
 
-    float totalRadius = computeTotalRadius(type, c, radius, outlineSize);
     float2 invRadius = 1.0 / max(radius, 0.0001);
 
     float distance = 0, gradientWeight = 0;
@@ -629,7 +623,7 @@ void rasterShapeCommon (
     }
 
     evaluateRasterShape(
-        type, radius, totalRadius, params,
+        type, radius, outlineSize, params,
         worldPosition, a, b, c, simple,
         distance, tl, br,
         gradientType, gradientWeight
@@ -691,7 +685,7 @@ void rasterShapeCommon (
     PREFER_BRANCH
     if (enableShadow) {
         shadowAlpha = computeShadowAlpha(
-            type, radius, totalRadius, params,
+            type, radius, params,
             worldPosition - ShadowOffset, a, b, c,
             ShadowInside ? fillEndDistance : max(outlineEndDistance, fillEndDistance)
         );
