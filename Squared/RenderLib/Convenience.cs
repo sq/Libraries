@@ -1326,7 +1326,7 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Rectangle,
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = tl, B = br,
-                    C = new Vector2(fillModeF, fillOffset),
+                    C = new Vector2(radius),
                     Radius = new Vector2(radius),
                     OutlineSize = 0,
                     InnerColor = innerColor,
@@ -1365,8 +1365,47 @@ namespace Squared.Render.Convenience {
                     Type = RasterShapeType.Rectangle,
                     WorldSpace = worldSpace ?? WorldSpace,
                     A = tl, B = br,
-                    C = new Vector2(fillModeF, fillOffset),
+                    C = new Vector2(radius),
                     Radius = new Vector2(radius),
+                    OutlineSize = outlineRadius,
+                    InnerColor = innerColor,
+                    OuterColor = outerColor,
+                    OutlineColor = outlineColor,
+                    OutlineGammaMinusOne = RasterOutlineGammaMinusOne,
+                    BlendInLinearSpace = blendInLinearSpace ?? RasterBlendInLinearSpace,
+                    FillGradientPowerMinusOne = (fillGradientPower ?? Vector2.One) - Vector2.One,
+                    FillMode = fillModeF,
+                    FillOffset = fillOffset,
+                    FillSize = fillSize,
+                    AnnularRadius = annularRadius ?? 0,
+                    Shadow = shadow ?? RasterShadow,
+                    // FIXME
+                    TextureBounds = Bounds.Unit,
+                    SoftOutline = RasterSoftOutlines
+                });
+        }
+
+        public void RasterizeRectangle (
+            Vector2 tl, Vector2 br, Vector4 radiusCW, float outlineRadius,
+            pSRGBColor innerColor, pSRGBColor outerColor, pSRGBColor outlineColor,
+            RasterFillMode fillMode = RasterFillMode.Natural,
+            float fillOffset = 0, float fillSize = 1, Vector2? fillGradientPower = null,
+            float fillAngle = 0, float? annularRadius = null,
+            RasterShadowSettings? shadow = null,
+            int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
+            BlendState blendState = null, Texture2D texture = null,
+            Bounds? textureRegion = null, SamplerState samplerState = null
+        ) {
+            var fillModeF = ConvertFillMode(fillMode, fillAngle);
+            using (var rsb = GetRasterShapeBatch(
+                layer, worldSpace, blendState, texture, samplerState
+            ))
+                rsb.Add(new RasterShapeDrawCall {
+                    Type = RasterShapeType.Rectangle,
+                    WorldSpace = worldSpace ?? WorldSpace,
+                    A = tl, B = br,
+                    C = new Vector2(radiusCW.X, radiusCW.Y),
+                    Radius = new Vector2(radiusCW.Z, radiusCW.W),
                     OutlineSize = outlineRadius,
                     InnerColor = innerColor,
                     OuterColor = outerColor,

@@ -90,8 +90,15 @@ float4 TransformPosition(float4 position, bool halfPixelOffset) {
     return mul(modelViewPos, Viewport.Projection);
 }
 
-float computeTotalRadius (float2 radius, float outlineSize) {
-    return radius.x + outlineSize;
+float computeTotalRadius (int type, float2 radiusTLTR, float2 radiusBRBL, float outlineSize) {
+    if (type == TYPE_Rectangle) {
+        return max(
+            max(radiusTLTR.x, radiusTLTR.y),
+            max(radiusBRBL.x, radiusBRBL.y)
+        ) + outlineSize;
+    } else {
+        return radiusBRBL.x + outlineSize;
+    }
 }
 
 void adjustTLBR (
@@ -235,7 +242,7 @@ void RasterShapeVertexShader (
     float outlineSize = abs(params.x);
     int type = abs(typeAndWorldSpace.x);
 
-    float totalRadius = computeTotalRadius(radius, outlineSize) + 1;
+    float totalRadius = computeTotalRadius(typeAndWorldSpace.x, c, radius, outlineSize) + 1;
     float2 tl, br;
 
     computeTLBR(type, radius, totalRadius, params, a, b, c, tl, br);
@@ -346,15 +353,20 @@ void evaluateLineSegment (
 }
 
 void evaluateRectangle (
-    in float2 worldPosition, in float2 a, in float2 b, in float2 c,
-    in float2 radius, out float distance,
+    in float2 worldPosition, in float2 a, in float2 b, in float2 radiusTLTR,
+    in float2 radiusBRBL, out float distance,
     inout int gradientType, out float gradientWeight
 ) {
     float2 center = (a + b) * 0.5;
     float2 boxSize = abs(b - a) * 0.5;
-    distance = sdBox(worldPosition - center, boxSize) - radius.x;
-
-    float centerDistance = sdBox(0, boxSize) - radius.x;
+    float2 localPosition = worldPosition - center;
+    float localRadius = 
+        (localPosition.y <= 0)
+            ? (localPosition.x <= 0 ? radiusTLTR.x : radiusTLTR.y)
+            : (localPosition.x <= 0 ? radiusBRBL.y : radiusBRBL.x);
+    
+    float2 q = abs(localPosition) - boxSize + localRadius;
+    distance = min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - localRadius;
     gradientWeight = 0;
 
     PREFER_FLATTEN
@@ -595,7 +607,7 @@ void rasterShapeCommon (
 
     const float threshold = (1 / 512.0);
 
-    float totalRadius = computeTotalRadius(radius, outlineSize);
+    float totalRadius = computeTotalRadius(type, c, radius, outlineSize);
     float2 invRadius = 1.0 / max(radius, 0.0001);
 
     float distance = 0, gradientWeight = 0;
