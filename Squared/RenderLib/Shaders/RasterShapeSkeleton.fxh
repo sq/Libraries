@@ -204,6 +204,12 @@ void computePosition (
 
         // FIXME
         xy = lerp(a - alongNorm, b + alongNorm, cornerWeights.x) + lerp(left, right, cornerWeights.y);
+    } else if (type == TYPE_Triangle) {
+        adjustTLBR(tl, br, params);
+        // HACK: Rounding triangles makes their bounding box expand for some reason
+        tl -= (1 + radius.x * 0.33); br += (1 + radius.x * 0.33);
+        // FIXME: Fit a better hull around triangles. Oriented bounding box?
+        xy = lerp(tl, br, cornerWeights.xy);
     } else {
         adjustTLBR(tl, br, params);
         // HACK: Padding
@@ -376,32 +382,40 @@ void evaluateTriangle (
     inout int gradientType, out float gradientWeight,
     out float2 tl, out float2 br
 ) {
-    distance = sdTriangle(worldPosition, a, b, c);
+    // length of the side opposite the vertex (between its neighbors)
+    float sa = length(b - c), sb = length(c - a), sc = length(b - a);
+    float perimeter = max(sa + sb + sc, 0.001);
+    float2 incenter = ((sa * a) + (sb * b) + (sc * c)) / perimeter;
 
-    float2 center = (a + b + c) / 3;
-    // float centerDistance = sdTriangle(center, a, b, c);
-    // FIXME: Why is this necessary?
-    float ac = length(a - center), bc = length(b - center), cc = length(c - center);
-    float targetDistance = ((min(ac, min(bc, cc)) + max(ac, max(bc, cc))) * -0.25) - radius.x;
+    // HACK: Subtracting radius for rounding expands the triangle, so compensate by shrinking the endpoints in towards the center
+    // FIXME: This grows outside the bounding box sometimes?
+    float2 ra = a, rb = b, rc = c;
+    rb -= normalize(b - incenter) * radius.x;
+    ra -= normalize(a - incenter) * radius.x;
+    rc -= normalize(c - incenter) * radius.x;
+
+    distance = sdTriangle(worldPosition, ra, rb, rc);
+    distance -= radius.x;
+
+    // FIXME: Not quite right, the center of the fill expands a bit
+    float targetDistance = sdTriangle(incenter, a, b, c);
 
     tl = min(min(a, b), c);
     br = max(max(a, b), c);
 
-    // FIXME: Recenter non-natural gradients around our centerpoint instead of the
+    // FIXME: Recenter non-natural gradients around our incenter instead of the
     //  center of our bounding box
 
     PREFER_FLATTEN
     switch (abs(gradientType)) {
         case GRADIENT_TYPE_Natural:
-            gradientWeight = 1 - saturate((distance - radius.x) / targetDistance);
+            gradientWeight = 1 - saturate(distance / targetDistance);
             gradientType = GRADIENT_TYPE_Other;
             break;
         default:
             gradientWeight = 0;
             break;
     }
-
-    // distance -= radius.x;
 }
 
 float evaluateGradient (
@@ -713,7 +727,7 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
 }
 
 float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool convertToSRGB, bool enableShadow, float2 vpos) {
-    float4 result = fillColor * (fillAlpha + 0.2);
+    float4 result = fillColor * fillAlpha;
     if (enableShadow) {
         // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
         float4 ca = ShadowInside ? ShadowColorLinear : result, cb = ShadowInside ? result : ShadowColorLinear;
