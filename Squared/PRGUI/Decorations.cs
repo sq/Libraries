@@ -238,7 +238,7 @@ namespace Squared.PRGUI.Decorations {
                 thickness = state.IsFlagged(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
             }
 
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
                 radius: InteractableCornerRadius,
@@ -253,7 +253,7 @@ namespace Squared.PRGUI.Decorations {
             if (!settings.State.IsFlagged(ControlStates.Hovering))
                 return;
 
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InteractableCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / settings.Box.Height));
 
             renderer.RasterizeRectangle(
@@ -271,7 +271,7 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void Container_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
             renderer.RasterizeRectangle(
                 a, b,
@@ -284,7 +284,7 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void FloatingContainer_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, FloatingContainerCornerRadius ?? ContainerCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
             renderer.RasterizeRectangle(
                 a, b,
@@ -297,7 +297,7 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void Tooltip_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, FloatingContainerCornerRadius ?? ContainerCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
             var color1 = (pSRGBColor)TooltipFillColor;
             var color2 = (color1.ToVector4() * 1.25f);
@@ -316,7 +316,7 @@ namespace Squared.PRGUI.Decorations {
             if (!settings.BackgroundColor.HasValue)
                 return;
 
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
             renderer.RasterizeRectangle(
                 a, b,
@@ -329,7 +329,7 @@ namespace Squared.PRGUI.Decorations {
         private void EditableText_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             bool isFocused = settings.State.IsFlagged(ControlStates.Focused),
                 isHovering = settings.State.IsFlagged(ControlStates.Hovering);
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
                 radius: InertCornerRadius,
@@ -346,7 +346,7 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void EditableText_ContentClip (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
                 radius: InertCornerRadius,
@@ -362,7 +362,7 @@ namespace Squared.PRGUI.Decorations {
             if (!settings.State.IsFlagged(ControlStates.Focused))
                 return;
 
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, InertCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / settings.Box.Height));
 
             renderer.RasterizeRectangle(
@@ -380,7 +380,7 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void Container_ContentClip (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, ContainerCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
                 radius: ContainerCornerRadius,
@@ -408,7 +408,7 @@ namespace Squared.PRGUI.Decorations {
             var b = box.Extent;
 
             renderer.RasterizeRectangle(
-                a + vRadius, b - vRadius,
+                a, b,
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: ScrollbarTrackColor, outerColor: ScrollbarTrackColor
@@ -428,7 +428,7 @@ namespace Squared.PRGUI.Decorations {
             renderer.Layer += 1;
 
             renderer.RasterizeRectangle(
-                a + vRadius, b - vRadius,
+                a, b,
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: ScrollbarThumbColor, outerColor: ScrollbarThumbColor * 0.8f,
@@ -438,7 +438,7 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void WindowTitle_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, TitleCornerRadius);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
             var color1 = (pSRGBColor)TitleFillColor;
             var color2 = color1.ToVector4() * 0.7f;
@@ -454,7 +454,7 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void Selection_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, SelectionCornerRadius - SelectionPadding);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var isCaret = (settings.Box.Width <= 0.5f);
             var isFocused = settings.State.IsFlagged(ControlStates.Focused);
             var fillColor = SelectionFillColor *
@@ -477,7 +477,7 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void CompositionPreview_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, SelectionCornerRadius - SelectionPadding);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var fillColor = SelectionFillColor;
             var outlineColor = Color.White;
 
