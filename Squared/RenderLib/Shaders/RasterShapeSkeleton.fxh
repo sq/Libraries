@@ -157,14 +157,14 @@ void computeTLBR (
                 ma = max(ma, q);
             }
 
-            tl = mi - outlineSize;
-            br = ma + outlineSize;
+            tl = mi - outlineSize - radius.x;
+            br = ma + outlineSize + radius.x;
             break;
 #endif
 
         case TYPE_Arc:
-            tl = a - outlineSize - radius.y;
-            br = a + outlineSize + radius.y;
+            tl = a - outlineSize - radius.x - radius.y;
+            br = a + outlineSize + radius.x + radius.y;
             break;
 
         default:
@@ -185,10 +185,8 @@ void computePosition (
 
         // HACK: Too hard to calculate precise offsets here so just pad it out.
         // FIXME: This is bad for performance!
-        if (!ShadowInside) {
-            totalRadius += length(ShadowOffset);
-            totalRadius += ShadowSoftness;
-        }
+        if (!ShadowInside)
+            totalRadius += (length(ShadowOffset) + ShadowSoftness) * 0.6;
 
         totalRadius += outlineSize;
 
@@ -403,7 +401,7 @@ void evaluateTriangle (
             break;
     }
 
-    distance -= radius.x;
+    // distance -= radius.x;
 }
 
 float evaluateGradient (
@@ -413,7 +411,7 @@ float evaluateGradient (
     float2 gradientCenter = (tl + br) / 2;
     float2 boxSize = (br - tl);
     boxSize = max(abs(boxSize), 0.001) * sign(boxSize);
-    float2 radialSize2 = (boxSize + (radius * 2)) * 0.5;
+    float2 radialSize2 = (boxSize /* + (radius * 2) */) * 0.5;
 
     PREFER_FLATTEN
     switch (abs(gradientType)) {
@@ -715,7 +713,7 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
 }
 
 float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool convertToSRGB, bool enableShadow, float2 vpos) {
-    float4 result = fillColor * fillAlpha;
+    float4 result = fillColor * (fillAlpha + 0.2);
     if (enableShadow) {
         // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
         float4 ca = ShadowInside ? ShadowColorLinear : result, cb = ShadowInside ? result : ShadowColorLinear;
@@ -740,12 +738,6 @@ float4 texturedShapeCommon (
     in float4 params, in float4 params2, in float2 tl, in float2 br,
     in bool enableShadow, in float2 vpos
 ) {
-    // HACK: Increasing the radius of shapes like rectangles
-    //  causes the shapes to expand, so we need to expand the
-    //  rectangular area the texture is being applied to
-    tl -= cd.zw;
-    br += cd.zw;
-
     float2 sizePx = br - tl;
     sizePx = max(abs(sizePx), 0.001) * sign(sizePx);
     float2 posRelative = worldPosition - tl;
