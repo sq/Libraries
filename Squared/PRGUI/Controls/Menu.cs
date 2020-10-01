@@ -11,8 +11,8 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public class Menu : Container {
-        public const float MenuShowSpeed = 0.2f;
-        public const float MenuHideSpeed = 0.2f;
+        public const float MenuShowSpeed = 0.1f;
+        public const float MenuHideSpeed = 0.25f;
 
         private Control _SelectedItem;
 
@@ -128,6 +128,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool OnEvent<T> (string name, T args) {
+            if (!IsActive)
+                return false;
+
             if (name == UIEvents.MouseLeave)
                 SelectedItem = null;
             else if (args is MouseEventArgs)
@@ -170,6 +173,9 @@ namespace Squared.PRGUI.Controls {
             if (!context.Controls.Contains(this))
                 context.Controls.Add(this);
 
+            MaximumWidth = context.CanvasSize.X * 0.5f;
+            MaximumHeight = context.CanvasSize.Y * 0.66f;
+
             // Align the top-left corner of the menu with the target position (compensating for margin),
             //  then shift the menu around if necessary to keep it on screen
             var adjustedPosition = (position ?? context.LastMousePosition);
@@ -178,25 +184,28 @@ namespace Squared.PRGUI.Controls {
             adjustedPosition.Y -= margin.Top;
             context.UpdateSubtreeLayout(this);
             var box = GetRect(context.Layout);
-            adjustedPosition.X = Arithmetic.Clamp(adjustedPosition.X, 0, context.CanvasSize.X - box.Width);
-            adjustedPosition.Y = Arithmetic.Clamp(adjustedPosition.Y, 0, context.CanvasSize.Y - box.Height);
+            adjustedPosition.X = Arithmetic.Clamp(adjustedPosition.X, 0, context.CanvasSize.X - box.Width - margin.Right);
+            adjustedPosition.Y = Arithmetic.Clamp(adjustedPosition.Y, 0, context.CanvasSize.Y - box.Height - margin.Bottom);
 
             SelectedItem = null;
             Position = adjustedPosition;
             Visible = true;
+            Intangible = false;
             if (!IsActive)
-                Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: context.TimeProvider.Ticks);
+                Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: NowL);
             context.CaptureMouse(this);
             IsActive = true;
             Context.FireEvent(UIEvents.Shown, this);
         }
 
         public void Close () {
-            Context.ReleaseCapture(this);
             if (!IsActive)
                 return;
-            Opacity = Tween<float>.StartNow(1, 0, MenuHideSpeed, now: Context.TimeProvider.Ticks);
             IsActive = false;
+            Intangible = true;
+            Context.ReleaseCapture(this);
+            var now = NowL;
+            Opacity = Tween<float>.StartNow(Opacity.Get(now), 0, MenuHideSpeed, now: now);
             Context.FireEvent(UIEvents.Closed, this);
         }
     }
