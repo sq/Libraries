@@ -208,6 +208,13 @@ namespace PRGUI.Demo {
                 Position = new Vector2(600, 400)
             };
 
+            var button1 = new Button {
+                AutoSizeWidth = false,
+                FixedWidth = 220,
+                Text = "Button 1",
+                TooltipContent = "Hi"
+            };
+
             Context = new UIContext(Materials, decorations) {
                 Controls = {
                     new Container {
@@ -217,12 +224,7 @@ namespace PRGUI.Demo {
                         Children = {
                             hoveringCtl,
                             lastClickedCtl,
-                            new Button {
-                                AutoSizeWidth = false,
-                                FixedWidth = 220,
-                                Text = "Button 1",
-                                TooltipContent = "Hi"
-                            },
+                            button1,
                             new StaticText {
                                 Text = "A Button:",
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
@@ -281,8 +283,7 @@ namespace PRGUI.Demo {
                             }
                         }
                     },
-                    floatingWindow,
-                    testMenu
+                    floatingWindow
                 }
             };
 
@@ -296,6 +297,10 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(changePaintOrder, UIEvents.Click, (ei) => {
                 floatingWindow.PaintOrder = -floatingWindow.PaintOrder;
+            });
+
+            Context.EventBus.Subscribe(button1, UIEvents.MouseDown, (ei) => {
+                testMenu.Show(Context);
             });
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {

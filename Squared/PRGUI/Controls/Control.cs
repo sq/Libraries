@@ -237,7 +237,7 @@ namespace Squared.PRGUI {
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var result = existingKey ?? context.Layout.CreateItem();
 
-            var decorations = GetDecorations(context);
+            var decorations = GetDecorations(context.DecorationProvider);
             var computedMargins = ComputeMargins(context, decorations);
             var computedPadding = ComputePadding(context, decorations);
 
@@ -275,16 +275,16 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        protected virtual IDecorator GetDefaultDecorations (UIOperationContext context) {
+        protected virtual IDecorator GetDefaultDecorations (IDecorationProvider provider) {
             return null;
         }
 
-        protected IDecorator GetDecorations (UIOperationContext context) {
-            return CustomDecorations ?? GetDefaultDecorations(context);
+        protected IDecorator GetDecorations (IDecorationProvider provider) {
+            return CustomDecorations ?? GetDefaultDecorations(provider);
         }
 
-        protected IDecorator GetTextDecorations (UIOperationContext context) {
-            return CustomTextDecorations ?? GetDefaultDecorations(context);
+        protected IDecorator GetTextDecorations (IDecorationProvider provider) {
+            return CustomTextDecorations ?? GetDefaultDecorations(provider);
         }
 
         protected ControlStates GetCurrentState (UIOperationContext context) {
@@ -326,7 +326,7 @@ namespace Squared.PRGUI {
 
         private void RasterizePass (UIOperationContext context, RectF box, bool compositing, ref RasterizePassSet passSet, ref ImperativeRenderer renderer, RasterizePasses pass) {
             var contentBox = GetRect(context.Layout, contentRect: true);
-            var decorations = GetDecorations(context);
+            var decorations = GetDecorations(context.DecorationProvider);
             var state = GetCurrentState(context);
 
             var passContext = context.Clone();

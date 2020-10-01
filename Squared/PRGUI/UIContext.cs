@@ -33,7 +33,10 @@ namespace Squared.PRGUI {
             KeyPress = string.Intern("KeyPress"),
             KeyUp = string.Intern("KeyUp"),
             Moved = string.Intern("Moved"),
-            ValueChanged = string.Intern("ValueChanged");
+            ValueChanged = string.Intern("ValueChanged"),
+            SelectionChanged = string.Intern("SelectionChanged"),
+            Shown = string.Intern("Shown"),
+            Closed = string.Intern("Closed");
     }
 
     public class UIContext : IDisposable {
@@ -165,12 +168,29 @@ namespace Squared.PRGUI {
         /// <summary>
         /// The control that currently has the mouse captured (if a button is pressed)
         /// </summary>
-        public Control MouseCaptured { get; private set; }
+        public Control MouseCaptured {
+            get => _MouseCaptured;
+            private set {
+                if ((value != null) && !value.AcceptsMouseInput)
+                    throw new InvalidOperationException("Control cannot accept mouse input");
+                var previous = _MouseCaptured;
+                _MouseCaptured = value;
+                // Console.WriteLine($"Mouse capture {previous} -> {value}");
+            }
+        }
 
         /// <summary>
         /// The control currently underneath the mouse cursor, as long as the mouse is not captured by another control
         /// </summary>
-        public Control Hovering { get; private set; }
+        public Control Hovering {
+            get => _Hovering;
+            private set {
+                var previous = _Hovering;
+                _Hovering = value;
+                if (previous != value)
+                    HandleHoverTransition(previous, value);
+            }
+        }
 
         /// <summary>
         /// The control currently underneath the mouse cursor
@@ -184,15 +204,15 @@ namespace Squared.PRGUI {
             get => _Focused;
             set {
                 if (value != null && (!value.AcceptsFocus || !value.Enabled))
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException("Control cannot accept focus");
                 var previous = _Focused;
                 _Focused = value;
-                if (previous != null)
+                if ((previous != null) && (previous != _Focused))
                     FireEvent(UIEvents.LostFocus, previous, _Focused);
 
                 HandleNewFocusTarget(previous, _Focused);
 
-                if (_Focused != null)
+                if ((_Focused != null) && (previous != _Focused))
                     FireEvent(UIEvents.GotFocus, _Focused, previous);
             }
         }
@@ -202,10 +222,12 @@ namespace Squared.PRGUI {
 
         private KeyboardModifiers CurrentModifiers;
 
-        private Vector2 LastMousePosition;
+        internal Vector2 LastMousePosition;
         private bool LastMouseButtonState = false;
         private Vector2? MouseDownPosition;
         private KeyboardState LastKeyboardState;
+        private bool SuppressNextCaptureLoss = false;
+        private Control ReleasedCapture = null;
 
         private Vector2 LastClickPosition;
         private Control LastClickTarget;
@@ -229,7 +251,7 @@ namespace Squared.PRGUI {
 
         public float Now => (float)TimeProvider.Seconds;
 
-        private Control _Focused;
+        private Control _Focused, _MouseCaptured, _Hovering;
 
         private void TextInputEXT_TextInput (char ch) {
             // Control characters will be handled through the KeyboardState path
@@ -296,30 +318,44 @@ namespace Squared.PRGUI {
             Materials = materials;
         }
 
-        internal bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false) {
+        internal bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false, bool targetHandlesFirst = false) {
             // FIXME: Is this right?
             if (target == null)
                 return false;
             if (EventBus == null)
                 return true;
-            if (EventBus.Broadcast(target, name, args))
+
+            if (!targetHandlesFirst && EventBus.Broadcast(target, name, args))
                 return true;
+            if (targetHandlesFirst && target.HandleEvent(name, args))
+                return true;
+
             if (suppressHandler)
                 return false;
+
+            if (targetHandlesFirst)
+                return EventBus.Broadcast(target, name, args);
             else
                 return target.HandleEvent(name, args);
         }
 
-        internal bool FireEvent (string name, Control target, bool suppressHandler = false) {
+        internal bool FireEvent (string name, Control target, bool suppressHandler = false, bool targetHandlesFirst = false) {
             // FIXME: Is this right?
             if (target == null)
                 return false;
             if (EventBus == null)
                 return true;
-            if (EventBus.Broadcast<object>(target, name, null))
+
+            if (!targetHandlesFirst && EventBus.Broadcast<object>(target, name, null))
                 return true;
+            if (targetHandlesFirst && target.HandleEvent(name))
+                return true;
+
             if (suppressHandler)
                 return false;
+
+            if (targetHandlesFirst)
+                return EventBus.Broadcast<object>(target, name, null);
             else
                 return target.HandleEvent(name);
         }
@@ -373,6 +409,24 @@ namespace Squared.PRGUI {
             return CachedCompositionPreview;
         }
 
+        public void CaptureMouse (Control target) {
+            if ((MouseCaptured != null) && (MouseCaptured != target) && !LastMouseButtonState)
+                SuppressNextCaptureLoss = true;
+            if (target.AcceptsFocus)
+                Focused = target;
+            MouseCaptured = target;
+        }
+
+        public void ReleaseCapture (Control target) {
+            if (Focused == target)
+                Focused = null;
+            if (Hovering == target)
+                Hovering = null;
+            if (MouseCaptured == target)
+                MouseCaptured = null;
+            ReleasedCapture = target;
+        }
+
         public void UpdateLayout () {
             var context = MakeOperationContext();
 
@@ -387,24 +441,23 @@ namespace Squared.PRGUI {
             Layout.Update();
         }
 
+        private void UpdateCaptureAndHovering (Vector2 mousePosition, Control exclude = null) {
+            MouseOver = HitTest(mousePosition);
+            if ((MouseOver != MouseCaptured) && (MouseCaptured != null))
+                Hovering = null;
+            else
+                Hovering = MouseOver;
+        }
+
         public void UpdateInput (
             Vector2 mousePosition, bool leftButtonPressed, KeyboardState keyboardState,
             float mouseWheelDelta = 0
         ) {
             var previouslyHovering = Hovering;
-            MouseOver = HitTest(mousePosition);
-
             if ((Focused != null) && !Focused.Enabled)
                 Focused = null;
 
-            if ((MouseOver != MouseCaptured) && (MouseCaptured != null))
-                Hovering = null;
-            else
-                Hovering = MouseOver;
-
-            if (Hovering != previouslyHovering)
-                HandleHoverTransition(previouslyHovering, Hovering);
-
+            UpdateCaptureAndHovering(mousePosition);
             var mouseEventTarget = MouseCaptured ?? Hovering;
 
             ProcessKeyboardState(ref LastKeyboardState, ref keyboardState);
@@ -416,6 +469,9 @@ namespace Squared.PRGUI {
                     HandleMouseMove(mouseEventTarget, mousePosition);
             }
 
+            var previouslyCaptured = MouseCaptured;
+            var processClick = false;
+
             if (!LastMouseButtonState && leftButtonPressed) {
                 // FIXME: This one should probably always be Hovering
                 HandleMouseDown(mouseEventTarget, mousePosition);
@@ -423,21 +479,24 @@ namespace Squared.PRGUI {
                 if (Hovering != null)
                     HandleMouseUp(mouseEventTarget, mousePosition);
 
-                if (MouseCaptured != null) {
-                    if (Hovering == MouseCaptured)
-                        HandleClick(MouseCaptured, mousePosition);
-                    else
-                        HandleDrag(MouseCaptured, Hovering);
-                }
+                if (MouseCaptured != null)
+                    processClick = true;
 
-                MouseCaptured = null;
-            } else if (!leftButtonPressed) {
-                // Shouldn't be necessary but whatever
-                MouseCaptured = null;
+                if (!SuppressNextCaptureLoss)
+                    MouseCaptured = null;
+                else
+                    SuppressNextCaptureLoss = false;
+            }
+
+            if (processClick) {
+                if (Hovering == previouslyCaptured)
+                    HandleClick(previouslyCaptured, mousePosition);
+                else
+                    HandleDrag(previouslyCaptured, Hovering);
             }
 
             if (mouseWheelDelta != 0)
-                HandleScroll(MouseCaptured ?? Hovering, mouseWheelDelta);
+                HandleScroll(previouslyCaptured ?? Hovering, mouseWheelDelta);
 
             UpdateTooltip(leftButtonPressed);
 
@@ -594,17 +653,37 @@ namespace Squared.PRGUI {
             LastTooltipHoverTime = 0;
         }
 
-        private void HandleMouseDown (Control target, Vector2 globalPosition) {
+        private bool HandleMouseDown (Control target, Vector2 globalPosition) {
+            var relinquishedHandlers = new HashSet<Control>();
+
             HideTooltipForMouseInput();
 
-            MouseDownPosition = globalPosition;
-            if (target != null && (target.AcceptsMouseInput && target.Enabled))
-                MouseCaptured = target;
-            if (target == null || (target.AcceptsFocus && target.Enabled))
-                Focused = target;
-            // FIXME: Suppress if disabled?
-            LastMouseDownTime = Now;
-            FireEvent(UIEvents.MouseDown, target, MakeMouseEventArgs(target, globalPosition));
+            while (true) {
+                SuppressNextCaptureLoss = false;
+                MouseDownPosition = globalPosition;
+                if (target != null && (target.AcceptsMouseInput && target.Enabled))
+                    MouseCaptured = target;
+                if (target == null || (target.AcceptsFocus && target.Enabled))
+                    Focused = target;
+                // FIXME: Suppress if disabled?
+                LastMouseDownTime = Now;
+                var previouslyCaptured = MouseCaptured;
+                var ok = FireEvent(UIEvents.MouseDown, target, MakeMouseEventArgs(target, globalPosition));
+
+                // HACK: A control can pre-emptively relinquish focus to pass the mouse event on to someone else
+                if (
+                    (previouslyCaptured == target) &&
+                    (ReleasedCapture == target)
+                ) {
+                    relinquishedHandlers.Add(target);
+                    UpdateCaptureAndHovering(globalPosition, target);
+                    target = MouseCaptured ?? Hovering;
+                    continue;
+                } else {
+                    ReleasedCapture = null;
+                    return ok;
+                }
+            }
         }
 
         private void HandleMouseUp (Control target, Vector2 globalPosition) {
@@ -644,7 +723,11 @@ namespace Squared.PRGUI {
             IsTooltipVisible = false;
         }
 
-        private void UpdateSubtreeLayout (Control subtreeRoot) {
+        /// <summary>
+        /// Use at your own risk! Performs immediate layout of a control and its children.
+        /// The results of this are not necessarily accurate, but can be used to infer its ideal size for positioning.
+        /// </summary>
+        public void UpdateSubtreeLayout (Control subtreeRoot) {
             ControlKey parentKey;
             Control parent;
             if (!subtreeRoot.TryGetParent(out parent))

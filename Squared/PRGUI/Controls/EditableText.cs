@@ -214,8 +214,8 @@ namespace Squared.PRGUI.Controls {
             return DynamicLayout.Get();
         }
 
-        protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
-            return context.DecorationProvider?.EditableText;
+        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+            return provider?.EditableText;
         }
 
         protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {

@@ -26,8 +26,8 @@ namespace Squared.PRGUI {
             AcceptsFocus = true;
         }
 
-        protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
-            return context.DecorationProvider?.Button;
+        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+            return provider?.Button;
         }
     }
 
@@ -42,8 +42,8 @@ namespace Squared.PRGUI {
             LayoutFlags = ControlFlags.Layout_Floating;
         }
 
-        protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
-            return context.DecorationProvider?.Tooltip;
+        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+            return provider?.Tooltip;
         }
     }
 

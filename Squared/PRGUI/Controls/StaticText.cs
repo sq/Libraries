@@ -103,8 +103,8 @@ namespace Squared.PRGUI.Controls {
             if (!AutoSizeWidth && !AutoSizeHeight)
                 return;
 
-            var decorations = GetDecorations(context);
-            var textDecorations = GetTextDecorations(context);
+            var decorations = GetDecorations(context.DecorationProvider);
+            var textDecorations = GetTextDecorations(context.DecorationProvider);
             UpdateFont(context, textDecorations);
 
             // HACK: If we know that our size is going to be constrained by layout settings, apply that in advance
@@ -132,8 +132,8 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
-            return context.DecorationProvider?.StaticText;
+        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+            return provider?.StaticText;
         }
 
         protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations) {
@@ -162,7 +162,7 @@ namespace Squared.PRGUI.Controls {
 
             Color? overrideColor = TextColor?.Get(context.Now);
             Material material;
-            var textDecorations = GetTextDecorations(context);
+            var textDecorations = GetTextDecorations(context.DecorationProvider);
             GetTextSettings(context, textDecorations, settings.State, out material, ref overrideColor);
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);

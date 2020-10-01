@@ -11,6 +11,9 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public class Menu : Container {
+        public const float MenuShowSpeed = 0.2f;
+        public const float MenuHideSpeed = 0.2f;
+
         private Control _SelectedItem;
 
         public Control SelectedItem {
@@ -35,15 +38,18 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private bool IsActive = false;
+
         public Menu ()
             : base () {
             AcceptsMouseInput = true;
+            AcceptsFocus = true;
             ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start;
             LayoutFlags |= ControlFlags.Layout_Floating;
         }
 
-        protected override IDecorator GetDefaultDecorations (UIOperationContext context) {
-            return context.DecorationProvider.Menu;
+        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+            return provider?.Menu;
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -72,6 +78,8 @@ namespace Squared.PRGUI.Controls {
                 child.CustomTextDecorations = (child == newControl)
                     ? Context.Decorations.Selection 
                     : null;
+
+            FireEvent(UIEvents.SelectionChanged, newControl);
         }
 
         private Control ChildFromGlobalPosition (LayoutContext context, Vector2 globalPosition) {
@@ -83,34 +91,39 @@ namespace Squared.PRGUI.Controls {
         }
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
-            var position = new Vector2(
-                Arithmetic.Clamp(args.LocalPosition.X, 0, args.ContentBox.Width - 1),
-                Arithmetic.Clamp(args.LocalPosition.Y, 0, args.ContentBox.Height - 1)
-            );
+            // Console.WriteLine($"menu.{name}");
+
+            if (name == UIEvents.MouseDown) {
+                if (HitTest(Context.Layout, args.GlobalPosition, false, false) != this) {
+                    Context.ReleaseCapture(this);
+                    Close();
+                    return true;
+                }
+            }
+
+            var virtualGlobalPosition = args.GlobalPosition + ScrollOffset;
+            if (args.Box.Contains(virtualGlobalPosition))
+                virtualGlobalPosition.X = args.ContentBox.Center.X;
+            var item = ChildFromGlobalPosition(Context.Layout, virtualGlobalPosition);
 
             if ((Context.MouseOver != this) && (Context.MouseCaptured != this)) {
                 SelectedItem = null;
             } else {
-                var virtualGlobalPosition = args.GlobalPosition + ScrollOffset;
-                virtualGlobalPosition.X = args.ContentBox.Center.X;
-                var item = ChildFromGlobalPosition(Context.Layout, virtualGlobalPosition);
                 if (item != null)
                     SelectedItem = item;
             }
 
-            if (name == UIEvents.MouseDown) {
-                return false;
-            } else if (
-                (name == UIEvents.MouseDrag) ||
-                (name == UIEvents.MouseUp)
-            ) {
-                return false;
-            } else
-                return false;
-        }
+            if (name == UIEvents.MouseUp) {
+                // This indicates that the mouse is in our padding zone
+                if (!args.ContentBox.Contains(virtualGlobalPosition))
+                    ;
+                else if (item != null)
+                    ItemChosen(item);
+                else
+                    Close();
+            }
 
-        protected bool OnClick (int clickCount) {
-            return false;
+            return true;
         }
 
         protected override bool OnEvent<T> (string name, T args) {
@@ -118,8 +131,8 @@ namespace Squared.PRGUI.Controls {
                 SelectedItem = null;
             else if (args is MouseEventArgs)
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
-            else if (name == UIEvents.Click)
-                return OnClick(Convert.ToInt32(args));
+            else if (name == UIEvents.LostFocus)
+                Close();
             /*
             else if (name == UIEvents.KeyPress)
                 return OnKeyPress((KeyEventArgs)(object)args);
@@ -145,6 +158,45 @@ namespace Squared.PRGUI.Controls {
             }
 
             base.OnRasterize(context, ref renderer, settings, decorations);
+        }
+
+        private void ItemChosen (Control item) {
+            Context.FireEvent<int>(UIEvents.Click, item, 1);
+            Close();
+        }
+
+        public void Show (UIContext context, Vector2? position = null) {
+            if (!context.Controls.Contains(this))
+                context.Controls.Add(this);
+
+            // Align the top-left corner of the menu with the target position (compensating for margin),
+            //  then shift the menu around if necessary to keep it on screen
+            var adjustedPosition = (position ?? context.LastMousePosition);
+            var margin = context.Decorations.Menu.Margins;
+            adjustedPosition.X -= margin.Left;
+            adjustedPosition.Y -= margin.Top;
+            context.UpdateSubtreeLayout(this);
+            var box = GetRect(context.Layout);
+            adjustedPosition.X = Arithmetic.Clamp(adjustedPosition.X, 0, context.CanvasSize.X - box.Width);
+            adjustedPosition.Y = Arithmetic.Clamp(adjustedPosition.Y, 0, context.CanvasSize.Y - box.Height);
+
+            SelectedItem = null;
+            Position = adjustedPosition;
+            Visible = true;
+            if (!IsActive)
+                Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: context.TimeProvider.Ticks);
+            context.CaptureMouse(this);
+            IsActive = true;
+            Context.FireEvent(UIEvents.Shown, this);
+        }
+
+        public void Close () {
+            Context.ReleaseCapture(this);
+            if (!IsActive)
+                return;
+            Opacity = Tween<float>.StartNow(1, 0, MenuHideSpeed, now: Context.TimeProvider.Ticks);
+            IsActive = false;
+            Context.FireEvent(UIEvents.Closed, this);
         }
     }
 }
