@@ -103,7 +103,8 @@ namespace Squared.PRGUI.Controls {
 
             var virtualGlobalPosition = args.GlobalPosition + ScrollOffset;
             if (args.Box.Contains(virtualGlobalPosition))
-                virtualGlobalPosition.X = args.ContentBox.Center.X;
+                // HACK: Shift the coordinates in a little to deal with items that are not full width
+                virtualGlobalPosition.X = args.ContentBox.Left + 4;
             var item = ChildFromGlobalPosition(Context.Layout, virtualGlobalPosition);
 
             if ((Context.MouseOver != this) && (Context.MouseCaptured != this)) {

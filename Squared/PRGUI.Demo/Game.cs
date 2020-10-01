@@ -200,10 +200,15 @@ namespace PRGUI.Demo {
 
             var testMenu = new Menu {
                 Children = {
-                    new StaticText { Text = "Item 1" },
-                    new StaticText { Text = "Item 2" },
-                    new StaticText { Text = "Item 3" },
-                    new StaticText { Text = "Item 4" },
+                    new StaticText { Text = "Item 1", BackgroundColor = Color.Red },
+                    new StaticText { Text = "Item 2", BackgroundColor = Color.Green },
+                    new StaticText { Text = "Item 3", BackgroundColor = Color.Blue },
+                    new Container {
+                        Children = {
+                            new StaticText { Text = "Item 4A" },
+                            new StaticText { Text = "Item 4B" },
+                        }
+                    }
                 },
                 Position = new Vector2(600, 400)
             };

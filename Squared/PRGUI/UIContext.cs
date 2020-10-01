@@ -489,6 +489,8 @@ namespace Squared.PRGUI {
             }
 
             if (processClick) {
+                // FIXME: if a menu is opened by a mousedown event, this will
+                //  fire a click on the menu in response to its mouseup
                 if (Hovering == previouslyCaptured)
                     HandleClick(previouslyCaptured, mousePosition);
                 else
