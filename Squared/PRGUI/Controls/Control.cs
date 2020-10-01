@@ -29,7 +29,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        public IDecorator CustomDecorations;
+        public IDecorator CustomDecorations, CustomTextDecorations;
         public Margins Margins, Padding;
         public ControlFlags LayoutFlags = ControlFlags.Layout_Fill_Row;
         public float? FixedWidth, FixedHeight;
@@ -135,8 +135,8 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        internal void GenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey = null) {
-            LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
+        internal ControlKey GenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey = null) {
+            return LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
         }
 
         protected Vector2 GetFixedInteriorSpace () {
@@ -281,6 +281,10 @@ namespace Squared.PRGUI {
 
         protected IDecorator GetDecorations (UIOperationContext context) {
             return CustomDecorations ?? GetDefaultDecorations(context);
+        }
+
+        protected IDecorator GetTextDecorations (UIOperationContext context) {
+            return CustomTextDecorations ?? GetDefaultDecorations(context);
         }
 
         protected ControlStates GetCurrentState (UIOperationContext context) {

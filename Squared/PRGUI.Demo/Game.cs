@@ -198,6 +198,16 @@ namespace PRGUI.Demo {
                 TooltipContent = "This button toggles whether the floating panel is above or below the main container"
             };
 
+            var testMenu = new Menu {
+                Children = {
+                    new StaticText { Text = "Item 1" },
+                    new StaticText { Text = "Item 2" },
+                    new StaticText { Text = "Item 3" },
+                    new StaticText { Text = "Item 4" },
+                },
+                Position = new Vector2(600, 400)
+            };
+
             Context = new UIContext(Materials, decorations) {
                 Controls = {
                     new Container {
@@ -271,7 +281,8 @@ namespace PRGUI.Demo {
                             }
                         }
                     },
-                    floatingWindow
+                    floatingWindow,
+                    testMenu
                 }
             };
 

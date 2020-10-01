@@ -104,7 +104,8 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             var decorations = GetDecorations(context);
-            UpdateFont(context, decorations);
+            var textDecorations = GetTextDecorations(context);
+            UpdateFont(context, textDecorations);
 
             // HACK: If we know that our size is going to be constrained by layout settings, apply that in advance
             //  when computing auto-size to reduce the odds that our layout will be changed once full UI layout happens
@@ -161,7 +162,8 @@ namespace Squared.PRGUI.Controls {
 
             Color? overrideColor = TextColor?.Get(context.Now);
             Material material;
-            GetTextSettings(context, decorations, settings.State, out material, ref overrideColor);
+            var textDecorations = GetTextDecorations(context);
+            GetTextSettings(context, textDecorations, settings.State, out material, ref overrideColor);
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
 

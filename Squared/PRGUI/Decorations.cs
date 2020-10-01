@@ -46,6 +46,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Selection { get; }
         IDecorator Button { get; }
         IDecorator Tooltip { get; }
+        IDecorator Menu { get; }
         IDecorator CompositionPreview { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
@@ -157,6 +158,7 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator EditableText { get; set; }
         public IDecorator Selection { get; set; }
         public IDecorator Tooltip { get; set; }
+        public IDecorator Menu { get; set; }
         public IDecorator CompositionPreview { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
@@ -528,12 +530,11 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void GetContentAdjustment_Button (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale) {
+            scale = Vector2.One;
             if (state.IsFlagged(ControlStates.Pressed)) {
                 offset = new Vector2(0, 2);
-                scale = Vector2.One * 0.97f;
             } else {
                 offset = new Vector2(0, 0);
-                scale = Vector2.One;
             }
         }
 
@@ -645,6 +646,12 @@ namespace Squared.PRGUI.Decorations {
 
             Tooltip = new DelegateDecorator {
                 Padding = new Margins(12, 8, 12, 8),
+                GetTextSettings = GetTextSettings_Tooltip,
+                Below = Tooltip_Below,
+            };
+
+            Menu = new DelegateDecorator {
+                Padding = new Margins(6),
                 GetTextSettings = GetTextSettings_Tooltip,
                 Below = Tooltip_Below,
             };

@@ -421,10 +421,20 @@ namespace Squared.PRGUI.Layout {
             return true;
         }
 
+        public unsafe ControlFlags GetContainerFlags (ControlKey key) {
+            var pItem = LayoutPtr(key);
+            return pItem->Flags & ControlFlagMask.Container;
+        }
+
         public unsafe void SetContainerFlags (ControlKey key, ControlFlags flags) {
             AssertMasked(flags, ControlFlagMask.Container, nameof(ControlFlagMask.Container));
             var pItem = LayoutPtr(key);
             pItem->Flags = (pItem->Flags & ~ControlFlagMask.Container) | flags;
+        }
+
+        public unsafe ControlFlags GetLayoutFlags (ControlKey key) {
+            var pItem = LayoutPtr(key);
+            return pItem->Flags & ControlFlagMask.Layout;
         }
 
         public unsafe void SetLayoutFlags (ControlKey key, ControlFlags flags) {
@@ -443,7 +453,7 @@ namespace Squared.PRGUI.Layout {
             pItem->Padding = m;
         }
 
-        public unsafe Vector4 GetMargins (ControlKey key) {
+        public unsafe Margins GetMargins (ControlKey key) {
             var pItem = LayoutPtr(key);
             return pItem->Margins;
         }

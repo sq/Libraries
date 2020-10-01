@@ -374,6 +374,12 @@ namespace Squared.PRGUI {
             }
         }
 
+        public Vector2 Center {
+            get {
+                return new Vector2(Left + (Width / 2f), Top + (Height / 2f));
+            }
+        }
+
         public Vector2 Extent {
             get {
                 return new Vector2(Left + Width, Top + Height);
