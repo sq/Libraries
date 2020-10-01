@@ -169,24 +169,15 @@ namespace Squared.PRGUI.Controls {
             Close();
         }
 
-        public void Show (UIContext context, Vector2? position = null) {
+        private void ShowInternalPrologue (UIContext context) {
             if (!context.Controls.Contains(this))
                 context.Controls.Add(this);
 
             MaximumWidth = context.CanvasSize.X * 0.5f;
             MaximumHeight = context.CanvasSize.Y * 0.66f;
+        }
 
-            // Align the top-left corner of the menu with the target position (compensating for margin),
-            //  then shift the menu around if necessary to keep it on screen
-            var adjustedPosition = (position ?? context.LastMousePosition);
-            var margin = context.Decorations.Menu.Margins;
-            adjustedPosition.X -= margin.Left;
-            adjustedPosition.Y -= margin.Top;
-            context.UpdateSubtreeLayout(this);
-            var box = GetRect(context.Layout);
-            adjustedPosition.X = Arithmetic.Clamp(adjustedPosition.X, 0, context.CanvasSize.X - box.Width - margin.Right);
-            adjustedPosition.Y = Arithmetic.Clamp(adjustedPosition.Y, 0, context.CanvasSize.Y - box.Height - margin.Bottom);
-
+        private void ShowInternal (UIContext context, Vector2 adjustedPosition) {
             SelectedItem = null;
             Position = adjustedPosition;
             Visible = true;
@@ -196,6 +187,40 @@ namespace Squared.PRGUI.Controls {
             context.CaptureMouse(this);
             IsActive = true;
             Context.FireEvent(UIEvents.Shown, this);
+        }
+
+        private Vector2 AdjustPosition (UIContext context, Vector2 desiredPosition) {
+            var margin = context.Decorations.Menu.Margins;
+            desiredPosition.X -= margin.Left;
+            desiredPosition.Y -= margin.Top;
+            context.UpdateSubtreeLayout(this);
+            var box = GetRect(context.Layout);
+            desiredPosition.X = Arithmetic.Clamp(desiredPosition.X, 0, context.CanvasSize.X - box.Width - margin.Right);
+            desiredPosition.Y = Arithmetic.Clamp(desiredPosition.Y, 0, context.CanvasSize.Y - box.Height - margin.Bottom);
+            return desiredPosition;
+        }
+
+        public void Show (UIContext context, Vector2? position = null) {
+            ShowInternalPrologue(context);
+
+            // Align the top-left corner of the menu with the target position (compensating for margin),
+            //  then shift the menu around if necessary to keep it on screen
+            var adjustedPosition = AdjustPosition(context, (position ?? context.LastMousePosition));
+
+            ShowInternal(context, adjustedPosition);
+        }
+
+        public void Show (UIContext context, Control anchor) {
+            ShowInternalPrologue(context);
+
+            // Align the top-left corner of the menu with the target position (compensating for margin),
+            //  then shift the menu around if necessary to keep it on screen
+            var anchorBox = anchor.GetRect(context.Layout);
+            var adjustedPosition = AdjustPosition(
+                context, new Vector2(anchorBox.Left, anchorBox.Top + anchorBox.Height)
+            );
+
+            ShowInternal(context, adjustedPosition);
         }
 
         public void Close () {

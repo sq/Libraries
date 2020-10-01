@@ -308,7 +308,7 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(button1, UIEvents.MouseDown, (ei) => {
-                testMenu.Show(Context);
+                testMenu.Show(Context, button1);
             });
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
