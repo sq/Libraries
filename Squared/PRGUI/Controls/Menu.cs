@@ -44,7 +44,8 @@ namespace Squared.PRGUI.Controls {
             : base () {
             AcceptsMouseInput = true;
             AcceptsFocus = true;
-            ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start;
+            ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start 
+                | ControlFlags.Container_Constrain_Size;
             LayoutFlags |= ControlFlags.Layout_Floating;
         }
 

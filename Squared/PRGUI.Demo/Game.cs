@@ -212,8 +212,7 @@ namespace PRGUI.Demo {
                             new StaticText { Text = "Item 4B" },
                         }
                     }
-                },
-                Position = new Vector2(600, 400)
+                }
             };
 
             var button1 = new Button {

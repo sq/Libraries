@@ -151,7 +151,12 @@ namespace Squared.PRGUI.Controls {
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            if (!AutoSizeWidth || Wrap) {
+            if (
+                !AutoSizeWidth || Wrap || 
+                // If our size was constrained by our parent, act as if auto-size was disabled. This handles
+                //  the scenario where a menu item's text is too big for the menu
+                (AutoSizeComputedWidth > settings.Box.Width)
+            ) {
                 // If auto-size is disabled or wrapping is enabled, we need to enable wrapping/breaking at
                 //  our rightmost edge to ensure that our text doesn't overflow outside of our boundaries
                 // If wrapping is disabled entirely, the overflowing text will be suppressed by the text

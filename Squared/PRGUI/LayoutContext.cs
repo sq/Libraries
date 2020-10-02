@@ -657,7 +657,7 @@ namespace Squared.PRGUI.Layout {
                 child = startChild;
                 ArrangeStackedRow(
                     wrap, idim, wdim, max_x2, 
-                    ref child, endChild,
+                    pItem, ref child, endChild,
                     fillerCount, squeezedCount, total,
                     filler, spacer, 
                     extraMargin, eater, x
@@ -668,8 +668,8 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe void ArrangeStackedRow (
-            bool wrap, int idim, int wdim, float max_x2, 
-            ref ControlKey child, ControlKey endChild, 
+            bool wrap, int idim, int wdim, float max_x2,
+            LayoutItem* pParent, ref ControlKey child, ControlKey endChild, 
             uint fillerCount, uint squeezedCount, uint total,
             float filler, float spacer, float extraMargin, 
             float eater, float x
@@ -732,6 +732,12 @@ namespace Squared.PRGUI.Layout {
                         ix1 = x + constrainedSize;
 
                     if (pass == 1) {
+                        // FIXME: Is this correct?
+                        if (pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size)) {
+                            var parentRect = GetRect(pParent->Key);
+                            float parentExtent = parentRect[idim] + parentRect[wdim];
+                            ix1 = Constrain(ix1, -1, parentExtent);
+                        }
                         childRect[idim] = ix0;
                         childRect[wdim] = ix1 - ix0;
                         SetRect(child, ref childRect);
