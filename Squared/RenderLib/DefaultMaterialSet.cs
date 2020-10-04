@@ -713,16 +713,17 @@ namespace Squared.Render {
         }
 
         private void LoadRasterShapeVariant (
-            Effect shader, string techniqueName, RasterShape.RasterShapeType? type, bool shadowed, bool textured, bool simple = false
+            Effect shader, string techniqueName, RasterShape.RasterShapeType? type, bool shadowed, bool textured, bool simple = false, bool ramp = false
         ) {
-            if (simple && !shader.Techniques.Any(t => t.Name == techniqueName))
+            if ((simple || ramp) && !shader.Techniques.Any(t => t.Name == techniqueName))
                 return;
 
             var key = new RasterShaderKey {
                 Type = type,
                 Shadowed = shadowed,
                 Textured = textured,
-                Simple = simple
+                Simple = simple,
+                HasRamp = ramp
             };
             var material = new Material(shader, techniqueName);
             RasterShapeMaterials[key] = material;
@@ -737,6 +738,8 @@ namespace Squared.Render {
             LoadRasterShapeVariant(shader, "ShadowedTextured" + techniqueSubstring + "Technique", type, true, true);
             LoadRasterShapeVariant(shader, techniqueSubstring + "SimpleTechnique", type, shadowed: false, textured: false, simple: true);
             LoadRasterShapeVariant(shader, "Shadowed" + techniqueSubstring + "SimpleTechnique", type, shadowed: true, textured: false, simple: true);
+            LoadRasterShapeVariant(shader, techniqueSubstring + "RampTechnique", type, shadowed: false, textured: false, simple: true);
+            LoadRasterShapeVariant(shader, "Shadowed" + techniqueSubstring + "RampTechnique", type, shadowed: true, textured: false, ramp: true);
         }
 
         private void LoadRasterShapeMaterials () {

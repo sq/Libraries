@@ -473,8 +473,12 @@ namespace Squared.Render.RasterShape {
                 key.Simple = false;
                 if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {
                     key.Type = null;
-                    if (!Materials.RasterShapeMaterials.TryGetValue(key, out result))
-                        throw new Exception($"Shader not found for raster shape {type} (shadowed={shadowed}, textured={Texture != null}, simple={simple}, ramp={RampTexture != null})");
+                    if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {
+                        // FIXME
+                        key.HasRamp = false;
+                        if (!Materials.RasterShapeMaterials.TryGetValue(key, out result))
+                            throw new Exception($"Shader not found for raster shape {type} (shadowed={shadowed}, textured={Texture != null}, simple={simple}, ramp={RampTexture != null})");
+                    }
                 }
             }
 
