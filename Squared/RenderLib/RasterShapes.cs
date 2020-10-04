@@ -469,6 +469,10 @@ namespace Squared.Render.RasterShape {
             };
 
             Material result;
+
+            if (type.HasValue)
+                Materials.AutoLoadRasterShapeVariants(type.Value);
+
             if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {
                 key.Simple = false;
                 if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {

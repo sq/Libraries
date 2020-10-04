@@ -42,7 +42,7 @@ namespace Squared.Render {
 
         protected abstract T CreateInstance (Stream stream, object data);
 
-        protected T Load (string name, object data, bool cached) {
+        protected T Load (string name, object data, bool cached, bool optional) {
             if (name.Contains("."))
                 name = name.Replace(Path.GetExtension(name), "");
 
@@ -50,22 +50,33 @@ namespace Squared.Render {
             if (!cached || !Cache.TryGetValue(name, out result)) {
                 var streamName = (Prefix ?? "") + name + Suffix;
                 using (var stream = Assembly.GetManifestResourceStream(streamName)) {
-                    if (stream == null)
-                        throw new FileNotFoundException("No manifest resource stream with this name found", name);
+                    if (stream == null) {
+                        if (optional)
+                            return null;
+                        else
+                            throw new FileNotFoundException("No manifest resource stream with this name found", name);
+                    }
+
                     result = CreateInstance(stream, data);
                     if (cached)
                         Cache[name] = result;
                 }
+            } else if ((result == null) && !optional) {
+                throw new FileNotFoundException("No manifest resource stream with this name found", name);
             }
             return result;
         }
 
         public T Load (string name) {
-            return Load(name, DefaultOptions, true);
+            return Load(name, DefaultOptions, true, false);
         }
 
         public T Load (string name, bool cached) {
-            return Load(name, DefaultOptions, cached);
+            return Load(name, DefaultOptions, cached, false);
+        }
+
+        public T Load (string name, bool cached, bool optional) {
+            return Load(name, DefaultOptions, cached, optional);
         }
 
         public virtual void Dispose () {

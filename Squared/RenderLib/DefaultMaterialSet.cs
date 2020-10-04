@@ -742,6 +742,27 @@ namespace Squared.Render {
             LoadRasterShapeVariant(shader, "Shadowed" + techniqueSubstring + "RampTechnique", type, shadowed: true, textured: false, ramp: true);
         }
 
+        private static readonly HashSet<RasterShape.RasterShapeType> HasAutoLoadedVariants = 
+            new HashSet<RasterShape.RasterShapeType>();
+
+        internal void AutoLoadRasterShapeVariants (RasterShape.RasterShapeType type) {
+            if (HasAutoLoadedVariants.Contains(type))
+                return;
+
+            var shaderName = "RasterShape" + type.ToString();
+            var techniqueSubstring = "Raster" + type.ToString();
+            HasAutoLoadedVariants.Add(type);
+
+            // FIXME: Will this deadlock?
+            lock (Coordinator.CreateResourceLock) {
+                var shader = BuiltInShaders.Load(shaderName, cached: true, optional: true);
+                if (shader == null)
+                    return;
+
+                LoadRasterShapeVariants(shader, techniqueSubstring, type);
+            }
+        }
+
         private void LoadRasterShapeMaterials () {
             var rasterShapeUbershader = BuiltInShaders.Load("RasterShapeUbershader");
             var rasterShapeEllipse = BuiltInShaders.Load("RasterShapeEllipse");
@@ -752,6 +773,7 @@ namespace Squared.Render {
             LoadRasterShapeVariants(
                 rasterShapeUbershader, "RasterShape", null
             );
+            /*
             LoadRasterShapeVariants(
                 rasterShapeRectangle, "RasterRectangle", RasterShape.RasterShapeType.Rectangle
             );
@@ -764,6 +786,7 @@ namespace Squared.Render {
             LoadRasterShapeVariants(
                 rasterShapeTriangle, "RasterTriangle", RasterShape.RasterShapeType.Triangle
             );
+            */
 
             RasterShapeUbershader = RasterShapeMaterials[new RasterShaderKey { Type = null, Shadowed = false, Textured = false }];
         }

@@ -48,8 +48,8 @@ namespace Squared.Render {
             : base(Assembly.GetCallingAssembly(), coordinator) {
         }
 
-        public Texture2D Load (string name, TextureLoadOptions options, bool cached = true) {
-            return base.Load(name, options, cached);
+        public Texture2D Load (string name, TextureLoadOptions options, bool cached = true, bool optional = false) {
+            return base.Load(name, options, cached, optional);
         }
 
         protected override Texture2D CreateInstance (Stream stream, object data) {
