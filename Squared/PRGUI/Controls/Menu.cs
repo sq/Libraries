@@ -48,6 +48,7 @@ namespace Squared.PRGUI.Controls {
                 | ControlFlags.Container_Constrain_Size;
             LayoutFlags |= ControlFlags.Layout_Floating;
             PaintOrder = 9900;
+            ClipChildren = true;
         }
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
@@ -146,24 +147,28 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            if ((SelectedItem != null) && (context.Pass == RasterizePasses.Below)) {
+        protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
+            if (SelectedItem != null) {
                 var selectionBox = SelectedItem.GetRect(context.Layout, true, false);
                 selectionBox.Left = settings.ContentBox.Left;
                 selectionBox.Width = settings.ContentBox.Width;
 
-                // HACK
+                // HACK: Selection boxes are normally rasterized on the content layer, but we want to rasterize
+                //  the selection on the Below layer beneath items' decorations and content.
+                var oldPass = context.Pass;
                 context.Pass = RasterizePasses.Content;
                 var selectionSettings = new DecorationSettings {
                     Box = selectionBox,
                     ContentBox = selectionBox,
                     State = ControlStates.Hovering | ControlStates.Focused
                 };
-                context.DecorationProvider.Selection?.Rasterize(context, ref renderer, selectionSettings);
-                context.Pass = RasterizePasses.Below;
+                context.DecorationProvider.Selection?.Rasterize(context, ref passSet.Below, selectionSettings);
+                context.Pass = oldPass;
+
+                passSet.Below.Layer += 1;
             }
 
-            base.OnRasterize(context, ref renderer, settings, decorations);
+            base.OnRasterizeChildren(context, ref passSet, settings);
         }
 
         private void ItemChosen (Control item) {

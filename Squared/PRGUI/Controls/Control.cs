@@ -376,7 +376,7 @@ namespace Squared.PRGUI {
             decorations?.Rasterize(context, ref renderer, settings);
         }
 
-        protected virtual void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet) {
+        protected virtual void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
         }
 
         protected virtual void ApplyClipMargins (UIOperationContext context, ref RectF box) {
@@ -424,7 +424,7 @@ namespace Squared.PRGUI {
                 OnRasterize(contentContext, ref renderer, settings, decorations);
 
             if ((pass == RasterizePasses.Content) && HasChildren) {
-                OnRasterizeChildren(contentContext, ref childrenPassSet);
+                OnRasterizeChildren(contentContext, ref childrenPassSet, settings);
             }
 
             if (hasNestedContext) {

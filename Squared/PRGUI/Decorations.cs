@@ -655,6 +655,8 @@ namespace Squared.PRGUI.Decorations {
                 Padding = new Margins(6),
                 GetTextSettings = GetTextSettings_Tooltip,
                 Below = Tooltip_Below,
+                // FIXME: Separate routine?
+                ContentClip = Container_ContentClip,
             };
 
             EditableText = new DelegateDecorator {

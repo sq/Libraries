@@ -100,7 +100,7 @@ namespace Squared.PRGUI.Controls {
         // FIXME: Always true?
         protected override bool HasChildren => (Children.Count > 0);
 
-        protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet) {
+        protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             // FIXME
             int layer1 = passSet.Below.Layer,
                 layer2 = passSet.Content.Layer,
