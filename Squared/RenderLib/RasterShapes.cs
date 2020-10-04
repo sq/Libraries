@@ -340,6 +340,7 @@ namespace Squared.Render.RasterShape {
         public DefaultMaterialSet Materials;
         public Texture2D Texture;
         public SamplerState SamplerState;
+        public Texture2D RampTexture;
 
         public bool UseUbershader = false;
 
@@ -461,9 +462,10 @@ namespace Squared.Render.RasterShape {
         private Material PickBaseMaterial (RasterShapeType? type, bool shadowed, bool simple) {
             var key = new DefaultMaterialSet.RasterShaderKey {
                 Type = type,
-                Simple = simple,
+                Simple = simple && (Texture == null) && (RampTexture == null),
                 Shadowed = shadowed,
-                Textured = (Texture != null)
+                Textured = (Texture != null),
+                HasRamp = (RampTexture != null)
             };
 
             Material result;
@@ -472,7 +474,7 @@ namespace Squared.Render.RasterShape {
                 if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {
                     key.Type = null;
                     if (!Materials.RasterShapeMaterials.TryGetValue(key, out result))
-                        throw new Exception($"Shader not found for raster shape {type} (shadowed={shadowed}, textured={Texture != null}, simple={simple})");
+                        throw new Exception($"Shader not found for raster shape {type} (shadowed={shadowed}, textured={Texture != null}, simple={simple}, ramp={RampTexture != null})");
                 }
             }
 
@@ -525,6 +527,7 @@ namespace Squared.Render.RasterShape {
 
                     p["BlendInLinearSpace"].SetValue(sb.BlendInLinearSpace);
                     p["RasterTexture"]?.SetValue(Texture);
+                    p["RampTexture"]?.SetValue(RampTexture);
 
                     // HACK: If the shadow color is fully transparent, suppress the offset and softness.
                     // If we don't do this, the bounding box of the shapes will be pointlessly expanded.
@@ -550,6 +553,7 @@ namespace Squared.Render.RasterShape {
                     // FIXME: why the hell
                     device.Textures[0] = Texture;
                     device.SamplerStates[0] = SamplerState ?? SamplerState.LinearWrap;
+                    device.Textures[3] = RampTexture;
 
                     scratchBindings[1] = new VertexBufferBinding(
                         vb, _SoftwareBuffer.HardwareVertexOffset + sb.InstanceOffset, 1
@@ -593,7 +597,7 @@ namespace Squared.Render.RasterShape {
 
         public static RasterShapeBatch New (
             IBatchContainer container, int layer, DefaultMaterialSet materials, Texture2D texture = null, SamplerState desiredSamplerState = null,
-            RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null
+            RasterizerState rasterizerState = null, DepthStencilState depthStencilState = null, BlendState blendState = null, Texture2D rampTexture = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
@@ -607,6 +611,7 @@ namespace Squared.Render.RasterShape {
             result.BlendState = blendState;
             result.Texture = texture;
             result.SamplerState = desiredSamplerState;
+            result.RampTexture = rampTexture;
             result.CaptureStack(0);
             return result;
         }

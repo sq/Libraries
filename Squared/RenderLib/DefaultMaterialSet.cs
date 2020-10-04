@@ -231,13 +231,14 @@ namespace Squared.Render {
             }
 
             public RasterShape.RasterShapeType? Type;
-            public bool Shadowed, Textured, Simple;
+            public bool Shadowed, Textured, Simple, HasRamp;
 
             public bool Equals (RasterShaderKey rhs) {
                 return (Type == rhs.Type) &&
                     (Shadowed == rhs.Shadowed) &&
                     (Textured == rhs.Textured) &&
-                    (Simple == rhs.Simple);
+                    (Simple == rhs.Simple) &&
+                    (HasRamp == rhs.HasRamp);
             }
 
             public override bool Equals (object obj) {
@@ -249,7 +250,7 @@ namespace Squared.Render {
 
             public override int GetHashCode () {
                 return ((int)(Type ?? (RasterShape.RasterShapeType)(-1))).GetHashCode() ^ Shadowed.GetHashCode() 
-                    ^ Textured.GetHashCode() ^ Simple.GetHashCode();
+                    ^ Textured.GetHashCode() ^ Simple.GetHashCode() ^ HasRamp.GetHashCode();
             }
         }
 

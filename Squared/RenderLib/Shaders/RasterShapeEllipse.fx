@@ -13,6 +13,10 @@
 #define SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE RasterEllipseSimpleTechnique
 #define SHAPE_TYPE_NAME_SIMPLE_SHADOWED ShadowedRasterEllipseSimple
 #define SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE_SHADOWED ShadowedRasterEllipseSimpleTechnique
+#define SHAPE_TYPE_NAME_SIMPLE RasterEllipseRamp
+#define SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE RasterEllipseRampTechnique
+#define SHAPE_TYPE_NAME_RAMP_SHADOWED ShadowedRasterEllipseRamp
+#define SHAPE_TYPE_TECHNIQUE_NAME_RAMP_SHADOWED ShadowedRasterEllipseRampTechnique
 
 #define INCLUDE_ELLIPSE
 
