@@ -47,6 +47,7 @@ namespace Squared.PRGUI.Controls {
             ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start 
                 | ControlFlags.Container_Constrain_Size;
             LayoutFlags |= ControlFlags.Layout_Floating;
+            PaintOrder = 9900;
         }
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {

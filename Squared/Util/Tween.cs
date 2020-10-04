@@ -94,8 +94,10 @@ namespace Squared.Util {
                 return Math.Max(0, unclamped);
 
             var clampedToRepeatCount = Arithmetic.Clamp(unclamped, 0, 1f + RepeatCount);
-            var wrapped = Arithmetic.WrapInclusive(clampedToRepeatCount, 0, 1f);
-            return wrapped;
+            if (RepeatCount > 0)
+                return Arithmetic.WrapInclusive(clampedToRepeatCount, 0, 1f);
+            else
+                return clampedToRepeatCount;
         }
 
         public T Get (float now) {

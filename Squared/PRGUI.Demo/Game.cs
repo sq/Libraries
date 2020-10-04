@@ -212,14 +212,15 @@ namespace PRGUI.Demo {
                             new StaticText { Text = "Item 4B" },
                         }
                     }
-                }
+                },
+                TooltipContent = "Surprise! I'm a pop-up menu!"
             };
 
             var button1 = new Button {
                 AutoSizeWidth = false,
                 FixedWidth = 220,
                 Text = "Button 1",
-                TooltipContent = "Hi"
+                TooltipContent = "Click me for a surprise!"
             };
 
             Context = new UIContext(Materials, decorations) {

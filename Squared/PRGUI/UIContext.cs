@@ -380,9 +380,6 @@ namespace Squared.PRGUI {
         private Tooltip GetTooltipInstance () {
             if (CachedTooltip == null) {
                 CachedTooltip = new Tooltip {
-                    PaintOrder = 9999,
-                    Wrap = true,
-                    Multiline = true,
                     Opacity = 0
                 };
                 Controls.Add(CachedTooltip);

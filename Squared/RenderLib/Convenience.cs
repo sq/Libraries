@@ -1144,7 +1144,7 @@ namespace Squared.Render.Convenience {
         private float ConvertFillMode (RasterFillMode fillMode, float fillAngle) {
             float fillModeF = (int)fillMode;
             if (fillMode >= RasterFillMode.Angular) {
-                fillAngle = Arithmetic.Wrap(fillAngle, 0, 360);
+                fillAngle = Arithmetic.WrapExclusive(fillAngle, 0, 360);
                 fillModeF += (float)(fillAngle);
             }
             return fillModeF;
