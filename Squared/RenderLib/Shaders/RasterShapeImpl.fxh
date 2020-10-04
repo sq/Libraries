@@ -2,15 +2,15 @@ void SHAPE_TYPE_NAME (
     RASTERSHAPE_FS_ARGS
 ) {
     float2 tl, br;
-    float4 fill;
-    float  fillAlpha, outlineAlpha, shadowAlpha;
+    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, false, false,
         ab, cd, params, params2,
-        centerColor, edgeColor, GET_VPOS,
-        tl, br,
-        fill, fillAlpha, outlineAlpha, shadowAlpha
+        GET_VPOS, tl, br,
+        gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
+
+    float4 fill = lerp(centerColor, edgeColor, gradientWeight);
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, false, GET_VPOS);
 
@@ -24,15 +24,15 @@ void SHAPE_TYPE_NAME_TEX (
     RASTERSHAPE_FS_ARGS
 ) {
     float2 tl, br;
-    float4 fill;
-    float  fillAlpha, outlineAlpha, shadowAlpha;
+    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, false, false,
         ab, cd, params, params2,
-        centerColor, edgeColor, GET_VPOS,
-        tl, br,
-        fill, fillAlpha, outlineAlpha, shadowAlpha
+        GET_VPOS, tl, br,
+        gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
+
+    float4 fill = lerp(centerColor, edgeColor, gradientWeight);
 
     result = texturedShapeCommon(
         worldPositionTypeAndWorldSpace.xy, texRgn,
@@ -52,15 +52,15 @@ void SHAPE_TYPE_NAME_SHADOWED (
     RASTERSHAPE_FS_ARGS
 ) {
     float2 tl, br;
-    float4 fill;
-    float  fillAlpha, outlineAlpha, shadowAlpha;
+    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, true, false,
         ab, cd, params, params2,
-        centerColor, edgeColor, GET_VPOS,
-        tl, br,
-        fill, fillAlpha, outlineAlpha, shadowAlpha
+        GET_VPOS, tl, br,
+        gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
+
+    float4 fill = lerp(centerColor, edgeColor, gradientWeight);
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, true, GET_VPOS);
 
@@ -74,15 +74,15 @@ void SHAPE_TYPE_NAME_TEX_SHADOWED (
     RASTERSHAPE_FS_ARGS
 ) {
     float2 tl, br;
-    float4 fill;
-    float  fillAlpha, outlineAlpha, shadowAlpha;
+    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, true, false,
         ab, cd, params, params2,
-        centerColor, edgeColor, GET_VPOS,
-        tl, br,
-        fill, fillAlpha, outlineAlpha, shadowAlpha
+        GET_VPOS, tl, br,
+        gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
+
+    float4 fill = lerp(centerColor, edgeColor, gradientWeight);
 
     result = texturedShapeCommon(
         worldPositionTypeAndWorldSpace.xy, texRgn,
@@ -140,15 +140,15 @@ void SHAPE_TYPE_NAME_SIMPLE (
     RASTERSHAPE_FS_ARGS
 ) {
     float2 tl, br;
-    float4 fill;
-    float  fillAlpha, outlineAlpha, shadowAlpha;
+    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, false, true,
         ab, cd, params, params2,
-        centerColor, edgeColor, GET_VPOS,
-        tl, br,
-        fill, fillAlpha, outlineAlpha, shadowAlpha
+        GET_VPOS, tl, br,
+        gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
+
+    float4 fill = centerColor;
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, false, GET_VPOS);
 
@@ -162,15 +162,15 @@ void SHAPE_TYPE_NAME_SIMPLE_SHADOWED (
     RASTERSHAPE_FS_ARGS
 ) {
     float2 tl, br;
-    float4 fill;
-    float  fillAlpha, outlineAlpha, shadowAlpha;
+    float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, true, true,
         ab, cd, params, params2,
-        centerColor, edgeColor, GET_VPOS,
-        tl, br,
-        fill, fillAlpha, outlineAlpha, shadowAlpha
+        GET_VPOS, tl, br,
+        gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
+
+    float4 fill = centerColor;
 
     result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, true, GET_VPOS);
 

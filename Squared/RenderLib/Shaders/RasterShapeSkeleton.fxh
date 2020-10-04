@@ -596,10 +596,9 @@ float computeShadowAlpha (
 void rasterShapeCommon (
     in float4 worldPositionTypeAndWorldSpace, in bool enableShadow, in bool simple,
     in float4 ab, in float4 cd,
-    in float4 params, in float4 params2,
-    in float4 centerColor, in float4 edgeColor, in float2 vpos,
+    in float4 params, in float4 params2, in float2 vpos,
     out float2 tl, out float2 br,
-    out float4 fill, out float fillAlpha, 
+    out float gradientWeight, out float fillAlpha, 
     out float outlineAlpha, out float shadowAlpha
 ) {
     float2 worldPosition = worldPositionTypeAndWorldSpace.xy;
@@ -616,7 +615,7 @@ void rasterShapeCommon (
 
     float2 invRadius = 1.0 / max(radius, 0.0001);
 
-    float distance = 0, gradientWeight = 0;
+    float distance = 0;
 
     tl = min(a, b);
     br = max(a, b);
@@ -675,7 +674,6 @@ void rasterShapeCommon (
         fillEndDistance = 0.5;
 
     fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
-    fill = lerp(centerColor, edgeColor, gradientWeight);
 
     PREFER_BRANCH
     if (outlineSize > 0.001) {
