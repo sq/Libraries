@@ -173,8 +173,8 @@ namespace Squared.PRGUI.Decorations {
             TitleCornerRadius = 3f,
             SelectionCornerRadius = 1.33f,
             SelectionPadding = 1f;
-        public float? FloatingContainerCornerRadius = null,
-            TooltipCornerRadius = null;
+        public float? FloatingContainerCornerRadius = 7f,
+            TooltipCornerRadius = 8f;
         public float InactiveOutlineThickness = 1f, 
             ActiveOutlineThickness = 1.3f, 
             PressedOutlineThickness = 2f,
@@ -455,9 +455,10 @@ namespace Squared.PRGUI.Decorations {
             var color1 = (pSRGBColor)TitleFillColor;
             var color2 = color1.ToVector4() * 0.7f;
             color2.W = 1;
+            var cornerRadius = FloatingContainerCornerRadius ?? ContainerCornerRadius;
             renderer.RasterizeRectangle(
                 a, b,
-                radius: TitleCornerRadius,
+                radiusCW: new Vector4(cornerRadius, cornerRadius, 0, 0),
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: color1, outerColor: color2,
                 fillMode: RasterFillMode.Vertical,
