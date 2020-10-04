@@ -747,6 +747,7 @@ namespace Squared.Render {
             new HashSet<RasterShape.RasterShapeType>();
 
         internal void AutoLoadRasterShapeVariants (RasterShape.RasterShapeType type) {
+            return;
             if (HasAutoLoadedVariants.Contains(type))
                 return;
 
@@ -774,7 +775,6 @@ namespace Squared.Render {
             LoadRasterShapeVariants(
                 rasterShapeUbershader, "RasterShape", null
             );
-            /*
             LoadRasterShapeVariants(
                 rasterShapeRectangle, "RasterRectangle", RasterShape.RasterShapeType.Rectangle
             );
@@ -787,7 +787,6 @@ namespace Squared.Render {
             LoadRasterShapeVariants(
                 rasterShapeTriangle, "RasterTriangle", RasterShape.RasterShapeType.Triangle
             );
-            */
 
             RasterShapeUbershader = RasterShapeMaterials[new RasterShaderKey { Type = null, Shadowed = false, Textured = false }];
         }

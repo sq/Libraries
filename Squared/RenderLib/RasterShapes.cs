@@ -56,7 +56,7 @@ namespace Squared.Render.RasterShape {
         }
     }
 
-    public enum RasterShapeType : byte {
+    public enum RasterShapeType : short {
         Ellipse = 0,
         LineSegment = 1,
         Rectangle = 2,
@@ -478,6 +478,11 @@ namespace Squared.Render.RasterShape {
             if (type.HasValue)
                 Materials.AutoLoadRasterShapeVariants(type.Value);
 
+            key.Simple = false;
+            key.Shadowed = false;
+            key.HasRamp = false;
+            key.Textured = false;
+
             if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {
                 key.Simple = false;
                 if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {
@@ -606,7 +611,7 @@ namespace Squared.Render.RasterShape {
             dc.Index = _DrawCalls.Count;
             dc.IsSimple = (dc.OuterColor4.FastEquals(ref dc.InnerColor4) || (dc.FillMode == (float)RasterFillMode.None)) ? 1 : 0;
             dc.PackedFlags = (
-                (int)dc.Type | (dc.IsSimple << 8) | (dc.Shadow.IsEnabled << 9) | ((dc.BlendInLinearSpace ? 1 : 0) << 10)
+                (int)dc.Type | (dc.IsSimple << 16) | (dc.Shadow.IsEnabled << 17) | ((dc.BlendInLinearSpace ? 1 : 0) << 18)
             );
             _DrawCalls.Add(ref dc);
         }
