@@ -179,6 +179,7 @@ namespace PRGUI.Demo {
                 Title = "Floating Panel",
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start | ControlFlags.Container_Wrap,
                 Children = {
+                    new StaticText { Text = "→", FocusBeneficiary = textfield, TooltipContent = "Clicking this label will focus the textfield" },
                     textfield,
                     hideButton,
                 },
