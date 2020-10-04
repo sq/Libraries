@@ -121,5 +121,59 @@ namespace Squared.Game {
                 c.A * alphaMultiplier
             );
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe bool FastEquals (this Vector2 lhs, ref Vector2 rhs) {
+            return (lhs.X == rhs.X) &&
+                (lhs.Y == rhs.Y);
+            /*
+            unchecked {
+                var pLhs = (UInt32*)&lhs;
+                fixed (Vector2* _pRhs = &rhs) {
+                    var pRhs = (UInt32*)_pRhs;
+                    return pLhs[0] == pRhs[0] &&
+                        pLhs[1] == pRhs[1];
+                }
+            }
+            */
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe bool FastEquals (this Vector3 lhs, ref Vector3 rhs) {
+            return (lhs.X == rhs.X) &&
+                (lhs.Y == rhs.Y) &&
+                (lhs.Z == rhs.Z);
+            /*
+            unchecked {
+                var pLhs = (UInt32*)&lhs;
+                fixed (Vector3* _pRhs = &rhs) {
+                    var pRhs = (UInt32*)_pRhs;
+                    return pLhs[0] == pRhs[0] &&
+                        pLhs[1] == pRhs[1] &&
+                        pLhs[2] == pRhs[2];
+                }
+            }
+            */
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe bool FastEquals (this Vector4 lhs, ref Vector4 rhs) {
+            return (lhs.X == rhs.X) &&
+                (lhs.Y == rhs.Y) &&
+                (lhs.Z == rhs.Z) &&
+                (lhs.W == rhs.W);
+            /*
+            unchecked {
+                var pLhs = (UInt32*)&lhs;
+                fixed (Vector4* _pRhs = &rhs) {
+                    var pRhs = (UInt32*)_pRhs;
+                    return pLhs[0] == pRhs[0] &&
+                        pLhs[1] == pRhs[1] &&
+                        pLhs[2] == pRhs[2] &&
+                        pLhs[3] == pRhs[3];
+                }
+            }
+            */
+        }
     }
 }

@@ -10,6 +10,7 @@ using System.Reflection;
 using Squared.Render.Convenience;
 using Squared.Util;
 using System.Runtime.InteropServices;
+using Squared.Game;
 
 namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential)]
@@ -119,7 +120,7 @@ namespace Squared.Render {
                 (Position == rhs.Position) &&
                 (Projection == rhs.Projection) &&
                 (ModelView == rhs.ModelView) &&
-                (InputAndOutputZRanges == rhs.InputAndOutputZRanges);
+                (InputAndOutputZRanges.FastEquals(ref rhs.InputAndOutputZRanges));
         }
 
         public override bool Equals (object obj) {

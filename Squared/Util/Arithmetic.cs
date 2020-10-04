@@ -798,6 +798,15 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe bool EqualsF (float lhs, float rhs) {
+            unchecked {
+                float* pLhs = &lhs;
+                float* pRhs = &rhs;
+                return *((UInt32*)pLhs) == *((UInt32*)pRhs);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe int CompareF (float lhs, float rhs) {
             unchecked {
                 // HACK: The union produces a couple fewer memory loads/stores & fewer insns than the uint* approach.

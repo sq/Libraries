@@ -231,11 +231,7 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         public RasterShadowSettings Shadow;
 
-        public bool IsSimple {
-            get {
-                return (OuterColor4 == InnerColor4) || (FillMode == (float)RasterFillMode.None);
-            }
-        }
+        public bool IsSimple;
 
         internal int Index;
     }
@@ -600,6 +596,7 @@ namespace Squared.Render.RasterShape {
         new public void Add (ref RasterShapeDrawCall dc) {
             // FIXME
             dc.Index = _DrawCalls.Count;
+            dc.IsSimple = dc.OuterColor4.FastEquals(ref dc.InnerColor4) || (dc.FillMode == (float)RasterFillMode.None);
             _DrawCalls.Add(ref dc);
         }
 
@@ -788,14 +785,19 @@ namespace Squared.Render {
                 if (IsVector4)
                     return Vector4.W <= 0;
                 else
-                    return Color.A <= 0;
+                    return Color.PackedValue == 0;
             }
         }
 
         public bool Equals (pSRGBColor rhs) {
-            var a = ToVector4();
-            var b = rhs.ToVector4();
-            return (a == b);
+            if (IsVector4 != rhs.IsVector4)
+                return false;
+
+            if (IsVector4) {
+                return Vector4.FastEquals(ref rhs.Vector4);
+            } else {
+                return Color == rhs.Color;
+            }
         }
 
         public override bool Equals (object obj) {
