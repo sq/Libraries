@@ -475,16 +475,6 @@ namespace Squared.Render.RasterShape {
 
             Material result;
 
-            /*
-            if (type.HasValue)
-                Materials.AutoLoadRasterShapeVariants(type.Value);
-            */
-
-            key.Simple = false;
-            key.Shadowed = false;
-            key.HasRamp = false;
-            key.Textured = false;
-
             if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {
                 key.Simple = false;
                 if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {

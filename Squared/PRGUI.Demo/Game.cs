@@ -57,7 +57,7 @@ namespace PRGUI.Demo {
             Graphics.PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8;
             Graphics.PreferredBackBufferWidth = 1920;
             Graphics.PreferredBackBufferHeight = 1080;
-            Graphics.SynchronizeWithVerticalRetrace = true;
+            Graphics.SynchronizeWithVerticalRetrace = false;
             Graphics.PreferMultiSampling = false;
             Graphics.IsFullScreen = false;
 
@@ -450,7 +450,7 @@ namespace PRGUI.Demo {
         private int LastPerformanceStatPrimCount;
 
         private void DrawPerformanceStats (ref ImperativeRenderer ir) {
-            return;
+            // return;
 
             const float scale = 0.5f;
             var text = PerformanceStats.GetText(-LastPerformanceStatPrimCount);
