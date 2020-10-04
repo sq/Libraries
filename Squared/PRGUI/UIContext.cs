@@ -561,7 +561,8 @@ namespace Squared.PRGUI {
                 if ((hoveringFor >= TooltipAppearanceDelay) || (disappearTimeout < TooltipDisappearDelay))
                     ShowTooltip(Hovering, tooltipContent);
             } else {
-                HideTooltip(false);
+                var shouldDismissInstantly = (Hovering != null) && IsTooltipActive && GetTooltipInstance().GetRect(Layout).Contains(LastMousePosition);
+                HideTooltip(shouldDismissInstantly);
 
                 var elapsed = now - LastTooltipHoverTime;
                 if (elapsed >= TooltipDisappearDelay)
