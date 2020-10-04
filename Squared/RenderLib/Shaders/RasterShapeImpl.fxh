@@ -223,7 +223,7 @@ void SHAPE_TYPE_NAME_RAMP (
     float2 tl, br;
     float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
     rasterShapeCommon(
-        worldPositionTypeAndWorldSpace, false, true,
+        worldPositionTypeAndWorldSpace, false, false,
         ab, cd, params, params2,
         GET_VPOS, tl, br,
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
@@ -245,7 +245,7 @@ void SHAPE_TYPE_NAME_RAMP_SHADOWED (
     float2 tl, br;
     float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
     rasterShapeCommon(
-        worldPositionTypeAndWorldSpace, false, true,
+        worldPositionTypeAndWorldSpace, false, false,
         ab, cd, params, params2,
         GET_VPOS, tl, br,
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
