@@ -119,6 +119,8 @@ namespace Squared.Util {
                 return From;
         }
 
+        public bool IsConstant => StartedWhen >= EndWhen;
+
         public bool IsOver (long now) {
             // FIXME: Is this right?
             if (StartedWhen == EndWhen)
@@ -130,7 +132,8 @@ namespace Squared.Util {
             if (RepeatCount == int.MaxValue)
                 return false;
 
-            return GetProgressUnclamped(now) >= (1f + RepeatCount);
+            var unclamped = GetProgressUnclamped(now);
+            return unclamped >= (1f + RepeatCount);
         }
 
         public static implicit operator Tween<T> (T value) {

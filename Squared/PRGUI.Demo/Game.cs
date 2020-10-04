@@ -314,11 +314,14 @@ namespace PRGUI.Demo {
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
                 floatingWindow.Intangible = true;
                 floatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.TimeProvider.Ticks);
-                Scheduler.Start(new Sleep(2.5))
-                    .RegisterOnComplete((_) => {
-                        floatingWindow.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, now: Context.TimeProvider.Ticks);
-                        floatingWindow.Intangible = false;
-                    });
+            });
+
+            Context.EventBus.Subscribe(floatingWindow, UIEvents.OpacityTweenEnded, (ei) => {
+                if (floatingWindow.Opacity.To >= 1)
+                    return;
+
+                floatingWindow.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, delay: 1f, now: Context.TimeProvider.Ticks);
+                floatingWindow.Intangible = false;
             });
 
             UIRenderTarget = new AutoRenderTarget(

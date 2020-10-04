@@ -36,7 +36,10 @@ namespace Squared.PRGUI {
             ValueChanged = string.Intern("ValueChanged"),
             SelectionChanged = string.Intern("SelectionChanged"),
             Shown = string.Intern("Shown"),
-            Closed = string.Intern("Closed");
+            Closed = string.Intern("Closed"),
+            OpacityTweenEnded = string.Intern("OpacityTweenEnded"),
+            BackgroundColorTweenEnded = string.Intern("BackgroundColorTweenEnded"),
+            TextColorTweenEnded = string.Intern("TextColorTweenEnded");
     }
 
     public class UIContext : IDisposable {

@@ -18,6 +18,7 @@ namespace Squared.PRGUI.Controls {
         public const bool DiagnosticText = false;
 
         public Tween<Color>? TextColor = null;
+        private bool _TextColorEventFired;
         public Material TextMaterial = null;
         public DynamicStringLayout Content = new DynamicStringLayout();
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
@@ -145,6 +146,10 @@ namespace Squared.PRGUI.Controls {
                 return null;
         }
 
+        protected Color? GetTextColor (long now) {
+            return AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref TextColor, ref _TextColorEventFired);
+        }
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
@@ -165,7 +170,7 @@ namespace Squared.PRGUI.Controls {
                 Content.LineBreakAtX = textWidthLimit;
             }
 
-            Color? overrideColor = TextColor?.Get(context.Now);
+            Color? overrideColor = GetTextColor(context.UIContext.TimeProvider.Ticks);
             Material material;
             var textDecorations = GetTextDecorations(context.DecorationProvider);
             GetTextSettings(context, textDecorations, settings.State, out material, ref overrideColor);

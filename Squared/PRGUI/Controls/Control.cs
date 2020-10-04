@@ -37,6 +37,7 @@ namespace Squared.PRGUI {
         public float? MaximumWidth, MaximumHeight;
         public Tween<Color>? BackgroundColor = null;
         public Tween<float> Opacity = 1;
+        private bool _BackgroundColorEventFired, _OpacityEventFired;
 
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
@@ -102,6 +103,31 @@ namespace Squared.PRGUI {
 
         protected bool FireEvent (string name) {
             return Context?.FireEvent(name, this, suppressHandler: true) ?? false;
+        }
+
+        protected T? AutoFireTweenEvent<T> (long now, string name, ref Tween<T>? tween, ref bool eventFired)
+            where T : struct {
+            if (!tween.HasValue)
+                return null;
+
+            var v = tween.Value;
+            return AutoFireTweenEvent(now, name, ref v, ref eventFired);
+        }
+
+        protected T AutoFireTweenEvent<T> (long now, string name, ref Tween<T> tween, ref bool eventFired)
+            where T : struct {
+
+            if (tween.IsConstant) {
+                eventFired = true;
+            } else if (tween.IsOver(now)) {
+                if (!eventFired) {
+                    eventFired = true;
+                    FireEvent(name);
+                }
+            } else {
+                eventFired = false;
+            }
+            return tween.Get(now);
         }
 
         public Vector2 AbsoluteDisplayOffset {
@@ -189,12 +215,20 @@ namespace Squared.PRGUI {
             return result;
         }
 
+        protected float GetOpacity (long now) {
+            return AutoFireTweenEvent(now, UIEvents.OpacityTweenEnded, ref Opacity, ref _OpacityEventFired);
+        }
+
+        protected Color? GetBackgroundColor (long now) {
+            return AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref BackgroundColor, ref _BackgroundColorEventFired);
+        }
+
         public Control HitTest (LayoutContext context, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly) {
             if (!Visible)
                 return null;
             if (LayoutKey.IsInvalid)
                 return null;
-            if (Opacity.Get(Context.Now) <= 0)
+            if (GetOpacity(Context.TimeProvider.Ticks) <= 0)
                 return null;
 
             var result = this;
@@ -320,7 +354,7 @@ namespace Squared.PRGUI {
                 Box = box,
                 ContentBox = contentBox,
                 State = state,
-                BackgroundColor = BackgroundColor?.Get(NowL)
+                BackgroundColor = GetBackgroundColor(NowL)
             };
         }
 
@@ -396,7 +430,7 @@ namespace Squared.PRGUI {
                 return;
             if (LayoutKey.IsInvalid)
                 return;
-            var opacity = Opacity.Get(context.Now);
+            var opacity = GetOpacity(context.UIContext.TimeProvider.Ticks);
 
             if (opacity <= 0)
                 return;
