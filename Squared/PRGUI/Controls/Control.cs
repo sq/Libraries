@@ -53,19 +53,38 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Can receive focus via user input
         /// </summary>
-        public bool AcceptsFocus { get; protected set; }
+        public virtual bool AcceptsFocus { get; protected set; }
         /// <summary>
         /// Receives mouse events and can capture the mouse
         /// </summary>
-        public bool AcceptsMouseInput { get; protected set; }
+        public virtual bool AcceptsMouseInput { get; protected set; }
         /// <summary>
         /// Receives keyboard events while focused
         /// </summary>
-        public bool AcceptsTextInput { get; protected set; }
+        public virtual bool AcceptsTextInput { get; protected set; }
         /// <summary>
         /// Intangible controls are ignored by hit-tests
         /// </summary>
         public bool Intangible { get; set; }
+
+        private Control _FocusBeneficiary;
+
+        /// <summary>
+        /// This control cannot receive focus, but input events that would give it focus will
+        ///  direct focus to its beneficiary instead of being ignored
+        /// </summary>
+        public Control FocusBeneficiary {
+            get => _FocusBeneficiary;
+            set {
+                if (value != null) {
+                    if ((value == this) || (value.FocusBeneficiary == this))
+                        throw new ArgumentException("Focus beneficiary must not establish a loop");
+                }
+                _FocusBeneficiary = value;
+            }
+        }
+
+        internal bool IsValidFocusTarget => AcceptsFocus || (FocusBeneficiary != null);
 
         public int TabOrder { get; set; } = 0;
         public int PaintOrder { get; set; } = 0;
@@ -209,7 +228,7 @@ namespace Squared.PRGUI {
         protected virtual bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
             if (Intangible)
                 return false;
-            if (!AcceptsMouseInput && acceptsMouseInputOnly)
+            if (!IsValidFocusTarget && acceptsMouseInputOnly)
                 return false;
             if (!AcceptsFocus && acceptsFocusOnly)
                 return false;

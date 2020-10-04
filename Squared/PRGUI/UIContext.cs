@@ -206,17 +206,31 @@ namespace Squared.PRGUI {
         public Control Focused {
             get => _Focused;
             set {
-                if (value != null && (!value.AcceptsFocus || !value.Enabled))
-                    throw new InvalidOperationException("Control cannot accept focus");
+                var newFocusTarget = value;
+                if (newFocusTarget != null) {
+                    while (newFocusTarget.FocusBeneficiary != null) {
+                        var beneficiary = newFocusTarget.FocusBeneficiary;
+                        newFocusTarget = beneficiary;
+                        if (newFocusTarget == value)
+                            throw new Exception("Cycle found in focus beneficiary chain");
+                    }
+
+                    // FIXME: Should we throw here?
+                    if (!newFocusTarget.IsValidFocusTarget || !newFocusTarget.Enabled)
+                        newFocusTarget = null;
+                }
+
                 var previous = _Focused;
-                _Focused = value;
-                if ((previous != null) && (previous != _Focused))
-                    FireEvent(UIEvents.LostFocus, previous, _Focused);
+                _Focused = newFocusTarget;
+                if ((previous != null) && (previous != newFocusTarget))
+                    FireEvent(UIEvents.LostFocus, previous, newFocusTarget);
 
-                HandleNewFocusTarget(previous, _Focused);
+                // HACK: Handle cases where focus changes re-entrantly so we don't go completely bonkers
+                if (_Focused == newFocusTarget)
+                    HandleNewFocusTarget(previous, newFocusTarget);
 
-                if ((_Focused != null) && (previous != _Focused))
-                    FireEvent(UIEvents.GotFocus, _Focused, previous);
+                if ((_Focused != null) && (previous != newFocusTarget) && (_Focused == newFocusTarget))
+                    FireEvent(UIEvents.GotFocus, newFocusTarget, previous);
             }
         }
 
@@ -412,7 +426,7 @@ namespace Squared.PRGUI {
         public void CaptureMouse (Control target) {
             if ((MouseCaptured != null) && (MouseCaptured != target) && !LastMouseButtonState)
                 SuppressNextCaptureLoss = true;
-            if (target.AcceptsFocus)
+            if (target.IsValidFocusTarget)
                 Focused = target;
             MouseCaptured = target;
         }
@@ -660,12 +674,14 @@ namespace Squared.PRGUI {
 
             HideTooltipForMouseInput();
 
-            while (true) {
+            // HACK: Prevent infinite repeat in corner cases
+            int steps = 5;
+            while (steps-- > 0) {
                 SuppressNextCaptureLoss = false;
                 MouseDownPosition = globalPosition;
                 if (target != null && (target.AcceptsMouseInput && target.Enabled))
                     MouseCaptured = target;
-                if (target == null || (target.AcceptsFocus && target.Enabled))
+                if (target == null || (target.IsValidFocusTarget && target.Enabled))
                     Focused = target;
                 // FIXME: Suppress if disabled?
                 LastMouseDownTime = Now;
@@ -686,6 +702,8 @@ namespace Squared.PRGUI {
                     return ok;
                 }
             }
+
+            return false;
         }
 
         private void HandleMouseUp (Control target, Vector2 globalPosition) {

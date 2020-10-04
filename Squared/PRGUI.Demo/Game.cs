@@ -244,7 +244,8 @@ namespace PRGUI.Demo {
                             new StaticText {
                                 Text = "A Button:",
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                                TooltipContent = "Nice label.\r\nThis label has a very long tooltip that has embedded line breaks and is just generally long, so that it will get word wrapped and stuff, testing the layout constraints for tooltips"
+                                TooltipContent = "Nice label.\r\nThis label has a very long tooltip that has embedded line breaks and is just generally long, so that it will get word wrapped and stuff, testing the layout constraints for tooltips",
+                                FocusBeneficiary = changePaintOrder
                             },
                             changePaintOrder,
                             new Button {

@@ -70,6 +70,37 @@ void SHAPE_TYPE_NAME_SHADOWED (
     }
 }
 
+technique SHAPE_TYPE_TECHNIQUE_NAME
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 RasterShapeVertexShader();
+        pixelShader = compile ps_3_0 SHAPE_TYPE_NAME ();
+    }
+}
+
+technique SHAPE_TYPE_TECHNIQUE_NAME_TEX
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 RasterShapeVertexShader();
+        pixelShader = compile ps_3_0 SHAPE_TYPE_NAME_TEX ();
+    }
+}
+
+technique SHAPE_TYPE_TECHNIQUE_NAME_SHADOWED
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 RasterShapeVertexShader();
+        pixelShader = compile ps_3_0 SHAPE_TYPE_NAME_SHADOWED ();
+    }
+}
+
+
+
+#ifdef SHAPE_TYPE_TECHNIQUE_NAME_TEX_SHADOWED
+
 void SHAPE_TYPE_NAME_TEX_SHADOWED (
     RASTERSHAPE_FS_ARGS
 ) {
@@ -98,33 +129,6 @@ void SHAPE_TYPE_NAME_TEX_SHADOWED (
     }
 }
 
-technique SHAPE_TYPE_TECHNIQUE_NAME
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 RasterShapeVertexShader();
-        pixelShader = compile ps_3_0 SHAPE_TYPE_NAME ();
-    }
-}
-
-technique SHAPE_TYPE_TECHNIQUE_NAME_TEX
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 RasterShapeVertexShader();
-        pixelShader = compile ps_3_0 SHAPE_TYPE_NAME_TEX ();
-    }
-}
-
-technique SHAPE_TYPE_TECHNIQUE_NAME_SHADOWED
-{
-    pass P0
-    {
-        vertexShader = compile vs_3_0 RasterShapeVertexShader();
-        pixelShader = compile ps_3_0 SHAPE_TYPE_NAME_SHADOWED ();
-    }
-}
-
 technique SHAPE_TYPE_TECHNIQUE_NAME_TEX_SHADOWED
 {
     pass P0
@@ -133,6 +137,10 @@ technique SHAPE_TYPE_TECHNIQUE_NAME_TEX_SHADOWED
         pixelShader = compile ps_3_0 SHAPE_TYPE_NAME_TEX_SHADOWED ();
     }
 }
+
+#endif
+
+
 
 #ifdef SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE
 
@@ -199,6 +207,8 @@ technique SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE_SHADOWED
 }
 
 #endif
+
+
 
 #ifdef SHAPE_TYPE_TECHNIQUE_NAME_RAMP
 
