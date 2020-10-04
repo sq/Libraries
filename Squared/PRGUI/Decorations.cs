@@ -652,6 +652,8 @@ namespace Squared.PRGUI.Decorations {
             };
 
             Menu = new DelegateDecorator {
+                // Keep the menu from cramming up against the edges of the screen
+                Margins = new Margins(4),
                 Padding = new Margins(6),
                 GetTextSettings = GetTextSettings_Tooltip,
                 Below = Tooltip_Below,

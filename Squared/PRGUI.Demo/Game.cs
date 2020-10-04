@@ -295,6 +295,9 @@ namespace PRGUI.Demo {
                                         FixedWidth = 1600,
                                         FixedHeight = 1800,
                                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                                    },
+                                    new Button {
+                                        Text = "Another button at the bottom to test clipped hit tests"
                                     }
                                 }
                             }
@@ -387,7 +390,7 @@ namespace PRGUI.Demo {
 
             Context.UpdateInput(
                 mousePosition,
-                mouseWheelDelta: (MouseState.ScrollWheelValue - PreviousMouseState.ScrollWheelValue) / 3.2f,
+                mouseWheelDelta: (MouseState.ScrollWheelValue - PreviousMouseState.ScrollWheelValue) / 2.4f,
                 leftButtonPressed: IsActive && (MouseState.LeftButton == ButtonState.Pressed),
                 keyboardState: KeyboardState
             );

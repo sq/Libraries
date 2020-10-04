@@ -134,12 +134,14 @@ namespace Squared.PRGUI.Controls {
             var scrollbar = context.DecorationProvider?.Scrollbar;
             if (scrollbar == null)
                 return result;
-            result.Right += scrollbar.MinimumSize.X;
-            result.Bottom += scrollbar.MinimumSize.Y;
+            if (ShowVerticalScrollbar)
+                result.Right += scrollbar.MinimumSize.X;
+            if (ShowHorizontalScrollbar)
+                result.Bottom += scrollbar.MinimumSize.Y;
             return result;
         }
 
-        protected bool GetContentBounds (UIOperationContext context, out RectF contentBounds) {
+        protected bool GetContentBounds (UIContext context, out RectF contentBounds) {
             if (!HasContentBounds)
                 HasContentBounds = context.Layout.TryMeasureContent(LayoutKey, out ContentBounds);
 
@@ -160,7 +162,7 @@ namespace Squared.PRGUI.Controls {
                 float viewportWidth = box.Width - (scrollbar?.MinimumSize.X ?? 0),
                     viewportHeight = box.Height - (scrollbar?.MinimumSize.Y ?? 0);
 
-                GetContentBounds(context, out RectF contentBounds);
+                GetContentBounds(context.UIContext, out RectF contentBounds);
 
                 if (HasContentBounds) {
                     float maxScrollX = ContentBounds.Width - viewportWidth, maxScrollY = ContentBounds.Height - viewportHeight;

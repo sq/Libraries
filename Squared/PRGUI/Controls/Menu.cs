@@ -44,11 +44,11 @@ namespace Squared.PRGUI.Controls {
             : base () {
             AcceptsMouseInput = true;
             AcceptsFocus = true;
-            ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start 
-                | ControlFlags.Container_Constrain_Size;
+            ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start;
             LayoutFlags |= ControlFlags.Layout_Floating;
             PaintOrder = 9900;
             ClipChildren = true;
+            ShowHorizontalScrollbar = false;
         }
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
@@ -68,10 +68,13 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
+        // HACK
+        private bool _OverrideHitTestResults = true;
+
         protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
             var ok = base.OnHitTest(context, box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
             // HACK: Ensure that hit-test does not pass through to our individual items. We want to handle all events for them
-            if (ok)
+            if (ok && _OverrideHitTestResults)
                 result = this;
             return ok;
         }
@@ -86,11 +89,16 @@ namespace Squared.PRGUI.Controls {
         }
 
         private Control ChildFromGlobalPosition (LayoutContext context, Vector2 globalPosition) {
-            foreach (var child in Children)
-                if (child.HitTest(context, globalPosition, false, false) == child)
+            try {
+                _OverrideHitTestResults = false;
+                var child = HitTest(context, globalPosition, false, false);
+                if (child == this)
+                    return null;
+                else
                     return child;
-
-            return null;
+            } finally {
+                _OverrideHitTestResults = true;
+            }
         }
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
@@ -104,7 +112,7 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            var virtualGlobalPosition = args.GlobalPosition + ScrollOffset;
+            var virtualGlobalPosition = args.GlobalPosition;
             if (args.Box.Contains(virtualGlobalPosition))
                 // HACK: Shift the coordinates in a little to deal with items that are not full width
                 virtualGlobalPosition.X = args.ContentBox.Left + 4;
@@ -140,10 +148,9 @@ namespace Squared.PRGUI.Controls {
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
             else if (name == UIEvents.LostFocus)
                 Close();
-            /*
-            else if (name == UIEvents.KeyPress)
-                return OnKeyPress((KeyEventArgs)(object)args);
-            */
+            else
+                return base.OnEvent(name, args);
+
             return false;
         }
 
@@ -182,6 +189,18 @@ namespace Squared.PRGUI.Controls {
 
             MaximumWidth = context.CanvasSize.X * 0.5f;
             MaximumHeight = context.CanvasSize.Y * 0.66f;
+            CalculateScrollable(context);
+        }
+
+        private void CalculateScrollable (UIContext context) {
+            context.UpdateSubtreeLayout(this);
+            if (GetContentBounds(context, out RectF contentBounds)) {
+                Scrollable = contentBounds.Height >= MaximumHeight;
+                // HACK: Changing the scrollable flag invalidates our layout info, so recalculate it
+                // If we don't do this the menu will overhang on the right side
+                if (Scrollable)
+                    context.UpdateSubtreeLayout(this);
+            }
         }
 
         private void ShowInternal (UIContext context, Vector2 adjustedPosition) {
@@ -198,12 +217,14 @@ namespace Squared.PRGUI.Controls {
 
         private Vector2 AdjustPosition (UIContext context, Vector2 desiredPosition) {
             var margin = context.Decorations.Menu.Margins;
-            desiredPosition.X -= margin.Left;
-            desiredPosition.Y -= margin.Top;
-            context.UpdateSubtreeLayout(this);
             var box = GetRect(context.Layout);
-            desiredPosition.X = Arithmetic.Clamp(desiredPosition.X, 0, context.CanvasSize.X - box.Width - margin.Right);
-            desiredPosition.Y = Arithmetic.Clamp(desiredPosition.Y, 0, context.CanvasSize.Y - box.Height - margin.Bottom);
+            // HACK: We'd want to use margin.Right/Bottom here normally, but compensation has already
+            //  been applied somewhere in the layout engine for the top/left margins so we need to
+            //  cancel them out again
+            var maxX = context.CanvasSize.X - box.Width - margin.X;
+            var maxY = context.CanvasSize.Y - box.Height - margin.Y;
+            desiredPosition.X = Arithmetic.Clamp(desiredPosition.X, margin.Left, maxX);
+            desiredPosition.Y = Arithmetic.Clamp(desiredPosition.Y, margin.Top, maxY);
             return desiredPosition;
         }
 
