@@ -8,7 +8,9 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.Render;
 using Squared.Render.Convenience;
+using Squared.Render.RasterShape;
 using Squared.Util;
 
 namespace Squared.PRGUI {
@@ -35,7 +37,7 @@ namespace Squared.PRGUI {
         public float? FixedWidth, FixedHeight;
         public float? MinimumWidth, MinimumHeight;
         public float? MaximumWidth, MaximumHeight;
-        public Tween<Color>? BackgroundColor = null;
+        public Tween<Vector4>? BackgroundColorPLinear = null;
         public Tween<float> Opacity = 1;
         private bool _BackgroundColorEventFired, _OpacityEventFired;
 
@@ -78,6 +80,34 @@ namespace Squared.PRGUI {
 
         protected float Now => Context?.Now ?? (float)Time.Seconds;
         protected long NowL => Context?.TimeProvider?.Ticks ?? Time.Ticks;
+
+        protected static void UpdateColor (ref Tween<Vector4>? v4, Tween<Color>? value) {
+            if (value == null) {
+                v4 = null;
+                return;
+            }
+
+            var v = value.Value;
+            v4 = v.CloneWithNewValues(((pSRGBColor)v.From).ToPLinear(), ((pSRGBColor)v.To).ToPLinear());
+        }
+
+        protected static void UpdateColor (ref Tween<Vector4>? v4, Tween<pSRGBColor>? value) {
+            if (value == null) {
+                v4 = null;
+                return;
+            }
+
+            var v = value.Value;
+            v4 = v.CloneWithNewValues(v.From.ToPLinear(), v.To.ToPLinear());
+        }
+
+        public Tween<Color>? BackgroundColor {
+            set => UpdateColor(ref BackgroundColorPLinear, value);
+        }
+
+        public Tween<pSRGBColor>? BackgroundColorPSRGB {
+            set => UpdateColor(ref BackgroundColorPLinear, value);
+        }
 
         public UIContext Context {
             get {
@@ -219,8 +249,11 @@ namespace Squared.PRGUI {
             return AutoFireTweenEvent(now, UIEvents.OpacityTweenEnded, ref Opacity, ref _OpacityEventFired);
         }
 
-        protected Color? GetBackgroundColor (long now) {
-            return AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref BackgroundColor, ref _BackgroundColorEventFired);
+        protected pSRGBColor? GetBackgroundColor (long now) {
+            var v4 = AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref BackgroundColorPLinear, ref _BackgroundColorEventFired);
+            if (!v4.HasValue)
+                return null;
+            return pSRGBColor.FromPLinear(v4.Value);
         }
 
         public Control HitTest (LayoutContext context, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly) {

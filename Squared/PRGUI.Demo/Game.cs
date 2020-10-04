@@ -259,7 +259,7 @@ namespace PRGUI.Demo {
                                 AutoSizeWidth = false,
                                 Text = "Static Text 3",
                                 TextAlignment = HorizontalAlignment.Right,
-                                BackgroundColor = Color.DarkGreen
+                                BackgroundColor = Tween.StartNow(Color.DarkGreen, Color.DarkRed, 1f, repeatCount: int.MaxValue, repeatMode: TweenRepeatMode.Pulse)
                             },
                             new StaticText {
                                 Text = "Static Text 4",
@@ -313,7 +313,7 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
                 floatingWindow.Intangible = true;
-                floatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 2, now: Context.TimeProvider.Ticks);
+                floatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.TimeProvider.Ticks);
             });
 
             Context.EventBus.Subscribe(floatingWindow, UIEvents.OpacityTweenEnded, (ei) => {

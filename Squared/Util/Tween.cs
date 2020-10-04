@@ -6,6 +6,39 @@ using System.Threading;
 using Squared.Util;
 
 namespace Squared.Util {
+    public static class Tween {
+        public static Tween<T> StartNow<T> (
+            T from, T to, long ticks, long? delay = null,
+            long? now = null, BoundInterpolator<T, Tween<T>> interpolator = null,
+            int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop
+        ) 
+            where T : struct {
+            var _now = now.HasValue ? now.Value : Time.Ticks;
+            return new Tween<T>(
+                from, to,
+                _now + delay.GetValueOrDefault(0),
+                _now + delay.GetValueOrDefault(0) + ticks,
+                interpolator: interpolator, repeatCount: repeatCount,
+                repeatMode: repeatMode
+            );
+        }
+
+        public static Tween<T> StartNow<T> (
+            T from, T to, float seconds, float? delay = null,
+            long? now = null, BoundInterpolator<T, Tween<T>> interpolator = null,
+            int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop
+        )
+            where T : struct {
+            return StartNow(
+                from, to,
+                ticks: TimeSpan.FromSeconds(seconds).Ticks,
+                delay: TimeSpan.FromSeconds(delay.GetValueOrDefault(0)).Ticks,
+                now: now, interpolator: interpolator, repeatCount: repeatCount,
+                repeatMode: repeatMode
+            );
+        }
+    }
+
     public struct Tween<T> 
         where T : struct {
 
@@ -97,10 +130,12 @@ namespace Squared.Util {
 
         public float GetProgress (long now) {
             var unclamped = GetProgressUnclamped(now);
-            if (RepeatCount == int.MaxValue)
-                return Math.Max(0, unclamped);
 
-            var clampedToRepeatCount = Arithmetic.Clamp(unclamped, 0, 1f + RepeatCount);
+            var clampedToRepeatCount = 
+                (RepeatCount == int.MaxValue) 
+                    ? unclamped
+                    : Arithmetic.Clamp(unclamped, 0, 1f + RepeatCount);
+
             if (RepeatCount > 0) {
                 switch (RepeatMode) {
                     case TweenRepeatMode.Loop:
@@ -153,6 +188,19 @@ namespace Squared.Util {
 
             var unclamped = GetProgressUnclamped(now);
             return unclamped >= (1f + RepeatCount);
+        }
+
+        public Tween<U> CloneWithNewValues<U> (U from, U to, BoundInterpolator<U, Tween<U>> interpolator = null)
+            where U : struct {
+
+            // HACK: This interpolator lookup is gross
+            if ((interpolator == null) && (Interpolator != null))
+                interpolator = Interpolators<U>.GetBoundByName<Tween<U>>(Interpolator.Method.Name);
+
+            return new Tween<U>(
+                from, to, StartedWhen, EndWhen, 
+                interpolator, RepeatCount, RepeatMode
+            );
         }
 
         public static implicit operator Tween<T> (T value) {

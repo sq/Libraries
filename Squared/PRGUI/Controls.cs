@@ -79,7 +79,7 @@ namespace Squared.PRGUI {
             LayoutFlags |= ControlFlags.Layout_Floating;
         }
 
-        protected IDecorator UpdateTitle (UIOperationContext context, DecorationSettings settings, out Material material, ref Color? color) {
+        protected IDecorator UpdateTitle (UIOperationContext context, DecorationSettings settings, out Material material, ref pSRGBColor? color) {
             var decorations = context.DecorationProvider?.WindowTitle;
             if (decorations == null) {
                 material = null;
@@ -88,7 +88,7 @@ namespace Squared.PRGUI {
             decorations.GetTextSettings(context, settings.State, out material, out IGlyphSource font, ref color);
             TitleLayout.Text = Title;
             TitleLayout.GlyphSource = font;
-            TitleLayout.Color = color ?? Color.White;
+            TitleLayout.Color = color?.ToColor() ?? Color.White;
             TitleLayout.LineBreakAtX = settings.ContentBox.Width;
             return decorations;
         }
@@ -99,7 +99,7 @@ namespace Squared.PRGUI {
             if (titleDecorations == null)
                 return result;
 
-            Color? color = null;
+            pSRGBColor? color = null;
             titleDecorations.GetTextSettings(context, default(ControlStates), out Material temp, out IGlyphSource font, ref color);
             result.Top += titleDecorations.Margins.Bottom;
             result.Top += titleDecorations.Padding.Top;
@@ -118,7 +118,7 @@ namespace Squared.PRGUI {
             UpdatePosition(Position, context.UIContext, settings.Box);
 
             IDecorator titleDecorator;
-            Color? titleColor = null;
+            pSRGBColor? titleColor = null;
             if (
                 (titleDecorator = UpdateTitle(context, settings, out Material titleMaterial, ref titleColor)) != null
             ) {
@@ -144,7 +144,7 @@ namespace Squared.PRGUI {
                 renderer.Layer += 1;
                 renderer.DrawMultiple(
                     layout.DrawCalls, new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top),
-                    samplerState: RenderStates.Text, multiplyColor: titleColor.Value
+                    samplerState: RenderStates.Text, multiplyColor: titleColor?.ToColor()
                 );
             }
         }

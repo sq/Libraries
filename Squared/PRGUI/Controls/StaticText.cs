@@ -17,7 +17,7 @@ namespace Squared.PRGUI.Controls {
     public class StaticText : Control {
         public const bool DiagnosticText = false;
 
-        public Tween<Color>? TextColor = null;
+        public Tween<Vector4>? TextColorPLinear = null;
         private bool _TextColorEventFired;
         public Material TextMaterial = null;
         public DynamicStringLayout Content = new DynamicStringLayout();
@@ -28,6 +28,14 @@ namespace Squared.PRGUI.Controls {
         public StaticText ()
             : base () {
             Multiline = false;
+        }
+
+        public Tween<Color>? TextColor {
+            set => UpdateColor(ref TextColorPLinear, value);
+        }
+
+        public Tween<pSRGBColor>? TextColorPSRGB {
+            set => UpdateColor(ref TextColorPLinear, value);
         }
 
         public bool Multiline {
@@ -146,8 +154,11 @@ namespace Squared.PRGUI.Controls {
                 return null;
         }
 
-        protected Color? GetTextColor (long now) {
-            return AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref TextColor, ref _TextColorEventFired);
+        protected pSRGBColor? GetTextColor (long now) {
+            var v4 = AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref TextColorPLinear, ref _TextColorEventFired);
+            if (!v4.HasValue)
+                return null;
+            return pSRGBColor.FromPLinear(v4.Value);
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
@@ -170,7 +181,7 @@ namespace Squared.PRGUI.Controls {
                 Content.LineBreakAtX = textWidthLimit;
             }
 
-            Color? overrideColor = GetTextColor(context.UIContext.TimeProvider.Ticks);
+            var overrideColor = GetTextColor(context.UIContext.TimeProvider.Ticks);
             Material material;
             var textDecorations = GetTextDecorations(context.DecorationProvider);
             GetTextSettings(context, textDecorations, settings.State, out material, ref overrideColor);
@@ -203,17 +214,17 @@ namespace Squared.PRGUI.Controls {
 
             renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
-                material: material, samplerState: RenderStates.Text, multiplyColor: overrideColor,
+                material: material, samplerState: RenderStates.Text, multiplyColor: overrideColor?.ToColor(),
                 scale: textScale
             );
         }
 
         protected void UpdateFont (UIOperationContext context, IDecorator decorations) {
-            Color? temp2 = null;
+            pSRGBColor? temp2 = null;
             GetTextSettings(context, decorations, default(ControlStates), out Material temp, ref temp2);
         }
 
-        protected void GetTextSettings (UIOperationContext context, IDecorator decorations, ControlStates state, out Material material, ref Color? color) {
+        protected void GetTextSettings (UIOperationContext context, IDecorator decorations, ControlStates state, out Material material, ref pSRGBColor? color) {
             decorations.GetTextSettings(context, state, out material, out IGlyphSource font, ref color);
             if (Content.GlyphSource == null)
                 Content.GlyphSource = font;

@@ -204,12 +204,12 @@ namespace Squared.PRGUI.Controls {
 
             UpdateLayoutSettings();
 
-            Color? color = null;
+            pSRGBColor? color = null;
             decorations.GetTextSettings(context, settings.State, out material, out IGlyphSource font, ref color);
             CachedPadding = ComputePadding(context, decorations);
 
             DynamicLayout.GlyphSource = font;
-            DynamicLayout.Color = color ?? Color.White;
+            DynamicLayout.Color = color?.ToColor() ?? Color.White;
 
             return DynamicLayout.Get();
         }
@@ -583,7 +583,7 @@ namespace Squared.PRGUI.Controls {
             ArraySegment<BitmapDrawCall> drawCalls, LayoutMarker? selection,
             UIOperationContext context, ControlStates state, IBaseDecorator selectionDecorator
         ) {
-            Color? selectedColor = DynamicLayout.Color;
+            pSRGBColor? selectedColor = DynamicLayout.Color;
             selectionDecorator.GetTextSettings(context, state, out Material temp, out IGlyphSource temp2, ref selectedColor);
             var noColorizing = (selection == null) || 
                 (selection.Value.Bounds == null) || 

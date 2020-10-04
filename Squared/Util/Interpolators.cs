@@ -26,8 +26,11 @@ namespace Squared.Util {
         private static HermiteFn _Hermite = null;
 
         static Interpolators () {
-            var m_lerp = (typeof(T).GetMethod("Lerp", BindingFlags.Static | BindingFlags.Public)
-                ?.CreateDelegate(typeof(LinearFn))) as LinearFn;
+            var m_lerp = (
+                typeof(T).GetMethod(
+                    "Lerp", BindingFlags.Static | BindingFlags.Public, null, 
+                    new[] { typeof(T), typeof(T), typeof(float) }, null
+                )?.CreateDelegate(typeof(LinearFn))) as LinearFn;
             CompileFallbackExpressions(m_lerp);
             CompileNativeExpressions(m_lerp);
         }
@@ -277,20 +280,78 @@ namespace Squared.Util {
             }
         }
 
+        private static readonly Dictionary<string, Interpolator<T>> Cache = 
+            new Dictionary<string, Interpolator<T>>(StringComparer.OrdinalIgnoreCase);
+
         public static Interpolator<T> GetByName (string name) {
+            Interpolator<T> result;
+
+            lock (Cache)
+            if (Cache.TryGetValue(name, out result))
+                return result;
+
             var types = new Type[] {
                 typeof(InterpolatorSource<T>), typeof(int), typeof(float)
             };
             Type myType = typeof(Interpolators<T>);
             Type resultType = typeof(Interpolator<T>);
-            MethodInfo mi = myType.GetMethod(name, types);
+
+            var mi = myType.GetMethod(name, types);
             if (mi == null)
                 mi = myType.GetMethod("Null", types);
-            return Delegate.CreateDelegate(resultType, null, mi) as Interpolator<T>;
+            result = Delegate.CreateDelegate(resultType, null, mi) as Interpolator<T>;
+
+            lock (Cache)
+                Cache[name] = result;
+
+            return result;
         }
 
         public static BoundInterpolator<T, U> GetBoundDefault<U>() {
             return Linear<U>;
+        }
+
+        private static class CacheContainer<U> {
+            public static readonly Dictionary<string, BoundInterpolator<T, U>> Cache = 
+                new Dictionary<string, BoundInterpolator<T, U>>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        public static BoundInterpolator<T, U> GetBoundByName<U> (string name) {
+            BoundInterpolator<T, U> result;
+
+            lock (CacheContainer<U>.Cache)
+            if (CacheContainer<U>.Cache.TryGetValue(name, out result))
+                return result;
+
+            var myType = typeof(Interpolators<T>);
+            var resultType = typeof(BoundInterpolator<T, U>);
+            var methods = myType.GetMethods();
+
+            MethodInfo mi = null;
+
+            foreach (var m in methods) {
+                if (m.Name != name)
+                    continue;
+                if (!m.ContainsGenericParameters)
+                    continue;
+                var p = m.GetParameters();
+                if (p?.Length != 4)
+                    continue;
+
+                mi = m;
+                break;
+            }
+
+            if (mi == null)
+                return GetBoundByName<U>("Null");
+
+            var mii = mi.MakeGenericMethod(typeof(U));
+            result = Delegate.CreateDelegate(resultType, null, mii) as BoundInterpolator<T, U>;
+
+            lock (CacheContainer<U>.Cache)
+                CacheContainer<U>.Cache[name] = result;
+
+            return result;
         }
 
         public static Interpolator<T> Default {
