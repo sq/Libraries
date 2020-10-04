@@ -56,7 +56,7 @@ namespace Squared.Render.RasterShape {
         }
     }
 
-    public enum RasterShapeType : int {
+    public enum RasterShapeType : byte {
         Ellipse = 0,
         LineSegment = 1,
         Rectangle = 2,
@@ -231,7 +231,9 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         public RasterShadowSettings Shadow;
 
-        public bool IsSimple;
+        internal int IsSimple;
+
+        internal int PackedFlags;
 
         internal int Index;
     }
@@ -264,18 +266,31 @@ namespace Squared.Render.RasterShape {
         /// <summary>
         /// The shadow color (premultiplied sRGB).
         /// </summary>
-        public pSRGBColor Color;
+        internal pSRGBColor _Color;
+
+        public pSRGBColor Color {
+            get {
+                return _Color;
+            }
+            set {
+                _Color = value;
+                IsEnabled = !_Color.IsTransparent ? 1 : 0;
+            }
+        }
 
         /// <summary>
         /// Shadow inside of the shape instead of outside
         /// </summary>
         public bool Inside;
 
+        internal int IsEnabled;
+
         public bool Equals (ref RasterShadowSettings rhs) {
-            return (Offset == rhs.Offset) &&
+            return (IsEnabled == rhs.IsEnabled) &&
+                (Offset == rhs.Offset) &&
                 (Softness == rhs.Softness) &&
                 (FillSuppressionMinusOne == rhs.FillSuppressionMinusOne) &&
-                (Color == rhs.Color) &&
+                (_Color == rhs._Color) &&
                 (Inside == rhs.Inside);
         }
 
@@ -292,22 +307,16 @@ namespace Squared.Render.RasterShape {
 
         // FIXME
         public override int GetHashCode () {
-            return 0;
+            return IsEnabled.GetHashCode() ^ Color.GetHashCode();
         }
     }
 
     public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
         private class RasterShapeTypeSorter : IRefComparer<RasterShapeDrawCall>, IComparer<RasterShapeDrawCall> {
             public int Compare (ref RasterShapeDrawCall lhs, ref RasterShapeDrawCall rhs) {
-                var result = ((int)lhs.Type).CompareTo((int)(rhs.Type));
+                var result = lhs.Index - rhs.Index;
                 if (result == 0)
-                    result = lhs.IsSimple.CompareTo(rhs.IsSimple);
-                if (result == 0)
-                    result = lhs.Shadow.Color.IsTransparent.CompareTo(rhs.Shadow.Color.IsTransparent);
-                if (result == 0)
-                    result = lhs.BlendInLinearSpace.CompareTo(rhs.BlendInLinearSpace);
-                if (result == 0)
-                    result = lhs.Index.CompareTo(rhs.Index);
+                    result = lhs.PackedFlags - rhs.PackedFlags;
                 return result;
             }
 
@@ -417,7 +426,7 @@ namespace Squared.Render.RasterShape {
                             Type = lastType,
                             Shadow = lastShadow,
                             Shadowed = ShouldBeShadowed(ref lastShadow),
-                            Simple = lastIsSimple
+                            Simple = lastIsSimple != 0
                         });
                         lastOffset = i;
                         lastType = dc.Type;
@@ -448,7 +457,7 @@ namespace Squared.Render.RasterShape {
                     Type = lastType,
                     Shadow = lastShadow,
                     Shadowed = ShouldBeShadowed(ref lastShadow),
-                    Simple = lastIsSimple
+                    Simple = lastIsSimple != 0
                 });
 
                 NativeBatch.RecordPrimitives(count * 2);
@@ -589,14 +598,16 @@ namespace Squared.Render.RasterShape {
         }
 
         new public void Add (RasterShapeDrawCall dc) {
-            dc.Index = _DrawCalls.Count;
-            _DrawCalls.Add(ref dc);
+            Add(ref dc);
         }
 
         new public void Add (ref RasterShapeDrawCall dc) {
             // FIXME
             dc.Index = _DrawCalls.Count;
-            dc.IsSimple = dc.OuterColor4.FastEquals(ref dc.InnerColor4) || (dc.FillMode == (float)RasterFillMode.None);
+            dc.IsSimple = (dc.OuterColor4.FastEquals(ref dc.InnerColor4) || (dc.FillMode == (float)RasterFillMode.None)) ? 1 : 0;
+            dc.PackedFlags = (
+                (int)dc.Type | (dc.IsSimple << 8) | (dc.Shadow.IsEnabled << 9) | ((dc.BlendInLinearSpace ? 1 : 0) << 10)
+            );
             _DrawCalls.Add(ref dc);
         }
 
