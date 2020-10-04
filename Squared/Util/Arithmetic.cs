@@ -285,7 +285,7 @@ namespace Squared.Util {
             }
         }
 
-        public static float Wrap (float value, float min, float max) {
+        public static float WrapExclusive (float value, float min, float max) {
             float d = max - min;
 
             if (max <= min)
@@ -298,6 +298,32 @@ namespace Squared.Util {
             } else {
                 return value;
             }
+        }
+
+        public static float WrapInclusive (float value, float min, float max) {
+            if (max <= min)
+                return min;
+
+            bool isBefore = value < min;
+            double relativeValue = isBefore ? min - value : value - min;
+            double windowSize = max - min;
+            double repeatCount = Math.Abs(Math.Truncate(relativeValue / windowSize));
+            double repeatBase = repeatCount * windowSize, previousRepeatBase = (repeatCount - 1) * windowSize;
+            double relativeToRepeatBase = Math.Abs(relativeValue) - repeatBase;
+            double finalWindowedValue;
+            double windowStart = double.Epsilon, windowEnd = windowSize - double.Epsilon;
+            if (relativeToRepeatBase >= windowStart)
+                finalWindowedValue = relativeToRepeatBase;
+            else if (repeatCount <= 0)
+                finalWindowedValue = min;
+            else
+                finalWindowedValue = max;
+
+            if (isBefore) {
+                var reversed = finalWindowedValue;
+                return (float)(min - reversed);
+            } else
+                return (float)(min + finalWindowedValue);
         }
 
         public static float Pulse (float value) {
@@ -328,7 +354,7 @@ namespace Squared.Util {
         // Input range: 0-2
         // Output range: -max - max
         public static float PulseCyclicExp (float value, float max) {
-            var valueCentered = Wrap(value, 0f, 2f);
+            var valueCentered = WrapInclusive(value, 0f, 2f);
             if (valueCentered <= 1f) {
                 if (valueCentered >= 0.5f) {
                     valueCentered = (0.5f - (valueCentered - 0.5f)) * 2f;
