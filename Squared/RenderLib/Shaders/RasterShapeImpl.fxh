@@ -245,7 +245,7 @@ void SHAPE_TYPE_NAME_RAMP_SHADOWED (
     float2 tl, br;
     float  fillAlpha, outlineAlpha, shadowAlpha, gradientWeight;
     rasterShapeCommon(
-        worldPositionTypeAndWorldSpace, false, false,
+        worldPositionTypeAndWorldSpace, true, false,
         ab, cd, params, params2,
         GET_VPOS, tl, br,
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
@@ -253,7 +253,7 @@ void SHAPE_TYPE_NAME_RAMP_SHADOWED (
 
     float4 fill = SampleFromRamp(gradientWeight);
 
-    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, false, GET_VPOS);
+    result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, true, GET_VPOS);
 
     if (result.a <= 0.5 / 255) {
         discard;

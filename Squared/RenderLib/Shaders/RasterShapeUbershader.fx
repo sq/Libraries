@@ -13,13 +13,10 @@
 #define SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE RasterShapeSimpleTechnique
 #define SHAPE_TYPE_NAME_SIMPLE_SHADOWED ShadowedRasterShapeSimple
 #define SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE_SHADOWED ShadowedRasterShapeSimpleTechnique
-// FIXME: This breaks unramped triangles
-/*
 #define SHAPE_TYPE_NAME_RAMP RasterShapeRamp
 #define SHAPE_TYPE_TECHNIQUE_NAME_RAMP RasterShapeRampTechnique
 #define SHAPE_TYPE_NAME_RAMP_SHADOWED ShadowedRasterShapeRamp
 #define SHAPE_TYPE_TECHNIQUE_NAME_RAMP_SHADOWED ShadowedRasterShapeRampTechnique
-*/
 
 #define INCLUDE_ELLIPSE
 #define INCLUDE_LINE
