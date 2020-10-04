@@ -12,6 +12,7 @@ namespace Squared.Util {
         private static readonly BoundInterpolatorSource<T, Tween<T>> GetValue;
 
         public readonly int RepeatCount;
+        public readonly TweenRepeatMode RepeatMode;
         public readonly T From, To;
         public readonly BoundInterpolator<T, Tween<T>> Interpolator;
         public readonly long StartedWhen, EndWhen;
@@ -34,13 +35,14 @@ namespace Squared.Util {
             StartedWhen = EndWhen = 0;
             Interpolator = null;
             RepeatCount = 0;
+            RepeatMode = TweenRepeatMode.Loop;
         }
 
         public Tween (
             T from, T to,
             long startWhen, long endWhen,
             BoundInterpolator<T, Tween<T>> interpolator = null,
-            int repeatCount = 0
+            int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop
         ) {
             From = from;
             To = to;
@@ -48,30 +50,35 @@ namespace Squared.Util {
             EndWhen = endWhen;
             Interpolator = interpolator ?? Interpolators<T>.GetBoundDefault<Tween<T>>();
             RepeatCount = repeatCount;
+            RepeatMode = repeatMode;
         }
 
         public static Tween<T> StartNow (
             T from, T to, long ticks, long? delay = null,
-            long? now = null, BoundInterpolator<T, Tween<T>> interpolator = null, int repeatCount = 0
+            long? now = null, BoundInterpolator<T, Tween<T>> interpolator = null,
+            int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop
         ) {
             var _now = now.HasValue ? now.Value : Time.Ticks;
             return new Tween<T>(
                 from, to,
                 _now + delay.GetValueOrDefault(0),
                 _now + delay.GetValueOrDefault(0) + ticks,
-                interpolator: interpolator, repeatCount: repeatCount
+                interpolator: interpolator, repeatCount: repeatCount,
+                repeatMode: repeatMode
             );
         }
 
         public static Tween<T> StartNow (
             T from, T to, float seconds, float? delay = null,
-            long? now = null, BoundInterpolator<T, Tween<T>> interpolator = null, int repeatCount = 0
+            long? now = null, BoundInterpolator<T, Tween<T>> interpolator = null,
+            int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop
         ) {
             return StartNow(
                 from, to,
                 ticks: TimeSpan.FromSeconds(seconds).Ticks,
                 delay: TimeSpan.FromSeconds(delay.GetValueOrDefault(0)).Ticks,
-                now: now, interpolator: interpolator, repeatCount: repeatCount
+                now: now, interpolator: interpolator, repeatCount: repeatCount,
+                repeatMode: repeatMode
             );
         }
 
@@ -94,9 +101,21 @@ namespace Squared.Util {
                 return Math.Max(0, unclamped);
 
             var clampedToRepeatCount = Arithmetic.Clamp(unclamped, 0, 1f + RepeatCount);
-            if (RepeatCount > 0)
-                return Arithmetic.WrapInclusive(clampedToRepeatCount, 0, 1f);
-            else
+            if (RepeatCount > 0) {
+                switch (RepeatMode) {
+                    case TweenRepeatMode.Loop:
+                        return Arithmetic.WrapInclusive(clampedToRepeatCount, 0, 1f);
+                    case TweenRepeatMode.Pulse:
+                        return Arithmetic.Pulse(clampedToRepeatCount / 2f, 1f, 0f);
+                    // FIXME: Not sure these two work right
+                    case TweenRepeatMode.PulseExp:
+                        return Arithmetic.PulseExp(clampedToRepeatCount / 2f, 1f, 0f);
+                    case TweenRepeatMode.PulseSine:
+                        return Arithmetic.PulseSine(clampedToRepeatCount / 2f, 1f, 0f);
+                    default:
+                        throw new ArgumentException("repeatMode");
+                }
+            } else
                 return clampedToRepeatCount;
         }
 
@@ -139,5 +158,24 @@ namespace Squared.Util {
         public static implicit operator Tween<T> (T value) {
             return new Tween<T>(value);
         }
+    }
+
+    public enum TweenRepeatMode : int {
+        /// <summary>
+        /// Repeats N times, starting from 0 each time
+        /// </summary>
+        Loop = 0,
+        /// <summary>
+        /// Repeats N times, going 0-1, 1-0, 0-1, ...
+        /// </summary>
+        Pulse = 1,
+        /// <summary>
+        /// Like Pulse, but exponential
+        /// </summary>
+        PulseExp = 2,
+        /// <summary>
+        /// Like Pulse, but sinusoidal
+        /// </summary>
+        PulseSine = 3
     }
 }

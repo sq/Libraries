@@ -313,7 +313,7 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
                 floatingWindow.Intangible = true;
-                floatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.TimeProvider.Ticks);
+                floatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 2, now: Context.TimeProvider.Ticks);
             });
 
             Context.EventBus.Subscribe(floatingWindow, UIEvents.OpacityTweenEnded, (ei) => {
