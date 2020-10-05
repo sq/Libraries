@@ -133,6 +133,9 @@ namespace Squared.PRGUI.Layout {
 
         private int Version;
         private GCHandle LayoutPin, BoxesPin;
+        private LayoutItem[] PinnedLayoutArray;
+        private RectF[] PinnedBoxesArray;
+        private IntPtr PinnedLayoutPtr, PinnedBoxesPtr;
         private readonly UnorderedList<LayoutItem> Layout = new UnorderedList<LayoutItem>(DefaultCapacity);
         private readonly UnorderedList<RectF> Boxes = new UnorderedList<RectF>(DefaultCapacity);
 
@@ -220,12 +223,14 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe LayoutItem * LayoutPtr () {
             var buffer = Layout.GetBuffer();
-            if (!LayoutPin.IsAllocated || (buffer.Array != LayoutPin.Target)) {
+            if (!LayoutPin.IsAllocated || (buffer.Array != PinnedLayoutArray)) {
                 if (LayoutPin.IsAllocated)
                     LayoutPin.Free();
+                PinnedLayoutArray = buffer.Array;
                 LayoutPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
+                PinnedLayoutPtr = LayoutPin.AddrOfPinnedObject();
             }
-            return ((LayoutItem*)LayoutPin.AddrOfPinnedObject()) + buffer.Offset;
+            return (LayoutItem*)PinnedLayoutPtr + buffer.Offset;
         }
 
         private unsafe LayoutItem * LayoutPtr (ControlKey key, bool optional = false) {
@@ -243,12 +248,14 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe RectF * BoxesPtr () {
             var buffer = Boxes.GetBuffer();
-            if (!BoxesPin.IsAllocated || (buffer.Array != BoxesPin.Target)) {
+            if (!BoxesPin.IsAllocated || (buffer.Array != PinnedBoxesArray)) {
                 if (BoxesPin.IsAllocated)
                     BoxesPin.Free();
+                PinnedBoxesArray = buffer.Array;
                 BoxesPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
+                PinnedBoxesPtr = BoxesPin.AddrOfPinnedObject();
             }
-            return ((RectF *)BoxesPin.AddrOfPinnedObject()) + buffer.Offset;
+            return (RectF *)PinnedBoxesPtr + buffer.Offset;
         }
 
         private unsafe RectF * RectPtr (ControlKey key, bool optional = false) {

@@ -250,8 +250,7 @@ namespace Squared.Render {
             }
 
             public override int GetHashCode () {
-                return ((int)(Type ?? (RasterShape.RasterShapeType)(0))).GetHashCode() ^ Shadowed.GetHashCode() 
-                    ^ Textured.GetHashCode() ^ Simple.GetHashCode() ^ HasRamp.GetHashCode();
+                return (int)(Type ?? 0) | (Shadowed ? 64 : 0) | (Textured ? 128 : 0) | (Simple ? 256 : 0);
             }
         }
 
@@ -356,8 +355,8 @@ namespace Squared.Render {
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
         public Material RasterShapeUbershader;
-        public readonly MaterialDictionary<RasterShaderKey> RasterShapeMaterials =
-            new MaterialDictionary<RasterShaderKey>(new RasterShaderKey.Comparer());
+        public readonly Dictionary<RasterShaderKey, RasterShape.RasterShader> RasterShapeMaterials =
+            new Dictionary<RasterShaderKey, RasterShape.RasterShader>(new RasterShaderKey.Comparer());
         /// <summary>
         /// Make sure to resolve your lightmap to sRGB before using it with this, otherwise your lighting
         ///  will have really terrible banding in dark areas.
@@ -727,7 +726,8 @@ namespace Squared.Render {
                 HasRamp = ramp
             };
             var material = new Material(shader, techniqueName);
-            RasterShapeMaterials[key] = material;
+            RasterShapeMaterials[key] = new RasterShape.RasterShader(material);
+            Add(material);
         }
 
         private void LoadRasterShapeVariants (
@@ -766,7 +766,7 @@ namespace Squared.Render {
                 rasterShapeTriangle, "RasterTriangle", RasterShape.RasterShapeType.Triangle
             );
 
-            RasterShapeUbershader = RasterShapeMaterials[new RasterShaderKey { Type = null, Shadowed = false, Textured = false }];
+            RasterShapeUbershader = RasterShapeMaterials[new RasterShaderKey { Type = null, Shadowed = false, Textured = false }].Material;
         }
 
         protected override void QueuePendingRegistrationHandler () {

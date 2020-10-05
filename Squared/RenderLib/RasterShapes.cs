@@ -311,6 +311,27 @@ namespace Squared.Render.RasterShape {
         }
     }
 
+    public struct RasterShader {
+        public Material Material;
+        public EffectParameter BlendInLinearSpace,
+            RasterTexture,
+            RampTexture,
+            ShadowOptions,
+            ShadowColorLinear,
+            ShadowInside;
+
+        public RasterShader (Material material) {
+            Material = material;
+            var p = material.Effect.Parameters;
+            BlendInLinearSpace = p["BlendInLinearSpace"];
+            RasterTexture = p["RasterTexture"];
+            RampTexture = p["RampTexture"];
+            ShadowOptions = p["ShadowOptions"];
+            ShadowColorLinear = p["ShadowColorLinear"];
+            ShadowInside = p["ShadowInside"];
+        }
+    }
+
     public class RasterShapeBatch : ListBatch<RasterShapeDrawCall> {
         private class RasterShapeTypeSorter : IRefComparer<RasterShapeDrawCall>, IComparer<RasterShapeDrawCall> {
             public int Compare (ref RasterShapeDrawCall lhs, ref RasterShapeDrawCall rhs) {
@@ -464,7 +485,7 @@ namespace Squared.Render.RasterShape {
             }
         }
 
-        private Material PickBaseMaterial (RasterShapeType? type, bool shadowed, bool simple) {
+        private RasterShader PickBaseMaterial (RasterShapeType? type, bool shadowed, bool simple) {
             var key = new DefaultMaterialSet.RasterShaderKey {
                 Type = type,
                 Simple = simple && (Texture == null) && (RampTexture == null),
@@ -473,7 +494,7 @@ namespace Squared.Render.RasterShape {
                 HasRamp = (RampTexture != null)
             };
 
-            Material result;
+            RasterShader result;
 
             if (!Materials.RasterShapeMaterials.TryGetValue(key, out result)) {
                 key.Simple = false;
@@ -491,7 +512,7 @@ namespace Squared.Render.RasterShape {
             return result;
         }
 
-        private Material PickMaterial (RasterShapeType? type, bool shadowed, bool simple) {
+        private RasterShader PickMaterial (RasterShapeType? type, bool shadowed, bool simple) {
             var baseMaterial = PickBaseMaterial(type, shadowed, simple);
             return baseMaterial;
         }
@@ -523,10 +544,8 @@ namespace Squared.Render.RasterShape {
                 // scratchBindings[1] = new VertexBufferBinding(vb, _SoftwareBuffer.HardwareVertexOffset, 1);
 
                 foreach (var sb in _SubBatches) {
-                    var material = UseUbershader ? PickMaterial(null, sb.Shadowed, sb.Simple) : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
-                    manager.ApplyMaterial(material);
-
-                    var p = material.Effect.Parameters;
+                    var rasterShader = UseUbershader ? PickMaterial(null, sb.Shadowed, sb.Simple) : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
+                    manager.ApplyMaterial(rasterShader.Material);
 
                     if (BlendState != null)
                         device.BlendState = BlendState;
@@ -535,9 +554,9 @@ namespace Squared.Render.RasterShape {
                     if (RasterizerState != null)
                         device.RasterizerState = RasterizerState;
 
-                    p["BlendInLinearSpace"].SetValue(sb.BlendInLinearSpace);
-                    p["RasterTexture"]?.SetValue(Texture);
-                    p["RampTexture"]?.SetValue(RampTexture);
+                    rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
+                    rasterShader.RasterTexture?.SetValue(Texture);
+                    rasterShader.RampTexture?.SetValue(RampTexture);
 
                     // HACK: If the shadow color is fully transparent, suppress the offset and softness.
                     // If we don't do this, the bounding box of the shapes will be pointlessly expanded.
@@ -551,14 +570,14 @@ namespace Squared.Render.RasterShape {
                         shadowSoftness = 0;
                     }
 
-                    p["ShadowOptions"].SetValue(new Vector4(
+                    rasterShader.ShadowOptions.SetValue(new Vector4(
                         shadowOffset.X, shadowOffset.Y,
                         shadowSoftness, sb.Shadow.FillSuppression
                     ));
-                    p["ShadowColorLinear"].SetValue(shadowColor);
-                    p["ShadowInside"].SetValue(sb.Shadow.Inside);
+                    rasterShader.ShadowColorLinear.SetValue(shadowColor);
+                    rasterShader.ShadowInside.SetValue(sb.Shadow.Inside);
 
-                    material.Flush();
+                    rasterShader.Material.Flush();
 
                     // FIXME: why the hell
                     device.Textures[0] = Texture;
@@ -579,7 +598,8 @@ namespace Squared.Render.RasterShape {
                     );
 
                     device.Textures[0] = null;
-                    material.Effect.Parameters["RasterTexture"]?.SetValue((Texture2D)null);
+                    rasterShader.RasterTexture?.SetValue((Texture2D)null);
+                    rasterShader.RampTexture?.SetValue((Texture2D)null);
                 }
 
                 NativeBatch.RecordCommands(_SubBatches.Count);
