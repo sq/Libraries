@@ -526,6 +526,7 @@ namespace Squared.PRGUI {
                     // Create nested prepass group before the RT group so that child controls have their prepass operations run before ours
                     var nestedPrepass = passSet.Prepass.MakeSubgroup();
                     var compositionRenderer = passSet.Prepass.ForRenderTarget(rt, name: $"Composite control");
+                    compositionRenderer.DepthStencilState = DepthStencilState.None;
                     compositionRenderer.BlendState = BlendState.AlphaBlend;
                     if (needClear)
                         compositionRenderer.Clear(color: Color.Transparent, stencil: 0, layer: -1);
