@@ -298,6 +298,18 @@ namespace PRGUI.Demo {
                                         FixedHeight = 1800,
                                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
                                     },
+                                    new Container {
+                                        ClipChildren = true,
+                                        ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
+                                        LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                                        FixedHeight = 1600,
+                                        MaximumWidth = 400,
+                                        Scrollable = true,
+                                        Children = {
+                                            new StaticText { Text = "Testing nested clips" },
+                                            new StaticText { Text = "Wow this one's text is extremely long, just absolutely massive. This is going to overrun the clip for sure. This will be multiple lines and should be a good way to test", Wrap = true }
+                                        }
+                                    },
                                     new Button {
                                         Text = "Another button at the bottom to test clipped hit tests"
                                     }

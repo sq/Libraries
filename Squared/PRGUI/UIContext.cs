@@ -562,6 +562,7 @@ namespace Squared.PRGUI {
                     ShowTooltip(Hovering, tooltipContent);
             } else {
                 var shouldDismissInstantly = (Hovering != null) && IsTooltipActive && GetTooltipInstance().GetRect(Layout).Contains(LastMousePosition);
+                // TODO: Instead of instantly hiding, maybe just fade the tooltip out partially?
                 HideTooltip(shouldDismissInstantly);
 
                 var elapsed = now - LastTooltipHoverTime;

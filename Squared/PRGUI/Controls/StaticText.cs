@@ -27,7 +27,7 @@ namespace Squared.PRGUI.Controls {
 
         public StaticText ()
             : base () {
-            Multiline = false;
+            // Multiline = false;
         }
 
         public Tween<Color>? TextColor {
