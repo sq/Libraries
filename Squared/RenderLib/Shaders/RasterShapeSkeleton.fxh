@@ -719,9 +719,7 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     top *= topOpacity;
     bottom *= bottomOpacity;
 
-    float3 rgb = top.rgb + (bottom.rgb * (1 - top.a));
-    float a = top.a + (bottom.a * (1 - top.a));
-    return float4(rgb, a);
+    return top + (bottom * (1 - top.a));
 }
 
 float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool convertToSRGB, bool isSimple, bool enableShadow, float2 vpos) {

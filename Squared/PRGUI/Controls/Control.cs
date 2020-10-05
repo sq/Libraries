@@ -521,35 +521,40 @@ namespace Squared.PRGUI {
                 var compositeBox = new RectF(tl, br - tl);
                 var rt = context.UIContext.GetScratchRenderTarget(passSet.Prepass.Container.Coordinator, ref compositeBox, out bool needClear);
                 try {
-                    var compositionContext = context.Clone();
-
-                    // Create nested prepass group before the RT group so that child controls have their prepass operations run before ours
-                    var nestedPrepass = passSet.Prepass.MakeSubgroup();
-                    var compositionRenderer = passSet.Prepass.ForRenderTarget(rt, name: $"Composite control");
-                    compositionRenderer.DepthStencilState = DepthStencilState.None;
-                    compositionRenderer.BlendState = BlendState.AlphaBlend;
-                    if (needClear)
-                        compositionRenderer.Clear(color: Color.Transparent, stencil: 0, layer: -1);
-
-                    var newPassSet = new RasterizePassSet(ref nestedPrepass, ref compositionRenderer, 0, 1);
-                    RasterizeAllPasses(compositionContext, ref box, ref newPassSet, true);
-                    compositionRenderer.Layer += 1;
-                    var pos = compositeBox.Position.Floor();
-                    // FIXME: Is this the right layer?
-                    passSet.Above.Draw(
-                        rt, position: pos,
-                        sourceRectangle: new Rectangle(
-                            (int)compositeBox.Left, (int)compositeBox.Top,
-                            (int)compositeBox.Width, (int)compositeBox.Height
-                        ),
-                        blendState: BlendState.AlphaBlend, 
-                        multiplyColor: Color.White * opacity
-                    );
-                    passSet.Above.Layer += 1;
+                    box = RasterizeIntoPrepass(context, passSet, opacity, ref box, ref compositeBox, rt, needClear);
                 } finally {
                     context.UIContext.ReleaseScratchRenderTarget(rt);
                 }
             }
+        }
+
+        private RectF RasterizeIntoPrepass (UIOperationContext context, RasterizePassSet passSet, float opacity, ref RectF box, ref RectF compositeBox, AutoRenderTarget rt, bool needClear) {
+            var compositionContext = context.Clone();
+
+            // Create nested prepass group before the RT group so that child controls have their prepass operations run before ours
+            var nestedPrepass = passSet.Prepass.MakeSubgroup();
+            var compositionRenderer = passSet.Prepass.ForRenderTarget(rt, name: $"Composite control");
+            compositionRenderer.DepthStencilState = DepthStencilState.None;
+            compositionRenderer.BlendState = BlendState.AlphaBlend;
+            if (needClear)
+                compositionRenderer.Clear(color: Color.Transparent, stencil: 0, layer: -1);
+
+            var newPassSet = new RasterizePassSet(ref nestedPrepass, ref compositionRenderer, 0, 1);
+            RasterizeAllPasses(compositionContext, ref box, ref newPassSet, true);
+            compositionRenderer.Layer += 1;
+            var pos = compositeBox.Position.Floor();
+            // FIXME: Is this the right layer?
+            passSet.Above.Draw(
+                rt, position: pos,
+                sourceRectangle: new Rectangle(
+                    (int)compositeBox.Left, (int)compositeBox.Top,
+                    (int)compositeBox.Width, (int)compositeBox.Height
+                ),
+                blendState: BlendState.AlphaBlend,
+                multiplyColor: Color.White * opacity
+            );
+            passSet.Above.Layer += 1;
+            return box;
         }
 
         public bool TryGetParent (out Control parent) {

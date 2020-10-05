@@ -236,8 +236,13 @@ namespace Squared.PRGUI.Layout {
 
             pEarlier->NextSibling = pNewItem->Key;
 
-            if (pNextSibling != null)
+            if (pNextSibling != null) {
                 pNextSibling->PreviousSibling = pNewItem->Key;
+            } else {
+                var pParent = LayoutPtr(pEarlier->Parent);
+                Assert(pParent->LastChild == pEarlier->Key);
+                pParent->LastChild = pNewItem->Key;
+            }
         }
 
         public unsafe void SetItemSyntheticBreak (ControlKey key, bool newState) {
@@ -270,16 +275,12 @@ namespace Squared.PRGUI.Layout {
             return ptr->FirstChild;
         }
 
-        // TODO: Optimize this
-        public ControlKey GetLastChild (ControlKey parent) {
+        public unsafe ControlKey GetLastChild (ControlKey parent) {
             if (parent.IsInvalid)
                 return ControlKey.Invalid;
 
-            var lastChild = ControlKey.Invalid;
-            foreach (var child in Children(parent))
-                lastChild = child;
-
-            return lastChild;
+            var ptr = LayoutPtr(parent);
+            return ptr->LastChild;
         }
 
         public unsafe void InsertBefore (ControlKey newSibling, ControlKey later) {
@@ -321,7 +322,9 @@ namespace Squared.PRGUI.Layout {
             Assert(pChild->Parent.IsInvalid, "is not inserted");
 
             if (pParent->FirstChild.IsInvalid) {
+                Assert(pParent->LastChild.IsInvalid);
                 pParent->FirstChild = child;
+                pParent->LastChild = child;
                 pChild->Parent = parent;
             } else {
                 var lastChild = GetLastChild(parent);
@@ -335,7 +338,6 @@ namespace Squared.PRGUI.Layout {
             AssertNotEqual(parent, newFirstChild);
             var pParent = LayoutPtr(parent);
             var oldChild = pParent->FirstChild;
-            var pOldChild = LayoutPtr(oldChild);
             var pChild = LayoutPtr(newFirstChild);
 
             Assert(pChild->Parent.IsInvalid, "is not inserted");
@@ -345,7 +347,13 @@ namespace Squared.PRGUI.Layout {
             pChild->NextSibling = oldChild;
 
             pParent->FirstChild = newFirstChild;
-            pOldChild->PreviousSibling = newFirstChild;
+            if (pParent->LastChild.IsInvalid)
+                pParent->LastChild = newFirstChild;
+
+            if (!oldChild.IsInvalid) {
+                var pOldChild = LayoutPtr(oldChild);
+                pOldChild->PreviousSibling = newFirstChild;
+            }
         }
 
         public unsafe Vector2 GetFixedSize (ControlKey key) {
