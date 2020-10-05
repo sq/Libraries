@@ -171,7 +171,7 @@ namespace Squared.PRGUI.Decorations {
             InertCornerRadius = 3f, 
             ContainerCornerRadius = 3f, 
             TitleCornerRadius = 3f,
-            SelectionCornerRadius = 1.33f,
+            SelectionCornerRadius = 1.9f,
             SelectionPadding = 1f;
         public float? FloatingContainerCornerRadius = 7f,
             TooltipCornerRadius = 8f;
@@ -508,6 +508,14 @@ namespace Squared.PRGUI.Decorations {
             UIOperationContext context, ControlStates state, 
             out Material material, out IGlyphSource font, ref pSRGBColor? color
         ) {
+            return GetTextSettings(context, state, out material, out font, ref color, false);
+        }
+
+        public bool GetTextSettings (
+            UIOperationContext context, ControlStates state, 
+            out Material material, out IGlyphSource font, ref pSRGBColor? color,
+            bool selected
+        ) {
             if (color == null)
                 color = TextColor;
 
@@ -516,7 +524,9 @@ namespace Squared.PRGUI.Decorations {
 
             font = DefaultFont;
             material = context.Materials.Get(
-                context.Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend
+                selected
+                    ? context.Materials.ScreenSpaceBitmap
+                    : context.Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend
             );
             return true;
         }
@@ -565,7 +575,7 @@ namespace Squared.PRGUI.Decorations {
             UIOperationContext context, ControlStates state, 
             out Material material, out IGlyphSource font, ref pSRGBColor? color
         ) {
-            GetTextSettings(context, state, out material, out font, ref color);
+            GetTextSettings(context, state, out material, out font, ref color, selected: true);
             color = SelectedTextColor;
             return true;
         }
