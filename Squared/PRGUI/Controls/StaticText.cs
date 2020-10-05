@@ -173,15 +173,18 @@ namespace Squared.PRGUI.Controls {
             return pSRGBColor.FromPLinear(v4.Value);
         }
 
-        private float ComputeScaleToFit (ref StringLayout layout, ref RectF contentBox) {
+        private float ComputeScaleToFit (ref StringLayout layout, ref RectF box, ref Margins margins) {
             if (!ScaleToFit)
                 return 1;
 
+            float availableWidth = Math.Max(box.Width - margins.X, 0);
+            float availableHeight = Math.Max(box.Height - margins.Y, 0);
+
             float scaleFactor = 1;
-            if (layout.UnconstrainedSize.X > contentBox.Width)
-                scaleFactor = Math.Min(scaleFactor, (contentBox.Width) / (layout.UnconstrainedSize.X + 0.1f));
-            if (layout.UnconstrainedSize.Y > contentBox.Height)
-                scaleFactor = Math.Min(scaleFactor, (contentBox.Height) / (layout.UnconstrainedSize.Y + 0.1f));
+            if (layout.UnconstrainedSize.X > availableWidth)
+                scaleFactor = Math.Min(scaleFactor, availableWidth / (layout.UnconstrainedSize.X + 0.1f));
+            if (layout.UnconstrainedSize.Y > availableHeight)
+                scaleFactor = Math.Min(scaleFactor, availableHeight / (layout.UnconstrainedSize.Y + 0.1f));
             return scaleFactor;
         }
 
@@ -190,6 +193,8 @@ namespace Squared.PRGUI.Controls {
 
             if (context.Pass != RasterizePasses.Content)
                 return;
+
+            var computedPadding = ComputePadding(context, decorations);
 
             if (
                 (
@@ -203,7 +208,7 @@ namespace Squared.PRGUI.Controls {
                 //  our rightmost edge to ensure that our text doesn't overflow outside of our boundaries
                 // If wrapping is disabled entirely, the overflowing text will be suppressed by the text
                 //  layout engine, otherwise it will be wrapped (potentially changing our layout, oops)
-                var textWidthLimit = ComputeTextWidthLimit(context, decorations) ?? settings.ContentBox.Width;
+                var textWidthLimit = ComputeTextWidthLimit(context, decorations) ?? (settings.Box.Width - computedPadding.X);
                 Content.LineBreakAtX = textWidthLimit;
             }
 
@@ -214,19 +219,17 @@ namespace Squared.PRGUI.Controls {
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
 
-            var computedPadding = ComputePadding(context, decorations);
-
             Vector2 textOffset = Vector2.Zero, textScale = Vector2.One;
             decorations?.GetContentAdjustment(context, settings.State, out textOffset, out textScale);
             textOffset += a + new Vector2(computedPadding.Left, computedPadding.Top);
 
             var layout = Content.Get();
-            textScale *= ComputeScaleToFit(ref layout, ref settings.ContentBox);
+            textScale *= ComputeScaleToFit(ref layout, ref settings.Box, ref computedPadding);
 
             var scaledSize = layout.Size * textScale;
 
             // Recenter the text if it's been scaled by the decorator
-            float extraSpaceY = Math.Max((b.Y - a.Y) - scaledSize.Y - computedPadding.Y, 0);
+            float extraSpaceY = Math.Max(settings.Box.Height - scaledSize.Y - computedPadding.Y, 0);
             textOffset.Y += Math.Min(extraSpaceY, (layout.Size.Y - scaledSize.Y));
 
             var xSpace = (b.X - a.X) - scaledSize.X - computedPadding.X;
@@ -240,6 +243,13 @@ namespace Squared.PRGUI.Controls {
                     textOffset.X += xSpace;
                     break;
             }
+
+            if (false)
+                renderer.RasterizeRectangle(
+                    textOffset, textOffset + layout.Size, 0f, Color.Black
+                );
+
+            renderer.Layer += 1;
 
             renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
