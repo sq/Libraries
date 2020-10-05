@@ -258,13 +258,15 @@ namespace PRGUI.Demo {
                             },
                             bigMenuButton,
                             new StaticText {
-                                AutoSizeWidth = false,
+                                AutoSize = false,
                                 Text = "Static Text 2\r\nLine 2",
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                                 MaximumWidth = 130,
+                                MinimumHeight = Font.LineSpacing + decorations.StaticText.Padding.Y,
                                 Multiline = true,
                                 Wrap = false,
-                                BackgroundColor = Color.DarkRed
+                                BackgroundColor = Color.DarkRed,
+                                ScaleToFit = true
                             },
                             new StaticText {
                                 AutoSizeWidth = false,

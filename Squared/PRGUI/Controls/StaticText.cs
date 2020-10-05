@@ -30,6 +30,18 @@ namespace Squared.PRGUI.Controls {
             // Multiline = false;
         }
 
+        bool _ScaleToFit;
+
+        public bool ScaleToFit {
+            get => _ScaleToFit;
+            set {
+                if (_ScaleToFit == value)
+                    return;
+                _ScaleToFit = true;
+                Invalidate();
+            }
+        }
+
         public Tween<Color>? TextColor {
             set => UpdateColor(ref TextColorPLinear, value);
         }
@@ -119,7 +131,7 @@ namespace Squared.PRGUI.Controls {
             // HACK: If we know that our size is going to be constrained by layout settings, apply that in advance
             //  when computing auto-size to reduce the odds that our layout will be changed once full UI layout happens
             var textWidthLimit = ComputeTextWidthLimit(context, decorations);
-            if (textWidthLimit.HasValue)
+            if (textWidthLimit.HasValue && !ScaleToFit)
                 Content.LineBreakAtX = textWidthLimit;
 
             var computedPadding = ComputePadding(context, decorations);
@@ -161,6 +173,18 @@ namespace Squared.PRGUI.Controls {
             return pSRGBColor.FromPLinear(v4.Value);
         }
 
+        private float ComputeScaleToFit (ref StringLayout layout, ref RectF contentBox) {
+            if (!ScaleToFit)
+                return 1;
+
+            float scaleFactor = 1;
+            if (layout.UnconstrainedSize.X > contentBox.Width)
+                scaleFactor = Math.Min(scaleFactor, (contentBox.Width) / (layout.UnconstrainedSize.X + 0.1f));
+            if (layout.UnconstrainedSize.Y > contentBox.Height)
+                scaleFactor = Math.Min(scaleFactor, (contentBox.Height) / (layout.UnconstrainedSize.Y + 0.1f));
+            return scaleFactor;
+        }
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
@@ -168,10 +192,12 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             if (
-                !AutoSizeWidth || Wrap || 
-                // If our size was constrained by our parent, act as if auto-size was disabled. This handles
-                //  the scenario where a menu item's text is too big for the menu
-                (AutoSizeComputedWidth > settings.Box.Width)
+                (
+                    !AutoSizeWidth || Wrap || 
+                    // If our size was constrained by our parent, act as if auto-size was disabled. This handles
+                    //  the scenario where a menu item's text is too big for the menu
+                    (AutoSizeComputedWidth > settings.Box.Width)
+                ) && !ScaleToFit
             ) {
                 // If auto-size is disabled or wrapping is enabled, we need to enable wrapping/breaking at
                 //  our rightmost edge to ensure that our text doesn't overflow outside of our boundaries
@@ -195,10 +221,13 @@ namespace Squared.PRGUI.Controls {
             textOffset += a + new Vector2(computedPadding.Left, computedPadding.Top);
 
             var layout = Content.Get();
+            textScale *= ComputeScaleToFit(ref layout, ref settings.ContentBox);
+
             var scaledSize = layout.Size * textScale;
 
             // Recenter the text if it's been scaled by the decorator
-            textOffset.Y += (layout.Size.Y - scaledSize.Y);
+            float extraSpaceY = Math.Max((b.Y - a.Y) - scaledSize.Y - computedPadding.Y, 0);
+            textOffset.Y += Math.Min(extraSpaceY, (layout.Size.Y - scaledSize.Y));
 
             var xSpace = (b.X - a.X) - scaledSize.X - computedPadding.X;
             switch (Content.Alignment) {
@@ -233,7 +262,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private string GetTrimmedText () {
-            var s = Text.ToString() ?? "";
+            var s = Text.ToString().Replace('\r', ' ').Replace('\n', ' ') ?? "";
             if (s.Length > 16)
                 return s.Substring(0, 16) + "...";
             else
