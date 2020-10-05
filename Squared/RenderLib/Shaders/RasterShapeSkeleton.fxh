@@ -724,7 +724,7 @@ float4 over (float4 top, float topOpacity, float4 bottom, float bottomOpacity) {
     return float4(rgb, a);
 }
 
-float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool convertToSRGB, bool enableShadow, float2 vpos) {
+float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float outlineAlpha, float shadowAlpha, bool convertToSRGB, bool isSimple, bool enableShadow, float2 vpos) {
     float4 result = fillColor * fillAlpha;
     if (enableShadow) {
         // FIXME: eliminating aa/ab breaks shadowing for line segments entirely. fxc bug?
@@ -739,7 +739,10 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
     if (convertToSRGB)
         result.rgb = LinearToSRGB(result.rgb);
 
-    return ApplyDither4(result, vpos);
+    if (isSimple)
+        return result;
+    else
+        return ApplyDither4(result, vpos);
 }
 
 float4 texturedShapeCommon (
@@ -764,6 +767,6 @@ float4 texturedShapeCommon (
 
     fill *= texColor;
 
-    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, enableShadow, vpos);
+    float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, false, enableShadow, vpos);
     return result;
 }
