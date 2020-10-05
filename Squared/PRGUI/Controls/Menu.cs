@@ -11,6 +11,8 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public class Menu : Container {
+        public const float AutoscrollMarginSize = 24f;
+
         public const float MenuShowSpeed = 0.1f;
         public const float MenuHideSpeed = 0.25f;
 
@@ -80,10 +82,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void OnSelectionChange (Control previous, Control newControl) {
-            foreach (var child in Children)
-                child.CustomTextDecorations = (child == newControl)
+            foreach (var child in Children) {
+                child.CustomTextDecorations = ((child == newControl) && (child.BackgroundColorPLinear == null))
                     ? Context.Decorations.Selection 
                     : null;
+            }
 
             FireEvent(UIEvents.SelectionChanged, newControl);
         }

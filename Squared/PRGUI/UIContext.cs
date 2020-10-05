@@ -262,6 +262,9 @@ namespace Squared.PRGUI {
         private Controls.StaticText CachedCompositionPreview;
 
         private UnorderedList<ScratchRenderTarget> ScratchRenderTargets = new UnorderedList<ScratchRenderTarget>();
+        private readonly static Dictionary<int, DepthStencilState> StencilEraseStates = new Dictionary<int, DepthStencilState>();
+        private readonly static Dictionary<int, DepthStencilState> StencilWriteStates = new Dictionary<int, DepthStencilState>();
+        private readonly static Dictionary<int, DepthStencilState> StencilTestStates = new Dictionary<int, DepthStencilState>();
 
         private bool IsTextInputRegistered = false;
         private bool IsCompositionActive = false;
@@ -269,6 +272,61 @@ namespace Squared.PRGUI {
         public float Now => (float)TimeProvider.Seconds;
 
         private Control _Focused, _MouseCaptured, _Hovering;
+
+        internal DepthStencilState GetStencilRestore (int targetReferenceStencil) {
+            DepthStencilState result;
+            if (StencilEraseStates.TryGetValue(targetReferenceStencil, out result))
+                return result;
+
+            result = new DepthStencilState {
+                StencilEnable = true,
+                StencilFunction = CompareFunction.Less,
+                StencilPass = StencilOperation.Replace,
+                StencilFail = StencilOperation.Keep,
+                ReferenceStencil = targetReferenceStencil,
+                DepthBufferEnable = false
+            };
+
+            StencilEraseStates[targetReferenceStencil] = result;
+            return result;
+        }
+
+        internal DepthStencilState GetStencilWrite (int previousReferenceStencil) {
+            DepthStencilState result;
+            if (StencilWriteStates.TryGetValue(previousReferenceStencil, out result))
+                return result;
+
+            result = new DepthStencilState {
+                StencilEnable = true,
+                StencilFunction = CompareFunction.Equal,
+                StencilPass = StencilOperation.IncrementSaturation,
+                StencilFail = StencilOperation.Keep,
+                ReferenceStencil = previousReferenceStencil,
+                DepthBufferEnable = false
+            };
+
+            StencilWriteStates[previousReferenceStencil] = result;
+            return result;
+        }
+
+        internal DepthStencilState GetStencilTest (int referenceStencil) {
+            DepthStencilState result;
+            if (StencilTestStates.TryGetValue(referenceStencil, out result))
+                return result;
+
+            result = new DepthStencilState {
+                StencilEnable = true,
+                StencilFunction = CompareFunction.LessEqual,
+                StencilPass = StencilOperation.Keep,
+                StencilFail = StencilOperation.Keep,
+                ReferenceStencil = referenceStencil,
+                StencilWriteMask = 0,
+                DepthBufferEnable = false
+            };
+
+            StencilTestStates[referenceStencil] = result;
+            return result;
+        }
 
         private void TextInputEXT_TextInput (char ch) {
             // Control characters will be handled through the KeyboardState path
@@ -904,13 +962,13 @@ namespace Squared.PRGUI {
                 var renderer = new ImperativeRenderer(rtBatch, Materials) {
                     BlendState = BlendState.AlphaBlend
                 };
-                renderer.Clear(color: Color.Transparent, layer: -999);
+                renderer.Clear(color: Color.Transparent, stencil: 0, layer: -999);
 
                 var seq = Controls.InOrder(Control.PaintOrderComparer.Instance);
                 foreach (var control in seq) {
                     // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
                     //  overlap each other, at the cost of more draw calls.
-                    var passSet = new RasterizePassSet(ref prepass, ref renderer);
+                    var passSet = new RasterizePassSet(ref prepass, ref renderer, 0, 1);
                     passSet.Below.DepthStencilState =
                         passSet.Content.DepthStencilState =
                         passSet.Above.DepthStencilState = DepthStencilState.None;
@@ -935,12 +993,15 @@ namespace Squared.PRGUI {
 
     public struct RasterizePassSet {
         public ImperativeRenderer Prepass, Below, Content, Above;
+        public int ReferenceStencil, NextReferenceStencil;
 
-        public RasterizePassSet (ref ImperativeRenderer prepass, ref ImperativeRenderer container) {
+        public RasterizePassSet (ref ImperativeRenderer prepass, ref ImperativeRenderer container, int referenceStencil, int nextReferenceStencil) {
             Prepass = prepass;
             Below = container.MakeSubgroup();
             Content = container.MakeSubgroup();
             Above = container.MakeSubgroup();
+            ReferenceStencil = referenceStencil;
+            NextReferenceStencil = nextReferenceStencil;
         }
     }
 

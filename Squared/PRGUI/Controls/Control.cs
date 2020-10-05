@@ -424,6 +424,9 @@ namespace Squared.PRGUI {
             ImperativeRenderer contentRenderer = default(ImperativeRenderer);
             RasterizePassSet childrenPassSet = default(RasterizePassSet);
 
+            int previousRefStencil = passSet.ReferenceStencil;
+            int nextRefStencil = passSet.NextReferenceStencil;
+
             // For clipping we need to create a separate batch group that contains all the rasterization work
             //  for our children. At the start of it we'll generate the stencil mask that will be used for our
             //  rendering operation(s).
@@ -431,9 +434,13 @@ namespace Squared.PRGUI {
                 renderer.Layer += 1;
                 contentContext = passContext.Clone();
                 contentRenderer = renderer.MakeSubgroup();
-                if (ShouldClipContent)
-                    contentRenderer.DepthStencilState = RenderStates.StencilTest;
-                childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer);
+                if (ShouldClipContent) {
+                    contentRenderer.DepthStencilState = context.UIContext.GetStencilTest(nextRefStencil);
+                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, nextRefStencil, nextRefStencil + 1);
+                } else {
+                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, previousRefStencil, nextRefStencil);
+                }
+                renderer.Layer += 1;
             }
 
             var settings = MakeDecorationSettings(ref box, ref contentBox, state);
@@ -450,12 +457,11 @@ namespace Squared.PRGUI {
                 // GROSS OPTIMIZATION HACK: Detect that any rendering operation(s) occurred inside the
                 //  group and if so, set up the stencil mask so that they will be clipped.
                 if (ShouldClipContent && !contentRenderer.Container.IsEmpty) {
-                    contentRenderer.DepthStencilState = RenderStates.StencilWrite;
+                    // If this is the first stencil pass instead of a nested one, clear the stencil buffer
+                    if (passSet.ReferenceStencil == 0)
+                        contentRenderer.Clear(stencil: 0, layer: -9999);
 
-                    // FIXME: Because we're doing Write here and clearing first, nested clips won't work right.
-                    // The solution is probably a combination of test-and-increment when entering the clip,
-                    //  and then a test-and-decrement when exiting to restore the previous clip region.
-                    contentRenderer.Clear(stencil: 0, layer: -9999);
+                    contentRenderer.DepthStencilState = context.UIContext.GetStencilWrite(previousRefStencil);
 
                     // FIXME: Separate context?
                     contentContext.Pass = RasterizePasses.ContentClip;
@@ -465,6 +471,14 @@ namespace Squared.PRGUI {
                     contentRenderer.Layer = -999;
                     settings.State = default(ControlStates);
                     decorations.Rasterize(contentContext, ref contentRenderer, settings);
+
+                    if (passSet.ReferenceStencil != 0) {
+                        // If this is a nested stencil pass, erase our stencil data and restore what was there before
+                        contentRenderer.DepthStencilState = context.UIContext.GetStencilRestore(passSet.ReferenceStencil);
+                        contentRenderer.FillRectangle(new Rectangle(-1, -1, 9999, 9999), Color.Transparent, blendState: RenderStates.DrawNone, layer: 9999);
+                    }
+
+                    passSet.NextReferenceStencil = childrenPassSet.NextReferenceStencil;
                 }
 
                 renderer.Layer += 1;
@@ -478,16 +492,26 @@ namespace Squared.PRGUI {
         }
 
         public void Rasterize (UIOperationContext context, ref RasterizePassSet passSet) {
+            // HACK: Do this first since it fires opacity change events
+            var opacity = GetOpacity(context.UIContext.TimeProvider.Ticks);
+            if (opacity <= 0)
+                return;
+
             if (!Visible)
                 return;
             if (LayoutKey.IsInvalid)
                 return;
-            var opacity = GetOpacity(context.UIContext.TimeProvider.Ticks);
-
-            if (opacity <= 0)
-                return;
 
             var box = GetRect(context.Layout);
+            // HACK: To account for drop shadows and stuff
+            const float visibilityPadding = 16;
+            if (
+                (box.Extent.X < -visibilityPadding) ||
+                (box.Extent.Y < -visibilityPadding) ||
+                (box.Left > context.UIContext.CanvasSize.X + visibilityPadding) ||
+                (box.Top > context.UIContext.CanvasSize.Y + visibilityPadding)
+            )
+                return;
 
             if (opacity >= 1) {
                 RasterizeAllPasses(context, ref box, ref passSet, false);
@@ -506,7 +530,7 @@ namespace Squared.PRGUI {
                     if (needClear)
                         compositionRenderer.Clear(color: Color.Transparent, stencil: 0, layer: -1);
 
-                    var newPassSet = new RasterizePassSet(ref nestedPrepass, ref compositionRenderer);
+                    var newPassSet = new RasterizePassSet(ref nestedPrepass, ref compositionRenderer, 0, 1);
                     RasterizeAllPasses(compositionContext, ref box, ref newPassSet, true);
                     compositionRenderer.Layer += 1;
                     var pos = compositeBox.Position.Floor();

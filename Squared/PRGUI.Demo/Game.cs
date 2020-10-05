@@ -202,7 +202,7 @@ namespace PRGUI.Demo {
             var testMenu = new Menu {
                 Children = {
                     new StaticText { Text = "Item 1", BackgroundColor = Color.Red },
-                    new StaticText { Text = "Item 2", BackgroundColor = Color.Green },
+                    new StaticText { Text = "Item 2" },
                     new StaticText {
                         Text = "Extremely long menu item with a bunch of text in it. This thing should be truncated pretty aggressively",
                         BackgroundColor = Color.Blue
@@ -296,15 +296,15 @@ namespace PRGUI.Demo {
                                     },
                                     new Button {
                                         Text = "Clipped huge button",
-                                        FixedWidth = 1600,
+                                        FixedWidth = 600,
                                         FixedHeight = 1800,
                                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
                                     },
                                     new Container {
                                         ClipChildren = true,
                                         ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
-                                        LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
-                                        FixedHeight = 1600,
+                                        LayoutFlags = ControlFlags.Layout_Fill,
+                                        MaximumHeight = 200,
                                         MaximumWidth = 400,
                                         Scrollable = true,
                                         Children = {
@@ -313,6 +313,7 @@ namespace PRGUI.Demo {
                                         }
                                     },
                                     new Button {
+                                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                                         Text = "Another button at the bottom to test clipped hit tests"
                                     }
                                 }
