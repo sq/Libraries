@@ -589,7 +589,8 @@ namespace Squared.PRGUI.Decorations {
             EditableShadow = new RasterShadowSettings {
                 Color = Color.Black * 0.45f,
                 Offset = new Vector2(1.25f, 1.5f),
-                Softness = 8f,
+                Softness = 6f,
+                Expansion = 0.4f,
                 Inside = true
             };
 

@@ -72,14 +72,17 @@ sampler TextureSampler : register(s0) {
 uniform bool BlendInLinearSpace;
 uniform float HalfPixelOffset;
 
-uniform bool ShadowInside;
 // offsetx, offsety, softness, fillSuppression
 uniform float4 ShadowOptions;
+// expansion, inside
+uniform float4 ShadowOptions2;
 uniform float4 ShadowColorLinear;
 
 #define ShadowSoftness ShadowOptions.z
 #define ShadowOffset ShadowOptions.xy
 #define ShadowFillSuppression ShadowOptions.w
+#define ShadowExpansion ShadowOptions2.x
+#define ShadowInside (ShadowOptions2.y > 0.5)
 
 float4 TransformPosition(float4 position, bool halfPixelOffset) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
@@ -100,7 +103,7 @@ void adjustTLBR (
     }
 
     if (!ShadowInside) {
-        float halfSoftness = ShadowSoftness * 0.6;
+        float halfSoftness = (ShadowSoftness * 0.6) + ShadowExpansion;
         tl -= halfSoftness;
         br += halfSoftness;
         if (ShadowOffset.x >= 0)
@@ -186,7 +189,7 @@ void computePosition (
         // HACK: Too hard to calculate precise offsets here so just pad it out.
         // FIXME: This is bad for performance!
         if (!ShadowInside)
-            totalRadius += (length(ShadowOffset) + ShadowSoftness) * 0.6;
+            totalRadius += (length(ShadowOffset) + ShadowSoftness) * 0.6 + ShadowExpansion;
 
         totalRadius += outlineSize;
 
@@ -576,6 +579,8 @@ float computeShadowAlpha (
         distance, tl, br,
         gradientType, gradientWeight
     );
+
+    distance -= ShadowExpansion;
 
     float offset = (ShadowSoftness * 0.5);
     float result;

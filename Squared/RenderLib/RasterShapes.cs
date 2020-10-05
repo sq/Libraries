@@ -249,6 +249,11 @@ namespace Squared.Render.RasterShape {
         /// </summary>
         public float Softness;
 
+        /// <summary>
+        /// Makes the shadow larger or smaller than the object it's shadowing.
+        /// </summary>
+        public float Expansion;
+
         private float FillSuppressionMinusOne;
         /// <summary>
         /// Configures how much of the shadow is visible behind the fill of the shape (if the fill is not opaque).
@@ -289,6 +294,7 @@ namespace Squared.Render.RasterShape {
             return (IsEnabled == rhs.IsEnabled) &&
                 (Offset == rhs.Offset) &&
                 (Softness == rhs.Softness) &&
+                (Expansion == rhs.Expansion) &&
                 (FillSuppressionMinusOne == rhs.FillSuppressionMinusOne) &&
                 (_Color == rhs._Color) &&
                 (Inside == rhs.Inside);
@@ -317,8 +323,8 @@ namespace Squared.Render.RasterShape {
             RasterTexture,
             RampTexture,
             ShadowOptions,
-            ShadowColorLinear,
-            ShadowInside;
+            ShadowOptions2,
+            ShadowColorLinear;
 
         public RasterShader (Material material) {
             Material = material;
@@ -327,8 +333,8 @@ namespace Squared.Render.RasterShape {
             RasterTexture = p["RasterTexture"];
             RampTexture = p["RampTexture"];
             ShadowOptions = p["ShadowOptions"];
+            ShadowOptions2 = p["ShadowOptions2"];
             ShadowColorLinear = p["ShadowColorLinear"];
-            ShadowInside = p["ShadowInside"];
         }
     }
 
@@ -406,6 +412,7 @@ namespace Squared.Render.RasterShape {
         private static bool ShouldBeShadowed (ref RasterShadowSettings shadow) {
             return !shadow.Color.IsTransparent && (
                 (shadow.Softness >= 0.1) || 
+                (shadow.Expansion >= 0.1) ||
                 (shadow.Offset.Length() > 0.1)
             );
         }
@@ -563,19 +570,23 @@ namespace Squared.Render.RasterShape {
                     var shadowColor = sb.BlendInLinearSpace ? sb.Shadow.Color.ToPLinear() : sb.Shadow.Color.ToVector4();
                     var shadowOffset = sb.Shadowed ? sb.Shadow.Offset : Vector2.Zero;
                     var shadowSoftness = sb.Shadowed ? sb.Shadow.Softness : 0;
+                    var shadowExpansion = (sb.Shadowed ? sb.Shadow.Expansion : 0) * (sb.Shadow.Inside ? -1 : 1);
                     // Also suppress the shadow entirely if the parameters are such that it would basically be invisible
                     if (!sb.Shadowed) {
                         shadowOffset = Vector2.Zero;
                         shadowColor = Vector4.Zero;
                         shadowSoftness = 0;
+                        shadowExpansion = 0;
                     }
 
                     rasterShader.ShadowOptions.SetValue(new Vector4(
                         shadowOffset.X, shadowOffset.Y,
                         shadowSoftness, sb.Shadow.FillSuppression
                     ));
+                    rasterShader.ShadowOptions2.SetValue(new Vector2(
+                        shadowExpansion, sb.Shadow.Inside ? 1 : 0
+                    ));
                     rasterShader.ShadowColorLinear.SetValue(shadowColor);
-                    rasterShader.ShadowInside.SetValue(sb.Shadow.Inside);
 
                     rasterShader.Material.Flush();
 
