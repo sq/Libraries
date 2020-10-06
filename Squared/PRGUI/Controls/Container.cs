@@ -27,7 +27,7 @@ namespace Squared.PRGUI.Controls {
         public ControlFlags ContainerFlags = ControlFlags.Container_Row;
 
         protected ScrollbarState HScrollbar, VScrollbar;
-        protected bool HasContentBounds;
+        protected bool HasContentBounds, CanScrollVertically;
         protected RectF ContentBounds;
 
         public Container () 
@@ -58,15 +58,16 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected void OnScroll (float delta) {
+        protected bool OnScroll (float delta) {
+            if (!ShowVerticalScrollbar || !CanScrollVertically)
+                return false;
             ScrollOffset = new Vector2(ScrollOffset.X, ScrollOffset.Y - delta);
+            return true;
         }
 
         protected override bool OnEvent<T> (string name, T args) {
-            if (name == UIEvents.Scroll) {
-                OnScroll(Convert.ToSingle(args));
-                return true;
-            }
+            if (name == UIEvents.Scroll)
+                return OnScroll(Convert.ToSingle(args));
 
             return false;
         }
@@ -149,9 +150,6 @@ namespace Squared.PRGUI.Controls {
             return HasContentBounds;
         }
 
-        protected void UpdateScrollbars (UIOperationContext context, DecorationSettings settings) {
-        }
-
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
@@ -172,6 +170,8 @@ namespace Squared.PRGUI.Controls {
                         Arithmetic.Clamp(ScrollOffset.X, 0, maxScrollX),
                         Arithmetic.Clamp(ScrollOffset.Y, 0, maxScrollY)
                     );
+
+                    CanScrollVertically = maxScrollY > 0;
                 }
 
                 HScrollbar.ContentSize = ContentBounds.Width;
