@@ -34,6 +34,7 @@ namespace Squared.PRGUI {
             KeyUp = string.Intern("KeyUp"),
             Moved = string.Intern("Moved"),
             ValueChanged = string.Intern("ValueChanged"),
+            RadioButtonSelected = string.Intern("RadioButtonSelected"),
             SelectionChanged = string.Intern("SelectionChanged"),
             Shown = string.Intern("Shown"),
             Closed = string.Intern("Closed"),

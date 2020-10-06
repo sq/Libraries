@@ -48,6 +48,8 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Tooltip { get; }
         IDecorator Menu { get; }
         IDecorator CompositionPreview { get; }
+        IDecorator Checkbox { get; }
+        IDecorator RadioButton { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
@@ -160,6 +162,8 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator Tooltip { get; set; }
         public IDecorator Menu { get; set; }
         public IDecorator CompositionPreview { get; set; }
+        public IDecorator Checkbox { get; set; }
+        public IDecorator RadioButton { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public IGlyphSource DefaultFont,
@@ -212,24 +216,22 @@ namespace Squared.PRGUI.Decorations {
             TextColor = Color.White,
             TooltipTextColor = Color.White;
 
+        public const float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
 
         public Color? FloatingContainerOutlineColor, 
             FloatingContainerFillColor;
 
-        private void Button_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+        private void Button_Below_Common (UIOperationContext context, DecorationSettings settings, out float alpha, out float thickness, out pSRGBColor baseColor, out float pulse) {
             var state = settings.State;
-
-            float alpha, thickness;
-            var baseColor = settings.BackgroundColor ?? (pSRGBColor)(
+            baseColor = settings.BackgroundColor ?? (pSRGBColor)(
                 state.IsFlagged(ControlStates.Focused)
                     ? FocusedColor
                     : InactiveColor
             );
-
             var hasColor = settings.BackgroundColor.HasValue;
 
-            float pulse = 0;
+            pulse = 0;
             if (state.IsFlagged(ControlStates.Pressed)) {
                 alpha = hasColor ? 1f : 0.9f;
                 thickness = PressedOutlineThickness;
@@ -244,11 +246,17 @@ namespace Squared.PRGUI.Decorations {
                 thickness = ActiveOutlineThickness;
                 pulse = Arithmetic.PulseSine(context.Now / 3.33f, 0f, 0.08f);
             } else {
-                alpha = hasColor 
+                alpha = hasColor
                     ? (state.IsFlagged(ControlStates.Focused) ? 0.9f : 0.8f)
                     : (state.IsFlagged(ControlStates.Focused) ? 0.5f : 0.35f);
                 thickness = state.IsFlagged(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
             }
+        }
+
+        private void Button_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            float alpha, thickness, pulse;
+            pSRGBColor baseColor;
+            Button_Below_Common(context, settings, out alpha, out thickness, out baseColor, out pulse);
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
@@ -271,6 +279,87 @@ namespace Squared.PRGUI.Decorations {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: InteractableCornerRadius,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
+                fillMode: RasterFillMode.Angular,
+                fillSize: fillSize,
+                fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
+                fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
+                annularRadius: 1.1f,
+                blendState: BlendState.Additive
+            );
+        }
+
+        private void AdjustRectForCheckbox (ref DecorationSettings settings) {
+            var box = settings.Box;
+            settings.Box = new RectF(box.Left + 2, box.Top + (box.Height - CheckboxSize) / 2, CheckboxSize, CheckboxSize);
+        }
+
+        private void Checkbox_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            AdjustRectForCheckbox(ref settings);
+            Button_Below(context, ref renderer, settings);
+        }
+
+        private void Checkbox_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            AdjustRectForCheckbox(ref settings);
+            var isHovering = settings.State.IsFlagged(ControlStates.Hovering);
+            var isChecked = settings.State.IsFlagged(ControlStates.Checked);
+            if (isHovering || isChecked) {
+                var f = Color.White * (isChecked ? 1 : 0.2f);
+                var o = Color.White * (isChecked ? 0.7f : 0f);
+                Vector2 a = new Vector2(settings.Box.Left + 8f, settings.Box.Center.Y + 1.75f),
+                    b = new Vector2(settings.Box.Center.X, settings.Box.Extent.Y - 6.5f),
+                    c = new Vector2(settings.Box.Extent.X - 7.75f, settings.Box.Top + 7f);
+                renderer.RasterizeLineSegment(
+                    a, b, startRadius: isChecked ? 1.7f : 1.4f, endRadius: null,
+                    outlineRadius: 0.8f, innerColor: f, outerColor: f, outlineColor: o
+                );
+                renderer.RasterizeLineSegment(
+                    b, c, startRadius: isChecked ? 1.65f : 1.4f, endRadius: isChecked ? 1.8f : 1.5f,
+                    outlineRadius: 0.8f, innerColor: f, outerColor: f, outlineColor: o
+                );
+            }
+            Button_Above(context, ref renderer, settings);
+        }
+
+        private void RadioButton_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            AdjustRectForCheckbox(ref settings);
+
+            float alpha, thickness, pulse;
+            pSRGBColor baseColor;
+            Button_Below_Common(context, settings, out alpha, out thickness, out baseColor, out pulse);
+
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            renderer.RasterizeRectangle(
+                a, b,
+                radius: CheckboxSize * 0.45f,
+                outlineRadius: thickness, outlineColor: baseColor * alpha,
+                innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
+                fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
+                shadow: InteractableShadow
+            );
+        }
+
+        private void RadioButton_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            AdjustRectForCheckbox(ref settings);
+
+            var isHovering = settings.State.IsFlagged(ControlStates.Hovering);
+            var isChecked = settings.State.IsFlagged(ControlStates.Checked);
+            if (isHovering || isChecked) {
+                var f = Color.White * (isChecked ? 1 : 0.2f);
+                var o = Color.White * (isChecked ? 0.8f : 0.4f);
+                renderer.RasterizeEllipse(settings.Box.Center, Vector2.One * (isChecked ? 8f : 7f), 1.2f, f, f, o);
+            }
+
+            if (!settings.State.IsFlagged(ControlStates.Hovering))
+                return;
+
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / settings.Box.Height));
+
+            renderer.RasterizeRectangle(
+                a, b,
+                radius: CheckboxSize * 0.45f,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
                 fillMode: RasterFillMode.Angular,
@@ -617,6 +706,22 @@ namespace Squared.PRGUI.Decorations {
                 GetTextSettings = GetTextSettings_Button,
                 Below = Button_Below,
                 Above = Button_Above
+            };
+
+            Checkbox = new DelegateDecorator {
+                Margins = new Margins(2, 4),
+                Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
+                GetTextSettings = GetTextSettings_Button,
+                Below = Checkbox_Below,
+                Above = Checkbox_Above
+            };
+
+            RadioButton = new DelegateDecorator {
+                Margins = new Margins(2, 4),
+                Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
+                GetTextSettings = GetTextSettings_Button,
+                Below = RadioButton_Below,
+                Above = RadioButton_Above
             };
 
             Container = new DelegateDecorator {

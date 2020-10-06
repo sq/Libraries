@@ -309,7 +309,12 @@ namespace PRGUI.Demo {
                                         Scrollable = true,
                                         Children = {
                                             new StaticText { Text = "Testing nested clips" },
-                                            new StaticText { Text = "Wow this one's text is extremely long, just absolutely massive. This is going to overrun the clip for sure. This will be multiple lines and should be a good way to test", Wrap = true }
+                                            new StaticText { Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing", Wrap = true },
+                                            new Checkbox { Text = "Checkbox 1" },
+                                            new Checkbox { Text = "Checkbox 2", Checked = true },
+                                            new RadioButton { Text = "Radio 1", GroupId = "radio" },
+                                            new RadioButton { Text = "Radio 2", GroupId = "radio" },
+                                            new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true }
                                         }
                                     },
                                     new Button {

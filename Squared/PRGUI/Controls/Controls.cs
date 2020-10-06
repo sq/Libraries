@@ -31,6 +31,82 @@ namespace Squared.PRGUI {
         }
     }
 
+    public class Checkbox : StaticText {
+        public bool Checked;
+
+        public Checkbox ()
+            : base () {
+            Content.Alignment = HorizontalAlignment.Left;
+            AcceptsMouseInput = true;
+            AcceptsFocus = true;
+        }
+
+        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+            return provider?.Checkbox;
+        }
+
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            if (Checked)
+                settings.State |= ControlStates.Checked;
+            base.OnRasterize(context, ref renderer, settings, decorations);
+        }
+
+        protected override bool OnEvent<T> (string name, T args) {
+            if (name == UIEvents.Click) {
+                Checked = !Checked;
+                FireEvent(UIEvents.ValueChanged);
+            }
+
+            return base.OnEvent(name, args);
+        }
+    }
+
+    public class RadioButton : StaticText {
+        public bool Checked;
+        public string GroupId;
+
+        public RadioButton ()
+            : base () {
+            Content.Alignment = HorizontalAlignment.Left;
+            AcceptsMouseInput = true;
+            AcceptsFocus = true;
+        }
+
+        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+            return provider?.RadioButton;
+        }
+
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            if (Checked)
+                settings.State |= ControlStates.Checked;
+            base.OnRasterize(context, ref renderer, settings, decorations);
+        }
+
+        private bool ProcessingEvent = false;
+
+        protected override bool OnEvent<T> (string name, T args) {
+            try {
+                ProcessingEvent = true;
+                if (name == UIEvents.Click) {
+                    if (!Checked) {
+                        FireEvent(UIEvents.RadioButtonSelected, GroupId);
+                        Checked = true;
+                        FireEvent(UIEvents.ValueChanged);
+                    }
+                } else if (name == UIEvents.RadioButtonSelected) {
+                    if (!ProcessingEvent && (GroupId == Convert.ToString(args))) {
+                        Checked = false;
+                        FireEvent(UIEvents.ValueChanged);
+                    }
+                }
+            } finally {
+                ProcessingEvent = false;
+            }
+
+            return base.OnEvent(name, args);
+        }
+    }
+
     public class Tooltip : StaticText {
         public Tooltip ()
             : base () {

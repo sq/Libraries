@@ -216,7 +216,8 @@ namespace Squared.PRGUI {
         Disabled = 0b1,
         Hovering = 0b10,
         Focused = 0b100,
-        Pressed = 0b1000
+        Pressed = 0b1000,
+        Checked = 0b10000
     }
 
     public enum RasterizePasses {
