@@ -566,6 +566,9 @@ namespace Squared.PRGUI {
             return WeakParent.TryGetTarget(out parent);
         }
 
+        protected virtual void Initialize () {
+        }
+
         internal void SetContext (UIContext context) {
             if (WeakContext != null)
                 throw new InvalidOperationException("UI context already set");
@@ -574,6 +577,7 @@ namespace Squared.PRGUI {
                 return;
 
             WeakContext = new WeakReference<UIContext>(context, false);
+            Initialize();
         }
 
         internal void SetParent (Control parent) {

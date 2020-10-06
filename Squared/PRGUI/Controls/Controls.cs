@@ -15,6 +15,7 @@ using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
 using Squared.Util;
+using Squared.Util.Event;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI {
@@ -62,14 +63,65 @@ namespace Squared.PRGUI {
     }
 
     public class RadioButton : StaticText {
-        public bool Checked;
+        private bool _Checked, _SubscriptionPending;
         public string GroupId;
+
+        private Util.Event.EventSubscription Subscription;
 
         public RadioButton ()
             : base () {
             Content.Alignment = HorizontalAlignment.Left;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
+        }
+
+        public bool Checked {
+            get => _Checked;
+            set {
+                if (value == _Checked)
+                    return;
+
+                if (value == false) {
+                    Unsubscribe();
+                    _Checked = false;
+                    FireEvent(UIEvents.ValueChanged);
+                } else {
+                    Subscribe();
+                    _Checked = true;
+                    FireEvent(UIEvents.ValueChanged);
+                    FireEvent(UIEvents.RadioButtonSelected, GroupId);
+                }
+            }
+        }
+
+        protected override void Initialize () {
+            if (_SubscriptionPending) {
+                Subscribe();
+                if (_Checked)
+                    FireEvent(UIEvents.RadioButtonSelected, GroupId);
+            }
+        }
+
+        private void OnRadioButtonSelected (IEventInfo<string> e, string groupId) {
+            if (e.Source == this)
+                return;
+            if (GroupId != groupId)
+                return;
+            Checked = false;
+        }
+
+        private void Subscribe () {
+            _SubscriptionPending = false;
+            Subscription.Dispose();
+            if (Context == null) {
+                _SubscriptionPending = true;
+                return;
+            }
+            Subscription = Context.EventBus.Subscribe<string>(null, UIEvents.RadioButtonSelected, OnRadioButtonSelected);
+        }
+
+        private void Unsubscribe () {
+            Subscription.Dispose();
         }
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
@@ -82,26 +134,9 @@ namespace Squared.PRGUI {
             base.OnRasterize(context, ref renderer, settings, decorations);
         }
 
-        private bool ProcessingEvent = false;
-
         protected override bool OnEvent<T> (string name, T args) {
-            try {
-                ProcessingEvent = true;
-                if (name == UIEvents.Click) {
-                    if (!Checked) {
-                        FireEvent(UIEvents.RadioButtonSelected, GroupId);
-                        Checked = true;
-                        FireEvent(UIEvents.ValueChanged);
-                    }
-                } else if (name == UIEvents.RadioButtonSelected) {
-                    if (!ProcessingEvent && (GroupId == Convert.ToString(args))) {
-                        Checked = false;
-                        FireEvent(UIEvents.ValueChanged);
-                    }
-                }
-            } finally {
-                ProcessingEvent = false;
-            }
+            if (name == UIEvents.Click)
+                Checked = true;
 
             return base.OnEvent(name, args);
         }
