@@ -304,15 +304,18 @@ namespace PRGUI.Demo {
                                         ClipChildren = true,
                                         ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
                                         LayoutFlags = ControlFlags.Layout_Fill,
-                                        MaximumHeight = 200,
+                                        MaximumHeight = 400,
                                         MaximumWidth = 400,
                                         Scrollable = true,
                                         Children = {
                                             new StaticText { Text = "Testing nested clips" },
-                                            new StaticText { Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing", Wrap = true },
-                                            new Checkbox { Text = "Checkbox 1" },
+                                            new StaticText {
+                                                Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
+                                                Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                                            },
+                                            new Checkbox { Text = "Checkbox 1", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak },
                                             new Checkbox { Text = "Checkbox 2", Checked = true },
-                                            new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_ForceBreak, Checked = true },
+                                            new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
                                             new RadioButton { Text = "Radio 2", GroupId = "radio" },
                                             new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true }
                                         }

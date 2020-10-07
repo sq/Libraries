@@ -55,7 +55,7 @@ namespace Squared.PRGUI {
         protected override bool OnEvent<T> (string name, T args) {
             if (name == UIEvents.Click) {
                 Checked = !Checked;
-                FireEvent(UIEvents.ValueChanged);
+                FireEvent(UIEvents.CheckedChanged);
             }
 
             return base.OnEvent(name, args);
@@ -66,7 +66,7 @@ namespace Squared.PRGUI {
         private bool _Checked, _SubscriptionPending;
         public string GroupId;
 
-        private Util.Event.EventSubscription Subscription;
+        private EventSubscription Subscription;
 
         public RadioButton ()
             : base () {
@@ -84,12 +84,12 @@ namespace Squared.PRGUI {
                 if (value == false) {
                     Unsubscribe();
                     _Checked = false;
-                    FireEvent(UIEvents.ValueChanged);
+                    FireEvent(UIEvents.CheckedChanged);
                 } else {
                     Subscribe();
                     _Checked = true;
-                    FireEvent(UIEvents.ValueChanged);
                     FireEvent(UIEvents.RadioButtonSelected, GroupId);
+                    FireEvent(UIEvents.CheckedChanged);
                 }
             }
         }

@@ -34,6 +34,7 @@ namespace Squared.PRGUI {
             KeyUp = string.Intern("KeyUp"),
             Moved = string.Intern("Moved"),
             ValueChanged = string.Intern("ValueChanged"),
+            CheckedChanged = string.Intern("CheckedChanged"),
             RadioButtonSelected = string.Intern("RadioButtonSelected"),
             SelectionChanged = string.Intern("SelectionChanged"),
             Shown = string.Intern("Shown"),
@@ -482,17 +483,19 @@ namespace Squared.PRGUI {
             return CachedCompositionPreview;
         }
 
-        public void CaptureMouse (Control target) {
+        public Control CaptureMouse (Control target) {
+            var donor = Focused;
             if ((MouseCaptured != null) && (MouseCaptured != target) && !LastMouseButtonState)
                 SuppressNextCaptureLoss = true;
             if (target.IsValidFocusTarget)
                 Focused = target;
             MouseCaptured = target;
+            return donor;
         }
 
-        public void ReleaseCapture (Control target) {
+        public void ReleaseCapture (Control target, Control focusDonor) {
             if (Focused == target)
-                Focused = null;
+                Focused = focusDonor;
             if (Hovering == target)
                 Hovering = null;
             if (MouseCaptured == target)

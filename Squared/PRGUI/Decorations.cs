@@ -196,7 +196,7 @@ namespace Squared.PRGUI.Decorations {
             SelectionShadow,
             TooltipShadow;
 
-        public Color FocusedColor = new Color(200, 230, 255),
+        public Color FocusedColor = new Color(205, 220, 255),
             ActiveColor = new Color(240, 240, 240),
             InactiveColor = new Color(180, 180, 180),
             ContainerOutlineColor = new Color(32, 32, 32),
@@ -242,13 +242,13 @@ namespace Squared.PRGUI.Decorations {
                 } else
                     baseColor = ActiveColor;
             } else if (state.IsFlagged(ControlStates.Hovering)) {
-                alpha = hasColor ? 0.9f : 0.75f;
+                alpha = hasColor ? 0.75f : 0.55f;
                 thickness = ActiveOutlineThickness;
-                pulse = Arithmetic.PulseSine(context.Now / 3.33f, 0f, 0.08f);
+                pulse = Arithmetic.PulseSine(context.Now / 2.5f, 0f, 0.15f);
             } else {
                 alpha = hasColor
-                    ? (state.IsFlagged(ControlStates.Focused) ? 0.9f : 0.8f)
-                    : (state.IsFlagged(ControlStates.Focused) ? 0.5f : 0.35f);
+                    ? (state.IsFlagged(ControlStates.Focused) ? 0.95f : 0.8f)
+                    : (state.IsFlagged(ControlStates.Focused) ? 0.65f : 0.4f);
                 thickness = state.IsFlagged(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
             }
         }
@@ -348,7 +348,10 @@ namespace Squared.PRGUI.Decorations {
             if (isHovering || isChecked) {
                 var f = Color.White * (isChecked ? 1 : 0.2f);
                 var o = Color.White * (isChecked ? 0.8f : 0.4f);
-                renderer.RasterizeEllipse(settings.Box.Center, Vector2.One * (isChecked ? 8f : 7f), 1.2f, f, f, o);
+                renderer.RasterizeEllipse(
+                    settings.Box.Center, Vector2.One * (isChecked ? 8f : 7f), 
+                    1.2f, f, f, o
+                );
             }
 
             if (!settings.State.IsFlagged(ControlStates.Hovering))

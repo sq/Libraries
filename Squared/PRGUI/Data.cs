@@ -538,4 +538,18 @@ namespace Squared.PRGUI {
             return new Vector4(margins.Left, margins.Top, margins.Right, margins.Bottom);
         }
     }
+
+    public struct NameAndIndex {
+        public string Name;
+        public int Index;
+
+        public NameAndIndex (string name, int index = 0) {
+            Name = name;
+            Index = index;
+        }
+
+        public static implicit operator NameAndIndex (string name) {
+            return new NameAndIndex(name);
+        }
+    }
 }

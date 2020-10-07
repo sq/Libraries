@@ -760,14 +760,16 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe void CheckConstraints (ControlKey control, int dimension) {
-            return;
-
             var pItem = LayoutPtr(control);
             var rect = GetRect(control);
             var wdim = dimension + 2;
 
             var min = pItem->MinimumSize.GetElement(dimension);
             var max = pItem->MaximumSize.GetElement(dimension);
+            // FIXME
+            if (min >= max)
+                return;
+
             if (
                 ((min >= 0) && (rect[wdim] < min)) ||
                 ((max >= 0) && (rect[wdim] > max))
@@ -912,13 +914,17 @@ namespace Squared.PRGUI.Layout {
                 }
 
                 rect[idim] += offset;
+                var unconstrained = rect[wdim];
+                // FIXME: Redistribute remaining space?
+                rect[wdim] = Constrain(unconstrained, pItem->MinimumSize.GetElement(idim), pItem->MaximumSize.GetElement(idim));
+
+                float extent = rect[idim] + rect[wdim];
 
                 if (pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size)) {
                     // rect[idim] = Constrain(rect[idim], parentRect[idim], parentRect[wdim]);
-                    float extent = rect[idim] + rect[wdim], parentExtent = parentRect[idim] + parentRect[wdim];
+                    float parentExtent = parentRect[idim] + parentRect[wdim];
                     extent = Constrain(extent, -1, parentExtent);
                     rect[wdim] = extent - rect[idim];
-                    ;
                 }
 
                 SetRect(item, ref rect);

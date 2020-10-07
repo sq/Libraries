@@ -16,6 +16,8 @@ namespace Squared.PRGUI.Controls {
         public const float MenuShowSpeed = 0.1f;
         public const float MenuHideSpeed = 0.25f;
 
+        internal Control FocusDonor;
+
         private Control _SelectedItem;
 
         public Control SelectedItem {
@@ -109,7 +111,7 @@ namespace Squared.PRGUI.Controls {
 
             if (name == UIEvents.MouseDown) {
                 if (HitTest(Context.Layout, args.GlobalPosition, false, false) != this) {
-                    Context.ReleaseCapture(this);
+                    Context.ReleaseCapture(this, FocusDonor);
                     Close();
                     return true;
                 }
@@ -213,7 +215,7 @@ namespace Squared.PRGUI.Controls {
             Intangible = false;
             if (!IsActive)
                 Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: NowL);
-            context.CaptureMouse(this);
+            FocusDonor = context.CaptureMouse(this);
             IsActive = true;
             Context.FireEvent(UIEvents.Shown, this);
         }
@@ -259,7 +261,7 @@ namespace Squared.PRGUI.Controls {
                 return;
             IsActive = false;
             Intangible = true;
-            Context.ReleaseCapture(this);
+            Context.ReleaseCapture(this, FocusDonor);
             var now = NowL;
             Opacity = Tween<float>.StartNow(Opacity.Get(now), 0, MenuHideSpeed, now: now);
             Context.FireEvent(UIEvents.Closed, this);

@@ -58,11 +58,14 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        // HACK used to properly discard scroll events when at a scroll edge
+        private bool CanScrollUp, CanScrollDown;
+
         protected bool OnScroll (float delta) {
             if (!ShowVerticalScrollbar || !CanScrollVertically)
                 return false;
             ScrollOffset = new Vector2(ScrollOffset.X, ScrollOffset.Y - delta);
-            return true;
+            return (delta > 0 && CanScrollUp) || (delta < 0 && CanScrollDown);
         }
 
         protected override bool OnEvent<T> (string name, T args) {
@@ -170,6 +173,9 @@ namespace Squared.PRGUI.Controls {
                         Arithmetic.Clamp(ScrollOffset.X, 0, maxScrollX),
                         Arithmetic.Clamp(ScrollOffset.Y, 0, maxScrollY)
                     );
+
+                    CanScrollUp = ScrollOffset.Y > 0;
+                    CanScrollDown = ScrollOffset.Y < maxScrollY;
 
                     CanScrollVertically = maxScrollY > 0;
                 }
