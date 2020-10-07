@@ -270,7 +270,7 @@ namespace Squared.PRGUI {
             newPosition = new Vector2(
                 Arithmetic.Clamp(newPosition.X, 0, context.CanvasSize.X - box.Width),
                 Arithmetic.Clamp(newPosition.Y, 0, context.CanvasSize.Y - box.Height)
-            );
+            ).Floor();
 
             Position = newPosition;
         }

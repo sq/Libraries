@@ -427,8 +427,8 @@ namespace Squared.PRGUI {
             a = new Vector2(Left + inset, Top + inset);
             b = new Vector2(Left + Width - inset, Top + Height - inset);
             // HACK: Snap to integral pixels so that edges don't look uneven
-            a = a.Round();
-            b = b.Round();
+            a = a.Floor();
+            b = b.Floor();
             if (a.X > b.X)
                 a.X = b.X = Left;
             if (a.Y > b.Y)
