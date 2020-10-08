@@ -120,7 +120,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
-            Buffer.F1 = x.SortKey.Order; Buffer.F2 = y.SortKey.Order;
+            Buffer.F1 = x.SortOrder; Buffer.F2 = y.SortOrder;
             var result = FastMath.CompareF(ref Buffer);
             if (result == 0)
                 result = (x.Textures.HashCode - y.Textures.HashCode);
@@ -140,7 +140,7 @@ namespace Squared.Render {
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             var result = (x.Textures.HashCode - y.Textures.HashCode);
             if (result == 0) {
-                Buffer.F1 = y.SortKey.Order; Buffer.F2 = x.SortKey.Order;
+                Buffer.F1 = y.SortOrder; Buffer.F2 = x.SortOrder;
                 result = FastMath.CompareF(ref Buffer);
             }
             return result;
@@ -502,7 +502,7 @@ namespace Squared.Render {
             };
             result.PositionAndRotation.X = call.Position.X;
             result.PositionAndRotation.Y = call.Position.Y;
-            result.PositionAndRotation.Z = call.SortKey.Order * zBufferFactor;
+            result.PositionAndRotation.Z = call.SortOrder * zBufferFactor;
             result.PositionAndRotation.W = call.Rotation;
             result.ScaleOrigin.X = call.Scale.X;
             result.ScaleOrigin.Y = call.Scale.Y;
@@ -1017,12 +1017,13 @@ namespace Squared.Render {
         public Vector2    Scale;
         public Vector2    Origin;
         public float      Rotation;
+        public float      SortOrder;
         public Color      MultiplyColor, AddColor;
         public Vector4    UserData;
         public Bounds     TextureRegion;
         public Bounds     TextureRegion2;
         public TextureSet Textures;
-        public DrawCallSortKey SortKey;
+        public Tags       SortTags;
         public bool?      WorldSpace;
 
 #if DEBUG
@@ -1100,8 +1101,8 @@ namespace Squared.Render {
             Rotation = rotation;
             UserData = default(Vector4);
             WorldSpace = default(bool?);
-
-            SortKey = default(DrawCallSortKey);
+            SortOrder = 0f;
+            SortTags = default(Tags);
         }
 
         public void Mirror (bool x, bool y) {
@@ -1146,23 +1147,16 @@ namespace Squared.Render {
             }
         }
 
-        public Tags SortTags {
-            get {
-                return SortKey.Tags;
-            }
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set {
-                SortKey.Tags = value;
-            }
+        // Not a getter to prevent accidentally using it when you shouldn't
+        public DrawCallSortKey GetSortKey () {
+            return new DrawCallSortKey(SortTags, SortOrder);
         }
 
-        public float SortOrder {
-            get {
-                return SortKey.Order;
-            }
+        public DrawCallSortKey SortKey {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
-                SortKey.Order = value;
+                SortOrder = value.Order;
+                SortTags = value.Tags;
             }
         }
 
@@ -1295,7 +1289,7 @@ namespace Squared.Render {
             else if (!ObjectNames.TryGetName(Texture, out name))
                 name = string.Format("{2:X4} {0}x{1}", Texture.Width, Texture.Height, Texture.GetHashCode());
 
-            return string.Format("tex {0} pos {1} sort {2}", name, Position, SortKey.Order);
+            return string.Format("tex {0} pos {1} sort {2}", name, Position, SortOrder);
         }
     }
 }

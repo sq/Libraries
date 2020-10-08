@@ -316,12 +316,11 @@ namespace Squared.Render {
                 (UseZBuffer && DepthPrePassOnly)
             ) {
                 // If sort keys are enabled, we want to try to draw back-to-front to maximize the effectiveness of the z-buffer
-                _DrawCalls.Sort(
-                    DisableSortKeys 
-                        ? (IRefComparer<BitmapDrawCall>)DrawCallTextureComparer 
-                        : DrawCallTextureAndReverseOrderComparer.Value, 
-                    indexArray
-                );
+                if (DisableSortKeys) {
+                    _DrawCalls.Sort(DrawCallTextureComparer, indexArray);
+                } else {
+                    _DrawCalls.Sort(DrawCallTextureAndReverseOrderComparer.Value, indexArray);
+                }
             } else {
                 _DrawCalls.Sort(DrawCallComparer.Value, indexArray);
             }

@@ -293,7 +293,7 @@ namespace Squared.Render.Text {
 
                 dc.Position = new Vector2(newCharacterX, dc.Position.Y + scaledLineSpacing);
                 if (alignment != HorizontalAlignment.Left)
-                    dc.SortKey.Order += 1;
+                    dc.SortOrder += 1;
 
                 buffer.Array[buffer.Offset + i] = dc;
             }
@@ -384,10 +384,10 @@ namespace Squared.Render.Text {
                 return;
 
             int lineStartIndex = 0;
-            float currentLine = buffer.Array[buffer.Offset].SortKey.Order;
+            float currentLine = buffer.Array[buffer.Offset].SortOrder;
 
             for (var i = 1; i < buffer.Count; i++) {
-                var line = buffer.Array[buffer.Offset + i].SortKey.Order;
+                var line = buffer.Array[buffer.Offset + i].SortOrder;
 
                 if (line > currentLine) {
                     AlignLine(buffer, alignment, lineStartIndex, i - 1);
@@ -684,9 +684,9 @@ namespace Squared.Render.Text {
 
                         // HACK so that the alignment pass can detect rows. We strip this later.
                         if (alignment != HorizontalAlignment.Left)
-                            drawCall.SortKey.Order = rowIndex;
+                            drawCall.SortOrder = rowIndex;
                         else if (reverseOrder)
-                            drawCall.SortKey.Order += 1;
+                            drawCall.SortOrder += 1;
 
                         if (!suppress && !suppressUntilNextLine) {
                             buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
