@@ -776,11 +776,44 @@ namespace Squared.Util {
         }
 
         [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 4)]
-        private struct U32F32 {
+        public struct U32F32 {
             [FieldOffset(0)]
-            public uint U;
+            public uint U1;
             [FieldOffset(0)]
-            public float F;
+            public int I1;
+            [FieldOffset(0)]
+            public float F1;
+            [FieldOffset(4)]
+            public uint U2;
+            [FieldOffset(4)]
+            public int I2;
+            [FieldOffset(4)]
+            public float F2;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int CompareF (ref U32F32 buf) {
+            // Caller initializes, avoiding the need to pass these arguments on the stack
+            // buf.F1 = lhs;
+            // buf.F2 = rhs;
+
+            // You might think that copying these instance fields to locals would reduce
+            //  overhead because the runtime loads them every time. Doesn't seem to be true,
+            //  this produces fewer insns
+            if (buf.I1 == buf.I2)
+                return 0;
+
+            unchecked {
+                // Precomputing these shifts once and storing them in locals creates memory
+                //  loads/stores so it's better to just compute over and over, it produces
+                //  fewer insns and theoretically doesn't hit stack/mem as much
+                if ((buf.I1 >> 31) != (buf.I2 >> 31))
+                    return (buf.I2 >> 31) - (buf.I1 >> 31);
+
+                // Storing these expressions into locals raises overhead, so just write them out bare
+                return (int)(buf.U1 - buf.U2) * 
+                    ((int)(buf.U1 >> 31) * -2) + 1;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -808,43 +841,11 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe int CompareF (float lhs, float rhs) {
-            unchecked {
-                // HACK: The union produces a couple fewer memory loads/stores & fewer insns than the uint* approach.
-                //  I'm just going to assume that fewer memory ops & fewer insns = better perf 
-                /* Union (other insns removed)
-                    mov         qword ptr [rsp+28h],rax  
-                    vmovss      xmm0,dword ptr [rdx+70h]  
-                    vmovss      xmm1,dword ptr [rsi+70h]  
-                    vmovss      dword ptr [rsp+28h],xmm0  
-                    mov         ecx,dword ptr [rsp+28h]  
-                    vmovss      dword ptr [rsp+28h],xmm1  
-                    cmp         ecx,dword ptr [rsp+28h]  
-                    mov         eax,dword ptr [rsp+28h]  
-                    lea         r8d,[r9*2+1]  
-                  Ptrs
-                    vmovss      xmm0,dword ptr [rdx+70h]  
-                    vmovss      dword ptr [rsp+2Ch],xmm0  
-                    vmovss      xmm0,dword ptr [rsi+70h]  
-                    vmovss      dword ptr [rsp+28h],xmm0  
-                    lea         rcx,[rsp+2Ch]  
-                    lea         rax,[rsp+28h]  
-                    mov         r8d,dword ptr [rcx]  
-                    cmp         r8d,dword ptr [rax]  
-                    mov         r8d,dword ptr [rcx]  
-                    mov         ecx,dword ptr [rax]  
-                    lea         eax,[r9*2+1]  
-                */
-                uint u1;
-                U32F32 u = default(U32F32);
-                u.F = lhs;
-                u1 = u.U;
-                u.F = rhs;
+            U32F32 u = default(U32F32);
+            u.F1 = lhs;
+            u.F2 = rhs;
 
-                if (u1 == u.U)
-                    return 0;
-
-                return CompareFSlow(u1, u.U);
-            }
+            return CompareF(ref u);
         }
     }
 }
