@@ -78,11 +78,10 @@ inline float2 ComputeRotatedCorner (
 }
 
 void ScreenSpaceVertexShader (
-    in float3 position : POSITION0, // x, y
+    in float4 positionAndRotation : POSITION0, // x, y, z, rot
     in float4 texRgn1 : POSITION1, // x1, y1, x2, y2
     in float4 texRgn2 : POSITION2, // x1, y1, x2, y2
     in float4 scaleOrigin : POSITION3, // scalex, scaley, originx, originy
-    in float rotation : POSITION4,
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
     inout float4 userData : COLOR2,
@@ -97,20 +96,19 @@ void ScreenSpaceVertexShader (
     float2 corner = ComputeCorner(cornerWeights, regionSize);
     texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
     texCoord2 = ComputeTexCoord(corner, texRgn2, newTexRgn2);
-    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, rotation);
+    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, positionAndRotation.w);
     
-    position.xy += rotatedCorner;
+    positionAndRotation.xy += rotatedCorner;
 
-    float z = ScaleZIntoViewTransformSpace(position.z);
-    result = TransformPosition(float4(position.xy, z, 1), true);
+    float z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
+    result = TransformPosition(float4(positionAndRotation.xy, z, 1), true);
 }
 
 void WorldSpaceVertexShader (
-    in float3 position : POSITION0, // x, y
+    in float4 positionAndRotation : POSITION0, // x, y
     in float4 texRgn1 : POSITION1, // x1, y1, x2, y2
     in float4 texRgn2 : POSITION2, // x1, y1, x2, y2
     in float4 scaleOrigin : POSITION3, // scalex, scaley, originx, originy
-    in float rotation : POSITION4,
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
     inout float4 userData : COLOR2,
@@ -125,20 +123,19 @@ void WorldSpaceVertexShader (
     float2 corner = ComputeCorner(cornerWeights, regionSize);
     texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
     texCoord2 = ComputeTexCoord(corner, texRgn2, newTexRgn2);
-    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, rotation);
+    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, positionAndRotation.w);
     
-    position.xy += rotatedCorner - GetViewportPosition().xy;
+    positionAndRotation.xy += rotatedCorner - GetViewportPosition().xy;
     
-    float z = ScaleZIntoViewTransformSpace(position.z);
-    result = TransformPosition(float4(position.xy * GetViewportScale().xy, z, 1), true);
+    float z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
+    result = TransformPosition(float4(positionAndRotation.xy * GetViewportScale().xy, z, 1), true);
 }
 
 void GenericVertexShader (
-    in float3 position : POSITION0, // x, y
+    in float4 positionAndRotation : POSITION0, // x, y, z, rot
     in float4 texRgn1 : POSITION1, // x1, y1, x2, y2
     in float4 texRgn2 : POSITION2, // x1, y1, x2, y2
     in float4 scaleOrigin : POSITION3, // scalex, scaley, originx, originy
-    in float rotation : POSITION4,
     inout float4 multiplyColor : COLOR0,
     inout float4 addColor : COLOR1,
     inout float4 userData : COLOR2,
@@ -156,16 +153,16 @@ void GenericVertexShader (
     float2 corner = ComputeCorner(cornerWeights, regionSize);
     texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
     texCoord2 = ComputeTexCoord(corner, texRgn2, newTexRgn2);
-    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, rotation);
+    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, positionAndRotation.w);
     
-    float2 adjustedPosition = position.xy + rotatedCorner;
-    originalPositionData = float4(position.xy, adjustedPosition.xy);
+    float2 adjustedPosition = positionAndRotation.xy + rotatedCorner;
+    originalPositionData = float4(positionAndRotation.xy, adjustedPosition.xy);
 
     if (worldSpace.x > 0.5) {
         adjustedPosition.xy -= GetViewportPosition().xy;
         adjustedPosition.xy *= GetViewportScale().xy;
     }
     
-    float z = ScaleZIntoViewTransformSpace(position.z);
+    float z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
     result = TransformPosition(float4(adjustedPosition, z, 1), true);
 }

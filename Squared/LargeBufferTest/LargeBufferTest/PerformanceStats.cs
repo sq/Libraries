@@ -9,7 +9,7 @@ namespace LargeBufferTest {
         private static readonly StringBuilder StringBuilder = new StringBuilder();
         private static string _CachedString = null;
 
-        public const int SampleCount = 90;
+        public const int SampleCount = 240;
         public static readonly List<double> WaitSamples = new List<double>(),
             BeginDrawSamples = new List<double>(),
             DrawSamples = new List<double>(),

@@ -45,13 +45,11 @@ namespace Squared.Render {
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct BitmapVertex : IVertexType {
-        public Vector3 Position;
+        public Vector4 PositionAndRotation;
         public Vector4 Texture1Region;
         public Vector4 Texture2Region;
         public Vector4 UserData;
-        public Vector2 Scale;
-        public Vector2 Origin;
-        public float Rotation;
+        public Vector4 ScaleOrigin;
         public Color MultiplyColor;
         public Color AddColor;
         public short WorldSpace, Unused;
@@ -63,17 +61,14 @@ namespace Squared.Render {
             var tThis = typeof(BitmapVertex);
 
             Elements = new VertexElement[] {
-                new VertexElement( Marshal.OffsetOf(tThis, "Position").ToInt32(), 
-                    VertexElementFormat.Vector3, VertexElementUsage.Position, 0 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "PositionAndRotation").ToInt32(), 
+                    VertexElementFormat.Vector4, VertexElementUsage.Position, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Texture1Region").ToInt32(), 
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 1 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Texture2Region").ToInt32(), 
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 2 ),
-                // ScaleOrigin
-                new VertexElement( Marshal.OffsetOf(tThis, "Scale").ToInt32(), 
+                new VertexElement( Marshal.OffsetOf(tThis, "ScaleOrigin").ToInt32(), 
                     VertexElementFormat.Vector4, VertexElementUsage.Position, 3 ),
-                new VertexElement( Marshal.OffsetOf(tThis, "Rotation").ToInt32(), 
-                    VertexElementFormat.Single, VertexElementUsage.Position, 4 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "MultiplyColor").ToInt32(), 
                     VertexElementFormat.Color, VertexElementUsage.Color, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "AddColor").ToInt32(), 
@@ -121,11 +116,14 @@ namespace Squared.Render {
     }
 
     public sealed class BitmapDrawCallOrderAndTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
+        private FastMath.U32F32 Buffer = new FastMath.U32F32();
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
-            var result = FastMath.CompareF(x.SortKey.Order, y.SortKey.Order);
+            Buffer.F1 = x.SortKey.Order; Buffer.F2 = y.SortKey.Order;
+            var result = FastMath.CompareF(ref Buffer);
             if (result == 0)
-                result = (x.Textures.GetHashCode() - y.Textures.GetHashCode());
+                result = (x.Textures.HashCode - y.Textures.HashCode);
             return result;
         }
 
@@ -136,11 +134,15 @@ namespace Squared.Render {
     }
 
     public sealed class BitmapDrawCallTextureAndReverseOrderComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
+        private FastMath.U32F32 Buffer = new FastMath.U32F32();
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
-            var result = (x.Textures.GetHashCode() - y.Textures.GetHashCode());
-            if (result == 0)
-                result = FastMath.CompareF(y.SortKey.Order, x.SortKey.Order);
+            var result = (x.Textures.HashCode - y.Textures.HashCode);
+            if (result == 0) {
+                Buffer.F1 = y.SortKey.Order; Buffer.F2 = x.SortKey.Order;
+                result = FastMath.CompareF(ref Buffer);
+            }
             return result;
         }
 
@@ -153,15 +155,7 @@ namespace Squared.Render {
     public sealed class BitmapDrawCallTextureComparer : IRefComparer<BitmapDrawCall>, IComparer<BitmapDrawCall> {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
-            var hashX = x.Textures.GetHashCode();
-            var hashY = y.Textures.GetHashCode();
-            return (hashX > hashY)
-                ? 1
-                : (
-                    (hashX < hashY)
-                    ? -1
-                    : 0
-                );
+            return (x.Textures.HashCode - y.Textures.HashCode);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -291,8 +285,8 @@ namespace Squared.Render {
             }
         }
 
-        public const int NativeBatchSize = 1024;
-        protected const int NativeBatchCapacityLimit = 1024;
+        public const int NativeBatchSize = 4096;
+        protected const int NativeBatchCapacityLimit = 4096;
 
         protected int LastReservationID = 0;
 
@@ -497,24 +491,23 @@ namespace Squared.Render {
             BufferGenerator<BitmapVertex>.SoftwareBuffer softwareBuffer, ref BitmapDrawCall call, out BitmapVertex result, 
             ref int vertCount, ref int vertOffset, float zBufferFactor
         ) {
-            var p = call.Position;
             var ws = (short)((call.WorldSpace ?? WorldSpace) ? 1 : 0);
             result = new BitmapVertex {
-                Position = {
-                    X = p.X,
-                    Y = p.Y,
-                    Z = call.SortKey.Order * zBufferFactor
-                },
                 Texture1Region = call.TextureRegion.ToVector4(),
                 MultiplyColor = call.MultiplyColor,
                 AddColor = call.AddColor,
                 UserData = call.UserData,
-                Scale = call.Scale,
-                Origin = call.Origin,
-                Rotation = call.Rotation,
                 WorldSpace = ws,
                 Unused = ws
             };
+            result.PositionAndRotation.X = call.Position.X;
+            result.PositionAndRotation.Y = call.Position.Y;
+            result.PositionAndRotation.Z = call.SortKey.Order * zBufferFactor;
+            result.PositionAndRotation.W = call.Rotation;
+            result.ScaleOrigin.X = call.Scale.X;
+            result.ScaleOrigin.Y = call.Scale.Y;
+            result.ScaleOrigin.Z = call.Origin.X;
+            result.ScaleOrigin.W = call.Origin.Y;
             if (call.TextureRegion2.TopLeft == call.TextureRegion2.BottomRight)
                 result.Texture2Region = result.Texture1Region;
             else
@@ -900,7 +893,7 @@ namespace Squared.Render {
 
     public struct TextureSet {
         public readonly AbstractTextureReference Texture1, Texture2;
-        private int HashCode;
+        internal int HashCode;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TextureSet (AbstractTextureReference texture1) {

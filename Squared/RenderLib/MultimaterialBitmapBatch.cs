@@ -247,7 +247,7 @@ namespace Squared.Render {
                 if (Sorter != null)
                     comparer.DrawCallComparer = Sorter.GetComparer(true);
                 else
-                    comparer.DrawCallComparer = BitmapBatch.DrawCallComparer;
+                    comparer.DrawCallComparer = BitmapBatch.DrawCallComparer.Value;
 
                 Sort.FastCLRSortRef(
                     new ArraySegment<MaterialBitmapDrawCall>(b.Data, b.Offset, b.Count), comparer, 0, count

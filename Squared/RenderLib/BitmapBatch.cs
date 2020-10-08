@@ -30,6 +30,9 @@ namespace Squared.Render {
 
         class BitmapBatchCombiner : IBatchCombiner {
             public bool CanCombine (Batch lhs, Batch rhs) {
+                // Combining large batches could be counter-productive
+                const int combineThreshold = 2048;
+
                 if ((lhs == null) || (rhs == null))
                     return false;
 
@@ -69,6 +72,9 @@ namespace Squared.Render {
                     return false;
 
                 if (!bbrhs.ReleaseAfterDraw)
+                    return false;
+
+                if ((bblhs.Count > combineThreshold) || (bbrhs.Count > combineThreshold))
                     return false;
 
                 return true;
@@ -123,9 +129,13 @@ namespace Squared.Render {
         public SamplerState SamplerState;
         public SamplerState SamplerState2;
 
-        internal static BitmapDrawCallOrderAndTextureComparer DrawCallComparer = new BitmapDrawCallOrderAndTextureComparer();
+        internal static ThreadLocal<BitmapDrawCallOrderAndTextureComparer> DrawCallComparer = new ThreadLocal<BitmapDrawCallOrderAndTextureComparer>(
+            () => new BitmapDrawCallOrderAndTextureComparer()
+        );
         internal static BitmapDrawCallTextureComparer DrawCallTextureComparer = new BitmapDrawCallTextureComparer();
-        internal static BitmapDrawCallTextureAndReverseOrderComparer DrawCallTextureAndReverseOrderComparer = new BitmapDrawCallTextureAndReverseOrderComparer();
+        internal static ThreadLocal<BitmapDrawCallTextureAndReverseOrderComparer> DrawCallTextureAndReverseOrderComparer = new ThreadLocal<BitmapDrawCallTextureAndReverseOrderComparer>(
+            () => new BitmapDrawCallTextureAndReverseOrderComparer()
+        );
 
         internal static ThreadLocal<BitmapDrawCallSorterComparer> DrawCallSorterComparer = new ThreadLocal<BitmapDrawCallSorterComparer>(
             () => new BitmapDrawCallSorterComparer()
@@ -309,11 +319,11 @@ namespace Squared.Render {
                 _DrawCalls.Sort(
                     DisableSortKeys 
                         ? (IRefComparer<BitmapDrawCall>)DrawCallTextureComparer 
-                        : DrawCallTextureAndReverseOrderComparer, 
+                        : DrawCallTextureAndReverseOrderComparer.Value, 
                     indexArray
                 );
             } else {
-                _DrawCalls.Sort(DrawCallComparer, indexArray);
+                _DrawCalls.Sort(DrawCallComparer.Value, indexArray);
             }
 
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
