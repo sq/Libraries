@@ -49,6 +49,7 @@
     <Compile Include="Controls\StaticText.cs" />
     <Compile Include="Decorations.cs" />
     <Compile Include="Controls\Controls.cs" />
+    <Compile Include="Events.cs" />
     <Compile Include="LayoutContext.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Data.cs" />

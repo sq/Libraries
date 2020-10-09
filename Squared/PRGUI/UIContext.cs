@@ -16,35 +16,7 @@ using Squared.Util.Event;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI {
-    public static class UIEvents {
-        public static readonly string LostFocus = string.Intern("LostFocus"),
-            GotFocus = string.Intern("GotFocus"),
-            MouseDown = string.Intern("MouseDown"),
-            // Mouse moved with no button(s) held
-            MouseMove = string.Intern("MouseMove"),
-            // Mouse moved with button(s) held
-            MouseDrag = string.Intern("MouseDrag"),
-            MouseUp = string.Intern("MouseUp"),
-            MouseEnter = string.Intern("MouseEnter"),
-            MouseLeave = string.Intern("MouseLeave"),
-            Click = string.Intern("Click"),
-            Scroll = string.Intern("Scroll"),
-            KeyDown = string.Intern("KeyDown"),
-            KeyPress = string.Intern("KeyPress"),
-            KeyUp = string.Intern("KeyUp"),
-            Moved = string.Intern("Moved"),
-            ValueChanged = string.Intern("ValueChanged"),
-            CheckedChanged = string.Intern("CheckedChanged"),
-            RadioButtonSelected = string.Intern("RadioButtonSelected"),
-            SelectionChanged = string.Intern("SelectionChanged"),
-            Shown = string.Intern("Shown"),
-            Closed = string.Intern("Closed"),
-            OpacityTweenEnded = string.Intern("OpacityTweenEnded"),
-            BackgroundColorTweenEnded = string.Intern("BackgroundColorTweenEnded"),
-            TextColorTweenEnded = string.Intern("TextColorTweenEnded");
-    }
-
-    public class UIContext : IDisposable {
+    public partial class UIContext : IDisposable {
         private class ScratchRenderTarget : IDisposable {
             public readonly UIContext Context;
             public readonly AutoRenderTarget Instance;
@@ -330,54 +302,6 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        private void TextInputEXT_TextInput (char ch) {
-            // Control characters will be handled through the KeyboardState path
-            if (char.IsControl(ch))
-                return;
-
-            HandleKeyEvent(UIEvents.KeyPress, null, ch);
-        }
-
-        private void TerminateComposition () {
-            if (IsCompositionActive)
-                Console.WriteLine("Terminating composition");
-            IsCompositionActive = false;
-
-            if (CachedCompositionPreview != null) {
-                CachedCompositionPreview.Text = "";
-                CachedCompositionPreview.Visible = false;
-            }
-        }
-
-        private void UpdateComposition (string currentText, int cursorPosition, int selectionLength) {
-            IsCompositionActive = true;
-            Console.WriteLine($"Composition text '{currentText}' with cursor at offset {cursorPosition}, selection length {selectionLength}");
-
-            var instance = GetCompositionPreviewInstance();
-            instance.Text = currentText;
-            instance.Invalidate();
-
-            var offset = Layout.GetRect(Focused.LayoutKey).Position;
-            // HACK
-            var editable = Focused as Controls.EditableText;
-            if (editable != null) {
-                var compositionOffset = editable.GetCursorPosition();
-                offset += compositionOffset;
-            }
-
-            instance.Margins = new Margins(offset.X, offset.Y, 0, 0);
-            instance.Visible = true;
-        }
-
-        private void TextInputEXT_TextEditing (string text, int cursorPosition, int length) {
-            if ((text == null) || (text.Length == 0)) {
-                TerminateComposition();
-                return;
-            }
-
-            UpdateComposition(text, cursorPosition, length);
-        }
-
         public UIContext (DefaultMaterialSet materials, IGlyphSource font = null, ITimeProvider timeProvider = null)
             : this (
                 materials: materials,
@@ -393,65 +317,6 @@ namespace Squared.PRGUI {
             Decorations = decorations;
             TimeProvider = TimeProvider ?? new DotNetTimeProvider();
             Materials = materials;
-        }
-
-        internal bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false, bool targetHandlesFirst = false) {
-            // FIXME: Is this right?
-            if (target == null)
-                return false;
-            if (EventBus == null)
-                return true;
-
-            if (!targetHandlesFirst && EventBus.Broadcast(target, name, args))
-                return true;
-            if (targetHandlesFirst && target.HandleEvent(name, args))
-                return true;
-
-            if (suppressHandler)
-                return false;
-
-            if (targetHandlesFirst)
-                return EventBus.Broadcast(target, name, args);
-            else
-                return target.HandleEvent(name, args);
-        }
-
-        internal bool FireEvent (string name, Control target, bool suppressHandler = false, bool targetHandlesFirst = false) {
-            // FIXME: Is this right?
-            if (target == null)
-                return false;
-            if (EventBus == null)
-                return true;
-
-            if (!targetHandlesFirst && EventBus.Broadcast<object>(target, name, null))
-                return true;
-            if (targetHandlesFirst && target.HandleEvent(name))
-                return true;
-
-            if (suppressHandler)
-                return false;
-
-            if (targetHandlesFirst)
-                return EventBus.Broadcast<object>(target, name, null);
-            else
-                return target.HandleEvent(name);
-        }
-
-        private void HandleNewFocusTarget (Control previous, Control target) {
-            if (target?.AcceptsTextInput ?? false) {
-                if (previous?.AcceptsTextInput ?? false) {
-                } else {
-                    if (!IsTextInputRegistered) {
-                        IsTextInputRegistered = true;
-                        TextInputEXT.TextInput += TextInputEXT_TextInput;
-                        TextInputEXT.TextEditing += TextInputEXT_TextEditing;
-                    }
-                    TextInputEXT.StartTextInput();
-                }
-            } else if (previous?.AcceptsTextInput ?? false) {
-                TextInputEXT.StopTextInput();
-                IsCompositionActive = false;
-            }
         }
 
         private Tooltip GetTooltipInstance () {
@@ -683,117 +548,11 @@ namespace Squared.PRGUI {
             }
         }
 
-        public bool HandleKeyEvent (string name, Keys? key, char? ch) {
-            if (Focused == null)
-                return false;
-
-            var evt = new KeyEventArgs {
-                Context = this,
-                Modifiers = CurrentModifiers,
-                Key = key,
-                Char = ch
-            };
-
-            // FIXME: Suppress events with a char if the target doesn't accept text input?
-            if (FireEvent(name, Focused, evt))
-                return true;
-
-            return false;
-        }
-
-        private MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition) {
-            if (target == null)
-                return default(MouseEventArgs);
-
-            var box = target.GetRect(Layout, contentRect: false);
-            var contentBox = target.GetRect(Layout, contentRect: true);
-            var mdp = MouseDownPosition ?? globalPosition;
-            var travelDistance = (globalPosition - mdp).Length();
-            return new MouseEventArgs {
-                Context = this,
-                Modifiers = CurrentModifiers,
-                Focused = Focused,
-                MouseOver = MouseOver,
-                Hovering = Hovering,
-                MouseCaptured = MouseCaptured,
-                GlobalPosition = globalPosition,
-                LocalPosition = globalPosition - contentBox.Position,
-                Box = box,
-                ContentBox = contentBox,
-                MouseDownPosition = mdp,
-                MovedSinceMouseDown = travelDistance >= MinimumMovementDistance,
-                DoubleClicking = IsInDoubleClickWindow(target, globalPosition) && (MouseCaptured != null)
-            };
-        }
-
         private void HideTooltipForMouseInput () {
             ResetTooltipShowTimer();
             HideTooltip(true);
             FirstTooltipHoverTime = null;
             LastTooltipHoverTime = 0;
-        }
-
-        private bool HandleMouseDown (Control target, Vector2 globalPosition) {
-            var relinquishedHandlers = new HashSet<Control>();
-
-            HideTooltipForMouseInput();
-
-            // HACK: Prevent infinite repeat in corner cases
-            int steps = 5;
-            while (steps-- > 0) {
-                SuppressNextCaptureLoss = false;
-                MouseDownPosition = globalPosition;
-                if (target != null && (target.AcceptsMouseInput && target.Enabled))
-                    MouseCaptured = target;
-                if (target == null || (target.IsValidFocusTarget && target.Enabled))
-                    Focused = target;
-                // FIXME: Suppress if disabled?
-                LastMouseDownTime = Now;
-                var previouslyCaptured = MouseCaptured;
-                var ok = FireEvent(UIEvents.MouseDown, target, MakeMouseEventArgs(target, globalPosition));
-
-                // HACK: A control can pre-emptively relinquish focus to pass the mouse event on to someone else
-                if (
-                    (previouslyCaptured == target) &&
-                    (ReleasedCapture == target)
-                ) {
-                    relinquishedHandlers.Add(target);
-                    UpdateCaptureAndHovering(globalPosition, target);
-                    target = MouseCaptured ?? Hovering;
-                    continue;
-                } else {
-                    ReleasedCapture = null;
-                    return ok;
-                }
-            }
-
-            return false;
-        }
-
-        private void HandleMouseUp (Control target, Vector2 globalPosition) {
-            HideTooltipForMouseInput();
-            MouseDownPosition = null;
-            // FIXME: Suppress if disabled?
-            FireEvent(UIEvents.MouseUp, target, MakeMouseEventArgs(target, globalPosition));
-        }
-
-        private void HandleMouseMove (Control target, Vector2 globalPosition) {
-            FireEvent(UIEvents.MouseMove, target, MakeMouseEventArgs(target, globalPosition));
-        }
-
-        private void HandleMouseDrag (Control target, Vector2 globalPosition) {
-            // FIXME: Suppress if disabled?
-            FireEvent(UIEvents.MouseDrag, target, MakeMouseEventArgs(target, globalPosition));
-        }
-
-        private void HandleScroll (Control control, float delta) {
-            while (control != null) {
-                if (FireEvent(UIEvents.Scroll, control, delta))
-                    return;
-
-                if (control.TryGetParent(out control))
-                    continue;
-            }
         }
 
         private void HideTooltip (bool instant) {
@@ -863,47 +622,6 @@ namespace Squared.PRGUI {
             PreviousTooltipAnchor = anchor;
             IsTooltipVisible = true;
             UpdateSubtreeLayout(instance);
-        }
-
-        private void HandleHoverTransition (Control previous, Control current) {
-            if (previous != null)
-                FireEvent(UIEvents.MouseLeave, previous, current);
-
-            if (current != null)
-                FireEvent(UIEvents.MouseEnter, current, previous);
-
-            ResetTooltipShowTimer();
-        }
-
-        private bool IsInDoubleClickWindow (Control target, Vector2 position) {
-            var movedDistance = (position - LastClickPosition).Length();
-            if (
-                (LastClickTarget == target) &&
-                (movedDistance < MinimumMovementDistance)
-            ) {
-                var elapsed = Now - LastClickTime;
-                return elapsed < DoubleClickWindowSize;
-            }
-            return false;
-        }
-
-        private void HandleClick (Control target, Vector2 mousePosition) {
-            if (!target.Enabled)
-                return;
-
-            if (IsInDoubleClickWindow(target, mousePosition))
-                SequentialClickCount++;
-            else
-                SequentialClickCount = 1;
-
-            LastClickPosition = mousePosition;
-            LastClickTarget = target;
-            LastClickTime = LastMouseDownTime;
-            FireEvent(UIEvents.Click, target, SequentialClickCount);
-        }
-
-        private void HandleDrag (Control originalTarget, Control finalTarget) {
-            // FIXME
         }
 
         // Position is relative to the top-left corner of the canvas
@@ -1030,32 +748,5 @@ namespace Squared.PRGUI {
                 MousePosition = MousePosition
             };
         }
-    }
-
-    public struct KeyboardModifiers {
-        public bool Control => LeftControl || RightControl;
-        public bool Shift => LeftShift || RightShift;
-        public bool Alt => LeftAlt || RightAlt;
-
-        public bool LeftControl, RightControl, LeftShift, RightShift, LeftAlt, RightAlt;
-    }
-
-    public struct MouseEventArgs {
-        public UIContext Context;
-
-        public KeyboardModifiers Modifiers;
-        public Control MouseOver, MouseCaptured, Hovering, Focused;
-        public Vector2 GlobalPosition, LocalPosition;
-        public Vector2 MouseDownPosition;
-        public RectF Box, ContentBox;
-        public bool MovedSinceMouseDown, DoubleClicking;
-    }
-
-    public struct KeyEventArgs {
-        public UIContext Context;
-
-        public KeyboardModifiers Modifiers;
-        public Keys? Key;
-        public char? Char;
     }
 }
