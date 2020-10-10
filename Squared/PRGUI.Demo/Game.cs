@@ -149,6 +149,13 @@ namespace PRGUI.Demo {
                 TooltipContent = "The control most recently clicked with the mouse"
             };
 
+            var focusedCtl = new StaticText {
+                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                AutoSize = false,
+                Text = "",
+                TooltipContent = "The control with keyboard focus"
+            };
+
             var testString = "Καλημέρα こんにちは \U0002F8B6\U0002F8CD\U0002F8D3 Hello";
 
             var textfield = new EditableText {
@@ -242,9 +249,9 @@ namespace PRGUI.Demo {
                             hoveringCtl,
                             lastClickedCtl,
                             button1,
+                            focusedCtl,
                             new StaticText {
                                 Text = "A Button:",
-                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                                 TooltipContent = "Nice label.\r\nThis label has a very long tooltip that has embedded line breaks and is just generally long, so that it will get word wrapped and stuff, testing the layout constraints for tooltips",
                                 FocusBeneficiary = changePaintOrder
                             },
@@ -331,6 +338,10 @@ namespace PRGUI.Demo {
                     floatingWindow
                 }
             };
+
+            Context.EventBus.Subscribe(null, UIEvents.GotFocus, (ei) => {
+                focusedCtl.Text = "Focused: " + ei.Source;
+            });
 
             Context.EventBus.Subscribe(null, UIEvents.MouseEnter, (ei) => {
                 hoveringCtl.Text = "Hovering: " + ei.Source;

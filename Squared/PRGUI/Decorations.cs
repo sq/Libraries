@@ -222,14 +222,20 @@ namespace Squared.PRGUI.Decorations {
         public Color? FloatingContainerOutlineColor, 
             FloatingContainerFillColor;
 
-        private void Button_Below_Common (UIOperationContext context, DecorationSettings settings, out float alpha, out float thickness, out pSRGBColor baseColor, out float pulse) {
+        private void Button_Below_Common (
+            UIOperationContext context, DecorationSettings settings, 
+            out float alpha, out float thickness, out float pulse,
+            out pSRGBColor baseColor, out pSRGBColor outlineColor 
+        ) {
             var state = settings.State;
+            var isFocused = state.IsFlagged(ControlStates.Focused);
             baseColor = settings.BackgroundColor ?? (pSRGBColor)(
-                state.IsFlagged(ControlStates.Focused)
+                isFocused
                     ? FocusedColor
                     : InactiveColor
             );
             var hasColor = settings.BackgroundColor.HasValue;
+            var pulseThickness = Arithmetic.PulseSine(context.Now / 3f, 0, 0.4f);
 
             pulse = 0;
             if (state.IsFlagged(ControlStates.Pressed)) {
@@ -241,28 +247,36 @@ namespace Squared.PRGUI.Decorations {
                     baseColor.Vector4.W = 1;
                 } else
                     baseColor = ActiveColor;
+                outlineColor = baseColor * 1.5f;
             } else if (state.IsFlagged(ControlStates.Hovering)) {
                 alpha = hasColor ? 0.75f : 0.55f;
-                thickness = ActiveOutlineThickness;
+                thickness = ActiveOutlineThickness + pulseThickness;
                 pulse = Arithmetic.PulseSine(context.Now / 2.5f, 0f, 0.15f);
+                outlineColor = baseColor * 1.5f;
             } else {
                 alpha = hasColor
-                    ? (state.IsFlagged(ControlStates.Focused) ? 0.95f : 0.8f)
-                    : (state.IsFlagged(ControlStates.Focused) ? 0.65f : 0.4f);
-                thickness = state.IsFlagged(ControlStates.Focused) ? ActiveOutlineThickness : InactiveOutlineThickness;
+                    ? (isFocused ? 0.95f : 0.8f)
+                    : (isFocused ? 0.65f : 0.4f);
+                thickness = isFocused
+                    ? ActiveOutlineThickness + pulseThickness
+                    : InactiveOutlineThickness;
+                outlineColor = baseColor * (isFocused ? 1.5f : 1.2f);
             }
         }
 
         private void Button_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             float alpha, thickness, pulse;
-            pSRGBColor baseColor;
-            Button_Below_Common(context, settings, out alpha, out thickness, out baseColor, out pulse);
+            pSRGBColor baseColor, outlineColor;
+            Button_Below_Common(
+                context, settings, out alpha, out thickness, out pulse, 
+                out baseColor, out outlineColor
+            );
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
                 radius: InteractableCornerRadius,
-                outlineRadius: thickness, outlineColor: baseColor * alpha,
+                outlineRadius: thickness, outlineColor: outlineColor * alpha,
                 innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
                 fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
                 shadow: InteractableShadow
@@ -326,14 +340,17 @@ namespace Squared.PRGUI.Decorations {
             AdjustRectForCheckbox(ref settings);
 
             float alpha, thickness, pulse;
-            pSRGBColor baseColor;
-            Button_Below_Common(context, settings, out alpha, out thickness, out baseColor, out pulse);
+            pSRGBColor baseColor, outlineColor;
+            Button_Below_Common(
+                context, settings, out alpha, out thickness, out pulse, 
+                out baseColor, out outlineColor
+            );
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
                 radius: CheckboxSize * 0.45f,
-                outlineRadius: thickness, outlineColor: baseColor * alpha,
+                outlineRadius: thickness, outlineColor: outlineColor * alpha,
                 innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
                 fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
                 shadow: InteractableShadow

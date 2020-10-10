@@ -185,6 +185,9 @@ namespace Squared.PRGUI {
         private Control PickNextFocusTarget (Control current, int delta) {
             ControlCollection collection;
 
+            if (current == null)
+                return FindFocusableSibling(Controls, null, delta);
+
             while (current != null) {
                 if (current != null) {
                     if (!current.TryGetParent(out Control parent))
