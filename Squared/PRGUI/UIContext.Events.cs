@@ -140,35 +140,68 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        // TODO: Climb up/down the tree as necessary
-        private Control PickNextFocusTarget (Control current, int delta) {
-            ControlCollection collection;
-            if (current != null) {
-                if (!current.TryGetParent(out Control parent))
-                    return null;
-                collection = (parent as IControlContainer)?.Children;
-            } else {
-                collection = Controls;
-            }
-
-            // FIXME: This means containers that themselves can't accept focus will
-            //  not be enumerated even if their children are eligible
-            var tabOrdered = collection.InTabOrder(true);
+        private Control FindFocusableSibling (ControlCollection collection, Control current, int delta) {
+            var tabOrdered = collection.InTabOrder(false);
             if (tabOrdered.Count < 1)
                 return null;
 
-            var tabIndex = tabOrdered.IndexOf(current);
-            if (tabIndex < 0)
-                return null;
+            int tabIndex = tabOrdered.IndexOf(current), newIndex, endIndex, idx;
+            if (tabIndex < 0) {
+                newIndex = (delta > 0 ? 0 : tabOrdered.Count - 1);
+                endIndex = (delta > 0 ? tabOrdered.Count - 1 : 0);
+            } else {
+                newIndex = tabIndex + delta;
+                endIndex = Arithmetic.Wrap(tabIndex - delta, 0, tabOrdered.Count - 1);
+            }
 
-            var newIndex = tabIndex + delta;
+            while (newIndex != endIndex) {
+                if (collection.Parent == null)
+                    idx = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
+                else if (newIndex >= tabOrdered.Count)
+                    return null;
+                else if (newIndex < 0)
+                    return null;
+                else
+                    idx = newIndex;
 
-            if (newIndex < 0)
-                newIndex = tabOrdered.Count - 1;
-            else if (newIndex >= tabOrdered.Count)
-                newIndex = 0;
+                var control = tabOrdered[idx];
 
-            return tabOrdered[newIndex];
+                if (control.Enabled && control.AcceptsFocus) {
+                    return control;
+                } else if (control is IControlContainer) {
+                    var child = FindFocusableSibling(((IControlContainer)control).Children, null, delta);
+                    if (child != null)
+                        return child;
+                }
+
+                newIndex += delta;
+                if (collection.Parent == null)
+                    newIndex = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
+            }
+
+            return null;
+        }
+
+        private Control PickNextFocusTarget (Control current, int delta) {
+            ControlCollection collection;
+
+            while (current != null) {
+                if (current != null) {
+                    if (!current.TryGetParent(out Control parent))
+                        return null;
+                    collection = (parent as IControlContainer)?.Children;
+                } else {
+                    collection = Controls;
+                }
+
+                var sibling = FindFocusableSibling(collection, current, delta);
+                if (sibling != null)
+                    return sibling;
+
+                current = collection.Parent;
+            }
+
+            return null;
         }
 
         private MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition) {
