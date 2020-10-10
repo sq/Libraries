@@ -122,7 +122,9 @@ namespace Squared.PRGUI {
             if (FireEvent(name, Focused, evt))
                 return true;
 
-            if (name == UIEvents.KeyPress)
+            if (name != UIEvents.KeyPress)
+                return false;
+
             switch (key) {
                 case Keys.Escape:
                     Focused = null;
@@ -135,6 +137,12 @@ namespace Squared.PRGUI {
                     else
                         return false;
                 }
+                case Keys.Space:
+                    if (Focused == null)
+                        return false;
+                    if (!Focused.AcceptsMouseInput)
+                        return false;
+                    return FireEvent(UIEvents.Click, Focused, 1);
             }
 
             return false;

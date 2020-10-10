@@ -247,12 +247,15 @@ namespace Squared.PRGUI.Decorations {
                     baseColor.Vector4.W = 1;
                 } else
                     baseColor = ActiveColor;
-                outlineColor = baseColor * 1.5f;
+                outlineColor = baseColor + (hasColor ? 0.2f : 0.05f);
             } else if (state.IsFlagged(ControlStates.Hovering)) {
                 alpha = hasColor ? 0.75f : 0.55f;
                 thickness = ActiveOutlineThickness + pulseThickness;
                 pulse = Arithmetic.PulseSine(context.Now / 2.5f, 0f, 0.15f);
-                outlineColor = baseColor * 1.5f;
+                if (hasColor)
+                    outlineColor = baseColor + (hasColor ? 0.2f : 0f);
+                else
+                    outlineColor = baseColor;
             } else {
                 alpha = hasColor
                     ? (isFocused ? 0.95f : 0.8f)
@@ -260,7 +263,10 @@ namespace Squared.PRGUI.Decorations {
                 thickness = isFocused
                     ? ActiveOutlineThickness + pulseThickness
                     : InactiveOutlineThickness;
-                outlineColor = baseColor * (isFocused ? 1.5f : 1.2f);
+                if (hasColor)
+                    outlineColor = baseColor + (isFocused ? 0.2f : 0.05f);
+                else
+                    outlineColor = baseColor;
             }
         }
 

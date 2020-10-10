@@ -449,6 +449,10 @@ namespace Squared.PRGUI.Controls {
                     case Keys.Insert:
                         evt.Context.TextInsertionMode = !evt.Context.TextInsertionMode;
                         return true;
+                    
+                    // If we don't consume this event, the context will generate a click for it
+                    case Keys.Space:
+                        return true;
 
                     default:
                         if (evt.Modifiers.Control || evt.Modifiers.Alt)

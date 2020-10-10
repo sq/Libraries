@@ -801,13 +801,31 @@ namespace Squared.Render {
             return new pSRGBColor(a.ToVector4() - b.ToVector4());
         }
 
+        public static pSRGBColor operator - (pSRGBColor color, float inverseDelta) {
+            return color + (-inverseDelta);
+        }
+
+        public static pSRGBColor operator + (pSRGBColor color, float delta) {
+            if (Math.Abs(delta) < 0.001f)
+                return color;
+
+            var result = color.ToVector4();
+            var alpha = Math.Max(result.W, 0.001f);
+            result.X /= alpha; result.Y /= alpha; result.Z /= alpha;
+            result.X += delta; result.Y += delta; result.Z += delta;
+            alpha = Arithmetic.Clamp(alpha + delta, 0, 1);
+            result.X *= alpha; result.Y *= alpha; result.Z *= alpha;
+            result.W = alpha;
+            return new pSRGBColor(result);
+        }
+
         public static pSRGBColor operator + (pSRGBColor a, pSRGBColor b) {
             return new pSRGBColor(a.ToVector4() + b.ToVector4());
         }
 
-        public static pSRGBColor operator * (pSRGBColor color, float alpha) {
+        public static pSRGBColor operator * (pSRGBColor color, float multiplier) {
             var result = color.ToVector4();
-            result *= alpha;
+            result *= multiplier;
             return new pSRGBColor(result, true);
         }
 
