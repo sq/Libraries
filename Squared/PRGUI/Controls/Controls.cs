@@ -316,7 +316,8 @@ namespace Squared.PRGUI {
     }
 
     public class ControlCollection : IEnumerable<Control> {
-        private UnorderedList<Control> SortBuffer = new UnorderedList<Control>();
+        private List<Control> PaintOrderedItems = new List<Control>(),
+            TabOrderedItems = new List<Control>();
         private List<Control> Items = new List<Control>();
 
         public int Count => Items.Count;
@@ -369,14 +370,20 @@ namespace Squared.PRGUI {
             }
         }
 
-        internal UnorderedList<Control> InOrder<TComparer> (TComparer comparer)
-            where TComparer : IComparer<Control>
-        {
-            SortBuffer.Clear();
-            SortBuffer.EnsureCapacity(Items.Count);
-            SortBuffer.AddRange(Items);
-            SortBuffer.Sort(comparer);
-            return SortBuffer;
+        internal List<Control> InTabOrder (bool suitableTargetsOnly) {
+            TabOrderedItems.Clear();
+            foreach (var item in Items)
+                if (!suitableTargetsOnly || (item.AcceptsFocus && item.Enabled))
+                    TabOrderedItems.Add(item);
+            TabOrderedItems.Sort(Control.TabOrderComparer.Instance);
+            return TabOrderedItems;
+        }
+
+        internal List<Control> InPaintOrder () {
+            PaintOrderedItems.Clear();
+            PaintOrderedItems.AddRange(Items);
+            PaintOrderedItems.Sort(Control.PaintOrderComparer.Instance);
+            return PaintOrderedItems;
         }
 
         IEnumerator<Control> IEnumerable<Control>.GetEnumerator () {

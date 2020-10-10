@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+using Squared.PRGUI.Controls;
+using Squared.Util;
 
 namespace Squared.PRGUI {
     public partial class UIContext : IDisposable {
@@ -109,9 +111,6 @@ namespace Squared.PRGUI {
         }
 
         public bool HandleKeyEvent (string name, Keys? key, char? ch) {
-            if (Focused == null)
-                return false;
-
             var evt = new KeyEventArgs {
                 Context = this,
                 Modifiers = CurrentModifiers,
@@ -123,7 +122,53 @@ namespace Squared.PRGUI {
             if (FireEvent(name, Focused, evt))
                 return true;
 
+            if (name == UIEvents.KeyPress)
+            switch (key) {
+                case Keys.Escape:
+                    Focused = null;
+                    break;
+                case Keys.Tab: {
+                    var target = PickNextFocusTarget(Focused, CurrentModifiers.Shift ? -1 : 1);
+                    Console.WriteLine($"Tab {Focused} -> {target}");
+                    if (target != null)
+                        return TrySetFocus(target);
+                    else
+                        return false;
+                }
+            }
+
             return false;
+        }
+
+        // TODO: Climb up/down the tree as necessary
+        private Control PickNextFocusTarget (Control current, int delta) {
+            ControlCollection collection;
+            if (current != null) {
+                if (!current.TryGetParent(out Control parent))
+                    return null;
+                collection = (parent as IControlContainer)?.Children;
+            } else {
+                collection = Controls;
+            }
+
+            // FIXME: This means containers that themselves can't accept focus will
+            //  not be enumerated even if their children are eligible
+            var tabOrdered = collection.InTabOrder(true);
+            if (tabOrdered.Count < 1)
+                return null;
+
+            var tabIndex = tabOrdered.IndexOf(current);
+            if (tabIndex < 0)
+                return null;
+
+            var newIndex = tabIndex + delta;
+
+            if (newIndex < 0)
+                newIndex = tabOrdered.Count - 1;
+            else if (newIndex >= tabOrdered.Count)
+                newIndex = 0;
+
+            return tabOrdered[newIndex];
         }
 
         private MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition) {

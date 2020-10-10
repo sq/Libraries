@@ -174,37 +174,44 @@ namespace Squared.PRGUI {
         /// </summary>
         public Control MouseOver { get; private set; }
 
+        public bool TrySetFocus (Control value) {
+            var newFocusTarget = value;
+            if (newFocusTarget != null) {
+                while (newFocusTarget.FocusBeneficiary != null) {
+                    var beneficiary = newFocusTarget.FocusBeneficiary;
+                    newFocusTarget = beneficiary;
+                    if (newFocusTarget == value)
+                        throw new Exception("Cycle found in focus beneficiary chain");
+                }
+
+                // FIXME: Should we throw here?
+                if (!newFocusTarget.IsValidFocusTarget || !newFocusTarget.Enabled)
+                    return false;
+            }
+
+            var previous = _Focused;
+            _Focused = newFocusTarget;
+            if ((previous != null) && (previous != newFocusTarget))
+                FireEvent(UIEvents.LostFocus, previous, newFocusTarget);
+
+            // HACK: Handle cases where focus changes re-entrantly so we don't go completely bonkers
+            if (_Focused == newFocusTarget)
+                HandleNewFocusTarget(previous, newFocusTarget);
+
+            if ((_Focused != null) && (previous != newFocusTarget) && (_Focused == newFocusTarget))
+                FireEvent(UIEvents.GotFocus, newFocusTarget, previous);
+
+            return true;
+        }
+
         /// <summary>
         /// The control that currently has keyboard input focus
         /// </summary>
         public Control Focused {
             get => _Focused;
             set {
-                var newFocusTarget = value;
-                if (newFocusTarget != null) {
-                    while (newFocusTarget.FocusBeneficiary != null) {
-                        var beneficiary = newFocusTarget.FocusBeneficiary;
-                        newFocusTarget = beneficiary;
-                        if (newFocusTarget == value)
-                            throw new Exception("Cycle found in focus beneficiary chain");
-                    }
-
-                    // FIXME: Should we throw here?
-                    if (!newFocusTarget.IsValidFocusTarget || !newFocusTarget.Enabled)
-                        newFocusTarget = null;
-                }
-
-                var previous = _Focused;
-                _Focused = newFocusTarget;
-                if ((previous != null) && (previous != newFocusTarget))
-                    FireEvent(UIEvents.LostFocus, previous, newFocusTarget);
-
-                // HACK: Handle cases where focus changes re-entrantly so we don't go completely bonkers
-                if (_Focused == newFocusTarget)
-                    HandleNewFocusTarget(previous, newFocusTarget);
-
-                if ((_Focused != null) && (previous != newFocusTarget) && (_Focused == newFocusTarget))
-                    FireEvent(UIEvents.GotFocus, newFocusTarget, previous);
+                if (!TrySetFocus(value))
+                    TrySetFocus(null);
             }
         }
 
@@ -626,9 +633,9 @@ namespace Squared.PRGUI {
 
         // Position is relative to the top-left corner of the canvas
         public Control HitTest (Vector2 position, bool acceptsMouseInputOnly = false, bool acceptsFocusOnly = false) {
-            var sorted = Controls.InOrder(Control.PaintOrderComparer.Instance);
+            var sorted = Controls.InPaintOrder();
             for (var i = sorted.Count - 1; i >= 0; i--) {
-                var control = sorted.DangerousGetItem(i);
+                var control = sorted[i];
                 var result = control.HitTest(Layout, position, acceptsMouseInputOnly, acceptsFocusOnly);
                 if (result != null)
                     return result;
@@ -686,7 +693,7 @@ namespace Squared.PRGUI {
                 };
                 renderer.Clear(color: Color.Transparent, stencil: 0, layer: -999);
 
-                var seq = Controls.InOrder(Control.PaintOrderComparer.Instance);
+                var seq = Controls.InPaintOrder();
                 foreach (var control in seq) {
                     // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
                     //  overlap each other, at the cost of more draw calls.

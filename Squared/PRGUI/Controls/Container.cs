@@ -10,8 +10,12 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public class Container : Control {
-        public readonly ControlCollection Children;
+    public interface IControlContainer {
+        ControlCollection Children { get; }
+    }
+
+    public class Container : Control, IControlContainer {
+        public ControlCollection Children { get; private set; }
 
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
@@ -113,7 +117,7 @@ namespace Squared.PRGUI.Controls {
                 maxLayer2 = layer2,
                 maxLayer3 = layer3;
 
-            var sequence = Children.InOrder(PaintOrderComparer.Instance);
+            var sequence = Children.InPaintOrder();
             foreach (var item in sequence) {
                 passSet.Below.Layer = layer1;
                 passSet.Content.Layer = layer2;
@@ -215,9 +219,9 @@ namespace Squared.PRGUI.Controls {
             bool success = AcceptsMouseInput || !acceptsMouseInputOnly;
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
-            var sorted = Children.InOrder(PaintOrderComparer.Instance);
+            var sorted = Children.InPaintOrder();
             for (int i = sorted.Count - 1; i >= 0; i--) {
-                var item = sorted.DangerousGetItem(i);
+                var item = sorted[i];
                 var newResult = item.HitTest(context, position, acceptsMouseInputOnly, acceptsFocusOnly);
                 if (newResult != null) {
                     result = newResult;

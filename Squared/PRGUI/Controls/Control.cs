@@ -449,9 +449,8 @@ namespace Squared.PRGUI {
             else
                 OnRasterize(contentContext, ref renderer, settings, decorations);
 
-            if ((pass == RasterizePasses.Content) && HasChildren) {
+            if (pass == RasterizePasses.Content)
                 OnRasterizeChildren(contentContext, ref childrenPassSet, settings);
-            }
 
             if (hasNestedContext) {
                 // GROSS OPTIMIZATION HACK: Detect that any rendering operation(s) occurred inside the

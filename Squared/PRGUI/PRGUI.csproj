@@ -54,6 +54,7 @@
     <Compile Include="Enums.cs" />
     <Compile Include="Data.cs" />
     <Compile Include="UIContext.cs" />
+    <Compile Include="UIContext.Events.cs" />
   </ItemGroup>
   <PropertyGroup>
     <SquaredPath>..\..\</SquaredPath>
