@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -142,6 +143,10 @@ namespace Squared.PRGUI {
         /// </summary>
         public ControlCollection Controls { get; private set; }
 
+        private Control _Focused, _MouseCaptured, _Hovering;
+
+        private ConditionalWeakTable<Control, Control> TopLevelFocusMemory = new ConditionalWeakTable<Control, Control>();
+
         /// <summary>
         /// The control that currently has the mouse captured (if a button is pressed)
         /// </summary>
@@ -173,36 +178,6 @@ namespace Squared.PRGUI {
         /// The control currently underneath the mouse cursor
         /// </summary>
         public Control MouseOver { get; private set; }
-
-        public bool TrySetFocus (Control value) {
-            var newFocusTarget = value;
-            if (newFocusTarget != null) {
-                while (newFocusTarget.FocusBeneficiary != null) {
-                    var beneficiary = newFocusTarget.FocusBeneficiary;
-                    newFocusTarget = beneficiary;
-                    if (newFocusTarget == value)
-                        throw new Exception("Cycle found in focus beneficiary chain");
-                }
-
-                // FIXME: Should we throw here?
-                if (!newFocusTarget.IsValidFocusTarget || !newFocusTarget.Enabled)
-                    return false;
-            }
-
-            var previous = _Focused;
-            _Focused = newFocusTarget;
-            if ((previous != null) && (previous != newFocusTarget))
-                FireEvent(UIEvents.LostFocus, previous, newFocusTarget);
-
-            // HACK: Handle cases where focus changes re-entrantly so we don't go completely bonkers
-            if (_Focused == newFocusTarget)
-                HandleNewFocusTarget(previous, newFocusTarget);
-
-            if ((_Focused != null) && (previous != newFocusTarget) && (_Focused == newFocusTarget))
-                FireEvent(UIEvents.GotFocus, newFocusTarget, previous);
-
-            return true;
-        }
 
         /// <summary>
         /// The control that currently has keyboard input focus
@@ -251,8 +226,6 @@ namespace Squared.PRGUI {
         private bool IsCompositionActive = false;
 
         public float Now => (float)TimeProvider.Seconds;
-
-        private Control _Focused, _MouseCaptured, _Hovering;
 
         internal DepthStencilState GetStencilRestore (int targetReferenceStencil) {
             DepthStencilState result;

@@ -53,6 +53,12 @@ namespace Squared.PRGUI {
         }
 
         private void HandleNewFocusTarget (Control previous, Control target) {
+            var topLevelParent = FindTopLevelAncestor(target);
+            if (topLevelParent != null) {
+                TopLevelFocusMemory.Remove(topLevelParent);
+                TopLevelFocusMemory.Add(topLevelParent, target);
+            }
+
             if (target?.AcceptsTextInput ?? false) {
                 if (previous?.AcceptsTextInput ?? false) {
                 } else {
@@ -129,14 +135,27 @@ namespace Squared.PRGUI {
                 case Keys.Escape:
                     Focused = null;
                     break;
-                case Keys.Tab: {
-                    var target = PickNextFocusTarget(Focused, CurrentModifiers.Shift ? -1 : 1);
-                    Console.WriteLine($"Tab {Focused} -> {target}");
-                    if (target != null)
-                        return TrySetFocus(target);
-                    else
-                        return false;
-                }
+                case Keys.Tab:
+                    int tabDelta = CurrentModifiers.Shift ? -1 : 1;
+                    if (CurrentModifiers.Control) {
+                        var currentTopLevel = FindTopLevelAncestor(Focused);
+                        var inTabOrder = Controls.InTabOrder(false);
+                        var currentIndex = inTabOrder.IndexOf(currentTopLevel);
+                        var newIndex = Arithmetic.Wrap(currentIndex + tabDelta, 0, Controls.Count - 1);
+                        var target = inTabOrder[newIndex];
+                        if ((target != null) && (target != currentTopLevel)) {
+                            Console.WriteLine($"Top level tab {currentTopLevel} -> {target}");
+                            return TrySetFocus(target);
+                        } else
+                            return false;
+                    } else {
+                        var target = PickNextFocusTarget(Focused, tabDelta, true);
+                        Console.WriteLine($"Tab {Focused} -> {target}");
+                        if (target != null)
+                            return TrySetFocus(target);
+                        else
+                            return false;
+                    }
                 case Keys.Space:
                     if (Focused == null)
                         return false;
@@ -148,7 +167,63 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        private Control FindFocusableSibling (ControlCollection collection, Control current, int delta) {
+        private Control FindTopLevelAncestor (Control control) {
+            if (control == null)
+                return null;
+
+            while (true) {
+                if (!control.TryGetParent(out Control parent))
+                    return control;
+
+                control = parent;
+            }
+        }
+
+        public bool TrySetFocus (Control value) {
+            var newFocusTarget = value;
+
+            // Top-level controls should pass focus on to their children if possible
+            if (Controls.Contains(value)) {
+                Control childTarget;
+                if (!TopLevelFocusMemory.TryGetValue(value, out childTarget)) {
+                    var container = value as IControlContainer;
+                    if (container != null)
+                        childTarget = container.Children.InTabOrder(true).FirstOrDefault();
+                }
+
+                if (childTarget != null)
+                    newFocusTarget = childTarget;
+            }
+
+            if (newFocusTarget != null) {
+                while (newFocusTarget.FocusBeneficiary != null) {
+                    var beneficiary = newFocusTarget.FocusBeneficiary;
+                    newFocusTarget = beneficiary;
+                    if (newFocusTarget == value)
+                        throw new Exception("Cycle found in focus beneficiary chain");
+                }
+
+                // FIXME: Should we throw here?
+                if (!newFocusTarget.IsValidFocusTarget || !newFocusTarget.Enabled)
+                    return false;
+            }
+
+            var previous = _Focused;
+            _Focused = newFocusTarget;
+            if ((previous != null) && (previous != newFocusTarget))
+                FireEvent(UIEvents.LostFocus, previous, newFocusTarget);
+
+            // HACK: Handle cases where focus changes re-entrantly so we don't go completely bonkers
+            if (_Focused == newFocusTarget)
+                HandleNewFocusTarget(previous, newFocusTarget);
+
+            if ((_Focused != null) && (previous != newFocusTarget) && (_Focused == newFocusTarget))
+                FireEvent(UIEvents.GotFocus, newFocusTarget, previous);
+
+            return true;
+        }
+
+        private Control FindFocusableSibling (ControlCollection collection, Control current, int delta, bool recursive) {
             var tabOrdered = collection.InTabOrder(false);
             if (tabOrdered.Count < 1)
                 return null;
@@ -176,8 +251,8 @@ namespace Squared.PRGUI {
 
                 if (control.Enabled && control.AcceptsFocus) {
                     return control;
-                } else if (control is IControlContainer) {
-                    var child = FindFocusableSibling(((IControlContainer)control).Children, null, delta);
+                } else if (recursive && (control is IControlContainer)) {
+                    var child = FindFocusableSibling(((IControlContainer)control).Children, null, delta, recursive);
                     if (child != null)
                         return child;
                 }
@@ -190,11 +265,11 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        private Control PickNextFocusTarget (Control current, int delta) {
+        private Control PickNextFocusTarget (Control current, int delta, bool recursive) {
             ControlCollection collection;
 
             if (current == null)
-                return FindFocusableSibling(Controls, null, delta);
+                return FindFocusableSibling(Controls, null, delta, recursive);
 
             while (current != null) {
                 if (current != null) {
@@ -205,7 +280,7 @@ namespace Squared.PRGUI {
                     collection = Controls;
                 }
 
-                var sibling = FindFocusableSibling(collection, current, delta);
+                var sibling = FindFocusableSibling(collection, current, delta, recursive);
                 if (sibling != null)
                     return sibling;
 
