@@ -70,6 +70,15 @@ namespace Squared.PRGUI {
         private Control _FocusBeneficiary;
 
         /// <summary>
+        /// Focus was transferred to this control from another control, and it will
+        ///  be returned when this control goes away. Used for menus and modal dialogs
+        /// </summary>
+        public Control FocusDonor {
+            get;
+            protected set;
+        }
+
+        /// <summary>
         /// This control cannot receive focus, but input events that would give it focus will
         ///  direct focus to its beneficiary instead of being ignored
         /// </summary>
@@ -383,7 +392,9 @@ namespace Squared.PRGUI {
             } else {
                 if (context.UIContext.Hovering == this)
                     result |= ControlStates.Hovering;
-                if (context.UIContext.Focused == this)
+                // HACK: If a modal has temporarily borrowed focus from us, we should still appear
+                //  to be focused.
+                if ((context.UIContext.Focused == this) || (context.UIContext.Focused?.FocusDonor == this))
                     result |= ControlStates.Focused;
             }
 

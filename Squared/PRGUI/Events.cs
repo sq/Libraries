@@ -18,6 +18,8 @@ namespace Squared.PRGUI {
             MouseUp = "MouseUp",
             MouseEnter = "MouseEnter",
             MouseLeave = "MouseLeave",
+            // Another mouse button was pressed/released in addition to the one being held
+            MouseButtonsChanged = "MouseButtonsChanged",
             Click = "Click",
             Scroll = "Scroll",
             KeyDown = "KeyDown",
@@ -51,6 +53,7 @@ namespace Squared.PRGUI {
         public Vector2 GlobalPosition, LocalPosition;
         public Vector2 MouseDownPosition;
         public RectF Box, ContentBox;
+        public MouseButtons PreviousButtons, Buttons;
         public bool MovedSinceMouseDown, DoubleClicking;
     }
 

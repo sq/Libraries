@@ -16,8 +16,6 @@ namespace Squared.PRGUI.Controls {
         public const float MenuShowSpeed = 0.1f;
         public const float MenuHideSpeed = 0.25f;
 
-        internal Control FocusDonor;
-
         private Control _SelectedItem;
 
         public Control SelectedItem {

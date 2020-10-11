@@ -94,7 +94,11 @@ namespace Squared.PRGUI {
         /// <summary>
         /// If the mouse is only moved this far (in pixels) it will be treated as no movement for the purposes of click detection
         /// </summary>
-        public float MinimumMovementDistance = 4;
+        public float MinimumMouseMovementDistance = 4;
+        /// <summary>
+        /// Mouse wheel movements are scaled by this amount
+        /// </summary>
+        public float MouseWheelScale = 1.0f / 2.4f;
 
         /// <summary>
         /// A key must be held for this long (in seconds) before repeating begins
@@ -193,10 +197,11 @@ namespace Squared.PRGUI {
         public DefaultMaterialSet Materials { get; private set; }
         public ITimeProvider TimeProvider;
 
+        private MouseButtons CurrentMouseButtons, LastMouseButtons;
+        private float LastMouseWheelValue;
         private KeyboardModifiers CurrentModifiers;
 
         internal Vector2 LastMousePosition;
-        private bool LastMouseButtonState = false;
         private Vector2? MouseDownPosition;
         private KeyboardState LastKeyboardState;
         private bool SuppressNextCaptureLoss = false;
@@ -330,7 +335,7 @@ namespace Squared.PRGUI {
 
         public Control CaptureMouse (Control target) {
             var donor = Focused;
-            if ((MouseCaptured != null) && (MouseCaptured != target) && !LastMouseButtonState)
+            if ((MouseCaptured != null) && (MouseCaptured != target) && (LastMouseButtons == MouseButtons.None))
                 SuppressNextCaptureLoss = true;
             if (target.IsValidFocusTarget)
                 Focused = target;
@@ -371,12 +376,19 @@ namespace Squared.PRGUI {
         }
 
         public void UpdateInput (
-            Vector2 mousePosition, bool leftButtonPressed, KeyboardState keyboardState,
-            float mouseWheelDelta = 0
+            MouseState mouseState, KeyboardState keyboardState,
+            Vector2? mouseOffset = null
         ) {
             var previouslyHovering = Hovering;
             if ((Focused != null) && !Focused.Enabled)
                 Focused = null;
+
+            CurrentMouseButtons = ((mouseState.LeftButton == ButtonState.Pressed) ? MouseButtons.Left : MouseButtons.None) |
+                ((mouseState.MiddleButton == ButtonState.Pressed) ? MouseButtons.Middle : MouseButtons.None) |
+                ((mouseState.RightButton == ButtonState.Pressed) ? MouseButtons.Right : MouseButtons.None);
+
+            var mousePosition = new Vector2(mouseState.X, mouseState.Y) + (mouseOffset ?? Vector2.Zero);
+            var mouseWheelValue = mouseState.ScrollWheelValue * MouseWheelScale;
 
             UpdateCaptureAndHovering(mousePosition);
             var mouseEventTarget = MouseCaptured ?? Hovering;
@@ -384,7 +396,7 @@ namespace Squared.PRGUI {
             ProcessKeyboardState(ref LastKeyboardState, ref keyboardState);
 
             if (LastMousePosition != mousePosition) {
-                if (leftButtonPressed)
+                if (CurrentMouseButtons != MouseButtons.None)
                     HandleMouseDrag(mouseEventTarget, mousePosition);
                 else
                     HandleMouseMove(mouseEventTarget, mousePosition);
@@ -393,10 +405,10 @@ namespace Squared.PRGUI {
             var previouslyCaptured = MouseCaptured;
             var processClick = false;
 
-            if (!LastMouseButtonState && leftButtonPressed) {
+            if ((LastMouseButtons == MouseButtons.None) && (CurrentMouseButtons != MouseButtons.None)) {
                 // FIXME: This one should probably always be Hovering
                 HandleMouseDown(mouseEventTarget, mousePosition);
-            } else if (LastMouseButtonState && !leftButtonPressed) {
+            } else if ((LastMouseButtons != MouseButtons.None) && (CurrentMouseButtons == MouseButtons.None)) {
                 if (Hovering != null)
                     HandleMouseUp(mouseEventTarget, mousePosition);
 
@@ -407,6 +419,8 @@ namespace Squared.PRGUI {
                     MouseCaptured = null;
                 else
                     SuppressNextCaptureLoss = false;
+            } else if (LastMouseButtons != CurrentMouseButtons) {
+                FireEvent(UIEvents.MouseButtonsChanged, mouseEventTarget, MakeMouseEventArgs(mouseEventTarget, mousePosition));
             }
 
             if (processClick) {
@@ -418,13 +432,16 @@ namespace Squared.PRGUI {
                     HandleDrag(previouslyCaptured, Hovering);
             }
 
+            var mouseWheelDelta = mouseWheelValue - LastMouseWheelValue;
+
             if (mouseWheelDelta != 0)
                 HandleScroll(previouslyCaptured ?? Hovering, mouseWheelDelta);
 
-            UpdateTooltip(leftButtonPressed);
+            UpdateTooltip((CurrentMouseButtons != MouseButtons.None));
 
+            LastMouseButtons = CurrentMouseButtons;
+            LastMouseWheelValue = mouseWheelValue;
             LastKeyboardState = keyboardState;
-            LastMouseButtonState = leftButtonPressed;
             LastMousePosition = mousePosition;
         }
 
@@ -622,7 +639,7 @@ namespace Squared.PRGUI {
                 UIContext = this,
                 Now = Now,
                 Modifiers = CurrentModifiers,
-                MouseButtonHeld = LastMouseButtonState,
+                MouseButtonHeld = (LastMouseButtons != MouseButtons.None),
                 MousePosition = LastMousePosition
             };
         }

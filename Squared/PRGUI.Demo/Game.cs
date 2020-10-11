@@ -169,11 +169,10 @@ namespace PRGUI.Demo {
             };
 
             var numberField = new EditableText {
-                // FIXME: The layout is completely busted if this is on the same row as the other textfield
                 BackgroundColor = new Color(40, 56, 60),
-                LayoutFlags = ControlFlags.Layout_Fill, // | ControlFlags.Layout_ForceBreak,
+                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                 DoubleOnly = true,
-                MinimumWidth = 200,
+                // MinimumWidth = 200,
                 Description = "A number"
             };
 
@@ -437,12 +436,11 @@ namespace PRGUI.Demo {
 
             Context.UpdateLayout();
 
-            Context.UpdateInput(
-                mousePosition,
-                mouseWheelDelta: (MouseState.ScrollWheelValue - PreviousMouseState.ScrollWheelValue) / 2.4f,
-                leftButtonPressed: IsActive && (MouseState.LeftButton == ButtonState.Pressed),
-                keyboardState: KeyboardState
-            );
+            if (IsActive)
+                Context.UpdateInput(
+                    mouseState: MouseState,
+                    keyboardState: KeyboardState
+                );
 
             if (Context.MouseOver != null)
                 LastTimeOverUI = Time.Ticks;

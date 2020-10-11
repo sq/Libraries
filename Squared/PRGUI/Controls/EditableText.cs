@@ -16,6 +16,15 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class EditableText : Control {
+        public static readonly Menu ContextMenu = new Menu {
+            Children = {
+                new StaticText { Text = "Cut" },
+                new StaticText { Text = "Copy" },
+                new StaticText { Text = "Paste" },
+                new StaticText { Text = "Select All" }
+            }
+        };
+
         // FIXME
         public static readonly bool Multiline = false;
 
@@ -263,7 +272,7 @@ namespace Squared.PRGUI.Controls {
             return DynamicLayout.HitTest(position);
         }
 
-        private int? MapVirtualPositionToCharacterIndex (Vector2 position, bool? leanOverride) {
+        public int? CharacterIndexFromVirtualPosition (Vector2 position, bool? leanOverride = null) {
             var result = ImmediateHitTest(position);
             if (position.X < 0) {
                 return 0;
@@ -297,10 +306,13 @@ namespace Squared.PRGUI.Controls {
             var virtualPosition = position + ScrollOffset;
 
             if (name == UIEvents.MouseDown) {
+                if (args.Buttons != MouseButtons.Left)
+                    return false;
+
                 DisableAutoscrollUntil = Now + AutoscrollClickTimeout;
 
                 ClickStartVirtualPosition = virtualPosition;
-                var currentCharacter = MapVirtualPositionToCharacterIndex(virtualPosition, null);
+                var currentCharacter = CharacterIndexFromVirtualPosition(virtualPosition, null);
                 // If we're double-clicking inside the selection don't update it yet. FIXME: Bias
                 if (currentCharacter.HasValue && !args.DoubleClicking)
                     SetSelection(new Pair<int>(currentCharacter.Value, currentCharacter.Value), 0);
@@ -309,29 +321,38 @@ namespace Squared.PRGUI.Controls {
                 (name == UIEvents.MouseDrag) ||
                 (name == UIEvents.MouseUp)
             ) {
-                // FIXME: Ideally we would just clamp the mouse coordinates into our rectangle instead of rejecting
-                //  coordinates outside our rect. Maybe UIContext should do this?
-                if (ClickStartVirtualPosition.HasValue) {
-                    // If the user is drag-selecting multiple characters, we want to expand the selection
-                    //  to cover all the character hitboxes touched by the mouse drag instead of just picking
-                    //  the character(s) the positions were leaning towards. For clicks that just place the
-                    //  caret on one side of a character, we honor the leaning value
-                    var csvp = ClickStartVirtualPosition.Value;
-                    var deltaBigEnough = Math.Abs(virtualPosition.X - csvp.X) >= 4;
-                    bool? leanA = null, // deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null,
-                        leanB = deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null;
-                    // FIXME: This -1 shouldn't be needed
-                    // Console.WriteLine("leanA={0}, leanB={1}", leanA, leanB);
-                    var a = MapVirtualPositionToCharacterIndex(csvp, leanA) ?? -1;
-                    var b = MapVirtualPositionToCharacterIndex(virtualPosition, leanB) ?? -1;
+                if (args.PreviousButtons == MouseButtons.Left) {
+                    // FIXME: Ideally we would just clamp the mouse coordinates into our rectangle instead of rejecting
+                    //  coordinates outside our rect. Maybe UIContext should do this?
+                    if (ClickStartVirtualPosition.HasValue) {
+                        // If the user is drag-selecting multiple characters, we want to expand the selection
+                        //  to cover all the character hitboxes touched by the mouse drag instead of just picking
+                        //  the character(s) the positions were leaning towards. For clicks that just place the
+                        //  caret on one side of a character, we honor the leaning value
+                        var csvp = ClickStartVirtualPosition.Value;
+                        var deltaBigEnough = Math.Abs(virtualPosition.X - csvp.X) >= 4;
+                        bool? leanA = null, // deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null,
+                            leanB = deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null;
+                        // FIXME: This -1 shouldn't be needed
+                        // Console.WriteLine("leanA={0}, leanB={1}", leanA, leanB);
+                        var a = CharacterIndexFromVirtualPosition(csvp, leanA) ?? -1;
+                        var b = CharacterIndexFromVirtualPosition(virtualPosition, leanB) ?? -1;
 
-                    // FIXME: bias
-                    int selectionBias = virtualPosition.X > csvp.X ? 1 : -1;
-                    SetSelection(new Pair<int>(Math.Min(a, b), Math.Max(a, b)), selectionBias);
+                        // FIXME: bias
+                        int selectionBias = virtualPosition.X > csvp.X ? 1 : -1;
+                        SetSelection(new Pair<int>(Math.Min(a, b), Math.Max(a, b)), selectionBias);
+                    }
+
+                    if (name != UIEvents.MouseUp)
+                        DisableAutoscrollUntil = Now + AutoscrollClickTimeout;
                 }
 
-                if (name != UIEvents.MouseUp)
-                    DisableAutoscrollUntil = Now + AutoscrollClickTimeout;
+                // Right mouse button was released, show context menu
+                if (
+                    args.PreviousButtons.HasFlag(MouseButtons.Right) &&
+                    !args.Buttons.HasFlag(MouseButtons.Right)
+                )
+                    ContextMenu.Show(Context);
 
                 return true;
             } else
@@ -442,21 +463,21 @@ namespace Squared.PRGUI.Controls {
                     case Keys.Up:
                     case Keys.Down:
                         if (evt.Modifiers.Control)
-                            HandleSelectionShift(evt.Key == Keys.Home ? -99999 : 99999, grow: evt.Modifiers.Shift, byWord: false);
+                            AdjustSelection(evt.Key == Keys.Home ? -99999 : 99999, grow: evt.Modifiers.Shift, byWord: false);
                         else
                             ;// FIXME: Multiline
                         break;
 
                     case Keys.Left:
                     case Keys.Right:
-                        HandleSelectionShift(evt.Key == Keys.Left ? -1 : 1, grow: evt.Modifiers.Shift, byWord: evt.Modifiers.Control);
+                        AdjustSelection(evt.Key == Keys.Left ? -1 : 1, grow: evt.Modifiers.Shift, byWord: evt.Modifiers.Control);
                         return true;
 
                     case Keys.Home:
                     case Keys.End:
                         if (evt.Modifiers.Control)
                             ; // FIXME: Multiline
-                        HandleSelectionShift(evt.Key == Keys.Home ? -99999 : 99999, grow: evt.Modifiers.Shift, byWord: false);
+                        AdjustSelection(evt.Key == Keys.Home ? -99999 : 99999, grow: evt.Modifiers.Shift, byWord: false);
                         return true;
 
                     case Keys.Insert:
@@ -478,25 +499,43 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
+        public void SelectAll () {
+            SetSelection(new Pair<int>(0, int.MaxValue), 1);
+        }
+
+        public void Paste () {
+            SelectedText = SDL2.SDL.SDL_GetClipboardText();
+        }
+
+        public void CopySelection () {
+            SDL2.SDL.SDL_SetClipboardText(SelectedText);
+        }
+
+        public void CutSelection () {
+            SDL2.SDL.SDL_SetClipboardText(SelectedText);
+            SelectedText = "";
+        }
+
         private bool HandleHotKey (KeyEventArgs evt) {
             string keyString = (evt.Char.HasValue) ? new string(evt.Char.Value, 1) : evt.Key.ToString();
             keyString = keyString.ToLowerInvariant();
 
             switch (keyString) {
                 case "a":
-                    SetSelection(new Pair<int>(0, int.MaxValue), 1);
+                    SelectAll();
                     return true;
                 case "c":
                 case "x":
-                    SDL2.SDL.SDL_SetClipboardText(SelectedText);
                     if (keyString == "x")
-                        SelectedText = "";
+                        CutSelection();
+                    else
+                        CopySelection();
                     return true;
                 case "v":
-                    SelectedText = SDL2.SDL.SDL_GetClipboardText();
+                    Paste();
                     return true;
                 default:
-                    Console.WriteLine(keyString);
+                    Console.WriteLine($"Unhandled hotkey: {keyString}");
                     break;
             }
 
@@ -536,7 +575,7 @@ namespace Squared.PRGUI.Controls {
             return (direction > 0) ? boundary.Second : boundary.First;
         }
 
-        private void HandleSelectionShift (int delta, bool grow, bool byWord) {
+        public void AdjustSelection (int delta, bool grow, bool byWord) {
             int anchor, extent;
             if (grow) {
                 anchor = (CurrentScrollBias < 0) ? Selection.Second : Selection.First;
@@ -582,7 +621,7 @@ namespace Squared.PRGUI.Controls {
                 if (!ClickStartVirtualPosition.HasValue)
                     return false;
 
-                var centerIndex = MapVirtualPositionToCharacterIndex(ClickStartVirtualPosition.Value, null);
+                var centerIndex = CharacterIndexFromVirtualPosition(ClickStartVirtualPosition.Value, null);
                 if (!centerIndex.HasValue)
                     return false;
 

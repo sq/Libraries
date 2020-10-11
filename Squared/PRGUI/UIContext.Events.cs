@@ -89,7 +89,7 @@ namespace Squared.PRGUI {
             var movedDistance = (position - LastClickPosition).Length();
             if (
                 (LastClickTarget == target) &&
-                (movedDistance < MinimumMovementDistance)
+                (movedDistance < MinimumMouseMovementDistance)
             ) {
                 var elapsed = Now - LastClickTime;
                 return elapsed < DoubleClickWindowSize;
@@ -310,8 +310,10 @@ namespace Squared.PRGUI {
                 Box = box,
                 ContentBox = contentBox,
                 MouseDownPosition = mdp,
-                MovedSinceMouseDown = travelDistance >= MinimumMovementDistance,
-                DoubleClicking = IsInDoubleClickWindow(target, globalPosition) && (MouseCaptured != null)
+                MovedSinceMouseDown = travelDistance >= MinimumMouseMovementDistance,
+                DoubleClicking = IsInDoubleClickWindow(target, globalPosition) && (MouseCaptured != null),
+                PreviousButtons = LastMouseButtons,
+                Buttons = CurrentMouseButtons
             };
         }
 
