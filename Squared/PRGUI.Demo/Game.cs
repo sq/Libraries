@@ -238,16 +238,18 @@ namespace PRGUI.Demo {
                 AutoSizeWidth = false,
                 FixedWidth = 220,
                 Text = "Button 1",
-                TooltipContent = "Click me for a surprise!"
-            };
-
-            var bigMenuButton = new Button {
-                Text = "Big Menu"
+                TooltipContent = "Click me for a surprise!",
+                Menu = testMenu
             };
 
             var bigMenu = new Menu();
             for (var i = 0; i < 100; i++)
                 bigMenu.Children.Add(new StaticText { Text = $"Item {i}" });
+
+            var bigMenuButton = new Button {
+                Text = "Big Menu",
+                Menu = bigMenu
+            };
 
             var topLevelContainer = new Container {
                 BackgroundColor = new Color(48, 48, 48),
@@ -365,14 +367,6 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(changePaintOrder, UIEvents.Click, (ei) => {
                 floatingWindow.PaintOrder = -floatingWindow.PaintOrder;
-            });
-
-            Context.EventBus.Subscribe(button1, UIEvents.MouseDown, (ei) => {
-                testMenu.Show(Context, button1);
-            });
-
-            Context.EventBus.Subscribe(bigMenuButton, UIEvents.MouseDown, (ei) => {
-                bigMenu.Show(Context, bigMenuButton);
             });
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {

@@ -20,11 +20,35 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI {
     public class Button : StaticText {
+        public Menu Menu;
+
         public Button ()
             : base () {
             Content.Alignment = HorizontalAlignment.Center;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
+        }
+
+        protected override bool OnEvent<T> (string name, T args) {
+            if (args is MouseEventArgs) {
+                return OnMouseEvent(name, (MouseEventArgs)(object)args);
+            } else if (name == UIEvents.Click) {
+                if (Menu != null) {
+                    Menu.Show(Context, this);
+                    return true;
+                }
+            }
+
+            return base.OnEvent(name, args);
+        }
+
+        private bool OnMouseEvent (string name, MouseEventArgs args) {
+            if ((name == UIEvents.MouseDown) && (Menu != null)) {
+                Menu.Show(Context, this);
+                return true;
+            }
+
+            return false;
         }
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {

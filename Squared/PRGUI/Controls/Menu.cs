@@ -223,6 +223,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void ItemChosen (Control item) {
+            Context.FireEvent(UIEvents.ItemChosen, this, item);
             Context.FireEvent<int>(UIEvents.Click, item, 1);
             NextResultFuture?.SetResult2(item, null);
             Close();

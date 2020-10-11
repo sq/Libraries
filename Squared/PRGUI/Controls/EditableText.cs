@@ -203,6 +203,7 @@ namespace Squared.PRGUI.Controls {
             _Selection = value;
             // Console.WriteLine("New selection is {0} biased {1}", value, scrollBias > 0 ? "right" : "left");
             Invalidate();
+            FireEvent(UIEvents.SelectionChanged, _Selection);
         }
 
         public void Invalidate () {

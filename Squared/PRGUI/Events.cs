@@ -30,6 +30,7 @@ namespace Squared.PRGUI {
             CheckedChanged = "CheckedChanged",
             RadioButtonSelected = "RadioButtonSelected",
             SelectionChanged = "SelectionChanged",
+            ItemChosen = "ItemChosen",
             Shown = "Shown",
             Closed = "Closed",
             OpacityTweenEnded = "OpacityTweenEnded",
