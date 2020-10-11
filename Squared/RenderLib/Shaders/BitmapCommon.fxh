@@ -1,5 +1,5 @@
 #ifndef MIP_BIAS
-#define MIP_BIAS 0
+#define MIP_BIAS -0.5
 #endif
 
 #define ENABLE_DITHERING
