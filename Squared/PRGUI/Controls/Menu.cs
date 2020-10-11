@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
+using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
@@ -15,6 +17,8 @@ namespace Squared.PRGUI.Controls {
 
         public const float MenuShowSpeed = 0.1f;
         public const float MenuHideSpeed = 0.25f;
+
+        private Future<Control> NextResultFuture = null;
 
         private Control _SelectedItem;
 
@@ -151,10 +155,47 @@ namespace Squared.PRGUI.Controls {
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
             else if (name == UIEvents.LostFocus)
                 Close();
+            else if (args is KeyEventArgs)
+                return OnKeyEvent(name, (KeyEventArgs)(object)args);
             else
                 return base.OnEvent(name, args);
 
             return false;
+        }
+
+        public bool AdjustSelection (int direction) {
+            if (Children.Count == 0)
+                return false;
+
+            var selectedIndex = Children.IndexOf(_SelectedItem);
+            if (selectedIndex < 0)
+                selectedIndex = direction > 0 ? 0 : Children.Count - 1;
+            else
+                selectedIndex = Arithmetic.Wrap(selectedIndex + direction, 0, Children.Count - 1);
+            SelectedItem = Children[selectedIndex];
+            return true;
+        }
+
+        private bool OnKeyEvent (string name, KeyEventArgs args) {
+            if (name != UIEvents.KeyPress)
+                return true;
+
+            switch (args.Key) {
+                case Keys.Escape:
+                    Close();
+                    return true;
+                case Keys.Space:
+                case Keys.Enter:
+                    if (SelectedItem != null)
+                        ItemChosen(SelectedItem);
+                    return true;
+                case Keys.Up:
+                case Keys.Down:
+                    AdjustSelection(args.Key == Keys.Up ? -1 : 1);
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
@@ -183,6 +224,7 @@ namespace Squared.PRGUI.Controls {
 
         private void ItemChosen (Control item) {
             Context.FireEvent<int>(UIEvents.Click, item, 1);
+            NextResultFuture?.SetResult2(item, null);
             Close();
         }
 
@@ -206,7 +248,10 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private void ShowInternal (UIContext context, Vector2 adjustedPosition) {
+        private Future<Control> ShowInternal (UIContext context, Vector2 adjustedPosition) {
+            if (NextResultFuture?.Completed == false)
+                NextResultFuture?.SetResult2(null, null);
+
             SelectedItem = null;
             Position = adjustedPosition;
             Visible = true;
@@ -216,6 +261,8 @@ namespace Squared.PRGUI.Controls {
             FocusDonor = context.CaptureMouse(this);
             IsActive = true;
             Context.FireEvent(UIEvents.Shown, this);
+            NextResultFuture = new Future<Control>();
+            return NextResultFuture;
         }
 
         private Vector2 AdjustPosition (UIContext context, Vector2 desiredPosition) {
@@ -231,27 +278,29 @@ namespace Squared.PRGUI.Controls {
             return desiredPosition;
         }
 
-        public void Show (UIContext context, Vector2? position = null) {
+        public Future<Control> Show (UIContext context, Vector2? position = null) {
             ShowInternalPrologue(context);
 
             // Align the top-left corner of the menu with the target position (compensating for margin),
             //  then shift the menu around if necessary to keep it on screen
             var adjustedPosition = AdjustPosition(context, (position ?? context.LastMousePosition));
 
-            ShowInternal(context, adjustedPosition);
+            return ShowInternal(context, adjustedPosition);
         }
 
-        public void Show (UIContext context, Control anchor) {
-            ShowInternalPrologue(context);
-
-            // Align the top-left corner of the menu with the target position (compensating for margin),
-            //  then shift the menu around if necessary to keep it on screen
-            var anchorBox = anchor.GetRect(context.Layout);
+        public Future<Control> Show (UIContext context, RectF anchorBox) {
             var adjustedPosition = AdjustPosition(
                 context, new Vector2(anchorBox.Left, anchorBox.Top + anchorBox.Height)
             );
 
-            ShowInternal(context, adjustedPosition);
+            return ShowInternal(context, adjustedPosition);
+        }
+
+        public Future<Control> Show (UIContext context, Control anchor) {
+            ShowInternalPrologue(context);
+
+            var anchorBox = anchor.GetRect(context.Layout);
+            return Show(context, anchorBox);
         }
 
         public void Close () {
@@ -263,6 +312,8 @@ namespace Squared.PRGUI.Controls {
             var now = NowL;
             Opacity = Tween<float>.StartNow(Opacity.Get(now), 0, MenuHideSpeed, now: now);
             Context.FireEvent(UIEvents.Closed, this);
+            if (NextResultFuture?.Completed == false)
+                NextResultFuture?.SetResult2(null, null);
         }
     }
 }

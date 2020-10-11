@@ -59,7 +59,9 @@ namespace Squared.PRGUI {
         /// </summary>
         public virtual bool AcceptsMouseInput { get; protected set; }
         /// <summary>
-        /// Receives keyboard events while focused
+        /// Controls whether textual input (IME composition, etc) should be enabled
+        ///  while this control is focused. You will still get key events even if this
+        ///  is false, so things like arrow key navigation will work.
         /// </summary>
         public virtual bool AcceptsTextInput { get; protected set; }
         /// <summary>

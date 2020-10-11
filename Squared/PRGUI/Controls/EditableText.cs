@@ -153,7 +153,7 @@ namespace Squared.PRGUI.Controls {
             if (StringFilter != null)
                 input = StringFilter(input);
 
-            if (!Multiline) {
+            if (!Multiline && (input != null)) {
                 var idx = input.IndexOfAny(new[] { '\r', '\n' });
                 if (idx >= 0)
                     return input.Replace("\r", "").Replace("\n", " ");
@@ -306,16 +306,22 @@ namespace Squared.PRGUI.Controls {
             var virtualPosition = position + ScrollOffset;
 
             if (name == UIEvents.MouseDown) {
-                if (args.Buttons != MouseButtons.Left)
-                    return false;
-
                 DisableAutoscrollUntil = Now + AutoscrollClickTimeout;
 
                 ClickStartVirtualPosition = virtualPosition;
-                var currentCharacter = CharacterIndexFromVirtualPosition(virtualPosition, null);
+                var newCharacterIndex = CharacterIndexFromVirtualPosition(virtualPosition, null);
                 // If we're double-clicking inside the selection don't update it yet. FIXME: Bias
-                if (currentCharacter.HasValue && !args.DoubleClicking)
-                    SetSelection(new Pair<int>(currentCharacter.Value, currentCharacter.Value), 0);
+                if (
+                    newCharacterIndex.HasValue && 
+                    !args.DoubleClicking &&
+                    (
+                        (args.Buttons == MouseButtons.Left) ||
+                        (Selection.First > newCharacterIndex.Value) ||
+                        (Selection.Second < newCharacterIndex.Value)
+                    )
+                ) {
+                    SetSelection(new Pair<int>(newCharacterIndex.Value, newCharacterIndex.Value), 0);
+                }
                 return true;
             } else if (
                 (name == UIEvents.MouseDrag) ||
@@ -352,11 +358,35 @@ namespace Squared.PRGUI.Controls {
                     args.PreviousButtons.HasFlag(MouseButtons.Right) &&
                     !args.Buttons.HasFlag(MouseButtons.Right)
                 )
-                    ContextMenu.Show(Context);
+                    ShowContextMenu();
 
                 return true;
             } else
                 return false;
+        }
+
+        private void ShowContextMenu () {
+            var menuResult = ContextMenu.Show(Context);
+            menuResult.RegisterOnComplete((_) => {
+                if (menuResult.Result == null)
+                    return;
+
+                var item = menuResult.Result as StaticText;
+                switch (item?.Text.ToString()) {
+                    case "Cut":
+                        CutSelection();
+                        return;
+                    case "Copy":
+                        CopySelection();
+                        return;
+                    case "Paste":
+                        Paste();
+                        return;
+                    case "Select All":
+                        SelectAll();
+                        return;
+                }
+            });
         }
 
         protected override bool OnEvent<T> (string name, T args) {
