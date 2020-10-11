@@ -38,6 +38,7 @@ namespace Squared.PRGUI.Controls {
 
         public Vector2 ScrollOffset;
 
+        protected DynamicStringLayout DescriptionLayout = new DynamicStringLayout();
         protected DynamicStringLayout DynamicLayout = new DynamicStringLayout();
         protected StringBuilder Builder = new StringBuilder();
         protected Margins CachedPadding;
@@ -52,6 +53,8 @@ namespace Squared.PRGUI.Controls {
         private Pair<int> _Selection;
 
         protected override bool ShouldClipContent => true;
+
+        public string Description;
 
         public EditableText ()
             : base () {
@@ -146,7 +149,7 @@ namespace Squared.PRGUI.Controls {
             if (CharacterFilter != null)
                 result = CharacterFilter(input);
 
-            if (char.IsControl(result.Value))
+            if ((result != null) && char.IsControl(result.Value))
                 result = null;
 
             return result;
@@ -693,8 +696,50 @@ namespace Squared.PRGUI.Controls {
             return LastLocalCursorPosition;
         }
 
+        private void RasterizeDescription (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator myDecorations, float textExtentX) {
+            var decorator = context.DecorationProvider.Description;
+            if (decorator == null)
+                return;
+
+            var color = default(pSRGBColor?);
+            decorator.GetTextSettings(context, settings.State, out Material material, out IGlyphSource font, ref color);
+            if (material == null)
+                return;
+            if (font == null)
+                return;
+            if (color == null)
+                return;
+
+            DescriptionLayout.GlyphSource = font;
+            DescriptionLayout.Text = Description;
+
+            var descriptionLayout = DescriptionLayout.Get();
+            var width = descriptionLayout.Size.X;
+            var x = settings.ContentBox.Extent.X - decorator.Margins.Right - width;
+
+            if (x <= textExtentX)
+                color *= 0.5f;
+
+            var textCorner = new Vector2(x, settings.ContentBox.Top);
+            renderer.DrawMultiple(
+                descriptionLayout.DrawCalls, textCorner, 
+                multiplyColor: color.Value.ToColor(), material: material
+            );
+            renderer.Layer += 1;
+        }
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
+
+            /*
+            if (context.Pass == RasterizePasses.Above) {
+                renderer.RasterizeRectangle(settings.Box.Position, settings.Box.Extent, 0f, Color.Red);
+                renderer.Layer += 1;
+                renderer.RasterizeRectangle(settings.ContentBox.Position, settings.ContentBox.Extent, 0f, Color.Blue);
+                renderer.Layer += 1;
+                return;
+            }
+            */
 
             MarkSelection();
 
@@ -712,6 +757,9 @@ namespace Squared.PRGUI.Controls {
 
             if (context.Pass != RasterizePasses.Content)
                 return;
+
+            if (Description != null)
+                RasterizeDescription(context, ref renderer, settings, decorations, textOffset.X + layout.Size.X);
 
             if (selBounds.HasValue && 
                 (

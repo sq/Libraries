@@ -164,7 +164,18 @@ namespace PRGUI.Demo {
                 // FIXME: This should be at least partially automatic
                 MinimumWidth = 400,
                 Selection = new Pair<int>(1, testString.Length - 4),
-                ScrollOffset = new Vector2(128, 32)
+                ScrollOffset = new Vector2(128, 32),
+                Description = "Message"
+            };
+
+            var numberField = new EditableText {
+                // FIXME: The layout is completely busted if this is on the same row as the other textfield
+                BackgroundColor = new Color(40, 56, 60),
+                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                CharacterFilter = (ch) => char.IsNumber(ch) ? ch : (char?)null,
+                StringFilter = (s) => s.All(char.IsNumber) ? s : (string)null,
+                // MinimumWidth = 200,
+                Description = "A number"
             };
 
             var hideButton = new Button {
@@ -188,6 +199,7 @@ namespace PRGUI.Demo {
                 Children = {
                     new StaticText { Text = "→", FocusBeneficiary = textfield, TooltipContent = "Clicking this label will focus the textfield" },
                     textfield,
+                    numberField,
                     hideButton,
                 },
                 PaintOrder = 1

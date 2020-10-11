@@ -250,16 +250,18 @@ namespace Squared.PRGUI {
             result.Left += _AbsoluteDisplayOffset.X;
             result.Top += _AbsoluteDisplayOffset.Y;
 
-            // HACK
-            if (FixedWidth.HasValue)
-                result.Width = FixedWidth.Value;
-            if (FixedHeight.HasValue)
-                result.Height = FixedHeight.Value;
+            if (!contentRect) {
+                // HACK
+                if (FixedWidth.HasValue)
+                    result.Width = FixedWidth.Value;
+                if (FixedHeight.HasValue)
+                    result.Height = FixedHeight.Value;
 
-            if (MinimumWidth.HasValue)
-                result.Width = Math.Max(MinimumWidth.Value, result.Width);
-            if (MinimumHeight.HasValue)
-                result.Height = Math.Max(MinimumHeight.Value, result.Height);
+                if (MinimumWidth.HasValue)
+                    result.Width = Math.Max(MinimumWidth.Value, result.Width);
+                if (MinimumHeight.HasValue)
+                    result.Height = Math.Max(MinimumHeight.Value, result.Height);
+            }
             
             return result;
         }
@@ -477,7 +479,7 @@ namespace Squared.PRGUI {
                         contentRenderer.FillRectangle(new Rectangle(-1, -1, 9999, 9999), Color.Transparent, blendState: RenderStates.DrawNone, layer: 9999);
                     }
 
-                    passSet.NextReferenceStencil = childrenPassSet.NextReferenceStencil;
+                    // passSet.NextReferenceStencil = childrenPassSet.NextReferenceStencil;
                 }
 
                 renderer.Layer += 1;

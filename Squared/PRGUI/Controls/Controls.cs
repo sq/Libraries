@@ -188,6 +188,7 @@ namespace Squared.PRGUI {
             AcceptsMouseInput = true;
             ContainerFlags |= ControlFlags.Container_Constrain_Size;
             LayoutFlags |= ControlFlags.Layout_Floating;
+            // ClipChildren = true;
         }
 
         protected IDecorator UpdateTitle (UIOperationContext context, DecorationSettings settings, out Material material, ref pSRGBColor? color) {

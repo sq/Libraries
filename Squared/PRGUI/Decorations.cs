@@ -50,6 +50,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator CompositionPreview { get; }
         IDecorator Checkbox { get; }
         IDecorator RadioButton { get; }
+        IDecorator Description { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
@@ -164,6 +165,7 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator CompositionPreview { get; set; }
         public IDecorator Checkbox { get; set; }
         public IDecorator RadioButton { get; set; }
+        public IDecorator Description { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public IGlyphSource DefaultFont,
@@ -466,8 +468,9 @@ namespace Squared.PRGUI.Decorations {
                 outlineColor: isFocused
                     ? FocusedColor
                     : ContainerOutlineColor,
-                innerColor: settings.BackgroundColor.Value, 
-                outerColor: settings.BackgroundColor.Value,
+                // FIXME: Separate textarea fill color?
+                innerColor: (settings.BackgroundColor ?? ContainerFillColor), 
+                outerColor: (settings.BackgroundColor ?? ContainerFillColor),
                 shadow: EditableShadow
             );
         }
@@ -646,6 +649,17 @@ namespace Squared.PRGUI.Decorations {
             return true;
         }
 
+        public bool GetTextSettings_Description (
+            UIOperationContext context, ControlStates state, 
+            out Material material, out IGlyphSource font, ref pSRGBColor? color
+        ) {
+            // HACK: Pass selected=true to get the unshadowed material
+            var result = GetTextSettings(context, state, out material, out font, ref color, true);
+            if (color.HasValue)
+                color = color.Value * 0.5f;
+            return result;
+        }
+
         private bool GetTextSettings_Button (
             UIOperationContext context, ControlStates state, 
             out Material material, out IGlyphSource font, ref pSRGBColor? color
@@ -820,6 +834,10 @@ namespace Squared.PRGUI.Decorations {
             CompositionPreview = new DelegateDecorator {
                 GetTextSettings = GetTextSettings_Selection,
                 Below = CompositionPreview_Below,
+            };
+
+            Description = new DelegateDecorator {
+                GetTextSettings = GetTextSettings_Description
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
