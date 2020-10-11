@@ -64,30 +64,40 @@ namespace Squared.PRGUI.Controls {
             AcceptsTextInput = true;
         }
 
-        public static EditableText Integer () {
-            return new EditableText {
-                CharacterFilter = (ch) =>
-                    (char.IsNumber(ch) || (ch == '-'))
-                        ? ch
-                        : (char?)null,
-                StringFilter = (str) =>
-                    int.TryParse(str, out int temp)
-                        ? str
-                        : null
-            };
+        public bool IntegerOnly {
+            set {
+                if (value) {
+                    CharacterFilter = (ch) =>
+                        (char.IsNumber(ch) || (ch == '-'))
+                            ? ch
+                            : (char?)null;
+                    StringFilter = (str) =>
+                        int.TryParse(str, out int temp)
+                            ? str
+                            : null;
+                } else {
+                    CharacterFilter = null;
+                    StringFilter = null;
+                }
+            }
         }
 
-        public static EditableText Double () {
-            return new EditableText {
-                CharacterFilter = (ch) =>
-                    (char.IsNumber(ch) || (ch == '-') || (ch == '.'))
-                        ? ch
-                        : (char?)null,
-                StringFilter = (str) =>
-                    double.TryParse(str, out double temp)
-                        ? str
-                        : null
-            };
+        public bool DoubleOnly {
+            set {
+                if (value) {
+                    CharacterFilter = (ch) =>
+                        (char.IsNumber(ch) || (ch == '-') || (ch == '.'))
+                            ? ch
+                            : (char?)null;
+                    StringFilter = (str) =>
+                        double.TryParse(str, out double temp)
+                            ? str
+                            : null;
+                } else {
+                    CharacterFilter = null;
+                    StringFilter = null;
+                }
+            }
         }
 
         public Pair<int> Selection {

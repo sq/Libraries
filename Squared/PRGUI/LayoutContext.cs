@@ -709,18 +709,19 @@ namespace Squared.PRGUI.Layout {
                     var fFlags = (ControlFlags)((uint)(childFlags & ControlFlagMask.Fixed) >> idim);
                     var childMargins = pChild->Margins;
                     var childRect = GetRect(child);
+                    var isFixedSize = fFlags.IsFlagged(ControlFlags.Internal_FixedWidth);
 
                     x += childRect[idim] + extraMargin;
 
                     float computedSize;
                     if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
                         computedSize = filler;
-                    else if (fFlags.IsFlagged(ControlFlags.Internal_FixedWidth))
+                    else if (isFixedSize)
                         computedSize = childRect[wdim];
                     else
                         computedSize = Math.Max(0f, childRect[wdim] + eater);
 
-                    if ((pass == 1) && (fillerCount > constrainedCount) && (constrainedCount > 0))
+                    if ((pass == 1) && (fillerCount > constrainedCount) && (constrainedCount > 0) && !isFixedSize)
                         computedSize += extraFromConstraints / (fillerCount - constrainedCount);
 
                     float constrainedSize = Constrain(computedSize, pChild, idim);
