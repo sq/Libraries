@@ -358,15 +358,17 @@ namespace Squared.PRGUI.Controls {
                     args.PreviousButtons.HasFlag(MouseButtons.Right) &&
                     !args.Buttons.HasFlag(MouseButtons.Right)
                 )
-                    ShowContextMenu();
+                    ShowContextMenu(true);
 
                 return true;
             } else
                 return false;
         }
 
-        private void ShowContextMenu () {
-            var menuResult = ContextMenu.Show(Context);
+        private void ShowContextMenu (bool forMouseEvent) {
+            var menuResult = forMouseEvent
+                    ? ContextMenu.Show(Context)
+                    : ContextMenu.Show(Context, this);
             menuResult.RegisterOnComplete((_) => {
                 if (menuResult.Result == null)
                     return;
@@ -461,8 +463,12 @@ namespace Squared.PRGUI.Controls {
                 return true;
             } else if (evt.Key.HasValue) {
                 switch (evt.Key.Value) {
+                    case Keys.Apps:
+                        ShowContextMenu(false);
+                        return true;
                     case Keys.Delete:
                     case Keys.Back:
+                        // FIXME: Ctrl-delete and Ctrl-backspace should eat entire words
                         if (Selection.Second != Selection.First) {
                             RemoveRange(Selection, true);
                             MoveCaret(Selection.First, 1);

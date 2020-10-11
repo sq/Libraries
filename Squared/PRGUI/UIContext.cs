@@ -513,17 +513,20 @@ namespace Squared.PRGUI {
                 var key = (Keys)i;
 
                 bool shouldFilterKeyPress = false;
-
-                // Clumsily filter out keys that would generate textinput events
-                if (!CurrentModifiers.Control && !CurrentModifiers.Alt) {
-                    if ((key >= Keys.D0) && (key <= Keys.NumPad9))
-                        shouldFilterKeyPress = true;
-                    else if ((key >= Keys.OemSemicolon) && (key <= Keys.OemBackslash))
-                        shouldFilterKeyPress = true;
-                }
-
                 var wasPressed = previous.IsKeyDown(key);
                 var isPressed = current.IsKeyDown(key);
+
+                if (isPressed || wasPressed) {
+                    // Clumsily filter out keys that would generate textinput events
+                    if (!CurrentModifiers.Control && !CurrentModifiers.Alt) {
+                        if ((key >= Keys.D0) && (key <= Keys.Z))
+                            shouldFilterKeyPress = true;
+                        else if ((key >= Keys.NumPad0) && (key <= Keys.Divide))
+                            shouldFilterKeyPress = true;
+                        else if ((key >= Keys.OemSemicolon) && (key <= Keys.OemBackslash))
+                            shouldFilterKeyPress = true;
+                    }
+                }
 
                 if (isPressed != wasPressed) {
                     HandleKeyEvent(isPressed ? UIEvents.KeyDown : UIEvents.KeyUp, key, null);
