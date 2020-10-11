@@ -27,6 +27,8 @@ namespace Squared.PRGUI.Controls {
                 return _SelectedItem;
             }
             set {
+                if (value?.Enabled == false)
+                    value = null;
                 if (_SelectedItem == value)
                     return;
                 OnSelectionChange(_SelectedItem, value);
@@ -136,9 +138,9 @@ namespace Squared.PRGUI.Controls {
                 // This indicates that the mouse is in our padding zone
                 if (!args.ContentBox.Contains(virtualGlobalPosition))
                     ;
-                else if (item != null)
-                    ItemChosen(item);
-                else
+                else if (item != null) {
+                    return ChooseItem(item);
+                } else
                     Close();
             }
 
@@ -171,8 +173,19 @@ namespace Squared.PRGUI.Controls {
             if (selectedIndex < 0)
                 selectedIndex = direction > 0 ? 0 : Children.Count - 1;
             else
-                selectedIndex = Arithmetic.Wrap(selectedIndex + direction, 0, Children.Count - 1);
-            SelectedItem = Children[selectedIndex];
+                selectedIndex += direction;
+
+            int steps = Children.Count;
+            while (steps-- > 0) {
+                selectedIndex = Arithmetic.Wrap(selectedIndex, 0, Children.Count - 1);
+                var item = Children[selectedIndex];
+                if (item.Enabled) {
+                    SelectedItem = Children[selectedIndex];
+                    break;
+                } else
+                    selectedIndex += direction; 
+            }
+
             return true;
         }
 
@@ -187,7 +200,7 @@ namespace Squared.PRGUI.Controls {
                 case Keys.Space:
                 case Keys.Enter:
                     if (SelectedItem != null)
-                        ItemChosen(SelectedItem);
+                        return ChooseItem(SelectedItem);
                     return true;
                 case Keys.Up:
                 case Keys.Down:
@@ -222,14 +235,19 @@ namespace Squared.PRGUI.Controls {
             base.OnRasterizeChildren(context, ref passSet, settings);
         }
 
-        private void ItemChosen (Control item) {
+        private bool ChooseItem (Control item) {
+            if (!item.Enabled)
+                return false;
+
             Context.FireEvent(UIEvents.ItemChosen, this, item);
             Context.FireEvent<int>(UIEvents.Click, item, 1);
             NextResultFuture?.SetResult2(item, null);
             Close();
+            return true;
         }
 
         private void ShowInternalPrologue (UIContext context) {
+            AcceptsFocus = true;
             if (!context.Controls.Contains(this))
                 context.Controls.Add(this);
 
@@ -315,6 +333,7 @@ namespace Squared.PRGUI.Controls {
             Context.FireEvent(UIEvents.Closed, this);
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
+            AcceptsFocus = false;
         }
     }
 }

@@ -380,7 +380,7 @@ namespace Squared.PRGUI {
             Vector2? mouseOffset = null
         ) {
             var previouslyHovering = Hovering;
-            if ((Focused != null) && !Focused.Enabled)
+            if ((Focused != null) && !Focused.IsValidFocusTarget)
                 Focused = null;
 
             CurrentMouseButtons = ((mouseState.LeftButton == ButtonState.Pressed) ? MouseButtons.Left : MouseButtons.None) |

@@ -68,7 +68,7 @@ namespace Squared.PRGUI {
         internal List<Control> InTabOrder (bool suitableTargetsOnly) {
             TabOrderedItems.Clear();
             foreach (var item in Items)
-                if (!suitableTargetsOnly || (item.AcceptsFocus && item.Enabled))
+                if (!suitableTargetsOnly || item.IsValidFocusTarget)
                     TabOrderedItems.Add(item);
             TabOrderedItems.Sort(Control.TabOrderComparer.Instance);
             return TabOrderedItems;

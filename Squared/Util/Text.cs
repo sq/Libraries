@@ -120,7 +120,7 @@ namespace Squared.Util.Text {
             if (searchStartedInWhiteSpace)
                 return new Pair<int>(firstWhitespaceCharacter, lastWhitespaceCharacter + 1);
             else {
-                if (char.IsHighSurrogate(str[lastWordCharacter]))
+                if ((lastWordCharacter > 0) && char.IsHighSurrogate(str[lastWordCharacter]))
                     lastWordCharacter++;
                 return new Pair<int>(firstWordCharacter, lastWordCharacter + 1);
             }
@@ -271,6 +271,14 @@ namespace Squared.Util.Text {
             return new AbstractString(array);
         }
 
+        public bool Equals (string other) {
+            return ToString() == other;
+        }
+
+        public bool Equals (string other, StringComparison comparison) {
+            return ToString().Equals(other, comparison);
+        }
+
         public bool Equals (AbstractString other) {
             return (String == other.String) &&
                 (StringBuilder == other.StringBuilder) &&
@@ -280,6 +288,22 @@ namespace Squared.Util.Text {
         public bool Equals (AbstractString other, StringComparison comparison) {
             // FIXME: Optimize this
             return ToString().Equals(other.ToString(), comparison);
+        }
+
+        public static bool operator == (AbstractString lhs, AbstractString rhs) {
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator != (AbstractString lhs, AbstractString rhs) {
+            return !lhs.Equals(rhs);
+        }
+
+        public static bool operator == (AbstractString lhs, string rhs) {
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator != (AbstractString lhs, string rhs) {
+            return !lhs.Equals(rhs);
         }
 
         public char this[int index] {

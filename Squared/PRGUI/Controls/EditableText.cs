@@ -367,9 +367,23 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void ShowContextMenu (bool forMouseEvent) {
+            ContextMenu.Child<StaticText>(st => st.Text == "Cut").Enabled =
+                ContextMenu.Child<StaticText>(st => st.Text == "Copy").Enabled =
+                    _Selection.First != _Selection.Second;
+
+            try {
+                ContextMenu.Child<StaticText>(st => st.Text == "Paste").Enabled =
+                    !string.IsNullOrEmpty(SDL2.SDL.SDL_GetClipboardText());
+            } catch {
+            }
+
+            ContextMenu.Child<StaticText>(st => st.Text == "Select All").Enabled =
+                Text.Length > 0;
+
             var menuResult = forMouseEvent
                     ? ContextMenu.Show(Context)
                     : ContextMenu.Show(Context, this);
+
             menuResult.RegisterOnComplete((_) => {
                 if (menuResult.Result == null)
                     return;
@@ -541,7 +555,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void Paste () {
-            SelectedText = SDL2.SDL.SDL_GetClipboardText();
+            try {
+                SelectedText = SDL2.SDL.SDL_GetClipboardText();
+            } catch {
+            }
         }
 
         public void CopySelection () {

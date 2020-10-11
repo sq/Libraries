@@ -98,7 +98,7 @@ namespace Squared.PRGUI {
         }
 
         private void HandleClick (Control target, Vector2 mousePosition) {
-            if (!target.Enabled)
+            if (!target.IsValidMouseInputTarget)
                 return;
 
             if (IsInDoubleClickWindow(target, mousePosition))
@@ -139,9 +139,15 @@ namespace Squared.PRGUI {
                     int tabDelta = CurrentModifiers.Shift ? -1 : 1;
                     if (CurrentModifiers.Control) {
                         var currentTopLevel = FindTopLevelAncestor(Focused);
-                        var inTabOrder = Controls.InTabOrder(false);
+                        // HACK
+                        var inTabOrder = Controls.InTabOrder(false)
+                            .Where(c => 
+                                ((c is IControlContainer) || c.AcceptsFocus) &&
+                                c.Enabled && c.Visible
+                            )
+                            .ToList();
                         var currentIndex = inTabOrder.IndexOf(currentTopLevel);
-                        var newIndex = Arithmetic.Wrap(currentIndex + tabDelta, 0, Controls.Count - 1);
+                        var newIndex = Arithmetic.Wrap(currentIndex + tabDelta, 0, inTabOrder.Count - 1);
                         var target = inTabOrder[newIndex];
                         if ((target != null) && (target != currentTopLevel)) {
                             Console.WriteLine($"Top level tab {currentTopLevel} -> {target}");
@@ -204,7 +210,7 @@ namespace Squared.PRGUI {
                 }
 
                 // FIXME: Should we throw here?
-                if (!newFocusTarget.IsValidFocusTarget || !newFocusTarget.Enabled)
+                if (!newFocusTarget.IsValidFocusTarget)
                     return false;
             }
 
@@ -249,7 +255,7 @@ namespace Squared.PRGUI {
 
                 var control = tabOrdered[idx];
 
-                if (control.Enabled && control.AcceptsFocus) {
+                if (control.Enabled && control.IsValidFocusTarget) {
                     return control;
                 } else if (recursive && (control is IControlContainer)) {
                     var child = FindFocusableSibling(((IControlContainer)control).Children, null, delta, recursive);
@@ -327,9 +333,9 @@ namespace Squared.PRGUI {
             while (steps-- > 0) {
                 SuppressNextCaptureLoss = false;
                 MouseDownPosition = globalPosition;
-                if (target != null && (target.AcceptsMouseInput && target.Enabled))
+                if (target != null && target.IsValidMouseInputTarget)
                     MouseCaptured = target;
-                if (target == null || (target.IsValidFocusTarget && target.Enabled))
+                if (target == null || target.IsValidFocusTarget)
                     Focused = target;
                 // FIXME: Suppress if disabled?
                 LastMouseDownTime = Now;

@@ -48,7 +48,23 @@ namespace Squared.PRGUI {
 
         internal ControlKey LayoutKey = ControlKey.Invalid;
 
-        public bool Visible { get; set; } = true;
+        private bool _Visible = true;
+        public bool Visible {
+            get {
+                if (!_Visible)
+                    return false;
+                // HACK
+                var ctx = Context;
+                if (ctx != null)
+                    if (GetOpacity(ctx.TimeProvider.Ticks) <= 0)
+                        return false;
+                return true;
+            }
+            set {
+                _Visible = value;
+            }
+        }
+
         public bool Enabled { get; set; } = true;
         /// <summary>
         /// Can receive focus via user input
@@ -95,7 +111,13 @@ namespace Squared.PRGUI {
             }
         }
 
-        internal bool IsValidFocusTarget => AcceptsFocus || (FocusBeneficiary != null);
+        internal bool IsValidFocusTarget => 
+            (
+                AcceptsFocus || (FocusBeneficiary != null)
+            ) && Enabled && Visible;
+
+        internal bool IsValidMouseInputTarget =>
+            AcceptsMouseInput && Visible && !Intangible && Enabled;
 
         public int TabOrder { get; set; } = 0;
         public int PaintOrder { get; set; } = 0;
@@ -239,7 +261,7 @@ namespace Squared.PRGUI {
         protected virtual bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
             if (Intangible)
                 return false;
-            if (!IsValidFocusTarget && acceptsMouseInputOnly)
+            if (!AcceptsMouseInput && acceptsMouseInputOnly)
                 return false;
             if (!AcceptsFocus && acceptsFocusOnly)
                 return false;

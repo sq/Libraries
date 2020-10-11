@@ -231,5 +231,19 @@ namespace Squared.PRGUI.Controls {
 
             return success;
         }
+
+        public T Child<T> (Func<T, bool> predicate)
+            where T : Control {
+
+            foreach (var child in Children) {
+                if (!(child is T))
+                    continue;
+                var t = (T)child;
+                if (predicate(t))
+                    return t;
+            }
+
+            return null;
+        }
     }
 }
