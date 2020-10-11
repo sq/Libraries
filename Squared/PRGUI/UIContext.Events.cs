@@ -151,14 +151,14 @@ namespace Squared.PRGUI {
                         var target = inTabOrder[newIndex];
                         if ((target != null) && (target != currentTopLevel)) {
                             Console.WriteLine($"Top level tab {currentTopLevel} -> {target}");
-                            return TrySetFocus(target);
+                            return TrySetFocus(target, false);
                         } else
                             return false;
                     } else {
                         var target = PickNextFocusTarget(Focused, tabDelta, true);
                         Console.WriteLine($"Tab {Focused} -> {target}");
                         if (target != null)
-                            return TrySetFocus(target);
+                            return TrySetFocus(target, false);
                         else
                             return false;
                     }
@@ -185,7 +185,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        public bool TrySetFocus (Control value) {
+        public bool TrySetFocus (Control value, bool force) {
             var newFocusTarget = value;
 
             // Top-level controls should pass focus on to their children if possible
@@ -210,7 +210,7 @@ namespace Squared.PRGUI {
                 }
 
                 // FIXME: Should we throw here?
-                if (!newFocusTarget.IsValidFocusTarget)
+                if (!newFocusTarget.IsValidFocusTarget && !force)
                     return false;
             }
 

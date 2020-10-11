@@ -189,8 +189,8 @@ namespace Squared.PRGUI {
         public Control Focused {
             get => _Focused;
             set {
-                if (!TrySetFocus(value))
-                    TrySetFocus(null);
+                if (!TrySetFocus(value, false))
+                    TrySetFocus(null, true);
             }
         }
 
@@ -337,8 +337,10 @@ namespace Squared.PRGUI {
             var donor = Focused;
             if ((MouseCaptured != null) && (MouseCaptured != target) && (LastMouseButtons == MouseButtons.None))
                 SuppressNextCaptureLoss = true;
-            if (target.IsValidFocusTarget)
-                Focused = target;
+            // HACK: If we used IsValidFocusTarget here, it would break scenarios where a control is capturing
+            //  focus before being shown or being enabled
+            if (target.AcceptsFocus)
+                TrySetFocus(target, true);
             MouseCaptured = target;
             return donor;
         }

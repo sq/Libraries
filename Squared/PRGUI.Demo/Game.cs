@@ -133,7 +133,7 @@ namespace PRGUI.Demo {
             TextMaterial = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
             TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.66f));
             TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.75f * DPIFactor);
-            TextMaterial.Parameters.ShadowMipBias.SetValue(1f);
+            TextMaterial.Parameters.ShadowMipBias.SetValue(1.33f);
 
             var hoveringCtl = new StaticText {
                 LayoutFlags = ControlFlags.Layout_Fill,

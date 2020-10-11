@@ -302,7 +302,7 @@ namespace Squared.PRGUI {
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
             if (name == UIEvents.MouseDown) {
-                Context.TrySetFocus(this);
+                Context.TrySetFocus(this, false);
 
                 if (MostRecentTitleBox.Contains(args.GlobalPosition)) {
                     Dragging = true;
