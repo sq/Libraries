@@ -552,14 +552,6 @@ namespace Squared.Render.RasterShape {
 
                 foreach (var sb in _SubBatches) {
                     var rasterShader = UseUbershader ? PickMaterial(null, sb.Shadowed, sb.Simple) : PickMaterial(sb.Type, sb.Shadowed, sb.Simple);
-                    manager.ApplyMaterial(rasterShader.Material);
-
-                    if (BlendState != null)
-                        device.BlendState = BlendState;
-                    if (DepthStencilState != null)
-                        device.DepthStencilState = DepthStencilState;
-                    if (RasterizerState != null)
-                        device.RasterizerState = RasterizerState;
 
                     rasterShader.BlendInLinearSpace.SetValue(sb.BlendInLinearSpace);
                     rasterShader.RasterTexture?.SetValue(Texture);
@@ -588,7 +580,14 @@ namespace Squared.Render.RasterShape {
                     ));
                     rasterShader.ShadowColorLinear.SetValue(shadowColor);
 
-                    rasterShader.Material.Flush();
+                    manager.ApplyMaterial(rasterShader.Material);
+
+                    if (BlendState != null)
+                        device.BlendState = BlendState;
+                    if (DepthStencilState != null)
+                        device.DepthStencilState = DepthStencilState;
+                    if (RasterizerState != null)
+                        device.RasterizerState = RasterizerState;
 
                     // FIXME: why the hell
                     device.Textures[0] = Texture;

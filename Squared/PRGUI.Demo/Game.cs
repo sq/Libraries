@@ -138,6 +138,7 @@ namespace PRGUI.Demo {
             var hoveringCtl = new StaticText {
                 LayoutFlags = ControlFlags.Layout_Fill,
                 AutoSize = false,
+                Wrap = false,
                 Text = "Hovering: None",
                 TooltipContent = "The control the mouse is currently hovering over"
             };
@@ -145,6 +146,7 @@ namespace PRGUI.Demo {
             var lastClickedCtl = new StaticText {
                 LayoutFlags = ControlFlags.Layout_Fill,
                 AutoSize = false,
+                Wrap = false,
                 Text = "",
                 TooltipContent = "The control most recently clicked with the mouse"
             };
@@ -152,6 +154,7 @@ namespace PRGUI.Demo {
             var focusedCtl = new StaticText {
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                 AutoSize = false,
+                Wrap = false,
                 Text = "",
                 TooltipContent = "The control with keyboard focus"
             };
@@ -372,6 +375,7 @@ namespace PRGUI.Demo {
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
                 floatingWindow.Intangible = true;
                 floatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.TimeProvider.Ticks);
+                System.Windows.Forms.MessageBox.Show("Test");
             });
 
             Context.EventBus.Subscribe(floatingWindow, UIEvents.OpacityTweenEnded, (ei) => {
@@ -393,6 +397,10 @@ namespace PRGUI.Demo {
             Window.AllowUserResizing = true;
             Window.ClientSizeChanged += Window_ClientSizeChanged;
             Window_ClientSizeChanged(null, EventArgs.Empty);
+        }
+
+        private class H : System.Windows.Forms.IWin32Window {
+            public IntPtr Handle { get; set; }
         }
 
         private void Window_ClientSizeChanged (object sender, EventArgs e) {
@@ -517,7 +525,7 @@ namespace PRGUI.Demo {
             using (var buffer = BufferPool<BitmapDrawCall>.Allocate(text.Length)) {
                 var layout = Font.LayoutString(text, buffer, scale: scale);
                 var layoutSize = layout.Size;
-                var position = new Vector2(Graphics.PreferredBackBufferWidth - (240 * scale), Graphics.PreferredBackBufferHeight - (240 * scale)).Floor();
+                var position = new Vector2(Window.ClientBounds.Width - (240 * scale), Window.ClientBounds.Height - (240 * scale)).Floor();
                 var dc = layout.DrawCalls;
 
                 // fill quad + text quads
