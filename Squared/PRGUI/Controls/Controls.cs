@@ -346,6 +346,23 @@ namespace Squared.PRGUI {
         public Func<Control, AbstractString> GetText;
         public AbstractString Text;
 
+        public AbstractTooltipContent (Func<Control, AbstractString> getText) {
+            Text = default(AbstractString);
+            GetText = getText;
+        }
+
+        public AbstractTooltipContent (AbstractString text) {
+            Text = text;
+            GetText = null;
+        }
+
+        public AbstractString Get (Control target) {
+            if (GetText != null)
+                return GetText(target);
+            else
+                return Text;
+        }
+
         public static implicit operator AbstractTooltipContent (Func<Control, AbstractString> func) {
             return new AbstractTooltipContent { GetText = func };
         }

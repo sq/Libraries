@@ -458,14 +458,6 @@ namespace Squared.PRGUI {
             FirstTooltipHoverTime = null;
         }
 
-        private AbstractString GetTooltipContent (Control target) {
-            var ttc = target.TooltipContent;
-            var tooltipText = ttc.Text;
-            if (ttc.GetText != null)
-                tooltipText = ttc.GetText(target);
-            return tooltipText;
-        }
-
         private void UpdateTooltip (bool leftButtonPressed) {
             if (leftButtonPressed)
                 return;
@@ -473,7 +465,7 @@ namespace Squared.PRGUI {
             var now = Now;
             var tooltipContent = default(AbstractString);
             if (Hovering != null)
-                tooltipContent = GetTooltipContent(Hovering);
+                tooltipContent = Hovering.TooltipContent.Get(Hovering);
 
             if (!tooltipContent.IsNull) {
                 if (!FirstTooltipHoverTime.HasValue)

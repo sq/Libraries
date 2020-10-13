@@ -247,7 +247,7 @@ namespace PRGUI.Demo {
 
             var bigMenu = new Menu();
             for (var i = 0; i < 100; i++)
-                bigMenu.Children.Add(new StaticText { Text = $"Item {i}" });
+                bigMenu.Children.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });
 
             var bigMenuButton = new Button {
                 Text = "Big Menu",

@@ -10,6 +10,7 @@ using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
 using Squared.Threading;
 using Squared.Util;
+using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class Menu : Container {
@@ -48,6 +49,16 @@ namespace Squared.PRGUI.Controls {
 
         private bool IsActive = false;
 
+        public static readonly AbstractTooltipContent SelectedItemTooltip = new AbstractTooltipContent(
+            (Control ctl) => {
+                var m = ctl as Menu;
+                if (m == null)
+                    return default(AbstractString);
+                else
+                    return m._SelectedItem?.TooltipContent.Get(m._SelectedItem) ?? default(AbstractString);
+            }
+        );
+
         public Menu ()
             : base () {
             AcceptsMouseInput = true;
@@ -57,6 +68,7 @@ namespace Squared.PRGUI.Controls {
             PaintOrder = 9900;
             ClipChildren = true;
             ShowHorizontalScrollbar = false;
+            TooltipContent = SelectedItemTooltip;
         }
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
