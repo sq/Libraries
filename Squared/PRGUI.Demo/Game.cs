@@ -375,7 +375,6 @@ namespace PRGUI.Demo {
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
                 floatingWindow.Intangible = true;
                 floatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.TimeProvider.Ticks);
-                System.Windows.Forms.MessageBox.Show("Test");
             });
 
             Context.EventBus.Subscribe(floatingWindow, UIEvents.OpacityTweenEnded, (ei) => {
@@ -397,10 +396,6 @@ namespace PRGUI.Demo {
             Window.AllowUserResizing = true;
             Window.ClientSizeChanged += Window_ClientSizeChanged;
             Window_ClientSizeChanged(null, EventArgs.Empty);
-        }
-
-        private class H : System.Windows.Forms.IWin32Window {
-            public IntPtr Handle { get; set; }
         }
 
         private void Window_ClientSizeChanged (object sender, EventArgs e) {

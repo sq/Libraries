@@ -230,7 +230,8 @@ namespace Squared.PRGUI {
         private bool IsTextInputRegistered = false;
         private bool IsCompositionActive = false;
 
-        public float Now => (float)TimeProvider.Seconds;
+        private float Now => (float)TimeProvider.Seconds;
+        private long NowL => TimeProvider.Ticks;
 
         internal DepthStencilState GetStencilRestore (int targetReferenceStencil) {
             DepthStencilState result;
@@ -568,7 +569,7 @@ namespace Squared.PRGUI {
             if (instant)
                 CachedTooltip.Opacity = 0;
             else if (IsTooltipVisible)
-                CachedTooltip.Opacity = Tween<float>.StartNow(CachedTooltip.Opacity.Get(Now), 0, seconds: TooltipFadeDuration);
+                CachedTooltip.Opacity = Tween<float>.StartNow(CachedTooltip.Opacity.Get(Now), 0, now: NowL, seconds: TooltipFadeDuration);
             IsTooltipVisible = false;
         }
 
@@ -621,7 +622,7 @@ namespace Squared.PRGUI {
 
             var currentOpacity = instance.Opacity.Get(Now);
             if (!IsTooltipVisible)
-                instance.Opacity = Tween<float>.StartNow(currentOpacity, 1f, (currentOpacity > 0.1 ? TooltipFadeDurationFast : TooltipFadeDuration));
+                instance.Opacity = Tween<float>.StartNow(currentOpacity, 1f, (currentOpacity > 0.1 ? TooltipFadeDurationFast : TooltipFadeDuration), now: NowL);
             if ((anchor != PreviousTooltipAnchor) && (currentOpacity > 0))
                 instance.Opacity = 1f;
 

@@ -130,7 +130,7 @@ namespace Squared.PRGUI {
         protected WeakReference<UIContext> WeakContext = null;
         protected WeakReference<Control> WeakParent = null;
 
-        protected float Now => Context?.Now ?? (float)Time.Seconds;
+        protected float Now => (float)(Context?.TimeProvider?.Seconds ?? Time.Seconds);
         protected long NowL => Context?.TimeProvider?.Ticks ?? Time.Ticks;
 
         protected static void UpdateColor (ref Tween<Vector4>? v4, Tween<Color>? value) {
