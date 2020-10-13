@@ -206,6 +206,43 @@ namespace Squared.Util {
         public static implicit operator Tween<T> (T value) {
             return new Tween<T>(value);
         }
+
+        public static bool operator == (Tween<T> lhs, Tween<T> rhs) {
+            return lhs.Equals(ref rhs);
+        }
+
+        public static bool operator != (Tween<T> lhs, Tween<T> rhs) {
+            return !lhs.Equals(ref rhs);
+        }
+
+        public bool Equals (ref Tween<T> rhs) {
+            return
+                (StartedWhen == rhs.StartedWhen) &&
+                (EndWhen == rhs.EndWhen) &&
+                (RepeatCount == rhs.RepeatCount) &&
+                (RepeatMode == rhs.RepeatMode) &&
+                (Interpolator == rhs.Interpolator) &&
+                object.Equals(From, rhs.From) &&
+                object.Equals(To, rhs.To);
+        }
+
+        public bool Equals (Tween<T> rhs) {
+            return Equals(ref rhs);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is Tween<T>)
+                return Equals((Tween<T>)obj);
+            else
+                return false;
+        }
+
+        public override string ToString () {
+            if (EndWhen <= StartedWhen)
+                return string.Format("constant <{0}>", From);
+            else
+                return string.Format("from <{0}> to <{1}> duration {2:0000.00}ms [started at {3}]", From, To, (double)(EndWhen - StartedWhen) / Time.MillisecondInTicks, StartedWhen);
+        }
     }
 
     public enum TweenRepeatMode : int {
