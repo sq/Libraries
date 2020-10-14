@@ -225,7 +225,8 @@ namespace PRGUI.Demo {
                     new StaticText { Text = "Item 2" },
                     new StaticText {
                         Text = "Extremely long menu item with a bunch of text in it. This thing should be truncated pretty aggressively",
-                        BackgroundColor = Color.Blue
+                        BackgroundColor = Color.Blue,
+                        Wrap = false
                     },
                     new Container {
                         Children = {

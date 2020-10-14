@@ -198,7 +198,7 @@ namespace Squared.PRGUI.Decorations {
             SelectionShadow,
             TooltipShadow;
 
-        public Color FocusedColor = new Color(205, 220, 255),
+        public Color FocusedColor = new Color(200, 220, 255),
             ActiveColor = new Color(240, 240, 240),
             InactiveColor = new Color(180, 180, 180),
             ContainerOutlineColor = new Color(32, 32, 32),

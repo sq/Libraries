@@ -674,8 +674,10 @@ namespace Squared.PRGUI {
         public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer, int prepassLayer) {
             var context = MakeOperationContext();
 
-            foreach (var srt in ScratchRenderTargets)
+            foreach (var srt in ScratchRenderTargets) {
+                srt.Update();
                 srt.Reset();
+            }
 
             using (var prepassGroup = BatchGroup.New(frame, prepassLayer))
             using (var rtBatch = BatchGroup.ForRenderTarget(frame, layer, renderTarget)) {
