@@ -117,15 +117,35 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private Pair<int> ExpandedSelection {
+            get {
+                var result = _Selection;
+                if (Builder.Length > 0) {
+                    if ((result.Second > 0) && char.IsHighSurrogate(Builder[result.Second - 1]))
+                        result.Second++;
+                    if (char.IsLowSurrogate(Builder[result.First]))
+                        result.First--;
+
+                    if (result.First < 0)
+                        result.First = 0;
+                }
+                return result;
+            }
+        }
+
         public string SelectedText {
             get {
                 if (Selection.First == Selection.Second)
                     return "";
 
-                return Builder.ToString(Selection.First, Selection.Second - Selection.First);
+                var sel = ExpandedSelection;
+                var result = Builder.ToString(sel.First, sel.Second - sel.First);
+                if (char.IsHighSurrogate(result[result.Length - 1]))
+                    throw new Exception();
+                return result;
             }
             set {
-                var newRange = ReplaceRange(Selection, FilterInput(value));
+                var newRange = ReplaceRange(ExpandedSelection, FilterInput(value));
                 SetSelection(new Pair<int>(newRange.Second, newRange.Second), 1);
                 NextScrollInstant = true;
             }
@@ -259,8 +279,9 @@ namespace Squared.PRGUI.Controls {
 
         protected LayoutMarker? MarkSelection () {
             // FIXME: Insertion mode highlight?
-            var a = Selection.First;
-            var b = Math.Max(Selection.Second - 1, a);
+            var esel = ExpandedSelection;
+            var a = esel.First;
+            var b = Math.Max(esel.Second - 1, a);
             return DynamicLayout.Mark(a, b);
         }
 
@@ -305,6 +326,7 @@ namespace Squared.PRGUI.Controls {
             );
 
             var virtualPosition = position + ScrollOffset;
+            var esel = ExpandedSelection;
 
             if (name == UIEvents.MouseDown) {
                 DisableAutoscrollUntil = Now + AutoscrollClickTimeout;
@@ -317,8 +339,8 @@ namespace Squared.PRGUI.Controls {
                     !args.DoubleClicking &&
                     (
                         (args.Buttons == MouseButtons.Left) ||
-                        (Selection.First > newCharacterIndex.Value) ||
-                        (Selection.Second < newCharacterIndex.Value)
+                        (esel.First > newCharacterIndex.Value) ||
+                        (esel.Second < newCharacterIndex.Value)
                     )
                 ) {
                     SetSelection(new Pair<int>(newCharacterIndex.Value, newCharacterIndex.Value), 0);
@@ -424,6 +446,10 @@ namespace Squared.PRGUI.Controls {
             if (range.First >= range.Second)
                 return;
 
+            if (char.IsLowSurrogate(Builder[range.First]))
+                range.First--;
+            else if (char.IsHighSurrogate(Builder[range.Second - 1]))
+                range.Second++;
             Builder.Remove(range.First, range.Second - range.First);
             if (fireEvent)
                 ValueChanged();
