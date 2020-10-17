@@ -121,7 +121,7 @@ namespace Squared.PRGUI.Controls {
             get {
                 var result = _Selection;
                 if (Builder.Length > 0) {
-                    if ((result.Second > 0) && char.IsHighSurrogate(Builder[result.Second - 1]))
+                    if ((result.Second > 0) && (result.Second < Builder.Length) && char.IsHighSurrogate(Builder[result.Second - 1]))
                         result.Second++;
                     if ((result.First < Builder.Length) && char.IsLowSurrogate(Builder[result.First]))
                         result.First--;
