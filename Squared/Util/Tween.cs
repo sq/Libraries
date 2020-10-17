@@ -194,8 +194,12 @@ namespace Squared.Util {
             where U : struct {
 
             // HACK: This interpolator lookup is gross
-            if ((interpolator == null) && (Interpolator != null))
-                interpolator = Interpolators<U>.GetBoundByName<Tween<U>>(Interpolator.Method.Name);
+            if ((interpolator == null) && (Interpolator != null)) {
+                if (typeof(T) == typeof(U))
+                    interpolator = (BoundInterpolator<U, Tween<U>>)((object)this.Interpolator);
+                else
+                    interpolator = Interpolators<U>.GetBoundByName<Tween<U>>(Interpolator.Method.Name);
+            }
 
             return new Tween<U>(
                 from, to, StartedWhen, EndWhen, 

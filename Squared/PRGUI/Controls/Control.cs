@@ -44,8 +44,6 @@ namespace Squared.PRGUI {
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
 
-        public ControlStates State;
-
         internal ControlKey LayoutKey = ControlKey.Invalid;
 
         private bool _Visible = true;
@@ -409,7 +407,7 @@ namespace Squared.PRGUI {
         }
 
         protected ControlStates GetCurrentState (UIOperationContext context) {
-            var result = State;
+            var result = default(ControlStates);
 
             if (!Enabled) {
                 result |= ControlStates.Disabled;
