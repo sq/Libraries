@@ -238,7 +238,7 @@ namespace Squared.PRGUI.Controls {
                     ContentBox = selectionBox,
                     State = ControlStates.Hovering | ControlStates.Focused
                 };
-                context.DecorationProvider.Selection?.Rasterize(context, ref passSet.Below, selectionSettings);
+                context.DecorationProvider.MenuSelection?.Rasterize(context, ref passSet.Below, selectionSettings);
                 context.Pass = oldPass;
 
                 passSet.Below.Layer += 1;

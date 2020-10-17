@@ -51,6 +51,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Checkbox { get; }
         IDecorator RadioButton { get; }
         IDecorator Description { get; }
+        IDecorator MenuSelection { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
@@ -166,6 +167,7 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator Checkbox { get; set; }
         public IDecorator RadioButton { get; set; }
         public IDecorator Description { get; set; }
+        public IDecorator MenuSelection { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public IGlyphSource DefaultFont,
@@ -178,7 +180,8 @@ namespace Squared.PRGUI.Decorations {
             ContainerCornerRadius = 3f, 
             TitleCornerRadius = 3f,
             SelectionCornerRadius = 1.9f,
-            SelectionPadding = 1f;
+            SelectionPadding = 1f,
+            MenuSelectionCornerRadius = 5f;
         public float? FloatingContainerCornerRadius = 7f,
             TooltipCornerRadius = 8f;
         public float InactiveOutlineThickness = 1f, 
@@ -607,6 +610,19 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
+        private void MenuSelection_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
+            var fillColor = (pSRGBColor)SelectionFillColor * Arithmetic.Pulse(context.Now / 2f, 0.9f, 1f);
+
+            renderer.RasterizeRectangle(
+                a, b,
+                radius: MenuSelectionCornerRadius,
+                outlineRadius: 0.9f, outlineColor: fillColor,
+                innerColor: fillColor, outerColor: fillColor * 0.6f,
+                fillMode: RasterFillMode.Horizontal
+            );
+        }
+
         private void CompositionPreview_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
             var fillColor = SelectionFillColor;
@@ -829,6 +845,11 @@ namespace Squared.PRGUI.Decorations {
             Selection = new DelegateDecorator {
                 GetTextSettings = GetTextSettings_Selection,
                 Content = Selection_Content,
+            };
+
+            MenuSelection = new DelegateDecorator {
+                GetTextSettings = GetTextSettings_Selection,
+                Content = MenuSelection_Content,
             };
 
             CompositionPreview = new DelegateDecorator {
