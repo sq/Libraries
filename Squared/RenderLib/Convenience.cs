@@ -296,58 +296,19 @@ namespace Squared.Render.Convenience {
         private struct CachedBatch {
             public IBatch Batch;
 
-            private CachedBatchType BatchType;
-            private IBatchContainer Container;
-            private int Layer;
-            private BlendState BlendState;
-            private SamplerState SamplerState;
-            private RasterizerState RasterizerState;
-            private DepthStencilState DepthStencilState;
-            private Material CustomMaterial;
-            private bool WorldSpace;
-            private bool UseZBuffer;
-            private bool ZBufferOnlySorting;
-            private bool DepthPrePass;
-
-            public CachedBatch (
-                CachedBatchType cbt,
-                IBatchContainer container,
-                int layer,
-                bool worldSpace,
-                RasterizerState rasterizerState,
-                DepthStencilState depthStencilState,
-                BlendState blendState,
-                SamplerState samplerState,
-                Material customMaterial,
-                bool useZBuffer,
-                bool zBufferOnlySorting,
-                bool depthPrePass
-            ) {
-                Batch = null;
-                BatchType = cbt;
-                Container = container;
-                Layer = layer;
-                // FIXME: Mask if multimaterial?
-                WorldSpace = worldSpace;
-                UseZBuffer = useZBuffer;
-                ZBufferOnlySorting = zBufferOnlySorting;
-                DepthPrePass = depthPrePass;
-
-                if (cbt != CachedBatchType.MultimaterialBitmap) {
-                    RasterizerState = rasterizerState;
-                    DepthStencilState = depthStencilState;
-                    BlendState = blendState;
-                    SamplerState = samplerState;
-                    CustomMaterial = customMaterial;
-                } else {
-                    RasterizerState = null;
-                    DepthStencilState = null;
-                    BlendState = null;
-                    SamplerState = null;
-                    CustomMaterial = null;
-                }
-            }
-
+            public CachedBatchType BatchType;
+            public IBatchContainer Container;
+            public int Layer;
+            public BlendState BlendState;
+            public SamplerState SamplerState;
+            public RasterizerState RasterizerState;
+            public DepthStencilState DepthStencilState;
+            public Material CustomMaterial;
+            public bool WorldSpace;
+            public bool UseZBuffer;
+            public bool ZBufferOnlySorting;
+            public bool DepthPrePass;
+            
             public bool KeysEqual (ref CachedBatch rhs) {
                 var result = (
                     (BatchType == rhs.BatchType) &&
@@ -409,38 +370,39 @@ namespace Squared.Render.Convenience {
                 bool zBufferOnlySorting,
                 bool depthPrePass
             ) {
-                CachedBatch searchKey;
+                result = new CachedBatch {
+                    BatchType = cbt,
+                    Container = container,
+                    Layer = layer,
+                    // FIXME: Mask if multimaterial?
+                    WorldSpace = worldSpace,
+                    UseZBuffer = useZBuffer,
+                    ZBufferOnlySorting = zBufferOnlySorting,
+                    DepthPrePass = depthPrePass
+                };
 
-                searchKey = new CachedBatch(
-                    cbt,
-                    container,
-                    layer,
-                    worldSpace,
-                    rasterizerState,
-                    depthStencilState,
-                    blendState,
-                    samplerState,
-                    customMaterial,
-                    useZBuffer,
-                    zBufferOnlySorting,
-                    depthPrePass
-                );
+                if (cbt != CachedBatchType.MultimaterialBitmap) {
+                    result.RasterizerState = rasterizerState;
+                    result.DepthStencilState = depthStencilState;
+                    result.BlendState = blendState;
+                    result.SamplerState = samplerState;
+                    result.CustomMaterial = customMaterial;
+                }
 
                 int i;
-                if (Batch0.KeysEqual(ref searchKey)) {
+                if (Batch0.KeysEqual(ref result)) {
                     result = Batch0;
                     i = 0;
-                } else if (Batch1.KeysEqual(ref searchKey)) {
+                } else if (Batch1.KeysEqual(ref result)) {
                     result = Batch1;
                     i = 1;
-                } else if (Batch2.KeysEqual(ref searchKey)) {
+                } else if (Batch2.KeysEqual(ref result)) {
                     result = Batch2;
                     i = 2;
-                } else if (Batch3.KeysEqual(ref searchKey)) {
+                } else if (Batch3.KeysEqual(ref result)) {
                     result = Batch3;
                     i = 3;
                 } else {
-                    result = searchKey;
                     return false;
                 }
 
