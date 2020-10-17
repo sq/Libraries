@@ -123,11 +123,13 @@ namespace Squared.PRGUI.Controls {
                 if (Builder.Length > 0) {
                     if ((result.Second > 0) && char.IsHighSurrogate(Builder[result.Second - 1]))
                         result.Second++;
-                    if (char.IsLowSurrogate(Builder[result.First]))
+                    if ((result.First < Builder.Length) && char.IsLowSurrogate(Builder[result.First]))
                         result.First--;
 
                     if (result.First < 0)
                         result.First = 0;
+                    if (result.Second > Builder.Length)
+                        result.Second = Builder.Length;
                 }
                 return result;
             }
@@ -210,11 +212,15 @@ namespace Squared.PRGUI.Controls {
                 // Expand selection outward if it rests in the middle of a surrogate pair
                 if ((value.First > 0) && char.IsLowSurrogate(Builder[value.First]))
                     value.First--;
-                /*
+                /* FIXME: Why is this disabled?
                 if ((value.Second < (Builder.Length - 1)) && char.IsHighSurrogate(Builder[value.Second]))
                     value.Second++;
                 */
             }
+
+            // Clamp again in case surrogate handling produced invalid outputs
+            value.First = Arithmetic.Clamp(value.First, 0, Builder.Length);
+            value.Second = Arithmetic.Clamp(value.Second, value.First, Builder.Length);
 
             if (_Selection == value)
                 return;
@@ -391,7 +397,7 @@ namespace Squared.PRGUI.Controls {
         private void ShowContextMenu (bool forMouseEvent) {
             ContextMenu.Child<StaticText>(st => st.Text == "Cut").Enabled =
                 ContextMenu.Child<StaticText>(st => st.Text == "Copy").Enabled =
-                    _Selection.First != _Selection.Second;
+                    Selection.First != Selection.Second;
 
             try {
                 ContextMenu.Child<StaticText>(st => st.Text == "Paste").Enabled =
@@ -499,7 +505,7 @@ namespace Squared.PRGUI.Controls {
                         SetSelection(new Pair<int>(Selection.First, Selection.First + 1), 1);
                 }
 
-                ReplaceRange(Selection, evt.Char.Value);
+                ReplaceRange(ExpandedSelection, evt.Char.Value);
                 MoveCaret(Selection.First + 1, 1);
                 return true;
             } else if (evt.Key.HasValue) {
@@ -511,7 +517,7 @@ namespace Squared.PRGUI.Controls {
                     case Keys.Back:
                         // FIXME: Ctrl-delete and Ctrl-backspace should eat entire words
                         if (Selection.Second != Selection.First) {
-                            RemoveRange(Selection, true);
+                            RemoveRange(ExpandedSelection, true);
                             MoveCaret(Selection.First, 1);
                         } else {
                             int pos = Selection.First, count = 1;
@@ -657,11 +663,12 @@ namespace Squared.PRGUI.Controls {
 
         public void AdjustSelection (int delta, bool grow, bool byWord) {
             int anchor, extent;
+            var esel = ExpandedSelection;
             if (grow) {
-                anchor = (CurrentScrollBias < 0) ? Selection.Second : Selection.First;
-                extent = (CurrentScrollBias < 0) ? Selection.First : Selection.Second;
+                anchor = (CurrentScrollBias < 0) ? esel.Second : esel.First;
+                extent = (CurrentScrollBias < 0) ? esel.First : esel.Second;
             } else {
-                anchor = (delta < 0) ? Selection.First : Selection.Second;
+                anchor = (delta < 0) ? esel.First : esel.Second;
                 extent = anchor;
             }
 
@@ -723,7 +730,7 @@ namespace Squared.PRGUI.Controls {
             selectionDecorator.GetTextSettings(context, state, out Material temp, out IGlyphSource temp2, ref selectedColor);
             var noColorizing = (selection == null) || 
                 (selection.Value.Bounds == null) || 
-                (_Selection.First == _Selection.Second) ||
+                (Selection.First == Selection.Second) ||
                 (selection.Value.GlyphCount == 0);
             for (int i = 0; i < drawCalls.Count; i++) {
                 var color = noColorizing || ((i < selection.Value.FirstDrawCallIndex) || (i > selection.Value.LastDrawCallIndex))
@@ -744,11 +751,11 @@ namespace Squared.PRGUI.Controls {
             if (sel.Size.Length() < 1)
                 sel.BottomRight = sel.TopLeft + new Vector2(0, DynamicLayout.GlyphSource.LineSpacing);
 
-            var hasRange = _Selection.First != _Selection.Second;
+            var hasRange = Selection.First != Selection.Second;
 
             // FIXME: Multiline
             if (!hasRange) {
-                if (_Selection.First >= Builder.Length)
+                if (Selection.First >= Builder.Length)
                     sel.TopLeft.X = sel.BottomRight.X;
                 else
                     sel.BottomRight.X = sel.TopLeft.X;
@@ -893,7 +900,7 @@ namespace Squared.PRGUI.Controls {
             if (selBounds.HasValue && 
                 (
                     settings.State.IsFlagged(ControlStates.Focused) || 
-                    (_Selection.First != _Selection.Second)
+                    (Selection.First != Selection.Second)
                 )
             ) {
                 var selBox = (RectF)selBounds.Value;
@@ -901,7 +908,7 @@ namespace Squared.PRGUI.Controls {
 
                 LastLocalCursorPosition = selBox.Position - settings.Box.Position;
 
-                if ((_Selection.First == _Selection.Second) && (context.UIContext.TextInsertionMode == false))
+                if ((Selection.First == Selection.Second) && (context.UIContext.TextInsertionMode == false))
                     selBox.Width = 4;
 
                 var selSettings = new DecorationSettings {
