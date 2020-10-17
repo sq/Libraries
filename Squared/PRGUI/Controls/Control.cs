@@ -422,7 +422,7 @@ namespace Squared.PRGUI {
                     result |= ControlStates.Focused;
             }
 
-            if (context.UIContext.MouseCaptured == this)
+            if ((context.UIContext.MouseCaptured == this) || (context.SpacebarHeld && context.UIContext.Focused == this))
                 result |= ControlStates.Pressed;
 
             return result;

@@ -55,13 +55,16 @@ namespace Squared.PRGUI {
             }
         }
 
-        private static readonly HashSet<Keys> SuppressRepeatKeys = new HashSet<Keys> {
+        public static readonly HashSet<Keys> ModifierKeys = new HashSet<Keys> {
             Keys.LeftAlt,
             Keys.LeftControl,
             Keys.LeftShift,
             Keys.RightAlt,
             Keys.RightControl,
             Keys.RightShift,
+        };
+
+        private static readonly HashSet<Keys> SuppressRepeatKeys = new HashSet<Keys> {
             Keys.Escape,
             Keys.CapsLock,
             Keys.Scroll,
@@ -541,6 +544,7 @@ namespace Squared.PRGUI {
                         ((now - LastKeyEventFirstTime) >= FirstKeyRepeatDelay) &&
                         ((now - LastKeyEventTime) >= repeatSpeed) &&
                         !SuppressRepeatKeys.Contains(key) && 
+                        !ModifierKeys.Contains(key) &&
                         !shouldFilterKeyPress
                     ) {
                         LastKeyEventTime = now;
@@ -644,6 +648,7 @@ namespace Squared.PRGUI {
                 UIContext = this,
                 Now = Now,
                 Modifiers = CurrentModifiers,
+                SpacebarHeld = LastKeyboardState.IsKeyDown(Keys.Space),
                 MouseButtonHeld = (LastMouseButtons != MouseButtons.None),
                 MousePosition = LastMousePosition
             };
@@ -739,6 +744,7 @@ namespace Squared.PRGUI {
         public RasterizePasses Pass;
         public float Now { get; internal set; }
         public KeyboardModifiers Modifiers { get; internal set; }
+        public bool SpacebarHeld { get; internal set; }
         public bool MouseButtonHeld { get; internal set; }
         public Vector2 MousePosition { get; internal set; }
 
@@ -748,6 +754,7 @@ namespace Squared.PRGUI {
                 Pass = Pass,
                 Now = Now,
                 Modifiers = Modifiers,
+                SpacebarHeld = SpacebarHeld,
                 MouseButtonHeld = MouseButtonHeld,
                 MousePosition = MousePosition
             };

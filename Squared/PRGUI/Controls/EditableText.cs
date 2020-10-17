@@ -572,7 +572,7 @@ namespace Squared.PRGUI.Controls {
                         return true;
 
                     default:
-                        if (evt.Modifiers.Control || evt.Modifiers.Alt)
+                        if ((evt.Modifiers.Control || evt.Modifiers.Alt) && !UIContext.ModifierKeys.Contains(evt.Key.Value))
                             return HandleHotKey(evt);
 
                         return false;
@@ -634,6 +634,8 @@ namespace Squared.PRGUI.Controls {
 
             for (int i = 0; i < 3; i++) {
                 boundary = Unicode.FindWordBoundary(Builder, searchFromCharacterIndex: searchPosition);
+                if (boundary.First < 0)
+                    return 0;
                 var ch = Builder[boundary.First];
 
                 if ((boundary.First == startingCharacter) || char.IsWhiteSpace(ch)) {

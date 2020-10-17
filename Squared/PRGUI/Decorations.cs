@@ -181,7 +181,8 @@ namespace Squared.PRGUI.Decorations {
             TitleCornerRadius = 3f,
             SelectionCornerRadius = 1.9f,
             SelectionPadding = 1f,
-            MenuSelectionCornerRadius = 5f;
+            MenuSelectionCornerRadius = 4.5f,
+            EditableTextCornerRadius = 4.5f;
         public float? FloatingContainerCornerRadius = 7f,
             TooltipCornerRadius = 8f;
         public float InactiveOutlineThickness = 1f, 
@@ -375,11 +376,14 @@ namespace Squared.PRGUI.Decorations {
             var isChecked = settings.State.IsFlagged(ControlStates.Checked);
             if (isHovering || isChecked) {
                 var f = Color.White * (isChecked ? 1 : 0.2f);
-                var o = Color.White * (isChecked ? 0.8f : 0.4f);
+                var o = Color.White * (isChecked ? 0.6f : 0.4f);
+                var so = renderer.RasterSoftOutlines;
+                renderer.RasterSoftOutlines = true;
                 renderer.RasterizeEllipse(
-                    settings.Box.Center, Vector2.One * (isChecked ? 8f : 7f), 
+                    settings.Box.Center - (Vector2.One * 0.1f), Vector2.One * (isChecked ? 8f : 7f), 
                     1.2f, f, f, o
                 );
+                renderer.RasterSoftOutlines = so;
             }
 
             if (!settings.State.IsFlagged(ControlStates.Hovering))
@@ -464,7 +468,7 @@ namespace Squared.PRGUI.Decorations {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
-                radius: InertCornerRadius,
+                radius: EditableTextCornerRadius,
                 outlineRadius: isFocused
                     ? EditableFocusedOutlineThickness 
                     : InactiveOutlineThickness, 
@@ -482,7 +486,7 @@ namespace Squared.PRGUI.Decorations {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
-                radius: InertCornerRadius,
+                radius: EditableTextCornerRadius,
                 outlineRadius: 0, 
                 outlineColor: Color.Transparent,
                 innerColor: Color.White, 

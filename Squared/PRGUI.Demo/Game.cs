@@ -256,7 +256,7 @@ namespace PRGUI.Demo {
             };
 
             var topLevelContainer = new Container {
-                BackgroundColor = new Color(48, 48, 48),
+                BackgroundColor = new Color(48, 48, 48) * 0.9f,
                 LayoutFlags = ControlFlags.Layout_Fill,
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                 Children = {
