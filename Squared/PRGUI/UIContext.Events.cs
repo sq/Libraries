@@ -183,25 +183,73 @@ namespace Squared.PRGUI {
         }
 
         private void UpdateAutoscroll () {
+            if (CurrentMouseButtons != MouseButtons.None)
+                return;
+
+            var scrollContext = ChooseScrollContext(KeyboardSelection, out RectF parentRect, out RectF controlRect, out RectF intersectedRect);
+            if (scrollContext != null) {
+                // For huge controls, as long as their top-left corner is visible we don't need to scroll
+                if (
+                    (
+                        (controlRect.Width >= parentRect.Width - AutoscrollMargin) || 
+                        (controlRect.Height >= parentRect.Height - AutoscrollMargin)
+                    ) && 
+                    (intersectedRect.Left <= controlRect.Left) &&
+                    (intersectedRect.Top <= controlRect.Top)
+                ) {
+                    return;
+                }
+
+                // If the control is partially visible, we want to scroll its top-left corner into view.
+                // Otherwise, just go for it and try to center the control in the viewport
+                var centered = (intersectedRect.Size.Length() < 4);
+                var anchor = centered ? controlRect.Center : controlRect.Position - (Vector2.One * AutoscrollMargin);
+                var idealCenter = centered ? parentRect.Center : parentRect.Position;
+                var maximumDisplacement = anchor - idealCenter;
+                // If the necessary scroll displacement is very small, don't bother scrolling - it'd just
+                //  be an annoyance.
+                if (maximumDisplacement.Length() < 1.5f)
+                    return;
+
+                // Compute a new scroll offset that shifts our anchor into view, and constrain it
+                var currentScrollOffset = scrollContext.ScrollOffset;
+                var newScrollOffset = currentScrollOffset + maximumDisplacement;
+                var min = scrollContext.MinScrollOffset ?? Vector2.Zero;
+                var max = scrollContext.MaxScrollOffset;
+                newScrollOffset.X = Math.Max(min.X, newScrollOffset.X);
+                newScrollOffset.Y = Math.Max(min.Y, newScrollOffset.Y);
+                if (max.HasValue) {
+                    newScrollOffset.X = Math.Min(max.Value.X, newScrollOffset.X);
+                    newScrollOffset.Y = Math.Min(max.Value.Y, newScrollOffset.Y);
+                }
+
+                // Compute our actual displacement based on the constrained offset and then clamp
+                //  that displacement to our autoscroll speed
+                var displacement = newScrollOffset - currentScrollOffset;
+                displacement.X = Math.Min(Math.Abs(displacement.X), AutoscrollSpeed) * Math.Sign(displacement.X);
+                displacement.Y = Math.Min(Math.Abs(displacement.Y), AutoscrollSpeed) * Math.Sign(displacement.Y);
+                scrollContext.ScrollOffset = currentScrollOffset + displacement;
+            }
         }
 
-        private IScrollableControl ChooseScrollContext (Control control) {
+        private IScrollableControl ChooseScrollContext (Control control, out RectF parentRect, out RectF controlRect, out RectF intersectedRect) {
+            parentRect = controlRect = intersectedRect = default(RectF);
             if (control == null)
                 return null;
 
             var _ = control;
-            var screenRect = control.GetRect(Layout);
-            var intersectedScreenRect = screenRect;
+            controlRect = control.GetRect(Layout);
             while (control.TryGetParent(out control)) {
                 var result = control as IScrollableControl;
                 if (result == null)
                     continue;
 
-                var parentRect = control.GetRect(Layout, contentRect: true);
-                intersectedScreenRect.Intersection(ref parentRect, out intersectedScreenRect);
+                parentRect = control.GetRect(Layout, contentRect: true);
+                controlRect.Intersection(ref parentRect, out intersectedRect);
+                if (!intersectedRect.Equals(controlRect))
+                    return result;
             }
 
-            Console.WriteLine($"{screenRect} -> {intersectedScreenRect}");
             return null;
         }
 
