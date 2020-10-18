@@ -85,6 +85,11 @@ namespace Squared.Util {
         public static int DefaultSize = 128;
         public static int FirstGrowTarget = 1024;
 
+        /// <summary>
+        /// This value will be incremented every time the underlying buffer is re-allocated
+        /// </summary>
+        public int BufferVersion { get; private set; }
+
         protected Allocator _Allocator;
         protected T[] _Items;
         protected int _BufferOffset, _BufferSize;
@@ -151,6 +156,7 @@ namespace Squared.Util {
 
         private void AllocateNewBuffer (int size) {
             var buffer = _Allocator.Allocate(size);
+            BufferVersion++;
             _Items = buffer.Array;
             _BufferOffset = buffer.Offset;
             _BufferSize = buffer.Count;
@@ -227,6 +233,7 @@ namespace Squared.Util {
                 newBuffer = _Allocator.Resize(oldBuffer,  newCapacity);
             }
 
+            BufferVersion++;
             _Items = newBuffer.Array;
             _BufferOffset = newBuffer.Offset;
             _BufferSize = newBuffer.Count;

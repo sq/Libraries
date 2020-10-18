@@ -641,7 +641,7 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe void ArrangeStacked (LayoutItem * pItem, Dimensions dim, bool wrap) {
             var itemFlags = pItem->Flags;
-            var rect = GetContentRect(pItem->Key);
+            var rect = GetContentRect(pItem);
             int idim = (int)dim, wdim = idim + 2;
             float space = rect[wdim], max_x2 = rect[idim] + space;
 
@@ -717,7 +717,7 @@ namespace Squared.PRGUI.Layout {
             float extraFromConstraints = 0, originalExtraMargin = extraMargin, originalX = x;
 
             var startChild = child;
-            var parentRect = GetContentRect(pParent->Key);
+            var parentRect = GetContentRect(pParent);
 
             // Perform initial size calculation for items, and then arrange items and calculate final sizes
             for (int pass = 0; pass < 2; pass++) {
@@ -877,9 +877,9 @@ namespace Squared.PRGUI.Layout {
         private unsafe void ArrangeOverlay (LayoutItem * pItem, Dimensions dim) {
             int idim = (int)dim, wdim = idim + 2;
 
-            var rect = GetContentRect(pItem->Key);
-            var offset = rect[idim];
-            var space = rect[wdim];
+            var contentRect = GetContentRect(pItem);
+            var offset = contentRect[idim];
+            var space = contentRect[wdim];
 
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
@@ -915,7 +915,7 @@ namespace Squared.PRGUI.Layout {
 
             Assert(!startItem.IsInvalid);
 
-            var parentRect = GetContentRect(pParent->Key);
+            var parentRect = GetContentRect(pParent);
 
             int idim = (int)dim, wdim = idim + 2;
 
@@ -971,7 +971,7 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, Dimensions dim) {
             int idim = (int)dim, wdim = idim + 2;
-            float offset = GetContentRect(pItem->Key)[idim], needSize = 0;
+            float offset = GetContentRect(pItem)[idim], needSize = 0;
 
             var startChild = pItem->FirstChild;
             foreach (var child in Children(pItem)) {
@@ -1001,7 +1001,7 @@ namespace Squared.PRGUI.Layout {
         private unsafe void Arrange (LayoutItem * pItem, Dimensions dim) {
             var flags = pItem->Flags;
             var pRect = RectPtr(pItem->Key);
-            var contentRect = GetContentRect(pItem->Key);
+            var contentRect = GetContentRect(pItem, ref *pRect);
             var idim = (int)dim;
 
             switch (flags & ControlFlagMask.BoxModel) {
