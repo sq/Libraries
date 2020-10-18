@@ -137,40 +137,43 @@ namespace Squared.PRGUI {
                     break;
                 case Keys.Tab:
                     int tabDelta = CurrentModifiers.Shift ? -1 : 1;
-                    if (CurrentModifiers.Control) {
-                        var currentTopLevel = FindTopLevelAncestor(Focused);
-                        // HACK
-                        var inTabOrder = Controls.InTabOrder(false)
-                            .Where(c => 
-                                ((c is IControlContainer) || c.AcceptsFocus) &&
-                                c.Enabled && c.Visible
-                            )
-                            .ToList();
-                        var currentIndex = inTabOrder.IndexOf(currentTopLevel);
-                        var newIndex = Arithmetic.Wrap(currentIndex + tabDelta, 0, inTabOrder.Count - 1);
-                        var target = inTabOrder[newIndex];
-                        if ((target != null) && (target != currentTopLevel)) {
-                            Console.WriteLine($"Top level tab {currentTopLevel} -> {target}");
-                            return TrySetFocus(target, false);
-                        } else
-                            return false;
-                    } else {
-                        var target = PickNextFocusTarget(Focused, tabDelta, true);
-                        Console.WriteLine($"Tab {Focused} -> {target}");
-                        if (target != null)
-                            return TrySetFocus(target, false);
-                        else
-                            return false;
-                    }
+                    return RotateFocus(topLevel: CurrentModifiers.Control, delta: tabDelta);
                 case Keys.Space:
-                    if (Focused == null)
+                    if (Focused?.IsValidMouseInputTarget == true)
+                        return FireEvent(UIEvents.Click, Focused, 1);
+                    else
                         return false;
-                    if (!Focused.AcceptsMouseInput)
-                        return false;
-                    return FireEvent(UIEvents.Click, Focused, 1);
             }
 
             return false;
+        }
+
+        public bool RotateFocus (bool topLevel, int delta) {
+            if (topLevel) {
+                var currentTopLevel = FindTopLevelAncestor(Focused);
+                // HACK
+                var inTabOrder = Controls.InTabOrder(false)
+                    .Where(c => 
+                        ((c is IControlContainer) || c.AcceptsFocus) &&
+                        c.Enabled && c.Visible
+                    )
+                    .ToList();
+                var currentIndex = inTabOrder.IndexOf(currentTopLevel);
+                var newIndex = Arithmetic.Wrap(currentIndex + delta, 0, inTabOrder.Count - 1);
+                var target = inTabOrder[newIndex];
+                if ((target != null) && (target != currentTopLevel)) {
+                    Console.WriteLine($"Top level tab {currentTopLevel} -> {target}");
+                    return TrySetFocus(target, false);
+                } else
+                    return false;
+            } else {
+                var target = PickNextFocusTarget(Focused, delta, true);
+                Console.WriteLine($"Tab {Focused} -> {target}");
+                if (target != null)
+                    return TrySetFocus(target, false);
+                else
+                    return false;
+            }
         }
 
         private Control FindTopLevelAncestor (Control control) {
