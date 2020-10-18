@@ -717,6 +717,7 @@ namespace Squared.PRGUI.Layout {
             float extraFromConstraints = 0, originalExtraMargin = extraMargin, originalX = x;
 
             var startChild = child;
+            var parentRect = GetContentRect(pParent->Key);
 
             // Perform initial size calculation for items, and then arrange items and calculate final sizes
             for (int pass = 0; pass < 2; pass++) {
@@ -777,7 +778,6 @@ namespace Squared.PRGUI.Layout {
                             pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size) && 
                             (pChild->FixedSize.GetElement(idim) < 0)
                         ) {
-                            var parentRect = GetContentRect(pParent->Key);
                             float parentExtent = Math.Max((parentRect[idim] + parentRect[wdim]), 0);
                             ix1 = Constrain(ix1, -1, parentExtent);
                         }

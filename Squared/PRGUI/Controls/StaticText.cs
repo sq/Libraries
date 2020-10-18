@@ -22,7 +22,7 @@ namespace Squared.PRGUI.Controls {
         public Material TextMaterial = null;
         public DynamicStringLayout Content = new DynamicStringLayout();
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
-        private float? MostRecentWidth = null;
+        private float? MostRecentContentWidth = null;
 
         private float? AutoSizeComputedWidth, AutoSizeComputedHeight;
 
@@ -124,6 +124,16 @@ namespace Squared.PRGUI.Controls {
                 fixedWidth = AutoSizeComputedWidth ?? fixedWidth;
             if (AutoSizeHeight && !FixedHeight.HasValue)
                 fixedHeight = AutoSizeComputedHeight ?? fixedHeight;
+
+            if (MinimumWidth.HasValue && fixedWidth.HasValue)
+                fixedWidth = Math.Max(MinimumWidth.Value, fixedWidth.Value);
+            if (MinimumHeight.HasValue && fixedHeight.HasValue)
+                fixedHeight = Math.Max(MinimumHeight.Value, fixedHeight.Value);
+
+            if (MaximumWidth.HasValue && fixedWidth.HasValue)
+                fixedWidth = Math.Min(MaximumWidth.Value, fixedWidth.Value);
+            if (MaximumHeight.HasValue && fixedHeight.HasValue)
+                fixedHeight = Math.Min(MaximumHeight.Value, fixedHeight.Value);
         }
 
         private void ComputeAutoSize (UIOperationContext context) {
@@ -172,20 +182,30 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations) {
+            if (ScaleToFit)
+                return null;
+
+            // HACK to avoid layout jitter upon content change if we're autosized
+            // This will result in two layout computations: one during ComputeAutoSize, then another
+            //  during rasterization after layout has set our new content width to use as a constraint
+            if (!Content.IsValid)
+                MostRecentContentWidth = null;
+
+            var computedPadding = ComputePadding(context, decorations);
             float? constrainedWidth = null;
-            if (MostRecentWidth.HasValue) {
-                float computed = MostRecentWidth.Value;
+            if (MostRecentContentWidth.HasValue) {
+                float computed = MostRecentContentWidth.Value;
                 if (MaximumWidth.HasValue)
-                    constrainedWidth = Math.Min(computed, MaximumWidth.Value);
+                    constrainedWidth = Math.Min(computed, MaximumWidth.Value - computedPadding.X);
                 else
                     constrainedWidth = computed;
             } else
                 constrainedWidth = MaximumWidth;
 
-            var limit = FixedWidth ?? constrainedWidth;
-            var computedPadding = ComputePadding(context, decorations);
+            var limit = FixedWidth - computedPadding.X ?? constrainedWidth;
             if (limit.HasValue)
-                return limit.Value - computedPadding.X;
+                // HACK: Suppress jitter
+                return (float)Math.Ceiling(limit.Value + 0.5);
             else
                 return null;
         }
@@ -234,13 +254,13 @@ namespace Squared.PRGUI.Controls {
                 //  our rightmost edge to ensure that our text doesn't overflow outside of our boundaries
                 // If wrapping is disabled entirely, the overflowing text will be suppressed by the text
                 //  layout engine, otherwise it will be wrapped (potentially changing our layout, oops)
-                MostRecentWidth = settings.Box.Width;
+                MostRecentContentWidth = settings.ContentBox.Width;
                 var textWidthLimit = ComputeTextWidthLimit(context, decorations);
                 if (Content.LineBreakAtX != textWidthLimit)
                     ;
                 Content.LineBreakAtX = textWidthLimit;
             } else {
-                MostRecentWidth = null;
+                MostRecentContentWidth = null;
                 var textWidthLimit = ComputeTextWidthLimit(context, decorations);
                 // This ensures that if we go from constrained to unconstrained, our layout is updated
                 if (Content.LineBreakAtX != textWidthLimit)

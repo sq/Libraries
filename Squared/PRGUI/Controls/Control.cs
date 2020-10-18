@@ -279,7 +279,7 @@ namespace Squared.PRGUI {
             result.Left += _AbsoluteDisplayOffset.X;
             result.Top += _AbsoluteDisplayOffset.Y;
 
-            if (!contentRect) {
+            if (!contentRect && false) {
                 // HACK
                 if (FixedWidth.HasValue)
                     result.Width = FixedWidth.Value;

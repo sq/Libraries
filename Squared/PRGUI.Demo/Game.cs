@@ -66,7 +66,7 @@ namespace PRGUI.Demo {
             IsFixedTimeStep = false;
 
             if (IsFixedTimeStep)
-                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 60);
+                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 2.0f);
 
             PreviousKeyboardState = Keyboard.GetState();
 
@@ -308,7 +308,6 @@ namespace PRGUI.Demo {
                 LayoutFlags = ControlFlags.Layout_Fill,
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                 Children = {
-                    /*
                     hoveringCtl,
                     lastClickedCtl,
                     button1,
@@ -327,7 +326,6 @@ namespace PRGUI.Demo {
                         BackgroundColor = Color.LightPink
                     },
                     bigMenuButton,
-                    */
                     new StaticText {
                         AutoSize = false,
                         Text = "Static Text 2\r\nLine 2",
@@ -348,18 +346,17 @@ namespace PRGUI.Demo {
                     new StaticText {
                         Text = "Static Text 4",
                         MinimumWidth = 300,
-                        // FIXME: If this is true and minimumwidth is set, the control overflows the edge of the parent.
                         AutoSizeWidth = true,
                         BackgroundColor = Color.DarkBlue
                     },
-                    // bigScrollableContainer
+                    bigScrollableContainer
                 }
             };
 
             Context = new UIContext(Materials, decorations) {
                 Controls = {
                     topLevelContainer,
-                    // floatingWindow
+                    floatingWindow
                 }
             };
 
