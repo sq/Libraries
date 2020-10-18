@@ -552,6 +552,8 @@ namespace Squared.PRGUI {
         }
 
         private void HandleScroll (Control control, float delta) {
+            KeyboardSelection = null;
+
             while (control != null) {
                 if (FireEvent(UIEvents.Scroll, control, delta))
                     return;
