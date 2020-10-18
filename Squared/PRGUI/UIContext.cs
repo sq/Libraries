@@ -165,10 +165,11 @@ namespace Squared.PRGUI {
         /// </summary>
         public ControlCollection Controls { get; private set; }
 
-        private Control _Focused, _MouseCaptured, _Hovering;
+        private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection;
 
         private ConditionalWeakTable<Control, Control> TopLevelFocusMemory = new ConditionalWeakTable<Control, Control>();
 
+        private Vector2 MousePositionWhenKeyboardSelectionWasLastUpdated;
         private IScrollableControl DragToScrollTarget;
         private Vector2? DragToScrollInitialOffset;
         private Vector2 DragToScrollInitialPosition;
@@ -183,6 +184,8 @@ namespace Squared.PRGUI {
                     throw new InvalidOperationException("Control cannot accept mouse input");
                 var previous = _MouseCaptured;
                 _MouseCaptured = value;
+                if (value != null)
+                    KeyboardSelection = null;
                 // Console.WriteLine($"Mouse capture {previous} -> {value}");
             }
         }
@@ -199,6 +202,19 @@ namespace Squared.PRGUI {
                     HandleHoverTransition(previous, value);
             }
         }
+
+        public Control KeyboardSelection {
+            get => _KeyboardSelection;
+            private set {
+                _KeyboardSelection = value;
+                MousePositionWhenKeyboardSelectionWasLastUpdated = LastMousePosition;
+            }
+        }
+
+        /// <summary>
+        /// The control most recently interacted with by the user
+        /// </summary>
+        public Control FixatedControl => KeyboardSelection ?? Hovering ?? Focused;
 
         /// <summary>
         /// The control currently underneath the mouse cursor
@@ -443,6 +459,13 @@ namespace Squared.PRGUI {
 
             ProcessKeyboardState(ref LastKeyboardState, ref keyboardState);
 
+            // If the mouse moves after the keyboard selection was updated, clear it
+            if (KeyboardSelection != null) {
+                var movedDistance = mousePosition - MousePositionWhenKeyboardSelectionWasLastUpdated;
+                if (movedDistance.Length() > MinimumMouseMovementDistance)
+                    KeyboardSelection = null;
+            }
+
             if (LastMousePosition != mousePosition) {
                 if (CurrentMouseButtons != MouseButtons.None)
                     HandleMouseDrag(mouseEventTarget, mousePosition);
@@ -526,8 +549,9 @@ namespace Squared.PRGUI {
 
             var now = Now;
             var tooltipContent = default(AbstractString);
-            if (Hovering != null)
-                tooltipContent = Hovering.TooltipContent.Get(Hovering);
+            var target = FixatedControl;
+            if (target != null)
+                tooltipContent = target.TooltipContent.Get(target);
 
             if (!tooltipContent.IsNull) {
                 if (!FirstTooltipHoverTime.HasValue)
@@ -540,9 +564,9 @@ namespace Squared.PRGUI {
                 var disappearTimeout = now - LastTooltipHoverTime;
 
                 if ((hoveringFor >= TooltipAppearanceDelay) || (disappearTimeout < TooltipDisappearDelay))
-                    ShowTooltip(Hovering, tooltipContent);
+                    ShowTooltip(target, tooltipContent);
             } else {
-                var shouldDismissInstantly = (Hovering != null) && IsTooltipActive && GetTooltipInstance().GetRect(Layout).Contains(LastMousePosition);
+                var shouldDismissInstantly = (target != null) && IsTooltipActive && GetTooltipInstance().GetRect(Layout).Contains(LastMousePosition);
                 // TODO: Instead of instantly hiding, maybe just fade the tooltip out partially?
                 HideTooltip(shouldDismissInstantly);
 

@@ -292,20 +292,10 @@ namespace Squared.PRGUI {
             var result = contentRect 
                 ? context.GetContentRect(LayoutKey) 
                 : context.GetRect(LayoutKey);
-            result.Left += _AbsoluteDisplayOffset.X;
-            result.Top += _AbsoluteDisplayOffset.Y;
 
-            if (!contentRect && false) {
-                // HACK
-                if (FixedWidth.HasValue)
-                    result.Width = FixedWidth.Value;
-                if (FixedHeight.HasValue)
-                    result.Height = FixedHeight.Value;
-
-                if (MinimumWidth.HasValue)
-                    result.Width = Math.Max(MinimumWidth.Value, result.Width);
-                if (MinimumHeight.HasValue)
-                    result.Height = Math.Max(MinimumHeight.Value, result.Height);
+            if (includeOffset) {
+                result.Left += _AbsoluteDisplayOffset.X;
+                result.Top += _AbsoluteDisplayOffset.Y;
             }
             
             return result;

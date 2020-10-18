@@ -76,6 +76,9 @@ namespace Squared.PRGUI {
         }
 
         private void HandleHoverTransition (Control previous, Control current) {
+            // If the mouse enters a new control, clear the keyboard selection
+            KeyboardSelection = null;
+
             if (previous != null)
                 FireEvent(UIEvents.MouseLeave, previous, current);
 
@@ -163,17 +166,39 @@ namespace Squared.PRGUI {
                 var target = inTabOrder[newIndex];
                 if ((target != null) && (target != currentTopLevel)) {
                     Console.WriteLine($"Top level tab {currentTopLevel} -> {target}");
-                    return TrySetFocus(target, false);
-                } else
-                    return false;
+                    if (TrySetFocus(target, false)) {
+                        KeyboardSelection = target;
+                        SetAutoscrollTarget(target);
+                        return true;
+                    }
+                }
             } else {
                 var target = PickNextFocusTarget(Focused, delta, true);
                 Console.WriteLine($"Tab {Focused} -> {target}");
-                if (target != null)
-                    return TrySetFocus(target, false);
-                else
-                    return false;
+                if ((target != null) && TrySetFocus(target, false)) {
+                    KeyboardSelection = target;
+                    SetAutoscrollTarget(target);
+                    return true;
+                }
             }
+            return false;
+        }
+
+        private void SetAutoscrollTarget (Control control) {
+            if (control == null)
+                return;
+
+            var _ = control;
+            var screenRect = control.GetRect(Layout);
+            var intersectedScreenRect = screenRect;
+            while (control.TryGetParent(out control)) {
+                var parentRect = control.GetRect(Layout, contentRect: true);
+                if (!intersectedScreenRect.Intersection(ref parentRect, out intersectedScreenRect)) {
+                    Console.WriteLine($"{_} fully clipped out by {control}");
+                    break;
+                }
+            }
+            Console.WriteLine($"{screenRect} -> {intersectedScreenRect}");
         }
 
         private Control FindTopLevelAncestor (Control control) {
@@ -330,6 +355,7 @@ namespace Squared.PRGUI {
             var relinquishedHandlers = new HashSet<Control>();
 
             HideTooltipForMouseInput();
+            SetAutoscrollTarget(null);
 
             // HACK: Prevent infinite repeat in corner cases
             int steps = 5;
@@ -368,6 +394,7 @@ namespace Squared.PRGUI {
         }
 
         private bool HandleMouseUp (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
+            SetAutoscrollTarget(null);
             HideTooltipForMouseInput();
             MouseDownPosition = null;
             // FIXME: Suppress if disabled?

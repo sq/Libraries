@@ -424,6 +424,21 @@ namespace Squared.PRGUI {
             }
         }
 
+        public bool Intersection (ref RectF rhs, out RectF result) {
+            var e1 = Extent;
+            var e2 = rhs.Extent;
+            var x1 = Math.Max(Left, rhs.Left);
+            var y1 = Math.Max(Top, rhs.Top);
+            var x2 = Math.Min(e1.X, e2.X);
+            var y2 = Math.Min(e1.Y, e2.Y);
+            if (x2 < x1)
+                x1 = x2 = (x2 + x1) / 2f;
+            if (y2 < y1)
+                y1 = y2 = (y2 + y1) / 2f;
+            result = new RectF(x1, y1, x2 - x1, y2 - y1);
+            return ((result.Width > 0) && (result.Height > 0));
+        }
+
         public bool Intersects (ref RectF rhs) {
             Vector2 tl, br;
             tl.X = Math.Max(Left, rhs.Left);

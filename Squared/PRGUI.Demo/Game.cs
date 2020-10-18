@@ -446,6 +446,8 @@ namespace PRGUI.Demo {
 
             if (Context.MouseOver != null)
                 LastTimeOverUI = Time.Ticks;
+            else if (KeyboardState.GetPressedKeys().Length > 0)
+                LastTimeOverUI = Time.Ticks;
 
             if (IsActive) {
                 var alt = KeyboardState.IsKeyDown(Keys.LeftAlt) || KeyboardState.IsKeyDown(Keys.RightAlt);
