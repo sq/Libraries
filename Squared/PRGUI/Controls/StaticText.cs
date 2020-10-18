@@ -22,6 +22,7 @@ namespace Squared.PRGUI.Controls {
         public Material TextMaterial = null;
         public DynamicStringLayout Content = new DynamicStringLayout();
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
+        private float? MostRecentWidth = null;
 
         private float? AutoSizeComputedWidth, AutoSizeComputedHeight;
 
@@ -141,8 +142,11 @@ namespace Squared.PRGUI.Controls {
             // HACK: If we know that our size is going to be constrained by layout settings, apply that in advance
             //  when computing auto-size to reduce the odds that our layout will be changed once full UI layout happens
             var textWidthLimit = ComputeTextWidthLimit(context, decorations);
-            if (textWidthLimit.HasValue && !ScaleToFit)
+            if (textWidthLimit.HasValue && !ScaleToFit) {
+                if (Content.LineBreakAtX != textWidthLimit)
+                    ;
                 Content.LineBreakAtX = textWidthLimit;
+            }
 
             var computedPadding = ComputePadding(context, decorations);
             var layout = Content.Get();
@@ -168,7 +172,17 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations) {
-            var limit = FixedWidth ?? MaximumWidth;
+            float? constrainedWidth = null;
+            if (MostRecentWidth.HasValue) {
+                float computed = MostRecentWidth.Value;
+                if (MaximumWidth.HasValue)
+                    constrainedWidth = Math.Min(computed, MaximumWidth.Value);
+                else
+                    constrainedWidth = computed;
+            } else
+                constrainedWidth = MaximumWidth;
+
+            var limit = FixedWidth ?? constrainedWidth;
             var computedPadding = ComputePadding(context, decorations);
             if (limit.HasValue)
                 return limit.Value - computedPadding.X;
@@ -206,6 +220,7 @@ namespace Squared.PRGUI.Controls {
 
             var computedPadding = ComputePadding(context, decorations);
 
+            // FIXME: Padding?
             var wasConstrainedByParent = (AutoSizeComputedWidth > settings.Box.Width);
             if (
                 (
@@ -219,12 +234,18 @@ namespace Squared.PRGUI.Controls {
                 //  our rightmost edge to ensure that our text doesn't overflow outside of our boundaries
                 // If wrapping is disabled entirely, the overflowing text will be suppressed by the text
                 //  layout engine, otherwise it will be wrapped (potentially changing our layout, oops)
-                var limit = Math.Max(0, (settings.Box.Width - computedPadding.X));
-                var textWidthLimit = ComputeTextWidthLimit(context, decorations) ?? limit;
+                MostRecentWidth = settings.Box.Width;
+                var textWidthLimit = ComputeTextWidthLimit(context, decorations);
+                if (Content.LineBreakAtX != textWidthLimit)
+                    ;
                 Content.LineBreakAtX = textWidthLimit;
             } else {
+                MostRecentWidth = null;
+                var textWidthLimit = ComputeTextWidthLimit(context, decorations);
                 // This ensures that if we go from constrained to unconstrained, our layout is updated
-                Content.LineBreakAtX = null;
+                if (Content.LineBreakAtX != textWidthLimit)
+                    ;
+                Content.LineBreakAtX = textWidthLimit;
             }
 
             var overrideColor = GetTextColor(context.UIContext.TimeProvider.Ticks);
