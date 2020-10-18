@@ -408,7 +408,7 @@ namespace PRGUI.Demo {
             RenderCoordinator.WaitForActiveDraws();
             Materials.ViewTransform = ViewTransform.CreateOrthographic(pp.BackBufferWidth, pp.BackBufferHeight);
             Context.CanvasSize = new Vector2(pp.BackBufferWidth, pp.BackBufferHeight);
-            Context.UpdateLayout();
+            Context.Update();
             UIRenderTarget.Resize(pp.BackBufferWidth, pp.BackBufferHeight);
         }
 
@@ -436,7 +436,7 @@ namespace PRGUI.Demo {
 
             var mousePosition = new Vector2(MouseState.X, MouseState.Y);
 
-            Context.UpdateLayout();
+            Context.Update();
 
             if (IsActive)
                 Context.UpdateInput(

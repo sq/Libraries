@@ -411,7 +411,7 @@ namespace Squared.PRGUI {
             return relayoutRequested;
         }
 
-        public void UpdateLayout () {
+        public void Update () {
             var context = MakeOperationContext();
             _PostLayoutListeners.Clear();
             context.PostLayoutListeners = _PostLayoutListeners;
@@ -426,6 +426,8 @@ namespace Squared.PRGUI {
                 Layout.Update();
                 NotifyLayoutListeners(context);
             }
+
+            UpdateAutoscroll();
         }
 
         private void UpdateCaptureAndHovering (Vector2 mousePosition, Control exclude = null) {
