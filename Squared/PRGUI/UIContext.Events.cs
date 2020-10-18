@@ -296,13 +296,13 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        private MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition) {
+        private MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
             if (target == null)
                 return default(MouseEventArgs);
 
             var box = target.GetRect(Layout, contentRect: false);
             var contentBox = target.GetRect(Layout, contentRect: true);
-            var mdp = MouseDownPosition ?? globalPosition;
+            var mdp = MouseDownPosition ?? mouseDownPosition ?? globalPosition;
             var travelDistance = (globalPosition - mdp).Length();
             return new MouseEventArgs {
                 Context = this,
@@ -340,7 +340,7 @@ namespace Squared.PRGUI {
                 // FIXME: Suppress if disabled?
                 LastMouseDownTime = Now;
                 var previouslyCaptured = MouseCaptured;
-                var ok = FireEvent(UIEvents.MouseDown, target, MakeMouseEventArgs(target, globalPosition));
+                var ok = FireEvent(UIEvents.MouseDown, target, MakeMouseEventArgs(target, globalPosition, null));
 
                 // HACK: A control can pre-emptively relinquish focus to pass the mouse event on to someone else
                 if (
@@ -360,20 +360,20 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        private void HandleMouseUp (Control target, Vector2 globalPosition) {
+        private void HandleMouseUp (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
             HideTooltipForMouseInput();
             MouseDownPosition = null;
             // FIXME: Suppress if disabled?
-            FireEvent(UIEvents.MouseUp, target, MakeMouseEventArgs(target, globalPosition));
+            FireEvent(UIEvents.MouseUp, target, MakeMouseEventArgs(target, globalPosition, mouseDownPosition));
         }
 
         private void HandleMouseMove (Control target, Vector2 globalPosition) {
-            FireEvent(UIEvents.MouseMove, target, MakeMouseEventArgs(target, globalPosition));
+            FireEvent(UIEvents.MouseMove, target, MakeMouseEventArgs(target, globalPosition, null));
         }
 
         private void HandleMouseDrag (Control target, Vector2 globalPosition) {
             // FIXME: Suppress if disabled?
-            FireEvent(UIEvents.MouseDrag, target, MakeMouseEventArgs(target, globalPosition));
+            FireEvent(UIEvents.MouseDrag, target, MakeMouseEventArgs(target, globalPosition, null));
         }
 
         private void HandleScroll (Control control, float delta) {

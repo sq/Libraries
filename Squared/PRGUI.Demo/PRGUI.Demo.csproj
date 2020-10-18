@@ -65,6 +65,9 @@
     <TTF Include="Fonts\*.otf;Fonts\*.ttf;Fonts\*.ttc">
       <Visible>false</Visible>
     </TTF>
+    <Texture Include="Images\*.png;Images\*.jpeg;Images\*.jpg">
+      <Visible>false</Visible>
+    </Texture>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="@(TTF)">

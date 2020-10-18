@@ -97,11 +97,22 @@ namespace Squared.PRGUI {
         /// <summary>
         /// If the mouse is only moved this far (in pixels) it will be treated as no movement for the purposes of click detection
         /// </summary>
-        public float MinimumMouseMovementDistance = 4;
+        public float MinimumMouseMovementDistance = 8;
         /// <summary>
         /// Mouse wheel movements are scaled by this amount
         /// </summary>
         public float MouseWheelScale = 1.0f / 2.4f;
+        /// <summary>
+        /// If the mouse has moved more than the minimum movement distance, do not generate a click event.
+        /// Otherwise, a click event will be generated as long as the mouse is still within the target control.
+        /// If this is not set, drag-to-scroll may misbehave.
+        /// </summary>
+        public bool SuppressSingleClickOnMovement = true;
+        /// <summary>
+        /// If the mouse moves more than the minimum movement distance, convert it into scrolling instead of
+        ///  a click, when appropriate
+        /// </summary>
+        public bool EnableDragToScroll = true;
 
         /// <summary>
         /// A key must be held for this long (in seconds) before repeating begins
@@ -408,25 +419,35 @@ namespace Squared.PRGUI {
                     HandleMouseMove(mouseEventTarget, mousePosition);
             }
 
+            var mouseDownPosition = MouseDownPosition;
             var previouslyCaptured = MouseCaptured;
             var processClick = false;
 
             if ((LastMouseButtons == MouseButtons.None) && (CurrentMouseButtons != MouseButtons.None)) {
                 // FIXME: This one should probably always be Hovering
                 HandleMouseDown(mouseEventTarget, mousePosition);
+                mouseDownPosition = mouseDownPosition ?? mousePosition;
             } else if ((LastMouseButtons != MouseButtons.None) && (CurrentMouseButtons == MouseButtons.None)) {
                 if (Hovering != null)
-                    HandleMouseUp(mouseEventTarget, mousePosition);
+                    HandleMouseUp(mouseEventTarget, mousePosition, mouseDownPosition);
 
-                if (MouseCaptured != null)
-                    processClick = true;
+                if (MouseCaptured != null) {
+                    var movedDistance = mousePosition - mouseDownPosition;
+                    if (
+                        // FIXME: Why?
+                        !movedDistance.HasValue || 
+                        (movedDistance.Value.Length() <= MinimumMouseMovementDistance) ||
+                        !SuppressSingleClickOnMovement
+                    )
+                        processClick = true;
+                }
 
                 if (!SuppressNextCaptureLoss)
                     MouseCaptured = null;
                 else
                     SuppressNextCaptureLoss = false;
             } else if (LastMouseButtons != CurrentMouseButtons) {
-                FireEvent(UIEvents.MouseButtonsChanged, mouseEventTarget, MakeMouseEventArgs(mouseEventTarget, mousePosition));
+                FireEvent(UIEvents.MouseButtonsChanged, mouseEventTarget, MakeMouseEventArgs(mouseEventTarget, mousePosition, mouseDownPosition));
             }
 
             if (processClick) {
