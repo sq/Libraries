@@ -288,7 +288,7 @@ namespace Squared.PRGUI.Controls {
             Visible = true;
             Intangible = false;
             if (!IsActive)
-                Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: NowL);
+                Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: context.NowL);
             FocusDonor = context.CaptureMouse(this);
             IsActive = true;
             Context.FireEvent(UIEvents.Shown, this);
@@ -340,7 +340,7 @@ namespace Squared.PRGUI.Controls {
             IsActive = false;
             Intangible = true;
             Context.ReleaseCapture(this, FocusDonor);
-            var now = NowL;
+            var now = Context.NowL;
             Opacity = Tween<float>.StartNow(Opacity.Get(now), 0, MenuHideSpeed, now: now);
             Context.FireEvent(UIEvents.Closed, this);
             if (NextResultFuture?.Completed == false)

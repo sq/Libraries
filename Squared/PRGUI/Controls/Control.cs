@@ -74,7 +74,7 @@ namespace Squared.PRGUI {
                 // HACK
                 var ctx = Context;
                 if (ctx != null)
-                    if (GetOpacity(ctx.TimeProvider.Ticks) <= 0)
+                    if (GetOpacity(ctx.NowL) <= 0)
                         return false;
                 return true;
             }
@@ -147,9 +147,6 @@ namespace Squared.PRGUI {
 
         protected WeakReference<UIContext> WeakContext = null;
         protected WeakReference<Control> WeakParent = null;
-
-        protected float Now => (float)(Context?.TimeProvider?.Seconds ?? Time.Seconds);
-        protected long NowL => Context?.TimeProvider?.Ticks ?? Time.Ticks;
 
         private RectF LastParentRect;
 
@@ -330,7 +327,7 @@ namespace Squared.PRGUI {
                 return null;
             if (LayoutKey.IsInvalid)
                 return null;
-            if (GetOpacity(Context.TimeProvider.Ticks) <= 0)
+            if (GetOpacity(Context.NowL) <= 0)
                 return null;
 
             var result = this;
@@ -458,7 +455,7 @@ namespace Squared.PRGUI {
                 Box = box,
                 ContentBox = contentBox,
                 State = state,
-                BackgroundColor = GetBackgroundColor(NowL)
+                BackgroundColor = GetBackgroundColor(Context.NowL)
             };
         }
 
@@ -544,7 +541,7 @@ namespace Squared.PRGUI {
 
         public void Rasterize (UIOperationContext context, ref RasterizePassSet passSet) {
             // HACK: Do this first since it fires opacity change events
-            var opacity = GetOpacity(context.UIContext.TimeProvider.Ticks);
+            var opacity = GetOpacity(context.NowL);
             if (opacity <= 0)
                 return;
 

@@ -259,9 +259,11 @@ namespace Squared.Render {
             if (material != null)
                 throw new ArgumentException("Must be null because this is not a MultimaterialBitmapBatch", nameof(material));
 
+            var hasScale = (scale ?? Vector2.One) != Vector2.One;
+
             if (
                 (offset == null) && (multiplyColor == null) && (addColor == null) &&
-                (userData == null) && (sortKey == null) && (scale == null)
+                (userData == null) && (sortKey == null) && !hasScale
             ) {
                 AddRange(items, firstIndex, count);
                 return;
@@ -272,8 +274,10 @@ namespace Squared.Render {
                 if (!item.IsValid)
                     continue;
 
-                if (scale.HasValue)
+                if (hasScale) {
                     item.Position *= scale.Value;
+                    item.Scale *= scale.Value;
+                }
                 if (offset.HasValue)
                     item.Position += offset.Value;
                 if (multiplyColor.HasValue)
@@ -284,8 +288,6 @@ namespace Squared.Render {
                     item.UserData = userData.Value;
                 if (sortKey.HasValue)
                     item.SortKey = sortKey.Value;
-                if (scale.HasValue)
-                    item.Scale *= scale.Value;
 
                 _DrawCalls.Add(ref item);
             }

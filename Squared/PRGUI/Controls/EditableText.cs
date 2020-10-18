@@ -341,7 +341,7 @@ namespace Squared.PRGUI.Controls {
             var esel = ExpandedSelection;
 
             if (name == UIEvents.MouseDown) {
-                DisableAutoscrollUntil = Now + AutoscrollClickTimeout;
+                DisableAutoscrollUntil = Context.Now + AutoscrollClickTimeout;
 
                 ClickStartVirtualPosition = virtualPosition;
                 var newCharacterIndex = CharacterIndexFromVirtualPosition(virtualPosition, null);
@@ -385,7 +385,7 @@ namespace Squared.PRGUI.Controls {
                     }
 
                     if (name != UIEvents.MouseUp)
-                        DisableAutoscrollUntil = Now + AutoscrollClickTimeout;
+                        DisableAutoscrollUntil = Context.Now + AutoscrollClickTimeout;
                 }
 
                 // Right mouse button was released, show context menu

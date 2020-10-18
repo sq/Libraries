@@ -236,7 +236,7 @@ namespace Squared.PRGUI.Controls {
 
             var computedPadding = ComputePadding(context, decorations);
 
-            var overrideColor = GetTextColor(context.UIContext.TimeProvider.Ticks);
+            var overrideColor = GetTextColor(context.NowL);
             Material material;
             var textDecorations = GetTextDecorations(context.DecorationProvider);
             GetTextSettings(context, textDecorations, settings.State, out material, ref overrideColor);

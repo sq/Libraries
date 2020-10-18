@@ -217,7 +217,7 @@ namespace Squared.PRGUI {
         }
 
         public DefaultMaterialSet Materials { get; private set; }
-        public ITimeProvider TimeProvider;
+        private ITimeProvider TimeProvider;
 
         private MouseButtons CurrentMouseButtons, LastMouseButtons;
         private float LastMouseWheelValue;
@@ -252,8 +252,8 @@ namespace Squared.PRGUI {
         private bool IsTextInputRegistered = false;
         private bool IsCompositionActive = false;
 
-        private float Now => (float)TimeProvider.Seconds;
-        private long NowL => TimeProvider.Ticks;
+        public float Now { get; private set; }
+        public long NowL { get; private set; }
 
         internal DepthStencilState GetStencilRestore (int targetReferenceStencil) {
             DepthStencilState result;
@@ -424,6 +424,9 @@ namespace Squared.PRGUI {
             MouseState mouseState, KeyboardState keyboardState,
             Vector2? mouseOffset = null
         ) {
+            Now = (float)TimeProvider.Seconds;
+            NowL = TimeProvider.Ticks;
+
             var previouslyHovering = Hovering;
             if ((Focused != null) && !Focused.IsValidFocusTarget)
                 Focused = null;
@@ -700,6 +703,7 @@ namespace Squared.PRGUI {
             return new UIOperationContext {
                 UIContext = this,
                 Now = Now,
+                NowL = NowL,
                 Modifiers = CurrentModifiers,
                 SpacebarHeld = LastKeyboardState.IsKeyDown(Keys.Space),
                 MouseButtonHeld = (LastMouseButtons != MouseButtons.None),
@@ -733,6 +737,9 @@ namespace Squared.PRGUI {
         }
 
         public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer, int prepassLayer) {
+            Now = (float)TimeProvider.Seconds;
+            NowL = TimeProvider.Ticks;
+
             var context = MakeOperationContext();
 
             foreach (var srt in ScratchRenderTargets) {
@@ -796,6 +803,7 @@ namespace Squared.PRGUI {
         public LayoutContext Layout => UIContext.Layout;
         public RasterizePasses Pass;
         public float Now { get; internal set; }
+        public long NowL { get; internal set; }
         public KeyboardModifiers Modifiers { get; internal set; }
         public bool SpacebarHeld { get; internal set; }
         public bool MouseButtonHeld { get; internal set; }
@@ -807,6 +815,7 @@ namespace Squared.PRGUI {
                 UIContext = UIContext,
                 Pass = Pass,
                 Now = Now,
+                NowL = NowL,
                 Modifiers = Modifiers,
                 SpacebarHeld = SpacebarHeld,
                 MouseButtonHeld = MouseButtonHeld,
