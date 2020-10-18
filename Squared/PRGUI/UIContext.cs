@@ -119,8 +119,8 @@ namespace Squared.PRGUI {
         public float DragToScrollSpeed = 1.0f;
 
         public float AutoscrollMargin = 4;
-        public float AutoscrollSpeedSlow = 8;
-        public float AutoscrollSpeedFast = 48;
+        public float AutoscrollSpeedSlow = 6;
+        public float AutoscrollSpeedFast = 80;
         public float AutoscrollFastThreshold = 512;
 
         /// <summary>
@@ -687,6 +687,21 @@ namespace Squared.PRGUI {
             var textChanged = !instance.Text.Equals(text);
 
             var rect = anchor.GetRect(Layout);
+            // HACK: Clip the anchor's rect to its parent's rect to ensure that
+            //  in the event that a container is scrolling, the tooltip doesn't shift outside
+            //  of the container too far
+            if (anchor.TryGetParent(out Control anchorParent)) {
+                var parentRect = anchorParent.GetRect(Layout, contentRect: true);
+
+                // If the anchor is entirely invisible, hide the tooltip to prevent visible glitches
+                if (!rect.Intersection(ref parentRect, out rect)) {
+                    instance.Visible = false;
+                    return;
+                }
+            }
+
+            instance.Visible = true;
+
             if (textChanged || !IsTooltipVisible) {
                 var idealMaxWidth = CanvasSize.X * 0.35f;
 

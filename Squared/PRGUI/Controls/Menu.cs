@@ -180,6 +180,13 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
+        private void SelectItemViaKeyboard (Control item) {
+            SelectedItem = item;
+            // HACK: Tell the context that the current item is the keyboard selection,
+            //  so that autoscroll and tooltips will happen for it.
+            Context.OverrideKeyboardSelection(item);
+        }
+
         public bool AdjustSelection (int direction) {
             if (Children.Count == 0)
                 return false;
@@ -195,16 +202,13 @@ namespace Squared.PRGUI.Controls {
                 selectedIndex = Arithmetic.Wrap(selectedIndex, 0, Children.Count - 1);
                 var item = Children[selectedIndex];
                 if (item.Enabled) {
-                    SelectedItem = Children[selectedIndex];
-                    break;
+                    SelectItemViaKeyboard(item);
+                    return true;
                 } else
                     selectedIndex += direction; 
             }
 
-            // HACK: Tell the context that the current item is the keyboard selection,
-            //  so that autoscroll and tooltips will happen for it.
-            Context.OverrideKeyboardSelection(SelectedItem);
-            return true;
+            return false;
         }
 
         private bool OnKeyEvent (string name, KeyEventArgs args) {
@@ -219,6 +223,12 @@ namespace Squared.PRGUI.Controls {
                 case Keys.Enter:
                     if (SelectedItem != null)
                         return ChooseItem(SelectedItem);
+                    return true;
+                case Keys.Home:
+                    SelectItemViaKeyboard(Children.FirstOrDefault());
+                    return true;
+                case Keys.End:
+                    SelectItemViaKeyboard(Children.LastOrDefault());
                     return true;
                 case Keys.PageUp:
                 case Keys.PageDown:
