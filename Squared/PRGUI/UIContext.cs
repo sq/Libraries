@@ -116,7 +116,7 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Drag-to-scroll will have its movement speed increased by this factor
         /// </summary>
-        public float DragToScrollSpeed = 3.0f;
+        public float DragToScrollSpeed = 1.0f;
 
         /// <summary>
         /// A key must be held for this long (in seconds) before repeating begins
@@ -385,7 +385,7 @@ namespace Squared.PRGUI {
             Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row | ControlFlags.Container_Constrain_Size);
 
             foreach (var control in Controls)
-                control.GenerateLayoutTree(context, Layout.Root, secondTime ? control.LayoutKey : (ControlKey?)null);
+                control.GenerateLayoutTree(ref context, Layout.Root, secondTime ? control.LayoutKey : (ControlKey?)null);
         }
 
         private bool NotifyLayoutListeners (UIOperationContext context) {
@@ -646,7 +646,7 @@ namespace Squared.PRGUI {
             }
 
             var tempCtx = MakeOperationContext();
-            subtreeRoot.GenerateLayoutTree(tempCtx, parentKey, subtreeRoot.LayoutKey.IsInvalid ? (ControlKey?)null : subtreeRoot.LayoutKey);
+            subtreeRoot.GenerateLayoutTree(ref tempCtx, parentKey, subtreeRoot.LayoutKey.IsInvalid ? (ControlKey?)null : subtreeRoot.LayoutKey);
             Layout.UpdateSubtree(subtreeRoot.LayoutKey);
         }
 
@@ -763,7 +763,7 @@ namespace Squared.PRGUI {
                     passSet.Below.DepthStencilState =
                         passSet.Content.DepthStencilState =
                         passSet.Above.DepthStencilState = DepthStencilState.None;
-                    control.Rasterize(context, ref passSet);
+                    control.Rasterize(ref context, ref passSet);
                     // HACK
                     prepass = passSet.Prepass;
                 }
@@ -796,7 +796,7 @@ namespace Squared.PRGUI {
         }
     }
 
-    public class UIOperationContext {
+    public struct UIOperationContext {
         public UIContext UIContext;
         public DefaultMaterialSet Materials => UIContext.Materials;
         public IDecorationProvider DecorationProvider => UIContext.Decorations;

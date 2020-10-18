@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,16 +15,19 @@ namespace Squared.PRGUI.Layout {
 
         internal int ID;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal ControlKey (int id) {
             ID = id;
         }
 
         public bool IsInvalid {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return ID < 0;
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (ControlKey rhs) {
             return ID == rhs.ID;
         }
@@ -43,10 +47,12 @@ namespace Squared.PRGUI.Layout {
             return $"[control {ID}]";
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator == (ControlKey lhs, ControlKey rhs) {
             return lhs.Equals(rhs);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator != (ControlKey lhs, ControlKey rhs) {
             return !lhs.Equals(rhs);
         }
@@ -227,17 +233,21 @@ namespace Squared.PRGUI.Layout {
             return true;
         }
 
+        private unsafe void UpdateLayoutPin () {
+            if (LayoutPin.IsAllocated)
+                LayoutPin.Free();
+            var buffer = Layout.GetBuffer();
+            LayoutBufferVersion = Layout.BufferVersion;
+            LayoutBufferOffset = buffer.Offset;
+            PinnedLayoutArray = buffer.Array;
+            LayoutPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
+            PinnedLayoutPtr = (IntPtr)(((LayoutItem*)LayoutPin.AddrOfPinnedObject()) + LayoutBufferOffset);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe LayoutItem * LayoutPtr () {
-            if (Layout.BufferVersion != LayoutBufferVersion) {
-                if (LayoutPin.IsAllocated)
-                    LayoutPin.Free();
-                var buffer = Layout.GetBuffer();
-                LayoutBufferVersion = Layout.BufferVersion;
-                LayoutBufferOffset = buffer.Offset;
-                PinnedLayoutArray = buffer.Array;
-                LayoutPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
-                PinnedLayoutPtr = (IntPtr)(((LayoutItem*)LayoutPin.AddrOfPinnedObject()) + LayoutBufferOffset);
-            }
+            if (Layout.BufferVersion != LayoutBufferVersion)
+                UpdateLayoutPin();
             return (LayoutItem*)PinnedLayoutPtr;
         }
 
@@ -254,17 +264,21 @@ namespace Squared.PRGUI.Layout {
             return result;
         }
 
+        private unsafe void UpdateBoxesPin () {
+            if (BoxesPin.IsAllocated)
+                BoxesPin.Free();
+            var buffer = Boxes.GetBuffer();
+            BoxesBufferVersion = Boxes.BufferVersion;
+            BoxesBufferOffset = buffer.Offset;
+            PinnedBoxesArray = buffer.Array;
+            BoxesPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
+            PinnedBoxesPtr = (IntPtr)(((RectF*)BoxesPin.AddrOfPinnedObject()) + BoxesBufferOffset);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe RectF * BoxesPtr () {
-            if (Boxes.BufferVersion != BoxesBufferVersion) {
-                if (BoxesPin.IsAllocated)
-                    BoxesPin.Free();
-                var buffer = Boxes.GetBuffer();
-                BoxesBufferVersion = Boxes.BufferVersion;
-                BoxesBufferOffset = buffer.Offset;
-                PinnedBoxesArray = buffer.Array;
-                BoxesPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
-                PinnedBoxesPtr = (IntPtr)(((RectF*)BoxesPin.AddrOfPinnedObject()) + BoxesBufferOffset);
-            }
+            if (Boxes.BufferVersion != BoxesBufferVersion)
+                UpdateBoxesPin();
             return (RectF*)PinnedBoxesPtr;
         }
 
@@ -329,6 +343,7 @@ namespace Squared.PRGUI {
         }
 
         public float this [uint index] {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return this[(int)index];
             }
@@ -338,6 +353,7 @@ namespace Squared.PRGUI {
         }
 
         public float this [int index] { 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 switch (index) {
                     case 0:
@@ -373,6 +389,7 @@ namespace Squared.PRGUI {
         }
 
         public Vector2 Position {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return new Vector2(Left, Top);
             }
@@ -383,6 +400,7 @@ namespace Squared.PRGUI {
         }
 
         public Vector2 Size {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return new Vector2(Width, Height);
             }
@@ -393,12 +411,14 @@ namespace Squared.PRGUI {
         }
 
         public Vector2 Center {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return new Vector2(Left + (Width / 2f), Top + (Height / 2f));
             }
         }
 
         public Vector2 Extent {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return new Vector2(Left + Width, Top + Height);
             }
@@ -446,6 +466,7 @@ namespace Squared.PRGUI {
                 a.Y = b.Y = Top;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals (RectF rhs) {
             return (Left == rhs.Left) &&
                 (Top == rhs.Top) &&
@@ -489,6 +510,7 @@ namespace Squared.PRGUI {
         }
 
         public float this[int index] {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return this[(uint)index];
             }
@@ -498,6 +520,7 @@ namespace Squared.PRGUI {
         }
 
         public float this[uint index] {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 switch (index) {
                     case 0:

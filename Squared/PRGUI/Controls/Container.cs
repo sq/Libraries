@@ -118,7 +118,7 @@ namespace Squared.PRGUI.Controls {
                 if ((existingKey.HasValue) && !item.LayoutKey.IsInvalid)
                     childExistingKey = item.LayoutKey;
 
-                item.GenerateLayoutTree(context, result, childExistingKey);
+                item.GenerateLayoutTree(ref context, result, childExistingKey);
             }
             return result;
         }
@@ -149,7 +149,7 @@ namespace Squared.PRGUI.Controls {
                 passSet.Content.Layer = layer2;
                 passSet.Above.Layer = layer3;
 
-                item.Rasterize(context, ref passSet);
+                item.Rasterize(ref context, ref passSet);
 
                 maxLayer1 = Math.Max(maxLayer1, passSet.Below.Layer);
                 maxLayer2 = Math.Max(maxLayer2, passSet.Content.Layer);

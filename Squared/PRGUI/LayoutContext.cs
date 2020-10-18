@@ -22,6 +22,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -52,6 +53,7 @@ namespace Squared.PRGUI.Layout {
                 FirstChild = pParent->FirstChild;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private void CheckVersion () {
                 if (Version <= -1)
                     throw new ObjectDisposedException("enumerator");
@@ -132,10 +134,7 @@ namespace Squared.PRGUI.Layout {
             throw new Exception("Invalid internal state");
         }
 
-        private void Assert (bool b, string message = null) {
-            if (b)
-                return;
-
+        private void AssertionFailed (string message) {
             throw new Exception(
                 message != null
                     ? $"Assertion failed: {message}"
@@ -143,21 +142,25 @@ namespace Squared.PRGUI.Layout {
                 );
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Assert (bool b, string message = null) {
+            if (b)
+                return;
+
+            AssertionFailed(message);
+        }
+
         private void AssertNotRoot (ControlKey key) {
-            if (key.IsInvalid)
-                throw new Exception("Invalid key");
-            else if (key == Root)
-                throw new Exception("Key must not be the root");
+            Assert(!key.IsInvalid, "Invalid key");
+            Assert(key != Root, "Key must not be the root");
         }
 
         private void AssertNotEqual (ControlKey lhs, ControlKey rhs) {
-            if (lhs == rhs)
-                throw new Exception("Keys must not be equal");
+            Assert(lhs != rhs, "Keys must not be equal");
         }
 
-        private void AssertMasked (ControlFlags flags, ControlFlags mask, string maskName) {
-            if ((flags & mask) != flags)
-                throw new Exception("Flags must be compatible with mask " + maskName);
+        private void AssertMasked (ControlFlags flags, ControlFlags mask) {
+            Assert((flags & mask) == flags, "Flags must be compatible with mask");
         }
 
         public void Update () {
@@ -435,7 +438,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         public unsafe void SetContainerFlags (ControlKey key, ControlFlags flags) {
-            AssertMasked(flags, ControlFlagMask.Container, nameof(ControlFlagMask.Container));
+            AssertMasked(flags, ControlFlagMask.Container);
             var pItem = LayoutPtr(key);
             pItem->Flags = (pItem->Flags & ~ControlFlagMask.Container) | flags;
         }
@@ -446,7 +449,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         public unsafe void SetLayoutFlags (ControlKey key, ControlFlags flags) {
-            AssertMasked(flags, ControlFlagMask.Layout, nameof(ControlFlagMask.Layout));
+            AssertMasked(flags, ControlFlagMask.Layout);
             var pItem = LayoutPtr(key);
             pItem->Flags = (pItem->Flags & ~ControlFlagMask.Layout) | flags;
         }

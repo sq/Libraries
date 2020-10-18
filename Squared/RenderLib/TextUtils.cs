@@ -438,10 +438,10 @@ namespace Squared.Render.Text {
     }
 
     public class FallbackGlyphSource : IGlyphSource, IDisposable {
-        public readonly List<IGlyphSource> Sources = new List<IGlyphSource>();
+        private readonly IGlyphSource[] Sources = null;
 
         public FallbackGlyphSource (params IGlyphSource[] sources) {
-            Sources.AddRange(sources);
+            Sources = sources;
         }
 
         public SpriteFont SpriteFont

@@ -437,7 +437,7 @@ namespace Squared.PRGUI {
             var maxScrollOffset = DragToScrollTarget.MaxScrollOffset ?? Vector2.Zero;
             var positionDelta = (globalPosition - DragToScrollInitialPosition);
 
-            var newOffset = DragToScrollInitialOffset.Value + (positionDelta * DragToScrollSpeed);
+            var newOffset = DragToScrollInitialOffset.Value - (positionDelta * DragToScrollSpeed);
             if (DragToScrollTarget.MinScrollOffset.HasValue) {
                 newOffset.X = Math.Max(minScrollOffset.X, newOffset.X);
                 newOffset.Y = Math.Max(minScrollOffset.Y, newOffset.Y);
