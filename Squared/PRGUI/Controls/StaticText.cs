@@ -182,14 +182,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations) {
+            MaybeSuppressLayoutJitter();
+
             if (ScaleToFit)
                 return null;
-
-            // HACK to avoid layout jitter upon content change if we're autosized
-            // This will result in two layout computations: one during ComputeAutoSize, then another
-            //  during rasterization after layout has set our new content width to use as a constraint
-            if (!Content.IsValid)
-                MostRecentContentWidth = null;
 
             var computedPadding = ComputePadding(context, decorations);
             float? constrainedWidth = null;
@@ -200,7 +196,7 @@ namespace Squared.PRGUI.Controls {
                 else
                     constrainedWidth = computed;
             } else
-                constrainedWidth = MaximumWidth;
+                constrainedWidth = MaximumWidth - computedPadding.X;
 
             var limit = FixedWidth - computedPadding.X ?? constrainedWidth;
             if (limit.HasValue)
@@ -306,9 +302,23 @@ namespace Squared.PRGUI.Controls {
             return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText()}'";
         }
 
-        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
-            var decorations = GetDecorations(context.DecorationProvider);
+        bool MaybeSuppressLayoutJitter () {
+            // HACK to avoid layout jitter upon content change if we're autosized
+            // This will result in two layout computations: one during ComputeAutoSize, then another
+            //  during rasterization after layout has set our new content width to use as a constraint
+            if (!Content.IsValid) {
+                MostRecentContentWidth = null;
+                return true;
+            }
 
+            return false;
+        }
+
+        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+            if (MaybeSuppressLayoutJitter())
+                relayoutRequested = true;
+
+            var decorations = GetDecorations(context.DecorationProvider);
             var box = context.Layout.GetRect(LayoutKey);
 
             // FIXME: Padding?

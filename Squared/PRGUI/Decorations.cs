@@ -181,7 +181,7 @@ namespace Squared.PRGUI.Decorations {
             TitleCornerRadius = 3f,
             SelectionCornerRadius = 1.9f,
             SelectionPadding = 1f,
-            MenuSelectionCornerRadius = 4.5f,
+            MenuSelectionCornerRadius = 8f,
             EditableTextCornerRadius = 4.5f;
         public float? FloatingContainerCornerRadius = 7f,
             TooltipCornerRadius = 8f;
@@ -336,6 +336,8 @@ namespace Squared.PRGUI.Decorations {
                 Vector2 a = new Vector2(settings.Box.Left + 8f, settings.Box.Center.Y + 1.75f),
                     b = new Vector2(settings.Box.Center.X, settings.Box.Extent.Y - 6.5f),
                     c = new Vector2(settings.Box.Extent.X - 7.75f, settings.Box.Top + 7f);
+                var so = renderer.RasterSoftOutlines;
+                renderer.RasterSoftOutlines = true;
                 renderer.RasterizeLineSegment(
                     a, b, startRadius: isChecked ? 1.7f : 1.4f, endRadius: null,
                     outlineRadius: 0.8f, innerColor: f, outerColor: f, outlineColor: o
@@ -344,6 +346,7 @@ namespace Squared.PRGUI.Decorations {
                     b, c, startRadius: isChecked ? 1.65f : 1.4f, endRadius: isChecked ? 1.8f : 1.5f,
                     outlineRadius: 0.8f, innerColor: f, outerColor: f, outlineColor: o
                 );
+                renderer.RasterSoftOutlines = so;
             }
             Button_Above(context, ref renderer, settings);
         }

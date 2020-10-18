@@ -26,6 +26,11 @@ namespace Squared.PRGUI {
     }
 
     public interface IPostLayoutListener {
+        /// <summary>
+        /// This method will be invoked after the full layout pass has been completed, so this control,
+        ///  its parent, and its children will all have valid boxes.
+        /// </summary>
+        /// <param name="relayoutRequested">Request a second layout pass (if you've changed constraints, etc)</param>
         void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested);
     }
 

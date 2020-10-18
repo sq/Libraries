@@ -10,7 +10,7 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public class Container : Control, IControlContainer, IScrollableControl {
+    public class Container : Control, IControlContainer, IScrollableControl, IPostLayoutListener {
         public ControlCollection Children { get; private set; }
 
         /// <summary>
@@ -161,6 +161,18 @@ namespace Squared.PRGUI.Controls {
             passSet.Above.Layer = maxLayer3;
         }
 
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, ref renderer, settings, decorations);
+
+            if (Scrollable) {
+                var scrollbar = context.DecorationProvider?.Scrollbar;
+                if (ShowHorizontalScrollbar)
+                    scrollbar?.Rasterize(context, ref renderer, settings, ref HScrollbar);
+                if (ShowVerticalScrollbar)
+                    scrollbar?.Rasterize(context, ref renderer, settings, ref VScrollbar);
+            }
+        }
+
         protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
             var result = base.ComputePadding(context, decorations);
             if (!Scrollable)
@@ -181,53 +193,6 @@ namespace Squared.PRGUI.Controls {
 
             contentBounds = ContentBounds;
             return HasContentBounds;
-        }
-
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
-
-            // FIXME: This should be done somewhere else
-            if (Scrollable) {
-                var box = settings.Box;
-                var scrollbar = context.DecorationProvider?.Scrollbar;
-                float viewportWidth = box.Width - (scrollbar?.MinimumSize.X ?? 0),
-                    viewportHeight = box.Height - (scrollbar?.MinimumSize.Y ?? 0);
-
-                GetContentBounds(context.UIContext, out RectF contentBounds);
-
-                if (HasContentBounds) {
-                    float maxScrollX = ContentBounds.Width - viewportWidth, maxScrollY = ContentBounds.Height - viewportHeight;
-                    maxScrollX = Math.Max(0, maxScrollX);
-                    maxScrollY = Math.Max(0, maxScrollY);
-                    MinScrollOffset = Vector2.Zero;
-                    MaxScrollOffset = new Vector2(maxScrollX, maxScrollY);
-                    ScrollOffset = new Vector2(
-                        Arithmetic.Clamp(ScrollOffset.X, 0, maxScrollX),
-                        Arithmetic.Clamp(ScrollOffset.Y, 0, maxScrollY)
-                    );
-
-                    CanScrollUp = ScrollOffset.Y > 0;
-                    CanScrollDown = ScrollOffset.Y < maxScrollY;
-
-                    CanScrollVertically = maxScrollY > 0;
-                }
-
-                HScrollbar.ContentSize = ContentBounds.Width;
-                HScrollbar.ViewportSize = box.Width;
-                HScrollbar.Position = ScrollOffset.X;
-                VScrollbar.ContentSize = ContentBounds.Height;
-                VScrollbar.ViewportSize = box.Height;
-                VScrollbar.Position = ScrollOffset.Y;
-
-                HScrollbar.HasCounterpart = VScrollbar.HasCounterpart = (ShowHorizontalScrollbar && ShowVerticalScrollbar);
-
-                if (ShowHorizontalScrollbar)
-                    scrollbar?.Rasterize(context, ref renderer, settings, ref HScrollbar);
-                if (ShowVerticalScrollbar)
-                    scrollbar?.Rasterize(context, ref renderer, settings, ref VScrollbar);
-            } else {
-                ScrollOffset = Vector2.Zero;
-            }
         }
 
         protected override void ApplyClipMargins (UIOperationContext context, ref RectF box) {
@@ -272,6 +237,46 @@ namespace Squared.PRGUI.Controls {
             }
 
             return null;
+        }
+
+        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+            // FIXME: This should be done somewhere else
+            if (Scrollable) {
+                var box = context.Layout.GetRect(LayoutKey);
+                var scrollbar = context.DecorationProvider?.Scrollbar;
+                float viewportWidth = box.Width - (scrollbar?.MinimumSize.X ?? 0),
+                    viewportHeight = box.Height - (scrollbar?.MinimumSize.Y ?? 0);
+
+                GetContentBounds(context.UIContext, out RectF contentBounds);
+
+                if (HasContentBounds) {
+                    float maxScrollX = ContentBounds.Width - viewportWidth, maxScrollY = ContentBounds.Height - viewportHeight;
+                    maxScrollX = Math.Max(0, maxScrollX);
+                    maxScrollY = Math.Max(0, maxScrollY);
+                    MinScrollOffset = Vector2.Zero;
+                    MaxScrollOffset = new Vector2(maxScrollX, maxScrollY);
+                    ScrollOffset = new Vector2(
+                        Arithmetic.Clamp(ScrollOffset.X, 0, maxScrollX),
+                        Arithmetic.Clamp(ScrollOffset.Y, 0, maxScrollY)
+                    );
+
+                    CanScrollUp = ScrollOffset.Y > 0;
+                    CanScrollDown = ScrollOffset.Y < maxScrollY;
+
+                    CanScrollVertically = maxScrollY > 0;
+                }
+
+                HScrollbar.ContentSize = ContentBounds.Width;
+                HScrollbar.ViewportSize = box.Width;
+                HScrollbar.Position = ScrollOffset.X;
+                VScrollbar.ContentSize = ContentBounds.Height;
+                VScrollbar.ViewportSize = box.Height;
+                VScrollbar.Position = ScrollOffset.Y;
+
+                HScrollbar.HasCounterpart = VScrollbar.HasCounterpart = (ShowHorizontalScrollbar && ShowVerticalScrollbar);
+            } else {
+                ScrollOffset = Vector2.Zero;
+            }
         }
     }
 }
