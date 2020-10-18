@@ -14,6 +14,9 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class Menu : Container {
+        // Yuck
+        public const int PageSize = 8;
+
         public const float AutoscrollMarginSize = 24f;
 
         public const float MenuShowSpeed = 0.1f;
@@ -214,9 +217,15 @@ namespace Squared.PRGUI.Controls {
                     if (SelectedItem != null)
                         return ChooseItem(SelectedItem);
                     return true;
+                case Keys.PageUp:
+                case Keys.PageDown:
+                    AdjustSelection(args.Key == Keys.PageUp ? -PageSize : PageSize);
+                    Context.OverrideKeyboardSelection(SelectedItem);
+                    return true;
                 case Keys.Up:
                 case Keys.Down:
                     AdjustSelection(args.Key == Keys.Up ? -1 : 1);
+                    Context.OverrideKeyboardSelection(SelectedItem);
                     return true;
                 default:
                     return false;

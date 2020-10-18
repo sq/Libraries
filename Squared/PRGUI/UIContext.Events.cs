@@ -226,8 +226,13 @@ namespace Squared.PRGUI {
                 // Compute our actual displacement based on the constrained offset and then clamp
                 //  that displacement to our autoscroll speed
                 var displacement = newScrollOffset - currentScrollOffset;
-                displacement.X = Math.Min(Math.Abs(displacement.X), AutoscrollSpeed) * Math.Sign(displacement.X);
-                displacement.Y = Math.Min(Math.Abs(displacement.Y), AutoscrollSpeed) * Math.Sign(displacement.Y);
+                // The autoscroll speed starts slow for short distances and speeds up
+                float speedX = Math.Abs(displacement.X) / AutoscrollFastThreshold,
+                    speedY = Math.Abs(displacement.Y) / AutoscrollFastThreshold;
+                speedX = Arithmetic.Lerp(AutoscrollSpeedSlow, AutoscrollSpeedFast, speedX);
+                speedY = Arithmetic.Lerp(AutoscrollSpeedSlow, AutoscrollSpeedFast, speedX);
+                displacement.X = Math.Min(Math.Abs(displacement.X), speedX) * Math.Sign(displacement.X);
+                displacement.Y = Math.Min(Math.Abs(displacement.Y), speedY) * Math.Sign(displacement.Y);
                 scrollContext.ScrollOffset = currentScrollOffset + displacement;
             }
         }
@@ -542,6 +547,10 @@ namespace Squared.PRGUI {
                 return true;
             else
                 return false;
+        }
+
+        public void OverrideKeyboardSelection (Control target) {
+            KeyboardSelection = target;
         }
 
         private bool TeardownDragToScroll (Control target, Vector2 globalPosition) {

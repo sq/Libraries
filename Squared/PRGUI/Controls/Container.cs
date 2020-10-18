@@ -31,7 +31,7 @@ namespace Squared.PRGUI.Controls {
         Vector2? IScrollableControl.MinScrollOffset => MinScrollOffset;
         Vector2? IScrollableControl.MaxScrollOffset => MaxScrollOffset;
 
-        public ControlFlags ContainerFlags = ControlFlags.Container_Row;
+        public ControlFlags ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap;
 
         protected ScrollbarState HScrollbar, VScrollbar;
         protected bool HasContentBounds, CanScrollVertically;

@@ -543,12 +543,14 @@ namespace Squared.PRGUI {
             var box = GetRect(context.Layout);
             // HACK: To account for drop shadows and stuff
             const float visibilityPadding = 16;
-            if (
-                (box.Extent.X < -visibilityPadding) ||
+            var isInvisible = (box.Extent.X < -visibilityPadding) ||
                 (box.Extent.Y < -visibilityPadding) ||
                 (box.Left > context.UIContext.CanvasSize.X + visibilityPadding) ||
-                (box.Top > context.UIContext.CanvasSize.Y + visibilityPadding)
-            )
+                (box.Top > context.UIContext.CanvasSize.Y + visibilityPadding) ||
+                (box.Width <= 0) ||
+                (box.Height <= 0);
+
+            if (isInvisible)
                 return;
 
             if (opacity >= 1) {

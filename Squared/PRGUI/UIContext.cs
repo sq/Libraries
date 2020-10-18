@@ -119,7 +119,9 @@ namespace Squared.PRGUI {
         public float DragToScrollSpeed = 1.0f;
 
         public float AutoscrollMargin = 4;
-        public float AutoscrollSpeed = 12;
+        public float AutoscrollSpeedSlow = 8;
+        public float AutoscrollSpeedFast = 48;
+        public float AutoscrollFastThreshold = 512;
 
         /// <summary>
         /// A key must be held for this long (in seconds) before repeating begins
@@ -684,8 +686,7 @@ namespace Squared.PRGUI {
 
             var textChanged = !instance.Text.Equals(text);
 
-            var rect = Layout.GetRect(anchor.LayoutKey);
-
+            var rect = anchor.GetRect(Layout);
             if (textChanged || !IsTooltipVisible) {
                 var idealMaxWidth = CanvasSize.X * 0.35f;
 

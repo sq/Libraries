@@ -196,7 +196,6 @@ namespace PRGUI.Demo {
                 // MinimumWidth = 400,
                 // MinimumHeight = 240,
                 Title = "Floating Panel",
-                ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_Start | ControlFlags.Container_Wrap,
                 Children = {
                     new StaticText { Text = "→", FocusBeneficiary = textfield, TooltipContent = "Clicking this label will focus the textfield" },
                     textfield,
@@ -255,9 +254,23 @@ namespace PRGUI.Demo {
                 Menu = bigMenu
             };
 
+            var supernestedGroup = new Container {
+                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                Children = {
+                    new Checkbox { Text = "Checkbox 3" },
+                    new Checkbox { Text = "Checkbox 4" },
+                    new Checkbox { Text = "Checkbox 5" },
+                    new Checkbox { Text = "Checkbox 6" },
+                    new Checkbox { Text = "Checkbox 7" },
+                    new Button { Text = "Button A" },
+                    new Button { Text = "Button B" },
+                    new Button { Text = "Button C" },
+                    new Button { Text = "Button D" },
+                }
+            };
+
             var bigScrollableContainer = new Container {
                 ClipChildren = true,
-                ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                 MaximumHeight = 1200,
                 Scrollable = true,
@@ -278,7 +291,6 @@ namespace PRGUI.Demo {
                     },
                     new Container {
                         ClipChildren = true,
-                        ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
                         LayoutFlags = ControlFlags.Layout_Fill,
                         MaximumHeight = 400,
                         FixedWidth = 400,
@@ -294,7 +306,8 @@ namespace PRGUI.Demo {
                             new Checkbox { Text = "Checkbox 2", Checked = true },
                             new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
                             new RadioButton { Text = "Radio 2", GroupId = "radio" },
-                            new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true }
+                            new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
+                            supernestedGroup
                         }
                     },
                     new Button {
