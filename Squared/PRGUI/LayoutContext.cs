@@ -468,16 +468,18 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe float CalcOverlaySize (LayoutItem * pItem, Dimensions dim) {
             float result = 0;
+            int idim = (int)dim, wdim = idim + 2;
             foreach (var child in Children(pItem)) {
                 var pChild = LayoutPtr(child);
                 if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating))
                     continue;
 
-                var rect = GetRect(child);
+                var childRect = GetRect(child);
                 // FIXME: Is this a bug?
-                var childSize = rect[(uint)dim] + rect[(uint)dim + 2] + pChild->Margins[(uint)dim + 2];
+                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
                 result = Math.Max(result, childSize);
             }
+            result += pItem->Padding[idim] + pItem->Padding[wdim];
             return result;
         }
 
@@ -489,9 +491,10 @@ namespace Squared.PRGUI.Layout {
                 if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating))
                     continue;
 
-                var rect = GetRect(child);
-                result += rect[idim] + rect[wdim] + pChild->Margins[wdim];
+                var childRect = GetRect(child);
+                result += childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
             }
+            result += pItem->Padding[idim] + pItem->Padding[wdim];
             return result;
         }
 
@@ -505,7 +508,7 @@ namespace Squared.PRGUI.Layout {
                 if (pChild->Flags.IsFlagged(ControlFlags.Layout_Floating))
                     continue;
 
-                var rect = GetRect(child);
+                var childRect = GetRect(child);
 
                 if (
                     (!forcedBreakOnly && pChild->Flags.IsBreak()) ||
@@ -519,7 +522,7 @@ namespace Squared.PRGUI.Layout {
                     needSize = 0;
                 }
 
-                var childSize = rect[idim] + rect[wdim] + pChild->Margins[wdim];
+                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
                 if (overlaid)
                     needSize = Math.Max(needSize, childSize);
                 else
@@ -532,8 +535,10 @@ namespace Squared.PRGUI.Layout {
             else
                 result = Math.Max(needSize, needSize2);
 
+            result += pItem->Padding[idim] + pItem->Padding[wdim];
+
             // FIXME: Is this actually necessary?
-            result = Constrain(result, GetComputedMinimumSize(pItem).GetElement(idim), GetComputedMaximumSize(pItem).GetElement(idim));
+            result = Constrain(result, GetComputedMinimumSize(pItem).GetElement(idim), GetComputedMaximumSize(pItem, null).GetElement(idim));
             return result;
         }
 
@@ -546,12 +551,22 @@ namespace Squared.PRGUI.Layout {
             return result;
         }
 
-        private unsafe Vector2 GetComputedMaximumSize (LayoutItem * pItem) {
+        private unsafe Vector2 GetComputedMaximumSize (LayoutItem * pItem, Vector2? parentConstraint) {
             var result = pItem->FixedSize;
-            if (result.X < 0)
-                result.X = pItem->MaximumSize.X;
-            if (result.Y < 0)
-                result.Y = pItem->MaximumSize.Y;
+            if (result.X < 0) {
+                if (parentConstraint.HasValue) {
+                    result.X = Math.Min(parentConstraint.Value.X, pItem->MaximumSize.X);
+                } else {
+                    result.X = pItem->MaximumSize.X;
+                }
+            }
+            if (result.Y < 0) {
+                if (parentConstraint.HasValue) {
+                    result.Y = Math.Min(parentConstraint.Value.Y, pItem->MaximumSize.Y);
+                } else {
+                    result.Y = pItem->MaximumSize.Y;
+                }
+            }
             return result;
         }
 
@@ -571,8 +586,8 @@ namespace Squared.PRGUI.Layout {
             return value;
         }
 
-        private unsafe float Constrain (float value, LayoutItem * pItem, int dimension) {
-            return Constrain(value, GetComputedMinimumSize(pItem).GetElement(dimension), GetComputedMaximumSize(pItem).GetElement(dimension));
+        private unsafe float Constrain (float value, LayoutItem * pItem, int dimension, Vector2? parentConstraint = null) {
+            return Constrain(value, GetComputedMinimumSize(pItem).GetElement(dimension), GetComputedMaximumSize(pItem, parentConstraint).GetElement(dimension));
         }
 
         private unsafe void CalcSize (LayoutItem * pItem, Dimensions dim) {
@@ -585,7 +600,7 @@ namespace Squared.PRGUI.Layout {
             var pRect = RectPtr(pItem->Key);
             var idim = (int)dim;
 
-            // Start by setting size to top/left margin
+            // Start by setting position to top/left margin
             (*pRect)[idim] = pItem->Margins[idim];
 
             if (pItem->FixedSize.GetElement(idim) > 0) {
@@ -620,8 +635,6 @@ namespace Squared.PRGUI.Layout {
                     result = CalcOverlaySize(pItem, dim);
                     break;
             }
-
-            result += pItem->Padding[idim] + pItem->Padding[2 + idim];
 
             (*pRect)[2 + idim] = Constrain(result, pItem, idim);
         }
@@ -760,13 +773,17 @@ namespace Squared.PRGUI.Layout {
 
                     if (pass == 1) {
                         // FIXME: Is this correct?
-                        if (pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size)) {
-                            var parentRect = GetRect(pParent->Key);
-                            float parentExtent = parentRect[idim] + parentRect[wdim];
+                        if (
+                            pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size) && 
+                            (pChild->FixedSize.GetElement(idim) < 0)
+                        ) {
+                            var parentRect = GetContentRect(pParent->Key);
+                            float parentExtent = Math.Max((parentRect[idim] + parentRect[wdim]), 0);
                             ix1 = Constrain(ix1, -1, parentExtent);
                         }
+                        float finalSize = ix1 - ix0;
                         childRect[idim] = ix0;
-                        childRect[wdim] = ix1 - ix0;
+                        childRect[wdim] = finalSize;
                         SetRect(child, ref childRect);
                         CheckConstraints(child, idim);
                     }
@@ -784,7 +801,7 @@ namespace Squared.PRGUI.Layout {
             var wdim = dimension + 2;
 
             var min = GetComputedMinimumSize(pItem).GetElement(dimension);
-            var max = GetComputedMaximumSize(pItem).GetElement(dimension);
+            var max = GetComputedMaximumSize(pItem, null).GetElement(dimension);
             // FIXME
             if (min >= max)
                 return;
@@ -913,38 +930,38 @@ namespace Squared.PRGUI.Layout {
                 var bFlags = (ControlFlags)((uint)(pItem->Flags & ControlFlagMask.Layout) >> idim);
                 var margins = pItem->Margins;
                 var rect = GetRect(item);
-                var minSize = Math.Max(0, space - rect[idim] - margins[wdim]);
+                var maxSize = Math.Max(0, space - rect[idim] - margins[wdim]);
 
                 switch (bFlags & ControlFlags.Layout_Fill_Row) {
                     case 0: // ControlFlags.Layout_Center:
-                        rect[wdim] = Math.Min(rect[wdim], minSize);
+                        rect[wdim] = Math.Min(rect[wdim], maxSize);
                         rect[idim] += (space - rect[wdim]) / 2 - margins[wdim];
                         break;
                     case ControlFlags.Layout_Anchor_Right:
-                        rect[wdim] = Math.Min(rect[wdim], minSize);
+                        rect[wdim] = Math.Min(rect[wdim], maxSize);
                         rect[idim] = space - rect[wdim] - margins[wdim];
                         break;
                     case ControlFlags.Layout_Fill_Row:
-                        rect[wdim] = minSize;
+                        rect[wdim] = maxSize;
                         break;
                     default:
-                        rect[wdim] = Math.Min(rect[wdim], minSize);
+                        rect[wdim] = Math.Min(rect[wdim], maxSize);
                         break;
                 }
 
                 rect[idim] += offset;
                 var unconstrained = rect[wdim];
                 // FIXME: Redistribute remaining space?
-                rect[wdim] = Constrain(unconstrained, GetComputedMinimumSize(pItem).GetElement(idim), GetComputedMaximumSize(pItem).GetElement(idim));
 
-                float extent = rect[idim] + rect[wdim];
-
+                Vector2? parentConstraint = null;
                 if (pParent->Flags.IsFlagged(ControlFlags.Container_Constrain_Size)) {
                     // rect[idim] = Constrain(rect[idim], parentRect[idim], parentRect[wdim]);
-                    float parentExtent = parentRect[idim] + parentRect[wdim];
-                    extent = Constrain(extent, -1, parentExtent);
-                    rect[wdim] = extent - rect[idim];
+                    // FIXME: parent padding?
+                    parentConstraint = parentRect.Extent - rect.Position;
                 }
+
+                rect[wdim] = Constrain(unconstrained, GetComputedMinimumSize(pItem).GetElement(idim), GetComputedMaximumSize(pItem, parentConstraint).GetElement(idim));
+                float extent = rect[idim] + rect[wdim];
 
                 SetRect(item, ref rect);
                 CheckConstraints(item, idim);
@@ -971,8 +988,8 @@ namespace Squared.PRGUI.Layout {
                     needSize = 0;
                 }
 
-                var rect = GetRect(child);
-                var childSize = rect[idim] + rect[wdim] + pChild->Margins[wdim];
+                var childRect = GetRect(child);
+                var childSize = childRect[idim] + childRect[wdim] + pChild->Margins[wdim];
                 needSize = Math.Max(needSize, childSize);
             }
 

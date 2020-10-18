@@ -255,11 +255,60 @@ namespace PRGUI.Demo {
                 Menu = bigMenu
             };
 
+            var bigScrollableContainer = new Container {
+                ClipChildren = true,
+                ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
+                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                MaximumHeight = 1200,
+                Scrollable = true,
+                ShowHorizontalScrollbar = true,
+                ShowVerticalScrollbar = true,
+                ScrollOffset = new Vector2(0, 22),
+                Children = {
+                    new StaticText {
+                        Text = "Clipped container",
+                        AutoSizeWidth = false,
+                        BackgroundColor = new Color(32, 60, 32),
+                    },
+                    new Button {
+                        Text = "Clipped huge button",
+                        FixedWidth = 600,
+                        FixedHeight = 1800,
+                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                    },
+                    new Container {
+                        ClipChildren = true,
+                        ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
+                        LayoutFlags = ControlFlags.Layout_Fill,
+                        MaximumHeight = 400,
+                        MaximumWidth = 400,
+                        Scrollable = true,
+                        Children = {
+                            new StaticText { Text = "Testing nested clips" },
+                            new StaticText {
+                                Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
+                                Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                            },
+                            new Checkbox { Text = "Checkbox 1", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak },
+                            new Checkbox { Text = "Checkbox 2", Checked = true },
+                            new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
+                            new RadioButton { Text = "Radio 2", GroupId = "radio" },
+                            new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true }
+                        }
+                    },
+                    new Button {
+                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                        Text = "Another button at the bottom to test clipped hit tests"
+                    }
+                }
+            };
+
             var topLevelContainer = new Container {
                 BackgroundColor = new Color(48, 48, 48) * 0.9f,
                 LayoutFlags = ControlFlags.Layout_Fill,
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                 Children = {
+                    /*
                     hoveringCtl,
                     lastClickedCtl,
                     button1,
@@ -278,6 +327,7 @@ namespace PRGUI.Demo {
                         BackgroundColor = Color.LightPink
                     },
                     bigMenuButton,
+                    */
                     new StaticText {
                         AutoSize = false,
                         Text = "Static Text 2\r\nLine 2",
@@ -297,63 +347,19 @@ namespace PRGUI.Demo {
                     },
                     new StaticText {
                         Text = "Static Text 4",
-                        MinimumWidth = 400,
+                        MinimumWidth = 300,
+                        // FIXME: If this is true and minimumwidth is set, the control overflows the edge of the parent.
+                        AutoSizeWidth = true,
                         BackgroundColor = Color.DarkBlue
                     },
-                    new Container {
-                        ClipChildren = true,
-                        ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
-                        LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
-                        MaximumHeight = 1200,
-                        Scrollable = true,
-                        ShowHorizontalScrollbar = true,
-                        ShowVerticalScrollbar = true,
-                        ScrollOffset = new Vector2(0, 22),
-                        Children = {
-                            new StaticText {
-                                Text = "Clipped container",
-                                AutoSizeWidth = false,
-                                BackgroundColor = new Color(32, 60, 32),
-                            },
-                            new Button {
-                                Text = "Clipped huge button",
-                                FixedWidth = 600,
-                                FixedHeight = 1800,
-                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
-                            },
-                            new Container {
-                                ClipChildren = true,
-                                ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap,
-                                LayoutFlags = ControlFlags.Layout_Fill,
-                                MaximumHeight = 400,
-                                MaximumWidth = 400,
-                                Scrollable = true,
-                                Children = {
-                                    new StaticText { Text = "Testing nested clips" },
-                                    new StaticText {
-                                        Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
-                                        Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
-                                    },
-                                    new Checkbox { Text = "Checkbox 1", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak },
-                                    new Checkbox { Text = "Checkbox 2", Checked = true },
-                                    new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
-                                    new RadioButton { Text = "Radio 2", GroupId = "radio" },
-                                    new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true }
-                                }
-                            },
-                            new Button {
-                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                                Text = "Another button at the bottom to test clipped hit tests"
-                            }
-                        }
-                    }
+                    // bigScrollableContainer
                 }
             };
 
             Context = new UIContext(Materials, decorations) {
                 Controls = {
                     topLevelContainer,
-                    floatingWindow
+                    // floatingWindow
                 }
             };
 
