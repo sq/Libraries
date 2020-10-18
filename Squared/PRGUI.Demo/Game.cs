@@ -57,7 +57,7 @@ namespace PRGUI.Demo {
             Graphics.PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8;
             Graphics.PreferredBackBufferWidth = 1920;
             Graphics.PreferredBackBufferHeight = 1080;
-            Graphics.SynchronizeWithVerticalRetrace = false;
+            Graphics.SynchronizeWithVerticalRetrace = true;
             Graphics.PreferMultiSampling = false;
             Graphics.IsFullScreen = false;
 
@@ -213,7 +213,7 @@ namespace PRGUI.Demo {
             };
 
             var changePaintOrder = new Button {
-                MinimumWidth = 400,
+                // MinimumWidth = 400,
                 Text = "Change Paint Order",
                 BackgroundColor = Color.LightSeaGreen,
                 TooltipContent = "This button toggles whether the floating panel is above or below the main container"

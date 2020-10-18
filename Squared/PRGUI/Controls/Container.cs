@@ -14,7 +14,7 @@ namespace Squared.PRGUI.Controls {
         ControlCollection Children { get; }
     }
 
-    public class Container : Control, IControlContainer {
+    public class Container : Control, IControlContainer, IScrollableControl {
         public ControlCollection Children { get; private set; }
 
         /// <summary>
@@ -27,6 +27,13 @@ namespace Squared.PRGUI.Controls {
 
         private Vector2 _ScrollOffset;
         protected Vector2 AbsoluteDisplayOffsetOfChildren;
+
+        protected Vector2 MinScrollOffset;
+        protected Vector2? MaxScrollOffset;
+
+        bool IScrollableControl.AllowDragToScroll => true;
+        Vector2? IScrollableControl.MinScrollOffset => MinScrollOffset;
+        Vector2? IScrollableControl.MaxScrollOffset => MaxScrollOffset;
 
         public ControlFlags ContainerFlags = ControlFlags.Container_Row;
 
@@ -54,6 +61,10 @@ namespace Squared.PRGUI.Controls {
                 return _ScrollOffset;
             }
             set {
+                if (!CanScrollVertically)
+                    value.Y = 0;
+                if (!Scrollable)
+                    value = Vector2.Zero;
                 if (value == _ScrollOffset)
                     return;
 
@@ -66,10 +77,22 @@ namespace Squared.PRGUI.Controls {
         private bool CanScrollUp, CanScrollDown;
 
         protected bool OnScroll (float delta) {
+            if (!Scrollable)
+                return false;
             if (!ShowVerticalScrollbar || !CanScrollVertically)
                 return false;
-            ScrollOffset = new Vector2(ScrollOffset.X, ScrollOffset.Y - delta);
-            return (delta > 0 && CanScrollUp) || (delta < 0 && CanScrollDown);
+            var so = ScrollOffset;
+            so.Y = so.Y - delta;
+            if (MaxScrollOffset.HasValue) {
+                so.X = Arithmetic.Clamp(so.X, 0, MaxScrollOffset.Value.X);
+                so.Y = Arithmetic.Clamp(so.Y, 0, MaxScrollOffset.Value.Y);
+            }
+            if (so != ScrollOffset) {
+                ScrollOffset = so;
+                return true;
+            } else {
+                return false;
+            }
         }
 
         protected override bool OnEvent<T> (string name, T args) {
@@ -173,6 +196,8 @@ namespace Squared.PRGUI.Controls {
                     float maxScrollX = ContentBounds.Width - viewportWidth, maxScrollY = ContentBounds.Height - viewportHeight;
                     maxScrollX = Math.Max(0, maxScrollX);
                     maxScrollY = Math.Max(0, maxScrollY);
+                    MinScrollOffset = Vector2.Zero;
+                    MaxScrollOffset = new Vector2(maxScrollX, maxScrollY);
                     ScrollOffset = new Vector2(
                         Arithmetic.Clamp(ScrollOffset.X, 0, maxScrollX),
                         Arithmetic.Clamp(ScrollOffset.Y, 0, maxScrollY)

@@ -113,6 +113,12 @@ namespace Squared.PRGUI.Controls {
 
         protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
             base.ComputeFixedSize(out fixedWidth, out fixedHeight);
+            /*
+            if (Context == null)
+                return;
+            */
+            // var parentRect = Context.Layout.GetRect(parent);
+
             if (AutoSizeWidth && !FixedWidth.HasValue)
                 fixedWidth = AutoSizeComputedWidth ?? fixedWidth;
             if (AutoSizeHeight && !FixedHeight.HasValue)
@@ -120,6 +126,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void ComputeAutoSize (UIOperationContext context) {
+            // FIXME: If we start out constrained (by our parent size, etc) we will compute
+            //  a compressed auto-size value here, and it will never be updated even if our parent
+            //  gets bigger
+
             AutoSizeComputedHeight = AutoSizeComputedWidth = null;
             if (!AutoSizeWidth && !AutoSizeHeight)
                 return;
@@ -196,20 +206,25 @@ namespace Squared.PRGUI.Controls {
 
             var computedPadding = ComputePadding(context, decorations);
 
+            var wasConstrainedByParent = (AutoSizeComputedWidth > settings.Box.Width);
             if (
                 (
                     !AutoSizeWidth || Wrap || 
                     // If our size was constrained by our parent, act as if auto-size was disabled. This handles
                     //  the scenario where a menu item's text is too big for the menu
-                    (AutoSizeComputedWidth > settings.Box.Width)
+                    wasConstrainedByParent
                 ) && !ScaleToFit
             ) {
                 // If auto-size is disabled or wrapping is enabled, we need to enable wrapping/breaking at
                 //  our rightmost edge to ensure that our text doesn't overflow outside of our boundaries
                 // If wrapping is disabled entirely, the overflowing text will be suppressed by the text
                 //  layout engine, otherwise it will be wrapped (potentially changing our layout, oops)
-                var textWidthLimit = ComputeTextWidthLimit(context, decorations) ?? (settings.Box.Width - computedPadding.X);
+                var limit = Math.Max(0, (settings.Box.Width - computedPadding.X));
+                var textWidthLimit = ComputeTextWidthLimit(context, decorations) ?? limit;
                 Content.LineBreakAtX = textWidthLimit;
+            } else {
+                // This ensures that if we go from constrained to unconstrained, our layout is updated
+                Content.LineBreakAtX = null;
             }
 
             var overrideColor = GetTextColor(context.UIContext.TimeProvider.Ticks);

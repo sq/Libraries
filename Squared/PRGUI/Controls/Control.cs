@@ -14,6 +14,13 @@ using Squared.Render.RasterShape;
 using Squared.Util;
 
 namespace Squared.PRGUI {
+    public interface IScrollableControl {
+        bool AllowDragToScroll { get; }
+        Vector2 ScrollOffset { get; set; }
+        Vector2? MinScrollOffset { get; }
+        Vector2? MaxScrollOffset { get; }
+    }
+
     public abstract class Control {
         public class TabOrderComparer : IComparer<Control> {
             public static readonly TabOrderComparer Instance = new TabOrderComparer();
@@ -131,6 +138,8 @@ namespace Squared.PRGUI {
         protected float Now => (float)(Context?.TimeProvider?.Seconds ?? Time.Seconds);
         protected long NowL => Context?.TimeProvider?.Ticks ?? Time.Ticks;
 
+        private RectF LastParentRect;
+
         protected static void UpdateColor (ref Tween<Vector4>? v4, Tween<Color>? value) {
             if (value == null) {
                 v4 = null;
@@ -243,17 +252,6 @@ namespace Squared.PRGUI {
 
         internal ControlKey GenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey = null) {
             return LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
-        }
-
-        protected Vector2 GetFixedInteriorSpace () {
-            return new Vector2(
-                FixedWidth.HasValue
-                    ? Math.Max(0, FixedWidth.Value - Margins.X)
-                    : LayoutItem.NoValue,
-                FixedHeight.HasValue
-                    ? Math.Max(0, FixedHeight.Value - Margins.Y)
-                    : LayoutItem.NoValue
-            );
         }
 
         protected virtual bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {

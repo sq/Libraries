@@ -15,7 +15,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class EditableText : Control {
+    public class EditableText : Control, IScrollableControl {
         public static readonly Menu ContextMenu = new Menu {
             Children = {
                 new StaticText { Text = "Cut" },
@@ -45,7 +45,13 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public Func<char, char?> CharacterFilter = null;
 
-        public Vector2 ScrollOffset;
+        public Vector2 ScrollOffset { get; set; }
+        protected Vector2 MinScrollOffset;
+        protected Vector2? MaxScrollOffset;
+
+        bool IScrollableControl.AllowDragToScroll => false;
+        Vector2? IScrollableControl.MinScrollOffset => MinScrollOffset;
+        Vector2? IScrollableControl.MaxScrollOffset => MaxScrollOffset;
 
         protected DynamicStringLayout DescriptionLayout = new DynamicStringLayout();
         protected DynamicStringLayout DynamicLayout = new DynamicStringLayout();
@@ -776,6 +782,8 @@ namespace Squared.PRGUI.Controls {
                             : MinRightScrollMargin
                     ), 0
             );
+            MinScrollOffset = Vector2.Zero;
+            MaxScrollOffset = new Vector2(0, maxScrollValue);
             var viewportBox = contentBox;
             viewportBox.Position = scrollOffset;
             var squashedViewportBox = viewportBox;

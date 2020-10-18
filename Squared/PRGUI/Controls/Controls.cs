@@ -27,6 +27,7 @@ namespace Squared.PRGUI {
             Content.Alignment = HorizontalAlignment.Center;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
+            Wrap = false;
         }
 
         protected override bool OnEvent<T> (string name, T args) {
@@ -292,9 +293,11 @@ namespace Squared.PRGUI {
         }
 
         private void UpdatePosition (Vector2 newPosition, UIContext context, RectF box) {
+            var availableSpaceX = Math.Max(0, context.CanvasSize.X - box.Width);
+            var availableSpaceY = Math.Max(0, context.CanvasSize.Y - box.Height);
             newPosition = new Vector2(
-                Arithmetic.Clamp(newPosition.X, 0, context.CanvasSize.X - box.Width),
-                Arithmetic.Clamp(newPosition.Y, 0, context.CanvasSize.Y - box.Height)
+                Arithmetic.Clamp(newPosition.X, 0, availableSpaceX),
+                Arithmetic.Clamp(newPosition.Y, 0, availableSpaceY)
             ).Floor();
 
             Position = newPosition;

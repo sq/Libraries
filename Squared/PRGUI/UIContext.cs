@@ -103,16 +103,20 @@ namespace Squared.PRGUI {
         /// </summary>
         public float MouseWheelScale = 1.0f / 2.4f;
         /// <summary>
-        /// If the mouse has moved more than the minimum movement distance, do not generate a click event.
+        /// If the mouse has moved more than the minimum movement distance, do not generate a click event if a scroll occurred.
         /// Otherwise, a click event will be generated as long as the mouse is still within the target control.
         /// If this is not set, drag-to-scroll may misbehave.
         /// </summary>
-        public bool SuppressSingleClickOnMovement = true;
+        public bool SuppressSingleClickOnMovementWhenAppropriate = true;
         /// <summary>
         /// If the mouse moves more than the minimum movement distance, convert it into scrolling instead of
         ///  a click, when appropriate
         /// </summary>
         public bool EnableDragToScroll = true;
+        /// <summary>
+        /// Drag-to-scroll will have its movement speed increased by this factor
+        /// </summary>
+        public float DragToScrollSpeed = 3.0f;
 
         /// <summary>
         /// A key must be held for this long (in seconds) before repeating begins
@@ -164,6 +168,10 @@ namespace Squared.PRGUI {
         private Control _Focused, _MouseCaptured, _Hovering;
 
         private ConditionalWeakTable<Control, Control> TopLevelFocusMemory = new ConditionalWeakTable<Control, Control>();
+
+        private IScrollableControl DragToScrollTarget;
+        private Vector2? DragToScrollInitialOffset;
+        private Vector2 DragToScrollInitialPosition;
 
         /// <summary>
         /// The control that currently has the mouse captured (if a button is pressed)
@@ -428,8 +436,11 @@ namespace Squared.PRGUI {
                 HandleMouseDown(mouseEventTarget, mousePosition);
                 mouseDownPosition = mouseDownPosition ?? mousePosition;
             } else if ((LastMouseButtons != MouseButtons.None) && (CurrentMouseButtons == MouseButtons.None)) {
+                bool scrolled = false;
                 if (Hovering != null)
-                    HandleMouseUp(mouseEventTarget, mousePosition, mouseDownPosition);
+                    scrolled = HandleMouseUp(mouseEventTarget, mousePosition, mouseDownPosition);
+                else if (DragToScrollTarget != null)
+                    scrolled = TeardownDragToScroll(mouseEventTarget, mousePosition);
 
                 if (MouseCaptured != null) {
                     var movedDistance = mousePosition - mouseDownPosition;
@@ -437,7 +448,8 @@ namespace Squared.PRGUI {
                         // FIXME: Why?
                         !movedDistance.HasValue || 
                         (movedDistance.Value.Length() <= MinimumMouseMovementDistance) ||
-                        !SuppressSingleClickOnMovement
+                        !scrolled ||
+                        !SuppressSingleClickOnMovementWhenAppropriate
                     )
                         processClick = true;
                 }

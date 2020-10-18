@@ -533,7 +533,25 @@ namespace Squared.PRGUI.Layout {
                 result = Math.Max(needSize, needSize2);
 
             // FIXME: Is this actually necessary?
-            result = Constrain(result, pItem->MinimumSize.GetElement(idim), pItem->MaximumSize.GetElement(idim));
+            result = Constrain(result, GetComputedMinimumSize(pItem).GetElement(idim), GetComputedMaximumSize(pItem).GetElement(idim));
+            return result;
+        }
+
+        private unsafe Vector2 GetComputedMinimumSize (LayoutItem * pItem) {
+            var result = pItem->FixedSize;
+            if (result.X < 0)
+                result.X = pItem->MinimumSize.X;
+            if (result.Y < 0)
+                result.Y = pItem->MinimumSize.Y;
+            return result;
+        }
+
+        private unsafe Vector2 GetComputedMaximumSize (LayoutItem * pItem) {
+            var result = pItem->FixedSize;
+            if (result.X < 0)
+                result.X = pItem->MaximumSize.X;
+            if (result.Y < 0)
+                result.Y = pItem->MaximumSize.Y;
             return result;
         }
 
@@ -554,7 +572,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe float Constrain (float value, LayoutItem * pItem, int dimension) {
-            return Constrain(value, pItem->MinimumSize.GetElement(dimension), pItem->MaximumSize.GetElement(dimension));
+            return Constrain(value, GetComputedMinimumSize(pItem).GetElement(dimension), GetComputedMaximumSize(pItem).GetElement(dimension));
         }
 
         private unsafe void CalcSize (LayoutItem * pItem, Dimensions dim) {
@@ -765,8 +783,8 @@ namespace Squared.PRGUI.Layout {
             var rect = GetRect(control);
             var wdim = dimension + 2;
 
-            var min = pItem->MinimumSize.GetElement(dimension);
-            var max = pItem->MaximumSize.GetElement(dimension);
+            var min = GetComputedMinimumSize(pItem).GetElement(dimension);
+            var max = GetComputedMaximumSize(pItem).GetElement(dimension);
             // FIXME
             if (min >= max)
                 return;
@@ -917,7 +935,7 @@ namespace Squared.PRGUI.Layout {
                 rect[idim] += offset;
                 var unconstrained = rect[wdim];
                 // FIXME: Redistribute remaining space?
-                rect[wdim] = Constrain(unconstrained, pItem->MinimumSize.GetElement(idim), pItem->MaximumSize.GetElement(idim));
+                rect[wdim] = Constrain(unconstrained, GetComputedMinimumSize(pItem).GetElement(idim), GetComputedMaximumSize(pItem).GetElement(idim));
 
                 float extent = rect[idim] + rect[wdim];
 

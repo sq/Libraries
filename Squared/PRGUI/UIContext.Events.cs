@@ -353,27 +353,120 @@ namespace Squared.PRGUI {
                     continue;
                 } else {
                     ReleasedCapture = null;
-                    return ok;
+                    if (ok)
+                        return true;
                 }
             }
+
+            if (EnableDragToScroll)
+                return InitDragToScroll(target, globalPosition);
 
             return false;
         }
 
-        private void HandleMouseUp (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
+        private bool HandleMouseUp (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
             HideTooltipForMouseInput();
             MouseDownPosition = null;
             // FIXME: Suppress if disabled?
             FireEvent(UIEvents.MouseUp, target, MakeMouseEventArgs(target, globalPosition, mouseDownPosition));
+            return TeardownDragToScroll(MouseCaptured ?? target, globalPosition);
         }
 
         private void HandleMouseMove (Control target, Vector2 globalPosition) {
-            FireEvent(UIEvents.MouseMove, target, MakeMouseEventArgs(target, globalPosition, null));
+            if (
+                EnableDragToScroll && 
+                CurrentMouseButtons != MouseButtons.None && 
+                UpdateDragToScroll(MouseCaptured ?? target, globalPosition)
+            )
+                return;
+
+            if (!FireEvent(UIEvents.MouseMove, target, MakeMouseEventArgs(target, globalPosition, null)))
+                return;
         }
 
         private void HandleMouseDrag (Control target, Vector2 globalPosition) {
+            if (
+                EnableDragToScroll && 
+                CurrentMouseButtons != MouseButtons.None && 
+                UpdateDragToScroll(MouseCaptured ?? target, globalPosition)
+            )
+                return;
+
             // FIXME: Suppress if disabled?
             FireEvent(UIEvents.MouseDrag, target, MakeMouseEventArgs(target, globalPosition, null));
+        }
+
+        private bool InitDragToScroll (Control target, Vector2 globalPosition) {
+            IScrollableControl scrollable = null;
+            while (target != null) {
+                scrollable = target as IScrollableControl;
+                if (scrollable != null)
+                    break;
+                if (!target.TryGetParent(out target))
+                    break;
+            }
+
+            DragToScrollInitialPosition = globalPosition;
+            DragToScrollTarget = scrollable;
+
+            if ((scrollable == null) || !scrollable.AllowDragToScroll) {
+                DragToScrollInitialOffset = null;
+                return false;
+            } else {
+                DragToScrollInitialOffset = scrollable.ScrollOffset;
+                return true;
+            }
+        }
+
+        private bool UpdateDragToScroll (Control target, Vector2 globalPosition) {
+            if (DragToScrollTarget == null)
+                return false;
+            if (!DragToScrollInitialOffset.HasValue)
+                return false;
+
+            if (!DragToScrollTarget.AllowDragToScroll) {
+                if (DragToScrollInitialOffset.HasValue) {
+                    DragToScrollTarget.ScrollOffset = DragToScrollInitialOffset.Value;
+                    DragToScrollTarget = null;
+                    DragToScrollInitialOffset = null;
+                }
+                return false;
+            }
+
+            var minScrollOffset = DragToScrollTarget.MinScrollOffset ?? Vector2.Zero;
+            var maxScrollOffset = DragToScrollTarget.MaxScrollOffset ?? Vector2.Zero;
+            var positionDelta = (globalPosition - DragToScrollInitialPosition);
+
+            var newOffset = DragToScrollInitialOffset.Value + (positionDelta * DragToScrollSpeed);
+            if (DragToScrollTarget.MinScrollOffset.HasValue) {
+                newOffset.X = Math.Max(minScrollOffset.X, newOffset.X);
+                newOffset.Y = Math.Max(minScrollOffset.Y, newOffset.Y);
+            }
+            if (DragToScrollTarget.MaxScrollOffset.HasValue) {
+                newOffset.X = Math.Min(maxScrollOffset.X, newOffset.X);
+                newOffset.Y = Math.Min(maxScrollOffset.Y, newOffset.Y);
+            }
+
+            var actualDelta = newOffset - DragToScrollInitialOffset.Value;
+            var actualDeltaScaled = actualDelta * (1.0f / DragToScrollSpeed);
+            if (actualDeltaScaled.Length() < MinimumMouseMovementDistance) {
+                actualDelta = Vector2.Zero;
+                newOffset = DragToScrollInitialOffset.Value;
+            }
+
+            DragToScrollTarget.ScrollOffset = newOffset;
+
+            if (newOffset != DragToScrollInitialOffset)
+                return true;
+            else
+                return false;
+        }
+
+        private bool TeardownDragToScroll (Control target, Vector2 globalPosition) {
+            var scrolled = UpdateDragToScroll(target, globalPosition);
+            DragToScrollTarget = null;
+            DragToScrollInitialOffset = null;
+            return scrolled;
         }
 
         private void HandleScroll (Control control, float delta) {
