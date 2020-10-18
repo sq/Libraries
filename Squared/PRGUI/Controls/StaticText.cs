@@ -14,7 +14,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class StaticText : Control {
+    public class StaticText : Control, IPostLayoutListener {
         public const bool DiagnosticText = false;
 
         public Tween<Vector4>? TextColorPLinear = null;
@@ -240,34 +240,6 @@ namespace Squared.PRGUI.Controls {
 
             var computedPadding = ComputePadding(context, decorations);
 
-            // FIXME: Padding?
-            var wasConstrainedByParent = (AutoSizeComputedWidth > settings.Box.Width);
-            if (
-                (
-                    !AutoSizeWidth || Wrap || 
-                    // If our size was constrained by our parent, act as if auto-size was disabled. This handles
-                    //  the scenario where a menu item's text is too big for the menu
-                    wasConstrainedByParent
-                ) && !ScaleToFit
-            ) {
-                // If auto-size is disabled or wrapping is enabled, we need to enable wrapping/breaking at
-                //  our rightmost edge to ensure that our text doesn't overflow outside of our boundaries
-                // If wrapping is disabled entirely, the overflowing text will be suppressed by the text
-                //  layout engine, otherwise it will be wrapped (potentially changing our layout, oops)
-                MostRecentContentWidth = settings.ContentBox.Width;
-                var textWidthLimit = ComputeTextWidthLimit(context, decorations);
-                if (Content.LineBreakAtX != textWidthLimit)
-                    ;
-                Content.LineBreakAtX = textWidthLimit;
-            } else {
-                MostRecentContentWidth = null;
-                var textWidthLimit = ComputeTextWidthLimit(context, decorations);
-                // This ensures that if we go from constrained to unconstrained, our layout is updated
-                if (Content.LineBreakAtX != textWidthLimit)
-                    ;
-                Content.LineBreakAtX = textWidthLimit;
-            }
-
             var overrideColor = GetTextColor(context.UIContext.TimeProvider.Ticks);
             Material material;
             var textDecorations = GetTextDecorations(context.DecorationProvider);
@@ -299,11 +271,6 @@ namespace Squared.PRGUI.Controls {
                     textOffset.X += xSpace;
                     break;
             }
-
-            if (false)
-                renderer.RasterizeRectangle(
-                    textOffset, textOffset + layout.Size, 0f, Color.Black
-                );
 
             renderer.Layer += 1;
 
@@ -337,6 +304,41 @@ namespace Squared.PRGUI.Controls {
 
         public override string ToString () {
             return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText()}'";
+        }
+
+        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+            var decorations = GetDecorations(context.DecorationProvider);
+
+            var box = context.Layout.GetRect(LayoutKey);
+
+            // FIXME: Padding?
+            var wasConstrainedByParent = (AutoSizeComputedWidth > box.Width);
+            if (
+                (
+                    !AutoSizeWidth || Wrap || 
+                    // If our size was constrained by our parent, act as if auto-size was disabled. This handles
+                    //  the scenario where a menu item's text is too big for the menu
+                    wasConstrainedByParent
+                ) && !ScaleToFit
+            ) {
+                // If auto-size is disabled or wrapping is enabled, we need to enable wrapping/breaking at
+                //  our rightmost edge to ensure that our text doesn't overflow outside of our boundaries
+                // If wrapping is disabled entirely, the overflowing text will be suppressed by the text
+                //  layout engine, otherwise it will be wrapped (potentially changing our layout, oops)
+                var contentBox = context.Layout.GetContentRect(LayoutKey);
+                MostRecentContentWidth = contentBox.Width;
+                var textWidthLimit = ComputeTextWidthLimit(context, decorations);
+                if (Content.LineBreakAtX != textWidthLimit)
+                    relayoutRequested = true;
+                Content.LineBreakAtX = textWidthLimit;
+            } else {
+                MostRecentContentWidth = null;
+                var textWidthLimit = ComputeTextWidthLimit(context, decorations);
+                // This ensures that if we go from constrained to unconstrained, our layout is updated
+                if (Content.LineBreakAtX != textWidthLimit)
+                    relayoutRequested = true;
+                Content.LineBreakAtX = textWidthLimit;
+            }
         }
     }
 }

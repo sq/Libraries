@@ -378,18 +378,38 @@ namespace Squared.PRGUI {
             ReleasedCapture = target;
         }
 
-        public void UpdateLayout () {
-            var context = MakeOperationContext();
+        UnorderedList<IPostLayoutListener> _PostLayoutListeners = new UnorderedList<IPostLayoutListener>();
 
-            Layout.Clear();
-
+        private void DoUpdateLayoutInternal (UIOperationContext context, bool secondTime) {
             Layout.SetFixedSize(Layout.Root, CanvasSize);
             Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row | ControlFlags.Container_Constrain_Size);
 
             foreach (var control in Controls)
-                control.GenerateLayoutTree(context, Layout.Root);
+                control.GenerateLayoutTree(context, Layout.Root, secondTime ? control.LayoutKey : (ControlKey?)null);
+        }
 
+        private bool NotifyLayoutListeners (UIOperationContext context) {
+            bool relayoutRequested = false;
+            foreach (var listener in context.PostLayoutListeners)
+                listener.OnLayoutComplete(context, ref relayoutRequested);
+            return relayoutRequested;
+        }
+
+        public void UpdateLayout () {
+            var context = MakeOperationContext();
+            _PostLayoutListeners.Clear();
+            context.PostLayoutListeners = _PostLayoutListeners;
+
+            Layout.Clear();
+
+            DoUpdateLayoutInternal(context, false);
             Layout.Update();
+
+            if (NotifyLayoutListeners(context)) {
+                DoUpdateLayoutInternal(context, true);
+                Layout.Update();
+                NotifyLayoutListeners(context);
+            }
         }
 
         private void UpdateCaptureAndHovering (Vector2 mousePosition, Control exclude = null) {
@@ -780,6 +800,7 @@ namespace Squared.PRGUI {
         public bool SpacebarHeld { get; internal set; }
         public bool MouseButtonHeld { get; internal set; }
         public Vector2 MousePosition { get; internal set; }
+        internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
 
         public UIOperationContext Clone () {
             return new UIOperationContext {

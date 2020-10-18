@@ -14,11 +14,19 @@ using Squared.Render.RasterShape;
 using Squared.Util;
 
 namespace Squared.PRGUI {
+    public interface IControlContainer {
+        ControlCollection Children { get; }
+    }
+
     public interface IScrollableControl {
         bool AllowDragToScroll { get; }
         Vector2 ScrollOffset { get; set; }
         Vector2? MinScrollOffset { get; }
         Vector2? MaxScrollOffset { get; }
+    }
+
+    public interface IPostLayoutListener {
+        void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested);
     }
 
     public abstract class Control {
@@ -251,7 +259,13 @@ namespace Squared.PRGUI {
         }
 
         internal ControlKey GenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey = null) {
-            return LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
+            LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
+
+            var listener = this as IPostLayoutListener;
+            if ((listener != null) && (existingKey == null))
+                context.PostLayoutListeners?.Add(listener);
+
+            return LayoutKey;
         }
 
         protected virtual bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {

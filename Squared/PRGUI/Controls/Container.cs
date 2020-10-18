@@ -10,10 +10,6 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public interface IControlContainer {
-        ControlCollection Children { get; }
-    }
-
     public class Container : Control, IControlContainer, IScrollableControl {
         public ControlCollection Children { get; private set; }
 
@@ -115,7 +111,14 @@ namespace Squared.PRGUI.Controls {
             context.Layout.SetContainerFlags(result, ContainerFlags);
             foreach (var item in Children) {
                 item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
-                item.GenerateLayoutTree(context, result);
+
+                // If we're performing layout again on an existing layout item, attempt to do the same
+                //  for our children
+                var childExistingKey = (ControlKey?)null;
+                if ((existingKey.HasValue) && !item.LayoutKey.IsInvalid)
+                    childExistingKey = item.LayoutKey;
+
+                item.GenerateLayoutTree(context, result, childExistingKey);
             }
             return result;
         }
