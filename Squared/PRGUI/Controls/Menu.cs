@@ -201,6 +201,9 @@ namespace Squared.PRGUI.Controls {
                     selectedIndex += direction; 
             }
 
+            // HACK: Tell the context that the current item is the keyboard selection,
+            //  so that autoscroll and tooltips will happen for it.
+            Context.OverrideKeyboardSelection(SelectedItem);
             return true;
         }
 
@@ -220,12 +223,10 @@ namespace Squared.PRGUI.Controls {
                 case Keys.PageUp:
                 case Keys.PageDown:
                     AdjustSelection(args.Key == Keys.PageUp ? -PageSize : PageSize);
-                    Context.OverrideKeyboardSelection(SelectedItem);
                     return true;
                 case Keys.Up:
                 case Keys.Down:
                     AdjustSelection(args.Key == Keys.Up ? -1 : 1);
-                    Context.OverrideKeyboardSelection(SelectedItem);
                     return true;
                 default:
                     return false;

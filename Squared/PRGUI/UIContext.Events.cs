@@ -188,11 +188,18 @@ namespace Squared.PRGUI {
 
             var scrollContext = ChooseScrollContext(KeyboardSelection, out RectF parentRect, out RectF controlRect, out RectF intersectedRect);
             if (scrollContext != null) {
-                // For huge controls, as long as their top-left corner is visible we don't need to scroll
+                // For huge controls, as long as its top-left corner and most of its body
+                //  is visible we don't need to scroll
                 if (
                     (
-                        (controlRect.Width >= parentRect.Width - AutoscrollMargin) || 
-                        (controlRect.Height >= parentRect.Height - AutoscrollMargin)
+                        (
+                            (controlRect.Width > parentRect.Width) &&
+                            (intersectedRect.Width >= (parentRect.Width - AutoscrollMargin))
+                        ) || 
+                        (
+                            (controlRect.Height > parentRect.Height) &&
+                            (intersectedRect.Height >= (parentRect.Height - AutoscrollMargin))
+                        )
                     ) && 
                     (intersectedRect.Left <= controlRect.Left) &&
                     (intersectedRect.Top <= controlRect.Top)
