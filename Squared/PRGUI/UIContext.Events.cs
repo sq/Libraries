@@ -258,7 +258,7 @@ namespace Squared.PRGUI {
 
                 var control = tabOrdered[idx];
 
-                if (control.Enabled && control.IsValidFocusTarget) {
+                if (control.Enabled && control.IsValidFocusTarget && (control.FocusBeneficiary == null)) {
                     return control;
                 } else if (recursive && (control is IControlContainer)) {
                     var child = FindFocusableSibling(((IControlContainer)control).Children, null, delta, recursive);
