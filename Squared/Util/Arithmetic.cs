@@ -812,7 +812,7 @@ namespace Squared.Util {
 
                 // Storing these expressions into locals raises overhead, so just write them out bare
                 return (int)(buf.U1 - buf.U2) * 
-                    ((int)(buf.U1 >> 31) * -2) + 1;
+                    (((int)(buf.U1 >> 31) * -2) + 1);
             }
         }
 
