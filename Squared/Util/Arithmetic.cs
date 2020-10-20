@@ -808,7 +808,7 @@ namespace Squared.Util {
                 //  loads/stores so it's better to just compute over and over, it produces
                 //  fewer insns and theoretically doesn't hit stack/mem as much
                 if ((buf.I1 >> 31) != (buf.I2 >> 31))
-                    return (buf.I2 >> 31) - (buf.I1 >> 31);
+                    return (buf.I1 >> 31) - (buf.I2 >> 31);
 
                 // Storing these expressions into locals raises overhead, so just write them out bare
                 return (int)(buf.U1 - buf.U2) * 

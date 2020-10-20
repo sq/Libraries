@@ -280,4 +280,51 @@ namespace Squared.Util {
             Console.WriteLine("Generic expression delegate execution time: {0} ticks for {1} iterations ({2:0.000} ticks/iter)", end - start, numIterations, (end - start) / numIterationsF);
         }
     }
+
+    public static class EvilTests {
+        private static readonly float[] TestValues = new[] {
+            // Problem child impossible to format correctly in debug output, I hate it
+            // -0f
+            0f, 0.1f, 1.0f, 2.0f, 0.001f, 256f, 1024f, 8192f, (float)0xFFFFFF, float.MinValue, float.MaxValue, float.NegativeInfinity, float.PositiveInfinity, float.NaN
+        };
+
+        private static void TestPairImpl (float a, float b, ref int errorCount) {
+            var buf = new FastMath.U32F32 { F1 = a, F2 = b };
+            var expected = a.CompareTo(b);
+            var actual = Math.Sign(FastMath.CompareF(ref buf));
+            if (expected != actual) {
+                var sA = a.ToString("R");
+                var sB = b.ToString("R");
+                if (!float.IsNaN(a) && (a < 0) && !sA.StartsWith("-"))
+                    sA = "-" + sA;
+                if (!float.IsNaN(b) && (b < 0) && !sB.StartsWith("-"))
+                    sB = "-" + sB;
+                Console.WriteLine("for {0}, {1} : expected {2}, got {3}", sA, sB, expected, actual);
+                errorCount++;
+            }
+        }
+
+        private static void TestPair (float a, float b, ref int errorCount) {
+            TestPairImpl(a, b, ref errorCount);
+            if (a != 0)
+                TestPairImpl(-a, b, ref errorCount);
+            if (b != 0)
+                TestPairImpl(a, -b, ref errorCount);
+            if (b != 0)
+                TestPairImpl(-b, a, ref errorCount);
+            if (a != 0)
+                TestPairImpl(b, -a, ref errorCount);
+        }
+
+        [Test]
+        public static void CompareFSimple () {
+            int errorCount = 0;
+            foreach (var a in TestValues) {
+                foreach (var b in TestValues) {
+                    TestPair(a, b, ref errorCount);
+                }
+            }
+            Assert.AreEqual(0, errorCount);
+        }
+    }
 }
