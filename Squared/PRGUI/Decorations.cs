@@ -29,6 +29,7 @@ namespace Squared.PRGUI.Decorations {
 
     public interface IWidgetDecorator<TData> : IBaseDecorator {
         Vector2 MinimumSize { get; }
+        bool OnMouseEvent (DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args);
         void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data);
     }
 
@@ -125,12 +126,14 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public delegate void WidgetDecoratorRasterizer<TData> (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data);
+    public delegate bool WidgetDecoratorMouseEventHandler<TData> (DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args);
 
     public sealed class DelegateWidgetDecorator<TData> : DelegateBaseDecorator, IWidgetDecorator<TData> {
         public Vector2 MinimumSize { get; set; }
         public WidgetDecoratorRasterizer<TData> Below, Content, Above, ContentClip;
+        public WidgetDecoratorMouseEventHandler<TData> OnMouseEvent;
 
-        void IWidgetDecorator<TData>.Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data) {
+        public void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data) {
             switch (context.Pass) {
                 case RasterizePasses.Below:
                     if (Below != null)
@@ -149,6 +152,13 @@ namespace Squared.PRGUI.Decorations {
                         ContentClip(context, ref renderer, settings, ref data);
                     return;
             }
+        }
+
+        bool IWidgetDecorator<TData>.OnMouseEvent (DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args) {
+            if (OnMouseEvent != null)
+                return OnMouseEvent(settings, ref data, eventName, args);
+            else
+                return false;
         }
     }
 
@@ -530,7 +540,11 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
-        private void Scrollbar_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref ScrollbarState data) {
+        private void Scrollbar_ComputeBoxes (
+            DecorationSettings settings, ref ScrollbarState data, out float sizePx,
+            out Vector2 trackA, out Vector2 trackB,
+            out Vector2 thumbA, out Vector2 thumbB
+        ) {
             var box = settings.Box;
 
             var vRadius = new Vector2(ScrollbarRadius);
@@ -539,16 +553,80 @@ namespace Squared.PRGUI.Decorations {
             float size = data.ViewportSize / Math.Max(data.ContentSize, 0.1f);
             float max = Math.Min(1.0f, min + size);
 
-            var sizePx = data.Horizontal ? box.Width - 1 : box.Height - 1;
+            sizePx = data.Horizontal ? box.Width - 1 : box.Height - 1;
             if (data.HasCounterpart)
                 sizePx -= ScrollbarSize;
-            var a = data.Horizontal
+            trackA = data.Horizontal
                 ? new Vector2(box.Left, box.Extent.Y - ScrollbarSize)
                 : new Vector2(box.Extent.X - ScrollbarSize, box.Top);
-            var b = box.Extent;
+            trackB = box.Extent;
+
+            thumbA = trackA;
+            thumbB = trackB;
+            if (data.Horizontal) {
+                thumbA.X += (sizePx * min);
+                thumbB.X = box.Left + (sizePx * max);
+            } else {
+                thumbA.Y += (sizePx * min);
+                thumbB.Y = box.Top + (sizePx * max);
+            }
+        }
+
+        private void Scrollbar_UpdateDrag (ref ScrollbarState data, MouseEventArgs args) {
+            if (!data.DragInitialMousePosition.HasValue)
+                return;
+
+            var dragDistance = data.Horizontal
+                ? args.GlobalPosition.X - data.DragInitialMousePosition.Value.X
+                : args.GlobalPosition.Y - data.DragInitialMousePosition.Value.Y;
+            var dragDeltaUnit = dragDistance / data.DragSizePx;
+            var dragDeltaScaled = dragDeltaUnit * data.ContentSize;
+            data.Position = data.DragInitialPosition + dragDeltaScaled;
+        }
+
+        private bool Scrollbar_OnMouseEvent (
+            DecorationSettings settings, ref ScrollbarState data, string eventName, MouseEventArgs args
+        ) {
+            Scrollbar_ComputeBoxes(
+                settings, ref data, out float sizePx,
+                out Vector2 trackA, out Vector2 trackB,
+                out Vector2 thumbA, out Vector2 thumbB
+            );
+
+            var thumb = new RectF(thumbA, thumbB - thumbA);
+            if (
+                thumb.Contains(args.GlobalPosition) || 
+                data.DragInitialMousePosition.HasValue
+            ) {
+                if (eventName == UIEvents.MouseDown) {
+                    data.DragSizePx = sizePx;
+                    data.DragInitialPosition = data.Position;
+                    data.DragInitialMousePosition = args.GlobalPosition;
+                } else if (eventName == UIEvents.MouseMove) {
+                    if (args.Buttons == MouseButtons.Left)
+                        Scrollbar_UpdateDrag(ref data, args);
+                } else if (eventName == UIEvents.MouseUp) {
+                    Scrollbar_UpdateDrag(ref data, args);
+                    data.DragInitialMousePosition = null;
+                }
+            }
+
+            var track = new RectF(trackA, trackB - trackA);
+            if (track.Contains(args.GlobalPosition))
+                return true;
+
+            return false;
+        }
+
+        private void Scrollbar_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref ScrollbarState data) {
+            Scrollbar_ComputeBoxes(
+                settings, ref data, out float sizePx,
+                out Vector2 trackA, out Vector2 trackB,
+                out Vector2 thumbA, out Vector2 thumbB
+            );
 
             renderer.RasterizeRectangle(
-                a, b,
+                trackA, trackB,
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: ScrollbarTrackColor, outerColor: ScrollbarTrackColor
@@ -557,18 +635,10 @@ namespace Squared.PRGUI.Decorations {
             if (data.ContentSize <= data.ViewportSize)
                 return;
 
-            if (data.Horizontal) {
-                a.X += (sizePx * min);
-                b.X = box.Left + (sizePx * max);
-            } else {
-                a.Y += (sizePx * min);
-                b.Y = box.Top + (sizePx * max);
-            }
-
             renderer.Layer += 1;
 
             renderer.RasterizeRectangle(
-                a, b,
+                thumbA, thumbB,
                 radius: ScrollbarRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: ScrollbarThumbColor, outerColor: ScrollbarThumbColor * 0.8f,
@@ -870,7 +940,8 @@ namespace Squared.PRGUI.Decorations {
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
                 MinimumSize = new Vector2(ScrollbarSize, ScrollbarSize),
-                Above = Scrollbar_Above
+                Above = Scrollbar_Above,
+                OnMouseEvent = Scrollbar_OnMouseEvent
             };
         }
     }
@@ -878,7 +949,8 @@ namespace Squared.PRGUI.Decorations {
     public struct ScrollbarState {
         public float Position;
         public float ContentSize, ViewportSize;
-        public float? DragInitialPosition;
+        public Vector2? DragInitialMousePosition;
         public bool HasCounterpart, Horizontal;
+        internal float DragSizePx, DragInitialPosition;
     }
 }

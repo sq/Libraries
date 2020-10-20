@@ -359,7 +359,7 @@ namespace Squared.PRGUI.Controls {
                 }
                 return true;
             } else if (
-                (name == UIEvents.MouseDrag) ||
+                (name == UIEvents.MouseMove) ||
                 (name == UIEvents.MouseUp)
             ) {
                 if (args.PreviousButtons == MouseButtons.Left) {
@@ -498,7 +498,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected bool OnKeyPress (KeyEventArgs evt) {
-            Console.WriteLine("{0:X4} '{1}' {2}", (int)(evt.Char ?? '\0'), new String(evt.Char ?? '\0', 1), evt.Key);
+            // Console.WriteLine("{0:X4} '{1}' {2}", (int)(evt.Char ?? '\0'), new String(evt.Char ?? '\0', 1), evt.Key);
 
             DisableAutoscrollUntil = 0;
 

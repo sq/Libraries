@@ -487,7 +487,7 @@ namespace Squared.PRGUI {
                 return;
 
             // FIXME: Suppress if disabled?
-            FireEvent(UIEvents.MouseDrag, target, MakeMouseEventArgs(target, globalPosition, null));
+            FireEvent(UIEvents.MouseMove, target, MakeMouseEventArgs(target, globalPosition, null));
         }
 
         private bool InitDragToScroll (Control target, Vector2 globalPosition) {

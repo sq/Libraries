@@ -116,6 +116,17 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int ScanLeft (int left, ref TElement pivot) {
+            while (Comparer.Compare(ref Items.Array[Items.Offset + Indices.Array[Indices.Offset + ++left]], ref pivot) < 0) ;
+            return left;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int ScanRight (int right, ref TElement pivot) {
+            while (Comparer.Compare(ref pivot, ref Items.Array[Items.Offset + Indices.Array[Indices.Offset + --right]]) < 0) ;
+            return right;
+        }
+
         private int PickPivotAndPartition(int lo, int hi) {
             // Compute median-of-three.  But also partition them, since we've done the comparison.
             int mid = lo + (hi - lo) / 2;
@@ -130,8 +141,8 @@ namespace Squared.Util {
             int left = lo, right = hi - 1;  // We already partitioned lo and hi and put the pivot in hi - 1.  And we pre-increment & decrement below.
                 
             while (left < right) {
-                while (Comparer.Compare(ref Items.Array[Items.Offset + Indices.Array[Indices.Offset + ++left]], ref pivot) < 0) ;
-                while (Comparer.Compare(ref pivot, ref Items.Array[Items.Offset + Indices.Array[Indices.Offset + --right]]) < 0) ;
+                left = ScanLeft(left, ref pivot);
+                right = ScanRight(right, ref pivot);
 
                 if (left >= right)
                     break;

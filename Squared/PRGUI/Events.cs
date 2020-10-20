@@ -11,10 +11,7 @@ namespace Squared.PRGUI {
         public const string LostFocus = "LostFocus",
             GotFocus = "GotFocus",
             MouseDown = "MouseDown",
-            // Mouse moved with no button(s) held
             MouseMove = "MouseMove",
-            // Mouse moved with button(s) held
-            MouseDrag = "MouseDrag",
             MouseUp = "MouseUp",
             MouseEnter = "MouseEnter",
             MouseLeave = "MouseLeave",

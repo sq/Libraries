@@ -317,7 +317,7 @@ namespace Squared.PRGUI {
                     return false;
                 }
             } else if (
-                (name == UIEvents.MouseDrag) ||
+                (name == UIEvents.MouseMove) ||
                 (name == UIEvents.MouseUp)
             ) {
                 if (!Dragging)
