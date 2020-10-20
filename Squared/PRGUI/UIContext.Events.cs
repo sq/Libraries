@@ -426,8 +426,10 @@ namespace Squared.PRGUI {
             while (steps-- > 0) {
                 SuppressNextCaptureLoss = false;
                 MouseDownPosition = globalPosition;
-                if (target != null && target.IsValidMouseInputTarget)
+                if (target != null && target.IsValidMouseInputTarget) {
+                    AutomaticallyTransferFocusOnTopLevelChange(target);
                     MouseCaptured = target;
+                }
                 if (target == null || target.IsValidFocusTarget)
                     Focused = target;
                 // FIXME: Suppress if disabled?

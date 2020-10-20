@@ -377,12 +377,25 @@ namespace Squared.PRGUI {
             return CachedCompositionPreview;
         }
 
+        private void AutomaticallyTransferFocusOnTopLevelChange (Control target) {
+            if (target.AcceptsFocus)
+                return;
+
+            var previousTopLevel = FindTopLevelAncestor(Focused);
+            var newTopLevel = FindTopLevelAncestor(target);
+            if ((newTopLevel != previousTopLevel) && (newTopLevel != null)) {
+                Console.WriteLine("Automatically transfering focus to new top level ancestor {0}", newTopLevel);
+                Focused = newTopLevel;
+            }
+        }
+
         public Control CaptureMouse (Control target) {
             var donor = Focused;
             if ((MouseCaptured != null) && (MouseCaptured != target) && (LastMouseButtons == MouseButtons.None))
                 SuppressNextCaptureLoss = true;
             // HACK: If we used IsValidFocusTarget here, it would break scenarios where a control is capturing
             //  focus before being shown or being enabled
+            AutomaticallyTransferFocusOnTopLevelChange(target);
             if (target.AcceptsFocus)
                 TrySetFocus(target, true);
             MouseCaptured = target;
