@@ -5,6 +5,7 @@ using System.Text;
 using NUnit.Framework;
 using Squared.Util;
 using System.Linq.Expressions;
+using System.Diagnostics;
 
 namespace Squared.Util {
     public struct ValueType {
@@ -285,7 +286,7 @@ namespace Squared.Util {
         private static readonly float[] TestValues = new[] {
             // Problem child impossible to format correctly in debug output, I hate it
             // -0f
-            float.NaN, 0f, 0.1f, 1.0f, 2.0f, 0.001f, 256f, 1024f, 8192f, (float)0xFFFFFF, float.MinValue, float.MaxValue, float.NegativeInfinity, float.PositiveInfinity
+            0f, 0.1f, 1.0f, 2.0f, 0.001f, 256f, 1024f, 8192f, (float)0xFFFFFF, (float)0xFFFFFFF, (float)0xFFFFFFFF, float.MinValue, float.MaxValue, float.NegativeInfinity, float.PositiveInfinity, float.NaN
         };
 
         private static void TestPairImpl (float a, float b, ref int errorCount) {
@@ -309,6 +310,7 @@ namespace Squared.Util {
             // Flipping signs on NaNs is going to produce garbage, we don't care
             if (float.IsNaN(a) || float.IsNaN(b))
                 return;
+            // Flipping signs on 0 produces nonsense
             if (a != 0)
                 TestPairImpl(-a, b, ref errorCount);
             if (b != 0)
@@ -319,11 +321,76 @@ namespace Squared.Util {
                 TestPairImpl(b, -a, ref errorCount);
         }
 
+        private static float[] GetAllTestValues () {
+            var allTestValues = new List<float>(TestValues);
+            allTestValues.Capacity = allTestValues.Capacity + 0x1FFF;
+
+            var buf = default(FastMath.U32F32);
+            // This burns some time but it's worthwhile to be exhaustive
+            for (var i = 0; i < 0x1FFF; i++) {
+                buf.I1 = i;
+                allTestValues.Add(buf.F1);
+            }
+
+            return allTestValues.ToArray();
+        }
+
+        [Test]
+        public static void CompareToBenchmark () {
+            long accumulator = 0;
+            var allTestValues = GetAllTestValues();
+            var sw = Stopwatch.StartNew();
+
+            const int passCount = 48;
+            long totalSteps = (passCount * allTestValues.Length * allTestValues.Length);
+            for (int i = 0; i < passCount; i++) {
+                foreach (var a in allTestValues) {
+                    foreach (var b in allTestValues) {
+                        var temp = a.CompareTo(b);
+                        accumulator += (temp > 0) ? 1 : 0;
+                    }
+                }
+            }
+
+            sw.Stop();
+            Console.WriteLine("acc={0}", accumulator);
+            Console.WriteLine("Elapsed: {0:R}ms", sw.Elapsed.TotalMilliseconds);
+            Console.WriteLine("{0:N11}ms/100k compares", sw.Elapsed.TotalMilliseconds / (totalSteps / 100000));
+        }
+
+        [Test]
+        public static void CompareFBenchmark () {
+            long accumulator = 0;
+            var allTestValues = GetAllTestValues();
+            var sw = Stopwatch.StartNew();
+
+            var buf = default(FastMath.U32F32);
+            const int passCount = 48;
+            long totalSteps = (passCount * allTestValues.Length * allTestValues.Length);
+            for (int i = 0; i < passCount; i++) {
+                foreach (var a in allTestValues) {
+                    buf.F1 = a;
+                    foreach (var b in allTestValues) {
+                        buf.F2 = b;
+                        var temp = FastMath.CompareF(ref buf);
+                        accumulator += (temp > 0) ? 1 : 0;
+                    }
+                }
+            }
+
+            sw.Stop();
+            Console.WriteLine("acc={0}", accumulator);
+            Console.WriteLine("Elapsed: {0:R}ms", sw.Elapsed.TotalMilliseconds);
+            Console.WriteLine("{0:N11}ms/100k compares", sw.Elapsed.TotalMilliseconds / (totalSteps / 100000));
+        }
+
         [Test]
         public static void CompareFSimple () {
             int errorCount = 0;
-            foreach (var a in TestValues) {
-                foreach (var b in TestValues) {
+            var allTestValues = GetAllTestValues();
+
+            foreach (var a in allTestValues) {
+                foreach (var b in allTestValues) {
                     TestPair(a, b, ref errorCount);
                 }
             }
