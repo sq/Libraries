@@ -335,27 +335,48 @@ namespace Squared.Util {
             return allTestValues.ToArray();
         }
 
+        const int passCount = 256;
+
+        private static void CompareToPass (float[] allTestValues, ref long totalAccumulator) {
+            int accumulator = 0;
+            foreach (var a in allTestValues) {
+                foreach (var b in allTestValues) {
+                    var temp = a.CompareTo(b);
+                    accumulator += (temp > 0) ? 1 : 0;
+                }
+            }
+            totalAccumulator += accumulator;
+        }
+
         [Test]
         public static void CompareToBenchmark () {
             long accumulator = 0;
             var allTestValues = GetAllTestValues();
             var sw = Stopwatch.StartNew();
 
-            const int passCount = 48;
             long totalSteps = (passCount * allTestValues.Length * allTestValues.Length);
-            for (int i = 0; i < passCount; i++) {
-                foreach (var a in allTestValues) {
-                    foreach (var b in allTestValues) {
-                        var temp = a.CompareTo(b);
-                        accumulator += (temp > 0) ? 1 : 0;
-                    }
-                }
-            }
+            // Compare inlining does not seem to happen if the pass is inlined into this function
+            for (int i = 0; i < passCount; i++)
+                CompareToPass(allTestValues, ref accumulator);
 
             sw.Stop();
             Console.WriteLine("acc={0}", accumulator);
             Console.WriteLine("Elapsed: {0:R}ms", sw.Elapsed.TotalMilliseconds);
             Console.WriteLine("{0:N11}ms/100k compares", sw.Elapsed.TotalMilliseconds / (totalSteps / 100000));
+        }
+
+        private static void CompareFPass (float[] allTestValues, ref long totalAccumulator) {
+            var buf = default(FastMath.U32F32);
+            int accumulator = 0;
+            foreach (var a in allTestValues) {
+                buf.F1 = a;
+                foreach (var b in allTestValues) {
+                    buf.F2 = b;
+                    var temp = FastMath.CompareF(ref buf);
+                    accumulator += (temp > 0) ? 1 : 0;
+                }
+            }
+            totalAccumulator += accumulator;
         }
 
         [Test]
@@ -364,19 +385,10 @@ namespace Squared.Util {
             var allTestValues = GetAllTestValues();
             var sw = Stopwatch.StartNew();
 
-            var buf = default(FastMath.U32F32);
-            const int passCount = 48;
             long totalSteps = (passCount * allTestValues.Length * allTestValues.Length);
-            for (int i = 0; i < passCount; i++) {
-                foreach (var a in allTestValues) {
-                    buf.F1 = a;
-                    foreach (var b in allTestValues) {
-                        buf.F2 = b;
-                        var temp = FastMath.CompareF(ref buf);
-                        accumulator += (temp > 0) ? 1 : 0;
-                    }
-                }
-            }
+            // Compare inlining does not seem to happen if the pass is inlined into this function
+            for (int i = 0; i < passCount; i++)
+                CompareFPass(allTestValues, ref accumulator);
 
             sw.Stop();
             Console.WriteLine("acc={0}", accumulator);

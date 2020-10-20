@@ -793,15 +793,10 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int CompareF (ref U32F32 buf) {
-            // Caller initializes, avoiding the need to pass these arguments on the stack
-            // buf.F1 = lhs;
-            // buf.F2 = rhs;
-
-            // You might think that copying these instance fields to locals would reduce
-            //  overhead because the runtime loads them every time. Doesn't seem to be true,
-            //  this produces fewer insns
-            if (buf.I1 == buf.I2)
-                return 0;
+            // Hot magic in action!
+            // We pass the union by reference and have the caller initialize it.
+            // Otherwise, we'd have to initialize it at entry to this function, which is expensive
+            // If it was passed by value it'd be copied per-call, which is pointless
 
             unchecked {
                 // Precomputing these shifts once and storing them in locals creates memory
@@ -812,7 +807,8 @@ namespace Squared.Util {
 
                 // Storing these expressions into locals raises overhead, so just write them out bare
                 return (int)(buf.U1 - buf.U2) * 
-                    (((int)(buf.U1 >> 31) * -2) + 1);
+                    // We use a bit shift instead of a * 2 because it seems to be faster
+                    (((buf.I1 >> 31) << 1) + 1);
             }
         }
 
