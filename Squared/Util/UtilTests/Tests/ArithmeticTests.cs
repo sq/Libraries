@@ -285,7 +285,7 @@ namespace Squared.Util {
         private static readonly float[] TestValues = new[] {
             // Problem child impossible to format correctly in debug output, I hate it
             // -0f
-            0f, 0.1f, 1.0f, 2.0f, 0.001f, 256f, 1024f, 8192f, (float)0xFFFFFF, float.MinValue, float.MaxValue, float.NegativeInfinity, float.PositiveInfinity, float.NaN
+            float.NaN, 0f, 0.1f, 1.0f, 2.0f, 0.001f, 256f, 1024f, 8192f, (float)0xFFFFFF, float.MinValue, float.MaxValue, float.NegativeInfinity, float.PositiveInfinity
         };
 
         private static void TestPairImpl (float a, float b, ref int errorCount) {
@@ -306,6 +306,9 @@ namespace Squared.Util {
 
         private static void TestPair (float a, float b, ref int errorCount) {
             TestPairImpl(a, b, ref errorCount);
+            // Flipping signs on NaNs is going to produce garbage, we don't care
+            if (float.IsNaN(a) || float.IsNaN(b))
+                return;
             if (a != 0)
                 TestPairImpl(-a, b, ref errorCount);
             if (b != 0)
