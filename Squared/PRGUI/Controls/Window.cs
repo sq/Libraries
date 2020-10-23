@@ -28,9 +28,9 @@ namespace Squared.PRGUI.Controls {
         public bool AllowDrag = true;
         public bool AllowMaximize = true;
 
-        private bool Dragging;
-        private Vector2 DragStartMousePosition, DragStartWindowPosition, DragStartMouseOffset;
-        private RectF MostRecentTitleBox;
+        private bool Dragging, DragStartedMaximized;
+        private Vector2 DragStartMousePosition, DragStartWindowPosition;
+        private RectF MostRecentTitleBox, MostRecentUnmaximizedRect;
 
         protected DynamicStringLayout TitleLayout = new DynamicStringLayout {
             LineLimit = 1
@@ -92,6 +92,9 @@ namespace Squared.PRGUI.Controls {
             // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
             UpdatePosition(Position, context.UIContext, settings.Box);
 
+            if (!Maximized)
+                MostRecentUnmaximizedRect = settings.Box;
+
             IDecorator titleDecorator;
             pSRGBColor? titleColor = null;
             if (
@@ -147,10 +150,9 @@ namespace Squared.PRGUI.Controls {
                 Context.TrySetFocus(this, false);
 
                 if (MostRecentTitleBox.Contains(args.GlobalPosition) && AllowDrag) {
-                    Console.WriteLine("Starting drag");
                     Context.CaptureMouse(this);
                     Dragging = true;
-                    DragStartMouseOffset = Maximized ? args.LocalPosition : Vector2.Zero;
+                    DragStartedMaximized = Maximized;
                     DragStartMousePosition = args.GlobalPosition;
                     DragStartWindowPosition = Position;
                     return true;
@@ -165,25 +167,23 @@ namespace Squared.PRGUI.Controls {
                 if (!Dragging)
                     return false;
 
-                if (name == UIEvents.MouseUp) {
-                    Console.WriteLine("Terminating drag");
+                if (name == UIEvents.MouseUp)
                     Dragging = false;
-                }
 
                 var delta = args.GlobalPosition - DragStartMousePosition;
-                var newPosition = DragStartWindowPosition + delta;
+                var newPosition = DragStartedMaximized
+                    ? new Vector2(args.GlobalPosition.X - (MostRecentUnmaximizedRect.Width / 2f), args.GlobalPosition.Y - 4)
+                    : (DragStartWindowPosition + delta);
                 var shouldMaximize = (newPosition.Y < 0) && !Maximized;
-                var shouldUnmaximize = (delta.Y > 4) && Maximized;
+                var shouldUnmaximize = ((delta.Y > 4) || (newPosition.Y > 4)) && Maximized;
                 if (shouldUnmaximize) {
                     // FIXME: Scale the mouse anchor based on the new size vs the old maximized size
-                    DragStartMousePosition = DragStartMouseOffset + Position;
                     Maximized = false;
                 } else if (shouldMaximize || Maximized) {
                     newPosition = Position = DragStartWindowPosition;
                     Maximized = true;
                 }
 
-                Console.WriteLine($"Position {Position} -> {newPosition}");
                 UpdatePosition(newPosition, args.Context, args.Box);
 
                 FireEvent(UIEvents.Moved);
