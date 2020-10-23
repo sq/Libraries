@@ -122,6 +122,31 @@ void ShadowedPixelShaderWithDiscard (
     clip(result.a - discardThreshold);
 }
 
+void HighlightColorPixelShaderWithDiscard(
+    in float4 multiplyColor : COLOR0,
+    in float4 addColor : COLOR1,
+    in float4 targetColor : COLOR2,
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    out float4 result : COLOR0
+) {
+    addColor.rgb *= addColor.a;
+    addColor.a = 0;
+
+    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    float3 distance = targetColor.rgb - texColor.rgb;
+    float distanceF = length(distance);
+    float epsilon = 1 / 256, threshold = epsilon + targetColor.a;
+    if (distanceF > threshold) {
+        result = 0;
+        discard;
+    } else {
+        result = multiplyColor * (1 - saturate(distanceF / threshold));
+        result += (addColor * result.a);
+        result *= texColor.a;
+    }
+}
+
 technique BitmapTechnique
 {
     pass P0
@@ -209,5 +234,14 @@ technique ScreenSpaceBitmapWithLUTTechnique
     {
         vertexShader = compile vs_3_0 ScreenSpaceVertexShader();
         pixelShader = compile ps_3_0 BasicPixelShaderWithLUT();
+    }
+}
+
+technique HighlightColorBitmapTechnique
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 HighlightColorPixelShaderWithDiscard();
     }
 }

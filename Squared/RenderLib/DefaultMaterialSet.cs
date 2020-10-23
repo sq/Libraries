@@ -351,6 +351,7 @@ namespace Squared.Render {
         public Material ScreenSpaceStippledBitmap, WorldSpaceStippledBitmap;
         public Material ScreenSpacePalettedBitmapWithDiscard, WorldSpacePalettedBitmapWithDiscard;
         public Material ScreenSpaceHueBitmapWithDiscard, WorldSpaceHueBitmapWithDiscard;
+        public Material HighlightColorBitmap;
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material ScreenSpaceLightmappedBitmap, WorldSpaceLightmappedBitmap;
@@ -478,6 +479,11 @@ namespace Squared.Render {
                 "BitmapTechnique"
             );
 
+            HighlightColorBitmap = new Material(
+                bitmapShader,
+                "HighlightColorBitmapTechnique"
+            );
+
             ScreenSpaceBitmapWithLUT = new Material(
                 bitmapShader,
                 "ScreenSpaceBitmapWithLUTTechnique"
@@ -581,7 +587,8 @@ namespace Squared.Render {
                 ScreenSpaceHueBitmapWithDiscard,
                 WorldSpaceHueBitmapWithDiscard,
                 ScreenSpaceSepiaBitmap,
-                WorldSpaceSepiaBitmap
+                WorldSpaceSepiaBitmap,
+                HighlightColorBitmap
             };
 
             foreach (var m in bitmapMaterials)
