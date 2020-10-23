@@ -178,17 +178,25 @@ namespace Squared.PRGUI.Layout {
             return new ChildrenEnumerable(this, parent);
         }
 
+        private unsafe void ApplyFloatingPosition (LayoutItem *pItem) {
+            if (!pItem->Flags.IsFlagged(ControlFlags.Layout_Floating))
+                return;
+            var pRect = RectPtr(pItem->Key);
+            pRect->Left = pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Row)
+                ? 0
+                : pItem->Margins.Left;
+            pRect->Top = pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Column)
+                ? 0
+                : pItem->Margins.Top;
+        }
+
         internal unsafe bool UpdateSubtree (ControlKey key) {
             if (key.IsInvalid)
                 return false;
 
             var pItem = LayoutPtr(key);
             // HACK: Ensure its position is updated even if we don't fully lay out all controls
-            if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating)) {
-                var pRect = RectPtr(key);
-                pRect->Left = pItem->Margins.Left;
-                pRect->Top = pItem->Margins.Top;
-            }
+            ApplyFloatingPosition(pItem);
 
             CalcSize(pItem, Dimensions.X);
             Arrange (pItem, Dimensions.X);
@@ -637,6 +645,22 @@ namespace Squared.PRGUI.Layout {
                 default:
                     result = CalcOverlaySize(pItem, dim);
                     break;
+            }
+
+            if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating)) {
+                var parentRect = GetContentRect(pItem->Parent);
+                // HACK: If we are maximized, enforce our full layout instead of just size
+                if (dim == Dimensions.X) {
+                    if (pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Row)) {
+                        pRect->Left = parentRect.Left;
+                        result = parentRect.Width;
+                    }
+                } else { 
+                    if (pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Column)) {
+                        pRect->Top = parentRect.Top;
+                        result = parentRect.Height;
+                    }
+                }
             }
 
             (*pRect)[2 + idim] = Constrain(result, pItem, idim);

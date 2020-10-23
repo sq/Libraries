@@ -48,6 +48,8 @@
     <Compile Include="Controls\EditableText.cs" />
     <Compile Include="Controls\Menu.cs" />
     <Compile Include="Controls\StaticText.cs" />
+    <Compile Include="Controls\Tooltip.cs" />
+    <Compile Include="Controls\Window.cs" />
     <Compile Include="Decorations.cs" />
     <Compile Include="Controls\Controls.cs" />
     <Compile Include="Events.cs" />

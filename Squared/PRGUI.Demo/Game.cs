@@ -193,6 +193,7 @@ namespace PRGUI.Demo {
             var floatingWindow = new Window {
                 BackgroundColor = windowBgColor,
                 Position = new Vector2(220, 140),
+                Maximized = true,
                 // MinimumWidth = 400,
                 // MinimumHeight = 240,
                 Title = "Floating Panel",

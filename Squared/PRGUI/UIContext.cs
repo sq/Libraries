@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Squared.PRGUI.Controls;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render;
@@ -507,6 +508,8 @@ namespace Squared.PRGUI {
                     scrolled = HandleMouseUp(mouseEventTarget, mousePosition, mouseDownPosition);
                 else if (DragToScrollTarget != null)
                     scrolled = TeardownDragToScroll(mouseEventTarget, mousePosition);
+                else if (MouseCaptured != null)
+                    scrolled = HandleMouseUp(mouseEventTarget, mousePosition, mouseDownPosition);
 
                 if (MouseCaptured != null) {
                     var movedDistance = mousePosition - mouseDownPosition;
