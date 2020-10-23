@@ -264,6 +264,7 @@ namespace Squared.PRGUI {
             LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
 
             var listener = this as IPostLayoutListener;
+            // TODO: Only register if the control is explicitly interested, to reduce overhead?
             if ((listener != null) && (existingKey == null))
                 context.PostLayoutListeners?.Add(listener);
 

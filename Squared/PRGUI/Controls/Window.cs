@@ -19,6 +19,7 @@ namespace Squared.PRGUI.Controls {
                 return new Vector2(Margins.Left, Margins.Top);
             }
             set {
+                NeedsCentering = false;
                 Margins.Left = value.X;
                 Margins.Top = value.Y;
             }
@@ -28,6 +29,7 @@ namespace Squared.PRGUI.Controls {
         public bool AllowDrag = true;
         public bool AllowMaximize = true;
 
+        private bool NeedsCentering = true;
         private bool Dragging, DragStartedMaximized;
         private Vector2 DragStartMousePosition, DragStartWindowPosition;
         private RectF MostRecentTitleBox, MostRecentUnmaximizedRect;
@@ -81,6 +83,18 @@ namespace Squared.PRGUI.Controls {
             result.Top += titleDecorations.Padding.Bottom;
             result.Top += font.LineSpacing;
             return result;
+        }
+
+        protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+            base.OnLayoutComplete(context, ref relayoutRequested);
+
+            if (!NeedsCentering)
+                return;
+
+            var rect = GetRect(context.Layout, includeOffset: false);
+            Position = (context.UIContext.CanvasSize - rect.Size) / 2f;
+            NeedsCentering = false;
+            relayoutRequested = true;
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

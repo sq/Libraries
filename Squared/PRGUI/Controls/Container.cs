@@ -282,7 +282,7 @@ namespace Squared.PRGUI.Controls {
             return null;
         }
 
-        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+        protected virtual void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             // FIXME: This should be done somewhere else
             if (Scrollable) {
                 var box = context.Layout.GetRect(LayoutKey);
@@ -317,6 +317,10 @@ namespace Squared.PRGUI.Controls {
             } else {
                 ScrollOffset = Vector2.Zero;
             }
+        }
+
+        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+            OnLayoutComplete(context, ref relayoutRequested);
         }
     }
 }
