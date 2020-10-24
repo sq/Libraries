@@ -88,13 +88,20 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
-            if (!NeedsCentering)
-                return;
-
             var rect = GetRect(context.Layout, includeOffset: false);
-            Position = (context.UIContext.CanvasSize - rect.Size) / 2f;
-            NeedsCentering = false;
-            relayoutRequested = true;
+
+            // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
+            if (!Maximized)
+                MostRecentUnmaximizedRect = rect;
+
+            if (!NeedsCentering) {
+                if (UpdatePosition(Position, context.UIContext, rect))
+                    relayoutRequested = true;
+            } else {
+                Position = (context.UIContext.CanvasSize - rect.Size) / 2f;
+                NeedsCentering = false;
+                relayoutRequested = true;
+            }
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
@@ -102,12 +109,6 @@ namespace Squared.PRGUI.Controls {
 
             if (context.Pass != RasterizePasses.Below)
                 return;
-
-            // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
-            UpdatePosition(Position, context.UIContext, settings.Box);
-
-            if (!Maximized)
-                MostRecentUnmaximizedRect = settings.Box;
 
             IDecorator titleDecorator;
             pSRGBColor? titleColor = null;
@@ -147,7 +148,7 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        private void UpdatePosition (Vector2 newPosition, UIContext context, RectF box) {
+        private bool UpdatePosition (Vector2 newPosition, UIContext context, RectF box) {
             var availableSpaceX = Math.Max(0, context.CanvasSize.X - box.Width);
             var availableSpaceY = Math.Max(0, context.CanvasSize.Y - box.Height);
             newPosition = new Vector2(
@@ -155,8 +156,11 @@ namespace Squared.PRGUI.Controls {
                 Arithmetic.Clamp(newPosition.Y, 0, availableSpaceY)
             ).Floor();
 
-            if (!Maximized)
-                Position = newPosition;
+            if (Position == newPosition)
+                return false;
+
+            Position = newPosition;
+            return true;
         }
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
@@ -188,17 +192,17 @@ namespace Squared.PRGUI.Controls {
                 var newPosition = DragStartedMaximized
                     ? new Vector2(args.GlobalPosition.X - (MostRecentUnmaximizedRect.Width / 2f), args.GlobalPosition.Y - 4)
                     : (DragStartWindowPosition + delta);
-                var shouldMaximize = (newPosition.Y < 0) && !Maximized;
+                var shouldMaximize = (newPosition.Y < -5) && !Maximized;
                 var shouldUnmaximize = ((delta.Y > 4) || (newPosition.Y > 4)) && Maximized;
                 if (shouldUnmaximize) {
                     // FIXME: Scale the mouse anchor based on the new size vs the old maximized size
                     Maximized = false;
+                    UpdatePosition(newPosition, args.Context, MostRecentUnmaximizedRect);
                 } else if (shouldMaximize || Maximized) {
-                    newPosition = Position = DragStartWindowPosition;
                     Maximized = true;
+                } else {
+                    UpdatePosition(newPosition, args.Context, args.Box);
                 }
-
-                UpdatePosition(newPosition, args.Context, args.Box);
 
                 FireEvent(UIEvents.Moved);
 

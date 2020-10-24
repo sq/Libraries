@@ -67,7 +67,7 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = true;
             AcceptsFocus = true;
             ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start;
-            LayoutFlags |= ControlFlags.Layout_Floating;
+            LayoutFlags = ControlFlags.Layout_Floating;
             PaintOrder = 9900;
             ClipChildren = true;
             ShowHorizontalScrollbar = false;
