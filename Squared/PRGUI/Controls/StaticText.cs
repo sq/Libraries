@@ -142,6 +142,7 @@ namespace Squared.PRGUI.Controls {
             if (ContentMeasurement == null)
                 ContentMeasurement = new DynamicStringLayout();
             ContentMeasurement.Copy(Content);
+            // ContentMeasurement.LineLimit = int.MaxValue;
         }
 
         private StringLayout GetCurrentLayout (bool measurement) {

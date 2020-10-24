@@ -597,8 +597,8 @@ namespace Squared.PRGUI.Layout {
             return value;
         }
 
-        private unsafe float Constrain (float value, LayoutItem * pItem, int dimension, Vector2? parentConstraint = null) {
-            return Constrain(value, GetComputedMinimumSize(pItem).GetElement(dimension), GetComputedMaximumSize(pItem, parentConstraint).GetElement(dimension));
+        private unsafe float Constrain (float value, LayoutItem * pItem, int dimension) {
+            return Constrain(value, GetComputedMinimumSize(pItem).GetElement(dimension), GetComputedMaximumSize(pItem, null).GetElement(dimension));
         }
 
         private unsafe void CalcSize (LayoutItem * pItem, Dimensions dim) {
@@ -784,6 +784,8 @@ namespace Squared.PRGUI.Layout {
                         computedSize += extraFromConstraints / (fillerCount - constrainedCount);
 
                     float constrainedSize = Constrain(computedSize, pChild, idim);
+                    if (wrap)
+                        constrainedSize = Constrain(Math.Min(max_x2 - childMargins[wdim] - x, constrainedSize), pChild, idim);
                     if (pass == 0) {
                         float constraintDelta = (computedSize - constrainedSize);
                         // FIXME: Epsilon too big?
@@ -794,10 +796,7 @@ namespace Squared.PRGUI.Layout {
                     }
 
                     ix0 = x;
-                    if (wrap)
-                        ix1 = Math.Min(max_x2 - childMargins[wdim], x + constrainedSize);
-                    else
-                        ix1 = x + constrainedSize;
+                    ix1 = x + constrainedSize;
 
                     if (pass == 1) {
                         // FIXME: Is this correct?
@@ -830,7 +829,7 @@ namespace Squared.PRGUI.Layout {
             var min = GetComputedMinimumSize(pItem).GetElement(dimension);
             var max = GetComputedMaximumSize(pItem, null).GetElement(dimension);
             // FIXME
-            if (min >= max)
+            if ((min > max) && (min >= 0) && (max >= 0))
                 return;
 
             if (
