@@ -220,7 +220,7 @@ namespace Squared.PRGUI {
         /// <summary>
         /// The control most recently interacted with by the user
         /// </summary>
-        public Control FixatedControl => KeyboardSelection ?? Hovering ?? Focused;
+        public Control FixatedControl => KeyboardSelection ?? Hovering;
 
         /// <summary>
         /// The control currently underneath the mouse cursor
@@ -730,7 +730,15 @@ namespace Squared.PRGUI {
             }
 
             var instanceBox = instance.GetRect(Layout);
-            var newX = Arithmetic.Clamp(rect.Left + (rect.Width / 2f) - (instanceBox.Width / 2f), TooltipSpacing, CanvasSize.X - instanceBox.Width - (TooltipSpacing * 2));
+            var newX = rect.Left + (rect.Width / 2f) - (instanceBox.Width / 2f);
+            /*
+            // We want to make sure the tooltip is at least roughly aligned with the mouse horizontally
+            // FIXME: This doesn't work because we're performing this position update every frame while a tooltip is open, oops
+            if ((newX > LastMousePosition.X) || (newX + instanceBox.Width) < LastMousePosition.X)
+                newX = LastMousePosition.X;
+            */
+
+            newX = Arithmetic.Clamp(newX, TooltipSpacing, CanvasSize.X - instanceBox.Width - (TooltipSpacing * 2));
             var newY = rect.Extent.Y + TooltipSpacing;
             if ((instanceBox.Height + rect.Extent.Y) >= CanvasSize.Y)
                 newY = rect.Top - instanceBox.Height - TooltipSpacing;
