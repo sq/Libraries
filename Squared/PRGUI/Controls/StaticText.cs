@@ -142,7 +142,6 @@ namespace Squared.PRGUI.Controls {
             if (ContentMeasurement == null)
                 ContentMeasurement = new DynamicStringLayout();
             ContentMeasurement.Copy(Content);
-            // ContentMeasurement.LineLimit = int.MaxValue;
         }
 
         private StringLayout GetCurrentLayout (bool measurement) {
@@ -193,6 +192,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             ComputeAutoSize(context);
+            UpdateLineBreak(context, GetDecorations(context.DecorationProvider));
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             return result;
         }
@@ -265,13 +265,7 @@ namespace Squared.PRGUI.Controls {
             decorations?.GetContentAdjustment(context, settings.State, out textOffset, out textScale);
             textOffset += a + new Vector2(computedPadding.Left, computedPadding.Top);
 
-            // HACK: If we know that our size is going to be constrained by layout settings, apply that in advance
-            //  when computing auto-size to reduce the odds that our layout will be changed once full UI layout happens
-            var textWidthLimit = ComputeTextWidthLimit(context, decorations);
-            if (textWidthLimit.HasValue && !ScaleToFit)
-                Content.LineBreakAtX = textWidthLimit;
-            else
-                Content.LineBreakAtX = null;
+            UpdateLineBreak(context, decorations);
 
             var layout = GetCurrentLayout(false);
             textScale *= ComputeScaleToFit(ref layout, ref settings.Box, ref computedPadding);
@@ -301,6 +295,14 @@ namespace Squared.PRGUI.Controls {
                 material: material, samplerState: RenderStates.Text, multiplyColor: overrideColor?.ToColor(),
                 scale: textScale
             );
+        }
+
+        private void UpdateLineBreak (UIOperationContext context, IDecorator decorations) {
+            var textWidthLimit = ComputeTextWidthLimit(context, decorations);
+            if (textWidthLimit.HasValue && !ScaleToFit)
+                Content.LineBreakAtX = textWidthLimit;
+            else
+                Content.LineBreakAtX = null;
         }
 
         protected void UpdateFont (UIOperationContext context, IDecorator decorations) {

@@ -296,7 +296,6 @@ namespace PRGUI.Demo {
                         Scrollable = true,
                         Children = {
                             new StaticText { Text = "Testing nested clips" },
-                            // FIXME: The layout of this label jitters between the first and second frame
                             new StaticText {
                                 Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
                                 Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
