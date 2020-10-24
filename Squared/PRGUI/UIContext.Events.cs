@@ -165,7 +165,7 @@ namespace Squared.PRGUI {
                 var newIndex = Arithmetic.Wrap(currentIndex + delta, 0, inTabOrder.Count - 1);
                 var target = inTabOrder[newIndex];
                 if ((target != null) && (target != currentTopLevel)) {
-                    Console.WriteLine($"Top level tab {currentTopLevel} -> {target}");
+                    Log($"Top level tab {currentTopLevel} -> {target}");
                     if (TrySetFocus(target, false)) {
                         KeyboardSelection = Focused;
                         return true;
@@ -173,7 +173,7 @@ namespace Squared.PRGUI {
                 }
             } else {
                 var target = PickNextFocusTarget(Focused, delta, true);
-                Console.WriteLine($"Tab {Focused} -> {target}");
+                Log($"Tab {Focused} -> {target}");
                 if ((target != null) && TrySetFocus(target, false)) {
                     KeyboardSelection = Focused;
                     return true;
@@ -591,7 +591,7 @@ namespace Squared.PRGUI {
 
         private void TerminateComposition () {
             if (IsCompositionActive)
-                Console.WriteLine("Terminating composition");
+                Log("Terminating composition");
             IsCompositionActive = false;
 
             if (CachedCompositionPreview != null) {
@@ -602,7 +602,7 @@ namespace Squared.PRGUI {
 
         private void UpdateComposition (string currentText, int cursorPosition, int selectionLength) {
             IsCompositionActive = true;
-            Console.WriteLine($"Composition text '{currentText}' with cursor at offset {cursorPosition}, selection length {selectionLength}");
+            Log($"Composition text '{currentText}' with cursor at offset {cursorPosition}, selection length {selectionLength}");
 
             var instance = GetCompositionPreviewInstance();
             instance.Text = currentText;

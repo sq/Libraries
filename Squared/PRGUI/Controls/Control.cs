@@ -551,7 +551,8 @@ namespace Squared.PRGUI {
                 (box.Width <= 0) ||
                 (box.Height <= 0);
 
-            if (isInvisible)
+            // Only visibility cull controls that have a parent.
+            if (isInvisible && TryGetParent(out Control parent))
                 return;
 
             if (opacity >= 1) {

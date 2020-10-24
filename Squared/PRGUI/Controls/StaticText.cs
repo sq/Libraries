@@ -21,7 +21,7 @@ namespace Squared.PRGUI.Controls {
         private bool _TextColorEventFired;
         public Material TextMaterial = null;
         public DynamicStringLayout Content = new DynamicStringLayout();
-        private DynamicStringLayout ContentMeasurement = new DynamicStringLayout();
+        private DynamicStringLayout ContentMeasurement = null;
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
         private bool _NeedRelayout;
         private float? MostRecentContentWidth = null;
@@ -139,12 +139,14 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void ConfigureMeasurement () {
+            if (ContentMeasurement == null)
+                ContentMeasurement = new DynamicStringLayout();
             ContentMeasurement.Copy(Content);
         }
 
         private StringLayout GetCurrentLayout (bool measurement) {
             if (measurement) {
-                if (!Content.IsValid)
+                if (!Content.IsValid || (ContentMeasurement == null))
                     ConfigureMeasurement();
                 if (!ContentMeasurement.IsValid)
                     _NeedRelayout = true;
@@ -172,6 +174,9 @@ namespace Squared.PRGUI.Controls {
             UpdateFont(context, textDecorations);
 
             var computedPadding = ComputePadding(context, decorations);
+            if (ScaleToFit)
+                return;
+
             var layout = GetCurrentLayout(true);
             if (AutoSizeWidth)
                 AutoSizeComputedWidth = layout.UnconstrainedSize.X + computedPadding.Size.X;
@@ -182,7 +187,7 @@ namespace Squared.PRGUI.Controls {
         public void Invalidate () {
             _NeedRelayout = true;
             Content.Invalidate();
-            ContentMeasurement.Invalidate();
+            ContentMeasurement?.Invalidate();
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {

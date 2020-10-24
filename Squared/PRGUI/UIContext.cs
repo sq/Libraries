@@ -192,7 +192,8 @@ namespace Squared.PRGUI {
                 _MouseCaptured = value;
                 if (value != null)
                     KeyboardSelection = null;
-                // Console.WriteLine($"Mouse capture {previous} -> {value}");
+                if (previous != value)
+                    Log($"Mouse capture {previous} -> {value}");
             }
         }
 
@@ -276,6 +277,14 @@ namespace Squared.PRGUI {
 
         public float Now { get; private set; }
         public long NowL { get; private set; }
+
+        [System.Diagnostics.Conditional("DEBUG")]
+        internal void Log (string text) {
+            if (System.Diagnostics.Debugger.IsAttached)
+                System.Diagnostics.Debug.WriteLine(text);
+            else
+                Console.WriteLine(text);
+        }
 
         internal DepthStencilState GetStencilRestore (int targetReferenceStencil) {
             DepthStencilState result;
@@ -385,7 +394,7 @@ namespace Squared.PRGUI {
             var previousTopLevel = FindTopLevelAncestor(Focused);
             var newTopLevel = FindTopLevelAncestor(target);
             if ((newTopLevel != previousTopLevel) && (newTopLevel != null)) {
-                Console.WriteLine("Automatically transfering focus to new top level ancestor {0}", newTopLevel);
+                Log($"Automatically transfering focus to new top level ancestor {newTopLevel}");
                 Focused = newTopLevel;
             }
         }
@@ -416,7 +425,7 @@ namespace Squared.PRGUI {
         UnorderedList<IPostLayoutListener> _PostLayoutListeners = new UnorderedList<IPostLayoutListener>();
 
         private void DoUpdateLayoutInternal (UIOperationContext context, bool secondTime) {
-            Layout.SetFixedSize(Layout.Root, CanvasSize);
+            Layout.CanvasSize = CanvasSize;
             Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row | ControlFlags.Container_Constrain_Size);
 
             foreach (var control in Controls)
@@ -429,7 +438,7 @@ namespace Squared.PRGUI {
                 var wasRequested = relayoutRequested;
                 listener.OnLayoutComplete(context, ref relayoutRequested);
                 if (relayoutRequested != wasRequested)
-                    Console.WriteLine($"Relayout requested by {listener}");
+                    Log($"Relayout requested by {listener}");
             }
             return relayoutRequested;
         }

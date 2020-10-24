@@ -44,6 +44,7 @@ namespace Squared.PRGUI.Controls {
                 var flags = LayoutFlags & ~ControlFlags.Layout_Fill;
                 if (value)
                     flags |= ControlFlags.Layout_Fill;
+                Context.Log($"Window layout flags {LayoutFlags} -> {flags}");
                 LayoutFlags = flags;
             }
         }
@@ -159,6 +160,7 @@ namespace Squared.PRGUI.Controls {
             if (Position == newPosition)
                 return false;
 
+            context.Log($"Window position {Position} -> {newPosition}");
             Position = newPosition;
             return true;
         }

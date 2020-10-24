@@ -146,6 +146,18 @@ namespace Squared.PRGUI.Layout {
         private IntPtr PinnedLayoutPtr, PinnedBoxesPtr;
         private readonly UnorderedList<LayoutItem> Layout = new UnorderedList<LayoutItem>(DefaultCapacity);
         private readonly UnorderedList<RectF> Boxes = new UnorderedList<RectF>(DefaultCapacity);
+        private Vector2 _CanvasSize;
+
+        public Vector2 CanvasSize {
+            get => _CanvasSize;
+            set {
+                if (value == _CanvasSize)
+                    return;
+                _CanvasSize = value;
+                if (!Root.IsInvalid)
+                    SetFixedSize(Root, value);
+            }
+        }
 
         public void EnsureCapacity (int capacity) {
             Version++;
@@ -193,12 +205,23 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe RectF GetContentRect (LayoutItem * pItem, ref RectF exterior) {
-            var extent = exterior.Extent;
-            var interior = exterior;
+            Vector2 extent;
+            RectF interior;
+            if (pItem->Key == Root) {
+                // FIXME: Why is this necessary?
+                extent = CanvasSize;
+                // HACK
+                exterior = interior = new RectF(Vector2.Zero, extent);
+            } else {
+                extent = exterior.Extent;
+                interior = exterior;
+            }
             interior.Left = Math.Min(extent.X, interior.Left + pItem->Padding.Left);
             interior.Top = Math.Min(extent.Y, interior.Top + pItem->Padding.Top);
             interior.Width = Math.Max(0, exterior.Width - pItem->Padding.X);
             interior.Height = Math.Max(0, exterior.Height - pItem->Padding.Y);
+            if ((interior.Width <= 0) || (interior.Height <= 0))
+                ;
             return interior;
         }
 
@@ -320,6 +343,7 @@ namespace Squared.PRGUI.Layout {
 
             IsDisposed = false;
             Root = CreateItem();
+            SetFixedSize(Root, _CanvasSize);
         }
     }
 }

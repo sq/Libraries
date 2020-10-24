@@ -650,12 +650,12 @@ namespace Squared.PRGUI.Layout {
             if (pItem->Flags.IsFlagged(ControlFlags.Layout_Floating)) {
                 var parentRect = GetContentRect(pItem->Parent);
                 // HACK: If we are maximized, enforce our full layout instead of just size
-                if (dim == Dimensions.X) {
+                if (dim == Dimensions.X && (parentRect.Width > 0)) {
                     if (pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Row)) {
                         pRect->Left = parentRect.Left;
                         result = parentRect.Width;
                     }
-                } else { 
+                } else if (parentRect.Height > 0) {
                     if (pItem->Flags.IsFlagged(ControlFlags.Layout_Fill_Column)) {
                         pRect->Top = parentRect.Top;
                         result = parentRect.Height;
