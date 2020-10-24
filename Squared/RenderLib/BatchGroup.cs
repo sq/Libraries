@@ -22,6 +22,11 @@ namespace Squared.Render {
         /// </summary>
         public ViewTransform? ViewTransform;
 
+        /// <summary>
+        /// A function that is called to process and modify the current view transform for the duration of the batch group.
+        /// </summary>
+        public Func<ViewTransform, object, ViewTransform> ViewTransformModifier;
+
         public OcclusionQuery OcclusionQuery;
 
         Action<DeviceManager, object> _Before, _After;
@@ -42,8 +47,13 @@ namespace Squared.Render {
             if (OcclusionQuery != null)
                 OcclusionQuery.Begin();
 
-            if (ViewTransform.HasValue)
-                MaterialSet?.PushViewTransform(ref ViewTransform);
+            if (MaterialSet != null) {
+                if (ViewTransform.HasValue)
+                    MaterialSet.PushViewTransform(ref ViewTransform);
+
+                if (ViewTransformModifier != null)
+                    MaterialSet.PushViewTransform(ViewTransformModifier(MaterialSet.ViewTransform, _UserData));
+            }
 
             if (_Before != null)
                 _Before(manager, _UserData);
@@ -62,7 +72,7 @@ namespace Squared.Render {
 
                 base.Issue(manager);
 
-                if (ViewTransform.HasValue)
+                if (ViewTransform.HasValue || ViewTransformModifier != null)
                     MaterialSet?.PopViewTransform();
 
                 manager.BatchGroupStack.Pop();
@@ -170,13 +180,14 @@ namespace Squared.Render {
             Action<DeviceManager, object> before = null, Action<DeviceManager, object> after = null,
             object userData = null, 
             DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
+            Func<ViewTransform, object, ViewTransform> viewTransformModifier = null,
             string name = null
         ) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
             var result = container.RenderManager.AllocateBatch<BatchGroup>();
-            result.Initialize(container, layer, before, after, userData, materialSet, viewTransform);
+            result.Initialize(container, layer, before, after, userData, materialSet, viewTransform, viewTransformModifier: viewTransformModifier);
             result.Name = name;
             result.CaptureStack(0);
 
@@ -187,7 +198,7 @@ namespace Squared.Render {
             IBatchContainer container, int layer, 
             Action<DeviceManager, object> before, Action<DeviceManager, object> after, 
             object userData, DefaultMaterialSet materialSet = null, ViewTransform? viewTransform = null, 
-            bool addToContainer = true
+            bool addToContainer = true, Func<ViewTransform, object, ViewTransform> viewTransformModifier = null
         ) {
             base.Initialize(container, layer, null, addToContainer);
 
@@ -201,6 +212,7 @@ namespace Squared.Render {
             _UserData = userData;
             MaterialSet = materialSet;
             ViewTransform = viewTransform;
+            ViewTransformModifier = viewTransformModifier;
             IsReleased = false;
             OcclusionQuery = null;
         }

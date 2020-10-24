@@ -169,7 +169,7 @@ namespace Squared.PRGUI.Controls {
             if (name == UIEvents.MouseDown) {
                 Context.TrySetFocus(this, false);
 
-                if (MostRecentTitleBox.Contains(args.GlobalPosition) && AllowDrag) {
+                if (MostRecentTitleBox.Contains(args.OrientedGlobalPosition) && AllowDrag) {
                     Context.CaptureMouse(this);
                     Dragging = true;
                     DragStartedMaximized = Maximized;

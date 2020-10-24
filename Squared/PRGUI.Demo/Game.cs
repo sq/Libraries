@@ -46,6 +46,8 @@ namespace PRGUI.Demo {
         public bool IsMouseOverUI = false, TearingTest = false;
         public long LastTimeOverUI;
 
+        Tween<float> Topple = new Tween<float>(0);
+
         // public ControlKey MasterList, ContentView;
 
         public DemoGame () {
@@ -189,6 +191,11 @@ namespace PRGUI.Demo {
                 TooltipContent = "Hide this window temporarily"
             };
 
+            var toppleButton = new Button {
+                Text = "Topple",
+                TooltipContent = "I'm a top-heavy window!"
+            };
+
             var windowBgColor = new Color(80, 96, 100);
             FloatingWindow = new Window {
                 BackgroundColor = windowBgColor,
@@ -200,6 +207,7 @@ namespace PRGUI.Demo {
                     textfield,
                     numberField,
                     hideButton,
+                    toppleButton
                 },
                 PaintOrder = 1,
             };
@@ -394,6 +402,10 @@ namespace PRGUI.Demo {
                 FloatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.NowL);
             });
 
+            Context.EventBus.Subscribe(toppleButton, UIEvents.Click, (ei) => {
+                Topple = Tween<float>.StartNow(0f, 2f, 5f, now: Context.NowL, repeatCount: 1, repeatMode: TweenRepeatMode.PulseSine);
+            });
+
             Context.EventBus.Subscribe(FloatingWindow, UIEvents.OpacityTweenEnded, (ei) => {
                 if (FloatingWindow.Opacity.To >= 1)
                     return;
@@ -479,13 +491,67 @@ namespace PRGUI.Demo {
                 }
             }
 
-            var angle = Arithmetic.PulseSine((float)Time.Seconds / 3f, -100, 360);
-            if (angle > 0)
-                FloatingWindow.TransformMatrix = Matrix.CreateRotationZ(MathHelper.ToRadians(angle));
-            else
+            float t = Topple.Get(Context.NowL);
+            if (t > 0) {
+                if (t > 1)
+                    t = 1;
+                var wbox = FloatingWindow.GetRect(Context.Layout);
+                var sz = wbox.Size;
+                float o = t * wbox.Width / 2f;
+                Weird2DTransform(
+                    sz, new Vector2(0, 0), new Vector2(sz.X - o, 0), new Vector2(0, sz.Y), sz, out Matrix temp
+                );
+                FloatingWindow.TransformMatrix = temp;
+            } else
                 FloatingWindow.TransformMatrix = null;
 
             base.Update(gameTime);
+        }
+
+        private void Weird2DTransform (
+            Vector2 size,
+            Vector2 topLeft, Vector2 topRight,
+            Vector2 bottomLeft, Vector2 bottomRight,
+            out Matrix result
+        ) {
+            const float x = 0, y = 0;
+            float width = size.X, height = size.Y;
+
+            float x1a = topLeft.X,     y1a = topLeft.Y;
+            float x2a = topRight.X,    y2a = topRight.Y;
+            float x3a = bottomLeft.X,  y3a = bottomLeft.Y;
+            float x4a = bottomRight.X, y4a = bottomRight.Y;
+
+            float y21 = y2a - y1a;
+            float y32 = y3a - y2a;
+            float y43 = y4a - y3a;
+            float y14 = y1a - y4a;
+            float y31 = y3a - y1a;
+            float y42 = y4a - y2a;
+
+            float a = -height*(x2a*x3a*y14 + x2a*x4a*y31 - x1a*x4a*y32 + x1a*x3a*y42);
+            float b = width*(x2a*x3a*y14 + x3a*x4a*y21 + x1a*x4a*y32 + x1a*x2a*y43);
+            float c = height*x*(x2a*x3a*y14 + x2a*x4a*y31 - x1a*x4a*y32 + x1a*x3a*y42) - height*width*x1a*(x4a*y32 - x3a*y42 + x2a*y43) - width*y*(x2a*x3a*y14 + x3a*x4a*y21 + x1a*x4a*y32 + x1a*x2a*y43);
+
+            float d = height*(-x4a*y21*y3a + x2a*y1a*y43 - x1a*y2a*y43 - x3a*y1a*y4a + x3a*y2a*y4a);
+            float e = width*(x4a*y2a*y31 - x3a*y1a*y42 - x2a*y31*y4a + x1a*y3a*y42);
+            float f = -(width*(x4a*(y*y2a*y31 + height*y1a*y32) - x3a*(height + y)*y1a*y42 + height*x2a*y1a*y43 + x2a*y*(y1a - y3a)*y4a + x1a*y*y3a*(-y2a + y4a)) - height*x*(x4a*y21*y3a - x2a*y1a*y43 + x3a*(y1a - y2a)*y4a + x1a*y2a*(-y3a + y4a)));
+
+            float g = height*(x3a*y21 - x4a*y21 + (-x1a + x2a)*y43);
+            float h = width*(-x2a*y31 + x4a*y31 + (x1a - x3a)*y42);
+            float i = width*y*(x2a*y31 - x4a*y31 - x1a*y42 + x3a*y42) + height*(x*(-(x3a*y21) + x4a*y21 + x1a*y43 - x2a*y43) + width*(-(x3a*y2a) + x4a*y2a + x2a*y3a - x4a*y3a - x2a*y4a + x3a*y4a));
+
+            const double kEpsilon = 0.0001;
+
+            if (Math.Abs(i) < kEpsilon)
+                i = (float)(kEpsilon * (i > 0 ? 1.0 : -1.0));
+
+            result = new Matrix(
+                a/i, d/i, 0, g/i, 
+                b/i, e/i, 0, h/i, 
+                0, 0, 1, 0, 
+                c/i, f/i, 0, 1f
+            );
         }
 
         public override void Draw (GameTime gameTime, Frame frame) {

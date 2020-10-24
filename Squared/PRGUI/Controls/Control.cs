@@ -51,7 +51,37 @@ namespace Squared.PRGUI {
             }
         }
 
-        public Matrix? TransformMatrix;
+        protected bool HasTransformMatrix { get; private set; }
+        protected bool HasInverseTransformMatrix { get; private set; }
+        private Matrix _TransformMatrix, _InverseTransformMatrix;
+
+        public Matrix? TransformMatrix {
+            get => HasTransformMatrix ? _TransformMatrix : (Matrix?)null;
+            set {
+                if (value == null) {
+                    _TransformMatrix = _InverseTransformMatrix = Matrix.Identity;
+                    HasInverseTransformMatrix = HasTransformMatrix = false;
+                    return;
+                }
+
+                HasTransformMatrix = true;
+                _TransformMatrix = value.Value;
+                Matrix.Invert(ref _TransformMatrix, out _InverseTransformMatrix);
+                var det = _InverseTransformMatrix.Determinant();
+                HasInverseTransformMatrix = !float.IsNaN(det) && !float.IsInfinity(det);
+            }
+        }
+
+        public Matrix? InverseTransformMatrix {
+            get {
+                if (!HasTransformMatrix)
+                    return null;
+                if (!HasInverseTransformMatrix)
+                    return null;
+                return _InverseTransformMatrix;
+            }
+        }
+
         public IDecorator CustomDecorations, CustomTextDecorations;
         public Margins Margins, Padding;
         public ControlFlags LayoutFlags = ControlFlags.Layout_Fill_Row;
@@ -316,6 +346,29 @@ namespace Squared.PRGUI {
             return pSRGBColor.FromPLinear(v4.Value);
         }
 
+        private void ComputeCenteredTransformMatrix (Vector2 origin, Vector2 finalPosition, out Matrix result) {
+            Matrix.CreateTranslation(origin.X, origin.Y, 0, out Matrix centering);
+            Matrix.CreateTranslation(finalPosition.X, finalPosition.Y, 0, out Matrix placement);
+            result = centering * _TransformMatrix * placement;
+        }
+
+        internal Vector2 ApplyLocalTransformToGlobalPosition (LayoutContext context, Vector2 globalPosition, ref RectF box, bool force) {
+            if (!HasTransformMatrix || !HasInverseTransformMatrix)
+                return globalPosition;
+
+            var localPosition = globalPosition - box.Center;
+            // Detect non-invertible transform or other messed up math
+
+            Vector4.Transform(ref localPosition, ref _InverseTransformMatrix, out Vector4 transformedLocalPosition);
+            var transformedLocal2 = new Vector2(transformedLocalPosition.X / transformedLocalPosition.W, transformedLocalPosition.Y / transformedLocalPosition.W);
+            var result = transformedLocal2 + box.Center;
+
+            if (!force && !box.Contains(result))
+                return globalPosition;
+            else
+                return result;
+        }
+
         public Control HitTest (LayoutContext context, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly) {
             if (!Visible)
                 return null;
@@ -326,6 +379,8 @@ namespace Squared.PRGUI {
 
             var result = this;
             var box = GetRect(context);
+            position = ApplyLocalTransformToGlobalPosition(context, position, ref box, true);
+
             if (OnHitTest(context, box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result))
                 return result;
 
@@ -558,43 +613,47 @@ namespace Squared.PRGUI {
             if (isInvisible && TryGetParent(out Control parent))
                 return;
 
-            var needsComposition = TransformMatrix.HasValue || (opacity < 1);
+            var needsComposition = HasTransformMatrix || (opacity < 1);
 
             if (!needsComposition) {
                 RasterizeAllPasses(ref context, ref box, ref passSet, false);
             } else {
                 // HACK: Create padding around the element for drop shadows
                 box.SnapAndInset(out Vector2 tl, out Vector2 br, -CompositePadding);
+                // Don't overflow the edges of the canvas with padding, it'd produce garbage pixels
+                if (tl.X < 0)
+                    tl.X = 0;
+                if (tl.Y < 0)
+                    tl.Y = 0;
+                if (br.X > context.UIContext.CanvasSize.X)
+                    br.X = context.UIContext.CanvasSize.X;
+                if (br.Y > context.UIContext.CanvasSize.Y)
+                    br.Y = context.UIContext.CanvasSize.Y;
+
                 var compositeBox = new RectF(tl, br - tl);
                 var rt = context.UIContext.GetScratchRenderTarget(passSet.Prepass.Container.Coordinator, ref compositeBox, out bool needClear);
                 try {
-                    box = RasterizeIntoPrepass(ref context, passSet, opacity, ref box, ref compositeBox, rt, needClear);
+                    // passSet.Above.RasterizeRectangle(box.Position, box.Extent, 1f, Color.Red * 0.1f);
+                    RasterizeIntoPrepass(ref context, passSet, opacity, ref box, ref compositeBox, rt, needClear);
+                    // passSet.Above.RasterizeEllipse(box.Center, Vector2.One * 3f, Color.White);
                 } finally {
                     context.UIContext.ReleaseScratchRenderTarget(rt);
                 }
             }
         }
 
-        private static void _PushTransformMatrix (DeviceManager dm, object _control) {
+        private static readonly Func<ViewTransform, object, ViewTransform> ApplyLocalTransformMatrix = _ApplyLocalTransformMatrix;
+        // HACK
+        private RectF MostRecentCompositeBox;
+
+        private static ViewTransform _ApplyLocalTransformMatrix (ViewTransform vt, object _control) {
             var control = (Control)_control;
-            var materials = control.Context.Materials;
-            var box = control.GetRect(control.Context.Layout);
-            Matrix.CreateTranslation(box.Width * -0.5f, box.Height * -0.5f, 0, out Matrix centering);
-            Matrix.CreateTranslation(box.Center.X - CompositePadding, box.Center.Y - CompositePadding, 0, out Matrix placement);
-            var xform = centering * control.TransformMatrix.Value * placement;
-            var vt = materials.ViewTransform;
-            
-            vt.ModelView = vt.ModelView * xform;
-            materials.PushViewTransform(ref vt);
+            control.ComputeCenteredTransformMatrix(control.MostRecentCompositeBox.Size * -0.5f, control.MostRecentCompositeBox.Center, out Matrix transform);
+            vt.ModelView *= transform;
+            return vt;
         }
 
-        private static void _PopTransformMatrix (DeviceManager dm, object _control) {
-            var control = (Control)_control;
-            var materials = control.Context.Materials;
-            materials.PopViewTransform();
-        }
-
-        private RectF RasterizeIntoPrepass (ref UIOperationContext context, RasterizePassSet passSet, float opacity, ref RectF box, ref RectF compositeBox, AutoRenderTarget rt, bool needClear) {
+        private void RasterizeIntoPrepass (ref UIOperationContext context, RasterizePassSet passSet, float opacity, ref RectF box, ref RectF compositeBox, AutoRenderTarget rt, bool needClear) {
             var compositionContext = context.Clone();
 
             // Create nested prepass group before the RT group so that child controls have their prepass operations run before ours
@@ -606,9 +665,10 @@ namespace Squared.PRGUI {
                 compositionRenderer.Clear(color: Color.Transparent, stencil: 0, layer: -1);
 
             var newPassSet = new RasterizePassSet(ref nestedPrepass, ref compositionRenderer, 0, 1);
+            // newPassSet.Above.RasterizeEllipse(box.Center, Vector2.One * 6f, Color.White * 0.7f);
             RasterizeAllPasses(ref compositionContext, ref box, ref newPassSet, true);
             compositionRenderer.Layer += 1;
-            var pos = (TransformMatrix.HasValue ? Vector2.Zero : compositeBox.Position.Floor());
+            var pos = HasTransformMatrix ? Vector2.Zero : compositeBox.Position.Floor();
             // FIXME: Is this the right layer?
             var sourceRect = new Rectangle(
                 (int)compositeBox.Left, (int)compositeBox.Top,
@@ -620,14 +680,14 @@ namespace Squared.PRGUI {
                 Color.White * opacity
             );
 
-            if (TransformMatrix.HasValue) {
-                var subgroup = passSet.Above.MakeSubgroup(before: _PushTransformMatrix, after: _PopTransformMatrix, userData: this);
+            if (HasTransformMatrix) {
+                MostRecentCompositeBox = compositeBox;
+                var subgroup = passSet.Above.MakeSubgroup(viewTransformModifier: ApplyLocalTransformMatrix, userData: this);
                 subgroup.Draw(ref dc, blendState: BlendState.AlphaBlend);
             } else {
                 passSet.Above.Draw(ref dc, blendState: BlendState.AlphaBlend);
                 passSet.Above.Layer += 1;
             }
-            return box;
         }
 
         public bool TryGetParent (out Control parent) {

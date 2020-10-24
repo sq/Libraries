@@ -676,7 +676,9 @@ void rasterShapeCommon (
 
     float outlineStartDistance = -(outlineSize * 0.5) + 0.5, 
         outlineEndDistance = outlineStartDistance + outlineSize,
-        fillStartDistance = -0.5,
+        // Ideally this range would be smaller, but a larger range produces softer fill outlines
+        //  for shapes like ellipses and lines
+        fillStartDistance = -1.01,
         fillEndDistance = 0.5;
 
     fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);

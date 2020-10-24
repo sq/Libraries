@@ -388,31 +388,52 @@ namespace Squared.PRGUI {
             return null;
         }
 
+        private List<Control> TemporaryParentChain = new List<Control>();
+
         private MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
             if (target == null)
                 return default(MouseEventArgs);
 
-            var box = target.GetRect(Layout, contentRect: false);
-            var contentBox = target.GetRect(Layout, contentRect: true);
-            var mdp = MouseDownPosition ?? mouseDownPosition ?? globalPosition;
-            var travelDistance = (globalPosition - mdp).Length();
-            return new MouseEventArgs {
-                Context = this,
-                Modifiers = CurrentModifiers,
-                Focused = Focused,
-                MouseOver = MouseOver,
-                Hovering = Hovering,
-                MouseCaptured = MouseCaptured,
-                GlobalPosition = globalPosition,
-                LocalPosition = globalPosition - contentBox.Position,
-                Box = box,
-                ContentBox = contentBox,
-                MouseDownPosition = mdp,
-                MovedSinceMouseDown = travelDistance >= MinimumMouseMovementDistance,
-                DoubleClicking = IsInDoubleClickWindow(target, globalPosition) && (MouseCaptured != null),
-                PreviousButtons = LastMouseButtons,
-                Buttons = CurrentMouseButtons
-            };
+            // Scan upwards to build a chain of controls to apply coordinate transforms from
+            TemporaryParentChain.Clear();
+            TemporaryParentChain.Add(target);
+            var search = target;
+            while (search.TryGetParent(out search))
+                TemporaryParentChain.Add(search);
+
+            var transformedGlobalPosition = globalPosition;
+
+            // Walk top-to-bottom, transforming coordinates if necessary
+            for (int i = TemporaryParentChain.Count - 1; i >= 0; i--) {
+                var ctl = TemporaryParentChain[i];
+                var box = ctl.GetRect(Layout);
+                transformedGlobalPosition = ctl.ApplyLocalTransformToGlobalPosition(Layout, transformedGlobalPosition, ref box, false);
+            }
+
+            {
+                var box = target.GetRect(Layout, contentRect: false);
+                var contentBox = target.GetRect(Layout, contentRect: true);
+                var mdp = MouseDownPosition ?? mouseDownPosition ?? globalPosition;
+                var travelDistance = (globalPosition - mdp).Length();
+                return new MouseEventArgs {
+                    Context = this,
+                    Modifiers = CurrentModifiers,
+                    Focused = Focused,
+                    MouseOver = MouseOver,
+                    Hovering = Hovering,
+                    MouseCaptured = MouseCaptured,
+                    GlobalPosition = globalPosition,
+                    OrientedGlobalPosition = transformedGlobalPosition,
+                    LocalPosition = transformedGlobalPosition - contentBox.Position,
+                    Box = box,
+                    ContentBox = contentBox,
+                    MouseDownPosition = mdp,
+                    MovedSinceMouseDown = travelDistance >= MinimumMouseMovementDistance,
+                    DoubleClicking = IsInDoubleClickWindow(target, globalPosition) && (MouseCaptured != null),
+                    PreviousButtons = LastMouseButtons,
+                    Buttons = CurrentMouseButtons
+                };
+            }
         }
 
         private bool HandleMouseDown (Control target, Vector2 globalPosition) {
