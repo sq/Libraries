@@ -553,6 +553,7 @@ namespace Squared.PRGUI.Layout {
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
         private unsafe Vector2 GetComputedMinimumSize (LayoutItem * pItem) {
             var result = pItem->FixedSize;
             if (result.X < 0)
@@ -589,6 +590,7 @@ namespace Squared.PRGUI.Layout {
             return CalcWrappedSizeImpl(pItem, dim, false, false);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
         private float Constrain (float value, float maybeMin, float maybeMax) {
             if (maybeMin >= 0)
                 value = Math.Max(value, maybeMin);
@@ -597,6 +599,7 @@ namespace Squared.PRGUI.Layout {
             return value;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
         private unsafe float Constrain (float value, LayoutItem * pItem, int dimension) {
             return Constrain(value, GetComputedMinimumSize(pItem).GetElement(dimension), GetComputedMaximumSize(pItem, null).GetElement(dimension));
         }

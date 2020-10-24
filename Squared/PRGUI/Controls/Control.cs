@@ -51,6 +51,7 @@ namespace Squared.PRGUI {
             }
         }
 
+        public Matrix? TransformMatrix;
         public IDecorator CustomDecorations, CustomTextDecorations;
         public Margins Margins, Padding;
         public ControlFlags LayoutFlags = ControlFlags.Layout_Fill_Row;
@@ -136,6 +137,8 @@ namespace Squared.PRGUI {
 
         internal bool IsValidMouseInputTarget =>
             AcceptsMouseInput && Visible && !Intangible && Enabled;
+
+        const int CompositePadding = 16;
 
         public int TabOrder { get; set; } = 0;
         public int PaintOrder { get; set; } = 0;
@@ -555,11 +558,13 @@ namespace Squared.PRGUI {
             if (isInvisible && TryGetParent(out Control parent))
                 return;
 
-            if (opacity >= 1) {
+            var needsComposition = TransformMatrix.HasValue || (opacity < 1);
+
+            if (!needsComposition) {
                 RasterizeAllPasses(ref context, ref box, ref passSet, false);
             } else {
                 // HACK: Create padding around the element for drop shadows
-                box.SnapAndInset(out Vector2 tl, out Vector2 br, -16);
+                box.SnapAndInset(out Vector2 tl, out Vector2 br, -CompositePadding);
                 var compositeBox = new RectF(tl, br - tl);
                 var rt = context.UIContext.GetScratchRenderTarget(passSet.Prepass.Container.Coordinator, ref compositeBox, out bool needClear);
                 try {
@@ -568,6 +573,25 @@ namespace Squared.PRGUI {
                     context.UIContext.ReleaseScratchRenderTarget(rt);
                 }
             }
+        }
+
+        private static void _PushTransformMatrix (DeviceManager dm, object _control) {
+            var control = (Control)_control;
+            var materials = control.Context.Materials;
+            var box = control.GetRect(control.Context.Layout);
+            Matrix.CreateTranslation(box.Width * -0.5f, box.Height * -0.5f, 0, out Matrix centering);
+            Matrix.CreateTranslation(box.Center.X - CompositePadding, box.Center.Y - CompositePadding, 0, out Matrix placement);
+            var xform = centering * control.TransformMatrix.Value * placement;
+            var vt = materials.ViewTransform;
+            
+            vt.ModelView = vt.ModelView * xform;
+            materials.PushViewTransform(ref vt);
+        }
+
+        private static void _PopTransformMatrix (DeviceManager dm, object _control) {
+            var control = (Control)_control;
+            var materials = control.Context.Materials;
+            materials.PopViewTransform();
         }
 
         private RectF RasterizeIntoPrepass (ref UIOperationContext context, RasterizePassSet passSet, float opacity, ref RectF box, ref RectF compositeBox, AutoRenderTarget rt, bool needClear) {
@@ -584,18 +608,25 @@ namespace Squared.PRGUI {
             var newPassSet = new RasterizePassSet(ref nestedPrepass, ref compositionRenderer, 0, 1);
             RasterizeAllPasses(ref compositionContext, ref box, ref newPassSet, true);
             compositionRenderer.Layer += 1;
-            var pos = compositeBox.Position.Floor();
+            var pos = (TransformMatrix.HasValue ? Vector2.Zero : compositeBox.Position.Floor());
             // FIXME: Is this the right layer?
-            passSet.Above.Draw(
-                rt, position: pos,
-                sourceRectangle: new Rectangle(
-                    (int)compositeBox.Left, (int)compositeBox.Top,
-                    (int)compositeBox.Width, (int)compositeBox.Height
-                ),
-                blendState: BlendState.AlphaBlend,
-                multiplyColor: Color.White * opacity
+            var sourceRect = new Rectangle(
+                (int)compositeBox.Left, (int)compositeBox.Top,
+                (int)compositeBox.Width, (int)compositeBox.Height
             );
-            passSet.Above.Layer += 1;
+            var dc = new BitmapDrawCall(
+                rt.Get(), pos,
+                GameExtensionMethods.BoundsFromRectangle(rt.Get(), sourceRect),
+                Color.White * opacity
+            );
+
+            if (TransformMatrix.HasValue) {
+                var subgroup = passSet.Above.MakeSubgroup(before: _PushTransformMatrix, after: _PopTransformMatrix, userData: this);
+                subgroup.Draw(ref dc, blendState: BlendState.AlphaBlend);
+            } else {
+                passSet.Above.Draw(ref dc, blendState: BlendState.AlphaBlend);
+                passSet.Above.Layer += 1;
+            }
             return box;
         }
 

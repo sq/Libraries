@@ -190,7 +190,7 @@ namespace PRGUI.Demo {
             };
 
             var windowBgColor = new Color(80, 96, 100);
-            var floatingWindow = new Window {
+            FloatingWindow = new Window {
                 BackgroundColor = windowBgColor,
                 // MinimumWidth = 400,
                 // MinimumHeight = 240,
@@ -201,7 +201,7 @@ namespace PRGUI.Demo {
                     numberField,
                     hideButton,
                 },
-                PaintOrder = 1
+                PaintOrder = 1,
             };
 
             var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
@@ -277,6 +277,7 @@ namespace PRGUI.Demo {
                 ShowVerticalScrollbar = true,
                 ScrollOffset = new Vector2(0, 22),
                 Children = {
+                    // FIXME: This should probably expand to the full width of the container's content, instead of the width of the container as it does now
                     new StaticText {
                         Text = "Clipped container",
                         AutoSizeWidth = false,
@@ -368,7 +369,7 @@ namespace PRGUI.Demo {
             Context = new UIContext(Materials, decorations) {
                 Controls = {
                     topLevelContainer,
-                    floatingWindow
+                    FloatingWindow
                 }
             };
 
@@ -385,20 +386,20 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(changePaintOrder, UIEvents.Click, (ei) => {
-                floatingWindow.PaintOrder = -floatingWindow.PaintOrder;
+                FloatingWindow.PaintOrder = -FloatingWindow.PaintOrder;
             });
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
-                floatingWindow.Intangible = true;
-                floatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.NowL);
+                FloatingWindow.Intangible = true;
+                FloatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.NowL);
             });
 
-            Context.EventBus.Subscribe(floatingWindow, UIEvents.OpacityTweenEnded, (ei) => {
-                if (floatingWindow.Opacity.To >= 1)
+            Context.EventBus.Subscribe(FloatingWindow, UIEvents.OpacityTweenEnded, (ei) => {
+                if (FloatingWindow.Opacity.To >= 1)
                     return;
 
-                floatingWindow.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, delay: 1f, now: Context.NowL);
-                floatingWindow.Intangible = false;
+                FloatingWindow.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, delay: 1f, now: Context.NowL);
+                FloatingWindow.Intangible = false;
             });
 
             UIRenderTarget = new AutoRenderTarget(
@@ -478,6 +479,12 @@ namespace PRGUI.Demo {
                 }
             }
 
+            var angle = Arithmetic.PulseSine((float)Time.Seconds / 3f, -100, 360);
+            if (angle > 0)
+                FloatingWindow.TransformMatrix = Matrix.CreateRotationZ(MathHelper.ToRadians(angle));
+            else
+                FloatingWindow.TransformMatrix = null;
+
             base.Update(gameTime);
         }
 
@@ -526,6 +533,7 @@ namespace PRGUI.Demo {
         }
 
         private int LastPerformanceStatPrimCount;
+        private Window FloatingWindow;
 
         private void DrawPerformanceStats (ref ImperativeRenderer ir) {
             // return;
