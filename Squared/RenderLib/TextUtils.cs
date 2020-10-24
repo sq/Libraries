@@ -118,7 +118,7 @@ namespace Squared.Render.Text {
                 (destination.HasValue && !destination.Value.Equals(newValue.Value))
             ) {
                 destination = newValue;
-                _CachedStringLayout = null;
+                Invalidate();
             }
         }
 
@@ -127,7 +127,7 @@ namespace Squared.Render.Text {
         {
             if (!destination.Equals(newValue)) {
                 destination = newValue;
-                _CachedStringLayout = null;
+                Invalidate();
             }
         }
 
@@ -136,7 +136,7 @@ namespace Squared.Render.Text {
         {
             if (destination != newValue) {
                 destination = newValue;
-                _CachedStringLayout = null;
+                Invalidate();
             }
         }
 
@@ -362,6 +362,9 @@ namespace Squared.Render.Text {
             _CachedStringLayout = null;
         }
 
+        /// <summary>
+        /// Constructs a layout engine based on this configuration
+        /// </summary>
         public void MakeLayoutEngine (out StringLayoutEngine result) {
             result = new StringLayoutEngine {
                 buffer = _Buffer,
@@ -390,12 +393,41 @@ namespace Squared.Render.Text {
                 result.HitTests.Add(new LayoutHitTest { Position = kvp.Key });
         }
 
+        /// <summary>
+        /// Copies all of source's configuration
+        /// </summary>
+        public void Copy (DynamicStringLayout source) {
+            this.Alignment = source.Alignment;
+            this.AlignToPixels = source.AlignToPixels;
+            this.CharacterLimit = source.CharacterLimit;
+            this.CharacterSkipCount = source.CharacterSkipCount;
+            this.CharacterWrap = source.CharacterWrap;
+            this.Color = source.Color;
+            this.GlyphSource = source.GlyphSource;
+            this.KerningAdjustments = source.KerningAdjustments;
+            this.LineBreakAtX = source.LineBreakAtX;
+            this.LineLimit = source.LineLimit;
+            this.Position = source.Position;
+            this.ReverseOrder = source.ReverseOrder;
+            this.Scale = source.Scale;
+            this.SortKey = source.SortKey;
+            this.Text = source.Text;
+            this.WordWrap = source.WordWrap;
+            this.WrapCharacter = source.WrapCharacter;
+            this.WrapIndentation = source.WrapIndentation;
+            this.XOffsetOfFirstLine = source.XOffsetOfFirstLine;
+            this.XOffsetOfNewLine = source.XOffsetOfNewLine;
+        }
+
+        /// <summary>
+        /// If the current state is invalid, computes a current layout. Otherwise, returns the cached layout.
+        /// </summary>
         public StringLayout Get () {
             if (_Text.IsNull)
                 return new StringLayout();
 
             if (_CachedStringLayout.HasValue && _CachedGlyphVersion < _GlyphSource.Version)
-                _CachedStringLayout = null;
+                Invalidate();
 
             if (!_CachedStringLayout.HasValue) {
                 int length = _Text.Length;

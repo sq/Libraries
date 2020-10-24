@@ -425,8 +425,12 @@ namespace Squared.PRGUI {
 
         private bool NotifyLayoutListeners (UIOperationContext context) {
             bool relayoutRequested = false;
-            foreach (var listener in context.PostLayoutListeners)
+            foreach (var listener in context.PostLayoutListeners) {
+                var wasRequested = relayoutRequested;
                 listener.OnLayoutComplete(context, ref relayoutRequested);
+                if (relayoutRequested != wasRequested)
+                    Console.WriteLine($"Relayout requested by {listener}");
+            }
             return relayoutRequested;
         }
 

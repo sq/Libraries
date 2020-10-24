@@ -21,7 +21,9 @@ namespace Squared.PRGUI.Controls {
         private bool _TextColorEventFired;
         public Material TextMaterial = null;
         public DynamicStringLayout Content = new DynamicStringLayout();
+        private DynamicStringLayout ContentMeasurement = new DynamicStringLayout();
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
+        private bool _NeedRelayout;
         private float? MostRecentContentWidth = null;
 
         private float? AutoSizeComputedWidth, AutoSizeComputedHeight;
@@ -136,6 +138,26 @@ namespace Squared.PRGUI.Controls {
                 fixedHeight = Math.Min(MaximumHeight.Value, fixedHeight.Value);
         }
 
+        private void ConfigureMeasurement () {
+            ContentMeasurement.Copy(Content);
+        }
+
+        private StringLayout GetCurrentLayout (bool measurement) {
+            if (measurement) {
+                if (!Content.IsValid)
+                    ConfigureMeasurement();
+                if (!ContentMeasurement.IsValid)
+                    _NeedRelayout = true;
+                return ContentMeasurement.Get();
+            } else {
+                if (!Content.IsValid) {
+                    ConfigureMeasurement();
+                    _NeedRelayout = true;
+                }
+                return Content.Get();
+            }
+        }
+
         private void ComputeAutoSize (UIOperationContext context) {
             // FIXME: If we start out constrained (by our parent size, etc) we will compute
             //  a compressed auto-size value here, and it will never be updated even if our parent
@@ -149,17 +171,8 @@ namespace Squared.PRGUI.Controls {
             var textDecorations = GetTextDecorations(context.DecorationProvider);
             UpdateFont(context, textDecorations);
 
-            // HACK: If we know that our size is going to be constrained by layout settings, apply that in advance
-            //  when computing auto-size to reduce the odds that our layout will be changed once full UI layout happens
-            var textWidthLimit = ComputeTextWidthLimit(context, decorations);
-            if (textWidthLimit.HasValue && !ScaleToFit) {
-                if (Content.LineBreakAtX != textWidthLimit)
-                    ;
-                Content.LineBreakAtX = textWidthLimit;
-            }
-
             var computedPadding = ComputePadding(context, decorations);
-            var layout = Content.Get();
+            var layout = GetCurrentLayout(true);
             if (AutoSizeWidth)
                 AutoSizeComputedWidth = layout.UnconstrainedSize.X + computedPadding.Size.X;
             if (AutoSizeHeight)
@@ -167,8 +180,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void Invalidate () {
-            Content.LineBreakAtX = null;
+            _NeedRelayout = true;
             Content.Invalidate();
+            ContentMeasurement.Invalidate();
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -182,8 +196,6 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float? ComputeTextWidthLimit (UIOperationContext context, IDecorator decorations) {
-            MaybeSuppressLayoutJitter();
-
             if (ScaleToFit)
                 return null;
 
@@ -247,7 +259,15 @@ namespace Squared.PRGUI.Controls {
             decorations?.GetContentAdjustment(context, settings.State, out textOffset, out textScale);
             textOffset += a + new Vector2(computedPadding.Left, computedPadding.Top);
 
-            var layout = Content.Get();
+            // HACK: If we know that our size is going to be constrained by layout settings, apply that in advance
+            //  when computing auto-size to reduce the odds that our layout will be changed once full UI layout happens
+            var textWidthLimit = ComputeTextWidthLimit(context, decorations);
+            if (textWidthLimit.HasValue && !ScaleToFit)
+                Content.LineBreakAtX = textWidthLimit;
+            else
+                Content.LineBreakAtX = null;
+
+            var layout = GetCurrentLayout(false);
             textScale *= ComputeScaleToFit(ref layout, ref settings.Box, ref computedPadding);
 
             var scaledSize = layout.Size * textScale;
@@ -302,53 +322,17 @@ namespace Squared.PRGUI.Controls {
             return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText()}'";
         }
 
-        bool MaybeSuppressLayoutJitter () {
-            // HACK to avoid layout jitter upon content change if we're autosized
-            // This will result in two layout computations: one during ComputeAutoSize, then another
-            //  during rasterization after layout has set our new content width to use as a constraint
-            if (!Content.IsValid) {
-                MostRecentContentWidth = null;
-                return true;
-            }
-
-            return false;
-        }
-
         void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
-            if (MaybeSuppressLayoutJitter())
+            if (_NeedRelayout) {
                 relayoutRequested = true;
+                _NeedRelayout = false;
+            }
 
             var decorations = GetDecorations(context.DecorationProvider);
             var box = context.Layout.GetRect(LayoutKey);
 
-            // FIXME: Padding?
-            var wasConstrainedByParent = (AutoSizeComputedWidth > box.Width);
-            if (
-                (
-                    !AutoSizeWidth || Wrap || 
-                    // If our size was constrained by our parent, act as if auto-size was disabled. This handles
-                    //  the scenario where a menu item's text is too big for the menu
-                    wasConstrainedByParent
-                ) && !ScaleToFit
-            ) {
-                // If auto-size is disabled or wrapping is enabled, we need to enable wrapping/breaking at
-                //  our rightmost edge to ensure that our text doesn't overflow outside of our boundaries
-                // If wrapping is disabled entirely, the overflowing text will be suppressed by the text
-                //  layout engine, otherwise it will be wrapped (potentially changing our layout, oops)
-                var contentBox = context.Layout.GetContentRect(LayoutKey);
-                MostRecentContentWidth = contentBox.Width;
-                var textWidthLimit = ComputeTextWidthLimit(context, decorations);
-                if (Content.LineBreakAtX != textWidthLimit)
-                    relayoutRequested = true;
-                Content.LineBreakAtX = textWidthLimit;
-            } else {
-                MostRecentContentWidth = null;
-                var textWidthLimit = ComputeTextWidthLimit(context, decorations);
-                // This ensures that if we go from constrained to unconstrained, our layout is updated
-                if (Content.LineBreakAtX != textWidthLimit)
-                    relayoutRequested = true;
-                Content.LineBreakAtX = textWidthLimit;
-            }
+            var contentBox = context.Layout.GetContentRect(LayoutKey);
+            MostRecentContentWidth = contentBox.Width;
         }
     }
 }
