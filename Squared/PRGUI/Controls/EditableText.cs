@@ -647,6 +647,10 @@ namespace Squared.PRGUI.Controls {
                 boundary = Unicode.FindWordBoundary(Builder, searchFromCharacterIndex: searchPosition);
                 if (boundary.First < 0)
                     return 0;
+
+                if ((i == 0) && (direction > 0) && (boundary.Second < startingCharacter))
+                    return startingCharacter;
+
                 var ch = Builder[boundary.First];
 
                 if ((boundary.First == startingCharacter) || char.IsWhiteSpace(ch)) {
@@ -665,13 +669,24 @@ namespace Squared.PRGUI.Controls {
                         // Console.WriteLine($"left<start -> {searchPosition}");
                         continue;
                     }
+                } else if (boundary.First > startingCharacter) {
+                    continue;
+                } else {
+                    return boundary.First;
                 }
-
-                return boundary.First;
             }
 
-            // FIXME: If the text has leading whitespace we won't ever jump to the beginning
-            return (direction > 0) ? boundary.Second : boundary.First;
+            if (direction > 0) {
+                // If we're stuck at the beginning of the very last word, jump to the end
+                if (boundary.First <= startingCharacter)
+                    return Builder.Length;
+                else
+                    return boundary.First;
+            } else if (startingCharacter <= boundary.First) {
+                // If we started at the first character of the first word, we want to jump to the beginning (whitespace)
+                return 0;
+            } else
+                return boundary.First;
         }
 
         public void AdjustSelection (int delta, bool grow, bool byWord) {
