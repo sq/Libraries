@@ -423,7 +423,7 @@ namespace Squared.PRGUI {
                     Hovering = Hovering,
                     MouseCaptured = MouseCaptured,
                     GlobalPosition = globalPosition,
-                    OrientedGlobalPosition = transformedGlobalPosition,
+                    RelativeGlobalPosition = transformedGlobalPosition,
                     LocalPosition = transformedGlobalPosition - contentBox.Position,
                     Box = box,
                     ContentBox = contentBox,
@@ -517,7 +517,11 @@ namespace Squared.PRGUI {
             IScrollableControl scrollable = null;
             while (target != null) {
                 scrollable = target as IScrollableControl;
-                if (scrollable != null)
+                if (
+                    (scrollable != null) && 
+                    // Some controls are scrollable but do not currently have any hidden content, so don't drag them
+                    (scrollable.MaxScrollOffset ?? scrollable.MinScrollOffset) != scrollable.MinScrollOffset
+                )
                     break;
                 if (!target.TryGetParent(out target))
                     break;
