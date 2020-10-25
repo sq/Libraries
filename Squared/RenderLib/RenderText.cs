@@ -624,6 +624,10 @@ namespace Squared.Render.Text {
                     // FIXME: is the center X right?
                     ProcessHitTests(ref whitespaceBounds, whitespaceBounds.Center.X);
                     ProcessMarkers(ref whitespaceBounds, currentCodepointSize, null);
+
+                    // Ensure that trailing spaces are factored into total size
+                    if (isWhiteSpace)
+                        maxX = Math.Max(maxX, whitespaceBounds.BottomRight.X);
                 }
 
                 if (deadGlyph) {

@@ -69,6 +69,9 @@ namespace Squared.PRGUI.Controls {
 
         protected override bool ShouldClipContent => true;
 
+        private Vector2 AlignmentOffset = Vector2.Zero;
+        public HorizontalAlignment HorizontalAlignment = HorizontalAlignment.Left;
+
         public string Description;
 
         public EditableText ()
@@ -297,20 +300,22 @@ namespace Squared.PRGUI.Controls {
             return DynamicLayout.Mark(a, b);
         }
 
-        private LayoutHitTest? ImmediateHitTest (Vector2 position) {
-            var result = DynamicLayout.HitTest(position);
+        private LayoutHitTest? ImmediateHitTest (Vector2 virtualPosition) {
+            var result = DynamicLayout.HitTest(virtualPosition);
             if (result.HasValue)
                 return result;
 
             DynamicLayout.Get();
-            return DynamicLayout.HitTest(position);
+            return DynamicLayout.HitTest(virtualPosition);
         }
 
-        public int? CharacterIndexFromVirtualPosition (Vector2 position, bool? leanOverride = null) {
-            var result = ImmediateHitTest(position);
-            if (position.X < 0) {
+        /// <param name="virtualPosition">Local position ignoring scroll offset.</param>
+        public int? CharacterIndexFromVirtualPosition (Vector2 virtualPosition, bool? leanOverride = null) {
+            virtualPosition -= AlignmentOffset;
+            var result = ImmediateHitTest(virtualPosition);
+            if (virtualPosition.X < 0) {
                 return 0;
-            } else if (position.X > DynamicLayout.Get().Size.X) {
+            } else if (virtualPosition.X > DynamicLayout.Get().Size.X) {
                 return Builder.Length;
             }
 
@@ -774,16 +779,18 @@ namespace Squared.PRGUI.Controls {
 
         void UpdateScrollOffset (RectF contentBox, Bounds? selectionBounds, StringLayout layout) {
             var scrollOffset = ScrollOffset;
+            var isTooWide = layout.Size.X > (contentBox.Width - MinRightScrollMargin);
+            float edgeScrollMargin = isTooWide
+                ? MaxRightScrollMargin
+                : MinRightScrollMargin;
+            float minScrollValue = 0;
             float maxScrollValue = Math.Max(
                 layout.Size.X - contentBox.Width + 
-                    (
-                        layout.Size.X > (contentBox.Width - MinRightScrollMargin)
-                            ? MaxRightScrollMargin
-                            : MinRightScrollMargin
-                    ), 0
+                    ((HorizontalAlignment == HorizontalAlignment.Left) ? edgeScrollMargin : 0), 
+                minScrollValue
             );
-            MinScrollOffset = Vector2.Zero;
-            MaxScrollOffset = new Vector2(0, maxScrollValue);
+            MinScrollOffset = new Vector2(minScrollValue, 0);
+            MaxScrollOffset = new Vector2(maxScrollValue, 0);
             var viewportBox = contentBox;
             viewportBox.Position = scrollOffset;
             var squashedViewportBox = viewportBox;
@@ -832,7 +839,7 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            scrollOffset.X = Arithmetic.Clamp(scrollOffset.X, 0, maxScrollValue);
+            scrollOffset.X = Arithmetic.Clamp(scrollOffset.X, minScrollValue, maxScrollValue);
             scrollOffset.Y = 0;
 
             ScrollOffset = scrollOffset;
@@ -861,10 +868,17 @@ namespace Squared.PRGUI.Controls {
 
             var descriptionLayout = DescriptionLayout.Get();
             var width = descriptionLayout.Size.X;
-            var x = settings.ContentBox.Extent.X - decorator.Margins.Right - width;
+            var totalSize = width + textExtentX;
 
-            if (x <= textExtentX)
-                color *= 0.5f;
+            float x;
+            if (HorizontalAlignment != HorizontalAlignment.Left) {
+                x = settings.ContentBox.Left;
+            } else {
+                x = settings.ContentBox.Extent.X - decorator.Margins.Right - width;
+            }
+
+            if (totalSize >= settings.ContentBox.Width)
+                color *= 0.4f;
 
             var textCorner = new Vector2(x, settings.ContentBox.Top);
             renderer.DrawMultiple(
@@ -877,20 +891,21 @@ namespace Squared.PRGUI.Controls {
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
-            /*
-            if (context.Pass == RasterizePasses.Above) {
-                renderer.RasterizeRectangle(settings.Box.Position, settings.Box.Extent, 0f, Color.Red);
-                renderer.Layer += 1;
-                renderer.RasterizeRectangle(settings.ContentBox.Position, settings.ContentBox.Extent, 0f, Color.Blue);
-                renderer.Layer += 1;
-                return;
-            }
-            */
-
             MarkSelection();
 
             var selectionDecorator = context.DecorationProvider.Selection;
             var layout = UpdateLayout(context, settings, decorations, out Material textMaterial);
+
+            AlignmentOffset = Vector2.Zero;
+            if (
+                (HorizontalAlignment != HorizontalAlignment.Left) &&
+                (layout.Size.X < settings.ContentBox.Width)
+            ) {
+                AlignmentOffset = new Vector2(
+                    (settings.ContentBox.Width - layout.Size.X) * (HorizontalAlignment == HorizontalAlignment.Center ? 0.5f : 1.0f), 0
+                );
+            }
+
             var selection = MarkSelection();
             var selBounds = GetBoundsForSelection(selection);
 
@@ -899,13 +914,13 @@ namespace Squared.PRGUI.Controls {
             if ((!isAutoscrollTimeLocked && !context.MouseButtonHeld) || !isMouseInBounds)
                 UpdateScrollOffset(settings.ContentBox, selBounds, layout);
 
-            var textOffset = (settings.ContentBox.Position - ScrollOffset).Floor();
+            var textOffset = (settings.ContentBox.Position - ScrollOffset + AlignmentOffset).Floor();
 
             if (context.Pass != RasterizePasses.Content)
                 return;
 
             if (Description != null)
-                RasterizeDescription(context, ref renderer, settings, decorations, textOffset.X + layout.Size.X);
+                RasterizeDescription(context, ref renderer, settings, decorations, layout.Size.X);
 
             if (selBounds.HasValue && 
                 (

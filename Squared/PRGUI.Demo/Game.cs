@@ -170,7 +170,8 @@ namespace PRGUI.Demo {
                 MinimumWidth = 400,
                 Selection = new Pair<int>(1, testString.Length - 4),
                 ScrollOffset = new Vector2(128, 32),
-                Description = "Message"
+                Description = "Message",
+                HorizontalAlignment = HorizontalAlignment.Right
             };
 
             var numberField = new EditableText {
@@ -196,7 +197,7 @@ namespace PRGUI.Demo {
                 TooltipContent = "I'm a top-heavy window!"
             };
 
-            var windowBgColor = new Color(80, 96, 100);
+            var windowBgColor = new Color(70, 86, 90);
             FloatingWindow = new Window {
                 BackgroundColor = windowBgColor,
                 // MinimumWidth = 400,

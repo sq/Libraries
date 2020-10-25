@@ -834,7 +834,7 @@ namespace Squared.PRGUI.Decorations {
 
             Button = new DelegateDecorator {
                 Margins = new Margins(4),
-                Padding = new Margins(9, 6),
+                Padding = new Margins(14, 6),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
                 Below = Button_Below,
