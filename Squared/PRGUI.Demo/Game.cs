@@ -170,8 +170,7 @@ namespace PRGUI.Demo {
                 MinimumWidth = 400,
                 Selection = new Pair<int>(1, testString.Length - 4),
                 ScrollOffset = new Vector2(128, 32),
-                Description = "Message",
-                HorizontalAlignment = HorizontalAlignment.Right
+                Description = "Message"
             };
 
             var numberField = new EditableText {
@@ -179,7 +178,8 @@ namespace PRGUI.Demo {
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                 DoubleOnly = true,
                 // MinimumWidth = 200,
-                Description = "A number"
+                Description = "A number",
+                HorizontalAlignment = HorizontalAlignment.Right
             };
 
             var hideButton = new Button {
@@ -197,6 +197,10 @@ namespace PRGUI.Demo {
                 TooltipContent = "I'm a top-heavy window!"
             };
 
+            var slider = new Slider {
+                LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+            };
+
             var windowBgColor = new Color(70, 86, 90);
             FloatingWindow = new Window {
                 BackgroundColor = windowBgColor,
@@ -207,8 +211,9 @@ namespace PRGUI.Demo {
                     new StaticText { Text = "→", FocusBeneficiary = textfield, TooltipContent = "Clicking this label will focus the textfield" },
                     textfield,
                     numberField,
+                    slider,
                     hideButton,
-                    toppleButton
+                    toppleButton,
                 },
                 PaintOrder = 1,
             };

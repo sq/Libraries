@@ -16,6 +16,8 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class EditableText : Control, IScrollableControl {
+        public const int ControlMinimumWidth = 300;
+
         public static readonly Menu ContextMenu = new Menu {
             Children = {
                 new StaticText { Text = "Cut" },
@@ -283,6 +285,7 @@ namespace Squared.PRGUI.Controls {
 
             var lineHeight = DynamicLayout.GlyphSource.LineSpacing;
             var contentMinimumHeight = lineHeight * (Multiline ? 2 : 1) + CachedPadding.Y; // FIXME: Include padding
+            minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumWidth);
             minimumHeight = Math.Max(minimumHeight ?? 0, contentMinimumHeight);
         }
 

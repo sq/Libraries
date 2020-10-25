@@ -390,14 +390,14 @@ namespace Squared.PRGUI {
 
         private List<Control> TemporaryParentChain = new List<Control>();
 
-        private MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
-            if (target == null)
-                return default(MouseEventArgs);
+        public Vector2 CalculateRelativeGlobalPosition (Control relativeTo, Vector2 globalPosition) {
+            if (relativeTo == null)
+                return globalPosition;
 
             // Scan upwards to build a chain of controls to apply coordinate transforms from
             TemporaryParentChain.Clear();
-            TemporaryParentChain.Add(target);
-            var search = target;
+            TemporaryParentChain.Add(relativeTo);
+            var search = relativeTo;
             while (search.TryGetParent(out search))
                 TemporaryParentChain.Add(search);
 
@@ -409,6 +409,15 @@ namespace Squared.PRGUI {
                 var box = ctl.GetRect(Layout);
                 transformedGlobalPosition = ctl.ApplyLocalTransformToGlobalPosition(Layout, transformedGlobalPosition, ref box, false);
             }
+
+            return transformedGlobalPosition;
+        }
+
+        private MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
+            if (target == null)
+                return default(MouseEventArgs);
+
+            var transformedGlobalPosition = CalculateRelativeGlobalPosition(target, globalPosition);
 
             {
                 var box = target.GetRect(Layout, contentRect: false);

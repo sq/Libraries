@@ -53,6 +53,8 @@ namespace Squared.PRGUI.Decorations {
         IDecorator RadioButton { get; }
         IDecorator Description { get; }
         IDecorator MenuSelection { get; }
+        IDecorator Slider { get; }
+        IDecorator SliderThumb { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
@@ -178,6 +180,8 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator RadioButton { get; set; }
         public IDecorator Description { get; set; }
         public IDecorator MenuSelection { get; set; }
+        public IDecorator Slider { get; set; }
+        public IDecorator SliderThumb { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public IGlyphSource DefaultFont,
@@ -936,6 +940,18 @@ namespace Squared.PRGUI.Decorations {
 
             Description = new DelegateDecorator {
                 GetTextSettings = GetTextSettings_Description
+            };
+
+            Slider = new DelegateDecorator {
+                Margins = new Margins(4),
+                Below = Container_Below
+            };
+
+            SliderThumb = new DelegateDecorator {
+                Margins = new Margins(0),
+                Padding = new Margins(0, 0),
+                Below = Button_Below,
+                Above = Button_Above
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {

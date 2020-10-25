@@ -474,9 +474,9 @@ namespace Squared.PRGUI {
 
         public bool Contains (Vector2 position) {
             return (position.X >= Left) &&
-                (position.X < (Left + Width)) &&
+                (position.X <= (Left + Width)) &&
                 (position.Y >= Top) &&
-                (position.Y < (Top + Height));
+                (position.Y <= (Top + Height));
         }
 
         public static explicit operator Bounds (RectF self) {
