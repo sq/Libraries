@@ -134,9 +134,11 @@
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader compiler path: '$(ShaderCompilerPath)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader directory: '$(ShaderDirectory)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader output directory: '$(ShaderLocalBinDirectory)'" />
-    <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader optimization level: $(ShaderOptimizationLevel)" />    
+    <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader optimization level: $(ShaderOptimizationLevel)" />
+    <Message Importance="High" Condition="'$(EnableFNA)' == 'true'" Text="Copying FNALibs from '$(FNALibsPath)\$(PlatformTarget)\*.dll'." />
 
     <Error Text="EnableFNA is set and FNAPath could not be automatically detected after searching nearby folders." Condition=" ('$(FNAPath)' == '') And ('$(EnableFNA)' == 'true') " />
+    <Error Text="SDL2.dll could not be found in the configured FNALibsPath." Condition=" ('$(EnableFNA)' == 'true') And !Exists('$(FNALibsPath)\$(PlatformTarget)\SDL2.dll') " />
 
     <Error Text="FNALibsPath '$(FNALibsPath)' does not exist or is not set" Condition=" !Exists('$(FNALibsPath)') And ('$(EnableFNA)' == 'true') " />
   </Target>
