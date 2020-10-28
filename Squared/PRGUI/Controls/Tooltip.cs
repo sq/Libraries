@@ -30,6 +30,14 @@ namespace Squared.PRGUI.Controls {
 }
 
 namespace Squared.PRGUI {
+    public interface ICustomTooltipTarget {
+        float? TooltipAppearanceDelay { get; }
+        float? TooltipDisappearDelay { get; }
+        bool ShowTooltipWhileMouseIsHeld { get; }
+        bool ShowTooltipWhileMouseIsNotHeld { get; }
+        bool HideTooltipOnMousePress { get; }
+    }
+
     public struct AbstractTooltipContent {
         public Func<Control, AbstractString> GetText;
         public AbstractString Text;

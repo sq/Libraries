@@ -10,9 +10,9 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class Slider : Control {
-        public const int ControlMinimumHeight = 24, ControlMinimumWidth = 48,
-            ThumbMinimumWidth = 8;
+    public class Slider : Control, ICustomTooltipTarget {
+        public const int ControlMinimumHeight = 28, ControlMinimumWidth = 100,
+            ThumbMinimumWidth = 12;
 
         public float Minimum = 0, Maximum = 100;
 
@@ -30,11 +30,21 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private bool HasCustomTooltipContent => TooltipContent.GetText != GetDefaultTooltip;
+
+        public float? TooltipDisappearDelay => null;
+        public float? TooltipAppearanceDelay => HasCustomTooltipContent ? (float?)null : 0f;
+        public bool ShowTooltipWhileMouseIsHeld => !HasCustomTooltipContent;
+        public bool ShowTooltipWhileMouseIsNotHeld => HasCustomTooltipContent;
+        public bool HideTooltipOnMousePress => HasCustomTooltipContent;
+
         public Slider () : base () {
             AcceptsFocus = true;
             AcceptsMouseInput = true;
             TooltipContent = new AbstractTooltipContent(GetDefaultTooltip);
         }
+
+        bool _WasMouseOverThumb = false;
 
         private static AbstractString GetDefaultTooltip (Control c) {
             var s = (Slider)c;
@@ -56,29 +66,34 @@ namespace Squared.PRGUI.Controls {
             minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumWidth);
         }
 
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(context, ref renderer, settings, decorations);
-
-            var thumb = context.DecorationProvider.SliderThumb;
+        private RectF ComputeThumbBox (RectF contentBox) {
+            var thumb = Context.Decorations.SliderThumb;
             var thumbSize = (thumb.Margins + thumb.Padding).Size;
             thumbSize.X = Math.Max(ThumbMinimumWidth, thumbSize.X);
-            thumbSize.Y = settings.ContentBox.Height;
-            var trackSpace = settings.ContentBox.Width - thumbSize.X;
+            thumbSize.Y = contentBox.Height;
+            var trackSpace = contentBox.Width - thumbSize.X;
             var scaledValue = (ClampValue(_Value) - Minimum) / (Maximum - Minimum);
-            var thumbPosition = new Vector2(scaledValue * trackSpace, 0) + settings.ContentBox.Position;
+            var thumbPosition = new Vector2(scaledValue * trackSpace, 0) + contentBox.Position;
+            return new RectF(thumbPosition, thumbSize);
+        }
+
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            base.OnRasterize(context, ref renderer, settings, decorations);
+            var thumb = Context.Decorations.SliderThumb;
             var thumbSettings = settings;
-            thumbSettings.Box = new RectF(thumbPosition, thumbSize);
             // FIXME: Apply padding
+            thumbSettings.Box = ComputeThumbBox(settings.ContentBox);
             thumbSettings.ContentBox = thumbSettings.Box;
             var hoveringThumb = 
                 (settings.State.HasFlag(ControlStates.Hovering))
                     ? thumbSettings.Box.Contains(context.UIContext.CalculateRelativeGlobalPosition(this, context.MousePosition))
                     : false;
+            _WasMouseOverThumb = hoveringThumb;
             thumbSettings.State = (thumbSettings.State & ~ControlStates.Hovering);
             if (hoveringThumb)
                 thumbSettings.State |= ControlStates.Hovering;
             thumb.Rasterize(context, ref renderer, thumbSettings);
-            renderer.RasterizeRectangle(thumbSettings.Box.Position, thumbSettings.Box.Extent, 1f, Color.Red * 0.5f);
+            // renderer.RasterizeRectangle(thumbSettings.Box.Position, thumbSettings.Box.Extent, 1f, Color.Red * 0.5f);
         }
     }
 }

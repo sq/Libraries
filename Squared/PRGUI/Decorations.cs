@@ -196,7 +196,8 @@ namespace Squared.PRGUI.Decorations {
             SelectionCornerRadius = 1.9f,
             SelectionPadding = 1f,
             MenuSelectionCornerRadius = 8f,
-            EditableTextCornerRadius = 4.5f;
+            EditableTextCornerRadius = 4.5f,
+            SliderCornerRadius = 4.5f;
         public float? FloatingContainerCornerRadius = 7f,
             TooltipCornerRadius = 8f;
         public float InactiveOutlineThickness = 1f, 
@@ -214,7 +215,8 @@ namespace Squared.PRGUI.Decorations {
             TitleShadow,
             EditableShadow,
             SelectionShadow,
-            TooltipShadow;
+            TooltipShadow,
+            SliderShadow;
 
         public Color FocusedColor = new Color(200, 220, 255),
             ActiveColor = new Color(240, 240, 240),
@@ -229,7 +231,8 @@ namespace Squared.PRGUI.Decorations {
             ContainerFillColor = Color.Transparent,
             InertFillColor = Color.Transparent,
             SelectionFillColor = new Color(200, 230, 255),
-            TooltipFillColor = new Color(48, 48, 48);
+            TooltipFillColor = new Color(48, 48, 48),
+            SliderFillColor = Color.Black * 0.1f;
 
         public Color SelectedTextColor = new Color(0, 30, 55),
             TitleTextColor = Color.White,
@@ -319,6 +322,62 @@ namespace Squared.PRGUI.Decorations {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: InteractableCornerRadius,
+                outlineRadius: 0, outlineColor: Color.Transparent,
+                innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
+                fillMode: RasterFillMode.Angular,
+                fillSize: fillSize,
+                fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
+                fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
+                annularRadius: 1.1f,
+                blendState: BlendState.Additive
+            );
+        }
+
+        private void Slider_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            renderer.RasterizeRectangle(
+                a, b,
+                radius: SliderCornerRadius,
+                outlineRadius: InertOutlineThickness, outlineColor: Color.Transparent,
+                innerColor: settings.BackgroundColor ?? SliderFillColor, 
+                outerColor: settings.BackgroundColor ?? SliderFillColor,
+                shadow: SliderShadow
+            );
+        }
+
+        private void SliderThumb_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            float alpha, thickness, pulse;
+            pSRGBColor baseColor, outlineColor;
+            Button_Below_Common(
+                context, settings, out alpha, out thickness, out pulse, 
+                out baseColor, out outlineColor
+            );
+            
+            alpha *= 1.5f;
+
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            var tip = (b - a).X * 0.8f;
+            renderer.RasterizeRectangle(
+                a, b,
+                radiusCW: new Vector4(InertCornerRadius, InertCornerRadius, tip, tip),
+                outlineRadius: thickness, outlineColor: outlineColor * alpha,
+                innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
+                fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
+                shadow: InteractableShadow
+            );
+        }
+
+        private void SliderThumb_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            if (!settings.State.IsFlagged(ControlStates.Hovering))
+                return;
+
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            var tip = (b - a).X * 0.8f;
+            float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / settings.Box.Height));
+
+            renderer.RasterizeRectangle(
+                a, b,
+                radiusCW: new Vector4(InertCornerRadius, InertCornerRadius, tip, tip),
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
                 fillMode: RasterFillMode.Angular,
@@ -830,6 +889,14 @@ namespace Squared.PRGUI.Decorations {
                 Inside = true
             };
 
+            SliderShadow = new RasterShadowSettings {
+                Color = Color.Black * 0.2f,
+                Offset = new Vector2(1.25f, 1.5f),
+                Softness = 6f,
+                Expansion = 0.4f,
+                Inside = true
+            };
+
             SelectionShadow = new RasterShadowSettings {
                 Color = Color.White * 0.2f,
                 Offset = new Vector2(1.25f, 1.5f),
@@ -943,15 +1010,16 @@ namespace Squared.PRGUI.Decorations {
             };
 
             Slider = new DelegateDecorator {
-                Margins = new Margins(4),
-                Below = Container_Below
+                Margins = new Margins(3),
+                Padding = new Margins(0, 0, 0, 2.75f),
+                Below = Slider_Below
             };
 
             SliderThumb = new DelegateDecorator {
                 Margins = new Margins(0),
-                Padding = new Margins(0, 0),
-                Below = Button_Below,
-                Above = Button_Above
+                Padding = new Margins(6),
+                Below = SliderThumb_Below,
+                Above = SliderThumb_Above
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {

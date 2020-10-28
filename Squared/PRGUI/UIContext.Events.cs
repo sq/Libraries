@@ -449,7 +449,7 @@ namespace Squared.PRGUI {
             var relinquishedHandlers = new HashSet<Control>();
 
             KeyboardSelection = null;
-            HideTooltipForMouseInput();
+            HideTooltipForMouseInput(true);
 
             // HACK: Prevent infinite repeat in corner cases
             int steps = 5;
@@ -491,7 +491,7 @@ namespace Squared.PRGUI {
 
         private bool HandleMouseUp (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
             KeyboardSelection = null;
-            HideTooltipForMouseInput();
+            HideTooltipForMouseInput(false);
             MouseDownPosition = null;
             // FIXME: Suppress if disabled?
             FireEvent(UIEvents.MouseUp, target, MakeMouseEventArgs(target, globalPosition, mouseDownPosition));

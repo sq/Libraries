@@ -81,11 +81,11 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Tooltips will only appear after the mouse remains over a single control for this long (in seconds)
         /// </summary>
-        public double TooltipAppearanceDelay = 0.3;
+        public float TooltipAppearanceDelay = 0.3f;
         /// <summary>
         /// If the mouse leaves tooltip-bearing controls for this long (in seconds) the tooltip appearance delay will reset
         /// </summary>
-        public double TooltipDisappearDelay = 0.2;
+        public float TooltipDisappearDelay = 0.2f;
         public float TooltipFadeDurationFast = 0.1f;
         public float TooltipFadeDuration = 0.2f;
 
@@ -579,15 +579,30 @@ namespace Squared.PRGUI {
             FirstTooltipHoverTime = null;
         }
 
+        private bool IsTooltipAllowedToAppear (bool leftButtonPressed) {
+            var target = FixatedControl;
+            var cttt = target as ICustomTooltipTarget;
+            if (cttt == null)
+                return !leftButtonPressed;
+
+            return leftButtonPressed
+                ? cttt.ShowTooltipWhileMouseIsHeld
+                : cttt.ShowTooltipWhileMouseIsNotHeld;
+        }
+
         private void UpdateTooltip (bool leftButtonPressed) {
-            if (leftButtonPressed)
+            var target = FixatedControl;
+            if (!IsTooltipAllowedToAppear(leftButtonPressed))
                 return;
+
+            var cttt = target as ICustomTooltipTarget;
 
             var now = Now;
             var tooltipContent = default(AbstractString);
-            var target = FixatedControl;
             if (target != null)
                 tooltipContent = target.TooltipContent.Get(target);
+
+            var disappearDelay = (cttt?.TooltipDisappearDelay ?? TooltipDisappearDelay);
 
             if (!tooltipContent.IsNull) {
                 if (!FirstTooltipHoverTime.HasValue)
@@ -599,7 +614,8 @@ namespace Squared.PRGUI {
                 var hoveringFor = now - FirstTooltipHoverTime;
                 var disappearTimeout = now - LastTooltipHoverTime;
 
-                if ((hoveringFor >= TooltipAppearanceDelay) || (disappearTimeout < TooltipDisappearDelay))
+                if ((hoveringFor >= (cttt?.TooltipAppearanceDelay ?? TooltipAppearanceDelay)) || 
+                    (disappearTimeout < disappearDelay))
                     ShowTooltip(target, tooltipContent);
             } else {
                 var shouldDismissInstantly = (target != null) && IsTooltipActive && GetTooltipInstance().GetRect(Layout).Contains(LastMousePosition);
@@ -607,7 +623,7 @@ namespace Squared.PRGUI {
                 HideTooltip(shouldDismissInstantly);
 
                 var elapsed = now - LastTooltipHoverTime;
-                if (elapsed >= TooltipDisappearDelay)
+                if (elapsed >= disappearDelay)
                     ResetTooltipShowTimer();
             }
         }
@@ -670,7 +686,13 @@ namespace Squared.PRGUI {
             }
         }
 
-        private void HideTooltipForMouseInput () {
+        private void HideTooltipForMouseInput (bool isMouseDown) {
+            var cttt = FixatedControl as ICustomTooltipTarget;
+            if (cttt != null) {
+                if (isMouseDown && !cttt.HideTooltipOnMousePress)
+                    return;
+            }
+
             ResetTooltipShowTimer();
             HideTooltip(true);
             FirstTooltipHoverTime = null;
