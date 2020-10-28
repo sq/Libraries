@@ -1,6 +1,3 @@
-Fracture
-========
-
 The Squared C# Library Collection
 
 License: MIT/X11
