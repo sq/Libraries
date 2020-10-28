@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.Render.Convenience;
 using Squared.Util;
@@ -12,11 +13,15 @@ using Squared.Util.Text;
 namespace Squared.PRGUI.Controls {
     public class Slider : Control, ICustomTooltipTarget {
         public const int ControlMinimumHeight = 28, ControlMinimumWidth = 100,
-            ThumbMinimumWidth = 12;
+            ThumbMinimumWidth = 12, MaxNotchCount = 128;
+        public const float NotchThickness = 0.75f;
+        public static readonly Color NotchColor = Color.Black * 0.2f;
 
         public float Minimum = 0, Maximum = 100;
 
         private float _Value = 50;
+
+        public float? NotchInterval;
 
         public float Value {
             get => ClampValue(_Value);
@@ -30,13 +35,13 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private bool HasCustomTooltipContent => TooltipContent.GetText != GetDefaultTooltip;
+        protected bool HasCustomTooltipContent => TooltipContent.GetText != GetDefaultTooltip;
 
-        public float? TooltipDisappearDelay => null;
-        public float? TooltipAppearanceDelay => HasCustomTooltipContent ? (float?)null : 0f;
-        public bool ShowTooltipWhileMouseIsHeld => !HasCustomTooltipContent;
-        public bool ShowTooltipWhileMouseIsNotHeld => HasCustomTooltipContent;
-        public bool HideTooltipOnMousePress => HasCustomTooltipContent;
+        float? ICustomTooltipTarget.TooltipDisappearDelay => null;
+        float? ICustomTooltipTarget.TooltipAppearanceDelay => HasCustomTooltipContent ? (float?)null : 0f;
+        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => !HasCustomTooltipContent;
+        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => HasCustomTooltipContent;
+        bool ICustomTooltipTarget.HideTooltipOnMousePress => HasCustomTooltipContent;
 
         public Slider () : base () {
             AcceptsFocus = true;
@@ -66,23 +71,33 @@ namespace Squared.PRGUI.Controls {
             minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumWidth);
         }
 
-        private RectF ComputeThumbBox (RectF contentBox) {
+        private RectF ComputeThumbBox (RectF contentBox, float value) {
             var thumb = Context.Decorations.SliderThumb;
             var thumbSize = (thumb.Margins + thumb.Padding).Size;
             thumbSize.X = Math.Max(ThumbMinimumWidth, thumbSize.X);
             thumbSize.Y = contentBox.Height;
-            var trackSpace = contentBox.Width - thumbSize.X;
-            var scaledValue = (ClampValue(_Value) - Minimum) / (Maximum - Minimum);
-            var thumbPosition = new Vector2(scaledValue * trackSpace, 0) + contentBox.Position;
-            return new RectF(thumbPosition, thumbSize);
+            var trackSpace = contentBox.Width;
+            var scaledValue = (ClampValue(value) - Minimum) / (Maximum - Minimum);
+            var thumbPosition = new Vector2(scaledValue * trackSpace - (thumbSize.X * 0.5f), 0) + contentBox.Position;
+            return new RectF(thumbPosition.Floor(), thumbSize);
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
+
+            if (context.Pass == RasterizePasses.Below) {
+                var rangeSize = Maximum - Minimum;
+                var interval = Arithmetic.Clamp(NotchInterval ?? 0, 0, rangeSize);
+                var hasInterval = (interval > 0) && (interval < rangeSize) && ((rangeSize / interval) < MaxNotchCount);
+
+                if (hasInterval)
+                    DrawNotches(context, ref renderer, settings, decorations, interval, rangeSize);
+            }
+
             var thumb = Context.Decorations.SliderThumb;
             var thumbSettings = settings;
             // FIXME: Apply padding
-            thumbSettings.Box = ComputeThumbBox(settings.ContentBox);
+            thumbSettings.Box = ComputeThumbBox(settings.ContentBox, _Value);
             thumbSettings.ContentBox = thumbSettings.Box;
             var hoveringThumb = 
                 (settings.State.HasFlag(ControlStates.Hovering))
@@ -94,6 +109,27 @@ namespace Squared.PRGUI.Controls {
                 thumbSettings.State |= ControlStates.Hovering;
             thumb.Rasterize(context, ref renderer, thumbSettings);
             // renderer.RasterizeRectangle(thumbSettings.Box.Position, thumbSettings.Box.Extent, 1f, Color.Red * 0.5f);
+        }
+
+        private void DrawNotches (
+            UIOperationContext context, ref ImperativeRenderer renderer, 
+            DecorationSettings settings, IDecorator decorations, 
+            float interval, float rangeSize
+        ) {
+            var numSteps = (int)Math.Floor(rangeSize / interval);
+
+            float x = interval, y = settings.ContentBox.Top + 0.5f;
+            for (int i = 0; i < numSteps; i++, x += interval) {
+                if ((Math.Abs(x - rangeSize) <= float.Epsilon) || (x >= Maximum))
+                    break;
+
+                var offset = (x / rangeSize) * settings.ContentBox.Width;
+                renderer.RasterizeLineSegment(
+                    new Vector2(settings.ContentBox.Left + offset, y),
+                    new Vector2(settings.ContentBox.Left + offset, settings.ContentBox.Extent.Y),
+                    NotchThickness, NotchColor
+                );
+            }
         }
     }
 }

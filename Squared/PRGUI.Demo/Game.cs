@@ -199,6 +199,7 @@ namespace PRGUI.Demo {
 
             var slider = new Slider {
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                NotchInterval = 25f
             };
 
             var windowBgColor = new Color(70, 86, 90);
