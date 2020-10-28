@@ -22,6 +22,9 @@ namespace Squared.PRGUI.Controls {
         private float _Value = 50;
 
         public float? NotchInterval;
+        public float NotchMagnetism = 99999;
+        public bool SnapToNotch = false;
+        public bool Integral = false;
 
         public float Value {
             get => ClampValue(_Value);
@@ -43,20 +46,38 @@ namespace Squared.PRGUI.Controls {
         bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => HasCustomTooltipContent;
         bool ICustomTooltipTarget.HideTooltipOnMousePress => HasCustomTooltipContent;
 
+        /// <summary>
+        /// A string.Format format string, where {0} is Value, {1} is Minimum, {2} is Maximum, and {3} is Value scaled to [0, 1]
+        /// </summary>
+        public string TooltipFormat = null;
+
+        float _MostRecentThumbPaddingWidth = 0;
+        bool _WasMouseOverThumb = false;
+
         public Slider () : base () {
             AcceptsFocus = true;
             AcceptsMouseInput = true;
             TooltipContent = new AbstractTooltipContent(GetDefaultTooltip);
         }
 
-        bool _WasMouseOverThumb = false;
-
         private static AbstractString GetDefaultTooltip (Control c) {
             var s = (Slider)c;
-            return $"{s.Value}/{s.Maximum}";
+            if (s.TooltipFormat != null)
+                return string.Format(s.TooltipFormat, s.Value, s.Minimum, s.Maximum, (s.Value - s.Minimum) / (s.Maximum - s.Minimum));
+            else
+                return $"{s.SmartFormat(s.Value)}/{s.SmartFormat(s.Maximum)}";
+        }
+
+        private string SmartFormat (float value) {
+            if ((int)value == value)
+                return value.ToString();
+            else
+                return value.ToString("F");
         }
 
         private float ClampValue (float value) {
+            if (Integral)
+                value = (float)Math.Round(value, MidpointRounding.AwayFromZero);
             return Arithmetic.Clamp(value, Minimum, Maximum);
         }
 
@@ -71,10 +92,39 @@ namespace Squared.PRGUI.Controls {
             minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumWidth);
         }
 
+        private float ValueFromPoint (RectF contentBox, Vector2 globalPosition) {
+            var thumbSize = ComputeThumbSize();
+            var localPosition = globalPosition - contentBox.Position;
+            var scaledValue = Arithmetic.Saturate(localPosition.X / contentBox.Width);
+            var rangeSize = (Maximum - Minimum);
+            var result = (rangeSize * scaledValue);
+            var interval = (NotchInterval ?? 0);
+            if (SnapToNotch && (interval > float.Epsilon)) {
+                float a = Arithmetic.Saturate((float)Math.Floor(result / interval) * interval, rangeSize), 
+                    b = Arithmetic.Saturate((float)Math.Ceiling(result / interval) * interval, rangeSize), 
+                    distA = Math.Abs(result - a), distB = Math.Abs(result - b);
+
+                if (distA < NotchMagnetism) {
+                    if (distB < NotchMagnetism) {
+                        if (distA <= distB)
+                            result = a;
+                        else
+                            result = b;
+                    } else {
+                        result = a;
+                    }
+                } else if (distB < NotchMagnetism) {
+                    result = b;
+                }
+            }
+
+            result += Minimum;
+            result = ClampValue(result);
+            return result;
+        }
+
         private RectF ComputeThumbBox (RectF contentBox, float value) {
-            var thumb = Context.Decorations.SliderThumb;
-            var thumbSize = (thumb.Margins + thumb.Padding).Size;
-            thumbSize.X = Math.Max(ThumbMinimumWidth, thumbSize.X);
+            var thumbSize = ComputeThumbSize();
             thumbSize.Y = contentBox.Height;
             var trackSpace = contentBox.Width;
             var scaledValue = (ClampValue(value) - Minimum) / (Maximum - Minimum);
@@ -82,13 +132,52 @@ namespace Squared.PRGUI.Controls {
             return new RectF(thumbPosition.Floor(), thumbSize);
         }
 
+        protected override bool OnEvent<T> (string name, T args) {
+            if (args is MouseEventArgs)
+                return OnMouseEvent(name, (MouseEventArgs)(object)args);
+            else
+                return base.OnEvent(name, args);
+        }
+
+        private bool OnMouseEvent (string name, MouseEventArgs args) {
+            switch (name) {
+                case UIEvents.MouseDown:
+                case UIEvents.MouseMove:
+                case UIEvents.MouseUp:
+                    if ((name == UIEvents.MouseMove) && (args.Buttons == MouseButtons.None))
+                        return true;
+
+                    var newValue = ValueFromPoint(GetRect(Context.Layout, contentRect: true), args.RelativeGlobalPosition);
+                    Value = newValue;
+
+                    return true;
+            }
+
+            return false;
+        }
+
+        private Vector2 ComputeThumbSize () {
+            var thumb = Context.Decorations.SliderThumb;
+            var thumbSize = (thumb.Margins + thumb.Padding).Size;
+            thumbSize.X = Math.Max(ThumbMinimumWidth, thumbSize.X);
+            return thumbSize;
+        }
+
+        protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
+            var result = base.ComputePadding(context, decorations);
+            var thumbSize = ComputeThumbSize();
+            result.Left += thumbSize.X * 0.5f;
+            result.Right += thumbSize.X * 0.5f;
+            return result;
+        }
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
             if (context.Pass == RasterizePasses.Below) {
                 var rangeSize = Maximum - Minimum;
-                var interval = Arithmetic.Clamp(NotchInterval ?? 0, 0, rangeSize);
-                var hasInterval = (interval > 0) && (interval < rangeSize) && ((rangeSize / interval) < MaxNotchCount);
+                var interval = Arithmetic.Saturate(NotchInterval ?? 0, rangeSize);
+                var hasInterval = (interval > float.Epsilon) && (interval < rangeSize) && ((rangeSize / interval) < MaxNotchCount);
 
                 if (hasInterval)
                     DrawNotches(context, ref renderer, settings, decorations, interval, rangeSize);

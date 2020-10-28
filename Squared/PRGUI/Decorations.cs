@@ -335,6 +335,11 @@ namespace Squared.PRGUI.Decorations {
 
         private void Slider_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            /*
+            settings.ContentBox.SnapAndInset(out Vector2 ca, out Vector2 cb);
+            a.X = ca.X;
+            b.X = cb.X;
+            */
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SliderCornerRadius,

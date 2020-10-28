@@ -270,6 +270,24 @@ namespace Squared.Util {
                 return value;
         }
 
+        public static float Saturate (float value) {
+            if (value < 0)
+                return 0;
+            else if (value > 1)
+                return 1;
+            else
+                return value;
+        }
+
+        public static float Saturate (float value, float max) {
+            if (value < 0)
+                return 0;
+            else if (value > max)
+                return max;
+            else
+                return value;
+        }
+
         public static int Wrap (int value, int min, int max) {
             int d = max - min + 1;
 
@@ -395,8 +413,7 @@ namespace Squared.Util {
 
             return Interpolators<T>.Linear(
                 LerpSource<T>.Get(ref a, ref b),
-                0,
-                Clamp(x, 0.0f, 1.0f)
+                0, Saturate(x)
             );
         }
 

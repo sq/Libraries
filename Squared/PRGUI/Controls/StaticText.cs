@@ -15,6 +15,7 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class StaticText : Control, IPostLayoutListener {
+        public const float AutoSizePadding = 3f;
         public const bool DiagnosticText = false;
 
         public Tween<Vector4>? TextColorPLinear = null;
@@ -179,15 +180,18 @@ namespace Squared.PRGUI.Controls {
 
             var layout = GetCurrentLayout(true);
             if (AutoSizeWidth)
-                AutoSizeComputedWidth = layout.UnconstrainedSize.X + computedPadding.Size.X;
+                AutoSizeComputedWidth = (float)Math.Ceiling(layout.UnconstrainedSize.X + computedPadding.Size.X);
             if (AutoSizeHeight)
-                AutoSizeComputedHeight = layout.Size.Y + computedPadding.Size.Y;
+                AutoSizeComputedHeight = (float)Math.Ceiling(layout.Size.Y + computedPadding.Size.Y);
         }
 
         public void Invalidate () {
             _NeedRelayout = true;
             Content.Invalidate();
             ContentMeasurement?.Invalidate();
+            // HACK: Ensure we do not erroneously wrap content that is intended to be used as an input for auto-size
+            if (AutoSizeWidth)
+                MostRecentContentWidth = null;
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -219,7 +223,7 @@ namespace Squared.PRGUI.Controls {
             var limit = FixedWidth - computedPadding.X ?? constrainedWidth;
             if (limit.HasValue)
                 // HACK: Suppress jitter
-                return (float)Math.Ceiling(limit.Value + 0.5);
+                return (float)Math.Ceiling(limit.Value) + AutoSizePadding;
             else
                 return null;
         }

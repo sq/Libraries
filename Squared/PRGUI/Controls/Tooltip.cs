@@ -59,6 +59,17 @@ namespace Squared.PRGUI {
                 return Text;
         }
 
+        public bool Equals (AbstractTooltipContent rhs) {
+            return (GetText == rhs.GetText) && Text.Equals(rhs.Text);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is AbstractTooltipContent)
+                return Equals((AbstractTooltipContent)obj);
+            else
+                return false;
+        }
+
         public static implicit operator AbstractTooltipContent (Func<Control, AbstractString> func) {
             return new AbstractTooltipContent { GetText = func };
         }

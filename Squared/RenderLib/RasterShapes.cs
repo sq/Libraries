@@ -812,7 +812,7 @@ namespace Squared.Render {
             var alpha = Math.Max(result.W, 0.001f);
             result.X /= alpha; result.Y /= alpha; result.Z /= alpha;
             result.X += delta; result.Y += delta; result.Z += delta;
-            alpha = Arithmetic.Clamp(alpha + delta, 0, 1);
+            alpha = Arithmetic.Saturate(alpha + delta);
             result.X *= alpha; result.Y *= alpha; result.Z *= alpha;
             result.W = alpha;
             return new pSRGBColor(result);

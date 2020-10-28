@@ -134,7 +134,7 @@ namespace Squared.Util {
             var clampedToRepeatCount = 
                 (RepeatCount == int.MaxValue) 
                     ? unclamped
-                    : Arithmetic.Clamp(unclamped, 0, 1f + RepeatCount);
+                    : Arithmetic.Saturate(unclamped, 1f + RepeatCount);
 
             if (RepeatCount > 0) {
                 switch (RepeatMode) {

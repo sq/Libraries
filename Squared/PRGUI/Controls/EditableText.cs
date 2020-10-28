@@ -342,7 +342,7 @@ namespace Squared.PRGUI.Controls {
         private bool OnMouseEvent (string name, MouseEventArgs args) {
             var position = new Vector2(
                 args.LocalPosition.X,
-                Arithmetic.Clamp(args.LocalPosition.Y, 0, args.ContentBox.Height - 1)
+                Arithmetic.Saturate(args.LocalPosition.Y, args.ContentBox.Height - 1)
             );
 
             var virtualPosition = position + ScrollOffset;

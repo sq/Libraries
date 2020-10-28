@@ -153,8 +153,8 @@ namespace Squared.PRGUI.Controls {
             var availableSpaceX = Math.Max(0, context.CanvasSize.X - box.Width);
             var availableSpaceY = Math.Max(0, context.CanvasSize.Y - box.Height);
             newPosition = new Vector2(
-                Arithmetic.Clamp(newPosition.X, 0, availableSpaceX),
-                Arithmetic.Clamp(newPosition.Y, 0, availableSpaceY)
+                Arithmetic.Saturate(newPosition.X, availableSpaceX),
+                Arithmetic.Saturate(newPosition.Y, availableSpaceY)
             ).Floor();
 
             if (Position == newPosition)

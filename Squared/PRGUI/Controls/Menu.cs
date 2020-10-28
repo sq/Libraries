@@ -13,7 +13,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class Menu : Container {
+    public class Menu : Container, ICustomTooltipTarget {
         // Yuck
         public const int PageSize = 8;
 
@@ -23,6 +23,16 @@ namespace Squared.PRGUI.Controls {
         public const float MenuHideSpeed = 0.25f;
 
         private Future<Control> NextResultFuture = null;
+
+        float? ICustomTooltipTarget.TooltipDisappearDelay => null;
+        float? ICustomTooltipTarget.TooltipAppearanceDelay => TooltipContent.Equals(SelectedItemTooltip) && 
+            (SelectedItem != null) &&
+            !SelectedItem.TooltipContent.Equals(default(AbstractTooltipContent))
+                ? 0f
+                : (float?)null;
+        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => true;
+        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => true;
+        bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
 
         private Control _SelectedItem;
 

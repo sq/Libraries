@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -221,7 +222,7 @@ namespace Squared.PRGUI {
         /// <summary>
         /// The control most recently interacted with by the user
         /// </summary>
-        public Control FixatedControl => KeyboardSelection ?? Hovering;
+        public Control FixatedControl => MouseCaptured ?? KeyboardSelection ?? Hovering;
 
         /// <summary>
         /// The control currently underneath the mouse cursor
@@ -445,20 +446,27 @@ namespace Squared.PRGUI {
 
         public void Update () {
             var context = MakeOperationContext();
-            _PostLayoutListeners.Clear();
-            context.PostLayoutListeners = _PostLayoutListeners;
+            var pll = Interlocked.Exchange(ref _PostLayoutListeners, null);
+            if (pll == null)
+                pll = new UnorderedList<IPostLayoutListener>();
+            else
+                pll.Clear();
+            context.PostLayoutListeners = pll;
 
-            Layout.Clear();
+            try {
+                Layout.Clear();
 
-            DoUpdateLayoutInternal(context, false);
-            Layout.Update();
-
-            if (NotifyLayoutListeners(context)) {
-                DoUpdateLayoutInternal(context, true);
+                DoUpdateLayoutInternal(context, false);
                 Layout.Update();
-                NotifyLayoutListeners(context);
-            }
 
+                if (NotifyLayoutListeners(context)) {
+                    DoUpdateLayoutInternal(context, true);
+                    Layout.Update();
+                    NotifyLayoutListeners(context);
+                }
+            } finally {
+                Interlocked.CompareExchange(ref _PostLayoutListeners, pll, null);
+            }
             UpdateAutoscroll();
         }
 
@@ -614,8 +622,10 @@ namespace Squared.PRGUI {
                 var hoveringFor = now - FirstTooltipHoverTime;
                 var disappearTimeout = now - LastTooltipHoverTime;
 
-                if ((hoveringFor >= (cttt?.TooltipAppearanceDelay ?? TooltipAppearanceDelay)) || 
-                    (disappearTimeout < disappearDelay))
+                if (
+                    (hoveringFor >= (cttt?.TooltipAppearanceDelay ?? TooltipAppearanceDelay)) || 
+                    (disappearTimeout < disappearDelay)
+                )
                     ShowTooltip(target, tooltipContent);
             } else {
                 var shouldDismissInstantly = (target != null) && IsTooltipActive && GetTooltipInstance().GetRect(Layout).Contains(LastMousePosition);
@@ -715,6 +725,29 @@ namespace Squared.PRGUI {
         /// The results of this are not necessarily accurate, but can be used to infer its ideal size for positioning.
         /// </summary>
         public void UpdateSubtreeLayout (Control subtreeRoot) {
+            var tempCtx = MakeOperationContext();
+
+            var pll = Interlocked.Exchange(ref _PostLayoutListeners, null);
+            if (pll == null)
+                pll = new UnorderedList<IPostLayoutListener>();
+            else
+                pll.Clear();
+            tempCtx.PostLayoutListeners = pll;
+
+            try {
+                UpdateSubtreeLayout(tempCtx, subtreeRoot);
+
+                if (NotifyLayoutListeners(tempCtx)) {
+                    DoUpdateLayoutInternal(tempCtx, true);
+                    UpdateSubtreeLayout(tempCtx, subtreeRoot);
+                    NotifyLayoutListeners(tempCtx);
+                }
+            } finally {
+                Interlocked.CompareExchange(ref _PostLayoutListeners, pll, null);
+            }
+        }
+
+        private void UpdateSubtreeLayout (UIOperationContext context, Control subtreeRoot) {
             ControlKey parentKey;
             Control parent;
             if (!subtreeRoot.TryGetParent(out parent))
@@ -723,12 +756,16 @@ namespace Squared.PRGUI {
                 parentKey = parent.LayoutKey;
             else {
                 // Just in case for some reason the control's parent also hasn't had layout happen...
-                UpdateSubtreeLayout(parent);
+                UpdateSubtreeLayout(context, parent);
                 return;
             }
 
-            var tempCtx = MakeOperationContext();
-            subtreeRoot.GenerateLayoutTree(ref tempCtx, parentKey, subtreeRoot.LayoutKey.IsInvalid ? (ControlKey?)null : subtreeRoot.LayoutKey);
+            subtreeRoot.GenerateLayoutTree(
+                ref context, parentKey, 
+                subtreeRoot.LayoutKey.IsInvalid 
+                    ? (ControlKey?)null 
+                    : subtreeRoot.LayoutKey
+            );
             Layout.UpdateSubtree(subtreeRoot.LayoutKey);
         }
 
