@@ -397,9 +397,15 @@ namespace Squared.PRGUI {
             // Scan upwards to build a chain of controls to apply coordinate transforms from
             TemporaryParentChain.Clear();
             TemporaryParentChain.Add(relativeTo);
+            // If the mouse is currently captured, we *always* want to apply the appropriate transform chain to
+            //  the mouse coordinates, instead of only applying it when the mouse intersects the transformed box
+            var foundMouseCapture = (relativeTo == _MouseCaptured) && (_MouseCaptured != null);
             var search = relativeTo;
-            while (search.TryGetParent(out search))
+            while (search.TryGetParent(out search)) {
+                if ((search == _MouseCaptured) && (_MouseCaptured != null))
+                    foundMouseCapture = true;
                 TemporaryParentChain.Add(search);
+            }
 
             var transformedGlobalPosition = globalPosition;
 
@@ -407,7 +413,7 @@ namespace Squared.PRGUI {
             for (int i = TemporaryParentChain.Count - 1; i >= 0; i--) {
                 var ctl = TemporaryParentChain[i];
                 var box = ctl.GetRect(Layout);
-                transformedGlobalPosition = ctl.ApplyLocalTransformToGlobalPosition(Layout, transformedGlobalPosition, ref box, false);
+                transformedGlobalPosition = ctl.ApplyLocalTransformToGlobalPosition(Layout, transformedGlobalPosition, ref box, foundMouseCapture);
             }
 
             return transformedGlobalPosition;

@@ -51,7 +51,6 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public string TooltipFormat = null;
 
-        float _MostRecentThumbPaddingWidth = 0;
         bool _WasMouseOverThumb = false;
 
         public Slider () : base () {
