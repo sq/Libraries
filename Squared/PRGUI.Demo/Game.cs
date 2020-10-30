@@ -200,9 +200,9 @@ namespace PRGUI.Demo {
             var slider = new Slider {
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                 NotchInterval = 25f,
-                NotchMagnetism = 5f,
+                NotchMagnetism = 2.99f,
                 Integral = true,
-                SnapToNotch = false,
+                SnapToNotch = true,
                 TooltipFormat = "{3:P0}"
             };
 

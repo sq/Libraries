@@ -214,7 +214,7 @@ namespace Squared.PRGUI.Controls {
                 var offset = (x / rangeSize) * settings.ContentBox.Width;
                 renderer.RasterizeLineSegment(
                     new Vector2(settings.ContentBox.Left + offset, y),
-                    new Vector2(settings.ContentBox.Left + offset, settings.ContentBox.Extent.Y),
+                    new Vector2(settings.ContentBox.Left + offset, settings.ContentBox.Extent.Y + 1f),
                     NotchThickness, NotchColor
                 );
             }
