@@ -674,7 +674,7 @@ void rasterShapeCommon (
     float outlineSizeAlpha = saturate(outlineSize / 2);
     float clampedOutlineSize = max(outlineSize / 2, sqrt(2)) * 2;
 
-    float outlineStartDistance = -(outlineSize * 0.5) + 0.5, 
+    float outlineStartDistance = -(outlineSize * 0.5) + 0.2, // This offset used to be +0.5 but that produces unpleasant artifacts at the intersection between fill/outline
         outlineEndDistance = outlineStartDistance + outlineSize,
         // Ideally this range would be smaller, but a larger range produces softer fill outlines
         //  for shapes like ellipses and lines
@@ -695,7 +695,7 @@ void rasterShapeCommon (
         }
         float outlineGamma = OutlineGammaMinusOne + 1;
         if ((outlineAlpha > 0) && (outlineGamma > 0))
-            outlineAlpha = saturate(pow(outlineAlpha, outlineGamma));
+            outlineAlpha = saturate(pow(outlineAlpha, 1.0 / outlineGamma));
     } else {
         outlineAlpha = 0;
     }
@@ -740,6 +740,9 @@ float4 composite (float4 fillColor, float4 outlineColor, float fillAlpha, float 
     }
     result = over(outlineColor, outlineAlpha, result, 1);
 
+    // Unpremultiply the output, because if we don't we get unpleasant stairstepping artifacts
+    //  for alpha gradients because the A we premultiply by does not match the A the GPU selected
+    // It's also important to do dithering and sRGB conversion on a result that is not premultiplied
     result.rgb = float4(result.rgb / max(result.a, 0.0001), result.a);
 
     if (convertToSRGB)
