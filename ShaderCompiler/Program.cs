@@ -25,6 +25,8 @@ namespace ShaderCompiler {
             if (args.Length > 4)
                 testParsePath = args[4];
 
+            var fxcPostParams = (args.Length > 5) ? args[5] : "";
+
             if (!File.Exists(fxcPath))
                 DownloadFXC(fxcDir);
             int totalFileCount = 0, updatedFileCount = 0, errorCount = 0;
@@ -42,16 +44,10 @@ namespace ShaderCompiler {
                 }
             }
 
-            string oldParams = null, oldParamsPath = Path.Combine(destDir, "params.txt");
-            if (File.Exists(oldParamsPath))
-                oldParams = File.ReadAllText(oldParamsPath);
-
-            if (oldParams != fxcParams)
-                shouldRebuild = true;
-
             Console.WriteLine("Compiling shaders from {0}...", sourceDir);
             foreach (var shader in Directory.GetFiles(sourceDir, "*.fx")) {
                 var destPath = Path.Combine(destDir, Path.GetFileName(shader) + ".bin");
+                var paramsPath = Path.Combine(destDir, Path.GetFileName(shader) + ".params");
                 var doesNotExist = !File.Exists(destPath);
                 var resultDate = File.GetLastWriteTimeUtc(destPath);
 
@@ -61,29 +57,41 @@ namespace ShaderCompiler {
 
                 var fileList = EnumerateFilenamesForShader(shader).ToList();
                 var isModified = !doesNotExist && fileList.Any((fn) => File.GetLastWriteTimeUtc(fn) >= resultDate);
+                var localFxcParams = GetFxcParamsForShader(shader, fxcParams, defines);
+                var fullFxcParams = 
+                    string.Format("/nologo {0} /T fx_2_0 {3} {1} /Fo {2}", shader, localFxcParams, destPath, fxcPostParams);
+
+                string existingParams = null;
+                shouldRebuild = true;
+                if (File.Exists(paramsPath)) {
+                    existingParams = File.ReadAllText(paramsPath, Encoding.UTF8);
+                    shouldRebuild = !existingParams.Equals(fullFxcParams);
+                }
 
                 if (doesNotExist || isModified || shouldRebuild) {
                     if (!doesNotExist)
                         File.Delete(destPath);
 
-                    var localFxcParams = GetFxcParamsForShader(shader, fxcParams, defines);
-                    var fullFxcParams = 
-                        string.Format("/nologo {0} /T fx_2_0 {1} /Fo {2}", shader, localFxcParams, destPath);
-
                     Console.ForegroundColor = ConsoleColor.White;
                     Console.WriteLine(
                         " {0}{2}Compiling with params '{1}'...", 
                         doesNotExist 
-                            ? "does not exist"
+                            ? "output missing"
                             : (
                                 shouldRebuild
-                                    ? "is forced to rebuild"
+                                    ? "parameters changed"
                                     : "is outdated"
                             ), 
                         localFxcParams,
                         Environment.NewLine
                     );
                     needNewline = false;
+
+                    try {
+                        if (File.Exists(paramsPath))
+                            File.Delete(paramsPath);
+                    } catch {
+                    }
 
                     int exitCode;
                     {
@@ -102,18 +110,21 @@ namespace ShaderCompiler {
 
                     if (exitCode != 0) {
                         errorCount += 1;
-                    } else if (!String.IsNullOrWhiteSpace(testParsePath)) {
-                        var psi = new ProcessStartInfo(
-                            testParsePath, string.Format("glsl120 \"{0}\"", destPath)
-                        ) {
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true
-                        };
-                        using (var outStream = File.OpenWrite(destPath.Replace(".bin", ".glsl")))
-                        using (var p = Process.Start(psi)) {
-                            p.StandardOutput.BaseStream.CopyTo(outStream);
-                            p.StandardOutput.Close();
-                            p.WaitForExit();
+                    } else {
+                        File.WriteAllText(paramsPath, fullFxcParams, Encoding.UTF8);
+                        if (!String.IsNullOrWhiteSpace(testParsePath)) {
+                            var psi = new ProcessStartInfo(
+                                testParsePath, string.Format("glsl120 \"{0}\"", destPath)
+                            ) {
+                                UseShellExecute = false,
+                                RedirectStandardOutput = true
+                            };
+                            using (var outStream = File.OpenWrite(destPath.Replace(".bin", ".glsl")))
+                            using (var p = Process.Start(psi)) {
+                                p.StandardOutput.BaseStream.CopyTo(outStream);
+                                p.StandardOutput.Close();
+                                p.WaitForExit();
+                            }
                         }
                     }
 
@@ -130,11 +141,6 @@ namespace ShaderCompiler {
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("Compiled {0}/{1} shader(s) with {3} error(s) to '{2}'", updatedFileCount, totalFileCount, destDir, errorCount);
             Console.ResetColor();
-
-            if (errorCount == 0)
-                File.WriteAllText(oldParamsPath, fxcParams);
-            else
-                File.Delete(oldParamsPath);
 
             if (Debugger.IsAttached)
                 Console.ReadLine();

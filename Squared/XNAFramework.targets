@@ -32,6 +32,8 @@
     <ShaderBinDirectory Condition="'$(ShaderBinDirectory)' == ''">$(ShaderDirectory)\bin</ShaderBinDirectory>
     <ShaderLocalBinDirectory>$(ShaderBinDirectory)\$(Platform)\$(Configuration)</ShaderLocalBinDirectory>
     <ShaderCompilerPath>$(SquaredPath)\ShaderCompiler\bin\ShaderCompiler.exe</ShaderCompilerPath>
+    <!-- The 'disable preshaders' flag has to come last, /Od /O3 etc clear it -->
+    <ShaderCompilerExtraOptions>/Op</ShaderCompilerExtraOptions>
 
     <AutoPlatforms Condition="'$(AutoPlatforms)' == ''">false</AutoPlatforms>
     <TestParsePath Condition="'$(GenerateShaderDisassembly)' != 'false'">$(FNALibsPath)\x86\testparse.exe</TestParsePath>
@@ -163,7 +165,7 @@
     <Message Importance="High" Text="Compiling shaders" />
     <Error Text="You must set SquaredPath to use the shader compiler" Condition=" '$(SquaredPath)' == '' " />
 
-    <Exec Command='"$(ShaderCompilerPath)" "$(SquaredPath)\ext\fxc" "$(ShaderDirectory)" "$(ShaderLocalBinDirectory)" "/O$(ShaderOptimizationLevel) /Zi $(ShaderCompilerDefines)" "$(TestParsePath)"' />
+    <Exec Command='"$(ShaderCompilerPath)" "$(SquaredPath)\ext\fxc" "$(ShaderDirectory)" "$(ShaderLocalBinDirectory)" "/O$(ShaderOptimizationLevel) /Zi $(ShaderCompilerDefines)" "$(TestParsePath)" "$(ShaderCompilerExtraOptions)"' />
   </Target>
 
   <ItemGroup Condition="'$(ShaderDirectory)' != ''">
