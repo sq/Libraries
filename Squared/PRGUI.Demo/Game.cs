@@ -189,6 +189,16 @@ namespace PRGUI.Demo {
                 Margins = default(Margins),
                 LayoutFlags = ControlFlags.Layout_Anchor_Right | ControlFlags.Layout_Fill_Column | ControlFlags.Layout_ForceBreak,
                 BackgroundColor = new Color(128, 16, 16),
+                BackgroundImage = new Squared.PRGUI.Decorations.BackgroundImageSettings {
+                    Texture = TextureLoader.Load("ghost"),
+                    Settings = {
+                        Origin = new Vector2(0, 0.5f),
+                        Position = new Vector2(0.05f, 0.5f),
+                        Scale = Vector2.One * 0.9f,
+                        
+                    }
+                },
+                TextAlignment = HorizontalAlignment.Right,
                 TooltipContent = "Hide this window temporarily"
             };
 
@@ -199,11 +209,13 @@ namespace PRGUI.Demo {
 
             var slider = new Slider {
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
+                Value = 80,
                 NotchInterval = 25f,
                 NotchMagnetism = 2.99f,
                 Integral = true,
                 SnapToNotch = true,
-                TooltipFormat = "{3:P0}"
+                TooltipFormat = "{3:P0}",
+                BackgroundImage = TextureLoader.Load("volume")
             };
 
             var windowBgColor = new Color(70, 86, 90);

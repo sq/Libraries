@@ -1,3 +1,7 @@
+#ifndef BACKGROUND_MIP_BIAS
+#define BACKGROUND_MIP_BIAS -0.5
+#endif
+
 #define ENABLE_DITHERING 1
 
 #include "CompilerWorkarounds.fxh"
@@ -784,7 +788,7 @@ float4 texturedShapeCommon (
     float2 texCoord = (posTextureScaled * texSize) + texRgn.xy;
     texCoord = clamp(texCoord, texRgn.xy, texRgn.zw);
 
-    float4 texColor = tex2D(TextureSampler, texCoord);
+    float4 texColor = tex2Dbias(TextureSampler, float4(texCoord, 0, BACKGROUND_MIP_BIAS));
     if (BlendInLinearSpace)
         texColor = pSRGBToPLinear(texColor);
 

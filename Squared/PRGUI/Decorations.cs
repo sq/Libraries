@@ -14,10 +14,46 @@ using Squared.Render.Text;
 using Squared.Util;
 
 namespace Squared.PRGUI.Decorations {
+    public class BackgroundImageSettings {
+        public AbstractTextureReference Texture;
+        public Bounds TextureBounds;
+        public RasterTextureSettings Settings;
+
+        public BackgroundImageSettings (AbstractTextureReference texture = default(AbstractTextureReference)) {
+            Texture = texture;
+            Settings = new RasterTextureSettings {
+                SamplerState = SamplerState.LinearClamp,
+                Mode = RasterTextureCompositeMode.Over,
+                Scale = Vector2.One,
+                PreserveAspectRatio = true,
+                Origin = Vector2.One * 0.5f,
+                Position = Vector2.One * 0.5f
+            };
+            TextureBounds = Bounds.Unit;
+        }
+
+        public static implicit operator BackgroundImageSettings (Texture2D texture) {
+            return new BackgroundImageSettings(texture);
+        }
+    }
+
     public struct DecorationSettings {
         public RectF Box, ContentBox;
         public ControlStates State;
         public pSRGBColor? BackgroundColor;
+        public BackgroundImageSettings BackgroundImage;
+
+        public Texture2D GetTexture () {
+            return BackgroundImage?.Texture.Instance;
+        }
+
+        public Bounds GetTextureRegion () {
+            return BackgroundImage?.TextureBounds ?? Bounds.Unit;
+        }
+
+        public RasterTextureSettings GetTextureSettings () {
+            return BackgroundImage?.Settings ?? default(RasterTextureSettings);
+        }
     }
 
     public interface IBaseDecorator {
@@ -308,7 +344,10 @@ namespace Squared.PRGUI.Decorations {
                 outlineRadius: thickness, outlineColor: outlineColor * alpha,
                 innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
                 fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
-                shadow: InteractableShadow
+                shadow: InteractableShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
             );
         }
 
@@ -346,7 +385,10 @@ namespace Squared.PRGUI.Decorations {
                 outlineRadius: InertOutlineThickness, outlineColor: Color.Transparent,
                 innerColor: settings.BackgroundColor ?? SliderFillColor, 
                 outerColor: settings.BackgroundColor ?? SliderFillColor,
-                shadow: SliderShadow
+                shadow: SliderShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
             );
         }
 
@@ -496,7 +538,10 @@ namespace Squared.PRGUI.Decorations {
                 outlineRadius: InertOutlineThickness, outlineColor: ContainerOutlineColor,
                 innerColor: settings.BackgroundColor ?? ContainerFillColor, 
                 outerColor: settings.BackgroundColor ?? ContainerFillColor,
-                shadow: ContainerShadow
+                shadow: ContainerShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
             );
         }
 
@@ -509,7 +554,10 @@ namespace Squared.PRGUI.Decorations {
                 outlineRadius: InertOutlineThickness, outlineColor: FloatingContainerOutlineColor ?? ContainerOutlineColor,
                 innerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor, 
                 outerColor: settings.BackgroundColor ?? FloatingContainerFillColor ?? ContainerFillColor,
-                shadow: FloatingContainerShadow ?? ContainerShadow
+                shadow: FloatingContainerShadow ?? ContainerShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
             );
         }
 
@@ -525,7 +573,10 @@ namespace Squared.PRGUI.Decorations {
                 outlineRadius: InertOutlineThickness, outlineColor: TooltipOutlineColor,
                 innerColor: settings.BackgroundColor ?? color2, 
                 outerColor: settings.BackgroundColor ?? color1,
-                shadow: TooltipShadow ?? FloatingContainerShadow
+                shadow: TooltipShadow ?? FloatingContainerShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
             );
         }
 
@@ -539,7 +590,10 @@ namespace Squared.PRGUI.Decorations {
                 a, b,
                 radius: InertCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: settings.BackgroundColor.Value, outerColor: settings.BackgroundColor.Value
+                innerColor: settings.BackgroundColor.Value, outerColor: settings.BackgroundColor.Value,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
             );
         }
 
@@ -559,7 +613,10 @@ namespace Squared.PRGUI.Decorations {
                 // FIXME: Separate textarea fill color?
                 innerColor: (settings.BackgroundColor ?? ContainerFillColor), 
                 outerColor: (settings.BackgroundColor ?? ContainerFillColor),
-                shadow: EditableShadow
+                shadow: EditableShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
             );
         }
 

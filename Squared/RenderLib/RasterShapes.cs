@@ -119,6 +119,7 @@ namespace Squared.Render.RasterShape {
     }
 
     public struct RasterTextureSettings {
+        public SamplerState SamplerState;
         internal Vector4 ModeAndSize;
         internal Vector4 Placement;
 
@@ -171,7 +172,8 @@ namespace Squared.Render.RasterShape {
         }
 
         public bool Equals (RasterTextureSettings rhs) {
-            return (ModeAndSize == rhs.ModeAndSize) &&
+            return (SamplerState == rhs.SamplerState) && 
+                (ModeAndSize == rhs.ModeAndSize) &&
                 (Placement == rhs.Placement);
         }
 
@@ -675,7 +677,7 @@ namespace Squared.Render.RasterShape {
 
                     // FIXME: why the hell
                     device.Textures[0] = Texture;
-                    device.SamplerStates[0] = SamplerState ?? SamplerState.LinearWrap;
+                    device.SamplerStates[0] = sb.TextureSettings.SamplerState ?? SamplerState ?? SamplerState.LinearWrap;
                     device.Textures[3] = RampTexture;
 
                     scratchBindings[1] = new VertexBufferBinding(

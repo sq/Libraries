@@ -89,6 +89,7 @@ namespace Squared.PRGUI {
         public float? MinimumWidth, MinimumHeight;
         public float? MaximumWidth, MaximumHeight;
         public Tween<Vector4>? BackgroundColorPLinear = null;
+        public BackgroundImageSettings BackgroundImage = null;
         public Tween<float> Opacity = 1;
         private bool _BackgroundColorEventFired, _OpacityEventFired;
 
@@ -504,7 +505,8 @@ namespace Squared.PRGUI {
                 Box = box,
                 ContentBox = contentBox,
                 State = state,
-                BackgroundColor = GetBackgroundColor(Context.NowL)
+                BackgroundColor = GetBackgroundColor(Context.NowL),
+                BackgroundImage = BackgroundImage
             };
         }
 
