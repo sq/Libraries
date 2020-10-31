@@ -112,6 +112,56 @@ namespace Squared.Render.RasterShape {
         Horizontal = Angular + 90,
     }
 
+    public enum RasterTextureCompositeMode : byte {
+        Multiply = 0,
+        Over = 1,
+        Under = 2
+    }
+
+    public struct RasterTextureSettings {
+        internal Vector4 ModeAndSize;
+        internal Vector4 Placement;
+
+        public RasterTextureCompositeMode Mode {
+            get {
+                return (RasterTextureCompositeMode)(int)ModeAndSize.X;
+            }
+            set {
+                ModeAndSize.X = (float)(int)value;
+            }
+        }
+
+        public Vector2 Scale {
+            get {
+                return new Vector2(ModeAndSize.Y + 1, ModeAndSize.Z + 1);
+            }
+            set {
+                ModeAndSize.Y = value.X - 1;
+                ModeAndSize.Z = value.Y - 1;
+            }
+        }
+
+        public Vector2 Origin {
+            get {
+                return new Vector2(Placement.X, Placement.Y);
+            }
+            set {
+                Placement.X = value.X;
+                Placement.Y = value.Y;
+            }
+        }
+
+        public Vector2 Position {
+            get {
+                return new Vector2(Placement.Z, Placement.W);
+            }
+            set {
+                Placement.Z = value.X;
+                Placement.W = value.Y;
+            }
+        }
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct RasterShapeDrawCall {
         public RasterShapeType Type;
@@ -225,6 +275,7 @@ namespace Squared.Render.RasterShape {
         ///  corner of the shape's bounding box.
         /// </summary>
         public Bounds TextureBounds;
+        public RasterTextureSettings TextureSettings;
 
         /// <summary>
         /// Configures the shadow for the raster shape, if any.

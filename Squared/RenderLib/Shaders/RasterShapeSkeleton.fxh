@@ -13,6 +13,9 @@ sampler TextureSampler : register(s0) {
     Texture = (RasterTexture);
 };
 
+uniform float4 TextureModeAndSize;
+uniform float4 TexturePlacement;
+
 // HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
 #define OutlineSizeCompensation 2.2
 
@@ -774,7 +777,17 @@ float4 texturedShapeCommon (
     if (BlendInLinearSpace)
         texColor = pSRGBToPLinear(texColor);
 
-    fill *= texColor;
+    // Under
+    if (TextureModeAndSize.x > 1.5) {
+        fill = over(fill, fillAlpha, texColor, 1);
+        fillAlpha = 1;
+    // Over
+    } else if (TextureModeAndSize.x > 0.5) {
+        fill = over(texColor, 1, fill, fillAlpha);
+        fillAlpha = 1;
+    // Multiply
+    } else
+        fill *= texColor;
 
     float4 result = composite(fill, outlineColor, fillAlpha, outlineAlpha, shadowAlpha, BlendInLinearSpace, false, enableShadow, vpos);
     return result;

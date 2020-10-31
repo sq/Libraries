@@ -470,7 +470,7 @@ namespace Squared.Render.Convenience {
                 }
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private bool SetItemAtIndex (int index, ref CachedBatch value) {
                 switch (index) {
                     case 0:
@@ -1121,7 +1121,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
@@ -1145,8 +1145,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
@@ -1161,7 +1161,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var eb = GetRasterShapeBatch(
@@ -1185,8 +1185,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
@@ -1200,7 +1200,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
@@ -1224,8 +1224,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
@@ -1240,7 +1240,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             float _endRadius = endRadius.GetValueOrDefault(startRadius);
@@ -1267,8 +1267,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
@@ -1283,7 +1283,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
@@ -1307,8 +1307,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
@@ -1323,7 +1323,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
@@ -1347,8 +1347,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
@@ -1363,7 +1363,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
@@ -1387,8 +1387,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
@@ -1403,7 +1403,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
@@ -1426,8 +1426,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
@@ -1442,7 +1442,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
@@ -1465,8 +1465,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
@@ -1480,7 +1480,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
@@ -1503,8 +1503,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
@@ -1519,7 +1519,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             using (var rsb = GetRasterShapeBatch(
@@ -1542,8 +1542,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
@@ -1565,7 +1565,7 @@ namespace Squared.Render.Convenience {
             int? layer = null, bool? worldSpace = null, bool? blendInLinearSpace = null,
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
-            Texture2D rampTexture = null
+            RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null
         ) {
             var fillModeF = ConvertFillMode(fillMode, fillAngle);
             var centerAngleDegrees = startAngleDegrees + (sizeDegrees / 2);
@@ -1595,8 +1595,8 @@ namespace Squared.Render.Convenience {
                     FillSize = fillSize,
                     AnnularRadius = annularRadius ?? 0,
                     Shadow = shadow ?? RasterShadow,
-                    // FIXME
-                    TextureBounds = Bounds.Unit,
+                    TextureBounds = textureRegion ?? Bounds.Unit,
+                    TextureSettings = textureSettings ?? default(RasterTextureSettings),
                     SoftOutline = RasterSoftOutlines
                 });
         }
