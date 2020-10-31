@@ -35,6 +35,7 @@ namespace Squared.PRGUI {
         float? TooltipDisappearDelay { get; }
         bool ShowTooltipWhileMouseIsHeld { get; }
         bool ShowTooltipWhileMouseIsNotHeld { get; }
+        bool ShowTooltipWhileKeyboardFocus { get; }
         bool HideTooltipOnMousePress { get; }
     }
 

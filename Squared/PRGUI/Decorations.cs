@@ -581,7 +581,7 @@ namespace Squared.PRGUI.Decorations {
         }
 
         private void StaticText_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            if (!settings.BackgroundColor.HasValue)
+            if (!settings.BackgroundColor.HasValue && (settings.GetTexture() == null))
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
@@ -805,7 +805,7 @@ namespace Squared.PRGUI.Decorations {
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SelectionCornerRadius,
-                outlineRadius: (isFocused && !isCaret) ? 0.7f : 0f, 
+                outlineRadius: (isFocused && !isCaret) ? 0.9f : 0f, 
                 outlineColor: outlineColor,
                 innerColor: fillColor, outerColor: fillColor,
                 shadow: SelectionShadow

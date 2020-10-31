@@ -593,9 +593,12 @@ namespace Squared.PRGUI {
             if (cttt == null)
                 return !leftButtonPressed;
 
-            return leftButtonPressed
+            var result = (leftButtonPressed
                 ? cttt.ShowTooltipWhileMouseIsHeld
-                : cttt.ShowTooltipWhileMouseIsNotHeld;
+                : cttt.ShowTooltipWhileMouseIsNotHeld);
+            if (FixatedControl == KeyboardSelection)
+                result |= cttt.ShowTooltipWhileKeyboardFocus;
+            return result;
         }
 
         private void UpdateTooltip (bool leftButtonPressed) {

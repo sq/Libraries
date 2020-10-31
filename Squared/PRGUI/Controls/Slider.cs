@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.Render.Convenience;
@@ -22,6 +23,7 @@ namespace Squared.PRGUI.Controls {
         private float _Value = 50;
 
         public float? NotchInterval;
+        public float KeyboardSpeed = 1;
         public float NotchMagnetism = 99999;
         public bool SnapToNotch = false;
         public bool Integral = false;
@@ -44,6 +46,7 @@ namespace Squared.PRGUI.Controls {
         float? ICustomTooltipTarget.TooltipAppearanceDelay => HasCustomTooltipContent ? (float?)null : 0f;
         bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => !HasCustomTooltipContent;
         bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => HasCustomTooltipContent;
+        bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
         bool ICustomTooltipTarget.HideTooltipOnMousePress => HasCustomTooltipContent;
 
         /// <summary>
@@ -91,14 +94,12 @@ namespace Squared.PRGUI.Controls {
             minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumWidth);
         }
 
-        private float ValueFromPoint (RectF contentBox, Vector2 globalPosition) {
-            var thumbSize = ComputeThumbSize();
-            var localPosition = globalPosition - contentBox.Position;
-            var scaledValue = Arithmetic.Saturate(localPosition.X / contentBox.Width);
-            var rangeSize = (Maximum - Minimum);
-            var result = (rangeSize * scaledValue);
+        private float ApplyNotchMagnetism (float result) {
             var interval = (NotchInterval ?? 0);
+
             if (SnapToNotch && (interval > float.Epsilon)) {
+                var rangeSize = (Maximum - Minimum);
+                result -= Minimum;
                 float a = Arithmetic.Saturate((float)Math.Floor(result / interval) * interval, rangeSize), 
                     b = Arithmetic.Saturate((float)Math.Ceiling(result / interval) * interval, rangeSize), 
                     distA = Math.Abs(result - a), distB = Math.Abs(result - b);
@@ -115,10 +116,19 @@ namespace Squared.PRGUI.Controls {
                 } else if (distB < NotchMagnetism) {
                     result = b;
                 }
+                result += Minimum;
             }
 
-            result += Minimum;
-            result = ClampValue(result);
+            return ClampValue(result);
+        }
+
+        private float ValueFromPoint (RectF contentBox, Vector2 globalPosition) {
+            var thumbSize = ComputeThumbSize();
+            var localPosition = globalPosition - contentBox.Position;
+            var scaledValue = Arithmetic.Saturate(localPosition.X / contentBox.Width);
+            var rangeSize = (Maximum - Minimum);
+            var result = (rangeSize * scaledValue) + Minimum;
+            result = ApplyNotchMagnetism(result);
             return result;
         }
 
@@ -134,8 +144,49 @@ namespace Squared.PRGUI.Controls {
         protected override bool OnEvent<T> (string name, T args) {
             if (args is MouseEventArgs)
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
+            else if (args is KeyEventArgs)
+                return OnKeyEvent(name, (KeyEventArgs)(object)args);
             else
                 return base.OnEvent(name, args);
+        }
+
+        private bool OnKeyEvent (string name, KeyEventArgs args) {
+            switch (name) {
+                case UIEvents.KeyPress:
+                    Context.OverrideKeyboardSelection(this);
+                    var speed = args.Modifiers.Control
+                        ? (NotchInterval ?? 10 * KeyboardSpeed)
+                        : KeyboardSpeed;
+                    float oldValue = Value, newValue;
+                    switch (args.Key) {
+                        case Keys.Up:
+                            newValue = Minimum;
+                            break;
+                        case Keys.Down:
+                            newValue = Maximum;
+                            break;
+                        case Keys.Left:
+                            newValue = oldValue - speed;
+                            break;
+                        case Keys.Right:
+                            newValue = oldValue + speed;
+                            break;
+                        default:
+                            return false;
+                    }
+
+                    var snappedValue = ApplyNotchMagnetism(newValue);
+                    var snapDelta = (snappedValue - oldValue);
+                    int snapDirection = Math.Sign(snapDelta), moveDirection = Math.Sign(newValue - oldValue);
+                    // Ensure we don't get stuck as a result of value snapping
+                    if ((Math.Abs(snapDelta) <= float.Epsilon) || (snapDirection != moveDirection))
+                        Value = newValue;
+                    else
+                        Value = snappedValue;
+                    return true;
+            }
+
+            return false;
         }
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
