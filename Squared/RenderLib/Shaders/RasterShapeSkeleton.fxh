@@ -13,7 +13,9 @@ sampler TextureSampler : register(s0) {
     Texture = (RasterTexture);
 };
 
+// Mode, ScaleX, ScaleY
 uniform float4 TextureModeAndSize;
+// Origin, Position
 uniform float4 TexturePlacement;
 
 // HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
@@ -766,11 +768,20 @@ float4 texturedShapeCommon (
     in bool enableShadow, in float2 vpos
 ) {
     float2 sizePx = br - tl;
+    
     sizePx = max(abs(sizePx), 0.001) * sign(sizePx);
     float2 posRelative = worldPosition - tl;
+    posRelative -= TexturePlacement.zw * sizePx;
+
+    if (TextureModeAndSize.y > 0.5)
+        sizePx = min(sizePx.x, sizePx.y);
+    float2 posRelativeScaled = posRelative / sizePx;
+
+    float2 posTextureScaled = posRelativeScaled / (TextureModeAndSize.zw + 1);
+    posTextureScaled += TexturePlacement.xy;
+
     float2 texSize = (texRgn.zw - texRgn.xy);
-    
-    float2 texCoord = ((posRelative / sizePx) * texSize) + texRgn.xy;
+    float2 texCoord = (posTextureScaled * texSize) + texRgn.xy;
     texCoord = clamp(texCoord, texRgn.xy, texRgn.zw);
 
     float4 texColor = tex2D(TextureSampler, texCoord);
@@ -779,11 +790,11 @@ float4 texturedShapeCommon (
 
     // Under
     if (TextureModeAndSize.x > 1.5) {
-        fill = over(fill, fillAlpha, texColor, 1);
+        fill = over(fill, fillAlpha, texColor, fillAlpha);
         fillAlpha = 1;
     // Over
     } else if (TextureModeAndSize.x > 0.5) {
-        fill = over(texColor, 1, fill, fillAlpha);
+        fill = over(texColor, fillAlpha, fill, fillAlpha);
         fillAlpha = 1;
     // Multiply
     } else

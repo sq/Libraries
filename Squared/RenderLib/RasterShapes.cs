@@ -131,13 +131,22 @@ namespace Squared.Render.RasterShape {
             }
         }
 
-        public Vector2 Scale {
+        public bool PreserveAspectRatio {
             get {
-                return new Vector2(ModeAndSize.Y + 1, ModeAndSize.Z + 1);
+                return ModeAndSize.Y > 0.5f;
             }
             set {
-                ModeAndSize.Y = value.X - 1;
-                ModeAndSize.Z = value.Y - 1;
+                ModeAndSize.Y = value ? 1f : 0f;
+            }
+        }
+
+        public Vector2 Scale {
+            get {
+                return new Vector2(ModeAndSize.Z + 1, ModeAndSize.W + 1);
+            }
+            set {
+                ModeAndSize.Z = value.X - 1;
+                ModeAndSize.W = value.Y - 1;
             }
         }
 
@@ -159,6 +168,18 @@ namespace Squared.Render.RasterShape {
                 Placement.Z = value.X;
                 Placement.W = value.Y;
             }
+        }
+
+        public bool Equals (RasterTextureSettings rhs) {
+            return (ModeAndSize == rhs.ModeAndSize) &&
+                (Placement == rhs.Placement);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is RasterTextureSettings)
+                return Equals((RasterTextureSettings)obj);
+            else
+                return false;
         }
     }
 
@@ -375,7 +396,9 @@ namespace Squared.Render.RasterShape {
             RampTexture,
             ShadowOptions,
             ShadowOptions2,
-            ShadowColorLinear;
+            ShadowColorLinear,
+            TextureModeAndSize,
+            TexturePlacement;
 
         public RasterShader (Material material) {
             Material = material;
@@ -386,6 +409,8 @@ namespace Squared.Render.RasterShape {
             ShadowOptions = p["ShadowOptions"];
             ShadowOptions2 = p["ShadowOptions2"];
             ShadowColorLinear = p["ShadowColorLinear"];
+            TextureModeAndSize = p["TextureModeAndSize"];
+            TexturePlacement = p["TexturePlacement"];
         }
     }
 
@@ -409,6 +434,7 @@ namespace Squared.Render.RasterShape {
             public RasterShadowSettings Shadow;
             public bool Shadowed, Simple;
             public int InstanceOffset, InstanceCount;
+            internal RasterTextureSettings TextureSettings;
         }
 
         private BufferGenerator<RasterShapeVertex> _BufferGenerator = null;
@@ -488,6 +514,7 @@ namespace Squared.Render.RasterShape {
                 var lastShadow = _DrawCalls[0].Shadow;
                 var lastOffset = 0;
                 var lastIsSimple = _DrawCalls[0].IsSimple;
+                var lastTextureSettings = _DrawCalls[0].TextureSettings;
 
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     var dc = _DrawCalls[i];
@@ -496,7 +523,8 @@ namespace Squared.Render.RasterShape {
                         ((dc.Type != lastType) && !UseUbershader) ||
                         (dc.BlendInLinearSpace != lastBlend) ||
                         !dc.Shadow.Equals(ref lastShadow) ||
-                        (dc.IsSimple != lastIsSimple)
+                        (dc.IsSimple != lastIsSimple) ||
+                        !dc.TextureSettings.Equals(lastTextureSettings)
                     ) {
                         _SubBatches.Add(new SubBatch {
                             InstanceOffset = lastOffset,
@@ -505,12 +533,14 @@ namespace Squared.Render.RasterShape {
                             Type = lastType,
                             Shadow = lastShadow,
                             Shadowed = ShouldBeShadowed(ref lastShadow),
-                            Simple = lastIsSimple != 0
+                            Simple = lastIsSimple != 0,
+                            TextureSettings = lastTextureSettings
                         });
                         lastOffset = i;
                         lastType = dc.Type;
                         lastShadow = dc.Shadow;
                         lastIsSimple = dc.IsSimple;
+                        lastTextureSettings = dc.TextureSettings;
                     }
 
                     var vert = new RasterShapeVertex {
@@ -536,7 +566,8 @@ namespace Squared.Render.RasterShape {
                     Type = lastType,
                     Shadow = lastShadow,
                     Shadowed = ShouldBeShadowed(ref lastShadow),
-                    Simple = lastIsSimple != 0
+                    Simple = lastIsSimple != 0,
+                    TextureSettings = lastTextureSettings
                 });
 
                 NativeBatch.RecordPrimitives(count * 2);
@@ -630,6 +661,8 @@ namespace Squared.Render.RasterShape {
                         shadowExpansion, sb.Shadow.Inside ? 1 : 0
                     ));
                     rasterShader.ShadowColorLinear.SetValue(shadowColor);
+                    rasterShader.TextureModeAndSize?.SetValue(sb.TextureSettings.ModeAndSize);
+                    rasterShader.TexturePlacement?.SetValue(sb.TextureSettings.Placement);
 
                     manager.ApplyMaterial(rasterShader.Material);
 
