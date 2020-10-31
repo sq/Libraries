@@ -36,18 +36,21 @@ namespace Squared.PRGUI.Controls {
                     return;
 
                 _Value = value;
+                InvalidateTooltip();
                 FireEvent(UIEvents.ValueChanged);
             }
         }
 
-        protected bool HasCustomTooltipContent => TooltipContent.GetText != GetDefaultTooltip;
+        protected bool HasCustomTooltipContent => !TooltipContent.Equals(default(AbstractTooltipContent));
 
         float? ICustomTooltipTarget.TooltipDisappearDelay => null;
         float? ICustomTooltipTarget.TooltipAppearanceDelay => HasCustomTooltipContent ? (float?)null : 0f;
-        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => !HasCustomTooltipContent;
+        bool ICustomTooltipTarget.ShowTooltipWhileMouseIsHeld => true;
         bool ICustomTooltipTarget.ShowTooltipWhileMouseIsNotHeld => HasCustomTooltipContent;
         bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
-        bool ICustomTooltipTarget.HideTooltipOnMousePress => HasCustomTooltipContent;
+        bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
+
+        new public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
 
         /// <summary>
         /// A string.Format format string, where {0} is Value, {1} is Minimum, {2} is Maximum, and {3} is Value scaled to [0, 1]
@@ -59,22 +62,39 @@ namespace Squared.PRGUI.Controls {
         public Slider () : base () {
             AcceptsFocus = true;
             AcceptsMouseInput = true;
-            TooltipContent = new AbstractTooltipContent(GetDefaultTooltip);
+            base.TooltipContent = new AbstractTooltipContent(GetDefaultTooltip);
         }
+
+        private readonly StringBuilder TooltipBuilder = new StringBuilder();
+        private readonly object[] TooltipFormatArgs = new object[4];
 
         private static AbstractString GetDefaultTooltip (Control c) {
             var s = (Slider)c;
-            if (s.TooltipFormat != null)
-                return string.Format(s.TooltipFormat, s.Value, s.Minimum, s.Maximum, (s.Value - s.Minimum) / (s.Maximum - s.Minimum));
-            else
-                return $"{s.SmartFormat(s.Value)}/{s.SmartFormat(s.Maximum)}";
+            s.TooltipBuilder.Clear();
+            if (!s.TooltipContent.Equals(default(AbstractTooltipContent))) {
+                var ct = s.TooltipContent.Get(s);
+                s.TooltipBuilder.Append(ct.ToString());
+                s.TooltipBuilder.Append(": ");
+            }
+            if (s.TooltipFormat != null) {
+                s.TooltipFormatArgs[0] = s.Value;
+                s.TooltipFormatArgs[1] = s.Minimum;
+                s.TooltipFormatArgs[2] = s.Maximum;
+                s.TooltipFormatArgs[3] = (s.Value - s.Minimum) / (s.Maximum - s.Minimum);
+                s.TooltipBuilder.AppendFormat(s.TooltipFormat, s.TooltipFormatArgs);
+            } else {
+                SmartAppend(s.TooltipBuilder, s.Value);
+                s.TooltipBuilder.Append('/');
+                SmartAppend(s.TooltipBuilder, s.Maximum);
+            }
+            return s.TooltipBuilder;
         }
 
-        private string SmartFormat (float value) {
+        private static void SmartAppend (StringBuilder sb, float value) {
             if ((int)value == value)
-                return value.ToString();
+                sb.Append((int)value);
             else
-                return value.ToString("F");
+                sb.AppendFormat("{0:F}", value);
         }
 
         private float ClampValue (float value) {

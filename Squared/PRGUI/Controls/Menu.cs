@@ -68,10 +68,17 @@ namespace Squared.PRGUI.Controls {
                 var m = ctl as Menu;
                 if (m == null)
                     return default(AbstractString);
-                else
-                    return m._SelectedItem?.TooltipContent.Get(m._SelectedItem) ?? default(AbstractString);
+
+                AbstractString result = default(AbstractString);
+                if (m._SelectedItem != null)
+                    result = m._SelectedItem.TooltipContent.Get(m._SelectedItem);
+                if (result == default(AbstractString))
+                    result = m.TooltipContent.Get(m);
+                return result;
             }
         );
+
+        new public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
 
         public Menu ()
             : base () {
@@ -82,7 +89,7 @@ namespace Squared.PRGUI.Controls {
             PaintOrder = 9900;
             ClipChildren = true;
             ShowHorizontalScrollbar = false;
-            TooltipContent = SelectedItemTooltip;
+            base.TooltipContent = SelectedItemTooltip;
         }
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {

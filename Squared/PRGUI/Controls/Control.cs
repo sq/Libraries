@@ -175,6 +175,7 @@ namespace Squared.PRGUI {
         public int PaintOrder { get; set; } = 0;
 
         public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
+        internal int TooltipContentVersion = 0;
 
         protected virtual bool HasChildren => false;
         protected virtual bool ShouldClipContent => false;
@@ -183,6 +184,10 @@ namespace Squared.PRGUI {
         protected WeakReference<Control> WeakParent = null;
 
         private RectF LastParentRect;
+
+        protected void InvalidateTooltip () {
+            TooltipContentVersion++;
+        }
 
         protected static void UpdateColor (ref Tween<Vector4>? v4, Tween<Color>? value) {
             if (value == null) {

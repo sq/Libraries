@@ -215,6 +215,7 @@ namespace PRGUI.Demo {
                 Integral = true,
                 SnapToNotch = true,
                 TooltipFormat = "{3:P0}",
+                TooltipContent = "Volume",
                 BackgroundImage = TextureLoader.Load("volume")
             };
 
@@ -254,6 +255,7 @@ namespace PRGUI.Demo {
                     new StaticText { Text = "Item 2" },
                     new StaticText {
                         Text = "Extremely long menu item with a bunch of text in it. This thing should be truncated pretty aggressively",
+                        TooltipContent = "This menu item has a custom tooltip",
                         BackgroundColor = Color.Blue,
                         Wrap = false
                     },

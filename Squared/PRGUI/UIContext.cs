@@ -266,6 +266,7 @@ namespace Squared.PRGUI {
         private Tooltip CachedTooltip;
         private Control PreviousTooltipAnchor;
         private bool IsTooltipVisible;
+        private int CurrentTooltipContentVersion;
         private Controls.StaticText CachedCompositionPreview;
 
         private UnorderedList<ScratchRenderTarget> ScratchRenderTargets = new UnorderedList<ScratchRenderTarget>();
@@ -628,8 +629,10 @@ namespace Squared.PRGUI {
                 if (
                     (hoveringFor >= (cttt?.TooltipAppearanceDelay ?? TooltipAppearanceDelay)) || 
                     (disappearTimeout < disappearDelay)
-                )
-                    ShowTooltip(target, tooltipContent);
+                ) {
+                    ShowTooltip(target, tooltipContent, CurrentTooltipContentVersion != target.TooltipContentVersion);
+                    CurrentTooltipContentVersion = target.TooltipContentVersion;
+                }
             } else {
                 var shouldDismissInstantly = (target != null) && IsTooltipActive && GetTooltipInstance().GetRect(Layout).Contains(LastMousePosition);
                 // TODO: Instead of instantly hiding, maybe just fade the tooltip out partially?
@@ -772,10 +775,10 @@ namespace Squared.PRGUI {
             Layout.UpdateSubtree(subtreeRoot.LayoutKey);
         }
 
-        private void ShowTooltip (Control anchor, AbstractString text) {
+        private void ShowTooltip (Control anchor, AbstractString text, bool textIsInvalidated) {
             var instance = GetTooltipInstance();
 
-            var textChanged = !instance.Text.Equals(text);
+            var textChanged = !instance.Text.Equals(text) || textIsInvalidated;
 
             var rect = anchor.GetRect(Layout);
             // HACK: Clip the anchor's rect to its parent's rect to ensure that
