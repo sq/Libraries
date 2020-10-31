@@ -67,7 +67,9 @@ namespace Squared.Render.Text {
 
             private unsafe static MipGenerator<Color> PickMipGenerator (FreeTypeFont font) {
                 // TODO: Add a property that controls whether srgb is used. Or is freetype always srgb?
-                return MipGenerator.sRGBPAGray;
+                return font.sRGB
+                    ? (MipGenerator<Color>)MipGenerator.sRGBPAGray 
+                    : MipGenerator.PAGray;
             }
 
             private unsafe DynamicAtlas<Color>.Reservation Upload (FTBitmap bitmap) {
@@ -88,9 +90,12 @@ namespace Squared.Render.Text {
 
                 if (!foundRoom) {
                     var isFirstAtlas = (Atlases.Count == 0) && (_SizePoints < SmallFirstAtlasThreshold);
+                    // FIXME: SRGB
+                    // var surfaceFormat = Font.sRGB ? SurfaceFormat.ColorSRgbEXT : SurfaceFormat.Color;
+                    var surfaceFormat = SurfaceFormat.Color;
                     var newAtlas = new DynamicAtlas<Color>(
                         Font.RenderCoordinator, isFirstAtlas ? FirstAtlasWidth : AtlasWidth, isFirstAtlas ? FirstAtlasHeight : AtlasHeight, 
-                        SurfaceFormat.Color, 4, Font.MipMapping ? PickMipGenerator(Font) : null
+                        surfaceFormat, 4, Font.MipMapping ? PickMipGenerator(Font) : null
                     );
                     Atlases.Add(newAtlas);
                     if (!newAtlas.TryReserve(widthW, heightW, out result))
@@ -104,6 +109,9 @@ namespace Squared.Render.Text {
                     switch (bitmap.PixelMode) {
                         case PixelMode.Gray:
                             var table = Font.GammaTable;
+                            // FIXME: SRGB
+                            // var srgb = Font.sRGB;
+                            var srgb = false;
 
                             for (var y = 0; y < rows; y++) {
                                 var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
@@ -111,8 +119,11 @@ namespace Squared.Render.Text {
                                 int yPitch = y * pitch;
 
                                 for (var x = 0; x < width; x++) {
-                                    var g = table[pSrc[x + yPitch]];
-                                    pDestRow[3] = pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
+                                    var a = table[pSrc[x + yPitch]];
+                                    var g = srgb ? MipGenerator.LinearByteToSRGBByteTable[a] : a;
+                                    
+                                    pDestRow[3] = a;
+                                    pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
                                     pDestRow += 4;
                                 }
                             }
@@ -311,11 +322,21 @@ namespace Squared.Render.Text {
         public FontSize DefaultSize { get; private set; }
         // FIXME: Invalidate on set
         public int GlyphMargin { get; set; }
+        /// <summary>
+        /// Increases the resolution of the generated texture by this much to allow compensating for high-DPI
+        /// </summary>
         public int DPIPercent { get; set; }
         public bool Hinting { get; set; }
+        /// <summary>
+        /// Enables generating a full accurate mip chain
+        /// </summary>
         public bool MipMapping { get; set; }
         public bool EnableBitmaps { get; set; }
         public bool Monochrome { get; set; }
+        /// <summary>
+        /// If set, the texture's r/g/b channels will be sRGB-encoded while the a channel will be linear
+        /// </summary>
+        public bool sRGB { get; set; }
         public int TabSize { get; set; }
 
         private double _Gamma;
@@ -375,6 +396,7 @@ namespace Squared.Render.Text {
             GlyphMargin = 0;
             DefaultSize = new FontSize(this, 12);
             TabSize = 4;
+            sRGB = true;
 
             if (Face.GlyphCount <= 0)
                 throw new Exception("Loaded font contains no glyphs or is corrupt.");

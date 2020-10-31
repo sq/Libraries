@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Util;
 
 namespace Squared.Render {
     public interface IDynamicTexture {
@@ -21,8 +22,9 @@ namespace Squared.Render {
     public unsafe delegate void MipGenerator<T> (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) where T : struct;
 
     public static class MipGenerator {
-        private static readonly double[] ToLinearTable = new
-            double[256];
+        public static readonly double[] ToLinearTable = new double[256];
+        public static readonly byte[] SRGBByteToLinearByteTable = new byte[256];
+        public static readonly byte[] LinearByteToSRGBByteTable = new byte[256];
 
         static MipGenerator () {
             for (int i = 0; i < 256; i++) {
@@ -31,11 +33,14 @@ namespace Squared.Render {
                     ToLinearTable[i] = fv / 12.92;
                 else
                     ToLinearTable[i] = Math.Pow((fv + 0.055) / 1.055, 2.4);
+
+                SRGBByteToLinearByteTable[i] = (byte)Arithmetic.Clamp(ToLinearTable[i] * 255, 0f, 255f);
+                LinearByteToSRGBByteTable[i] = FromLinear(i / 255.0);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte FromLinear (double v) {
+        public static byte FromLinear (double v) {
             double scaled;
             if (v <= 0.0031308)
                 scaled = 12.92 * v;
@@ -46,7 +51,13 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte Average_sRGB (byte a, byte b, byte c, byte d) {
+        public static byte Average (byte a, byte b, byte c, byte d) {
+            var sum = a + b + c + d;
+            return (byte)(sum / 4);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static byte Average_sRGB (byte a, byte b, byte c, byte d) {
             double sum = ToLinearTable[a] + ToLinearTable[b] + ToLinearTable[c] + ToLinearTable[d];
             return FromLinear(sum / 4);
         }
@@ -98,7 +109,8 @@ namespace Squared.Render {
                     result[0] = Average_sRGB(a[0], b[0], c[0], d[0]);
                     result[1] = Average_sRGB(a[1], b[1], c[1], d[1]);
                     result[2] = Average_sRGB(a[2], b[2], c[2], d[2]);
-                    result[3] = Average_sRGB(a[3], b[3], c[3], d[3]);
+                    // The alpha channel is always linear
+                    result[3] = Average(a[3], b[3], c[3], d[3]);
                 }
             }
         }
@@ -121,7 +133,35 @@ namespace Squared.Render {
                     var d = b + srcRowSize;
 
                     var result = destRow + (x * 4);
-                    var gray = Average_sRGB(a[0], b[0], c[0], d[0]);
+                    // Average the alpha channel because it is linear
+                    var alphaAverage = Average(a[3], b[3], c[3], d[3]);
+                    var gray = FromLinear(alphaAverage / 255.0);
+                    result[0] = result[1] = result[2] = gray;
+                    result[3] = alphaAverage;
+                }
+            }
+        }
+
+        public static unsafe void PAGray (void* src, int srcWidth, int srcHeight, void* dest, int destWidth, int destHeight) {
+            if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
+                throw new ArgumentOutOfRangeException();
+
+            byte* pSrc = (byte*)src, pDest = (byte*)dest;
+            var srcRowSize = srcWidth * 4;
+            
+            for (var y = 0; y < destHeight; y++) {
+                byte* srcRow = pSrc + ((y * 2) * srcRowSize);
+                byte* destRow = pDest + (y * destWidth * 4);
+
+                for (var x = 0; x < destWidth; x++) {
+                    var a = srcRow + ((x * 2) * 4);
+                    var b = a + 4;
+                    var c = a + srcRowSize;
+                    var d = b + srcRowSize;
+
+                    var result = destRow + (x * 4);
+                    // Average the alpha channel because it is linear
+                    var gray = Average(a[3], b[3], c[3], d[3]);
                     result[0] = result[1] = result[2] = result[3] = gray;
                 }
             }
