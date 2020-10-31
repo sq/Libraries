@@ -20,12 +20,11 @@ namespace ShaderCompiler {
             var destDir = args[2];
             var fxcParams = args[3];
             var fxcPath = Path.Combine(fxcDir, @"fxc.exe");
+            var fxcPostParams = (args.Length > 4) ? args[4] : "";
 
             string testParsePath = null;
-            if (args.Length > 4)
-                testParsePath = args[4];
-
-            var fxcPostParams = (args.Length > 5) ? args[5] : "";
+            if (args.Length > 5)
+                testParsePath = args[5];
 
             if (!File.Exists(fxcPath))
                 DownloadFXC(fxcDir);
@@ -67,7 +66,7 @@ namespace ShaderCompiler {
                     existingParams = File.ReadAllText(paramsPath, Encoding.UTF8).Trim();
                     shouldRebuild = !existingParams.Equals(fullFxcParams.Trim());
                     if (shouldRebuild)
-                        Console.WriteLine(" params '{0}' -> '{1}'", existingParams, fullFxcParams);
+                        Console.WriteLine(" params '{0}' -> '{1}'", existingParams, fullFxcParams.Trim());
                 }
 
                 if (doesNotExist || isModified || shouldRebuild) {
@@ -200,7 +199,8 @@ namespace ShaderCompiler {
             var name = Path.GetFileName(path);
             var prologue = "#include \"";
 
-            foreach (var line in File.ReadAllLines(path)) {
+            foreach (var _line in File.ReadAllLines(path)) {
+                var line = _line.Trim();
                 if (!line.StartsWith(prologue))
                     continue;
 
@@ -213,8 +213,6 @@ namespace ShaderCompiler {
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.Error.WriteLine("// WARNING: File not found: {0}", absoluteIncludePath);
                 }
-
-                // Console.WriteLine("  {1}", name, includePath);
 
                 foreach (var includedPath in EnumerateFilenamesForShader(absoluteIncludePath))
                     yield return includedPath;

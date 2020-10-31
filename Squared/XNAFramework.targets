@@ -165,7 +165,7 @@
     <Message Importance="High" Text="Compiling shaders" />
     <Error Text="You must set SquaredPath to use the shader compiler" Condition=" '$(SquaredPath)' == '' " />
 
-    <Exec Command='"$(ShaderCompilerPath)" "$(SquaredPath)\ext\fxc" "$(ShaderDirectory)" "$(ShaderLocalBinDirectory)" "/O$(ShaderOptimizationLevel) /Zi $(ShaderCompilerDefines)" "$(TestParsePath)" "$(ShaderCompilerExtraOptions)"' />
+    <Exec Command='"$(ShaderCompilerPath)" "$(SquaredPath)\ext\fxc" "$(ShaderDirectory)" "$(ShaderLocalBinDirectory)" "/O$(ShaderOptimizationLevel) /Zi $(ShaderCompilerDefines)" "$(ShaderCompilerExtraOptions)" "$(TestParsePath)"' />
   </Target>
 
   <ItemGroup Condition="'$(ShaderDirectory)' != ''">
