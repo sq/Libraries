@@ -59,13 +59,15 @@ namespace ShaderCompiler {
                 var isModified = !doesNotExist && fileList.Any((fn) => File.GetLastWriteTimeUtc(fn) >= resultDate);
                 var localFxcParams = GetFxcParamsForShader(shader, fxcParams, defines);
                 var fullFxcParams = 
-                    string.Format("/nologo {0} /T fx_2_0 {3} {1} /Fo {2}", shader, localFxcParams, destPath, fxcPostParams);
+                    string.Format(" /T fx_2_0 {0} {1} ", localFxcParams, fxcPostParams);
 
                 string existingParams = null;
                 shouldRebuild = true;
                 if (File.Exists(paramsPath)) {
-                    existingParams = File.ReadAllText(paramsPath, Encoding.UTF8);
-                    shouldRebuild = !existingParams.Equals(fullFxcParams);
+                    existingParams = File.ReadAllText(paramsPath, Encoding.UTF8).Trim();
+                    shouldRebuild = !existingParams.Equals(fullFxcParams.Trim());
+                    if (shouldRebuild)
+                        Console.WriteLine(" params '{0}' -> '{1}'", existingParams, fullFxcParams);
                 }
 
                 if (doesNotExist || isModified || shouldRebuild) {
@@ -95,8 +97,9 @@ namespace ShaderCompiler {
 
                     int exitCode;
                     {
+                        var arglist = "/nologo " + shader + fullFxcParams + "/Fo " + destPath;
                         var psi = new ProcessStartInfo(
-                            fxcPath, fullFxcParams
+                            fxcPath, arglist
                         ) {
                             UseShellExecute = false
                         };
@@ -111,7 +114,7 @@ namespace ShaderCompiler {
                     if (exitCode != 0) {
                         errorCount += 1;
                     } else {
-                        File.WriteAllText(paramsPath, fullFxcParams, Encoding.UTF8);
+                        File.WriteAllText(paramsPath, fullFxcParams.Trim(), Encoding.UTF8);
                         if (!String.IsNullOrWhiteSpace(testParsePath)) {
                             var psi = new ProcessStartInfo(
                                 testParsePath, string.Format("glsl120 \"{0}\"", destPath)
