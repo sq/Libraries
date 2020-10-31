@@ -625,13 +625,14 @@ namespace Squared.PRGUI {
 
                 var hoveringFor = now - FirstTooltipHoverTime;
                 var disappearTimeout = now - LastTooltipHoverTime;
+                var version = target.TooltipContentVersion + target.TooltipContent.Version;
 
                 if (
                     (hoveringFor >= (cttt?.TooltipAppearanceDelay ?? TooltipAppearanceDelay)) || 
                     (disappearTimeout < disappearDelay)
                 ) {
-                    ShowTooltip(target, tooltipContent, CurrentTooltipContentVersion != target.TooltipContentVersion);
-                    CurrentTooltipContentVersion = target.TooltipContentVersion;
+                    ShowTooltip(target, tooltipContent, CurrentTooltipContentVersion != version);
+                    CurrentTooltipContentVersion = version;
                 }
             } else {
                 var shouldDismissInstantly = (target != null) && IsTooltipActive && GetTooltipInstance().GetRect(Layout).Contains(LastMousePosition);

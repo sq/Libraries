@@ -50,12 +50,26 @@ namespace Squared.PRGUI.Controls {
         bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
         bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
 
-        new public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
+        private AbstractTooltipContent _UserTooltipContent = default(AbstractTooltipContent);
+        new public AbstractTooltipContent TooltipContent {
+            get => _UserTooltipContent;
+            set {
+                _UserTooltipContent = value;
+                InvalidateTooltip();
+            }
+        }
 
+        private string _TooltipFormat = null;
         /// <summary>
         /// A string.Format format string, where {0} is Value, {1} is Minimum, {2} is Maximum, and {3} is Value scaled to [0, 1]
         /// </summary>
-        public string TooltipFormat = null;
+        public string TooltipFormat {
+            get => _TooltipFormat;
+            set {
+                _TooltipFormat = value;
+                InvalidateTooltip();
+            }
+        }
 
         bool _WasMouseOverThumb = false;
 

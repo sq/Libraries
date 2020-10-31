@@ -42,15 +42,18 @@ namespace Squared.PRGUI {
     public struct AbstractTooltipContent {
         public Func<Control, AbstractString> GetText;
         public AbstractString Text;
+        public int Version;
 
-        public AbstractTooltipContent (Func<Control, AbstractString> getText) {
+        public AbstractTooltipContent (Func<Control, AbstractString> getText, int version = 0) {
             Text = default(AbstractString);
             GetText = getText;
+            Version = version;
         }
 
-        public AbstractTooltipContent (AbstractString text) {
+        public AbstractTooltipContent (AbstractString text, int version = 0) {
             Text = text;
             GetText = null;
+            Version = version;
         }
 
         public AbstractString Get (Control target) {
@@ -61,7 +64,14 @@ namespace Squared.PRGUI {
         }
 
         public bool Equals (AbstractTooltipContent rhs) {
-            return (GetText == rhs.GetText) && Text.Equals(rhs.Text);
+            var result = (GetText == rhs.GetText) && Text.Equals(rhs.Text);
+            if (result) {
+                if ((GetText == null) && Text.Equals(default(AbstractString)))
+                    return true;
+                else
+                    result = (Version == rhs.Version);
+            }
+            return result;
         }
 
         public override bool Equals (object obj) {
