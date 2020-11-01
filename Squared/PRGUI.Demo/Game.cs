@@ -202,7 +202,7 @@ namespace PRGUI.Demo {
                 LayoutFlags = ControlFlags.Layout_Anchor_Right | ControlFlags.Layout_Fill_Column | ControlFlags.Layout_ForceBreak,
                 BackgroundColor = new Color(128, 16, 16),
                 BackgroundImage = new Squared.PRGUI.Decorations.BackgroundImageSettings {
-                    Texture = TextureLoader.Load("ghost"),
+                    // Texture = TextureLoader.Load("ghost"),
                     Settings = {
                         Origin = new Vector2(0, 0.5f),
                         Position = new Vector2(0.05f, 0.5f),
@@ -210,7 +210,7 @@ namespace PRGUI.Demo {
                         
                     }
                 },
-                TextAlignment = HorizontalAlignment.Right,
+                // TextAlignment = HorizontalAlignment.Right,
                 TooltipContent = "Hide this window temporarily"
             };
 
@@ -234,7 +234,7 @@ namespace PRGUI.Demo {
             var windowBgColor = new Color(70, 86, 90);
             FloatingWindow = new Window {
                 BackgroundColor = windowBgColor,
-                // MinimumWidth = 400,
+                // MinimumWidth = 800,
                 // MinimumHeight = 240,
                 Title = "Floating Panel",
                 Children = {

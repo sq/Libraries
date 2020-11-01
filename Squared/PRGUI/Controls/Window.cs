@@ -14,12 +14,21 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public class Window : Container {
+        private Vector2 _ScreenAlignment = Vector2.One * 0.5f;
+        public Vector2 ScreenAlignment {
+            get => _ScreenAlignment;
+            set {
+                _ScreenAlignment = value;
+                NeedsAlignment = true;
+            }
+        }
+
         public Vector2 Position {
             get {
                 return new Vector2(Margins.Left, Margins.Top);
             }
             set {
-                NeedsCentering = false;
+                NeedsAlignment = false;
                 Margins.Left = value.X;
                 Margins.Top = value.Y;
             }
@@ -29,7 +38,7 @@ namespace Squared.PRGUI.Controls {
         public bool AllowDrag = true;
         public bool AllowMaximize = true;
 
-        private bool NeedsCentering = true;
+        private bool NeedsAlignment = true;
         private bool Dragging, DragStartedMaximized;
         private Vector2 DragStartMousePosition, DragStartWindowPosition;
         private RectF MostRecentTitleBox, MostRecentUnmaximizedRect;
@@ -41,6 +50,8 @@ namespace Squared.PRGUI.Controls {
         public bool Maximized {
             get => LayoutFlags.IsFlagged(ControlFlags.Layout_Fill);
             set {
+                if (!AllowMaximize)
+                    value = false;
                 var flags = LayoutFlags & ~ControlFlags.Layout_Fill;
                 if (value)
                     flags |= ControlFlags.Layout_Fill;
@@ -54,7 +65,6 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = true;
             ContainerFlags |= ControlFlags.Container_Constrain_Size;
             LayoutFlags = ControlFlags.Layout_Floating;
-            // ClipChildren = true;
         }
 
         protected IDecorator UpdateTitle (UIOperationContext context, DecorationSettings settings, out Material material, ref pSRGBColor? color) {
@@ -95,12 +105,16 @@ namespace Squared.PRGUI.Controls {
             if (!Maximized)
                 MostRecentUnmaximizedRect = rect;
 
-            if (!NeedsCentering) {
+            var availableSpace = (context.UIContext.CanvasSize - rect.Size);
+
+            if (!NeedsAlignment) {
                 if (UpdatePosition(Position, context.UIContext, rect))
                     relayoutRequested = true;
+
+                _ScreenAlignment = Position / availableSpace;
             } else {
-                Position = (context.UIContext.CanvasSize - rect.Size) / 2f;
-                NeedsCentering = false;
+                Position = availableSpace * _ScreenAlignment;
+                NeedsAlignment = false;
                 relayoutRequested = true;
             }
         }
@@ -146,7 +160,8 @@ namespace Squared.PRGUI.Controls {
         protected override bool OnEvent<T> (string name, T args) {
             if (args is MouseEventArgs)
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
-            return false;
+
+            return base.OnEvent<T>(name, args);
         }
 
         private bool UpdatePosition (Vector2 newPosition, UIContext context, RectF box) {
@@ -160,7 +175,7 @@ namespace Squared.PRGUI.Controls {
             if (Position == newPosition)
                 return false;
 
-            context.Log($"Window position {Position} -> {newPosition}");
+            // context.Log($"Window position {Position} -> {newPosition}");
             Position = newPosition;
             return true;
         }
@@ -194,8 +209,8 @@ namespace Squared.PRGUI.Controls {
                 var newPosition = DragStartedMaximized
                     ? new Vector2(args.GlobalPosition.X - (MostRecentUnmaximizedRect.Width / 2f), args.GlobalPosition.Y - 4)
                     : (DragStartWindowPosition + delta);
-                var shouldMaximize = (newPosition.Y < -5) && !Maximized;
-                var shouldUnmaximize = ((delta.Y > 4) || (newPosition.Y > 4)) && Maximized;
+                var shouldMaximize = (newPosition.Y < -5) && !Maximized && AllowMaximize;
+                var shouldUnmaximize = (((delta.Y > 4) || (newPosition.Y > 4)) || !AllowMaximize) && Maximized;
                 if (shouldUnmaximize) {
                     // FIXME: Scale the mouse anchor based on the new size vs the old maximized size
                     Maximized = false;

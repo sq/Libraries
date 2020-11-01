@@ -16,7 +16,8 @@ namespace Squared.PRGUI.Controls {
         public const int ControlMinimumHeight = 28, ControlMinimumWidth = 100,
             ThumbMinimumWidth = 12, MaxNotchCount = 128;
         public const float NotchThickness = 0.75f;
-        public static readonly Color NotchColor = Color.Black * 0.2f;
+        public static readonly Color NotchColor = Color.Black * 0.2f,
+            CenterMarkColor = Color.White * 0.3f;
 
         public float Minimum = 0, Maximum = 100;
 
@@ -189,7 +190,7 @@ namespace Squared.PRGUI.Controls {
                 case UIEvents.KeyPress:
                     Context.OverrideKeyboardSelection(this);
                     var speed = args.Modifiers.Control
-                        ? (NotchInterval ?? 10 * KeyboardSpeed)
+                        ? Math.Max(10 * KeyboardSpeed, (NotchInterval ?? 0))
                         : KeyboardSpeed;
                     float oldValue = Value, newValue;
                     switch (args.Key) {
@@ -265,6 +266,9 @@ namespace Squared.PRGUI.Controls {
 
                 if (hasInterval)
                     DrawNotches(context, ref renderer, settings, decorations, interval, rangeSize);
+
+                if ((Maximum > 0) && (Minimum < 0))
+                    DrawCenterMark(context, ref renderer, settings, decorations, rangeSize);
             }
 
             var thumb = Context.Decorations.SliderThumb;
@@ -291,18 +295,31 @@ namespace Squared.PRGUI.Controls {
         ) {
             var numSteps = (int)Math.Floor(rangeSize / interval);
 
-            float x = interval, y = settings.ContentBox.Top + 0.5f;
+            float x = Minimum + interval, y = settings.ContentBox.Top + 0.5f;
             for (int i = 0; i < numSteps; i++, x += interval) {
                 if ((Math.Abs(x - rangeSize) <= float.Epsilon) || (x >= Maximum))
                     break;
 
-                var offset = (x / rangeSize) * settings.ContentBox.Width;
+                var offset = ((x - Minimum) / rangeSize) * settings.ContentBox.Width;
                 renderer.RasterizeLineSegment(
                     new Vector2(settings.ContentBox.Left + offset, y),
                     new Vector2(settings.ContentBox.Left + offset, settings.ContentBox.Extent.Y + 1f),
                     NotchThickness, NotchColor
                 );
             }
+        }
+
+        private void DrawCenterMark (
+            UIOperationContext context, ref ImperativeRenderer renderer, 
+            DecorationSettings settings, IDecorator decorations, 
+            float rangeSize
+        ) {
+            float offset = (-Minimum / rangeSize) * settings.ContentBox.Width, y = settings.ContentBox.Top + 0.5f;
+            renderer.RasterizeLineSegment(
+                new Vector2(settings.ContentBox.Left + offset, y),
+                new Vector2(settings.ContentBox.Left + offset, settings.ContentBox.Extent.Y + 1f),
+                NotchThickness, CenterMarkColor
+            );
         }
     }
 }

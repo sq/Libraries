@@ -45,6 +45,8 @@ namespace Squared.PRGUI.Controls {
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
             if ((name == UIEvents.MouseDown) && (Menu != null)) {
+                var box = GetRect(Context.Layout, contentRect: true);
+                Menu.MinimumWidth = box.Width;
                 Menu.Show(Context, this);
                 return true;
             }

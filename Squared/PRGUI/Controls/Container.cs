@@ -285,10 +285,10 @@ namespace Squared.PRGUI.Controls {
         protected virtual void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             // FIXME: This should be done somewhere else
             if (Scrollable) {
-                var box = context.Layout.GetRect(LayoutKey);
+                var contentBox = context.Layout.GetContentRect(LayoutKey);
                 var scrollbar = context.DecorationProvider?.Scrollbar;
-                float viewportWidth = box.Width - (scrollbar?.MinimumSize.X ?? 0),
-                    viewportHeight = box.Height - (scrollbar?.MinimumSize.Y ?? 0);
+                float viewportWidth = contentBox.Width - (scrollbar?.MinimumSize.X ?? 0),
+                    viewportHeight = contentBox.Height - (scrollbar?.MinimumSize.Y ?? 0);
 
                 GetContentBounds(context.UIContext, out RectF contentBounds);
 
@@ -307,10 +307,10 @@ namespace Squared.PRGUI.Controls {
                 }
 
                 HScrollbar.ContentSize = ContentBounds.Width;
-                HScrollbar.ViewportSize = box.Width;
+                HScrollbar.ViewportSize = contentBox.Width;
                 HScrollbar.Position = ScrollOffset.X;
                 VScrollbar.ContentSize = ContentBounds.Height;
-                VScrollbar.ViewportSize = box.Height;
+                VScrollbar.ViewportSize = contentBox.Height;
                 VScrollbar.Position = ScrollOffset.Y;
 
                 HScrollbar.HasCounterpart = VScrollbar.HasCounterpart = (ShowHorizontalScrollbar && ShowVerticalScrollbar);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -34,7 +35,59 @@ namespace Squared.PRGUI {
         void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested);
     }
 
+    internal struct ControlDataKey {
+        public Type Type;
+        public string Key;
+
+        public bool Equals (ControlDataKey rhs) {
+            return (Type == rhs.Type) &&
+                string.Equals(Key, rhs.Key);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is ControlDataKey)
+                return Equals((ControlDataKey)obj);
+            else
+                return false;
+        }
+
+        public override int GetHashCode () {
+            return Type.GetHashCode();
+        }
+    }
+
     public abstract class Control {
+        public struct ControlDataCollection {
+            Dictionary<ControlDataKey, object> Data;
+
+            public T Get<T> (string name = null) {
+                return Get(name, default(T));
+            }
+
+            public T Get<T> (string name, T defaultValue) {
+                if (Data == null)
+                    return defaultValue;
+
+                var key = new ControlDataKey { Type = typeof(T), Key = name };
+                object existingValue;
+                if (!Data.TryGetValue(key, out existingValue))
+                    return defaultValue;
+                return (T)existingValue;
+            }
+
+            public bool Set<T> (T value) {
+                return Set(null, value);
+            }
+
+            public bool Set<T> (string name, T value) {
+                if (Data == null)
+                    Data = new Dictionary<ControlDataKey, object>();
+                var key = new ControlDataKey { Type = typeof(T), Key = name };
+                Data[key] = value;
+                return true;
+            }
+        }
+
         public class TabOrderComparer : IComparer<Control> {
             public static readonly TabOrderComparer Instance = new TabOrderComparer();
 
@@ -92,6 +145,8 @@ namespace Squared.PRGUI {
         public BackgroundImageSettings BackgroundImage = null;
         public Tween<float> Opacity = 1;
         private bool _BackgroundColorEventFired, _OpacityEventFired;
+
+        public ControlDataCollection Data;
 
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
