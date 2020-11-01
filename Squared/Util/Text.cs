@@ -350,7 +350,7 @@ namespace Squared.Util.Text {
             else if (ArraySegment.Array != null)
                 return new string(ArraySegment.Array, ArraySegment.Offset, ArraySegment.Count);
             else
-                throw new NullReferenceException("This string contains no text");
+                return null;
         }
     }
 }

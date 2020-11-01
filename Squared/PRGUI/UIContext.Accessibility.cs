@@ -66,13 +66,14 @@ namespace Squared.PRGUI.Accessibility {
             Stop();
             CurrentlyReading = control;
             var customTarget = control as IReadingTarget;
-            var text = customTarget?.Text;
+            var text = customTarget?.Text.ToString();
             if ((text == null) && control.TooltipContent)
-                text = control.TooltipContent.Get(control);
+                text = control.TooltipContent.Get(control).ToString();
             if (text == null)
                 text = control.ToString();
-            if (text.HasValue)
-                Speak(text.Value.ToString(), Context.TTSDescriptionReadingSpeed);
+
+            if (text != null)
+                Speak(text.ToString(), Context.TTSDescriptionReadingSpeed);
         }
 
         private void Control_OnValueChanged (IEventInfo e) {

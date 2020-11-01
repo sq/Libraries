@@ -13,7 +13,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class Menu : Container, ICustomTooltipTarget {
+    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget {
         // Yuck
         public const int PageSize = 8;
 
@@ -46,8 +46,9 @@ namespace Squared.PRGUI.Controls {
                     value = null;
                 if (_SelectedItem == value)
                     return;
-                OnSelectionChange(_SelectedItem, value);
+                var oldSelection = _SelectedItem;
                 _SelectedItem = value;
+                OnSelectionChange(oldSelection, value);
             }
         }
 
@@ -128,6 +129,8 @@ namespace Squared.PRGUI.Controls {
             }
 
             FireEvent(UIEvents.SelectionChanged, newControl);
+            // HACK: For TTS
+            FireEvent(UIEvents.ValueChanged, newControl);
         }
 
         private Control ChildFromGlobalPosition (LayoutContext context, Vector2 globalPosition) {
@@ -327,7 +330,7 @@ namespace Squared.PRGUI.Controls {
             Intangible = false;
             if (!IsActive)
                 Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: context.NowL);
-            FocusDonor = context.CaptureMouse(this);
+            context.CaptureMouse(this, out _FocusDonor);
             IsActive = true;
             Context.FireEvent(UIEvents.Shown, this);
             NextResultFuture = new Future<Control>();
@@ -384,6 +387,35 @@ namespace Squared.PRGUI.Controls {
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
             AcceptsFocus = false;
+        }
+
+        AbstractString Accessibility.IReadingTarget.Text {
+            get {
+                var ttc = TooltipContent.Get(this).ToString();
+                if (ttc != null)
+                    return ttc;
+
+                var donorIrt = FocusDonor as Accessibility.IReadingTarget;
+                if (donorIrt != null)
+                    return $"Menu {donorIrt.Text}";
+
+                // FIXME: ToString the donor?
+                return "Menu";
+            }
+        }
+
+        void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {
+            if (SelectedItem == null)
+                return;
+
+            var irt = SelectedItem as Accessibility.IReadingTarget;
+            if (irt != null) {
+                irt.FormatValueInto(sb);
+                if (sb.Length == 0)
+                    sb.Append(irt.Text);
+            } else {
+                sb.Append(SelectedItem.ToString());
+            }
         }
     }
 }

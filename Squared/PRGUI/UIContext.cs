@@ -403,8 +403,12 @@ namespace Squared.PRGUI {
             }
         }
 
-        public Control CaptureMouse (Control target) {
-            var donor = Focused;
+        public bool CaptureMouse (Control target) {
+            return CaptureMouse(target, out Control temp);
+        }
+
+        public bool CaptureMouse (Control target, out Control previous) {
+            previous = Focused;
             if ((MouseCaptured != null) && (MouseCaptured != target) && (LastMouseButtons == MouseButtons.None))
                 SuppressNextCaptureLoss = true;
             // HACK: If we used IsValidFocusTarget here, it would break scenarios where a control is capturing
@@ -413,7 +417,7 @@ namespace Squared.PRGUI {
             if (target.AcceptsFocus)
                 TrySetFocus(target, true);
             MouseCaptured = target;
-            return donor;
+            return (MouseCaptured == target);
         }
 
         public void ReleaseCapture (Control target, Control focusDonor) {

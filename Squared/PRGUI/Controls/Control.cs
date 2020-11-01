@@ -217,15 +217,13 @@ namespace Squared.PRGUI {
         public bool Intangible { get; set; }
 
         private Control _FocusBeneficiary;
+        protected Control _FocusDonor;
 
         /// <summary>
         /// Focus was transferred to this control from another control, and it will
         ///  be returned when this control goes away. Used for menus and modal dialogs
         /// </summary>
-        public Control FocusDonor {
-            get;
-            protected set;
-        }
+        public Control FocusDonor => _FocusDonor;
 
         /// <summary>
         /// This control cannot receive focus, but input events that would give it focus will
