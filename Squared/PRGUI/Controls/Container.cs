@@ -245,13 +245,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void ApplyClipMargins (UIOperationContext context, ref RectF box) {
-            var scroll = context.DecorationProvider?.Scrollbar;
-            if (scroll != null) {
-                if (ShowHorizontalScrollbar)
-                    box.Height -= scroll.MinimumSize.Y;
-                if (ShowVerticalScrollbar)
-                    box.Width -= scroll.MinimumSize.X;
-            }
+            // Scrollbars are already part of computed padding, so just clip out the header (if any)
             box.Top += MostRecentHeaderHeight;
             box.Height -= MostRecentHeaderHeight;
         }
@@ -295,8 +289,8 @@ namespace Squared.PRGUI.Controls {
             if (Scrollable) {
                 var contentBox = context.Layout.GetContentRect(LayoutKey);
                 var scrollbar = context.DecorationProvider?.Scrollbar;
-                float viewportWidth = contentBox.Width - (scrollbar?.MinimumSize.X ?? 0),
-                    viewportHeight = contentBox.Height - (scrollbar?.MinimumSize.Y ?? 0);
+                float viewportWidth = contentBox.Width,
+                    viewportHeight = contentBox.Height;
 
                 GetContentBounds(context.UIContext, out RectF contentBounds);
 
