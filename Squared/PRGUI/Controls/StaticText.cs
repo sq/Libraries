@@ -14,7 +14,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class StaticText : Control, IPostLayoutListener {
+    public class StaticText : Control, IPostLayoutListener, Accessibility.IReadingTarget {
         public const float AutoSizePadding = 3f;
         public const bool DiagnosticText = false;
 
@@ -336,6 +336,9 @@ namespace Squared.PRGUI.Controls {
 
         public override string ToString () {
             return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText()}'";
+        }
+
+        void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {
         }
 
         void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {

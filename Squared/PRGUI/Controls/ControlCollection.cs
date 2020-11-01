@@ -67,7 +67,7 @@ namespace Squared.PRGUI {
 
         internal List<Control> InTabOrder (bool suitableTargetsOnly) {
             TabOrderedItems.Clear();
-            TabOrderedItems.Capacity = Math.Max(TabOrderedItems.Capacity, Items.Count);
+            TabOrderedItems.Capacity = Math.Max(Math.Max(TabOrderedItems.Capacity, Items.Count), 16);
             foreach (var item in Items)
                 if (!suitableTargetsOnly || item.IsValidFocusTarget)
                     TabOrderedItems.Add(item);
@@ -77,8 +77,9 @@ namespace Squared.PRGUI {
 
         internal List<Control> InPaintOrder () {
             PaintOrderedItems.Clear();
-            PaintOrderedItems.Capacity = Math.Max(PaintOrderedItems.Capacity, Items.Count);
-            PaintOrderedItems.AddRange(Items);
+            PaintOrderedItems.Capacity = Math.Max(Math.Max(PaintOrderedItems.Capacity, Items.Count), 16);
+            foreach (var item in Items)
+                PaintOrderedItems.Add(item);
             PaintOrderedItems.Sort(Control.PaintOrderComparer.Instance);
             return PaintOrderedItems;
         }

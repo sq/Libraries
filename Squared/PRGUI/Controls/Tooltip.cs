@@ -92,5 +92,9 @@ namespace Squared.PRGUI {
         public static implicit operator AbstractTooltipContent (string text) {
             return new AbstractTooltipContent { Text = text };
         }
+
+        public static implicit operator bool (AbstractTooltipContent content) {
+            return (content.GetText != null) || (content.Text != default(AbstractString));
+        }
     }
 }

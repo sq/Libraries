@@ -73,6 +73,8 @@ namespace Squared.PRGUI {
                 TextInputEXT.StopTextInput();
                 IsCompositionActive = false;
             }
+
+            TTS.FocusedControlChanged(target);
         }
 
         private void HandleHoverTransition (Control previous, Control current) {
@@ -619,6 +621,11 @@ namespace Squared.PRGUI {
                 if (control.TryGetParent(out control))
                     continue;
             }
+        }
+
+        private void HandleFixationChange (Control previous, Control current) {
+            FireEvent(UIEvents.ControlFixated, current, previous);
+            TTS.FixatedControlChanged(current);
         }
 
         private void TextInputEXT_TextInput (char ch) {

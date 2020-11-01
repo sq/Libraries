@@ -361,6 +361,11 @@ namespace PRGUI.Demo {
                 }
             };
 
+            var readAloud = new Checkbox {
+                Text = "Read Aloud On Focus",
+                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_ForceBreak,
+            };
+
             var topLevelContainer = new Container {
                 BackgroundColor = new Color(48, 48, 48) * 0.9f,
                 LayoutFlags = ControlFlags.Layout_Fill,
@@ -376,11 +381,13 @@ namespace PRGUI.Demo {
                         FocusBeneficiary = changePaintOrder
                     },
                     changePaintOrder,
+                    readAloud,
+                    new Spacer (),
                     new Button {
                         MinimumWidth = 200,
                         Text = "Disabled Button",
                         Enabled = false,
-                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                        LayoutFlags = ControlFlags.Layout_Fill_Row,
                         BackgroundColor = Color.LightPink
                     },
                     bigMenuButton,
@@ -428,6 +435,12 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(null, UIEvents.Click, (ei) => {
                 lastClickedCtl.Text = $"Clicked (#{ei.Arguments}): {ei.Source}";
+            });
+
+            Context.EventBus.Subscribe(readAloud, UIEvents.CheckedChanged, (ei) => {
+                Context.ReadAloudOnFocus = readAloud.Checked;
+                Context.TTS.Stop();
+                Context.TTS.Speak($"Reading {(readAloud.Checked ? "Enabled" : "Disabled")}");
             });
 
             Context.EventBus.Subscribe(changePaintOrder, UIEvents.Click, (ei) => {

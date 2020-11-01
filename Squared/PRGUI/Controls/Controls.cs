@@ -19,6 +19,18 @@ using Squared.Util.Event;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
+    public class Spacer : Control {
+        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) => false;
+        protected override bool OnEvent<T> (string name, T args) => false;
+        protected override bool OnEvent (string name) => false;
+
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+        }
+
+        protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
+        }
+    }
+
     public class Button : StaticText {
         public Menu Menu;
 

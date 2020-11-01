@@ -15,7 +15,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class EditableText : Control, IScrollableControl {
+    public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget {
         public const int ControlMinimumWidth = 300;
 
         public static readonly Menu ContextMenu = new Menu {
@@ -973,6 +973,19 @@ namespace Squared.PRGUI.Controls {
                 layout.DrawCalls, offset: textOffset,
                 material: textMaterial, samplerState: RenderStates.Text
             );
+        }
+
+        AbstractString Accessibility.IReadingTarget.Text {
+            get {
+                if (Description != null)
+                    return $"Edit \"{Description}\". {Text}";
+                else
+                    return $"Edit. {Text}";
+            }
+        }
+
+        void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {
+            sb.Append(Text);
         }
     }
 }

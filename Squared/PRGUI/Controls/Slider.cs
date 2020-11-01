@@ -13,7 +13,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class Slider : Control, ICustomTooltipTarget {
+    public class Slider : Control, ICustomTooltipTarget, Accessibility.IReadingTarget {
         public const int ControlMinimumHeight = 28, ControlMinimumWidth = 100,
             ThumbMinimumWidth = 12, MaxNotchCount = 128;
         public const float NotchThickness = 0.75f;
@@ -42,6 +42,9 @@ namespace Squared.PRGUI.Controls {
                 FireEvent(UIEvents.ValueChanged);
             }
         }
+
+        AbstractString Accessibility.IReadingTarget.Text => base.TooltipContent.Get(this);
+        void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) => FormatValue(sb);
 
         protected bool HasCustomTooltipContent => !TooltipContent.Equals(default(AbstractTooltipContent));
 
@@ -84,6 +87,23 @@ namespace Squared.PRGUI.Controls {
         private readonly StringBuilder TooltipBuilder = new StringBuilder();
         private readonly object[] TooltipFormatArgs = new object[4];
 
+        public void FormatValue (StringBuilder sb) {
+            if (TooltipFormat != null) {
+                TooltipFormatArgs[0] = Value;
+                TooltipFormatArgs[1] = Minimum;
+                TooltipFormatArgs[2] = Maximum;
+                if (Maximum != Minimum)
+                    TooltipFormatArgs[3] = (Value - Minimum) / (Maximum - Minimum);
+                else
+                    TooltipFormatArgs[3] = 0;
+                sb.AppendFormat(TooltipFormat, TooltipFormatArgs);
+            } else {
+                SmartAppend(sb, Value);
+                sb.Append('/');
+                SmartAppend(sb, Maximum);
+            }
+        }
+
         private static AbstractString GetDefaultTooltip (Control c) {
             var s = (Slider)c;
             s.TooltipBuilder.Clear();
@@ -92,17 +112,7 @@ namespace Squared.PRGUI.Controls {
                 s.TooltipBuilder.Append(ct.ToString());
                 s.TooltipBuilder.Append(": ");
             }
-            if (s.TooltipFormat != null) {
-                s.TooltipFormatArgs[0] = s.Value;
-                s.TooltipFormatArgs[1] = s.Minimum;
-                s.TooltipFormatArgs[2] = s.Maximum;
-                s.TooltipFormatArgs[3] = (s.Value - s.Minimum) / (s.Maximum - s.Minimum);
-                s.TooltipBuilder.AppendFormat(s.TooltipFormat, s.TooltipFormatArgs);
-            } else {
-                SmartAppend(s.TooltipBuilder, s.Value);
-                s.TooltipBuilder.Append('/');
-                SmartAppend(s.TooltipBuilder, s.Maximum);
-            }
+            s.FormatValue(s.TooltipBuilder);
             return s.TooltipBuilder;
         }
 

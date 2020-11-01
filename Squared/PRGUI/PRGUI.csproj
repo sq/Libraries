@@ -40,6 +40,7 @@
     <Reference Include="System.Core">
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Speech" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controls\Container.cs" />
@@ -58,6 +59,7 @@
     <Compile Include="Enums.cs" />
     <Compile Include="Data.cs" />
     <Compile Include="UIContext.cs" />
+    <Compile Include="UIContext.Accessibility.cs" />
     <Compile Include="UIContext.Events.cs" />
   </ItemGroup>
   <PropertyGroup>

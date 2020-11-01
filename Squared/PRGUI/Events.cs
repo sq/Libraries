@@ -32,7 +32,8 @@ namespace Squared.PRGUI {
             Closed = "Closed",
             OpacityTweenEnded = "OpacityTweenEnded",
             BackgroundColorTweenEnded = "BackgroundColorTweenEnded",
-            TextColorTweenEnded = "TextColorTweenEnded";
+            TextColorTweenEnded = "TextColorTweenEnded",
+            ControlFixated = "ControlFixated";
     }
 
     public struct KeyboardModifiers {

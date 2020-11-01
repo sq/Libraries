@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -69,7 +70,7 @@ namespace Squared.PRGUI {
     }
 
     public abstract class Control {
-        public struct ControlDataCollection {
+        public struct ControlDataCollection : IEnumerable<KeyValuePair<string, object>> {
             Dictionary<ControlDataKey, object> Data;
 
             public T Get<T> (string name = null) {
@@ -97,6 +98,19 @@ namespace Squared.PRGUI {
                 var key = new ControlDataKey { Type = typeof(T), Key = name };
                 Data[key] = value;
                 return true;
+            }
+
+            public void Add<T> (string name, T value) {
+                Set(name, value);
+            }
+
+            public IEnumerator<KeyValuePair<string, object>> GetEnumerator () {
+                foreach (var kvp in Data)
+                    yield return new KeyValuePair<string, object>(kvp.Key.Key, kvp.Value);
+            }
+
+            IEnumerator IEnumerable.GetEnumerator () {
+                return this.GetEnumerator();
             }
         }
 

@@ -155,7 +155,7 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Control events are broadcast on this bus
         /// </summary>
-        public EventBus EventBus = new EventBus();
+        public readonly EventBus EventBus;
 
         /// <summary>
         /// The layout engine used to compute control sizes and positions
@@ -354,10 +354,12 @@ namespace Squared.PRGUI {
         }
 
         public UIContext (DefaultMaterialSet materials, IDecorationProvider decorations, ITimeProvider timeProvider = null) {
+            EventBus = new EventBus();
             Controls = new ControlCollection(this);
             Decorations = decorations;
             TimeProvider = TimeProvider ?? new DotNetTimeProvider();
             Materials = materials;
+            TTS = new Accessibility.TTS(this);
         }
 
         private Tooltip GetTooltipInstance () {
@@ -486,6 +488,8 @@ namespace Squared.PRGUI {
             Now = (float)TimeProvider.Seconds;
             NowL = TimeProvider.Ticks;
 
+            var previouslyFixated = FixatedControl;
+
             var previouslyHovering = Hovering;
             if ((Focused != null) && !Focused.IsValidFocusTarget)
                 Focused = null;
@@ -571,6 +575,9 @@ namespace Squared.PRGUI {
                 HandleScroll(previouslyCaptured ?? Hovering, mouseWheelDelta);
 
             UpdateTooltip((CurrentMouseButtons != MouseButtons.None));
+
+            if (FixatedControl != previouslyFixated)
+                HandleFixationChange(previouslyFixated, FixatedControl);
 
             LastMouseButtons = CurrentMouseButtons;
             LastMouseWheelValue = mouseWheelValue;
