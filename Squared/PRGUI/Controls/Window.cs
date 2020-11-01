@@ -133,6 +133,8 @@ namespace Squared.PRGUI.Controls {
                 var layout = TitleLayout.Get();
                 var titleBox = settings.Box;
                 titleBox.Height = titleDecorator.Padding.Top + titleDecorator.Padding.Bottom + TitleLayout.GlyphSource.LineSpacing;
+                // FIXME: Compute this somewhere else, like in OnLayoutComplete
+                MostRecentHeaderHeight = titleBox.Height;
                 MostRecentTitleBox = titleBox;
 
                 var titleContentBox = titleBox;
@@ -193,14 +195,14 @@ namespace Squared.PRGUI.Controls {
                     return true;
                 } else {
                     Dragging = false;
-                    return false;
+                    return base.OnEvent(name, args);
                 }
             } else if (
                 (name == UIEvents.MouseMove) ||
                 (name == UIEvents.MouseUp)
             ) {
                 if (!Dragging)
-                    return false;
+                    return base.OnEvent(name, args);
 
                 if (name == UIEvents.MouseUp)
                     Dragging = false;
@@ -225,7 +227,7 @@ namespace Squared.PRGUI.Controls {
 
                 return true;
             } else
-                return false;
+                return base.OnEvent(name, args);
         }
 
         public override string ToString () {

@@ -137,7 +137,7 @@ namespace PRGUI.Demo {
             buttonIcons.DefaultGlyphColors = new Dictionary<uint, Color> {
                 { ButtonChars[0], FilterButtonColor(Color.Green) },
                 { ButtonChars[1], FilterButtonColor(Color.DarkRed) },
-                { ButtonChars[2], FilterButtonColor(Color.DarkBlue) },
+                { ButtonChars[2], FilterButtonColor(Color.Blue) },
                 { ButtonChars[3], FilterButtonColor(Color.Yellow) }
             };
             Font = new FallbackGlyphSource(firaSans, jpFallback, buttonIcons);
@@ -195,7 +195,7 @@ namespace PRGUI.Demo {
             };
 
             var hideButton = new Button {
-                Text = "Hide " + ButtonChars[0],
+                Text = "Hide",
                 AutoSizeWidth = false,
                 MaximumWidth = 150,
                 Margins = default(Margins),
@@ -215,7 +215,7 @@ namespace PRGUI.Demo {
             };
 
             var toppleButton = new Button {
-                Text = "Topple " + ButtonChars[1],
+                Text = "Topple",
                 TooltipContent = "I'm a top-heavy window!"
             };
 
@@ -329,7 +329,7 @@ namespace PRGUI.Demo {
                         BackgroundColor = new Color(32, 60, 32),
                     },
                     new Button {
-                        Text = "Clipped huge button",
+                        Text = "Clipped huge button\r\nSecond line\r\n" + ButtonChars,
                         FixedWidth = 600,
                         FixedHeight = 1800,
                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak

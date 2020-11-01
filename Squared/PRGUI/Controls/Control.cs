@@ -625,7 +625,10 @@ namespace Squared.PRGUI {
                     // FIXME: Separate context?
                     contentContext.Pass = RasterizePasses.ContentClip;
 
+                    // FIXME
+                    box = settings.Box;
                     ApplyClipMargins(contentContext, ref box);
+                    settings.Box = box;
 
                     contentRenderer.Layer = -999;
                     settings.State = default(ControlStates);

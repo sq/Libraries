@@ -25,6 +25,7 @@ namespace Squared.PRGUI.Controls {
         private Vector2 _ScrollOffset;
         protected Vector2 AbsoluteDisplayOffsetOfChildren;
 
+        protected float MostRecentHeaderHeight = 0;
         protected Vector2 MinScrollOffset;
         protected Vector2? MaxScrollOffset;
 
@@ -208,6 +209,11 @@ namespace Squared.PRGUI.Controls {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
             if (Scrollable) {
+                settings.Box.Top += MostRecentHeaderHeight;
+                settings.ContentBox.Top += MostRecentHeaderHeight;
+                settings.Box.Height -= MostRecentHeaderHeight;
+                settings.ContentBox.Height -= MostRecentHeaderHeight;
+
                 var scrollbar = context.DecorationProvider?.Scrollbar;
                 if (ShowHorizontalScrollbar)
                     scrollbar?.Rasterize(context, ref renderer, settings, ref HScrollbar);
@@ -246,6 +252,8 @@ namespace Squared.PRGUI.Controls {
                 if (ShowVerticalScrollbar)
                     box.Width -= scroll.MinimumSize.X;
             }
+            box.Top += MostRecentHeaderHeight;
+            box.Height -= MostRecentHeaderHeight;
         }
 
         protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
