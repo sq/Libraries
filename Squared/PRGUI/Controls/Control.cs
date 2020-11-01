@@ -35,6 +35,18 @@ namespace Squared.PRGUI {
         void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested);
     }
 
+    internal class ControlDataKeyComparer : IEqualityComparer<ControlDataKey> {
+        public static readonly ControlDataKeyComparer Instance = new ControlDataKeyComparer();
+
+        public bool Equals (ControlDataKey x, ControlDataKey y) {
+            return x.Equals(y);
+        }
+
+        public int GetHashCode (ControlDataKey obj) {
+            return obj.GetHashCode();
+        }
+    }
+
     internal struct ControlDataKey {
         public Type Type;
         public string Key;
@@ -81,7 +93,7 @@ namespace Squared.PRGUI {
 
             public bool Set<T> (string name, T value) {
                 if (Data == null)
-                    Data = new Dictionary<ControlDataKey, object>();
+                    Data = new Dictionary<ControlDataKey, object>(ControlDataKeyComparer.Instance);
                 var key = new ControlDataKey { Type = typeof(T), Key = name };
                 Data[key] = value;
                 return true;

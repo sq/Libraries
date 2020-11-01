@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
+using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
 using Squared.Util;
 using Squared.Util.Text;
@@ -277,7 +278,7 @@ namespace Squared.PRGUI.Controls {
             thumbSettings.Box = ComputeThumbBox(settings.ContentBox, _Value);
             thumbSettings.ContentBox = thumbSettings.Box;
             var hoveringThumb = 
-                (settings.State.HasFlag(ControlStates.Hovering))
+                (settings.State.IsFlagged(ControlStates.Hovering))
                     ? thumbSettings.Box.Contains(context.UIContext.CalculateRelativeGlobalPosition(this, context.MousePosition))
                     : false;
             _WasMouseOverThumb = hoveringThumb;
