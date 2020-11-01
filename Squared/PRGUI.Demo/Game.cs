@@ -366,6 +366,16 @@ namespace PRGUI.Demo {
                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_ForceBreak,
             };
 
+            var readingSpeed = new Slider {
+                TooltipContent = "Reading Speed",
+                Minimum = -2,
+                Maximum = 5,
+                Value = 0,
+                Integral = true,
+                MaximumWidth = 150,
+                TooltipFormat = "{0}"
+            };
+
             var topLevelContainer = new Container {
                 BackgroundColor = new Color(48, 48, 48) * 0.9f,
                 LayoutFlags = ControlFlags.Layout_Fill,
@@ -382,6 +392,7 @@ namespace PRGUI.Demo {
                     },
                     changePaintOrder,
                     readAloud,
+                    readingSpeed,
                     new Spacer (),
                     new Button {
                         MinimumWidth = 200,
@@ -441,6 +452,11 @@ namespace PRGUI.Demo {
                 Context.ReadAloudOnFocus = readAloud.Checked;
                 Context.TTS.Stop();
                 Context.TTS.Speak($"Reading {(readAloud.Checked ? "Enabled" : "Disabled")}");
+            });
+
+            Context.EventBus.Subscribe(readingSpeed, UIEvents.ValueChanged, (ei) => {
+                Context.TTSDescriptionReadingSpeed = (int)readingSpeed.Value;
+                Context.TTSValueReadingSpeed = (int)readingSpeed.Value + 2;
             });
 
             Context.EventBus.Subscribe(changePaintOrder, UIEvents.Click, (ei) => {

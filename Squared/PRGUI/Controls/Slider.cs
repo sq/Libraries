@@ -20,9 +20,10 @@ namespace Squared.PRGUI.Controls {
         public static readonly Color NotchColor = Color.Black * 0.2f,
             CenterMarkColor = Color.White * 0.3f;
 
-        public float Minimum = 0, Maximum = 100;
-
-        private float _Value = 50;
+        // HACK: Track whether this is a default-initialized slider so we can respond appropriately to min/max changes
+        private bool _HasValue;
+        private float _Minimum = 0, _Maximum = 100;
+        private float _Value = 0;
 
         public float? NotchInterval;
         public float KeyboardSpeed = 1;
@@ -30,9 +31,34 @@ namespace Squared.PRGUI.Controls {
         public bool SnapToNotch = false;
         public bool Integral = false;
 
-        public float Value {
-            get => ClampValue(_Value);
+        public float Minimum {
+            get => _Minimum;
             set {
+                if (_Minimum == value)
+                    return;
+                _Minimum = value;
+                _Value = ClampValue(_Value);
+            }
+        }
+
+        public float Maximum {
+            get => _Maximum;
+            set {
+                if (_Maximum == value)
+                    return;
+                _Maximum = value;
+                _Value = ClampValue(_Value);
+            }
+        }
+
+        public float Value {
+            get => 
+                _HasValue 
+                    ? ClampValue(_Value)
+                    : ClampValue((Minimum + Maximum) / 2);
+            set {
+                _HasValue = true;
+
                 value = ClampValue(value);
                 if (value == _Value)
                     return;
@@ -285,7 +311,7 @@ namespace Squared.PRGUI.Controls {
             var thumb = Context.Decorations.SliderThumb;
             var thumbSettings = settings;
             // FIXME: Apply padding
-            thumbSettings.Box = ComputeThumbBox(settings.ContentBox, _Value);
+            thumbSettings.Box = ComputeThumbBox(settings.ContentBox, Value);
             thumbSettings.ContentBox = thumbSettings.Box;
             var hoveringThumb = 
                 (settings.State.IsFlagged(ControlStates.Hovering))
