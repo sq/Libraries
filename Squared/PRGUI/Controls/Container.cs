@@ -255,6 +255,10 @@ namespace Squared.PRGUI.Controls {
                 return false;
 
             bool success = AcceptsMouseInput || !acceptsMouseInputOnly;
+            // Don't perform child hit-tests if the mouse is over the header
+            if (position.Y <= (box.Top + MostRecentHeaderHeight))
+                return success;
+
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
             var sorted = Children.InPaintOrder();
