@@ -85,6 +85,17 @@ namespace Squared.PRGUI.Controls {
             return provider?.Checkbox;
         }
 
+        protected override AbstractString GetReadingText () {
+            if (Checked)
+                return Text.ToString() + ": Yes";
+            else
+                return Text;
+        }
+
+        protected override void FormatValueInto (StringBuilder sb) {
+            sb.Append(Checked ? "Yes" : "No");
+        }
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             if (Checked)
                 settings.State |= ControlStates.Checked;
@@ -165,6 +176,17 @@ namespace Squared.PRGUI.Controls {
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
             return provider?.RadioButton;
+        }
+
+        protected override AbstractString GetReadingText () {
+            if (Checked)
+                return Text.ToString() + ": Yes";
+            else
+                return Text;
+        }
+
+        protected override void FormatValueInto (StringBuilder sb) {
+            sb.Append(Checked ? "Yes" : "No");
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

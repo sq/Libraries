@@ -338,8 +338,13 @@ namespace Squared.PRGUI.Controls {
             return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText()}'";
         }
 
-        void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {
+        protected virtual AbstractString GetReadingText () => Text;
+
+        protected virtual void FormatValueInto (StringBuilder sb) {
         }
+
+        AbstractString Accessibility.IReadingTarget.Text => GetReadingText();
+        void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) => FormatValueInto(sb);
 
         void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             if (_NeedRelayout) {

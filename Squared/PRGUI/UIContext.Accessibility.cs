@@ -27,6 +27,8 @@ namespace Squared.PRGUI.Accessibility {
         public TTS (UIContext context) {
             Context = context;
             Context.EventBus.Subscribe(null, UIEvents.ValueChanged, Control_OnValueChanged);
+            Context.EventBus.Subscribe(null, UIEvents.CheckedChanged, Control_OnValueChanged);
+            Context.EventBus.Subscribe(null, UIEvents.SelectionChanged, Control_OnValueChanged);
         }
 
         public SpeechSynthesizer SpeechSynthesizer {
@@ -55,7 +57,8 @@ namespace Squared.PRGUI.Accessibility {
         }
 
         public void Stop () {
-            SpeechSynthesizer.SpeakAsyncCancelAll();
+            if (IsSpeaking)
+                SpeechSynthesizer.SpeakAsyncCancelAll();
             SpeechQueue.Clear();
         }
 

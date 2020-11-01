@@ -129,8 +129,6 @@ namespace Squared.PRGUI.Controls {
             }
 
             FireEvent(UIEvents.SelectionChanged, newControl);
-            // HACK: For TTS
-            FireEvent(UIEvents.ValueChanged, newControl);
         }
 
         private Control ChildFromGlobalPosition (LayoutContext context, Vector2 globalPosition) {
