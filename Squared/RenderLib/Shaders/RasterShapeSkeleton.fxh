@@ -23,7 +23,7 @@ uniform float4 TextureModeAndSize;
 uniform float4 TexturePlacement;
 
 // HACK suggested by Sean Barrett: Increase all line widths to ensure that a diagonal 1px-thick line covers one pixel
-#define OutlineSizeCompensation 2.2
+#define OutlineSizeCompensation 2.1
 
 #define PI 3.1415926535897931
 #define DEG_TO_RAD (PI / 180.0)
@@ -683,12 +683,13 @@ void rasterShapeCommon (
     float outlineSizeAlpha = saturate(outlineSize / 2);
     float clampedOutlineSize = max(outlineSize / 2, sqrt(2)) * 2;
 
-    float outlineStartDistance = -(outlineSize * 0.5) + 0.2, // This offset used to be +0.5 but that produces unpleasant artifacts at the intersection between fill/outline
+    float outlineStartDistance = -(outlineSize * 0.5) + 0.5,
         outlineEndDistance = outlineStartDistance + outlineSize,
         // Ideally this range would be smaller, but a larger range produces softer fill outlines
         //  for shapes like ellipses and lines
         fillStartDistance = -1.01,
-        fillEndDistance = 0.5;
+        // Expand the fill if there is an outline to reduce the seam between fill and outline
+        fillEndDistance = 0.5 + min(outlineSize, 0.5);
 
     fillAlpha = getWindowAlpha(distance, fillStartDistance, fillEndDistance, 1, 1, 0);
 

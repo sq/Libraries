@@ -808,7 +808,7 @@ namespace Squared.Render {
         ) {
             var state = new StringLayoutEngine {
                 position = position,
-                overrideColor = color,
+                defaultColor = color ?? Color.White,
                 scale = scale,
                 sortKey = sortKey,
                 characterSkipCount = characterSkipCount,
@@ -852,7 +852,7 @@ namespace Squared.Render {
         ) {
             var state = new StringLayoutEngine {
                 position = position,
-                overrideColor = color,
+                defaultColor = color ?? Color.White,
                 scale = scale,
                 sortKey = sortKey,
                 characterSkipCount = characterSkipCount,
