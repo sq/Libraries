@@ -449,7 +449,8 @@ namespace Squared.Render.Text {
             var effectiveScale = scale / font.DPIScaleFactor;
 
             var drawCall = default(BitmapDrawCall);
-            drawCall.MultiplyColor = color.GetValueOrDefault(Color.White);
+            var white = Color.White;
+            drawCall.MultiplyColor = white;
             drawCall.ScaleF = effectiveScale;
             drawCall.SortKey = sortKey;
 
@@ -685,6 +686,7 @@ namespace Squared.Render.Text {
                         drawCall.Textures = new TextureSet(glyph.Texture);
                         drawCall.TextureRegion = glyph.BoundsInTexture;
                         drawCall.Position = glyphPosition;
+                        drawCall.MultiplyColor = color ?? glyph.DefaultColor ?? white;
 
                         // HACK so that the alignment pass can detect rows. We strip this later.
                         if (alignment != HorizontalAlignment.Left)

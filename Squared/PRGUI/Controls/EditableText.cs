@@ -759,14 +759,16 @@ namespace Squared.PRGUI.Controls {
         ) {
             pSRGBColor? selectedColor = DynamicLayout.Color;
             selectionDecorator.GetTextSettings(context, state, out Material temp, out IGlyphSource temp2, ref selectedColor);
+            var selectedColorC = (selectedColor ?? Color.Black).ToColor();
+            var nonSelectedColorC = (DynamicLayout.Color ?? Color.White);
             var noColorizing = (selection == null) || 
                 (selection.Value.Bounds == null) || 
                 (Selection.First == Selection.Second) ||
                 (selection.Value.GlyphCount == 0);
             for (int i = 0; i < drawCalls.Count; i++) {
                 var color = noColorizing || ((i < selection.Value.FirstDrawCallIndex) || (i > selection.Value.LastDrawCallIndex))
-                    ? DynamicLayout.Color
-                    : Color.Black;
+                    ? nonSelectedColorC
+                    : selectedColorC;
                 drawCalls.Array[i + drawCalls.Offset].MultiplyColor = color;
             }
         }

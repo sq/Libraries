@@ -20,7 +20,7 @@ namespace Squared.Render.Text {
         private IGlyphSource _GlyphSource;
         private AbstractString _Text;
         private Vector2 _Position = Vector2.Zero;
-        private Color _Color = Color.White;
+        private Color? _Color = null;
         private float _Scale = 1;
         private float _SortKey = 0;
         private int _CharacterSkipCount = 0;
@@ -191,12 +191,12 @@ namespace Squared.Render.Text {
             }
         }
 
-        public Color Color {
+        public Color? Color {
             get {
                 return _Color;
             }
             set {
-                InvalidatingValueAssignment(ref _Color, value);
+                InvalidatingNullableAssignment(ref _Color, value);
             }
         }
 
@@ -679,5 +679,6 @@ namespace Squared.Render.Text {
         public float Width;
         public float CharacterSpacing;
         public float LineSpacing;
+        public Color? DefaultColor;
     }
 }

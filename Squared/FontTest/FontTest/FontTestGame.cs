@@ -102,7 +102,10 @@ namespace FontTest {
 
         protected override void OnLoadContent (bool isReloading) {
             LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") {
-                SizePoints = 40, DPIPercent = 200, GlyphMargin = 8, Gamma = 1.6
+                SizePoints = 40, DPIPercent = 200, GlyphMargin = 8, Gamma = 1.6,
+                DefaultGlyphColors = {
+                    { (uint)'h', Color.Red }
+                }
             };
             if (false)
                 LatinFont = new FreeTypeFont(RenderCoordinator, "cambria.ttc") {

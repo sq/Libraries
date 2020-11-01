@@ -185,9 +185,16 @@ namespace Squared.Render.Text {
                         return true;
                     }
                 }
+
+                Color? nullableDefaultColor = null;
+                Color defaultColor;
+                if (Font.DefaultGlyphColors.TryGetValue(ch, out defaultColor))
+                    nullableDefaultColor = defaultColor;
                 
-                if (Cache.TryGetValue(ch, out glyph))
+                if (Cache.TryGetValue(ch, out glyph)) {
+                    glyph.DefaultColor = nullableDefaultColor;
                     return true;
+                }
 
                 if ((ch == '\r') || (ch == '\n') || (ch == '\0'))
                     return false;
@@ -255,7 +262,8 @@ namespace Squared.Render.Text {
                     XOffset = ftgs.BitmapLeft - bearingXMetric - Font.GlyphMargin,
                     YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin,
                     RectInTexture = rect,
-                    LineSpacing = Font.Face.Size.Metrics.Height.ToSingle()
+                    LineSpacing = Font.Face.Size.Metrics.Height.ToSingle(),
+                    DefaultColor = nullableDefaultColor
                 };
 
                 if (texRegion.Atlas != null) {
@@ -342,6 +350,8 @@ namespace Squared.Render.Text {
         private double _Gamma;
         private byte[] GammaTable;
         private HashSet<FontSize> Sizes = new HashSet<FontSize>(new ReferenceComparer<FontSize>());
+
+        public Dictionary<uint, Color> DefaultGlyphColors = new Dictionary<uint, Color>();
 
         public double Gamma {
             get {
