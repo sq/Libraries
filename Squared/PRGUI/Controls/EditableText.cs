@@ -900,7 +900,7 @@ namespace Squared.PRGUI.Controls {
             if (totalSize >= settings.ContentBox.Width)
                 color *= 0.4f;
 
-            var textCorner = new Vector2(x, settings.ContentBox.Top);
+            var textCorner = new Vector2(x, settings.ContentBox.Top).Floor();
             renderer.DrawMultiple(
                 descriptionLayout.DrawCalls, textCorner, 
                 multiplyColor: color.Value.ToColor(), material: material

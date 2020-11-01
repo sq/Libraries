@@ -107,7 +107,7 @@ namespace PRGUI.Demo {
         }
 
         private Color FilterButtonColor (Color c) {
-            return Color.Lerp(c, Color.White, 0.4f);
+            return Color.Lerp(c, Color.White, 0.3f);
         }
 
         protected override void OnLoadContent (bool isReloading) {
@@ -124,14 +124,8 @@ namespace PRGUI.Demo {
             float fontScale = 1.2f;
             var firaSans = LoadFont("FiraSans-Medium", 20f * fontScale);
             var jpFallback = LoadFont("NotoSansCJKjp-Regular", 16f * fontScale);
-            var buttonIcons = LoadFont("kenney-icon-font", 18f * fontScale);
-            buttonIcons.VerticalOffset = 4;
-            buttonIcons.DefaultGlyphColors = new Dictionary<uint, Color> {
-                { ButtonChars[0], FilterButtonColor(Color.Green) },
-                { ButtonChars[1], FilterButtonColor(Color.DarkRed) },
-                { ButtonChars[2], FilterButtonColor(Color.DarkBlue) },
-                { ButtonChars[3], FilterButtonColor(Color.Yellow) }
-            };
+            jpFallback.VerticalOffset = -1f;
+            var buttonIcons = LoadFont("kenney-icon-font", 17f * fontScale);
 
             var titleFont = new FreeTypeFont.FontSize(firaSans, 14f);
             var tooltipFont = new FallbackGlyphSource(
@@ -139,6 +133,13 @@ namespace PRGUI.Demo {
                 buttonIcons
             );
 
+            buttonIcons.VerticalOffset = 6;
+            buttonIcons.DefaultGlyphColors = new Dictionary<uint, Color> {
+                { ButtonChars[0], FilterButtonColor(Color.Green) },
+                { ButtonChars[1], FilterButtonColor(Color.DarkRed) },
+                { ButtonChars[2], FilterButtonColor(Color.DarkBlue) },
+                { ButtonChars[3], FilterButtonColor(Color.Yellow) }
+            };
             Font = new FallbackGlyphSource(firaSans, jpFallback, buttonIcons);
 
             Materials = new DefaultMaterialSet(RenderCoordinator);
