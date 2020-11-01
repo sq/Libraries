@@ -24,6 +24,9 @@ using Squared.Util;
 
 namespace PRGUI.Demo {
     public class DemoGame : MultithreadedGame {
+        // ABXY
+        public const string ButtonChars = "";
+
         public TaskScheduler Scheduler;
         public UIContext Context;
 
@@ -103,6 +106,10 @@ namespace PRGUI.Demo {
             return result;
         }
 
+        private Color FilterButtonColor (Color c) {
+            return Color.Lerp(c, Color.White, 0.4f);
+        }
+
         protected override void OnLoadContent (bool isReloading) {
             RenderCoordinator.EnableThreading = false;
 
@@ -117,18 +124,22 @@ namespace PRGUI.Demo {
             float fontScale = 1.2f;
             var firaSans = LoadFont("FiraSans-Medium", 20f * fontScale);
             var jpFallback = LoadFont("NotoSansCJKjp-Regular", 16f * fontScale);
-
-            if (false)
-            foreach (var ch in jpFallback.SupportedCodepoints) {
-                if (ch <= 0xFFFF)
-                    continue;
-                Console.WriteLine("\\U00{0:X6}", ch);
-            }
+            var buttonIcons = LoadFont("kenney-icon-font", 18f * fontScale);
+            buttonIcons.VerticalOffset = 4;
+            buttonIcons.DefaultGlyphColors = new Dictionary<uint, Color> {
+                { ButtonChars[0], FilterButtonColor(Color.Green) },
+                { ButtonChars[1], FilterButtonColor(Color.DarkRed) },
+                { ButtonChars[2], FilterButtonColor(Color.DarkBlue) },
+                { ButtonChars[3], FilterButtonColor(Color.Yellow) }
+            };
 
             var titleFont = new FreeTypeFont.FontSize(firaSans, 14f);
-            var tooltipFont = new FreeTypeFont.FontSize(firaSans, 16f);
+            var tooltipFont = new FallbackGlyphSource(
+                new FreeTypeFont.FontSize(firaSans, 16f),
+                buttonIcons
+            );
 
-            Font = new FallbackGlyphSource(firaSans, jpFallback);
+            Font = new FallbackGlyphSource(firaSans, jpFallback, buttonIcons);
 
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
@@ -183,7 +194,7 @@ namespace PRGUI.Demo {
             };
 
             var hideButton = new Button {
-                Text = "Hide",
+                Text = "Hide " + ButtonChars[0],
                 AutoSizeWidth = false,
                 MaximumWidth = 150,
                 Margins = default(Margins),
@@ -203,7 +214,7 @@ namespace PRGUI.Demo {
             };
 
             var toppleButton = new Button {
-                Text = "Topple",
+                Text = "Topple " + ButtonChars[1],
                 TooltipContent = "I'm a top-heavy window!"
             };
 

@@ -66,7 +66,7 @@ namespace Squared.PRGUI.Controls {
             decorations.GetTextSettings(context, settings.State, out material, out IGlyphSource font, ref color);
             TitleLayout.Text = Title;
             TitleLayout.GlyphSource = font;
-            TitleLayout.Color = color?.ToColor() ?? Color.White;
+            TitleLayout.DefaultColor = color?.ToColor() ?? Color.White;
             TitleLayout.LineBreakAtX = settings.ContentBox.Width;
             return decorations;
         }

@@ -20,6 +20,7 @@ namespace Squared.Render.Text {
         private IGlyphSource _GlyphSource;
         private AbstractString _Text;
         private Vector2 _Position = Vector2.Zero;
+        private Color _DefaultColor = Microsoft.Xna.Framework.Color.White;
         private Color? _Color = null;
         private float _Scale = 1;
         private float _SortKey = 0;
@@ -188,6 +189,15 @@ namespace Squared.Render.Text {
             }
             set {
                 InvalidatingValueAssignment(ref _Position, value);
+            }
+        }
+
+        public Color DefaultColor {
+            get {
+                return _DefaultColor;
+            }
+            set {
+                InvalidatingValueAssignment(ref _DefaultColor, value);
             }
         }
 
@@ -369,7 +379,8 @@ namespace Squared.Render.Text {
             result = new StringLayoutEngine {
                 buffer = _Buffer,
                 position = _Position,
-                color = _Color,
+                overrideColor = _Color,
+                defaultColor = _DefaultColor,
                 scale = _Scale,
                 sortKey = _SortKey,
                 characterSkipCount = _CharacterSkipCount,

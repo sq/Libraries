@@ -160,7 +160,8 @@ namespace Squared.Render.Text {
         // Parameters
         public ArraySegment<BitmapDrawCall> buffer;
         public Vector2? position;
-        public Color?   color;
+        public Color?   overrideColor;
+        public Color    defaultColor;
         public float    scale;
         public DrawCallSortKey sortKey;
         public int      characterSkipCount;
@@ -449,8 +450,7 @@ namespace Squared.Render.Text {
             var effectiveScale = scale / font.DPIScaleFactor;
 
             var drawCall = default(BitmapDrawCall);
-            var white = Color.White;
-            drawCall.MultiplyColor = white;
+            drawCall.MultiplyColor = defaultColor;
             drawCall.ScaleF = effectiveScale;
             drawCall.SortKey = sortKey;
 
@@ -686,7 +686,7 @@ namespace Squared.Render.Text {
                         drawCall.Textures = new TextureSet(glyph.Texture);
                         drawCall.TextureRegion = glyph.BoundsInTexture;
                         drawCall.Position = glyphPosition;
-                        drawCall.MultiplyColor = color ?? glyph.DefaultColor ?? white;
+                        drawCall.MultiplyColor = overrideColor ?? glyph.DefaultColor ?? defaultColor;
 
                         // HACK so that the alignment pass can detect rows. We strip this later.
                         if (alignment != HorizontalAlignment.Left)
@@ -808,7 +808,7 @@ namespace Squared.Render {
         ) {
             var state = new StringLayoutEngine {
                 position = position,
-                color = color,
+                overrideColor = color,
                 scale = scale,
                 sortKey = sortKey,
                 characterSkipCount = characterSkipCount,
@@ -852,7 +852,7 @@ namespace Squared.Render {
         ) {
             var state = new StringLayoutEngine {
                 position = position,
-                color = color,
+                overrideColor = color,
                 scale = scale,
                 sortKey = sortKey,
                 characterSkipCount = characterSkipCount,

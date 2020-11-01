@@ -269,7 +269,7 @@ namespace Squared.PRGUI.Controls {
             CachedPadding = ComputePadding(context, decorations);
 
             DynamicLayout.GlyphSource = font;
-            DynamicLayout.Color = color?.ToColor() ?? Color.White;
+            DynamicLayout.DefaultColor = color?.ToColor() ?? Color.White;
 
             return DynamicLayout.Get();
         }

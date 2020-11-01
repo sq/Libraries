@@ -229,7 +229,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected pSRGBColor? GetTextColor (long now) {
-            var v4 = AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref TextColorPLinear, ref _TextColorEventFired);
+            var v4 = AutoFireTweenEvent(now, UIEvents.TextColorTweenEnded, ref TextColorPLinear, ref _TextColorEventFired);
             if (!v4.HasValue)
                 return null;
             return pSRGBColor.FromPLinear(v4.Value);
@@ -259,9 +259,13 @@ namespace Squared.PRGUI.Controls {
             var computedPadding = ComputePadding(context, decorations);
 
             var overrideColor = GetTextColor(context.NowL);
+            pSRGBColor? defaultColor = null;
             Material material;
             var textDecorations = GetTextDecorations(context.DecorationProvider);
-            GetTextSettings(context, textDecorations, settings.State, out material, ref overrideColor);
+            GetTextSettings(context, textDecorations, settings.State, out material, ref defaultColor);
+
+            Content.DefaultColor = defaultColor?.ToColor() ?? Color.White;
+            Content.Color = overrideColor?.ToColor();
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
 
@@ -296,7 +300,7 @@ namespace Squared.PRGUI.Controls {
 
             renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
-                material: material, samplerState: RenderStates.Text, multiplyColor: overrideColor?.ToColor(),
+                material: material, samplerState: RenderStates.Text,
                 scale: textScale
             );
         }

@@ -52,6 +52,8 @@ namespace Squared.Render.Text {
                 Font.Sizes.Add(this);
             }
 
+            public float VerticalOffset;
+
             public float SizePoints {
                 get {
                     return _SizePoints;
@@ -260,7 +262,7 @@ namespace Squared.Render.Text {
                             metrics.HorizontalBearingX.ToSingle()
                     ),
                     XOffset = ftgs.BitmapLeft - bearingXMetric - Font.GlyphMargin,
-                    YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin,
+                    YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin + Font.VerticalOffset + VerticalOffset,
                     RectInTexture = rect,
                     LineSpacing = Font.Face.Size.Metrics.Height.ToSingle(),
                     DefaultColor = nullableDefaultColor
@@ -352,6 +354,8 @@ namespace Squared.Render.Text {
         private HashSet<FontSize> Sizes = new HashSet<FontSize>(new ReferenceComparer<FontSize>());
 
         public Dictionary<uint, Color> DefaultGlyphColors = new Dictionary<uint, Color>();
+
+        public float VerticalOffset;
 
         public double Gamma {
             get {
