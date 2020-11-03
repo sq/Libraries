@@ -415,5 +415,14 @@ namespace Squared.PRGUI.Controls {
                 sb.Append(SelectedItem.ToString());
             }
         }
+
+        public int Count => Children.Count;
+        public Control this [int index] {
+            get => Children[index];
+            set => Children[index] = value;
+        }
+        public void RemoveAt (int index) => Children.RemoveAt(index);
+        public void Clear () => Children.Clear();
+        public void Add (Control child) => Children.Add(child);
     }
 }

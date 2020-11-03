@@ -41,6 +41,12 @@ namespace Squared.PRGUI {
             Items.Remove(control);
         }
 
+        public void RemoveAt (int index) {
+            var control = Items[index];
+            Items.RemoveAt(index);
+            control.UnsetParent(Parent);
+        }
+
         public int IndexOf (Control control) {
             return Items.IndexOf(control);
         }
@@ -61,6 +67,11 @@ namespace Squared.PRGUI {
                 return Items[index];
             }
             set {
+                if (Items[index] == value)
+                    return;
+
+                Items[index].UnsetParent(Parent);
+                value.SetParent(Parent);
                 Items[index] = value;
             }
         }

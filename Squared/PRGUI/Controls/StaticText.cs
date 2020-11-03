@@ -106,11 +106,11 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected AbstractString Text {
+        public AbstractString Text {
             get {
                 return Content.Text;
             }
-            set {
+            protected set {
                 Content.Text = value;
             }
         }
@@ -326,8 +326,11 @@ namespace Squared.PRGUI.Controls {
                 material = TextMaterial;
         }
 
-        protected string GetTrimmedText () {
-            var s = Text.ToString().Replace('\r', ' ').Replace('\n', ' ') ?? "";
+        protected string GetTrimmedText (string text) {
+            if (text == null)
+                return null;
+
+            var s = text.Replace('\r', ' ').Replace('\n', ' ') ?? "";
             if (s.Length > 16)
                 return s.Substring(0, 16) + "...";
             else
@@ -335,7 +338,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public override string ToString () {
-            return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText()}'";
+            return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText(Text.ToString())}'";
         }
 
         protected virtual AbstractString GetReadingText () => Text;

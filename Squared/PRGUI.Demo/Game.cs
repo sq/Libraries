@@ -289,14 +289,11 @@ namespace PRGUI.Demo {
                 Menu = testMenu
             };
 
-            var bigMenu = new Menu();
-            for (var i = 0; i < 100; i++)
-                bigMenu.Children.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });
-
-            var bigMenuButton = new Button {
-                Text = "Big Menu",
-                Menu = bigMenu
+            var dropdown = new Dropdown<StaticText> {
+                Label = "Dropdown Menu"
             };
+            for (var i = 0; i < 100; i++)
+                dropdown.Items.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });
 
             var supernestedGroup = new Container {
                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
@@ -401,7 +398,7 @@ namespace PRGUI.Demo {
                         LayoutFlags = ControlFlags.Layout_Fill_Row,
                         BackgroundColor = Color.LightPink
                     },
-                    bigMenuButton,
+                    dropdown,
                     new StaticText {
                         AutoSize = false,
                         Text = "Static Text 2\r\nLine 2",
