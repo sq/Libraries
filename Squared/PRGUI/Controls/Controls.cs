@@ -31,8 +31,15 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public class Button : StaticText {
+    public class Button : StaticTextBase {
         public Menu Menu;
+
+        new public DynamicStringLayout Content => base.Content;
+        new public AbstractString Text {
+            get => base.Text;
+            set => base.Text = value;
+        }
+        new public void Invalidate () => base.Invalidate();
 
         public Button ()
             : base () {
@@ -71,8 +78,15 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public class Checkbox : StaticText {
+    public class Checkbox : StaticTextBase {
         public bool Checked;
+
+        new public DynamicStringLayout Content => base.Content;
+        new public AbstractString Text {
+            get => base.Text;
+            set => base.Text = value;
+        }
+        new public void Invalidate () => base.Invalidate();
 
         public Checkbox ()
             : base () {
@@ -112,11 +126,18 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public class RadioButton : StaticText {
+    public class RadioButton : StaticTextBase {
         private bool _Checked, _SubscriptionPending;
         public string GroupId;
 
         private EventSubscription Subscription;
+
+        new public DynamicStringLayout Content => base.Content;
+        new public AbstractString Text {
+            get => base.Text;
+            set => base.Text = value;
+        }
+        new public void Invalidate () => base.Invalidate();
 
         public RadioButton ()
             : base () {
@@ -180,13 +201,14 @@ namespace Squared.PRGUI.Controls {
 
         protected override AbstractString GetReadingText () {
             if (Checked)
-                return Text.ToString() + ": Yes";
+                return Text.ToString() + ": Selected";
             else
                 return Text;
         }
 
         protected override void FormatValueInto (StringBuilder sb) {
-            sb.Append(Checked ? "Yes" : "No");
+            if (Checked)
+                sb.Append("Selected");
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

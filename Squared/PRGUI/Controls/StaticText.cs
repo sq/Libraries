@@ -14,14 +14,14 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class StaticText : Control, IPostLayoutListener, Accessibility.IReadingTarget {
+    public class StaticTextBase : Control, IPostLayoutListener, Accessibility.IReadingTarget {
         public const float AutoSizePadding = 3f;
         public const bool DiagnosticText = false;
 
         public Tween<Vector4>? TextColorPLinear = null;
         private bool _TextColorEventFired;
         public Material TextMaterial = null;
-        public DynamicStringLayout Content = new DynamicStringLayout();
+        protected DynamicStringLayout Content = new DynamicStringLayout();
         private DynamicStringLayout ContentMeasurement = null;
         private bool _AutoSizeWidth = true, _AutoSizeHeight = true;
         private bool _NeedRelayout;
@@ -29,14 +29,14 @@ namespace Squared.PRGUI.Controls {
 
         private float? AutoSizeComputedWidth, AutoSizeComputedHeight;
 
-        public StaticText ()
+        public StaticTextBase ()
             : base () {
             // Multiline = false;
         }
 
         bool _ScaleToFit;
 
-        public bool ScaleToFit {
+        protected bool ScaleToFit {
             get => _ScaleToFit;
             set {
                 if (_ScaleToFit == value)
@@ -54,7 +54,7 @@ namespace Squared.PRGUI.Controls {
             set => UpdateColor(ref TextColorPLinear, value);
         }
 
-        public bool Multiline {
+        protected bool Multiline {
             get => Content.LineLimit != 1;
             set {
                 Content.LineLimit = value ? int.MaxValue : 1;
@@ -87,7 +87,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public bool Wrap {
+        protected bool Wrap {
             get {
                 return Content.WordWrap;
             }
@@ -106,7 +106,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public AbstractString Text {
+        protected AbstractString Text {
             get {
                 return Content.Text;
             }
@@ -145,7 +145,7 @@ namespace Squared.PRGUI.Controls {
             ContentMeasurement.Copy(Content);
         }
 
-        private StringLayout GetCurrentLayout (bool measurement) {
+        protected StringLayout GetCurrentLayout (bool measurement) {
             if (measurement) {
                 if (!Content.IsValid || (ContentMeasurement == null))
                     ConfigureMeasurement();
@@ -161,7 +161,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private void ComputeAutoSize (UIOperationContext context) {
+        protected void ComputeAutoSize (UIOperationContext context) {
             // FIXME: If we start out constrained (by our parent size, etc) we will compute
             //  a compressed auto-size value here, and it will never be updated even if our parent
             //  gets bigger
@@ -185,7 +185,7 @@ namespace Squared.PRGUI.Controls {
                 AutoSizeComputedHeight = (float)Math.Ceiling(layout.Size.Y + computedPadding.Size.Y);
         }
 
-        public void Invalidate () {
+        protected void Invalidate () {
             _NeedRelayout = true;
             Content.Invalidate();
             ContentMeasurement?.Invalidate();
@@ -235,7 +235,7 @@ namespace Squared.PRGUI.Controls {
             return pSRGBColor.FromPLinear(v4.Value);
         }
 
-        private float ComputeScaleToFit (ref StringLayout layout, ref RectF box, ref Margins margins) {
+        protected float ComputeScaleToFit (ref StringLayout layout, ref RectF box, ref Margins margins) {
             if (!ScaleToFit)
                 return 1;
 
@@ -305,7 +305,7 @@ namespace Squared.PRGUI.Controls {
             );
         }
 
-        private void UpdateLineBreak (UIOperationContext context, IDecorator decorations) {
+        protected void UpdateLineBreak (UIOperationContext context, IDecorator decorations) {
             var textWidthLimit = ComputeTextWidthLimit(context, decorations);
             if (textWidthLimit.HasValue && !ScaleToFit)
                 Content.LineBreakAtX = textWidthLimit;
@@ -326,7 +326,7 @@ namespace Squared.PRGUI.Controls {
                 material = TextMaterial;
         }
 
-        private string GetTrimmedText () {
+        protected string GetTrimmedText () {
             var s = Text.ToString().Replace('\r', ' ').Replace('\n', ' ') ?? "";
             if (s.Length > 16)
                 return s.Substring(0, 16) + "...";
@@ -358,5 +358,27 @@ namespace Squared.PRGUI.Controls {
             var contentBox = context.Layout.GetContentRect(LayoutKey);
             MostRecentContentWidth = contentBox.Width;
         }
+    }
+
+    public class StaticText : StaticTextBase {
+        new public DynamicStringLayout Content => base.Content;
+        new public AbstractString Text {
+            get => base.Text;
+            set => base.Text = value;
+        }
+        new public bool Wrap {
+            get => base.Wrap;
+            set => base.Wrap = value;
+        }
+        new public bool Multiline {
+            get => base.Multiline;
+            set => base.Multiline = value;
+        }
+        new public bool ScaleToFit {
+            get => base.ScaleToFit;
+            set => base.ScaleToFit = value;
+        }
+
+        new public void Invalidate () => base.Invalidate();
     }
 }
