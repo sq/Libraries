@@ -42,7 +42,11 @@ namespace Squared.PRGUI.Controls {
         bool ICustomTooltipTarget.ShowTooltipWhileKeyboardFocus => true;
         bool ICustomTooltipTarget.HideTooltipOnMousePress => false;
 
+        public string Description;
+
         private Control _SelectedItem;
+
+        public bool DeselectOnMouseLeave = true;
 
         public Control SelectedItem {
             get {
@@ -69,7 +73,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private bool IsActive = false;
+        public bool IsActive { get; private set; }
 
         public static readonly AbstractTooltipContent SelectedItemTooltip = new AbstractTooltipContent(
             (Control ctl) => {
@@ -173,7 +177,8 @@ namespace Squared.PRGUI.Controls {
             var item = ChildFromGlobalPosition(Context.Layout, virtualGlobalPosition);
 
             if ((Context.MouseOver != this) && (Context.MouseCaptured != this)) {
-                SelectedItem = null;
+                if (DeselectOnMouseLeave)
+                    SelectedItem = null;
             } else {
                 if (item != null)
                     SelectedItem = item;
@@ -196,9 +201,10 @@ namespace Squared.PRGUI.Controls {
             if (!IsActive)
                 return false;
 
-            if (name == UIEvents.MouseLeave)
-                SelectedItem = null;
-            else if (args is MouseEventArgs)
+            if (name == UIEvents.MouseLeave) {
+                if (DeselectOnMouseLeave)
+                    SelectedItem = null;
+            } else if (args is MouseEventArgs)
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
             else if (name == UIEvents.LostFocus)
                 Close();
@@ -403,6 +409,9 @@ namespace Squared.PRGUI.Controls {
 
         AbstractString Accessibility.IReadingTarget.Text {
             get {
+                if (Description != null)
+                    return Description;
+
                 var ttc = TooltipContent.Get(this).ToString();
                 if (ttc != null)
                     return ttc;

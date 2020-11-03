@@ -18,7 +18,11 @@ namespace Squared.PRGUI.Controls {
     public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget, IMenuListener {
         public IEqualityComparer<T> Comparer;
         public readonly List<T> Items = new List<T>();
-        private readonly Menu ItemsMenu = new Menu();
+        private readonly Menu ItemsMenu = new Menu {
+            DeselectOnMouseLeave = false
+        };
+
+        public string Description;
 
         private readonly Dictionary<Control, T> ValueForControl = new Dictionary<Control, T>(new ReferenceComparer<Control>());
         public CreateControlForValueDelegate<T> CreateControlForValue = null;
@@ -42,6 +46,11 @@ namespace Squared.PRGUI.Controls {
 
         AbstractString Accessibility.IReadingTarget.Text {
             get {
+                if (Description != null)
+                    return $"{Description}: {GetValueText()}";
+                else if (TooltipContent)
+                    return TooltipContent.Get(this);
+
                 var irt = _SelectedItem as Accessibility.IReadingTarget;
                 if (irt != null)
                     return irt.Text;
@@ -100,6 +109,9 @@ namespace Squared.PRGUI.Controls {
         protected Control UpdateMenu () {
             Control result = null;
 
+            if (Description != null)
+                ItemsMenu.Description = $"Menu {Description}";
+
             for (int i = 0; i < Items.Count; i++) {
                 var value = Items[i];
                 var existingControl = (i < ItemsMenu.Count)
@@ -138,7 +150,7 @@ namespace Squared.PRGUI.Controls {
 
         private void ShowMenu () {
             UpdateMenu();
-            if (ItemsMenu.Visible)
+            if (ItemsMenu.IsActive)
                 return;
 
             var box = GetRect(Context.Layout, contentRect: true);
