@@ -290,7 +290,7 @@ namespace PRGUI.Demo {
             };
 
             var dropdown = new Dropdown<StaticText> {
-                Label = "Dropdown Menu"
+                // Label = "Dropdown Menu"
             };
             for (var i = 0; i < 100; i++)
                 dropdown.Items.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });

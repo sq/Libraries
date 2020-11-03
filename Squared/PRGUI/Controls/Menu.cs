@@ -13,6 +13,13 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
+    public interface IMenuListener {
+        void Shown (Menu menu);
+        void Closed (Menu menu);
+        void ItemSelected (Menu menu, Control item);
+        void ItemChosen (Menu menu, Control item);
+    }
+
     public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget {
         // Yuck
         public const int PageSize = 8;
@@ -83,6 +90,7 @@ namespace Squared.PRGUI.Controls {
 
         public Menu ()
             : base () {
+            Visible = false;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
             ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start;
@@ -113,6 +121,8 @@ namespace Squared.PRGUI.Controls {
         // HACK
         private bool _OverrideHitTestResults = true;
 
+        private IMenuListener Listener => FocusDonor as IMenuListener;
+
         protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
             var ok = base.OnHitTest(context, box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
             // HACK: Ensure that hit-test does not pass through to our individual items. We want to handle all events for them
@@ -124,10 +134,11 @@ namespace Squared.PRGUI.Controls {
         private void OnSelectionChange (Control previous, Control newControl) {
             foreach (var child in Children) {
                 child.CustomTextDecorations = ((child == newControl) && (child.BackgroundColorPLinear == null))
-                    ? Context.Decorations.Selection 
+                    ? Context?.Decorations.Selection 
                     : null;
             }
 
+            Listener?.ItemSelected(this, newControl);
             FireEvent(UIEvents.SelectionChanged, newControl);
         }
 
@@ -290,6 +301,7 @@ namespace Squared.PRGUI.Controls {
             if (!item.Enabled)
                 return false;
 
+            Listener?.ItemChosen(this, item);
             Context.FireEvent(UIEvents.ItemChosen, this, item);
             Context.FireEvent<int>(UIEvents.Click, item, 1);
             NextResultFuture?.SetResult2(item, null);
@@ -322,7 +334,6 @@ namespace Squared.PRGUI.Controls {
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
 
-            SelectedItem = null;
             Position = adjustedPosition;
             Visible = true;
             Intangible = false;
@@ -330,6 +341,7 @@ namespace Squared.PRGUI.Controls {
                 Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: context.NowL);
             context.CaptureMouse(this, out _FocusDonor);
             IsActive = true;
+            Listener?.Shown(this);
             Context.FireEvent(UIEvents.Shown, this);
             NextResultFuture = new Future<Control>();
             return NextResultFuture;
@@ -381,10 +393,12 @@ namespace Squared.PRGUI.Controls {
             Context.ReleaseCapture(this, FocusDonor);
             var now = Context.NowL;
             Opacity = Tween<float>.StartNow(Opacity.Get(now), 0, MenuHideSpeed, now: now);
+            Listener?.Closed(this);
             Context.FireEvent(UIEvents.Closed, this);
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
             AcceptsFocus = false;
+            SelectedItem = null;
         }
 
         AbstractString Accessibility.IReadingTarget.Text {

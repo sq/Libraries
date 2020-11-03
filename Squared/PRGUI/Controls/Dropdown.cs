@@ -15,11 +15,12 @@ using Squared.Util.Text;
 namespace Squared.PRGUI.Controls {
     public delegate Control CreateControlForValueDelegate<T> (ref T value, Control existingControl);
 
-    public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget {
-        public IEqualityComparer<T> Comparer = EqualityComparer<T>.Default;
+    public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget, IMenuListener {
+        public IEqualityComparer<T> Comparer;
         public readonly List<T> Items = new List<T>();
         private readonly Menu ItemsMenu = new Menu();
 
+        private readonly Dictionary<Control, T> ValueForControl = new Dictionary<Control, T>(new ReferenceComparer<Control>());
         public CreateControlForValueDelegate<T> CreateControlForValue = null;
         public Func<T, AbstractString> FormatValue = null;
         public AbstractString Label;
@@ -67,9 +68,10 @@ namespace Squared.PRGUI.Controls {
                 return _SelectedItem?.ToString();
         }
 
-        public Dropdown () : base () {
+        public Dropdown (IEqualityComparer<T> comparer = null) : base () {
             AcceptsFocus = true;
             AcceptsMouseInput = true;
+            Comparer = comparer ?? EqualityComparer<T>.Default;
         }
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
@@ -107,6 +109,8 @@ namespace Squared.PRGUI.Controls {
                 Control newControl;
                 if (CreateControlForValue != null)
                     newControl = CreateControlForValue(ref value, existingControl);
+                else if (value is Control)
+                    newControl = (Control)(object)value;
                 else {
                     AbstractString text = FormatValue != null
                         ? FormatValue(value)
@@ -115,6 +119,7 @@ namespace Squared.PRGUI.Controls {
                 }
 
                 if (newControl != existingControl) {
+                    ValueForControl[newControl] = value;
                     if (i < ItemsMenu.Count)
                         ItemsMenu[i] = newControl;
                     else
@@ -122,10 +127,26 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            while (ItemsMenu.Count > Items.Count)
-                ItemsMenu.RemoveAt(ItemsMenu.Count - 1);
+            while (ItemsMenu.Count > Items.Count) {
+                var i = ItemsMenu.Count - 1;
+                ValueForControl.Remove(ItemsMenu[i]);
+                ItemsMenu.RemoveAt(i);
+            }
 
             return result;
+        }
+
+        private void ShowMenu () {
+            UpdateMenu();
+            if (ItemsMenu.Visible)
+                return;
+
+            var box = GetRect(Context.Layout, contentRect: true);
+            ItemsMenu.MinimumWidth = box.Width;
+            var selectedIndex = Items.IndexOf(_SelectedItem);
+            if (selectedIndex >= 0)
+                ItemsMenu.SelectedItem = ItemsMenu[selectedIndex];
+            ItemsMenu.Show(Context, this);
         }
 
         protected override bool OnEvent<TArgs> (string name, TArgs args) {
@@ -133,7 +154,10 @@ namespace Squared.PRGUI.Controls {
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
             else if (args is KeyEventArgs)
                 return OnKeyEvent(name, (KeyEventArgs)(object)args);
-            else
+            else if (name == UIEvents.Click) {
+                ShowMenu();
+                return true;
+            } else
                 return base.OnEvent(name, args);
         }
 
@@ -157,16 +181,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
-            switch (name) {
-                case UIEvents.MouseDown:
-                case UIEvents.MouseMove:
-                case UIEvents.MouseUp:
-                    if ((name == UIEvents.MouseMove) && (args.Buttons == MouseButtons.None))
-                        return true;
-
-                    // FIXME
-
-                    return true;
+            if (name == UIEvents.MouseDown) {
+                ShowMenu();
+                return true;
             }
 
             return false;
@@ -178,6 +195,20 @@ namespace Squared.PRGUI.Controls {
 
         public override string ToString () {
             return $"Dropdown #{GetHashCode():X8} '{GetTrimmedText(GetValueText().ToString())}'";
+        }
+
+        void IMenuListener.Shown (Menu menu) {
+        }
+
+        void IMenuListener.Closed (Menu menu) {
+        }
+
+        void IMenuListener.ItemSelected (Menu menu, Control item) {
+        }
+
+        void IMenuListener.ItemChosen (Menu menu, Control item) {
+            var value = ValueForControl[item];
+            SelectedItem = value;
         }
     }
 }
