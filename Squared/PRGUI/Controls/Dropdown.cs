@@ -41,6 +41,7 @@ namespace Squared.PRGUI.Controls {
                     throw new ArgumentException("Value not in items list");
                 _SelectedItem = value;
                 NeedsUpdate = true;
+                Invalidate();
             }
         }
 
