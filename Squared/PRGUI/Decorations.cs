@@ -91,6 +91,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator MenuSelection { get; }
         IDecorator Slider { get; }
         IDecorator SliderThumb { get; }
+        IDecorator Dropdown { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
@@ -218,6 +219,7 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator MenuSelection { get; set; }
         public IDecorator Slider { get; set; }
         public IDecorator SliderThumb { get; set; }
+        public IDecorator Dropdown { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public IGlyphSource DefaultFont,
@@ -275,6 +277,7 @@ namespace Squared.PRGUI.Decorations {
             TextColor = Color.White,
             TooltipTextColor = Color.White;
 
+        public const float DropdownArrowWidth = 16, DropdownArrowHeight = 14, DropdownArrowPadding = 8;
         public const float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
 
@@ -369,6 +372,30 @@ namespace Squared.PRGUI.Decorations {
                 fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
                 annularRadius: 1.1f,
                 blendState: BlendState.Additive
+            );
+        }
+
+        private void Dropdown_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            Button_Above(context, ref renderer, settings);
+            var isPressed = settings.State.IsFlagged(ControlStates.Pressed);
+            GetContentAdjustment_Button(context, settings.State, out Vector2 offset, out Vector2 scale);
+
+            var ySpace = ((settings.ContentBox.Height - DropdownArrowHeight) / 2f);
+            var a = new Vector2(settings.ContentBox.Extent.X + DropdownArrowPadding + offset.X, settings.ContentBox.Top + ySpace + offset.Y);
+            var b = a + new Vector2(DropdownArrowWidth, DropdownArrowHeight);
+            var color = isPressed
+                ? Color.White
+                : Color.White * 0.9f;
+            var outlineColor = isPressed 
+                ? Color.Black * 0.85f
+                : Color.Black * 0.75f;
+
+            renderer.RasterizeTriangle(
+                a, new Vector2(b.X, a.Y),
+                new Vector2((a.X + b.X) / 2f, b.Y),
+                radius: 1f, outlineRadius: 1.1f,
+                innerColor: color, outerColor: color, 
+                outlineColor: outlineColor
             );
         }
 
@@ -1082,6 +1109,15 @@ namespace Squared.PRGUI.Decorations {
                 Padding = new Margins(6),
                 Below = SliderThumb_Below,
                 Above = SliderThumb_Above
+            };
+
+            Dropdown = new DelegateDecorator {
+                Margins = new Margins(4),
+                Padding = new Margins(14, 6, 14 + DropdownArrowWidth + 6, 6),
+                GetContentAdjustment = GetContentAdjustment_Button,
+                GetTextSettings = GetTextSettings_Button,
+                Below = Button_Below,
+                Above = Dropdown_Above
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {

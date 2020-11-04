@@ -85,8 +85,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
-            // FIXME
-            return provider.Button;
+            return provider.Dropdown;
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -203,6 +202,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            if (ItemsMenu.IsActive)
+                settings.State |= ControlStates.Pressed;
             base.OnRasterize(context, ref renderer, settings, decorations);
         }
 

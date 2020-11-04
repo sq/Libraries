@@ -290,7 +290,8 @@ namespace PRGUI.Demo {
             };
 
             var dropdown = new Dropdown<StaticText> {
-                Description = "Big Menu"
+                Description = "Big Menu",
+                TooltipContent = "Click me for a big dropdown menu"
             };
             for (var i = 0; i < 100; i++)
                 dropdown.Items.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });
