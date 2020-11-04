@@ -42,6 +42,7 @@ namespace Squared.PRGUI.Controls {
                 _SelectedItem = value;
                 NeedsUpdate = true;
                 Invalidate();
+                FireEvent(UIEvents.ValueChanged, _SelectedItem);
             }
         }
 
@@ -153,7 +154,7 @@ namespace Squared.PRGUI.Controls {
             if (ItemsMenu.IsActive)
                 return;
 
-            var box = GetRect(Context.Layout, contentRect: true);
+            var box = GetRect(Context.Layout, contentRect: false);
             ItemsMenu.MinimumWidth = box.Width;
             var selectedIndex = Items.IndexOf(_SelectedItem);
             if (selectedIndex >= 0)

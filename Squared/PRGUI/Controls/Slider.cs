@@ -243,6 +243,12 @@ namespace Squared.PRGUI.Controls {
                         case Keys.Right:
                             newValue = oldValue + speed;
                             break;
+                        case Keys.Home:
+                            newValue = (oldValue > 0) ? 0 : Minimum;
+                            break;
+                        case Keys.End:
+                            newValue = (oldValue < 0) ? 0 : Maximum;
+                            break;
                         default:
                             return false;
                     }

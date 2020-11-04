@@ -29,6 +29,9 @@ namespace Squared.PRGUI.Controls {
         public const float MenuShowSpeed = 0.1f;
         public const float MenuHideSpeed = 0.25f;
 
+        Vector2 MousePositionWhenShown;
+        bool? MouseInsideWhenShown;
+
         private Future<Control> NextResultFuture = null;
 
         float? ICustomTooltipTarget.TooltipDisappearDelay => null;
@@ -163,6 +166,9 @@ namespace Squared.PRGUI.Controls {
             // Console.WriteLine($"menu.{name}");
 
             if (name == UIEvents.MouseDown) {
+                // HACK: Clear the flag that causes us to ignore the next mouseup if the mouse hasn't mvoed
+                MouseInsideWhenShown = false;
+
                 if (HitTest(Context.Layout, args.GlobalPosition, false, false) != this) {
                     Context.ReleaseCapture(this, FocusDonor);
                     Close();
@@ -185,10 +191,12 @@ namespace Squared.PRGUI.Controls {
             }
 
             if (name == UIEvents.MouseUp) {
-                // This indicates that the mouse is in our padding zone
-                if (!args.ContentBox.Contains(virtualGlobalPosition))
-                    ;
-                else if (item != null) {
+                var mouseHasMovedSinceOpening = (args.GlobalPosition - MousePositionWhenShown).Length() > Context.MinimumMouseMovementDistance;
+                if (!args.ContentBox.Contains(virtualGlobalPosition)) {
+                    // This indicates that the mouse is in our padding zone
+                } else if ((MouseInsideWhenShown == true) && !mouseHasMovedSinceOpening) {
+                    // The mouse was inside our rect when we first opened, and hasn't moved
+                } else if (item != null) {
                     return ChooseItem(item);
                 } else
                     Close();
@@ -279,6 +287,13 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+            base.OnLayoutComplete(context, ref relayoutRequested);
+
+            if (!MouseInsideWhenShown.HasValue)
+                MouseInsideWhenShown = GetRect(context.Layout).Contains(MousePositionWhenShown);
+        }
+
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             if (SelectedItem != null) {
                 var selectionBox = SelectedItem.GetRect(context.Layout, true, false);
@@ -320,6 +335,8 @@ namespace Squared.PRGUI.Controls {
             if (!context.Controls.Contains(this))
                 context.Controls.Add(this);
 
+            MousePositionWhenShown = context.LastMousePosition;
+            MouseInsideWhenShown = null;
             MaximumWidth = context.CanvasSize.X * 0.5f;
             MaximumHeight = context.CanvasSize.Y * 0.66f;
             CalculateScrollable(context);
