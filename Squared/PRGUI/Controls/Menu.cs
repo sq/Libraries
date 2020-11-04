@@ -292,6 +292,12 @@ namespace Squared.PRGUI.Controls {
 
             if (!MouseInsideWhenShown.HasValue)
                 MouseInsideWhenShown = GetRect(context.Layout).Contains(MousePositionWhenShown);
+
+            // Remove ourselves from the top-level context if we've just finished fading out.
+            // While this isn't strictly necessary, it's worth doing for many reasons
+            var opacity = GetOpacity(context.NowL);
+            if ((opacity <= 0) && !IsActive)
+                context.UIContext.Controls.Remove(this);
         }
 
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
@@ -331,6 +337,14 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void ShowInternalPrologue (UIContext context) {
+            // If we have existing layout data (like we are in the middle of fading out),
+            //  we do not want to re-use it for calculations, it might be wrong
+            InvalidateLayout();
+
+            if (!IsActive)
+                Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: context.NowL);
+            IsActive = true;
+
             AcceptsFocus = true;
             if (!context.Controls.Contains(this))
                 context.Controls.Add(this);
@@ -360,10 +374,7 @@ namespace Squared.PRGUI.Controls {
             Position = adjustedPosition;
             Visible = true;
             Intangible = false;
-            if (!IsActive)
-                Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: context.NowL);
             context.CaptureMouse(this, out _FocusDonor);
-            IsActive = true;
             Listener?.Shown(this);
             Context.FireEvent(UIEvents.Shown, this);
             NextResultFuture = new Future<Control>();
@@ -378,8 +389,10 @@ namespace Squared.PRGUI.Controls {
             //  cancel them out again
             var maxX = context.CanvasSize.X - box.Width - margin.X;
             var maxY = context.CanvasSize.Y - box.Height - margin.Y;
-            desiredPosition.X = Arithmetic.Clamp(desiredPosition.X, margin.Left, maxX);
-            desiredPosition.Y = Arithmetic.Clamp(desiredPosition.Y, margin.Top, maxY);
+            var result = new Vector2(
+                Arithmetic.Clamp(desiredPosition.X, margin.Left, maxX),
+                Arithmetic.Clamp(desiredPosition.Y, margin.Top, maxY)
+            );
             return desiredPosition;
         }
 

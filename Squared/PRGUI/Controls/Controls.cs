@@ -165,7 +165,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override void Initialize () {
+        protected override void InitializeForContext () {
             if (_SubscriptionPending) {
                 Subscribe();
                 if (_Checked)

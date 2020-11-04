@@ -92,6 +92,12 @@ namespace Squared.PRGUI.Controls {
             return so;
         }
 
+        internal override void InvalidateLayout () {
+            base.InvalidateLayout();
+            foreach (var ch in Children)
+                ch.InvalidateLayout();
+        }
+
         protected bool OnScroll (float delta) {
             if (!Scrollable)
                 return false;

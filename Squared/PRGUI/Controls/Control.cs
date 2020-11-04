@@ -788,22 +788,33 @@ namespace Squared.PRGUI {
             return WeakParent.TryGetTarget(out parent);
         }
 
-        protected virtual void Initialize () {
+        protected virtual void InitializeForContext () {
+        }
+
+        internal virtual void InvalidateLayout () {
+            LayoutKey = ControlKey.Invalid;
         }
 
         internal void SetContext (UIContext context) {
-            if (WeakContext != null)
+            InvalidateLayout();
+
+            if (WeakContext != null) {
+                if (
+                    WeakContext.TryGetTarget(out UIContext existingContext) &&
+                    (existingContext != context)
+                )
                 throw new InvalidOperationException("UI context already set");
+            }
             // HACK to handle scenarios where a tree of controls are created without a context
             if (context == null)
                 return;
 
             WeakContext = new WeakReference<UIContext>(context, false);
-            Initialize();
+            InitializeForContext();
         }
 
         internal void SetParent (Control parent) {
-            LayoutKey = ControlKey.Invalid;
+            InvalidateLayout();
 
             if (parent == null) {
                 WeakParent = null;
@@ -823,6 +834,8 @@ namespace Squared.PRGUI {
         }
 
         internal void UnsetParent (Control oldParent) {
+            InvalidateLayout();
+
             if (WeakParent == null)
                 return;
 
