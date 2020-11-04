@@ -393,7 +393,7 @@ namespace Squared.PRGUI.Controls {
                 Arithmetic.Clamp(desiredPosition.X, margin.Left, maxX),
                 Arithmetic.Clamp(desiredPosition.Y, margin.Top, maxY)
             );
-            return desiredPosition;
+            return result;
         }
 
         public Future<Control> Show (UIContext context, Vector2? position = null) {
@@ -437,21 +437,38 @@ namespace Squared.PRGUI.Controls {
             SelectedItem = null;
         }
 
+        StringBuilder TextBuilder = new StringBuilder();
+
         AbstractString Accessibility.IReadingTarget.Text {
             get {
+                TextBuilder.Clear();
                 if (Description != null)
-                    return Description;
+                    TextBuilder.Append(Description);
+                else {
+                    var ttc = TooltipContent.Get(this).ToString();
+                    if (ttc != null)
+                        TextBuilder.Append(ttc);
+                    else {
+                        var donorIrt = FocusDonor as Accessibility.IReadingTarget;
+                        if (donorIrt != null)
+                            TextBuilder.Append($"Menu {donorIrt.Text}");
+                    }
+                }
 
-                var ttc = TooltipContent.Get(this).ToString();
-                if (ttc != null)
-                    return ttc;
+                if (SelectedItem != null) {
+                    var irt = SelectedItem as Accessibility.IReadingTarget;
+                    if (irt != null) {
+                        TextBuilder.Append(": ");
+                        var existingLength = TextBuilder.Length;
+                        irt.FormatValueInto(TextBuilder);
+                        if (TextBuilder.Length == existingLength)
+                            TextBuilder.Append(irt.Text.ToString());
+                    } else {
+                        // FIXME: Fallback to something else here?
+                    }
+                }
 
-                var donorIrt = FocusDonor as Accessibility.IReadingTarget;
-                if (donorIrt != null)
-                    return $"Menu {donorIrt.Text}";
-
-                // FIXME: ToString the donor?
-                return "Menu";
+                return TextBuilder;
             }
         }
 

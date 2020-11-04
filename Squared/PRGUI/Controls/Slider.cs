@@ -274,6 +274,8 @@ namespace Squared.PRGUI.Controls {
                 case UIEvents.MouseUp:
                     if ((name == UIEvents.MouseMove) && (args.Buttons == MouseButtons.None))
                         return true;
+                    if ((args.Buttons != MouseButtons.Left) && (args.PreviousButtons != MouseButtons.Left))
+                        return true;
 
                     var newValue = ValueFromPoint(GetRect(Context.Layout, contentRect: true), args.RelativeGlobalPosition);
                     Value = newValue;
