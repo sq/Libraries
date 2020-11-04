@@ -219,7 +219,7 @@ namespace PRGUI.Demo {
                 TooltipContent = "I'm a top-heavy window!"
             };
 
-            var slider = new Slider {
+            var volumeSlider = new Slider {
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                 Value = 80,
                 NotchInterval = 25f,
@@ -241,7 +241,7 @@ namespace PRGUI.Demo {
                     new StaticText { Text = "→", FocusBeneficiary = textfield, TooltipContent = "Clicking this label will focus the textfield" },
                     textfield,
                     numberField,
-                    slider,
+                    volumeSlider,
                     hideButton,
                     toppleButton,
                 },
@@ -450,6 +450,10 @@ namespace PRGUI.Demo {
                 Context.ReadAloudOnFocus = readAloud.Checked;
                 Context.TTS.Stop();
                 Context.TTS.Speak($"Reading {(readAloud.Checked ? "Enabled" : "Disabled")}");
+            });
+
+            Context.EventBus.Subscribe(volumeSlider, UIEvents.ValueChanged, (ei) => {
+                Context.TTS.Volume = (int)Math.Round(volumeSlider.Value, MidpointRounding.AwayFromZero);
             });
 
             Context.EventBus.Subscribe(readingSpeed, UIEvents.ValueChanged, (ei) => {

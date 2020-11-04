@@ -20,9 +20,13 @@ namespace Squared.PRGUI.Accessibility {
     public class TTS {
         public readonly UIContext Context;
 
+        public static TimeSpan StopOnTransitionThreshold = TimeSpan.FromSeconds(0.1);
+
         private readonly List<Prompt> SpeechQueue = new List<Prompt>();
         private SpeechSynthesizer _SpeechSynthesizer;
         private Control CurrentlyReading;
+
+        private long StartedReadingControlWhen;
 
         public TTS (UIContext context) {
             Context = context;
@@ -48,6 +52,11 @@ namespace Squared.PRGUI.Accessibility {
             get => SpeechQueue.Any(p => !p.IsCompleted);
         }
 
+        public int Volume {
+            get => SpeechSynthesizer.Volume;
+            set => SpeechSynthesizer.Volume = Arithmetic.Clamp(value, 0, 100);
+        }
+
         public void Speak (string text, int? rate = null) {
             if (rate != null)
                 SpeechSynthesizer.Rate = rate.Value;
@@ -66,6 +75,8 @@ namespace Squared.PRGUI.Accessibility {
             if (CurrentlyReading == control)
                 return;
 
+            StartedReadingControlWhen = Context.NowL;
+            ShouldStopBeforeReadingValue = false;
             Stop();
             CurrentlyReading = control;
             var customTarget = control as IReadingTarget;
@@ -86,6 +97,7 @@ namespace Squared.PRGUI.Accessibility {
         }
 
         private StringBuilder ValueStringBuilder = new StringBuilder();
+        private bool ShouldStopBeforeReadingValue = false;
 
         public void NotifyValueChanged (Control target) {
             if (!Context.ReadAloudOnValueChange)
@@ -101,8 +113,20 @@ namespace Squared.PRGUI.Accessibility {
             ValueStringBuilder.Clear();
             irt.FormatValueInto(ValueStringBuilder);
             if (ValueStringBuilder.Length > 0) {
-                Stop();
+                // A ValueChanged event can come immediately after a focus change
+                //  if a mouse event both transitioned focus and altered the value.
+                // In this case, we want to completely read the new focus target and
+                //  THEN read the new value, instead of having the new value immediately
+                //  stop the reading of the new focus target, so that it's clear which
+                //  control is now focused and having its value modified
+                if (
+                    ShouldStopBeforeReadingValue || 
+                    ((Context.NowL - StartedReadingControlWhen) >= StopOnTransitionThreshold.Ticks)
+                )
+                    Stop();
+
                 Speak(ValueStringBuilder.ToString(), Context.TTSValueReadingSpeed);
+                ShouldStopBeforeReadingValue = true;
             }
         }
 
