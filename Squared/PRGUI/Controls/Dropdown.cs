@@ -30,6 +30,7 @@ namespace Squared.PRGUI.Controls {
         public AbstractString Label;
 
         private bool NeedsUpdate = true;
+        private bool MenuJustClosed = false;
 
         private T _SelectedItem = default(T);
         public T SelectedItem {
@@ -150,8 +151,16 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void ShowMenu () {
+            // When the menu closes it will set this flag. If it was closed because a click occurred
+            //  on us (outside of the menu), we will hit this point with the flag set and know not
+            //  to reopen the menu
+            // FIXME: Maybe we should clear it here?
+            if (MenuJustClosed)
+                return;
+
             UpdateMenu();
 
+            // FIXME: The ideal behavior is for another click when open to close the dropdown
             if (ItemsMenu.IsActive)
                 return;
 
@@ -159,6 +168,7 @@ namespace Squared.PRGUI.Controls {
             ItemsMenu.MinimumWidth = box.Width;
             var selectedIndex = Items.IndexOf(_SelectedItem);
             ItemsMenu.Show(Context, this, selectedIndex >= 0 ? ItemsMenu[selectedIndex] : null);
+            MenuJustClosed = false;
         }
 
         protected override bool OnEvent<TArgs> (string name, TArgs args) {
@@ -166,10 +176,7 @@ namespace Squared.PRGUI.Controls {
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
             else if (args is KeyEventArgs)
                 return OnKeyEvent(name, (KeyEventArgs)(object)args);
-            else if (name == UIEvents.Click) {
-                ShowMenu();
-                return true;
-            } else
+            else
                 return base.OnEvent(name, args);
         }
 
@@ -187,6 +194,9 @@ namespace Squared.PRGUI.Controls {
                                 0, Items.Count - 1
                             );
                             SelectedItem = Items[newIndex];
+                            return true;
+                        case Keys.Space:
+                            ShowMenu();
                             return true;
                         default:
                             return false;
@@ -209,6 +219,9 @@ namespace Squared.PRGUI.Controls {
             if (ItemsMenu.IsActive)
                 settings.State |= ControlStates.Pressed;
             base.OnRasterize(context, ref renderer, settings, decorations);
+
+            // FIXME: There is probably a better place to clear this flag
+            MenuJustClosed = false;
         }
 
         public override string ToString () {
@@ -219,6 +232,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         void IMenuListener.Closed (Menu menu) {
+            MenuJustClosed = true;
         }
 
         void IMenuListener.ItemSelected (Menu menu, Control item) {
