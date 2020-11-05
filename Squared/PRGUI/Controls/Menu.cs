@@ -367,10 +367,11 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private Future<Control> ShowInternal (UIContext context, Vector2 adjustedPosition) {
+        private Future<Control> ShowInternal (UIContext context, Vector2 adjustedPosition, Control selectedItem) {
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
 
+            SelectedItem = selectedItem;
             Position = adjustedPosition;
             Visible = true;
             Intangible = false;
@@ -396,29 +397,29 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        public Future<Control> Show (UIContext context, Vector2? position = null) {
+        public Future<Control> Show (UIContext context, Vector2? position = null, Control selectedItem = null) {
             ShowInternalPrologue(context);
 
             // Align the top-left corner of the menu with the target position (compensating for margin),
             //  then shift the menu around if necessary to keep it on screen
             var adjustedPosition = AdjustPosition(context, (position ?? context.LastMousePosition));
 
-            return ShowInternal(context, adjustedPosition);
+            return ShowInternal(context, adjustedPosition, selectedItem);
         }
 
-        public Future<Control> Show (UIContext context, RectF anchorBox) {
+        public Future<Control> Show (UIContext context, RectF anchorBox, Control selectedItem = null) {
             var adjustedPosition = AdjustPosition(
                 context, new Vector2(anchorBox.Left, anchorBox.Top + anchorBox.Height)
             );
 
-            return ShowInternal(context, adjustedPosition);
+            return ShowInternal(context, adjustedPosition, selectedItem);
         }
 
-        public Future<Control> Show (UIContext context, Control anchor) {
+        public Future<Control> Show (UIContext context, Control anchor, Control selectedItem = null) {
             ShowInternalPrologue(context);
 
             var anchorBox = anchor.GetRect(context.Layout);
-            return Show(context, anchorBox);
+            return Show(context, anchorBox, selectedItem);
         }
 
         public void Close () {
@@ -434,7 +435,6 @@ namespace Squared.PRGUI.Controls {
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
             AcceptsFocus = false;
-            SelectedItem = null;
         }
 
         StringBuilder TextBuilder = new StringBuilder();

@@ -631,7 +631,7 @@ namespace PRGUI.Demo {
                 Window_ClientSizeChanged(null, EventArgs.Empty);
             }
 
-            Context.Rasterize(frame, UIRenderTarget, -9990, -9991);
+            Context.Rasterize(frame, UIRenderTarget, -9990);
             var ir = new ImperativeRenderer(frame, Materials);
             ir.Clear(color: Color.Transparent);
             ir.Layer += 1;

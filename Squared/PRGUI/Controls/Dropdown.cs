@@ -151,15 +151,14 @@ namespace Squared.PRGUI.Controls {
 
         private void ShowMenu () {
             UpdateMenu();
+
             if (ItemsMenu.IsActive)
                 return;
 
             var box = GetRect(Context.Layout, contentRect: false);
             ItemsMenu.MinimumWidth = box.Width;
             var selectedIndex = Items.IndexOf(_SelectedItem);
-            if (selectedIndex >= 0)
-                ItemsMenu.SelectedItem = ItemsMenu[selectedIndex];
-            ItemsMenu.Show(Context, this);
+            ItemsMenu.Show(Context, this, selectedIndex >= 0 ? ItemsMenu[selectedIndex] : null);
         }
 
         protected override bool OnEvent<TArgs> (string name, TArgs args) {

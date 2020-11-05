@@ -895,7 +895,7 @@ namespace Squared.PRGUI {
             // FIXME: Do we need to do anything here?
         }
 
-        public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer, int prepassLayer) {
+        public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer) {
             Now = (float)TimeProvider.Seconds;
             NowL = TimeProvider.Ticks;
 
@@ -906,8 +906,9 @@ namespace Squared.PRGUI {
                 srt.Reset();
             }
 
-            using (var prepassGroup = BatchGroup.New(frame, prepassLayer))
-            using (var rtBatch = BatchGroup.ForRenderTarget(frame, layer, renderTarget)) {
+            using (var outerGroup = BatchGroup.New(frame, layer))
+            using (var prepassGroup = BatchGroup.New(outerGroup, 0))
+            using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget)) {
                 var prepass = new ImperativeRenderer(prepassGroup, Materials);
                 var renderer = new ImperativeRenderer(rtBatch, Materials) {
                     BlendState = BlendState.AlphaBlend
