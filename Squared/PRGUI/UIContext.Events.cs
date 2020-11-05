@@ -322,6 +322,10 @@ namespace Squared.PRGUI {
 
             var previous = _Focused;
             _Focused = newFocusTarget;
+            TopLevelFocused = FindTopLevelAncestor(_Focused);
+            if ((TopLevelFocused == null) && (_Focused != null) && Controls.Contains(_Focused))
+                TopLevelFocused = _Focused;
+
             if ((previous != null) && (previous != newFocusTarget))
                 FireEvent(UIEvents.LostFocus, previous, newFocusTarget);
 

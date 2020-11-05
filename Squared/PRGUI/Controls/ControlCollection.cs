@@ -62,6 +62,10 @@ namespace Squared.PRGUI {
             return Items.GetEnumerator();
         }
 
+        public bool Contains (Control control) {
+            return Items.Contains(control);
+        }
+
         public Control this[int index] {
             get {
                 return Items[index];

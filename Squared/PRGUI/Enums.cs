@@ -217,7 +217,9 @@ namespace Squared.PRGUI {
         Hovering = 0b10,
         Focused = 0b100,
         Pressed = 0b1000,
-        Checked = 0b10000
+        Checked = 0b10000,
+        // FIXME: Currently only reported for top-level controls
+        ContainsFocus = 0b100000
     }
 
     public enum RasterizePasses {

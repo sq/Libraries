@@ -564,8 +564,16 @@ namespace Squared.PRGUI {
                     result |= ControlStates.Hovering;
                 // HACK: If a modal has temporarily borrowed focus from us, we should still appear
                 //  to be focused.
-                if ((context.UIContext.Focused == this) || (context.UIContext.Focused?.FocusDonor == this))
+                if (
+                    (context.UIContext.Focused == this) || 
+                    (context.UIContext.Focused?.FocusDonor == this)
+                ) {
                     result |= ControlStates.Focused;
+                    result |= ControlStates.ContainsFocus;
+                }
+
+                if (context.UIContext.TopLevelFocused == this)
+                    result |= ControlStates.ContainsFocus;
             }
 
             if ((context.UIContext.MouseCaptured == this) || (context.SpacebarHeld && context.UIContext.Focused == this))
