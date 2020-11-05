@@ -379,6 +379,9 @@ namespace Squared.PRGUI.Controls {
             Listener?.Shown(this);
             Context.FireEvent(UIEvents.Shown, this);
             NextResultFuture = new Future<Control>();
+            // FIXME: This doesn't work the first time the menu is shown
+            if (selectedItem != null)
+                context.PerformAutoscroll(selectedItem, 99999);
             return NextResultFuture;
         }
 

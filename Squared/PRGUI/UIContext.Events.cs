@@ -184,11 +184,8 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        private void UpdateAutoscroll () {
-            if (CurrentMouseButtons != MouseButtons.None)
-                return;
-
-            var scrollContext = ChooseScrollContext(KeyboardSelection, out RectF parentRect, out RectF controlRect, out RectF intersectedRect);
+        public bool PerformAutoscroll (Control target, float? speed = null) {
+            var scrollContext = ChooseScrollContext(target, out RectF parentRect, out RectF controlRect, out RectF intersectedRect);
             if (scrollContext != null) {
                 // For huge controls, as long as its top-left corner and most of its body
                 //  is visible we don't need to scroll
@@ -206,7 +203,7 @@ namespace Squared.PRGUI {
                     (intersectedRect.Left <= controlRect.Left) &&
                     (intersectedRect.Top <= controlRect.Top)
                 ) {
-                    return;
+                    return false;
                 }
 
                 // If the control is partially visible, we want to scroll its top-left corner into view.
@@ -218,7 +215,7 @@ namespace Squared.PRGUI {
                 // If the necessary scroll displacement is very small, don't bother scrolling - it'd just
                 //  be an annoyance.
                 if (maximumDisplacement.Length() < 1.5f)
-                    return;
+                    return false;
 
                 // Compute a new scroll offset that shifts our anchor into view, and constrain it
                 var currentScrollOffset = scrollContext.ScrollOffset;
@@ -236,14 +233,29 @@ namespace Squared.PRGUI {
                 //  that displacement to our autoscroll speed
                 var displacement = newScrollOffset - currentScrollOffset;
                 // The autoscroll speed starts slow for short distances and speeds up
-                float speedX = Math.Abs(displacement.X) / AutoscrollFastThreshold,
+                float speedX, speedY;
+                if (speed.HasValue) {
+                    speedX = speedY = speed.Value;
+                } else {
+                    speedX = Math.Abs(displacement.X) / AutoscrollFastThreshold;
                     speedY = Math.Abs(displacement.Y) / AutoscrollFastThreshold;
-                speedX = Arithmetic.Lerp(AutoscrollSpeedSlow, AutoscrollSpeedFast, speedX);
-                speedY = Arithmetic.Lerp(AutoscrollSpeedSlow, AutoscrollSpeedFast, speedX);
+                    speedX = Arithmetic.Lerp(AutoscrollSpeedSlow, AutoscrollSpeedFast, speedX);
+                    speedY = Arithmetic.Lerp(AutoscrollSpeedSlow, AutoscrollSpeedFast, speedX);
+                }
                 displacement.X = Math.Min(Math.Abs(displacement.X), speedX) * Math.Sign(displacement.X);
                 displacement.Y = Math.Min(Math.Abs(displacement.Y), speedY) * Math.Sign(displacement.Y);
                 scrollContext.ScrollOffset = currentScrollOffset + displacement;
+                return true;
             }
+
+            return false;
+        }
+
+        private void UpdateAutoscroll () {
+            if (CurrentMouseButtons != MouseButtons.None)
+                return;
+
+            PerformAutoscroll(KeyboardSelection, null);
         }
 
         private IScrollableControl ChooseScrollContext (Control control, out RectF parentRect, out RectF controlRect, out RectF intersectedRect) {

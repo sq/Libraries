@@ -178,11 +178,15 @@ namespace Squared.PRGUI.Controls {
                 case UIEvents.KeyPress:
                     Context.OverrideKeyboardSelection(this);
                     var oldSelection = _SelectedItem;
+                    var oldIndex = Items.IndexOf(oldSelection);
                     switch (args.Key) {
                         case Keys.Up:
-                            // FIXME
-                            return true;
                         case Keys.Down:
+                            var newIndex = Arithmetic.Clamp(
+                                oldIndex + ((args.Key == Keys.Up) ? -1 : 1),
+                                0, Items.Count - 1
+                            );
+                            SelectedItem = Items[newIndex];
                             return true;
                         default:
                             return false;

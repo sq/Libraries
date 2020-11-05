@@ -46,15 +46,21 @@ namespace Squared.PRGUI.Accessibility {
         private void InitSpeechSynthesizer () {
             _SpeechSynthesizer = new SpeechSynthesizer();
             _SpeechSynthesizer.SelectVoiceByHints(VoiceGender.Female);
+            _SpeechSynthesizer.Volume = _Volume;
         }
 
         public bool IsSpeaking {
             get => SpeechQueue.Any(p => !p.IsCompleted);
         }
 
+        private int _Volume = 100;
         public int Volume {
-            get => SpeechSynthesizer.Volume;
-            set => SpeechSynthesizer.Volume = Arithmetic.Clamp(value, 0, 100);
+            get => _Volume;
+            set {
+                _Volume = Arithmetic.Clamp(value, 0, 100);
+                if (_SpeechSynthesizer != null)
+                    _SpeechSynthesizer.Volume = _Volume;
+            }
         }
 
         public void Speak (string text, int? rate = null) {

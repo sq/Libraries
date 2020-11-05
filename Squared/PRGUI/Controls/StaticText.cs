@@ -344,6 +344,7 @@ namespace Squared.PRGUI.Controls {
         protected virtual AbstractString GetReadingText () => Text;
 
         protected virtual void FormatValueInto (StringBuilder sb) {
+            sb.Append(Text);
         }
 
         AbstractString Accessibility.IReadingTarget.Text => GetReadingText();

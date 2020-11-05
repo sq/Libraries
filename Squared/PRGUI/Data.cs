@@ -201,6 +201,9 @@ namespace Squared.PRGUI.Layout {
         }
 
         public RectF GetRect (ControlKey key) {
+            if (key.IsInvalid)
+                return default(RectF);
+
             return Boxes.DangerousGetItem(key.ID);
         }
 
@@ -231,12 +234,18 @@ namespace Squared.PRGUI.Layout {
         }
 
         public unsafe RectF GetContentRect (ControlKey key) {
+            if (key.IsInvalid)
+                return default(RectF);
+
             var pItem = LayoutPtr(key);
             var pExterior = RectPtr(key);
             return GetContentRect(pItem, ref *pExterior);
         }
 
         private void SetRect (ControlKey key, ref RectF newRect) {
+            if (key.IsInvalid)
+                throw new ArgumentOutOfRangeException("key");
+
             Boxes.DangerousSetItem(key.ID, ref newRect);
         }
 

@@ -717,7 +717,7 @@ namespace Squared.PRGUI {
         private void HideTooltipForMouseInput (bool isMouseDown) {
             var cttt = FixatedControl as ICustomTooltipTarget;
             if (cttt != null) {
-                if (isMouseDown && !cttt.HideTooltipOnMousePress)
+                if (!cttt.HideTooltipOnMousePress)
                     return;
             }
 
