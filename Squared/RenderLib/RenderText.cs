@@ -159,43 +159,43 @@ namespace Squared.Render.Text {
 
         // Parameters
         public ArraySegment<BitmapDrawCall> buffer;
-        public Vector2? position;
-        public Color?   overrideColor;
-        public Color    defaultColor;
-        public float    scale;
-        public DrawCallSortKey sortKey;
-        public int      characterSkipCount;
-        public int?     characterLimit;
-        public float    xOffsetOfFirstLine;
-        public float    xOffsetOfWrappedLine;
-        public float    xOffsetOfNewLine;
-        public float?   lineBreakAtX;
-        public bool     characterWrap;
-        public bool     wordWrap;
-        public char     wrapCharacter;
-        public bool     reverseOrder;
-        public int?     lineLimit;
+        public Vector2?            position;
+        public Color?              overrideColor;
+        public Color               defaultColor;
+        public float               scale;
+        public DrawCallSortKey     sortKey;
+        public int                 characterSkipCount;
+        public int?                characterLimit;
+        public float               xOffsetOfFirstLine;
+        public float               xOffsetOfWrappedLine;
+        public float               xOffsetOfNewLine;
+        public float?              lineBreakAtX;
+        public bool                characterWrap;
+        public bool                wordWrap;
+        public char                wrapCharacter;
+        public bool                reverseOrder;
+        public int?                lineLimit;
+        public bool                measureOnly;
         public GlyphPixelAlignment alignToPixels;
         public HorizontalAlignment alignment;
         public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
 
         // State
-        public float    maxLineHeight;
-        public Vector2  actualPosition, characterOffset, characterOffsetUnconstrained;
-        public Bounds   firstCharacterBounds, lastCharacterBounds;
-        public int      drawCallsWritten, drawCallsSuppressed;
-        float   initialLineXOffset;
-        int     bufferWritePosition, wordStartWritePosition;
-        int     rowIndex, colIndex;
-        bool    wordWrapSuppressed;
-        float   currentLineMaxX, currentLineMaxXUnconstrained;
-        float   currentLineWhitespaceMaxXLeft, currentLineWhitespaceMaxX;
-        float   maxX, maxY, maxXUnconstrained, maxYUnconstrained;
-        float?  currentLineSpacing;
-        float   maxLineSpacing;
-        Vector2 wordStartOffset;
-        private bool ownsBuffer;
-        private bool suppress, suppressUntilNextLine;
+        public float   maxLineHeight;
+        public Vector2 actualPosition, characterOffset, characterOffsetUnconstrained;
+        public Bounds  firstCharacterBounds, lastCharacterBounds;
+        public int     drawCallsWritten, drawCallsSuppressed;
+        float          initialLineXOffset;
+        int            bufferWritePosition, wordStartWritePosition;
+        int            rowIndex, colIndex;
+        bool           wordWrapSuppressed;
+        float          currentLineMaxX, currentLineMaxXUnconstrained;
+        float          currentLineWhitespaceMaxXLeft, currentLineWhitespaceMaxX;
+        float          maxX, maxY, maxXUnconstrained, maxYUnconstrained;
+        float?         currentLineSpacing;
+        float          maxLineSpacing;
+        Vector2        wordStartOffset;
+        private bool   ownsBuffer, suppress, suppressUntilNextLine;
 
         int currentCharacterIndex;
 
@@ -255,6 +255,9 @@ namespace Squared.Render.Text {
         }
 
         private void ProcessMarkers (ref Bounds bounds, int currentCodepointSize, int? drawCallIndex) {
+            if (measureOnly)
+                return;
+
             var characterIndex1 = currentCharacterIndex - currentCodepointSize + 1;
             var characterIndex2 = currentCharacterIndex;
             for (int i = 0; i < Markers.Count; i++) {
@@ -442,7 +445,8 @@ namespace Squared.Render.Text {
             if (text.IsNull)
                 throw new ArgumentNullException("text");
 
-            EnsureBufferCapacity(bufferWritePosition + text.Length);
+            if (!measureOnly)
+                EnsureBufferCapacity(bufferWritePosition + text.Length);
 
             if (kerningAdjustments == null)
                 kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
@@ -680,25 +684,29 @@ namespace Squared.Render.Text {
                     );
 
                     if (!isWhiteSpace) {
-                        if (bufferWritePosition >= buffer.Count)
-                            EnsureBufferCapacity(bufferWritePosition);
+                        if (!measureOnly) {
+                            if (bufferWritePosition >= buffer.Count)
+                                EnsureBufferCapacity(bufferWritePosition);
 
-                        drawCall.Textures = new TextureSet(glyph.Texture);
-                        drawCall.TextureRegion = glyph.BoundsInTexture;
-                        drawCall.Position = glyphPosition;
-                        drawCall.MultiplyColor = overrideColor ?? glyph.DefaultColor ?? defaultColor;
+                            drawCall.Textures = new TextureSet(glyph.Texture);
+                            drawCall.TextureRegion = glyph.BoundsInTexture;
+                            drawCall.Position = glyphPosition;
+                            drawCall.MultiplyColor = overrideColor ?? glyph.DefaultColor ?? defaultColor;
 
-                        // HACK so that the alignment pass can detect rows. We strip this later.
-                        if (alignment != HorizontalAlignment.Left)
-                            drawCall.SortOrder = rowIndex;
-                        else if (reverseOrder)
-                            drawCall.SortOrder += 1;
+                            // HACK so that the alignment pass can detect rows. We strip this later.
+                            if (alignment != HorizontalAlignment.Left)
+                                drawCall.SortOrder = rowIndex;
+                            else if (reverseOrder)
+                                drawCall.SortOrder += 1;
+                        }
 
                         if (!suppress && !suppressUntilNextLine) {
-                            buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
-                            ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition);
-                            bufferWritePosition += 1;
-                            drawCallsWritten += 1;
+                            if (!measureOnly) {
+                                buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
+                                ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition);
+                                bufferWritePosition += 1;
+                                drawCallsWritten += 1;
+                            }
                             currentLineMaxX = Math.Max(currentLineMaxX, x);
                             maxY = Math.Max(maxY, (characterOffset.Y + effectiveLineSpacing) * effectiveScale);
                         } else {

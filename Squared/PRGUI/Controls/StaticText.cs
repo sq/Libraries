@@ -143,6 +143,7 @@ namespace Squared.PRGUI.Controls {
             if (ContentMeasurement == null)
                 ContentMeasurement = new DynamicStringLayout();
             ContentMeasurement.Copy(Content);
+            ContentMeasurement.MeasureOnly = true;
         }
 
         protected StringLayout GetCurrentLayout (bool measurement) {
@@ -154,7 +155,8 @@ namespace Squared.PRGUI.Controls {
                 return ContentMeasurement.Get();
             } else {
                 if (!Content.IsValid) {
-                    ConfigureMeasurement();
+                    if (ContentMeasurement != null)
+                        ConfigureMeasurement();
                     _NeedRelayout = true;
                 }
                 return Content.Get();

@@ -37,6 +37,7 @@ namespace Squared.Render.Text {
         private int _Alignment = (int)HorizontalAlignment.Left;
         private bool _ReverseOrder = false;
         private int _LineLimit = int.MaxValue;
+        private bool _MeasureOnly = false;
 
         private readonly Dictionary<Pair<int>, LayoutMarker> _Markers = new Dictionary<Pair<int>, LayoutMarker>();
         private readonly Dictionary<Vector2, LayoutHitTest> _HitTests = new Dictionary<Vector2, LayoutHitTest>();
@@ -301,6 +302,20 @@ namespace Squared.Render.Text {
             }
         }
 
+        public bool MeasureOnly {
+            get {
+                return _MeasureOnly;
+            }
+            set {
+                // If we weren't in measurement-only mode, transitioning into it doesn't
+                //  need to invalidate anything since all we'd do is throw away data
+                if (_MeasureOnly == false)
+                    InvalidatingValueAssignment(ref _MeasureOnly, value);
+                else
+                    _MeasureOnly = value;
+            }
+        }
+
         public HorizontalAlignment Alignment {
             get {
                 return (HorizontalAlignment)_Alignment;
@@ -395,7 +410,8 @@ namespace Squared.Render.Text {
                 wrapCharacter = _WrapCharacter,
                 alignment = (HorizontalAlignment)_Alignment,
                 reverseOrder = _ReverseOrder,
-                lineLimit = _LineLimit
+                lineLimit = _LineLimit,
+                measureOnly = _MeasureOnly
             };
 
             foreach (var kvp in _Markers)
