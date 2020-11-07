@@ -378,5 +378,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         new public void Invalidate () => base.Invalidate();
+
+        public StaticText ()
+            : base () {
+            AcceptsMouseInput = true;
+        }
     }
 }
