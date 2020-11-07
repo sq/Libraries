@@ -241,6 +241,7 @@ namespace Squared.PRGUI {
         }
 
         public Control TopLevelFocused { get; private set; }
+        public Control TopLevelFocusDonor { get; private set; }
 
         public DefaultMaterialSet Materials { get; private set; }
         private ITimeProvider TimeProvider;

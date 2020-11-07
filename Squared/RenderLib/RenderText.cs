@@ -753,28 +753,28 @@ namespace Squared.Render.Text {
         }
 
         public StringLayout Finish () {
-            ArraySegment<BitmapDrawCall> result;
-            if (buffer.Array == null)
-                result = default(ArraySegment<BitmapDrawCall>);
-            else
-                result = new ArraySegment<BitmapDrawCall>(
-                    buffer.Array, buffer.Offset, drawCallsWritten
-                );
+            var result = default(ArraySegment<BitmapDrawCall>);
+            if (!measureOnly) {
+                if (buffer.Array != null)
+                    result = new ArraySegment<BitmapDrawCall>(
+                        buffer.Array, buffer.Offset, drawCallsWritten
+                    );
 
-            if (alignment != HorizontalAlignment.Left)
-                AlignLines(result, alignment);
-            else
-                SnapPositions(result);
+                if (alignment != HorizontalAlignment.Left)
+                    AlignLines(result, alignment);
+                else
+                    SnapPositions(result);
 
-            if (reverseOrder) {
-                int i = result.Offset;
-                int j = result.Offset + result.Count - 1;
-                while (i < j) {
-                    var temp = result.Array[i];
-                    result.Array[i] = result.Array[j];
-                    result.Array[j] = temp;
-                    i++;
-                    j--;
+                if (reverseOrder) {
+                    int i = result.Offset;
+                    int j = result.Offset + result.Count - 1;
+                    while (i < j) {
+                        var temp = result.Array[i];
+                        result.Array[i] = result.Array[j];
+                        result.Array[j] = temp;
+                        i++;
+                        j--;
+                    }
                 }
             }
 
