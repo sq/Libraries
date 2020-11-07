@@ -478,6 +478,9 @@ namespace PRGUI.Demo {
                 if (FloatingWindow.Opacity.To >= 1)
                     return;
 
+                Context.Controls.Remove(FloatingWindow);
+                return;
+
                 FloatingWindow.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, delay: 1f, now: Context.NowL);
                 FloatingWindow.Intangible = false;
             });

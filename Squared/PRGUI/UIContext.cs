@@ -243,6 +243,9 @@ namespace Squared.PRGUI {
         public Control TopLevelFocused { get; private set; }
         public Control TopLevelFocusDonor { get; private set; }
 
+        public Control PreviousFocused { get; private set; }
+        public Control PreviousTopLevelFocused { get; private set; }
+
         public DefaultMaterialSet Materials { get; private set; }
         private ITimeProvider TimeProvider;
 
@@ -486,6 +489,50 @@ namespace Squared.PRGUI {
                 Hovering = null;
             else
                 Hovering = MouseOver;
+        }
+
+        bool IsEqualOrAncestor (Control control, Control expected) {
+            if (expected == control)
+                return true;
+            if (control == null)
+                return false;
+
+            var current = control;
+            while (true) {
+                if (!current.TryGetParent(out Control parent))
+                    return false;
+
+                if (parent == expected)
+                    return true;
+                current = parent;
+            }
+        }
+
+        // Clean up when a control is removed in case it has focus or mouse capture,
+        //  and attempt to return focus to the most recent place it occupied (for modals)
+        internal void NotifyControlBeingRemoved (Control control) {
+            if (PreviousFocused == control)
+                PreviousFocused = null;
+            if (PreviousTopLevelFocused == control)
+                PreviousTopLevelFocused = null;
+            if (IsEqualOrAncestor(_MouseCaptured, control))
+                MouseCaptured = null;
+
+            if (IsEqualOrAncestor(Focused, control)) {
+                if (Focused?.FocusDonor != null) {
+                    TrySetFocus(Focused?.FocusDonor, false);
+                    if (IsEqualOrAncestor(Focused, control))
+                        TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false);
+                } else
+                    TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false);
+            }
+            if (IsEqualOrAncestor(KeyboardSelection, control))
+                KeyboardSelection = null;
+
+            if (PreviousFocused == control)
+                PreviousFocused = null;
+            if (PreviousTopLevelFocused == control)
+                PreviousTopLevelFocused = null;
         }
 
         public void UpdateInput (

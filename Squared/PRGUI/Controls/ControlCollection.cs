@@ -37,12 +37,14 @@ namespace Squared.PRGUI {
         }
 
         public void Remove (Control control) {
+            Context?.NotifyControlBeingRemoved(control);
             control.UnsetParent(Parent);
             Items.Remove(control);
         }
 
         public void RemoveAt (int index) {
             var control = Items[index];
+            Context?.NotifyControlBeingRemoved(control);
             Items.RemoveAt(index);
             control.UnsetParent(Parent);
         }
@@ -52,8 +54,10 @@ namespace Squared.PRGUI {
         }
 
         public void Clear () {
-            foreach (var control in Items)
+            foreach (var control in Items) {
+                Context?.NotifyControlBeingRemoved(control);
                 control.UnsetParent(Parent);
+            }
 
             Items.Clear();
         }

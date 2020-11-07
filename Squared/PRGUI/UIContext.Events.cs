@@ -279,7 +279,7 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        private Control FindTopLevelAncestor (Control control) {
+        public Control FindTopLevelAncestor (Control control) {
             if (control == null)
                 return null;
 
@@ -321,10 +321,16 @@ namespace Squared.PRGUI {
             }
 
             var previous = _Focused;
+            if (previous != _Focused)
+                PreviousFocused = _Focused;
             _Focused = newFocusTarget;
+
+            var previousTopLevel = TopLevelFocused;
             TopLevelFocused = FindTopLevelAncestor(_Focused);
             if ((TopLevelFocused == null) && (_Focused != null) && Controls.Contains(_Focused))
                 TopLevelFocused = _Focused;
+            if (TopLevelFocused != previousTopLevel)
+                PreviousTopLevelFocused = previousTopLevel;
 
             var fd = _Focused?.FocusDonor;
             TopLevelFocusDonor = FindTopLevelAncestor(fd);
