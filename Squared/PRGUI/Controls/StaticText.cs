@@ -18,7 +18,7 @@ namespace Squared.PRGUI.Controls {
         public const float AutoSizePadding = 3f;
         public const bool DiagnosticText = false;
 
-        public Tween<Vector4>? TextColorPLinear = null;
+        public ColorVariable TextColor;
         private bool _TextColorEventFired;
         public Material TextMaterial = null;
         protected DynamicStringLayout Content = new DynamicStringLayout();
@@ -44,14 +44,6 @@ namespace Squared.PRGUI.Controls {
                 _ScaleToFit = true;
                 Invalidate();
             }
-        }
-
-        public Tween<Color>? TextColor {
-            set => UpdateColor(ref TextColorPLinear, value);
-        }
-
-        public Tween<pSRGBColor>? TextColorPSRGB {
-            set => UpdateColor(ref TextColorPLinear, value);
         }
 
         protected bool Multiline {
@@ -231,7 +223,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected pSRGBColor? GetTextColor (long now) {
-            var v4 = AutoFireTweenEvent(now, UIEvents.TextColorTweenEnded, ref TextColorPLinear, ref _TextColorEventFired);
+            var v4 = AutoFireTweenEvent(now, UIEvents.TextColorTweenEnded, ref TextColor.pLinear, ref _TextColorEventFired);
             if (!v4.HasValue)
                 return null;
             return pSRGBColor.FromPLinear(v4.Value);

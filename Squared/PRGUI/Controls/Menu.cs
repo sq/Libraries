@@ -140,7 +140,7 @@ namespace Squared.PRGUI.Controls {
 
         private void OnSelectionChange (Control previous, Control newControl) {
             foreach (var child in Children) {
-                child.CustomTextDecorations = ((child == newControl) && (child.BackgroundColorPLinear == null))
+                child.CustomTextDecorations = ((child == newControl) && (child.BackgroundColor.pLinear == null))
                     ? Context?.Decorations.Selection 
                     : null;
             }
@@ -377,7 +377,7 @@ namespace Squared.PRGUI.Controls {
             Intangible = false;
             context.CaptureMouse(this, out _FocusDonor);
             Listener?.Shown(this);
-            Context.FireEvent(UIEvents.Shown, this);
+            FireEvent(UIEvents.Shown);
             NextResultFuture = new Future<Control>();
             // FIXME: This doesn't work the first time the menu is shown
             if (selectedItem != null)
@@ -434,7 +434,7 @@ namespace Squared.PRGUI.Controls {
             var now = Context.NowL;
             Opacity = Tween<float>.StartNow(Opacity.Get(now), 0, MenuHideSpeed, now: now);
             Listener?.Closed(this);
-            Context.FireEvent(UIEvents.Closed, this);
+            FireEvent(UIEvents.Closed);
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
             AcceptsFocus = false;

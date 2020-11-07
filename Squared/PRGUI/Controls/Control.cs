@@ -167,7 +167,7 @@ namespace Squared.PRGUI {
         public float? FixedWidth, FixedHeight;
         public float? MinimumWidth, MinimumHeight;
         public float? MaximumWidth, MaximumHeight;
-        public Tween<Vector4>? BackgroundColorPLinear = null;
+        public ColorVariable BackgroundColor;
         public BackgroundImageSettings BackgroundImage = null;
         public Tween<float> Opacity = 1;
         private bool _BackgroundColorEventFired, _OpacityEventFired;
@@ -266,34 +266,6 @@ namespace Squared.PRGUI {
 
         protected void InvalidateTooltip () {
             TooltipContentVersion++;
-        }
-
-        protected static void UpdateColor (ref Tween<Vector4>? v4, Tween<Color>? value) {
-            if (value == null) {
-                v4 = null;
-                return;
-            }
-
-            var v = value.Value;
-            v4 = v.CloneWithNewValues(((pSRGBColor)v.From).ToPLinear(), ((pSRGBColor)v.To).ToPLinear());
-        }
-
-        protected static void UpdateColor (ref Tween<Vector4>? v4, Tween<pSRGBColor>? value) {
-            if (value == null) {
-                v4 = null;
-                return;
-            }
-
-            var v = value.Value;
-            v4 = v.CloneWithNewValues(v.From.ToPLinear(), v.To.ToPLinear());
-        }
-
-        public Tween<Color>? BackgroundColor {
-            set => UpdateColor(ref BackgroundColorPLinear, value);
-        }
-
-        public Tween<pSRGBColor>? BackgroundColorPSRGB {
-            set => UpdateColor(ref BackgroundColorPLinear, value);
         }
 
         public UIContext Context {
@@ -425,7 +397,7 @@ namespace Squared.PRGUI {
         }
 
         protected pSRGBColor? GetBackgroundColor (long now) {
-            var v4 = AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref BackgroundColorPLinear, ref _BackgroundColorEventFired);
+            var v4 = AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref BackgroundColor.pLinear, ref _BackgroundColorEventFired);
             if (!v4.HasValue)
                 return null;
             return pSRGBColor.FromPLinear(v4.Value);
@@ -862,6 +834,52 @@ namespace Squared.PRGUI {
 
         public override string ToString () {
             return $"{GetType().Name} #{GetHashCode():X8}";
+        }
+    }
+
+    public struct ColorVariable {
+        public Tween<Vector4>? pLinear;
+
+        public Tween<Color>? Color {
+            set => Update(ref pLinear, value);
+        }
+
+        public Tween<pSRGBColor>? pSRGB {
+            set => Update(ref pLinear, value);
+        }
+
+        internal static void Update (ref Tween<Vector4>? v4, Tween<Color>? value) {
+            if (value == null) {
+                v4 = null;
+                return;
+            }
+
+            var v = value.Value;
+            v4 = v.CloneWithNewValues(((pSRGBColor)v.From).ToPLinear(), ((pSRGBColor)v.To).ToPLinear());
+        }
+
+        internal static void Update (ref Tween<Vector4>? v4, Tween<pSRGBColor>? value) {
+            if (value == null) {
+                v4 = null;
+                return;
+            }
+
+            var v = value.Value;
+            v4 = v.CloneWithNewValues(v.From.ToPLinear(), v.To.ToPLinear());
+        }
+
+        public static implicit operator ColorVariable (Tween<Color> c) {
+            var result = new ColorVariable();
+            Update(ref result.pLinear, c);
+            return result;
+        }
+
+        public static implicit operator ColorVariable (Color c) {
+            return new ColorVariable { Color = c };
+        }
+
+        public static implicit operator ColorVariable (pSRGBColor c) {
+            return new ColorVariable { pSRGB = c };
         }
     }
 }

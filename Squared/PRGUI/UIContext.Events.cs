@@ -348,7 +348,7 @@ namespace Squared.PRGUI {
             return true;
         }
 
-        private Control FindFocusableSibling (ControlCollection collection, Control current, int delta, bool recursive) {
+        public Control FindFocusableSibling (ControlCollection collection, Control current, int delta, bool recursive) {
             var tabOrdered = collection.InTabOrder(false);
             if (tabOrdered.Count < 1)
                 return null;

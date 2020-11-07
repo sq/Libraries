@@ -40,6 +40,10 @@ namespace Squared.PRGUI.Controls {
             set => base.Text = value;
         }
         new public void Invalidate () => base.Invalidate();
+        new public bool AcceptsFocus {
+            get => base.AcceptsFocus;
+            set => base.AcceptsFocus = value;
+        }
 
         public Button ()
             : base () {
@@ -93,6 +97,7 @@ namespace Squared.PRGUI.Controls {
             Content.Alignment = HorizontalAlignment.Left;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
+            Wrap = false;
         }
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
@@ -144,6 +149,7 @@ namespace Squared.PRGUI.Controls {
             Content.Alignment = HorizontalAlignment.Left;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
+            Wrap = false;
         }
 
         public bool Checked {
