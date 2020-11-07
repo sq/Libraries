@@ -25,6 +25,11 @@ namespace Squared.PRGUI {
             Context = parent.Context;
         }
 
+        public void CopyTo (List<Control> destination) {
+            foreach (var item in Items)
+                destination.Add(item);
+        }
+
         public void Add (Control control) {
             if (Items.Contains(control))
                 throw new InvalidOperationException("Control already in collection");

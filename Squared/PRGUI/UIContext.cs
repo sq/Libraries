@@ -437,12 +437,16 @@ namespace Squared.PRGUI {
         }
 
         UnorderedList<IPostLayoutListener> _PostLayoutListeners = new UnorderedList<IPostLayoutListener>();
+        List<Control> _TopLevelControls = new List<Control>();
 
         private void DoUpdateLayoutInternal (UIOperationContext context, bool secondTime) {
             Layout.CanvasSize = CanvasSize;
             Layout.SetContainerFlags(Layout.Root, ControlFlags.Container_Row | ControlFlags.Container_Constrain_Size);
 
-            foreach (var control in Controls)
+            _TopLevelControls.Clear();
+            Controls.CopyTo(_TopLevelControls);
+
+            foreach (var control in _TopLevelControls)
                 control.GenerateLayoutTree(ref context, Layout.Root, secondTime ? control.LayoutKey : (ControlKey?)null);
         }
 

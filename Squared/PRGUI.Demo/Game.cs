@@ -479,10 +479,14 @@ namespace PRGUI.Demo {
                     return;
 
                 Context.Controls.Remove(FloatingWindow);
-                return;
 
-                FloatingWindow.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, delay: 1f, now: Context.NowL);
-                FloatingWindow.Intangible = false;
+                var f = Scheduler.Start(new Sleep(1f));
+
+                f.RegisterOnComplete((_) => {
+                    FloatingWindow.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, delay: 1f, now: Context.NowL);
+                    FloatingWindow.Intangible = false;
+                    Context.Controls.Add(FloatingWindow);
+                });
             });
 
             UIRenderTarget = new AutoRenderTarget(
