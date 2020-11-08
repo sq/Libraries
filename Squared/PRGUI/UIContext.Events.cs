@@ -115,6 +115,8 @@ namespace Squared.PRGUI {
             LastClickTarget = target;
             LastClickTime = LastMouseDownTime;
             FireEvent(UIEvents.Click, target, SequentialClickCount);
+
+            TTS.ControlClicked(target);
         }
 
         private void HandleDrag (Control originalTarget, Control finalTarget) {

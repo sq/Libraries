@@ -20,11 +20,11 @@ namespace Squared.PRGUI.Accessibility {
     public class TTS {
         public readonly UIContext Context;
 
-        public static TimeSpan StopOnTransitionThreshold = TimeSpan.FromSeconds(0.1);
+        public static TimeSpan StopOnTransitionThreshold = TimeSpan.FromSeconds(0.3);
 
         private readonly List<Prompt> SpeechQueue = new List<Prompt>();
         private SpeechSynthesizer _SpeechSynthesizer;
-        private Control CurrentlyReading;
+        public Control CurrentlyReading { get; private set; }
 
         private long StartedReadingControlWhen;
 
@@ -153,6 +153,22 @@ namespace Squared.PRGUI.Accessibility {
                     BeginReading(current);
             }
         }
+
+        internal void ControlClicked (Control target) {
+            // FIXME: If clicking on a static transferred focus to a neighbor (because it was in
+            //  another top-level container) should we read it?
+            if (
+                !target.AcceptsFocus && 
+                Context.ReadAloudOnClickIfNotFocusable &&
+                // Containers will transfer focus elsewhere when clicked so don't read them
+                !(target is IControlContainer) &&
+                // Controls that transfer focus elsewhere shouldn't be read when clicked,
+                //  we want to read the new focus target instead
+                (target.FocusBeneficiary == null) &&
+                ((CurrentlyReading != target) || !IsSpeaking)
+            )
+                BeginReading(target);
+        }
     }
 }
 
@@ -162,7 +178,8 @@ namespace Squared.PRGUI {
         public int TTSDescriptionReadingSpeed = 0;
         public bool ReadAloudOnFixation = false;
         public bool ReadAloudOnFocus = false;
-        public bool ReadAloudOnValueChange = true;
+        public bool ReadAloudOnClickIfNotFocusable = false;
+        public bool ReadAloudOnValueChange = false;
 
         public readonly TTS TTS;
     }

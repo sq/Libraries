@@ -360,7 +360,7 @@ namespace PRGUI.Demo {
             };
 
             var readAloud = new Checkbox {
-                Text = "Read Aloud On Focus",
+                Text = "Read Aloud",
                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_ForceBreak,
             };
 
@@ -448,6 +448,8 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(readAloud, UIEvents.CheckedChanged, (ei) => {
                 Context.ReadAloudOnFocus = readAloud.Checked;
+                Context.ReadAloudOnClickIfNotFocusable = readAloud.Checked;
+                Context.ReadAloudOnValueChange = readAloud.Checked;
                 Context.TTS.Stop();
                 Context.TTS.Speak($"Reading {(readAloud.Checked ? "Enabled" : "Disabled")}");
             });
