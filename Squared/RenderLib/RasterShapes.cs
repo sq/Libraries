@@ -511,15 +511,16 @@ namespace Squared.Render.RasterShape {
                 var vb = new Internal.VertexBuffer<RasterShapeVertex>(swb.Vertices);
                 var vw = vb.GetWriter(count);
 
-                var lastType = _DrawCalls[0].Type;
-                var lastBlend = _DrawCalls[0].BlendInLinearSpace;
-                var lastShadow = _DrawCalls[0].Shadow;
+                var dc = _DrawCalls[0];
+                var lastType = dc.Type;
+                var lastBlend = dc.BlendInLinearSpace;
+                var lastShadow = dc.Shadow;
                 var lastOffset = 0;
-                var lastIsSimple = _DrawCalls[0].IsSimple;
-                var lastTextureSettings = _DrawCalls[0].TextureSettings;
+                var lastIsSimple = dc.IsSimple;
+                var lastTextureSettings = dc.TextureSettings;
 
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
-                    var dc = _DrawCalls[i];
+                    dc = _DrawCalls[i];
 
                     if (
                         ((dc.Type != lastType) && !UseUbershader) ||

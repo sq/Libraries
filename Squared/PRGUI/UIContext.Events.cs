@@ -135,6 +135,17 @@ namespace Squared.PRGUI {
             if (FireEvent(name, Focused, evt))
                 return true;
 
+            if (name == UIEvents.KeyDown) {
+                if ((key == Keys.LeftAlt) || (key == Keys.RightAlt)) {
+                    AcceleratorOverlayVisible = !AcceleratorOverlayVisible;
+                } else if (key == Keys.Escape) {
+                    AcceleratorOverlayVisible = false;
+                } else if (key == Keys.Tab) {
+                } else if (key.HasValue && !ModifierKeys.Contains(key.Value)) {
+                    AcceleratorOverlayVisible = false;
+                }
+            }
+
             if (name != UIEvents.KeyPress)
                 return false;
 
@@ -155,7 +166,7 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        public bool RotateFocus (bool topLevel, int delta) {
+        private Control PickRotateFocusTarget (bool topLevel, int delta) {
             if (topLevel) {
                 var currentTopLevel = FindTopLevelAncestor(Focused);
                 // HACK
@@ -168,6 +179,16 @@ namespace Squared.PRGUI {
                 var currentIndex = inTabOrder.IndexOf(currentTopLevel);
                 var newIndex = Arithmetic.Wrap(currentIndex + delta, 0, inTabOrder.Count - 1);
                 var target = inTabOrder[newIndex];
+                return target;
+            } else {
+                return PickNextFocusTarget(Focused, delta, true);
+            }
+        }
+
+        public bool RotateFocus (bool topLevel, int delta) {
+            var target = PickRotateFocusTarget(topLevel, delta);
+            var currentTopLevel = FindTopLevelAncestor(Focused);
+            if (topLevel) {
                 if ((target != null) && (target != currentTopLevel)) {
                     Log($"Top level tab {currentTopLevel} -> {target}");
                     if (TrySetFocus(target, false)) {
@@ -176,7 +197,6 @@ namespace Squared.PRGUI {
                     }
                 }
             } else {
-                var target = PickNextFocusTarget(Focused, delta, true);
                 Log($"Tab {Focused} -> {target}");
                 if ((target != null) && TrySetFocus(target, false)) {
                     KeyboardSelection = Focused;
@@ -483,6 +503,7 @@ namespace Squared.PRGUI {
         private bool HandleMouseDown (Control target, Vector2 globalPosition) {
             var relinquishedHandlers = new HashSet<Control>();
 
+            AcceleratorOverlayVisible = false;
             KeyboardSelection = null;
             HideTooltipForMouseInput(true);
 

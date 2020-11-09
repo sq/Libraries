@@ -427,7 +427,7 @@ namespace Squared.Util {
                 for (int i = 0; i < count; i++)
                     Add(ref items[offset + i]);
             } else {
-                EnsureList(newCount);
+                EnsureCapacity(newCount);
                 Items.AddRange(items, offset, count);
             }
         }

@@ -10,6 +10,11 @@ using System.Speech.Synthesis;
 using Squared.PRGUI.Accessibility;
 using Squared.Util.Text;
 using Squared.Util.Event;
+using Squared.Render.Convenience;
+using Squared.Render.Text;
+using Squared.Render;
+using Microsoft.Xna.Framework;
+using Squared.Game;
 
 namespace Squared.PRGUI.Accessibility {
     public interface IReadingTarget {
@@ -182,5 +187,74 @@ namespace Squared.PRGUI {
         public bool ReadAloudOnValueChange = false;
 
         public readonly TTS TTS;
+
+        bool AcceleratorOverlayVisible = false;
+        ArraySegment<BitmapDrawCall> AcceleratorOverlayBuffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[256]);
+
+        private void RasterizeAcceleratorOverlay (UIOperationContext context, ref ImperativeRenderer renderer) {
+            Control shiftTab = PickRotateFocusTarget(false, -1),
+                tab = PickRotateFocusTarget(false, 1),
+                ctrlShiftTab = PickRotateFocusTarget(true, -1),
+                ctrlTab = PickRotateFocusTarget(true, 1);
+
+            var targetGroup = renderer.MakeSubgroup();
+            var labelGroup = renderer.MakeSubgroup();
+
+            // FIXME: This looks confusing
+            // RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, Focused, null);
+
+            RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, tab, "Tab");
+            if (shiftTab != tab)
+                RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, shiftTab, "Shift+Tab");
+
+            RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlTab, "Ctrl+Tab");
+            if (ctrlTab != ctrlShiftTab)
+                RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlShiftTab, "Ctrl+Shift+Tab");
+        }
+
+        private void RasterizeAcceleratorOverlay (
+            UIOperationContext context, ref ImperativeRenderer labelRenderer, ref ImperativeRenderer targetRenderer, 
+            Control control, string label
+        ) {
+            if ((control == null) || ((control == Focused) && !string.IsNullOrWhiteSpace(label)))
+                return;
+
+            var box = control.GetRect(Layout);
+            var decorator = Decorations.AcceleratorTarget;
+            var settings = new Decorations.DecorationSettings {
+                Box = box,
+                ContentBox = box
+            };
+            decorator.Rasterize(context, ref targetRenderer, settings);
+
+            if (!string.IsNullOrWhiteSpace(label)) {
+                var outlinePadding = 1f;
+                decorator = Decorations.AcceleratorLabel;
+                pSRGBColor? textColor = null;
+                decorator.GetTextSettings(context, default(ControlStates), out Material material, out IGlyphSource font, ref textColor);
+                var layout = font.LayoutString(label, buffer: AcceleratorOverlayBuffer);
+
+                var labelPosition = box.Position - new Vector2(0, layout.Size.Y + decorator.Padding.Y + outlinePadding);
+                if (labelPosition.Y <= 0)
+                    labelPosition = box.Position;
+                labelPosition.X = Math.Max(0, labelPosition.X);
+                labelPosition.Y = Math.Max(0, labelPosition.Y);
+
+                var labelBox = new RectF(
+                    labelPosition, 
+                    layout.Size + decorator.Padding.Size
+                );
+                var labelContentBox = new RectF(
+                    labelBox.Position + new Vector2(decorator.Padding.Left, decorator.Padding.Top),
+                    layout.Size
+                );
+                settings = new Decorations.DecorationSettings {
+                    Box = labelBox,
+                    ContentBox = box,
+                };
+                decorator.Rasterize(context, ref labelRenderer, settings);
+                labelRenderer.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), layer: 1);
+            }
+        }
     }
 }

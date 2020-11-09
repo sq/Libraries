@@ -660,9 +660,9 @@ namespace Squared.PRGUI {
             RasterizePass(ref context, box, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
         }
 
-        public void Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet) {
+        public void Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, float opacity = 1) {
             // HACK: Do this first since it fires opacity change events
-            var opacity = GetOpacity(context.NowL);
+            opacity *= GetOpacity(context.NowL);
             if (opacity <= 0)
                 return;
 

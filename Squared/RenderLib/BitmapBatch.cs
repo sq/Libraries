@@ -269,6 +269,7 @@ namespace Squared.Render {
                 return;
             }
 
+            _DrawCalls.EnsureCapacity(_DrawCalls.Count + count);
             for (int i = 0; i < count; i++) {
                 var item = items[i + firstIndex];
                 if (!item.IsValid)

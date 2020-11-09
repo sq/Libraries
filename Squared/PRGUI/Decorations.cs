@@ -92,6 +92,8 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Slider { get; }
         IDecorator SliderThumb { get; }
         IDecorator Dropdown { get; }
+        IDecorator AcceleratorTarget { get; }
+        IDecorator AcceleratorLabel { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
@@ -220,12 +222,15 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator Slider { get; set; }
         public IDecorator SliderThumb { get; set; }
         public IDecorator Dropdown { get; set; }
+        public IDecorator AcceleratorLabel { get; set; }
+        public IDecorator AcceleratorTarget { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public IGlyphSource DefaultFont,
             ButtonFont,
             TitleFont,
-            TooltipFont;
+            TooltipFont,
+            AcceleratorFont;
 
         public float InteractableCornerRadius = 6f, 
             InertCornerRadius = 3f, 
@@ -254,7 +259,8 @@ namespace Squared.PRGUI.Decorations {
             EditableShadow,
             SelectionShadow,
             TooltipShadow,
-            SliderShadow;
+            SliderShadow,
+            AcceleratorTargetShadow;
 
         public Color FocusedColor = new Color(200, 220, 255),
             ActiveColor = new Color(240, 240, 240),
@@ -263,19 +269,22 @@ namespace Squared.PRGUI.Decorations {
             InertOutlineColor = new Color(255, 255, 255) * 0.33f,
             TooltipOutlineColor = new Color(16, 16, 16) * 0.5f,
             ScrollbarThumbColor = new Color(220, 220, 220),
-            ScrollbarTrackColor = new Color(32, 32, 32);
+            ScrollbarTrackColor = new Color(32, 32, 32),
+            AcceleratorOutlineColor = Color.White;
 
         public Color TitleFillColor = new Color(40, 100, 120),
             ContainerFillColor = Color.Transparent,
             InertFillColor = Color.Transparent,
             SelectionFillColor = new Color(200, 230, 255),
             TooltipFillColor = new Color(48, 48, 48),
-            SliderFillColor = Color.Black * 0.1f;
+            SliderFillColor = Color.Black * 0.1f,
+            AcceleratorFillColor = Color.Black * 0.8f;
 
         public Color SelectedTextColor = new Color(0, 30, 55),
             TitleTextColor = Color.White,
             TextColor = Color.White,
-            TooltipTextColor = Color.White;
+            TooltipTextColor = Color.White,
+            AcceleratorTextColor = Color.White;
 
         public const float DropdownArrowWidth = 16, DropdownArrowHeight = 14, DropdownArrowPadding = 8;
         public const float CheckboxSize = 32;
@@ -868,6 +877,38 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
+        private void AcceleratorLabel_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            // HACK
+            var isInside = settings.ContentBox.Top <= settings.Box.Top;
+            var radius = isInside
+                ? new Vector4(0, 0, 4, 0)
+                : new Vector4(4, 4, 0, 0);
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            // FIXME
+            renderer.RasterizeRectangle(
+                a, b,
+                radiusCW: radius,
+                outlineRadius: 1f, outlineColor: AcceleratorOutlineColor,
+                innerColor: AcceleratorFillColor, outerColor: AcceleratorFillColor,
+                shadow: null,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
+            );
+        }
+
+        private void AcceleratorTarget_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            // FIXME
+            renderer.RasterizeRectangle(
+                a, b,
+                radiusCW: new Vector4(0, 4, 4, 4),
+                outlineRadius: 1f, outlineColor: AcceleratorOutlineColor,
+                innerColor: Color.Transparent, outerColor: Color.Transparent,
+                shadow: AcceleratorTargetShadow
+            );
+        }
+
         public bool GetTextSettings (
             UIOperationContext context, ControlStates state, 
             out Material material, out IGlyphSource font, ref pSRGBColor? color
@@ -935,6 +976,17 @@ namespace Squared.PRGUI.Decorations {
             return true;
         }
 
+        private bool GetTextSettings_AcceleratorLabel (
+            UIOperationContext context, ControlStates state, 
+            out Material material, out IGlyphSource font, ref pSRGBColor? color
+        ) {
+            if (color == null)
+                color = AcceleratorTextColor;
+            GetTextSettings(context, state, out material, out font, ref color);
+            font = AcceleratorFont ?? TitleFont ?? font;
+            return true;
+        }
+
         private bool GetTextSettings_Tooltip (
             UIOperationContext context, ControlStates state, 
             out Material material, out IGlyphSource font, ref pSRGBColor? color
@@ -991,6 +1043,12 @@ namespace Squared.PRGUI.Decorations {
                 Color = Color.White * 0.2f,
                 Offset = new Vector2(1.25f, 1.5f),
                 Softness = 2f
+            };
+
+            AcceleratorTargetShadow = new RasterShadowSettings {
+                Color = Color.Black * 0.7f,
+                Softness = 12f,
+                Expansion = 1.75f
             };
 
             Button = new DelegateDecorator {
@@ -1119,6 +1177,16 @@ namespace Squared.PRGUI.Decorations {
                 GetTextSettings = GetTextSettings_Button,
                 Below = Button_Below,
                 Above = Dropdown_Above
+            };
+
+            AcceleratorLabel = new DelegateDecorator {
+                Padding = new Margins(6, 4, 6, 4),
+                GetTextSettings = GetTextSettings_AcceleratorLabel,
+                Below = AcceleratorLabel_Below
+            };
+
+            AcceleratorTarget = new DelegateDecorator {
+                Below = AcceleratorTarget_Below
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {

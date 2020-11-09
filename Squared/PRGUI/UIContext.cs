@@ -64,6 +64,8 @@ namespace Squared.PRGUI {
             Keys.RightAlt,
             Keys.RightControl,
             Keys.RightShift,
+            Keys.LeftWindows,
+            Keys.RightWindows
         };
 
         private static readonly HashSet<Keys> SuppressRepeatKeys = new HashSet<Keys> {
@@ -238,6 +240,18 @@ namespace Squared.PRGUI {
                 if (!TrySetFocus(value, false))
                     TrySetFocus(null, true);
             }
+        }
+
+        /// <summary>
+        /// Indicates that the context is currently being interacted with by the user
+        /// </summary>
+        public bool IsActive {
+            get =>
+                (MouseOver != null) ||
+                    (LastKeyboardState.GetPressedKeys().Length > 0) ||
+                    (KeyboardSelection != null) ||
+                    (MouseCaptured != null) ||
+                    AcceleratorOverlayVisible;
         }
 
         public Control TopLevelFocused { get; private set; }
@@ -970,19 +984,34 @@ namespace Squared.PRGUI {
                 renderer.Clear(color: Color.Transparent, stencil: 0, layer: -999);
 
                 var seq = Controls.InPaintOrder();
-                foreach (var control in seq) {
+                var topLevelFocusIndex = seq.IndexOf(TopLevelFocused);
+                for (int i = 0; i < seq.Count; i++) {
+                    var control = seq[i];
+                    // When the accelerator overlay is visible, fade out any top-level controls
+                    //  that cover the currently focused top-level control so that the user can see
+                    //  any controls that might be active
+                    var opacityModifier = (AcceleratorOverlayVisible && (topLevelFocusIndex >= 0))
+                        ? (
+                            (i == topLevelFocusIndex) || (i < topLevelFocusIndex)
+                                ? 1.0f
+                                : 0.6f
+                        )
+                        : 1.0f;
                     // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
                     //  overlap each other, at the cost of more draw calls.
                     var passSet = new RasterizePassSet(ref prepass, ref renderer, 0, 1);
                     passSet.Below.DepthStencilState =
                         passSet.Content.DepthStencilState =
                         passSet.Above.DepthStencilState = DepthStencilState.None;
-                    control.Rasterize(ref context, ref passSet);
+                    control.Rasterize(ref context, ref passSet, opacityModifier);
                     // HACK
                     prepass = passSet.Prepass;
                 }
 
                 LastPassCount = prepassGroup.Count + 1;
+
+                if (AcceleratorOverlayVisible)
+                    RasterizeAcceleratorOverlay(context, ref renderer);
             }
         }
 

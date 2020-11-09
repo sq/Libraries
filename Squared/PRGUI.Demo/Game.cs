@@ -251,7 +251,8 @@ namespace PRGUI.Demo {
             var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
                 DefaultFont = Font,
                 TitleFont = titleFont,
-                TooltipFont = tooltipFont
+                TooltipFont = tooltipFont,
+                AcceleratorFont = titleFont
             };
 
             var changePaintOrder = new Button {
@@ -545,9 +546,7 @@ namespace PRGUI.Demo {
                     keyboardState: KeyboardState
                 );
 
-            if (Context.MouseOver != null)
-                LastTimeOverUI = Time.Ticks;
-            else if (KeyboardState.GetPressedKeys().Length > 0)
+            if (Context.IsActive)
                 LastTimeOverUI = Time.Ticks;
 
             if (IsActive) {
