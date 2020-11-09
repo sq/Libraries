@@ -17,6 +17,10 @@ using Microsoft.Xna.Framework;
 using Squared.Game;
 
 namespace Squared.PRGUI.Accessibility {
+    public interface IAcceleratorSource {
+        IEnumerable<KeyValuePair<Control, string>> Accelerators { get; }
+    }
+
     public interface IReadingTarget {
         AbstractString Text { get; }
         void FormatValueInto (StringBuilder sb);
@@ -210,6 +214,13 @@ namespace Squared.PRGUI {
             RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlTab, "Ctrl+Tab");
             if (ctrlTab != ctrlShiftTab)
                 RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlShiftTab, "Ctrl+Shift+Tab");
+
+            var overlaySource = FixatedControl as IAcceleratorSource;
+            if (overlaySource == null)
+                return;
+
+            foreach (var kvp in overlaySource.Accelerators)
+                RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, kvp.Key, kvp.Value);
         }
 
         private void RasterizeAcceleratorOverlay (

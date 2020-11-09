@@ -131,10 +131,6 @@ namespace Squared.PRGUI {
                 Char = ch
             };
 
-            // FIXME: Suppress events with a char if the target doesn't accept text input?
-            if (FireEvent(name, Focused, evt))
-                return true;
-
             if (name == UIEvents.KeyDown) {
                 if ((key == Keys.LeftAlt) || (key == Keys.RightAlt)) {
                     AcceleratorOverlayVisible = !AcceleratorOverlayVisible;
@@ -145,6 +141,10 @@ namespace Squared.PRGUI {
                     AcceleratorOverlayVisible = false;
                 }
             }
+
+            // FIXME: Suppress events with a char if the target doesn't accept text input?
+            if (FireEvent(name, Focused, evt))
+                return true;
 
             if (name != UIEvents.KeyPress)
                 return false;

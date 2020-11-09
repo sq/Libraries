@@ -20,7 +20,7 @@ namespace Squared.PRGUI.Controls {
         void ItemChosen (Menu menu, Control item);
     }
 
-    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget {
+    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource {
         // Yuck
         public const int PageSize = 8;
 
@@ -50,6 +50,10 @@ namespace Squared.PRGUI.Controls {
         private Control _SelectedItem;
 
         public bool DeselectOnMouseLeave = true;
+
+        public int SelectedIndex => (_SelectedItem != null)
+            ? Children.IndexOf(_SelectedItem)
+            : -1;
 
         public Control SelectedItem {
             get {
@@ -492,6 +496,16 @@ namespace Squared.PRGUI.Controls {
         }
 
         public int Count => Children.Count;
+
+        IEnumerable<KeyValuePair<Control, string>> Accessibility.IAcceleratorSource.Accelerators {
+            get {
+                if (SelectedIndex > 0)
+                    yield return new KeyValuePair<Control, string>(this[SelectedIndex - 1], "Up");
+                if (SelectedIndex < Children.Count)
+                    yield return new KeyValuePair<Control, string>(this[SelectedIndex + 1], "Down");
+            }
+        }
+
         public Control this [int index] {
             get => Children[index];
             set => Children[index] = value;
