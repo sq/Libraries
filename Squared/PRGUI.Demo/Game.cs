@@ -127,7 +127,7 @@ namespace PRGUI.Demo {
             jpFallback.VerticalOffset = -1f;
             var buttonIcons = LoadFont("kenney-icon-font", 17f * fontScale);
 
-            var titleFont = new FreeTypeFont.FontSize(firaSans, 14f);
+            var titleFont = new FreeTypeFont.FontSize(firaSans, 16f);
             var tooltipFont = new FallbackGlyphSource(
                 new FreeTypeFont.FontSize(firaSans, 16f),
                 buttonIcons

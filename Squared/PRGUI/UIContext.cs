@@ -979,7 +979,8 @@ namespace Squared.PRGUI {
             using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget)) {
                 var prepass = new ImperativeRenderer(prepassGroup, Materials);
                 var renderer = new ImperativeRenderer(rtBatch, Materials) {
-                    BlendState = BlendState.AlphaBlend
+                    BlendState = BlendState.AlphaBlend,
+                    DepthStencilState = DepthStencilState.None
                 };
                 renderer.Clear(color: Color.Transparent, stencil: 0, layer: -999);
 
@@ -1010,8 +1011,10 @@ namespace Squared.PRGUI {
 
                 LastPassCount = prepassGroup.Count + 1;
 
-                if (AcceleratorOverlayVisible)
+                if (AcceleratorOverlayVisible) {
+                    renderer.Layer += 1;
                     RasterizeAcceleratorOverlay(context, ref renderer);
+                }
             }
         }
 

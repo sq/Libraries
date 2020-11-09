@@ -256,6 +256,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         private bool OnKeyEvent (string name, KeyEventArgs args) {
+            if (args.Key != null && UIContext.ModifierKeys.Contains(args.Key.Value))
+                return false;
             if (name != UIEvents.KeyPress)
                 return true;
 
