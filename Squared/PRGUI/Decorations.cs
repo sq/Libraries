@@ -205,8 +205,8 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public class DefaultDecorations : IDecorationProvider {
-        public const float GlobalDefaultMargin = 6,
-            GlobalDefaultMarginCollapsed = 4;
+        public readonly float GlobalDefaultMargin,
+            GlobalDefaultMarginCollapsed;
 
         public IDecorator Button { get; set; }
         public IDecorator Container { get; set; }
@@ -230,7 +230,10 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator AcceleratorTarget { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
-        public DefaultDecorations () {
+        public DefaultDecorations (float defaultMargin = 6, float defaultMarginCollapsed = 4) {
+            GlobalDefaultMargin = defaultMargin;
+            GlobalDefaultMarginCollapsed = defaultMarginCollapsed;
+
             InteractableShadow = new RasterShadowSettings {
                 Color = Color.Black * 0.25f,
                 Offset = new Vector2(1.5f, 2f),
@@ -247,7 +250,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             EditableShadow = new RasterShadowSettings {
-                Color = Color.Black * 0.45f,
+                Color = Color.Black * 0.3f,
                 Offset = new Vector2(1.25f, 1.5f),
                 Softness = 6f,
                 Expansion = 0.4f,

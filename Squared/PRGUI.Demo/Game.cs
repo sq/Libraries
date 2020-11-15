@@ -206,6 +206,8 @@ namespace PRGUI.Demo {
                 // MinimumWidth = 200,
                 Description = "A number",
                 HorizontalAlignment = HorizontalAlignment.Right,
+                Minimum = -10,
+                Maximum = 1000,
                 Value = 3.50
             };
 

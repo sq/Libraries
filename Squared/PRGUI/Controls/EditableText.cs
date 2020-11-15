@@ -84,9 +84,13 @@ namespace Squared.PRGUI.Controls {
             AcceptsTextInput = true;
         }
 
+        private bool _IntegerOnly, _DoubleOnly;
+
         public bool IntegerOnly {
+            get => _IntegerOnly;
             set {
                 if (value) {
+                    _DoubleOnly = false;
                     CharacterFilter = (ch) =>
                         (char.IsNumber(ch) || (ch == '-'))
                             ? ch
@@ -95,16 +99,19 @@ namespace Squared.PRGUI.Controls {
                         int.TryParse(str, out int temp)
                             ? str
                             : null;
-                } else {
+                } else if (_IntegerOnly) {
                     CharacterFilter = null;
                     StringFilter = null;
                 }
+                _IntegerOnly = value;
             }
         }
 
         public bool DoubleOnly {
+            get => _DoubleOnly;
             set {
                 if (value) {
+                    _IntegerOnly = false;
                     CharacterFilter = (ch) =>
                         (char.IsNumber(ch) || (ch == '-') || (ch == '.') || (ch == 'e') || (ch == 'E'))
                             ? ch
@@ -113,10 +120,11 @@ namespace Squared.PRGUI.Controls {
                         double.TryParse(str, out double temp)
                             ? str
                             : null;
-                } else {
+                } else if (_DoubleOnly) {
                     CharacterFilter = null;
                     StringFilter = null;
                 }
+                _DoubleOnly = value;
             }
         }
 
@@ -190,13 +198,13 @@ namespace Squared.PRGUI.Controls {
             try {
                 Invalidate();
                 OnValueChanged();
-                FireEvent(UIEvents.ValueChanged);
             } finally {
                 IsChangingValue = false;
             }
         }
 
         protected virtual void OnValueChanged () {
+            FireEvent(UIEvents.ValueChanged);
         }
 
         protected string FilterInput (string input) {
@@ -222,6 +230,10 @@ namespace Squared.PRGUI.Controls {
                 result = null;
 
             return result;
+        }
+
+        protected void ClearSelection () {
+            SetSelection(new Pair<int>(-1, -1), 0);
         }
 
         protected void SetSelection (Pair<int> value, int scrollBias) {

@@ -10,35 +10,96 @@ using Squared.Render.Convenience;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public class ParameterEditor<T> : EditableText
-        where T : struct, IEquatable<T> {
+    public interface IParameterEditor {
+        object Minimum { get; set; }
+        object Maximum { get; set; }
+        object Value { get; set; }
+        bool IntegerOnly { get; set; }
+        bool DoubleOnly { get; set; }
+    }
+
+    public class ParameterEditor<T> : EditableText, IParameterEditor
+        where T : struct, IComparable<T> {
 
         // FIXME: Use a decorator for this?
         public const float ArrowWidth = 9,
             ArrowHeight = 17,
             ArrowPadding = ArrowWidth + 6;
 
+        private bool _HasValue;
         private T _Value;
+        private T? _Minimum, _Maximum;
 
         public T Value {
             get => _Value;
             set {
-                if (_Value.Equals(value))
+                value = ClampValue(value);
+                if ((_Value.CompareTo(value) == 0) && _HasValue)
                     return;
                 _Value = value;
                 Text = Convert.ToString(value);
+                _HasValue = true;
             }
+        }
+
+        public T? Minimum {
+            get => _Minimum;
+            set {
+                _Minimum = value;
+                if (_HasValue)
+                    Value = Value;
+            }
+        }
+        public T? Maximum {
+            get => _Maximum;
+            set {
+                _Maximum = value;
+                if (_HasValue)
+                    Value = Value;
+            }
+        }
+
+        object IParameterEditor.Minimum {
+            get => Minimum;
+            set => Minimum = (T)value;
+        }
+        object IParameterEditor.Maximum {
+            get => Maximum;
+            set => Maximum = (T)value;
+        }
+        object IParameterEditor.Value {
+            get => Value;
+            set => Value = (T)value;
         }
 
         public ParameterEditor ()
             : base () {
             ClampVirtualPositionToTextbox = false;
+            var t = typeof(T);
+            if (!t.IsValueType)
+                throw new ArgumentException("T must be a value type");
+
+            if (t == typeof(double) || t == typeof(float))
+                DoubleOnly = true;
+            else if (t == typeof(int) || t == typeof(long))
+                IntegerOnly = true;
+        }
+
+        private T ClampValue (T value) {
+            if (_Minimum.HasValue && (value.CompareTo(_Minimum.Value) < 0))
+                value = _Minimum.Value;
+            if (_Maximum.HasValue && (value.CompareTo(_Maximum.Value) > 0))
+                value = _Maximum.Value;
+            return value;
         }
 
         protected override void OnValueChanged () {
             try {
                 var newValue = Convert.ChangeType(Text, typeof(T));
-                _Value = (T)newValue;
+                var converted = ClampValue((T)newValue);
+                _HasValue = true;
+                _Value = converted;
+                FireEvent(UIEvents.ValueChanged);
             } catch {
             }
         }
@@ -100,9 +161,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool OnEvent<T> (string name, T args) {
-            if (name == UIEvents.LostFocus)
+            if (name == UIEvents.LostFocus) {
                 FinalizeValue();
-            else if (name == UIEvents.GotFocus)
+                ClearSelection();
+            } else if (name == UIEvents.GotFocus)
                 SetSelection(new Pair<int>(-9999, 9999), 0);
 
             return base.OnEvent<T>(name, args);
