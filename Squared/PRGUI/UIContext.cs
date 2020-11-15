@@ -1048,9 +1048,9 @@ namespace Squared.PRGUI {
 
     public struct UIOperationContext {
         public UIContext UIContext;
-        public DefaultMaterialSet Materials => UIContext.Materials;
-        public IDecorationProvider DecorationProvider => UIContext.Decorations;
-        public LayoutContext Layout => UIContext.Layout;
+        public DefaultMaterialSet Materials => UIContext?.Materials;
+        public IDecorationProvider DecorationProvider => UIContext?.Decorations;
+        public LayoutContext Layout => UIContext?.Layout;
         public RasterizePasses Pass;
         public float Now { get; internal set; }
         public long NowL { get; internal set; }

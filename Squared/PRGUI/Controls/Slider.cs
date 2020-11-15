@@ -161,8 +161,10 @@ namespace Squared.PRGUI.Controls {
 
         protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
             var decorations = GetDefaultDecorations(Context.Decorations);
+            Render.pSRGBColor? color = null;
+            decorations.GetTextSettings(default(UIOperationContext), default(ControlStates), out Render.Material temp, out Render.Text.IGlyphSource glyphSource, ref color);
             base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
-            minimumHeight = Math.Max(minimumHeight ?? 0, ControlMinimumHeight);
+            minimumHeight = Math.Max(Math.Max(minimumHeight ?? 0, ControlMinimumHeight), glyphSource.LineSpacing * 0.6f);
             minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumWidth);
         }
 

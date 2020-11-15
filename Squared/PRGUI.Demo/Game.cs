@@ -94,9 +94,8 @@ namespace PRGUI.Demo {
             }
         }
 
-        private FreeTypeFont LoadFont (string name, float size) {
+        private FreeTypeFont LoadFont (string name) {
             var result = FontLoader.Load(name);
-            result.SizePoints = size;
             // High-DPI offscreen surface so the text is sharp even at subpixel positions
             result.DPIPercent = (int)(100f / DPIFactor);
             // Big margin on glyphs so shadows aren't clipped
@@ -108,6 +107,20 @@ namespace PRGUI.Demo {
 
         private Color FilterButtonColor (Color c) {
             return Color.Lerp(c, Color.White, 0.3f);
+        }
+
+        private FreeTypeFont FiraSans,
+            NotoSans,
+            Kenney;
+        private FreeTypeFont.FontSize TitleFont, TooltipFont;
+
+        private void SetFontScale (float fontScale) {
+            FiraSans.SizePoints = 20f * fontScale;
+            NotoSans.SizePoints = 16f * fontScale;
+            NotoSans.VerticalOffset = -1f * fontScale;
+            Kenney.SizePoints = 17f * fontScale;
+            TitleFont.SizePoints = 14f * fontScale;
+            TooltipFont.SizePoints = 14f * fontScale;
         }
 
         protected override void OnLoadContent (bool isReloading) {
@@ -122,25 +135,27 @@ namespace PRGUI.Demo {
             FontLoader = new EmbeddedFreeTypeFontProvider(RenderCoordinator);
 
             float fontScale = 1.2f;
-            var firaSans = LoadFont("FiraSans-Medium", 20f * fontScale);
-            var jpFallback = LoadFont("NotoSansCJKjp-Regular", 16f * fontScale);
-            jpFallback.VerticalOffset = -1f;
-            var buttonIcons = LoadFont("kenney-icon-font", 17f * fontScale);
+            FiraSans = LoadFont("FiraSans-Medium");
+            NotoSans = LoadFont("NotoSansCJKjp-Regular");
+            Kenney = LoadFont("kenney-icon-font");
 
-            var titleFont = new FreeTypeFont.FontSize(firaSans, 16f);
+            TitleFont = new FreeTypeFont.FontSize(FiraSans, 14f * fontScale);
+            TooltipFont = new FreeTypeFont.FontSize(FiraSans, 14f * fontScale);
             var tooltipFont = new FallbackGlyphSource(
-                new FreeTypeFont.FontSize(firaSans, 16f),
-                buttonIcons
+                TooltipFont, Kenney
             );
 
-            buttonIcons.VerticalOffset = 6;
-            buttonIcons.DefaultGlyphColors = new Dictionary<uint, Color> {
+            Kenney.VerticalOffset = 6;
+            Kenney.DefaultGlyphColors = new Dictionary<uint, Color> {
                 { ButtonChars[0], FilterButtonColor(Color.Green) },
                 { ButtonChars[1], FilterButtonColor(Color.DarkRed) },
                 { ButtonChars[2], FilterButtonColor(Color.Blue) },
                 { ButtonChars[3], FilterButtonColor(Color.Yellow) }
             };
-            Font = new FallbackGlyphSource(firaSans, jpFallback, buttonIcons);
+
+            SetFontScale(fontScale);
+
+            Font = new FallbackGlyphSource(FiraSans, NotoSans, Kenney);
 
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
@@ -250,9 +265,9 @@ namespace PRGUI.Demo {
 
             var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
                 DefaultFont = Font,
-                TitleFont = titleFont,
+                TitleFont = TitleFont,
                 TooltipFont = tooltipFont,
-                AcceleratorFont = titleFont
+                AcceleratorFont = TitleFont
             };
 
             var changePaintOrder = new Button {
@@ -360,9 +375,13 @@ namespace PRGUI.Demo {
                 }
             };
 
+            var largeText = new Checkbox {
+                Text = "Large Text",
+                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_ForceBreak,
+            };
+
             var readAloud = new Checkbox {
                 Text = "Read Aloud",
-                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_ForceBreak,
             };
 
             var readingSpeed = new Slider {
@@ -390,6 +409,7 @@ namespace PRGUI.Demo {
                         FocusBeneficiary = changePaintOrder
                     },
                     changePaintOrder,
+                    largeText,
                     readAloud,
                     readingSpeed,
                     new Spacer (),
@@ -445,6 +465,10 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(null, UIEvents.Click, (ei) => {
                 lastClickedCtl.Text = $"Clicked (#{ei.Arguments}): {ei.Source}";
+            });
+
+            Context.EventBus.Subscribe(largeText, UIEvents.CheckedChanged, (ei) => {
+                SetFontScale(largeText.Checked ? 1.9f : 1.1f);
             });
 
             Context.EventBus.Subscribe(readAloud, UIEvents.CheckedChanged, (ei) => {

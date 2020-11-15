@@ -105,6 +105,7 @@ namespace Squared.PRGUI.Decorations {
         public Margins Margins { get; set; }
         public Margins Padding { get; set; }
 
+        public IGlyphSource Font;
         public TextSettingsGetter GetTextSettings;
         public ContentAdjustmentGetter GetContentAdjustment;
 
@@ -113,7 +114,7 @@ namespace Squared.PRGUI.Decorations {
                 return GetTextSettings(context, state, out material, out font, ref color);
             else {
                 material = default(Material);
-                font = default(IGlyphSource);
+                font = Font;
                 return false;
             }
         }
@@ -228,6 +229,196 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator AcceleratorLabel { get; set; }
         public IDecorator AcceleratorTarget { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
+
+        public DefaultDecorations () {
+            InteractableShadow = new RasterShadowSettings {
+                Color = Color.Black * 0.25f,
+                Offset = new Vector2(1.5f, 2f),
+                Softness = 5f
+            };
+
+            ContainerShadow = null;
+            ScrollbarThumbShadow = null;
+
+            FloatingContainerShadow = new RasterShadowSettings {
+                Color = Color.Black * 0.33f,
+                Offset = new Vector2(2.5f, 3f),
+                Softness = 8f
+            };
+
+            EditableShadow = new RasterShadowSettings {
+                Color = Color.Black * 0.45f,
+                Offset = new Vector2(1.25f, 1.5f),
+                Softness = 6f,
+                Expansion = 0.4f,
+                Inside = true
+            };
+
+            SliderShadow = new RasterShadowSettings {
+                Color = Color.Black * 0.2f,
+                Offset = new Vector2(1.25f, 1.5f),
+                Softness = 6f,
+                Expansion = 0.4f,
+                Inside = true
+            };
+
+            SelectionShadow = new RasterShadowSettings {
+                Color = Color.White * 0.15f,
+                Offset = new Vector2(1.15f, 1.35f),
+                Softness = 2f
+            };
+
+            AcceleratorTargetShadow = new RasterShadowSettings {
+                Color = Color.Black * 0.5f,
+                Softness = 10f,
+                Expansion = 1.5f
+            };
+
+            Button = new DelegateDecorator {
+                Margins = new Margins(GlobalDefaultMargin),
+                Padding = new Margins(14, 6),
+                GetContentAdjustment = GetContentAdjustment_Button,
+                GetTextSettings = GetTextSettings_Button,
+                Below = Button_Below,
+                Above = Button_Above
+            };
+
+            Checkbox = new DelegateDecorator {
+                Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
+                Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
+                GetTextSettings = GetTextSettings_Button,
+                Below = Checkbox_Below,
+                Above = Checkbox_Above
+            };
+
+            RadioButton = new DelegateDecorator {
+                Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
+                Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
+                GetTextSettings = GetTextSettings_Button,
+                Below = RadioButton_Below,
+                Above = RadioButton_Above
+            };
+
+            Container = new DelegateDecorator {
+                Margins = new Margins(GlobalDefaultMargin),
+                GetTextSettings = GetTextSettings,
+                Below = Container_Below,
+                ContentClip = Container_ContentClip,
+            };
+
+            FloatingContainer = new DelegateDecorator {
+                Padding = new Margins(4),
+                GetTextSettings = GetTextSettings,
+                Below = FloatingContainer_Below,
+                // FIXME: Separate routine?
+                ContentClip = Container_ContentClip,
+            };
+
+            Window = new DelegateDecorator {
+                Padding = new Margins(4, 32, 4, 4),
+                GetTextSettings = GetTextSettings,
+                Below = FloatingContainer_Below,
+                // FIXME: Separate routine?
+                ContentClip = Container_ContentClip,
+            };
+
+            WindowTitle = new DelegateDecorator {
+                Padding = new Margins(6, 3, 6, 4),
+                Margins = new Margins(0, 0, 0, 2),
+                GetTextSettings = GetTextSettings_Title,
+                Below = WindowTitle_Below
+            };
+
+            StaticText = new DelegateDecorator {
+                Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
+                Padding = new Margins(6),
+                GetTextSettings = GetTextSettings,
+                Below = StaticText_Below,
+            };
+
+            Tooltip = new DelegateDecorator {
+                Padding = new Margins(12, 8, 12, 8),
+                GetTextSettings = GetTextSettings_Tooltip,
+                Below = Tooltip_Below,
+            };
+
+            Menu = new DelegateDecorator {
+                // Keep the menu from cramming up against the edges of the screen
+                Margins = new Margins(4),
+                Padding = new Margins(6),
+                GetTextSettings = GetTextSettings_Tooltip,
+                Below = Tooltip_Below,
+                // FIXME: Separate routine?
+                ContentClip = Container_ContentClip,
+            };
+
+            EditableText = new DelegateDecorator {
+                Margins = new Margins(GlobalDefaultMargin),
+                Padding = new Margins(6),
+                GetTextSettings = GetTextSettings,
+                // FIXME
+                Below = EditableText_Below,
+                ContentClip = EditableText_ContentClip
+            };
+
+            Selection = new DelegateDecorator {
+                GetTextSettings = GetTextSettings_Selection,
+                Content = Selection_Content,
+            };
+
+            MenuSelection = new DelegateDecorator {
+                GetTextSettings = GetTextSettings_Selection,
+                Content = MenuSelection_Content,
+            };
+
+            CompositionPreview = new DelegateDecorator {
+                GetTextSettings = GetTextSettings_Selection,
+                Below = CompositionPreview_Below,
+            };
+
+            Description = new DelegateDecorator {
+                GetTextSettings = GetTextSettings_Description
+            };
+
+            Slider = new DelegateDecorator {
+                Margins = new Margins(GlobalDefaultMargin),
+                Padding = new Margins(0, 0, 0, 2.75f),
+                Below = Slider_Below,
+                GetTextSettings = GetTextSettings
+            };
+
+            SliderThumb = new DelegateDecorator {
+                Margins = new Margins(0),
+                Padding = new Margins(6),
+                Below = SliderThumb_Below,
+                Above = SliderThumb_Above
+            };
+
+            Dropdown = new DelegateDecorator {
+                Margins = new Margins(GlobalDefaultMargin),
+                Padding = new Margins(14, 6, 14 + DropdownArrowWidth + 6, 6),
+                GetContentAdjustment = GetContentAdjustment_Button,
+                GetTextSettings = GetTextSettings_Button,
+                Below = Button_Below,
+                Above = Dropdown_Above
+            };
+
+            AcceleratorLabel = new DelegateDecorator {
+                Padding = new Margins(6, 4, 6, 4),
+                GetTextSettings = GetTextSettings_AcceleratorLabel,
+                Below = AcceleratorLabel_Below
+            };
+
+            AcceleratorTarget = new DelegateDecorator {
+                Below = AcceleratorTarget_Below
+            };
+
+            Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
+                MinimumSize = new Vector2(ScrollbarSize, ScrollbarSize),
+                Above = Scrollbar_Above,
+                OnMouseEvent = Scrollbar_OnMouseEvent
+            };
+        }
 
         public IGlyphSource DefaultFont,
             ButtonFont,
@@ -931,10 +1122,10 @@ namespace Squared.PRGUI.Decorations {
                 color = color?.ToColor().ToGrayscale(DisabledTextAlpha);
 
             font = DefaultFont;
-            material = context.Materials.Get(
+            material = context.Materials?.Get(
                 selected
-                    ? context.Materials.ScreenSpaceBitmap
-                    : context.Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend
+                    ? context.Materials?.ScreenSpaceBitmap
+                    : context.Materials?.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend
             );
             return true;
         }
@@ -1008,195 +1199,6 @@ namespace Squared.PRGUI.Decorations {
             GetTextSettings(context, state, out material, out font, ref color, selected: true);
             color = SelectedTextColor;
             return true;
-        }
-
-        public DefaultDecorations () {
-            InteractableShadow = new RasterShadowSettings {
-                Color = Color.Black * 0.25f,
-                Offset = new Vector2(1.5f, 2f),
-                Softness = 5f
-            };
-
-            ContainerShadow = null;
-            ScrollbarThumbShadow = null;
-
-            FloatingContainerShadow = new RasterShadowSettings {
-                Color = Color.Black * 0.33f,
-                Offset = new Vector2(2.5f, 3f),
-                Softness = 8f
-            };
-
-            EditableShadow = new RasterShadowSettings {
-                Color = Color.Black * 0.45f,
-                Offset = new Vector2(1.25f, 1.5f),
-                Softness = 6f,
-                Expansion = 0.4f,
-                Inside = true
-            };
-
-            SliderShadow = new RasterShadowSettings {
-                Color = Color.Black * 0.2f,
-                Offset = new Vector2(1.25f, 1.5f),
-                Softness = 6f,
-                Expansion = 0.4f,
-                Inside = true
-            };
-
-            SelectionShadow = new RasterShadowSettings {
-                Color = Color.White * 0.2f,
-                Offset = new Vector2(1.25f, 1.5f),
-                Softness = 2f
-            };
-
-            AcceleratorTargetShadow = new RasterShadowSettings {
-                Color = Color.Black * 0.7f,
-                Softness = 12f,
-                Expansion = 1.75f
-            };
-
-            Button = new DelegateDecorator {
-                Margins = new Margins(GlobalDefaultMargin),
-                Padding = new Margins(14, 6),
-                GetContentAdjustment = GetContentAdjustment_Button,
-                GetTextSettings = GetTextSettings_Button,
-                Below = Button_Below,
-                Above = Button_Above
-            };
-
-            Checkbox = new DelegateDecorator {
-                Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
-                Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
-                GetTextSettings = GetTextSettings_Button,
-                Below = Checkbox_Below,
-                Above = Checkbox_Above
-            };
-
-            RadioButton = new DelegateDecorator {
-                Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
-                Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
-                GetTextSettings = GetTextSettings_Button,
-                Below = RadioButton_Below,
-                Above = RadioButton_Above
-            };
-
-            Container = new DelegateDecorator {
-                Margins = new Margins(GlobalDefaultMargin),
-                GetTextSettings = GetTextSettings,
-                Below = Container_Below,
-                ContentClip = Container_ContentClip,
-            };
-
-            FloatingContainer = new DelegateDecorator {
-                Padding = new Margins(4),
-                GetTextSettings = GetTextSettings,
-                Below = FloatingContainer_Below,
-                // FIXME: Separate routine?
-                ContentClip = Container_ContentClip,
-            };
-
-            Window = new DelegateDecorator {
-                Padding = new Margins(4, 32, 4, 4),
-                GetTextSettings = GetTextSettings,
-                Below = FloatingContainer_Below,
-                // FIXME: Separate routine?
-                ContentClip = Container_ContentClip,
-            };
-
-            WindowTitle = new DelegateDecorator {
-                Padding = new Margins(6, 3, 6, 4),
-                Margins = new Margins(0, 0, 0, 2),
-                GetTextSettings = GetTextSettings_Title,
-                Below = WindowTitle_Below
-            };
-
-            StaticText = new DelegateDecorator {
-                Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
-                Padding = new Margins(6),
-                GetTextSettings = GetTextSettings,
-                Below = StaticText_Below,
-            };
-
-            Tooltip = new DelegateDecorator {
-                Padding = new Margins(12, 8, 12, 8),
-                GetTextSettings = GetTextSettings_Tooltip,
-                Below = Tooltip_Below,
-            };
-
-            Menu = new DelegateDecorator {
-                // Keep the menu from cramming up against the edges of the screen
-                Margins = new Margins(4),
-                Padding = new Margins(6),
-                GetTextSettings = GetTextSettings_Tooltip,
-                Below = Tooltip_Below,
-                // FIXME: Separate routine?
-                ContentClip = Container_ContentClip,
-            };
-
-            EditableText = new DelegateDecorator {
-                Margins = new Margins(GlobalDefaultMargin),
-                Padding = new Margins(6),
-                GetTextSettings = GetTextSettings,
-                // FIXME
-                Below = EditableText_Below,
-                ContentClip = EditableText_ContentClip
-            };
-
-            Selection = new DelegateDecorator {
-                GetTextSettings = GetTextSettings_Selection,
-                Content = Selection_Content,
-            };
-
-            MenuSelection = new DelegateDecorator {
-                GetTextSettings = GetTextSettings_Selection,
-                Content = MenuSelection_Content,
-            };
-
-            CompositionPreview = new DelegateDecorator {
-                GetTextSettings = GetTextSettings_Selection,
-                Below = CompositionPreview_Below,
-            };
-
-            Description = new DelegateDecorator {
-                GetTextSettings = GetTextSettings_Description
-            };
-
-            Slider = new DelegateDecorator {
-                Margins = new Margins(GlobalDefaultMargin),
-                Padding = new Margins(0, 0, 0, 2.75f),
-                Below = Slider_Below
-            };
-
-            SliderThumb = new DelegateDecorator {
-                Margins = new Margins(0),
-                Padding = new Margins(6),
-                Below = SliderThumb_Below,
-                Above = SliderThumb_Above
-            };
-
-            Dropdown = new DelegateDecorator {
-                Margins = new Margins(GlobalDefaultMargin),
-                Padding = new Margins(14, 6, 14 + DropdownArrowWidth + 6, 6),
-                GetContentAdjustment = GetContentAdjustment_Button,
-                GetTextSettings = GetTextSettings_Button,
-                Below = Button_Below,
-                Above = Dropdown_Above
-            };
-
-            AcceleratorLabel = new DelegateDecorator {
-                Padding = new Margins(6, 4, 6, 4),
-                GetTextSettings = GetTextSettings_AcceleratorLabel,
-                Below = AcceleratorLabel_Below
-            };
-
-            AcceleratorTarget = new DelegateDecorator {
-                Below = AcceleratorTarget_Below
-            };
-
-            Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
-                MinimumSize = new Vector2(ScrollbarSize, ScrollbarSize),
-                Above = Scrollbar_Above,
-                OnMouseEvent = Scrollbar_OnMouseEvent
-            };
         }
     }
 
