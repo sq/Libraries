@@ -978,11 +978,14 @@ namespace Squared.PRGUI.Controls {
 
             var textOffset = (settings.ContentBox.Position - ScrollOffset + AlignmentOffset).Floor();
 
+            // Draw in the Below pass for better batching
+            if (context.Pass == RasterizePasses.Below) {
+                if (Description != null)
+                    RasterizeDescription(context, ref renderer, settings, decorations, layout.Size.X);
+            }
+
             if (context.Pass != RasterizePasses.Content)
                 return;
-
-            if (Description != null)
-                RasterizeDescription(context, ref renderer, settings, decorations, layout.Size.X);
 
             if (selBounds.HasValue && 
                 (

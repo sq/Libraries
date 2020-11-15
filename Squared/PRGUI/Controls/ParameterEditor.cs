@@ -22,9 +22,9 @@ namespace Squared.PRGUI.Controls {
         where T : struct, IComparable<T> {
 
         // FIXME: Use a decorator for this?
-        public const float ArrowWidth = 9,
+        public const float ArrowWidth = 10,
             ArrowHeight = 17,
-            ArrowPadding = ArrowWidth + 6;
+            ArrowPadding = ArrowWidth + 8;
 
         private bool _HasValue;
         private T _Value;
@@ -134,7 +134,8 @@ namespace Squared.PRGUI.Controls {
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
-            if (context.Pass != RasterizePasses.Content)
+            // Draw in the "Above" pass to ensure it is not clipped (better batching)
+            if (context.Pass != RasterizePasses.Above)
                 return;
 
             var box = settings.ContentBox;
