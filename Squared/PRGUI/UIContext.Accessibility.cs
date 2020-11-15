@@ -211,9 +211,11 @@ namespace Squared.PRGUI {
             if (shiftTab != tab)
                 RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, shiftTab, "Shift+Tab");
 
-            RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlTab, "Ctrl+Tab");
-            if (ctrlTab != ctrlShiftTab)
-                RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlShiftTab, "Ctrl+Shift+Tab");
+            if ((ctrlTab != TopLevelFocused) || (ctrlShiftTab != TopLevelFocused)) {
+                RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlTab, "Ctrl+Tab");
+                if (ctrlTab != ctrlShiftTab)
+                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlShiftTab, "Ctrl+Shift+Tab");
+            }
 
             var overlaySource = FixatedControl as IAcceleratorSource;
             if (overlaySource == null)

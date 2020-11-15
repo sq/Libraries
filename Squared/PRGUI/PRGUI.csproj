@@ -49,6 +49,7 @@
     <Compile Include="Controls\EditableText.cs" />
     <Compile Include="Controls\Menu.cs" />
     <Compile Include="Controls\Dropdown.cs" />
+    <Compile Include="Controls\ParameterEditor.cs" />
     <Compile Include="Controls\Slider.cs" />
     <Compile Include="Controls\StaticText.cs" />
     <Compile Include="Controls\Tooltip.cs" />

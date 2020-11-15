@@ -106,7 +106,7 @@ namespace Squared.PRGUI.Controls {
             set {
                 if (value) {
                     CharacterFilter = (ch) =>
-                        (char.IsNumber(ch) || (ch == '-') || (ch == '.'))
+                        (char.IsNumber(ch) || (ch == '-') || (ch == '.') || (ch == 'e') || (ch == 'E'))
                             ? ch
                             : (char?)null;
                     StringFilter = (str) =>
@@ -170,19 +170,36 @@ namespace Squared.PRGUI.Controls {
             }
             set {
                 // FIXME: Optimize the 'value hasn't changed' case
+                var newValue = FilterInput(value);
                 Builder.Clear();
-                Builder.Append(FilterInput(value));
+                Builder.Append(newValue);
                 NextScrollInstant = true;
-                ValueChanged();
+                NotifyValueChanged();
             }
         }
 
-        private void ValueChanged () {
-            Invalidate();
-            FireEvent(UIEvents.ValueChanged);
+        private bool IsChangingValue;
+
+        protected void NotifyValueChanged () {
+            if (IsChangingValue)
+                return;
+
+            SetSelection(_Selection, 0);
+
+            IsChangingValue = true;
+            try {
+                Invalidate();
+                OnValueChanged();
+                FireEvent(UIEvents.ValueChanged);
+            } finally {
+                IsChangingValue = false;
+            }
         }
 
-        private string FilterInput (string input) {
+        protected virtual void OnValueChanged () {
+        }
+
+        protected string FilterInput (string input) {
             if (StringFilter != null)
                 input = StringFilter(input);
 
@@ -195,7 +212,7 @@ namespace Squared.PRGUI.Controls {
             return input;
         }
 
-        private char? FilterInput (char input) {
+        protected char? FilterInput (char input) {
             char? result = input;
 
             if (CharacterFilter != null)
@@ -207,11 +224,11 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        private void SetSelection (Pair<int> value, int scrollBias) {
-            if (_Selection == value)
-                return;
+        protected void SetSelection (Pair<int> value, int scrollBias) {
             value.First = Arithmetic.Clamp(value.First, 0, Builder.Length);
             value.Second = Arithmetic.Clamp(value.Second, value.First, Builder.Length);
+            if (_Selection == value)
+                return;
 
             if (value.First == value.Second) {
                 if ((value.First < Builder.Length) && char.IsLowSurrogate(Builder[value.First])) {
@@ -312,14 +329,22 @@ namespace Squared.PRGUI.Controls {
             return DynamicLayout.HitTest(virtualPosition);
         }
 
+        protected bool ClampVirtualPositionToTextbox = true;
+
         /// <param name="virtualPosition">Local position ignoring scroll offset.</param>
         public int? CharacterIndexFromVirtualPosition (Vector2 virtualPosition, bool? leanOverride = null) {
             virtualPosition -= AlignmentOffset;
             var result = ImmediateHitTest(virtualPosition);
             if (virtualPosition.X < 0) {
-                return 0;
+                if (ClampVirtualPositionToTextbox)
+                    return 0;
+                else
+                    return null;
             } else if (virtualPosition.X > DynamicLayout.Get().Size.X) {
-                return Builder.Length;
+                if (ClampVirtualPositionToTextbox)
+                    return Builder.Length;
+                else
+                    return null;
             }
 
             if (result.HasValue) {
@@ -339,7 +364,7 @@ namespace Squared.PRGUI.Controls {
             return null;
         }
 
-        private bool OnMouseEvent (string name, MouseEventArgs args) {
+        protected virtual bool OnMouseEvent (string name, MouseEventArgs args) {
             var position = new Vector2(
                 args.LocalPosition.X,
                 Arithmetic.Saturate(args.LocalPosition.Y, args.ContentBox.Height - 1)
@@ -353,6 +378,7 @@ namespace Squared.PRGUI.Controls {
 
                 ClickStartVirtualPosition = virtualPosition;
                 var newCharacterIndex = CharacterIndexFromVirtualPosition(virtualPosition, null);
+
                 // If we're double-clicking inside the selection don't update it yet. FIXME: Bias
                 if (
                     newCharacterIndex.HasValue && 
@@ -462,7 +488,7 @@ namespace Squared.PRGUI.Controls {
             SetSelection(new Pair<int>(characterIndex, characterIndex), scrollBias);
         }
 
-        private void RemoveRange (Pair<int> range, bool fireEvent) {
+        protected void RemoveRange (Pair<int> range, bool fireEvent) {
             if (range.First >= range.Second)
                 return;
 
@@ -472,40 +498,40 @@ namespace Squared.PRGUI.Controls {
                 range.Second++;
             Builder.Remove(range.First, range.Second - range.First);
             if (fireEvent)
-                ValueChanged();
+                NotifyValueChanged();
         }
 
-        private Pair<int> Insert (int offset, char newText) {
+        protected Pair<int> Insert (int offset, char newText) {
             var filtered = FilterInput(newText);
             if (!filtered.HasValue)
                 return default(Pair<int>);
 
             Builder.Insert(offset, newText);
-            ValueChanged();
+            NotifyValueChanged();
             return new Pair<int>(offset, offset + 1);
         }
 
-        private Pair<int> Insert (int offset, string newText) {
+        protected Pair<int> Insert (int offset, string newText) {
             var filtered = FilterInput(newText);
             if (filtered == null)
                 return default(Pair<int>);
 
             Builder.Insert(offset, newText);
-            ValueChanged();
+            NotifyValueChanged();
             return new Pair<int>(offset, offset + newText.Length);
         }
 
-        private Pair<int> ReplaceRange (Pair<int> range, char newText) {
+        protected Pair<int> ReplaceRange (Pair<int> range, char newText) {
             RemoveRange(range, false);
             return Insert(range.First, newText);
         }
 
-        private Pair<int> ReplaceRange (Pair<int> range, string newText) {
+        protected Pair<int> ReplaceRange (Pair<int> range, string newText) {
             RemoveRange(range, false);
             return Insert(range.First, newText);
         }
 
-        protected bool OnKeyPress (KeyEventArgs evt) {
+        protected virtual bool OnKeyPress (KeyEventArgs evt) {
             // Console.WriteLine("{0:X4} '{1}' {2}", (int)(evt.Char ?? '\0'), new String(evt.Char ?? '\0', 1), evt.Key);
 
             DisableAutoscrollUntil = 0;
@@ -553,7 +579,7 @@ namespace Squared.PRGUI.Controls {
                             if (evt.Key.Value == Keys.Back)
                                 MoveCaret(Selection.First - count, -1);
 
-                            ValueChanged();
+                            NotifyValueChanged();
                         }
                         return true;
 
@@ -616,7 +642,7 @@ namespace Squared.PRGUI.Controls {
             SelectedText = "";
         }
 
-        private bool HandleHotKey (KeyEventArgs evt) {
+        protected virtual bool HandleHotKey (KeyEventArgs evt) {
             string keyString = (evt.Char.HasValue) ? new string(evt.Char.Value, 1) : evt.Key.ToString();
             keyString = keyString.ToLowerInvariant();
 
@@ -729,7 +755,7 @@ namespace Squared.PRGUI.Controls {
             );
         }
 
-        protected bool OnClick (int clickCount) {
+        protected virtual bool OnClick (int clickCount) {
             // FIXME: Select current word, then entire textbox on triple click
             if (clickCount == 3) {
                 DisableAutoscrollUntil = 0;

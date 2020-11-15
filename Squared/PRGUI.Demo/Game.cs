@@ -62,7 +62,7 @@ namespace PRGUI.Demo {
             Graphics.PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8;
             Graphics.PreferredBackBufferWidth = 1920;
             Graphics.PreferredBackBufferHeight = 1080;
-            Graphics.SynchronizeWithVerticalRetrace = false;
+            Graphics.SynchronizeWithVerticalRetrace = true;
             Graphics.PreferMultiSampling = false;
             Graphics.IsFullScreen = false;
 
@@ -71,7 +71,7 @@ namespace PRGUI.Demo {
             IsFixedTimeStep = false;
 
             if (IsFixedTimeStep)
-                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 2.0f);
+                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 10f);
 
             PreviousKeyboardState = Keyboard.GetState();
 
@@ -185,13 +185,13 @@ namespace PRGUI.Demo {
                 Description = "Message"
             };
 
-            var numberField = new EditableText {
+            var numberField = new ParameterEditor<double> {
                 BackgroundColor = new Color(40, 56, 60),
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
-                DoubleOnly = true,
                 // MinimumWidth = 200,
                 Description = "A number",
-                HorizontalAlignment = HorizontalAlignment.Right
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Value = 3.50
             };
 
             var hideButton = new Button {

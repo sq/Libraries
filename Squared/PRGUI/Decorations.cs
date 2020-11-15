@@ -204,6 +204,9 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public class DefaultDecorations : IDecorationProvider {
+        public const float GlobalDefaultMargin = 6,
+            GlobalDefaultMarginCollapsed = 4;
+
         public IDecorator Button { get; set; }
         public IDecorator Container { get; set; }
         public IDecorator FloatingContainer { get; set; }
@@ -1052,7 +1055,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             Button = new DelegateDecorator {
-                Margins = new Margins(4),
+                Margins = new Margins(GlobalDefaultMargin),
                 Padding = new Margins(14, 6),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
@@ -1061,7 +1064,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             Checkbox = new DelegateDecorator {
-                Margins = new Margins(2, 4),
+                Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
                 Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
                 GetTextSettings = GetTextSettings_Button,
                 Below = Checkbox_Below,
@@ -1069,7 +1072,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             RadioButton = new DelegateDecorator {
-                Margins = new Margins(2, 4),
+                Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
                 Padding = new Margins(6 + CheckboxSize + 4, 6, 6, 6),
                 GetTextSettings = GetTextSettings_Button,
                 Below = RadioButton_Below,
@@ -1077,7 +1080,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             Container = new DelegateDecorator {
-                Margins = new Margins(4),
+                Margins = new Margins(GlobalDefaultMargin),
                 GetTextSettings = GetTextSettings,
                 Below = Container_Below,
                 ContentClip = Container_ContentClip,
@@ -1107,7 +1110,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             StaticText = new DelegateDecorator {
-                Margins = new Margins(2, 4),
+                Margins = new Margins(GlobalDefaultMarginCollapsed, GlobalDefaultMargin),
                 Padding = new Margins(6),
                 GetTextSettings = GetTextSettings,
                 Below = StaticText_Below,
@@ -1130,7 +1133,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             EditableText = new DelegateDecorator {
-                Margins = new Margins(4),
+                Margins = new Margins(GlobalDefaultMargin),
                 Padding = new Margins(6),
                 GetTextSettings = GetTextSettings,
                 // FIXME
@@ -1158,7 +1161,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             Slider = new DelegateDecorator {
-                Margins = new Margins(3),
+                Margins = new Margins(GlobalDefaultMargin),
                 Padding = new Margins(0, 0, 0, 2.75f),
                 Below = Slider_Below
             };
@@ -1171,7 +1174,7 @@ namespace Squared.PRGUI.Decorations {
             };
 
             Dropdown = new DelegateDecorator {
-                Margins = new Margins(4),
+                Margins = new Margins(GlobalDefaultMargin),
                 Padding = new Margins(14, 6, 14 + DropdownArrowWidth + 6, 6),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,

@@ -995,7 +995,11 @@ namespace Squared.PRGUI {
                         ? (
                             (i == topLevelFocusIndex) || (i < topLevelFocusIndex)
                                 ? 1.0f
-                                : 0.6f
+                                : (
+                                    (Hovering == control)
+                                        ? 0.9f
+                                        : 0.6f
+                                )
                         )
                         : 1.0f;
                     // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
