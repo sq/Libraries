@@ -123,6 +123,8 @@ namespace Squared.PRGUI {
             // FIXME
         }
 
+        private bool HasPressedKeySincePressingAlt = false;
+
         public bool HandleKeyEvent (string name, Keys? key, char? ch) {
             var evt = new KeyEventArgs {
                 Context = this,
@@ -133,12 +135,19 @@ namespace Squared.PRGUI {
 
             if (name == UIEvents.KeyDown) {
                 if ((key == Keys.LeftAlt) || (key == Keys.RightAlt)) {
-                    AcceleratorOverlayVisible = !AcceleratorOverlayVisible;
+                    HasPressedKeySincePressingAlt = false;
                 } else if (key == Keys.Escape) {
                     AcceleratorOverlayVisible = false;
                 } else if (key == Keys.Tab) {
                 } else if (key.HasValue && !ModifierKeys.Contains(key.Value)) {
+                    if (CurrentModifiers.Alt)
+                        HasPressedKeySincePressingAlt = true;
                     AcceleratorOverlayVisible = false;
+                }
+            } else if (name == UIEvents.KeyUp) {
+                if ((key == Keys.LeftAlt) || (key == Keys.RightAlt)) {
+                    if (!HasPressedKeySincePressingAlt)
+                        AcceleratorOverlayVisible = !AcceleratorOverlayVisible;
                 }
             }
 

@@ -410,12 +410,16 @@ namespace Squared.PRGUI.Controls {
                             leanB = deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null;
                         // FIXME: This -1 shouldn't be needed
                         // Console.WriteLine("leanA={0}, leanB={1}", leanA, leanB);
-                        var a = CharacterIndexFromVirtualPosition(csvp, leanA) ?? -1;
-                        var b = CharacterIndexFromVirtualPosition(virtualPosition, leanB) ?? -1;
+                        var _a = CharacterIndexFromVirtualPosition(csvp, leanA);
+                        var _b = CharacterIndexFromVirtualPosition(virtualPosition, leanB);
 
-                        // FIXME: bias
-                        int selectionBias = virtualPosition.X > csvp.X ? 1 : -1;
-                        SetSelection(new Pair<int>(Math.Min(a, b), Math.Max(a, b)), selectionBias);
+                        if (_a.HasValue || ClampVirtualPositionToTextbox) {
+                            var a = _a ?? -1;
+                            var b = _b ?? -1;
+                            // FIXME: bias
+                            int selectionBias = virtualPosition.X > csvp.X ? 1 : -1;
+                            SetSelection(new Pair<int>(Math.Min(a, b), Math.Max(a, b)), selectionBias);
+                        }
                     }
 
                     if (name != UIEvents.MouseUp)
