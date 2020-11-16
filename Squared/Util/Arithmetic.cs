@@ -102,7 +102,7 @@ namespace Squared.Util {
     }
 
     public static class Arithmetic {
-        internal static class OperatorCache<T> {
+        public static class OperatorCache<T> {
             public static BinaryOperatorMethod<T, T> Add, Subtract, Divide, Multiply;
 
             static OperatorCache () {

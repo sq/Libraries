@@ -31,6 +31,13 @@ namespace Squared.PRGUI.Controls {
         private T _Value;
         private T? _Minimum, _Maximum;
 
+        // HACK: Used 
+        const double FractionScaleD = 1000;
+        T FractionScale = (T)Convert.ChangeType(FractionScaleD, typeof(T));
+        private bool IsDraggingGauge = false;
+
+        // FIXME: If for some reason your PageSize is very large, pgup/pgdn will be slow
+        public int PageSize = 10;
         public T? Increment;
 
         public bool Exponential;
@@ -51,7 +58,12 @@ namespace Squared.PRGUI.Controls {
                     return;
                 _HasValue = true;
                 _Value = value;
-                Text = ValueEncoder(value);
+
+                var newText = ValueEncoder(value);
+                if (Text != newText) {
+                    Text = newText;
+                    SelectNone();
+                }
             }
         }
 
@@ -189,10 +201,24 @@ namespace Squared.PRGUI.Controls {
             return gaugeBox;
         }
 
-        // HACK: Used 
-        const double FractionScaleD = 1000;
-        T FractionScale = (T)Convert.ChangeType(FractionScaleD, typeof(T));
-        private bool IsDraggingGauge = false;
+        private RectF ComputeArrowBox (RectF contentBox, bool facingRight) {
+            if (Increment == null)
+                return default(RectF);
+
+            var box = contentBox;
+            // Compensate for padding
+            box.Left -= ArrowPadding;
+            box.Width -= (ArrowPadding * 2);
+
+            var space = (box.Height - ArrowHeight) / 2f;
+            box.Top += space;
+            box.Width = ArrowWidth;
+            box.Height = ArrowHeight;
+            if (!facingRight)
+                return box;
+            box.Left = contentBox.Extent.X + (ArrowPadding - ArrowWidth);
+            return box;
+        }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
@@ -219,30 +245,71 @@ namespace Squared.PRGUI.Controls {
             if (!Increment.HasValue)
                 return;
 
-            var box = settings.ContentBox;
-            // Compensate for padding
-            box.Left -= ArrowPadding;
-            box.Width -= (ArrowPadding * 2);
+            DrawArrow(ref renderer, ComputeArrowBox(settings.ContentBox, false), false);
+            DrawArrow(ref renderer, ComputeArrowBox(settings.ContentBox, true), true);
+        }
 
-            var space = (box.Height - ArrowHeight) / 2f;
-            box.Top += space;
-            box.Width = ArrowWidth;
-            box.Height = ArrowHeight;
-            DrawArrow(ref renderer, box, false);
-            box.Left = settings.ContentBox.Extent.X + (ArrowPadding - ArrowWidth);
-            DrawArrow(ref renderer, box, true);
+        private bool Adjust (bool positive, bool page) {
+            if (!Increment.HasValue)
+                return false;
+
+            var increment = Increment.Value;
+            if (page) {
+                var value = _Value;
+                for (int i = 0; i < PageSize; i++) {
+                    if (positive)
+                        value = Arithmetic.OperatorCache<T>.Add(value, increment);
+                    else
+                        value = Arithmetic.OperatorCache<T>.Subtract(value, increment);
+                }
+                Value = value;
+            } else {
+                if (positive)
+                    Value = Arithmetic.OperatorCache<T>.Add(_Value, increment);
+                else
+                    Value = Arithmetic.OperatorCache<T>.Subtract(_Value, increment);
+            }
+
+            return true;
         }
 
         protected override bool OnKeyPress (KeyEventArgs evt) {
-            if (evt.Key == Keys.Enter) {
-                FinalizeValue();
-                return true;
+            switch (evt.Key) {
+                case Keys.Enter:
+                    FinalizeValue();
+                    return true;
+                case Keys.Up:
+                    return Adjust(true, false);
+                case Keys.Down:
+                    return Adjust(false, false);
+                case Keys.PageUp:
+                    return Adjust(true, true);
+                case Keys.PageDown:
+                    return Adjust(false, true);
+                case Keys.Home:
+                    if (Minimum.HasValue && evt.Modifiers.Control) {
+                        Value = Minimum.Value;
+                        SelectNone();
+                        return true;
+                    }
+                    break;
+                case Keys.End:
+                    if (Maximum.HasValue && evt.Modifiers.Control) {
+                        Value = Maximum.Value;
+                        SelectNone();
+                        return true;
+                    }
+                    break;
             }
 
             return base.OnKeyPress(evt);
         }
 
         protected override bool OnEvent<T> (string name, T args) {
+            // Don't respond to focus changes if they involve a context menu
+            if (args is Menu)
+                return base.OnEvent<T>(name, args);
+
             if (name == UIEvents.LostFocus) {
                 FinalizeValue();
                 SelectNone();
@@ -251,6 +318,13 @@ namespace Squared.PRGUI.Controls {
             }
 
             return base.OnEvent<T>(name, args);
+        }
+
+        protected override bool OnClick (int clickCount) {
+            if (clickCount > 1)
+                return true;
+
+            return base.OnClick(clickCount);
         }
 
         protected override bool OnMouseEvent (string name, MouseEventArgs args) {
@@ -273,6 +347,20 @@ namespace Squared.PRGUI.Controls {
                     IsDraggingGauge = false;
                 }
             }
+
+            var leftArrow = ComputeArrowBox(args.ContentBox, false);
+            var rightArrow = ComputeArrowBox(args.ContentBox, true);
+            if (leftArrow.Contains(args.RelativeGlobalPosition) || rightArrow.Contains(args.RelativeGlobalPosition)) {
+                if (name == UIEvents.MouseDown) {
+                    Adjust(rightArrow.Contains(args.RelativeGlobalPosition), (args.Buttons == MouseButtons.Right));
+                    SelectNone();
+                }
+
+                return true;
+            }
+
+            if (leftArrow.Contains(args.MouseDownPosition) || rightArrow.Contains(args.MouseDownPosition))
+                return true;
 
             return base.OnMouseEvent(name, args);
         }

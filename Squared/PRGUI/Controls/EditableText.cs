@@ -341,16 +341,16 @@ namespace Squared.PRGUI.Controls {
         }
 
         /// <param name="virtualPosition">Local position ignoring scroll offset.</param>
-        public int? CharacterIndexFromVirtualPosition (Vector2 virtualPosition, bool? leanOverride = null) {
+        public int? CharacterIndexFromVirtualPosition (Vector2 virtualPosition, bool? leanOverride = null, bool forceClamp = false) {
             virtualPosition -= AlignmentOffset;
             var result = ImmediateHitTest(virtualPosition);
             if (virtualPosition.X < 0) {
-                if (ClampVirtualPositionToTextbox)
+                if (ClampVirtualPositionToTextbox || forceClamp)
                     return 0;
                 else
                     return null;
             } else if (virtualPosition.X > DynamicLayout.Get().Size.X) {
-                if (ClampVirtualPositionToTextbox)
+                if (ClampVirtualPositionToTextbox || forceClamp)
                     return Builder.Length;
                 else
                     return null;
@@ -415,12 +415,13 @@ namespace Squared.PRGUI.Controls {
                         //  caret on one side of a character, we honor the leaning value
                         var csvp = ClickStartVirtualPosition.Value;
                         var deltaBigEnough = Math.Abs(virtualPosition.X - csvp.X) >= 4;
+                        var forceClamp = deltaBigEnough;
                         bool? leanA = null, // deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null,
                             leanB = deltaBigEnough ? (virtualPosition.X > csvp.X) : (bool?)null;
                         // FIXME: This -1 shouldn't be needed
                         // Console.WriteLine("leanA={0}, leanB={1}", leanA, leanB);
-                        var _a = CharacterIndexFromVirtualPosition(csvp, leanA);
-                        var _b = CharacterIndexFromVirtualPosition(virtualPosition, leanB);
+                        var _a = CharacterIndexFromVirtualPosition(csvp, leanA, forceClamp);
+                        var _b = CharacterIndexFromVirtualPosition(virtualPosition, leanB, forceClamp);
 
                         if (_a.HasValue || ClampVirtualPositionToTextbox) {
                             var a = _a ?? -1;
@@ -439,8 +440,10 @@ namespace Squared.PRGUI.Controls {
                 if (
                     args.PreviousButtons.HasFlag(MouseButtons.Right) &&
                     !args.Buttons.HasFlag(MouseButtons.Right)
-                )
-                    ShowContextMenu(true);
+                ) {
+                    if (ClampVirtualPositionToTextbox || CharacterIndexFromVirtualPosition(virtualPosition, null).HasValue)
+                        ShowContextMenu(true);
+                }
 
                 return true;
             } else
