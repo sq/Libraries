@@ -472,7 +472,7 @@ namespace Squared.PRGUI.Decorations {
         public Color FocusedColor = new Color(200, 220, 255),
             ActiveColor = new Color(240, 240, 240),
             InactiveColor = new Color(180, 180, 180),
-            ContainerOutlineColor = new Color(32, 32, 32),
+            ContainerOutlineColor = new Color(32, 32, 32) * 0.5f,
             InertOutlineColor = new Color(255, 255, 255) * 0.33f,
             TooltipOutlineColor = new Color(16, 16, 16) * 0.5f,
             ScrollbarThumbColor = new Color(220, 220, 220),

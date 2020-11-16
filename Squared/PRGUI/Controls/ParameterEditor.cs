@@ -46,23 +46,29 @@ namespace Squared.PRGUI.Controls {
         public Func<T, string> ValueEncoder;
         public Func<string, T> ValueDecoder;
 
+        bool IsSettingValue;
         public T Value {
             get => _Value;
             set {
-                var clamped = ClampValue(value);
-                if (clamped == null)
-                    return;
+                try {
+                    IsSettingValue = true;
+                    var clamped = ClampValue(value);
+                    if (clamped == null)
+                        return;
 
-                value = clamped.Value;
-                if ((_Value.CompareTo(value) == 0) && _HasValue)
-                    return;
-                _HasValue = true;
-                _Value = value;
+                    value = clamped.Value;
+                    if ((_Value.CompareTo(value) == 0) && _HasValue)
+                        return;
+                    _HasValue = true;
+                    _Value = value;
 
-                var newText = ValueEncoder(value);
-                if (Text != newText) {
-                    Text = newText;
-                    SelectNone();
+                    var newText = ValueEncoder(value);
+                    if (Text != newText) {
+                        SetText(newText, true);
+                        SelectNone();
+                    }
+                } finally {
+                    IsSettingValue = false;
                 }
             }
         }
@@ -128,12 +134,14 @@ namespace Squared.PRGUI.Controls {
 
         protected override void OnValueChanged () {
             try {
-                var newValue = ValueDecoder(Text);
-                var converted = ClampValue((T)newValue);
-                if (converted == null)
-                    return;
-                _HasValue = true;
-                _Value = converted.Value;
+                if (!IsSettingValue) {
+                    var newValue = ValueDecoder(Text);
+                    var converted = ClampValue((T)newValue);
+                    if (converted == null)
+                        return;
+                    _HasValue = true;
+                    _Value = converted.Value;
+                }
                 FireEvent(UIEvents.ValueChanged);
             } catch {
             }
@@ -141,7 +149,7 @@ namespace Squared.PRGUI.Controls {
 
         private void FinalizeValue () {
             OnValueChanged();
-            Text = ValueEncoder(_Value);
+            SetText(ValueEncoder(_Value), true);
         }
 
         protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
@@ -155,7 +163,7 @@ namespace Squared.PRGUI.Controls {
             // If there's a gauge, adjust our content box based on its margins so that it doesn't overlap
             //  our text or selection box
             var gauge = context.DecorationProvider.ParameterGauge;
-            if (gauge != null) {
+            if ((gauge != null) && Minimum.HasValue && Maximum.HasValue) {
                 if (gauge.Padding.Top > 0)
                     result.Top += (gauge.Margins.Top * 2f);
                 if (gauge.Padding.Bottom > 0)
@@ -190,6 +198,8 @@ namespace Squared.PRGUI.Controls {
 
         private RectF ComputeGaugeBox (IDecorator decorations, RectF box) {
             if (decorations == null)
+                return default(RectF);
+            if (!Minimum.HasValue || !Maximum.HasValue)
                 return default(RectF);
             var gaugeBox = box;
             gaugeBox.Top += decorations.Margins.Top;
@@ -279,9 +289,9 @@ namespace Squared.PRGUI.Controls {
                     FinalizeValue();
                     return true;
                 case Keys.Up:
-                    return Adjust(true, false);
+                    return Adjust(true, evt.Modifiers.Control);
                 case Keys.Down:
-                    return Adjust(false, false);
+                    return Adjust(false, evt.Modifiers.Control);
                 case Keys.PageUp:
                     return Adjust(true, true);
                 case Keys.PageDown:

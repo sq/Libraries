@@ -15,6 +15,12 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class StaticTextBase : Control, IPostLayoutListener, Accessibility.IReadingTarget {
+        /// <summary>
+        /// If true, the control will have its size set exactly to fit its content.
+        /// If false, the control will be expanded to fit its content but will not shrink.
+        /// </summary>
+        public bool AutoSizeIsMaximum = true;
+
         public const float AutoSizePadding = 3f;
         public const bool DiagnosticText = false;
 
@@ -115,9 +121,9 @@ namespace Squared.PRGUI.Controls {
             */
             // var parentRect = Context.Layout.GetRect(parent);
 
-            if (AutoSizeWidth && !FixedWidth.HasValue)
+            if (AutoSizeWidth && AutoSizeIsMaximum && !FixedWidth.HasValue)
                 fixedWidth = AutoSizeComputedWidth ?? fixedWidth;
-            if (AutoSizeHeight && !FixedHeight.HasValue)
+            if (AutoSizeHeight && AutoSizeIsMaximum &&!FixedHeight.HasValue)
                 fixedHeight = AutoSizeComputedHeight ?? fixedHeight;
 
             if (MinimumWidth.HasValue && fixedWidth.HasValue)
@@ -129,6 +135,17 @@ namespace Squared.PRGUI.Controls {
                 fixedWidth = Math.Min(MaximumWidth.Value, fixedWidth.Value);
             if (MaximumHeight.HasValue && fixedHeight.HasValue)
                 fixedHeight = Math.Min(MaximumHeight.Value, fixedHeight.Value);
+        }
+
+        protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
+            base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
+            if (AutoSizeIsMaximum)
+                return;
+
+            if (AutoSizeWidth)
+                minimumWidth = AutoSizeComputedWidth;
+            if (AutoSizeHeight)
+                minimumHeight = AutoSizeComputedHeight;
         }
 
         private void ConfigureMeasurement () {

@@ -177,17 +177,22 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        protected void SetText (string newValue, bool bypassFilter) {
+            // FIXME: Optimize the 'value hasn't changed' case
+            if (!bypassFilter)
+                newValue = FilterInput(newValue);
+            Builder.Clear();
+            Builder.Append(newValue);
+            NextScrollInstant = true;
+            NotifyValueChanged();
+        }
+
         public string Text {
             get {
                 return Builder.ToString();
             }
             set {
-                // FIXME: Optimize the 'value hasn't changed' case
-                var newValue = FilterInput(value);
-                Builder.Clear();
-                Builder.Append(newValue);
-                NextScrollInstant = true;
-                NotifyValueChanged();
+                SetText(value, false);
             }
         }
 
