@@ -31,6 +31,8 @@ namespace Squared.PRGUI.Controls {
         private T _Value;
         private T? _Minimum, _Maximum;
 
+        public T? Increment;
+
         public bool Exponential;
 
         public Func<T, T?> ValueFilter;
@@ -132,8 +134,11 @@ namespace Squared.PRGUI.Controls {
 
         protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
             var result = base.ComputePadding(context, decorations);
-            result.Left += ArrowPadding;
-            result.Right += ArrowPadding;
+
+            if (Increment.HasValue) {
+                result.Left += ArrowPadding;
+                result.Right += ArrowPadding;
+            }
 
             // If there's a gauge, adjust our content box based on its margins so that it doesn't overlap
             //  our text or selection box
@@ -155,10 +160,19 @@ namespace Squared.PRGUI.Controls {
                 c = !facingRight
                     ? new Vector2(box.Extent.X, box.Position.Y)
                     : new Vector2(box.Position.X, box.Extent.Y);
+
+            float alpha = 1;
+            if (_Minimum.HasValue && !facingRight)
+                if (_Minimum.Value.CompareTo(_Value) >= 0)
+                    alpha = 0.6f;
+            if (_Maximum.HasValue && facingRight)
+                if (_Maximum.Value.CompareTo(_Value) <= 0)
+                    alpha = 0.6f;
+
             renderer.RasterizeTriangle(
                 a, b, c, radius: 0f, outlineRadius: 1f,
-                innerColor: Color.White, outerColor: Color.White, 
-                outlineColor: Color.Black * 0.8f
+                innerColor: Color.White * alpha, outerColor: Color.White * alpha, 
+                outlineColor: Color.Black * (0.8f * alpha)
             );
         }
 
@@ -200,6 +214,9 @@ namespace Squared.PRGUI.Controls {
 
             // Draw in the "Above" pass to ensure it is not clipped (better batching)
             if (context.Pass != RasterizePasses.Above)
+                return;
+
+            if (!Increment.HasValue)
                 return;
 
             var box = settings.ContentBox;
