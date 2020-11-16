@@ -208,7 +208,7 @@ namespace PRGUI.Demo {
                 HorizontalAlignment = HorizontalAlignment.Right,
                 Minimum = -10,
                 Maximum = 1000,
-                Value = 3.50
+                Value = 73.50
             };
 
             var hideButton = new Button {

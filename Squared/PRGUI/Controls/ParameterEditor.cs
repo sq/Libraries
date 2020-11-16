@@ -113,6 +113,14 @@ namespace Squared.PRGUI.Controls {
             var result = base.ComputePadding(context, decorations);
             result.Left += ArrowPadding;
             result.Right += ArrowPadding;
+
+            // If there's a gauge, adjust our content box based on its margins so that it doesn't overlap
+            //  our text or selection box
+            var gauge = context.DecorationProvider.ParameterGauge;
+            if (gauge != null) {
+                result.Top += (gauge.Margins.Top * 2f);
+                result.Bottom += (gauge.Margins.Bottom * 2f);
+            }
             return result;
         }
 
@@ -134,6 +142,24 @@ namespace Squared.PRGUI.Controls {
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
+            var gauge = context.DecorationProvider.ParameterGauge;
+            if ((Minimum.HasValue && Maximum.HasValue) && (gauge != null)) {
+                var gaugeBox = settings.Box;
+                gaugeBox.Top += gauge.Margins.Top;
+                gaugeBox.Left += gauge.Margins.Left;
+                gaugeBox.Width -= gauge.Margins.X;
+                gaugeBox.Height -= gauge.Margins.Y;
+                // HACK: Good enough for rasterization
+                double v = Convert.ToDouble(_Value),
+                    min = Convert.ToDouble(_Minimum.Value),
+                    max = Convert.ToDouble(_Maximum.Value);
+                var fraction = (v - min) / (max - min);
+                gaugeBox.Width = Math.Min(Math.Max(settings.Box.Width * (float)fraction, gauge.Padding.X), settings.Box.Width - gauge.Margins.X);
+                var tempSettings = settings;
+                tempSettings.ContentBox = gaugeBox;
+                gauge.Rasterize(context, ref renderer, tempSettings);
+            }
+
             // Draw in the "Above" pass to ensure it is not clipped (better batching)
             if (context.Pass != RasterizePasses.Above)
                 return;
@@ -142,6 +168,11 @@ namespace Squared.PRGUI.Controls {
             // Compensate for padding
             box.Left -= ArrowPadding;
             box.Width -= (ArrowPadding * 2);
+            // Shift the arrows up/down if there's a gauge running along the edge of the editor
+            if (gauge != null) {
+                box.Top += gauge.Padding.Top;
+                box.Height -= gauge.Padding.Y;
+            }
 
             var space = (box.Height - ArrowHeight) / 2f;
             box.Top += space;

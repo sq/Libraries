@@ -94,6 +94,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Dropdown { get; }
         IDecorator AcceleratorTarget { get; }
         IDecorator AcceleratorLabel { get; }
+        IDecorator ParameterGauge { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
@@ -228,6 +229,7 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator Dropdown { get; set; }
         public IDecorator AcceleratorLabel { get; set; }
         public IDecorator AcceleratorTarget { get; set; }
+        public IDecorator ParameterGauge { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public DefaultDecorations (float defaultMargin = 6, float defaultMarginCollapsed = 4) {
@@ -414,6 +416,15 @@ namespace Squared.PRGUI.Decorations {
 
             AcceleratorTarget = new DelegateDecorator {
                 Below = AcceleratorTarget_Below
+            };
+
+            ParameterGauge = new DelegateDecorator {
+                Below = ParameterGauge_Below,
+                Margins = new Margins(1),
+                // Padding controls gauge size and placement.
+                // Top padding = height of upper gauge bar, bottom padding = lower bar
+                // Left+right padding = minimum width of fill
+                Padding = new Margins(2, 0, 0, 4.5f)
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
@@ -1104,6 +1115,29 @@ namespace Squared.PRGUI.Decorations {
                 innerColor: Color.Transparent, outerColor: Color.Transparent,
                 shadow: AcceleratorTargetShadow
             );
+        }
+
+        private void ParameterGauge_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            var radius = new Vector4(InertCornerRadius, InertCornerRadius, InertCornerRadius, InertCornerRadius);
+            var isFocused = settings.State.IsFlagged(ControlStates.Focused);
+            var outlineRadius = isFocused ? 1f : 0f;
+            var outlineColor = Color.Black * 0.8f;
+            var color = isFocused ? Color.White : Color.White * 0.65f;
+            settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
+            if (ParameterGauge.Padding.Top > 0) {
+                renderer.RasterizeRectangle(
+                    a, new Vector2(b.X, a.Y + ParameterGauge.Padding.Top), radiusCW: radius,
+                    outlineRadius: outlineRadius, outlineColor: outlineColor,
+                    innerColor: color, outerColor: color
+                );
+            }
+            if (ParameterGauge.Padding.Bottom > 0) {
+                renderer.RasterizeRectangle(
+                    new Vector2(a.X, b.Y - ParameterGauge.Padding.Bottom), b, radiusCW: radius,
+                    outlineRadius: outlineRadius, outlineColor: outlineColor,
+                    innerColor: color, outerColor: color
+                );
+            }
         }
 
         public bool GetTextSettings (
