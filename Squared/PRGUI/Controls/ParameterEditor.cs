@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -30,15 +31,18 @@ namespace Squared.PRGUI.Controls {
         private T _Value;
         private T? _Minimum, _Maximum;
 
+        public Func<T, string> Encoder;
+        public Func<string, T> Decoder;
+
         public T Value {
             get => _Value;
             set {
                 value = ClampValue(value);
                 if ((_Value.CompareTo(value) == 0) && _HasValue)
                     return;
-                _Value = value;
-                Text = Convert.ToString(value);
                 _HasValue = true;
+                _Value = value;
+                Text = Encoder(value);
             }
         }
 
@@ -83,6 +87,10 @@ namespace Squared.PRGUI.Controls {
                 DoubleOnly = true;
             else if (t == typeof(int) || t == typeof(long))
                 IntegerOnly = true;
+
+            Decoder = (s) => (T)Convert.ChangeType(s, typeof(T));
+            var fp = NumberFormatInfo.CurrentInfo;
+            Encoder = (v) => Convert.ToString(v, fp);
         }
 
         private T ClampValue (T value) {
@@ -95,7 +103,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override void OnValueChanged () {
             try {
-                var newValue = Convert.ChangeType(Text, typeof(T));
+                var newValue = Decoder(Text);
                 var converted = ClampValue((T)newValue);
                 _HasValue = true;
                 _Value = converted;
@@ -106,7 +114,7 @@ namespace Squared.PRGUI.Controls {
 
         private void FinalizeValue () {
             OnValueChanged();
-            Text = Convert.ToString(_Value);
+            Text = Encoder(_Value);
         }
 
         protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
@@ -118,8 +126,10 @@ namespace Squared.PRGUI.Controls {
             //  our text or selection box
             var gauge = context.DecorationProvider.ParameterGauge;
             if (gauge != null) {
-                result.Top += (gauge.Margins.Top * 2f);
-                result.Bottom += (gauge.Margins.Bottom * 2f);
+                if (gauge.Padding.Top > 0)
+                    result.Top += (gauge.Margins.Top * 2f);
+                if (gauge.Padding.Bottom > 0)
+                    result.Bottom += (gauge.Margins.Bottom * 2f);
             }
             return result;
         }
@@ -139,22 +149,29 @@ namespace Squared.PRGUI.Controls {
             );
         }
 
+        private RectF ComputeGaugeBox (IDecorator decorations, RectF box) {
+            if (decorations == null)
+                return default(RectF);
+            var gaugeBox = box;
+            gaugeBox.Top += decorations.Margins.Top;
+            gaugeBox.Left += decorations.Margins.Left;
+            gaugeBox.Width -= decorations.Margins.X;
+            gaugeBox.Height -= decorations.Margins.Y;
+            return gaugeBox;
+        }
+
+        // HACK: Used 
+        const double FractionScaleD = 1000;
+        T FractionScale = (T)Convert.ChangeType(FractionScaleD, typeof(T));
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
             var gauge = context.DecorationProvider.ParameterGauge;
             if ((Minimum.HasValue && Maximum.HasValue) && (gauge != null)) {
-                var gaugeBox = settings.Box;
-                gaugeBox.Top += gauge.Margins.Top;
-                gaugeBox.Left += gauge.Margins.Left;
-                gaugeBox.Width -= gauge.Margins.X;
-                gaugeBox.Height -= gauge.Margins.Y;
-                // HACK: Good enough for rasterization
-                double v = Convert.ToDouble(_Value),
-                    min = Convert.ToDouble(_Minimum.Value),
-                    max = Convert.ToDouble(_Maximum.Value);
-                var fraction = (v - min) / (max - min);
-                gaugeBox.Width = Math.Min(Math.Max(settings.Box.Width * (float)fraction, gauge.Padding.X), settings.Box.Width - gauge.Margins.X);
+                var gaugeBox = ComputeGaugeBox(gauge, settings.Box);
+                var fraction = Convert.ToDouble(Arithmetic.Fraction(_Value, _Minimum.Value, _Maximum.Value, FractionScale)) / FractionScaleD;
+                gaugeBox.Width = Math.Min(Math.Max(gaugeBox.Width * (float)fraction, gauge.Padding.X), settings.Box.Width - gauge.Margins.X);
                 var tempSettings = settings;
                 tempSettings.ContentBox = gaugeBox;
                 gauge.Rasterize(context, ref renderer, tempSettings);
@@ -168,11 +185,6 @@ namespace Squared.PRGUI.Controls {
             // Compensate for padding
             box.Left -= ArrowPadding;
             box.Width -= (ArrowPadding * 2);
-            // Shift the arrows up/down if there's a gauge running along the edge of the editor
-            if (gauge != null) {
-                box.Top += gauge.Padding.Top;
-                box.Height -= gauge.Padding.Y;
-            }
 
             var space = (box.Height - ArrowHeight) / 2f;
             box.Top += space;

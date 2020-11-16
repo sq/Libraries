@@ -424,7 +424,7 @@ namespace Squared.PRGUI.Decorations {
                 // Padding controls gauge size and placement.
                 // Top padding = height of upper gauge bar, bottom padding = lower bar
                 // Left+right padding = minimum width of fill
-                Padding = new Margins(2, 0, 0, 4.5f)
+                Padding = new Margins(2, 0, 0, 5.5f)
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {

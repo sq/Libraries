@@ -40,6 +40,26 @@ namespace Squared.Util {
             return lhs % rhs;
         }
 
+        public static long op_Subtraction (long lhs, long rhs) {
+            return lhs - rhs;
+        }
+
+        public static long op_Addition (long lhs, long rhs) {
+            return lhs + rhs;
+        }
+
+        public static long op_Multiply (long lhs, long rhs) {
+            return lhs * rhs;
+        }
+
+        public static long op_Division (long lhs, long rhs) {
+            return lhs / rhs;
+        }
+
+        public static long op_Modulus (long lhs, long rhs) {
+            return lhs % rhs;
+        }
+
         public static float op_Subtraction (float lhs, float rhs) {
             return lhs - rhs;
         }
@@ -82,6 +102,17 @@ namespace Squared.Util {
     }
 
     public static class Arithmetic {
+        internal static class OperatorCache<T> {
+            public static BinaryOperatorMethod<T, T> Add, Subtract, Divide, Multiply;
+
+            static OperatorCache () {
+                Add = Arithmetic.GetOperator<T, T>(Operators.Add);
+                Subtract = Arithmetic.GetOperator<T, T>(Operators.Subtract);
+                Divide = Arithmetic.GetOperator<T, T>(Operators.Divide);
+                Multiply = Arithmetic.GetOperator<T, T>(Operators.Multiply);
+            }
+        }
+
         public enum Operators : int {
             // Binary operators
             Add = 1,
@@ -260,6 +291,9 @@ namespace Squared.Util {
             return result;
         }
 
+        /// <summary>
+        /// Clamps a value to the range (min, max)
+        /// </summary>
         public static T Clamp<T> (T value, T min, T max)
             where T : IComparable<T> {
             if (value.CompareTo(max) > 0)
@@ -270,6 +304,24 @@ namespace Squared.Util {
                 return value;
         }
 
+        /// <summary>
+        /// Clamps a value to the range (min, max) then scales it to the range (0, scale)
+        /// </summary>
+        /// <param name="scale">An optional scale value for integer types (default 1)</param>
+        /// <returns>((value - min) * scale) / (max - min)</returns>
+        public static T Fraction<T> (T value, T min, T max, T? scale = null)
+            where T : struct
+        {
+            var range = OperatorCache<T>.Subtract(max, min);
+            var relative = OperatorCache<T>.Subtract(value, min);
+            if (scale != null)
+                relative = OperatorCache<T>.Multiply(relative, scale.Value);
+            return OperatorCache<T>.Divide(relative, range);
+        }
+
+        /// <summary>
+        /// Clamps a value to the range (0, 1)
+        /// </summary>
         public static float Saturate (float value) {
             if (value < 0)
                 return 0;
@@ -279,6 +331,9 @@ namespace Squared.Util {
                 return value;
         }
 
+        /// <summary>
+        /// Clamps a value to the range (0, 1)
+        /// </summary>
         public static float Saturate (float value, float max) {
             if (value < 0)
                 return 0;
@@ -288,6 +343,9 @@ namespace Squared.Util {
                 return value;
         }
 
+        /// <summary>
+        /// Wraps a value into the range (min, max)
+        /// </summary>
         public static int Wrap (int value, int min, int max) {
             int d = max - min + 1;
 
@@ -303,6 +361,10 @@ namespace Squared.Util {
             }
         }
 
+        /// <summary>
+        /// Wraps a value into the range (min, max].
+        /// Will never return max.
+        /// </summary>
         public static float WrapExclusive (float value, float min, float max) {
             float d = max - min;
 
@@ -318,6 +380,11 @@ namespace Squared.Util {
             }
         }
 
+        /// <summary>
+        /// Wraps a value into the range (min, max).
+        /// After the first wrap, will never return max, i.e:
+        /// WrapInclusive(1, 0, 1) == 1, WrapInclusive(2, 0, 1) == 0
+        /// </summary>
         public static float WrapInclusive (float value, float min, float max) {
             if (max <= min)
                 return min;
@@ -369,8 +436,10 @@ namespace Squared.Util {
             return Lerp(min, max, (float)Math.Sin(a * multiplier));
         }
 
-        // Input range: 0-2
-        // Output range: -max - max
+        /// <summary>
+        /// Input range: (0, 2)
+        /// Output range: (-max, max)
+        /// </summary>
         public static float PulseCyclicExp (float value, float max) {
             var valueCentered = WrapInclusive(value, 0f, 2f);
             if (valueCentered <= 1f) {
