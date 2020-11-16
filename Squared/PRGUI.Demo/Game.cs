@@ -208,7 +208,8 @@ namespace PRGUI.Demo {
                 HorizontalAlignment = HorizontalAlignment.Right,
                 Minimum = -10,
                 Maximum = 1000,
-                Value = 73.50
+                Value = 73.50,
+                ValueFilter = (d) => Math.Round(d, 2, MidpointRounding.AwayFromZero)
             };
 
             var hideButton = new Button {
@@ -223,8 +224,7 @@ namespace PRGUI.Demo {
                     Settings = {
                         Origin = new Vector2(0, 0.5f),
                         Position = new Vector2(0.05f, 0.5f),
-                        Scale = Vector2.One * 0.9f,
-                        
+                        Scale = Vector2.One * 0.9f
                     }
                 },
                 // TextAlignment = HorizontalAlignment.Right,

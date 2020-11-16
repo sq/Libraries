@@ -28,7 +28,7 @@ namespace Squared.PRGUI.Controls {
         };
 
         // FIXME
-        public static readonly bool Multiline = false;
+        public const bool Multiline = false;
 
         public bool StripNewlines = true;
 
@@ -37,6 +37,10 @@ namespace Squared.PRGUI.Controls {
         public const float AutoscrollClickTimeout = 0.25f;
         public const float ScrollTurboThreshold = 420f, ScrollFastThreshold = 96f;
         public const float ScrollLimitPerFrameSlow = 5.5f, ScrollLimitPerFrameFast = 32f;
+
+        public HorizontalAlignment HorizontalAlignment = HorizontalAlignment.Left;
+
+        public string Description;
 
         /// <summary>
         /// Pre-processes any new text being inserted
@@ -64,17 +68,18 @@ namespace Squared.PRGUI.Controls {
         private int CurrentScrollBias = 1;
         private bool NextScrollInstant = true;
 
-        private Vector2 LastLocalCursorPosition;
+        protected Vector2 LastLocalCursorPosition;
 
-        private Vector2? ClickStartVirtualPosition = null;
+        protected Vector2? ClickStartVirtualPosition = null;
         private Pair<int> _Selection;
 
         protected override bool ShouldClipContent => true;
 
-        private Vector2 AlignmentOffset = Vector2.Zero;
-        public HorizontalAlignment HorizontalAlignment = HorizontalAlignment.Left;
+        protected Vector2 AlignmentOffset = Vector2.Zero;
 
-        public string Description;
+        protected bool ClampVirtualPositionToTextbox = true;
+
+        private bool IsChangingValue;
 
         public EditableText ()
             : base () {
@@ -136,7 +141,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private Pair<int> ExpandedSelection {
+        protected Pair<int> ExpandedSelection {
             get {
                 var result = _Selection;
                 if (Builder.Length > 0) {
@@ -186,8 +191,6 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private bool IsChangingValue;
-
         protected void NotifyValueChanged () {
             if (IsChangingValue)
                 return;
@@ -230,10 +233,6 @@ namespace Squared.PRGUI.Controls {
                 result = null;
 
             return result;
-        }
-
-        protected void ClearSelection () {
-            SetSelection(new Pair<int>(-1, -1), 0);
         }
 
         protected void SetSelection (Pair<int> value, int scrollBias) {
@@ -340,8 +339,6 @@ namespace Squared.PRGUI.Controls {
             DynamicLayout.Get();
             return DynamicLayout.HitTest(virtualPosition);
         }
-
-        protected bool ClampVirtualPositionToTextbox = true;
 
         /// <param name="virtualPosition">Local position ignoring scroll offset.</param>
         public int? CharacterIndexFromVirtualPosition (Vector2 virtualPosition, bool? leanOverride = null) {
@@ -636,6 +633,10 @@ namespace Squared.PRGUI.Controls {
             }
 
             return false;
+        }
+
+        public void SelectNone () {
+            SetSelection(new Pair<int>(int.MaxValue, int.MaxValue), 1);
         }
 
         public void SelectAll () {

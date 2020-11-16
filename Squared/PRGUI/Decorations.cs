@@ -421,10 +421,9 @@ namespace Squared.PRGUI.Decorations {
             ParameterGauge = new DelegateDecorator {
                 Below = ParameterGauge_Below,
                 Margins = new Margins(1),
-                // Padding controls gauge size and placement.
-                // Top padding = height of upper gauge bar, bottom padding = lower bar
+                // Top+bottom padding = height of fill/track
                 // Left+right padding = minimum width of fill
-                Padding = new Margins(2, 0, 0, 5.5f)
+                Padding = new Margins(4, 0, 0, 6f)
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
@@ -1119,25 +1118,18 @@ namespace Squared.PRGUI.Decorations {
 
         private void ParameterGauge_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             var radius = new Vector4(InertCornerRadius, InertCornerRadius, InertCornerRadius, InertCornerRadius);
-            var isFocused = settings.State.IsFlagged(ControlStates.Focused);
+            bool isFocused = settings.State.IsFlagged(ControlStates.Focused),
+                isHovering = settings.State.IsFlagged(ControlStates.Hovering);
             var outlineRadius = isFocused ? 1f : 0f;
             var outlineColor = Color.Black * 0.8f;
-            var color = isFocused ? Color.White : Color.White * 0.65f;
+            float alpha = (isFocused ? 1.0f : 0.7f) * (isHovering ? 1.0f : 0.75f);
+            var color = Color.White * alpha;
             settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
-            if (ParameterGauge.Padding.Top > 0) {
-                renderer.RasterizeRectangle(
-                    a, new Vector2(b.X, a.Y + ParameterGauge.Padding.Top), radiusCW: radius,
-                    outlineRadius: outlineRadius, outlineColor: outlineColor,
-                    innerColor: color, outerColor: color
-                );
-            }
-            if (ParameterGauge.Padding.Bottom > 0) {
-                renderer.RasterizeRectangle(
-                    new Vector2(a.X, b.Y - ParameterGauge.Padding.Bottom), b, radiusCW: radius,
-                    outlineRadius: outlineRadius, outlineColor: outlineColor,
-                    innerColor: color, outerColor: color
-                );
-            }
+            renderer.RasterizeRectangle(
+                a, b, radiusCW: radius,
+                outlineRadius: outlineRadius, outlineColor: outlineColor,
+                innerColor: color, outerColor: color
+            );
         }
 
         public bool GetTextSettings (

@@ -31,18 +31,23 @@ namespace Squared.PRGUI.Controls {
         private T _Value;
         private T? _Minimum, _Maximum;
 
-        public Func<T, string> Encoder;
-        public Func<string, T> Decoder;
+        public Func<T, T?> ValueFilter;
+        public Func<T, string> ValueEncoder;
+        public Func<string, T> ValueDecoder;
 
         public T Value {
             get => _Value;
             set {
-                value = ClampValue(value);
+                var clamped = ClampValue(value);
+                if (clamped == null)
+                    return;
+
+                value = clamped.Value;
                 if ((_Value.CompareTo(value) == 0) && _HasValue)
                     return;
                 _HasValue = true;
                 _Value = value;
-                Text = Encoder(value);
+                Text = ValueEncoder(value);
             }
         }
 
@@ -88,25 +93,31 @@ namespace Squared.PRGUI.Controls {
             else if (t == typeof(int) || t == typeof(long))
                 IntegerOnly = true;
 
-            Decoder = (s) => (T)Convert.ChangeType(s, typeof(T));
+            ValueDecoder = (s) => (T)Convert.ChangeType(s, typeof(T));
             var fp = NumberFormatInfo.CurrentInfo;
-            Encoder = (v) => Convert.ToString(v, fp);
+            ValueEncoder = (v) => Convert.ToString(v, fp);
         }
 
-        private T ClampValue (T value) {
+        private T? ClampValue (T value) {
             if (_Minimum.HasValue && (value.CompareTo(_Minimum.Value) < 0))
                 value = _Minimum.Value;
             if (_Maximum.HasValue && (value.CompareTo(_Maximum.Value) > 0))
                 value = _Maximum.Value;
-            return value;
+
+            if (ValueFilter != null)
+                return ValueFilter(value);
+            else
+                return value;
         }
 
         protected override void OnValueChanged () {
             try {
-                var newValue = Decoder(Text);
+                var newValue = ValueDecoder(Text);
                 var converted = ClampValue((T)newValue);
+                if (converted == null)
+                    return;
                 _HasValue = true;
-                _Value = converted;
+                _Value = converted.Value;
                 FireEvent(UIEvents.ValueChanged);
             } catch {
             }
@@ -114,7 +125,7 @@ namespace Squared.PRGUI.Controls {
 
         private void FinalizeValue () {
             OnValueChanged();
-            Text = Encoder(_Value);
+            Text = ValueEncoder(_Value);
         }
 
         protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
@@ -157,12 +168,15 @@ namespace Squared.PRGUI.Controls {
             gaugeBox.Left += decorations.Margins.Left;
             gaugeBox.Width -= decorations.Margins.X;
             gaugeBox.Height -= decorations.Margins.Y;
+            gaugeBox.Top = gaugeBox.Extent.Y - decorations.Padding.Y;
+            gaugeBox.Height = box.Extent.Y - gaugeBox.Top - decorations.Margins.Bottom;
             return gaugeBox;
         }
 
         // HACK: Used 
         const double FractionScaleD = 1000;
         T FractionScale = (T)Convert.ChangeType(FractionScaleD, typeof(T));
+        private bool IsDraggingGauge = false;
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
@@ -171,8 +185,11 @@ namespace Squared.PRGUI.Controls {
             if ((Minimum.HasValue && Maximum.HasValue) && (gauge != null)) {
                 var gaugeBox = ComputeGaugeBox(gauge, settings.Box);
                 var fraction = Convert.ToDouble(Arithmetic.Fraction(_Value, _Minimum.Value, _Maximum.Value, FractionScale)) / FractionScaleD;
-                gaugeBox.Width = Math.Min(Math.Max(gaugeBox.Width * (float)fraction, gauge.Padding.X), settings.Box.Width - gauge.Margins.X);
                 var tempSettings = settings;
+                tempSettings.State = settings.State & ~ControlStates.Hovering;
+                if (gaugeBox.Contains(context.MousePosition) || IsDraggingGauge)
+                    tempSettings.State |= ControlStates.Hovering;
+                gaugeBox.Width = Math.Min(Math.Max(gaugeBox.Width * (float)fraction, gauge.Padding.X), settings.Box.Width - gauge.Margins.X);
                 tempSettings.ContentBox = gaugeBox;
                 gauge.Rasterize(context, ref renderer, tempSettings);
             }
@@ -207,11 +224,34 @@ namespace Squared.PRGUI.Controls {
         protected override bool OnEvent<T> (string name, T args) {
             if (name == UIEvents.LostFocus) {
                 FinalizeValue();
-                ClearSelection();
-            } else if (name == UIEvents.GotFocus)
-                SetSelection(new Pair<int>(-9999, 9999), 0);
+                SelectNone();
+            } else if (name == UIEvents.GotFocus) {
+                SelectAll();
+            }
 
             return base.OnEvent<T>(name, args);
+        }
+
+        protected override bool OnMouseEvent (string name, MouseEventArgs args) {
+            var gauge = Context.Decorations.ParameterGauge;
+            if (gauge != null) {
+                var gaugeBox = ComputeGaugeBox(gauge, args.Box);
+                if (gaugeBox.Contains(args.MouseDownPosition)) {
+                    IsDraggingGauge = (args.Buttons == MouseButtons.Left);
+                    var fraction = Arithmetic.Saturate((args.RelativeGlobalPosition.X - args.Box.Left) / args.Box.Width) * FractionScaleD;
+                    var fractionT = (T)Convert.ChangeType(fraction, typeof(T));
+                    var scaledNewValue = Arithmetic.FractionToValue(fractionT, _Minimum.Value, _Maximum.Value, FractionScale);
+                    if ((args.Buttons == MouseButtons.Left) || (args.PreviousButtons == MouseButtons.Left)) {
+                        Value = scaledNewValue;
+                        SelectNone();
+                    }
+                    return true;
+                } else {
+                    IsDraggingGauge = false;
+                }
+            }
+
+            return base.OnMouseEvent(name, args);
         }
     }
 }

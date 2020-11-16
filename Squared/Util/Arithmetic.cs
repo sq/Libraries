@@ -308,7 +308,6 @@ namespace Squared.Util {
         /// Clamps a value to the range (min, max) then scales it to the range (0, scale)
         /// </summary>
         /// <param name="scale">An optional scale value for integer types (default 1)</param>
-        /// <returns>((value - min) * scale) / (max - min)</returns>
         public static T Fraction<T> (T value, T min, T max, T? scale = null)
             where T : struct
         {
@@ -317,6 +316,20 @@ namespace Squared.Util {
             if (scale != null)
                 relative = OperatorCache<T>.Multiply(relative, scale.Value);
             return OperatorCache<T>.Divide(relative, range);
+        }
+
+        /// <summary>
+        /// Scales a value by (max - min), then divides it by scale and adds it to min
+        /// </summary>
+        /// <param name="scale">An optional scale value for integer types (default 1)</param>
+        public static T FractionToValue<T> (T fraction, T min, T max, T? scale = null)
+            where T : struct
+        {
+            var range = OperatorCache<T>.Subtract(max, min);
+            var global = OperatorCache<T>.Multiply(fraction, range);
+            if (scale != null)
+                global = OperatorCache<T>.Divide(global, scale.Value);
+            return OperatorCache<T>.Add(min, global);
         }
 
         /// <summary>
