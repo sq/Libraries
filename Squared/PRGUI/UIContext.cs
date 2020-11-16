@@ -563,8 +563,17 @@ namespace Squared.PRGUI {
             var previouslyFixated = FixatedControl;
 
             var previouslyHovering = Hovering;
-            if ((Focused != null) && !Focused.IsValidFocusTarget)
-                Focused = null;
+            if (
+                (Focused != null) && 
+                (!Focused.IsValidFocusTarget || (FindTopLevelAncestor(Focused) == null))
+            ) {
+                // If the current focused control is no longer enabled or present, attempt to
+                //  focus something else in the current top level control, if possible
+                if (Controls.Contains(TopLevelFocused))
+                    Focused = TopLevelFocused;
+                else
+                    Focused = null;
+            }
 
             CurrentMouseButtons = ((mouseState.LeftButton == ButtonState.Pressed) ? MouseButtons.Left : MouseButtons.None) |
                 ((mouseState.MiddleButton == ButtonState.Pressed) ? MouseButtons.Middle : MouseButtons.None) |

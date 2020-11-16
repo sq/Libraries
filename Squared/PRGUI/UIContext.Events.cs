@@ -315,8 +315,12 @@ namespace Squared.PRGUI {
                 return null;
 
             while (true) {
-                if (!control.TryGetParent(out Control parent))
-                    return control;
+                if (!control.TryGetParent(out Control parent)) {
+                    if (Controls.Contains(control))
+                        return control;
+                    else
+                        return null;
+                }
 
                 control = parent;
             }
@@ -325,10 +329,16 @@ namespace Squared.PRGUI {
         public bool TrySetFocus (Control value, bool force) {
             var newFocusTarget = value;
 
+            // Detect attempts to focus a control that is no longer in the hierarchy
+            if (FindTopLevelAncestor(value) == null)
+                value = null;
+
             // Top-level controls should pass focus on to their children if possible
             if (Controls.Contains(value)) {
                 Control childTarget;
-                if (!TopLevelFocusMemory.TryGetValue(value, out childTarget)) {
+                if (!TopLevelFocusMemory.TryGetValue(value, out childTarget) ||
+                    (FindTopLevelAncestor(childTarget) == null)
+                ) {
                     var container = value as IControlContainer;
                     if (container != null)
                         childTarget = container.Children.InTabOrder(true).FirstOrDefault();
@@ -418,7 +428,7 @@ namespace Squared.PRGUI {
                     newIndex = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
             }
 
-            return null;
+            return tabOrdered[0];
         }
 
         private Control PickNextFocusTarget (Control current, int delta, bool recursive) {

@@ -41,7 +41,7 @@ namespace Squared.PRGUI.Accessibility {
             Context = context;
             Context.EventBus.Subscribe(null, UIEvents.ValueChanged, Control_OnValueChanged);
             Context.EventBus.Subscribe(null, UIEvents.CheckedChanged, Control_OnValueChanged);
-            Context.EventBus.Subscribe(null, UIEvents.SelectionChanged, Control_OnValueChanged);
+            Context.EventBus.Subscribe(null, UIEvents.SelectionChanged, Control_OnSelectionChanged);
         }
 
         public SpeechSynthesizer SpeechSynthesizer {
@@ -103,6 +103,15 @@ namespace Squared.PRGUI.Accessibility {
 
             if (text != null)
                 Speak(text.ToString(), Context.TTSDescriptionReadingSpeed);
+        }
+
+        private void Control_OnSelectionChanged (IEventInfo e) {
+            var ctl = e.Source as Control;
+            // HACK
+            if (ctl is EditableText)
+                return;
+            if (ctl != null)
+                NotifyValueChanged(ctl);
         }
 
         private void Control_OnValueChanged (IEventInfo e) {
