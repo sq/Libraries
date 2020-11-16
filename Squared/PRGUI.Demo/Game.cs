@@ -209,7 +209,8 @@ namespace PRGUI.Demo {
                 Minimum = -10,
                 Maximum = 1000,
                 Value = 73.50,
-                ValueFilter = (d) => Math.Round(d, 2, MidpointRounding.AwayFromZero)
+                ValueFilter = (d) => Math.Round(d, 2, MidpointRounding.AwayFromZero),
+                Exponential = true
             };
 
             var hideButton = new Button {

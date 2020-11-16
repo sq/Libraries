@@ -31,6 +31,8 @@ namespace Squared.PRGUI.Controls {
         private T _Value;
         private T? _Minimum, _Maximum;
 
+        public bool Exponential;
+
         public Func<T, T?> ValueFilter;
         public Func<T, string> ValueEncoder;
         public Func<string, T> ValueDecoder;
@@ -185,6 +187,8 @@ namespace Squared.PRGUI.Controls {
             if ((Minimum.HasValue && Maximum.HasValue) && (gauge != null)) {
                 var gaugeBox = ComputeGaugeBox(gauge, settings.Box);
                 var fraction = Convert.ToDouble(Arithmetic.Fraction(_Value, _Minimum.Value, _Maximum.Value, FractionScale)) / FractionScaleD;
+                if (Exponential)
+                    fraction = 1 - Math.Pow(1 - fraction, 2);
                 var tempSettings = settings;
                 tempSettings.State = settings.State & ~ControlStates.Hovering;
                 if (gaugeBox.Contains(context.MousePosition) || IsDraggingGauge)
@@ -238,8 +242,10 @@ namespace Squared.PRGUI.Controls {
                 var gaugeBox = ComputeGaugeBox(gauge, args.Box);
                 if (gaugeBox.Contains(args.MouseDownPosition)) {
                     IsDraggingGauge = (args.Buttons == MouseButtons.Left);
-                    var fraction = Arithmetic.Saturate((args.RelativeGlobalPosition.X - args.Box.Left) / args.Box.Width) * FractionScaleD;
-                    var fractionT = (T)Convert.ChangeType(fraction, typeof(T));
+                    double fraction = Arithmetic.Saturate((args.RelativeGlobalPosition.X - args.Box.Left) / args.Box.Width);
+                    if (Exponential)
+                        fraction = 1 - Math.Sqrt(1 - fraction);
+                    var fractionT = (T)Convert.ChangeType(fraction * FractionScaleD, typeof(T));
                     var scaledNewValue = Arithmetic.FractionToValue(fractionT, _Minimum.Value, _Maximum.Value, FractionScale);
                     if ((args.Buttons == MouseButtons.Left) || (args.PreviousButtons == MouseButtons.Left)) {
                         Value = scaledNewValue;
