@@ -159,6 +159,9 @@ namespace Squared.PRGUI.Controls {
             HasContentBounds = false;
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             context.Layout.SetContainerFlags(result, ContainerFlags);
+            if (HideChildren)
+                return result;
+
             foreach (var item in Children) {
                 item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
 
@@ -184,7 +187,12 @@ namespace Squared.PRGUI.Controls {
         // FIXME: Always true?
         protected override bool HasChildren => (Children.Count > 0);
 
+        protected virtual bool HideChildren => false;
+
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
+            if (HideChildren)
+                return;
+
             // FIXME
             int layer1 = passSet.Below.Layer,
                 layer2 = passSet.Content.Layer,
@@ -329,6 +337,13 @@ namespace Squared.PRGUI.Controls {
             } else {
                 ScrollOffset = Vector2.Zero;
             }
+        }
+
+        protected virtual void OnDescendantReceivedFocus (Control control) {
+        }
+
+        void IControlContainer.DescendantReceivedFocus (Control descendant) {
+            OnDescendantReceivedFocus(descendant);
         }
 
         void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {

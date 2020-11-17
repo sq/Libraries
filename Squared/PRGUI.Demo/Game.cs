@@ -325,10 +325,17 @@ namespace PRGUI.Demo {
                     new Checkbox { Text = "Checkbox 5" },
                     new Checkbox { Text = "Checkbox 6" },
                     new Checkbox { Text = "Checkbox 7" },
-                    new Button { Text = "Button A" },
-                    new Button { Text = "Button B" },
-                    new Button { Text = "Button C" },
-                    new Button { Text = "Button D" },
+                    new TitledContainer {
+                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                        Collapsible = true,
+                        Title = "Test",
+                        Children = {
+                            new Button { Text = "Button A" },
+                            new Button { Text = "Button B" },
+                            new Button { Text = "Button C" },
+                            new Button { Text = "Button D" },
+                        }
+                    }
                 }
             };
 
@@ -400,7 +407,7 @@ namespace PRGUI.Demo {
             };
 
             var topLevelContainer = new Container {
-                BackgroundColor = new Color(48, 48, 48) * 0.9f,
+                BackgroundColor = new Color(60, 60, 60) * 0.9f,
                 LayoutFlags = ControlFlags.Layout_Fill,
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                 Children = {
@@ -469,7 +476,8 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(null, UIEvents.Click, (ei) => {
-                lastClickedCtl.Text = $"Clicked (#{ei.Arguments}): {ei.Source}";
+                var ma = (MouseEventArgs)ei.Arguments;
+                lastClickedCtl.Text = $"Clicked (#{ma.SequentialClickCount}): {ei.Source}";
             });
 
             Context.EventBus.Subscribe(largeText, UIEvents.CheckedChanged, (ei) => {

@@ -336,7 +336,9 @@ namespace Squared.PRGUI.Controls {
 
             Listener?.ItemChosen(this, item);
             Context.FireEvent(UIEvents.ItemChosen, this, item);
-            Context.FireEvent<int>(UIEvents.Click, item, 1);
+            var args = Context.MakeMouseEventArgs(item, Context.LastMousePosition, null);
+            args.SequentialClickCount = 1;
+            Context.FireEvent(UIEvents.Click, item, args);
             NextResultFuture?.SetResult2(item, null);
             Close();
             return true;

@@ -74,6 +74,18 @@ namespace Squared.PRGUI {
                 IsCompositionActive = false;
             }
 
+            if (target != null) {
+                var chain = target;
+                while (true) {
+                    if (!chain.TryGetParent(out Control parent) || (parent == null))
+                        break;
+
+                    var icc = parent as IControlContainer;
+                    icc?.DescendantReceivedFocus(target);
+                    chain = parent;
+                }
+            }
+
             TTS.FocusedControlChanged(target);
         }
 
@@ -102,7 +114,7 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        private void HandleClick (Control target, Vector2 mousePosition) {
+        private void HandleClick (Control target, Vector2 mousePosition, Vector2 mouseDownPosition) {
             if (!target.IsValidMouseInputTarget)
                 return;
 
@@ -114,7 +126,7 @@ namespace Squared.PRGUI {
             LastClickPosition = mousePosition;
             LastClickTarget = target;
             LastClickTime = LastMouseDownTime;
-            FireEvent(UIEvents.Click, target, SequentialClickCount);
+            FireEvent(UIEvents.Click, target, MakeMouseEventArgs(target, mousePosition, mouseDownPosition));
 
             TTS.ControlClicked(target);
         }
@@ -166,9 +178,11 @@ namespace Squared.PRGUI {
                     int tabDelta = CurrentModifiers.Shift ? -1 : 1;
                     return RotateFocus(topLevel: CurrentModifiers.Control, delta: tabDelta);
                 case Keys.Space:
-                    if (Focused?.IsValidMouseInputTarget == true)
-                        return FireEvent(UIEvents.Click, Focused, 1);
-                    else
+                    if (Focused?.IsValidMouseInputTarget == true) {
+                        var args = MakeMouseEventArgs(Focused, LastMousePosition, null);
+                        args.SequentialClickCount = 1;
+                        return FireEvent(UIEvents.Click, Focused, args);
+                    } else
                         return false;
             }
 
@@ -487,7 +501,7 @@ namespace Squared.PRGUI {
             return transformedGlobalPosition;
         }
 
-        private MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
+        internal MouseEventArgs MakeMouseEventArgs (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
             if (target == null)
                 return default(MouseEventArgs);
 
@@ -517,7 +531,10 @@ namespace Squared.PRGUI {
                     MovedSinceMouseDown = travelDistance >= MinimumMouseMovementDistance,
                     DoubleClicking = IsInDoubleClickWindow(target, globalPosition) && (MouseCaptured != null),
                     PreviousButtons = LastMouseButtons,
-                    Buttons = CurrentMouseButtons
+                    Buttons = CurrentMouseButtons,
+                    SequentialClickCount = (target == LastClickTarget)
+                        ? SequentialClickCount 
+                        : 0
                 };
             }
         }

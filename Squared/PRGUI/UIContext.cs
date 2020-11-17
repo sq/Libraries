@@ -645,7 +645,8 @@ namespace Squared.PRGUI {
                 //  fire a click on the menu in response to its mouseup
                 if (Hovering == previouslyCaptured) {
                     if ((LastMouseButtons & MouseButtons.Left) == MouseButtons.Left)
-                        HandleClick(previouslyCaptured, mousePosition);
+                        // FIXME: Is this ?? right
+                        HandleClick(previouslyCaptured, mousePosition, mouseDownPosition ?? mousePosition);
                     else
                         ; // FIXME: Fire another event here?
                 } else

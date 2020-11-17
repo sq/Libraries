@@ -54,14 +54,13 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override bool OnEvent<T> (string name, T args) {
-            if (args is MouseEventArgs) {
-                return OnMouseEvent(name, (MouseEventArgs)(object)args);
-            } else if (name == UIEvents.Click) {
-                if (Menu != null) {
-                    Menu.Show(Context, this);
-                    return true;
-                }
+            if ((name == UIEvents.Click) && (Menu != null)) {
+                Menu.Show(Context, this);
+                return true;
             }
+
+            if (args is MouseEventArgs)
+                return OnMouseEvent(name, (MouseEventArgs)(object)args);
 
             return base.OnEvent(name, args);
         }

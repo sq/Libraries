@@ -379,6 +379,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected virtual bool OnMouseEvent (string name, MouseEventArgs args) {
+            if (name == UIEvents.Click)
+                return OnClick(args.SequentialClickCount);
+
             var position = new Vector2(
                 args.LocalPosition.X,
                 Arithmetic.Saturate(args.LocalPosition.Y, args.ContentBox.Height - 1)
@@ -498,8 +501,6 @@ namespace Squared.PRGUI.Controls {
         protected override bool OnEvent<T> (string name, T args) {
             if (args is MouseEventArgs)
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
-            else if (name == UIEvents.Click)
-                return OnClick(Convert.ToInt32(args));
             else if (name == UIEvents.KeyPress)
                 return OnKeyPress((KeyEventArgs)(object)args);
             return false;

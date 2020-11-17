@@ -75,6 +75,7 @@ namespace Squared.PRGUI {
         public RectF Box, ContentBox;
         public MouseButtons PreviousButtons, Buttons;
         public bool MovedSinceMouseDown, DoubleClicking;
+        public int SequentialClickCount;
     }
 
     public struct KeyEventArgs {
