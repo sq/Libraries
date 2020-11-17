@@ -1019,7 +1019,7 @@ namespace Squared.PRGUI.Decorations {
             var containsFocus = settings.State.IsFlagged(ControlStates.ContainsFocus);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
-            var color1 = (pSRGBColor)(containsFocus ? TitleFillColor : TitleFillColor.ToGrayscale(0.7f));
+            var color1 = (pSRGBColor)(containsFocus ? TitleFillColor : TitleFillColor.ToGrayscale(0.85f));
             var color2 = color1.ToVector4() * 0.8f;
             color2.W = 1;
             var cornerRadius = FloatingContainerCornerRadius ?? ContainerCornerRadius;

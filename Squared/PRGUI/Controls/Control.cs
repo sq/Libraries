@@ -18,7 +18,7 @@ using Squared.Util;
 namespace Squared.PRGUI {
     public interface IControlContainer {
         ControlCollection Children { get; }
-        void DescendantReceivedFocus (Control descendant);
+        void DescendantReceivedFocus (Control descendant, bool isUserInitiated);
     }
 
     public interface IScrollableControl {

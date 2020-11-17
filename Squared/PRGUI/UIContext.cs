@@ -419,7 +419,7 @@ namespace Squared.PRGUI {
             var newTopLevel = FindTopLevelAncestor(target);
             if ((newTopLevel != previousTopLevel) && (newTopLevel != null)) {
                 Log($"Automatically transfering focus to new top level ancestor {newTopLevel}");
-                Focused = newTopLevel;
+                TrySetFocus(newTopLevel, isUserInitiated: false);
             }
         }
 
@@ -435,7 +435,7 @@ namespace Squared.PRGUI {
             //  focus before being shown or being enabled
             AutomaticallyTransferFocusOnTopLevelChange(target);
             if (target.AcceptsFocus)
-                TrySetFocus(target, true);
+                TrySetFocus(target, true, true);
             MouseCaptured = target;
             return (MouseCaptured == target);
         }
@@ -444,28 +444,37 @@ namespace Squared.PRGUI {
             if (Focused != target)
                 return false;
 
-            if (!RotateFocus(false, forward ? 1 : -1)) {
+            // FIXME
+            var isUserInitiated = false;
+            if (!RotateFocus(false, forward ? 1 : -1, isUserInitiated)) {
                 // Forward is a best-effort request, go backward instead if necessary
-                if (forward && RotateFocus(false, -1))
+                if (forward && RotateFocus(false, -1, isUserInitiated))
                     return true;
-                return TrySetFocus(null, true);
+                return TrySetFocus(null);
             }
 
             return true;
         }
 
-        // FIXME: This operation can shift the focus out of view, should it perform
-        //  auto-scroll?
+        // FIXME: This operation can shift the focus out of view, should it perform auto-scroll?
         public bool ReleaseDescendantFocus (Control container, bool forward) {
             if (Focused == null)
                 return false;
+            if (container == null)
+                return false;
+
+            // FIXME
+            var isUserInitiated = false;
+
+            if (TopLevelFocused == container)
+                return RotateFocus(true, forward ? 1 : -1, isUserInitiated);
             
             var chain = Focused;
             while (true) {
                 if (chain == container) {
-                    if (!RotateFocusFrom(container, forward ? 1 : -1)) {
+                    if (!RotateFocusFrom(container, forward ? 1 : -1, isUserInitiated)) {
                         if (forward)
-                            return RotateFocusFrom(container, -1);
+                            return RotateFocusFrom(container, -1, isUserInitiated);
                         else
                             return TrySetFocus(null, true);
                     } else
@@ -576,11 +585,11 @@ namespace Squared.PRGUI {
 
             if (IsEqualOrAncestor(Focused, control)) {
                 if (Focused?.FocusDonor != null) {
-                    TrySetFocus(Focused?.FocusDonor, false);
+                    TrySetFocus(Focused?.FocusDonor, false, false);
                     if (IsEqualOrAncestor(Focused, control))
-                        TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false);
+                        TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false, false);
                 } else
-                    TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false);
+                    TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false, false);
             }
             if (IsEqualOrAncestor(KeyboardSelection, control))
                 KeyboardSelection = null;
@@ -659,11 +668,12 @@ namespace Squared.PRGUI {
                 if (MouseCaptured != null) {
                     var movedDistance = mousePosition - mouseDownPosition;
                     if (
-                        // FIXME: Why?
-                        !movedDistance.HasValue || 
-                        (movedDistance.Value.Length() <= MinimumMouseMovementDistance) ||
-                        !scrolled ||
-                        !SuppressSingleClickOnMovementWhenAppropriate
+                        (
+                            // FIXME: Why?
+                            !movedDistance.HasValue || 
+                            (movedDistance.Value.Length() <= MinimumMouseMovementDistance)
+                        ) &&
+                        (!scrolled || !SuppressSingleClickOnMovementWhenAppropriate)
                     )
                         processClick = true;
                 }

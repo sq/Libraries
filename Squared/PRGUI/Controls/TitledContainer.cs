@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Squared.Game;
 using Squared.PRGUI.Decorations;
 using Squared.Render;
 using Squared.Render.Convenience;
@@ -56,15 +57,22 @@ namespace Squared.PRGUI.Controls {
             return base.OnEvent<T>(name, args);
         }
 
-        protected virtual bool OnMouseEvent (string name, MouseEventArgs args) {
-            if (name == UIEvents.Click) {
-                if (Collapsible && Enabled) {
-                    Collapsed = !Collapsed;
-                    if (Collapsed)
-                        Context.ReleaseDescendantFocus(this, true);
-                    return true;
-                }
+        protected bool ToggleCollapsed () {
+            if (Collapsible && Enabled) {
+                Collapsed = !Collapsed;
+
+                // FIXME: Notify container(s) to update their content bounds and scroll data
+                if (Collapsed)
+                    Context.ReleaseDescendantFocus(this, true);
+                return true;
             }
+
+            return false;
+        }
+
+        protected virtual bool OnMouseEvent (string name, MouseEventArgs args) {
+            if (name == UIEvents.Click)
+                return ToggleCollapsed();
 
             return false;
         }
@@ -73,6 +81,8 @@ namespace Squared.PRGUI.Controls {
             var result = base.ComputePadding(context, decorations);
             var titleDecorations = context.DecorationProvider?.WindowTitle;
             if (titleDecorations == null)
+                return result;
+            if (string.IsNullOrEmpty(Title))
                 return result;
 
             pSRGBColor? color = null;
@@ -84,14 +94,27 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected override void OnDescendantReceivedFocus (Control control) {
+        protected override void OnDescendantReceivedFocus (Control control, bool isUserInitiated) {
+            // If this focus change is the result of a top-level focus change (i.e. selecting a window),
+            //  this does not indicate that the user has attempted to focus one of our descendants directly
+            //  using tab or some other mechanism, so we shouldn't respond by expanding ourselves.
+            // This still means focus will be trapped inside us, but it's better than nothing.
+            if (!isUserInitiated)
+                return;
+
             if (Collapsed)
                 Collapsed = false;
         }
 
         protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
-            // FIXME
             base.ComputeFixedSize(out fixedWidth, out fixedHeight);
+
+            if (Collapsed) {
+                if (fixedHeight.HasValue)
+                    fixedHeight = Math.Min(fixedHeight.Value, MostRecentHeaderHeight);
+                else
+                    fixedHeight = MostRecentHeaderHeight;
+            }
         }
 
         protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
@@ -131,9 +154,11 @@ namespace Squared.PRGUI.Controls {
                 renderer.Layer += 1;
                 titleDecorator.Rasterize(context, ref renderer, subSettings);
 
+                var textPosition = new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top);
+
                 renderer.Layer += 1;
                 renderer.DrawMultiple(
-                    layout.DrawCalls, new Vector2(titleContentBox.Left + offsetX, titleContentBox.Top),
+                    layout.DrawCalls, textPosition.Floor(),
                     samplerState: RenderStates.Text, multiplyColor: titleColor?.ToColor()
                 );
             }

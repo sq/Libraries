@@ -42,6 +42,8 @@ namespace Squared.PRGUI.Controls {
         private Vector2 DragStartMousePosition, DragStartWindowPosition;
         private RectF MostRecentUnmaximizedRect;
 
+        private bool CollapsingEnabled;
+
         public bool Maximized {
             get => LayoutFlags.IsFlagged(ControlFlags.Layout_Fill);
             set {
@@ -105,9 +107,17 @@ namespace Squared.PRGUI.Controls {
             return true;
         }
 
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            // HACK: We don't want collapsing to be enabled the first time a window is clicked
+            if (!context.MouseButtonHeld)
+                CollapsingEnabled = settings.State.IsFlagged(ControlStates.ContainsFocus);
+
+            base.OnRasterize(context, ref renderer, settings, decorations);
+        }
+
         protected override bool OnMouseEvent (string name, MouseEventArgs args) {
             if (name == UIEvents.MouseDown) {
-                Context.TrySetFocus(this, false);
+                Context.TrySetFocus(this);
 
                 if (MostRecentTitleBox.Contains(args.RelativeGlobalPosition) && AllowDrag) {
                     Context.CaptureMouse(this);
@@ -148,9 +158,14 @@ namespace Squared.PRGUI.Controls {
                 FireEvent(UIEvents.Moved);
 
                 return true;
+            } else if (name == UIEvents.Click) {
+                if (CollapsingEnabled || Collapsed)
+                    ToggleCollapsed();
+                return true;
             }
 
-            return base.OnMouseEvent(name, args);
+            // Don't fallback to TitledContainer's event handler, it does things we don't want
+            return false;
         }
 
         public override string ToString () {

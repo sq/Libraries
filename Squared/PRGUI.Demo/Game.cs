@@ -266,6 +266,7 @@ namespace PRGUI.Demo {
                     toppleButton,
                 },
                 PaintOrder = 1,
+                Collapsible = true
             };
 
             var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {

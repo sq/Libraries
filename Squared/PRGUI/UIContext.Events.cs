@@ -52,7 +52,7 @@ namespace Squared.PRGUI {
                 return target.HandleEvent(name);
         }
 
-        private void HandleNewFocusTarget (Control previous, Control target) {
+        private void HandleNewFocusTarget (Control previous, Control target, bool isUserInitiated) {
             var topLevelParent = FindTopLevelAncestor(target);
             if (topLevelParent != null) {
                 TopLevelFocusMemory.Remove(topLevelParent);
@@ -74,19 +74,21 @@ namespace Squared.PRGUI {
                 IsCompositionActive = false;
             }
 
-            if (target != null) {
-                var chain = target;
-                while (true) {
-                    if (!chain.TryGetParent(out Control parent) || (parent == null))
-                        break;
+            if (previous != target) {
+                if (target != null) {
+                    var chain = target;
+                    while (true) {
+                        if (!chain.TryGetParent(out Control parent) || (parent == null))
+                            break;
 
-                    var icc = parent as IControlContainer;
-                    icc?.DescendantReceivedFocus(target);
-                    chain = parent;
+                        var icc = parent as IControlContainer;
+                        icc?.DescendantReceivedFocus(target, isUserInitiated);
+                        chain = parent;
+                    }
                 }
-            }
 
-            TTS.FocusedControlChanged(target);
+                TTS.FocusedControlChanged(target);
+            }
         }
 
         private void HandleHoverTransition (Control previous, Control current) {
@@ -176,7 +178,7 @@ namespace Squared.PRGUI {
                     break;
                 case Keys.Tab:
                     int tabDelta = CurrentModifiers.Shift ? -1 : 1;
-                    return RotateFocus(topLevel: CurrentModifiers.Control, delta: tabDelta);
+                    return RotateFocus(topLevel: CurrentModifiers.Control, delta: tabDelta, isUserInitiated: true);
                 case Keys.Space:
                     if (Focused?.IsValidMouseInputTarget == true) {
                         var args = MakeMouseEventArgs(Focused, LastMousePosition, null);
@@ -208,25 +210,25 @@ namespace Squared.PRGUI {
             }
         }
 
-        internal bool RotateFocusFrom (Control location, int delta) {
+        internal bool RotateFocusFrom (Control location, int delta, bool isUserInitiated) {
             var target = PickNextFocusTarget(location, delta, true);
-            return TrySetFocus(target, false);
+            return TrySetFocus(target, isUserInitiated: isUserInitiated);
         }
 
-        public bool RotateFocus (bool topLevel, int delta) {
+        public bool RotateFocus (bool topLevel, int delta, bool isUserInitiated) {
             var target = PickRotateFocusTarget(topLevel, delta);
             if (topLevel) {
                 var currentTopLevel = FindTopLevelAncestor(Focused);
                 if ((target != null) && (target != currentTopLevel)) {
                     Log($"Top level tab {currentTopLevel} -> {target}");
-                    if (TrySetFocus(target, false)) {
+                    if (TrySetFocus(target, isUserInitiated: isUserInitiated)) {
                         KeyboardSelection = Focused;
                         return true;
                     }
                 }
             } else {
                 Log($"Tab {Focused} -> {target}");
-                if ((target != null) && TrySetFocus(target, false)) {
+                if ((target != null) && TrySetFocus(target, isUserInitiated: isUserInitiated)) {
                     KeyboardSelection = Focused;
                     return true;
                 }
@@ -349,7 +351,11 @@ namespace Squared.PRGUI {
         /// Transfers focus to a target control (or no control), if possible
         /// </summary>
         /// <param name="force">If true, focus will be transferred even if the control is not a valid focus target</param>
-        public bool TrySetFocus (Control value, bool force = false) {
+        public bool TrySetFocus (
+            Control value, 
+            bool force = false, 
+            bool isUserInitiated = true
+        ) {
             var newFocusTarget = value;
 
             // Detect attempts to focus a control that is no longer in the hierarchy
@@ -404,7 +410,7 @@ namespace Squared.PRGUI {
 
             // HACK: Handle cases where focus changes re-entrantly so we don't go completely bonkers
             if (_Focused == newFocusTarget)
-                HandleNewFocusTarget(previous, newFocusTarget);
+                HandleNewFocusTarget(previous, newFocusTarget, isUserInitiated);
 
             if ((_Focused != null) && (previous != newFocusTarget) && (_Focused == newFocusTarget))
                 FireEvent(UIEvents.GotFocus, newFocusTarget, previous);

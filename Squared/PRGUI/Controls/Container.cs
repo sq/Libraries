@@ -159,8 +159,6 @@ namespace Squared.PRGUI.Controls {
             HasContentBounds = false;
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             context.Layout.SetContainerFlags(result, ContainerFlags);
-            if (HideChildren)
-                return result;
 
             foreach (var item in Children) {
                 item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
@@ -339,11 +337,11 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected virtual void OnDescendantReceivedFocus (Control control) {
+        protected virtual void OnDescendantReceivedFocus (Control control, bool isUserInitiated) {
         }
 
-        void IControlContainer.DescendantReceivedFocus (Control descendant) {
-            OnDescendantReceivedFocus(descendant);
+        void IControlContainer.DescendantReceivedFocus (Control descendant, bool isUserInitiated) {
+            OnDescendantReceivedFocus(descendant, isUserInitiated);
         }
 
         void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
