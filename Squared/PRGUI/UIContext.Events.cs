@@ -208,10 +208,15 @@ namespace Squared.PRGUI {
             }
         }
 
+        internal bool RotateFocusFrom (Control location, int delta) {
+            var target = PickNextFocusTarget(location, delta, true);
+            return TrySetFocus(target, false);
+        }
+
         public bool RotateFocus (bool topLevel, int delta) {
             var target = PickRotateFocusTarget(topLevel, delta);
-            var currentTopLevel = FindTopLevelAncestor(Focused);
             if (topLevel) {
+                var currentTopLevel = FindTopLevelAncestor(Focused);
                 if ((target != null) && (target != currentTopLevel)) {
                     Log($"Top level tab {currentTopLevel} -> {target}");
                     if (TrySetFocus(target, false)) {
@@ -340,7 +345,11 @@ namespace Squared.PRGUI {
             }
         }
 
-        public bool TrySetFocus (Control value, bool force) {
+        /// <summary>
+        /// Transfers focus to a target control (or no control), if possible
+        /// </summary>
+        /// <param name="force">If true, focus will be transferred even if the control is not a valid focus target</param>
+        public bool TrySetFocus (Control value, bool force = false) {
             var newFocusTarget = value;
 
             // Detect attempts to focus a control that is no longer in the hierarchy

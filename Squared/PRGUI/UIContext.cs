@@ -440,6 +440,44 @@ namespace Squared.PRGUI {
             return (MouseCaptured == target);
         }
 
+        public bool ReleaseFocus (Control target, bool forward) {
+            if (Focused != target)
+                return false;
+
+            if (!RotateFocus(false, forward ? 1 : -1)) {
+                // Forward is a best-effort request, go backward instead if necessary
+                if (forward && RotateFocus(false, -1))
+                    return true;
+                return TrySetFocus(null, true);
+            }
+
+            return true;
+        }
+
+        // FIXME: This operation can shift the focus out of view, should it perform
+        //  auto-scroll?
+        public bool ReleaseDescendantFocus (Control container, bool forward) {
+            if (Focused == null)
+                return false;
+            
+            var chain = Focused;
+            while (true) {
+                if (chain == container) {
+                    if (!RotateFocusFrom(container, forward ? 1 : -1)) {
+                        if (forward)
+                            return RotateFocusFrom(container, -1);
+                        else
+                            return TrySetFocus(null, true);
+                    } else
+                        return true;
+                }
+
+                if (!chain.TryGetParent(out Control parent) || (parent == null))
+                    return false;
+                chain = parent;
+            }
+        }
+
         public void ReleaseCapture (Control target, Control focusDonor) {
             if (Focused == target)
                 Focused = focusDonor;

@@ -60,6 +60,8 @@ namespace Squared.PRGUI.Controls {
             if (name == UIEvents.Click) {
                 if (Collapsible && Enabled) {
                     Collapsed = !Collapsed;
+                    if (Collapsed)
+                        Context.ReleaseDescendantFocus(this, true);
                     return true;
                 }
             }
