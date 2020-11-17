@@ -211,7 +211,8 @@ namespace PRGUI.Demo {
                 Value = 73.50,
                 ValueFilter = (d) => Math.Round(d, 2, MidpointRounding.AwayFromZero),
                 Exponential = true,
-                Increment = 5
+                Increment = 5,
+                FastIncrementRate = 5
             };
 
             var hideButton = new Button {

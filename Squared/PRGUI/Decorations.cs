@@ -423,7 +423,7 @@ namespace Squared.PRGUI.Decorations {
                 Margins = new Margins(1),
                 // Top+bottom padding = height of fill/track
                 // Left+right padding = minimum width of fill
-                Padding = new Margins(4, 0, 0, 6f)
+                Padding = new Margins(4, 0, 0, 7.5f)
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {

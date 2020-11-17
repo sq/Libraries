@@ -22,6 +22,11 @@ namespace Squared.PRGUI.Controls {
     public class ParameterEditor<T> : EditableText, IParameterEditor
         where T : struct, IComparable<T> {
 
+        public const double NormalAccelerationMultiplier = 1.0,
+            NormalRepeatSpeed = 0.75,
+            FastAccelerationMultiplier = 0.85,
+            FastRepeatSpeed = 0.55;
+
         // FIXME: Use a decorator for this?
         public const float ArrowWidth = 10,
             ArrowHeight = 17,
@@ -36,8 +41,10 @@ namespace Squared.PRGUI.Controls {
         T FractionScale = (T)Convert.ChangeType(FractionScaleD, typeof(T));
         private bool IsDraggingGauge = false;
 
-        // FIXME: If for some reason your PageSize is very large, pgup/pgdn will be slow
-        public int PageSize = 10;
+        private double LastRepeatTimestamp;
+
+        // FIXME: If for some reason your FastIncrementRate is very large, pgup/pgdn will be slow
+        public int FastIncrementRate = 10;
         public T? Increment;
 
         public bool Exponential;
@@ -244,6 +251,9 @@ namespace Squared.PRGUI.Controls {
                 if (gaugeBox.Contains(context.MousePosition) || IsDraggingGauge)
                     tempSettings.State |= ControlStates.Hovering;
                 gaugeBox.Width = Math.Min(Math.Max(gaugeBox.Width * (float)fraction, gauge.Padding.X), settings.Box.Width - gauge.Margins.X);
+                // HACK: Compensate for the hitbox being too small for some reason
+                gaugeBox.Top += 1;
+                gaugeBox.Height -= 1;
                 tempSettings.ContentBox = gaugeBox;
                 gauge.Rasterize(context, ref renderer, tempSettings);
             }
@@ -259,14 +269,14 @@ namespace Squared.PRGUI.Controls {
             DrawArrow(ref renderer, ComputeArrowBox(settings.ContentBox, true), true);
         }
 
-        private bool Adjust (bool positive, bool page) {
+        private bool Adjust (bool positive, bool fast) {
             if (!Increment.HasValue)
                 return false;
 
             var increment = Increment.Value;
-            if (page) {
+            if (fast) {
                 var value = _Value;
-                for (int i = 0; i < PageSize; i++) {
+                for (int i = 0; i < FastIncrementRate; i++) {
                     if (positive)
                         value = Arithmetic.OperatorCache<T>.Add(value, increment);
                     else
@@ -335,6 +345,25 @@ namespace Squared.PRGUI.Controls {
                 return true;
 
             return base.OnClick(clickCount);
+        }
+
+        protected override void OnTick (MouseEventArgs args) {
+            base.OnTick(args);
+            if (args.Buttons == MouseButtons.None)
+                return;
+
+            var leftArrow = ComputeArrowBox(args.ContentBox, false);
+            var rightArrow = ComputeArrowBox(args.ContentBox, true);
+            var leftHeld = leftArrow.Contains(args.RelativeGlobalPosition) && leftArrow.Contains(args.MouseDownPosition);
+            var rightHeld = rightArrow.Contains(args.RelativeGlobalPosition) && rightArrow.Contains(args.MouseDownPosition);
+            var fast = args.Buttons == MouseButtons.Right;
+
+            if ((leftHeld || rightHeld) && Context.UpdateRepeat(
+                args.Now, args.MouseDownTimestamp, ref LastRepeatTimestamp, 
+                speedMultiplier: fast ? FastRepeatSpeed : NormalRepeatSpeed, 
+                accelerationMultiplier: fast ? FastAccelerationMultiplier : NormalAccelerationMultiplier
+            ))
+                Adjust(rightHeld, fast);
         }
 
         protected override bool OnMouseEvent (string name, MouseEventArgs args) {

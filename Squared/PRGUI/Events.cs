@@ -47,6 +47,9 @@ namespace Squared.PRGUI {
     public struct MouseEventArgs {
         public UIContext Context;
 
+        public double Now;
+        public long NowL;
+
         public KeyboardModifiers Modifiers;
         public Control MouseOver, MouseCaptured, Hovering, Focused;
         /// <summary>
@@ -65,6 +68,10 @@ namespace Squared.PRGUI {
         /// The global location of the mouse when the mouse was first pressed (if ever).
         /// </summary>
         public Vector2 MouseDownPosition;
+        /// <summary>
+        /// The time when the mouse was first pressed (if ever).
+        /// </summary>
+        public double MouseDownTimestamp;
         public RectF Box, ContentBox;
         public MouseButtons PreviousButtons, Buttons;
         public bool MovedSinceMouseDown, DoubleClicking;

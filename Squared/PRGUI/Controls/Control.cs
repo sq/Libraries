@@ -286,6 +286,16 @@ namespace Squared.PRGUI {
             }
         }
 
+        internal void Tick (MouseEventArgs args) {
+            OnTick(args);
+        }
+
+        /// <summary>
+        /// Fired every update as long as this control is fixated or has the mouse captured
+        /// </summary>
+        protected virtual void OnTick (MouseEventArgs args) {
+        }
+
         protected bool FireEvent<T> (string name, T args) {
             return Context?.FireEvent(name, this, args, suppressHandler: true) ?? false;
         }

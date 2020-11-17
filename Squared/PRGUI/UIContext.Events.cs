@@ -500,6 +500,8 @@ namespace Squared.PRGUI {
                 var travelDistance = (globalPosition - mdp).Length();
                 return new MouseEventArgs {
                     Context = this,
+                    Now = Now,
+                    NowL = NowL,
                     Modifiers = CurrentModifiers,
                     Focused = Focused,
                     MouseOver = MouseOver,
@@ -511,6 +513,7 @@ namespace Squared.PRGUI {
                     Box = box,
                     ContentBox = contentBox,
                     MouseDownPosition = mdp,
+                    MouseDownTimestamp = LastMouseDownTime,
                     MovedSinceMouseDown = travelDistance >= MinimumMouseMovementDistance,
                     DoubleClicking = IsInDoubleClickWindow(target, globalPosition) && (MouseCaptured != null),
                     PreviousButtons = LastMouseButtons,

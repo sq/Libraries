@@ -634,6 +634,8 @@ namespace Squared.PRGUI {
                     MouseCaptured = null;
                 else
                     SuppressNextCaptureLoss = false;
+
+                // FIXME: Clear LastMouseDownTime?
             } else if (LastMouseButtons != CurrentMouseButtons) {
                 FireEvent(UIEvents.MouseButtonsChanged, mouseEventTarget, MakeMouseEventArgs(mouseEventTarget, mousePosition, mouseDownPosition));
             }
@@ -655,6 +657,12 @@ namespace Squared.PRGUI {
             if (mouseWheelDelta != 0)
                 HandleScroll(previouslyCaptured ?? Hovering, mouseWheelDelta);
 
+            TickControl(KeyboardSelection, mousePosition, mouseDownPosition);
+            if (Hovering != KeyboardSelection)
+                TickControl(Hovering, mousePosition, mouseDownPosition);
+            if ((MouseCaptured != KeyboardSelection) && (MouseCaptured != Hovering))
+                TickControl(MouseCaptured, mousePosition, mouseDownPosition);
+
             UpdateTooltip((CurrentMouseButtons != MouseButtons.None));
 
             if (FixatedControl != previouslyFixated)
@@ -664,6 +672,12 @@ namespace Squared.PRGUI {
             LastMouseWheelValue = mouseWheelValue;
             LastKeyboardState = keyboardState;
             LastMousePosition = mousePosition;
+        }
+
+        private void TickControl (Control control, Vector2 globalPosition, Vector2? mouseDownPosition) {
+            if (control == null)
+                return;
+            control.Tick(MakeMouseEventArgs(control, globalPosition, mouseDownPosition));
         }
 
         private bool IsTooltipActive {
@@ -733,6 +747,26 @@ namespace Squared.PRGUI {
             }
         }
 
+        /// <summary>
+        /// Updates key/click repeat state for the current timestamp and returns true if a click should be generated
+        /// </summary>
+        public bool UpdateRepeat (double now, double firstTime, ref double mostRecentTime, double speedMultiplier = 1, double accelerationMultiplier = 1) {
+            // HACK: Handle cases where mostRecentTime has not been initialized by the initial press
+            if (mostRecentTime < firstTime)
+                mostRecentTime = firstTime;
+
+            double repeatSpeed = Arithmetic.Lerp(KeyRepeatIntervalSlow, KeyRepeatIntervalFast, (float)((now - firstTime) / KeyRepeatAccelerationDelay * accelerationMultiplier)) / speedMultiplier;
+            if (
+                ((now - firstTime) >= FirstKeyRepeatDelay) &&
+                ((now - mostRecentTime) >= repeatSpeed)
+            ) {
+                mostRecentTime = now;
+                return true;
+            }
+
+            return false;
+        }
+
         private void ProcessKeyboardState (ref KeyboardState previous, ref KeyboardState current) {
             CurrentModifiers = new KeyboardModifiers {
                 LeftControl = current.IsKeyDown(Keys.LeftControl),
@@ -771,20 +805,16 @@ namespace Squared.PRGUI {
 
                     if (isPressed && !shouldFilterKeyPress) {
                         LastKeyEvent = key;
-                        LastKeyEventTime = now;
-                        LastKeyEventFirstTime = now;
+                        LastKeyEventTime = LastKeyEventFirstTime = now;
                         HandleKeyEvent(UIEvents.KeyPress, key, null);
                     }
                 } else if (isPressed && (LastKeyEvent == key)) {
-                    double repeatSpeed = Arithmetic.Lerp(KeyRepeatIntervalSlow, KeyRepeatIntervalFast, (float)((now - LastKeyEventFirstTime) / KeyRepeatAccelerationDelay));
                     if (
-                        ((now - LastKeyEventFirstTime) >= FirstKeyRepeatDelay) &&
-                        ((now - LastKeyEventTime) >= repeatSpeed) &&
                         !SuppressRepeatKeys.Contains(key) && 
                         !ModifierKeys.Contains(key) &&
-                        !shouldFilterKeyPress
+                        !shouldFilterKeyPress &&
+                        UpdateRepeat(now, LastKeyEventFirstTime, ref LastKeyEventTime)
                     ) {
-                        LastKeyEventTime = now;
                         HandleKeyEvent(UIEvents.KeyPress, key, null);
                     }
                 }
