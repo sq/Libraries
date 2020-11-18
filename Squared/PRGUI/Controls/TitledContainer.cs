@@ -33,8 +33,13 @@ namespace Squared.PRGUI.Controls {
 
         protected override bool HideChildren => Collapsible && Collapsed;
 
+        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+            return provider?.TitledContainer ?? base.GetDefaultDecorations(provider);
+        }
+
         protected virtual IDecorator GetTitleDecorator (UIOperationContext context) {
-            return context.DecorationProvider?.WindowTitle;
+            return context.DecorationProvider?.ContainerTitle ?? 
+                context.DecorationProvider?.WindowTitle;
         }
 
         protected IDecorator UpdateTitle (UIOperationContext context, DecorationSettings settings, out Material material, ref pSRGBColor? color) {
@@ -67,6 +72,10 @@ namespace Squared.PRGUI.Controls {
                 // FIXME: Notify container(s) to update their content bounds and scroll data
                 if (Collapsed)
                     Context.ReleaseDescendantFocus(this, true);
+                // A click on the collapse arrow should still focus our parent if necessary
+                if (TryGetParent(out Control parent) && (Context.Focused == null))
+                    Context.TrySetFocus(parent);
+
                 return true;
             }
 

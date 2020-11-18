@@ -387,8 +387,10 @@ namespace Squared.PRGUI {
                         throw new Exception("Cycle found in focus beneficiary chain");
                 }
 
+                // Attempting to set focus to a top level control is valid even if no child was selected
+                var isTopLevel = Controls.Contains(newFocusTarget);
                 // FIXME: Should we throw here?
-                if (!newFocusTarget.IsValidFocusTarget && !force)
+                if (!newFocusTarget.IsValidFocusTarget && !force && !isTopLevel)
                     return false;
             }
 

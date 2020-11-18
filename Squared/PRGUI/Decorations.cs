@@ -75,6 +75,8 @@ namespace Squared.PRGUI.Decorations {
 
     public interface IDecorationProvider {
         IDecorator Container { get; }
+        IDecorator TitledContainer { get; }
+        IDecorator ContainerTitle { get; }
         IDecorator FloatingContainer { get; }
         IDecorator Window { get; }
         IDecorator WindowTitle { get; }
@@ -211,6 +213,8 @@ namespace Squared.PRGUI.Decorations {
 
         public IDecorator Button { get; set; }
         public IDecorator Container { get; set; }
+        public IDecorator TitledContainer { get; set; }
+        public IDecorator ContainerTitle { get; set; }
         public IDecorator FloatingContainer { get; set; }
         public IDecorator Window { get; set; }
         public IDecorator WindowTitle { get; set; }
@@ -317,6 +321,13 @@ namespace Squared.PRGUI.Decorations {
                 Below = FloatingContainer_Below,
                 // FIXME: Separate routine?
                 ContentClip = Container_ContentClip,
+            };
+
+            ContainerTitle = new DelegateDecorator {
+                Padding = new Margins(6, 3, 6, 4),
+                Margins = new Margins(0, 0, 0, 2),
+                GetTextSettings = GetTextSettings_Title,
+                Below = ContainerTitle_Below
             };
 
             Window = new DelegateDecorator {
@@ -1015,17 +1026,29 @@ namespace Squared.PRGUI.Decorations {
             );
         }
 
+        private void ContainerTitle_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            float cornerRadius = ContainerCornerRadius,
+                cornerRadius2 = settings.State.IsFlagged(ControlStates.Pressed) // HACK: When collapsed, round all corners
+                    ? cornerRadius
+                    : 0;
+            TitleCommon_Below(ref renderer, settings, cornerRadius, cornerRadius2);
+        }
+
         private void WindowTitle_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            float cornerRadius = FloatingContainerCornerRadius ?? ContainerCornerRadius,
+                cornerRadius2 = settings.State.IsFlagged(ControlStates.Pressed) // HACK: When collapsed, round all corners
+                    ? cornerRadius
+                    : 0;
+            TitleCommon_Below(ref renderer, settings, cornerRadius, cornerRadius2);
+        }
+
+        private void TitleCommon_Below (ref ImperativeRenderer renderer, DecorationSettings settings, float cornerRadius, float cornerRadius2) {
             var containsFocus = settings.State.IsFlagged(ControlStates.ContainsFocus);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME: Should we draw the outline in Above?
             var color1 = (pSRGBColor)(containsFocus ? TitleFillColor : TitleFillColor.ToGrayscale(0.85f));
             var color2 = color1.ToVector4() * 0.8f;
             color2.W = 1;
-            float cornerRadius = FloatingContainerCornerRadius ?? ContainerCornerRadius,
-                cornerRadius2 = settings.State.IsFlagged(ControlStates.Pressed) // HACK: When collapsed, round all corners
-                    ? cornerRadius
-                    : 0;
             renderer.RasterizeRectangle(
                 a, b,
                 radiusCW: new Vector4(cornerRadius, cornerRadius, cornerRadius2, cornerRadius2),
