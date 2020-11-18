@@ -15,7 +15,7 @@ namespace Squared.PRGUI.Controls {
     public class TitledContainer : Container {
         public const float MinDisclosureArrowSize = 13,
             DisclosureArrowMargin = 12,
-            DisclosureArrowRotateDuration = 0.15f,
+            DisclosureAnimationDuration = 0.175f,
             DisclosureArrowSizeMultiplier = 0.375f;
 
         private bool _Collapsed;
@@ -28,16 +28,16 @@ namespace Squared.PRGUI.Controls {
                     return;
 
                 _Collapsed = value;
-                var targetAngle = (float)(value ? -0.5 * Math.PI : 0);
+                var targetValue = (float)(value ? 0 : 1);
                 if (Context != null) {
                     var nowL = Context.NowL;
-                    DisclosureArrowAngle = Tween.StartNow(
-                        from: DisclosureArrowAngle.Get(nowL), to: targetAngle, 
-                        seconds: DisclosureArrowRotateDuration, now: nowL,
+                    DisclosureLevel = Tween.StartNow(
+                        from: DisclosureLevel.Get(nowL), to: targetValue, 
+                        seconds: DisclosureAnimationDuration, now: nowL,
                         interpolator: Interpolators<float>.Cosine
                     );
                 } else
-                    DisclosureArrowAngle = new Tween<float>(targetAngle);
+                    DisclosureLevel = new Tween<float>(targetValue);
             }
         }
         public bool Collapsible;
@@ -50,7 +50,7 @@ namespace Squared.PRGUI.Controls {
 
         protected RectF MostRecentTitleBox;
 
-        private Tween<float> DisclosureArrowAngle;
+        private Tween<float> DisclosureLevel = 1f;
 
         public TitledContainer ()
             : base () {
@@ -60,7 +60,11 @@ namespace Squared.PRGUI.Controls {
         protected float DisclosureArrowSize => Math.Max(MinDisclosureArrowSize, MostRecentHeaderHeight * DisclosureArrowSizeMultiplier);
         protected float DisclosureArrowPadding => DisclosureArrowSize + DisclosureArrowMargin;
 
-        protected override bool HideChildren => Collapsible && Collapsed;
+        protected override bool HideChildren => Collapsible && (DisclosureLevel.Get(Context.NowL) <= 0);
+
+        protected override bool ShouldClipContent => base.ShouldClipContent || (
+            Collapsible && (DisclosureLevel.Get(Context.NowL) < 1)
+        );
 
         protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
             return provider?.TitledContainer ?? base.GetDefaultDecorations(provider);
@@ -163,11 +167,30 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
             base.ComputeFixedSize(out fixedWidth, out fixedHeight);
 
-            if (Collapsed) {
+            var originalFixedHeight = fixedHeight ?? MostRecentTotalHeight;
+
+            if (Collapsible && originalFixedHeight.HasValue) {
+                var level = DisclosureLevel.Get(Context.NowL);
+                if (level >= 1)
+                    return;
+
                 if (fixedHeight.HasValue)
                     fixedHeight = Math.Min(fixedHeight.Value, MostRecentHeaderHeight);
                 else
                     fixedHeight = MostRecentHeaderHeight;
+
+                fixedHeight = Arithmetic.Lerp(fixedHeight.Value, originalFixedHeight.Value, level);
+            }
+        }
+
+        protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+            base.OnLayoutComplete(context, ref relayoutRequested);
+
+            if (Collapsible && !Collapsed && 
+                (DisclosureLevel.Get(Context.NowL) >= 1)
+            ) {
+                var box = GetRect(context.Layout);
+                MostRecentTotalHeight = box.Height;
             }
         }
 
@@ -184,29 +207,8 @@ namespace Squared.PRGUI.Controls {
             if (
                 (titleDecorator = UpdateTitle(context, settings, out Material titleMaterial, ref titleColor)) != null
             ) {
-                if (Collapsible && (context.Pass == RasterizePasses.Above)) {
-                    var pad = (DisclosureArrowPadding - DisclosureArrowSize) / 2f;
-                    var ySpace = ((MostRecentHeaderHeight - DisclosureArrowSize) / 2f);
-                    var centering = DisclosureArrowSize * 0.5f;
-                    Vector2 a = Vector2.One * -centering,
-                        b = new Vector2(DisclosureArrowSize, DisclosureArrowSize) + a,
-                        c = new Vector2((a.X + b.X) / 2f, b.Y);
-                    b.Y = a.Y;
-                    var radians = DisclosureArrowAngle.Get(context.NowL);
-                    a = a.Rotate(radians);
-                    b = b.Rotate(radians);
-                    c = c.Rotate(radians);
-                    var offset = new Vector2(settings.Box.Left + pad + centering, settings.Box.Top + ySpace + centering);
-                    var color = Color.White;
-                    var outlineColor = Color.Black * 0.8f;
-
-                    renderer.RasterizeTriangle(
-                        a + offset, b + offset, c + offset,
-                        radius: 1f, outlineRadius: 1.1f,
-                        innerColor: color, outerColor: color, 
-                        outlineColor: outlineColor
-                    );
-                }
+                if (Collapsible && (context.Pass == RasterizePasses.Above))
+                    RasterizeDisclosureArrow(ref context, ref renderer, settings);
 
                 if (context.Pass != RasterizePasses.Below)
                     return;
@@ -245,6 +247,28 @@ namespace Squared.PRGUI.Controls {
                     samplerState: RenderStates.Text, multiplyColor: titleColor?.ToColor()
                 );
             }
+        }
+
+        private void RasterizeDisclosureArrow (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            var pad = (DisclosureArrowPadding - DisclosureArrowSize) / 2f;
+            var ySpace = ((MostRecentHeaderHeight - DisclosureArrowSize) / 2f);
+            var centering = DisclosureArrowSize * 0.5f;
+            Vector2 a = Vector2.One * -centering, b = new Vector2(DisclosureArrowSize, DisclosureArrowSize) + a, c = new Vector2((a.X + b.X) / 2f, b.Y);
+            b.Y = a.Y;
+            var radians = (1 - DisclosureLevel.Get(context.NowL)) * (float)(Math.PI * -0.5);
+            a = a.Rotate(radians);
+            b = b.Rotate(radians);
+            c = c.Rotate(radians);
+            var offset = new Vector2(settings.Box.Left + pad + centering, settings.Box.Top + ySpace + centering);
+            var color = Color.White;
+            var outlineColor = Color.Black * 0.8f;
+
+            renderer.RasterizeTriangle(
+                a + offset, b + offset, c + offset,
+                radius: 1f, outlineRadius: 1.1f,
+                innerColor: color, outerColor: color,
+                outlineColor: outlineColor
+            );
         }
     }
 }

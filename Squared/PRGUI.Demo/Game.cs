@@ -364,8 +364,8 @@ namespace PRGUI.Demo {
                     new Container {
                         ClipChildren = true,
                         LayoutFlags = ControlFlags.Layout_Fill,
-                        MaximumHeight = 400,
-                        FixedWidth = 400,
+                        MaximumHeight = 500,
+                        FixedWidth = 450,
                         Scrollable = true,
                         Children = {
                             new StaticText { Text = "Testing nested clips" },

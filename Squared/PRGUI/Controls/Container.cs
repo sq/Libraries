@@ -17,7 +17,7 @@ namespace Squared.PRGUI.Controls {
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
         /// </summary>
-        public bool ClipChildren = false;
+        public bool ClipChildren;
 
         public bool Scrollable = false;
         public bool ShowVerticalScrollbar = true, ShowHorizontalScrollbar = true;
@@ -26,6 +26,7 @@ namespace Squared.PRGUI.Controls {
         protected Vector2 AbsoluteDisplayOffsetOfChildren;
 
         protected float MostRecentHeaderHeight = 0;
+        protected float? MostRecentTotalHeight = null;
         protected Vector2 MinScrollOffset;
         protected Vector2? MaxScrollOffset;
 
@@ -253,6 +254,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected bool GetContentBounds (UIContext context, out RectF contentBounds) {
+            if (LayoutKey.IsInvalid) {
+                contentBounds = default(RectF);
+                return false;
+            }
+
             var ok = context.Layout.TryMeasureContent(LayoutKey, out contentBounds);
             if (ok)
                 ContentBounds = contentBounds;
