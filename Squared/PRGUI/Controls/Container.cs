@@ -324,6 +324,13 @@ namespace Squared.PRGUI.Controls {
                     float maxScrollX = ContentBounds.Width - viewportWidth, maxScrollY = ContentBounds.Height - viewportHeight;
                     maxScrollX = Math.Max(0, maxScrollX);
                     maxScrollY = Math.Max(0, maxScrollY);
+
+                    // HACK: Suppress flickering during size transitions
+                    if (maxScrollX <= 1)
+                        maxScrollX = 0;
+                    if (maxScrollY <= 1)
+                        maxScrollY = 0;
+
                     MinScrollOffset = Vector2.Zero;
                     MaxScrollOffset = new Vector2(maxScrollX, maxScrollY);
                     TrySetScrollOffset(DesiredScrollOffset, false);

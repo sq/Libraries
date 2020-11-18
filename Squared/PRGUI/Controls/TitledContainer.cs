@@ -179,7 +179,8 @@ namespace Squared.PRGUI.Controls {
                 else
                     fixedHeight = MostRecentHeaderHeight;
 
-                fixedHeight = Arithmetic.Lerp(fixedHeight.Value, originalFixedHeight.Value, level);
+                // Floor to suppress jittering
+                fixedHeight = (float)Math.Floor(Arithmetic.Lerp(fixedHeight.Value, originalFixedHeight.Value, level));
             }
         }
 
