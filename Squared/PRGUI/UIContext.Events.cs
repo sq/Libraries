@@ -428,7 +428,7 @@ namespace Squared.PRGUI {
             int tabIndex = tabOrdered.IndexOf(current), newIndex, endIndex, idx;
             if (tabIndex < 0) {
                 newIndex = (delta > 0 ? 0 : tabOrdered.Count - 1);
-                endIndex = (delta > 0 ? tabOrdered.Count - 1 : 0);
+                endIndex = (delta > 0 ? tabOrdered.Count : -1);
             } else {
                 newIndex = tabIndex + delta;
                 endIndex = Arithmetic.Wrap(tabIndex - delta, 0, tabOrdered.Count - 1);
@@ -459,7 +459,10 @@ namespace Squared.PRGUI {
                     newIndex = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
             }
 
-            return tabOrdered[0];
+            if (tabOrdered[0].IsValidFocusTarget && tabOrdered[0].Enabled)
+                return tabOrdered[0];
+            else
+                return null;
         }
 
         private Control PickNextFocusTarget (Control current, int delta, bool recursive) {
@@ -696,9 +699,9 @@ namespace Squared.PRGUI {
                 newOffset = DragToScrollInitialOffset.Value;
             }
 
-            if (newOffset != DragToScrollInitialOffset) {
+            if (newOffset != DragToScrollInitialOffset)
                 return DragToScrollTarget.TrySetScrollOffset(newOffset, true);
-            } else
+            else
                 return false;
         }
 

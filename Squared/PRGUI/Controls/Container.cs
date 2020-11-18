@@ -82,9 +82,6 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        // HACK used to properly discard scroll events when at a scroll edge
-        private bool CanScrollUp, CanScrollDown;
-
         private Vector2 ConstrainNewScrollOffset (Vector2 so) {
             if (!Scrollable)
                 return so;
@@ -147,7 +144,7 @@ namespace Squared.PRGUI.Controls {
             var hScrollProcessed = ShowHorizontalScrollbar && scroll.OnMouseEvent(settings, ref HScrollbar, name, args);
             var vScrollProcessed = ShowVerticalScrollbar && scroll.OnMouseEvent(settings, ref VScrollbar, name, args);
 
-            TrySetScrollOffset(ConstrainNewScrollOffset(new Vector2(HScrollbar.Position, VScrollbar.Position)), true);
+            TrySetScrollOffset(ConstrainNewScrollOffset(new Vector2(HScrollbar.Position, VScrollbar.Position)), hScrollProcessed || vScrollProcessed);
             // Update the scrollbar state again because we may have clamped the offsets
             HScrollbar.Position = ScrollOffset.X;
             VScrollbar.Position = ScrollOffset.Y;
@@ -256,11 +253,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected bool GetContentBounds (UIContext context, out RectF contentBounds) {
-            // FIXME
-            //if (!HasContentBounds)
-            HasContentBounds = context.Layout.TryMeasureContent(LayoutKey, out ContentBounds);
-            contentBounds = ContentBounds;
-            return HasContentBounds;
+            var ok = context.Layout.TryMeasureContent(LayoutKey, out contentBounds);
+            if (ok)
+                ContentBounds = contentBounds;
+            HasContentBounds = ok;
+            return ok;
         }
 
         protected override void ApplyClipMargins (UIOperationContext context, ref RectF box) {
@@ -324,9 +321,6 @@ namespace Squared.PRGUI.Controls {
                     MinScrollOffset = Vector2.Zero;
                     MaxScrollOffset = new Vector2(maxScrollX, maxScrollY);
                     TrySetScrollOffset(DesiredScrollOffset, false);
-
-                    CanScrollUp = ScrollOffset.Y > 0;
-                    CanScrollDown = ScrollOffset.Y < maxScrollY;
 
                     CanScrollVertically = maxScrollY > 0;
                 }
