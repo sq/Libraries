@@ -76,6 +76,10 @@ namespace Squared.PRGUI {
             Keys.Insert
         };
 
+        // Full occlusion tests are performed with this padding region (in pixels) to account for things like
+        //  drop shadows being visible even if the control itself is not
+        public const float VisibilityPadding = 16;
+
         /// <summary>
         /// Globally tracks whether text editing should be in insert or overwrite mode
         /// </summary>
@@ -403,7 +407,7 @@ namespace Squared.PRGUI {
                     LayoutFlags = ControlFlags.Layout_Floating,
                     BackgroundColor = Color.White,
                     TextColor = Color.Black,
-                    CustomDecorations = Decorations.CompositionPreview
+                    CustomDecorator = Decorations.CompositionPreview
                 };
                 Controls.Add(CachedCompositionPreview);
             }
@@ -853,7 +857,10 @@ namespace Squared.PRGUI {
                     HandleKeyEvent(isPressed ? UIEvents.KeyDown : UIEvents.KeyUp, key, null);
 
                     if (isPressed && !shouldFilterKeyPress) {
-                        LastKeyEvent = key;
+                        // Modifier keys shouldn't break an active key repeat (i.e. you should be able to press/release shift)
+                        if (!current.IsKeyDown(LastKeyEvent) || !ModifierKeys.Contains(key))
+                            LastKeyEvent = key;
+
                         LastKeyEventTime = LastKeyEventFirstTime = now;
                         HandleKeyEvent(UIEvents.KeyPress, key, null);
                     }
@@ -1022,7 +1029,8 @@ namespace Squared.PRGUI {
                 Modifiers = CurrentModifiers,
                 SpacebarHeld = LastKeyboardState.IsKeyDown(Keys.Space),
                 MouseButtonHeld = (LastMouseButtons != MouseButtons.None),
-                MousePosition = LastMousePosition
+                MousePosition = LastMousePosition,
+                VisibleRegion = new RectF(-VisibilityPadding, -VisibilityPadding, CanvasSize.X + (VisibilityPadding * 2), CanvasSize.Y + (VisibilityPadding * 2))
             };
         }
 
@@ -1146,6 +1154,7 @@ namespace Squared.PRGUI {
         public bool SpacebarHeld { get; internal set; }
         public bool MouseButtonHeld { get; internal set; }
         public Vector2 MousePosition { get; internal set; }
+        public RectF VisibleRegion { get; internal set; }
         internal UnorderedList<IPostLayoutListener> PostLayoutListeners;
 
         public UIOperationContext Clone () {
@@ -1157,7 +1166,8 @@ namespace Squared.PRGUI {
                 Modifiers = Modifiers,
                 SpacebarHeld = SpacebarHeld,
                 MouseButtonHeld = MouseButtonHeld,
-                MousePosition = MousePosition
+                MousePosition = MousePosition,
+                VisibleRegion = VisibleRegion
             };
         }
     }

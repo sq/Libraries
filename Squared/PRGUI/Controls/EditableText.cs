@@ -329,7 +329,7 @@ namespace Squared.PRGUI.Controls {
             return DynamicLayout.Get();
         }
 
-        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.EditableText;
         }
 

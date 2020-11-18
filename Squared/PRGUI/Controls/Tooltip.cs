@@ -23,7 +23,7 @@ namespace Squared.PRGUI.Controls {
             Multiline = true;
         }
 
-        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.Tooltip;
         }
     }

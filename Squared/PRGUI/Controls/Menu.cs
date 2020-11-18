@@ -112,7 +112,7 @@ namespace Squared.PRGUI.Controls {
             base.TooltipContent = SelectedItemTooltip;
         }
 
-        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.Menu;
         }
 
@@ -144,7 +144,7 @@ namespace Squared.PRGUI.Controls {
 
         private void OnSelectionChange (Control previous, Control newControl) {
             foreach (var child in Children) {
-                child.CustomTextDecorations = ((child == newControl) && (child.BackgroundColor.pLinear == null))
+                child.CustomTextDecorator = ((child == newControl) && (child.BackgroundColor.pLinear == null))
                     ? Context?.Decorations.Selection 
                     : null;
             }

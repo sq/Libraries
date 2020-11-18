@@ -76,7 +76,7 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.Button;
         }
     }
@@ -99,7 +99,7 @@ namespace Squared.PRGUI.Controls {
             Wrap = false;
         }
 
-        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.Checkbox;
         }
 
@@ -200,7 +200,7 @@ namespace Squared.PRGUI.Controls {
             Subscription.Dispose();
         }
 
-        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.RadioButton;
         }
 

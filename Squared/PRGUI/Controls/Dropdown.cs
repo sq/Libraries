@@ -86,7 +86,7 @@ namespace Squared.PRGUI.Controls {
             Comparer = comparer ?? EqualityComparer<T>.Default;
         }
 
-        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider.Dropdown;
         }
 

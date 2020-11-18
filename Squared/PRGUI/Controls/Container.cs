@@ -179,7 +179,7 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             if (LayoutFlags.IsFlagged(ControlFlags.Layout_Floating))
                 return provider?.FloatingContainer ?? provider?.Container;
             else

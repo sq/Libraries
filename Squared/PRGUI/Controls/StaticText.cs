@@ -181,8 +181,8 @@ namespace Squared.PRGUI.Controls {
             if (!AutoSizeWidth && !AutoSizeHeight)
                 return;
 
-            var decorations = GetDecorations(context.DecorationProvider);
-            var textDecorations = GetTextDecorations(context.DecorationProvider);
+            var decorations = GetDecorator(context.DecorationProvider);
+            var textDecorations = GetTextDecorator(context.DecorationProvider);
             UpdateFont(context, textDecorations);
 
             var computedPadding = ComputePadding(context, decorations);
@@ -207,12 +207,12 @@ namespace Squared.PRGUI.Controls {
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             ComputeAutoSize(context);
-            UpdateLineBreak(context, GetDecorations(context.DecorationProvider));
+            UpdateLineBreak(context, GetDecorator(context.DecorationProvider));
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             return result;
         }
 
-        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.StaticText;
         }
 
@@ -272,7 +272,7 @@ namespace Squared.PRGUI.Controls {
             var overrideColor = GetTextColor(context.NowL);
             pSRGBColor? defaultColor = null;
             Material material;
-            var textDecorations = GetTextDecorations(context.DecorationProvider);
+            var textDecorations = GetTextDecorator(context.DecorationProvider);
             GetTextSettings(context, textDecorations, settings.State, out material, ref defaultColor);
 
             Content.DefaultColor = defaultColor?.ToColor() ?? Color.White;
@@ -367,7 +367,7 @@ namespace Squared.PRGUI.Controls {
                 _NeedRelayout = false;
             }
 
-            var decorations = GetDecorations(context.DecorationProvider);
+            var decorations = GetDecorator(context.DecorationProvider);
             var box = context.Layout.GetRect(LayoutKey);
 
             var contentBox = context.Layout.GetContentRect(LayoutKey);

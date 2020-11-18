@@ -62,7 +62,7 @@ namespace PRGUI.Demo {
             Graphics.PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8;
             Graphics.PreferredBackBufferWidth = 1920;
             Graphics.PreferredBackBufferHeight = 1080;
-            Graphics.SynchronizeWithVerticalRetrace = true;
+            Graphics.SynchronizeWithVerticalRetrace = false;
             Graphics.PreferMultiSampling = false;
             Graphics.IsFullScreen = false;
 

@@ -14,7 +14,7 @@ using Squared.Util;
 namespace Squared.PRGUI.Controls {
     public class TitledContainer : Container {
         public const float MinDisclosureArrowSize = 13,
-            DisclosureArrowMargin = 12,
+            DisclosureArrowMargin = 16,
             DisclosureAnimationDuration = 0.175f,
             DisclosureArrowSizeMultiplier = 0.375f;
 
@@ -65,12 +65,22 @@ namespace Squared.PRGUI.Controls {
 
         protected override bool HideChildren => Collapsible && (DisclosureLevel.Get(Context.NowL) <= 0);
 
-        protected override bool ShouldClipContent => base.ShouldClipContent || (
-            Collapsible && (DisclosureLevel.Get(Context.NowL) < 1)
-        );
+        protected override bool ShouldClipContent {
+            get {
+                if (base.ShouldClipContent)
+                    return true;
+                if (!Collapsible)
+                    return false;
+                // Forcibly clip our content if we're currently animating an open/close
+                var dl = DisclosureLevel.Get(Context.NowL);
+                if ((dl <= 0) || (dl >= 1))
+                    return false;
+                return true;
+            }
+        }
 
-        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
-            return provider?.TitledContainer ?? base.GetDefaultDecorations(provider);
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
+            return provider?.TitledContainer ?? base.GetDefaultDecorator(provider);
         }
 
         protected virtual IDecorator GetTitleDecorator (UIOperationContext context) {

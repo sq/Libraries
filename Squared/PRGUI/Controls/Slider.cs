@@ -155,12 +155,12 @@ namespace Squared.PRGUI.Controls {
             return Arithmetic.Clamp(value, Minimum, Maximum);
         }
 
-        protected override IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+        protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider.Slider;
         }
 
         protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
-            var decorations = GetDefaultDecorations(Context.Decorations);
+            var decorations = GetDefaultDecorator(Context.Decorations);
             Render.pSRGBColor? color = null;
             decorations.GetTextSettings(default(UIOperationContext), default(ControlStates), out Render.Material temp, out Render.Text.IGlyphSource glyphSource, ref color);
             base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);

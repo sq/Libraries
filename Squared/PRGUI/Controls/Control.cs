@@ -163,7 +163,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        public IDecorator CustomDecorations, CustomTextDecorations;
+        public IDecorator CustomDecorator, CustomTextDecorator;
         public Margins Margins, Padding;
         public ControlFlags LayoutFlags = ControlFlags.Layout_Fill_Row;
         public float? FixedWidth, FixedHeight;
@@ -488,7 +488,7 @@ namespace Squared.PRGUI {
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var result = existingKey ?? context.Layout.CreateItem();
 
-            var decorations = GetDecorations(context.DecorationProvider);
+            var decorations = GetDecorator(context.DecorationProvider);
             var computedMargins = ComputeMargins(context, decorations);
             var computedPadding = ComputePadding(context, decorations);
 
@@ -526,16 +526,16 @@ namespace Squared.PRGUI {
             return result;
         }
 
-        protected virtual IDecorator GetDefaultDecorations (IDecorationProvider provider) {
+        protected virtual IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return null;
         }
 
-        protected IDecorator GetDecorations (IDecorationProvider provider) {
-            return CustomDecorations ?? GetDefaultDecorations(provider);
+        protected IDecorator GetDecorator (IDecorationProvider provider) {
+            return CustomDecorator ?? GetDefaultDecorator(provider);
         }
 
-        protected IDecorator GetTextDecorations (IDecorationProvider provider) {
-            return CustomTextDecorations ?? GetDefaultDecorations(provider);
+        protected IDecorator GetTextDecorator (IDecorationProvider provider) {
+            return CustomTextDecorator ?? GetDefaultDecorator(provider);
         }
 
         protected ControlStates GetCurrentState (UIOperationContext context) {
@@ -589,15 +589,36 @@ namespace Squared.PRGUI {
             };
         }
 
+        private void UpdateVisibleRegion (ref UIOperationContext context, ref RectF box) {
+            var vr = context.VisibleRegion;
+            vr.Left = Math.Max(context.VisibleRegion.Left, box.Left - UIContext.VisibilityPadding);
+            vr.Top = Math.Max(context.VisibleRegion.Top, box.Top - UIContext.VisibilityPadding);
+            var right = Math.Min(context.VisibleRegion.Extent.X, box.Extent.X + UIContext.VisibilityPadding);
+            var bottom = Math.Min(context.VisibleRegion.Extent.Y, box.Extent.Y + UIContext.VisibilityPadding);
+            vr.Width = right - vr.Left;
+            vr.Height = bottom - vr.Top;
+            context.VisibleRegion = vr;
+        }
+
         private void RasterizePass (ref UIOperationContext context, RectF box, bool compositing, ref RasterizePassSet passSet, ref ImperativeRenderer renderer, RasterizePasses pass) {
             var contentBox = GetRect(context.Layout, contentRect: true);
-            var decorations = GetDecorations(context.DecorationProvider);
+            var decorations = GetDecorator(context.DecorationProvider);
             var state = GetCurrentState(context);
 
             var passContext = context.Clone();
+            UpdateVisibleRegion(ref passContext, ref box);
             passContext.Pass = pass;
             // passContext.Renderer = context.Renderer.MakeSubgroup();
             var hasNestedContext = (pass == RasterizePasses.Content) && (ShouldClipContent || HasChildren);
+
+            /*
+            if (pass == RasterizePasses.Above)
+                renderer.RasterizeRectangle(
+                    passContext.VisibleRegion.Position, passContext.VisibleRegion.Extent, 
+                    0f, outlineRadius: 1.1f, innerColor: Color.Transparent, outerColor: Color.Transparent,
+                    outlineColor: Color.Red
+                );
+            */
 
             var contentContext = passContext;
             ImperativeRenderer contentRenderer = default(ImperativeRenderer);
@@ -684,12 +705,10 @@ namespace Squared.PRGUI {
                 return;
 
             var box = GetRect(context.Layout);
-            // HACK: To account for drop shadows and stuff
-            const float visibilityPadding = 16;
-            var isInvisible = (box.Extent.X < -visibilityPadding) ||
-                (box.Extent.Y < -visibilityPadding) ||
-                (box.Left > context.UIContext.CanvasSize.X + visibilityPadding) ||
-                (box.Top > context.UIContext.CanvasSize.Y + visibilityPadding) ||
+            var isInvisible = (box.Extent.X < context.VisibleRegion.Left) ||
+                (box.Extent.Y < context.VisibleRegion.Top) ||
+                (box.Left > context.VisibleRegion.Extent.X) ||
+                (box.Top > context.VisibleRegion.Extent.Y) ||
                 (box.Width <= 0) ||
                 (box.Height <= 0);
 
@@ -739,6 +758,7 @@ namespace Squared.PRGUI {
 
         private void RasterizeIntoPrepass (ref UIOperationContext context, RasterizePassSet passSet, float opacity, ref RectF box, ref RectF compositeBox, AutoRenderTarget rt, bool needClear) {
             var compositionContext = context.Clone();
+            UpdateVisibleRegion(ref compositionContext, ref box);
 
             // Create nested prepass group before the RT group so that child controls have their prepass operations run before ours
             var nestedPrepass = passSet.Prepass.MakeSubgroup();
