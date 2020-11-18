@@ -254,6 +254,7 @@ namespace Squared.PRGUI.Controls {
                 // HACK: Compensate for the hitbox being too small for some reason
                 gaugeBox.Top += 1;
                 gaugeBox.Height -= 1;
+                tempSettings.Box = settings.ContentBox;
                 tempSettings.ContentBox = gaugeBox;
                 gauge.Rasterize(context, ref renderer, tempSettings);
             }

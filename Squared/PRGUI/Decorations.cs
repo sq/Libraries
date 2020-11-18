@@ -1122,13 +1122,15 @@ namespace Squared.PRGUI.Decorations {
                 isHovering = settings.State.IsFlagged(ControlStates.Hovering);
             var outlineRadius = isFocused ? 1f : 0f;
             var outlineColor = Color.Black * 0.8f;
-            float alpha = (isFocused ? 1.0f : 0.7f) * (isHovering ? 1.0f : 0.75f);
-            var color = Color.White * alpha;
             settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
+            float alpha1 = (isFocused ? 0.75f : 0.6f) * (isHovering ? 0.75f : 0.6f);
+            float alpha2 = (isFocused ? 1.0f : 0.7f) * (isHovering ? 1.0f : 0.75f);
+            alpha2 = Arithmetic.Lerp(alpha1, alpha2, (b.X - a.X) / (settings.Box.Width));
             renderer.RasterizeRectangle(
                 a, b, radiusCW: radius,
                 outlineRadius: outlineRadius, outlineColor: outlineColor,
-                innerColor: color, outerColor: color
+                innerColor: Color.White * alpha1, outerColor: Color.White * alpha2,
+                fillMode: RasterFillMode.Horizontal
             );
         }
 
