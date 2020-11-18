@@ -486,8 +486,8 @@ namespace Squared.PRGUI.Decorations {
             ContainerOutlineColor = new Color(32, 32, 32) * 0.5f,
             InertOutlineColor = new Color(255, 255, 255) * 0.33f,
             TooltipOutlineColor = new Color(16, 16, 16) * 0.5f,
-            ScrollbarThumbColor = new Color(220, 220, 220),
-            ScrollbarTrackColor = new Color(32, 32, 32),
+            ScrollbarThumbColor = new Color(200, 200, 200),
+            ScrollbarTrackColor = new Color(48, 48, 48),
             AcceleratorOutlineColor = Color.White;
 
         public Color TitleFillColor = new Color(40, 100, 120),

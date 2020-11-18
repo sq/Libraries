@@ -26,7 +26,7 @@ namespace Squared.PRGUI.Controls {
         protected Vector2 AbsoluteDisplayOffsetOfChildren;
 
         protected float MostRecentHeaderHeight = 0;
-        protected float? MostRecentTotalHeight = null;
+        protected RectF? MostRecentFullSize = null;
         protected Vector2 MinScrollOffset;
         protected Vector2? MaxScrollOffset;
 
@@ -341,7 +341,7 @@ namespace Squared.PRGUI.Controls {
                 HScrollbar.ContentSize = ContentBounds.Width;
                 HScrollbar.ViewportSize = contentBox.Width;
                 HScrollbar.Position = ScrollOffset.X;
-                VScrollbar.ContentSize = ContentBounds.Height;
+                VScrollbar.ContentSize = CanScrollVertically ? ContentBounds.Height : contentBox.Height;
                 VScrollbar.ViewportSize = contentBox.Height;
                 VScrollbar.Position = ScrollOffset.Y;
 

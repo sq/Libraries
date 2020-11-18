@@ -28,6 +28,7 @@ namespace Squared.PRGUI.Controls {
         };
 
         // FIXME
+        public const bool OptimizedClipping = true;
         public const bool Multiline = false;
 
         public bool StripNewlines = true;
@@ -73,7 +74,27 @@ namespace Squared.PRGUI.Controls {
         protected Vector2? ClickStartVirtualPosition = null;
         private Pair<int> _Selection;
 
-        protected override bool ShouldClipContent => true;
+        protected override bool ShouldClipContent {
+            get {
+                // HACK: If our content is smaller than our content box, disable clipping
+                if (OptimizedClipping && (DynamicLayout.GlyphSource != null)) {
+                    var contentBox = GetRect(Context.Layout, contentRect: true);
+                    UpdateLayoutSettings();
+                    var layout = DynamicLayout.Get();
+                    // Extra padding for things like shadows/outlines on selection decorators
+                    const float safeMargin = 4;
+                    if (
+                        (layout.UnconstrainedSize.X < (contentBox.Size.X - safeMargin)) &&
+                        (layout.UnconstrainedSize.Y <= contentBox.Size.Y)
+                    )
+                        return false;
+                    else
+                        return true;
+                }
+
+                return true;
+            }
+        }
 
         protected Vector2 AlignmentOffset = Vector2.Zero;
 
@@ -301,7 +322,8 @@ namespace Squared.PRGUI.Controls {
             decorations.GetTextSettings(context, settings.State, out material, out IGlyphSource font, ref color);
             CachedPadding = ComputePadding(context, decorations);
 
-            DynamicLayout.GlyphSource = font;
+            if (font != null)
+                DynamicLayout.GlyphSource = font;
             DynamicLayout.DefaultColor = color?.ToColor() ?? Color.White;
 
             return DynamicLayout.Get();
@@ -318,7 +340,7 @@ namespace Squared.PRGUI.Controls {
 
             var lineHeight = DynamicLayout.GlyphSource.LineSpacing;
             var contentMinimumHeight = lineHeight * (Multiline ? 2 : 1) + CachedPadding.Y; // FIXME: Include padding
-            minimumWidth = Math.Max(minimumWidth ?? 0, ControlMinimumWidth);
+            minimumWidth = minimumWidth ?? ControlMinimumWidth;
             minimumHeight = Math.Max(minimumHeight ?? 0, contentMinimumHeight);
         }
 

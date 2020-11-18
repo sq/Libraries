@@ -34,6 +34,16 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private bool _DesiredCollapsible;
+
+        new public bool Collapsible {
+            get => _DesiredCollapsible;
+            set {
+                _DesiredCollapsible = value;
+                base.Collapsible = _DesiredCollapsible && !Maximized;
+            }
+        }
+
         public bool AllowDrag = true;
         public bool AllowMaximize = true;
 
@@ -54,6 +64,7 @@ namespace Squared.PRGUI.Controls {
                     flags |= ControlFlags.Layout_Fill;
                 Context.Log($"Window layout flags {LayoutFlags} -> {flags}");
                 LayoutFlags = flags;
+                base.Collapsible = _DesiredCollapsible && !Maximized;
             }
         }
 
@@ -74,8 +85,8 @@ namespace Squared.PRGUI.Controls {
             var rect = GetRect(context.Layout, includeOffset: false);
 
             // Handle the corner case where the canvas size has changed since we were last moved and ensure we are still on screen
-            if (!Maximized)
-                MostRecentUnmaximizedRect = rect;
+            if (!Maximized && MostRecentFullSize.HasValue)
+                MostRecentUnmaximizedRect = MostRecentFullSize.Value;
 
             var availableSpace = (context.UIContext.CanvasSize - rect.Size);
 
@@ -151,6 +162,7 @@ namespace Squared.PRGUI.Controls {
                     UpdatePosition(newPosition, args.Context, MostRecentUnmaximizedRect);
                 } else if (shouldMaximize || Maximized) {
                     Maximized = true;
+                    SetCollapsed(false, instant: true);
                 } else {
                     UpdatePosition(newPosition, args.Context, args.Box);
                 }
@@ -160,8 +172,8 @@ namespace Squared.PRGUI.Controls {
                 return true;
             } else if (name == UIEvents.Click) {
                 if (
-                    Collapsed ||
-                    (CollapsingEnabled && DisclosureArrowHitTest(args.RelativeGlobalPosition - args.Box.Position))
+                    (Collapsed && CollapsingEnabled) ||
+                    DisclosureArrowHitTest(args.RelativeGlobalPosition - args.Box.Position)
                 )
                     ToggleCollapsed();
                 return true;

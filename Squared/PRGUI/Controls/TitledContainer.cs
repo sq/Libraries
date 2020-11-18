@@ -21,25 +21,28 @@ namespace Squared.PRGUI.Controls {
         private bool _Collapsed;
         public bool Collapsed {
             get => _Collapsed;
-            set {
-                if (!Collapsible)
-                    value = false;
-                if (value == _Collapsed)
-                    return;
-
-                _Collapsed = value;
-                var targetValue = (float)(value ? 0 : 1);
-                if (Context != null) {
-                    var nowL = Context.NowL;
-                    DisclosureLevel = Tween.StartNow(
-                        from: DisclosureLevel.Get(nowL), to: targetValue, 
-                        seconds: DisclosureAnimationDuration, now: nowL,
-                        interpolator: Interpolators<float>.Cosine
-                    );
-                } else
-                    DisclosureLevel = new Tween<float>(targetValue);
-            }
+            set => SetCollapsed(value, false);
         }
+
+        protected void SetCollapsed (bool value, bool instant = false) {
+            if (!Collapsible)
+                value = false;
+            if (value == _Collapsed)
+                return;
+
+            _Collapsed = value;
+            var targetValue = (float)(value ? 0 : 1);
+            if ((Context != null) && !instant) {
+                var nowL = Context.NowL;
+                DisclosureLevel = Tween.StartNow(
+                    from: DisclosureLevel.Get(nowL), to: targetValue, 
+                    seconds: DisclosureAnimationDuration, now: nowL,
+                    interpolator: Interpolators<float>.Cosine
+                );
+            } else
+                DisclosureLevel = new Tween<float>(targetValue);
+        }
+
         public bool Collapsible;
 
         public string Title;
@@ -167,7 +170,7 @@ namespace Squared.PRGUI.Controls {
         protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
             base.ComputeFixedSize(out fixedWidth, out fixedHeight);
 
-            var originalFixedHeight = fixedHeight ?? MostRecentTotalHeight;
+            var originalFixedHeight = fixedHeight ?? MostRecentFullSize?.Height;
 
             if (Collapsible && originalFixedHeight.HasValue) {
                 var level = DisclosureLevel.Get(Context.NowL);
@@ -191,7 +194,7 @@ namespace Squared.PRGUI.Controls {
                 (DisclosureLevel.Get(Context.NowL) >= 1)
             ) {
                 var box = GetRect(context.Layout);
-                MostRecentTotalHeight = box.Height;
+                MostRecentFullSize = box;
             }
         }
 
@@ -261,8 +264,9 @@ namespace Squared.PRGUI.Controls {
             b = b.Rotate(radians);
             c = c.Rotate(radians);
             var offset = new Vector2(settings.Box.Left + pad + centering, settings.Box.Top + ySpace + centering);
-            var color = Color.White;
-            var outlineColor = Color.Black * 0.8f;
+            var alpha = DisclosureArrowHitTest(context.MousePosition - settings.Box.Position) ? 1.0f : 0.75f;
+            var color = Color.White * alpha;
+            var outlineColor = Color.Black * (0.8f * alpha);
 
             renderer.RasterizeTriangle(
                 a + offset, b + offset, c + offset,
