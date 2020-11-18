@@ -298,7 +298,7 @@ namespace Squared.PRGUI {
                 displacement.Y = Math.Min(Math.Abs(displacement.Y), speedY) * Math.Sign(displacement.Y);
                 var newOffset = currentScrollOffset + displacement;
                 if (newOffset != scrollContext.ScrollOffset)
-                    scrollContext.TrySetScrollOffset(newOffset, false); // FIXME: true?
+                    scrollContext.TrySetScrollOffset(newOffset, true);
                 return true;
             }
 
