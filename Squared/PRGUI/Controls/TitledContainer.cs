@@ -9,13 +9,37 @@ using Squared.PRGUI.Decorations;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
+using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public class TitledContainer : Container {
-        public const float DisclosureArrowSize = 14, 
-            DisclosureArrowPadding = DisclosureArrowSize + 12;
+        public const float MinDisclosureArrowSize = 13,
+            DisclosureArrowMargin = 12,
+            DisclosureArrowRotateDuration = 0.15f,
+            DisclosureArrowSizeMultiplier = 0.375f;
 
-        public bool Collapsed;
+        private bool _Collapsed;
+        public bool Collapsed {
+            get => _Collapsed;
+            set {
+                if (!Collapsible)
+                    value = false;
+                if (value == _Collapsed)
+                    return;
+
+                _Collapsed = value;
+                var targetAngle = (float)(value ? -0.5 * Math.PI : 0);
+                if (Context != null) {
+                    var nowL = Context.NowL;
+                    DisclosureArrowAngle = Tween.StartNow(
+                        from: DisclosureArrowAngle.Get(nowL), to: targetAngle, 
+                        seconds: DisclosureArrowRotateDuration, now: nowL,
+                        interpolator: Interpolators<float>.Cosine
+                    );
+                } else
+                    DisclosureArrowAngle = new Tween<float>(targetAngle);
+            }
+        }
         public bool Collapsible;
 
         public string Title;
@@ -26,10 +50,15 @@ namespace Squared.PRGUI.Controls {
 
         protected RectF MostRecentTitleBox;
 
+        private Tween<float> DisclosureArrowAngle;
+
         public TitledContainer ()
             : base () {
             AcceptsMouseInput = true;
         }
+
+        protected float DisclosureArrowSize => Math.Max(MinDisclosureArrowSize, MostRecentHeaderHeight * DisclosureArrowSizeMultiplier);
+        protected float DisclosureArrowPadding => DisclosureArrowSize + DisclosureArrowMargin;
 
         protected override bool HideChildren => Collapsible && Collapsed;
 
@@ -163,12 +192,10 @@ namespace Squared.PRGUI.Controls {
                         b = new Vector2(DisclosureArrowSize, DisclosureArrowSize) + a,
                         c = new Vector2((a.X + b.X) / 2f, b.Y);
                     b.Y = a.Y;
-                    if (Collapsed) {
-                        var radians = (float)(Math.PI * -0.5);
-                        a = a.Rotate(radians);
-                        b = b.Rotate(radians);
-                        c = c.Rotate(radians);
-                    }
+                    var radians = DisclosureArrowAngle.Get(context.NowL);
+                    a = a.Rotate(radians);
+                    b = b.Rotate(radians);
+                    c = c.Rotate(radians);
                     var offset = new Vector2(settings.Box.Left + pad + centering, settings.Box.Top + ySpace + centering);
                     var color = Color.White;
                     var outlineColor = Color.Black * 0.8f;
