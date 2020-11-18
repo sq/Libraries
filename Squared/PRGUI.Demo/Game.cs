@@ -71,7 +71,7 @@ namespace PRGUI.Demo {
             IsFixedTimeStep = false;
 
             if (IsFixedTimeStep)
-                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 10f);
+                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 5f);
 
             PreviousKeyboardState = Keyboard.GetState();
 

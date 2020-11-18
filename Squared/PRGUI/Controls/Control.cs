@@ -23,9 +23,10 @@ namespace Squared.PRGUI {
 
     public interface IScrollableControl {
         bool AllowDragToScroll { get; }
-        Vector2 ScrollOffset { get; set; }
+        Vector2 ScrollOffset { get; }
         Vector2? MinScrollOffset { get; }
         Vector2? MaxScrollOffset { get; }
+        bool TrySetScrollOffset (Vector2 value, bool forUser);
     }
 
     public interface IPostLayoutListener {

@@ -296,7 +296,9 @@ namespace Squared.PRGUI {
                 }
                 displacement.X = Math.Min(Math.Abs(displacement.X), speedX) * Math.Sign(displacement.X);
                 displacement.Y = Math.Min(Math.Abs(displacement.Y), speedY) * Math.Sign(displacement.Y);
-                scrollContext.ScrollOffset = currentScrollOffset + displacement;
+                var newOffset = currentScrollOffset + displacement;
+                if (newOffset != scrollContext.ScrollOffset)
+                    scrollContext.TrySetScrollOffset(newOffset, false); // FIXME: true?
                 return true;
             }
 
@@ -666,7 +668,7 @@ namespace Squared.PRGUI {
 
             if (!DragToScrollTarget.AllowDragToScroll) {
                 if (DragToScrollInitialOffset.HasValue) {
-                    DragToScrollTarget.ScrollOffset = DragToScrollInitialOffset.Value;
+                    DragToScrollTarget.TrySetScrollOffset(DragToScrollInitialOffset.Value, false);
                     DragToScrollTarget = null;
                     DragToScrollInitialOffset = null;
                 }
@@ -694,11 +696,9 @@ namespace Squared.PRGUI {
                 newOffset = DragToScrollInitialOffset.Value;
             }
 
-            DragToScrollTarget.ScrollOffset = newOffset;
-
-            if (newOffset != DragToScrollInitialOffset)
-                return true;
-            else
+            if (newOffset != DragToScrollInitialOffset) {
+                return DragToScrollTarget.TrySetScrollOffset(newOffset, true);
+            } else
                 return false;
         }
 

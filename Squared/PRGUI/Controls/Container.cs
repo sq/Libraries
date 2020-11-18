@@ -54,24 +54,31 @@ namespace Squared.PRGUI.Controls {
             };
         }
 
+        private Vector2 DesiredScrollOffset;
+
+        public bool TrySetScrollOffset (Vector2 value, bool forUserInput) {
+            if (!CanScrollVertically)
+                value.Y = 0;
+            if (!Scrollable)
+                value = Vector2.Zero;
+            if (forUserInput && (value != DesiredScrollOffset))
+                DesiredScrollOffset = value;
+            value = ConstrainNewScrollOffset(value);
+            if (value == _ScrollOffset)
+                return false;
+
+            // Console.WriteLine("ScrollOffset {0} -> {1}", _ScrollOffset, value);
+            _ScrollOffset = value;
+            OnDisplayOffsetChanged();
+            return true;
+        }
+
         public Vector2 ScrollOffset {
             get {
                 return _ScrollOffset;
             }
             set {
-                if (!CanScrollVertically)
-                    value.Y = 0;
-                if (!Scrollable)
-                    value = Vector2.Zero;
-                if (value == _ScrollOffset)
-                    return;
-                value = ConstrainNewScrollOffset(value);
-                if (value == _ScrollOffset)
-                    return;
-
-                // Console.WriteLine("ScrollOffset {0} -> {1}", _ScrollOffset, value);
-                _ScrollOffset = value;
-                OnDisplayOffsetChanged();
+                TrySetScrollOffset(value, false);
             }
         }
 
@@ -107,7 +114,7 @@ namespace Squared.PRGUI.Controls {
             so.Y = so.Y - delta;
             so = ConstrainNewScrollOffset(so);
             if (so != ScrollOffset) {
-                ScrollOffset = so;
+                TrySetScrollOffset(so, true);
                 return true;
             } else {
                 return false;
@@ -140,7 +147,7 @@ namespace Squared.PRGUI.Controls {
             var hScrollProcessed = ShowHorizontalScrollbar && scroll.OnMouseEvent(settings, ref HScrollbar, name, args);
             var vScrollProcessed = ShowVerticalScrollbar && scroll.OnMouseEvent(settings, ref VScrollbar, name, args);
 
-            ScrollOffset = ConstrainNewScrollOffset(new Vector2(HScrollbar.Position, VScrollbar.Position));
+            TrySetScrollOffset(ConstrainNewScrollOffset(new Vector2(HScrollbar.Position, VScrollbar.Position)), true);
             // Update the scrollbar state again because we may have clamped the offsets
             HScrollbar.Position = ScrollOffset.X;
             VScrollbar.Position = ScrollOffset.Y;
@@ -249,9 +256,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected bool GetContentBounds (UIContext context, out RectF contentBounds) {
-            if (!HasContentBounds)
-                HasContentBounds = context.Layout.TryMeasureContent(LayoutKey, out ContentBounds);
-
+            // FIXME
+            //if (!HasContentBounds)
+            HasContentBounds = context.Layout.TryMeasureContent(LayoutKey, out ContentBounds);
             contentBounds = ContentBounds;
             return HasContentBounds;
         }
@@ -316,7 +323,7 @@ namespace Squared.PRGUI.Controls {
                     maxScrollY = Math.Max(0, maxScrollY);
                     MinScrollOffset = Vector2.Zero;
                     MaxScrollOffset = new Vector2(maxScrollX, maxScrollY);
-                    ScrollOffset = ScrollOffset;
+                    TrySetScrollOffset(DesiredScrollOffset, false);
 
                     CanScrollUp = ScrollOffset.Y > 0;
                     CanScrollDown = ScrollOffset.Y < maxScrollY;
@@ -333,7 +340,7 @@ namespace Squared.PRGUI.Controls {
 
                 HScrollbar.HasCounterpart = VScrollbar.HasCounterpart = (ShowHorizontalScrollbar && ShowVerticalScrollbar);
             } else {
-                ScrollOffset = Vector2.Zero;
+                TrySetScrollOffset(Vector2.Zero, false);
             }
         }
 

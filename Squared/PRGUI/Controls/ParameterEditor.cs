@@ -29,8 +29,8 @@ namespace Squared.PRGUI.Controls {
 
         // FIXME: Use a decorator for this?
         public const float ArrowWidth = 10,
-            ArrowHeight = 17,
-            ArrowPadding = ArrowWidth + 8;
+            ArrowHeight = 18,
+            ArrowPadding = ArrowWidth + 4;
 
         private bool _HasValue;
         private T _Value;

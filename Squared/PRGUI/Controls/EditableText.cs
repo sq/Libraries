@@ -1039,8 +1039,15 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        Vector2 IScrollableControl.ScrollOffset => throw new NotImplementedException();
+
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {
             sb.Append(Text);
+        }
+
+        bool IScrollableControl.TrySetScrollOffset (Vector2 value, bool forUser) {
+            ScrollOffset = value;
+            return true;
         }
     }
 }
