@@ -1022,10 +1022,13 @@ namespace Squared.PRGUI.Decorations {
             var color1 = (pSRGBColor)(containsFocus ? TitleFillColor : TitleFillColor.ToGrayscale(0.85f));
             var color2 = color1.ToVector4() * 0.8f;
             color2.W = 1;
-            var cornerRadius = FloatingContainerCornerRadius ?? ContainerCornerRadius;
+            float cornerRadius = FloatingContainerCornerRadius ?? ContainerCornerRadius,
+                cornerRadius2 = settings.State.IsFlagged(ControlStates.Pressed) // HACK: When collapsed, round all corners
+                    ? cornerRadius
+                    : 0;
             renderer.RasterizeRectangle(
                 a, b,
-                radiusCW: new Vector4(cornerRadius, cornerRadius, 0, 0),
+                radiusCW: new Vector4(cornerRadius, cornerRadius, cornerRadius2, cornerRadius2),
                 outlineRadius: 0, outlineColor: Color.Transparent,
                 innerColor: color1, outerColor: color2,
                 fillMode: RasterFillMode.Vertical,

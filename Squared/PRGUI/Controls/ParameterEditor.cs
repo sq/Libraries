@@ -179,7 +179,7 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
-        void DrawArrow (ref ImperativeRenderer renderer, RectF box, bool facingRight) {
+        void RasterizeArrow (ref ImperativeRenderer renderer, RectF box, bool facingRight) {
             Vector2 a = !facingRight ? box.Extent : box.Position,
                 b = !facingRight 
                     ? new Vector2(box.Position.X, box.Center.Y)
@@ -197,7 +197,7 @@ namespace Squared.PRGUI.Controls {
                     alpha = 0.6f;
 
             renderer.RasterizeTriangle(
-                a, b, c, radius: 0f, outlineRadius: 1f,
+                a, b, c, radius: 0f, outlineRadius: 1.1f,
                 innerColor: Color.White * alpha, outerColor: Color.White * alpha, 
                 outlineColor: Color.Black * (0.8f * alpha)
             );
@@ -266,8 +266,8 @@ namespace Squared.PRGUI.Controls {
             if (!Increment.HasValue)
                 return;
 
-            DrawArrow(ref renderer, ComputeArrowBox(settings.ContentBox, false), false);
-            DrawArrow(ref renderer, ComputeArrowBox(settings.ContentBox, true), true);
+            RasterizeArrow(ref renderer, ComputeArrowBox(settings.ContentBox, false), false);
+            RasterizeArrow(ref renderer, ComputeArrowBox(settings.ContentBox, true), true);
         }
 
         private bool Adjust (bool positive, bool fast) {

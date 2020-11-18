@@ -159,7 +159,10 @@ namespace Squared.PRGUI.Controls {
 
                 return true;
             } else if (name == UIEvents.Click) {
-                if (CollapsingEnabled || Collapsed)
+                if (
+                    Collapsed ||
+                    (CollapsingEnabled && DisclosureArrowHitTest(args.RelativeGlobalPosition - args.Box.Position))
+                )
                     ToggleCollapsed();
                 return true;
             }
