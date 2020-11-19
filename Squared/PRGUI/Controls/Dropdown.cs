@@ -15,7 +15,7 @@ using Squared.Util.Text;
 namespace Squared.PRGUI.Controls {
     public delegate Control CreateControlForValueDelegate<T> (ref T value, Control existingControl);
 
-    public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget, IMenuListener {
+    public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget, IMenuListener, IValueControl<T> {
         public IEqualityComparer<T> Comparer;
         public readonly List<T> Items = new List<T>();
         private readonly Menu ItemsMenu = new Menu {
@@ -60,6 +60,11 @@ namespace Squared.PRGUI.Controls {
                 else
                     return GetValueText();
             }
+        }
+
+        T IValueControl<T>.Value {
+            get => SelectedItem;
+            set => SelectedItem = value;
         }
 
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {

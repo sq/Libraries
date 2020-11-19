@@ -19,7 +19,7 @@ namespace Squared.PRGUI.Controls {
         bool DoubleOnly { get; set; }
     }
 
-    public class ParameterEditor<T> : EditableText, IParameterEditor
+    public class ParameterEditor<T> : EditableText, IParameterEditor, IValueControl<T>
         where T : struct, IComparable<T> {
 
         public const double NormalAccelerationMultiplier = 1.0,

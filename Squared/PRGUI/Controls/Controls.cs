@@ -19,6 +19,10 @@ using Squared.Util.Event;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
+    public interface IValueControl<T> {
+        T Value { get; set; }
+    }
+
     public class Spacer : Control {
         protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) => false;
         protected override bool OnEvent<T> (string name, T args) => false;
@@ -81,7 +85,7 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public class Checkbox : StaticTextBase {
+    public class Checkbox : StaticTextBase, IValueControl<bool> {
         public bool Checked;
 
         new public DynamicStringLayout Content => base.Content;
@@ -97,6 +101,11 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = true;
             AcceptsFocus = true;
             Wrap = false;
+        }
+
+        bool IValueControl<bool>.Value {
+            get => Checked;
+            set => Checked = value;
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
@@ -130,7 +139,7 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public class RadioButton : StaticTextBase {
+    public class RadioButton : StaticTextBase, IValueControl<bool> {
         private bool _Checked, _SubscriptionPending;
         public string GroupId;
 
@@ -168,6 +177,11 @@ namespace Squared.PRGUI.Controls {
                     FireEvent(UIEvents.CheckedChanged);
                 }
             }
+        }
+
+        bool IValueControl<bool>.Value {
+            get => Checked;
+            set => Checked = value;
         }
 
         protected override void InitializeForContext () {

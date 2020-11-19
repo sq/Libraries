@@ -15,7 +15,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget {
+    public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, IValueControl<string> {
         public const int ControlMinimumWidth = 300;
 
         public static readonly Menu ContextMenu = new Menu {
@@ -1066,6 +1066,11 @@ namespace Squared.PRGUI.Controls {
             get => true;
             set {
             }
+        }
+
+        string IValueControl<string>.Value {
+            get => Text;
+            set => Text = value;
         }
 
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {

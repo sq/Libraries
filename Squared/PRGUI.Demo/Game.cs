@@ -252,13 +252,12 @@ namespace PRGUI.Demo {
                 BackgroundImage = TextureLoader.Load("volume")
             };
 
-            var windowBgColor = new Color(70, 86, 90);
-            var window = new ControlBuilder<Window>(new Window())
-                .SetBackgroundColor(windowBgColor)
+            var window = ContainerBuilder.New<Window>();
+            window.Properties
+                .SetBackgroundColor(new Color(70, 86, 90))
                 .SetTitle("Floating Panel")
                 .SetPaintOrder(1)
-                .SetCollapsible(true)
-                .Children<Window>();
+                .SetCollapsible(true);
 
             window.New<StaticText>()
                 .SetText("→")

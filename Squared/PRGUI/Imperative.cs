@@ -9,6 +9,13 @@ using Squared.PRGUI.Layout;
 using Squared.Util;
 
 namespace Squared.PRGUI.Imperative {
+    public static class ContainerBuilder {
+        public static ContainerBuilder<TContainer> New<TContainer> ()
+            where TContainer : Control, IControlContainer, new() {
+            return new ContainerBuilder<TContainer>(new TContainer());
+        }
+    }
+
     public struct ContainerBuilder<TContainer>
         where TContainer : Control, IControlContainer
     {
@@ -49,12 +56,12 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> Data<TControl, TData> (TData data)
-            where TControl : Control {
+            where TControl : Control, new() {
             return Data<TControl, TData>(null, data);
         }
 
         public ControlBuilder<TControl> Data<TControl, TData> (string key, TData data)
-            where TControl : Control {
+            where TControl : Control, new() {
 
             TControl instance = null;
             if (ControlsByType.TryGetValue(typeof(TControl), out List<Control> list)) {
@@ -68,7 +75,7 @@ namespace Squared.PRGUI.Imperative {
             }
 
             if (instance == null)
-                instance = Activator.CreateInstance<TControl>();
+                instance = new TControl();
 
             instance.Data.Set<TData>(key, data);
 
@@ -77,10 +84,10 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> New<TControl> ()
-            where TControl : Control {
+            where TControl : Control, new() {
             var instance = (NextIndex < ChildBuffer.Count)
                 ? ChildBuffer[NextIndex] as TControl
-                : Activator.CreateInstance<TControl>();
+                : new TControl();
 
             AddInternal(instance);
             return new ControlBuilder<TControl>(instance);
@@ -107,6 +114,18 @@ namespace Squared.PRGUI.Imperative {
             foreach (var child in children)
                 AddInternal(child);
             return this;
+        }
+
+        public ControlBuilder<TContainer> Properties {
+            get => new ControlBuilder<TContainer>(Control);
+        }
+    }
+
+    public static class ControlBuilder {
+        public static ControlBuilder<TControl> New<TControl> () 
+            where TControl : Control, new()
+        {
+            return new ControlBuilder<TControl>(new TControl());
         }
     }
 
@@ -259,6 +278,12 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> SetValue<TValue> (TValue value) {
+            var cast = (Control as IValueControl<TValue>);
+            if (cast != null)
+                cast.Value = value;
+            return this;
+        }
         public ControlBuilder<TControl> SetText (string value) {
             var cast1 = (Control as StaticTextBase);
             cast1?.SetText(value);
