@@ -17,12 +17,15 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public interface IControlContainer {
+        bool ClipChildren { get; set; }
+        ControlFlags ContainerFlags { get; set; }
         ControlCollection Children { get; }
         void DescendantReceivedFocus (Control descendant, bool isUserInitiated);
     }
 
     public interface IScrollableControl {
         bool AllowDragToScroll { get; }
+        bool Scrollable { get; set; }
         Vector2 ScrollOffset { get; }
         Vector2? MinScrollOffset { get; }
         Vector2? MaxScrollOffset { get; }
@@ -75,6 +78,12 @@ namespace Squared.PRGUI {
         public struct ControlDataCollection : IEnumerable<KeyValuePair<string, object>> {
             Dictionary<ControlDataKey, object> Data;
 
+            public void Clear () {
+                if (Data == null)
+                    return;
+                Data.Clear();
+            }
+
             public T Get<T> (string name = null) {
                 return Get(name, default(T));
             }
@@ -100,6 +109,23 @@ namespace Squared.PRGUI {
                 var key = new ControlDataKey { Type = typeof(T), Key = name };
                 Data[key] = value;
                 return true;
+            }
+
+            public bool Remove<T> (string name) {
+                if (Data == null)
+                    return false;
+                var key = new ControlDataKey { Type = typeof(T), Key = name };
+                return Data.Remove(key);
+            }
+
+            public bool UpdateOrCreate<TExisting, TNew> (string name, TExisting expected, TNew replacement)
+                where TExisting : IEquatable<TExisting>
+            {
+                if ((Data == null) && !Get<TExisting>(name).Equals(expected))
+                    return false;
+
+                Remove<TExisting>(name);
+                return Set(name, replacement);
             }
 
             public void Add<T> (string name, T value) {

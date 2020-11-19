@@ -17,9 +17,8 @@ namespace Squared.PRGUI.Controls {
         /// <summary>
         /// If set, children will only be rendered within the volume of this container
         /// </summary>
-        public bool ClipChildren;
-
-        public bool Scrollable = false;
+        public bool ClipChildren { get; set; } = false;
+        public bool Scrollable { get; set; } = false;
         public bool ShowVerticalScrollbar = true, ShowHorizontalScrollbar = true;
 
         private Vector2 _ScrollOffset;
@@ -34,7 +33,9 @@ namespace Squared.PRGUI.Controls {
         Vector2? IScrollableControl.MinScrollOffset => MinScrollOffset;
         Vector2? IScrollableControl.MaxScrollOffset => MaxScrollOffset;
 
-        public ControlFlags ContainerFlags = ControlFlags.Container_Align_Start | ControlFlags.Container_Row | ControlFlags.Container_Wrap;
+        public ControlFlags ContainerFlags { get; set; } =
+            ControlFlags.Container_Align_Start | ControlFlags.Container_Row | 
+            ControlFlags.Container_Wrap;
 
         protected ScrollbarState HScrollbar, VScrollbar;
         protected bool HasContentBounds, CanScrollVertically;

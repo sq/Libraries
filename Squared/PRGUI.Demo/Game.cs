@@ -14,6 +14,7 @@ using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI;
 using Squared.PRGUI.Controls;
+using Squared.PRGUI.Imperative;
 using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
@@ -252,22 +253,27 @@ namespace PRGUI.Demo {
             };
 
             var windowBgColor = new Color(70, 86, 90);
-            FloatingWindow = new Window {
-                BackgroundColor = windowBgColor,
-                // MinimumWidth = 800,
-                // MinimumHeight = 240,
-                Title = "Floating Panel",
-                Children = {
-                    new StaticText { Text = "→", FocusBeneficiary = textfield, TooltipContent = "Clicking this label will focus the textfield" },
-                    textfield,
-                    numberField,
-                    volumeSlider,
-                    hideButton,
-                    toppleButton,
-                },
-                PaintOrder = 1,
-                Collapsible = true
-            };
+            var window = new ControlBuilder<Window>(new Window())
+                .SetBackgroundColor(windowBgColor)
+                .SetTitle("Floating Panel")
+                .SetPaintOrder(1)
+                .SetCollapsible(true)
+                .Children<Window>();
+
+            window.New<StaticText>()
+                .SetText("→")
+                .SetFocusBeneficiary(textfield)
+                .SetTooltip("Clicking this label will focus the textfield");
+
+            window.AddRange(
+                textfield,
+                numberField,
+                volumeSlider,
+                hideButton,
+                toppleButton
+            );
+
+            FloatingWindow = window;
 
             var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
                 DefaultFont = Font,

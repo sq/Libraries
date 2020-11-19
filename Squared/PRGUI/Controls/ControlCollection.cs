@@ -33,6 +33,11 @@ namespace Squared.PRGUI {
                 destination.Add(item);
         }
 
+        public void AddRange (IEnumerable<Control> source) {
+            foreach (var control in source)
+                Add(control);
+        }
+
         public void AddRange (List<Control> source, int offset, int count) {
             if (offset < 0)
                 throw new ArgumentOutOfRangeException("offset");
@@ -68,6 +73,9 @@ namespace Squared.PRGUI {
         }
 
         private void UpdateIndexTable (int startIndex) {
+            if (startIndex < 0)
+                throw new ArgumentOutOfRangeException("startIndex");
+
             while (startIndex < Items.Count) {
                 var control = Items[startIndex];
                 IndexTable[control] = startIndex;
@@ -88,9 +96,9 @@ namespace Squared.PRGUI {
             var control = Items[index];
             var deleteAtIndex = IndexTable[control];
             Context?.NotifyControlBeingRemoved(control);
-            Items.RemoveAt(deleteAtIndex);
+            Items.RemoveAt(index);
             control.UnsetParent(Parent);
-            UpdateIndexTable(deleteAtIndex);
+            UpdateIndexTable(index);
         }
 
         public int IndexOf (Control control) {

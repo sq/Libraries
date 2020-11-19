@@ -113,6 +113,10 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        internal void SetText (AbstractString text) {
+            Text = text;
+        }
+
         protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
             base.ComputeFixedSize(out fixedWidth, out fixedHeight);
             /*
