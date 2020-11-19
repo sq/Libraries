@@ -141,8 +141,10 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ContainerBuilder<TContainer> Children<TContainer> ()
-            where TContainer : Control, IControlContainer {
+            where TContainer : TControl, IControlContainer {
             var cast = Control as TContainer;
+            if (cast == null)
+                throw new InvalidCastException();
             return new ContainerBuilder<TContainer>(cast);
         }
 
@@ -177,20 +179,17 @@ namespace Squared.PRGUI.Imperative {
 
         public ControlBuilder<TControl> SetContainerFlags (ControlFlags value) {
             var cast = (Control as IControlContainer);
-            if (cast != null)
-                cast.ContainerFlags = value;
+            cast.ContainerFlags = value;
             return this;
         }
         public ControlBuilder<TControl> SetClipChildren (bool value) {
             var cast = (Control as IControlContainer);
-            if (cast != null)
-                cast.ClipChildren = value;
+            cast.ClipChildren = value;
             return this;
         }
         public ControlBuilder<TControl> SetScrollable (bool value) {
             var cast = (Control as IScrollableControl);
-            if (cast != null)
-                cast.Scrollable = value;
+            cast.Scrollable = value;
             return this;
         }
 
@@ -278,10 +277,33 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> SetIntegral (bool value) {
+            var cast = (Control as Slider);
+            cast.Integral = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetRange<TValue> (TValue? min = null, TValue? max = null)
+            where TValue : struct, IComparable<TValue>
+        {
+            var cast1 = (Control as ParameterEditor<TValue>);
+            if (cast1 != null) {
+                cast1.Minimum = min;
+                cast1.Maximum = max;
+            }
+
+            var cast2 = (Control as Slider);
+            if (cast2 != null) {
+                if (min.HasValue)
+                    cast2.Minimum = (float)(object)min;
+                if (max.HasValue)
+                    cast2.Maximum = (float)(object)max;
+            }
+
+            return this;
+        }
         public ControlBuilder<TControl> SetValue<TValue> (TValue value) {
             var cast = (Control as IValueControl<TValue>);
-            if (cast != null)
-                cast.Value = value;
+            cast.Value = value;
             return this;
         }
         public ControlBuilder<TControl> SetText (string value) {
@@ -297,7 +319,7 @@ namespace Squared.PRGUI.Imperative {
 
         public ControlBuilder<TControl> AddChildren (params Control[] children) {
             var cast = (Control as IControlContainer);
-            cast?.Children.AddRange(children);
+            cast.Children.AddRange(children);
             return this;
         }
     }
