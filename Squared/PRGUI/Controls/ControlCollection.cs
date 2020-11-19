@@ -4,12 +4,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Squared.Util;
 
 namespace Squared.PRGUI {
     public class ControlCollection : IEnumerable<Control> {
         private List<Control> PaintOrderedItems = new List<Control>(),
             TabOrderedItems = new List<Control>();
         private List<Control> Items = new List<Control>();
+        private Dictionary<Control, int> IndexTable = 
+            new Dictionary<Control, int>(new ReferenceComparer<Control>());
 
         public int Count => Items.Count;
         public Control Parent { get; private set; }
@@ -30,35 +33,77 @@ namespace Squared.PRGUI {
                 destination.Add(item);
         }
 
+        public void AddRange (List<Control> source, int offset, int count) {
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException("offset");
+            else if (offset >= source.Count)
+                throw new ArgumentOutOfRangeException("offset");
+            else if (count < 0)
+                throw new ArgumentOutOfRangeException("count");
+            else if (count > source.Count)
+                throw new ArgumentOutOfRangeException("count");
+
+            for (int i = 0; i < count; i++) {
+                int j = i + offset;
+                if (j >= source.Count)
+                    throw new ArgumentOutOfRangeException("count");
+
+                var control = source[j];
+                Add(control);
+            }
+        }
+
         public void Add (Control control) {
-            if (Items.Contains(control))
+            if (IndexTable.ContainsKey(control))
                 throw new InvalidOperationException("Control already in collection");
 
             if (Parent != null)
                 control.SetParent(Parent);
             else
                 control.SetContext(Context);
+
+            var newIndex = Items.Count;
             Items.Add(control);
+            IndexTable[control] = newIndex;
+        }
+
+        private void UpdateIndexTable (int startIndex) {
+            while (startIndex < Items.Count) {
+                var control = Items[startIndex];
+                IndexTable[control] = startIndex;
+                startIndex++;
+            }
         }
 
         public void Remove (Control control) {
+            var deleteAtIndex = IndexTable[control];
             Context?.NotifyControlBeingRemoved(control);
             control.UnsetParent(Parent);
-            Items.Remove(control);
+            Items.RemoveAt(deleteAtIndex);
+            IndexTable.Remove(control);
+            UpdateIndexTable(deleteAtIndex);
         }
 
         public void RemoveAt (int index) {
             var control = Items[index];
+            var deleteAtIndex = IndexTable[control];
             Context?.NotifyControlBeingRemoved(control);
-            Items.RemoveAt(index);
+            Items.RemoveAt(deleteAtIndex);
             control.UnsetParent(Parent);
+            UpdateIndexTable(deleteAtIndex);
         }
 
         public int IndexOf (Control control) {
-            return Items.IndexOf(control);
+            if (control == null)
+                return -1;
+            if (!IndexTable.TryGetValue(control, out int result))
+                return -1;
+            return result;
         }
 
         public void Clear () {
+            IndexTable.Clear();
+
             foreach (var control in Items) {
                 Context?.NotifyControlBeingRemoved(control);
                 control.UnsetParent(Parent);
@@ -72,7 +117,10 @@ namespace Squared.PRGUI {
         }
 
         public bool Contains (Control control) {
-            return Items.Contains(control);
+            if (control == null)
+                return false;
+
+            return IndexTable.ContainsKey(control);
         }
 
         public Control this[int index] {

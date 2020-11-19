@@ -120,7 +120,8 @@ namespace Squared.PRGUI.Controls {
                     Context.ReleaseDescendantFocus(this, true);
                 // A click on the collapse arrow should still focus our parent if necessary
                 if (TryGetParent(out Control parent) && (Context.Focused == null))
-                    Context.TrySetFocus(parent);
+                    // HACK: If we make this user initiated it can uncollapse us, which sucks
+                    Context.TrySetFocus(parent, isUserInitiated: false);
 
                 return true;
             }

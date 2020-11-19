@@ -474,7 +474,15 @@ namespace Squared.PRGUI {
                 return RotateFocus(true, forward ? 1 : -1, isUserInitiated);
             
             var chain = Focused;
-            while (true) {
+            while (chain != null) {
+                // If focus memory points to this control we're defocusing, clear it
+                foreach (var control in Controls) {
+                    if (!TopLevelFocusMemory.TryGetValue(control, out Control memory))
+                        continue;
+                    if (chain == memory)
+                        TopLevelFocusMemory.Remove(control);
+                }
+
                 if (chain == container) {
                     if (!RotateFocusFrom(container, forward ? 1 : -1, isUserInitiated)) {
                         if (forward)
@@ -489,6 +497,8 @@ namespace Squared.PRGUI {
                     return false;
                 chain = parent;
             }
+
+            return false;
         }
 
         public void ReleaseCapture (Control target, Control focusDonor) {

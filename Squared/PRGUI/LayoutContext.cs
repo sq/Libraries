@@ -416,7 +416,7 @@ namespace Squared.PRGUI.Layout {
 
             if (pItem->FirstChild.IsInvalid) {
                 result = default(RectF);
-                return false;
+                return true;
             }
 
             foreach (var child in Children(pItem)) {
