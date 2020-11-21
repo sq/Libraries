@@ -170,6 +170,7 @@ namespace Squared.Render.Text {
         public float               xOffsetOfWrappedLine;
         public float               xOffsetOfNewLine;
         public float?              lineBreakAtX;
+        public float?              stopAtY;
         public bool                characterWrap;
         public bool                wordWrap;
         public char                wrapCharacter;
@@ -677,6 +678,9 @@ namespace Squared.Render.Text {
                     characterOffset.X = Math.Max(characterOffset.X, 0);
                     characterOffsetUnconstrained.X = Math.Max(characterOffsetUnconstrained.X, 0);
                 }
+
+                if (stopAtY.HasValue && (characterOffset.Y >= stopAtY))
+                    suppress = true;
 
                 if (characterSkipCount <= 0) {
                     if (characterLimit.HasValue && characterLimit.Value <= 0)

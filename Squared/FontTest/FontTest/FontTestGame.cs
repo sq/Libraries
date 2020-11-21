@@ -184,6 +184,7 @@ namespace FontTest {
 
             Text.Position = TopLeft;
             Text2.LineBreakAtX = Text.LineBreakAtX = BottomRight.X - TopLeft.X;
+            Text2.StopAtY = Text.StopAtY = BottomRight.Y - TopLeft.Y;
             Text.WrapIndentation = Text2.WrapIndentation = Indent.Value ? 64 : 0;
 
             ir.OutlineRectangle(new Bounds(TopLeft, BottomRight), Color.Red);

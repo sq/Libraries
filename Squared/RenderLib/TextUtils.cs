@@ -30,6 +30,7 @@ namespace Squared.Render.Text {
         private float _XOffsetOfFirstLine = 0;
         private float _XOffsetOfNewLine = 0;
         private float? _LineBreakAtX = null;
+        private float? _StopAtY = null;
         private bool _WordWrap = false;
         private bool _CharacterWrap = true;
         private float _WrapIndentation = 0f;
@@ -276,6 +277,15 @@ namespace Squared.Render.Text {
             }
         }
 
+        public float? StopAtY {
+            get {
+                return _StopAtY;
+            }
+            set {
+                InvalidatingNullableAssignment(ref _StopAtY, value);
+            }
+        }
+
         public int LineLimit {
             get {
                 return _LineLimit;
@@ -424,6 +434,7 @@ namespace Squared.Render.Text {
                 xOffsetOfWrappedLine = _XOffsetOfNewLine + _WrapIndentation,
                 xOffsetOfNewLine = _XOffsetOfNewLine,
                 lineBreakAtX = _LineBreakAtX,
+                stopAtY = _StopAtY,
                 alignToPixels = _AlignToPixels,
                 characterWrap = _CharacterWrap,
                 wordWrap = _WordWrap,
