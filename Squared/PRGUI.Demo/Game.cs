@@ -118,7 +118,9 @@ namespace PRGUI.Demo {
         private void SetFontScale (float fontScale) {
             FiraSans.SizePoints = 20f * fontScale;
             NotoSans.SizePoints = 16f * fontScale;
-            NotoSans.VerticalOffset = -1f * fontScale;
+            // FIXME: The chinese glyphs are below the baseline, but with the recent baseline changes
+            //  the japanese glyphs no longer need an offset
+            // NotoSans.VerticalOffset = 0f * fontScale;
             Kenney.SizePoints = 17f * fontScale;
             TitleFont.SizePoints = 14f * fontScale;
             TooltipFont.SizePoints = 14f * fontScale;

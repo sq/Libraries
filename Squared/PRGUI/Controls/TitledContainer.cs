@@ -13,7 +13,7 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
     public class TitledContainer : Container {
-        public const float MinDisclosureArrowSize = 13,
+        public const float MinDisclosureArrowSize = 10,
             DisclosureArrowMargin = 16,
             DisclosureAnimationDuration = 0.175f,
             DisclosureArrowSizeMultiplier = 0.375f;
@@ -60,7 +60,10 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = true;
         }
 
-        protected float DisclosureArrowSize => Math.Max(MinDisclosureArrowSize, MostRecentHeaderHeight * DisclosureArrowSizeMultiplier);
+        protected float DisclosureArrowSize => (float)Math.Round(
+            Math.Max(MinDisclosureArrowSize, MostRecentHeaderHeight * DisclosureArrowSizeMultiplier), 
+            MidpointRounding.AwayFromZero
+        );
         protected float DisclosureArrowPadding => DisclosureArrowSize + DisclosureArrowMargin;
 
         protected override bool HideChildren => Collapsible && (DisclosureLevel.Get(Context.NowL) <= 0);
@@ -267,20 +270,25 @@ namespace Squared.PRGUI.Controls {
         private void RasterizeDisclosureArrow (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             var pad = (DisclosureArrowPadding - DisclosureArrowSize) / 2f;
             var ySpace = ((MostRecentHeaderHeight - DisclosureArrowSize) / 2f);
-            var centering = DisclosureArrowSize * 0.5f;
+            var centering = (float)(Math.Round(DisclosureArrowSize * 0.5f, MidpointRounding.AwayFromZero));
+            ySpace = (float)Math.Floor(ySpace);
+            settings.Box.SnapAndInset(out Vector2 tl, out Vector2 temp);
             Vector2 a = Vector2.One * -centering, b = new Vector2(DisclosureArrowSize, DisclosureArrowSize) + a, c = new Vector2((a.X + b.X) / 2f, b.Y);
             b.Y = a.Y;
             var radians = (1 - DisclosureLevel.Get(context.NowL)) * (float)(Math.PI * -0.5);
             a = a.Rotate(radians);
             b = b.Rotate(radians);
             c = c.Rotate(radians);
-            var offset = new Vector2(settings.Box.Left + pad + centering, settings.Box.Top + ySpace + centering);
-            var alpha = DisclosureArrowHitTest(context.MousePosition - settings.Box.Position) ? 1.0f : 0.75f;
+            var offset = new Vector2(tl.X + pad + centering, tl.Y + ySpace + centering);
+            var alpha = DisclosureArrowHitTest(context.MousePosition - tl) ? 1.0f : 0.75f;
             var color = Color.White * alpha;
             var outlineColor = Color.Black * (0.8f * alpha);
+            a += offset;
+            b += offset;
+            c += offset;
 
             renderer.RasterizeTriangle(
-                a + offset, b + offset, c + offset,
+                a, b, c,
                 radius: 1f, outlineRadius: 1.1f,
                 innerColor: color, outerColor: color,
                 outlineColor: outlineColor

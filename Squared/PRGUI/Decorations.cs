@@ -606,9 +606,10 @@ namespace Squared.PRGUI.Decorations {
             Button_Above(context, ref renderer, settings);
             var isPressed = settings.State.IsFlagged(ControlStates.Pressed);
             GetContentAdjustment_Button(context, settings.State, out Vector2 offset, out Vector2 scale);
+            settings.ContentBox.SnapAndInset(out Vector2 tl, out Vector2 br);
 
-            var ySpace = ((settings.ContentBox.Height - DropdownArrowHeight) / 2f);
-            var a = new Vector2(settings.ContentBox.Extent.X + DropdownArrowPadding + offset.X, settings.ContentBox.Top + ySpace + offset.Y);
+            var ySpace = (float)Math.Floor((settings.ContentBox.Height - DropdownArrowHeight) / 2f);
+            var a = new Vector2(br.X + DropdownArrowPadding + offset.X, tl.Y + ySpace + offset.Y);
             var b = a + new Vector2(DropdownArrowWidth, DropdownArrowHeight);
             var color = isPressed
                 ? Color.White
