@@ -16,7 +16,7 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string TestText =
-            "The $[quick]quick$[] $[brown]brown$[] fox jumped over the lazy dogs" +
+            "The $[quick]quick $[brown]brown$[] fox jumped over the lazy dogs" +
             "\r\nこの体は、無限のチェイサーで出来ていた" +
             "\r\n\r\nEmpty line before this one";
 
@@ -127,6 +127,10 @@ namespace FontTest {
                 ReverseOrder = true,
                 RichText = true,
                 RichTextConfiguration = new RichTextConfiguration {
+                    Styles = new Dictionary<string, RichStyle> {
+                        {"quick", new RichStyle { Color = Color.Yellow } },
+                        {"brown", new RichStyle { Color = Color.Brown, Scale = 2 } }
+                    }
                 }
             };
             Text2 = new DynamicStringLayout(ActiveFont, TestText2) {

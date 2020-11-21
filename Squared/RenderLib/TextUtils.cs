@@ -774,7 +774,7 @@ namespace Squared.Render.Text {
                     } else if ((Styles != null) && Styles.TryGetValue(command, out style)) {
                         glyphSource = style.GlyphSource ?? glyphSource;
                         layoutEngine.overrideColor = style.Color ?? initialColor;
-                        layoutEngine.scale = style.Scale ?? initialScale;
+                        layoutEngine.scale = style.Scale * initialScale ?? initialScale;
                     } else if ((Images != null) && Images.TryGetValue(command, out image)) {
                         // FIXME
                     } else {
