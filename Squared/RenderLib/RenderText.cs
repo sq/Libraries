@@ -435,7 +435,8 @@ namespace Squared.Render.Text {
 
         public ArraySegment<BitmapDrawCall> AppendText (
             IGlyphSource font, AbstractString text,
-            Dictionary<char, KerningAdjustment> kerningAdjustments = null
+            Dictionary<char, KerningAdjustment> kerningAdjustments = null,
+            int? start = null, int? end = null
         ) {
             if (!IsInitialized)
                 throw new InvalidOperationException("Call Initialize first");
@@ -461,7 +462,7 @@ namespace Squared.Render.Text {
             float x = 0;
             float? defaultLineSpacing = null;
 
-            for (int i = 0, l = text.Length; i < l; i++) {
+            for (int i = start ?? 0, l = Math.Min(end ?? text.Length, text.Length); i < l; i++) {
                 if (lineLimit.HasValue && lineLimit.Value <= 0)
                     suppress = true;
 

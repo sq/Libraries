@@ -352,5 +352,16 @@ namespace Squared.Util.Text {
             else
                 return null;
         }
+
+        public string Substring (int start, int count) {
+            if (String != null)
+                return String.Substring(start, count);
+            else if (StringBuilder != null)
+                return StringBuilder.ToString(start, count);
+            else if (ArraySegment.Array != null)
+                return new string(ArraySegment.Array, ArraySegment.Offset + start, count);
+            else
+                throw new ArgumentNullException("this");
+        }
     }
 }

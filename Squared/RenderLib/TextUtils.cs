@@ -16,6 +16,7 @@ namespace Squared.Render.Text {
         private StringLayout? _CachedStringLayout;
         private int _CachedGlyphVersion = -1;
 
+        private RichTextConfiguration _RichTextConfiguration;
         private Dictionary<char, KerningAdjustment> _KerningAdjustments; 
         private IGlyphSource _GlyphSource;
         private AbstractString _Text;
@@ -38,6 +39,7 @@ namespace Squared.Render.Text {
         private bool _ReverseOrder = false;
         private int _LineLimit = int.MaxValue;
         private bool _MeasureOnly = false;
+        private bool _RichText = false;
 
         private readonly Dictionary<Pair<int>, LayoutMarker> _Markers = new Dictionary<Pair<int>, LayoutMarker>();
         private readonly Dictionary<Vector2, LayoutHitTest> _HitTests = new Dictionary<Vector2, LayoutHitTest>();
@@ -283,6 +285,24 @@ namespace Squared.Render.Text {
             }
         }
 
+        public RichTextConfiguration RichTextConfiguration {
+            get {
+                return _RichTextConfiguration;
+            }
+            set {
+                InvalidatingValueAssignment(ref _RichTextConfiguration, value);
+            }
+        }
+
+        public bool RichText {
+            get {
+                return _RichText;
+            }
+            set {
+                InvalidatingValueAssignment(ref _RichText, value);
+            }
+        }
+
         public bool WordWrap {
             get {
                 return _WordWrap;
@@ -478,7 +498,10 @@ namespace Squared.Render.Text {
 
                 try {
                     le.Initialize();
-                    le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
+                    if (_RichText)
+                        _RichTextConfiguration.Append(ref le, _GlyphSource, _Text, _KerningAdjustments);
+                    else
+                        le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
 
                     _CachedGlyphVersion = _GlyphSource.Version;
                     _CachedStringLayout = le.Finish();
@@ -707,5 +730,90 @@ namespace Squared.Render.Text {
         public float CharacterSpacing;
         public float LineSpacing;
         public Color? DefaultColor;
+    }
+
+    public struct RichStyle {
+        public IGlyphSource GlyphSource;
+        public Color? Color;
+        public float? Scale;
+        // public float? Kerning;
+    }
+
+    public struct RichImage {
+        public AbstractTextureReference Texture;
+        public Bounds Bounds;
+    }
+
+    public struct RichTextConfiguration : IEquatable<RichTextConfiguration> {
+        public Dictionary<string, RichStyle> Styles;
+        public Dictionary<string, RichImage> Images;
+
+        public void Append (
+            ref StringLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, 
+            AbstractString text, Dictionary<char, KerningAdjustment> kerningAdjustments = null
+        ) {
+            var initialColor = layoutEngine.overrideColor;
+            var initialScale = layoutEngine.scale;
+            RichStyle style;
+            RichImage image;
+            var count = text.Length;
+            var currentRangeStart = 0;
+            IGlyphSource glyphSource = null;
+            for (int i = 0; i < count; i++) {
+                var ch = text[i];
+                var next = (i < count - 2) ? text[i + 1] : '\0';
+                if ((ch == '$') && (next == '[')) {
+                    AppendRange(ref layoutEngine, glyphSource ?? defaultGlyphSource, text, kerningAdjustments, currentRangeStart, i);
+                    var command = ParseCommand(text, ref i, ref currentRangeStart);
+                    if (command == null) {
+                        continue;
+                    } else if (string.IsNullOrWhiteSpace(command)) {
+                        glyphSource = null;
+                        layoutEngine.overrideColor = initialColor;
+                        layoutEngine.scale = initialScale;
+                    } else if ((Styles != null) && Styles.TryGetValue(command, out style)) {
+                        glyphSource = style.GlyphSource ?? glyphSource;
+                        layoutEngine.overrideColor = style.Color ?? initialColor;
+                        layoutEngine.scale = style.Scale ?? initialScale;
+                    } else if ((Images != null) && Images.TryGetValue(command, out image)) {
+                        // FIXME
+                    } else {
+                        ;
+                    }
+                }
+            }
+            AppendRange(ref layoutEngine, glyphSource ?? defaultGlyphSource, text,kerningAdjustments, currentRangeStart, count);
+        }
+
+        private void AppendRange (
+            ref StringLayoutEngine layoutEngine, IGlyphSource glyphSource, AbstractString text,
+            Dictionary<char, KerningAdjustment> kerningAdjustments, int rangeStart, int rangeEnd
+        ) {
+            if (rangeEnd <= rangeStart)
+                return;
+            layoutEngine.AppendText(glyphSource, text, kerningAdjustments, start: rangeStart, end: rangeEnd);
+        }
+
+        private string ParseCommand (AbstractString text, ref int i, ref int currentRangeStart) {
+            var count = text.Length;
+            var start = i + 2;
+            while (i < count) {
+                var ch = text[i];
+                if (ch == ']') {
+                    i++;
+                    currentRangeStart = i;
+                    return text.Substring(start, i - start - 1);
+                }
+                if (ch < ' ')
+                    return null;
+                i++;
+            }
+            return null;
+        }
+
+        public bool Equals (RichTextConfiguration other) {
+            return (Styles == other.Styles) &&
+                (Images == other.Images);
+        }
     }
 }
