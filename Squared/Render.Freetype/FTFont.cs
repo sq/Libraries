@@ -265,7 +265,8 @@ namespace Squared.Render.Text {
                     YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin + Font.VerticalOffset + VerticalOffset,
                     RectInTexture = rect,
                     LineSpacing = Font.Face.Size.Metrics.Height.ToSingle(),
-                    DefaultColor = nullableDefaultColor
+                    DefaultColor = nullableDefaultColor,
+                    Baseline = Font.Face.Size.Metrics.Ascender.ToSingle()
                 };
 
                 if (texRegion.Atlas != null) {

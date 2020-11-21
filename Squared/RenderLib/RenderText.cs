@@ -187,13 +187,14 @@ namespace Squared.Render.Text {
         public Bounds  firstCharacterBounds, lastCharacterBounds;
         public int     drawCallsWritten, drawCallsSuppressed;
         float          initialLineXOffset;
-        int            bufferWritePosition, wordStartWritePosition, lineSpacingAdjustmentStart;
+        int            bufferWritePosition, wordStartWritePosition, baselineAdjustmentStart;
         int            rowIndex, colIndex;
         bool           wordWrapSuppressed;
         float          currentLineMaxX, currentLineMaxXUnconstrained;
         float          currentLineWhitespaceMaxXLeft, currentLineWhitespaceMaxX;
         float          maxX, maxY, maxXUnconstrained, maxYUnconstrained;
         float          initialLineSpacing, currentLineSpacing;
+        float          currentBaseline;
         float          maxLineSpacing;
         Vector2        wordStartOffset;
         private bool   ownsBuffer, suppress, suppressUntilNextLine;
@@ -217,6 +218,7 @@ namespace Squared.Render.Text {
             rowIndex = colIndex = 0;
             wordWrapSuppressed = false;
             initialLineSpacing = 0;
+            currentBaseline = 0;
             currentLineSpacing = 0;
             maxLineSpacing = 0;
 
@@ -280,22 +282,25 @@ namespace Squared.Render.Text {
             }
         }
 
-        private void AutoIncreaseLineSpacing (ArraySegment<BitmapDrawCall> buffer, float newLineSpacing) {
-            if (newLineSpacing <= currentLineSpacing)
-                return;
-
-            if (bufferWritePosition > lineSpacingAdjustmentStart) {
-                var yOffset = newLineSpacing - currentLineSpacing;
-                for (int i = lineSpacingAdjustmentStart; i < bufferWritePosition; i++)
-                    buffer.Array[buffer.Offset + i].Position.Y += yOffset;
+        private void ProcessLineSpacingChange (ArraySegment<BitmapDrawCall> buffer, float newLineSpacing, float newBaseline) {
+            if (newBaseline > currentBaseline) {
+                if (bufferWritePosition > baselineAdjustmentStart) {
+                    var yOffset = newBaseline - currentBaseline;
+                    for (int i = baselineAdjustmentStart; i < bufferWritePosition; i++)
+                        buffer.Array[buffer.Offset + i].Position.Y += yOffset;
+                }
+                currentBaseline = newBaseline;
+                baselineAdjustmentStart = bufferWritePosition;
             }
-            currentLineSpacing = newLineSpacing;
-            lineSpacingAdjustmentStart = bufferWritePosition;
+
+            if (newLineSpacing > currentLineSpacing)
+                currentLineSpacing = newLineSpacing;
         }
 
         private void WrapWord (
             ArraySegment<BitmapDrawCall> buffer,
-            Vector2 firstOffset, int firstIndex, int lastIndex, float glyphLineSpacing
+            Vector2 firstOffset, int firstIndex, int lastIndex, 
+            float glyphLineSpacing, float glyphBaseline
         ) {
             // FIXME: Can this ever happen?
             if (currentLineWhitespaceMaxX <= 0)
@@ -304,15 +309,20 @@ namespace Squared.Render.Text {
                 maxX = Math.Max(maxX, currentLineWhitespaceMaxXLeft);
 
             var previousLineSpacing = currentLineSpacing;
+            var previousBaseline = currentBaseline;
 
-            currentLineSpacing = glyphLineSpacing;
-            initialLineSpacing = currentLineSpacing;
+            currentBaseline = glyphBaseline;
+            initialLineSpacing = currentLineSpacing = glyphLineSpacing;
+
+            // FIXME: This is wrong if the baseline changed during the previous line
+            var yOffset = currentLineSpacing;
 
             for (var i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
                 var newCharacterX = (xOffsetOfWrappedLine) + (dc.Position.X - firstOffset.X);
 
-                dc.Position = new Vector2(newCharacterX, dc.Position.Y + currentLineSpacing);
+                // FIXME: Baseline?
+                dc.Position = new Vector2(newCharacterX, dc.Position.Y + yOffset);
                 if (alignment != HorizontalAlignment.Left)
                     dc.SortOrder += 1;
 
@@ -332,7 +342,7 @@ namespace Squared.Render.Text {
                 );
 
             // FIXME: This will break if the word mixes styles
-            lineSpacingAdjustmentStart = firstIndex;
+            baselineAdjustmentStart = firstIndex;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -544,19 +554,23 @@ namespace Squared.Render.Text {
                 deadGlyph = !font.GetGlyph(codepoint, out glyph);
 
                 float glyphLineSpacing = glyph.LineSpacing * effectiveScale;
+                float glyphBaseline = glyph.Baseline * effectiveScale;
                 if (deadGlyph) {
-                    if (currentLineSpacing > 0)
+                    if (currentLineSpacing > 0) {
                         glyphLineSpacing = currentLineSpacing;
-                    else {
+                        glyphBaseline = currentBaseline;
+                    } else {
                         Glyph space;
-                        if (font.GetGlyph(' ', out space))
+                        if (font.GetGlyph(' ', out space)) {
                             glyphLineSpacing = space.LineSpacing * effectiveScale;
+                            glyphBaseline = space.Baseline * effectiveScale;
+                        }
                     }
                 }
 
                 if (initialLineSpacing <= 0)
                     initialLineSpacing = glyphLineSpacing;
-                AutoIncreaseLineSpacing(buffer, glyphLineSpacing);
+                ProcessLineSpacingChange(buffer, glyphLineSpacing, glyphBaseline);
 
                 // FIXME: Don't key kerning adjustments off 'char'
                 if ((kerningAdjustments != null) && kerningAdjustments.TryGetValue(ch1, out kerningAdjustment)) {
@@ -588,7 +602,7 @@ namespace Squared.Render.Text {
                     if (wordWrap && !wordWrapSuppressed && (currentWordSize <= lineBreakAtX)) {
                         if (lineLimit.HasValue)
                             lineLimit--;
-                        WrapWord(buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, glyphLineSpacing);
+                        WrapWord(buffer, wordStartOffset, wordStartWritePosition, bufferWritePosition - 1, glyphLineSpacing, glyphBaseline);
                         wordWrapSuppressed = true;
                         lineBreak = true;
 
@@ -601,7 +615,8 @@ namespace Squared.Render.Text {
                         characterOffset.X = xOffsetOfWrappedLine;
                         characterOffset.Y += currentLineSpacing;
                         initialLineSpacing = currentLineSpacing = glyphLineSpacing;
-                        lineSpacingAdjustmentStart = bufferWritePosition;
+                        currentBaseline = glyphBaseline;
+                        baselineAdjustmentStart = bufferWritePosition;
 
                         maxX = Math.Max(maxX, currentLineMaxX);
                         wordStartWritePosition = bufferWritePosition;
@@ -628,8 +643,9 @@ namespace Squared.Render.Text {
                         maxX = Math.Max(maxX, currentLineMaxX);
                         maxXUnconstrained = Math.Max(maxXUnconstrained, currentLineMaxXUnconstrained);
                         currentLineMaxXUnconstrained = 0;
-                        initialLineSpacing = currentLineSpacing = glyphLineSpacing;
-                        lineSpacingAdjustmentStart = bufferWritePosition;
+                        initialLineSpacing = currentLineSpacing = 0;
+                        currentBaseline = 0;
+                        baselineAdjustmentStart = bufferWritePosition;
                         suppressUntilNextLine = false;
                     }
 
@@ -647,7 +663,7 @@ namespace Squared.Render.Text {
                     (glyph.LeftSideBearing + 
                     glyph.RightSideBearing + 
                     glyph.Width + glyph.CharacterSpacing) * effectiveScale;
-                var yOffset = currentLineSpacing - glyphLineSpacing;
+                var yOffset = currentBaseline - glyphBaseline;
                 var xUnconstrained = x - characterOffset.X + characterOffsetUnconstrained.X;
 
                 if (deadGlyph || isWhiteSpace) {
@@ -763,7 +779,7 @@ namespace Squared.Render.Text {
                 if (!suppress && !suppressUntilNextLine)
                     characterOffset.X += (glyph.Width + glyph.RightSideBearing) * effectiveScale;
                 characterOffsetUnconstrained.X += (glyph.Width + glyph.RightSideBearing) * effectiveScale;
-                AutoIncreaseLineSpacing(buffer, glyphLineSpacing);
+                ProcessLineSpacingChange(buffer, glyphLineSpacing, glyphBaseline);
                 maxLineSpacing = Math.Max(maxLineSpacing, currentLineSpacing);
 
                 currentCharacterIndex++;

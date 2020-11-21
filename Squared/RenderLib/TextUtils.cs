@@ -694,7 +694,9 @@ namespace Squared.Render.Text {
                 RightSideBearing = kerning.Z,
                 Width = kerning.Y,
                 CharacterSpacing = Font.Spacing,
-                LineSpacing = Font.LineSpacing
+                LineSpacing = Font.LineSpacing,
+                // FIXME
+                Baseline = Font.LineSpacing
             };
         }
 
@@ -740,6 +742,7 @@ namespace Squared.Render.Text {
         public float Width;
         public float CharacterSpacing;
         public float LineSpacing;
+        public float Baseline;
         public Color? DefaultColor;
     }
 

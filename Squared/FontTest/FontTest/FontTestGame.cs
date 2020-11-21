@@ -101,18 +101,19 @@ namespace FontTest {
         }
 
         protected override void OnLoadContent (bool isReloading) {
+            var margin = 6;
             LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") {
-                SizePoints = 40, DPIPercent = 200, GlyphMargin = 8, Gamma = 1.6,
+                SizePoints = 40, DPIPercent = 200, GlyphMargin = margin, Gamma = 1.6,
                 DefaultGlyphColors = {
                     { (uint)'h', Color.Red }
                 }
             };
             if (false)
                 LatinFont = new FreeTypeFont(RenderCoordinator, "cambria.ttc") {
-                    SizePoints = 40, DPIPercent = 200, GlyphMargin = 8, Gamma = 1.6
+                    SizePoints = 40, DPIPercent = 200, GlyphMargin = margin, Gamma = 1.6
                 };
             UniFont = new FreeTypeFont(RenderCoordinator, @"C:\Windows\Fonts\msgothic.ttc") {
-                SizePoints = 30, DPIPercent = 200, GlyphMargin = 8, Gamma = 1.6
+                SizePoints = 30, DPIPercent = 200, GlyphMargin = margin, Gamma = 1.6
             };
             FallbackFont = new FallbackGlyphSource(LatinFont, UniFont);
 
@@ -197,7 +198,7 @@ namespace FontTest {
 
             var m = Materials.Get(Materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
             m.Parameters.ShadowColor.SetValue(Color.Red.ToVector4());
-            m.Parameters.ShadowOffset.SetValue(new Vector2(1.5f, 1.5f));
+            m.Parameters.ShadowOffset.SetValue(new Vector2(1f, 1f));
 
             ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.Size), Color.Yellow * 0.75f);
             ir.DrawMultiple(layout, material: m, samplerState: RenderStates.Text, userData: new Vector4(0, 0, 0, 0.66f));
