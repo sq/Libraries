@@ -571,10 +571,13 @@ namespace Squared.PRGUI {
             // HACK: Prevent infinite repeat in corner cases
             int steps = 5;
             while (steps-- > 0) {
-                SuppressNextCaptureLoss = false;
+                if (SuppressNextCaptureLoss)
+                    SuppressNextCaptureLoss = false;
+
                 MouseDownPosition = globalPosition;
                 if (target != null && target.IsValidMouseInputTarget) {
                     AutomaticallyTransferFocusOnTopLevelChange(target);
+                    Console.WriteLine($"MouseDown setting capture to {target}");
                     MouseCaptured = target;
                 }
                 if (target == null || target.IsValidFocusTarget)

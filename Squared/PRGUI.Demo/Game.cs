@@ -547,9 +547,6 @@ namespace PRGUI.Demo {
             var c = builder.NewContainer();
             c.Text("Item 4A");
             c.Text("Item 4B");
-            builder.New<EditableText>()
-                .SetDescription("Test")
-                .SetText("Hello");
         }
 
         private void BuildSupernestedGroup (ref ContainerBuilder builder) {

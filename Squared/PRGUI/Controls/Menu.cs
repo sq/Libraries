@@ -172,6 +172,9 @@ namespace Squared.PRGUI.Controls {
         private Control ChildFromGlobalPosition (LayoutContext context, Vector2 globalPosition) {
             try {
                 var rect = this.GetRect(context, contentRect: true);
+                if (!rect.Contains(globalPosition))
+                    return null;
+
                 globalPosition.X = rect.Left + 6;
                 _OverrideHitTestResults = false;
 

@@ -448,7 +448,7 @@ namespace Squared.PRGUI {
 
         public bool CaptureMouse (Control target, out Control previous) {
             previous = Focused;
-            if ((MouseCaptured != null) && (MouseCaptured != target) && (LastMouseButtons == MouseButtons.None))
+            if ((MouseCaptured != null) && (MouseCaptured != target))
                 SuppressNextCaptureLoss = true;
             // HACK: If we used IsValidFocusTarget here, it would break scenarios where a control is capturing
             //  focus before being shown or being enabled
@@ -456,6 +456,7 @@ namespace Squared.PRGUI {
             if (target.AcceptsFocus)
                 TrySetFocus(target, true, true);
             MouseCaptured = target;
+            Console.WriteLine($"CaptureMouse setting capture to {target}");
             return (MouseCaptured == target);
         }
 
@@ -521,8 +522,10 @@ namespace Squared.PRGUI {
                 Focused = focusDonor;
             if (Hovering == target)
                 Hovering = null;
-            if (MouseCaptured == target)
+            if (MouseCaptured == target) {
+                Console.WriteLine($"ReleaseCapture setting capture to null");
                 MouseCaptured = null;
+            }
             ReleasedCapture = target;
         }
 
@@ -707,10 +710,12 @@ namespace Squared.PRGUI {
                         processClick = true;
                 }
 
-                if (!SuppressNextCaptureLoss)
+                if (!SuppressNextCaptureLoss && (MouseCaptured != null)) {
+                    Console.WriteLine($"UpdateInput setting capture to null");
                     MouseCaptured = null;
-                else
+                } else if (SuppressNextCaptureLoss) {
                     SuppressNextCaptureLoss = false;
+                }
 
                 // FIXME: Clear LastMouseDownTime?
             } else if (LastMouseButtons != CurrentMouseButtons) {
