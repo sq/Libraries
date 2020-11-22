@@ -196,7 +196,8 @@ namespace Squared.PRGUI.Controls {
                 else
                     fixedHeight = MostRecentHeaderHeight;
 
-                // Floor to suppress jittering
+                // FIXME: If the size of our content has changed while we were collapsed, this will be wrong
+                // HACK: Floor to suppress jittering
                 fixedHeight = (float)Math.Floor(Arithmetic.Lerp(fixedHeight.Value, originalFixedHeight.Value, level));
             }
         }

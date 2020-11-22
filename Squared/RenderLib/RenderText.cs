@@ -314,8 +314,8 @@ namespace Squared.Render.Text {
             currentBaseline = glyphBaseline;
             initialLineSpacing = currentLineSpacing = glyphLineSpacing;
 
-            // FIXME: This is wrong if the baseline changed during the previous line
-            var yOffset = currentLineSpacing;
+            // Remove the effect of the previous baseline adjustment then realign to our new baseline
+            var yOffset = -previousBaseline + previousLineSpacing + currentBaseline;
 
             for (var i = firstIndex; i <= lastIndex; i++) {
                 var dc = buffer.Array[buffer.Offset + i];
