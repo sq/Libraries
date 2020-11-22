@@ -59,6 +59,7 @@ namespace Squared.PRGUI.Controls {
 
         public TitledContainer ()
             : base () {
+            LayoutFlags |= Layout.ControlFlags.Layout_ForceBreak;
             AcceptsMouseInput = true;
         }
 

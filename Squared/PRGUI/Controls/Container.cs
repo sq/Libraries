@@ -42,11 +42,11 @@ namespace Squared.PRGUI.Controls {
         protected bool HasContentBounds, CanScrollVertically;
         protected RectF ContentBounds;
 
-        protected ContainerBuilder<Container> DynamicBuilder;
+        protected ContainerBuilder DynamicBuilder;
         /// <summary>
         /// If set, every update this delegate will be invoked to reconstruct the container's children
         /// </summary>
-        public ContainerContentsDelegate<Container> DynamicContents;
+        public ContainerContentsDelegate DynamicContents;
 
         protected virtual bool FreezeDynamicContent => false;
 
@@ -178,7 +178,7 @@ namespace Squared.PRGUI.Controls {
                 return;
 
             if (DynamicBuilder.Container != this)
-                DynamicBuilder = new ContainerBuilder<Container>(this);
+                DynamicBuilder = new ContainerBuilder(this);
             DynamicBuilder.Reset();
             DynamicContents(ref DynamicBuilder);
             DynamicBuilder.Finish();

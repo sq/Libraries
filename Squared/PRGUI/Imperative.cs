@@ -11,55 +11,48 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Imperative {
-    public delegate void ContainerContentsDelegate<T> (ref ContainerBuilder<T> builder)
-        where T : Control, IControlContainer, new();
-
-    public static class ContainerBuilder {
-        public static ContainerBuilder<TContainer> New<TContainer> ()
-            where TContainer : Control, IControlContainer, new() {
-            return new ContainerBuilder<TContainer>(new TContainer());
-        }
-    }
-
-    public struct ContainerBuilder<TContainer>
-        where TContainer : Control, IControlContainer
-    {
+    public delegate void ContainerContentsDelegate (ref ContainerBuilder builder);
+    
+    public struct ContainerBuilder {
         public UIContext Context { get; internal set; }
-        public IControlContainer Container { get => Control; }
-        public TContainer Control { get; internal set; }
+        public IControlContainer Container { get => (IControlContainer)Control; }
+        public Control Control { get; internal set; }
 
-        private DenseList<Control> RemovedControls;
+        private DenseList<Control> PreviousRemovedControls, CurrentRemovedControls;
         private int NextIndex;
 
-        internal ContainerBuilder (UIContext context, TContainer container) {
-            if (container == null)
-                throw new ArgumentNullException("container");
+        internal ContainerBuilder (UIContext context, Control control) {
+            if (control == null)
+                throw new ArgumentNullException("control");
+            if (!(control is IControlContainer))
+                throw new InvalidCastException("control must implement IControlContainer");
 
             NextIndex = 0;
             Context = context;
-            Control = container;
-            RemovedControls = new DenseList<Control>();
+            Control = control;
+            PreviousRemovedControls = new DenseList<Control>();
+            CurrentRemovedControls = new DenseList<Control>();
         }
 
-        public ContainerBuilder (TContainer container)
+        public ContainerBuilder (Control container)
             : this (container.Context, container) {
         }
 
         public void Reset () {
-            RemovedControls.Clear();
             NextIndex = 0;
         }
 
         public void Finish () {
+            var temp = PreviousRemovedControls;
+            PreviousRemovedControls = CurrentRemovedControls;
+            CurrentRemovedControls = temp;
+            temp.Clear();
+
             // Trim off any excess controls
             for (int i = Container.Children.Count - 1; i >= NextIndex; i--) {
-                RemovedControls.Add(Container.Children[i]);
+                PreviousRemovedControls.Add(Container.Children[i]);
                 Container.Children.RemoveAt(i);
             }
-        }
-
-        public static implicit operator TContainer (ContainerBuilder<TContainer> builder) {
-            return builder.Control;
         }
 
         public ControlBuilder<TControl> Data<TControl, TData> (TData data)
@@ -68,15 +61,30 @@ namespace Squared.PRGUI.Imperative {
         }
 
         private TControl EvaluateMatch<TControl, TData> (Control c, string key, TData data)
-            where TControl : Control, new() {
+            where TControl : Control {
             var result = c as TControl;
             if (result == null)
                 return null;
 
-            if (object.Equals(result.Data.Get<TData>(key), data))
+            var currentData = result.Data.Get<TData>(key);
+            if (object.Equals(currentData, data))
                 return result;
             else
                 return null;
+        }
+
+        private TControl FindRemovedWithData<TControl, TData> (ref DenseList<Control> list, string key, TData data)
+            where TControl : Control {
+            // Look for a match in the controls we have previously removed
+            for (int i = 0, c = list.Count; i < c; i++) {
+                var tctl = EvaluateMatch<TControl, TData>(list[i], key, data);
+                if (tctl == null)
+                    continue;
+
+                list.RemoveAt(i);
+                return tctl;
+            }
+            return null;
         }
 
         public ControlBuilder<TControl> Data<TControl, TData> (string key, TData data)
@@ -88,6 +96,8 @@ namespace Squared.PRGUI.Imperative {
                 var tctl = EvaluateMatch<TControl, TData>(Container.Children[i], key, data);
                 if (tctl == null)
                     continue;
+                instance = tctl;
+                foundWhere = i;
             }
 
             if ((foundWhere == NextIndex) && (instance != null)) {
@@ -97,18 +107,11 @@ namespace Squared.PRGUI.Imperative {
                 if (instance != null) {
                     // Found a match in the current list
                     Container.Children.RemoveAt(foundWhere);
-                } else {
-                    // Look for a match in the controls we have previously removed
-                    for (int i = 0, c = RemovedControls.Count; i < c; i++) {
-                        var tctl = EvaluateMatch<TControl, TData>(RemovedControls[i], key, data);
-                        if (tctl == null)
-                            continue;
+                } else
+                    instance = FindRemovedWithData<TControl, TData>(ref CurrentRemovedControls, key, data);
 
-                        RemovedControls.RemoveAt(i);
-                        instance = tctl;
-                        break;
-                    }
-                }
+                if (instance == null)
+                    instance = FindRemovedWithData<TControl, TData>(ref PreviousRemovedControls, key, data);
 
                 // Failed to find a match anywhere, so make a new one
                 if (instance == null)
@@ -146,11 +149,11 @@ namespace Squared.PRGUI.Imperative {
             return new ControlBuilder<TControl>(instance);
         }
 
-        public ContainerBuilder<Container> NewContainer () {
+        public ContainerBuilder NewContainer () {
             return this.NewContainer<Container>();
         }
 
-        public ContainerBuilder<TControl> NewContainer<TControl> ()
+        public ContainerBuilder NewContainer<TControl> ()
             where TControl : Control, IControlContainer, new() {
             TControl instance = null;
             if (NextIndex < Container.Children.Count)
@@ -161,15 +164,15 @@ namespace Squared.PRGUI.Imperative {
 
             AddInternal(instance);
 
-            return new ContainerBuilder<TControl>(instance);
+            return new ContainerBuilder(instance);
         }
 
-        public ContainerBuilder<TitledContainer> TitledContainer (string title, bool? collapsible = null) {
-            var result = NewContainer<TitledContainer>();
-            result.Properties.SetTitle(title);
+        public ContainerBuilder TitledContainer (string title, bool? collapsible = null) {
+            var result = New<TitledContainer>();
+            result.SetTitle(title);
             if (collapsible != null)
-                result.Properties.SetCollapsible(collapsible.Value);
-            return result;
+                result.SetCollapsible(collapsible.Value);
+            return result.Children();
         }
 
         private void AddInternal<TControl> (TControl instance)
@@ -182,23 +185,19 @@ namespace Squared.PRGUI.Imperative {
             else {
                 var previous = Container.Children[index];
                 Container.Children[index] = instance;
-                RemovedControls.Add(previous);
+                CurrentRemovedControls.Add(previous);
             }
         }
 
-        public ContainerBuilder<TContainer> Add (Control child) {
+        public ContainerBuilder Add (Control child) {
             AddInternal(child);
             return this;
         }
 
-        public ContainerBuilder<TContainer> AddRange (params Control[] children) {
+        public ContainerBuilder AddRange (params Control[] children) {
             foreach (var child in children)
                 AddInternal(child);
             return this;
-        }
-
-        public ControlBuilder<TContainer> Properties {
-            get => new ControlBuilder<TContainer>(Control);
         }
     }
 
@@ -221,12 +220,11 @@ namespace Squared.PRGUI.Imperative {
             Control = control;
         }
 
-        public ContainerBuilder<TContainer> Children<TContainer> ()
-            where TContainer : TControl, IControlContainer {
-            var cast = Control as TContainer;
+        public ContainerBuilder Children () {
+            var cast = Control as IControlContainer;
             if (cast == null)
                 throw new InvalidCastException();
-            return new ContainerBuilder<TContainer>(cast);
+            return new ContainerBuilder(Control);
         }
 
         public static implicit operator TControl (ControlBuilder<TControl> builder) {
