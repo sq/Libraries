@@ -164,6 +164,14 @@ namespace Squared.PRGUI.Imperative {
             return new ContainerBuilder<TControl>(instance);
         }
 
+        public ContainerBuilder<TitledContainer> TitledContainer (string title, bool? collapsible = null) {
+            var result = NewContainer<TitledContainer>();
+            result.Properties.SetTitle(title);
+            if (collapsible != null)
+                result.Properties.SetCollapsible(collapsible.Value);
+            return result;
+        }
+
         private void AddInternal<TControl> (TControl instance)
             where TControl : Control {
             var t = typeof(TControl);
