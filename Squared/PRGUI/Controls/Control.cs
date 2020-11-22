@@ -75,6 +75,8 @@ namespace Squared.PRGUI {
     }
 
     public abstract class Control {
+        public static readonly NullControl None = new NullControl();
+
         public struct ControlDataCollection : IEnumerable<KeyValuePair<string, object>> {
             Dictionary<ControlDataKey, object> Data;
 
@@ -950,6 +952,32 @@ namespace Squared.PRGUI {
 
         public static implicit operator ColorVariable (pSRGBColor c) {
             return new ColorVariable { pSRGB = c };
+        }
+    }
+
+    public sealed class NullControl : Control {
+        internal NullControl () {
+            AcceptsMouseInput = AcceptsTextInput = AcceptsFocus = false;
+        }
+
+        protected override bool OnEvent (string name) {
+            return false;
+        }
+
+        protected override bool OnEvent<T> (string name, T args) {
+            return false;
+        }
+
+        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+            return false;
+        }
+
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            return;
+        }
+
+        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            return ControlKey.Invalid;
         }
     }
 }

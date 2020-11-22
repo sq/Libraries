@@ -15,6 +15,7 @@ namespace Squared.PRGUI {
             MouseUp = "MouseUp",
             MouseEnter = "MouseEnter",
             MouseLeave = "MouseLeave",
+            MouseCaptureChanged = "MouseCaptureChanged",
             // Another mouse button was pressed/released in addition to the one being held
             MouseButtonsChanged = "MouseButtonsChanged",
             Click = "Click",

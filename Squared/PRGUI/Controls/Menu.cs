@@ -196,6 +196,8 @@ namespace Squared.PRGUI.Controls {
             var item = ChildFromGlobalPosition(Context.Layout, args.RelativeGlobalPosition);
 
             if (name == UIEvents.MouseDown) {
+                if (!args.Box.Contains(args.RelativeGlobalPosition))
+                    item = null;
                 // HACK: Clear the flag that causes us to ignore the next mouseup if the mouse hasn't mvoed
                 MouseInsideWhenShown = false;
 

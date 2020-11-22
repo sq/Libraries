@@ -191,6 +191,14 @@ namespace PRGUI.Demo {
                 TooltipContent = "The control with keyboard focus"
             };
 
+            var capturedCtl = new StaticText {
+                LayoutFlags = ControlFlags.Layout_Fill,
+                AutoSize = false,
+                Wrap = false,
+                Text = "",
+                TooltipContent = "The control with mouse capture"
+            };
+
             var testString = "Καλημέρα こんにちは \U0002F8B6\U0002F8CD\U0002F8D3 Hello";
 
             var textfield = new EditableText {
@@ -383,6 +391,7 @@ namespace PRGUI.Demo {
                     lastClickedCtl,
                     button1,
                     focusedCtl,
+                    capturedCtl,
                     new StaticText {
                         Text = "A Button:",
                         TooltipContent = "Nice label.\r\nThis label has a very long tooltip that has embedded line breaks and is just generally long, so that it will get word wrapped and stuff, testing the layout constraints for tooltips",
@@ -452,6 +461,13 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(null, UIEvents.MouseEnter, (ei) => {
                 hoveringCtl.Text = "Hovering: " + ei.Source;
+            });
+
+            Context.EventBus.Subscribe(null, UIEvents.MouseCaptureChanged, (ei) => {
+                if (ei.Source != Control.None)
+                    capturedCtl.Text = "Captured: " + ei.Source;
+                else
+                    capturedCtl.Text = "";
             });
 
             Context.EventBus.Subscribe(null, UIEvents.Click, (ei) => {
@@ -701,6 +717,7 @@ namespace PRGUI.Demo {
             ir.Clear(color: Color.Transparent);
             ir.Layer += 1;
 
+            /*
             var hoveringControl = Context.HitTest(new Vector2(MouseState.X, MouseState.Y), false);
             if (hoveringControl != null) {
                 var hoveringBox = hoveringControl.GetRect(Context.Layout);
@@ -715,6 +732,7 @@ namespace PRGUI.Demo {
                         blendState: BlendState.Additive, blendInLinearSpace: false
                     );
             }
+            */
 
             var elapsedSeconds = TimeSpan.FromTicks(Time.Ticks - LastTimeOverUI).TotalSeconds;
             float uiOpacity = Arithmetic.Lerp(1.0f, 0.66f, (float)((elapsedSeconds - 1.5) * 2.25f));

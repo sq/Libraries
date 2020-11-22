@@ -13,7 +13,7 @@ namespace Squared.PRGUI {
         internal bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false, bool targetHandlesFirst = false) {
             // FIXME: Is this right?
             if (target == null)
-                return false;
+                target = Control.None;
             if (EventBus == null)
                 return true;
 
@@ -34,7 +34,7 @@ namespace Squared.PRGUI {
         internal bool FireEvent (string name, Control target, bool suppressHandler = false, bool targetHandlesFirst = false) {
             // FIXME: Is this right?
             if (target == null)
-                return false;
+                target = Control.None;
             if (EventBus == null)
                 return true;
 

@@ -208,7 +208,7 @@ namespace Squared.PRGUI {
                 if (value != null)
                     KeyboardSelection = null;
                 if (previous != value)
-                    Log($"Mouse capture {previous} -> {value}");
+                    FireEvent(UIEvents.MouseCaptureChanged, value, previous);
             }
         }
 
