@@ -85,6 +85,10 @@ namespace Squared.PRGUI.Controls {
                 return _SelectedItem?.ToString();
         }
 
+        public Dropdown ()
+            : this (null) {
+        }
+
         public Dropdown (IEqualityComparer<T> comparer = null) : base () {
             AcceptsFocus = true;
             AcceptsMouseInput = true;
