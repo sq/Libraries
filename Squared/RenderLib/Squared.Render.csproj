@@ -69,6 +69,7 @@
     <Compile Include="RenderManager.cs" />
     <Compile Include="RenderPrimitives.cs" />
     <Compile Include="RenderText.cs" />
+    <Compile Include="RichText.cs" />
     <Compile Include="TextUtils.cs" />
     <Compile Include="ThreadedRenderCoordinator.cs" />
     <Compile Include="ThreadedRenderGame.cs" />

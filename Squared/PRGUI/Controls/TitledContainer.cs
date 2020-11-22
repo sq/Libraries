@@ -181,25 +181,22 @@ namespace Squared.PRGUI.Controls {
                 Collapsed = false;
         }
 
-        protected override void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
-            base.ComputeFixedSize(out fixedWidth, out fixedHeight);
+        private float? ComputeDisclosureHeight (float? input) {
+            if (!MostRecentFullSize.HasValue)
+                return input;
+            if (!Collapsible)
+                return input;
+            var level = DisclosureLevel.Get(Context.NowL);
+            if (level >= 1)
+                return input;
+            float collapsedHeight = input.HasValue ? Math.Min(input.Value, MostRecentHeaderHeight) : MostRecentHeaderHeight;
+            float expandedHeight = input.HasValue ? Math.Min(input.Value, MostRecentFullSize.Value.Height) : MostRecentFullSize.Value.Height;
+            return (float)Math.Floor(Arithmetic.Lerp(collapsedHeight, expandedHeight, level));
+        }
 
-            var originalFixedHeight = fixedHeight ?? MostRecentFullSize?.Height;
-
-            if (Collapsible && originalFixedHeight.HasValue) {
-                var level = DisclosureLevel.Get(Context.NowL);
-                if (level >= 1)
-                    return;
-
-                if (fixedHeight.HasValue)
-                    fixedHeight = Math.Min(fixedHeight.Value, MostRecentHeaderHeight);
-                else
-                    fixedHeight = MostRecentHeaderHeight;
-
-                // FIXME: If the size of our content has changed while we were collapsed, this will be wrong
-                // HACK: Floor to suppress jittering
-                fixedHeight = (float)Math.Floor(Arithmetic.Lerp(fixedHeight.Value, originalFixedHeight.Value, level));
-            }
+        protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
+            base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
+            maximumHeight = ComputeDisclosureHeight(maximumHeight);
         }
 
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
@@ -211,11 +208,6 @@ namespace Squared.PRGUI.Controls {
                 var box = GetRect(context.Layout);
                 MostRecentFullSize = box;
             }
-        }
-
-        protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
-            // FIXME
-            base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

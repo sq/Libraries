@@ -272,8 +272,12 @@ namespace Squared.PRGUI.Imperative {
         }
         public ControlBuilder<TControl> SetCollapsible (bool value) {
             // FIXME
-            var cast = (Control as TitledContainer);
-            cast.Collapsible = value;
+            var cast1 = (Control as Window);
+            var cast2 = (Control as TitledContainer);
+            if (cast1 != null)
+                cast1.Collapsible = value;
+            else if (cast2 != null)
+                cast2.Collapsible = value;
             return this;
         }
 
