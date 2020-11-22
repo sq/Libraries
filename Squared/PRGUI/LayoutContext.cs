@@ -825,6 +825,7 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe void CheckConstraints (ControlKey control, int dimension) {
+#if DEBUG
             var pItem = LayoutPtr(control);
             var rect = GetRect(control);
             var wdim = dimension + 2;
@@ -840,6 +841,7 @@ namespace Squared.PRGUI.Layout {
                 ((max >= 0) && (rect[wdim] > max))
             )
                 System.Diagnostics.Debugger.Break();
+#endif
         }
 
         private unsafe void BuildStackedRow (

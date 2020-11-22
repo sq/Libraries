@@ -58,6 +58,7 @@ namespace Squared.PRGUI.Controls {
             get => _Value;
             set {
                 try {
+                    CachedFractionD = null;
                     IsSettingValue = true;
                     var clamped = ClampValue(value);
                     if (clamped == null)
@@ -83,6 +84,7 @@ namespace Squared.PRGUI.Controls {
         public T? Minimum {
             get => _Minimum;
             set {
+                CachedFractionD = null;
                 _Minimum = value;
                 if (_HasValue)
                     Value = Value;
@@ -91,6 +93,7 @@ namespace Squared.PRGUI.Controls {
         public T? Maximum {
             get => _Maximum;
             set {
+                CachedFractionD = null;
                 _Maximum = value;
                 if (_HasValue)
                     Value = Value;
@@ -237,13 +240,25 @@ namespace Squared.PRGUI.Controls {
             return box;
         }
 
+        protected double? CachedFractionD;
+        protected double FractionD {
+            get {
+                if (CachedFractionD.HasValue)
+                    return CachedFractionD.Value;
+
+                var result = Convert.ToDouble(Arithmetic.Fraction(_Value, _Minimum.Value, _Maximum.Value, FractionScale)) / FractionScaleD;
+                CachedFractionD = result;
+                return result;
+            }
+        }
+
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
             var gauge = context.DecorationProvider.ParameterGauge;
             if ((Minimum.HasValue && Maximum.HasValue) && (gauge != null)) {
                 var gaugeBox = ComputeGaugeBox(gauge, settings.Box);
-                var fraction = Convert.ToDouble(Arithmetic.Fraction(_Value, _Minimum.Value, _Maximum.Value, FractionScale)) / FractionScaleD;
+                var fraction = FractionD;
                 if (Exponential)
                     fraction = 1 - Math.Pow(1 - fraction, 2);
                 var tempSettings = settings;
