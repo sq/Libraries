@@ -192,24 +192,22 @@ namespace Squared.PRGUI.Controls {
                 return result;
             }
             set {
-                var newRange = ReplaceRange(ExpandedSelection, FilterInput(value));
+                var newRange = ReplaceRange(ExpandedSelection, FilterInput(value).ToString());
                 SetSelection(new Pair<int>(newRange.Second, newRange.Second), 1);
                 NextScrollInstant = true;
             }
         }
 
-        protected void SetText (string newValue, bool bypassFilter) {
+        internal void SetText (AbstractString newValue, bool bypassFilter) {
             // FIXME: Optimize the 'value hasn't changed' case
+            if (newValue.TextEquals(Builder, StringComparison.Ordinal))
+                return;
             if (!bypassFilter)
                 newValue = FilterInput(newValue);
             Builder.Clear();
-            Builder.Append(newValue);
+            Builder.Append(newValue.ToString());
             NextScrollInstant = true;
             NotifyValueChanged();
-        }
-
-        internal void SetText (AbstractString text) {
-            SetText(text.ToString(), false);
         }
 
         public string Text {
@@ -222,6 +220,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected void NotifyValueChanged () {
+            Invalidate();
+
             if (IsChangingValue)
                 return;
 
@@ -229,7 +229,6 @@ namespace Squared.PRGUI.Controls {
 
             IsChangingValue = true;
             try {
-                Invalidate();
                 OnValueChanged();
             } finally {
                 IsChangingValue = false;
@@ -240,14 +239,17 @@ namespace Squared.PRGUI.Controls {
             FireEvent(UIEvents.ValueChanged);
         }
 
-        protected string FilterInput (string input) {
+        protected AbstractString FilterInput (AbstractString input) {
             if (StringFilter != null)
-                input = StringFilter(input);
+                input = StringFilter(input.ToString());
 
             if (!Multiline && (input != null)) {
-                var idx = input.IndexOfAny(new[] { '\r', '\n' });
-                if (idx >= 0)
-                    return input.Replace("\r", "").Replace("\n", " ");
+                for (int i = 0, l = input.Length; i < l; i++) {
+                    var ch = input[i];
+                    // FIXME: Optimize this
+                    if ((ch == '\r') || (ch == '\n'))
+                        return input.ToString().Replace("\r", "").Replace("\n", " ");
+                }
             }
 
             return input;

@@ -271,23 +271,31 @@ namespace Squared.Util.Text {
             return new AbstractString(array);
         }
 
-        public bool Equals (string other) {
+        public bool TextEquals (string other) {
+            if (Length != other.Length)
+                return false;
             return ToString() == other;
         }
 
-        public bool Equals (string other, StringComparison comparison) {
+        public bool TextEquals (string other, StringComparison comparison) {
+            if (Length != other.Length)
+                return false;
             return ToString().Equals(other, comparison);
         }
 
         public bool Equals (AbstractString other) {
-            return (String == other.String) &&
-                (StringBuilder == other.StringBuilder) &&
-                (ArraySegment == other.ArraySegment);
+            return (
+                (String == other.String) &&
+                object.ReferenceEquals(StringBuilder, other.StringBuilder) &&
+                (ArraySegment == other.ArraySegment)
+            );
         }
 
-        public bool Equals (AbstractString other, StringComparison comparison) {
+        public bool TextEquals (AbstractString other, StringComparison comparison) {
+            if (Length != other.Length)
+                return false;
             // FIXME: Optimize this
-            return ToString().Equals(other.ToString(), comparison);
+            return string.Equals(ToString(), other.ToString(), comparison);
         }
 
         public static bool operator == (AbstractString lhs, AbstractString rhs) {

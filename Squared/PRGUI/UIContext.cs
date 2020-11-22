@@ -20,6 +20,11 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI {
     public partial class UIContext : IDisposable {
+        private struct UnhandledEvent {
+            public Control Source;
+            public string EventName;
+        }
+
         private class ScratchRenderTarget : IDisposable {
             public readonly UIContext Context;
             public readonly AutoRenderTarget Instance;
@@ -162,6 +167,9 @@ namespace Squared.PRGUI {
         /// Control events are broadcast on this bus
         /// </summary>
         public readonly EventBus EventBus;
+
+        private List<UnhandledEvent> UnhandledEvents = new List<UnhandledEvent>();
+        private List<UnhandledEvent> PreviousUnhandledEvents = new List<UnhandledEvent>();
 
         /// <summary>
         /// The layout engine used to compute control sizes and positions
@@ -380,11 +388,17 @@ namespace Squared.PRGUI {
 
         public UIContext (DefaultMaterialSet materials, IDecorationProvider decorations, ITimeProvider timeProvider = null) {
             EventBus = new EventBus();
+            EventBus.AfterBroadcast += EventBus_AfterBroadcast;
             Controls = new ControlCollection(this);
             Decorations = decorations;
             TimeProvider = TimeProvider ?? new DotNetTimeProvider();
             Materials = materials;
             TTS = new Accessibility.TTS(this);
+        }
+
+        private void EventBus_AfterBroadcast (EventBus sender, object eventSource, string eventType, object eventArgs, bool eventWasHandled) {
+            if (eventWasHandled)
+                return;
         }
 
         private Tooltip GetTooltipInstance () {

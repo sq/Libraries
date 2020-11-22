@@ -405,7 +405,7 @@ namespace Squared.PRGUI.Imperative {
             var cast1 = (Control as StaticTextBase);
             var cast2 = (Control as EditableText);
             cast1?.SetText(value);
-            cast2?.SetText(value);
+            cast2?.SetText(value, false);
             return this;
         }
 
