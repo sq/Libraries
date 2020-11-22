@@ -17,6 +17,7 @@ namespace Squared.Render.Text {
         private int _CachedGlyphVersion = -1;
 
         private RichTextConfiguration _RichTextConfiguration;
+        private string _StyleName;
         private Dictionary<char, KerningAdjustment> _KerningAdjustments; 
         private IGlyphSource _GlyphSource;
         private AbstractString _Text;
@@ -323,6 +324,15 @@ namespace Squared.Render.Text {
             }
         }
 
+        public string StyleName {
+            get {
+                return _StyleName;
+            }
+            set {
+                InvalidatingReferenceAssignment(ref _StyleName, value);
+            }
+        }
+
         public bool WordWrap {
             get {
                 return _WordWrap;
@@ -525,8 +535,10 @@ namespace Squared.Render.Text {
                 try {
                     le.Initialize();
                     if (_RichText) {
-                        // _RichTextConfiguration.KerningAdjustments = KerningAdjustments ?? _RichTextConfiguration.KerningAdjustments;
-                        _RichTextConfiguration.Append(ref le, _GlyphSource, _Text);
+                        var ka = _RichTextConfiguration.KerningAdjustments;
+                        _RichTextConfiguration.KerningAdjustments = _KerningAdjustments ?? ka;
+                        _RichTextConfiguration.Append(ref le, _GlyphSource, _Text, _StyleName);
+                        _RichTextConfiguration.KerningAdjustments = ka;
                     } else
                         le.AppendText(_GlyphSource, _Text, _KerningAdjustments);
 

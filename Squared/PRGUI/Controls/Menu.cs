@@ -139,7 +139,7 @@ namespace Squared.PRGUI.Controls {
         protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
             var ok = base.OnHitTest(context, box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
             // HACK: Ensure that hit-test does not pass through to our individual items. We want to handle all events for them
-            if (ok && _OverrideHitTestResults)
+            if (ok && _OverrideHitTestResults && (result?.AcceptsMouseInput == false))
                 result = this;
             return ok;
         }
@@ -155,14 +155,36 @@ namespace Squared.PRGUI.Controls {
             FireEvent(UIEvents.SelectionChanged, newControl);
         }
 
+        private Control LocateContainingChild (Control control) {
+            var current = control;
+            while (current != null) {
+                if (!control.TryGetParent(out Control parent))
+                    return null;
+                if (parent == this)
+                    return current;
+                else
+                    current = parent;
+            }
+
+            return null;
+        }
+
         private Control ChildFromGlobalPosition (LayoutContext context, Vector2 globalPosition) {
             try {
+                var rect = this.GetRect(context, contentRect: true);
+                globalPosition.X = rect.Left + 6;
                 _OverrideHitTestResults = false;
+
                 var child = HitTest(context, globalPosition, false, false);
+                if ((child ?? this) == this) {
+                    globalPosition.X = rect.Center.X;
+                    child = HitTest(context, globalPosition, false, false);
+                }
+
                 if (child == this)
                     return null;
                 else
-                    return child;
+                    return LocateContainingChild(child);
             } finally {
                 _OverrideHitTestResults = true;
             }
@@ -171,22 +193,18 @@ namespace Squared.PRGUI.Controls {
         private bool OnMouseEvent (string name, MouseEventArgs args) {
             // Console.WriteLine($"menu.{name}");
 
+            var item = ChildFromGlobalPosition(Context.Layout, args.RelativeGlobalPosition);
+
             if (name == UIEvents.MouseDown) {
                 // HACK: Clear the flag that causes us to ignore the next mouseup if the mouse hasn't mvoed
                 MouseInsideWhenShown = false;
 
-                if (HitTest(Context.Layout, args.GlobalPosition, false, false) != this) {
+                if ((item != this) && !Children.Contains(item)) {
                     Context.ReleaseCapture(this, FocusDonor);
                     Close();
                     return true;
                 }
             }
-
-            var virtualGlobalPosition = args.GlobalPosition;
-            if (args.Box.Contains(virtualGlobalPosition))
-                // HACK: Shift the coordinates in a little to deal with items that are not full width
-                virtualGlobalPosition.X = args.ContentBox.Left + 4;
-            var item = ChildFromGlobalPosition(Context.Layout, virtualGlobalPosition);
 
             if ((Context.MouseOver != this) && (Context.MouseCaptured != this)) {
                 if (DeselectOnMouseLeave)
@@ -198,7 +216,7 @@ namespace Squared.PRGUI.Controls {
 
             if (name == UIEvents.MouseUp) {
                 var mouseHasMovedSinceOpening = (args.GlobalPosition - MousePositionWhenShown).Length() > Context.MinimumMouseMovementDistance;
-                if (!args.ContentBox.Contains(virtualGlobalPosition)) {
+                if (!args.ContentBox.Contains(args.RelativeGlobalPosition)) {
                     // This indicates that the mouse is in our padding zone
                 } else if ((MouseInsideWhenShown == true) && !mouseHasMovedSinceOpening) {
                     // The mouse was inside our rect when we first opened, and hasn't moved

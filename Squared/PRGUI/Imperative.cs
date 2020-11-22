@@ -262,17 +262,20 @@ namespace Squared.PRGUI.Imperative {
 
         public ControlBuilder<TControl> SetContainerFlags (ControlFlags value) {
             var cast = (Control as IControlContainer);
-            cast.ContainerFlags = value;
+            if (cast != null)
+                cast.ContainerFlags = value;
             return this;
         }
         public ControlBuilder<TControl> SetClipChildren (bool value) {
             var cast = (Control as IControlContainer);
-            cast.ClipChildren = value;
+            if (cast != null)
+                cast.ClipChildren = value;
             return this;
         }
         public ControlBuilder<TControl> SetScrollable (bool value) {
             var cast = (Control as IScrollableControl);
-            cast.Scrollable = value;
+            if (cast != null)
+                cast.Scrollable = value;
             return this;
         }
 
@@ -350,7 +353,8 @@ namespace Squared.PRGUI.Imperative {
         public ControlBuilder<TControl> SetTitle (string value) {
             // FIXME
             var cast = (Control as TitledContainer);
-            cast.Title = value;
+            if (cast != null)
+                cast.Title = value;
             return this;
         }
         public ControlBuilder<TControl> SetCollapsible (bool value) {
@@ -364,9 +368,20 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> SetDescription (string value) {
+            var cast = (Control as EditableText);
+            if (cast != null)
+                cast.Description = value;
+            return this;
+        }
+
         public ControlBuilder<TControl> SetIntegral (bool value) {
-            var cast = (Control as Slider);
-            cast.Integral = value;
+            var cast1 = (Control as Slider);
+            var cast2 = (Control as EditableText);
+            if (cast1 != null)
+                cast1.Integral = value;
+            else if (cast2 != null)
+                cast2.IntegerOnly = value;
             return this;
         }
         public ControlBuilder<TControl> SetRange<TValue> (TValue? min = null, TValue? max = null)

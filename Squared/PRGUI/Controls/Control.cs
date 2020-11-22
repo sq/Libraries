@@ -388,6 +388,18 @@ namespace Squared.PRGUI {
             return false;
         }
 
+        /*
+
+        protected bool DispatchChildEvent (Control child, string name) {
+            return child.OnEvent(name);
+        }
+
+        protected bool DispatchChildEvent<T> (Control child, string name, T args) {
+            return child.OnEvent<T>(name, args);
+        }
+
+        */
+
         internal ControlKey GenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey = null) {
             LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
 

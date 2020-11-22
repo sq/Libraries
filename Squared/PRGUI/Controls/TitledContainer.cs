@@ -285,6 +285,13 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+            var ok = base.OnHitTest(context, box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);
+            if (ok && Collapsed)
+                result = this;
+            return ok;
+        }
+
         private void RasterizeDisclosureArrow (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             var pad = (DisclosureArrowPadding - DisclosureArrowSize) / 2f;
             var ySpace = ((MostRecentTitleBox.Height - DisclosureArrowSize) / 2f);

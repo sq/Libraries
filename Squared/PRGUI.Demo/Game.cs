@@ -531,6 +531,9 @@ namespace PRGUI.Demo {
             var c = builder.NewContainer();
             c.Text("Item 4A");
             c.Text("Item 4B");
+            builder.New<EditableText>()
+                .SetDescription("Test")
+                .SetText("Hello");
         }
 
         private void BuildSupernestedGroup (ref ContainerBuilder builder) {
@@ -718,7 +721,7 @@ namespace PRGUI.Demo {
 
             ir.Draw(UIRenderTarget, Vector2.Zero, multiplyColor: Color.White * uiOpacity);
 
-            DrawPerformanceStats(ref ir);
+            // DrawPerformanceStats(ref ir);
 
             if (TearingTest) {
                 var x = (Time.Ticks / 20000) % Graphics.PreferredBackBufferWidth;

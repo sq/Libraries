@@ -314,7 +314,7 @@ namespace Squared.PRGUI.Controls {
                 var item = sorted[i];
                 var newResult = item.HitTest(context, position, acceptsMouseInputOnly, acceptsFocusOnly);
                 if (newResult != null) {
-                    result = newResult;
+                    result = item;
                     success = true;
                 }
             }
