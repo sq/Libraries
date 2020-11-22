@@ -46,7 +46,7 @@ namespace Squared.PRGUI.Imperative {
             var temp = PreviousRemovedControls;
             PreviousRemovedControls = CurrentRemovedControls;
             CurrentRemovedControls = temp;
-            temp.Clear();
+            CurrentRemovedControls.Clear();
 
             // Trim off any excess controls
             for (int i = Container.Children.Count - 1; i >= NextIndex; i--) {
@@ -198,6 +198,10 @@ namespace Squared.PRGUI.Imperative {
             foreach (var child in children)
                 AddInternal(child);
             return this;
+        }
+
+        public ControlBuilder<Control> Properties {
+            get => new ControlBuilder<Control>(Control);
         }
     }
 

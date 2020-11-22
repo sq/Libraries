@@ -176,7 +176,7 @@ namespace Squared.PRGUI.Accessibility {
             // FIXME: If clicking on a static transferred focus to a neighbor (because it was in
             //  another top-level container) should we read it?
             if (
-                !target.AcceptsFocus && 
+                !target.AcceptsFocus &&
                 Context.ReadAloudOnClickIfNotFocusable &&
                 // Containers will transfer focus elsewhere when clicked so don't read them
                 !(target is IControlContainer) &&
@@ -184,6 +184,15 @@ namespace Squared.PRGUI.Accessibility {
                 //  we want to read the new focus target instead
                 (target.FocusBeneficiary == null) &&
                 ((CurrentlyReading != target) || !IsSpeaking)
+            )
+                BeginReading(target);
+            // HACK: Once we started reading an unfocusable control, we need to detect when the
+            //  reading needs to shift back to the focused control
+            else if (
+                (Context.Focused == target) &&
+                Context.ReadAloudOnClickIfNotFocusable &&
+                (CurrentlyReading != target) &&
+                (CurrentlyReading?.AcceptsFocus == false)
             )
                 BeginReading(target);
         }

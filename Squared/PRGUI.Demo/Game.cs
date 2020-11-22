@@ -246,12 +246,12 @@ namespace PRGUI.Demo {
                 BackgroundImage = TextureLoader.Load("volume")
             };
 
-            var window = ContainerBuilder.New<Window>();
-            window.Properties
-                .SetBackgroundColor(new Color(70, 86, 90))
-                .SetTitle("Floating Panel")
-                .SetPaintOrder(1)
-                .SetCollapsible(true);
+            var window = new ContainerBuilder(new Window {
+                BackgroundColor = new Color(70, 86, 90),
+                Title = "Floating Panel",
+                PaintOrder = 1,
+                Collapsible = true
+            });
 
             window.New<StaticText>()
                 .SetText("→")
@@ -266,7 +266,7 @@ namespace PRGUI.Demo {
                 toppleButton
             );
 
-            FloatingWindow = window;
+            FloatingWindow = (Window)window.Container;
 
             var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
                 DefaultFont = Font,
@@ -521,7 +521,7 @@ namespace PRGUI.Demo {
             Window_ClientSizeChanged(null, EventArgs.Empty);
         }
 
-        private void BuildTestMenu (ref ContainerBuilder<Container> builder) {
+        private void BuildTestMenu (ref ContainerBuilder builder) {
             builder.Text("Item 1").SetBackgroundColor(Color.Red);
             builder.Text("Item 2");
             builder.Text("Extremely long menu item with a bunch of text in it. This thing should be truncated pretty aggressively")
@@ -533,7 +533,7 @@ namespace PRGUI.Demo {
             c.Text("Item 4B");
         }
 
-        private void BuildSupernestedGroup (ref ContainerBuilder<Container> builder) {
+        private void BuildSupernestedGroup (ref ContainerBuilder builder) {
             builder.Text<Checkbox>("Checkbox 3");
             builder.Text<Checkbox>("Checkbox 4");
             builder.Text<Checkbox>("Checkbox 5");

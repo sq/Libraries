@@ -84,12 +84,16 @@ namespace Squared.PRGUI {
         }
 
         public void Remove (Control control) {
-            var deleteAtIndex = IndexTable[control];
             Context?.NotifyControlBeingRemoved(control);
             control.UnsetParent(Parent);
-            Items.RemoveAt(deleteAtIndex);
-            IndexTable.Remove(control);
-            UpdateIndexTable(deleteAtIndex);
+
+            if (IndexTable.TryGetValue(control, out int deleteAtIndex)) {
+                Items.RemoveAt(deleteAtIndex);
+                IndexTable.Remove(control);
+                UpdateIndexTable(deleteAtIndex);
+            } else {
+                ;
+            }
         }
 
         public void RemoveAt (int index) {

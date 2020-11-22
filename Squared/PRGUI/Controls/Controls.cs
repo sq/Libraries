@@ -115,10 +115,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override AbstractString GetReadingText () {
-            if (Checked)
-                return Text.ToString() + ": Yes";
-            else
-                return Text;
+            return Text.ToString() + (Checked ? ": Yes" : ": No");
         }
 
         protected override void FormatValueInto (StringBuilder sb) {
