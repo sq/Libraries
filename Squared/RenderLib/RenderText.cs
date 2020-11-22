@@ -473,6 +473,31 @@ namespace Squared.Render.Text {
             }
         }
 
+        public void AppendImage (
+            Texture2D texture, Bounds? textureRegion = null,
+            Vector2? margin = null, 
+            float scale = 1, float verticalAlignment = 1,
+            Color? multiplyColor = null
+        ) {
+            var dc = new BitmapDrawCall {
+                Position = Vector2.Zero,
+                Texture = texture,
+                SortKey = sortKey,
+                TextureRegion = textureRegion ?? Bounds.Unit,
+                ScaleF = scale * this.scale,
+                MultiplyColor = multiplyColor ?? overrideColor ?? Color.White,
+                Origin = new Vector2(0, verticalAlignment)
+            };
+            var estimatedBounds = dc.EstimateDrawBounds();
+            var lineSpacing = estimatedBounds.Size.Y;
+            float x = characterOffset.X;
+            ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
+            dc.Position = new Vector2(characterOffset.X, characterOffset.Y + currentBaseline - (margin?.Y ?? 0));
+            estimatedBounds = dc.EstimateDrawBounds();
+            characterOffset.X += estimatedBounds.Size.X + (margin?.X ?? 0);
+            AppendCharacter(ref dc, x, 1, false, lineSpacing, 0f, x, ref estimatedBounds);
+        }
+
         public ArraySegment<BitmapDrawCall> AppendText (
             IGlyphSource font, AbstractString text,
             Dictionary<char, KerningAdjustment> kerningAdjustments = null,
@@ -493,7 +518,7 @@ namespace Squared.Render.Text {
                 kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
 
             var effectiveScale = scale / Math.Max(0.0001f, font.DPIScaleFactor);
-            var effectiveSpacing = spacing / Math.Max(0.0001f, effectiveScale);
+            var effectiveSpacing = spacing;
 
             var drawCall = default(BitmapDrawCall);
             drawCall.MultiplyColor = defaultColor;
@@ -507,7 +532,7 @@ namespace Squared.Render.Text {
                     suppress = true;
 
                 var stringOffset = i;
-                char ch1 = text[i], 
+                char ch1 = text[i],
                     ch2 = i < (text.Length - 1)
                         ? text[i + 1]
                         : '\0';
@@ -599,11 +624,11 @@ namespace Squared.Render.Text {
                     glyph.RightSideBearing += kerningAdjustment.RightSideBearing;
                 }
 
-                x = 
-                    characterOffset.X + 
+                x =
+                    characterOffset.X +
                     ((
-                        glyph.LeftSideBearing + 
-                        glyph.RightSideBearing + 
+                        glyph.LeftSideBearing +
+                        glyph.RightSideBearing +
                         glyph.Width + glyph.CharacterSpacing
                     ) * effectiveScale);
 
@@ -678,10 +703,10 @@ namespace Squared.Render.Text {
                 }
 
                 // HACK: Recompute after wrapping
-                x = 
-                    characterOffset.X + 
-                    (glyph.LeftSideBearing + 
-                    glyph.RightSideBearing + 
+                x =
+                    characterOffset.X +
+                    (glyph.LeftSideBearing +
+                    glyph.RightSideBearing +
                     glyph.Width + glyph.CharacterSpacing) * effectiveScale;
                 var yOffset = currentBaseline - glyphBaseline;
                 var xUnconstrained = x - characterOffset.X + characterOffsetUnconstrained.X;
@@ -713,6 +738,7 @@ namespace Squared.Render.Text {
                     characterOffset.X += (glyph.CharacterSpacing * effectiveScale);
                 characterOffsetUnconstrained.X += (glyph.CharacterSpacing * effectiveScale);
 
+                // FIXME: Shift this stuff below into the append function
                 var scaledGlyphSize = new Vector2(
                     glyph.LeftSideBearing + glyph.Width + glyph.RightSideBearing,
                     glyph.LineSpacing
@@ -735,66 +761,23 @@ namespace Squared.Render.Text {
                     characterOffset.X += glyph.LeftSideBearing * effectiveScale;
                 characterOffsetUnconstrained.X += glyph.LeftSideBearing * effectiveScale;
 
-                if (colIndex == 0) {
-                    characterOffset.X = Math.Max(characterOffset.X, 0);
-                    characterOffsetUnconstrained.X = Math.Max(characterOffsetUnconstrained.X, 0);
-                }
-
-                if (stopAtY.HasValue && (characterOffset.Y >= stopAtY))
-                    suppress = true;
-
-                if (characterSkipCount <= 0) {
-                    if (characterLimit.HasValue && characterLimit.Value <= 0)
-                        suppress = true;
-
+                if (!measureOnly && !isWhiteSpace) {
                     var glyphPosition = new Vector2(
                         actualPosition.X + (glyph.XOffset * effectiveScale) + characterOffset.X,
                         actualPosition.Y + (glyph.YOffset * effectiveScale) + characterOffset.Y + yOffset
                     );
-
-                    if (!isWhiteSpace) {
-                        if (!measureOnly) {
-                            if (bufferWritePosition >= buffer.Count)
-                                EnsureBufferCapacity(bufferWritePosition);
-
-                            drawCall.Textures = new TextureSet(glyph.Texture);
-                            drawCall.TextureRegion = glyph.BoundsInTexture;
-                            drawCall.Position = glyphPosition;
-                            drawCall.MultiplyColor = overrideColor ?? glyph.DefaultColor ?? defaultColor;
-
-                            // HACK so that the alignment pass can detect rows. We strip this later.
-                            if (alignment != HorizontalAlignment.Left)
-                                drawCall.SortOrder = rowIndex;
-                            else if (reverseOrder)
-                                drawCall.SortOrder += 1;
-                        }
-
-                        if (!suppress && !suppressUntilNextLine) {
-                            if (!measureOnly) {
-                                buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
-                                ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition);
-                                bufferWritePosition += 1;
-                                drawCallsWritten += 1;
-                            }
-                            currentLineMaxX = Math.Max(currentLineMaxX, x);
-                            maxY = Math.Max(maxY, characterOffset.Y + glyphLineSpacing);
-                        } else {
-                            drawCallsSuppressed++;
-                        }
-
-                        currentLineMaxXUnconstrained = Math.Max(currentLineMaxXUnconstrained, xUnconstrained);
-                        maxYUnconstrained = Math.Max(maxYUnconstrained, (characterOffsetUnconstrained.Y + glyphLineSpacing));
-                    } else {
-                        currentLineWhitespaceMaxXLeft = Math.Max(currentLineWhitespaceMaxXLeft, characterOffset.X);
-                        currentLineWhitespaceMaxX = Math.Max(currentLineWhitespaceMaxX, x);
-
-                        ProcessMarkers(ref testBounds, currentCodepointSize, null);
-                    }
-
-                    characterLimit--;
-                } else {
-                    characterSkipCount--;
+                    drawCall.Textures = new TextureSet(glyph.Texture);
+                    drawCall.TextureRegion = glyph.BoundsInTexture;
+                    drawCall.Position = glyphPosition;
+                    drawCall.MultiplyColor = overrideColor ?? glyph.DefaultColor ?? defaultColor;
                 }
+
+                AppendCharacter(
+                    ref drawCall, 
+                    x, currentCodepointSize, 
+                    isWhiteSpace, glyphLineSpacing, 
+                    yOffset, xUnconstrained, ref testBounds
+                );
 
                 if (!suppress && !suppressUntilNextLine)
                     characterOffset.X += (glyph.Width + glyph.RightSideBearing) * effectiveScale;
@@ -814,6 +797,64 @@ namespace Squared.Render.Text {
             maxX = Math.Max(maxX, currentLineMaxX);
 
             return segment;
+        }
+
+        private void AppendCharacter (
+            ref BitmapDrawCall drawCall, 
+            float x, int currentCodepointSize, 
+            bool isWhiteSpace, float glyphLineSpacing, float yOffset, 
+            float xUnconstrained, ref Bounds testBounds
+        ) {
+            if (colIndex == 0) {
+                characterOffset.X = Math.Max(characterOffset.X, 0);
+                characterOffsetUnconstrained.X = Math.Max(characterOffsetUnconstrained.X, 0);
+            }
+
+            if (stopAtY.HasValue && (characterOffset.Y >= stopAtY))
+                suppress = true;
+
+            if (characterSkipCount <= 0) {
+                if (characterLimit.HasValue && characterLimit.Value <= 0)
+                    suppress = true;
+
+                if (!isWhiteSpace) {
+                    if (!measureOnly) {
+                        if (bufferWritePosition >= buffer.Count)
+                            EnsureBufferCapacity(bufferWritePosition);
+
+                        // HACK so that the alignment pass can detect rows. We strip this later.
+                        if (alignment != HorizontalAlignment.Left)
+                            drawCall.SortOrder = rowIndex;
+                        else if (reverseOrder)
+                            drawCall.SortOrder += 1;
+                    }
+
+                    if (!suppress && !suppressUntilNextLine) {
+                        if (!measureOnly) {
+                            buffer.Array[buffer.Offset + bufferWritePosition] = drawCall;
+                            ProcessMarkers(ref testBounds, currentCodepointSize, bufferWritePosition);
+                            bufferWritePosition += 1;
+                            drawCallsWritten += 1;
+                        }
+                        currentLineMaxX = Math.Max(currentLineMaxX, x);
+                        maxY = Math.Max(maxY, characterOffset.Y + glyphLineSpacing);
+                    } else {
+                        drawCallsSuppressed++;
+                    }
+
+                    currentLineMaxXUnconstrained = Math.Max(currentLineMaxXUnconstrained, xUnconstrained);
+                    maxYUnconstrained = Math.Max(maxYUnconstrained, (characterOffsetUnconstrained.Y + glyphLineSpacing));
+                } else {
+                    currentLineWhitespaceMaxXLeft = Math.Max(currentLineWhitespaceMaxXLeft, characterOffset.X);
+                    currentLineWhitespaceMaxX = Math.Max(currentLineWhitespaceMaxX, x);
+
+                    ProcessMarkers(ref testBounds, currentCodepointSize, null);
+                }
+
+                characterLimit--;
+            } else {
+                characterSkipCount--;
+            }
         }
 
         private void Scramble (ArraySegment<BitmapDrawCall> result) {

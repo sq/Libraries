@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.Util.Text;
 
@@ -19,7 +20,40 @@ namespace Squared.Render.Text {
 
     public struct RichImage {
         public AbstractTextureReference Texture;
-        public Bounds Bounds;
+        public Bounds? Bounds;
+        public Vector2 Margin;
+        private float VerticalAlignmentMinusOne;
+        private float ScaleMinusOne;
+
+        public float VerticalAlignment {
+            get {
+                return VerticalAlignmentMinusOne + 1;
+            }
+            set {
+                VerticalAlignmentMinusOne = value - 1;
+            }
+        }
+
+        public float Scale {
+            get {
+                return ScaleMinusOne + 1;
+            }
+            set {
+                ScaleMinusOne = value - 1;
+            }
+        }
+
+        public static implicit operator RichImage (AbstractTextureReference texture) {
+            return new RichImage {
+                Texture = texture
+            };
+        }
+
+        public static implicit operator RichImage (Texture2D texture) {
+            return new RichImage {
+                Texture = texture
+            };
+        }
     }
 
     public struct RichTextConfiguration : IEquatable<RichTextConfiguration> {
@@ -78,6 +112,7 @@ namespace Squared.Render.Text {
                     AppendRange(ref layoutEngine, glyphSource ?? defaultGlyphSource, text, currentRangeStart, i);
                     var command = ParseCommand(text, ref i, ref currentRangeStart);
                     if (command == null) {
+                        // FIXME: Can this cause an infinite loop?
                         continue;
                     } else if (string.IsNullOrWhiteSpace(command)) {
                         glyphSource = null;
@@ -90,7 +125,7 @@ namespace Squared.Render.Text {
                         layoutEngine.scale = style.Scale * initialScale ?? initialScale;
                         layoutEngine.spacing = style.Spacing ?? initialSpacing;
                     } else if ((Images != null) && Images.TryGetValue(command, out image)) {
-                        // FIXME
+                        AppendImage(ref layoutEngine, image);
                     } else if (command.Contains(":")) {
                         foreach (var _match in RuleRegex.Matches(command)) {
                             var match = (Match)_match;
@@ -138,6 +173,15 @@ namespace Squared.Render.Text {
             AppendRange(ref layoutEngine, glyphSource ?? defaultGlyphSource, text, currentRangeStart, count);
         }
 
+        private void AppendImage (ref StringLayoutEngine layoutEngine, RichImage image) {
+            layoutEngine.AppendImage(
+                image.Texture.Instance, scale: image.Scale, 
+                verticalAlignment: image.VerticalAlignment,
+                margin: image.Margin,
+                textureRegion: image.Bounds ?? Bounds.Unit
+            );
+        }
+
         private void AppendRange (
             ref StringLayoutEngine layoutEngine, IGlyphSource glyphSource, AbstractString text,
             int rangeStart, int rangeEnd
@@ -150,15 +194,27 @@ namespace Squared.Render.Text {
         private string ParseCommand (AbstractString text, ref int i, ref int currentRangeStart) {
             var count = text.Length;
             var start = i + 2;
+            i = start;
             while (i < count) {
                 var ch = text[i];
-                if (ch == ']') {
-                    i++;
-                    currentRangeStart = i;
-                    return text.Substring(start, i - start - 1);
+                switch (ch) {
+                    case ']':
+                        i++;
+                        currentRangeStart = i;
+                        return text.Substring(start, i - start - 1);
+                    case '\"':
+                    case '\'':
+                    case '$':
+                    case '[': {
+                        i = start;
+                        return null;
+                    }
                 }
-                if (ch < ' ')
+
+                if (ch < ' ') {
+                    i = start;
                     return null;
+                }
                 i++;
             }
             return null;

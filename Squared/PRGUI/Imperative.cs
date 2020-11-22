@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
+using Squared.Render.Text;
 using Squared.Util;
 
 namespace Squared.PRGUI.Imperative {
@@ -318,6 +319,51 @@ namespace Squared.PRGUI.Imperative {
             if (cast2 != null)
                 cast2.Text = value;
 
+            return this;
+        }
+
+        public ControlBuilder<TControl> SetRichText (bool value) {
+            var stb = (Control as StaticTextBase);
+            if (stb != null)
+                stb.RichText = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetTextAlignment (HorizontalAlignment value) {
+            var stb = (Control as StaticTextBase);
+            if (stb != null)
+                stb.TextAlignment = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetTextColor (ColorVariable value) {
+            var stb = (Control as StaticTextBase);
+            if (stb != null)
+                stb.TextColor = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetScaleToFit (bool value) {
+            var stb = (Control as StaticText);
+            if (stb != null)
+                stb.ScaleToFit = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetWrap (bool value) {
+            var stb = (Control as StaticText);
+            if (stb != null)
+                stb.Wrap = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetAutoSize (bool value) {
+            var stb = (Control as StaticTextBase);
+            if (stb != null)
+                stb.AutoSize = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetAutoSize (bool width, bool height) {
+            var stb = (Control as StaticTextBase);
+            if (stb != null) {
+                stb.AutoSizeWidth = width;
+                stb.AutoSizeHeight = height;
+            }
             return this;
         }
 

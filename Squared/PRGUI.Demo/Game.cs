@@ -461,6 +461,17 @@ namespace PRGUI.Demo {
             };
 
             Context = new UIContext(Materials, decorations) {
+                RichTextConfiguration = {
+                    Images = new Dictionary<string, RichImage> {
+                        {
+                            "ghost", new RichImage {
+                                Texture = TextureLoader.Load("ghost"),
+                                Scale = 0.4f,
+                                Margin = new Vector2(0, -2)
+                            }
+                        }
+                    }
+                },
                 Controls = {
                     topLevelContainer,
                     FloatingWindow
