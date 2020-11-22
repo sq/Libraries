@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
+using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
@@ -64,7 +65,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float DisclosureArrowSize => (float)Math.Round(
-            Math.Max(MinDisclosureArrowSize, MostRecentHeaderHeight * DisclosureArrowSizeMultiplier), 
+            Math.Max(MinDisclosureArrowSize, MostRecentTitleBox.Height * DisclosureArrowSizeMultiplier), 
             MidpointRounding.AwayFromZero
         );
         protected float DisclosureArrowPadding => DisclosureArrowSize + DisclosureArrowMargin;
@@ -141,7 +142,7 @@ namespace Squared.PRGUI.Controls {
         protected bool DisclosureArrowHitTest (Vector2 localPosition) {
             if (localPosition.X > DisclosureArrowPadding)
                 return false;
-            if (localPosition.Y > MostRecentHeaderHeight)
+            if (localPosition.Y > MostRecentTitleBox.Height)
                 return false;
             if ((localPosition.X < 0) || (localPosition.Y < 0))
                 return false;
@@ -175,6 +176,17 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
+        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            var result = base.OnGenerateLayoutTree(context, parent, existingKey);
+            if (string.IsNullOrEmpty(Title) && !existingKey.HasValue) {
+                var spacer = context.Layout.CreateItem();
+                context.Layout.SetLayoutFlags(spacer, ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak);
+                context.Layout.SetFixedSize(spacer, DisclosureArrowPadding, MostRecentTitleBox.Height);
+                context.Layout.InsertAtStart(result, spacer);
+            }
+            return result;
+        }
+
         protected override void OnDescendantReceivedFocus (Control control, bool isUserInitiated) {
             // If this focus change is the result of a top-level focus change (i.e. selecting a window),
             //  this does not indicate that the user has attempted to focus one of our descendants directly
@@ -197,7 +209,7 @@ namespace Squared.PRGUI.Controls {
             var level = DisclosureLevel.Get(Context.NowL);
             if (level >= 1)
                 return input;
-            float collapsedHeight = input.HasValue ? Math.Min(input.Value, MostRecentHeaderHeight) : MostRecentHeaderHeight;
+            float collapsedHeight = input.HasValue ? Math.Min(input.Value, MostRecentTitleBox.Height) : MostRecentTitleBox.Height;
             float expandedHeight = input.HasValue ? Math.Min(input.Value, MostRecentFullSize.Value.Height) : MostRecentFullSize.Value.Height;
             return (float)Math.Floor(Arithmetic.Lerp(collapsedHeight, expandedHeight, level));
         }
@@ -235,8 +247,13 @@ namespace Squared.PRGUI.Controls {
                 var layout = TitleLayout.Get();
                 var titleBox = settings.Box;
                 titleBox.Height = titleDecorator.Padding.Top + titleDecorator.Padding.Bottom + TitleLayout.GlyphSource.LineSpacing;
+                if (string.IsNullOrWhiteSpace(Title)) {
+                    titleBox.Width = DisclosureArrowPadding;
+                    MostRecentHeaderHeight = 0;
+                } else {
+                    MostRecentHeaderHeight = titleBox.Height;
+                }
                 // FIXME: Compute this somewhere else, like in OnLayoutComplete
-                MostRecentHeaderHeight = titleBox.Height;
                 MostRecentTitleBox = titleBox;
 
                 var titleContentBox = titleBox;
@@ -270,7 +287,7 @@ namespace Squared.PRGUI.Controls {
 
         private void RasterizeDisclosureArrow (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             var pad = (DisclosureArrowPadding - DisclosureArrowSize) / 2f;
-            var ySpace = ((MostRecentHeaderHeight - DisclosureArrowSize) / 2f);
+            var ySpace = ((MostRecentTitleBox.Height - DisclosureArrowSize) / 2f);
             var centering = (float)(Math.Round(DisclosureArrowSize * 0.5f, MidpointRounding.AwayFromZero));
             ySpace = (float)Math.Floor(ySpace);
             settings.Box.SnapAndInset(out Vector2 tl, out Vector2 temp);

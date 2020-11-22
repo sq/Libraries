@@ -547,8 +547,16 @@ namespace PRGUI.Demo {
                 .SetTitle("Test");
             tc.Text<Button>("Button A");
             tc.Text<Button>("Button B");
+
+            tc = builder.NewContainer<TitledContainer>();
+            tc.Properties
+                .SetLayoutFlags(ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak)
+                .SetCollapsible(true);
             tc.Text<Button>("Button C");
             tc.Text<Button>("Button D");
+            tc.Text<Button>("Button E");
+            tc.Text<Button>("Button F");
+            tc.Text<Button>("Button G");
         }
 
         private void Window_ClientSizeChanged (object sender, EventArgs e) {
