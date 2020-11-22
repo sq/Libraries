@@ -163,6 +163,7 @@ namespace Squared.Render.Text {
         public Color?              overrideColor;
         public Color               defaultColor;
         public float               scale;
+        private float              _spacingMinusOne;
         public DrawCallSortKey     sortKey;
         public int                 characterSkipCount;
         public int?                characterLimit;
@@ -180,6 +181,15 @@ namespace Squared.Render.Text {
         public GlyphPixelAlignment alignToPixels;
         public HorizontalAlignment alignment;
         public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
+
+        public float spacing {
+            get {
+                return _spacingMinusOne + 1;
+            }
+            set {
+                _spacingMinusOne = value - 1;
+            }
+        }
 
         // State
         public float   maxLineHeight;
@@ -483,6 +493,7 @@ namespace Squared.Render.Text {
                 kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
 
             var effectiveScale = scale / font.DPIScaleFactor;
+            var effectiveSpacing = spacing;
 
             var drawCall = default(BitmapDrawCall);
             drawCall.MultiplyColor = defaultColor;
@@ -567,6 +578,15 @@ namespace Squared.Render.Text {
                         }
                     }
                 }
+
+                // glyph.LeftSideBearing *= effectiveSpacing;
+                float leftSideDelta = 0;
+                if (effectiveSpacing >= 0)
+                    glyph.LeftSideBearing *= effectiveSpacing;
+                else
+                    leftSideDelta = Math.Abs(glyph.LeftSideBearing * effectiveSpacing);
+                glyph.RightSideBearing *= effectiveSpacing;
+                glyph.RightSideBearing -= leftSideDelta;
 
                 if (initialLineSpacing <= 0)
                     initialLineSpacing = glyphLineSpacing;

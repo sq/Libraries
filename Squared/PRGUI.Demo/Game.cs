@@ -219,26 +219,18 @@ namespace PRGUI.Demo {
             };
 
             var hideButton = new Button {
-                Text = "Hide",
+                Text = "$[ghost] Hide",
                 AutoSizeWidth = false,
                 MaximumWidth = 150,
                 Margins = default(Margins),
                 LayoutFlags = ControlFlags.Layout_Anchor_Right | ControlFlags.Layout_Fill_Column | ControlFlags.Layout_ForceBreak,
                 BackgroundColor = new Color(128, 16, 16),
-                BackgroundImage = new Squared.PRGUI.Decorations.BackgroundImageSettings {
-                    // Texture = TextureLoader.Load("ghost"),
-                    Settings = {
-                        Origin = new Vector2(0, 0.5f),
-                        Position = new Vector2(0.05f, 0.5f),
-                        Scale = Vector2.One * 0.9f
-                    }
-                },
                 // TextAlignment = HorizontalAlignment.Right,
                 TooltipContent = "Hide this window temporarily"
             };
 
             var toppleButton = new Button {
-                Text = "Topple",
+                Text = "T$[scale:0.9]o$[scale:0.8]p$[scale:0.7]p$[scale:0.6]l$[scale:0.5]e",
                 TooltipContent = "I'm a top-heavy window!"
             };
 

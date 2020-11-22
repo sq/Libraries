@@ -40,6 +40,16 @@ namespace Squared.PRGUI.Controls {
             // Multiline = false;
         }
 
+        bool? _RichText;
+
+        public bool RichText {
+            get => _RichText ?? Content.RichText;
+            set {
+                _RichText = value;
+                Content.RichText = value;
+            }
+        }
+
         bool _ScaleToFit;
 
         protected bool ScaleToFit {
@@ -160,6 +170,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected StringLayout GetCurrentLayout (bool measurement) {
+            Content.RichText = RichText;
+            Content.RichTextConfiguration = Context.RichTextConfiguration;
+
             if (measurement) {
                 if (!Content.IsValid || (ContentMeasurement == null))
                     ConfigureMeasurement();

@@ -264,6 +264,7 @@ namespace Squared.PRGUI {
         public Control PreviousFocused { get; private set; }
         public Control PreviousTopLevelFocused { get; private set; }
 
+        public RichTextConfiguration RichTextConfiguration;
         public DefaultMaterialSet Materials { get; private set; }
         private ITimeProvider TimeProvider;
 

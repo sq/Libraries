@@ -24,6 +24,7 @@ namespace Squared.Render.Text {
         private Color _DefaultColor = Microsoft.Xna.Framework.Color.White;
         private Color? _Color = null;
         private float _Scale = 1;
+        private float _Spacing = 1;
         private float _SortKey = 0;
         private int _CharacterSkipCount = 0;
         private int _CharacterLimit = int.MaxValue;
@@ -220,6 +221,15 @@ namespace Squared.Render.Text {
             }
             set {
                 InvalidatingValueAssignment(ref _Scale, value);
+            }
+        }
+
+        public float Spacing {
+            get {
+                return _Spacing;
+            }
+            set {
+                InvalidatingValueAssignment(ref _Spacing, value);
             }
         }
 
@@ -427,6 +437,7 @@ namespace Squared.Render.Text {
                 overrideColor = _Color,
                 defaultColor = _DefaultColor,
                 scale = _Scale,
+                spacing = _Spacing,
                 sortKey = _SortKey,
                 characterSkipCount = _CharacterSkipCount,
                 characterLimit = _CharacterLimit,
@@ -464,10 +475,12 @@ namespace Squared.Render.Text {
             this.GlyphSource = source.GlyphSource;
             this.KerningAdjustments = source.KerningAdjustments;
             this.LineBreakAtX = source.LineBreakAtX;
+            this.StopAtY = source.StopAtY;
             this.LineLimit = source.LineLimit;
             this.Position = source.Position;
             this.ReverseOrder = source.ReverseOrder;
             this.Scale = source.Scale;
+            this.Spacing = source.Spacing;
             this.SortKey = source.SortKey;
             this.Text = source.Text;
             this.WordWrap = source.WordWrap;
@@ -475,6 +488,8 @@ namespace Squared.Render.Text {
             this.WrapIndentation = source.WrapIndentation;
             this.XOffsetOfFirstLine = source.XOffsetOfFirstLine;
             this.XOffsetOfNewLine = source.XOffsetOfNewLine;
+            this.RichText = source.RichText;
+            this.RichTextConfiguration = source.RichTextConfiguration;
         }
 
         /// <summary>

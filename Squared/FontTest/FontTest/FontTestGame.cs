@@ -16,7 +16,7 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string TestText =
-            "The $[quick]quick $[brown]brown$[] fox jumped over the lazy dogs" +
+            "The $[.quick]quick $[color:brown;scale:2.0;spacing:-0.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] fox $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[] the lazy dogs" +
             "\r\nこの体は、無限のチェイサーで出来ていた" +
             "\r\n\r\nEmpty line before this one";
 
@@ -25,7 +25,7 @@ namespace FontTest {
             "\r\nはいはい！おつかれさまでした！" +
             "\r\n\tIndented\tText";
 
-        IGlyphSource LatinFont, UniFont, FallbackFont;
+        IGlyphSource LatinFont, SmallLatinFont, UniFont, FallbackFont;
 
         IGlyphSource ActiveFont;
 
@@ -116,6 +116,7 @@ namespace FontTest {
                 SizePoints = 30, DPIPercent = 200, GlyphMargin = margin, Gamma = 1.6
             };
             FallbackFont = new FallbackGlyphSource(LatinFont, UniFont);
+            SmallLatinFont = new FreeTypeFont.FontSize((FreeTypeFont)LatinFont, 40 * 0.75f);
 
             ActiveFont = FallbackFont;
 
@@ -131,6 +132,10 @@ namespace FontTest {
                     Styles = new Dictionary<string, RichStyle> {
                         {"quick", new RichStyle { Color = Color.Yellow } },
                         {"brown", new RichStyle { Color = Color.Brown, Scale = 2 } }
+                    },
+                    GlyphSources = new Dictionary<string, IGlyphSource> {
+                        {"large", LatinFont },
+                        {"small", SmallLatinFont}
                     }
                 }
             };
@@ -170,8 +175,10 @@ namespace FontTest {
             var newSize = Arithmetic.Clamp(20 + (ms.ScrollWheelValue / 56f), 6, 200);
             newSize = Arithmetic.Clamp(9 + (ms.ScrollWheelValue / 100f), 4, 200);
             var font = ((FreeTypeFont)LatinFont);
+            var sfont = ((FreeTypeFont.FontSize)SmallLatinFont);
             if (newSize != font.SizePoints) {
                 font.SizePoints = newSize;
+                sfont.SizePoints = newSize * 0.75f;
                 Text.Invalidate();
                 Text2.Invalidate();
             }

@@ -52,6 +52,7 @@ namespace Squared.PRGUI.Controls {
         public Button ()
             : base () {
             Content.Alignment = HorizontalAlignment.Center;
+            Content.RichText = true;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
             Wrap = false;
@@ -98,6 +99,7 @@ namespace Squared.PRGUI.Controls {
         public Checkbox ()
             : base () {
             Content.Alignment = HorizontalAlignment.Left;
+            Content.RichText = true;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
             Wrap = false;
@@ -155,6 +157,7 @@ namespace Squared.PRGUI.Controls {
         public RadioButton ()
             : base () {
             Content.Alignment = HorizontalAlignment.Left;
+            Content.RichText = true;
             AcceptsMouseInput = true;
             AcceptsFocus = true;
             Wrap = false;
