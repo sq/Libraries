@@ -271,33 +271,36 @@ namespace Squared.Util.Text {
             return new AbstractString(array);
         }
 
-        public bool TextEquals (string other) {
-            if (Length != other.Length)
-                return false;
-            return ToString() == other;
-        }
-
-        public bool TextEquals (string other, StringComparison comparison) {
-            if (Length != other.Length)
-                return false;
-            return ToString().Equals(other, comparison);
-        }
-
         public bool Equals (AbstractString other) {
             return (
-                (String == other.String) &&
+                object.ReferenceEquals(String, other.String) &&
                 object.ReferenceEquals(StringBuilder, other.StringBuilder) &&
                 (ArraySegment == other.ArraySegment)
             );
         }
 
+        public bool TextEquals (string other) {
+            if (Length != other?.Length)
+                return false;
+            return string.Equals(ToString(), other);
+        }
+
+        public bool TextEquals (string other, StringComparison comparison) {
+            if (Length != other?.Length)
+                return false;
+            return string.Equals(ToString(), other, comparison);
+        }
+
         public bool TextEquals (AbstractString other, StringComparison comparison) {
+            if (Equals(other))
+                return true;
             if (Length != other.Length)
                 return false;
             // FIXME: Optimize this
             return string.Equals(ToString(), other.ToString(), comparison);
         }
 
+        // FIXME: Should these be TextEquals?
         public static bool operator == (AbstractString lhs, AbstractString rhs) {
             return lhs.Equals(rhs);
         }
@@ -307,11 +310,11 @@ namespace Squared.Util.Text {
         }
 
         public static bool operator == (AbstractString lhs, string rhs) {
-            return lhs.Equals(rhs);
+            return lhs.TextEquals(rhs);
         }
 
         public static bool operator != (AbstractString lhs, string rhs) {
-            return !lhs.Equals(rhs);
+            return !lhs.TextEquals(rhs);
         }
 
         public char this[int index] {

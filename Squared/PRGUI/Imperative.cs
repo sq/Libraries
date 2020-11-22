@@ -121,24 +121,6 @@ namespace Squared.PRGUI.Imperative {
             return new ControlBuilder<TControl>(instance);
         }
 
-        private TControl EvaluateTextMatch<TControl> (Control c, AbstractString text)
-            where TControl : Control, new() {
-            var result = c as TControl;
-            if (result == null)
-                return null;
-
-            // FIXME: Overly rigid
-            var stb = result as StaticTextBase;
-            if ((stb != null) && text.Equals(stb.Text))
-                return result;
-            // FIXME: Creates garbage
-            var et = result as EditableText;
-            if ((et != null) && text.Equals(et.Text))
-                return result;
-
-            return null;
-        }
-
         public ControlBuilder<StaticText> Text (AbstractString text) {
             return this.Text<StaticText>(text);
         }
