@@ -492,8 +492,8 @@ namespace Squared.Render.Text {
             if (kerningAdjustments == null)
                 kerningAdjustments = StringLayout.GetDefaultKerningAdjustments(font);
 
-            var effectiveScale = scale / font.DPIScaleFactor;
-            var effectiveSpacing = spacing;
+            var effectiveScale = scale / Math.Max(0.0001f, font.DPIScaleFactor);
+            var effectiveSpacing = spacing / Math.Max(0.0001f, effectiveScale);
 
             var drawCall = default(BitmapDrawCall);
             drawCall.MultiplyColor = defaultColor;
