@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 
 namespace Squared.Util.Event {
+    public delegate void AfterBroadcastEventHandler (EventBus sender, object eventSource, string eventType, object eventArgs, bool eventWasHandled);
+
     public struct EventFilter {
         public readonly WeakReference WeakSource;
         public readonly object StrongSource;
@@ -246,6 +248,10 @@ namespace Squared.Util.Event {
         /// Return false to suppress broadcast of this event
         /// </summary>
         public Func<object, string, object, bool> OnBroadcast;
+        /// <summary>
+        /// Fired after an event has been broadcast
+        /// </summary>
+        public event AfterBroadcastEventHandler AfterBroadcast;
 
         private static void CreateFilter (object source, string type, out EventFilter filter, bool weak) {
             filter = new EventFilter(source ?? AnySource, type ?? AnyType, weak);
@@ -388,7 +394,11 @@ namespace Squared.Util.Event {
             if ((OnBroadcast != null) && !OnBroadcast(source, type, arguments))
                 return true;
 
-            return BroadcastToSubscribers(source, type, arguments);
+            var result = BroadcastToSubscribers(source, type, arguments);
+            if (AfterBroadcast != null)
+                AfterBroadcast(this, source, type, arguments, result);
+
+            return result;
         }
 
         public bool Broadcast<T> (object source, string type, T arguments) {
@@ -400,7 +410,11 @@ namespace Squared.Util.Event {
             if ((OnBroadcast != null) && !OnBroadcast(source, type, arguments))
                 return true;
 
-            return BroadcastToSubscribers(source, type, arguments);
+            var result = BroadcastToSubscribers(source, type, arguments);
+            if (AfterBroadcast != null)
+                AfterBroadcast(this, source, type, arguments, result);
+
+            return result;
         }
 
         public int Compact () {

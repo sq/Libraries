@@ -55,6 +55,8 @@ namespace Squared.PRGUI.Controls {
 
         private Tween<float> DisclosureLevel = 1f;
 
+        protected override bool FreezeDynamicContent => base.FreezeDynamicContent || Collapsed;
+
         public TitledContainer ()
             : base () {
             AcceptsMouseInput = true;
@@ -116,6 +118,9 @@ namespace Squared.PRGUI.Controls {
 
         protected bool ToggleCollapsed () {
             if (Collapsible && Enabled) {
+                if (Collapsed)
+                    GenerateDynamicContent(true);
+
                 Collapsed = !Collapsed;
 
                 // FIXME: Notify container(s) to update their content bounds and scroll data
@@ -177,8 +182,10 @@ namespace Squared.PRGUI.Controls {
             if (!isUserInitiated)
                 return;
 
-            if (Collapsed)
+            if (Collapsed) {
+                GenerateDynamicContent(true);
                 Collapsed = false;
+            }
         }
 
         private float? ComputeDisclosureHeight (float? input) {

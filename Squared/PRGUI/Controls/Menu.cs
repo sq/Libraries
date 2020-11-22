@@ -99,6 +99,8 @@ namespace Squared.PRGUI.Controls {
 
         new public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
 
+        protected override bool FreezeDynamicContent => Visible;
+
         public Menu ()
             : base () {
             Visible = false;
@@ -345,6 +347,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void ShowInternalPrologue (UIContext context) {
+            // Ensure we have run a generate pass for our dynamic content before doing anything
+            GenerateDynamicContent(true);
+
             // If we have existing layout data (like we are in the middle of fading out),
             //  we do not want to re-use it for calculations, it might be wrong
             InvalidateLayout();

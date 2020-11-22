@@ -438,6 +438,12 @@ namespace Squared.Util {
             return Items.ReserveSpace(count);
         }
 
+        public void RemoveAt (int index) {
+            // FIXME: Slow
+            EnsureList();
+            Items.DangerousRemoveAt(index);
+        }
+
         public void RemoveRange (int index, int count) {
             // FIXME: Slow
             EnsureList();

@@ -283,22 +283,7 @@ namespace PRGUI.Demo {
             };
 
             var testMenu = new Menu {
-                Children = {
-                    new StaticText { Text = "Item 1", BackgroundColor = Color.Red },
-                    new StaticText { Text = "Item 2" },
-                    new StaticText {
-                        Text = "Extremely long menu item with a bunch of text in it. This thing should be truncated pretty aggressively",
-                        TooltipContent = "This menu item has a custom tooltip",
-                        BackgroundColor = Color.Blue,
-                        Wrap = false
-                    },
-                    new Container {
-                        Children = {
-                            new StaticText { Text = "Item 4A" },
-                            new StaticText { Text = "Item 4B" },
-                        }
-                    }
-                },
+                DynamicContents = BuildTestMenu,
                 TooltipContent = "Surprise! I'm a pop-up menu!"
             };
 
@@ -319,24 +304,7 @@ namespace PRGUI.Demo {
 
             var supernestedGroup = new Container {
                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                Children = {
-                    new Checkbox { Text = "Checkbox 3" },
-                    new Checkbox { Text = "Checkbox 4" },
-                    new Checkbox { Text = "Checkbox 5" },
-                    new Checkbox { Text = "Checkbox 6" },
-                    new Checkbox { Text = "Checkbox 7" },
-                    new TitledContainer {
-                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                        Collapsible = true,
-                        Title = "Test",
-                        Children = {
-                            new Button { Text = "Button A" },
-                            new Button { Text = "Button B" },
-                            new Button { Text = "Button C" },
-                            new Button { Text = "Button D" },
-                        }
-                    }
-                }
+                DynamicContents = BuildSupernestedGroup
             };
 
             var bigScrollableContainer = new Container {
@@ -551,6 +519,36 @@ namespace PRGUI.Demo {
             Window.AllowUserResizing = true;
             Window.ClientSizeChanged += Window_ClientSizeChanged;
             Window_ClientSizeChanged(null, EventArgs.Empty);
+        }
+
+        private void BuildTestMenu (ref ContainerBuilder<Container> builder) {
+            builder.Text("Item 1").SetBackgroundColor(Color.Red);
+            builder.Text("Item 2");
+            builder.Text("Extremely long menu item with a bunch of text in it. This thing should be truncated pretty aggressively")
+                .SetTooltip("This menu item has a custom tooltip")
+                .SetBackgroundColor(Color.Blue)
+                .SetWrap(false);
+            var c = builder.NewContainer();
+            c.Text("Item 4A");
+            c.Text("Item 4B");
+        }
+
+        private void BuildSupernestedGroup (ref ContainerBuilder<Container> builder) {
+            builder.Text<Checkbox>("Checkbox 3");
+            builder.Text<Checkbox>("Checkbox 4");
+            builder.Text<Checkbox>("Checkbox 5");
+            builder.Text<Checkbox>("Checkbox 6");
+            builder.Text<Checkbox>("Checkbox 7");
+
+            var tc = builder.NewContainer<TitledContainer>();
+            tc.Properties
+                .SetLayoutFlags(ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak)
+                .SetCollapsible(true)
+                .SetTitle("Test");
+            tc.Text<Button>("Button A");
+            tc.Text<Button>("Button B");
+            tc.Text<Button>("Button C");
+            tc.Text<Button>("Button D");
         }
 
         private void Window_ClientSizeChanged (object sender, EventArgs e) {

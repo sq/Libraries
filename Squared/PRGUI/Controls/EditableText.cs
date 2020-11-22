@@ -208,6 +208,10 @@ namespace Squared.PRGUI.Controls {
             NotifyValueChanged();
         }
 
+        internal void SetText (AbstractString text) {
+            SetText(text.ToString(), false);
+        }
+
         public string Text {
             get {
                 return Builder.ToString();

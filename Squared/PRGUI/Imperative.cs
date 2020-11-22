@@ -8,8 +8,12 @@ using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render.Text;
 using Squared.Util;
+using Squared.Util.Text;
 
 namespace Squared.PRGUI.Imperative {
+    public delegate void ContainerContentsDelegate<T> (ref ContainerBuilder<T> builder)
+        where T : Control, IControlContainer, new();
+
     public static class ContainerBuilder {
         public static ContainerBuilder<TContainer> New<TContainer> ()
             where TContainer : Control, IControlContainer, new() {
@@ -24,8 +28,7 @@ namespace Squared.PRGUI.Imperative {
         public IControlContainer Container { get => Control; }
         public TContainer Control { get; internal set; }
 
-        private List<Control> ChildBuffer;
-        private Dictionary<Type, List<Control>> ControlsByType;
+        private DenseList<Control> RemovedControls;
         private int NextIndex;
 
         internal ContainerBuilder (UIContext context, TContainer container) {
@@ -35,21 +38,24 @@ namespace Squared.PRGUI.Imperative {
             NextIndex = 0;
             Context = context;
             Control = container;
-            ControlsByType = new Dictionary<Type, List<Control>>(new ReferenceComparer<Type>());
-            ChildBuffer = new List<Control>(container.Children);
-            container.Children.Clear();
-
-            foreach (var child in ChildBuffer) {
-                var t = child.GetType();
-                List<Control> byType;
-                if (!ControlsByType.TryGetValue(t, out byType))
-                    ControlsByType[t] = byType = new List<Control>();
-                byType.Add(child);
-            }
+            RemovedControls = new DenseList<Control>();
         }
 
         public ContainerBuilder (TContainer container)
             : this (container.Context, container) {
+        }
+
+        public void Reset () {
+            RemovedControls.Clear();
+            NextIndex = 0;
+        }
+
+        public void Finish () {
+            // Trim off any excess controls
+            for (int i = Container.Children.Count - 1; i >= NextIndex; i--) {
+                RemovedControls.Add(Container.Children[i]);
+                Container.Children.RemoveAt(i);
+            }
         }
 
         public static implicit operator TContainer (ContainerBuilder<TContainer> builder) {
@@ -61,49 +67,133 @@ namespace Squared.PRGUI.Imperative {
             return Data<TControl, TData>(null, data);
         }
 
+        private TControl EvaluateMatch<TControl, TData> (Control c, string key, TData data)
+            where TControl : Control, new() {
+            var result = c as TControl;
+            if (result == null)
+                return null;
+
+            if (object.Equals(result.Data.Get<TData>(key), data))
+                return result;
+            else
+                return null;
+        }
+
         public ControlBuilder<TControl> Data<TControl, TData> (string key, TData data)
             where TControl : Control, new() {
 
             TControl instance = null;
-            if (ControlsByType.TryGetValue(typeof(TControl), out List<Control> list)) {
-                // FIXME: This is slow. Use a dictionary?
-                foreach (var ctl in list) {
-                    if (ctl.Data.Get<TData>(key).Equals(data)) {
-                        instance = (TControl)ctl;
+            int foundWhere = 0;
+            for (int i = NextIndex, c = Container.Children.Count; i < c; i++) {
+                var tctl = EvaluateMatch<TControl, TData>(Container.Children[i], key, data);
+                if (tctl == null)
+                    continue;
+            }
+
+            if ((foundWhere == NextIndex) && (instance != null)) {
+                instance.Data.Set<TData>(key, data);
+                NextIndex++;
+            } else {
+                if (instance != null) {
+                    // Found a match in the current list
+                    Container.Children.RemoveAt(foundWhere);
+                } else {
+                    // Look for a match in the controls we have previously removed
+                    for (int i = 0, c = RemovedControls.Count; i < c; i++) {
+                        var tctl = EvaluateMatch<TControl, TData>(RemovedControls[i], key, data);
+                        if (tctl == null)
+                            continue;
+
+                        RemovedControls.RemoveAt(i);
+                        instance = tctl;
                         break;
                     }
                 }
+
+                // Failed to find a match anywhere, so make a new one
+                if (instance == null)
+                    instance = new TControl();
+
+                instance.Data.Set<TData>(key, data);
+                AddInternal(instance);
             }
 
-            if (instance == null)
-                instance = new TControl();
-
-            instance.Data.Set<TData>(key, data);
-
-            AddInternal(instance);
             return new ControlBuilder<TControl>(instance);
+        }
+
+        private TControl EvaluateTextMatch<TControl> (Control c, AbstractString text)
+            where TControl : Control, new() {
+            var result = c as TControl;
+            if (result == null)
+                return null;
+
+            // FIXME: Overly rigid
+            var stb = result as StaticTextBase;
+            if ((stb != null) && text.Equals(stb.Text))
+                return result;
+            // FIXME: Creates garbage
+            var et = result as EditableText;
+            if ((et != null) && text.Equals(et.Text))
+                return result;
+
+            return null;
+        }
+
+        public ControlBuilder<StaticText> Text (AbstractString text) {
+            return this.Text<StaticText>(text);
+        }
+
+        public ControlBuilder<TControl> Text<TControl> (AbstractString text)
+            where TControl : Control, new() {
+            var result = New<TControl>();
+            result.SetText(text);
+            return result;
         }
 
         public ControlBuilder<TControl> New<TControl> ()
             where TControl : Control, new() {
-            var instance = (NextIndex < ChildBuffer.Count)
-                ? ChildBuffer[NextIndex] as TControl
-                : new TControl();
+            TControl instance = null;
+            if (NextIndex < Container.Children.Count)
+                instance = Container.Children[NextIndex] as TControl;
+
+            if (instance == null)
+                instance = new TControl();
 
             AddInternal(instance);
+
             return new ControlBuilder<TControl>(instance);
+        }
+
+        public ContainerBuilder<Container> NewContainer () {
+            return this.NewContainer<Container>();
+        }
+
+        public ContainerBuilder<TControl> NewContainer<TControl> ()
+            where TControl : Control, IControlContainer, new() {
+            TControl instance = null;
+            if (NextIndex < Container.Children.Count)
+                instance = Container.Children[NextIndex] as TControl;
+
+            if (instance == null)
+                instance = new TControl();
+
+            AddInternal(instance);
+
+            return new ContainerBuilder<TControl>(instance);
         }
 
         private void AddInternal<TControl> (TControl instance)
             where TControl : Control {
             var t = typeof(TControl);
 
-            List<Control> list;
-            if (!ControlsByType.TryGetValue(t, out list))
-                ControlsByType[t] = list = new List<Control>();
-
-            Container.Children.Add(instance);
-            list.Add(instance);
+            var index = NextIndex++;
+            if (index >= Container.Children.Count)
+                Container.Children.Add(instance);
+            else {
+                var previous = Container.Children[index];
+                Container.Children[index] = instance;
+                RemovedControls.Add(previous);
+            }
         }
 
         public ContainerBuilder<TContainer> Add (Control child) {
@@ -123,10 +213,10 @@ namespace Squared.PRGUI.Imperative {
     }
 
     public static class ControlBuilder {
-        public static ControlBuilder<TControl> New<TControl> () 
+        public static ControlBuilder<TControl> New<TControl> (TControl instance = null) 
             where TControl : Control, new()
         {
-            return new ControlBuilder<TControl>(new TControl());
+            return new ControlBuilder<TControl>(instance ?? new TControl());
         }
     }
 
@@ -311,14 +401,11 @@ namespace Squared.PRGUI.Imperative {
             cast.Value = value;
             return this;
         }
-        public ControlBuilder<TControl> SetText (string value) {
+        public ControlBuilder<TControl> SetText (AbstractString value) {
             var cast1 = (Control as StaticTextBase);
-            cast1?.SetText(value);
-
             var cast2 = (Control as EditableText);
-            if (cast2 != null)
-                cast2.Text = value;
-
+            cast1?.SetText(value);
+            cast2?.SetText(value);
             return this;
         }
 

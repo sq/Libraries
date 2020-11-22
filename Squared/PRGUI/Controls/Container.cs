@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
 using Squared.PRGUI.Decorations;
+using Squared.PRGUI.Imperative;
 using Squared.PRGUI.Layout;
 using Squared.Render.Convenience;
 using Squared.Util;
@@ -40,6 +41,14 @@ namespace Squared.PRGUI.Controls {
         protected ScrollbarState HScrollbar, VScrollbar;
         protected bool HasContentBounds, CanScrollVertically;
         protected RectF ContentBounds;
+
+        protected ContainerBuilder<Container> DynamicBuilder;
+        /// <summary>
+        /// If set, every update this delegate will be invoked to reconstruct the container's children
+        /// </summary>
+        public ContainerContentsDelegate<Container> DynamicContents;
+
+        protected virtual bool FreezeDynamicContent => false;
 
         public Container () 
             : base () {
@@ -161,10 +170,26 @@ namespace Squared.PRGUI.Controls {
                 child.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
         }
 
+        protected void GenerateDynamicContent (bool force) {
+            if (DynamicContents == null)
+                return;
+
+            if (FreezeDynamicContent && !force)
+                return;
+
+            if (DynamicBuilder.Container != this)
+                DynamicBuilder = new ContainerBuilder<Container>(this);
+            DynamicBuilder.Reset();
+            DynamicContents(ref DynamicBuilder);
+            DynamicBuilder.Finish();
+        }
+
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             HasContentBounds = false;
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             context.Layout.SetContainerFlags(result, ContainerFlags);
+
+            GenerateDynamicContent(false);
 
             foreach (var item in Children) {
                 item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
