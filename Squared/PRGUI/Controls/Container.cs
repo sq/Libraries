@@ -251,7 +251,7 @@ namespace Squared.PRGUI.Controls {
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
-            if (Scrollable) {
+            if (Scrollable && (settings.Box.Height > MostRecentHeaderHeight)) {
                 settings.Box.Top += MostRecentHeaderHeight;
                 settings.ContentBox.Top += MostRecentHeaderHeight;
                 settings.Box.Height -= MostRecentHeaderHeight;

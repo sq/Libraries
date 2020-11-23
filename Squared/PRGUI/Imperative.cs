@@ -217,6 +217,7 @@ namespace Squared.PRGUI.Imperative {
         where TControl : Control {
 
         public TControl Control { get; internal set; }
+        UIContext Context => Control.Context;
 
         public ControlBuilder (TControl control) {
             if (control == null)
@@ -229,6 +230,14 @@ namespace Squared.PRGUI.Imperative {
             if (cast == null)
                 throw new InvalidCastException();
             return new ContainerBuilder(Control);
+        }
+
+        private bool UnhandledEvent (string eventName) {
+            var key = new UIContext.UnhandledEvent { Source = Control, Name = eventName };
+            var comparer = UIContext.UnhandledEvent.Comparer.Instance;
+            var result = Context.UnhandledEvents.Contains(key, comparer) || 
+                Context.PreviousUnhandledEvents.Contains(key, comparer);
+            return result;
         }
 
         public static implicit operator TControl (ControlBuilder<TControl> builder) {
@@ -406,6 +415,20 @@ namespace Squared.PRGUI.Imperative {
         public ControlBuilder<TControl> SetValue<TValue> (TValue value) {
             var cast = (Control as IValueControl<TValue>);
             cast.Value = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetValue<TValue> (ref TValue value, out bool changed) {
+            var cast = (Control as IValueControl<TValue>);
+            if (
+                UnhandledEvent(UIEvents.ValueChanged) || 
+                UnhandledEvent(UIEvents.CheckedChanged)
+            ) {
+                changed = true;
+                value = cast.Value;
+            } else {
+                changed = false;
+                cast.Value = value;
+            }
             return this;
         }
         public ControlBuilder<TControl> SetText (AbstractString value) {

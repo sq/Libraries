@@ -465,6 +465,13 @@ namespace Squared.Render.RasterShape {
 
         const int MaxVertexCount = 65535;
 
+        const bool HollowOptimization = true;
+
+        const int CornerBufferRepeatCount = HollowOptimization ? 5 : 1;
+        const int CornerBufferVertexCount = CornerBufferRepeatCount * 4;
+        const int CornerBufferIndexCount = CornerBufferRepeatCount * 6;
+        const int CornerBufferPrimCount = CornerBufferRepeatCount * 2;
+
         public DepthStencilState DepthStencilState;
         public BlendState BlendState;
         public RasterizerState RasterizerState;
@@ -504,7 +511,7 @@ namespace Squared.Render.RasterShape {
                     _DrawCalls.Sort(ShapeTypeSorter);
 
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<RasterShapeVertex>>();
-                _CornerBuffer = QuadUtils.CreateCornerBuffer(Container);
+                _CornerBuffer = QuadUtils.CreateCornerBuffer(Container, CornerBufferRepeatCount);
                 var swb = _BufferGenerator.Allocate(vertexCount, 1);
                 _SoftwareBuffer = swb;
 
@@ -573,7 +580,7 @@ namespace Squared.Render.RasterShape {
                     TextureSettings = lastTextureSettings
                 });
 
-                NativeBatch.RecordPrimitives(count * 2);
+                NativeBatch.RecordPrimitives(count * CornerBufferPrimCount);
             }
         }
 
@@ -689,8 +696,8 @@ namespace Squared.Render.RasterShape {
 
                     device.DrawInstancedPrimitives(
                         PrimitiveType.TriangleList, 
-                        0, _CornerBuffer.HardwareVertexOffset, 4, 
-                        _CornerBuffer.HardwareIndexOffset, 2, 
+                        0, _CornerBuffer.HardwareVertexOffset, CornerBufferVertexCount, 
+                        _CornerBuffer.HardwareIndexOffset, CornerBufferPrimCount, 
                         sb.InstanceCount
                     );
 

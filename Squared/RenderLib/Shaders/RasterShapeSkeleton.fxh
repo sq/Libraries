@@ -185,11 +185,28 @@ void computeTLBR (
     }
 }
 
+void computeHullCorners (
+    in int type, in float index,
+    inout float2 tl, inout float2 br
+) {
+    float2 _tl = tl, _br = br;
+    if (index < 2) {
+        br = lerp(_tl, _br, 0.5);
+    } else if (index < 3) {
+        tl.x = lerp(_tl.x, _br.x, 0.5);
+        br.y = lerp(_tl.y, _br.y, 0.5);
+    } else if (index < 4) {
+        tl = br = 0;
+    } else {
+        tl = br = 0;
+    }
+}
+
 void computePosition (
     int type, float outlineSize, 
     float2 a, float2 b, float2 c, float2 radius,
-    float2 tl, float2 br, float3 cornerWeights,
-    float4 params,
+    float2 tl, float2 br, float4 cornerWeights,
+    float4 params, bool isHollow,
     out float2 xy
 ) {
     if (type == TYPE_LineSegment) {
@@ -226,13 +243,15 @@ void computePosition (
         adjustTLBR(tl, br, params);
         // HACK: Padding
         tl -= 1; br += 1;
+        if (isHollow)
+            computeHullCorners(type, cornerWeights.w, tl, br);
         // FIXME: Fit a better hull around triangles. Oriented bounding box?
         xy = lerp(tl, br, cornerWeights.xy);
     }
 }
 
 void RasterShapeVertexShader (
-    in float3 cornerWeights : NORMAL2,
+    in float4 cornerWeights : NORMAL2,
     in float4 ab_in : POSITION0,
     in float4 cd_in : POSITION1,
     inout float4 params : TEXCOORD0,
@@ -247,17 +266,26 @@ void RasterShapeVertexShader (
     out float4 cd : TEXCOORD4,
     out float4 worldPositionTypeAndWorldSpace : NORMAL0
 ) {
+    int type = abs(typeAndWorldSpace.x);
+
+    bool isHollow = ((centerColor.a <= 0) && (edgeColor.a <= 0)) && (type == TYPE_Rectangle);
+    bool dead = isHollow ? (cornerWeights.w < 1) : (cornerWeights.w >= 1);
+    if (dead) {
+        result = -9999;
+        ab = cd = worldPositionTypeAndWorldSpace = 0;
+        return;
+    }
+
     ab = ab_in; cd = cd_in;
     float4 position = float4(ab_in.x, ab_in.y, 0, 1);
     float2 a = ab.xy, b = ab.zw, c = cd.xy, radius = cd.zw;
     params.x *= OutlineSizeCompensation;
     float outlineSize = abs(params.x);
-    int type = abs(typeAndWorldSpace.x);
 
     float2 tl, br;
 
     computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
-    computePosition(type, outlineSize, a, b, c, radius, tl, br, cornerWeights.xyz, params, position.xy);
+    computePosition(type, outlineSize, a, b, c, radius, tl, br, cornerWeights, params, isHollow, position.xy);
 
     float2 adjustedPosition = position.xy;
     if (typeAndWorldSpace.y > 0.5) {

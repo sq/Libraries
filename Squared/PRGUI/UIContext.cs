@@ -20,9 +20,33 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI {
     public partial class UIContext : IDisposable {
-        private struct UnhandledEvent {
+        internal struct UnhandledEvent {
+            internal class Comparer : IEqualityComparer<UnhandledEvent> {
+                public static readonly Comparer Instance = new Comparer();
+
+                public bool Equals (UnhandledEvent x, UnhandledEvent y) {
+                    return x.Equals(y);
+                }
+
+                public int GetHashCode (UnhandledEvent obj) {
+                    return obj.GetHashCode();
+                }
+            }
+
             public Control Source;
-            public string EventName;
+            public string Name;
+
+            public bool Equals (UnhandledEvent rhs) {
+                return (Source == rhs.Source) &&
+                    (Name == rhs.Name);
+            }
+
+            public override bool Equals (object obj) {
+                if (obj is UnhandledEvent)
+                    return Equals((UnhandledEvent)obj);
+                else
+                    return false;
+            }
         }
 
         private class ScratchRenderTarget : IDisposable {
@@ -168,8 +192,8 @@ namespace Squared.PRGUI {
         /// </summary>
         public readonly EventBus EventBus;
 
-        private List<UnhandledEvent> UnhandledEvents = new List<UnhandledEvent>();
-        private List<UnhandledEvent> PreviousUnhandledEvents = new List<UnhandledEvent>();
+        internal List<UnhandledEvent> UnhandledEvents = new List<UnhandledEvent>();
+        internal List<UnhandledEvent> PreviousUnhandledEvents = new List<UnhandledEvent>();
 
         /// <summary>
         /// The layout engine used to compute control sizes and positions
@@ -396,9 +420,14 @@ namespace Squared.PRGUI {
             TTS = new Accessibility.TTS(this);
         }
 
-        private void EventBus_AfterBroadcast (EventBus sender, object eventSource, string eventType, object eventArgs, bool eventWasHandled) {
+        private void EventBus_AfterBroadcast (EventBus sender, object eventSource, string eventName, object eventArgs, bool eventWasHandled) {
             if (eventWasHandled)
                 return;
+
+            UnhandledEvents.Add(new UnhandledEvent {
+                Source = eventSource as Control,
+                Name = eventName
+            });
         }
 
         private Tooltip GetTooltipInstance () {
@@ -456,7 +485,6 @@ namespace Squared.PRGUI {
             if (target.AcceptsFocus)
                 TrySetFocus(target, true, true);
             MouseCaptured = target;
-            Console.WriteLine($"CaptureMouse setting capture to {target}");
             return (MouseCaptured == target);
         }
 
@@ -522,10 +550,8 @@ namespace Squared.PRGUI {
                 Focused = focusDonor;
             if (Hovering == target)
                 Hovering = null;
-            if (MouseCaptured == target) {
-                Console.WriteLine($"ReleaseCapture setting capture to null");
+            if (MouseCaptured == target)
                 MouseCaptured = null;
-            }
             ReleasedCapture = target;
         }
 
@@ -639,6 +665,10 @@ namespace Squared.PRGUI {
             Now = (float)TimeProvider.Seconds;
             NowL = TimeProvider.Ticks;
 
+            PreviousUnhandledEvents.Clear();
+            PreviousUnhandledEvents.AddRange(UnhandledEvents);
+            UnhandledEvents.Clear();
+
             var previouslyFixated = FixatedControl;
 
             var previouslyHovering = Hovering;
@@ -653,6 +683,7 @@ namespace Squared.PRGUI {
                 else
                     Focused = null;
             }
+
 
             CurrentMouseButtons = ((mouseState.LeftButton == ButtonState.Pressed) ? MouseButtons.Left : MouseButtons.None) |
                 ((mouseState.MiddleButton == ButtonState.Pressed) ? MouseButtons.Middle : MouseButtons.None) |
@@ -711,7 +742,6 @@ namespace Squared.PRGUI {
                 }
 
                 if (!SuppressNextCaptureLoss && (MouseCaptured != null)) {
-                    Console.WriteLine($"UpdateInput setting capture to null");
                     MouseCaptured = null;
                 } else if (SuppressNextCaptureLoss) {
                     SuppressNextCaptureLoss = false;

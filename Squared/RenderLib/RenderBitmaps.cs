@@ -22,7 +22,7 @@ using System.Runtime.CompilerServices;
 namespace Squared.Render {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct CornerVertex : IVertexType {
-        public Vector3 CornerWeights;
+        public Vector4 CornerWeightsAndIndex;
 
         public static readonly VertexElement[] Elements;
         static readonly VertexDeclaration _VertexDeclaration;
@@ -31,8 +31,8 @@ namespace Squared.Render {
             var tThis = typeof(CornerVertex);
 
             Elements = new VertexElement[] {
-                new VertexElement( Marshal.OffsetOf(tThis, "CornerWeights").ToInt32(),
-                    VertexElementFormat.Vector3, VertexElementUsage.Normal, 2)
+                new VertexElement( Marshal.OffsetOf(tThis, "CornerWeightsAndIndex").ToInt32(),
+                    VertexElementFormat.Vector4, VertexElementUsage.Normal, 2)
             };
 
             _VertexDeclaration = new VertexDeclaration(Elements);
@@ -180,26 +180,36 @@ namespace Squared.Render {
             0, 2, 3
         };
 
-        public static BufferGenerator<CornerVertex>.SoftwareBuffer CreateCornerBuffer (IBatchContainer container) {
+        public static BufferGenerator<CornerVertex>.SoftwareBuffer CreateCornerBuffer (IBatchContainer container, int repeatCount = 1) {
             BufferGenerator<CornerVertex>.SoftwareBuffer result;
             var cornerGenerator = container.RenderManager.GetBufferGenerator<BufferGenerator<CornerVertex>>();
             // TODO: Is it OK to share the buffer?
-            if (!cornerGenerator.TryGetCachedBuffer("QuadCorners", 4, 6, out result)) {
-                result = cornerGenerator.Allocate(4, 6, true);
-                cornerGenerator.SetCachedBuffer("QuadCorners", result);
+            int vertCount = 4 * repeatCount;
+            int indexCount = 6 * repeatCount;
+            var bufferName = "QuadCorners" + repeatCount;
+            if (!cornerGenerator.TryGetCachedBuffer(bufferName, vertCount, indexCount, out result)) {
+                result = cornerGenerator.Allocate(vertCount, indexCount, true);
+                cornerGenerator.SetCachedBuffer(bufferName, result);
                 // TODO: Can we just skip filling the buffer here?
             }
 
             var verts = result.Vertices;
             var indices = result.Indices;
+            var vertOffset = verts.Offset;
+            var indexOffset = indices.Offset;
 
-            verts.Array[verts.Offset + 0].CornerWeights = new Vector3(0, 0, 0);
-            verts.Array[verts.Offset + 1].CornerWeights = new Vector3(1, 0, 0);
-            verts.Array[verts.Offset + 2].CornerWeights = new Vector3(1, 1, 0);
-            verts.Array[verts.Offset + 3].CornerWeights = new Vector3(0, 1, 0);
+            for (int j = 0; j < repeatCount; j++) {
+                verts.Array[vertOffset + 0].CornerWeightsAndIndex = new Vector4(0, 0, 0, j);
+                verts.Array[vertOffset + 1].CornerWeightsAndIndex = new Vector4(1, 0, 0, j);
+                verts.Array[vertOffset + 2].CornerWeightsAndIndex = new Vector4(1, 1, 0, j);
+                verts.Array[vertOffset + 3].CornerWeightsAndIndex = new Vector4(0, 1, 0, j);
 
-            for (var i = 0; i < QuadIndices.Length; i++)
-                indices.Array[indices.Offset + i] = QuadIndices[i];
+                for (var i = 0; i < QuadIndices.Length; i++)
+                    indices.Array[indexOffset + i] = (ushort)(QuadIndices[i] + (j * 4));
+
+                vertOffset += 4;
+                indexOffset += 6;
+            }
 
             return result;
         }

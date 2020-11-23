@@ -10,6 +10,8 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public partial class UIContext : IDisposable {
+        public event Func<string, Keys?, char?, bool> OnKeyEvent;
+
         internal bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false, bool targetHandlesFirst = false) {
             // FIXME: Is this right?
             if (target == null)
@@ -169,24 +171,26 @@ namespace Squared.PRGUI {
             if (FireEvent(name, Focused, evt))
                 return true;
 
-            if (name != UIEvents.KeyPress)
-                return false;
-
-            switch (key) {
-                case Keys.Escape:
-                    Focused = null;
-                    break;
-                case Keys.Tab:
-                    int tabDelta = CurrentModifiers.Shift ? -1 : 1;
-                    return RotateFocus(topLevel: CurrentModifiers.Control, delta: tabDelta, isUserInitiated: true);
-                case Keys.Space:
-                    if (Focused?.IsValidMouseInputTarget == true) {
-                        var args = MakeMouseEventArgs(Focused, LastMousePosition, null);
-                        args.SequentialClickCount = 1;
-                        return FireEvent(UIEvents.Click, Focused, args);
-                    } else
-                        return false;
+            if (name == UIEvents.KeyPress) {
+                switch (key) {
+                    case Keys.Escape:
+                        Focused = null;
+                        break;
+                    case Keys.Tab:
+                        int tabDelta = CurrentModifiers.Shift ? -1 : 1;
+                        return RotateFocus(topLevel: CurrentModifiers.Control, delta: tabDelta, isUserInitiated: true);
+                    case Keys.Space:
+                        if (Focused?.IsValidMouseInputTarget == true) {
+                            var args = MakeMouseEventArgs(Focused, LastMousePosition, null);
+                            args.SequentialClickCount = 1;
+                            return FireEvent(UIEvents.Click, Focused, args);
+                        }
+                        break;
+                }
             }
+
+            if (OnKeyEvent != null)
+                return OnKeyEvent(name, key, ch);
 
             return false;
         }
@@ -577,7 +581,6 @@ namespace Squared.PRGUI {
                 MouseDownPosition = globalPosition;
                 if (target != null && target.IsValidMouseInputTarget) {
                     AutomaticallyTransferFocusOnTopLevelChange(target);
-                    Console.WriteLine($"MouseDown setting capture to {target}");
                     MouseCaptured = target;
                 }
                 if (target == null || target.IsValidFocusTarget)

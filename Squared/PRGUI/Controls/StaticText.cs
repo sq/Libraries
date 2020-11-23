@@ -124,6 +124,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         internal void SetText (AbstractString text) {
+            if (Text.TextEquals(text, StringComparison.Ordinal))
+                return;
+
             Text = text;
         }
 
