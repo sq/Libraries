@@ -69,10 +69,10 @@ namespace PRGUI.Demo {
 
             Content.RootDirectory = "Content";
 
-            IsFixedTimeStep = false;
+            IsFixedTimeStep = true;
 
             if (IsFixedTimeStep)
-                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 5f);
+                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 3f);
 
             PreviousKeyboardState = Keyboard.GetState();
 
@@ -315,7 +315,7 @@ namespace PRGUI.Demo {
                 FixedWidth = 600,
                 FixedHeight = 600,
                 // FIXME: Why is this not aligned with the top
-                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
+                LayoutFlags = ControlFlags.Layout_Fill_Row,
             };
             for (var i = 0; i < 500; i++)
                 listBox.Items.Add($"Item {i}");
@@ -348,7 +348,7 @@ namespace PRGUI.Demo {
                     },
                     new Container {
                         ClipChildren = true,
-                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
+                        LayoutFlags = ControlFlags.Layout_Fill_Row,
                         MaximumHeight = 500,
                         FixedWidth = 450,
                         Scrollable = true,
