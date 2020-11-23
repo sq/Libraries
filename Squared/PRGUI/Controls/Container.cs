@@ -68,12 +68,12 @@ namespace Squared.PRGUI.Controls {
         private Vector2 DesiredScrollOffset;
 
         public bool TrySetScrollOffset (Vector2 value, bool forUserInput) {
-            if (!CanScrollVertically)
-                value.Y = 0;
             if (!Scrollable)
                 value = Vector2.Zero;
             if (forUserInput && (value != DesiredScrollOffset))
                 DesiredScrollOffset = value;
+            if (!CanScrollVertically)
+                value.Y = 0;
             value = ConstrainNewScrollOffset(value);
             if (value == _ScrollOffset)
                 return false;
@@ -155,12 +155,15 @@ namespace Squared.PRGUI.Controls {
             var hScrollProcessed = ShowHorizontalScrollbar && scroll.OnMouseEvent(settings, ref HScrollbar, name, args);
             var vScrollProcessed = ShowVerticalScrollbar && scroll.OnMouseEvent(settings, ref VScrollbar, name, args);
 
-            TrySetScrollOffset(ConstrainNewScrollOffset(new Vector2(HScrollbar.Position, VScrollbar.Position)), hScrollProcessed || vScrollProcessed);
-            // Update the scrollbar state again because we may have clamped the offsets
-            HScrollbar.Position = ScrollOffset.X;
-            VScrollbar.Position = ScrollOffset.Y;
+            if (hScrollProcessed || vScrollProcessed) {
+                var newOffset = new Vector2(HScrollbar.Position, VScrollbar.Position);
+                TrySetScrollOffset(newOffset, true);
+                HScrollbar.Position = ScrollOffset.X;
+                VScrollbar.Position = ScrollOffset.Y;
+                return true;
+            }
 
-            return hScrollProcessed || vScrollProcessed;
+            return false;
         }
 
         protected override void OnDisplayOffsetChanged () {

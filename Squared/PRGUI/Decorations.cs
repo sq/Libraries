@@ -952,9 +952,9 @@ namespace Squared.PRGUI.Decorations {
             }
         }
 
-        private void Scrollbar_UpdateDrag (ref ScrollbarState data, MouseEventArgs args) {
+        private bool Scrollbar_UpdateDrag (ref ScrollbarState data, MouseEventArgs args) {
             if (!data.DragInitialMousePosition.HasValue)
-                return;
+                return false;
 
             var dragDistance = data.Horizontal
                 ? args.GlobalPosition.X - data.DragInitialMousePosition.Value.X
@@ -962,6 +962,7 @@ namespace Squared.PRGUI.Decorations {
             var dragDeltaUnit = dragDistance / data.DragSizePx;
             var dragDeltaScaled = dragDeltaUnit * data.ContentSize;
             data.Position = data.DragInitialPosition + dragDeltaScaled;
+            return true;
         }
 
         private bool Scrollbar_OnMouseEvent (
@@ -974,6 +975,7 @@ namespace Squared.PRGUI.Decorations {
             );
 
             var thumb = new RectF(thumbA, thumbB - thumbA);
+            var processed = false;
             if (
                 thumb.Contains(args.GlobalPosition) || 
                 data.DragInitialMousePosition.HasValue
@@ -984,18 +986,18 @@ namespace Squared.PRGUI.Decorations {
                     data.DragInitialMousePosition = args.GlobalPosition;
                 } else if (eventName == UIEvents.MouseMove) {
                     if (args.Buttons == MouseButtons.Left)
-                        Scrollbar_UpdateDrag(ref data, args);
+                        processed = Scrollbar_UpdateDrag(ref data, args);
                 } else if (eventName == UIEvents.MouseUp) {
-                    Scrollbar_UpdateDrag(ref data, args);
+                    processed = Scrollbar_UpdateDrag(ref data, args);
                     data.DragInitialMousePosition = null;
                 }
             }
 
             var track = new RectF(trackA, trackB - trackA);
             if (track.Contains(args.GlobalPosition))
-                return true;
+                processed = true;
 
-            return false;
+            return processed;
         }
 
         private void Scrollbar_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref ScrollbarState data) {

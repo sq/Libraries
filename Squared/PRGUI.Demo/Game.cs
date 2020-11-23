@@ -736,7 +736,7 @@ namespace PRGUI.Demo {
 
             ir.Draw(UIRenderTarget, Vector2.Zero, multiplyColor: Color.White * uiOpacity);
 
-            // DrawPerformanceStats(ref ir);
+            DrawPerformanceStats(ref ir);
 
             if (TearingTest) {
                 var x = (Time.Ticks / 20000) % Graphics.PreferredBackBufferWidth;
