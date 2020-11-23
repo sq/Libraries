@@ -14,6 +14,8 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class ListBox<T> : Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IValueControl<T> {
+        public const int ControlMinimumHeight = 75, ControlMinimumWidth = 150;
+
         public IEqualityComparer<T> Comparer;
         public ItemList<T> Items { get; private set; }
 
@@ -61,6 +63,18 @@ namespace Squared.PRGUI.Controls {
             Scrollable = true;
             // FIXME
             Items = new ItemList<T>(Comparer);
+        }
+
+        protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
+            base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
+            if (minimumWidth.HasValue)
+                minimumWidth = Math.Max(minimumWidth.Value, ControlMinimumWidth);
+            else
+                minimumWidth = ControlMinimumWidth;
+            if (minimumHeight.HasValue)
+                minimumHeight = Math.Max(minimumHeight.Value, ControlMinimumHeight);
+            else
+                minimumHeight = ControlMinimumHeight;
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {

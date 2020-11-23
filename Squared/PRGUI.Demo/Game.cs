@@ -69,7 +69,7 @@ namespace PRGUI.Demo {
 
             Content.RootDirectory = "Content";
 
-            IsFixedTimeStep = true;
+            IsFixedTimeStep = false;
 
             if (IsFixedTimeStep)
                 TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 3f);
@@ -314,8 +314,7 @@ namespace PRGUI.Demo {
                 Description = "Big List",
                 FixedWidth = 600,
                 FixedHeight = 600,
-                // FIXME: Why is this not aligned with the top
-                LayoutFlags = ControlFlags.Layout_Fill_Row,
+                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
             };
             for (var i = 0; i < 500; i++)
                 listBox.Items.Add($"Item {i}");
@@ -335,38 +334,48 @@ namespace PRGUI.Demo {
                 ScrollOffset = new Vector2(0, 22),
                 Children = {
                     // FIXME: This should probably expand to the full width of the container's content, instead of the width of the container as it does now
+                    /*
                     new StaticText {
                         Text = "Clipped container",
                         AutoSizeWidth = false,
                         BackgroundColor = new Color(32, 60, 32),
                     },
-                    new Button {
-                        Text = "Clipped huge button\r\nSecond line\r\n" + ButtonChars,
-                        FixedWidth = 600,
-                        FixedHeight = 1800,
-                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
-                    },
+                    */
                     new Container {
-                        ClipChildren = true,
-                        LayoutFlags = ControlFlags.Layout_Fill_Row,
-                        MaximumHeight = 500,
-                        FixedWidth = 450,
-                        Scrollable = true,
+                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
+                        CustomDecorator = decorations.None,
                         Children = {
-                            new StaticText { Text = "Testing nested clips" },
-                            new StaticText {
-                                Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
-                                Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                            new Button {
+                                Text = "Clipped huge button\r\nSecond line\r\n" + ButtonChars,
+                                FixedWidth = 600,
+                                FixedHeight = 1800,
+                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
                             },
-                            new Checkbox { Text = "Checkbox 1", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak },
-                            new Checkbox { Text = "Checkbox 2", Checked = true },
-                            new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
-                            new RadioButton { Text = "Radio 2", GroupId = "radio" },
-                            new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
-                            supernestedGroup
+                            new Container {
+                                ClipChildren = true,
+                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
+                                MaximumHeight = 500,
+                                FixedWidth = 450,
+                                Scrollable = true,
+                                /*
+                                Children = {
+                                    new StaticText { Text = "Testing nested clips" },
+                                    new StaticText {
+                                        Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
+                                        Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                                    },
+                                    new Checkbox { Text = "Checkbox 1", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak },
+                                    new Checkbox { Text = "Checkbox 2", Checked = true },
+                                    new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
+                                    new RadioButton { Text = "Radio 2", GroupId = "radio" },
+                                    new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
+                                    supernestedGroup
+                                }
+                                */
+                            },
+                            listBox,
                         }
                     },
-                    listBox,
                     new Button {
                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                         Text = "Another button at the bottom to test clipped hit tests"
@@ -398,6 +407,7 @@ namespace PRGUI.Demo {
                 LayoutFlags = ControlFlags.Layout_Fill,
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                 Children = {
+                    /*
                     hoveringCtl,
                     lastClickedCtl,
                     button1,
@@ -444,6 +454,7 @@ namespace PRGUI.Demo {
                         AutoSizeWidth = true,
                         BackgroundColor = Color.DarkBlue
                     },
+                    */
                     bigScrollableContainer
                 }
             };
@@ -462,7 +473,7 @@ namespace PRGUI.Demo {
                 },
                 Controls = {
                     topLevelContainer,
-                    FloatingWindow
+                    // FloatingWindow
                 }
             };
 

@@ -212,6 +212,8 @@ namespace Squared.PRGUI.Decorations {
         public readonly float GlobalDefaultMargin,
             GlobalDefaultMarginCollapsed;
 
+        public IDecorator None { get; set; }
+
         public IDecorator Button { get; set; }
         public IDecorator Container { get; set; }
         public IDecorator TitledContainer { get; set; }
@@ -284,6 +286,8 @@ namespace Squared.PRGUI.Decorations {
                 Softness = 10f,
                 Expansion = 1.5f
             };
+
+            None = new DelegateDecorator { };
 
             Button = new DelegateDecorator {
                 Margins = new Margins(GlobalDefaultMargin),
