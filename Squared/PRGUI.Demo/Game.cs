@@ -307,7 +307,7 @@ namespace PRGUI.Demo {
                 Description = "Big Menu",
                 TooltipContent = "Click me for a big dropdown menu"
             };
-            for (var i = 0; i < 100; i++)
+            for (var i = 0; i < 500; i++)
                 dropdown.Items.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });
 
             var supernestedGroup = new Container {

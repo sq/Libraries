@@ -17,19 +17,18 @@ namespace Squared.PRGUI.Controls {
 
     public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget, IMenuListener, IValueControl<T> {
         public IEqualityComparer<T> Comparer;
-        public readonly List<T> Items = new List<T>();
+        public readonly ItemList<T> Items = new ItemList<T>();
         private readonly Menu ItemsMenu = new Menu {
             DeselectOnMouseLeave = false
         };
 
         public string Description;
 
-        private readonly Dictionary<Control, T> ValueForControl = new Dictionary<Control, T>(new ReferenceComparer<Control>());
         public CreateControlForValueDelegate<T> CreateControlForValue = null;
         public Func<T, AbstractString> FormatValue = null;
         public AbstractString Label;
 
-        private bool NeedsUpdate = true;
+        // private bool NeedsUpdate = true;
         private bool MenuJustClosed = false;
 
         private T _SelectedItem = default(T);
@@ -41,7 +40,7 @@ namespace Squared.PRGUI.Controls {
                 if (!Items.Contains(value))
                     throw new ArgumentException("Value not in items list");
                 _SelectedItem = value;
-                NeedsUpdate = true;
+                // NeedsUpdate = true;
                 Invalidate();
                 FireEvent(UIEvents.ValueChanged, _SelectedItem);
             }
@@ -107,7 +106,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected void Update () {
-            NeedsUpdate = false;
+            // NeedsUpdate = false;
             if (Comparer.Equals(_SelectedItem, default(T)) && (Items.Count > 0))
                 SelectedItem = Items[0];
 
@@ -123,38 +122,10 @@ namespace Squared.PRGUI.Controls {
             if (Description != null)
                 ItemsMenu.Description = $"Menu {Description}";
 
-            for (int i = 0; i < Items.Count; i++) {
-                var value = Items[i];
-                var existingControl = (i < ItemsMenu.Count)
-                    ? ItemsMenu[i]
-                    : null;
-
-                Control newControl;
-                if (CreateControlForValue != null)
-                    newControl = CreateControlForValue(ref value, existingControl);
-                else if (value is Control)
-                    newControl = (Control)(object)value;
-                else {
-                    AbstractString text = FormatValue != null
-                        ? FormatValue(value)
-                        : value.ToString();
-                    newControl = new StaticText { Text = text, Data = { { null, value } } };
-                }
-
-                if (newControl != existingControl) {
-                    ValueForControl[newControl] = value;
-                    if (i < ItemsMenu.Count)
-                        ItemsMenu[i] = newControl;
-                    else
-                        ItemsMenu.Add(newControl);
-                }
-            }
-
-            while (ItemsMenu.Count > Items.Count) {
-                var i = ItemsMenu.Count - 1;
-                ValueForControl.Remove(ItemsMenu[i]);
-                ItemsMenu.RemoveAt(i);
-            }
+            Items.GenerateControls(
+                ItemsMenu.Children, CreateControlForValue,
+                FormatValue
+            );
 
             return result;
         }
@@ -248,8 +219,61 @@ namespace Squared.PRGUI.Controls {
         }
 
         void IMenuListener.ItemChosen (Menu menu, Control item) {
-            var value = ValueForControl[item];
-            SelectedItem = value;
+            if (Items.GetValueForControl(item, out T value))
+                SelectedItem = value;
+        }
+    }
+
+    public class ItemList<T> : List<T> {
+        private readonly Dictionary<Control, T> ValueForControl = 
+            new Dictionary<Control, T>(new ReferenceComparer<Control>());
+
+        public bool GetValueForControl (Control control, out T result) {
+            return ValueForControl.TryGetValue(control, out result);
+        }
+
+        public void GenerateControls (
+            ControlCollection output, 
+            CreateControlForValueDelegate<T> createControlForValue, 
+            Func<T, AbstractString> formatValue
+        ) {
+            for (int i = 0; i < Count; i++) {
+                var value = this[i];
+                var existingControl = (i < output.Count)
+                    ? output[i]
+                    : null;
+
+                Control newControl;
+                if (createControlForValue != null)
+                    newControl = createControlForValue(ref value, existingControl);
+                else if (value is Control)
+                    newControl = (Control)(object)value;
+                else {
+                    AbstractString text = formatValue != null
+                        ? formatValue(value)
+                        : value.ToString();
+                    newControl = new StaticText {
+                        Text = text,
+                        Data = {
+                            { null, value }
+                        }
+                    };
+                }
+
+                if (newControl != existingControl) {
+                    ValueForControl[newControl] = value;
+                    if (i < output.Count)
+                        output[i] = newControl;
+                    else
+                        output.Add(newControl);
+                }
+            }
+
+            while (output.Count > Count) {
+                var i = output.Count - 1;
+                ValueForControl.Remove(output[i]);
+                output.RemoveAt(i);
+            }
         }
     }
 }

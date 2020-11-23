@@ -233,22 +233,112 @@ namespace Squared.PRGUI.Controls {
                 maxLayer2 = layer2,
                 maxLayer3 = layer3;
 
-            var sequence = Children.InPaintOrder();
-            foreach (var item in sequence) {
-                passSet.Below.Layer = layer1;
-                passSet.Content.Layer = layer2;
-                passSet.Above.Layer = layer3;
-
-                item.Rasterize(ref context, ref passSet);
-
-                maxLayer1 = Math.Max(maxLayer1, passSet.Below.Layer);
-                maxLayer2 = Math.Max(maxLayer2, passSet.Content.Layer);
-                maxLayer3 = Math.Max(maxLayer3, passSet.Above.Layer);
-            }
+            RasterizeChildrenInOrder(
+                ref context, ref passSet, 
+                layer1, layer2, layer3,
+                ref maxLayer1, ref maxLayer2, ref maxLayer3
+            );
 
             passSet.Below.Layer = maxLayer1;
             passSet.Content.Layer = maxLayer2;
             passSet.Above.Layer = maxLayer3;
+        }
+
+        protected virtual void RasterizeChildrenInOrder (
+            ref UIOperationContext context, ref RasterizePassSet passSet, 
+            int layer1, int layer2, int layer3, 
+            ref int maxLayer1, ref int maxLayer2, ref int maxLayer3
+        ) {
+            var sequence = Children.InPaintOrder();
+            foreach (var item in sequence)
+                RasterizeChild(ref context, item, ref passSet, layer1, layer2, layer3, ref maxLayer1, ref maxLayer2, ref maxLayer3);
+        }
+
+        public static void RasterizeChildrenFromCenter (
+            ref UIOperationContext context, ref RasterizePassSet passSet, 
+            RectF box, ControlCollection children, Control selectedItem,
+            int layer1, int layer2, int layer3, 
+            ref int maxLayer1, ref int maxLayer2, ref int maxLayer3,
+            ref int lastOffset1, ref int lastOffset2
+        ) {
+            RectF childRect =
+                (selectedItem != null)
+                    ? selectedItem.GetRect(context.Layout)
+                    : default(RectF);
+            int count = children.Count, 
+                selectedIndex = children.IndexOf(selectedItem), startOffset = (selectedIndex >= 0) &&
+                    box.Intersects(ref childRect)
+                    ? selectedIndex
+                    : (
+                        (
+                            (lastOffset1 >= 0) &&
+                            (lastOffset2 >= 0) &&
+                            (lastOffset2 < count)
+                        )
+                            ? (lastOffset1 + lastOffset2) / 2
+                            : count / 2
+                    );
+            bool hasRenderedAny = false;
+
+            int itemsDrawn = 0;
+            for (int i = startOffset, j = startOffset; (i >= 0) || (j < count); i--, j++) {
+                if (i >= 0) {
+                    itemsDrawn++;
+                    // Stop searching upward once an item fails to render
+                    var item1 = children[i];
+                    var ok = RasterizeChild(
+                        ref context, item1, ref passSet,
+                        layer1, layer2, layer3,
+                        ref maxLayer1, ref maxLayer2, ref maxLayer3
+                    );
+                    if (!item1.Visible) {
+                        ;
+                    } else if (!ok && hasRenderedAny) {
+                        lastOffset1 = i;
+                        i = -1;
+                    } else if (ok) {
+                        hasRenderedAny = true;
+                    }
+                }
+
+                if (j < count) {
+                    itemsDrawn++;
+                    var item2 = children[j];
+                    var ok = RasterizeChild(
+                        ref context, item2, ref passSet,
+                        layer1, layer2, layer3,
+                        ref maxLayer1, ref maxLayer2, ref maxLayer3
+                    );
+                    if (!item2.Visible) {
+                        ;
+                    } else if (!ok && hasRenderedAny) {
+                        lastOffset2 = j;
+                        j = count;
+                    } else if (ok) {
+                        hasRenderedAny = true;
+                    }
+                }
+            }
+
+            // Console.WriteLine($"Items drawn: {itemsDrawn}");
+        }
+
+        public static bool RasterizeChild (
+            ref UIOperationContext context, Control item, ref RasterizePassSet passSet, 
+            int layer1, int layer2, int layer3, ref int maxLayer1, 
+            ref int maxLayer2, ref int maxLayer3
+        ) {
+            passSet.Below.Layer = layer1;
+            passSet.Content.Layer = layer2;
+            passSet.Above.Layer = layer3;
+
+            var result = item.Rasterize(ref context, ref passSet);
+
+            maxLayer1 = Math.Max(maxLayer1, passSet.Below.Layer);
+            maxLayer2 = Math.Max(maxLayer2, passSet.Content.Layer);
+            maxLayer3 = Math.Max(maxLayer3, passSet.Above.Layer);
+
+            return result;
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

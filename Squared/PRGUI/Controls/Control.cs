@@ -733,16 +733,16 @@ namespace Squared.PRGUI {
             RasterizePass(ref context, box, compositing, ref passSet, ref passSet.Above, RasterizePasses.Above);
         }
 
-        public void Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, float opacity = 1) {
+        public bool Rasterize (ref UIOperationContext context, ref RasterizePassSet passSet, float opacity = 1) {
             // HACK: Do this first since it fires opacity change events
             opacity *= GetOpacity(context.NowL);
             if (opacity <= 0)
-                return;
+                return false;
 
             if (!Visible)
-                return;
+                return false;
             if (LayoutKey.IsInvalid)
-                return;
+                return false;
 
             var box = GetRect(context.Layout);
             var isInvisible = (box.Extent.X < context.VisibleRegion.Left) ||
@@ -754,7 +754,7 @@ namespace Squared.PRGUI {
 
             // Only visibility cull controls that have a parent.
             if (isInvisible && TryGetParent(out Control parent))
-                return;
+                return false;
 
             var needsComposition = HasTransformMatrix || (opacity < 1);
 
@@ -764,14 +764,10 @@ namespace Squared.PRGUI {
                 // HACK: Create padding around the element for drop shadows
                 box.SnapAndInset(out Vector2 tl, out Vector2 br, -CompositePadding);
                 // Don't overflow the edges of the canvas with padding, it'd produce garbage pixels
-                if (tl.X < 0)
-                    tl.X = 0;
-                if (tl.Y < 0)
-                    tl.Y = 0;
-                if (br.X > context.UIContext.CanvasSize.X)
-                    br.X = context.UIContext.CanvasSize.X;
-                if (br.Y > context.UIContext.CanvasSize.Y)
-                    br.Y = context.UIContext.CanvasSize.Y;
+                tl.X = Math.Max(tl.X, 0);
+                tl.Y = Math.Max(tl.Y, 0);
+                br.X = Math.Min(br.X, context.UIContext.CanvasSize.X);
+                br.Y = Math.Min(br.Y, context.UIContext.CanvasSize.Y);
 
                 var compositeBox = new RectF(tl, br - tl);
                 var rt = context.UIContext.GetScratchRenderTarget(passSet.Prepass.Container.Coordinator, ref compositeBox, out bool needClear);
@@ -783,6 +779,8 @@ namespace Squared.PRGUI {
                     context.UIContext.ReleaseScratchRenderTarget(rt);
                 }
             }
+
+            return true;
         }
 
         private static readonly Func<ViewTransform, object, ViewTransform> ApplyLocalTransformMatrix = _ApplyLocalTransformMatrix;

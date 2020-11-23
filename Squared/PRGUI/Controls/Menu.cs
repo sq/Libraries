@@ -355,6 +355,23 @@ namespace Squared.PRGUI.Controls {
             base.OnRasterizeChildren(context, ref passSet, settings);
         }
 
+        private int lastOffset1 = -1,
+            lastOffset2 = -1;
+
+        protected override void RasterizeChildrenInOrder (
+            ref UIOperationContext context, ref RasterizePassSet passSet, 
+            int layer1, int layer2, int layer3, 
+            ref int maxLayer1, ref int maxLayer2, ref int maxLayer3
+        ) {
+            RasterizeChildrenFromCenter(
+                ref context, ref passSet, 
+                GetRect(context.Layout), Children, _SelectedItem,
+                layer1, layer2, layer3, 
+                ref maxLayer1, ref maxLayer2, ref maxLayer3,
+                ref lastOffset1, ref lastOffset2
+            );
+        }
+
         private bool ChooseItem (Control item) {
             if (!item.Enabled)
                 return false;
