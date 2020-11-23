@@ -24,9 +24,10 @@ namespace Squared.PRGUI.Controls {
 
         public string Description;
 
+        public AbstractString Label;
         public CreateControlForValueDelegate<T> CreateControlForValue = null;
         public Func<T, AbstractString> FormatValue = null;
-        public AbstractString Label;
+        private CreateControlForValueDelegate<T> DefaultCreateControlForValue;
 
         // private bool NeedsUpdate = true;
         private bool MenuJustClosed = false;
@@ -95,6 +96,18 @@ namespace Squared.PRGUI.Controls {
             Comparer = comparer ?? EqualityComparer<T>.Default;
             // FIXME
             Items = new ItemList<T>(Comparer);
+            DefaultCreateControlForValue = _DefaultCreateControlForValue;
+        }
+
+        private Control _DefaultCreateControlForValue (ref T value, Control existingControl) {
+            var st = (existingControl as StaticText) ?? new StaticText();
+            var text =
+                (FormatValue != null)
+                    ? FormatValue(value)
+                    : value.ToString();
+            st.Text = text;
+            st.Data.Set<T>(ref value);
+            return st;
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
@@ -126,8 +139,7 @@ namespace Squared.PRGUI.Controls {
                 ItemsMenu.Description = $"Menu {Description}";
 
             Items.GenerateControls(
-                ItemsMenu.Children, CreateControlForValue,
-                FormatValue
+                ItemsMenu.Children, CreateControlForValue ?? DefaultCreateControlForValue
             );
 
             return result;
@@ -224,93 +236,6 @@ namespace Squared.PRGUI.Controls {
         void IMenuListener.ItemChosen (Menu menu, Control item) {
             if (Items.GetValueForControl(item, out T value))
                 SelectedItem = value;
-        }
-    }
-
-    public class ItemList<T> : List<T> {
-        private readonly Dictionary<T, Control> ControlForValue;
-        private readonly Dictionary<Control, T> ValueForControl = 
-            new Dictionary<Control, T>(new ReferenceComparer<Control>());
-
-        public ItemList (IEqualityComparer<T> comparer) 
-            : base () {
-            ControlForValue = new Dictionary<T, Control>(comparer);
-        }
-
-        public bool GetControlForValue (T value, out Control result) {
-            if (value == null) {
-                result = null;
-                return false;
-            }
-            return ControlForValue.TryGetValue(value, out result);
-        }
-
-        public bool GetControlForValue (ref T value, out Control result) {
-            if (value == null) {
-                result = null;
-                return false;
-            }
-            return ControlForValue.TryGetValue(value, out result);
-        }
-
-        public bool GetValueForControl (Control control, out T result) {
-            if (control == null) {
-                result = default(T);
-                return false;
-            }
-            return ValueForControl.TryGetValue(control, out result);
-        }
-
-        public void GenerateControls (
-            ControlCollection output, 
-            CreateControlForValueDelegate<T> createControlForValue, 
-            Func<T, AbstractString> formatValue
-        ) {
-            for (int i = 0; i < Count; i++) {
-                var value = this[i];
-                // FIXME
-                if (value == null)
-                    continue;
-                var existingControl = (i < output.Count)
-                    ? output[i]
-                    : null;
-
-                Control newControl;
-                if (createControlForValue != null)
-                    newControl = createControlForValue(ref value, existingControl);
-                else if (value is Control)
-                    newControl = (Control)(object)value;
-                else {
-                    AbstractString text = formatValue != null
-                        ? formatValue(value)
-                        : value.ToString();
-                    newControl = new StaticText {
-                        Text = text,
-                        Data = {
-                            { null, value }
-                        }
-                    };
-                }
-
-                if (value != null)
-                    ControlForValue[value] = newControl;
-
-                if (newControl != existingControl) {
-                    ValueForControl[newControl] = value;
-                    if (i < output.Count)
-                        output[i] = newControl;
-                    else
-                        output.Add(newControl);
-                }
-            }
-
-            while (output.Count > Count) {
-                var i = output.Count - 1;
-                if (ValueForControl.TryGetValue(output[i], out T temp))
-                    ControlForValue.Remove(temp);
-                ValueForControl.Remove(output[i]);
-                output.RemoveAt(i);
-            }
         }
     }
 }

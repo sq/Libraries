@@ -209,6 +209,21 @@ namespace Squared.PRGUI.Controls {
             if (ScaleToFit)
                 return;
 
+            // HACK: If we're pretty certain the text will be exactly one line long and we don't
+            //  care how wide it is, just return the line spacing without performing layout
+            if (
+                (AutoSizeHeight && !AutoSizeWidth) &&
+                (!Content.CharacterWrap && !Content.WordWrap) &&
+                (
+                    (Content.LineLimit == 1) ||
+                    Content.Text.Length < 1 ||
+                    ((Content.Text.Length < 512) && !Content.Text.Contains('\n'))
+                )
+            ) {
+                AutoSizeComputedHeight = (float)Math.Ceiling(Content.GlyphSource.LineSpacing + computedPadding.Size.Y);
+                return;
+            }
+
             var layout = GetCurrentLayout(true);
             if (AutoSizeWidth)
                 AutoSizeComputedWidth = (float)Math.Ceiling(layout.UnconstrainedSize.X + computedPadding.Size.X);

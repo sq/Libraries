@@ -23,6 +23,7 @@ namespace Squared.PRGUI.Controls {
 
         public CreateControlForValueDelegate<T> CreateControlForValue = null;
         public Func<T, AbstractString> FormatValue = null;
+        private CreateControlForValueDelegate<T> DefaultCreateControlForValue;
 
         public const float AutoscrollMarginSize = 24f;
 
@@ -68,6 +69,20 @@ namespace Squared.PRGUI.Controls {
             Scrollable = true;
             // FIXME
             Items = new ItemList<T>(Comparer);
+            DefaultCreateControlForValue = _DefaultCreateControlForValue;
+        }
+
+        private Control _DefaultCreateControlForValue (ref T value, Control existingControl) {
+            var st = (existingControl as StaticText) ?? new StaticText();
+            var text =
+                (FormatValue != null)
+                    ? FormatValue(value)
+                    : value.ToString();
+            st.Text = text;
+            st.Wrap = false;
+            st.AutoSizeWidth = false;
+            st.Data.Set<T>(ref value);
+            return st;
         }
 
         protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
@@ -91,7 +106,7 @@ namespace Squared.PRGUI.Controls {
             NeedsUpdate |= (Items.Count != Children.Count);
             if (NeedsUpdate) {
                 NeedsUpdate = false;
-                Items.GenerateControls(Children, CreateControlForValue, FormatValue);
+                Items.GenerateControls(Children, CreateControlForValue ?? DefaultCreateControlForValue);
             }
 
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);

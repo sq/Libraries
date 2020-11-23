@@ -113,6 +113,18 @@ namespace Squared.PRGUI {
                 return true;
             }
 
+            public bool Set<T> (ref T value) {
+                return Set(null, ref value);
+            }
+
+            public bool Set<T> (string name, ref T value) {
+                if (Data == null)
+                    Data = new Dictionary<ControlDataKey, object>(ControlDataKeyComparer.Instance);
+                var key = new ControlDataKey { Type = typeof(T), Key = name };
+                Data[key] = value;
+                return true;
+            }
+
             public bool Remove<T> (string name) {
                 if (Data == null)
                     return false;

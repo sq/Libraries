@@ -364,6 +364,18 @@ namespace Squared.Util.Text {
                 return null;
         }
 
+        public bool Contains (char ch) {
+            if (String != null)
+                return String.Contains(ch);
+
+            for (int i = 0, l = Length; i < l; i++) {
+                if (this[i] == ch)
+                    return true;
+            }
+
+            return false;
+        }
+
         public string Substring (int start, int count) {
             if (String != null)
                 return String.Substring(start, count);
