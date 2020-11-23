@@ -74,6 +74,7 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public interface IDecorationProvider {
+        IDecorator None { get; }
         IDecorator Container { get; }
         IDecorator TitledContainer { get; }
         IDecorator ContainerTitle { get; }

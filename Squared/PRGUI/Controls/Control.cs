@@ -558,7 +558,10 @@ namespace Squared.PRGUI {
 
         protected ControlFlags ComputeLayoutFlags (bool hasFixedWidth, bool hasFixedHeight) {
             var result = LayoutFlags;
-            // FIXME: If we do this, fixed-size elements extremely are not fixed size
+            // HACK: Clearing the fill flag is necessary for fixed sizes to work,
+            //  but clearing both anchors causes the control to end up centered...
+            //  and if we only clear one anchor then wrapping breaks. Awesome
+            return result;
             if (hasFixedWidth && result.IsFlagged(ControlFlags.Layout_Fill_Row))
                 result &= ~ControlFlags.Layout_Fill_Row;
             if (hasFixedHeight && result.IsFlagged(ControlFlags.Layout_Fill_Column))

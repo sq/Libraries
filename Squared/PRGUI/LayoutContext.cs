@@ -256,13 +256,6 @@ namespace Squared.PRGUI.Layout {
             }
         }
 
-        public unsafe void SetItemSyntheticBreak (ControlKey key, bool newState) {
-            var pItem = LayoutPtr(key);
-            pItem->Flags = pItem->Flags & ~ControlFlags.Internal_Break;
-            if (newState)
-                pItem->Flags |= ControlFlags.Internal_Break;
-        }
-
         public unsafe void SetItemForceBreak (ControlKey key, bool newState) {
             var pItem = LayoutPtr(key);
             pItem->Flags = pItem->Flags & ~ControlFlags.Layout_ForceBreak;
@@ -869,6 +862,8 @@ namespace Squared.PRGUI.Layout {
                 var childMargins = pChild->Margins;
                 var childRect = GetRect(child);
                 var extend = used;
+                var isFillRow = flags.IsFlagged(ControlFlags.Layout_Fill_Row);
+                var isFixedSize = fFlags.IsFlagged(ControlFlags.Internal_FixedWidth);
 
                 if (
                     childFlags.IsFlagged(ControlFlags.Layout_ForceBreak) &&
@@ -876,12 +871,20 @@ namespace Squared.PRGUI.Layout {
                 ) {
                     endChild = child;
                     break;
-                } else if (flags.IsFlagged(ControlFlags.Layout_Fill_Row)) {
+                } else if (isFixedSize) {
+                    var fixedSize = pChild->FixedSize.GetElement(idim);
+                    // FIXME: Something needs to happen here to preserve proper wrapping when fixed sizes are set
+                    if (isFillRow) {
+                        ++fillerCount;
+                        extend += childRect[idim] + childMargins[wdim];
+                    } else {
+                        extend += childRect[idim] + childRect[wdim] + childMargins[wdim];
+                    }
+                } else if (isFillRow) {
                     ++fillerCount;
                     extend += childRect[idim] + childMargins[wdim];
                 } else {
-                    if (!fFlags.IsFlagged(ControlFlags.Internal_FixedWidth))
-                        ++squeezedCount;
+                    ++squeezedCount;
                     extend += childRect[idim] + childRect[wdim] + childMargins[wdim];
                 }
 
@@ -1002,7 +1005,8 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, Dimensions dim) {
             int idim = (int)dim, wdim = idim + 2;
-            float offset = GetContentRect(pItem)[idim], needSize = 0;
+            var contentRect = GetContentRect(pItem);
+            float offset = contentRect[idim], needSize = 0;
 
             var startChild = pItem->FirstChild;
             foreach (var child in Children(pItem)) {

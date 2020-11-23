@@ -167,6 +167,43 @@ namespace PRGUI.Demo {
             TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.75f * DPIFactor);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1.33f);
 
+            var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
+                DefaultFont = Font,
+                TitleFont = TitleFont,
+                TooltipFont = tooltipFont,
+                AcceleratorFont = TitleFont
+            };
+
+            Context = new UIContext(Materials, decorations) {
+                RichTextConfiguration = {
+                    Images = new Dictionary<string, RichImage> {
+                        {
+                            "ghost", new RichImage {
+                                Texture = TextureLoader.Load("ghost"),
+                                Scale = 0.4f,
+                                Margin = new Vector2(0, -2)
+                            }
+                        }
+                    }
+                },
+            };
+
+            UIRenderTarget = new AutoRenderTarget(
+                RenderCoordinator,
+                Graphics.PreferredBackBufferWidth, Graphics.PreferredBackBufferHeight, 
+                false, SurfaceFormat.Color, DepthFormat.Depth24Stencil8, 1
+            );
+
+            LastTimeOverUI = Time.Ticks;
+
+            Window.AllowUserResizing = true;
+            Window.ClientSizeChanged += Window_ClientSizeChanged;
+            Window_ClientSizeChanged(null, EventArgs.Empty);
+
+            BuildUI();
+        }
+
+        private void BuildUI () {
             var hoveringCtl = new StaticText {
                 LayoutFlags = ControlFlags.Layout_Fill,
                 AutoSize = false,
@@ -276,13 +313,6 @@ namespace PRGUI.Demo {
 
             FloatingWindow = (Window)window.Container;
 
-            var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
-                DefaultFont = Font,
-                TitleFont = TitleFont,
-                TooltipFont = tooltipFont,
-                AcceleratorFont = TitleFont
-            };
-
             var changePaintOrder = new Button {
                 // MinimumWidth = 400,
                 Text = "Change Paint Order",
@@ -316,7 +346,7 @@ namespace PRGUI.Demo {
                 FixedHeight = 600,
                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
             };
-            for (var i = 0; i < 500; i++)
+            for (var i = 0; i < 1; i++)
                 listBox.Items.Add($"Item {i}");
 
             var supernestedGroup = new Container {
@@ -334,16 +364,15 @@ namespace PRGUI.Demo {
                 ScrollOffset = new Vector2(0, 22),
                 Children = {
                     // FIXME: This should probably expand to the full width of the container's content, instead of the width of the container as it does now
-                    /*
                     new StaticText {
                         Text = "Clipped container",
                         AutoSizeWidth = false,
                         BackgroundColor = new Color(32, 60, 32),
                     },
-                    */
                     new Container {
                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                        CustomDecorator = decorations.None,
+                        ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start,
+                        CustomDecorator = Context.Decorations.None,
                         Children = {
                             new Button {
                                 Text = "Clipped huge button\r\nSecond line\r\n" + ButtonChars,
@@ -357,7 +386,6 @@ namespace PRGUI.Demo {
                                 MaximumHeight = 500,
                                 FixedWidth = 450,
                                 Scrollable = true,
-                                /*
                                 Children = {
                                     new StaticText { Text = "Testing nested clips" },
                                     new StaticText {
@@ -371,7 +399,6 @@ namespace PRGUI.Demo {
                                     new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
                                     supernestedGroup
                                 }
-                                */
                             },
                             listBox,
                         }
@@ -407,7 +434,6 @@ namespace PRGUI.Demo {
                 LayoutFlags = ControlFlags.Layout_Fill,
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                 Children = {
-                    /*
                     hoveringCtl,
                     lastClickedCtl,
                     button1,
@@ -436,7 +462,7 @@ namespace PRGUI.Demo {
                         Text = "Static Text 2\r\nLine 2",
                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                         MaximumWidth = 130,
-                        MinimumHeight = Font.LineSpacing + decorations.StaticText.Padding.Y,
+                        MinimumHeight = Font.LineSpacing + Context.Decorations.StaticText.Padding.Y,
                         Multiline = true,
                         Wrap = false,
                         BackgroundColor = Color.DarkRed,
@@ -454,26 +480,7 @@ namespace PRGUI.Demo {
                         AutoSizeWidth = true,
                         BackgroundColor = Color.DarkBlue
                     },
-                    */
                     bigScrollableContainer
-                }
-            };
-
-            Context = new UIContext(Materials, decorations) {
-                RichTextConfiguration = {
-                    Images = new Dictionary<string, RichImage> {
-                        {
-                            "ghost", new RichImage {
-                                Texture = TextureLoader.Load("ghost"),
-                                Scale = 0.4f,
-                                Margin = new Vector2(0, -2)
-                            }
-                        }
-                    }
-                },
-                Controls = {
-                    topLevelContainer,
-                    // FloatingWindow
                 }
             };
 
@@ -546,17 +553,8 @@ namespace PRGUI.Demo {
                 });
             });
 
-            UIRenderTarget = new AutoRenderTarget(
-                RenderCoordinator,
-                Graphics.PreferredBackBufferWidth, Graphics.PreferredBackBufferHeight, 
-                false, SurfaceFormat.Color, DepthFormat.Depth24Stencil8, 1
-            );
-
-            LastTimeOverUI = Time.Ticks;
-
-            Window.AllowUserResizing = true;
-            Window.ClientSizeChanged += Window_ClientSizeChanged;
-            Window_ClientSizeChanged(null, EventArgs.Empty);
+            Context.Controls.Add(topLevelContainer);
+            Context.Controls.Add(window.Control);
         }
 
         private void BuildTestMenu (ref ContainerBuilder builder) {
@@ -586,15 +584,16 @@ namespace PRGUI.Demo {
             tc.Text<Button>("Button A");
             tc.Text<Button>("Button B");
 
-            tc = builder.NewContainer<TitledContainer>();
-            tc.Properties
+            var tc2 = builder.NewContainer<TitledContainer>();
+            tc2.Properties
                 .SetLayoutFlags(ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak)
+                // .SetFixedSize(null, 432)
                 .SetCollapsible(true);
-            tc.Text<Button>("Button C");
-            tc.Text<Button>("Button D");
-            tc.Text<Button>("Button E");
-            tc.Text<Button>("Button F");
-            tc.Text<Button>("Button G");
+            tc2.Text<Button>("Button C");
+            tc2.Text<Button>("Button D");
+            tc2.Text<Button>("Button E");
+            tc2.Text<Button>("Button F");
+            tc2.Text<Button>("Button G");
         }
 
         private void Window_ClientSizeChanged (object sender, EventArgs e) {
