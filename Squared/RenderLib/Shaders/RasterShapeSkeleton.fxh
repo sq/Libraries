@@ -187,18 +187,39 @@ void computeTLBR (
 
 void computeHullCorners (
     in int type, in float index,
+    float2 c, float2 radius, float outlineSize,
     inout float2 tl, inout float2 br
 ) {
     float2 _tl = tl, _br = br;
+    float edgeSize = max(
+        max(radius.x, radius.y),
+        max(c.x, c.y)
+    ) + outlineSize;
+    edgeSize += (length(ShadowOffset) + ShadowSoftness) * 0.6 + ShadowExpansion;
+
+    float2 offsetPositive = max(0, ShadowOffset),
+        offsetNegative = min(0, ShadowOffset);
+    float x1 = min(br.x, tl.x + edgeSize + offsetPositive.x);
+    float x2 = max(tl.x, br.x - edgeSize + offsetNegative.x);
+    float y1 = min(br.y, tl.y + edgeSize + offsetPositive.y);
+    float y2 = max(tl.y, br.y - edgeSize + offsetNegative.y);
+
     if (index < 2) {
-        br = lerp(_tl, _br, 0.5);
+        // top
+        br.y = y1;
     } else if (index < 3) {
-        tl.x = lerp(_tl.x, _br.x, 0.5);
-        br.y = lerp(_tl.y, _br.y, 0.5);
+        // left
+        tl.y = y1;
+        br.y = y2;
+        br.x = x1;
     } else if (index < 4) {
-        tl = br = 0;
+        // right
+        tl.y = y1;
+        br.y = y2;
+        tl.x = x2;
     } else {
-        tl = br = 0;
+        // bottom
+        tl.y = y2;
     }
 }
 
@@ -244,7 +265,7 @@ void computePosition (
         // HACK: Padding
         tl -= 1; br += 1;
         if (isHollow)
-            computeHullCorners(type, cornerWeights.w, tl, br);
+            computeHullCorners(type, cornerWeights.w, c, radius, outlineSize, tl, br);
         // FIXME: Fit a better hull around triangles. Oriented bounding box?
         xy = lerp(tl, br, cornerWeights.xy);
     }
@@ -268,7 +289,10 @@ void RasterShapeVertexShader (
 ) {
     int type = abs(typeAndWorldSpace.x);
 
-    bool isHollow = ((centerColor.a <= 0) && (edgeColor.a <= 0)) && (type == TYPE_Rectangle);
+    bool isHollow = ((centerColor.a <= 0) && (edgeColor.a <= 0)) && 
+        (type == TYPE_Rectangle) && 
+        (params.y <= 0); /* FIXME: Annular radius */
+
     bool dead = isHollow ? (cornerWeights.w < 1) : (cornerWeights.w >= 1);
     if (dead) {
         result = -9999;
