@@ -194,7 +194,8 @@ void computeHullCorners (
     float edgeSize = max(
         max(radius.x, radius.y),
         max(c.x, c.y)
-    ) + outlineSize;
+    ) + (outlineSize * 2);
+
     edgeSize += (length(ShadowOffset) + ShadowSoftness) * 0.6 + ShadowExpansion;
 
     float2 offsetPositive = max(0, ShadowOffset),

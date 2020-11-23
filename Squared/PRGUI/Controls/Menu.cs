@@ -196,6 +196,9 @@ namespace Squared.PRGUI.Controls {
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
             if (ProcessMouseEventForScrollbar(name, args)) {
+                // Normally an event like mouseup would release our capture and close the menu,
+                //  but since the user was interacting with the scrollbar we want to retain
+                //  capture so that mouse movement events will still update the selected item
                 Context.RetainCapture(this);
                 return true;
             }
