@@ -131,10 +131,10 @@ namespace Squared.PRGUI.Controls {
             return result;
         }
 
+        private IMenuListener Listener => FocusDonor as IMenuListener;
+
         // HACK
         private bool _OverrideHitTestResults = true;
-
-        private IMenuListener Listener => FocusDonor as IMenuListener;
 
         protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
             var ok = base.OnHitTest(context, box, position, acceptsMouseInputOnly, acceptsFocusOnly, ref result);

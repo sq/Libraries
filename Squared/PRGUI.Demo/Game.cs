@@ -310,6 +310,16 @@ namespace PRGUI.Demo {
             for (var i = 0; i < 500; i++)
                 dropdown.Items.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });
 
+            var listBox = new ListBox<string> {
+                Description = "Big List",
+                FixedWidth = 600,
+                FixedHeight = 600,
+                // FIXME: Why is this not aligned with the top
+                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
+            };
+            for (var i = 0; i < 500; i++)
+                listBox.Items.Add($"Item {i}");
+
             var supernestedGroup = new Container {
                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                 DynamicContents = BuildSupernestedGroup
@@ -338,7 +348,7 @@ namespace PRGUI.Demo {
                     },
                     new Container {
                         ClipChildren = true,
-                        LayoutFlags = ControlFlags.Layout_Fill,
+                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
                         MaximumHeight = 500,
                         FixedWidth = 450,
                         Scrollable = true,
@@ -356,6 +366,7 @@ namespace PRGUI.Demo {
                             supernestedGroup
                         }
                     },
+                    listBox,
                     new Button {
                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                         Text = "Another button at the bottom to test clipped hit tests"

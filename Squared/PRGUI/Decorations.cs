@@ -86,6 +86,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Button { get; }
         IDecorator Tooltip { get; }
         IDecorator Menu { get; }
+        IDecorator ListBox { get; }
         IDecorator CompositionPreview { get; }
         IDecorator Checkbox { get; }
         IDecorator RadioButton { get; }
@@ -223,6 +224,7 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator Selection { get; set; }
         public IDecorator Tooltip { get; set; }
         public IDecorator Menu { get; set; }
+        public IDecorator ListBox { get; set; }
         public IDecorator CompositionPreview { get; set; }
         public IDecorator Checkbox { get; set; }
         public IDecorator RadioButton { get; set; }
@@ -365,6 +367,15 @@ namespace Squared.PRGUI.Decorations {
                 GetTextSettings = GetTextSettings_Tooltip,
                 Below = Tooltip_Below,
                 // FIXME: Separate routine?
+                ContentClip = Container_ContentClip,
+            };
+
+            // FIXME
+            ListBox = new DelegateDecorator {
+                Margins = new Margins(GlobalDefaultMargin),
+                Padding = new Margins(2),
+                GetTextSettings = GetTextSettings,
+                Below = Container_Below,
                 ContentClip = Container_ContentClip,
             };
 

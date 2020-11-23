@@ -293,10 +293,18 @@ namespace Squared.PRGUI {
                 if (speed.HasValue) {
                     speedX = speedY = speed.Value;
                 } else {
-                    speedX = Math.Abs(displacement.X) / AutoscrollFastThreshold;
-                    speedY = Math.Abs(displacement.Y) / AutoscrollFastThreshold;
-                    speedX = Arithmetic.Lerp(AutoscrollSpeedSlow, AutoscrollSpeedFast, speedX);
-                    speedY = Arithmetic.Lerp(AutoscrollSpeedSlow, AutoscrollSpeedFast, speedX);
+                    if (Math.Abs(displacement.X) >= AutoscrollInstantThreshold) {
+                        speedX = 99999;
+                    } else {
+                        speedX = Math.Abs(displacement.X) / AutoscrollFastThreshold;
+                        speedX = Arithmetic.Lerp(AutoscrollSpeedSlow, AutoscrollSpeedFast, speedX);
+                    }
+                    if (Math.Abs(displacement.Y) >= AutoscrollInstantThreshold) {
+                        speedY = 99999;
+                    } else {
+                        speedY = Math.Abs(displacement.Y) / AutoscrollFastThreshold;
+                        speedY = Arithmetic.Lerp(AutoscrollSpeedSlow, AutoscrollSpeedFast, speedX);
+                    }
                 }
                 displacement.X = Math.Min(Math.Abs(displacement.X), speedX) * Math.Sign(displacement.X);
                 displacement.Y = Math.Min(Math.Abs(displacement.Y), speedY) * Math.Sign(displacement.Y);

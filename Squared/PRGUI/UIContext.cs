@@ -159,6 +159,7 @@ namespace Squared.PRGUI {
         public float AutoscrollSpeedSlow = 6;
         public float AutoscrollSpeedFast = 80;
         public float AutoscrollFastThreshold = 512;
+        public float AutoscrollInstantThreshold = 1200;
 
         /// <summary>
         /// A key must be held for this long (in seconds) before repeating begins

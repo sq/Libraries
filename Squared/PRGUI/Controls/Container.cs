@@ -254,20 +254,37 @@ namespace Squared.PRGUI.Controls {
                 RasterizeChild(ref context, item, ref passSet, layer1, layer2, layer3, ref maxLayer1, ref maxLayer2, ref maxLayer3);
         }
 
-        public static void RasterizeChildrenFromCenter (
+        /// <summary>
+        /// Intelligently rasterize children starting from an automatically selected
+        ///  midpoint, instead of rasterizing all of our children.
+        /// May draw an unnecessarily large number of children in some cases, but will
+        ///  typically only draw slightly more than the number of children currently
+        ///  in view.
+        /// </summary>
+        /// <returns>The number of child controls rasterization was attempted for</returns>
+        public static int RasterizeChildrenFromCenter (
             ref UIOperationContext context, ref RasterizePassSet passSet, 
             RectF box, ControlCollection children, Control selectedItem,
             int layer1, int layer2, int layer3, 
             ref int maxLayer1, ref int maxLayer2, ref int maxLayer3,
             ref int lastOffset1, ref int lastOffset2
         ) {
+            if (children.Count <= 0)
+                return 0;
+
             RectF childRect =
                 (selectedItem != null)
                     ? selectedItem.GetRect(context.Layout)
                     : default(RectF);
+
             int count = children.Count, 
-                selectedIndex = children.IndexOf(selectedItem), startOffset = (selectedIndex >= 0) &&
+                selectedIndex = children.IndexOf(selectedItem), 
+                startOffset = (
+                    (selectedIndex >= 0) &&
                     box.Intersects(ref childRect)
+                )
+                    // If we have a selected item and the selected item is visible, begin painting
+                    //  from its position
                     ? selectedIndex
                     : (
                         (
@@ -275,15 +292,17 @@ namespace Squared.PRGUI.Controls {
                             (lastOffset2 >= 0) &&
                             (lastOffset2 < count)
                         )
+                            // Otherwise, start painting from the midpoint of the last paint region
                             ? (lastOffset1 + lastOffset2) / 2
+                            // And if we don't have a last paint region, start from our midpoint
                             : count / 2
                     );
             bool hasRenderedAny = false;
 
-            int itemsDrawn = 0;
+            int itemsAttempted = 0;
             for (int i = startOffset, j = startOffset; (i >= 0) || (j < count); i--, j++) {
                 if (i >= 0) {
-                    itemsDrawn++;
+                    itemsAttempted++;
                     // Stop searching upward once an item fails to render
                     var item1 = children[i];
                     var ok = RasterizeChild(
@@ -302,7 +321,7 @@ namespace Squared.PRGUI.Controls {
                 }
 
                 if (j < count) {
-                    itemsDrawn++;
+                    itemsAttempted++;
                     var item2 = children[j];
                     var ok = RasterizeChild(
                         ref context, item2, ref passSet,
@@ -320,9 +339,13 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            // Console.WriteLine($"Items drawn: {itemsDrawn}");
+            return itemsAttempted;
         }
 
+        /// <summary>
+        /// Rasterizes a child control and updates the pass layer data
+        /// </summary>
+        /// <returns>Whether the child was successfully rasterized</returns>
         public static bool RasterizeChild (
             ref UIOperationContext context, Control item, ref RasterizePassSet passSet, 
             int layer1, int layer2, int layer3, ref int maxLayer1, 
