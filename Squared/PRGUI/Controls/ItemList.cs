@@ -55,10 +55,10 @@ namespace Squared.PRGUI.Controls {
                     : null;
 
                 Control newControl;
-                if (createControlForValue != null)
-                    newControl = createControlForValue(ref value, existingControl);
-                else if (value is Control)
+                if (value is Control)
                     newControl = (Control)(object)value;
+                else if (createControlForValue != null)
+                    newControl = createControlForValue(ref value, existingControl);
                 else
                     throw new ArgumentNullException("createControlForValue");
 
