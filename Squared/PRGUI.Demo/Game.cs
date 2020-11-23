@@ -346,7 +346,7 @@ namespace PRGUI.Demo {
                 FixedHeight = 600,
                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
             };
-            for (var i = 0; i < 1; i++)
+            for (var i = 0; i < 500; i++)
                 listBox.Items.Add($"Item {i}");
 
             var supernestedGroup = new Container {
@@ -432,6 +432,7 @@ namespace PRGUI.Demo {
             var topLevelContainer = new Container {
                 BackgroundColor = new Color(60, 60, 60) * 0.9f,
                 LayoutFlags = ControlFlags.Layout_Fill,
+                // FIXME: We shouldn't need to set Wrap here since we're setting explicit breaks
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
                 Children = {
                     hoveringCtl,

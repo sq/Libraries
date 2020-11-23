@@ -583,14 +583,14 @@ namespace Squared.PRGUI {
             // HACK: Prevent infinite repeat in corner cases
             int steps = 5;
             while (steps-- > 0) {
-                if (SuppressNextCaptureLoss)
-                    SuppressNextCaptureLoss = false;
+                RetainCaptureRequested = null;
 
                 MouseDownPosition = globalPosition;
                 if (target != null && target.IsValidMouseInputTarget) {
                     AutomaticallyTransferFocusOnTopLevelChange(target);
                     MouseCaptured = target;
                 }
+                // FIXME: Should focus changes only occur on mouseup in order to account for drag-to-scroll?
                 if (target == null || target.IsValidFocusTarget)
                     Focused = target;
                 // FIXME: Suppress if disabled?
@@ -715,9 +715,12 @@ namespace Squared.PRGUI {
                 newOffset = DragToScrollInitialOffset.Value;
             }
 
-            if (newOffset != DragToScrollInitialOffset)
-                return DragToScrollTarget.TrySetScrollOffset(newOffset, true);
-            else
+            if (newOffset != DragToScrollInitialOffset) {
+                if (DragToScrollTarget.TrySetScrollOffset(newOffset, true))
+                    return (DragToScrollTarget.ScrollOffset != DragToScrollInitialOffset);
+                else
+                    return false;
+            } else
                 return false;
         }
 

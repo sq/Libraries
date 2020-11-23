@@ -134,7 +134,7 @@ namespace Squared.PRGUI {
         /// <summary>
         /// If the mouse is only moved this far (in pixels) it will be treated as no movement for the purposes of click detection
         /// </summary>
-        public float MinimumMouseMovementDistance = 8;
+        public float MinimumMouseMovementDistance = 10;
         /// <summary>
         /// Mouse wheel movements are scaled by this amount
         /// </summary>
@@ -308,8 +308,8 @@ namespace Squared.PRGUI {
         internal Vector2 LastMousePosition;
         private Vector2? MouseDownPosition;
         private KeyboardState LastKeyboardState;
-        private bool SuppressNextCaptureLoss = false;
         private Control ReleasedCapture = null;
+        private Control RetainCaptureRequested = null;
 
         private Vector2 LastClickPosition;
         private Control LastClickTarget;
@@ -479,7 +479,7 @@ namespace Squared.PRGUI {
         public bool CaptureMouse (Control target, out Control previous) {
             previous = Focused;
             if ((MouseCaptured != null) && (MouseCaptured != target))
-                SuppressNextCaptureLoss = true;
+                RetainCaptureRequested = target;
             // HACK: If we used IsValidFocusTarget here, it would break scenarios where a control is capturing
             //  focus before being shown or being enabled
             AutomaticallyTransferFocusOnTopLevelChange(target);
@@ -546,6 +546,10 @@ namespace Squared.PRGUI {
             return false;
         }
 
+        public void RetainCapture (Control target) {
+            RetainCaptureRequested = target;
+        }
+
         public void ReleaseCapture (Control target, Control focusDonor) {
             if (Focused == target)
                 Focused = focusDonor;
@@ -554,6 +558,8 @@ namespace Squared.PRGUI {
             if (MouseCaptured == target)
                 MouseCaptured = null;
             ReleasedCapture = target;
+            if (RetainCaptureRequested == target)
+                RetainCaptureRequested = null;
         }
 
         UnorderedList<IPostLayoutListener> _PostLayoutListeners = new UnorderedList<IPostLayoutListener>();
@@ -731,21 +737,21 @@ namespace Squared.PRGUI {
 
                 if (MouseCaptured != null) {
                     var movedDistance = mousePosition - mouseDownPosition;
+                    var hasMoved = movedDistance.HasValue &&
+                            (movedDistance.Value.Length() >= MinimumMouseMovementDistance);
                     if (
-                        (
-                            // FIXME: Why?
-                            !movedDistance.HasValue || 
-                            (movedDistance.Value.Length() <= MinimumMouseMovementDistance)
-                        ) &&
+                        !hasMoved &&
                         (!scrolled || !SuppressSingleClickOnMovementWhenAppropriate)
                     )
                         processClick = true;
                 }
 
-                if (!SuppressNextCaptureLoss && (MouseCaptured != null)) {
-                    MouseCaptured = null;
-                } else if (SuppressNextCaptureLoss) {
-                    SuppressNextCaptureLoss = false;
+                if (MouseCaptured != null) {
+                    if (RetainCaptureRequested == MouseCaptured) {
+                        RetainCaptureRequested = null;
+                    } else {
+                        MouseCaptured = null;
+                    }
                 }
 
                 // FIXME: Clear LastMouseDownTime?

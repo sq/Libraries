@@ -87,12 +87,13 @@ namespace Squared.PRGUI.Decorations {
         IDecorator Button { get; }
         IDecorator Tooltip { get; }
         IDecorator Menu { get; }
+        IDecorator MenuSelection { get; }
         IDecorator ListBox { get; }
+        IDecorator ListSelection { get; }
         IDecorator CompositionPreview { get; }
         IDecorator Checkbox { get; }
         IDecorator RadioButton { get; }
         IDecorator Description { get; }
-        IDecorator MenuSelection { get; }
         IDecorator Slider { get; }
         IDecorator SliderThumb { get; }
         IDecorator Dropdown { get; }
@@ -227,12 +228,13 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator Selection { get; set; }
         public IDecorator Tooltip { get; set; }
         public IDecorator Menu { get; set; }
+        public IDecorator MenuSelection { get; set; }
         public IDecorator ListBox { get; set; }
+        public IDecorator ListSelection { get; set; }
         public IDecorator CompositionPreview { get; set; }
         public IDecorator Checkbox { get; set; }
         public IDecorator RadioButton { get; set; }
         public IDecorator Description { get; set; }
-        public IDecorator MenuSelection { get; set; }
         public IDecorator Slider { get; set; }
         public IDecorator SliderThumb { get; set; }
         public IDecorator Dropdown { get; set; }
@@ -403,6 +405,12 @@ namespace Squared.PRGUI.Decorations {
                 Content = MenuSelection_Content,
             };
 
+            ListSelection = new DelegateDecorator {
+                GetTextSettings = GetTextSettings_Selection,
+                Margins = new Margins(1),
+                Content = ListSelection_Content,
+            };
+
             CompositionPreview = new DelegateDecorator {
                 GetTextSettings = GetTextSettings_Selection,
                 Below = CompositionPreview_Below,
@@ -473,6 +481,7 @@ namespace Squared.PRGUI.Decorations {
             SelectionCornerRadius = 1.9f,
             SelectionPadding = 1f,
             MenuSelectionCornerRadius = 8f,
+            ListSelectionCornerRadius = 3f,
             EditableTextCornerRadius = 4.5f,
             SliderCornerRadius = 4.5f;
         public float? FloatingContainerCornerRadius = 7f,
@@ -1010,7 +1019,13 @@ namespace Squared.PRGUI.Decorations {
             }
 
             var track = new RectF(trackA, trackB - trackA);
-            if (track.Contains(args.GlobalPosition))
+            if (
+                track.Contains(args.GlobalPosition) && 
+                (
+                    (eventName != UIEvents.MouseMove) ||
+                    (args.Buttons != MouseButtons.None)
+                )
+            )
                 processed = true;
 
             return processed;
@@ -1109,6 +1124,24 @@ namespace Squared.PRGUI.Decorations {
                 a, b,
                 radius: MenuSelectionCornerRadius,
                 outlineRadius: 0.9f, outlineColor: fillColor,
+                innerColor: fillColor, outerColor: fillColor * 0.6f,
+                fillMode: RasterFillMode.Horizontal
+            );
+        }
+
+        private void ListSelection_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b, -SelectionPadding);
+            var isFocused = settings.State.IsFlagged(ControlStates.Focused);
+            var fillColor = (pSRGBColor)(
+                 isFocused
+                    ? SelectionFillColor
+                    : Color.Lerp(SelectionFillColor, SelectionFillColor.ToGrayscale(0.8f), 0.6f)
+                );
+
+            renderer.RasterizeRectangle(
+                a, b,
+                radius: ListSelectionCornerRadius,
+                outlineRadius: 0.9f, outlineColor: fillColor * (isFocused ? 1.0f : 0.5f),
                 innerColor: fillColor, outerColor: fillColor * 0.6f,
                 fillMode: RasterFillMode.Horizontal
             );

@@ -14,6 +14,8 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class ListBox<T> : Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IValueControl<T> {
+        public static bool SelectOnMouseDown = false;
+
         public const int ControlMinimumHeight = 75, ControlMinimumWidth = 150;
 
         public IEqualityComparer<T> Comparer;
@@ -38,8 +40,11 @@ namespace Squared.PRGUI.Controls {
                     return;
                 if (!Items.Contains(value))
                     throw new ArgumentException("Value not in items list");
+                Items.GetControlForValue(_SelectedItem, out Control priorControl);
                 _SelectedItem = value;
                 FireEvent(UIEvents.ValueChanged, _SelectedItem);
+                Items.GetControlForValue(_SelectedItem, out Control newControl);
+                OnSelectionChange(priorControl, newControl);
             }
         }
 
@@ -117,6 +122,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void OnSelectionChange (Control previous, Control newControl) {
+            // FIXME: Optimize this for large lists
             foreach (var child in Children) {
                 child.CustomTextDecorator = ((child == newControl) && (child.BackgroundColor.pLinear == null))
                     ? Context?.Decorations.Selection 
@@ -165,25 +171,26 @@ namespace Squared.PRGUI.Controls {
         }
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
-            // Console.WriteLine($"menu.{name}");
+            if (ProcessMouseEventForScrollbar(name, args))
+                return true;
 
             var control = ChildFromGlobalPosition(Context.Layout, args.RelativeGlobalPosition);
-
-            if (name == UIEvents.MouseDown) {
-                if (!args.Box.Contains(args.RelativeGlobalPosition))
-                    control = null;
-                else if (Items.GetValueForControl(control, out T newItem))
-                    SelectedItem = newItem;
-            } else if (
-                (name == UIEvents.MouseMove) &&
-                (control != null) &&
-                (args.Buttons != MouseButtons.None)
+            // FIXME: If we handle Click then drag-to-scroll won't select an item,
+            //  but having it not select on mousedown feels bad
+            if (
+                ((name == UIEvents.MouseDown) && SelectOnMouseDown) ||
+                (name == UIEvents.Click)
             ) {
-                if (Items.GetValueForControl(control, out T newItem))
+                if (
+                    args.Box.Contains(args.RelativeGlobalPosition) && 
+                    Items.GetValueForControl(control, out T newItem)
+                ) {
                     SelectedItem = newItem;
+                    return (name == UIEvents.Click);
+                }
             }
 
-            return true;
+            return false;
         }
 
         protected override bool OnEvent<T> (string name, T args) {
@@ -250,10 +257,16 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
-            if (Items.GetControlForValue(ref _SelectedItem, out Control selectedControl)) {
+            var selectionDecorator = context.DecorationProvider.ListSelection;
+            if (
+                (selectionDecorator != null) &&
+                Items.GetControlForValue(ref _SelectedItem, out Control selectedControl)
+            ) {
                 var selectionBox = selectedControl.GetRect(context.Layout, true, false);
-                selectionBox.Left = settings.ContentBox.Left;
-                selectionBox.Width = settings.ContentBox.Width;
+                selectionBox.Top += selectionDecorator.Margins.Top;
+                selectionBox.Left = settings.ContentBox.Left + selectionDecorator.Margins.Left;
+                selectionBox.Height -= selectionDecorator.Margins.Y;
+                selectionBox.Width = settings.ContentBox.Width - selectionDecorator.Margins.X;
 
                 // HACK: Selection boxes are normally rasterized on the content layer, but we want to rasterize
                 //  the selection on the Below layer beneath items' decorations and content.
@@ -262,10 +275,10 @@ namespace Squared.PRGUI.Controls {
                 var selectionSettings = new DecorationSettings {
                     Box = selectionBox,
                     ContentBox = selectionBox,
-                    State = ControlStates.Hovering | ControlStates.Focused
+                    State = settings.State
                 };
                 // FIXME
-                context.DecorationProvider.MenuSelection?.Rasterize(context, ref passSet.Below, selectionSettings);
+                selectionDecorator.Rasterize(context, ref passSet.Below, selectionSettings);
                 context.Pass = oldPass;
 
                 passSet.Below.Layer += 1;
@@ -297,13 +310,8 @@ namespace Squared.PRGUI.Controls {
 
         private void CalculateScrollable (UIContext context) {
             context.UpdateSubtreeLayout(this);
-            if (GetContentBounds(context, out RectF contentBounds)) {
+            if (GetContentBounds(context, out RectF contentBounds))
                 Scrollable = contentBounds.Height >= MaximumHeight;
-                // HACK: Changing the scrollable flag invalidates our layout info, so recalculate it
-                // If we don't do this the menu will overhang on the right side
-                if (Scrollable)
-                    context.UpdateSubtreeLayout(this);
-            }
         }
 
         StringBuilder TextBuilder = new StringBuilder();

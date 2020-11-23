@@ -671,13 +671,13 @@ namespace Squared.PRGUI.Layout {
             var startChild = pItem->FirstChild;
             while (!startChild.IsInvalid) {
                 float used;
-                uint fillerCount, squeezedCount, total;
+                uint fillerCount, squeezedCount, fixedCount, total;
                 bool hardBreak;
                 ControlKey child, endChild;
 
                 BuildStackedRow(
                     wrap, idim, wdim, space, startChild,
-                    out used, out fillerCount, out squeezedCount, out total,
+                    out used, out fillerCount, out squeezedCount, out fixedCount, out total,
                     out hardBreak, out child, out endChild
                 );
 
@@ -720,7 +720,8 @@ namespace Squared.PRGUI.Layout {
                 ArrangeStackedRow(
                     wrap, idim, wdim, max_x2, 
                     pItem, ref child, endChild,
-                    fillerCount, squeezedCount, total,
+                    fillerCount, squeezedCount, 
+                    fixedCount, total,
                     filler, spacer, 
                     extraMargin, eater, x
                 );
@@ -732,7 +733,7 @@ namespace Squared.PRGUI.Layout {
         private unsafe void ArrangeStackedRow (
             bool wrap, int idim, int wdim, float max_x2,
             LayoutItem* pParent, ref ControlKey child, ControlKey endChild, 
-            uint fillerCount, uint squeezedCount, uint total,
+            uint fillerCount, uint squeezedCount, uint fixedCount, uint total,
             float filler, float spacer, float extraMargin, 
             float eater, float x
         ) {
@@ -769,10 +770,10 @@ namespace Squared.PRGUI.Layout {
                     x += childRect[idim] + extraMargin;
 
                     float computedSize;
-                    if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
-                        computedSize = filler;
-                    else if (isFixedSize)
+                    if (isFixedSize)
                         computedSize = childRect[wdim];
+                    else if (flags.IsFlagged(ControlFlags.Layout_Fill_Row))
+                        computedSize = filler;
                     else
                         computedSize = Math.Max(0f, childRect[wdim] + eater);
 
@@ -839,11 +840,12 @@ namespace Squared.PRGUI.Layout {
 
         private unsafe void BuildStackedRow (
             bool wrap, int idim, int wdim, float space, ControlKey startChild, 
-            out float used, out uint fillerCount, out uint squeezedCount, out uint total, 
+            out float used, out uint fillerCount, out uint squeezedCount, 
+            out uint fixedCount, out uint total, 
             out bool hardBreak, out ControlKey child, out ControlKey endChild
         ) {
             used = 0;
-            fillerCount = squeezedCount = total = 0;
+            fixedCount = fillerCount = squeezedCount = total = 0;
             hardBreak = false;
 
             // first pass: count items that need to be expanded, and the space that is used
@@ -872,14 +874,8 @@ namespace Squared.PRGUI.Layout {
                     endChild = child;
                     break;
                 } else if (isFixedSize) {
-                    var fixedSize = pChild->FixedSize.GetElement(idim);
-                    // FIXME: Something needs to happen here to preserve proper wrapping when fixed sizes are set
-                    if (isFillRow) {
-                        ++fillerCount;
-                        extend += childRect[idim] + childMargins[wdim];
-                    } else {
-                        extend += childRect[idim] + childRect[wdim] + childMargins[wdim];
-                    }
+                    fixedCount++;
+                    extend += childRect[idim] + childRect[wdim] + childMargins[wdim];
                 } else if (isFillRow) {
                     ++fillerCount;
                     extend += childRect[idim] + childMargins[wdim];

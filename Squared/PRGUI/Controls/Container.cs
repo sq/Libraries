@@ -133,12 +133,12 @@ namespace Squared.PRGUI.Controls {
             if (name == UIEvents.Scroll)
                 return OnScroll(Convert.ToSingle(args));
             else if (args is MouseEventArgs)
-                return OnMouseEvent(name, (MouseEventArgs)(object)args);
+                return ProcessMouseEventForScrollbar(name, (MouseEventArgs)(object)args);
 
             return false;
         }
 
-        private bool OnMouseEvent (string name, MouseEventArgs args) {
+        protected bool ProcessMouseEventForScrollbar (string name, MouseEventArgs args) {
             var context = Context;
             var scroll = context.Decorations?.Scrollbar;
             if (scroll == null)
@@ -162,7 +162,6 @@ namespace Squared.PRGUI.Controls {
                 VScrollbar.Position = ScrollOffset.Y;
                 return true;
             }
-
             return false;
         }
 
@@ -185,6 +184,16 @@ namespace Squared.PRGUI.Controls {
             DynamicBuilder.Reset();
             DynamicContents(ref DynamicBuilder);
             DynamicBuilder.Finish();
+        }
+
+        private void OnSelectionChange (Control previous, Control newControl) {
+            foreach (var child in Children) {
+                child.CustomTextDecorator = ((child == newControl) && (child.BackgroundColor.pLinear == null))
+                    ? Context?.Decorations.Selection 
+                    : null;
+            }
+
+            FireEvent(UIEvents.SelectionChanged, newControl);
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {

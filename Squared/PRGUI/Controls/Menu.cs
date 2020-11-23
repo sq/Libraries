@@ -145,6 +145,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void OnSelectionChange (Control previous, Control newControl) {
+            // FIXME: Optimize this for large lists
             foreach (var child in Children) {
                 child.CustomTextDecorator = ((child == newControl) && (child.BackgroundColor.pLinear == null))
                     ? Context?.Decorations.Selection 
@@ -194,6 +195,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
+            if (ProcessMouseEventForScrollbar(name, args)) {
+                Context.RetainCapture(this);
+                return true;
+            }
+
             // Console.WriteLine($"menu.{name}");
 
             var item = ChildFromGlobalPosition(Context.Layout, args.RelativeGlobalPosition);
