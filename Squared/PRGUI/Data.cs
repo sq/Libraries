@@ -122,7 +122,7 @@ namespace Squared.PRGUI.Layout {
         }
     }
 
-    public partial class LayoutContext : IDisposable {
+    public unsafe partial class LayoutContext : IDisposable {
         public const int DefaultCapacity = 1024;
 
         public int Count {
@@ -144,7 +144,8 @@ namespace Squared.PRGUI.Layout {
         private GCHandle LayoutPin, BoxesPin;
         private LayoutItem[] PinnedLayoutArray;
         private RectF[] PinnedBoxesArray;
-        private IntPtr PinnedLayoutPtr, PinnedBoxesPtr;
+        private LayoutItem* PinnedLayoutPtr;
+        private RectF* PinnedBoxesPtr;
         private readonly UnorderedList<LayoutItem> Layout = new UnorderedList<LayoutItem>(DefaultCapacity);
         private readonly UnorderedList<RectF> Boxes = new UnorderedList<RectF>(DefaultCapacity);
         private Vector2 _CanvasSize;
@@ -224,8 +225,6 @@ namespace Squared.PRGUI.Layout {
             interior.Top = Math.Min(extent.Y, interior.Top + pItem->Padding.Top);
             interior.Width = Math.Max(0, exterior.Width - pItem->Padding.X);
             interior.Height = Math.Max(0, exterior.Height - pItem->Padding.Y);
-            if ((interior.Width <= 0) || (interior.Height <= 0))
-                ;
             return interior;
         }
 
@@ -274,7 +273,7 @@ namespace Squared.PRGUI.Layout {
             LayoutBufferOffset = buffer.Offset;
             PinnedLayoutArray = buffer.Array;
             LayoutPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
-            PinnedLayoutPtr = (IntPtr)(((LayoutItem*)LayoutPin.AddrOfPinnedObject()) + LayoutBufferOffset);
+            PinnedLayoutPtr = ((LayoutItem*)LayoutPin.AddrOfPinnedObject()) + LayoutBufferOffset;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -285,23 +284,26 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe LayoutItem * LayoutPtr (ControlKey key, bool optional = false) {
-            if (key.ID < 0) {
+            var id = key.ID;
+            if (id < 0) {
                 if (optional)
                     return null;
                 else
                     throw new ArgumentOutOfRangeException(nameof(key));
             }
 
-            if (key.ID >= _Count)
+            if (id >= _Count)
                 throw new ArgumentOutOfRangeException(nameof(key));
 
             if (Layout.BufferVersion != LayoutBufferVersion)
                 UpdateLayoutPin();
 
             var buf = (LayoutItem*)PinnedLayoutPtr;
-            var result = &buf[key.ID];
-            if (result->Key.ID != key.ID)
+            var result = &buf[id];
+            /*
+            if (result->Key.ID != id)
                 InvalidState();
+            */
             return result;
         }
 
@@ -313,7 +315,7 @@ namespace Squared.PRGUI.Layout {
             BoxesBufferOffset = buffer.Offset;
             PinnedBoxesArray = buffer.Array;
             BoxesPin = GCHandle.Alloc(buffer.Array, GCHandleType.Pinned);
-            PinnedBoxesPtr = (IntPtr)(((RectF*)BoxesPin.AddrOfPinnedObject()) + BoxesBufferOffset);
+            PinnedBoxesPtr = ((RectF*)BoxesPin.AddrOfPinnedObject()) + BoxesBufferOffset;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -211,6 +211,7 @@ namespace Squared.PRGUI.Decorations {
     }
 
     public class DefaultDecorations : IDecorationProvider {
+        public readonly DefaultMaterialSet Materials;
         public readonly float GlobalDefaultMargin,
             GlobalDefaultMarginCollapsed;
 
@@ -243,7 +244,14 @@ namespace Squared.PRGUI.Decorations {
         public IDecorator ParameterGauge { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
-        public DefaultDecorations (float defaultMargin = 6, float defaultMarginCollapsed = 4) {
+        private Material TextMaterial, SelectedTextMaterial;
+
+        public DefaultDecorations (DefaultMaterialSet materials, float defaultMargin = 6, float defaultMarginCollapsed = 4) {
+            Materials = materials;
+
+            TextMaterial = materials.Get(materials.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend);
+            SelectedTextMaterial = materials.Get(materials.ScreenSpaceBitmap, blendState: BlendState.AlphaBlend);
+
             GlobalDefaultMargin = defaultMargin;
             GlobalDefaultMarginCollapsed = defaultMarginCollapsed;
 
@@ -966,14 +974,22 @@ namespace Squared.PRGUI.Decorations {
                 : new Vector2(box.Extent.X - ScrollbarSize, box.Top);
             trackB = box.Extent;
 
+            var thumbSize = sizePx * (max - min);
+            const float minSize = 10;
+            if (thumbSize < minSize) {
+                var gap = minSize - thumbSize;
+                sizePx -= gap;
+                thumbSize = minSize;
+            }
+
             thumbA = trackA;
             thumbB = trackB;
             if (data.Horizontal) {
                 thumbA.X += (sizePx * min);
-                thumbB.X = box.Left + (sizePx * max);
+                thumbB.X = thumbA.X + thumbSize;
             } else {
                 thumbA.Y += (sizePx * min);
-                thumbB.Y = box.Top + (sizePx * max);
+                thumbB.Y = thumbA.Y + thumbSize;
             }
         }
 
@@ -1231,11 +1247,10 @@ namespace Squared.PRGUI.Decorations {
                 color = color?.ToColor().ToGrayscale(DisabledTextAlpha);
 
             font = DefaultFont;
-            material = context.Materials?.Get(
-                selected
-                    ? context.Materials?.ScreenSpaceBitmap
-                    : context.Materials?.ScreenSpaceShadowedBitmap, blendState: BlendState.AlphaBlend
-            );
+
+            material = selected
+                ? SelectedTextMaterial
+                : TextMaterial;
             return true;
         }
 

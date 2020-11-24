@@ -366,7 +366,7 @@ namespace Squared.Util.Text {
 
         public bool Contains (char ch) {
             if (String != null)
-                return String.Contains(ch);
+                return String.IndexOf(ch) >= 0;
 
             for (int i = 0, l = Length; i < l; i++) {
                 if (this[i] == ch)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -128,11 +129,13 @@ namespace Squared.PRGUI.Layout {
                 IsFlagged(flags, ControlFlags.Layout_ForceBreak);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsFlagged (this ControlFlags flags, ControlFlags flag) {
             var masked = (uint)(flags & flag);
             return masked != 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsFlagged (this ControlStates flags, ControlStates flag) {
             var masked = (int)(flags & flag);
             return masked != 0;
@@ -174,25 +177,28 @@ namespace Squared.PRGUI.Layout {
             return bounds;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float GetElement (this Vector2 v, uint index) {
             return GetElement(v, (int)index);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float GetElement (this Vector4 v, uint index) {
             return GetElement(v, (int)index);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float GetElement (this Vector2 v, int index) {
             switch (index) {
                 case 0:
                     return v.X;
                 case 1:
-                    return v.Y;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(index));
+                    return v.Y;
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float GetElement (this Vector4 v, int index) {
             switch (index) {
                 case 0:
@@ -202,9 +208,8 @@ namespace Squared.PRGUI.Layout {
                 case 2:
                     return v.Z;
                 case 3:
-                    return v.W;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(index));
+                    return v.W;
             }
         }
     }

@@ -404,7 +404,7 @@ namespace Squared.PRGUI {
         public UIContext (DefaultMaterialSet materials, IGlyphSource font = null, ITimeProvider timeProvider = null)
             : this (
                 materials: materials,
-                decorations: new DefaultDecorations {
+                decorations: new DefaultDecorations(materials) {
                     DefaultFont = font
                 },
                 timeProvider: timeProvider

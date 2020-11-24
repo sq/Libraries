@@ -167,7 +167,7 @@ namespace PRGUI.Demo {
             TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.75f * DPIFactor);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1.33f);
 
-            var decorations = new Squared.PRGUI.Decorations.DefaultDecorations {
+            var decorations = new Squared.PRGUI.Decorations.DefaultDecorations(Materials) {
                 DefaultFont = Font,
                 TitleFont = TitleFont,
                 TooltipFont = tooltipFont,
@@ -333,11 +333,13 @@ namespace PRGUI.Demo {
                 Menu = testMenu
             };
 
+            const int itemCount = 200;
+
             var dropdown = new Dropdown<StaticText> {
                 Description = "Big Menu",
                 TooltipContent = "Click me for a big dropdown menu"
             };
-            for (var i = 0; i < 5000; i++)
+            for (var i = 0; i < itemCount; i++)
                 dropdown.Items.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });
 
             var listBox = new ListBox<string> {
@@ -346,7 +348,7 @@ namespace PRGUI.Demo {
                 FixedHeight = 600,
                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
             };
-            for (var i = 0; i < 5000; i++)
+            for (var i = 0; i < itemCount; i++)
                 listBox.Items.Add($"Item {i}");
 
             var supernestedGroup = new Container {
