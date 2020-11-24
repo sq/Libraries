@@ -99,8 +99,6 @@ namespace Squared.PRGUI.Controls {
 
         new public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
 
-        protected override bool FreezeDynamicContent => Visible;
-
         public Menu ()
             : base () {
             Visible = false;
@@ -119,6 +117,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            FreezeDynamicContent = Visible;
+
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             foreach (var child in Children) {
                 var lk = child.LayoutKey;

@@ -56,8 +56,6 @@ namespace Squared.PRGUI.Controls {
 
         private Tween<float> DisclosureLevel = 1f;
 
-        protected override bool FreezeDynamicContent => base.FreezeDynamicContent || Collapsed;
-
         public TitledContainer ()
             : base () {
             LayoutFlags |= Layout.ControlFlags.Layout_ForceBreak;
@@ -177,6 +175,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            FreezeDynamicContent = _Collapsed;
+            // FIXME: Broken right now
+            // SuppressChildLayout = _Collapsed && (DisclosureLevel.Get(context.NowL) <= 0);
+            SuppressChildLayout = false;
+
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             if (string.IsNullOrEmpty(Title) && !existingKey.HasValue) {
                 var spacer = context.Layout.CreateItem();

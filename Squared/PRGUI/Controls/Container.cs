@@ -48,7 +48,8 @@ namespace Squared.PRGUI.Controls {
         /// </summary>
         public ContainerContentsDelegate DynamicContents;
 
-        protected virtual bool FreezeDynamicContent => false;
+        protected bool FreezeDynamicContent = false;
+        protected bool SuppressChildLayout = false;
 
         public Container () 
             : base () {
@@ -201,20 +202,29 @@ namespace Squared.PRGUI.Controls {
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             context.Layout.SetContainerFlags(result, ContainerFlags);
 
-            GenerateDynamicContent(false);
+            if (SuppressChildLayout) {
+                // FIXME: We need to also lock our minimum width in this case
+                // HACK
+                foreach (var item in Children)
+                    item.LayoutKey = ControlKey.Invalid;
 
-            foreach (var item in Children) {
-                item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
+                return result;
+            } else {
+                GenerateDynamicContent(false);
 
-                // If we're performing layout again on an existing layout item, attempt to do the same
-                //  for our children
-                var childExistingKey = (ControlKey?)null;
-                if ((existingKey.HasValue) && !item.LayoutKey.IsInvalid)
-                    childExistingKey = item.LayoutKey;
+                foreach (var item in Children) {
+                    item.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
 
-                item.GenerateLayoutTree(ref context, result, childExistingKey);
+                    // If we're performing layout again on an existing layout item, attempt to do the same
+                    //  for our children
+                    var childExistingKey = (ControlKey?)null;
+                    if ((existingKey.HasValue) && !item.LayoutKey.IsInvalid)
+                        childExistingKey = item.LayoutKey;
+
+                    item.GenerateLayoutTree(ref context, result, childExistingKey);
+                }
+                return result;
             }
-            return result;
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
