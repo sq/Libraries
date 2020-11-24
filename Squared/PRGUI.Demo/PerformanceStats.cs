@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Squared.Render;
+using Squared.Util;
 
 namespace Framework {
     public static class PerformanceStats {
@@ -10,7 +11,8 @@ namespace Framework {
         private static string _CachedString = null;
 
         public const int SampleCount = 200;
-        private static readonly List<double> WaitSamples = new List<double>(),
+        private static readonly List<double> UpdateSamples = new List<double>(),
+            WaitSamples = new List<double>(),
             BeginDrawSamples = new List<double>(),
             DrawSamples = new List<double>(),
             BeforePresentSamples = new List<double>(),
@@ -25,32 +27,44 @@ namespace Framework {
             list.Add(sample);
         }
 
-        private static double GetAverage (List<double> list) {
-            if (list.Count == 0)
-                return 0;
+        private static void Analyze (List<double> list, out double average, out double max) {
+            average = max = 0;
 
-            return list.Average();
+            var sum = 0.0;
+            foreach (var d in list) {
+                max = Math.Max(max, d);
+                sum += d;
+            }
+
+            if (list.Count > 0)
+                average = sum / list.Count;
         }
 
         private static void GenerateText (int primCountOffset) {
             StringBuilder.Clear();
 
-            var drawAverage = GetAverage(DrawSamples);
-            var beginAverage = GetAverage(BeginDrawSamples);
-            var bpAverage = GetAverage(BeforePresentSamples);
-            var endAverage = GetAverage(EndDrawSamples);
-            var waitAverage = GetAverage(WaitSamples);
+            double updateAverage, drawAverage, beginAverage, bpAverage, endAverage, waitAverage;
+            double updateMax, drawMax, beginMax, bpMax, endMax, waitMax;
+            Analyze(UpdateSamples, out updateAverage, out updateMax);
+            Analyze(DrawSamples, out drawAverage, out drawMax);
+            Analyze(BeginDrawSamples, out beginAverage, out beginMax);
+            Analyze(BeforePresentSamples, out bpAverage, out bpMax);
+            Analyze(EndDrawSamples, out endAverage, out endMax);
+            Analyze(WaitSamples, out waitAverage, out waitMax);
 
-            var totalAverage = drawAverage + beginAverage + endAverage + waitAverage;
+            var totalAverage = updateAverage + drawAverage + beginAverage + endAverage + waitAverage;
+            var totalMax = updateAverage + drawMax + beginMax + endMax + waitMax;
             var fpsAverage = 1000.0 / totalAverage;
 
             StringBuilder.AppendFormat("ms/f {0,7:000.00}\r\n", totalAverage);
+            StringBuilder.AppendFormat("max  {0,7:000.00}\r\n", totalMax);
+            StringBuilder.AppendFormat("upd% {0,4:000.0}\r\n", (updateAverage / totalAverage) * 100);
             StringBuilder.AppendFormat("FPS ~{0,7:000.00}\r\n", fpsAverage);
             StringBuilder.AppendFormat("batch {0,7:0000}\r\n", LastBatchCount);
-            StringBuilder.AppendFormat("prim ~{0,7:0000000}\r\n", LastPrimitiveCount + primCountOffset);
         }
 
-        public static void Record (FrameTiming timing) {
+        public static void Record (FrameTiming timing, long updateElapsedTicks) {
+            PushSample(UpdateSamples, (double)updateElapsedTicks / (double)Time.MillisecondInTicks);
             PushSample(WaitSamples, timing.Wait.TotalMilliseconds);
             PushSample(BeginDrawSamples, timing.BeginDraw.TotalMilliseconds);
             PushSample(DrawSamples, timing.Draw.TotalMilliseconds);

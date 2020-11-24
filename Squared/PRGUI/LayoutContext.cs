@@ -35,12 +35,13 @@ namespace Squared.PRGUI.Layout {
             public readonly ControlKey Parent;
             private readonly ControlKey FirstChild;
             private int Version;
-            private unsafe LayoutItem* pCurrent;
+            private unsafe LayoutItem* pLayoutItems, pCurrent;
 
             public ChildrenEnumerator (LayoutContext context, ControlKey parent) {
                 Context = context;
                 Version = context.Version;
                 Parent = parent;
+                pLayoutItems = null;
                 pCurrent = null;
                 FirstChild = ControlKey.Invalid;
             }
@@ -49,26 +50,27 @@ namespace Squared.PRGUI.Layout {
                 Context = context;
                 Version = context.Version;
                 Parent = pParent->Key;
+                pLayoutItems = null;
                 pCurrent = null;
                 FirstChild = pParent->FirstChild;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private void CheckVersion () {
-                if (Version <= -1)
-                    throw new ObjectDisposedException("enumerator");
+                if (Version == Context.Version)
+                    return;
 
-                Context.Assert(Version == Context.Version, "Context was modified");
+                Context.AssertionFailed("Context was modified");
             }
 
             private void CheckValid (void * ptr) {
+                if (ptr == null)
+                    Context.AssertionFailed("No current item");
                 CheckVersion();
-                Context.Assert(ptr != null, "No current item");
             }
 
             public ControlKey Current {
                 get {
-                    CheckVersion();
                     CheckValid(pCurrent);
                     return pCurrent->Key;
                 }
@@ -84,15 +86,24 @@ namespace Squared.PRGUI.Layout {
             public bool MoveNext () {
                 CheckVersion();
 
+                if (pLayoutItems == null)
+                    pLayoutItems = Context.LayoutPtr();
+
                 if (pCurrent == null) {
                     if (FirstChild.IsInvalid) {
-                        var pParent = Context.LayoutPtr(Parent);
-                        pCurrent = Context.LayoutPtr(pParent->FirstChild, true);
+                        var pParent = &pLayoutItems[Parent.ID];
+                        var firstChild = pParent->FirstChild;
+                        if (firstChild.IsInvalid)
+                            pCurrent = null;
+                        else
+                            pCurrent = &pLayoutItems[firstChild.ID];
                     } else {
-                        pCurrent = Context.LayoutPtr(FirstChild);
+                        pCurrent = &pLayoutItems[FirstChild.ID];
                     }
+                } else if (pCurrent->NextSibling.IsInvalid) {
+                    pCurrent = null;
                 } else {
-                    pCurrent = Context.LayoutPtr(pCurrent->NextSibling, true);
+                    pCurrent = &pLayoutItems[pCurrent->NextSibling.ID];
                 }
 
                 return (pCurrent != null);
@@ -213,6 +224,8 @@ namespace Squared.PRGUI.Layout {
 
             Layout.Add(ref newData);
             Boxes.Add(ref newBox);
+
+            _Count = Count;
 
             return key;
         }

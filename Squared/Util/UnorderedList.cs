@@ -88,11 +88,7 @@ namespace Squared.Util {
         /// <summary>
         /// This value will be incremented every time the underlying buffer is re-allocated
         /// </summary>
-        public int BufferVersion {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get;
-            private set;
-        }
+        public int BufferVersion;
 
         protected Allocator _Allocator;
         protected T[] _Items;

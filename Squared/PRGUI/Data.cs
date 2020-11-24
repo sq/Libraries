@@ -137,6 +137,7 @@ namespace Squared.PRGUI.Layout {
 
         public ControlKey Root = ControlKey.Invalid;
 
+        private int _Count;
         private int Version;
         private int LayoutBufferVersion = -1, BoxesBufferVersion = -1;
         private int LayoutBufferOffset, BoxesBufferOffset;
@@ -210,7 +211,7 @@ namespace Squared.PRGUI.Layout {
         private unsafe RectF GetContentRect (LayoutItem * pItem, ref RectF exterior) {
             Vector2 extent;
             RectF interior;
-            if (pItem->Key == Root) {
+            if (pItem->Key.ID == Root.ID) {
                 // FIXME: Why is this necessary?
                 extent = CanvasSize;
                 // HACK
@@ -284,14 +285,22 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe LayoutItem * LayoutPtr (ControlKey key, bool optional = false) {
-            if (optional && key.IsInvalid)
-                return null;
+            if (key.ID < 0) {
+                if (optional)
+                    return null;
+                else
+                    throw new ArgumentOutOfRangeException(nameof(key));
+            }
 
-            if ((key.ID < 0) || (key.ID >= Layout.Count))
+            if (key.ID >= _Count)
                 throw new ArgumentOutOfRangeException(nameof(key));
 
-            var result = &LayoutPtr()[key.ID];
-            if (result->Key != key)
+            if (Layout.BufferVersion != LayoutBufferVersion)
+                UpdateLayoutPin();
+
+            var buf = (LayoutItem*)PinnedLayoutPtr;
+            var result = &buf[key.ID];
+            if (result->Key.ID != key.ID)
                 InvalidState();
             return result;
         }
@@ -315,13 +324,18 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe RectF * RectPtr (ControlKey key, bool optional = false) {
-            if (optional && key.IsInvalid)
-                return null;
-
-            if ((key.ID < 0) || (key.ID >= Boxes.Count))
+            if (key.ID < 0) {
+                if (optional)
+                    return null;
+                else
+                    throw new ArgumentOutOfRangeException(nameof(key));
+            } else if (key.ID >= _Count)
                 throw new ArgumentOutOfRangeException(nameof(key));
 
-            var result = &BoxesPtr()[key.ID];
+            if (Boxes.BufferVersion != BoxesBufferVersion)
+                UpdateBoxesPin();
+            var buf = (RectF*)PinnedBoxesPtr;
+            var result = &buf[key.ID];
             return result;
         }
 
@@ -345,6 +359,7 @@ namespace Squared.PRGUI.Layout {
                 BoxesPin.Free();
             Layout.Clear();
             Boxes.Clear();
+            _Count = 0;
         }
 
         public void Initialize () {

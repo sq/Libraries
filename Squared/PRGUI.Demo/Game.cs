@@ -337,7 +337,7 @@ namespace PRGUI.Demo {
                 Description = "Big Menu",
                 TooltipContent = "Click me for a big dropdown menu"
             };
-            for (var i = 0; i < 500; i++)
+            for (var i = 0; i < 5000; i++)
                 dropdown.Items.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });
 
             var listBox = new ListBox<string> {
@@ -346,7 +346,7 @@ namespace PRGUI.Demo {
                 FixedHeight = 600,
                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
             };
-            for (var i = 0; i < 500; i++)
+            for (var i = 0; i < 5000; i++)
                 listBox.Items.Add($"Item {i}");
 
             var supernestedGroup = new Container {
@@ -619,7 +619,7 @@ namespace PRGUI.Demo {
             WaitHistory = new List<double>();
 
         protected override void Update (GameTime gameTime) {
-            PerformanceStats.Record(this.PreviousFrameTiming);
+            var started = Time.Ticks;
 
             PreviousKeyboardState = KeyboardState;
             PreviousMouseState = MouseState;
@@ -674,6 +674,9 @@ namespace PRGUI.Demo {
                 FloatingWindow.TransformMatrix = null;
 
             base.Update(gameTime);
+
+            var ended = Time.Ticks;
+            PerformanceStats.Record(this.PreviousFrameTiming, ended - started);
         }
 
         private void Weird2DTransform (
