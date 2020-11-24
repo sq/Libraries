@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -785,12 +786,14 @@ namespace Squared.Render {
             Color = default(Color);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public pSRGBColor (Color c) {
             IsVector4 = false;
             Vector4 = default(Vector4);
             Color = c;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public pSRGBColor (Vector4 v4, bool isPremultiplied = true) {
             IsVector4 = true;
             if (!isPremultiplied) {
@@ -803,6 +806,7 @@ namespace Squared.Render {
             Color = default(Color);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public pSRGBColor (ref Vector4 v4, bool isPremultiplied = true) {
             IsVector4 = true;
             if (!isPremultiplied) {
@@ -816,6 +820,7 @@ namespace Squared.Render {
             Color = default(Color);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Color ToColor () {
             if (!IsVector4)
                 return Color;
@@ -825,6 +830,7 @@ namespace Squared.Render {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector4 ToVector4 () {
             if (IsVector4)
                 return Vector4;
