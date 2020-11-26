@@ -1151,14 +1151,17 @@ namespace Squared.PRGUI.Decorations {
             var fillColor = (pSRGBColor)(
                  isFocused
                     ? SelectionFillColor
-                    : Color.Lerp(SelectionFillColor, SelectionFillColor.ToGrayscale(0.8f), 0.6f)
+                    : Color.Lerp(SelectionFillColor, SelectionFillColor.ToGrayscale(0.65f), 0.5f)
                 );
+            var outlineColor = (isFocused)
+                ? Color.White
+                : fillColor * 0.5f;
 
             renderer.RasterizeRectangle(
                 a, b,
                 radius: ListSelectionCornerRadius,
-                outlineRadius: 0.9f, outlineColor: fillColor * (isFocused ? 1.0f : 0.5f),
-                innerColor: fillColor, outerColor: fillColor * 0.6f,
+                outlineRadius: 0.9f, outlineColor: outlineColor,
+                innerColor: fillColor, outerColor: fillColor,
                 fillMode: RasterFillMode.Horizontal
             );
         }

@@ -97,7 +97,7 @@ namespace Squared.PRGUI.Controls {
 
         protected bool Wrap {
             get {
-                return Content.WordWrap;
+                return Content.WordWrap || Content.CharacterWrap;
             }
             set {
                 Content.CharacterWrap = value;
@@ -441,7 +441,8 @@ namespace Squared.PRGUI.Controls {
                 _NeedRelayout = false;
             }
 
-            if (!AutoSizeWidth)
+            // FIXME: This is probably wrong?
+            if (!AutoSizeWidth && !Wrap && MostRecentContentWidth.HasValue)
                 return;
 
             var contentBox = context.Layout.GetContentRect(LayoutKey);
