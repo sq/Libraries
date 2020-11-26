@@ -170,17 +170,27 @@ namespace Squared.PRGUI.Controls {
                 ContentMeasurement = new DynamicStringLayout();
             ContentMeasurement.Copy(Content);
             ContentMeasurement.MeasureOnly = true;
+            // HACK: If we never get painted (to validate our main content layout), then
+            //  Content.IsValid will be false forever and we will recompute our measurement
+            //  layout every frame. Not great, so... whatever
+            Content.Get();
         }
 
         protected StringLayout GetCurrentLayout (bool measurement) {
-            Content.RichText = RichText;
-            Content.RichTextConfiguration = Context.RichTextConfiguration;
+            if (_RichText.HasValue)
+                Content.RichText = _RichText.Value;
+            if (Content.RichText)
+                Content.RichTextConfiguration = Context.RichTextConfiguration;
 
             if (measurement) {
-                if (!Content.IsValid || (ContentMeasurement == null))
+                if (!Content.IsValid || (ContentMeasurement == null)) {
+                    AutoSizeComputedHeight = AutoSizeComputedWidth = null;
                     ConfigureMeasurement();
-                if (!ContentMeasurement.IsValid)
+                }
+                if (!ContentMeasurement.IsValid) {
+                    AutoSizeComputedHeight = AutoSizeComputedWidth = null;
                     _NeedRelayout = true;
+                }
                 return ContentMeasurement.Get();
             } else {
                 if (!Content.IsValid) {
@@ -192,22 +202,48 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private IDecorator _CachedTextDecorations,
+            _CachedDecorations;
+        private Margins _CachedPadding;
+
         protected void ComputeAutoSize (UIOperationContext context) {
             // FIXME: If we start out constrained (by our parent size, etc) we will compute
             //  a compressed auto-size value here, and it will never be updated even if our parent
             //  gets bigger
 
-            AutoSizeComputedHeight = AutoSizeComputedWidth = null;
-            if (!AutoSizeWidth && !AutoSizeHeight)
+            if (!AutoSizeWidth && !AutoSizeHeight) {
+                AutoSizeComputedHeight = AutoSizeComputedWidth = null;
+                return;
+            }
+
+            var textDecorations = GetTextDecorator(context.DecorationProvider);
+            UpdateFont(context, textDecorations);
+            if (ScaleToFit)
                 return;
 
             var decorations = GetDecorator(context.DecorationProvider);
-            var textDecorations = GetTextDecorator(context.DecorationProvider);
-            UpdateFont(context, textDecorations);
+            ComputePadding(context, decorations, out Margins computedPadding);
 
-            var computedPadding = ComputePadding(context, decorations);
-            if (ScaleToFit)
+            if (ContentMeasurement?.IsValid != true)
+                AutoSizeComputedWidth = AutoSizeComputedHeight = null;
+
+            if (
+                (_CachedTextDecorations != textDecorations) ||
+                (_CachedDecorations != decorations) ||
+                !_CachedPadding.Equals(ref computedPadding)
+            ) {
+                AutoSizeComputedWidth = AutoSizeComputedHeight = null;
+            }
+
+            if (
+                ((AutoSizeComputedWidth != null) == AutoSizeWidth) &&
+                ((AutoSizeComputedHeight != null) == AutoSizeHeight)
+            )
                 return;
+
+            _CachedTextDecorations = textDecorations;
+            _CachedDecorations = decorations;
+            _CachedPadding = computedPadding;
 
             // HACK: If we're pretty certain the text will be exactly one line long and we don't
             //  care how wide it is, just return the line spacing without performing layout
@@ -233,6 +269,7 @@ namespace Squared.PRGUI.Controls {
 
         protected void Invalidate () {
             _NeedRelayout = true;
+            AutoSizeComputedHeight = AutoSizeComputedWidth = null;
             Content.Invalidate();
             ContentMeasurement?.Invalidate();
             // HACK: Ensure we do not erroneously wrap content that is intended to be used as an input for auto-size
@@ -255,7 +292,7 @@ namespace Squared.PRGUI.Controls {
             if (ScaleToFit)
                 return null;
 
-            var computedPadding = ComputePadding(context, decorations);
+            ComputePadding(context, decorations, out Margins computedPadding);
             float? constrainedWidth = null;
             if (MostRecentContentWidth.HasValue) {
                 float computed = MostRecentContentWidth.Value;
@@ -302,15 +339,15 @@ namespace Squared.PRGUI.Controls {
             if (context.Pass != RasterizePasses.Content)
                 return;
 
-            var computedPadding = ComputePadding(context, decorations);
+            ComputePadding(context, decorations, out Margins computedPadding);
 
             var overrideColor = GetTextColor(context.NowL);
-            pSRGBColor? defaultColor = null;
+            Color? defaultColor = null;
             Material material;
             var textDecorations = GetTextDecorator(context.DecorationProvider);
             GetTextSettings(context, textDecorations, settings.State, out material, ref defaultColor);
 
-            Content.DefaultColor = defaultColor?.ToColor() ?? Color.White;
+            Content.DefaultColor = defaultColor ?? Color.White;
             Content.Color = overrideColor?.ToColor();
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
@@ -360,11 +397,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected void UpdateFont (UIOperationContext context, IDecorator decorations) {
-            pSRGBColor? temp2 = null;
+            Color? temp2 = null;
             GetTextSettings(context, decorations, default(ControlStates), out Material temp, ref temp2);
         }
 
-        protected void GetTextSettings (UIOperationContext context, IDecorator decorations, ControlStates state, out Material material, ref pSRGBColor? color) {
+        protected void GetTextSettings (UIOperationContext context, IDecorator decorations, ControlStates state, out Material material, ref Color? color) {
             decorations.GetTextSettings(context, state, out material, out IGlyphSource font, ref color);
             if (Content.GlyphSource == null)
                 Content.GlyphSource = font;
@@ -396,14 +433,16 @@ namespace Squared.PRGUI.Controls {
         AbstractString Accessibility.IReadingTarget.Text => GetReadingText();
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) => FormatValueInto(sb);
 
-        void IPostLayoutListener.OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+        void IPostLayoutListener.OnLayoutComplete (
+            UIOperationContext context, ref bool relayoutRequested
+        ) {
             if (_NeedRelayout) {
                 relayoutRequested = true;
                 _NeedRelayout = false;
             }
 
-            var decorations = GetDecorator(context.DecorationProvider);
-            var box = context.Layout.GetRect(LayoutKey);
+            if (!AutoSizeWidth)
+                return;
 
             var contentBox = context.Layout.GetContentRect(LayoutKey);
             MostRecentContentWidth = contentBox.Width;

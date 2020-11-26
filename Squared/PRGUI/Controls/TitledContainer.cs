@@ -93,7 +93,7 @@ namespace Squared.PRGUI.Controls {
                 context.DecorationProvider?.WindowTitle;
         }
 
-        protected IDecorator UpdateTitle (UIOperationContext context, DecorationSettings settings, out Material material, ref pSRGBColor? color) {
+        protected IDecorator UpdateTitle (UIOperationContext context, DecorationSettings settings, out Material material, ref Color? color) {
             var decorations = GetTitleDecorator(context);
             if (decorations == null) {
                 material = null;
@@ -102,7 +102,7 @@ namespace Squared.PRGUI.Controls {
             decorations.GetTextSettings(context, settings.State, out material, out IGlyphSource font, ref color);
             TitleLayout.Text = Title;
             TitleLayout.GlyphSource = font;
-            TitleLayout.DefaultColor = color?.ToColor() ?? Color.White;
+            TitleLayout.DefaultColor = color ?? Color.White;
             TitleLayout.LineBreakAtX = settings.ContentBox.Width;
             return decorations;
         }
@@ -157,21 +157,20 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
-            var result = base.ComputePadding(context, decorations);
+        protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputePadding(context, decorations, out result);
             var titleDecorations = context.DecorationProvider?.WindowTitle;
             if (titleDecorations == null)
-                return result;
+                return;
             if (string.IsNullOrEmpty(Title))
-                return result;
+                return;
 
-            pSRGBColor? color = null;
+            Color? color = null;
             titleDecorations.GetTextSettings(context, default(ControlStates), out Material temp, out IGlyphSource font, ref color);
             result.Top += titleDecorations.Margins.Bottom;
             result.Top += titleDecorations.Padding.Top;
             result.Top += titleDecorations.Padding.Bottom;
             result.Top += font.LineSpacing;
-            return result;
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -237,7 +236,7 @@ namespace Squared.PRGUI.Controls {
             base.OnRasterize(context, ref renderer, settings, decorations);
 
             IDecorator titleDecorator;
-            pSRGBColor? titleColor = null;
+            Color? titleColor = null;
             if (
                 (titleDecorator = UpdateTitle(context, settings, out Material titleMaterial, ref titleColor)) != null
             ) {
@@ -283,7 +282,7 @@ namespace Squared.PRGUI.Controls {
                 renderer.Layer += 1;
                 renderer.DrawMultiple(
                     layout.DrawCalls, textPosition.Floor(),
-                    samplerState: RenderStates.Text, multiplyColor: titleColor?.ToColor()
+                    samplerState: RenderStates.Text, multiplyColor: titleColor
                 );
             }
         }

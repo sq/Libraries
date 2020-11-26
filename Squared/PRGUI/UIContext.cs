@@ -206,6 +206,8 @@ namespace Squared.PRGUI {
         /// </summary>
         public IDecorationProvider Decorations;
 
+        internal int FrameIndex;
+
         /// <summary>
         /// The top-level controls managed by the layout engine. Each one gets a separate rendering layer
         /// </summary>
@@ -588,6 +590,8 @@ namespace Squared.PRGUI {
         }
 
         public void Update () {
+            FrameIndex++;
+
             var context = MakeOperationContext();
             var pll = Interlocked.Exchange(ref _PostLayoutListeners, null);
             if (pll == null)
@@ -1077,7 +1081,7 @@ namespace Squared.PRGUI {
 
         // Position is relative to the top-left corner of the canvas
         public Control HitTest (Vector2 position, bool acceptsMouseInputOnly = false, bool acceptsFocusOnly = false) {
-            var sorted = Controls.InPaintOrder();
+            var sorted = Controls.InPaintOrder(FrameIndex);
             for (var i = sorted.Count - 1; i >= 0; i--) {
                 var control = sorted[i];
                 var result = control.HitTest(Layout, position, acceptsMouseInputOnly, acceptsFocusOnly);
@@ -1127,6 +1131,8 @@ namespace Squared.PRGUI {
         }
 
         public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer) {
+            FrameIndex++;
+
             Now = (float)TimeProvider.Seconds;
             NowL = TimeProvider.Ticks;
 
@@ -1147,7 +1153,7 @@ namespace Squared.PRGUI {
                 };
                 renderer.Clear(color: Color.Transparent, stencil: 0, layer: -999);
 
-                var seq = Controls.InPaintOrder();
+                var seq = Controls.InPaintOrder(FrameIndex);
                 var topLevelFocusIndex = seq.IndexOf(TopLevelFocused);
                 for (int i = 0; i < seq.Count; i++) {
                     var control = seq[i];

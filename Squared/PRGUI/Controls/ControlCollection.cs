@@ -152,22 +152,34 @@ namespace Squared.PRGUI {
             }
         }
 
-        internal List<Control> InTabOrder (bool suitableTargetsOnly) {
-            TabOrderedItems.Clear();
-            TabOrderedItems.Capacity = Math.Max(Math.Max(TabOrderedItems.Capacity, Items.Count), 16);
-            foreach (var item in Items)
-                if (!suitableTargetsOnly || item.IsValidFocusTarget)
-                    TabOrderedItems.Add(item);
-            TabOrderedItems.Sort(Control.TabOrderComparer.Instance);
+        private int TabOrderLastValidFrame = -1, PaintOrderLastValidFrame = -1;
+
+        private bool PrepareToUpdateSortedList (ref int lastValidFrame, int currentFrame, List<Control> targetList) {
+            if ((targetList.Count == Count) && (lastValidFrame == currentFrame))
+                return false;
+
+            targetList.Clear();
+            targetList.Capacity = Math.Max(Math.Max(targetList.Capacity, Items.Count), 16);
+            lastValidFrame = currentFrame;
+            return true;
+        }
+
+        internal List<Control> InTabOrder (int frameIndex, bool suitableTargetsOnly) {
+            if (PrepareToUpdateSortedList(ref TabOrderLastValidFrame, frameIndex, TabOrderedItems)) {
+                foreach (var item in Items)
+                    if (!suitableTargetsOnly || item.IsValidFocusTarget)
+                        TabOrderedItems.Add(item);
+                TabOrderedItems.Sort(Control.TabOrderComparer.Instance);
+            }
             return TabOrderedItems;
         }
 
-        internal List<Control> InPaintOrder () {
-            PaintOrderedItems.Clear();
-            PaintOrderedItems.Capacity = Math.Max(Math.Max(PaintOrderedItems.Capacity, Items.Count), 16);
-            foreach (var item in Items)
-                PaintOrderedItems.Add(item);
-            PaintOrderedItems.Sort(Control.PaintOrderComparer.Instance);
+        internal List<Control> InPaintOrder (int frameIndex) {
+            if (PrepareToUpdateSortedList(ref PaintOrderLastValidFrame, frameIndex, PaintOrderedItems)) {
+                foreach (var item in Items)
+                    PaintOrderedItems.Add(item);
+                PaintOrderedItems.Sort(Control.PaintOrderComparer.Instance);
+            }
             return PaintOrderedItems;
         }
 

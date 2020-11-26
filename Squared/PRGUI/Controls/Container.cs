@@ -268,7 +268,7 @@ namespace Squared.PRGUI.Controls {
             int layer1, int layer2, int layer3, 
             ref int maxLayer1, ref int maxLayer2, ref int maxLayer3
         ) {
-            var sequence = Children.InPaintOrder();
+            var sequence = Children.InPaintOrder(Context.FrameIndex);
             foreach (var item in sequence)
                 RasterizeChild(ref context, item, ref passSet, layer1, layer2, layer3, ref maxLayer1, ref maxLayer2, ref maxLayer3);
         }
@@ -400,18 +400,17 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
-            var result = base.ComputePadding(context, decorations);
+        protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputePadding(context, decorations, out result);
             if (!Scrollable)
-                return result;
+                return;
             var scrollbar = context.DecorationProvider?.Scrollbar;
             if (scrollbar == null)
-                return result;
+                return;
             if (ShowVerticalScrollbar)
                 result.Right += scrollbar.MinimumSize.X;
             if (ShowHorizontalScrollbar)
                 result.Bottom += scrollbar.MinimumSize.Y;
-            return result;
         }
 
         protected bool GetContentBounds (UIContext context, out RectF contentBounds) {
@@ -444,7 +443,7 @@ namespace Squared.PRGUI.Controls {
 
             // FIXME: Should we only perform the hit test if the position is within our boundaries?
             // This doesn't produce the right outcome when a container's computed size is zero
-            var sorted = Children.InPaintOrder();
+            var sorted = Children.InPaintOrder(Context.FrameIndex);
             for (int i = sorted.Count - 1; i >= 0; i--) {
                 var item = sorted[i];
                 var newResult = item.HitTest(context, position, acceptsMouseInputOnly, acceptsFocusOnly);

@@ -162,8 +162,8 @@ namespace Squared.PRGUI.Controls {
             SetText(ValueEncoder(_Value), true);
         }
 
-        protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
-            var result = base.ComputePadding(context, decorations);
+        protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputePadding(context, decorations, out result);
 
             if (Increment.HasValue) {
                 result.Left += ArrowPadding;
@@ -179,7 +179,6 @@ namespace Squared.PRGUI.Controls {
                 if (gauge.Padding.Bottom > 0)
                     result.Bottom += (gauge.Margins.Bottom * 2f);
             }
-            return result;
         }
 
         void RasterizeArrow (ref ImperativeRenderer renderer, RectF box, bool facingRight) {

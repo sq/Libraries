@@ -574,6 +574,24 @@ namespace Squared.PRGUI {
             Bottom = bottom;
         }
 
+        public bool Equals (Margins rhs) {
+            return Equals(ref rhs);
+        }
+
+        public bool Equals (ref Margins rhs) {
+            return (Left == rhs.Left) &&
+                (Top == rhs.Top) &&
+                (Right == rhs.Right) &&
+                (Bottom == rhs.Bottom);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is Margins)
+                return Equals((Margins)obj);
+            else
+                return false;
+        }
+
         public float this[int index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
@@ -618,6 +636,14 @@ namespace Squared.PRGUI {
                         throw new ArgumentOutOfRangeException();
                 }
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Add (ref Margins lhs, Margins rhs, out Margins result) {
+            result.Left = lhs.Left + rhs.Left;
+            result.Top = lhs.Top + rhs.Top;
+            result.Right = lhs.Right + rhs.Right;
+            result.Bottom = lhs.Bottom + rhs.Bottom;
         }
 
         public static Margins operator + (Margins lhs, Margins rhs) {

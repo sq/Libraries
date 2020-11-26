@@ -555,22 +555,24 @@ namespace Squared.PRGUI.Layout {
             result += pItem->Padding[idim] + pItem->Padding[wdim];
 
             // FIXME: Is this actually necessary?
-            result = Constrain(result, GetComputedMinimumSize(pItem).GetElement(idim), GetComputedMaximumSize(pItem, null).GetElement(idim));
+            GetComputedMinimumSize(pItem, out Vector2 minimumSize);
+            GetComputedMaximumSize(pItem, null, out Vector2 maximumSize);
+            result = Constrain(result, minimumSize.GetElement(idim), maximumSize.GetElement(idim));
             return result;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
-        private unsafe Vector2 GetComputedMinimumSize (LayoutItem * pItem) {
-            var result = pItem->FixedSize;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe void GetComputedMinimumSize (LayoutItem * pItem, out Vector2 result) {
+            result = pItem->FixedSize;
             if (result.X < 0)
                 result.X = pItem->MinimumSize.X;
             if (result.Y < 0)
                 result.Y = pItem->MinimumSize.Y;
-            return result;
         }
 
-        private unsafe Vector2 GetComputedMaximumSize (LayoutItem * pItem, Vector2? parentConstraint) {
-            var result = pItem->FixedSize;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe void GetComputedMaximumSize (LayoutItem * pItem, Vector2? parentConstraint, out Vector2 result) {
+            result = pItem->FixedSize;
             if (result.X < 0) {
                 if (parentConstraint.HasValue) {
                     result.X = Math.Min(parentConstraint.Value.X, pItem->MaximumSize.X);
@@ -585,7 +587,6 @@ namespace Squared.PRGUI.Layout {
                     result.Y = pItem->MaximumSize.Y;
                 }
             }
-            return result;
         }
 
         private unsafe float CalcWrappedOverlaidSize (LayoutItem * pItem, Dimensions dim) {
@@ -605,9 +606,11 @@ namespace Squared.PRGUI.Layout {
             return value;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private unsafe float Constrain (float value, LayoutItem * pItem, int dimension) {
-            return Constrain(value, GetComputedMinimumSize(pItem).GetElement(dimension), GetComputedMaximumSize(pItem, null).GetElement(dimension));
+            GetComputedMinimumSize(pItem, out Vector2 minimum);
+            GetComputedMaximumSize(pItem, null, out Vector2 maximum);
+            return Constrain(value, minimum.GetElement(dimension), maximum.GetElement(dimension));
         }
 
         private unsafe void CalcSize (LayoutItem * pItem, Dimensions dim) {
@@ -676,6 +679,9 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe void ArrangeStacked (LayoutItem * pItem, Dimensions dim, bool wrap) {
+            if (pItem->FirstChild.ID < 0)
+                return;
+
             var itemFlags = pItem->Flags;
             var rect = GetContentRect(pItem);
             int idim = (int)dim, wdim = idim + 2;
@@ -750,6 +756,9 @@ namespace Squared.PRGUI.Layout {
             float filler, float spacer, float extraMargin, 
             float eater, float x
         ) {
+            if (child == endChild)
+                return;
+
             int constrainedCount = 0;
             float extraFromConstraints = 0, originalExtraMargin = extraMargin, originalX = x;
 
@@ -837,8 +846,10 @@ namespace Squared.PRGUI.Layout {
             var rect = GetRect(control);
             var wdim = dimension + 2;
 
-            var min = GetComputedMinimumSize(pItem).GetElement(dimension);
-            var max = GetComputedMaximumSize(pItem, null).GetElement(dimension);
+            GetComputedMinimumSize(pItem, out Vector2 minimum);
+            GetComputedMaximumSize(pItem, null, out Vector2 maximum);
+            var min = minimum.GetElement(dimension);
+            var max = maximum.GetElement(dimension);
             // FIXME
             if ((min > max) && (min >= 0) && (max >= 0))
                 return;
@@ -918,6 +929,9 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe void ArrangeOverlay (LayoutItem * pItem, Dimensions dim) {
+            if (pItem->FirstChild.ID < 0)
+                return;
+
             int idim = (int)dim, wdim = idim + 2;
 
             var contentRect = GetContentRect(pItem);
@@ -1003,7 +1017,9 @@ namespace Squared.PRGUI.Layout {
                     parentConstraint = parentRect.Extent - rect.Position;
                 }
 
-                rect[wdim] = Constrain(unconstrained, GetComputedMinimumSize(pItem).GetElement(idim), GetComputedMaximumSize(pItem, parentConstraint).GetElement(idim));
+                GetComputedMinimumSize(pItem, out Vector2 minimum);
+                GetComputedMaximumSize(pItem, parentConstraint, out Vector2 maximum);
+                rect[wdim] = Constrain(unconstrained, minimum.GetElement(idim), maximum.GetElement(idim));
                 float extent = rect[idim] + rect[wdim];
 
                 SetRect(item, ref rect);
@@ -1013,6 +1029,8 @@ namespace Squared.PRGUI.Layout {
         }
 
         private unsafe float ArrangeWrappedOverlaySqueezed (LayoutItem * pItem, Dimensions dim) {
+            // FIXME: Find some way to early-out here if there are no children?
+
             int idim = (int)dim, wdim = idim + 2;
             var contentRect = GetContentRect(pItem);
             float offset = contentRect[idim], needSize = 0;

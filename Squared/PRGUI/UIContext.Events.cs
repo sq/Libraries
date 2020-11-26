@@ -199,7 +199,7 @@ namespace Squared.PRGUI {
             if (topLevel) {
                 var currentTopLevel = FindTopLevelAncestor(Focused);
                 // HACK
-                var inTabOrder = Controls.InTabOrder(false)
+                var inTabOrder = Controls.InTabOrder(FrameIndex, false)
                     .Where(c => 
                         ((c is IControlContainer) || c.AcceptsFocus) &&
                         c.Enabled && c.Visible
@@ -384,7 +384,7 @@ namespace Squared.PRGUI {
                 ) {
                     var container = value as IControlContainer;
                     if (container != null)
-                        childTarget = container.Children.InTabOrder(true).FirstOrDefault();
+                        childTarget = container.Children.InTabOrder(FrameIndex, true).FirstOrDefault();
                 }
 
                 if (childTarget != null)
@@ -435,7 +435,7 @@ namespace Squared.PRGUI {
         }
 
         public Control FindFocusableSibling (ControlCollection collection, Control current, int delta, bool recursive) {
-            var tabOrdered = collection.InTabOrder(false);
+            var tabOrdered = collection.InTabOrder(FrameIndex, false);
             if (tabOrdered.Count < 1)
                 return null;
 

@@ -161,7 +161,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
             var decorations = GetDefaultDecorator(Context.Decorations);
-            Render.pSRGBColor? color = null;
+            Color? color = null;
             decorations.GetTextSettings(default(UIOperationContext), default(ControlStates), out Render.Material temp, out Render.Text.IGlyphSource glyphSource, ref color);
             base.ComputeSizeConstraints(out minimumWidth, out minimumHeight, out maximumWidth, out maximumHeight);
             minimumHeight = Math.Max(Math.Max(minimumHeight ?? 0, ControlMinimumHeight), glyphSource.LineSpacing * 0.6f);
@@ -295,12 +295,11 @@ namespace Squared.PRGUI.Controls {
             return thumbSize;
         }
 
-        protected override Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
-            var result = base.ComputePadding(context, decorations);
+        protected override void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
+            base.ComputePadding(context, decorations, out result);
             var thumbSize = ComputeThumbSize();
             result.Left += thumbSize.X * 0.5f;
             result.Right += thumbSize.X * 0.5f;
-            return result;
         }
 
         protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {

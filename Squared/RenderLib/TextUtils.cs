@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -427,6 +428,7 @@ namespace Squared.Render.Text {
         }
 
         public bool IsValid {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return (_CachedStringLayout.HasValue && (_CachedGlyphVersion >= _GlyphSource.Version));
             }
@@ -506,13 +508,15 @@ namespace Squared.Render.Text {
         /// If the current state is invalid, computes a current layout. Otherwise, returns the cached layout.
         /// </summary>
         public StringLayout Get () {
-            if (_Text.IsNull)
-                return new StringLayout();
-
             if (_CachedStringLayout.HasValue && _CachedGlyphVersion < _GlyphSource.Version)
                 Invalidate();
 
             if (!_CachedStringLayout.HasValue) {
+                if (_Text.IsNull) {
+                    _CachedStringLayout = new StringLayout();
+                    return _CachedStringLayout.Value;
+                }
+
                 int length = _Text.Length;
 
                 int capacity = length + StringLayoutEngine.DefaultBufferPadding;
@@ -596,6 +600,7 @@ namespace Squared.Render.Text {
         }
 
         int IGlyphSource.Version {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 int result = 0;
                 foreach (var item in Sources)

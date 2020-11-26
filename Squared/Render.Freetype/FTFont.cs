@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -309,6 +310,7 @@ namespace Squared.Render.Text {
             }
 
             int IGlyphSource.Version {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
                     return _Version;
                 }
@@ -455,6 +457,7 @@ namespace Squared.Render.Text {
         }
 
         int IGlyphSource.Version {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 return DefaultSize._Version;
             }

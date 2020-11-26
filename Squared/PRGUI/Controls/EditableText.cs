@@ -324,13 +324,13 @@ namespace Squared.PRGUI.Controls {
 
             UpdateLayoutSettings();
 
-            pSRGBColor? color = null;
+            Color? color = null;
             decorations.GetTextSettings(context, settings.State, out material, out IGlyphSource font, ref color);
-            CachedPadding = ComputePadding(context, decorations);
+            ComputePadding(context, decorations, out CachedPadding);
 
             if (font != null)
                 DynamicLayout.GlyphSource = font;
-            DynamicLayout.DefaultColor = color?.ToColor() ?? Color.White;
+            DynamicLayout.DefaultColor = color ?? Color.White;
 
             return DynamicLayout.Get();
         }
@@ -837,9 +837,9 @@ namespace Squared.PRGUI.Controls {
             ArraySegment<BitmapDrawCall> drawCalls, LayoutMarker? selection,
             UIOperationContext context, ControlStates state, IBaseDecorator selectionDecorator
         ) {
-            pSRGBColor? selectedColor = DynamicLayout.Color;
+            Color? selectedColor = DynamicLayout.Color;
             selectionDecorator.GetTextSettings(context, state, out Material temp, out IGlyphSource temp2, ref selectedColor);
-            var selectedColorC = (selectedColor ?? Color.Black).ToColor();
+            var selectedColorC = (selectedColor ?? Color.Black);
             var nonSelectedColorC = (DynamicLayout.Color ?? Color.White);
             var noColorizing = (selection == null) || 
                 (selection.Value.Bounds == null) || 
@@ -954,7 +954,7 @@ namespace Squared.PRGUI.Controls {
             if (decorator == null)
                 return;
 
-            var color = default(pSRGBColor?);
+            var color = default(Color?);
             decorator.GetTextSettings(context, settings.State, out Material material, out IGlyphSource font, ref color);
             if (material == null)
                 return;
@@ -983,7 +983,7 @@ namespace Squared.PRGUI.Controls {
             var textCorner = new Vector2(x, settings.ContentBox.Top).Floor();
             renderer.DrawMultiple(
                 descriptionLayout.DrawCalls, textCorner, 
-                multiplyColor: color.Value.ToColor(), material: material
+                multiplyColor: color.Value, material: material
             );
             renderer.Layer += 1;
         }

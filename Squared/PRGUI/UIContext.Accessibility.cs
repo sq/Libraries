@@ -262,7 +262,7 @@ namespace Squared.PRGUI {
             if (!string.IsNullOrWhiteSpace(label)) {
                 var outlinePadding = 1f;
                 decorator = Decorations.AcceleratorLabel;
-                pSRGBColor? textColor = null;
+                Color? textColor = null;
                 decorator.GetTextSettings(context, default(ControlStates), out Material material, out IGlyphSource font, ref textColor);
                 var layout = font.LayoutString(label, buffer: AcceleratorOverlayBuffer);
 

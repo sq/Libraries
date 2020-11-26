@@ -310,21 +310,25 @@ namespace Squared.PRGUI {
             TooltipContentVersion++;
         }
 
+        // FIXME: Potential leak, but you shouldn't be throwing away contexts and keeping controls around
+        private UIContext _CachedContext;
+
         public UIContext Context {
             get {
-                if (WeakContext == null) {
-                    if (TryGetParent(out Control parent)) {
-                        var result = parent.Context;
-                        if (result != null) {
-                            SetContext(result);
-                            return result;
-                        }
+                if (_CachedContext != null)
+                    return _CachedContext;
+                if (WeakParent == null)
+                    return null;
+
+                if (TryGetParent(out Control parent)) {
+                    var result = parent.Context;
+                    if (result != null) {
+                        SetContext(result);
+                        return result;
                     }
-                    return null;
-                } else if (WeakContext.TryGetTarget(out UIContext result))
-                    return result;
-                else
-                    return null;
+                }
+
+                return null;
             }
         }
 
@@ -508,18 +512,18 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        protected virtual Margins ComputeMargins (UIOperationContext context, IDecorator decorations) {
-            var result = Margins;
+        protected virtual void ComputeMargins (UIOperationContext context, IDecorator decorations, out Margins result) {
             if (decorations != null)
-                result += decorations.Margins;
-            return result;
+                Margins.Add(ref Margins, decorations.Margins, out result);
+            else
+                result = Margins;
         }
 
-        protected virtual Margins ComputePadding (UIOperationContext context, IDecorator decorations) {
-            var result = Padding;
+        protected virtual void ComputePadding (UIOperationContext context, IDecorator decorations, out Margins result) {
             if (decorations != null)
-                result += decorations.Padding;
-            return result;
+                Margins.Add(ref Padding, decorations.Padding, out result);
+            else
+                result = Padding;
         }
 
         protected virtual void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
@@ -541,8 +545,8 @@ namespace Squared.PRGUI {
             var result = existingKey ?? context.Layout.CreateItem();
 
             var decorations = GetDecorator(context.DecorationProvider);
-            var computedMargins = ComputeMargins(context, decorations);
-            var computedPadding = ComputePadding(context, decorations);
+            ComputeMargins(context, decorations, out Margins computedMargins);
+            ComputePadding(context, decorations, out Margins computedPadding);
 
             ComputeFixedSize(out float? fixedWidth, out float? fixedHeight);
             var actualLayoutFlags = ComputeLayoutFlags(fixedWidth.HasValue, fixedHeight.HasValue);
@@ -866,18 +870,10 @@ namespace Squared.PRGUI {
         internal void SetContext (UIContext context) {
             InvalidateLayout();
 
-            if (WeakContext != null) {
-                if (
-                    WeakContext.TryGetTarget(out UIContext existingContext) &&
-                    (existingContext != context)
-                )
+            if ((_CachedContext != null) && (_CachedContext != context))
                 throw new InvalidOperationException("UI context already set");
-            }
-            // HACK to handle scenarios where a tree of controls are created without a context
-            if (context == null)
-                return;
 
-            WeakContext = new WeakReference<UIContext>(context, false);
+            _CachedContext = context;
             InitializeForContext();
         }
 

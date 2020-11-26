@@ -60,7 +60,7 @@ namespace Squared.PRGUI.Decorations {
         Margins Margins { get; }
         Margins Padding { get; }
         void GetContentAdjustment (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
-        bool GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref pSRGBColor? color);
+        bool GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color);
     }
 
     public interface IWidgetDecorator<TData> : IBaseDecorator {
@@ -103,7 +103,7 @@ namespace Squared.PRGUI.Decorations {
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
-    public delegate bool TextSettingsGetter (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref pSRGBColor? color);
+    public delegate bool TextSettingsGetter (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color);
     public delegate void DecoratorDelegate (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
     public delegate void ContentAdjustmentGetter (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
 
@@ -115,7 +115,7 @@ namespace Squared.PRGUI.Decorations {
         public TextSettingsGetter GetTextSettings;
         public ContentAdjustmentGetter GetContentAdjustment;
 
-        bool IBaseDecorator.GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref pSRGBColor? color) {
+        bool IBaseDecorator.GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color) {
             if (GetTextSettings != null)
                 return GetTextSettings(context, state, out material, out font, ref color);
             else {
@@ -1230,21 +1230,21 @@ namespace Squared.PRGUI.Decorations {
 
         public bool GetTextSettings (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref pSRGBColor? color
+            out Material material, out IGlyphSource font, ref Color? color
         ) {
             return GetTextSettings(context, state, out material, out font, ref color, false);
         }
 
         public bool GetTextSettings (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref pSRGBColor? color,
+            out Material material, out IGlyphSource font, ref Color? color,
             bool selected
         ) {
-            if (color == null)
+            if (!color.HasValue)
                 color = TextColor;
 
             if (state.IsFlagged(ControlStates.Disabled))
-                color = color?.ToColor().ToGrayscale(DisabledTextAlpha);
+                color = color?.ToGrayscale(DisabledTextAlpha);
 
             font = DefaultFont;
 
@@ -1256,7 +1256,7 @@ namespace Squared.PRGUI.Decorations {
 
         public bool GetTextSettings_Description (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref pSRGBColor? color
+            out Material material, out IGlyphSource font, ref Color? color
         ) {
             // HACK: Pass selected=true to get the unshadowed material
             var result = GetTextSettings(context, state, out material, out font, ref color, true);
@@ -1267,7 +1267,7 @@ namespace Squared.PRGUI.Decorations {
 
         private bool GetTextSettings_Button (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref pSRGBColor? color
+            out Material material, out IGlyphSource font, ref Color? color
         ) {
             GetTextSettings(context, state, out material, out font, ref color);
             font = ButtonFont ?? font;
@@ -1285,7 +1285,7 @@ namespace Squared.PRGUI.Decorations {
 
         private bool GetTextSettings_Title (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref pSRGBColor? color
+            out Material material, out IGlyphSource font, ref Color? color
         ) {
             if (color == null)
                 color = TitleTextColor;
@@ -1296,7 +1296,7 @@ namespace Squared.PRGUI.Decorations {
 
         private bool GetTextSettings_AcceleratorLabel (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref pSRGBColor? color
+            out Material material, out IGlyphSource font, ref Color? color
         ) {
             if (color == null)
                 color = AcceleratorTextColor;
@@ -1307,7 +1307,7 @@ namespace Squared.PRGUI.Decorations {
 
         private bool GetTextSettings_Tooltip (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref pSRGBColor? color
+            out Material material, out IGlyphSource font, ref Color? color
         ) {
             if (color == null)
                 color = TooltipTextColor;
@@ -1318,7 +1318,7 @@ namespace Squared.PRGUI.Decorations {
 
         private bool GetTextSettings_Selection (
             UIOperationContext context, ControlStates state, 
-            out Material material, out IGlyphSource font, ref pSRGBColor? color
+            out Material material, out IGlyphSource font, ref Color? color
         ) {
             GetTextSettings(context, state, out material, out font, ref color, selected: true);
             color = SelectedTextColor;

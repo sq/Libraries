@@ -333,7 +333,7 @@ namespace PRGUI.Demo {
                 Menu = testMenu
             };
 
-            const int itemCount = 200;
+            const int itemCount = 100;
 
             var dropdown = new Dropdown<StaticText> {
                 Description = "Big Menu",
