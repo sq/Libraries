@@ -435,6 +435,7 @@ namespace Squared.PRGUI.Controls {
 
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
             LayoutKey = ControlKey.Invalid;
+            SelectedItem = null;
             SelectedItem = selectedItem;
             Position = adjustedPosition;
             Visible = true;
@@ -443,6 +444,7 @@ namespace Squared.PRGUI.Controls {
             Listener?.Shown(this);
             FireEvent(UIEvents.Shown);
             NextResultFuture = new Future<Control>();
+            SelectItemViaKeyboard(selectedItem);
             // FIXME: This doesn't work the first time the menu is shown
             if (selectedItem != null)
                 context.PerformAutoscroll(selectedItem, 99999);
