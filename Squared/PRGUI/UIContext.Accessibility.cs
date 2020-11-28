@@ -241,16 +241,8 @@ namespace Squared.PRGUI {
                     RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlShiftTab, "Ctrl+Shift+Tab");
             }
 
-            var overlaySource = FixatedControl as IAcceleratorSource;
-            if (overlaySource != null) {
-                labelGroup = renderer.MakeSubgroup();
-
-                foreach (var kvp in overlaySource.Accelerators)
-                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, kvp.Key, kvp.Value, overlaySource == Focused);
-            }
-
             var focusedSource = Focused as IAcceleratorSource;
-            if ((focusedSource != overlaySource) && (focusedSource != null)) {
+            if (focusedSource != null) {
                 labelGroup = renderer.MakeSubgroup();
 
                 foreach (var kvp in focusedSource.Accelerators)

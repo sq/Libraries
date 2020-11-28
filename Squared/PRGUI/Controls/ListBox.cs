@@ -502,10 +502,15 @@ namespace Squared.PRGUI.Controls {
 
         IEnumerable<KeyValuePair<Control, string>> Accessibility.IAcceleratorSource.Accelerators {
             get {
-                if (SelectedIndex > 0)
-                    yield return new KeyValuePair<Control, string>(this[SelectedIndex - 1], "Up");
-                if (SelectedIndex < (Children.Count - 1))
-                    yield return new KeyValuePair<Control, string>(this[SelectedIndex + 1], "Down");
+                var si = SelectedIndex;
+                if (si > 0) {
+                    Items.GetControlForValue(Items[si - 1], out Control prev);
+                    yield return new KeyValuePair<Control, string>(prev, "Up");
+                }
+                if (si < (Items.Count - 1)) {
+                    Items.GetControlForValue(Items[si + 1], out Control next);
+                    yield return new KeyValuePair<Control, string>(next, "Down");
+                }
             }
         }
 
