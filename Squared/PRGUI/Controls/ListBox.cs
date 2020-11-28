@@ -43,6 +43,7 @@ namespace Squared.PRGUI.Controls {
                     return;
                 if (!Items.Contains(value))
                     throw new ArgumentException("Value not in items list");
+                DesiredScrollOffset = null;
                 Items.GetControlForValue(_SelectedItem, out Control priorControl);
                 _SelectedItem = value;
                 SelectedItemHasChangedSinceLastUpdate = true;
@@ -122,21 +123,21 @@ namespace Squared.PRGUI.Controls {
                 while (true) {
                     var selectedIndex = SelectedIndex;
                     var newItemOffset = Math.Max((int)(ScrollOffset.Y / VirtualItemHeight) - 1, 0);
-                    var newEndItemOffset = newItemOffset + VirtualViewportSize;
+                    var newEndItemOffset = Math.Min(newItemOffset + VirtualViewportSize, Items.Count - 1);
 
                     int delta = 0;
                     if (selectedIndex >= 0) {
+                        // HACK: We need to offset by more than 1 because of the virtual viewport padding
                         if (selectedIndex < newItemOffset)
-                            delta = -(newItemOffset - selectedIndex) - 1;
+                            delta = -(newItemOffset - selectedIndex) - 2;
                         else if (selectedIndex >= newEndItemOffset)
-                            delta = (selectedIndex - newEndItemOffset) + 1;
+                            delta = (selectedIndex - newEndItemOffset) + 4;
                     }
 
                     if (SelectedItemHasChangedSinceLastUpdate && (delta != 0) && !scrollOffsetChanged) {
                         if (delta != 0) {
                             var newOffset = ScrollOffset;
                             newOffset.Y += (delta * VirtualItemHeight);
-                            Console.WriteLine($"scrollOffset:={newOffset.Y}, virtualScrollOffset=={VirtualScrollOffset.Y}");
                             if (TrySetScrollOffset(newOffset, false)) {
                                 scrollOffsetChanged = true;
                                 continue;
@@ -150,7 +151,6 @@ namespace Squared.PRGUI.Controls {
                     }
                     var newScrollOffset = -VirtualItemOffset * VirtualItemHeight;
                     if (newScrollOffset != VirtualScrollOffset.Y) {
-                        Console.WriteLine($"scrollOffset=={ScrollOffset.Y}, virtualScrollOffset:={newScrollOffset}");
                         VirtualScrollOffset.Y = newScrollOffset;
                         scrollOffsetChanged = true;
                         NeedsUpdate = true;
@@ -330,7 +330,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public bool AdjustSelection (int direction) {
-            if (Children.Count == 0)
+            if (Items.Count == 0)
                 return false;
 
             var selectedIndex = Items.IndexOf(_SelectedItem);
@@ -338,15 +338,14 @@ namespace Squared.PRGUI.Controls {
                 selectedIndex = direction > 0 ? 0 : Items.Count - 1;
             else
                 selectedIndex += direction;
+            selectedIndex = Arithmetic.Clamp(selectedIndex, 0, Items.Count - 1);
 
-            int steps = Children.Count;
-            while (steps-- > 0) {
-                selectedIndex = Arithmetic.Wrap(selectedIndex, 0, Items.Count - 1);
-                var item = Items[selectedIndex];
-                SelectItemViaKeyboard(item);
+            if ((selectedIndex >= 0) && (selectedIndex < Items.Count)) {
+                SelectItemViaKeyboard(Items[selectedIndex]);
+                return true;
+            } else {
+                return false;
             }
-
-            return false;
         }
 
         private bool OnKeyEvent (string name, KeyEventArgs args) {
