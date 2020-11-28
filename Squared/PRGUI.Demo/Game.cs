@@ -334,13 +334,14 @@ namespace PRGUI.Demo {
                 Menu = testMenu
             };
 
+            const int menuItemCount = 50;
             const int itemCount = 5000;
 
             var dropdown = new Dropdown<StaticText> {
                 Description = "Big Menu",
                 TooltipContent = "Click me for a big dropdown menu"
             };
-            for (var i = 0; i < itemCount; i++)
+            for (var i = 0; i < menuItemCount; i++)
                 dropdown.Items.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });
 
             var virtualCheckbox = new Checkbox {

@@ -7,6 +7,54 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
+    public class ItemListManager<T> {
+        public ItemList<T> Items;
+        // FIXME: Handle set
+        public IEqualityComparer<T> Comparer;
+        public T SelectedItem;
+
+        public ItemListManager (IEqualityComparer<T> comparer) {
+            Comparer = comparer;
+            Items = new ItemList<T>(comparer);
+        }
+
+        public int SelectedIndex => Items.IndexOf(ref SelectedItem, Comparer);
+
+        public Control SelectedControl =>
+            Items.GetControlForValue(ref SelectedItem, out Control result)
+                ? result
+                : null;
+
+        public bool TryAdjustSelection (int delta, out T newItem) {
+            newItem = default(T);
+            if (Items.Count == 0)
+                return false;
+
+            var selectedIndex = SelectedIndex;
+            if (selectedIndex < 0)
+                selectedIndex = delta > 0 ? 0 : Items.Count - 1;
+            else
+                selectedIndex += delta;
+            selectedIndex = Arithmetic.Clamp(selectedIndex, 0, Items.Count - 1);
+
+            if ((selectedIndex >= 0) && (selectedIndex < Items.Count)) {
+                newItem = Items[selectedIndex];
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        public bool TrySetSelectedItem (ref T value) {
+            if (Comparer.Equals(value, SelectedItem))
+                return false;
+            if (!Items.Contains(ref value, Comparer))
+                return false;
+            SelectedItem = value;
+            return true;
+        }
+    }
+
     public class ItemList<T> : List<T> {
         private readonly Dictionary<T, Control> ControlForValue;
         private readonly Dictionary<Control, T> ValueForControl = 
@@ -39,6 +87,18 @@ namespace Squared.PRGUI.Controls {
                 return false;
             }
             return ValueForControl.TryGetValue(control, out result);
+        }
+
+        public int IndexOf (ref T value, IEqualityComparer<T> comparer) {
+            for (int i = 0, c = Count; i < c; i++)
+                if (comparer.Equals(value, this[i]))
+                    return i;
+
+            return -1;
+        }
+
+        public bool Contains (ref T value, IEqualityComparer<T> comparer) {
+            return IndexOf(ref value, comparer) >= 0;
         }
 
         private Control CreateControlForValue (

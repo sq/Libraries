@@ -18,8 +18,13 @@ namespace Squared.PRGUI.Controls {
 
         public const int ControlMinimumHeight = 75, ControlMinimumWidth = 150;
 
-        public IEqualityComparer<T> Comparer;
-        public ItemList<T> Items { get; private set; }
+        protected ItemListManager<T> Manager;
+
+        public IEqualityComparer<T> Comparer {
+            get => Manager.Comparer;
+            set => Manager.Comparer = value;
+        }
+        public ItemList<T> Items => Manager.Items;
 
         public CreateControlForValueDelegate<T> CreateControlForValue = null;
         public Func<T, AbstractString> FormatValue = null;
@@ -29,25 +34,18 @@ namespace Squared.PRGUI.Controls {
 
         public string Description;
 
-        public int SelectedIndex => (_SelectedItem != null)
-            ? Items.IndexOf(_SelectedItem)
-            : -1;
+        public int SelectedIndex => Manager.SelectedIndex;
 
         private bool SelectedItemHasChangedSinceLastUpdate = true;
 
-        private T _SelectedItem = default(T);
         public T SelectedItem {
-            get => _SelectedItem;
+            get => Manager.SelectedItem;
             set {
-                if (Comparer.Equals(value, _SelectedItem))
+                if (!Manager.TrySetSelectedItem(ref value))
                     return;
-                if (!Items.Contains(value))
-                    throw new ArgumentException("Value not in items list");
                 DesiredScrollOffset = null;
-                Items.GetControlForValue(_SelectedItem, out Control priorControl);
-                _SelectedItem = value;
                 SelectedItemHasChangedSinceLastUpdate = true;
-                FireEvent(UIEvents.ValueChanged, _SelectedItem);
+                FireEvent(UIEvents.ValueChanged, SelectedItem);
             }
         }
 
@@ -84,10 +82,9 @@ namespace Squared.PRGUI.Controls {
             ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start;
             ClipChildren = true;
             ShowHorizontalScrollbar = false;
-            Comparer = comparer ?? EqualityComparer<T>.Default;
             Scrollable = true;
             // FIXME
-            Items = new ItemList<T>(Comparer);
+            Manager = new ItemListManager<T>(comparer ?? EqualityComparer<T>.Default);
             DefaultCreateControlForValue = _DefaultCreateControlForValue;
         }
 
@@ -174,7 +171,7 @@ namespace Squared.PRGUI.Controls {
             bool hadKeyboardSelection = false;
             if (NeedsUpdate) {
                 hadKeyboardSelection = Children.Contains(Context.KeyboardSelection);
-                Items.GetControlForValue(_SelectedItem, out Control priorControl);
+                var priorControl = Manager.SelectedControl;
                 // FIXME: Why do virtual list items flicker for a frame before appearing?
                 Items.GenerateControls(
                     Children, CreateControlForValue ?? DefaultCreateControlForValue,
@@ -185,7 +182,7 @@ namespace Squared.PRGUI.Controls {
             }
 
             if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection) {
-                Items.GetControlForValue(_SelectedItem, out Control newControl);
+                var newControl = Manager.SelectedControl;
                 OnSelectionChange(newControl, SelectedItemHasChangedSinceLastUpdate);
                 if (hadKeyboardSelection)
                     Context.OverrideKeyboardSelection(newControl);
@@ -214,8 +211,9 @@ namespace Squared.PRGUI.Controls {
 
             if (Children.Count > 0) {
                 VirtualItemHeight = Children[0].GetRect(context.Layout, false, false).Height;
-                // HACK
-                ScrollSpeedMultiplier = (VirtualItemHeight / 12);
+                // HACK: Traditional listboxes on windows scroll multiple item(s) at a time on mousewheel
+                //  instead of scrolling on a per-pixel basis
+                ScrollSpeedMultiplier = (VirtualItemHeight / 14);
             }
 
             var box = GetRect(context.Layout, includeOffset: false, contentRect: true);
@@ -334,8 +332,7 @@ namespace Squared.PRGUI.Controls {
         private void UpdateKeyboardSelection (T item) {
             // HACK: Tell the context that the current item is the keyboard selection,
             //  so that autoscroll and tooltips will happen for it.
-            if (Items.GetControlForValue(ref item, out Control control))
-                Context.OverrideKeyboardSelection(control);
+            Context.OverrideKeyboardSelection(Manager.SelectedControl);
         }
 
         private void SelectItemViaKeyboard (T item) {
@@ -343,23 +340,9 @@ namespace Squared.PRGUI.Controls {
             UpdateKeyboardSelection(item);
         }
 
-        public bool AdjustSelection (int direction) {
-            if (Items.Count == 0)
-                return false;
-
-            var selectedIndex = Items.IndexOf(_SelectedItem);
-            if (selectedIndex < 0)
-                selectedIndex = direction > 0 ? 0 : Items.Count - 1;
-            else
-                selectedIndex += direction;
-            selectedIndex = Arithmetic.Clamp(selectedIndex, 0, Items.Count - 1);
-
-            if ((selectedIndex >= 0) && (selectedIndex < Items.Count)) {
-                SelectItemViaKeyboard(Items[selectedIndex]);
-                return true;
-            } else {
-                return false;
-            }
+        public void AdjustSelection (int delta) {
+            if (Manager.TryAdjustSelection(delta, out T newItem))
+                SelectItemViaKeyboard(newItem);
         }
 
         private bool OnKeyEvent (string name, KeyEventArgs args) {
@@ -390,9 +373,9 @@ namespace Squared.PRGUI.Controls {
 
         protected override void OnRasterizeChildren (UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             var selectionDecorator = context.DecorationProvider.ListSelection;
+            var selectedControl = Manager.SelectedControl;
             if (
-                (selectionDecorator != null) &&
-                Items.GetControlForValue(ref _SelectedItem, out Control selectedControl)
+                (selectionDecorator != null) && (selectedControl != null)
             ) {
                 var selectionBox = selectedControl.GetRect(context.Layout, true, false);
                 selectionBox.Top += selectionDecorator.Margins.Top;
@@ -434,7 +417,7 @@ namespace Squared.PRGUI.Controls {
                 );
                 PageSize = Math.Max(VirtualViewportSize - 4, 2);
             } else {
-                Items.GetControlForValue(ref _SelectedItem, out Control selectedControl);
+                var selectedControl = Manager.SelectedControl;
                 var displayPageSize = RasterizeChildrenFromCenter(
                     ref context, ref passSet, 
                     GetRect(context.Layout), Children, selectedControl,
@@ -498,8 +481,6 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public int Count => Children.Count;
-
         IEnumerable<KeyValuePair<Control, string>> Accessibility.IAcceleratorSource.Accelerators {
             get {
                 var si = SelectedIndex;
@@ -515,16 +496,33 @@ namespace Squared.PRGUI.Controls {
         }
 
         T IValueControl<T>.Value {
-            get => _SelectedItem;
+            get => SelectedItem;
             set => SelectedItem = value;
         }
 
-        public Control this [int index] {
-            get => Children[index];
-            set => Children[index] = value;
+        public int Count => Items.Count;
+
+        public T this [int index] {
+            get => Items[index];
+            set {
+                Items[index] = value;
+                Invalidate();
+            }
         }
-        public void RemoveAt (int index) => Children.RemoveAt(index);
-        public void Clear () => Children.Clear();
-        public void Add (Control child) => Children.Add(child);
+
+        public void RemoveAt (int index) {
+            Items.RemoveAt(index);
+            Invalidate();
+        }
+
+        public void Clear () {
+            Items.Clear();
+            Invalidate();
+        }
+
+        public void Add (T value) {
+            Items.Add(value);
+            Invalidate();
+        }
     }
 }

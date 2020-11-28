@@ -16,8 +16,6 @@ namespace Squared.PRGUI.Controls {
     public delegate Control CreateControlForValueDelegate<T> (ref T value, Control existingControl);
 
     public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget, IMenuListener, IValueControl<T> {
-        public IEqualityComparer<T> Comparer;
-        public ItemList<T> Items { get; private set; }
         private readonly Menu ItemsMenu = new Menu {
             DeselectOnMouseLeave = false
         };
@@ -29,21 +27,25 @@ namespace Squared.PRGUI.Controls {
         public Func<T, AbstractString> FormatValue = null;
         private CreateControlForValueDelegate<T> DefaultCreateControlForValue;
 
+        protected ItemListManager<T> Manager;
+
+        public IEqualityComparer<T> Comparer {
+            get => Manager.Comparer;
+            set => Manager.Comparer = value;
+        }
+        public ItemList<T> Items => Manager.Items;
+
         // private bool NeedsUpdate = true;
         private bool MenuJustClosed = false;
 
-        private T _SelectedItem = default(T);
+        public int SelectedIndex => Manager.SelectedIndex;
         public T SelectedItem {
-            get => _SelectedItem;
+            get => Manager.SelectedItem;
             set {
-                if (Comparer.Equals(value, _SelectedItem))
+                if (!Manager.TrySetSelectedItem(ref value))
                     return;
-                if (!Items.Contains(value))
-                    throw new ArgumentException("Value not in items list");
-                _SelectedItem = value;
-                // NeedsUpdate = true;
                 Invalidate();
-                FireEvent(UIEvents.ValueChanged, _SelectedItem);
+                FireEvent(UIEvents.ValueChanged, SelectedItem);
             }
         }
 
@@ -54,7 +56,7 @@ namespace Squared.PRGUI.Controls {
                 else if (TooltipContent)
                     return TooltipContent.Get(this);
 
-                var irt = _SelectedItem as Accessibility.IReadingTarget;
+                var irt = SelectedItem as Accessibility.IReadingTarget;
                 if (irt != null)
                     return irt.Text;
                 else
@@ -68,7 +70,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {
-            var irt = _SelectedItem as Accessibility.IReadingTarget;
+            var irt = SelectedItem as Accessibility.IReadingTarget;
             if (irt != null)
                 irt.FormatValueInto(sb);
             else
@@ -76,13 +78,13 @@ namespace Squared.PRGUI.Controls {
         }
 
         AbstractString GetValueText () {
-            var stb = _SelectedItem as StaticTextBase;
+            var stb = SelectedItem as StaticTextBase;
             if (FormatValue != null)
-                return FormatValue(_SelectedItem);
+                return FormatValue(SelectedItem);
             else if (stb != null)
                 return stb.Text;
             else
-                return _SelectedItem?.ToString();
+                return SelectedItem?.ToString();
         }
 
         public Dropdown ()
@@ -93,9 +95,7 @@ namespace Squared.PRGUI.Controls {
             : base () {
             AcceptsFocus = true;
             AcceptsMouseInput = true;
-            Comparer = comparer ?? EqualityComparer<T>.Default;
-            // FIXME
-            Items = new ItemList<T>(Comparer);
+            Manager = new ItemListManager<T>(comparer ?? EqualityComparer<T>.Default);
             DefaultCreateControlForValue = _DefaultCreateControlForValue;
         }
 
@@ -123,7 +123,7 @@ namespace Squared.PRGUI.Controls {
 
         protected void Update () {
             // NeedsUpdate = false;
-            if (Comparer.Equals(_SelectedItem, default(T)) && (Items.Count > 0))
+            if (Comparer.Equals(SelectedItem, default(T)) && (Items.Count > 0))
                 SelectedItem = Items[0];
 
             if (Label != default(AbstractString))
@@ -161,7 +161,7 @@ namespace Squared.PRGUI.Controls {
 
             var box = GetRect(Context.Layout, contentRect: false);
             ItemsMenu.MinimumWidth = box.Width;
-            var selectedIndex = Items.IndexOf(_SelectedItem);
+            var selectedIndex = SelectedIndex;
             ItemsMenu.Show(Context, this, selectedIndex >= 0 ? ItemsMenu[selectedIndex] : null);
             MenuJustClosed = false;
         }
@@ -179,16 +179,16 @@ namespace Squared.PRGUI.Controls {
             switch (name) {
                 case UIEvents.KeyPress:
                     Context.OverrideKeyboardSelection(this);
-                    var oldSelection = _SelectedItem;
+                    var oldSelection = SelectedItem;
                     var oldIndex = Items.IndexOf(oldSelection);
                     switch (args.Key) {
                         case Keys.Up:
                         case Keys.Down:
-                            var newIndex = Arithmetic.Clamp(
-                                oldIndex + ((args.Key == Keys.Up) ? -1 : 1),
-                                0, Items.Count - 1
-                            );
-                            SelectedItem = Items[newIndex];
+                            if (Manager.TryAdjustSelection(
+                                (args.Key == Keys.Up) ? -1 : 1,
+                                out T newItem
+                            ))
+                                SelectedItem = newItem;
                             return true;
                         case Keys.Space:
                             ShowMenu();
