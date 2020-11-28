@@ -110,6 +110,12 @@ namespace Squared.PRGUI {
         public const float VisibilityPadding = 16;
 
         /// <summary>
+        /// If set, it is possible for Focused to become null. Otherwise, the context will attempt to ensure
+        ///  that a control is focused at all times
+        /// </summary>
+        public bool AllowNullFocus = true;
+
+        /// <summary>
         /// Globally tracks whether text editing should be in insert or overwrite mode
         /// </summary>
         public bool TextInsertionMode = true;

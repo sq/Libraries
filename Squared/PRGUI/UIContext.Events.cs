@@ -376,6 +376,9 @@ namespace Squared.PRGUI {
             if (FindTopLevelAncestor(value) == null)
                 value = null;
 
+            if (!AllowNullFocus && (value == null))
+                value = Focused ?? Controls.FirstOrDefault();
+
             // Top-level controls should pass focus on to their children if possible
             if (Controls.Contains(value)) {
                 Control childTarget;
