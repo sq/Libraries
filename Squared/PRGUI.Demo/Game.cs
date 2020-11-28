@@ -342,11 +342,15 @@ namespace PRGUI.Demo {
             for (var i = 0; i < itemCount; i++)
                 dropdown.Items.Add(new StaticText { Text = $"Item {i}", TooltipContent = $"Item {i} tooltip" });
 
+            var virtualCheckbox = new Checkbox {
+                Text = "Virtual List",
+                Checked = true
+            };
             var listBox = new ListBox<string> {
+                LayoutFlags = ControlFlags.Layout_ForceBreak,
                 Description = "Big List",
                 FixedWidth = 600,
                 FixedHeight = 600,
-                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
                 Virtual = true
             };
             for (var i = 0; i < itemCount; i++)
@@ -403,7 +407,13 @@ namespace PRGUI.Demo {
                                     supernestedGroup
                                 }
                             },
-                            listBox,
+                            new Container {
+                                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
+                                Children = {
+                                    virtualCheckbox,
+                                    listBox
+                                }
+                            }
                         }
                     },
                     new Button {
@@ -506,6 +516,10 @@ namespace PRGUI.Demo {
             Context.EventBus.Subscribe(null, UIEvents.Click, (ei) => {
                 var ma = (MouseEventArgs)ei.Arguments;
                 lastClickedCtl.Text = $"Clicked (#{ma.SequentialClickCount}): {ei.Source}";
+            });
+
+            Context.EventBus.Subscribe(virtualCheckbox, UIEvents.CheckedChanged, (ei) => {
+                listBox.Virtual = virtualCheckbox.Checked;
             });
 
             Context.EventBus.Subscribe(largeText, UIEvents.CheckedChanged, (ei) => {

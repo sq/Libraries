@@ -52,6 +52,8 @@ namespace Squared.PRGUI.Controls {
         protected bool HasContentBounds, CanScrollVertically;
         protected RectF ContentBounds;
 
+        protected float ScrollSpeedMultiplier = 1;
+
         protected ContainerBuilder DynamicBuilder;
         /// <summary>
         /// If set, every update this delegate will be invoked to reconstruct the container's children
@@ -130,7 +132,7 @@ namespace Squared.PRGUI.Controls {
             if (!ShowVerticalScrollbar || !CanScrollVertically)
                 return false;
             var so = ScrollOffset;
-            so.Y = so.Y - delta;
+            so.Y = so.Y - delta * ScrollSpeedMultiplier;
             so = ConstrainNewScrollOffset(so);
             if (so != ScrollOffset) {
                 TrySetScrollOffset(so, true);

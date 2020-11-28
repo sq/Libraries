@@ -55,6 +55,10 @@ namespace Squared.PRGUI.Controls {
         public bool Virtual {
             get => _Virtual;
             set {
+                if (_Virtual == value)
+                    return;
+
+                Children.Clear();
                 NeedsUpdate = true;
                 _Virtual = value;
             }
@@ -159,7 +163,11 @@ namespace Squared.PRGUI.Controls {
                     break;
                 }
             } else {
-                VirtualScrollOffset = Vector2.Zero;
+                if (VirtualScrollOffset != Vector2.Zero) {
+                    scrollOffsetChanged = true;
+                    VirtualScrollOffset = Vector2.Zero;
+                }
+                VirtualScrollRegion = Vector2.Zero;
                 NeedsUpdate |= (Items.Count != Children.Count);
             }
 
@@ -167,10 +175,13 @@ namespace Squared.PRGUI.Controls {
             if (NeedsUpdate) {
                 hadKeyboardSelection = Children.Contains(Context.KeyboardSelection);
                 Items.GetControlForValue(_SelectedItem, out Control priorControl);
+                // FIXME: Why do virtual list items flicker for a frame before appearing?
                 Items.GenerateControls(
-                    Children, CreateControlForValue ?? DefaultCreateControlForValue, 
-                    offset: VirtualItemOffset, count: VirtualViewportSize
+                    Children, CreateControlForValue ?? DefaultCreateControlForValue,
+                    offset: Virtual ? VirtualItemOffset : 0, count: Virtual ? VirtualViewportSize : int.MaxValue
                 );
+                // HACK: Without doing this, old content bounds can be kept that are too big/too small
+                HasContentBounds = false;
             }
 
             if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection) {
@@ -201,8 +212,11 @@ namespace Squared.PRGUI.Controls {
         protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
             base.OnLayoutComplete(context, ref relayoutRequested);
 
-            if (Children.Count > 0)
+            if (Children.Count > 0) {
                 VirtualItemHeight = Children[0].GetRect(context.Layout, false, false).Height;
+                // HACK
+                ScrollSpeedMultiplier = (VirtualItemHeight / 12);
+            }
 
             var box = GetRect(context.Layout, includeOffset: false, contentRect: true);
             var newViewportSize = Math.Max((int)(box.Height / VirtualItemHeight) + 4, 8);
