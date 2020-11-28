@@ -356,6 +356,18 @@ namespace Squared.Render.Text {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Snap (ref float x) {
+            switch (alignToPixels.Horizontal) {
+                case PixelAlignmentMode.Floor:
+                    x = (float)Math.Floor(x);
+                    break;
+                case PixelAlignmentMode.FloorHalf:
+                    x = (float)Math.Floor(x * 2) / 2;
+                    break;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Snap (Vector2 pos, out Vector2 result) {
             switch (alignToPixels.Horizontal) {
                 case PixelAlignmentMode.Floor:
@@ -409,10 +421,10 @@ namespace Squared.Render.Text {
             if (alignment == HorizontalAlignment.Center)
                 whitespace /= 2;
 
+            Snap(ref whitespace);
+
             for (var j = firstIndex; j <= lastIndex; j++) {
-                var newPosition = buffer.Array[buffer.Offset + j].Position;
-                newPosition.X += whitespace;
-                Snap(newPosition, out buffer.Array[buffer.Offset + j].Position);
+                buffer.Array[buffer.Offset + j].Position.X += whitespace;
                 // We used the sortkey to store line numbers, now we put the right data there
                 var key = sortKey;
                 if (reverseOrder)
