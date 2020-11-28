@@ -458,11 +458,10 @@ namespace Squared.Render.RasterShape {
 
         private readonly RasterShapeTypeSorter ShapeTypeSorter = new RasterShapeTypeSorter();
 
-        private DenseList<SubBatch> _SubBatches = new DenseList<SubBatch>();
-
         private static ListPool<SubBatch> _SubListPool = new ListPool<SubBatch>(
-            64, 4, 16, 64, 256
+            256, 4, 32, 128, 512
         );
+        private DenseList<SubBatch> _SubBatches;
 
         const int MaxVertexCount = 65535;
 
@@ -482,9 +481,6 @@ namespace Squared.Render.RasterShape {
             base.Initialize(container, layer, materials.RasterShapeUbershader, true);
 
             Materials = materials;
-
-            _SubBatches.ListPool = _SubListPool;
-            _SubBatches.Clear();
 
             DepthStencilState = null;
             BlendState = null;
@@ -508,6 +504,10 @@ namespace Squared.Render.RasterShape {
             var count = _DrawCalls.Count;
             var vertexCount = count;
             if (count > 0) {
+                _SubBatches.ListPool = _SubListPool;
+                _SubBatches.Clear();
+                _SubBatches.EnsureCapacity(count, true);
+
                 if (!UseUbershader)
                     _DrawCalls.Sort(ShapeTypeSorter);
 

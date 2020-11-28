@@ -54,7 +54,7 @@ namespace Squared.PRGUI.Controls {
 
         protected float ScrollSpeedMultiplier = 1;
 
-        protected ContainerBuilder DynamicBuilder;
+        internal ContainerBuilder DynamicBuilder;
         /// <summary>
         /// If set, every update this delegate will be invoked to reconstruct the container's children
         /// </summary>

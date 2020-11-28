@@ -159,12 +159,29 @@ namespace Squared.PRGUI.Imperative {
             if (NextIndex < Container.Children.Count)
                 instance = Container.Children[NextIndex] as TControl;
 
-            if (instance == null)
+            ContainerBuilder result;
+            Container container;
+            if (instance == null) {
                 instance = new TControl();
+                result = new ContainerBuilder(instance);
+            } else if ((container = (instance as Container)) != null) {
+                // HACK: A lot of gross stuff going on here to try and reuse lists
+                if ((container.DynamicContents == null) && (container.DynamicBuilder.Container == container)) {
+                    container.DynamicBuilder.PreviousRemovedControls.EnsureList();
+                    container.DynamicBuilder.CurrentRemovedControls.EnsureList();
+                    result = container.DynamicBuilder;
+                } else {
+                    result = new ContainerBuilder(instance);
+                    container.DynamicBuilder = result;
+                }
+            } else {
+                result = new ContainerBuilder(instance);
+            }
 
             AddInternal(instance);
 
-            return new ContainerBuilder(instance);
+            // FIXME: The child builder will create a temporary list
+            return result;
         }
 
         public ContainerBuilder TitledContainer (string title, bool? collapsible = null) {

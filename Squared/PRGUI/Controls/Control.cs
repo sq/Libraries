@@ -674,10 +674,11 @@ namespace Squared.PRGUI {
             var state = GetCurrentState(context);
 
             var passContext = context.Clone();
-            UpdateVisibleRegion(ref passContext, ref box);
             passContext.Pass = pass;
             // passContext.Renderer = context.Renderer.MakeSubgroup();
             var hasNestedContext = (pass == RasterizePasses.Content) && (ShouldClipContent || HasChildren);
+            if (hasNestedContext)
+                UpdateVisibleRegion(ref passContext, ref box);
 
             /*
             if (pass == RasterizePasses.Above)
