@@ -567,9 +567,9 @@ namespace Squared.PRGUI.Controls {
             if (filtered == null)
                 return default(Pair<int>);
 
-            Builder.Insert(offset, newText);
+            Builder.Insert(offset, filtered);
             NotifyValueChanged();
-            return new Pair<int>(offset, offset + newText.Length);
+            return new Pair<int>(offset, offset + filtered.Length);
         }
 
         protected Pair<int> ReplaceRange (Pair<int> range, char newText) {
