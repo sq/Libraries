@@ -180,13 +180,17 @@ namespace Squared.Render {
             0, 2, 3
         };
 
+        private static readonly string[] CornerBufferNames = new string[16];
+
         public static BufferGenerator<CornerVertex>.SoftwareBuffer CreateCornerBuffer (IBatchContainer container, int repeatCount = 1) {
             BufferGenerator<CornerVertex>.SoftwareBuffer result;
             var cornerGenerator = container.RenderManager.GetBufferGenerator<BufferGenerator<CornerVertex>>();
             // TODO: Is it OK to share the buffer?
             int vertCount = 4 * repeatCount;
             int indexCount = 6 * repeatCount;
-            var bufferName = "QuadCorners" + repeatCount;
+            var bufferName = CornerBufferNames[repeatCount];
+            if (bufferName == null)
+                bufferName = CornerBufferNames[repeatCount] = "QuadCorners" + repeatCount;
             if (!cornerGenerator.TryGetCachedBuffer(bufferName, vertCount, indexCount, out result)) {
                 result = cornerGenerator.Allocate(vertCount, indexCount, true);
                 cornerGenerator.SetCachedBuffer(bufferName, result);
