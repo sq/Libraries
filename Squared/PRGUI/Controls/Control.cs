@@ -16,6 +16,13 @@ using Squared.Render.RasterShape;
 using Squared.Util;
 
 namespace Squared.PRGUI {
+    public interface IControlCompositor {
+        bool WillComposite (Control control, float opacity);
+        void BeforeComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall);
+        void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall);
+        void AfterComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall);
+    }
+
     public interface IControlContainer {
         bool ClipChildren { get; set; }
         ControlFlags ContainerFlags { get; set; }
@@ -175,6 +182,8 @@ namespace Squared.PRGUI {
         protected bool HasTransformMatrix { get; private set; }
         protected bool HasInverseTransformMatrix { get; private set; }
         private Matrix _TransformMatrix, _InverseTransformMatrix;
+
+        public IControlCompositor Compositor;
 
         public Matrix? TransformMatrix {
             get => HasTransformMatrix ? _TransformMatrix : (Matrix?)null;
@@ -780,7 +789,10 @@ namespace Squared.PRGUI {
             if (isInvisible && TryGetParent(out Control parent))
                 return false;
 
-            var needsComposition = HasTransformMatrix || (opacity < 1);
+            var enableCompositor = Compositor?.WillComposite(this, opacity) == true;
+            var needsComposition = HasTransformMatrix || 
+                (opacity < 1) || 
+                enableCompositor;
 
             if (!needsComposition) {
                 RasterizeAllPasses(ref context, ref box, ref passSet, false);
@@ -797,7 +809,7 @@ namespace Squared.PRGUI {
                 var rt = context.UIContext.GetScratchRenderTarget(passSet.Prepass.Container.Coordinator, ref compositeBox, out bool needClear);
                 try {
                     // passSet.Above.RasterizeRectangle(box.Position, box.Extent, 1f, Color.Red * 0.1f);
-                    RasterizeIntoPrepass(ref context, passSet, opacity, ref box, ref compositeBox, rt, needClear);
+                    RasterizeIntoPrepass(ref context, passSet, opacity, ref box, ref compositeBox, rt, needClear, enableCompositor);
                     // passSet.Above.RasterizeEllipse(box.Center, Vector2.One * 3f, Color.White);
                 } finally {
                     context.UIContext.ReleaseScratchRenderTarget(rt);
@@ -808,8 +820,21 @@ namespace Squared.PRGUI {
         }
 
         private static readonly Func<ViewTransform, object, ViewTransform> ApplyLocalTransformMatrix = _ApplyLocalTransformMatrix;
+        private static readonly Action<DeviceManager, object> BeforeComposite = _BeforeComposite,
+            AfterComposite = _AfterComposite;
         // HACK
         private RectF MostRecentCompositeBox;
+        private BitmapDrawCall MostRecentCompositeDrawCall;
+
+        private static void _BeforeComposite (DeviceManager dm, object _control) {
+            var control = (Control)_control;
+            control.Compositor?.BeforeComposite(control, dm, ref control.MostRecentCompositeDrawCall);
+        }
+
+        private static void _AfterComposite (DeviceManager dm, object _control) {
+            var control = (Control)_control;
+            control.Compositor?.AfterComposite(control, dm, ref control.MostRecentCompositeDrawCall);
+        }
 
         private static ViewTransform _ApplyLocalTransformMatrix (ViewTransform vt, object _control) {
             var control = (Control)_control;
@@ -818,7 +843,11 @@ namespace Squared.PRGUI {
             return vt;
         }
 
-        private void RasterizeIntoPrepass (ref UIOperationContext context, RasterizePassSet passSet, float opacity, ref RectF box, ref RectF compositeBox, AutoRenderTarget rt, bool needClear) {
+        private void RasterizeIntoPrepass (
+            ref UIOperationContext context, RasterizePassSet passSet, float opacity, 
+            ref RectF box, ref RectF compositeBox, AutoRenderTarget rt, 
+            bool needClear, bool enableCompositor
+        ) {
             var compositionContext = context.Clone();
             UpdateVisibleRegion(ref compositionContext, ref box);
 
@@ -846,10 +875,19 @@ namespace Squared.PRGUI {
                 Color.White * opacity
             );
 
-            if (HasTransformMatrix) {
+            if (HasTransformMatrix || enableCompositor) {
+                MostRecentCompositeDrawCall = dc;
                 MostRecentCompositeBox = compositeBox;
-                var subgroup = passSet.Above.MakeSubgroup(viewTransformModifier: ApplyLocalTransformMatrix, userData: this);
-                subgroup.Draw(ref dc, blendState: BlendState.AlphaBlend);
+                var subgroup = passSet.Above.MakeSubgroup(
+                    before: BeforeComposite, 
+                    after: AfterComposite,
+                    viewTransformModifier: HasTransformMatrix ? ApplyLocalTransformMatrix : null, 
+                    userData: this
+                );
+                if (enableCompositor)
+                    Compositor.Composite(this, ref subgroup, ref dc);
+                else
+                    subgroup.Draw(ref dc, blendState: BlendState.AlphaBlend);
             } else {
                 passSet.Above.Draw(ref dc, blendState: BlendState.AlphaBlend);
                 passSet.Above.Layer += 1;

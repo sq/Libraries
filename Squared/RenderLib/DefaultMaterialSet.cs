@@ -962,6 +962,8 @@ namespace Squared.Render {
             if (tapCount / 2 * 2 == tapCount)
                 throw new ArgumentException("Tap count must be odd");
 
+            const double scale = 5;
+
             using (var scratch = BufferPool<double>.Allocate(tapCount)) {
                 Array.Clear(scratch.Data, 0, scratch.Data.Length);
 
@@ -975,7 +977,7 @@ namespace Squared.Render {
 
                 for (int i = 0; i < weightCount; i++) {
                     var unscaled = scratch.Data[weightCount - i - 1];
-                    var scaled = unscaled * 10;
+                    var scaled = unscaled * scale;
                     // We reduce error in the shader (from small values becoming denormals) 
                     //  by scaling the range up a bit
                     WeightBuffer[i] = (float)scaled;
@@ -984,7 +986,12 @@ namespace Squared.Render {
                 var p = m.Effect.Parameters;
                 p["TapCount"]?.SetValue(weightCount);
                 p["TapWeights"]?.SetValue(WeightBuffer);
-                p["InverseTapDivisor"]?.SetValue((float)(1.0 / (sum * 10)));
+                var divisor = (sum * scale);
+                var inverseDivisor = 1.0 / divisor;
+                var inverseDivisor2 = inverseDivisor * inverseDivisor;
+                p["InverseTapDivisors"]?.SetValue(new Vector2(
+                    (float)inverseDivisor, (float)inverseDivisor2
+                ));
             }
         }
 

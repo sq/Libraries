@@ -13,12 +13,12 @@
 // Sigma 2, Kernel size 9
 uniform int TapCount = 5;
 uniform float TapWeights[10] = { 0.20236, 0.179044, 0.124009, 0.067234, 0.028532, 0, 0, 0, 0, 0 };
-uniform float InverseTapDivisor = 1;
+uniform float2 InverseTapDivisors = float2(1, 1);
 
-// HACK: Setting this any higher than 1 produces weird ringing artifacts.
+// HACK: Setting this any higher than 0.5 produces weird ringing artifacts.
 // In practice we're basically super-sampling the matrix... it doesn't make it blurry with a low
 //  sigma value at least?
-const float TapSpacingFactor = 1;
+const float TapSpacingFactor = 0.5;
 
 sampler TapSampler : register(s0) {
     Texture = (BitmapTexture);
@@ -76,7 +76,7 @@ void HorizontalGaussianBlurPixelShader(
 ) {
     float4 centerTap = tap(texCoord, texRgn);
     float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(TapSpacingFactor, 0), texCoord, texRgn);
-    result = psEpilogue(sum * InverseTapDivisor, multiplyColor, addColor);
+    result = psEpilogue(sum * InverseTapDivisors.x, multiplyColor, addColor);
 }
 
 void VerticalGaussianBlurPixelShader(
@@ -88,7 +88,7 @@ void VerticalGaussianBlurPixelShader(
 ) {
     float4 centerTap = tap(texCoord, texRgn);
     float4 sum = gaussianBlur1D(centerTap, HalfTexel * float2(0, TapSpacingFactor), texCoord, texRgn);
-    result = psEpilogue(sum * InverseTapDivisor, multiplyColor, addColor);
+    result = psEpilogue(sum * InverseTapDivisors.x, multiplyColor, addColor);
 }
 
 void RadialGaussianBlurPixelShader(
@@ -112,7 +112,7 @@ void RadialGaussianBlurPixelShader(
         sum += gaussianBlur1D(centerTap, innerStepSize, texCoord + outerOffset, texRgn) * TapWeights[i];
     }
 
-    result = psEpilogue(sum * InverseTapDivisor * InverseTapDivisor, multiplyColor, addColor);
+    result = psEpilogue(sum * InverseTapDivisors.y, multiplyColor, addColor);
 }
 
 technique WorldSpaceHorizontalGaussianBlur

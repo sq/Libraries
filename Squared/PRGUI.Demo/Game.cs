@@ -295,7 +295,8 @@ namespace PRGUI.Demo {
                 BackgroundColor = new Color(70, 86, 90),
                 Title = "Floating Panel",
                 PaintOrder = 1,
-                Collapsible = true
+                Collapsible = true,
+                Compositor = new WindowCompositor(Materials)
             });
 
             window.New<StaticText>()
@@ -815,6 +816,37 @@ namespace PRGUI.Demo {
                 ir.Layer += 1;
                 ir.DrawMultiple(dc, position, material: Materials.ScreenSpaceBitmap, blendState: BlendState.AlphaBlend);
             }
+        }
+    }
+
+    public class WindowCompositor : IControlCompositor {
+        public DefaultMaterialSet Materials;
+        public Material Material;
+
+        public WindowCompositor (DefaultMaterialSet materials) {
+            Materials = materials;
+            Material = Materials.Get(Materials.WorldSpaceRadialGaussianBlur, blendState: BlendState.AlphaBlend);
+        }
+
+        public void AfterComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall) {
+        }
+
+        public void BeforeComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall) {
+            var opacity = drawCall.MultiplyColor.A / 255.0f;
+            var sigma = Arithmetic.Lerp(0f, 4f, 1.0f - opacity) + 1;
+            Materials.SetGaussianBlurParameters(Material, sigma, 7, 0);
+        }
+
+        public void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall) {
+            var opacity = drawCall.MultiplyColor.A / 255.0f;
+            if (opacity >= 1)
+                renderer.Draw(ref drawCall, blendState: BlendState.AlphaBlend);
+            else
+                renderer.Draw(ref drawCall, material: Material);
+        }
+
+        public bool WillComposite (Control control, float opacity) {
+            return (opacity < 1);
         }
     }
 }
