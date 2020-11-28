@@ -29,7 +29,15 @@ namespace Squared.PRGUI.Controls {
         protected RectF? MostRecentFullSize = null;
         protected Vector2 MinScrollOffset;
         protected Vector2? MaxScrollOffset;
+        /// <summary>
+        /// A value added to the actual scroll offset when computing the display position
+        ///  of child controls
+        /// </summary>
         protected Vector2 VirtualScrollOffset;
+        /// <summary>
+        /// The total scroll region is increased to this virtual region if necessary in
+        ///  order to allow scrolling to reveal hidden (culled) content
+        /// </summary>
         protected Vector2 VirtualScrollRegion;
 
         bool IScrollableControl.AllowDragToScroll => true;
@@ -68,7 +76,7 @@ namespace Squared.PRGUI.Controls {
             };
         }
 
-        private Vector2 DesiredScrollOffset;
+        protected Vector2? DesiredScrollOffset;
 
         public bool TrySetScrollOffset (Vector2 value, bool forUserInput) {
             if (!Scrollable)
@@ -498,7 +506,8 @@ namespace Squared.PRGUI.Controls {
 
                     MinScrollOffset = Vector2.Zero;
                     MaxScrollOffset = new Vector2(maxScrollX, maxScrollY);
-                    TrySetScrollOffset(DesiredScrollOffset, false);
+                    if (DesiredScrollOffset.HasValue)
+                        TrySetScrollOffset(DesiredScrollOffset.Value, false);
 
                     CanScrollVertically = maxScrollY > 0;
                 }

@@ -47,7 +47,6 @@ namespace Squared.PRGUI.Controls {
                 _SelectedItem = value;
                 SelectedItemHasChangedSinceLastUpdate = true;
                 FireEvent(UIEvents.ValueChanged, _SelectedItem);
-                Items.GetControlForValue(_SelectedItem, out Control newControl);
             }
         }
 
@@ -120,50 +119,69 @@ namespace Squared.PRGUI.Controls {
             bool scrollOffsetChanged = false;
 
             if (Virtual) {
-                var selectedIndex = SelectedIndex;
-                var y = ScrollOffset.Y - VirtualScrollOffset.Y;
-                var newItemOffset = Math.Max((int)(y / VirtualItemHeight) - 1, 0);
-                var newEndItemOffset = (newItemOffset + VirtualViewportSize) - 1;
+                while (true) {
+                    var selectedIndex = SelectedIndex;
+                    var newItemOffset = Math.Max((int)(ScrollOffset.Y / VirtualItemHeight) - 1, 0);
+                    var newEndItemOffset = newItemOffset + VirtualViewportSize;
 
-                if (SelectedItemHasChangedSinceLastUpdate) {
-                    if (selectedIndex <= newItemOffset)
-                        newItemOffset = Math.Max(selectedIndex - 1, 0);
-                    else if (selectedIndex >= newEndItemOffset)
-                        newItemOffset += (selectedIndex - newEndItemOffset) + 1;
+                    int delta = 0;
+                    if (selectedIndex >= 0) {
+                        if (selectedIndex < newItemOffset)
+                            delta = -(newItemOffset - selectedIndex) - 1;
+                        else if (selectedIndex >= newEndItemOffset)
+                            delta = (selectedIndex - newEndItemOffset) + 1;
+                    }
 
-                    newEndItemOffset = (newItemOffset + VirtualViewportSize) - 1;
-                    ;
-                }
+                    if (SelectedItemHasChangedSinceLastUpdate && (delta != 0) && !scrollOffsetChanged) {
+                        if (delta != 0) {
+                            var newOffset = ScrollOffset;
+                            newOffset.Y += (delta * VirtualItemHeight);
+                            Console.WriteLine($"scrollOffset:={newOffset.Y}, virtualScrollOffset=={VirtualScrollOffset.Y}");
+                            if (TrySetScrollOffset(newOffset, false)) {
+                                scrollOffsetChanged = true;
+                                continue;
+                            }
+                        }
+                    }
 
-                if (newItemOffset != VirtualItemOffset) {
-                    VirtualItemOffset = newItemOffset;
-                    NeedsUpdate = true;
-                }
-                var newScrollOffset = -VirtualItemOffset * VirtualItemHeight;
-                if (newScrollOffset != VirtualScrollOffset.Y) {
-                    VirtualScrollOffset.Y = newScrollOffset;
-                    scrollOffsetChanged = true;
-                    NeedsUpdate = true;
+                    if (newItemOffset != VirtualItemOffset) {
+                        VirtualItemOffset = newItemOffset;
+                        NeedsUpdate = true;
+                    }
+                    var newScrollOffset = -VirtualItemOffset * VirtualItemHeight;
+                    if (newScrollOffset != VirtualScrollOffset.Y) {
+                        Console.WriteLine($"scrollOffset=={ScrollOffset.Y}, virtualScrollOffset:={newScrollOffset}");
+                        VirtualScrollOffset.Y = newScrollOffset;
+                        scrollOffsetChanged = true;
+                        NeedsUpdate = true;
+                    }
+
+                    break;
                 }
             } else {
                 VirtualScrollOffset = Vector2.Zero;
                 NeedsUpdate |= (Items.Count != Children.Count);
             }
 
+            bool hadKeyboardSelection = false;
             if (NeedsUpdate) {
-                NeedsUpdate = false;
+                hadKeyboardSelection = Children.Contains(Context.KeyboardSelection);
+                Items.GetControlForValue(_SelectedItem, out Control priorControl);
                 Items.GenerateControls(
                     Children, CreateControlForValue ?? DefaultCreateControlForValue, 
                     offset: VirtualItemOffset, count: VirtualViewportSize
                 );
             }
 
-            if (SelectedItemHasChangedSinceLastUpdate) {
-                SelectedItemHasChangedSinceLastUpdate = false;
+            if (SelectedItemHasChangedSinceLastUpdate || NeedsUpdate || hadKeyboardSelection) {
                 Items.GetControlForValue(_SelectedItem, out Control newControl);
-                OnSelectionChange(null, newControl, true);
-                Context.OverrideKeyboardSelection(newControl);
+                OnSelectionChange(newControl, SelectedItemHasChangedSinceLastUpdate);
+                if (hadKeyboardSelection)
+                    Context.OverrideKeyboardSelection(newControl);
             }
+
+            NeedsUpdate = false;
+            SelectedItemHasChangedSinceLastUpdate = false;
 
             if (scrollOffsetChanged)
                 OnDisplayOffsetChanged();
@@ -211,15 +229,21 @@ namespace Squared.PRGUI.Controls {
             return ok;
         }
 
-        private void OnSelectionChange (Control previous, Control newControl, bool fireEvent) {
+        private void UpdateTextDecorators (Control selectedControl) {
             // FIXME: Optimize this for large lists
             foreach (var child in Children) {
-                child.CustomTextDecorator = ((child == newControl) && (child.BackgroundColor.pLinear == null))
+                child.CustomTextDecorator = ((child == selectedControl) && (child.BackgroundColor.pLinear == null))
                     ? Context?.Decorations.Selection 
                     : null;
             }
+        }
 
-            if ((fireEvent) && (previous != newControl))
+        private void OnSelectionChange (Control newControl, bool fireEvent) {
+            UpdateTextDecorators(newControl);
+
+            // FIXME
+            // if ((fireEvent) && (previous != newControl))
+            if (fireEvent)
                 FireEvent(UIEvents.SelectionChanged, newControl);
         }
 

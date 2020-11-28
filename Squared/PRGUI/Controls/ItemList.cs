@@ -76,6 +76,15 @@ namespace Squared.PRGUI.Controls {
             }
 
             count = Math.Max(Math.Min(Count - offset, count), 0);
+
+            while (output.Count > count) {
+                var ctl = output[output.Count - 1];
+                if (ValueForControl.TryGetValue(ctl, out T temp))
+                    ControlForValue.Remove(temp);
+                ValueForControl.Remove(ctl);
+                output.RemoveAt(output.Count - 1);
+            }
+
             for (int i = 0; i < count; i++) {
                 var value = this[i + offset];
                 // FIXME
@@ -94,14 +103,6 @@ namespace Squared.PRGUI.Controls {
                     else
                         output.Add(newControl);
                 }
-            }
-
-            while (output.Count > count) {
-                var ctl = output[output.Count - 1];
-                if (ValueForControl.TryGetValue(ctl, out T temp))
-                    ControlForValue.Remove(temp);
-                ValueForControl.Remove(ctl);
-                output.RemoveAt(output.Count - 1);
             }
         }
     }
