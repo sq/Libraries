@@ -232,12 +232,30 @@ namespace Squared.PRGUI.Imperative {
             return new ContainerBuilder(Control);
         }
 
-        private bool UnhandledEvent (string eventName) {
+        private static int FindEvent (List<UIContext.UnhandledEvent> events, ref UIContext.UnhandledEvent evt) {
+            for (int i = 0, c = events.Count; i < c; i++) {
+                if (evt.Equals(events[i]))
+                    return i;
+            }
+
+            return -1;
+        }
+
+        public ControlBuilder<TControl> GetEvent (string eventName, out bool result) {
             var key = new UIContext.UnhandledEvent { Source = Control, Name = eventName };
-            var comparer = UIContext.UnhandledEvent.Comparer.Instance;
-            var result = Context.UnhandledEvents.Contains(key, comparer) || 
-                Context.PreviousUnhandledEvents.Contains(key, comparer);
-            return result;
+            var index = FindEvent(Context.PreviousUnhandledEvents, ref key);
+            if (index >= 0) {
+                Context.PreviousUnhandledEvents.RemoveAt(index);
+                result = true;
+                return this;
+            }
+
+            index = FindEvent(Context.UnhandledEvents, ref key);
+            result = index >= 0;
+            if (result)
+                Context.UnhandledEvents.RemoveAt(index);
+
+            return this;
         }
 
         public static implicit operator TControl (ControlBuilder<TControl> builder) {
@@ -419,16 +437,13 @@ namespace Squared.PRGUI.Imperative {
         }
         public ControlBuilder<TControl> SetValue<TValue> (ref TValue value, out bool changed) {
             var cast = (Control as IValueControl<TValue>);
-            if (
-                UnhandledEvent(UIEvents.ValueChanged) || 
-                UnhandledEvent(UIEvents.CheckedChanged)
-            ) {
-                changed = true;
+            GetEvent(UIEvents.ValueChanged, out changed);
+            if (!changed)
+                GetEvent(UIEvents.CheckedChanged, out changed);
+            if (changed)
                 value = cast.Value;
-            } else {
-                changed = false;
+            else 
                 cast.Value = value;
-            }
             return this;
         }
         public ControlBuilder<TControl> SetText (AbstractString value) {
@@ -436,6 +451,18 @@ namespace Squared.PRGUI.Imperative {
             var cast2 = (Control as EditableText);
             cast1?.SetText(value);
             cast2?.SetText(value, false);
+            return this;
+        }
+        public ControlBuilder<TControl> SetText (ref string value, out bool changed) {
+            var cast1 = (Control as StaticTextBase);
+            var cast2 = (Control as EditableText);
+            GetEvent(UIEvents.ValueChanged, out changed);
+            if (changed) {
+                value = cast2.Text;
+            } else {
+                cast1?.SetText(value);
+                cast2?.SetText(value, false);
+            }
             return this;
         }
 

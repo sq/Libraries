@@ -213,6 +213,9 @@ namespace Squared.PRGUI {
         bool AcceleratorOverlayVisible = false;
         ArraySegment<BitmapDrawCall> AcceleratorOverlayBuffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[256]);
 
+        // HACK
+        List<RectF> RasterizedOverlayBoxes = new List<RectF>();
+
         private void RasterizeAcceleratorOverlay (UIOperationContext context, ref ImperativeRenderer renderer) {
             Control shiftTab = PickRotateFocusTarget(false, -1),
                 tab = PickRotateFocusTarget(false, 1),
@@ -221,6 +224,8 @@ namespace Squared.PRGUI {
 
             var targetGroup = renderer.MakeSubgroup();
             var labelGroup = renderer.MakeSubgroup();
+
+            RasterizedOverlayBoxes.Clear();
 
             // FIXME: This looks confusing
             // RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, Focused, null);
@@ -237,18 +242,29 @@ namespace Squared.PRGUI {
             }
 
             var overlaySource = FixatedControl as IAcceleratorSource;
-            if (overlaySource == null)
-                return;
+            if (overlaySource != null) {
+                labelGroup = renderer.MakeSubgroup();
 
-            foreach (var kvp in overlaySource.Accelerators)
-                RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, kvp.Key, kvp.Value);
+                foreach (var kvp in overlaySource.Accelerators)
+                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, kvp.Key, kvp.Value, overlaySource == Focused);
+            }
+
+            var focusedSource = Focused as IAcceleratorSource;
+            if ((focusedSource != overlaySource) && (focusedSource != null)) {
+                labelGroup = renderer.MakeSubgroup();
+
+                foreach (var kvp in focusedSource.Accelerators)
+                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, kvp.Key, kvp.Value, true);
+            }
         }
 
         private void RasterizeAcceleratorOverlay (
             UIOperationContext context, ref ImperativeRenderer labelRenderer, ref ImperativeRenderer targetRenderer, 
-            Control control, string label
+            Control control, string label, bool showFocused = false
         ) {
-            if ((control == null) || ((control == Focused) && !string.IsNullOrWhiteSpace(label)))
+            if (control == null)
+                return;
+            if (!showFocused && (control == Focused) && !string.IsNullOrWhiteSpace(label))
                 return;
 
             var box = control.GetRect(Layout);
@@ -269,13 +285,20 @@ namespace Squared.PRGUI {
                 var labelPosition = box.Position - new Vector2(0, layout.Size.Y + decorator.Padding.Y + outlinePadding);
                 if (labelPosition.Y <= 0)
                     labelPosition = box.Position;
-                labelPosition.X = Math.Max(0, labelPosition.X);
+                labelPosition.X = Arithmetic.Clamp(labelPosition.X, 0, CanvasSize.X - layout.Size.X);
                 labelPosition.Y = Math.Max(0, labelPosition.Y);
 
                 var labelBox = new RectF(
                     labelPosition, 
                     layout.Size + decorator.Padding.Size
                 );
+                foreach (var previousRect in RasterizedOverlayBoxes) {
+                    if (previousRect.Intersects(ref labelBox)) {
+                        labelBox.Left = box.Extent.X - labelBox.Width;
+                        break;
+                    }
+                }
+
                 var labelContentBox = new RectF(
                     labelBox.Position + new Vector2(decorator.Padding.Left, decorator.Padding.Top),
                     layout.Size
@@ -286,6 +309,8 @@ namespace Squared.PRGUI {
                 };
                 decorator.Rasterize(context, ref labelRenderer, settings);
                 labelRenderer.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), layer: 1);
+
+                RasterizedOverlayBoxes.Add(labelBox);
             }
         }
     }

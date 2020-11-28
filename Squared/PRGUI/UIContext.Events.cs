@@ -473,10 +473,18 @@ namespace Squared.PRGUI {
                     newIndex = Arithmetic.Wrap(newIndex, 0, tabOrdered.Count - 1);
             }
 
-            if (tabOrdered[0].IsValidFocusTarget && tabOrdered[0].Enabled)
-                return tabOrdered[0];
-            else
-                return null;
+            foreach (var item in tabOrdered) {
+                if (item == current)
+                    continue;
+                if (!item.IsValidFocusTarget)
+                    continue;
+                if (!item.Enabled)
+                    continue;
+
+                return item;
+            }
+
+            return null;
         }
 
         private Control PickNextFocusTarget (Control current, int delta, bool recursive) {

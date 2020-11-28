@@ -1185,8 +1185,8 @@ namespace Squared.PRGUI.Decorations {
             // HACK
             var isInside = settings.ContentBox.Top <= settings.Box.Top;
             var radius = isInside
-                ? new Vector4(0, 0, 4, 0)
-                : new Vector4(4, 4, 0, 0);
+                ? new Vector4(0, 0, 5, 0)
+                : new Vector4(5, 5, 0, 0);
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             // FIXME
             renderer.RasterizeRectangle(
@@ -1203,11 +1203,12 @@ namespace Squared.PRGUI.Decorations {
 
         private void AcceleratorTarget_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            var outlineColor = AcceleratorOutlineColor * Arithmetic.PulseSine((context.Now / 1.3f) + (a.X / 512), 0.65f, 1.0f);
             // FIXME
             renderer.RasterizeRectangle(
                 a, b,
-                radiusCW: new Vector4(0, 4, 4, 4),
-                outlineRadius: 1f, outlineColor: AcceleratorOutlineColor,
+                radius: 0f,
+                outlineRadius: 1f, outlineColor: outlineColor,
                 innerColor: Color.Transparent, outerColor: Color.Transparent,
                 shadow: AcceleratorTargetShadow
             );

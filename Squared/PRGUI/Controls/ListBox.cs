@@ -379,7 +379,7 @@ namespace Squared.PRGUI.Controls {
             get {
                 if (SelectedIndex > 0)
                     yield return new KeyValuePair<Control, string>(this[SelectedIndex - 1], "Up");
-                if (SelectedIndex < Children.Count)
+                if (SelectedIndex < (Children.Count - 1))
                     yield return new KeyValuePair<Control, string>(this[SelectedIndex + 1], "Down");
             }
         }

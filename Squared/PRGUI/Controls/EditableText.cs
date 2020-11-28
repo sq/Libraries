@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Squared.Game;
+using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render;
@@ -15,7 +16,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, IValueControl<string> {
+    public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, IValueControl<string>, IAcceleratorSource {
         public const int ControlMinimumWidth = 300;
 
         public static readonly Menu ContextMenu = new Menu {
@@ -1077,6 +1078,19 @@ namespace Squared.PRGUI.Controls {
         string IValueControl<string>.Value {
             get => Text;
             set => Text = value;
+        }
+
+        IEnumerable<KeyValuePair<Control, string>> IAcceleratorSource.Accelerators {
+            get {
+                var sb = new StringBuilder();
+                sb.AppendLine("Ctrl+A Select All");
+                if (Selection.First != Selection.Second) {
+                    sb.AppendLine("Ctrl+X Cut");
+                    sb.AppendLine("Ctrl+C Copy");
+                }
+                sb.AppendLine("Ctrl+V Paste");
+                yield return new KeyValuePair<Control, string>(this, sb.ToString());
+            }
         }
 
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {
