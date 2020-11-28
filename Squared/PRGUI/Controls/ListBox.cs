@@ -33,6 +33,8 @@ namespace Squared.PRGUI.Controls {
             ? Items.IndexOf(_SelectedItem)
             : -1;
 
+        private bool SelectedItemHasChangedSinceLastUpdate = true;
+
         private T _SelectedItem = default(T);
         public T SelectedItem {
             get => _SelectedItem;
@@ -43,11 +45,24 @@ namespace Squared.PRGUI.Controls {
                     throw new ArgumentException("Value not in items list");
                 Items.GetControlForValue(_SelectedItem, out Control priorControl);
                 _SelectedItem = value;
+                SelectedItemHasChangedSinceLastUpdate = true;
                 FireEvent(UIEvents.ValueChanged, _SelectedItem);
                 Items.GetControlForValue(_SelectedItem, out Control newControl);
-                OnSelectionChange(priorControl, newControl);
             }
         }
+
+        private bool _Virtual = false;
+        public bool Virtual {
+            get => _Virtual;
+            set {
+                NeedsUpdate = true;
+                _Virtual = value;
+            }
+        }
+
+        private int VirtualItemOffset = 0;
+        private float VirtualItemHeight = 30; // HACK, will be adjusted each frame
+        private int VirtualViewportSize = 100; // HACK, will be adjusted up/down each frame
 
         private bool NeedsUpdate = true;
 
@@ -102,12 +117,56 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            // FIXME
-            NeedsUpdate |= (Items.Count != Children.Count);
+            bool scrollOffsetChanged = false;
+
+            if (Virtual) {
+                var selectedIndex = SelectedIndex;
+                var y = ScrollOffset.Y - VirtualScrollOffset.Y;
+                var newItemOffset = Math.Max((int)(y / VirtualItemHeight) - 1, 0);
+                var newEndItemOffset = (newItemOffset + VirtualViewportSize) - 1;
+
+                if (SelectedItemHasChangedSinceLastUpdate) {
+                    if (selectedIndex <= newItemOffset)
+                        newItemOffset = Math.Max(selectedIndex - 1, 0);
+                    else if (selectedIndex >= newEndItemOffset)
+                        newItemOffset += (selectedIndex - newEndItemOffset) + 1;
+
+                    newEndItemOffset = (newItemOffset + VirtualViewportSize) - 1;
+                    ;
+                }
+
+                if (newItemOffset != VirtualItemOffset) {
+                    VirtualItemOffset = newItemOffset;
+                    NeedsUpdate = true;
+                }
+                var newScrollOffset = -VirtualItemOffset * VirtualItemHeight;
+                if (newScrollOffset != VirtualScrollOffset.Y) {
+                    VirtualScrollOffset.Y = newScrollOffset;
+                    scrollOffsetChanged = true;
+                    NeedsUpdate = true;
+                }
+            } else {
+                VirtualScrollOffset = Vector2.Zero;
+                NeedsUpdate |= (Items.Count != Children.Count);
+            }
+
             if (NeedsUpdate) {
                 NeedsUpdate = false;
-                Items.GenerateControls(Children, CreateControlForValue ?? DefaultCreateControlForValue);
+                Items.GenerateControls(
+                    Children, CreateControlForValue ?? DefaultCreateControlForValue, 
+                    offset: VirtualItemOffset, count: VirtualViewportSize
+                );
             }
+
+            if (SelectedItemHasChangedSinceLastUpdate) {
+                SelectedItemHasChangedSinceLastUpdate = false;
+                Items.GetControlForValue(_SelectedItem, out Control newControl);
+                OnSelectionChange(null, newControl, true);
+                Context.OverrideKeyboardSelection(newControl);
+            }
+
+            if (scrollOffsetChanged)
+                OnDisplayOffsetChanged();
 
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             foreach (var child in Children) {
@@ -119,6 +178,22 @@ namespace Squared.PRGUI.Controls {
                 context.Layout.SetMargins(lk, m);
             }
             return result;
+        }
+
+        protected override void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested) {
+            base.OnLayoutComplete(context, ref relayoutRequested);
+
+            if (Children.Count > 0)
+                VirtualItemHeight = Children[0].GetRect(context.Layout, false, false).Height;
+
+            var box = GetRect(context.Layout, includeOffset: false, contentRect: true);
+            var newViewportSize = Math.Max((int)(box.Height / VirtualItemHeight) + 4, 8);
+            if (newViewportSize != VirtualViewportSize) {
+                VirtualViewportSize = newViewportSize;
+                NeedsUpdate = true;
+                relayoutRequested = true;
+            }
+            VirtualScrollRegion.Y = (Items.Count * VirtualItemHeight) - box.Height;
         }
 
         public void Invalidate () {
@@ -136,7 +211,7 @@ namespace Squared.PRGUI.Controls {
             return ok;
         }
 
-        private void OnSelectionChange (Control previous, Control newControl) {
+        private void OnSelectionChange (Control previous, Control newControl, bool fireEvent) {
             // FIXME: Optimize this for large lists
             foreach (var child in Children) {
                 child.CustomTextDecorator = ((child == newControl) && (child.BackgroundColor.pLinear == null))
@@ -144,7 +219,8 @@ namespace Squared.PRGUI.Controls {
                     : null;
             }
 
-            FireEvent(UIEvents.SelectionChanged, newControl);
+            if ((fireEvent) && (previous != newControl))
+                FireEvent(UIEvents.SelectionChanged, newControl);
         }
 
         private Control LocateContainingChild (Control control) {
@@ -217,12 +293,16 @@ namespace Squared.PRGUI.Controls {
                 return base.OnEvent(name, args);
         }
 
-        private void SelectItemViaKeyboard (T item) {
-            SelectedItem = item;
+        private void UpdateKeyboardSelection (T item) {
             // HACK: Tell the context that the current item is the keyboard selection,
             //  so that autoscroll and tooltips will happen for it.
             if (Items.GetControlForValue(ref item, out Control control))
                 Context.OverrideKeyboardSelection(control);
+        }
+
+        private void SelectItemViaKeyboard (T item) {
+            SelectedItem = item;
+            UpdateKeyboardSelection(item);
         }
 
         public bool AdjustSelection (int direction) {
@@ -310,17 +390,25 @@ namespace Squared.PRGUI.Controls {
             int layer1, int layer2, int layer3, 
             ref int maxLayer1, ref int maxLayer2, ref int maxLayer3
         ) {
-            Items.GetControlForValue(ref _SelectedItem, out Control selectedControl);
-            var displayPageSize = RasterizeChildrenFromCenter(
-                ref context, ref passSet, 
-                GetRect(context.Layout), Children, selectedControl,
-                layer1, layer2, layer3, 
-                ref maxLayer1, ref maxLayer2, ref maxLayer3,
-                ref lastOffset1, ref lastOffset2
-            );
+            if (Virtual) {
+                base.RasterizeChildrenInOrder(
+                    ref context, ref passSet, layer1, layer2, layer2,
+                    ref maxLayer1, ref maxLayer2, ref maxLayer3
+                );
+                PageSize = Math.Max(VirtualViewportSize - 4, 2);
+            } else {
+                Items.GetControlForValue(ref _SelectedItem, out Control selectedControl);
+                var displayPageSize = RasterizeChildrenFromCenter(
+                    ref context, ref passSet, 
+                    GetRect(context.Layout), Children, selectedControl,
+                    layer1, layer2, layer3, 
+                    ref maxLayer1, ref maxLayer2, ref maxLayer3,
+                    ref lastOffset1, ref lastOffset2
+                );
 
-            // FIXME: If we're partially offscreen this value will be too small
-            PageSize = Math.Max(1, displayPageSize / 2);
+                // FIXME: If we're partially offscreen this value will be too small
+                PageSize = Math.Max(1, displayPageSize / 2);
+            }
         }
 
         private void CalculateScrollable (UIContext context) {

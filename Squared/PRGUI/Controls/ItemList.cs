@@ -41,32 +41,54 @@ namespace Squared.PRGUI.Controls {
             return ValueForControl.TryGetValue(control, out result);
         }
 
-        public void GenerateControls (
-            ControlCollection output, 
+        private Control CreateControlForValue (
+            ref T value, Control existingControl,
             CreateControlForValueDelegate<T> createControlForValue
         ) {
-            for (int i = 0; i < Count; i++) {
-                var value = this[i];
+            Control newControl;
+            if (value is Control)
+                newControl = (Control)(object)value;
+            else if (createControlForValue != null)
+                newControl = createControlForValue(ref value, existingControl);
+            else
+                throw new ArgumentNullException("createControlForValue");
+
+            if (value != null)
+                ControlForValue[value] = newControl;
+
+            ValueForControl[newControl] = value;
+            return newControl;
+        }
+
+        public void GenerateControls (
+            ControlCollection output, 
+            CreateControlForValueDelegate<T> createControlForValue,
+            int offset = 0, int count = int.MaxValue
+        ) {
+            // FIXME: This is inefficient, it would be cool to reuse existing controls
+            //  even if the order of values changes
+            ControlForValue.Clear();
+
+            count = Math.Min(Count, count);
+            if (offset < 0) {
+                count += offset;
+                offset = 0;
+            }
+
+            count = Math.Max(Math.Min(Count - offset, count), 0);
+            for (int i = 0; i < count; i++) {
+                var value = this[i + offset];
                 // FIXME
                 if (value == null)
                     continue;
+
                 var existingControl = (i < output.Count)
                     ? output[i]
                     : null;
 
-                Control newControl;
-                if (value is Control)
-                    newControl = (Control)(object)value;
-                else if (createControlForValue != null)
-                    newControl = createControlForValue(ref value, existingControl);
-                else
-                    throw new ArgumentNullException("createControlForValue");
-
-                if (value != null)
-                    ControlForValue[value] = newControl;
+                var newControl = CreateControlForValue(ref value, existingControl, createControlForValue);
 
                 if (newControl != existingControl) {
-                    ValueForControl[newControl] = value;
                     if (i < output.Count)
                         output[i] = newControl;
                     else
@@ -74,12 +96,12 @@ namespace Squared.PRGUI.Controls {
                 }
             }
 
-            while (output.Count > Count) {
-                var i = output.Count - 1;
-                if (ValueForControl.TryGetValue(output[i], out T temp))
+            while (output.Count > count) {
+                var ctl = output[output.Count - 1];
+                if (ValueForControl.TryGetValue(ctl, out T temp))
                     ControlForValue.Remove(temp);
-                ValueForControl.Remove(output[i]);
-                output.RemoveAt(i);
+                ValueForControl.Remove(ctl);
+                output.RemoveAt(output.Count - 1);
             }
         }
     }

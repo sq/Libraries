@@ -29,6 +29,8 @@ namespace Squared.PRGUI.Controls {
         protected RectF? MostRecentFullSize = null;
         protected Vector2 MinScrollOffset;
         protected Vector2? MaxScrollOffset;
+        protected Vector2 VirtualScrollOffset;
+        protected Vector2 VirtualScrollRegion;
 
         bool IScrollableControl.AllowDragToScroll => true;
         Vector2? IScrollableControl.MinScrollOffset => MinScrollOffset;
@@ -167,7 +169,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void OnDisplayOffsetChanged () {
-            AbsoluteDisplayOffsetOfChildren = AbsoluteDisplayOffset - _ScrollOffset.Floor();
+            AbsoluteDisplayOffsetOfChildren = AbsoluteDisplayOffset - (_ScrollOffset + VirtualScrollOffset).Floor();
 
             foreach (var child in Children)
                 child.AbsoluteDisplayOffset = AbsoluteDisplayOffsetOfChildren;
@@ -480,10 +482,13 @@ namespace Squared.PRGUI.Controls {
 
                 GetContentBounds(context.UIContext, out RectF contentBounds);
 
+                contentBounds.Width = Math.Max(contentBounds.Width, VirtualScrollRegion.X);
+                contentBounds.Height = Math.Max(contentBounds.Height, VirtualScrollRegion.Y);
+
                 if (HasContentBounds) {
                     float maxScrollX = ContentBounds.Width - viewportWidth, maxScrollY = ContentBounds.Height - viewportHeight;
-                    maxScrollX = Math.Max(0, maxScrollX);
-                    maxScrollY = Math.Max(0, maxScrollY);
+                    maxScrollX = Math.Max(Math.Max(0, maxScrollX), VirtualScrollRegion.X);
+                    maxScrollY = Math.Max(Math.Max(0, maxScrollY), VirtualScrollRegion.Y);
 
                     // HACK: Suppress flickering during size transitions
                     if (maxScrollX <= 1)
@@ -498,10 +503,10 @@ namespace Squared.PRGUI.Controls {
                     CanScrollVertically = maxScrollY > 0;
                 }
 
-                HScrollbar.ContentSize = ContentBounds.Width;
+                HScrollbar.ContentSize = contentBounds.Width;
                 HScrollbar.ViewportSize = contentBox.Width;
                 HScrollbar.Position = ScrollOffset.X;
-                VScrollbar.ContentSize = CanScrollVertically ? ContentBounds.Height : contentBox.Height;
+                VScrollbar.ContentSize = CanScrollVertically ? contentBounds.Height : contentBox.Height;
                 VScrollbar.ViewportSize = contentBox.Height;
                 VScrollbar.Position = ScrollOffset.Y;
 

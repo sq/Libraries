@@ -72,7 +72,7 @@ namespace PRGUI.Demo {
             IsFixedTimeStep = false;
 
             if (IsFixedTimeStep)
-                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 3f);
+                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 5f);
 
             PreviousKeyboardState = Keyboard.GetState();
 
@@ -333,7 +333,7 @@ namespace PRGUI.Demo {
                 Menu = testMenu
             };
 
-            const int itemCount = 100;
+            const int itemCount = 5000;
 
             var dropdown = new Dropdown<StaticText> {
                 Description = "Big Menu",
@@ -347,6 +347,7 @@ namespace PRGUI.Demo {
                 FixedWidth = 600,
                 FixedHeight = 600,
                 LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
+                Virtual = true
             };
             for (var i = 0; i < itemCount; i++)
                 listBox.Items.Add($"Item {i}");

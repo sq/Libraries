@@ -771,6 +771,11 @@ namespace Squared.PRGUI {
                 (box.Width <= 0) ||
                 (box.Height <= 0);
 
+            /*
+            if (context.Pass == RasterizePasses.Content)
+                passSet.Content.RasterizeRectangle(box.Position, box.Extent, 0f, 1f, Color.Transparent, Color.Transparent, Color.Red);
+            */
+
             // Only visibility cull controls that have a parent.
             if (isInvisible && TryGetParent(out Control parent))
                 return false;
