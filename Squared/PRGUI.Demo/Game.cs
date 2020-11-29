@@ -168,7 +168,7 @@ namespace PRGUI.Demo {
             TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.75f * DPIFactor);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1.33f);
 
-            var decorations = new Squared.PRGUI.Decorations.DefaultDecorations(Materials) {
+            var decorations = new Squared.PRGUI.DefaultDecorations(Materials) {
                 DefaultFont = Font,
                 TitleFont = TitleFont,
                 TooltipFont = tooltipFont,
@@ -325,8 +325,7 @@ namespace PRGUI.Demo {
             var testMenu = new Menu {
                 DynamicContents = BuildTestMenu,
                 TooltipContent = "Surprise! I'm a pop-up menu!",
-                CloseWhenItemChosen = false,
-                CloseWhenFocusLost = false
+                CloseWhenItemChosen = false
             };
 
             var button1 = new Button {

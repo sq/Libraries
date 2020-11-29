@@ -416,21 +416,35 @@ void evaluateLineSegment (
         gradientWeight = 1 - saturate(-distance / localRadius);
 }
 
+float computeLocalRectangleRadius (
+    in float2 worldPosition, 
+    in float2 a, in float2 b, 
+    in float2 radiusTLTR, in float2 radiusBRBL
+) {
+    // Smoothly interpolate the transition between radius values over the [0.25 - 0.75]
+    //  region, because otherwise the immediate jump can cause very weird discontinuities
+    float2 radiusWeight = saturate((
+        (
+            (worldPosition - a) / max((b - a), 0.001)
+        ) - 0.5) * 2
+    );
+    return lerp(
+        lerp(radiusTLTR.x, radiusTLTR.y, radiusWeight.x),
+        lerp(radiusBRBL.y, radiusBRBL.x, radiusWeight.x),
+        radiusWeight.y
+    );
+}
+
 void evaluateRectangle (
-    in float2 worldPosition, in float2 a, in float2 b, in float2 radiusTLTR,
-    in float2 radiusBRBL, out float distance,
-    inout int gradientType, out float gradientWeight
+    in float2 worldPosition, in float2 a, in float2 b, in float radius, 
+    out float distance, inout int gradientType, out float gradientWeight
 ) {
     float2 center = (a + b) * 0.5;
     float2 boxSize = abs(b - a) * 0.5;
     float2 localPosition = worldPosition - center;
-    float localRadius = 
-        (localPosition.y <= 0)
-            ? (localPosition.x <= 0 ? radiusTLTR.x : radiusTLTR.y)
-            : (localPosition.x <= 0 ? radiusBRBL.y : radiusBRBL.x);
     
-    float2 q = abs(localPosition) - boxSize + localRadius;
-    distance = min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - localRadius;
+    float2 q = abs(localPosition) - boxSize + radius;
+    distance = min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - radius;
     gradientWeight = 0;
 
     PREFER_FLATTEN
@@ -582,9 +596,8 @@ PREFER_BRANCH
 #ifdef INCLUDE_RECTANGLE
         case TYPE_Rectangle: {
             evaluateRectangle(
-                worldPosition, a, b, c,
-                radius, distance,
-                gradientType, gradientWeight
+                worldPosition, a, b, radius.x, 
+                distance, gradientType, gradientWeight
             );
 
             break;
@@ -681,12 +694,15 @@ void rasterShapeCommon (
 
     const float threshold = (1 / 512.0);
 
-    float2 invRadius = 1.0 / max(radius, 0.0001);
-
     float distance = 0;
 
     tl = min(a, b);
     br = max(a, b);
+
+    if (type == TYPE_Rectangle)
+        radius = computeLocalRectangleRadius(worldPosition, tl, br, cd.xy, cd.zw);
+
+    float2 invRadius = 1.0 / max(radius, 0.0001);
 
     float gradientOffset = params2.z, gradientSize = params2.w, gradientAngle;
     int gradientType;
