@@ -393,18 +393,24 @@ namespace Squared.PRGUI.Controls {
                 return false;
 
             Listener?.ItemChosen(this, item);
-            Context.FireEvent(UIEvents.ItemChosen, this, item);
+            FireEvent(UIEvents.ItemChosen, item);
             var args = Context.MakeMouseEventArgs(item, Context.LastMousePosition, null);
             args.SequentialClickCount = 1;
             Context.FireEvent(UIEvents.Click, item, args);
-            NextResultFuture?.SetResult2(item, null);
             if (CloseWhenItemChosen) {
+                SetResult(item);
                 Close();
             } else {
                 Context.RetainCapture(this);
-                NextResultFuture = new Future<Control>();
             }
             return true;
+        }
+
+        /// <summary>
+        /// If CloseWhenItemChosen is not set it is your responsibility to invoke this to set a result
+        /// </summary>
+        public void SetResult (Control item) {
+            NextResultFuture?.SetResult2(item, null);
         }
 
         private void ShowInternalPrologue (UIContext context) {
