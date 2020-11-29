@@ -50,6 +50,9 @@ namespace Squared.PRGUI.Controls {
         private Control _SelectedItem;
 
         public bool DeselectOnMouseLeave = true;
+        public bool CloseWhenFocusLost = true;
+        public bool CloseWhenItemChosen = true;
+        public bool CloseOnClickOutside = true;
 
         public int SelectedIndex => (_SelectedItem != null)
             ? Children.IndexOf(_SelectedItem)
@@ -214,8 +217,10 @@ namespace Squared.PRGUI.Controls {
                 MouseInsideWhenShown = false;
 
                 if ((item != this) && !Children.Contains(item)) {
-                    Context.ReleaseCapture(this, FocusDonor);
-                    Close();
+                    if (CloseOnClickOutside) {
+                        Context.ReleaseCapture(this, FocusDonor);
+                        Close();
+                    }
                     return true;
                 }
             }
@@ -236,8 +241,9 @@ namespace Squared.PRGUI.Controls {
                     // The mouse was inside our rect when we first opened, and hasn't moved
                 } else if (item != null) {
                     return ChooseItem(item);
-                } else
+                } else if (CloseOnClickOutside) {
                     Close();
+                }
             }
 
             return true;
@@ -252,9 +258,10 @@ namespace Squared.PRGUI.Controls {
                     SelectedItem = null;
             } else if (args is MouseEventArgs)
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
-            else if (name == UIEvents.LostFocus)
-                Close();
-            else if (args is KeyEventArgs)
+            else if (name == UIEvents.LostFocus) {
+                if (CloseWhenFocusLost)
+                    Close();
+            } else if (args is KeyEventArgs)
                 return OnKeyEvent(name, (KeyEventArgs)(object)args);
             else
                 return base.OnEvent(name, args);
@@ -391,7 +398,12 @@ namespace Squared.PRGUI.Controls {
             args.SequentialClickCount = 1;
             Context.FireEvent(UIEvents.Click, item, args);
             NextResultFuture?.SetResult2(item, null);
-            Close();
+            if (CloseWhenItemChosen) {
+                Close();
+            } else {
+                Context.RetainCapture(this);
+                NextResultFuture = new Future<Control>();
+            }
             return true;
         }
 

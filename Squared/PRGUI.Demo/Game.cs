@@ -324,7 +324,9 @@ namespace PRGUI.Demo {
 
             var testMenu = new Menu {
                 DynamicContents = BuildTestMenu,
-                TooltipContent = "Surprise! I'm a pop-up menu!"
+                TooltipContent = "Surprise! I'm a pop-up menu!",
+                CloseWhenItemChosen = false,
+                CloseWhenFocusLost = false
             };
 
             var button1 = new Button {
