@@ -342,7 +342,7 @@ namespace Squared.PRGUI {
             TooltipTextColor = Color.White,
             AcceleratorTextColor = Color.White;
 
-        public const float DropdownArrowWidth = 16, DropdownArrowHeight = 14, DropdownArrowPadding = 8;
+        public const float DropdownArrowWidth = 16, DropdownArrowHeight = 11, DropdownArrowPadding = 8;
         public const float CheckboxSize = 32;
         public float DisabledTextAlpha = 0.5f;
 
@@ -449,17 +449,13 @@ namespace Squared.PRGUI {
             var ySpace = (float)Math.Floor((settings.ContentBox.Height - DropdownArrowHeight) / 2f);
             var a = new Vector2(br.X + DropdownArrowPadding + offset.X, tl.Y + ySpace + offset.Y);
             var b = a + new Vector2(DropdownArrowWidth, DropdownArrowHeight);
-            var color = isPressed
-                ? Color.White
-                : Color.White * 0.9f;
-            var outlineColor = isPressed 
-                ? Color.Black * 0.85f
-                : Color.Black * 0.75f;
+            var color = Color.White;
+            var outlineColor = Color.Black;
 
             renderer.RasterizeTriangle(
                 a, new Vector2(b.X, a.Y),
                 new Vector2((a.X + b.X) / 2f, b.Y),
-                radius: 1f, outlineRadius: 1.1f,
+                radius: 1f, outlineRadius: 1f,
                 innerColor: color, outerColor: color, 
                 outlineColor: outlineColor
             );

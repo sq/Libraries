@@ -57,14 +57,18 @@ namespace Squared.PRGUI {
 
             public ScratchRenderTarget (RenderCoordinator coordinator, UIContext context) {
                 Context = context;
+                int width = (int)(context.CanvasSize.X * context.ScratchScaleFactor),
+                    height = (int)(context.CanvasSize.Y * context.ScratchScaleFactor);
                 Instance = new AutoRenderTarget(
-                    coordinator, (int)context.CanvasSize.X, (int)context.CanvasSize.Y, 
+                    coordinator, width, height,
                     false, SurfaceFormat.Color, DepthFormat.Depth24Stencil8
                 );
             }
 
             public void Update () {
-                Instance.Resize((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y);
+                int width = (int)(Context.CanvasSize.X * Context.ScratchScaleFactor),
+                    height = (int)(Context.CanvasSize.Y * Context.ScratchScaleFactor);
+                Instance.Resize(width, height);
             }
 
             public void Reset () {
@@ -104,6 +108,10 @@ namespace Squared.PRGUI {
             Keys.NumLock,
             Keys.Insert
         };
+
+        // Allocate scratch rendering buffers (for composited controls) at a higher or lower resolution
+        //  than the canvas, to improve the quality of transformed imagery
+        public readonly float ScratchScaleFactor = 1.0f;
 
         // Full occlusion tests are performed with this padding region (in pixels) to account for things like
         //  drop shadows being visible even if the control itself is not

@@ -199,9 +199,9 @@ namespace Squared.PRGUI.Controls {
                     alpha = 0.6f;
 
             renderer.RasterizeTriangle(
-                a, b, c, radius: 0f, outlineRadius: 1.1f,
+                a, b, c, radius: 0f, outlineRadius: 1f,
                 innerColor: Color.White * alpha, outerColor: Color.White * alpha, 
-                outlineColor: Color.Black * (0.8f * alpha)
+                outlineColor: Color.Black
             );
         }
 

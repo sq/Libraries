@@ -307,16 +307,16 @@ namespace Squared.PRGUI.Controls {
             b = b.Rotate(radians);
             c = c.Rotate(radians);
             var offset = new Vector2(tl.X + pad + centering, tl.Y + ySpace + centering);
-            var alpha = DisclosureArrowHitTest(context.MousePosition - tl) ? 1.0f : 0.75f;
+            var alpha = DisclosureArrowHitTest(context.MousePosition - tl) ? 1.0f : 0.85f;
             var color = Color.White * alpha;
-            var outlineColor = Color.Black * (0.8f * alpha);
+            var outlineColor = Color.Black * alpha;
             a += offset;
             b += offset;
             c += offset;
 
             renderer.RasterizeTriangle(
                 a, b, c,
-                radius: 1f, outlineRadius: 1.1f,
+                radius: 1f, outlineRadius: 1f,
                 innerColor: color, outerColor: color,
                 outlineColor: outlineColor
             );

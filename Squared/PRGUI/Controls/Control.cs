@@ -873,8 +873,8 @@ namespace Squared.PRGUI {
             );
             var dc = new BitmapDrawCall(
                 rt.Get(), pos,
-                GameExtensionMethods.BoundsFromRectangle(rt.Get(), sourceRect),
-                Color.White * opacity
+                GameExtensionMethods.BoundsFromRectangle((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y, ref sourceRect),
+                Color.White * opacity, scale: 1.0f / Context.ScratchScaleFactor
             );
 
             if (HasTransformMatrix || enableCompositor) {
