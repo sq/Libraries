@@ -376,7 +376,6 @@ namespace Squared.Render {
 
             var elapsed = sw.Elapsed.TotalMilliseconds;
             Debug.WriteLine(string.Format("Shader preload took {0:000.00}ms", elapsed));
-            Console.WriteLine("Shader preload took {0:000.00}ms", elapsed);
         }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Squared.Threading;
 using Squared.Util;
 
@@ -90,24 +91,17 @@ namespace Squared.Render {
     public class ListPool<T> : IDrainable, IListPool<T> {
         private struct ListClearWorkItem : IWorkItem {
             public UnorderedList<T> List;
-            public UnorderedList<UnorderedList<T>> Pool;
-            public int Limit;
 
             public void Execute () {
-                lock (Pool)
-                    if (Pool.Count >= Limit)
-                        return;
-
                 List.Clear();
-                lock (Pool) {
-                    if (Pool.Count >= Limit)
-                        return;
-
-                    Pool.Add(List);
-                }
+                ClearedLists.Value.Add(List);
             }
         }
 
+        private static readonly ThreadLocal<UnorderedList<UnorderedList<T>>> ClearedLists = 
+            new ThreadLocal<UnorderedList<UnorderedList<T>>>(
+                () => new UnorderedList<UnorderedList<T>>()
+            );
         private UnorderedList<UnorderedList<T>> _Pool = new UnorderedList<UnorderedList<T>>();
         private UnorderedList<UnorderedList<T>> _LargePool = new UnorderedList<UnorderedList<T>>();
 
@@ -119,7 +113,56 @@ namespace Squared.Render {
         public          int SmallPoolMaxItemSize;
         public          int LargePoolMaxItemSize;
 
-        public ThreadGroup ThreadGroup { get; set; }
+        private ThreadGroup _ThreadGroup;
+        public ThreadGroup ThreadGroup {
+            get {
+                return _ThreadGroup;
+            }
+            set {
+                if (_ThreadGroup == value)
+                    return;
+                _ThreadGroup = value;
+                value?.GetQueueForType<ListClearWorkItem>()
+                    ?.RegisterDrainListener(OnClearListDrained);
+            }
+        }
+
+        private void OnClearListDrained (int listsCleared, bool moreRemain) {
+            var cl = ClearedLists.Value;
+            if (cl == null) // FIXME: This shouldn't be possible
+                return;
+
+            bool isSmallLocked = false, isLargeLocked = false;
+
+            try {
+                foreach (var item in cl) {
+                    var isLarge = (item.Capacity > SmallPoolMaxItemSize);
+                    if (isLarge) {
+                        if (!isLargeLocked) {
+                            isLargeLocked = true;
+                            Monitor.Enter(_LargePool);
+                        }
+                        if (_LargePool.Count >= LargePoolCapacity)
+                            continue;
+                        _LargePool.Add(item);
+                    } else {
+                        if (!isSmallLocked) {
+                            isSmallLocked = true;
+                            Monitor.Enter(_Pool);
+                        }
+                        if (_Pool.Count >= SmallPoolCapacity)
+                            continue;
+                        _Pool.Add(item);
+                    }
+                }
+            } finally {
+                if (isSmallLocked)
+                    Monitor.Exit(_Pool);
+                if (isLargeLocked)
+                    Monitor.Exit(_LargePool);
+                cl.Clear();
+            }
+        }
 
         public ListPool (int smallPoolCapacity, int initialItemSize, int maxItemSize) {
             SmallPoolCapacity = smallPoolCapacity;
@@ -174,9 +217,7 @@ namespace Squared.Render {
         private void ClearAndReturn (UnorderedList<T> list, UnorderedList<UnorderedList<T>> pool, int limit) {
             if (ThreadGroup != null) {
                 ThreadGroup.Enqueue(new ListClearWorkItem {
-                    List = list,
-                    Pool = pool,
-                    Limit = limit
+                    List = list
                 });
                 return;
             }

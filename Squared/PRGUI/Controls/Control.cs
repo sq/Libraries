@@ -690,6 +690,7 @@ namespace Squared.PRGUI {
             */
 
             var contentContext = passContext;
+            // FIXME: The memset for these actually burns a measurable amount of time
             ImperativeRenderer contentRenderer = default(ImperativeRenderer);
             RasterizePassSet childrenPassSet = default(RasterizePassSet);
 

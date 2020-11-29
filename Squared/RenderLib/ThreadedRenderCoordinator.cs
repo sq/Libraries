@@ -141,6 +141,8 @@ namespace Squared.Render {
         private readonly ConcurrentQueue<Action> BeforePresentQueue = new ConcurrentQueue<Action>();
         private readonly ConcurrentQueue<Action> AfterPresentQueue = new ConcurrentQueue<Action>();
 
+        private Stopwatch EndDrawStopwatch = new Stopwatch();
+
         private readonly ManualResetEvent PresentBegunSignal = new ManualResetEvent(false),
             PresentEndedSignal = new ManualResetEvent(false);
         private long PresentBegunWhen = 0, PresentEndedWhen = 0;
@@ -656,7 +658,9 @@ namespace Squared.Render {
                 lock (_FrameLock)
                     newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
-                var sw = Stopwatch.StartNew();
+                var sw = EndDrawStopwatch;
+                sw.Reset();
+                sw.Start();
 
                 RunBeforePrepareHandlers();
                 PrepareNextFrame(newFrame, true);

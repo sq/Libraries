@@ -8,8 +8,14 @@ using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Squared.Util;
 
 namespace Squared.Threading {
+    /// <summary>
+    /// Responds to one or more work items being processed by the current thread.
+    /// </summary>
+    public delegate void WorkQueueDrainListener (int itemsRunByThisThread, bool moreWorkRemains);
+
     public interface IWorkItemQueueTarget {
         /// <summary>Adds a work item to the end of the job queue for the current step.</summary>
         void QueueWorkItem (Action item);
@@ -37,6 +43,10 @@ namespace Squared.Threading {
         /// <param name="exhausted">Is set to true if the Step operation caused the queue to become empty.</param>
         /// <returns>The number of work items handled.</returns>
         int Step (out bool exhausted, int? maximumCount = null);
+        /// <summary>
+        /// Registers a listener to be invoked any time a group of work items is processed by a thread.
+        /// </summary>
+        void RegisterDrainListener (WorkQueueDrainListener listener);
     }
 
     // This job must be run on the main thread
@@ -86,6 +96,8 @@ namespace Squared.Threading {
         // For debugging
         internal bool IsMainThreadQueue = false;
 
+        private volatile int HasAnyListeners = 0;
+        private readonly List<WorkQueueDrainListener> DrainListeners = new List<WorkQueueDrainListener>();
         private readonly Queue<InternalWorkItem<T>> Queue = new Queue<InternalWorkItem<T>>();
         private int InFlightTasks = 0;
 
@@ -100,6 +112,17 @@ namespace Squared.Threading {
 
         public WorkQueue () {
             IsMainThreadWorkItem = typeof(IMainThreadWorkItem).IsAssignableFrom(typeof(T));
+        }
+
+        public void RegisterDrainListener (WorkQueueDrainListener listener) {
+            if (listener == null)
+                throw new ArgumentNullException("listener");
+
+            // FIXME: This will deadlock if we are currently draining... don't do that
+
+            HasAnyListeners = 1;
+            lock (DrainListeners)
+                DrainListeners.Add(listener);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -166,6 +189,7 @@ namespace Squared.Threading {
                 var isInFlight = false;
 
                 try {
+                    // FIXME: Find a way to not acquire this every step
                     lock (Queue) {
                         running = ((count = Queue.Count) > 0) &&
                             (result < actualMaximumCount);
@@ -204,6 +228,12 @@ namespace Squared.Threading {
 
             lock (Queue)
                 exhausted = Queue.Count == 0;
+
+            if ((result > 0) && (HasAnyListeners != 0)) {
+                lock (DrainListeners)
+                    foreach (var listener in DrainListeners)
+                        listener(result, !exhausted);
+            }
 
             return result;
         }

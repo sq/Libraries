@@ -56,11 +56,24 @@ namespace Framework {
             var totalMax = updateAverage + drawMax + beginMax + endMax + waitMax;
             var fpsAverage = 1000.0 / totalAverage;
 
-            StringBuilder.AppendFormat("ms/f {0,7:000.00}\r\n", totalAverage);
-            StringBuilder.AppendFormat("max  {0,7:000.00}\r\n", totalMax);
-            StringBuilder.AppendFormat("upd% {0,4:000.0}\r\n", (updateAverage / totalAverage) * 100);
-            StringBuilder.AppendFormat("FPS ~{0,7:000.00}\r\n", fpsAverage);
-            StringBuilder.AppendFormat("batch {0,7:0000}\r\n", LastBatchCount);
+            StringBuilder.Append("ms/f ");
+            StringBuilder.Append(Math.Round(totalAverage, 3, MidpointRounding.AwayFromZero));
+            StringBuilder.AppendLine();
+            StringBuilder.Append("max ");
+            StringBuilder.Append(Math.Round(totalMax, 3, MidpointRounding.AwayFromZero));
+            StringBuilder.AppendLine();
+            StringBuilder.Append("upd% ");
+            StringBuilder.Append(Math.Round(
+                (updateAverage / totalAverage) * 100, 1, MidpointRounding.AwayFromZero
+            ));
+            StringBuilder.AppendLine();
+            StringBuilder.Append("FPS ~");
+            StringBuilder.Append(Math.Round(
+                fpsAverage, 1, MidpointRounding.AwayFromZero
+            ));
+            StringBuilder.AppendLine();
+            StringBuilder.Append(LastBatchCount);
+            StringBuilder.AppendLine(" batches");
         }
 
         public static void Record (FrameTiming timing, long updateElapsedTicks) {

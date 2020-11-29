@@ -22,6 +22,7 @@ using Squared.Render.RasterShape;
 using Squared.Render.Text;
 using Squared.Task;
 using Squared.Util;
+using Squared.Util.Text;
 
 namespace PRGUI.Demo {
     public class DemoGame : MultithreadedGame {
@@ -798,11 +799,12 @@ namespace PRGUI.Demo {
 
             const float scale = 0.5f;
             var text = PerformanceStats.GetText(-LastPerformanceStatPrimCount);
-            text.AppendFormat("{0:000} pass(es)", Context.LastPassCount);
-            text.AppendLine();
+            text.Append(Context.LastPassCount);
+            text.AppendLine(" passes");
 
-            using (var buffer = BufferPool<BitmapDrawCall>.Allocate(text.Length)) {
-                var layout = Font.LayoutString(text, buffer, scale: scale);
+            var s = (AbstractString)text;
+            using (var buffer = BufferPool<BitmapDrawCall>.Allocate(s.Length)) {
+                var layout = Font.LayoutString(s, buffer, scale: scale);
                 var layoutSize = layout.Size;
                 var position = new Vector2(Window.ClientBounds.Width - (240 * scale), Window.ClientBounds.Height - (240 * scale)).Floor();
                 var dc = layout.DrawCalls;
@@ -834,20 +836,20 @@ namespace PRGUI.Demo {
 
         public void BeforeComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall) {
             var opacity = drawCall.MultiplyColor.A / 255.0f;
-            var sigma = Arithmetic.Lerp(0f, 4f, 1.0f - opacity) + 1;
+            var sigma = Arithmetic.Lerp(0f, 4f, 1.0f - opacity) + 1 + ((control.Context.TopLevelFocused != control) ? 1 : 0);
             Materials.SetGaussianBlurParameters(Material, sigma, 7, 0);
         }
 
         public void Composite (Control control, ref ImperativeRenderer renderer, ref BitmapDrawCall drawCall) {
             var opacity = drawCall.MultiplyColor.A / 255.0f;
-            if (opacity >= 1)
+            if ((opacity >= 1) && (control.Context.TopLevelFocused == control))
                 renderer.Draw(ref drawCall, blendState: BlendState.AlphaBlend);
             else
                 renderer.Draw(ref drawCall, material: Material);
         }
 
         public bool WillComposite (Control control, float opacity) {
-            return (opacity < 1);
+            return (opacity < 1) || (control.Context.TopLevelFocused != control);
         }
     }
 }
