@@ -205,7 +205,7 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        internal bool FireSyntheticClick (Control target) {
+        public bool FireSyntheticClick (Control target) {
             var args = MakeMouseEventArgs(target, LastMousePosition, null);
             args.SequentialClickCount = 1;
             return FireEvent(UIEvents.Click, target, args);

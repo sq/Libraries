@@ -1097,7 +1097,7 @@ namespace Squared.PRGUI.Controls {
             get {
                 var sb = new StringBuilder();
                 sb.AppendLine("Ctrl+A Select All");
-                if (Selection.First != Selection.Second) {
+                if ((Selection.First != Selection.Second) && AllowCopy) {
                     sb.AppendLine("Ctrl+X Cut");
                     sb.AppendLine("Ctrl+C Copy");
                 }

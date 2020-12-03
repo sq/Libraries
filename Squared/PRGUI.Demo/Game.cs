@@ -589,31 +589,38 @@ namespace PRGUI.Demo {
         }
 
         private void BuildLoginWindow (ref ContainerBuilder builder) {
+            var window = (ModalDialog)builder.Control;
+
             builder.New<EditableText>()
                 .SetForceBreak(true)
                 .SetDescription("Username")
-                .SetBackgroundColor(new Color(40, 56, 60));
+                .SetBackgroundColor(new Color(40, 56, 60))
+                .SetMinimumSize(width: 400);
             builder.New<EditableText>()
                 .SetForceBreak(true)
                 .SetDescription("Password")
                 .SetPassword(true)
                 .SetBackgroundColor(new Color(40, 56, 60));
-            var m = (IModal)builder.Control;
+
             bool clicked1, clicked2;
-            builder.Text<Button>("Log In")
+            window.AcceptControl = 
+                builder.Text<Button>("OK")
                 .SetForceBreak(true)
                 .GetEvent(UIEvents.Click, out clicked1);
-            builder.Text<Button>("Cancel")
+            window.CancelControl =
+                builder.Text<Button>("Cancel")
                 .GetEvent(UIEvents.Click, out clicked2);
+
             if (clicked1 || clicked2)
-                m.Close();
+                window.Close();
         }
 
         private void ShowLoginWindow () {
             (new ModalDialog {
-                Title = "Log In",
+                Title = "Login",
                 BackgroundColor = new Color(70, 86, 90),
-                DynamicContents = BuildLoginWindow
+                DynamicContents = BuildLoginWindow,
+                ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap | ControlFlags.Container_Row
             }).Show(Context);
         }
 

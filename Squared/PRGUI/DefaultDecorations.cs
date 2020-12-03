@@ -917,7 +917,7 @@ namespace Squared.PRGUI {
             var fillColor = SelectionFillColor *
                 (isFocused
                     ? Arithmetic.Pulse(context.Now / 2f, 0.7f, 0.8f)
-                    : 0.55f
+                    : 0.45f
                 ) * (isCaret ? 1.8f : 1f);
             var outlineColor = (isFocused && !isCaret)
                 ? Color.White

@@ -429,6 +429,7 @@ namespace Squared.PRGUI.Controls {
             IsActive = true;
 
             AcceptsFocus = true;
+            PaintOrder = context.Controls.Max(c => c.PaintOrder) + 1;
             if (!context.Controls.Contains(this))
                 context.Controls.Add(this);
 
@@ -450,7 +451,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private Future<Control> ShowInternal (UIContext context, Vector2 adjustedPosition, Control selectedItem) {
+        private Future<Control> ShowInternalEpilogue (UIContext context, Vector2 adjustedPosition, Control selectedItem) {
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
             NextResultFuture = new Future<Control>();
@@ -462,8 +463,8 @@ namespace Squared.PRGUI.Controls {
             Position = adjustedPosition;
             Visible = true;
             Intangible = false;
-            context.NotifyModalShown(this);
             context.CaptureMouse(this, out _FocusDonor);
+            context.NotifyModalShown(this);
             Listener?.Shown(this);
             SelectItemViaKeyboard(selectedItem);
             // FIXME: This doesn't work the first time the menu is shown
@@ -500,7 +501,7 @@ namespace Squared.PRGUI.Controls {
             //  then shift the menu around if necessary to keep it on screen
             var adjustedPosition = AdjustPosition(context, (position ?? context.LastMousePosition));
 
-            return ShowInternal(context, adjustedPosition, selectedItem);
+            return ShowInternalEpilogue(context, adjustedPosition, selectedItem);
         }
 
         public Future<Control> Show (UIContext context, RectF anchorBox, Control selectedItem = null) {
@@ -508,7 +509,7 @@ namespace Squared.PRGUI.Controls {
                 context, new Vector2(anchorBox.Left, anchorBox.Top + anchorBox.Height)
             );
 
-            return ShowInternal(context, adjustedPosition, selectedItem);
+            return ShowInternalEpilogue(context, adjustedPosition, selectedItem);
         }
 
         public Future<Control> Show (UIContext context, Control anchor, Control selectedItem = null) {
