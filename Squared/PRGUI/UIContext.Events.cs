@@ -171,28 +171,44 @@ namespace Squared.PRGUI {
             if (FireEvent(name, Focused, evt))
                 return true;
 
+            bool needsToClearFocus = false;
+
             if (name == UIEvents.KeyPress) {
                 switch (key) {
                     case Keys.Escape:
-                        Focused = null;
+                        needsToClearFocus = true;
                         break;
                     case Keys.Tab:
                         int tabDelta = CurrentModifiers.Shift ? -1 : 1;
                         return RotateFocus(topLevel: CurrentModifiers.Control, delta: tabDelta, isUserInitiated: true);
                     case Keys.Space:
-                        if (Focused?.IsValidMouseInputTarget == true) {
-                            var args = MakeMouseEventArgs(Focused, LastMousePosition, null);
-                            args.SequentialClickCount = 1;
-                            return FireEvent(UIEvents.Click, Focused, args);
-                        }
+                        if (Focused?.IsValidMouseInputTarget == true)
+                            return FireSyntheticClick(Focused);
                         break;
                 }
             }
+
+            var activeModal = (ModalStack.Count > 0)
+                ? ModalStack[ModalStack.Count - 1]
+                : null;
+
+            if ((activeModal != null) && activeModal.OnUnhandledKeyEvent(name, evt))
+                return true;
+
+            // FIXME: Allow OnKeyEvent to block this?
+            if (needsToClearFocus)
+                Focused = null;
 
             if (OnKeyEvent != null)
                 return OnKeyEvent(name, key, ch);
 
             return false;
+        }
+
+        internal bool FireSyntheticClick (Control target) {
+            var args = MakeMouseEventArgs(target, LastMousePosition, null);
+            args.SequentialClickCount = 1;
+            return FireEvent(UIEvents.Click, target, args);
         }
 
         private Control PickRotateFocusTarget (bool topLevel, int delta) {
@@ -372,8 +388,10 @@ namespace Squared.PRGUI {
         ) {
             var newFocusTarget = value;
 
+            var topLevelAncestor = FindTopLevelAncestor(value);
+
             // Detect attempts to focus a control that is no longer in the hierarchy
-            if (FindTopLevelAncestor(value) == null)
+            if (topLevelAncestor == null)
                 value = null;
 
             if (!AllowNullFocus && (value == null))
@@ -412,16 +430,24 @@ namespace Squared.PRGUI {
             var previous = _Focused;
             if (previous != _Focused)
                 PreviousFocused = _Focused;
+
+            var newTopLevelAncestor = FindTopLevelAncestor(newFocusTarget);
+            if (ModalStack.Count > 0) {
+                var modal = ModalStack[ModalStack.Count - 1];
+                if (modal.RetainFocus && newTopLevelAncestor != modal)
+                    return false;
+            }
             _Focused = newFocusTarget;
 
             var previousTopLevel = TopLevelFocused;
-            TopLevelFocused = FindTopLevelAncestor(_Focused);
+            TopLevelFocused = newTopLevelAncestor;
             if ((TopLevelFocused == null) && (_Focused != null) && Controls.Contains(_Focused))
                 TopLevelFocused = _Focused;
             if (TopLevelFocused != previousTopLevel)
                 PreviousTopLevelFocused = previousTopLevel;
 
-            var fd = _Focused?.FocusDonor;
+            var fm = _Focused as IModal;
+            var fd = fm?.FocusDonor;
             TopLevelFocusDonor = FindTopLevelAncestor(fd);
 
             if ((previous != null) && (previous != newFocusTarget))

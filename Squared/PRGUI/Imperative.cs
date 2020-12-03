@@ -275,6 +275,20 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> OnClick (Action onClick) {
+            GetEvent(UIEvents.Click, out bool clicked);
+            if (clicked)
+                onClick();
+            return this;
+        }
+
+        public ControlBuilder<TControl> OnClick (Action<TControl> onClick) {
+            GetEvent(UIEvents.Click, out bool clicked);
+            if (clicked)
+                onClick(Control);
+            return this;
+        }
+
         public static implicit operator TControl (ControlBuilder<TControl> builder) {
             return builder.Control;
         }
@@ -301,6 +315,13 @@ namespace Squared.PRGUI.Imperative {
 
         public ControlBuilder<TControl> SetLayoutFlags (ControlFlags value) {
             Control.LayoutFlags = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetForceBreak (bool value) {
+            var flags = Control.LayoutFlags & ~ControlFlags.Layout_ForceBreak;
+            if (value)
+                flags |= ControlFlags.Layout_ForceBreak;
+            Control.LayoutFlags = flags;
             return this;
         }
 
@@ -416,6 +437,18 @@ namespace Squared.PRGUI.Imperative {
             var cast = (Control as EditableText);
             if (cast != null)
                 cast.Description = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetAllowCopy (bool value) {
+            var cast = (Control as EditableText);
+            if (cast != null)
+                cast.AllowCopy = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetPassword (bool value) {
+            var cast = (Control as EditableText);
+            if (cast != null)
+                cast.Password = value;
             return this;
         }
 

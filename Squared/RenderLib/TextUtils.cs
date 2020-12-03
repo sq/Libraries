@@ -44,6 +44,7 @@ namespace Squared.Render.Text {
         private int _LineLimit = int.MaxValue;
         private bool _MeasureOnly = false;
         private bool _RichText = false;
+        private char? _ReplacementCharacter = null;
 
         private readonly Dictionary<Pair<int>, LayoutMarker> _Markers = new Dictionary<Pair<int>, LayoutMarker>();
         private readonly Dictionary<Vector2, LayoutHitTest> _HitTests = new Dictionary<Vector2, LayoutHitTest>();
@@ -427,6 +428,15 @@ namespace Squared.Render.Text {
             }
         }
 
+        public char? ReplacementCharacter {
+            get {
+                return _ReplacementCharacter;
+            }
+            set {
+                InvalidatingNullableAssignment(ref _ReplacementCharacter, value);
+            }
+        }
+
         public bool IsValid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
@@ -465,7 +475,8 @@ namespace Squared.Render.Text {
                 alignment = (HorizontalAlignment)_Alignment,
                 reverseOrder = _ReverseOrder,
                 lineLimit = _LineLimit,
-                measureOnly = _MeasureOnly
+                measureOnly = _MeasureOnly,
+                replacementCodepoint = _ReplacementCharacter
             };
 
             foreach (var kvp in _Markers)
@@ -502,6 +513,7 @@ namespace Squared.Render.Text {
             this.XOffsetOfNewLine = source.XOffsetOfNewLine;
             this.RichText = source.RichText;
             this.RichTextConfiguration = source.RichTextConfiguration;
+            this.ReplacementCharacter = source.ReplacementCharacter;
         }
 
         /// <summary>

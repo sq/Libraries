@@ -180,6 +180,7 @@ namespace Squared.Render.Text {
         public bool                measureOnly;
         public GlyphPixelAlignment alignToPixels;
         public HorizontalAlignment alignment;
+        public uint?               replacementCodepoint;
         public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
 
         public float spacing {
@@ -565,9 +566,11 @@ namespace Squared.Render.Text {
                     }
                 }
 
-                bool isWhiteSpace = char.IsWhiteSpace(ch1),
+                codepoint = replacementCodepoint ?? codepoint;
+
+                bool isWhiteSpace = (char.IsWhiteSpace(ch1) && !replacementCodepoint.HasValue),
                      forcedWrap = false, lineBreak = false,
-                     deadGlyph = false, isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1);
+                     deadGlyph = false, isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1) || replacementCodepoint.HasValue;
                 Glyph glyph;
                 KerningAdjustment kerningAdjustment;
 

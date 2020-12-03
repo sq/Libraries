@@ -280,6 +280,10 @@ namespace PRGUI.Demo {
                 TooltipContent = "I'm a top-heavy window!"
             };
 
+            var loginButton = new Button {
+                Text = "Login"
+            };
+
             var volumeSlider = new Slider {
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                 Value = 80,
@@ -310,7 +314,8 @@ namespace PRGUI.Demo {
                 numberField,
                 volumeSlider,
                 hideButton,
-                toppleButton
+                toppleButton,
+                loginButton
             );
 
             FloatingWindow = (Window)window.Container;
@@ -560,6 +565,10 @@ namespace PRGUI.Demo {
                 Topple = Tween<float>.StartNow(0f, 2f, 5f, now: Context.NowL, repeatCount: 1, repeatMode: TweenRepeatMode.PulseSine);
             });
 
+            Context.EventBus.Subscribe(loginButton, UIEvents.Click, (ei) => {
+                ShowLoginWindow();
+            });
+
             Context.EventBus.Subscribe(FloatingWindow, UIEvents.OpacityTweenEnded, (ei) => {
                 if (FloatingWindow.Opacity.To >= 1)
                     return;
@@ -577,6 +586,35 @@ namespace PRGUI.Demo {
 
             Context.Controls.Add(topLevelContainer);
             Context.Controls.Add(window.Control);
+        }
+
+        private void BuildLoginWindow (ref ContainerBuilder builder) {
+            builder.New<EditableText>()
+                .SetForceBreak(true)
+                .SetDescription("Username")
+                .SetBackgroundColor(new Color(40, 56, 60));
+            builder.New<EditableText>()
+                .SetForceBreak(true)
+                .SetDescription("Password")
+                .SetPassword(true)
+                .SetBackgroundColor(new Color(40, 56, 60));
+            var m = (IModal)builder.Control;
+            bool clicked1, clicked2;
+            builder.Text<Button>("Log In")
+                .SetForceBreak(true)
+                .GetEvent(UIEvents.Click, out clicked1);
+            builder.Text<Button>("Cancel")
+                .GetEvent(UIEvents.Click, out clicked2);
+            if (clicked1 || clicked2)
+                m.Close();
+        }
+
+        private void ShowLoginWindow () {
+            (new ModalDialog {
+                Title = "Log In",
+                BackgroundColor = new Color(70, 86, 90),
+                DynamicContents = BuildLoginWindow
+            }).Show(Context);
         }
 
         private void BuildTestMenu (ref ContainerBuilder builder) {

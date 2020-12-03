@@ -32,6 +32,8 @@ namespace Squared.PRGUI.Controls {
         public const bool OptimizedClipping = true;
         public const bool Multiline = false;
 
+        public bool AllowCopy = true;
+
         public bool StripNewlines = true;
 
         public const float SelectionHorizontalScrollPadding = 40;
@@ -74,6 +76,13 @@ namespace Squared.PRGUI.Controls {
 
         protected Vector2? ClickStartVirtualPosition = null;
         private Pair<int> _Selection;
+
+        public bool Password {
+            set {
+                DynamicLayout.ReplacementCharacter = value ? '*' : (char?)null;
+                AllowCopy = !value;
+            }
+        }
 
         protected override bool ShouldClipContent {
             get {
@@ -689,10 +698,14 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void CopySelection () {
+            if (!AllowCopy)
+                return;
             SDL2.SDL.SDL_SetClipboardText(SelectedText);
         }
 
         public void CutSelection () {
+            if (!AllowCopy)
+                return;
             SDL2.SDL.SDL_SetClipboardText(SelectedText);
             SelectedText = "";
         }

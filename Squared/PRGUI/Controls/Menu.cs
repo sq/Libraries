@@ -20,7 +20,7 @@ namespace Squared.PRGUI.Controls {
         void ItemChosen (Menu menu, Control item);
     }
 
-    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource {
+    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IModal {
         // Yuck
         public const int PageSize = 8;
 
@@ -101,6 +101,9 @@ namespace Squared.PRGUI.Controls {
         );
 
         new public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
+
+        protected Control _FocusDonor;
+        public Control FocusDonor => _FocusDonor;
 
         public Menu ()
             : base () {
@@ -450,6 +453,7 @@ namespace Squared.PRGUI.Controls {
         private Future<Control> ShowInternal (UIContext context, Vector2 adjustedPosition, Control selectedItem) {
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
+            NextResultFuture = new Future<Control>();
 
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
             LayoutKey = ControlKey.Invalid;
@@ -458,10 +462,9 @@ namespace Squared.PRGUI.Controls {
             Position = adjustedPosition;
             Visible = true;
             Intangible = false;
+            context.NotifyModalShown(this);
             context.CaptureMouse(this, out _FocusDonor);
             Listener?.Shown(this);
-            FireEvent(UIEvents.Shown);
-            NextResultFuture = new Future<Control>();
             SelectItemViaKeyboard(selectedItem);
             // FIXME: This doesn't work the first time the menu is shown
             if (selectedItem != null)
@@ -482,6 +485,12 @@ namespace Squared.PRGUI.Controls {
                 Arithmetic.Clamp(desiredPosition.Y, margin.Top, maxY)
             );
             return result;
+        }
+
+        bool IModal.FadeBackground => false;
+
+        void IModal.Show (UIContext context) {
+            Show(context, (Vector2?)null);
         }
 
         public Future<Control> Show (UIContext context, Vector2? position = null, Control selectedItem = null) {
@@ -514,14 +523,14 @@ namespace Squared.PRGUI.Controls {
                 return;
             IsActive = false;
             Intangible = true;
-            Context.ReleaseCapture(this, FocusDonor);
             var now = Context.NowL;
             Opacity = Tween<float>.StartNow(Opacity.Get(now), 0, MenuHideSpeed, now: now);
             Listener?.Closed(this);
-            FireEvent(UIEvents.Closed);
+            Context.NotifyModalClosed(this);
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);
             AcceptsFocus = false;
+            _FocusDonor = null;
         }
 
         StringBuilder TextBuilder = new StringBuilder();
@@ -584,6 +593,10 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        bool IModal.BlockHitTests => false;
+        bool IModal.BlockInput => false;
+        bool IModal.RetainFocus => false;
+
         public Control this [int index] {
             get => Children[index];
             set => Children[index] = value;
@@ -591,5 +604,9 @@ namespace Squared.PRGUI.Controls {
         public void RemoveAt (int index) => Children.RemoveAt(index);
         public void Clear () => Children.Clear();
         public void Add (Control child) => Children.Add(child);
+
+        bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) {
+            return false;
+        }
     }
 }

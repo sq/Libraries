@@ -16,6 +16,21 @@ using Squared.Render.RasterShape;
 using Squared.Util;
 
 namespace Squared.PRGUI {
+    public interface IModal {
+        /// <summary>
+        /// Focus was transferred to this control from another control, and it will
+        ///  be returned when this control goes away. Used for menus and modal dialogs
+        /// </summary>
+        Control FocusDonor { get; }
+        bool BlockHitTests { get; }
+        bool BlockInput { get; }
+        bool RetainFocus { get; }
+        bool FadeBackground { get; }
+        void Show (UIContext context);
+        void Close ();
+        bool OnUnhandledKeyEvent (string name, KeyEventArgs args);
+    }
+
     public interface IControlCompositor {
         bool WillComposite (Control control, float opacity);
         void BeforeComposite (Control control, DeviceManager dm, ref BitmapDrawCall drawCall);
@@ -268,13 +283,6 @@ namespace Squared.PRGUI {
         public bool Intangible { get; set; }
 
         private Control _FocusBeneficiary;
-        protected Control _FocusDonor;
-
-        /// <summary>
-        /// Focus was transferred to this control from another control, and it will
-        ///  be returned when this control goes away. Used for menus and modal dialogs
-        /// </summary>
-        public Control FocusDonor => _FocusDonor;
 
         /// <summary>
         /// This control cannot receive focus, but input events that would give it focus will
@@ -616,9 +624,10 @@ namespace Squared.PRGUI {
                     result |= ControlStates.Hovering;
                 // HACK: If a modal has temporarily borrowed focus from us, we should still appear
                 //  to be focused.
+                var fm = context.UIContext.Focused as IModal;
                 if (
                     (context.UIContext.Focused == this) || 
-                    (context.UIContext.Focused?.FocusDonor == this)
+                    (fm?.FocusDonor == this)
                 ) {
                     result |= ControlStates.Focused;
                     result |= ControlStates.ContainsFocus;

@@ -51,6 +51,7 @@
     <Compile Include="Controls\ListBox.cs" />
     <Compile Include="Controls\Menu.cs" />
     <Compile Include="Controls\Dropdown.cs" />
+    <Compile Include="Controls\ModalDialog.cs" />
     <Compile Include="Controls\ParameterEditor.cs" />
     <Compile Include="Controls\Slider.cs" />
     <Compile Include="Controls\StaticText.cs" />

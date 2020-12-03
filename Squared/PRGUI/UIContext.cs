@@ -109,6 +109,9 @@ namespace Squared.PRGUI {
             Keys.Insert
         };
 
+        public float BackgroundFadeOpacity = 0.15f;
+        public float BackgroundFadeDuration = 0.2f;
+
         // Allocate scratch rendering buffers (for composited controls) at a higher or lower resolution
         //  than the canvas, to improve the quality of transformed imagery
         public readonly float ScratchScaleFactor = 1.0f;
@@ -210,6 +213,8 @@ namespace Squared.PRGUI {
         internal List<UnhandledEvent> UnhandledEvents = new List<UnhandledEvent>();
         internal List<UnhandledEvent> PreviousUnhandledEvents = new List<UnhandledEvent>();
 
+        internal List<IModal> ModalStack = new List<IModal>();
+
         /// <summary>
         /// The layout engine used to compute control sizes and positions
         /// </summary>
@@ -304,7 +309,8 @@ namespace Squared.PRGUI {
                     (LastKeyboardState.GetPressedKeys().Length > 0) ||
                     (KeyboardSelection != null) ||
                     (MouseCaptured != null) ||
-                    AcceleratorOverlayVisible;
+                    AcceleratorOverlayVisible ||
+                    (ModalStack.Count > 0);
         }
 
         public Control TopLevelFocused { get; private set; }
@@ -656,6 +662,41 @@ namespace Squared.PRGUI {
             }
         }
 
+        public void ShowModal (IModal modal) {
+            if (ModalStack.Contains(modal))
+                throw new InvalidOperationException("Modal already visible");
+            var ctl = (Control)modal;
+            ctl.PaintOrder = Controls.Max(c => c.PaintOrder) + 1;
+            Controls.Add(ctl);
+            NotifyModalShown(modal);
+        }
+
+        public void NotifyModalShown (IModal modal) {
+            if (ModalStack.Contains(modal))
+                throw new InvalidOperationException("Modal already visible");
+            var ctl = (Control)modal;
+            if (!Controls.Contains(ctl))
+                throw new InvalidOperationException("Modal not in top level controls list");
+            TopLevelFocusMemory.Remove(ctl);
+            ModalStack.Add(modal);
+            TrySetFocus(ctl, false, false);
+            FireEvent(UIEvents.Shown, ctl);
+        }
+
+        public void NotifyModalClosed (IModal modal) {
+            var ctl = (Control)modal;
+            var newFocusTarget = (TopLevelFocused == ctl)
+                ? modal.FocusDonor
+                : null;
+            ReleaseCapture(ctl, modal.FocusDonor);
+            if (!ModalStack.Contains(modal))
+                return;
+            ModalStack.Remove(modal);
+            FireEvent(UIEvents.Closed, ctl);
+            if (newFocusTarget != null)
+                TrySetFocus(newFocusTarget, false, false);
+        }
+
         // Clean up when a control is removed in case it has focus or mouse capture,
         //  and attempt to return focus to the most recent place it occupied (for modals)
         internal void NotifyControlBeingRemoved (Control control) {
@@ -666,9 +707,10 @@ namespace Squared.PRGUI {
             if (IsEqualOrAncestor(_MouseCaptured, control))
                 MouseCaptured = null;
 
+            var fm = Focused as IModal;
             if (IsEqualOrAncestor(Focused, control)) {
-                if (Focused?.FocusDonor != null) {
-                    TrySetFocus(Focused?.FocusDonor, false, false);
+                if (fm?.FocusDonor != null) {
+                    TrySetFocus(fm?.FocusDonor, false, false);
                     if (IsEqualOrAncestor(Focused, control))
                         TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false, false);
                 } else
@@ -681,6 +723,8 @@ namespace Squared.PRGUI {
                 PreviousFocused = null;
             if (PreviousTopLevelFocused == control)
                 PreviousTopLevelFocused = null;
+
+            NotifyModalClosed(control as IModal);
         }
 
         public void UpdateInput (
@@ -719,6 +763,18 @@ namespace Squared.PRGUI {
 
             UpdateCaptureAndHovering(mousePosition);
             var mouseEventTarget = MouseCaptured ?? Hovering;
+            var topLevelTarget = (mouseEventTarget != null)
+                ? FindTopLevelAncestor(mouseEventTarget)
+                : null;
+
+            var activeModal = (ModalStack.Count > 0) 
+                ? ModalStack[ModalStack.Count - 1] 
+                : null;
+            var wasInputBlocked = false;
+            if ((activeModal?.BlockInput == true) && (activeModal != topLevelTarget)) {
+                mouseEventTarget = null;
+                wasInputBlocked = true;
+            }
 
             ProcessKeyboardState(ref LastKeyboardState, ref keyboardState);
 
@@ -777,7 +833,7 @@ namespace Squared.PRGUI {
                 FireEvent(UIEvents.MouseButtonsChanged, mouseEventTarget, MakeMouseEventArgs(mouseEventTarget, mousePosition, mouseDownPosition));
             }
 
-            if (processClick) {
+            if (processClick && !wasInputBlocked) {
                 // FIXME: if a menu is opened by a mousedown event, this will
                 //  fire a click on the menu in response to its mouseup
                 if (Hovering == previouslyCaptured) {
@@ -1095,9 +1151,16 @@ namespace Squared.PRGUI {
 
         // Position is relative to the top-left corner of the canvas
         public Control HitTest (Vector2 position, bool acceptsMouseInputOnly = false, bool acceptsFocusOnly = false) {
+            var areHitTestsBlocked = false;
+            foreach (var m in ModalStack)
+                if (m.BlockHitTests)
+                    areHitTestsBlocked = true;
+
             var sorted = Controls.InPaintOrder(FrameIndex);
             for (var i = sorted.Count - 1; i >= 0; i--) {
                 var control = sorted[i];
+                if (areHitTestsBlocked && !ModalStack.Contains(control as IModal))
+                    continue;
                 var result = control.HitTest(Layout, position, acceptsMouseInputOnly, acceptsFocusOnly);
                 if (result != null)
                     return result;
@@ -1144,6 +1207,9 @@ namespace Squared.PRGUI {
             // FIXME: Do we need to do anything here?
         }
 
+        private bool WasBackgroundFaded = false;
+        private Tween<float> BackgroundFadeTween = new Tween<float>(0f);
+
         public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer) {
             FrameIndex++;
 
@@ -1155,6 +1221,29 @@ namespace Squared.PRGUI {
             foreach (var srt in ScratchRenderTargets) {
                 srt.Update();
                 srt.Reset();
+            }
+
+            var activeModal = (ModalStack.Count > 0)
+                ? ModalStack[ModalStack.Count - 1]
+                : null;
+            var needsToFadeBackground = false;
+            foreach (var modal in ModalStack) {
+                if (modal.FadeBackground) {
+                    if (!WasBackgroundFaded) {
+                        BackgroundFadeTween = Tween<float>.StartNow(
+                            BackgroundFadeTween.Get(NowL), 1f,
+                            seconds: BackgroundFadeDuration, now: NowL
+                        );
+                    }
+
+                    needsToFadeBackground = true;
+                    WasBackgroundFaded = true;
+                }
+            }
+
+            if (!needsToFadeBackground && WasBackgroundFaded) {
+                BackgroundFadeTween = new Tween<float>(0f);
+                WasBackgroundFaded = false;
             }
 
             using (var outerGroup = BatchGroup.New(frame, layer))
@@ -1171,6 +1260,16 @@ namespace Squared.PRGUI {
                 var topLevelFocusIndex = seq.IndexOf(TopLevelFocused);
                 for (int i = 0; i < seq.Count; i++) {
                     var control = seq[i];
+                    if (needsToFadeBackground && (control == activeModal)) {
+                        var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity;
+                        renderer.FillRectangle(
+                            Game.Bounds.FromPositionAndSize(Vector2.One * -9999, Vector2.One * 99999), 
+                            Color.White * opacity, blendState: RenderStates.SubtractiveBlend
+                        );
+                        renderer.Layer += 1;
+                        needsToFadeBackground = false;
+                    }
+
                     // When the accelerator overlay is visible, fade out any top-level controls
                     //  that cover the currently focused top-level control so that the user can see
                     //  any controls that might be active
