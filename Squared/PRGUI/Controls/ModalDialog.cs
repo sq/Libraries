@@ -4,11 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Input;
+using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Layout;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
-    public class ModalDialog : Window, IModal {
+    public class ModalDialog : Window, IModal, IAcceleratorSource {
         public const float ModalShowSpeed = 0.1f;
         public const float ModalHideSpeed = 0.25f;
 
@@ -53,6 +54,15 @@ namespace Squared.PRGUI.Controls {
             else if ((args.Key == Keys.Escape) && (CancelControl != null))
                 return Context.FireSyntheticClick(CancelControl);
             return false;
+        }
+
+        IEnumerable<KeyValuePair<Control, string>> IAcceleratorSource.Accelerators {
+            get {
+                if (AcceptControl != null)
+                    yield return new KeyValuePair<Control, string>(AcceptControl, "Enter");
+                if (CancelControl != null)
+                    yield return new KeyValuePair<Control, string>(CancelControl, "Escape");
+            }
         }
     }
 }

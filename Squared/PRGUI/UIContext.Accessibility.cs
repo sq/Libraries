@@ -233,6 +233,14 @@ namespace Squared.PRGUI {
             // FIXME: This looks confusing
             // RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, Focused, null);
 
+            var topLevelSource = TopLevelFocused as IAcceleratorSource;
+            if (topLevelSource != null) {
+                labelGroup = renderer.MakeSubgroup();
+
+                foreach (var kvp in topLevelSource.Accelerators)
+                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, kvp.Key, kvp.Value, true);
+            }
+
             RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, tab, "Tab");
             if (shiftTab != tab)
                 RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, shiftTab, "Shift+Tab");
@@ -245,12 +253,27 @@ namespace Squared.PRGUI {
             }
 
             var focusedSource = Focused as IAcceleratorSource;
-            if (focusedSource != null) {
+            if ((focusedSource != null) && (focusedSource != topLevelSource)) {
                 labelGroup = renderer.MakeSubgroup();
 
                 foreach (var kvp in focusedSource.Accelerators)
                     RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, kvp.Key, kvp.Value, true);
             }
+        }
+
+        private bool IntersectsAnyPreviousBox (ref RectF box) {
+            const float padding = 1;
+            var padded = box;
+            padded.Left -= padding;
+            padded.Top -= padding;
+            padded.Width += (padding * 2);
+            padded.Height += (padding * 2);
+
+            foreach (var previousRect in RasterizedOverlayBoxes)
+                if (previousRect.Intersects(ref padded))
+                    return true;
+
+            return false;
         }
 
         private void RasterizeAcceleratorOverlay (
@@ -287,12 +310,14 @@ namespace Squared.PRGUI {
                     labelPosition, 
                     layout.Size + decorator.Padding.Size
                 );
-                foreach (var previousRect in RasterizedOverlayBoxes) {
-                    if (previousRect.Intersects(ref labelBox)) {
-                        labelBox.Left = box.Extent.X - labelBox.Width;
-                        break;
-                    }
+                if (IntersectsAnyPreviousBox(ref labelBox))
+                    labelBox.Left = box.Extent.X - labelBox.Width;
+                if (IntersectsAnyPreviousBox(ref labelBox)) {
+                    labelBox.Left = labelPosition.X;
+                    labelBox.Top = box.Extent.Y + 1; // FIXME: Why the +1?
                 }
+                if (IntersectsAnyPreviousBox(ref labelBox))
+                    labelBox.Left = box.Extent.X - labelBox.Width;
 
                 var labelContentBox = new RectF(
                     labelBox.Position + new Vector2(decorator.Padding.Left, decorator.Padding.Top),
