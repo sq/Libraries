@@ -43,7 +43,7 @@ namespace Squared.PRGUI.Controls {
             SetContext(context);
             var now = context.NowL;
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
-            LayoutKey = ControlKey.Invalid;
+            InvalidateLayout();
             // Force realignment
             ScreenAlignment = ScreenAlignment;
             Visible = true;

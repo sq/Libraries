@@ -280,6 +280,8 @@ namespace Squared.PRGUI.Controls {
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             ComputeAutoSize(context);
             UpdateLineBreak(context, GetDecorator(context.DecorationProvider));
+            if (!Content.IsValid)
+                ComputeAutoSize(context);
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);
             return result;
         }

@@ -245,7 +245,17 @@ namespace Squared.PRGUI {
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
 
-        internal ControlKey LayoutKey = ControlKey.Invalid;
+        private ControlKey _LayoutKey = ControlKey.Invalid;
+        public ControlKey LayoutKey {
+            get => _LayoutKey;
+            private set {
+                if (value == _LayoutKey)
+                    return;
+                if (!_LayoutKey.IsInvalid)
+                    ;
+                _LayoutKey = value;
+            }
+        }
 
         private bool _Visible = true;
         public bool Visible {
@@ -924,7 +934,8 @@ namespace Squared.PRGUI {
         }
 
         internal void SetContext (UIContext context) {
-            InvalidateLayout();
+            if (_CachedContext == context)
+                return;
 
             if ((_CachedContext != null) && (_CachedContext != context))
                 throw new InvalidOperationException("UI context already set");
@@ -934,8 +945,6 @@ namespace Squared.PRGUI {
         }
 
         internal void SetParent (Control parent) {
-            InvalidateLayout();
-
             if (parent == null) {
                 WeakParent = null;
                 return;
@@ -949,6 +958,7 @@ namespace Squared.PRGUI {
                     return;
             }
 
+            InvalidateLayout();
             WeakParent = new WeakReference<Control>(parent, false);
             SetContext(parent.Context);
         }

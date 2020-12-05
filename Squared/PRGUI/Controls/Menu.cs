@@ -457,7 +457,7 @@ namespace Squared.PRGUI.Controls {
             NextResultFuture = new Future<Control>();
 
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
-            LayoutKey = ControlKey.Invalid;
+            InvalidateLayout();
             SelectedItem = null;
             SelectedItem = selectedItem;
             Position = adjustedPosition;

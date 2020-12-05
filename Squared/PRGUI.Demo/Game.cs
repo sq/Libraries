@@ -50,6 +50,8 @@ namespace PRGUI.Demo {
 
         public bool IsMouseOverUI = false, TearingTest = false;
         public long LastTimeOverUI;
+        private bool IsFirstUpdate = true, IsFirstDraw = true;
+        private int UpdatesToSkip = 0, DrawsToSkip = 0;
 
         Tween<float> Topple = new Tween<float>(0);
 
@@ -73,7 +75,7 @@ namespace PRGUI.Demo {
             IsFixedTimeStep = false;
 
             if (IsFixedTimeStep)
-                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 5f);
+                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 2f);
 
             PreviousKeyboardState = Keyboard.GetState();
 
@@ -704,7 +706,11 @@ namespace PRGUI.Demo {
 
             var mousePosition = new Vector2(MouseState.X, MouseState.Y);
 
-            Context.Update();
+            if (IsFirstUpdate || (UpdatesToSkip <= 0)) {
+                IsFirstUpdate = false;
+                Context.Update();
+            } else 
+                UpdatesToSkip--;
 
             if (IsActive)
                 Context.UpdateInput(
@@ -808,7 +814,12 @@ namespace PRGUI.Demo {
                 Window_ClientSizeChanged(null, EventArgs.Empty);
             }
 
-            Context.Rasterize(frame, UIRenderTarget, -9990);
+            if (IsFirstDraw || (DrawsToSkip <= 0)) {
+                IsFirstDraw = false;
+                Context.Rasterize(frame, UIRenderTarget, -9990);
+            } else
+                DrawsToSkip--;
+
             var ir = new ImperativeRenderer(frame, Materials);
             ir.Clear(color: Color.Transparent);
             ir.Layer += 1;

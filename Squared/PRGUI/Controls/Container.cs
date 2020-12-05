@@ -218,7 +218,7 @@ namespace Squared.PRGUI.Controls {
                 // FIXME: We need to also lock our minimum width in this case
                 // HACK
                 foreach (var item in Children)
-                    item.LayoutKey = ControlKey.Invalid;
+                    item.InvalidateLayout();
 
                 return result;
             } else {

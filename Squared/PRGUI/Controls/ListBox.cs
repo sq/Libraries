@@ -63,8 +63,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         private int VirtualItemOffset = 0;
-        private float VirtualItemHeight = 30; // HACK, will be adjusted each frame
-        private int VirtualViewportSize = 100; // HACK, will be adjusted up/down each frame
+        private float VirtualItemHeight = 1; // HACK, will be adjusted each frame
+        private int VirtualViewportSize = 2; // HACK, will be adjusted up/down each frame
 
         private bool NeedsUpdate = true;
 
