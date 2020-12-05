@@ -595,33 +595,41 @@ namespace PRGUI.Demo {
                 .SetForceBreak(true)
                 .SetDescription("Username")
                 .SetBackgroundColor(new Color(40, 56, 60))
-                .SetMinimumSize(width: 400);
+                .SetMinimumSize(width: 400)
+                .GetText(out AbstractString username);
             builder.New<EditableText>()
                 .SetForceBreak(true)
                 .SetDescription("Password")
                 .SetPassword(true)
                 .SetBackgroundColor(new Color(40, 56, 60));
 
-            bool clicked1, clicked2;
             window.AcceptControl = 
                 builder.Text<Button>("OK")
-                .SetForceBreak(true)
-                .GetEvent(UIEvents.Click, out clicked1);
+                .SetForceBreak(true);
             window.CancelControl =
-                builder.Text<Button>("Cancel")
-                .GetEvent(UIEvents.Click, out clicked2);
+                builder.Text<Button>("Cancel");
 
-            if (clicked1 || clicked2)
-                window.Close();
+            if (builder.GetEvent(UIEvents.Click, out Control button))
+                window.Close(
+                    button == window.AcceptControl 
+                    ? username.ToString()
+                    : null);
         }
 
         private void ShowLoginWindow () {
-            (new ModalDialog {
+            var fUsername = (new ModalDialog {
                 Title = "Login",
                 BackgroundColor = new Color(70, 86, 90),
                 DynamicContents = BuildLoginWindow,
                 ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap | ControlFlags.Container_Row
             }).Show(Context);
+            fUsername.RegisterOnComplete((f) => {
+                Console.WriteLine(
+                    (f.Result != null)
+                        ? "Login with username " + fUsername.Result
+                        : "Login cancelled"
+                );
+            });
         }
 
         private void BuildTestMenu (ref ContainerBuilder builder) {

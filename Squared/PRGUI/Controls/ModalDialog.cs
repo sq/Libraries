@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Layout;
+using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.PRGUI.Controls {
@@ -24,28 +25,66 @@ namespace Squared.PRGUI.Controls {
         bool IModal.BlockInput => true;
         bool IModal.RetainFocus => true;
 
-        public void Show (UIContext context) {
+        public bool IsActive { get; private set; }
+
+        private Future<object> NextResultFuture = null;
+
+        public static Future<object> ShowNew (UIContext context) {
+            var modal = new ModalDialog {
+            };
+            return modal.Show(context);
+        }
+
+        void IModal.Show (UIContext context) {
+            this.Show(context);
+        }
+
+        public Future<object> Show (UIContext context) {
             SetContext(context);
+            var now = context.NowL;
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
             LayoutKey = ControlKey.Invalid;
             // Force realignment
             ScreenAlignment = ScreenAlignment;
             Visible = true;
             Intangible = false;
-            var now = context.NowL;
+            if (IsActive)
+                return NextResultFuture;
+            var f = NextResultFuture = new Future<object>();
             Opacity = Tween<float>.StartNow(0f, 1f, ModalShowSpeed, now: now);
             GenerateDynamicContent(true);
             _FocusDonor = context.TopLevelFocused;
             context.ShowModal(this);
+            IsActive = true;
+            return f;
         }
 
-        public void Close () {
+        void IModal.Close () {
+            this.Close(null);
+        }
+
+        public void Close (object result = null) {
+            if (!IsActive) {
+                // FIXME
+                /*
+                if ((result != null) && (result != NextResultFuture.Result))
+                    throw new ArgumentException("This modal was already closed with a different result");
+                */
+                return;
+            }
+
+            IsActive = false;
+            NextResultFuture?.SetResult(result, null);
             Intangible = true;
             var now = Context.NowL;
             Opacity = Tween<float>.StartNow(Opacity.Get(now), 0f, ModalHideSpeed, now: now);
             Context.NotifyModalClosed(this);
             AcceptsFocus = false;
             _FocusDonor = null;
+        }
+
+        bool IModal.OnUnhandledEvent (string name, Util.Event.IEventInfo args) {
+            return false;
         }
 
         bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) {

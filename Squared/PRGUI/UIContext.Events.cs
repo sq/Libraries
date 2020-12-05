@@ -54,6 +54,64 @@ namespace Squared.PRGUI {
                 return target.HandleEvent(name);
         }
 
+        private int FindChildEvent (List<UIContext.UnhandledEvent> events, Control parent, string eventName, out Control source) {
+            for (int i = 0, c = events.Count; i < c; i++) {
+                if (events[i].Name == eventName) {
+                    // FIXME: Handle parents that are not top level controls
+                    var topLevel = FindTopLevelAncestor(events[i].Source);
+                    if (topLevel != parent)
+                        continue;
+                    source = events[i].Source;
+                    return i;
+                }
+            }
+
+            source = null;
+            return -1;
+        }
+
+        private static int FindEvent (List<UIContext.UnhandledEvent> events, ref UIContext.UnhandledEvent evt) {
+            for (int i = 0, c = events.Count; i < c; i++) {
+                if (evt.Equals(events[i]))
+                    return i;
+            }
+
+            return -1;
+        }
+
+        public bool GetUnhandledChildEvent (Control parent, string eventName, out Control source) {
+            var index = FindChildEvent(PreviousUnhandledEvents, parent, eventName, out source);
+            if (index >= 0) {
+                PreviousUnhandledEvents.RemoveAt(index);
+                return true;
+            }
+
+            index = FindChildEvent(UnhandledEvents, parent, eventName, out source);
+            if (index >= 0) {
+                UnhandledEvents.RemoveAt(index);
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool GetUnhandledEvent (Control source, string eventName) {
+            var key = new UnhandledEvent { Source = source, Name = eventName };
+            var index = FindEvent(PreviousUnhandledEvents, ref key);
+            if (index >= 0) {
+                PreviousUnhandledEvents.RemoveAt(index);
+                return true;
+            }
+
+            index = FindEvent(UnhandledEvents, ref key);
+            if (index >= 0) {
+                UnhandledEvents.RemoveAt(index);
+                return true;
+            }
+
+            return false;
+        }
+
         private void HandleNewFocusTarget (Control previous, Control target, bool isUserInitiated) {
             var topLevelParent = FindTopLevelAncestor(target);
             if (topLevelParent != null) {
@@ -188,9 +246,7 @@ namespace Squared.PRGUI {
                 }
             }
 
-            var activeModal = (ModalStack.Count > 0)
-                ? ModalStack[ModalStack.Count - 1]
-                : null;
+            var activeModal = ActiveModal;
 
             if ((activeModal != null) && activeModal.OnUnhandledKeyEvent(name, evt))
                 return true;
@@ -432,11 +488,9 @@ namespace Squared.PRGUI {
                 PreviousFocused = _Focused;
 
             var newTopLevelAncestor = FindTopLevelAncestor(newFocusTarget);
-            if (ModalStack.Count > 0) {
-                var modal = ModalStack[ModalStack.Count - 1];
-                if (modal.RetainFocus && newTopLevelAncestor != modal)
-                    return false;
-            }
+            var activeModal = ActiveModal;
+            if ((activeModal?.RetainFocus == true) && (newTopLevelAncestor != activeModal))
+                return false;
             _Focused = newFocusTarget;
 
             var previousTopLevel = TopLevelFocused;

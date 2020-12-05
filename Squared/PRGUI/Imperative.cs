@@ -220,6 +220,14 @@ namespace Squared.PRGUI.Imperative {
         public ControlBuilder<Control> Properties {
             get => new ControlBuilder<Control>(Control);
         }
+
+        public bool GetEvent (string eventName, out Control source) {
+            return Context.GetUnhandledChildEvent(Control, eventName, out source);
+        }
+
+        public bool GetEvent (string eventName) {
+            return Context.GetUnhandledEvent(Control, eventName);
+        }
     }
 
     public static class ControlBuilder {
@@ -249,28 +257,8 @@ namespace Squared.PRGUI.Imperative {
             return new ContainerBuilder(Control);
         }
 
-        private static int FindEvent (List<UIContext.UnhandledEvent> events, ref UIContext.UnhandledEvent evt) {
-            for (int i = 0, c = events.Count; i < c; i++) {
-                if (evt.Equals(events[i]))
-                    return i;
-            }
-
-            return -1;
-        }
-
         public ControlBuilder<TControl> GetEvent (string eventName, out bool result) {
-            var key = new UIContext.UnhandledEvent { Source = Control, Name = eventName };
-            var index = FindEvent(Context.PreviousUnhandledEvents, ref key);
-            if (index >= 0) {
-                Context.PreviousUnhandledEvents.RemoveAt(index);
-                result = true;
-                return this;
-            }
-
-            index = FindEvent(Context.UnhandledEvents, ref key);
-            result = index >= 0;
-            if (result)
-                Context.UnhandledEvents.RemoveAt(index);
+            result = Context.GetUnhandledEvent(Control, eventName);
 
             return this;
         }
@@ -480,12 +468,13 @@ namespace Squared.PRGUI.Imperative {
 
             return this;
         }
+
         public ControlBuilder<TControl> SetValue<TValue> (TValue value) {
             var cast = (Control as IValueControl<TValue>);
             cast.Value = value;
             return this;
         }
-        public ControlBuilder<TControl> SetValue<TValue> (ref TValue value, out bool changed) {
+        public ControlBuilder<TControl> Value<TValue> (ref TValue value, out bool changed) {
             var cast = (Control as IValueControl<TValue>);
             GetEvent(UIEvents.ValueChanged, out changed);
             if (!changed)
@@ -496,6 +485,12 @@ namespace Squared.PRGUI.Imperative {
                 cast.Value = value;
             return this;
         }
+        public ControlBuilder<TControl> GetValue<TValue> (out TValue value) {
+            var cast = (Control as IValueControl<TValue>);
+            value = cast.Value;
+            return this;
+        }
+
         public ControlBuilder<TControl> SetText (AbstractString value) {
             var cast1 = (Control as StaticTextBase);
             var cast2 = (Control as EditableText);
@@ -503,7 +498,7 @@ namespace Squared.PRGUI.Imperative {
             cast2?.SetText(value, false);
             return this;
         }
-        public ControlBuilder<TControl> SetText (ref string value, out bool changed) {
+        public ControlBuilder<TControl> Text (ref string value, out bool changed) {
             var cast1 = (Control as StaticTextBase);
             var cast2 = (Control as EditableText);
             GetEvent(UIEvents.ValueChanged, out changed);
@@ -513,6 +508,17 @@ namespace Squared.PRGUI.Imperative {
                 cast1?.SetText(value);
                 cast2?.SetText(value, false);
             }
+            return this;
+        }
+        public ControlBuilder<TControl> GetText (out AbstractString value) {
+            var cast1 = (Control as StaticTextBase);
+            var cast2 = (Control as EditableText);
+            if (cast2 != null)
+                value = cast2.Text;
+            else if (cast1 != null)
+                value = cast1.Text;
+            else
+                value = default(AbstractString);
             return this;
         }
 

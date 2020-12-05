@@ -606,6 +606,10 @@ namespace Squared.PRGUI.Controls {
         public void Clear () => Children.Clear();
         public void Add (Control child) => Children.Add(child);
 
+        bool IModal.OnUnhandledEvent (string name, Util.Event.IEventInfo args) {
+            return false;
+        }
+
         bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) {
             return false;
         }

@@ -217,9 +217,7 @@ namespace Squared.PRGUI {
         List<RectF> RasterizedOverlayBoxes = new List<RectF>();
 
         private void RasterizeAcceleratorOverlay (UIOperationContext context, ref ImperativeRenderer renderer) {
-            var activeModal = (ModalStack.Count > 0)
-                ? ModalStack[ModalStack.Count - 1]
-                : null;
+            var activeModal = ActiveModal;
             Control shiftTab = PickRotateFocusTarget(false, -1),
                 tab = PickRotateFocusTarget(false, 1),
                 ctrlShiftTab = (activeModal?.RetainFocus == true) ? null : PickRotateFocusTarget(true, -1),

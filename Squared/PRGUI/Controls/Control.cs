@@ -14,6 +14,7 @@ using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.RasterShape;
 using Squared.Util;
+using Squared.Util.Event;
 
 namespace Squared.PRGUI {
     public interface IModal {
@@ -29,6 +30,7 @@ namespace Squared.PRGUI {
         void Show (UIContext context);
         void Close ();
         bool OnUnhandledKeyEvent (string name, KeyEventArgs args);
+        bool OnUnhandledEvent (string name, IEventInfo args);
     }
 
     public interface IControlCompositor {

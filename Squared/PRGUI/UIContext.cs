@@ -215,6 +215,11 @@ namespace Squared.PRGUI {
 
         internal List<IModal> ModalStack = new List<IModal>();
 
+        IModal ActiveModal =>
+            (ModalStack.Count > 0)
+                ? ModalStack[ModalStack.Count - 1]
+                : null;
+
         /// <summary>
         /// The layout engine used to compute control sizes and positions
         /// </summary>
@@ -767,9 +772,7 @@ namespace Squared.PRGUI {
                 ? FindTopLevelAncestor(mouseEventTarget)
                 : null;
 
-            var activeModal = (ModalStack.Count > 0) 
-                ? ModalStack[ModalStack.Count - 1] 
-                : null;
+            var activeModal = ActiveModal;
             var wasInputBlocked = false;
             if ((activeModal?.BlockInput == true) && (activeModal != topLevelTarget)) {
                 mouseEventTarget = null;
@@ -1223,9 +1226,7 @@ namespace Squared.PRGUI {
                 srt.Reset();
             }
 
-            var activeModal = (ModalStack.Count > 0)
-                ? ModalStack[ModalStack.Count - 1]
-                : null;
+            var activeModal = ActiveModal;
             var needsToFadeBackground = false;
             foreach (var modal in ModalStack) {
                 if (modal.FadeBackground) {
