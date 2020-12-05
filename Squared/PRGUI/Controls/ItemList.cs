@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -55,7 +56,8 @@ namespace Squared.PRGUI.Controls {
         }
     }
 
-    public class ItemList<T> : List<T> {
+    public class ItemList<T> : IEnumerable<T> {
+        private List<T> Items = new List<T>();
         private readonly Dictionary<T, Control> ControlForValue;
         private readonly Dictionary<Control, T> ValueForControl = 
             new Dictionary<Control, T>(new ReferenceComparer<Control>());
@@ -63,6 +65,56 @@ namespace Squared.PRGUI.Controls {
         public ItemList (IEqualityComparer<T> comparer) 
             : base () {
             ControlForValue = new Dictionary<T, Control>(comparer);
+        }
+
+        public bool IsValid { get; internal set; }
+        public int Count => Items.Count;
+
+        public T this[int index] {
+            get => Items[index];
+            set {
+                Items[index] = value;
+                Invalidate();
+            }
+        }
+
+        public void Invalidate () {
+            IsValid = false;
+        }
+
+        public void Clear () {
+            Items.Clear();
+            Invalidate();
+        }
+
+        public void AddRange (IEnumerable<T> collection) {
+            Items.AddRange(collection);
+            Invalidate();
+        }
+
+        public void Add (T value) {
+            Items.Add(value);
+            Invalidate();
+        }
+
+        public void Add (ref T value) {
+            Items.Add(value);
+            Invalidate();
+        }
+
+        public bool Remove (T value) {
+            Invalidate();
+            return Items.Remove(value);
+        }
+
+        public bool Remove (ref T value) {
+            Invalidate();
+            return Items.Remove(value);
+        }
+
+        public void RemoveAt (int index) {
+            Items.RemoveAt(index);
+            Invalidate();
         }
 
         public bool GetControlForValue (T value, out Control result) {
@@ -89,12 +141,20 @@ namespace Squared.PRGUI.Controls {
             return ValueForControl.TryGetValue(control, out result);
         }
 
+        public int IndexOf (T value, IEqualityComparer<T> comparer) {
+            return IndexOf(ref value, comparer);
+        }
+
         public int IndexOf (ref T value, IEqualityComparer<T> comparer) {
             for (int i = 0, c = Count; i < c; i++)
                 if (comparer.Equals(value, this[i]))
                     return i;
 
             return -1;
+        }
+
+        public bool Contains (T value, IEqualityComparer<T> comparer) {
+            return Contains(ref value, comparer);
         }
 
         public bool Contains (ref T value, IEqualityComparer<T> comparer) {
@@ -164,6 +224,14 @@ namespace Squared.PRGUI.Controls {
                         output.Add(newControl);
                 }
             }
+        }
+
+        public IEnumerator<T> GetEnumerator () {
+            return ((IEnumerable<T>)Items).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator () {
+            return ((IEnumerable<T>)Items).GetEnumerator();
         }
     }
 }

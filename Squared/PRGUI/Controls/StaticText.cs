@@ -224,7 +224,7 @@ namespace Squared.PRGUI.Controls {
             var decorations = GetDecorator(context.DecorationProvider);
             ComputePadding(context, decorations, out Margins computedPadding);
 
-            if (ContentMeasurement?.IsValid != true)
+            if ((ContentMeasurement?.IsValid != true) || !Content.IsValid)
                 AutoSizeComputedWidth = AutoSizeComputedHeight = null;
 
             if (

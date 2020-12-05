@@ -552,6 +552,12 @@ namespace Squared.PRGUI.Imperative {
                 stb.Wrap = value;
             return this;
         }
+        public ControlBuilder<TControl> SetMultiline (bool value) {
+            var stb = (Control as StaticText);
+            if (stb != null)
+                stb.Multiline = value;
+            return this;
+        }
         public ControlBuilder<TControl> SetAutoSize (bool value) {
             var stb = (Control as StaticTextBase);
             if (stb != null)

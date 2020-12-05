@@ -168,6 +168,9 @@ namespace Squared.PRGUI.Controls {
                 NeedsUpdate |= (Items.Count != Children.Count);
             }
 
+            if (!Items.IsValid)
+                NeedsUpdate = true;
+
             bool hadKeyboardSelection = false;
             if (NeedsUpdate) {
                 hadKeyboardSelection = Children.Contains(Context.KeyboardSelection);
@@ -177,6 +180,7 @@ namespace Squared.PRGUI.Controls {
                     Children, CreateControlForValue ?? DefaultCreateControlForValue,
                     offset: Virtual ? VirtualItemOffset : 0, count: Virtual ? VirtualViewportSize : int.MaxValue
                 );
+                Items.IsValid = true;
                 // HACK: Without doing this, old content bounds can be kept that are too big/too small
                 HasContentBounds = false;
             }
