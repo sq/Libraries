@@ -689,6 +689,9 @@ namespace Squared.PRGUI {
         }
 
         public void NotifyModalClosed (IModal modal) {
+            if (modal == null)
+                return;
+
             var ctl = (Control)modal;
             var newFocusTarget = (TopLevelFocused == ctl)
                 ? modal.FocusDonor
