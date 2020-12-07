@@ -314,20 +314,17 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> SetContainerFlags (ControlFlags value) {
-            var cast = (Control as IControlContainer);
-            if (cast != null)
+            if (Control is IControlContainer cast)
                 cast.ContainerFlags = value;
             return this;
         }
         public ControlBuilder<TControl> SetClipChildren (bool value) {
-            var cast = (Control as IControlContainer);
-            if (cast != null)
+            if (Control is IControlContainer cast)
                 cast.ClipChildren = value;
             return this;
         }
         public ControlBuilder<TControl> SetScrollable (bool value) {
-            var cast = (Control as IScrollableControl);
-            if (cast != null)
+            if (Control is IScrollableControl cast)
                 cast.Scrollable = value;
             return this;
         }
@@ -404,62 +401,50 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> SetTitle (string value) {
-            // FIXME
-            var cast = (Control as TitledContainer);
-            if (cast != null)
+            if (Control is TitledContainer cast)
                 cast.Title = value;
             return this;
         }
         public ControlBuilder<TControl> SetCollapsible (bool value) {
-            // FIXME
-            var cast1 = (Control as Window);
-            var cast2 = (Control as TitledContainer);
-            if (cast1 != null)
+            if (Control is Window cast1)
                 cast1.Collapsible = value;
-            else if (cast2 != null)
+            else if (Control is TitledContainer cast2)
                 cast2.Collapsible = value;
             return this;
         }
 
         public ControlBuilder<TControl> SetDescription (string value) {
-            var cast = (Control as EditableText);
-            if (cast != null)
+            if (Control is EditableText cast)
                 cast.Description = value;
             return this;
         }
         public ControlBuilder<TControl> SetAllowCopy (bool value) {
-            var cast = (Control as EditableText);
-            if (cast != null)
+            if (Control is EditableText cast)
                 cast.AllowCopy = value;
             return this;
         }
         public ControlBuilder<TControl> SetPassword (bool value) {
-            var cast = (Control as EditableText);
-            if (cast != null)
+            if (Control is EditableText cast)
                 cast.Password = value;
             return this;
         }
 
         public ControlBuilder<TControl> SetIntegral (bool value) {
-            var cast1 = (Control as Slider);
-            var cast2 = (Control as EditableText);
-            if (cast1 != null)
+            if (Control is Slider cast1)
                 cast1.Integral = value;
-            else if (cast2 != null)
+            else if (Control is EditableText cast2)
                 cast2.IntegerOnly = value;
             return this;
         }
         public ControlBuilder<TControl> SetRange<TValue> (TValue? min = null, TValue? max = null)
             where TValue : struct, IComparable<TValue>
         {
-            var cast1 = (Control as ParameterEditor<TValue>);
-            if (cast1 != null) {
+            if (Control is ParameterEditor<TValue> cast1) {
                 cast1.Minimum = min;
                 cast1.Maximum = max;
             }
 
-            var cast2 = (Control as Slider);
-            if (cast2 != null) {
+            if (Control is Slider cast2) {
                 if (min.HasValue)
                     cast2.Minimum = (float)(object)min;
                 if (max.HasValue)
@@ -486,7 +471,7 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
         public ControlBuilder<TControl> GetValue<TValue> (out TValue value) {
-            var cast = (Control as IValueControl<TValue>);
+            var cast = (IValueControl<TValue>)Control;
             value = cast.Value;
             return this;
         }
@@ -511,11 +496,9 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
         public ControlBuilder<TControl> GetText (out AbstractString value) {
-            var cast1 = (Control as StaticTextBase);
-            var cast2 = (Control as EditableText);
-            if (cast2 != null)
+            if (Control is EditableText cast2)
                 value = cast2.Text;
-            else if (cast1 != null)
+            else if (Control is StaticTextBase cast1)
                 value = cast1.Text;
             else
                 value = default(AbstractString);
@@ -523,50 +506,42 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> SetRichText (bool value) {
-            var stb = (Control as StaticTextBase);
-            if (stb != null)
+            if (Control is StaticTextBase stb)
                 stb.RichText = value;
             return this;
         }
         public ControlBuilder<TControl> SetTextAlignment (HorizontalAlignment value) {
-            var stb = (Control as StaticTextBase);
-            if (stb != null)
+            if (Control is StaticTextBase stb)
                 stb.TextAlignment = value;
             return this;
         }
         public ControlBuilder<TControl> SetTextColor (ColorVariable value) {
-            var stb = (Control as StaticTextBase);
-            if (stb != null)
+            if (Control is StaticTextBase stb)
                 stb.TextColor = value;
             return this;
         }
         public ControlBuilder<TControl> SetScaleToFit (bool value) {
-            var stb = (Control as StaticText);
-            if (stb != null)
+            if (Control is StaticText stb)
                 stb.ScaleToFit = value;
             return this;
         }
         public ControlBuilder<TControl> SetWrap (bool value) {
-            var stb = (Control as StaticText);
-            if (stb != null)
+            if (Control is StaticText stb)
                 stb.Wrap = value;
             return this;
         }
         public ControlBuilder<TControl> SetMultiline (bool value) {
-            var stb = (Control as StaticText);
-            if (stb != null)
+            if (Control is StaticText stb)
                 stb.Multiline = value;
             return this;
         }
         public ControlBuilder<TControl> SetAutoSize (bool value) {
-            var stb = (Control as StaticTextBase);
-            if (stb != null)
+            if (Control is StaticTextBase stb)
                 stb.AutoSize = value;
             return this;
         }
         public ControlBuilder<TControl> SetAutoSize (bool width, bool height) {
-            var stb = (Control as StaticTextBase);
-            if (stb != null) {
+            if (Control is StaticTextBase stb) {
                 stb.AutoSizeWidth = width;
                 stb.AutoSizeHeight = height;
             }
@@ -574,7 +549,7 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> AddChildren (params Control[] children) {
-            var cast = (Control as IControlContainer);
+            var cast = (IControlContainer)Control;
             cast.Children.AddRange(children);
             return this;
         }
