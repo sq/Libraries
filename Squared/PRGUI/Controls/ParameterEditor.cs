@@ -239,10 +239,11 @@ namespace Squared.PRGUI.Controls {
             return box;
         }
 
+        protected T CachedFractionValue;
         protected double? CachedFractionD;
         protected double FractionD {
             get {
-                if (CachedFractionD.HasValue)
+                if (CachedFractionD.HasValue && (CachedFractionValue.CompareTo(_Value) == 0))
                     return CachedFractionD.Value;
 
                 var result = Convert.ToDouble(Arithmetic.Fraction(_Value, _Minimum.Value, _Maximum.Value, FractionScale)) / FractionScaleD;
