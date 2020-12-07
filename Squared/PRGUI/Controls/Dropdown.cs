@@ -56,8 +56,7 @@ namespace Squared.PRGUI.Controls {
                 else if (TooltipContent)
                     return TooltipContent.Get(this);
 
-                var irt = SelectedItem as Accessibility.IReadingTarget;
-                if (irt != null)
+                if (SelectedItem is Accessibility.IReadingTarget irt)
                     return irt.Text;
                 else
                     return GetValueText();
@@ -70,18 +69,16 @@ namespace Squared.PRGUI.Controls {
         }
 
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {
-            var irt = SelectedItem as Accessibility.IReadingTarget;
-            if (irt != null)
+            if (SelectedItem is Accessibility.IReadingTarget irt)
                 irt.FormatValueInto(sb);
             else
                 sb.Append(GetValueText());
         }
 
         AbstractString GetValueText () {
-            var stb = SelectedItem as StaticTextBase;
             if (FormatValue != null)
                 return FormatValue(SelectedItem);
-            else if (stb != null)
+            else if (SelectedItem is StaticTextBase stb)
                 return stb.Text;
             else
                 return SelectedItem?.ToString();

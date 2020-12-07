@@ -454,17 +454,14 @@ namespace Squared.PRGUI.Controls {
                         TextBuilder.Append(ttc);
                 }
 
-                if (SelectedItem != null) {
-                    var irt = SelectedItem as Accessibility.IReadingTarget;
-                    if (irt != null) {
-                        TextBuilder.Append(": ");
-                        var existingLength = TextBuilder.Length;
-                        irt.FormatValueInto(TextBuilder);
-                        if (TextBuilder.Length == existingLength)
-                            TextBuilder.Append(irt.Text.ToString());
-                    } else {
-                        // FIXME: Fallback to something else here?
-                    }
+                if (SelectedItem is Accessibility.IReadingTarget irt) {
+                    TextBuilder.Append(": ");
+                    var existingLength = TextBuilder.Length;
+                    irt.FormatValueInto(TextBuilder);
+                    if (TextBuilder.Length == existingLength)
+                        TextBuilder.Append(irt.Text.ToString());
+                } else {
+                    // FIXME: Fallback to something else here?
                 }
 
                 return TextBuilder;
@@ -475,8 +472,7 @@ namespace Squared.PRGUI.Controls {
             if (SelectedItem == null)
                 return;
 
-            var irt = SelectedItem as Accessibility.IReadingTarget;
-            if (irt != null) {
+            if (SelectedItem is Accessibility.IReadingTarget irt) {
                 irt.FormatValueInto(sb);
                 if (sb.Length == 0)
                     sb.Append(irt.Text);
