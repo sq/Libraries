@@ -579,6 +579,13 @@ namespace Squared.PRGUI {
             ComputeFixedSize(out float? fixedWidth, out float? fixedHeight);
             var actualLayoutFlags = ComputeLayoutFlags(fixedWidth.HasValue, fixedHeight.HasValue);
 
+            var spacingScale = context.DecorationProvider.SpacingScaleRatio;
+            var sizeScale = context.DecorationProvider.SizeScaleRatio;
+            Margins.Scale(ref computedMargins, ref spacingScale);
+            Margins.Scale(ref computedPadding, ref spacingScale);
+            fixedWidth *= sizeScale.X;
+            fixedHeight *= sizeScale.Y;
+
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetMargins(result, computedMargins);
             context.Layout.SetPadding(result, computedPadding);
@@ -588,6 +595,11 @@ namespace Squared.PRGUI {
                 out float? minimumWidth, out float? minimumHeight,
                 out float? maximumWidth, out float? maximumHeight
             );
+            minimumWidth *= sizeScale.X;
+            minimumHeight *= sizeScale.Y;
+            maximumWidth *= sizeScale.X;
+            maximumHeight *= sizeScale.Y;
+
             context.Layout.SetSizeConstraints(
                 result, 
                 minimumWidth, minimumHeight, 

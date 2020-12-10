@@ -53,6 +53,8 @@ namespace PRGUI.Demo {
         private bool IsFirstUpdate = true, IsFirstDraw = true;
         private int UpdatesToSkip = 0, DrawsToSkip = 0;
 
+        public DefaultDecorations Decorations;
+
         Tween<float> Topple = new Tween<float>(0);
 
         // public ControlKey MasterList, ContentView;
@@ -170,14 +172,14 @@ namespace PRGUI.Demo {
             TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.75f * DPIFactor);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1.33f);
 
-            var decorations = new Squared.PRGUI.DefaultDecorations(Materials) {
+            Decorations = new Squared.PRGUI.DefaultDecorations(Materials) {
                 DefaultFont = Font,
                 TitleFont = TitleFont,
                 TooltipFont = tooltipFont,
                 AcceleratorFont = TitleFont
             };
 
-            Context = new UIContext(Materials, decorations) {
+            Context = new UIContext(Materials, Decorations) {
                 RichTextConfiguration = {
                     Images = new Dictionary<string, RichImage> {
                         {
@@ -268,8 +270,6 @@ namespace PRGUI.Demo {
 
             var hideButton = new Button {
                 Text = "$[ghost] Hide",
-                AutoSizeWidth = false,
-                MaximumWidth = 150,
                 Margins = default(Margins),
                 LayoutFlags = ControlFlags.Layout_Anchor_Right | ControlFlags.Layout_Fill_Column | ControlFlags.Layout_ForceBreak,
                 BackgroundColor = new Color(128, 16, 16),
@@ -534,6 +534,10 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(largeText, UIEvents.CheckedChanged, (ei) => {
+                Decorations.SizeScaleRatio = new Vector2(
+                    largeText.Checked ? 1.15f : 1.0f,
+                    largeText.Checked ? 1.045f : 1.0f
+                );
                 SetFontScale(largeText.Checked ? 1.9f : 1.1f);
             });
 

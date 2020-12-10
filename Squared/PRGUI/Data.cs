@@ -638,6 +638,20 @@ namespace Squared.PRGUI {
             }
         }
 
+        public static void Scale (ref Margins margins, float scale) {
+            margins.Left *= scale;
+            margins.Top *= scale;
+            margins.Right *= scale;
+            margins.Bottom *= scale;
+        }
+
+        public static void Scale (ref Margins margins, ref Vector2 scale) {
+            margins.Left *= scale.X;
+            margins.Top *= scale.Y;
+            margins.Right *= scale.X;
+            margins.Bottom *= scale.Y;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Add (ref Margins lhs, Margins rhs, out Margins result) {
             result.Left = lhs.Left + rhs.Left;

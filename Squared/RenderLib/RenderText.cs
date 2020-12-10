@@ -507,7 +507,9 @@ namespace Squared.Render.Text {
             ProcessLineSpacingChange(buffer, lineSpacing, lineSpacing);
             dc.Position = new Vector2(characterOffset.X, characterOffset.Y + currentBaseline - (margin?.Y ?? 0));
             estimatedBounds = dc.EstimateDrawBounds();
-            characterOffset.X += estimatedBounds.Size.X + (margin?.X ?? 0);
+            var sizeX = estimatedBounds.Size.X + (margin?.X ?? 0);
+            characterOffset.X += sizeX;
+            characterOffsetUnconstrained.X += sizeX;
             AppendCharacter(ref dc, x, 1, false, lineSpacing, 0f, x, ref estimatedBounds);
         }
 

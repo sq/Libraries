@@ -49,6 +49,9 @@ namespace Squared.PRGUI {
         public IDecorator ParameterGauge { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
+        public Vector2 SizeScaleRatio { get; set; }
+        public Vector2 SpacingScaleRatio { get; set; }
+
         private Material TextMaterial, SelectedTextMaterial;
 
         public DefaultDecorations (DefaultMaterialSet materials, float defaultMargin = 6, float defaultMarginCollapsed = 4) {
@@ -59,6 +62,9 @@ namespace Squared.PRGUI {
 
             GlobalDefaultMargin = defaultMargin;
             GlobalDefaultMarginCollapsed = defaultMarginCollapsed;
+
+            SizeScaleRatio = Vector2.One;
+            SpacingScaleRatio = Vector2.One;
 
             InteractableShadow = new RasterShadowSettings {
                 Color = Color.Black * 0.25f,

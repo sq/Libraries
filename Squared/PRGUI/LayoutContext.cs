@@ -854,9 +854,10 @@ namespace Squared.PRGUI.Layout {
             if ((min > max) && (min >= 0) && (max >= 0))
                 return;
 
+            var padding = 0.5f;
             if (
-                ((min >= 0) && (rect[wdim] < min)) ||
-                ((max >= 0) && (rect[wdim] > max))
+                ((min >= 0) && (rect[wdim] + padding < min)) ||
+                ((max >= 0) && (rect[wdim] - padding > max))
             )
                 System.Diagnostics.Debugger.Break();
 #endif
