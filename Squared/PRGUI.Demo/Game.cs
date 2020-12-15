@@ -615,7 +615,7 @@ namespace PRGUI.Demo {
             window.CancelControl =
                 builder.Text<Button>("Cancel");
 
-            if (builder.GetEvent(UIEvents.Click, out Control button))
+            if (builder.GetEvent(UIEvents.Click, out Button button))
                 window.Close(
                     button == window.AcceptControl 
                     ? username.ToString()

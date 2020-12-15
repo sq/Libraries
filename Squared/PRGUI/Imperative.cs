@@ -221,8 +221,17 @@ namespace Squared.PRGUI.Imperative {
             get => new ControlBuilder<Control>(Control);
         }
 
-        public bool GetEvent (string eventName, out Control source) {
-            return Context.GetUnhandledChildEvent(Control, eventName, out source);
+        public bool GetEvent<TSource> (string eventName, out TSource source)
+            where TSource : Control 
+        {
+            Control temp;
+            if (Context.GetUnhandledChildEvent(Control, eventName, out temp)) {
+                source = temp as TSource;
+                return (source != null);
+            }
+
+            source = default(TSource);
+            return false;
         }
 
         public bool GetEvent (string eventName) {
@@ -484,6 +493,18 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
         public ControlBuilder<TControl> Text (ref string value, out bool changed) {
+            var cast1 = (Control as StaticTextBase);
+            var cast2 = (Control as EditableText);
+            GetEvent(UIEvents.ValueChanged, out changed);
+            if (changed) {
+                value = cast2.Text;
+            } else {
+                cast1?.SetText(value);
+                cast2?.SetText(value, false);
+            }
+            return this;
+        }
+        public ControlBuilder<TControl> Text (ref AbstractString value, out bool changed) {
             var cast1 = (Control as StaticTextBase);
             var cast2 = (Control as EditableText);
             GetEvent(UIEvents.ValueChanged, out changed);
