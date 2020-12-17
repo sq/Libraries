@@ -196,6 +196,7 @@ namespace Squared.PRGUI {
             }
         }
 
+        public bool AutoScaleMetrics { get; protected set; } = true;
         protected bool HasTransformMatrix { get; private set; }
         protected bool HasInverseTransformMatrix { get; private set; }
         private Matrix _TransformMatrix, _InverseTransformMatrix;
@@ -555,18 +556,20 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
-            fixedWidth = FixedWidth;
-            fixedHeight = FixedHeight;
+            var sizeScale = AutoScaleMetrics ? Context.Decorations.SizeScaleRatio : Vector2.One;
+            fixedWidth = FixedWidth * sizeScale.X;
+            fixedHeight = FixedHeight * sizeScale.Y;
         }
 
         protected virtual void ComputeSizeConstraints (
             out float? minimumWidth, out float? minimumHeight,
             out float? maximumWidth, out float? maximumHeight
         ) {
-            minimumWidth = MinimumWidth;
-            minimumHeight = MinimumHeight;
-            maximumWidth = MaximumWidth;
-            maximumHeight = MaximumHeight;
+            var sizeScale = AutoScaleMetrics ? Context.Decorations.SizeScaleRatio : Vector2.One;
+            minimumWidth = MinimumWidth * sizeScale.X;
+            minimumHeight = MinimumHeight * sizeScale.Y;
+            maximumWidth = MaximumWidth * sizeScale.X;
+            maximumHeight = MaximumHeight * sizeScale.Y;
         }
 
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -580,11 +583,8 @@ namespace Squared.PRGUI {
             var actualLayoutFlags = ComputeLayoutFlags(fixedWidth.HasValue, fixedHeight.HasValue);
 
             var spacingScale = context.DecorationProvider.SpacingScaleRatio;
-            var sizeScale = context.DecorationProvider.SizeScaleRatio;
             Margins.Scale(ref computedMargins, ref spacingScale);
             Margins.Scale(ref computedPadding, ref spacingScale);
-            fixedWidth *= sizeScale.X;
-            fixedHeight *= sizeScale.Y;
 
             context.Layout.SetLayoutFlags(result, actualLayoutFlags);
             context.Layout.SetMargins(result, computedMargins);
@@ -595,10 +595,6 @@ namespace Squared.PRGUI {
                 out float? minimumWidth, out float? minimumHeight,
                 out float? maximumWidth, out float? maximumHeight
             );
-            minimumWidth *= sizeScale.X;
-            minimumHeight *= sizeScale.Y;
-            maximumWidth *= sizeScale.X;
-            maximumHeight *= sizeScale.Y;
 
             context.Layout.SetSizeConstraints(
                 result, 
