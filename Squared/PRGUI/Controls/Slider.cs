@@ -290,7 +290,7 @@ namespace Squared.PRGUI.Controls {
 
         private Vector2 ComputeThumbSize () {
             var thumb = Context.Decorations.SliderThumb;
-            var thumbSize = (thumb.Margins + thumb.Padding).Size;
+            var thumbSize = (thumb.Margins + thumb.Padding).Size * Context.Decorations.SizeScaleRatio;
             thumbSize.X = Math.Max(ThumbMinimumWidth, thumbSize.X);
             return thumbSize;
         }

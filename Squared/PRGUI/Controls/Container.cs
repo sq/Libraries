@@ -419,10 +419,12 @@ namespace Squared.PRGUI.Controls {
             var scrollbar = context.DecorationProvider?.Scrollbar;
             if (scrollbar == null)
                 return;
+            // FIXME: Automate this?
+            var scale = context.DecorationProvider.SizeScaleRatio;
             if (ShowVerticalScrollbar)
-                result.Right += scrollbar.MinimumSize.X;
+                result.Right += scrollbar.MinimumSize.X * scale.X;
             if (ShowHorizontalScrollbar)
-                result.Bottom += scrollbar.MinimumSize.Y;
+                result.Bottom += scrollbar.MinimumSize.Y * scale.Y;
         }
 
         protected bool GetContentBounds (UIContext context, out RectF contentBounds) {

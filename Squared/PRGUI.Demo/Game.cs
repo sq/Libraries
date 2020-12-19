@@ -535,10 +535,10 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(largeText, UIEvents.CheckedChanged, (ei) => {
                 Decorations.SizeScaleRatio = new Vector2(
-                    largeText.Checked ? 1.15f : 1.0f,
+                    largeText.Checked ? 1.1f : 1.0f,
                     largeText.Checked ? 1.045f : 1.0f
                 );
-                SetFontScale(largeText.Checked ? 1.9f : 1.1f);
+                SetFontScale(largeText.Checked ? 1.75f : 1.1f);
             });
 
             Context.EventBus.Subscribe(readAloud, UIEvents.CheckedChanged, (ei) => {

@@ -113,7 +113,7 @@ namespace Squared.PRGUI {
 
             Button = new DelegateDecorator {
                 Margins = new Margins(GlobalDefaultMargin),
-                Padding = new Margins(14, 6),
+                Padding = new Margins(16, 8),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
                 Below = Button_Below,
@@ -255,7 +255,7 @@ namespace Squared.PRGUI {
 
             Dropdown = new DelegateDecorator {
                 Margins = new Margins(GlobalDefaultMargin),
-                Padding = new Margins(14, 6, 14 + DropdownArrowWidth + 6, 6),
+                Padding = new Margins(16, 8, 16 + DropdownArrowWidth + 6, 8),
                 GetContentAdjustment = GetContentAdjustment_Button,
                 GetTextSettings = GetTextSettings_Button,
                 Below = Button_Below,
@@ -533,7 +533,9 @@ namespace Squared.PRGUI {
 
         private void AdjustRectForCheckbox (ref DecorationSettings settings) {
             var box = settings.Box;
-            settings.Box = new RectF(box.Left + 2, box.Top + (box.Height - CheckboxSize) / 2, CheckboxSize, CheckboxSize);
+            // FIXME: Scaling this will make the text crowded
+            var size = CheckboxSize * Vector2.One; // * SizeScaleRatio;
+            settings.Box = new RectF(box.Left + 2, box.Top + (box.Height - size.Y) / 2, size.X, size.Y);
         }
 
         private void Checkbox_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
@@ -773,12 +775,13 @@ namespace Squared.PRGUI {
             float size = data.ViewportSize / Math.Max(data.ContentSize, 0.1f);
             float max = Math.Min(1.0f, min + size);
 
+            var effectiveScrollbarSize = ScrollbarSize * SizeScaleRatio;
             sizePx = data.Horizontal ? box.Width - 1 : box.Height - 1;
             if (data.HasCounterpart)
-                sizePx -= ScrollbarSize;
+                sizePx -= data.Horizontal ? effectiveScrollbarSize.X : effectiveScrollbarSize.Y;
             trackA = data.Horizontal
-                ? new Vector2(box.Left, box.Extent.Y - ScrollbarSize)
-                : new Vector2(box.Extent.X - ScrollbarSize, box.Top);
+                ? new Vector2(box.Left, box.Extent.Y - effectiveScrollbarSize.Y)
+                : new Vector2(box.Extent.X - effectiveScrollbarSize.X, box.Top);
             trackB = box.Extent;
 
             var thumbSize = sizePx * (max - min);
