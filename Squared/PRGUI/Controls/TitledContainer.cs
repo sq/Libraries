@@ -5,15 +5,17 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
+using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
 using Squared.Util;
+using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class TitledContainer : Container {
+    public class TitledContainer : Container, IReadingTarget {
         public const float MinDisclosureArrowSize = 10,
             DisclosureArrowMargin = 16,
             DisclosureAnimationDuration = 0.175f,
@@ -83,6 +85,8 @@ namespace Squared.PRGUI.Controls {
                 return true;
             }
         }
+
+        AbstractString IReadingTarget.Text => Title;
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {
             return provider?.TitledContainer ?? base.GetDefaultDecorator(provider);
@@ -320,6 +324,10 @@ namespace Squared.PRGUI.Controls {
                 innerColor: color, outerColor: color,
                 outlineColor: outlineColor
             );
+        }
+
+        void IReadingTarget.FormatValueInto (StringBuilder sb) {
+            throw new NotImplementedException();
         }
     }
 }

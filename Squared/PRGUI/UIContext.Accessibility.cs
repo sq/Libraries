@@ -42,6 +42,7 @@ namespace Squared.PRGUI.Accessibility {
             Context.EventBus.Subscribe(null, UIEvents.ValueChanged, Control_OnValueChanged);
             Context.EventBus.Subscribe(null, UIEvents.CheckedChanged, Control_OnValueChanged);
             Context.EventBus.Subscribe(null, UIEvents.SelectionChanged, Control_OnSelectionChanged);
+            Context.EventBus.Subscribe(null, UIEvents.Shown, Control_OnShown);
         }
 
         public SpeechSynthesizer SpeechSynthesizer {
@@ -86,7 +87,7 @@ namespace Squared.PRGUI.Accessibility {
             SpeechQueue.Clear();
         }
 
-        public void BeginReading (Control control) {
+        public void BeginReading (Control control, string prefix = null) {
             if (CurrentlyReading == control)
                 return;
 
@@ -102,7 +103,7 @@ namespace Squared.PRGUI.Accessibility {
                 text = control.ToString();
 
             if (text != null)
-                Speak(text.ToString(), Context.TTSDescriptionReadingSpeed);
+                Speak((prefix ?? "") + text.ToString(), Context.TTSDescriptionReadingSpeed);
         }
 
         private void Control_OnSelectionChanged (IEventInfo e) {
@@ -118,6 +119,12 @@ namespace Squared.PRGUI.Accessibility {
             var ctl = e.Source as Control;
             if (ctl != null)
                 NotifyValueChanged(ctl);
+        }
+
+        private void Control_OnShown (IEventInfo e) {
+            var ctl = e.Source as IModal;
+            if (ctl != null)
+                NotifyModalShown(ctl);
         }
 
         private StringBuilder ValueStringBuilder = new StringBuilder();
@@ -161,6 +168,11 @@ namespace Squared.PRGUI.Accessibility {
                 else
                     BeginReading(current);
             }
+        }
+
+        internal void NotifyModalShown (IModal modal) {
+            if (Context.ReadAloudOnFocus)
+                BeginReading(modal as Control, "Shown: ");
         }
 
         internal void FocusedControlChanged (Control current) {
