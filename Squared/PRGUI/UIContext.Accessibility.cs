@@ -127,7 +127,7 @@ namespace Squared.PRGUI.Accessibility {
             if (!Context.ReadAloudOnValueChange)
                 return;
 
-            if (target != CurrentlyReading)
+            if ((target != CurrentlyReading) && (Context.MouseCaptured != target))
                 return;
 
             var irt = target as IReadingTarget;
