@@ -372,6 +372,18 @@ namespace PRGUI.Demo {
                 DynamicContents = BuildSupernestedGroup
             };
 
+            var increaseGaugeButton = new Button {
+                Text = "Increase Gauge Value",
+                LayoutFlags = ControlFlags.Layout_ForceBreak | ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
+                FixedWidth = 450,
+                AutoSizeWidth = false
+            };
+
+            var gauge = new Gauge {
+                Description = "Test Gauge",
+                FixedWidth = 450
+            };
+
             var bigScrollableContainer = new Container {
                 ClipChildren = true,
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
@@ -398,24 +410,33 @@ namespace PRGUI.Demo {
                                 FixedHeight = 1800,
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
                             },
+                            // FIXME: Why does this have a bunch of horizontal space in it?
                             new Container {
-                                ClipChildren = true,
-                                LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
-                                MaximumHeight = 500,
-                                FixedWidth = 450,
-                                Scrollable = true,
+                                LayoutFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top,
+                                ContainerFlags = ControlFlags.Container_Wrap | ControlFlags.Container_Row,
                                 Children = {
-                                    new StaticText { Text = "Testing nested clips" },
-                                    new StaticText {
-                                        Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
-                                        Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                                    new Container {
+                                        ClipChildren = true,
+                                        LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
+                                        MaximumHeight = 500,
+                                        FixedWidth = 450,
+                                        Scrollable = true,
+                                        Children = {
+                                            new StaticText { Text = "Testing nested clips" },
+                                            new StaticText {
+                                                Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
+                                                Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
+                                            },
+                                            new Checkbox { Text = "Checkbox 1", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak },
+                                            new Checkbox { Text = "Checkbox 2", Checked = true },
+                                            new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
+                                            new RadioButton { Text = "Radio 2", GroupId = "radio" },
+                                            new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
+                                            supernestedGroup
+                                        }
                                     },
-                                    new Checkbox { Text = "Checkbox 1", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak },
-                                    new Checkbox { Text = "Checkbox 2", Checked = true },
-                                    new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
-                                    new RadioButton { Text = "Radio 2", GroupId = "radio" },
-                                    new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
-                                    supernestedGroup
+                                    increaseGaugeButton,
+                                    gauge
                                 }
                             },
                             new Container {
@@ -565,6 +586,13 @@ namespace PRGUI.Demo {
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
                 FloatingWindow.Intangible = true;
                 FloatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.NowL);
+            });
+
+            Context.EventBus.Subscribe(increaseGaugeButton, UIEvents.Click, (ei) => {
+                if (gauge.Value >= 1)
+                    gauge.Value = 0;
+                else
+                    gauge.Value += 0.05f;
             });
 
             Context.EventBus.Subscribe(toppleButton, UIEvents.Click, (ei) => {

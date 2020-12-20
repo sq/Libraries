@@ -53,6 +53,7 @@
     <Compile Include="Controls\Dropdown.cs" />
     <Compile Include="Controls\ModalDialog.cs" />
     <Compile Include="Controls\ParameterEditor.cs" />
+    <Compile Include="Controls\Gauge.cs" />
     <Compile Include="Controls\Slider.cs" />
     <Compile Include="Controls\StaticText.cs" />
     <Compile Include="Controls\TitledContainer.cs" />

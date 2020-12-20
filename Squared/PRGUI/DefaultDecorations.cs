@@ -47,6 +47,7 @@ namespace Squared.PRGUI {
         public IDecorator AcceleratorLabel { get; set; }
         public IDecorator AcceleratorTarget { get; set; }
         public IDecorator ParameterGauge { get; set; }
+        public IDecorator Gauge { get; set; }
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public Vector2 SizeScaleRatio { get; set; }
@@ -96,6 +97,8 @@ namespace Squared.PRGUI {
                 Expansion = 0.4f,
                 Inside = true
             };
+
+            GaugeShadow = SliderShadow;
 
             SelectionShadow = new RasterShadowSettings {
                 Color = Color.White * 0.15f,
@@ -240,9 +243,17 @@ namespace Squared.PRGUI {
             };
 
             Slider = new DelegateDecorator {
-                Margins = new Margins(GlobalDefaultMargin),
+                Margins = new Margins(0f),
                 Padding = new Margins(0, 0, 0, 2.75f),
                 Below = Slider_Below,
+                GetTextSettings = GetTextSettings
+            };
+
+            Gauge = new DelegateDecorator {
+                Margins = new Margins(GlobalDefaultMargin),
+                Padding = new Margins(2),
+                Below = Gauge_Below,
+                Content = Gauge_Content,
                 GetTextSettings = GetTextSettings
             };
 
@@ -285,6 +296,8 @@ namespace Squared.PRGUI {
                 Above = Scrollbar_Above,
                 OnMouseEvent = Scrollbar_OnMouseEvent
             };
+
+            GaugeValueFillColor = SelectionFillColor;
         }
 
         public IGlyphSource DefaultFont,
@@ -322,7 +335,9 @@ namespace Squared.PRGUI {
             SelectionShadow,
             TooltipShadow,
             SliderShadow,
-            AcceleratorTargetShadow;
+            AcceleratorTargetShadow,
+            GaugeShadow,
+            GaugeValueShadow;
 
         public Color FocusedColor = new Color(200, 220, 255),
             ActiveColor = new Color(240, 240, 240),
@@ -340,7 +355,9 @@ namespace Squared.PRGUI {
             SelectionFillColor = new Color(200, 230, 255),
             TooltipFillColor = new Color(48, 48, 48),
             SliderFillColor = Color.Black * 0.1f,
-            AcceleratorFillColor = Color.Black * 0.8f;
+            AcceleratorFillColor = Color.Black * 0.8f,
+            GaugeFillColor = Color.Black * 0.1f,
+            GaugeValueFillColor;
 
         public Color SelectedTextColor = new Color(0, 30, 55),
             TitleTextColor = Color.White,
@@ -469,11 +486,6 @@ namespace Squared.PRGUI {
 
         private void Slider_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
-            /*
-            settings.ContentBox.SnapAndInset(out Vector2 ca, out Vector2 cb);
-            a.X = ca.X;
-            b.X = cb.X;
-            */
             renderer.RasterizeRectangle(
                 a, b,
                 radius: SliderCornerRadius,
@@ -481,6 +493,42 @@ namespace Squared.PRGUI {
                 innerColor: settings.BackgroundColor ?? SliderFillColor, 
                 outerColor: settings.BackgroundColor ?? SliderFillColor,
                 shadow: SliderShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
+            );
+        }
+
+        private void Gauge_Below (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            renderer.RasterizeRectangle(
+                a, b,
+                radius: SliderCornerRadius,
+                outlineRadius: InertOutlineThickness, outlineColor: Color.Transparent,
+                innerColor: settings.BackgroundColor ?? GaugeFillColor, 
+                outerColor: settings.BackgroundColor ?? GaugeFillColor,
+                shadow: GaugeShadow,
+                texture: settings.GetTexture(),
+                textureRegion: settings.GetTextureRegion(),
+                textureSettings: settings.GetTextureSettings()
+            );
+        }
+
+        private void Gauge_Content (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
+            if (b.X <= a.X)
+                return;
+            var alpha1 = 0.4f;
+            // FIXME: Padding will make this slightly wrong
+            var alpha2 = Arithmetic.Saturate(alpha1 + (0.7f * (settings.ContentBox.Width / settings.Box.Width)));
+            renderer.RasterizeRectangle(
+                a, b,
+                radius: SliderCornerRadius,
+                outlineRadius: InertOutlineThickness, outlineColor: Color.Transparent,
+                fillMode: RasterFillMode.Horizontal,
+                innerColor: GaugeValueFillColor * alpha1, 
+                outerColor: GaugeValueFillColor * alpha2,
+                shadow: GaugeValueShadow,
                 texture: settings.GetTexture(),
                 textureRegion: settings.GetTextureRegion(),
                 textureSettings: settings.GetTextureSettings()
