@@ -324,6 +324,8 @@ namespace Squared.PRGUI {
         public Control PreviousFocused { get; private set; }
         public Control PreviousTopLevelFocused { get; private set; }
 
+        private Control PreviousMouseDownTarget = null;
+
         public RichTextConfiguration RichTextConfiguration;
         public DefaultMaterialSet Materials { get; private set; }
         private ITimeProvider TimeProvider;
@@ -815,16 +817,16 @@ namespace Squared.PRGUI {
                 else if (MouseCaptured != null)
                     scrolled = HandleMouseUp(mouseEventTarget, mousePosition, mouseDownPosition);
 
-                if (MouseCaptured != null) {
-                    var movedDistance = mousePosition - mouseDownPosition;
-                    var hasMoved = movedDistance.HasValue &&
-                            (movedDistance.Value.Length() >= MinimumMouseMovementDistance);
-                    if (
-                        !hasMoved &&
-                        (!scrolled || !SuppressSingleClickOnMovementWhenAppropriate)
-                    )
-                        processClick = true;
-                }
+                // if (MouseCaptured != null) {
+                var movedDistance = mousePosition - mouseDownPosition;
+                var hasMoved = movedDistance.HasValue &&
+                        (movedDistance.Value.Length() >= MinimumMouseMovementDistance);
+                if (
+                    !hasMoved &&
+                    (!scrolled || !SuppressSingleClickOnMovementWhenAppropriate)
+                )
+                    processClick = true;
+                // }
 
                 if (MouseCaptured != null) {
                     if (RetainCaptureRequested == MouseCaptured) {
@@ -842,10 +844,13 @@ namespace Squared.PRGUI {
             if (processClick && !wasInputBlocked) {
                 // FIXME: if a menu is opened by a mousedown event, this will
                 //  fire a click on the menu in response to its mouseup
-                if (Hovering == previouslyCaptured) {
+                if (
+                    (Hovering == previouslyCaptured) ||
+                    ((previouslyCaptured == null) && (Hovering == PreviousMouseDownTarget))
+                ) {
                     if ((LastMouseButtons & MouseButtons.Left) == MouseButtons.Left)
                         // FIXME: Is this ?? right
-                        HandleClick(previouslyCaptured, mousePosition, mouseDownPosition ?? mousePosition);
+                        HandleClick(previouslyCaptured ?? PreviousMouseDownTarget, mousePosition, mouseDownPosition ?? mousePosition);
                     else
                         ; // FIXME: Fire another event here?
                 } else

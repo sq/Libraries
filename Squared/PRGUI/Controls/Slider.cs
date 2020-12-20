@@ -114,17 +114,18 @@ namespace Squared.PRGUI.Controls {
         private readonly object[] TooltipFormatArgs = new object[4];
 
         public void FormatValue (StringBuilder sb) {
+            var value = (float)Math.Round(Value, 2, MidpointRounding.AwayFromZero);
             if (TooltipFormat != null) {
-                TooltipFormatArgs[0] = Value;
+                TooltipFormatArgs[0] = value;
                 TooltipFormatArgs[1] = Minimum;
                 TooltipFormatArgs[2] = Maximum;
                 if (Maximum != Minimum)
-                    TooltipFormatArgs[3] = (Value - Minimum) / (Maximum - Minimum);
+                    TooltipFormatArgs[3] = (value - Minimum) / (Maximum - Minimum);
                 else
                     TooltipFormatArgs[3] = 0;
                 sb.AppendFormat(TooltipFormat, TooltipFormatArgs);
             } else {
-                SmartAppend(sb, Value);
+                SmartAppend(sb, value);
                 sb.Append('/');
                 SmartAppend(sb, Maximum);
             }

@@ -177,8 +177,10 @@ namespace Squared.PRGUI {
         }
 
         private void HandleClick (Control target, Vector2 mousePosition, Vector2 mouseDownPosition) {
-            if (!target.IsValidMouseInputTarget)
+            if (!target.IsValidMouseInputTarget) {
+                TTS.ControlClicked(target);
                 return;
+            }
 
             if (IsInDoubleClickWindow(target, mousePosition))
                 SequentialClickCount++;
@@ -704,6 +706,8 @@ namespace Squared.PRGUI {
                         return true;
                 }
             }
+
+            PreviousMouseDownTarget = target;
 
             if (EnableDragToScroll)
                 return InitDragToScroll(target, globalPosition);

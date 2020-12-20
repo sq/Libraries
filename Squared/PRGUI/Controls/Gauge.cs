@@ -39,7 +39,18 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        AbstractString Accessibility.IReadingTarget.Text => Description ?? base.TooltipContent.Get(this);
+        AbstractString Accessibility.IReadingTarget.Text {
+            get {
+                var sb = new StringBuilder();
+                var desc = (Description ?? base.TooltipContent.Get(this));
+                if (desc != null) {
+                    sb.Append(desc);
+                    sb.Append(": ");
+                }
+                FormatValue(sb);
+                return sb;
+            }
+        }
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) => FormatValue(sb);
 
         public Gauge () : base () {
@@ -48,7 +59,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void FormatValue (StringBuilder sb) {
-            SmartAppend(sb, Value * 100);
+            SmartAppend(sb, (float)Math.Round(Value * 100, 2, MidpointRounding.AwayFromZero));
             sb.Append("%");
         }
 
