@@ -177,6 +177,9 @@ namespace Squared.PRGUI {
         }
 
         private void HandleClick (Control target, Vector2 mousePosition, Vector2 mouseDownPosition) {
+            if (target == null)
+                return;
+
             if (!target.IsValidMouseInputTarget) {
                 TTS.ControlClicked(target);
                 return;

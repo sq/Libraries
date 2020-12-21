@@ -9,7 +9,8 @@ using Squared.Util;
 namespace Squared.PRGUI {
     public class ControlCollection : IEnumerable<Control> {
         private List<Control> PaintOrderedItems = new List<Control>(),
-            TabOrderedItems = new List<Control>();
+            TabOrderedItemsResult = new List<Control>();
+        private List<IndexedControl> TabOrderedItems = new List<IndexedControl>();
         private List<Control> Items = new List<Control>();
         private Dictionary<Control, int> IndexTable = 
             new Dictionary<Control, int>(new ReferenceComparer<Control>());
@@ -154,7 +155,7 @@ namespace Squared.PRGUI {
 
         private int TabOrderLastValidFrame = -1, PaintOrderLastValidFrame = -1;
 
-        private bool PrepareToUpdateSortedList (ref int lastValidFrame, int currentFrame, List<Control> targetList) {
+        private bool PrepareToUpdateSortedList<T> (ref int lastValidFrame, int currentFrame, List<T> targetList) {
             if ((targetList.Count == Count) && (lastValidFrame == currentFrame))
                 return false;
 
@@ -166,19 +167,28 @@ namespace Squared.PRGUI {
 
         internal List<Control> InTabOrder (int frameIndex, bool suitableTargetsOnly) {
             if (PrepareToUpdateSortedList(ref TabOrderLastValidFrame, frameIndex, TabOrderedItems)) {
-                foreach (var item in Items)
+                for (int i = 0; i < Items.Count; i++) {
+                    var item = Items[i];
                     if (!suitableTargetsOnly || item.IsValidFocusTarget)
-                        TabOrderedItems.Add(item);
-                TabOrderedItems.Sort(Control.TabOrderComparer.Instance);
+                        TabOrderedItems.Add(new IndexedControl { 
+                            Control = item,
+                            Index = i,
+                            TabOrder = item.TabOrder
+                        });
+                }
+                TabOrderedItems.Sort(TabOrderComparer.Instance);
+                TabOrderedItemsResult.Clear();
+                foreach (var item in TabOrderedItems)
+                    TabOrderedItemsResult.Add(item.Control);
             }
-            return TabOrderedItems;
+            return TabOrderedItemsResult;
         }
 
         internal List<Control> InPaintOrder (int frameIndex) {
             if (PrepareToUpdateSortedList(ref PaintOrderLastValidFrame, frameIndex, PaintOrderedItems)) {
                 foreach (var item in Items)
                     PaintOrderedItems.Add(item);
-                PaintOrderedItems.Sort(Control.PaintOrderComparer.Instance);
+                PaintOrderedItems.Sort(PaintOrderComparer.Instance);
             }
             return PaintOrderedItems;
         }
@@ -189,6 +199,30 @@ namespace Squared.PRGUI {
 
         IEnumerator IEnumerable.GetEnumerator () {
             return ((IEnumerable)Items).GetEnumerator();
+        }
+    }
+
+    internal struct IndexedControl {
+        public int TabOrder, Index;
+        public Control Control;
+    }
+
+    internal class TabOrderComparer : IComparer<IndexedControl> {
+        public static readonly TabOrderComparer Instance = new TabOrderComparer();
+
+        public int Compare (IndexedControl x, IndexedControl y) {
+            var result = x.TabOrder.CompareTo(y.TabOrder);
+            if (result == 0)
+                result = x.Index.CompareTo(y.Index);
+            return result;
+        }
+    }
+
+    internal class PaintOrderComparer : IComparer<Control> {
+        public static readonly PaintOrderComparer Instance = new PaintOrderComparer();
+
+        public int Compare (Control x, Control y) {
+            return x.PaintOrder.CompareTo(y.PaintOrder);
         }
     }
 }

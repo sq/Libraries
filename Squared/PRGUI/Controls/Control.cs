@@ -180,22 +180,6 @@ namespace Squared.PRGUI {
             }
         }
 
-        public class TabOrderComparer : IComparer<Control> {
-            public static readonly TabOrderComparer Instance = new TabOrderComparer();
-
-            public int Compare (Control x, Control y) {
-                return x.TabOrder.CompareTo(y.TabOrder);
-            }
-        }
-
-        public class PaintOrderComparer : IComparer<Control> {
-            public static readonly PaintOrderComparer Instance = new PaintOrderComparer();
-
-            public int Compare (Control x, Control y) {
-                return x.PaintOrder.CompareTo(y.PaintOrder);
-            }
-        }
-
         public bool AutoScaleMetrics { get; protected set; } = true;
         protected bool HasTransformMatrix { get; private set; }
         protected bool HasInverseTransformMatrix { get; private set; }
