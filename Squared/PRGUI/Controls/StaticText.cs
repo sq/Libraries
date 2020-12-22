@@ -141,15 +141,8 @@ namespace Squared.PRGUI.Controls {
             if (AutoSizeHeight && AutoSizeIsMaximum && !Height.Fixed.HasValue)
                 fixedHeight = AutoSizeComputedHeight ?? fixedHeight;
 
-            if (Width.Minimum.HasValue && fixedWidth.HasValue)
-                fixedWidth = Math.Max(Width.Minimum.Value, fixedWidth.Value);
-            if (Height.Minimum.HasValue && fixedHeight.HasValue)
-                fixedHeight = Math.Max(Height.Minimum.Value, fixedHeight.Value);
-
-            if (Width.Maximum.HasValue && fixedWidth.HasValue)
-                fixedWidth = Math.Min(Width.Maximum.Value, fixedWidth.Value);
-            if (Height.Maximum.HasValue && fixedHeight.HasValue)
-                fixedHeight = Math.Min(Height.Maximum.Value, fixedHeight.Value);
+            Width.Constrain(ref fixedWidth);
+            Height.Constrain(ref fixedHeight);
         }
 
         protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {

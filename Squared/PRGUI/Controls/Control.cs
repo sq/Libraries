@@ -68,6 +68,18 @@ namespace Squared.PRGUI {
 
     public struct ControlDimension {
         public float? Minimum, Maximum, Fixed;
+
+        public void Constrain (ref float? size) {
+            if (Minimum.HasValue && size.HasValue)
+                size = Math.Max(Minimum.Value, size.Value);
+            if (Maximum.HasValue && size.HasValue)
+                size = Math.Min(Maximum.Value, size.Value);
+        }
+
+        public float? Constrain (float? size) {
+            Constrain(ref size);
+            return size;
+        }
     }
     
     public abstract class Control {
