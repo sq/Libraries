@@ -338,17 +338,28 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
-        public ControlBuilder<TControl> SetDecorator (IDecorator value) {
-            Control.CustomDecorator = value;
+        public ControlBuilder<TControl> SetAppearance (ref ControlAppearance value) {
+            Control.Appearance = value;
             return this;
         }
-
+        public ControlBuilder<TControl> SetAppearance (ControlAppearance value) {
+            Control.Appearance = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetDecorator (IDecorator value) {
+            Control.Appearance.Decorator = value;
+            return this;
+        }
         public ControlBuilder<TControl> SetBackgroundColor (ColorVariable value) {
-            Control.BackgroundColor = value;
+            Control.Appearance.BackgroundColor = value;
             return this;
         }
         public ControlBuilder<TControl> SetBackgroundImage (BackgroundImageSettings value) {
-            Control.BackgroundImage = value;
+            Control.Appearance.BackgroundImage = value;
+            return this;
+        }
+        public ControlBuilder<TControl> SetTextColor (ColorVariable value) {
+            Control.Appearance.TextColor = value;
             return this;
         }
 
@@ -534,11 +545,6 @@ namespace Squared.PRGUI.Imperative {
         public ControlBuilder<TControl> SetTextAlignment (HorizontalAlignment value) {
             if (Control is StaticTextBase stb)
                 stb.TextAlignment = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetTextColor (ColorVariable value) {
-            if (Control is StaticTextBase stb)
-                stb.TextColor = value;
             return this;
         }
         public ControlBuilder<TControl> SetScaleToFit (bool value) {

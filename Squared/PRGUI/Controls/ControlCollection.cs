@@ -173,7 +173,7 @@ namespace Squared.PRGUI {
                         TabOrderedItems.Add(new IndexedControl { 
                             Control = item,
                             Index = i,
-                            TabOrder = item.TabOrder
+                            SortOrder = item.TabOrder
                         });
                 }
                 TabOrderedItems.Sort(TabOrderComparer.Instance);
@@ -203,7 +203,7 @@ namespace Squared.PRGUI {
     }
 
     internal struct IndexedControl {
-        public int TabOrder, Index;
+        public int SortOrder, Index;
         public Control Control;
     }
 
@@ -211,7 +211,7 @@ namespace Squared.PRGUI {
         public static readonly TabOrderComparer Instance = new TabOrderComparer();
 
         public int Compare (IndexedControl x, IndexedControl y) {
-            var result = x.TabOrder.CompareTo(y.TabOrder);
+            var result = x.SortOrder.CompareTo(y.SortOrder);
             if (result == 0)
                 result = x.Index.CompareTo(y.Index);
             return result;
@@ -222,7 +222,11 @@ namespace Squared.PRGUI {
         public static readonly PaintOrderComparer Instance = new PaintOrderComparer();
 
         public int Compare (Control x, Control y) {
-            return x.PaintOrder.CompareTo(y.PaintOrder);
+            var result = x.PaintOrder.CompareTo(y.PaintOrder);
+            if (result == 0) {
+                result = x.TypeID.CompareTo(y.TypeID);
+            }
+            return result;
         }
     }
 }

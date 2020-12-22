@@ -248,7 +248,7 @@ namespace Squared.PRGUI.Controls {
         private void UpdateTextDecorators (Control selectedControl) {
             // FIXME: Optimize this for large lists
             foreach (var child in Children) {
-                child.CustomTextDecorator = ((child == selectedControl) && (child.BackgroundColor.pLinear == null))
+                child.Appearance.TextDecorator = ((child == selectedControl) && (child.Appearance.BackgroundColor.pLinear == null))
                     ? Context?.Decorations.Selection 
                     : null;
             }

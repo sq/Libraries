@@ -13,6 +13,7 @@ using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.RasterShape;
+using Squared.Render.Text;
 using Squared.Util;
 using Squared.Util.Event;
 
@@ -181,49 +182,16 @@ namespace Squared.PRGUI {
         }
 
         public bool AutoScaleMetrics { get; protected set; } = true;
-        protected bool HasTransformMatrix { get; private set; }
-        protected bool HasInverseTransformMatrix { get; private set; }
-        private Matrix _TransformMatrix, _InverseTransformMatrix;
 
-        public IControlCompositor Compositor;
+        internal int TypeID;
 
-        public Matrix? TransformMatrix {
-            get => HasTransformMatrix ? _TransformMatrix : (Matrix?)null;
-            set {
-                if (value == null) {
-                    _TransformMatrix = _InverseTransformMatrix = Matrix.Identity;
-                    HasInverseTransformMatrix = HasTransformMatrix = false;
-                    return;
-                }
-
-                HasTransformMatrix = true;
-                _TransformMatrix = value.Value;
-                Matrix.Invert(ref _TransformMatrix, out _InverseTransformMatrix);
-                var det = _InverseTransformMatrix.Determinant();
-                HasInverseTransformMatrix = !float.IsNaN(det) && !float.IsInfinity(det);
-            }
-        }
-
-        public Matrix? InverseTransformMatrix {
-            get {
-                if (!HasTransformMatrix)
-                    return null;
-                if (!HasInverseTransformMatrix)
-                    return null;
-                return _InverseTransformMatrix;
-            }
-        }
-
-        public IDecorator CustomDecorator, CustomTextDecorator;
+        public ControlAppearance Appearance;
         public Margins Margins, Padding;
         public ControlFlags LayoutFlags = ControlFlags.Layout_Fill_Row;
         public float? FixedWidth, FixedHeight;
         public float? MinimumWidth, MinimumHeight;
         public float? MaximumWidth, MaximumHeight;
-        public ColorVariable BackgroundColor;
-        public BackgroundImageSettings BackgroundImage = null;
-        public Tween<float> Opacity = 1;
-        private bool _BackgroundColorEventFired, _OpacityEventFired;
+        private bool _BackgroundColorEventFired, _OpacityEventFired, _TextColorEventFired;
 
         public ControlDataCollection Data;
 
@@ -319,6 +287,10 @@ namespace Squared.PRGUI {
         protected WeakReference<Control> WeakParent = null;
 
         private RectF LastParentRect;
+
+        public Control () {
+            TypeID = GetType().GetHashCode();
+        }
 
         protected void InvalidateTooltip () {
             TooltipContentVersion++;
@@ -474,11 +446,21 @@ namespace Squared.PRGUI {
         }
 
         protected float GetOpacity (long now) {
-            return AutoFireTweenEvent(now, UIEvents.OpacityTweenEnded, ref Opacity, ref _OpacityEventFired);
+            if (!Appearance.HasOpacity)
+                return 1;
+
+            return AutoFireTweenEvent(now, UIEvents.OpacityTweenEnded, ref Appearance._Opacity, ref _OpacityEventFired);
         }
 
         protected pSRGBColor? GetBackgroundColor (long now) {
-            var v4 = AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref BackgroundColor.pLinear, ref _BackgroundColorEventFired);
+            var v4 = AutoFireTweenEvent(now, UIEvents.BackgroundColorTweenEnded, ref Appearance.BackgroundColor.pLinear, ref _BackgroundColorEventFired);
+            if (!v4.HasValue)
+                return null;
+            return pSRGBColor.FromPLinear(v4.Value);
+        }
+
+        protected pSRGBColor? GetTextColor (long now) {
+            var v4 = AutoFireTweenEvent(now, UIEvents.TextColorTweenEnded, ref Appearance.TextColor.pLinear, ref _TextColorEventFired);
             if (!v4.HasValue)
                 return null;
             return pSRGBColor.FromPLinear(v4.Value);
@@ -487,17 +469,17 @@ namespace Squared.PRGUI {
         private void ComputeCenteredTransformMatrix (Vector2 origin, Vector2 finalPosition, out Matrix result) {
             Matrix.CreateTranslation(origin.X, origin.Y, 0, out Matrix centering);
             Matrix.CreateTranslation(finalPosition.X, finalPosition.Y, 0, out Matrix placement);
-            result = centering * _TransformMatrix * placement;
+            result = centering * Appearance._TransformMatrix * placement;
         }
 
         internal Vector2 ApplyLocalTransformToGlobalPosition (LayoutContext context, Vector2 globalPosition, ref RectF box, bool force) {
-            if (!HasTransformMatrix || !HasInverseTransformMatrix)
+            if (!Appearance.HasTransformMatrix || !Appearance.HasInverseTransformMatrix)
                 return globalPosition;
 
             var localPosition = globalPosition - box.Center;
             // Detect non-invertible transform or other messed up math
 
-            Vector4.Transform(ref localPosition, ref _InverseTransformMatrix, out Vector4 transformedLocalPosition);
+            Vector4.Transform(ref localPosition, ref Appearance._InverseTransformMatrix, out Vector4 transformedLocalPosition);
             var transformedLocal2 = new Vector2(transformedLocalPosition.X / transformedLocalPosition.W, transformedLocalPosition.Y / transformedLocalPosition.W);
             var result = transformedLocal2 + box.Center;
 
@@ -610,11 +592,11 @@ namespace Squared.PRGUI {
         }
 
         protected IDecorator GetDecorator (IDecorationProvider provider) {
-            return CustomDecorator ?? GetDefaultDecorator(provider);
+            return Appearance.Decorator ?? GetDefaultDecorator(provider);
         }
 
         protected IDecorator GetTextDecorator (IDecorationProvider provider) {
-            return CustomTextDecorator ?? GetDefaultDecorator(provider);
+            return Appearance.TextDecorator ?? GetDefaultDecorator(provider);
         }
 
         protected ControlStates GetCurrentState (UIOperationContext context) {
@@ -665,7 +647,7 @@ namespace Squared.PRGUI {
                 ContentBox = contentBox,
                 State = state,
                 BackgroundColor = GetBackgroundColor(Context.NowL),
-                BackgroundImage = BackgroundImage
+                BackgroundImage = Appearance.BackgroundImage
             };
         }
 
@@ -803,8 +785,8 @@ namespace Squared.PRGUI {
             if (isInvisible && TryGetParent(out Control parent))
                 return false;
 
-            var enableCompositor = Compositor?.WillComposite(this, opacity) == true;
-            var needsComposition = HasTransformMatrix || 
+            var enableCompositor = Appearance.Compositor?.WillComposite(this, opacity) == true;
+            var needsComposition = Appearance.HasTransformMatrix || 
                 (opacity < 1) || 
                 enableCompositor;
 
@@ -842,12 +824,12 @@ namespace Squared.PRGUI {
 
         private static void _BeforeComposite (DeviceManager dm, object _control) {
             var control = (Control)_control;
-            control.Compositor?.BeforeComposite(control, dm, ref control.MostRecentCompositeDrawCall);
+            control.Appearance.Compositor?.BeforeComposite(control, dm, ref control.MostRecentCompositeDrawCall);
         }
 
         private static void _AfterComposite (DeviceManager dm, object _control) {
             var control = (Control)_control;
-            control.Compositor?.AfterComposite(control, dm, ref control.MostRecentCompositeDrawCall);
+            control.Appearance.Compositor?.AfterComposite(control, dm, ref control.MostRecentCompositeDrawCall);
         }
 
         private static ViewTransform _ApplyLocalTransformMatrix (ViewTransform vt, object _control) {
@@ -877,7 +859,7 @@ namespace Squared.PRGUI {
             // newPassSet.Above.RasterizeEllipse(box.Center, Vector2.One * 6f, Color.White * 0.7f);
             RasterizeAllPasses(ref compositionContext, ref box, ref newPassSet, true);
             compositionRenderer.Layer += 1;
-            var pos = HasTransformMatrix ? Vector2.Zero : compositeBox.Position.Floor();
+            var pos = Appearance.HasTransformMatrix ? Vector2.Zero : compositeBox.Position.Floor();
             // FIXME: Is this the right layer?
             var sourceRect = new Rectangle(
                 (int)compositeBox.Left, (int)compositeBox.Top,
@@ -889,17 +871,17 @@ namespace Squared.PRGUI {
                 Color.White * opacity, scale: 1.0f / Context.ScratchScaleFactor
             );
 
-            if (HasTransformMatrix || enableCompositor) {
+            if (Appearance.HasTransformMatrix || enableCompositor) {
                 MostRecentCompositeDrawCall = dc;
                 MostRecentCompositeBox = compositeBox;
                 var subgroup = passSet.Above.MakeSubgroup(
                     before: BeforeComposite, 
                     after: AfterComposite,
-                    viewTransformModifier: HasTransformMatrix ? ApplyLocalTransformMatrix : null, 
+                    viewTransformModifier: Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null, 
                     userData: this
                 );
                 if (enableCompositor)
-                    Compositor.Composite(this, ref subgroup, ref dc);
+                    Appearance.Compositor.Composite(this, ref subgroup, ref dc);
                 else
                     subgroup.Draw(ref dc, blendState: BlendState.AlphaBlend);
             } else {
@@ -1044,6 +1026,56 @@ namespace Squared.PRGUI {
 
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             return ControlKey.Invalid;
+        }
+    }
+
+    public struct ControlAppearance {
+        public IControlCompositor Compositor;
+        public IDecorator Decorator, TextDecorator;
+        public IGlyphSource Font;
+        public ColorVariable BackgroundColor;
+        public ColorVariable TextColor;
+        public BackgroundImageSettings BackgroundImage;
+
+        internal bool HasOpacity { get; private set; }
+        internal bool HasTransformMatrix { get; private set; }
+        internal bool HasInverseTransformMatrix { get; private set; }
+
+        internal Tween<float> _Opacity;
+        public Tween<float> Opacity {
+            get => HasOpacity ? _Opacity : 1f;
+            set {
+                HasOpacity = true;
+                _Opacity = value;
+            }
+        }
+
+        internal Matrix _TransformMatrix, _InverseTransformMatrix;
+        public Matrix? Transform {
+            get => HasTransformMatrix ? _TransformMatrix : (Matrix?)null;
+            set {
+                if (value == null) {
+                    _TransformMatrix = _InverseTransformMatrix = Matrix.Identity;
+                    HasInverseTransformMatrix = HasTransformMatrix = false;
+                    return;
+                }
+
+                HasTransformMatrix = true;
+                _TransformMatrix = value.Value;
+                Matrix.Invert(ref _TransformMatrix, out _InverseTransformMatrix);
+                var det = _InverseTransformMatrix.Determinant();
+                HasInverseTransformMatrix = !float.IsNaN(det) && !float.IsInfinity(det);
+            }
+        }
+
+        public Matrix? InverseTransform {
+            get {
+                if (!HasTransformMatrix)
+                    return null;
+                if (!HasInverseTransformMatrix)
+                    return null;
+                return _InverseTransformMatrix;
+            }
         }
     }
 }

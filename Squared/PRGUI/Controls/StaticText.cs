@@ -24,8 +24,6 @@ namespace Squared.PRGUI.Controls {
         public const float AutoSizePadding = 3f;
         public const bool DiagnosticText = false;
 
-        public ColorVariable TextColor;
-        private bool _TextColorEventFired;
         public Material TextMaterial = null;
         protected DynamicStringLayout Content = new DynamicStringLayout();
         private DynamicStringLayout ContentMeasurement = null;
@@ -311,13 +309,6 @@ namespace Squared.PRGUI.Controls {
                 return (float)Math.Ceiling(limit.Value) + AutoSizePadding;
             else
                 return null;
-        }
-
-        protected pSRGBColor? GetTextColor (long now) {
-            var v4 = AutoFireTweenEvent(now, UIEvents.TextColorTweenEnded, ref TextColor.pLinear, ref _TextColorEventFired);
-            if (!v4.HasValue)
-                return null;
-            return pSRGBColor.FromPLinear(v4.Value);
         }
 
         protected float ComputeScaleToFit (ref StringLayout layout, ref RectF box, ref Margins margins) {

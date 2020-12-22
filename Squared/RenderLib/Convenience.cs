@@ -765,7 +765,8 @@ namespace Squared.Render.Convenience {
 
             using (var batch = GetBitmapBatch(
                 layer, worldSpace,
-                blendState, samplerState, depthStencilState ?? DepthStencilState, rasterizerState ?? RasterizerState, material ?? DefaultBitmapMaterial
+                blendState ?? BlendState, samplerState, depthStencilState ?? DepthStencilState, 
+                rasterizerState ?? RasterizerState, material ?? DefaultBitmapMaterial
             )) {
                 if (LowPriorityMaterialOrdering) {
                     if (material != null)

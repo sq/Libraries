@@ -463,7 +463,7 @@ namespace Squared.PRGUI {
         private Tooltip GetTooltipInstance () {
             if (CachedTooltip == null) {
                 CachedTooltip = new Tooltip {
-                    Opacity = 0
+                    Appearance = { Opacity = 0 }
                 };
                 Controls.Add(CachedTooltip);
             }
@@ -479,9 +479,11 @@ namespace Squared.PRGUI {
                     Multiline = false,
                     Intangible = true,
                     LayoutFlags = ControlFlags.Layout_Floating,
-                    BackgroundColor = Color.White,
-                    TextColor = Color.Black,
-                    CustomDecorator = Decorations.CompositionPreview
+                    Appearance = {
+                        BackgroundColor = Color.White,
+                        TextColor = Color.Black,
+                        Decorator = Decorations.CompositionPreview
+                    }
                 };
                 Controls.Add(CachedCompositionPreview);
             }
@@ -1047,9 +1049,9 @@ namespace Squared.PRGUI {
                 return;
 
             if (instant)
-                CachedTooltip.Opacity = 0;
+                CachedTooltip.Appearance.Opacity = 0;
             else if (IsTooltipVisible)
-                CachedTooltip.Opacity = Tween<float>.StartNow(CachedTooltip.Opacity.Get(Now), 0, now: NowL, seconds: TooltipFadeDuration);
+                CachedTooltip.Appearance.Opacity = Tween<float>.StartNow(CachedTooltip.Appearance.Opacity.Get(Now), 0, now: NowL, seconds: TooltipFadeDuration);
             IsTooltipVisible = false;
         }
 
@@ -1149,11 +1151,11 @@ namespace Squared.PRGUI {
                 newY = rect.Top - instanceBox.Height - TooltipSpacing;
             instance.Margins = new Margins(newX, newY, 0, 0);
 
-            var currentOpacity = instance.Opacity.Get(Now);
+            var currentOpacity = instance.Appearance.Opacity.Get(Now);
             if (!IsTooltipVisible)
-                instance.Opacity = Tween<float>.StartNow(currentOpacity, 1f, (currentOpacity > 0.1 ? TooltipFadeDurationFast : TooltipFadeDuration), now: NowL);
+                instance.Appearance.Opacity = Tween<float>.StartNow(currentOpacity, 1f, (currentOpacity > 0.1 ? TooltipFadeDurationFast : TooltipFadeDuration), now: NowL);
             if ((anchor != PreviousTooltipAnchor) && (currentOpacity > 0))
-                instance.Opacity = 1f;
+                instance.Appearance.Opacity = 1f;
 
             PreviousTooltipAnchor = anchor;
             IsTooltipVisible = true;

@@ -153,7 +153,7 @@ namespace Squared.PRGUI.Controls {
         private void OnSelectionChange (Control previous, Control newControl) {
             // FIXME: Optimize this for large lists
             foreach (var child in Children) {
-                child.CustomTextDecorator = ((child == newControl) && (child.BackgroundColor.pLinear == null))
+                child.Appearance.TextDecorator = ((child == newControl) && (child.Appearance.BackgroundColor.pLinear == null))
                     ? Context?.Decorations.Selection 
                     : null;
             }
@@ -425,7 +425,7 @@ namespace Squared.PRGUI.Controls {
             InvalidateLayout();
 
             if (!IsActive)
-                Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: context.NowL);
+                Appearance.Opacity = Tween<float>.StartNow(0, 1, MenuShowSpeed, now: context.NowL);
             IsActive = true;
 
             AcceptsFocus = true;
@@ -525,7 +525,7 @@ namespace Squared.PRGUI.Controls {
             IsActive = false;
             Intangible = true;
             var now = Context.NowL;
-            Opacity = Tween<float>.StartNow(Opacity.Get(now), 0, MenuHideSpeed, now: now);
+            Appearance.Opacity = Tween<float>.StartNow(Appearance.Opacity.Get(now), 0, MenuHideSpeed, now: now);
             Listener?.Closed(this);
             Context.NotifyModalClosed(this);
             if (NextResultFuture?.Completed == false)

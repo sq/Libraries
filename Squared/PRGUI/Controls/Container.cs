@@ -198,17 +198,7 @@ namespace Squared.PRGUI.Controls {
             DynamicContents(ref DynamicBuilder);
             DynamicBuilder.Finish();
         }
-
-        private void OnSelectionChange (Control previous, Control newControl) {
-            foreach (var child in Children) {
-                child.CustomTextDecorator = ((child == newControl) && (child.BackgroundColor.pLinear == null))
-                    ? Context?.Decorations.Selection 
-                    : null;
-            }
-
-            FireEvent(UIEvents.SelectionChanged, newControl);
-        }
-
+        
         protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             HasContentBounds = false;
             var result = base.OnGenerateLayoutTree(context, parent, existingKey);

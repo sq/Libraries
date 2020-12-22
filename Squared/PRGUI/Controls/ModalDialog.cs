@@ -51,7 +51,7 @@ namespace Squared.PRGUI.Controls {
             if (IsActive)
                 return NextResultFuture;
             var f = NextResultFuture = new Future<object>();
-            Opacity = Tween<float>.StartNow(0f, 1f, ModalShowSpeed, now: now);
+            Appearance.Opacity = Tween<float>.StartNow(0f, 1f, ModalShowSpeed, now: now);
             GenerateDynamicContent(true);
             _FocusDonor = context.TopLevelFocused;
             context.ShowModal(this);
@@ -77,7 +77,7 @@ namespace Squared.PRGUI.Controls {
             NextResultFuture?.SetResult(result, null);
             Intangible = true;
             var now = Context.NowL;
-            Opacity = Tween<float>.StartNow(Opacity.Get(now), 0f, ModalHideSpeed, now: now);
+            Appearance.Opacity = Tween<float>.StartNow(Appearance.Opacity.Get(now), 0f, ModalHideSpeed, now: now);
             Context.NotifyModalClosed(this);
             AcceptsFocus = false;
             _FocusDonor = null;

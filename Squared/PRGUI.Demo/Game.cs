@@ -245,7 +245,9 @@ namespace PRGUI.Demo {
 
             var textfield = new EditableText {
                 Text = testString,
-                BackgroundColor = new Color(40, 56, 60),
+                Appearance = {
+                    BackgroundColor = new Color(40, 56, 60),
+                },
                 // FIXME: This should be at least partially automatic
                 MinimumWidth = 400,
                 Selection = new Pair<int>(1, testString.Length - 4),
@@ -254,7 +256,9 @@ namespace PRGUI.Demo {
             };
 
             var numberField = new ParameterEditor<double> {
-                BackgroundColor = new Color(40, 56, 60),
+                Appearance = {
+                    BackgroundColor = new Color(40, 56, 60),
+                },
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
                 // MinimumWidth = 200,
                 Description = "A number",
@@ -272,7 +276,9 @@ namespace PRGUI.Demo {
                 Text = "$[ghost] Hide",
                 Margins = default(Margins),
                 LayoutFlags = ControlFlags.Layout_Anchor_Right | ControlFlags.Layout_Fill_Column | ControlFlags.Layout_ForceBreak,
-                BackgroundColor = new Color(128, 16, 16),
+                Appearance = {
+                    BackgroundColor = new Color(128, 16, 16),
+                },
                 // TextAlignment = HorizontalAlignment.Right,
                 TooltipContent = "Hide this window temporarily"
             };
@@ -295,15 +301,19 @@ namespace PRGUI.Demo {
                 SnapToNotch = true,
                 TooltipFormat = "{3:P0}",
                 TooltipContent = "Volume",
-                BackgroundImage = TextureLoader.Load("volume")
+                Appearance = {
+                    BackgroundImage = TextureLoader.Load("volume")
+                },
             };
 
             var window = new ContainerBuilder(new Window {
-                BackgroundColor = new Color(70, 86, 90),
+                Appearance = {
+                    BackgroundColor = new Color(70, 86, 90),
+                    Compositor = new WindowCompositor(Materials)
+                },
                 Title = "Floating Panel",
                 PaintOrder = 1,
                 Collapsible = true,
-                Compositor = new WindowCompositor(Materials)
             });
 
             window.New<StaticText>()
@@ -325,7 +335,9 @@ namespace PRGUI.Demo {
             var changePaintOrder = new Button {
                 // MinimumWidth = 400,
                 Text = "Change Paint Order",
-                BackgroundColor = Color.LightSeaGreen,
+                Appearance = {
+                    BackgroundColor = Color.LightSeaGreen,
+                },
                 TooltipContent = "This button toggles whether the floating panel is above or below the main container"
             };
 
@@ -397,12 +409,16 @@ namespace PRGUI.Demo {
                     new StaticText {
                         Text = "Clipped container",
                         AutoSizeWidth = false,
-                        BackgroundColor = new Color(32, 60, 32),
+                        Appearance = {
+                            BackgroundColor = new Color(32, 60, 32),
+                        }
                     },
                     new Container {
                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
                         ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Wrap | ControlFlags.Container_Align_Start,
-                        CustomDecorator = Context.Decorations.None,
+                        Appearance = {
+                            Decorator = Context.Decorations.None,
+                        },
                         Children = {
                             new Button {
                                 Text = "Clipped huge button\r\nSecond line\r\n" + ButtonChars,
@@ -475,7 +491,9 @@ namespace PRGUI.Demo {
             };
 
             var topLevelContainer = new Container {
-                BackgroundColor = new Color(60, 60, 60) * 0.9f,
+                Appearance = {
+                    BackgroundColor = new Color(60, 60, 60) * 0.9f,
+                },
                 LayoutFlags = ControlFlags.Layout_Fill,
                 // FIXME: We shouldn't need to set Wrap here since we're setting explicit breaks
                 ContainerFlags = ControlFlags.Container_Row | ControlFlags.Container_Align_End | ControlFlags.Container_Wrap | ControlFlags.Container_Constrain_Size,
@@ -500,7 +518,9 @@ namespace PRGUI.Demo {
                         Text = "Disabled Button",
                         Enabled = false,
                         LayoutFlags = ControlFlags.Layout_Fill_Row,
-                        BackgroundColor = Color.LightPink
+                        Appearance = {
+                            BackgroundColor = Color.LightPink
+                        }
                     },
                     dropdown,
                     new StaticText {
@@ -511,20 +531,27 @@ namespace PRGUI.Demo {
                         MinimumHeight = Font.LineSpacing + Context.Decorations.StaticText.Padding.Y,
                         Multiline = true,
                         Wrap = false,
-                        BackgroundColor = Color.DarkRed,
+                        Appearance = {
+                            BackgroundColor = Color.DarkRed,
+                        },
                         ScaleToFit = true
                     },
                     new StaticText {
                         AutoSizeWidth = false,
                         Text = "Static Text 3",
                         TextAlignment = HorizontalAlignment.Right,
-                        BackgroundColor = Tween.StartNow(Color.DarkGreen, Color.DarkRed, 1f, repeatCount: int.MaxValue, repeatMode: TweenRepeatMode.Pulse)
+                        Appearance = {
+                            BackgroundColor = Tween.StartNow(Color.DarkGreen, Color.DarkRed, 1f, repeatCount: int.MaxValue, repeatMode: TweenRepeatMode.Pulse)
+                        }
                     },
                     new StaticText {
                         Text = "Static Text 4",
                         MinimumWidth = 300,
                         AutoSizeWidth = true,
-                        BackgroundColor = Color.DarkBlue
+                        Appearance = {
+                            BackgroundColor = Color.DarkBlue,
+                            TextColor = Tween.StartNow(Color.White, Color.White * 0.5f, 2f, repeatCount: int.MaxValue, repeatMode: TweenRepeatMode.PulseExp)
+                        }
                     },
                     bigScrollableContainer
                 }
@@ -585,7 +612,7 @@ namespace PRGUI.Demo {
 
             Context.EventBus.Subscribe(hideButton, UIEvents.Click, (ei) => {
                 FloatingWindow.Intangible = true;
-                FloatingWindow.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.NowL);
+                FloatingWindow.Appearance.Opacity = Tween<float>.StartNow(1, 0, seconds: 1, now: Context.NowL);
             });
 
             Context.EventBus.Subscribe(increaseGaugeButton, UIEvents.Click, (ei) => {
@@ -604,7 +631,7 @@ namespace PRGUI.Demo {
             });
 
             Context.EventBus.Subscribe(FloatingWindow, UIEvents.OpacityTweenEnded, (ei) => {
-                if (FloatingWindow.Opacity.To >= 1)
+                if (FloatingWindow.Appearance.Opacity.To >= 1)
                     return;
 
                 Context.Controls.Remove(FloatingWindow);
@@ -612,7 +639,7 @@ namespace PRGUI.Demo {
                 var f = Scheduler.Start(new Sleep(1f));
 
                 f.RegisterOnComplete((_) => {
-                    FloatingWindow.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, delay: 1f, now: Context.NowL);
+                    FloatingWindow.Appearance.Opacity = Tween<float>.StartNow(0, 1, seconds: 0.25f, delay: 1f, now: Context.NowL);
                     FloatingWindow.Intangible = false;
                     Context.Controls.Add(FloatingWindow);
                 });
@@ -653,7 +680,9 @@ namespace PRGUI.Demo {
         private void ShowLoginWindow () {
             var fUsername = (new ModalDialog {
                 Title = "Login",
-                BackgroundColor = new Color(70, 86, 90),
+                Appearance = {
+                    BackgroundColor = new Color(70, 86, 90),
+                },
                 DynamicContents = BuildLoginWindow,
                 ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap | ControlFlags.Container_Row
             }).Show(Context);
@@ -781,9 +810,9 @@ namespace PRGUI.Demo {
                 Weird2DTransform(
                     sz, new Vector2(0, 0), new Vector2(sz.X - o, 0), new Vector2(0, sz.Y), sz, out Matrix temp
                 );
-                FloatingWindow.TransformMatrix = temp;
+                FloatingWindow.Appearance.Transform = temp;
             } else
-                FloatingWindow.TransformMatrix = null;
+                FloatingWindow.Appearance.Transform = null;
 
             base.Update(gameTime);
 
