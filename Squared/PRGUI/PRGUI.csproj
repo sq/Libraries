@@ -46,6 +46,7 @@
     <Compile Include="Controls\Container.cs" />
     <Compile Include="Controls\Control.cs" />
     <Compile Include="Controls\ControlCollection.cs" />
+    <Compile Include="Controls\ControlData.cs" />
     <Compile Include="Controls\EditableText.cs" />
     <Compile Include="Controls\ItemList.cs" />
     <Compile Include="Controls\ListBox.cs" />

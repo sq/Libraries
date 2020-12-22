@@ -66,134 +66,22 @@ namespace Squared.PRGUI {
         void OnLayoutComplete (UIOperationContext context, ref bool relayoutRequested);
     }
 
-    internal class ControlDataKeyComparer : IEqualityComparer<ControlDataKey> {
-        public static readonly ControlDataKeyComparer Instance = new ControlDataKeyComparer();
-
-        public bool Equals (ControlDataKey x, ControlDataKey y) {
-            return x.Equals(y);
-        }
-
-        public int GetHashCode (ControlDataKey obj) {
-            return obj.GetHashCode();
-        }
+    public struct ControlDimension {
+        public float? Minimum, Maximum, Fixed;
     }
-
-    internal struct ControlDataKey {
-        public Type Type;
-        public string Key;
-
-        public bool Equals (ControlDataKey rhs) {
-            return (Type == rhs.Type) &&
-                string.Equals(Key, rhs.Key);
-        }
-
-        public override bool Equals (object obj) {
-            if (obj is ControlDataKey)
-                return Equals((ControlDataKey)obj);
-            else
-                return false;
-        }
-
-        public override int GetHashCode () {
-            return Type.GetHashCode();
-        }
-    }
-
+    
     public abstract class Control {
-        public static readonly NullControl None = new NullControl();
-
-        public struct ControlDataCollection : IEnumerable<KeyValuePair<string, object>> {
-            Dictionary<ControlDataKey, object> Data;
-
-            public void Clear () {
-                if (Data == null)
-                    return;
-                Data.Clear();
-            }
-
-            public T Get<T> (string name = null) {
-                return Get(name, default(T));
-            }
-
-            public T Get<T> (string name, T defaultValue) {
-                if (Data == null)
-                    return defaultValue;
-
-                var key = new ControlDataKey { Type = typeof(T), Key = name };
-                object existingValue;
-                if (!Data.TryGetValue(key, out existingValue))
-                    return defaultValue;
-                return (T)existingValue;
-            }
-
-            public bool Set<T> (T value) {
-                return Set(null, value);
-            }
-
-            public bool Set<T> (string name, T value) {
-                if (Data == null)
-                    Data = new Dictionary<ControlDataKey, object>(ControlDataKeyComparer.Instance);
-                var key = new ControlDataKey { Type = typeof(T), Key = name };
-                Data[key] = value;
-                return true;
-            }
-
-            public bool Set<T> (ref T value) {
-                return Set(null, ref value);
-            }
-
-            public bool Set<T> (string name, ref T value) {
-                if (Data == null)
-                    Data = new Dictionary<ControlDataKey, object>(ControlDataKeyComparer.Instance);
-                var key = new ControlDataKey { Type = typeof(T), Key = name };
-                Data[key] = value;
-                return true;
-            }
-
-            public bool Remove<T> (string name) {
-                if (Data == null)
-                    return false;
-                var key = new ControlDataKey { Type = typeof(T), Key = name };
-                return Data.Remove(key);
-            }
-
-            public bool UpdateOrCreate<TExisting, TNew> (string name, TExisting expected, TNew replacement)
-                where TExisting : IEquatable<TExisting>
-            {
-                if ((Data == null) && !Get<TExisting>(name).Equals(expected))
-                    return false;
-
-                Remove<TExisting>(name);
-                return Set(name, replacement);
-            }
-
-            public void Add<T> (string name, T value) {
-                Set(name, value);
-            }
-
-            public IEnumerator<KeyValuePair<string, object>> GetEnumerator () {
-                foreach (var kvp in Data)
-                    yield return new KeyValuePair<string, object>(kvp.Key.Key, kvp.Value);
-            }
-
-            IEnumerator IEnumerable.GetEnumerator () {
-                return this.GetEnumerator();
-            }
-        }
-
-        public bool AutoScaleMetrics { get; protected set; } = true;
+        public static readonly Controls.NullControl None = new Controls.NullControl();
 
         internal int TypeID;
 
         public ControlAppearance Appearance;
         public Margins Margins, Padding;
         public ControlFlags LayoutFlags = ControlFlags.Layout_Fill_Row;
-        public float? FixedWidth, FixedHeight;
-        public float? MinimumWidth, MinimumHeight;
-        public float? MaximumWidth, MaximumHeight;
+        public ControlDimension Width, Height;
         private bool _BackgroundColorEventFired, _OpacityEventFired, _TextColorEventFired;
 
-        public ControlDataCollection Data;
+        public Controls.ControlDataCollection Data;
 
         // Accumulates scroll offset(s) from parent controls
         private Vector2 _AbsoluteDisplayOffset;
@@ -272,6 +160,7 @@ namespace Squared.PRGUI {
         internal bool IsValidMouseInputTarget =>
             AcceptsMouseInput && Visible && !Intangible && Enabled;
 
+        // HACK
         const int CompositePadding = 16;
 
         public int TabOrder { get; set; } = 0;
@@ -392,18 +281,6 @@ namespace Squared.PRGUI {
             return false;
         }
 
-        /*
-
-        protected bool DispatchChildEvent (Control child, string name) {
-            return child.OnEvent(name);
-        }
-
-        protected bool DispatchChildEvent<T> (Control child, string name, T args) {
-            return child.OnEvent<T>(name, args);
-        }
-
-        */
-
         internal ControlKey GenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey = null) {
             LayoutKey = OnGenerateLayoutTree(context, parent, existingKey);
 
@@ -466,12 +343,6 @@ namespace Squared.PRGUI {
             return pSRGBColor.FromPLinear(v4.Value);
         }
 
-        private void ComputeCenteredTransformMatrix (Vector2 origin, Vector2 finalPosition, out Matrix result) {
-            Matrix.CreateTranslation(origin.X, origin.Y, 0, out Matrix centering);
-            Matrix.CreateTranslation(finalPosition.X, finalPosition.Y, 0, out Matrix placement);
-            result = centering * Appearance._TransformMatrix * placement;
-        }
-
         internal Vector2 ApplyLocalTransformToGlobalPosition (LayoutContext context, Vector2 globalPosition, ref RectF box, bool force) {
             if (!Appearance.HasTransformMatrix || !Appearance.HasInverseTransformMatrix)
                 return globalPosition;
@@ -522,20 +393,20 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void ComputeFixedSize (out float? fixedWidth, out float? fixedHeight) {
-            var sizeScale = AutoScaleMetrics ? Context.Decorations.SizeScaleRatio : Vector2.One;
-            fixedWidth = FixedWidth * sizeScale.X;
-            fixedHeight = FixedHeight * sizeScale.Y;
+            var sizeScale = Appearance.AutoScaleMetrics ? Context.Decorations.SizeScaleRatio : Vector2.One;
+            fixedWidth = Width.Fixed * sizeScale.X;
+            fixedHeight = Height.Fixed * sizeScale.Y;
         }
 
         protected virtual void ComputeSizeConstraints (
             out float? minimumWidth, out float? minimumHeight,
             out float? maximumWidth, out float? maximumHeight
         ) {
-            var sizeScale = AutoScaleMetrics ? Context.Decorations.SizeScaleRatio : Vector2.One;
-            minimumWidth = MinimumWidth * sizeScale.X;
-            minimumHeight = MinimumHeight * sizeScale.Y;
-            maximumWidth = MaximumWidth * sizeScale.X;
-            maximumHeight = MaximumHeight * sizeScale.Y;
+            var sizeScale = Appearance.AutoScaleMetrics ? Context.Decorations.SizeScaleRatio : Vector2.One;
+            minimumWidth = Width.Minimum * sizeScale.X;
+            minimumHeight = Height.Minimum * sizeScale.Y;
+            maximumWidth = Width.Maximum * sizeScale.X;
+            maximumHeight = Height.Maximum * sizeScale.Y;
         }
 
         protected virtual ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
@@ -834,7 +705,9 @@ namespace Squared.PRGUI {
 
         private static ViewTransform _ApplyLocalTransformMatrix (ViewTransform vt, object _control) {
             var control = (Control)_control;
-            control.ComputeCenteredTransformMatrix(control.MostRecentCompositeBox.Size * -0.5f, control.MostRecentCompositeBox.Center, out Matrix transform);
+            control.Appearance.ComputeCenteredTransformMatrix(
+                control.MostRecentCompositeBox.Size * -0.5f, control.MostRecentCompositeBox.Center, out Matrix transform
+            );
             vt.ModelView *= transform;
             return vt;
         }
@@ -1002,33 +875,7 @@ namespace Squared.PRGUI {
             return new ColorVariable { pSRGB = c };
         }
     }
-
-    public sealed class NullControl : Control {
-        internal NullControl () {
-            AcceptsMouseInput = AcceptsTextInput = AcceptsFocus = false;
-        }
-
-        protected override bool OnEvent (string name) {
-            return false;
-        }
-
-        protected override bool OnEvent<T> (string name, T args) {
-            return false;
-        }
-
-        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
-            return false;
-        }
-
-        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
-            return;
-        }
-
-        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
-            return ControlKey.Invalid;
-        }
-    }
-
+    
     public struct ControlAppearance {
         public IControlCompositor Compositor;
         public IDecorator Decorator, TextDecorator;
@@ -1041,6 +888,13 @@ namespace Squared.PRGUI {
         internal bool HasTransformMatrix { get; private set; }
         internal bool HasInverseTransformMatrix { get; private set; }
 
+        internal bool _DoNotAutoScaleMetrics;
+
+        public bool AutoScaleMetrics {
+            get => !_DoNotAutoScaleMetrics;
+            set => _DoNotAutoScaleMetrics = !value;
+        }
+
         internal Tween<float> _Opacity;
         public Tween<float> Opacity {
             get => HasOpacity ? _Opacity : 1f;
@@ -1048,6 +902,15 @@ namespace Squared.PRGUI {
                 HasOpacity = true;
                 _Opacity = value;
             }
+        }
+
+        public void ComputeCenteredTransformMatrix (Vector2 origin, Vector2 finalPosition, out Matrix result) {
+            Matrix.CreateTranslation(origin.X, origin.Y, 0, out Matrix centering);
+            Matrix.CreateTranslation(finalPosition.X, finalPosition.Y, 0, out Matrix placement);
+            if (HasTransformMatrix)
+                result = centering * _TransformMatrix * placement;
+            else
+                result = centering * placement;
         }
 
         internal Matrix _TransformMatrix, _InverseTransformMatrix;

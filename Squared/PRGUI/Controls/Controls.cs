@@ -76,7 +76,7 @@ namespace Squared.PRGUI.Controls {
         private bool OnMouseEvent (string name, MouseEventArgs args) {
             if ((name == UIEvents.MouseDown) && (Menu != null)) {
                 var box = GetRect(Context.Layout, contentRect: true);
-                Menu.MinimumWidth = box.Width;
+                Menu.Width.Minimum = box.Width;
                 Menu.Show(Context, this);
                 return true;
             }
@@ -244,6 +244,33 @@ namespace Squared.PRGUI.Controls {
                 Checked = true;
 
             return base.OnEvent(name, args);
+        }
+    }
+
+    public sealed class NullControl : Control {
+        internal NullControl () {
+            AcceptsMouseInput = AcceptsTextInput = AcceptsFocus = false;
+            Intangible = true; Enabled = false;
+        }
+
+        protected override bool OnEvent (string name) {
+            return false;
+        }
+
+        protected override bool OnEvent<T> (string name, T args) {
+            return false;
+        }
+
+        protected override bool OnHitTest (LayoutContext context, RectF box, Vector2 position, bool acceptsMouseInputOnly, bool acceptsFocusOnly, ref Control result) {
+            return false;
+        }
+
+        protected override void OnRasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator decorations) {
+            return;
+        }
+
+        protected override ControlKey OnGenerateLayoutTree (UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
+            return ControlKey.Invalid;
         }
     }
 }

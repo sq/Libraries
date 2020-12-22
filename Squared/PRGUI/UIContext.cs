@@ -1130,7 +1130,7 @@ namespace Squared.PRGUI {
 
                 instance.Text = text;
                 // FIXME: Shift it around if it's already too close to the right side
-                instance.MaximumWidth = idealMaxWidth;
+                instance.Width.Maximum = idealMaxWidth;
                 instance.Invalidate();
 
                 UpdateSubtreeLayout(instance);

@@ -136,20 +136,20 @@ namespace Squared.PRGUI.Controls {
             */
             // var parentRect = Context.Layout.GetRect(parent);
 
-            if (AutoSizeWidth && AutoSizeIsMaximum && !FixedWidth.HasValue)
+            if (AutoSizeWidth && AutoSizeIsMaximum && !Width.Fixed.HasValue)
                 fixedWidth = AutoSizeComputedWidth ?? fixedWidth;
-            if (AutoSizeHeight && AutoSizeIsMaximum &&!FixedHeight.HasValue)
+            if (AutoSizeHeight && AutoSizeIsMaximum && !Height.Fixed.HasValue)
                 fixedHeight = AutoSizeComputedHeight ?? fixedHeight;
 
-            if (MinimumWidth.HasValue && fixedWidth.HasValue)
-                fixedWidth = Math.Max(MinimumWidth.Value, fixedWidth.Value);
-            if (MinimumHeight.HasValue && fixedHeight.HasValue)
-                fixedHeight = Math.Max(MinimumHeight.Value, fixedHeight.Value);
+            if (Width.Minimum.HasValue && fixedWidth.HasValue)
+                fixedWidth = Math.Max(Width.Minimum.Value, fixedWidth.Value);
+            if (Height.Minimum.HasValue && fixedHeight.HasValue)
+                fixedHeight = Math.Max(Height.Minimum.Value, fixedHeight.Value);
 
-            if (MaximumWidth.HasValue && fixedWidth.HasValue)
-                fixedWidth = Math.Min(MaximumWidth.Value, fixedWidth.Value);
-            if (MaximumHeight.HasValue && fixedHeight.HasValue)
-                fixedHeight = Math.Min(MaximumHeight.Value, fixedHeight.Value);
+            if (Width.Maximum.HasValue && fixedWidth.HasValue)
+                fixedWidth = Math.Min(Width.Maximum.Value, fixedWidth.Value);
+            if (Height.Maximum.HasValue && fixedHeight.HasValue)
+                fixedHeight = Math.Min(Height.Maximum.Value, fixedHeight.Value);
         }
 
         protected override void ComputeSizeConstraints (out float? minimumWidth, out float? minimumHeight, out float? maximumWidth, out float? maximumHeight) {
@@ -296,14 +296,14 @@ namespace Squared.PRGUI.Controls {
             float? constrainedWidth = null;
             if (MostRecentContentWidth.HasValue) {
                 float computed = MostRecentContentWidth.Value;
-                if (MaximumWidth.HasValue)
-                    constrainedWidth = Math.Min(computed, MaximumWidth.Value - computedPadding.X);
+                if (Width.Maximum.HasValue)
+                    constrainedWidth = Math.Min(computed, Width.Maximum.Value - computedPadding.X);
                 else
                     constrainedWidth = computed;
             } else
-                constrainedWidth = MaximumWidth - computedPadding.X;
+                constrainedWidth = Width.Maximum - computedPadding.X;
 
-            var limit = FixedWidth - computedPadding.X ?? constrainedWidth;
+            var limit = Width.Fixed - computedPadding.X ?? constrainedWidth;
             if (limit.HasValue)
                 // HACK: Suppress jitter
                 return (float)Math.Ceiling(limit.Value) + AutoSizePadding;

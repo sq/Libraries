@@ -249,7 +249,7 @@ namespace PRGUI.Demo {
                     BackgroundColor = new Color(40, 56, 60),
                 },
                 // FIXME: This should be at least partially automatic
-                MinimumWidth = 400,
+                Width = { Minimum = 400 },
                 Selection = new Pair<int>(1, testString.Length - 4),
                 ScrollOffset = new Vector2(128, 32),
                 Description = "Message"
@@ -349,7 +349,7 @@ namespace PRGUI.Demo {
 
             var button1 = new Button {
                 AutoSizeWidth = false,
-                FixedWidth = 220,
+                Width = { Fixed = 220 },
                 Text = "Button 1",
                 TooltipContent = "Click me for a surprise!",
                 Menu = testMenu
@@ -372,8 +372,8 @@ namespace PRGUI.Demo {
             var listBox = new ListBox<string> {
                 LayoutFlags = ControlFlags.Layout_ForceBreak,
                 Description = "Big List",
-                FixedWidth = 600,
-                FixedHeight = 600,
+                Width = { Fixed = 600 },
+                Height = { Fixed = 600 },
                 Virtual = true
             };
             for (var i = 0; i < itemCount; i++)
@@ -387,19 +387,19 @@ namespace PRGUI.Demo {
             var increaseGaugeButton = new Button {
                 Text = "Increase Gauge Value",
                 LayoutFlags = ControlFlags.Layout_ForceBreak | ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
-                FixedWidth = 450,
+                Width = { Fixed = 450 },
                 AutoSizeWidth = false
             };
 
             var gauge = new Gauge {
                 Description = "Test Gauge",
-                FixedWidth = 450
+                Width = { Fixed = 450 }
             };
 
             var bigScrollableContainer = new Container {
                 ClipChildren = true,
                 LayoutFlags = ControlFlags.Layout_Fill | ControlFlags.Layout_ForceBreak,
-                MaximumHeight = 1200,
+                Height = { Maximum = 1200 },
                 Scrollable = true,
                 ShowHorizontalScrollbar = true,
                 ShowVerticalScrollbar = true,
@@ -422,8 +422,8 @@ namespace PRGUI.Demo {
                         Children = {
                             new Button {
                                 Text = "Clipped huge button\r\nSecond line\r\n" + ButtonChars,
-                                FixedWidth = 600,
-                                FixedHeight = 1800,
+                                Width = { Fixed = 600 },
+                                Height = { Fixed = 1800 },
                                 LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak
                             },
                             // FIXME: Why does this have a bunch of horizontal space in it?
@@ -434,8 +434,8 @@ namespace PRGUI.Demo {
                                     new Container {
                                         ClipChildren = true,
                                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
-                                        MaximumHeight = 500,
-                                        FixedWidth = 450,
+                                        Height = { Maximum = 500 },
+                                        Width = { Fixed = 450 },
                                         Scrollable = true,
                                         Children = {
                                             new StaticText { Text = "Testing nested clips" },
@@ -486,7 +486,7 @@ namespace PRGUI.Demo {
                 Maximum = 5,
                 Value = 0,
                 Integral = true,
-                MaximumWidth = 150,
+                Width = { Maximum = 150 },
                 TooltipFormat = "{0}"
             };
 
@@ -514,7 +514,7 @@ namespace PRGUI.Demo {
                     readingSpeed,
                     new Spacer (),
                     new Button {
-                        MinimumWidth = 200,
+                        Width = { Minimum = 200 },
                         Text = "Disabled Button",
                         Enabled = false,
                         LayoutFlags = ControlFlags.Layout_Fill_Row,
@@ -527,8 +527,8 @@ namespace PRGUI.Demo {
                         AutoSize = false,
                         Text = "Static Text 2\r\nLine 2",
                         LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak,
-                        MaximumWidth = 130,
-                        MinimumHeight = Font.LineSpacing + Context.Decorations.StaticText.Padding.Y,
+                        Width = { Maximum = 130 },
+                        Height = { Minimum = Font.LineSpacing + Context.Decorations.StaticText.Padding.Y },
                         Multiline = true,
                         Wrap = false,
                         Appearance = {
@@ -546,7 +546,7 @@ namespace PRGUI.Demo {
                     },
                     new StaticText {
                         Text = "Static Text 4",
-                        MinimumWidth = 300,
+                        Width = { Minimum = 300 },
                         AutoSizeWidth = true,
                         Appearance = {
                             BackgroundColor = Color.DarkBlue,

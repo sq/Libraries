@@ -16,7 +16,7 @@ namespace Squared.PRGUI.Controls {
             AcceptsMouseInput = false;
             AcceptsFocus = false;
             AutoSize = true;
-            AutoScaleMetrics = false;
+            Appearance.AutoScaleMetrics = false;
             Intangible = true;
             LayoutFlags = ControlFlags.Layout_Floating;
             PaintOrder = 9999;

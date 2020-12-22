@@ -399,19 +399,26 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
+        public ControlBuilder<TControl> SetSize (ControlDimension? width = null, ControlDimension? height = null) {
+            if (width.HasValue)
+                Control.Width = width.Value;
+            if (height.HasValue)
+                Control.Height = height.Value;
+            return this;
+        }
         public ControlBuilder<TControl> SetFixedSize (float? width = null, float? height = null) {
-            Control.FixedWidth = width;
-            Control.FixedHeight = height;
+            Control.Width.Fixed = width;
+            Control.Height.Fixed = height;
             return this;
         }
         public ControlBuilder<TControl> SetMinimumSize (float? width = null, float? height = null) {
-            Control.MinimumWidth = width;
-            Control.MinimumHeight = height;
+            Control.Width.Minimum = width;
+            Control.Height.Minimum = height;
             return this;
         }
         public ControlBuilder<TControl> SetMaximumSize (float? width = null, float? height = null) {
-            Control.MaximumWidth = width;
-            Control.MaximumHeight = height;
+            Control.Width.Maximum = width;
+            Control.Height.Maximum = height;
             return this;
         }
 

@@ -435,15 +435,15 @@ namespace Squared.PRGUI.Controls {
 
             MousePositionWhenShown = context.LastMousePosition;
             MouseInsideWhenShown = null;
-            MaximumWidth = context.CanvasSize.X * 0.5f;
-            MaximumHeight = context.CanvasSize.Y * 0.66f;
+            Width.Maximum = context.CanvasSize.X * 0.5f;
+            Height.Maximum = context.CanvasSize.Y * 0.66f;
             CalculateScrollable(context);
         }
 
         private void CalculateScrollable (UIContext context) {
             context.UpdateSubtreeLayout(this);
             if (GetContentBounds(context, out RectF contentBounds)) {
-                Scrollable = contentBounds.Height >= MaximumHeight;
+                Scrollable = contentBounds.Height >= Height.Maximum;
                 // HACK: Changing the scrollable flag invalidates our layout info, so recalculate it
                 // If we don't do this the menu will overhang on the right side
                 if (Scrollable)
