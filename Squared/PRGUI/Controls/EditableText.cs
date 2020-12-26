@@ -849,7 +849,7 @@ namespace Squared.PRGUI.Controls {
 
         private void ColorizeSelection (
             ArraySegment<BitmapDrawCall> drawCalls, LayoutMarker? selection,
-            UIOperationContext context, ControlStates state, IBaseDecorator selectionDecorator
+            UIOperationContext context, ControlStates state, IMetricsProvider selectionDecorator
         ) {
             Color? selectedColor = DynamicLayout.Color;
             selectionDecorator.GetTextSettings(context, state, out Material temp, out IGlyphSource temp2, ref selectedColor);
@@ -963,7 +963,7 @@ namespace Squared.PRGUI.Controls {
             return LastLocalCursorPosition;
         }
 
-        private void RasterizeDescription (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, IDecorator myDecorations, float textExtentX) {
+        private void RasterizeDescription (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, float textExtentX) {
             var decorator = context.DecorationProvider.Description;
             if (decorator == null)
                 return;
@@ -1033,7 +1033,7 @@ namespace Squared.PRGUI.Controls {
             // Draw in the Below pass for better batching
             if (context.Pass == RasterizePasses.Below) {
                 if (Description != null)
-                    RasterizeDescription(context, ref renderer, settings, decorations, layout.Size.X);
+                    RasterizeDescription(context, ref renderer, settings, layout.Size.X);
             }
 
             if (context.Pass != RasterizePasses.Content)

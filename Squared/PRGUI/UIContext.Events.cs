@@ -122,15 +122,12 @@ namespace Squared.PRGUI {
             if (target?.AcceptsTextInput ?? false) {
                 if (previous?.AcceptsTextInput ?? false) {
                 } else {
-                    if (!IsTextInputRegistered) {
-                        IsTextInputRegistered = true;
-                        TextInputEXT.TextInput += TextInputEXT_TextInput;
-                        TextInputEXT.TextEditing += TextInputEXT_TextEditing;
-                    }
-                    TextInputEXT.StartTextInput();
+                    foreach (var src in InputSources)
+                        src.SetTextInputState(this, true);
                 }
             } else if (previous?.AcceptsTextInput ?? false) {
-                TextInputEXT.StopTextInput();
+                foreach (var src in InputSources)
+                    src.SetTextInputState(this, false);
                 IsCompositionActive = false;
             }
 
@@ -850,15 +847,7 @@ namespace Squared.PRGUI {
             TTS.FixatedControlChanged(current);
         }
 
-        private void TextInputEXT_TextInput (char ch) {
-            // Control characters will be handled through the KeyboardState path
-            if (char.IsControl(ch))
-                return;
-
-            HandleKeyEvent(UIEvents.KeyPress, null, ch);
-        }
-
-        private void TerminateComposition () {
+        public void TerminateComposition () {
             if (IsCompositionActive)
                 Log("Terminating composition");
             IsCompositionActive = false;
@@ -869,7 +858,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        private void UpdateComposition (string currentText, int cursorPosition, int selectionLength) {
+        public void UpdateComposition (string currentText, int cursorPosition, int selectionLength) {
             IsCompositionActive = true;
             Log($"Composition text '{currentText}' with cursor at offset {cursorPosition}, selection length {selectionLength}");
 
@@ -887,15 +876,6 @@ namespace Squared.PRGUI {
 
             instance.Margins = new Margins(offset.X, offset.Y, 0, 0);
             instance.Visible = true;
-        }
-
-        private void TextInputEXT_TextEditing (string text, int cursorPosition, int length) {
-            if ((text == null) || (text.Length == 0)) {
-                TerminateComposition();
-                return;
-            }
-
-            UpdateComposition(text, cursorPosition, length);
         }
     }
 }

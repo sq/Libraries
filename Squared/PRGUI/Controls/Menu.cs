@@ -397,7 +397,7 @@ namespace Squared.PRGUI.Controls {
 
             Listener?.ItemChosen(this, item);
             FireEvent(UIEvents.ItemChosen, item);
-            var args = Context.MakeMouseEventArgs(item, Context.LastMousePosition, null);
+            var args = Context.MakeMouseEventArgs(item, Context.LastInputState.CursorPosition, null);
             args.SequentialClickCount = 1;
             Context.FireEvent(UIEvents.Click, item, args);
             if (CloseWhenItemChosen) {
@@ -433,7 +433,7 @@ namespace Squared.PRGUI.Controls {
             if (!context.Controls.Contains(this))
                 context.Controls.Add(this);
 
-            MousePositionWhenShown = context.LastMousePosition;
+            MousePositionWhenShown = context.LastInputState.CursorPosition;
             MouseInsideWhenShown = null;
             Width.Maximum = context.CanvasSize.X * 0.5f;
             Height.Maximum = context.CanvasSize.Y * 0.66f;
@@ -499,7 +499,7 @@ namespace Squared.PRGUI.Controls {
 
             // Align the top-left corner of the menu with the target position (compensating for margin),
             //  then shift the menu around if necessary to keep it on screen
-            var adjustedPosition = AdjustPosition(context, (position ?? context.LastMousePosition));
+            var adjustedPosition = AdjustPosition(context, (position ?? context.LastInputState.CursorPosition));
 
             return ShowInternalEpilogue(context, adjustedPosition, selectedItem);
         }

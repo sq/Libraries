@@ -15,6 +15,7 @@ using Squared.Game;
 using Squared.PRGUI;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Imperative;
+using Squared.PRGUI.Input;
 using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
@@ -38,8 +39,8 @@ namespace PRGUI.Demo {
         public EmbeddedTexture2DProvider TextureLoader { get; private set; }
         public EmbeddedFreeTypeFontProvider FontLoader { get; private set; }
 
-        public KeyboardState PreviousKeyboardState, KeyboardState;
-        public MouseState PreviousMouseState, MouseState;
+        public KeyboardInputSource Keyboard = new KeyboardInputSource();
+        public MouseInputSource Mouse = new MouseInputSource();
 
         public Material TextMaterial { get; private set; }
 
@@ -79,25 +80,7 @@ namespace PRGUI.Demo {
             if (IsFixedTimeStep)
                 TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 2f);
 
-            PreviousKeyboardState = Keyboard.GetState();
-
             Scheduler = new TaskScheduler(JobQueue.WindowsMessageBased);
-        }
-
-        protected override void Initialize () {
-            base.Initialize();
-        }
-
-        public bool LeftMouse {
-            get {
-                return (MouseState.LeftButton == ButtonState.Pressed) && !IsMouseOverUI;
-            }
-        }
-
-        public bool RightMouse {
-            get {
-                return (MouseState.RightButton == ButtonState.Pressed) && !IsMouseOverUI;
-            }
         }
 
         private FreeTypeFont LoadFont (string name) {
@@ -180,6 +163,9 @@ namespace PRGUI.Demo {
             };
 
             Context = new UIContext(Materials, Decorations) {
+                InputSources = {
+                    Keyboard, Mouse
+                },
                 RichTextConfiguration = {
                     Images = new Dictionary<string, RichImage> {
                         {
@@ -758,14 +744,7 @@ namespace PRGUI.Demo {
         protected override void Update (GameTime gameTime) {
             var started = Time.Ticks;
 
-            PreviousKeyboardState = KeyboardState;
-            PreviousMouseState = MouseState;
-            KeyboardState = Keyboard.GetState();
-            MouseState = Mouse.GetState();
-
             this.IsMouseVisible = true;
-
-            var mousePosition = new Vector2(MouseState.X, MouseState.Y);
 
             if (IsFirstUpdate || (UpdatesToSkip <= 0)) {
                 IsFirstUpdate = false;
@@ -773,29 +752,28 @@ namespace PRGUI.Demo {
             } else 
                 UpdatesToSkip--;
 
-            if (IsActive)
-                Context.UpdateInput(
-                    mouseState: MouseState,
-                    keyboardState: KeyboardState
-                );
+            Context.UpdateInput(IsActive);
 
             if (Context.IsActive)
                 LastTimeOverUI = Time.Ticks;
 
-            if (IsActive) {
-                var alt = KeyboardState.IsKeyDown(Keys.LeftAlt) || KeyboardState.IsKeyDown(Keys.RightAlt);
-                var wasAlt = PreviousKeyboardState.IsKeyDown(Keys.LeftAlt) || PreviousKeyboardState.IsKeyDown(Keys.RightAlt);
+            var ks = Keyboard.CurrentState;
+            var pks = Keyboard.PreviousState;
 
-                if (KeyboardState.IsKeyDown(Keys.OemTilde) && !PreviousKeyboardState.IsKeyDown(Keys.OemTilde)) {
+            if (IsActive) {
+                var alt = ks.IsKeyDown(Keys.LeftAlt) || ks.IsKeyDown(Keys.RightAlt);
+                var wasAlt = pks.IsKeyDown(Keys.LeftAlt) || pks.IsKeyDown(Keys.RightAlt);
+
+                if (ks.IsKeyDown(Keys.OemTilde) && !pks.IsKeyDown(Keys.OemTilde)) {
                     Graphics.SynchronizeWithVerticalRetrace = !Graphics.SynchronizeWithVerticalRetrace;
                     Graphics.ApplyChangesAfterPresent(RenderCoordinator);
                 } else if (
-                    (KeyboardState.IsKeyDown(Keys.Enter) && alt) &&
-                    (!PreviousKeyboardState.IsKeyDown(Keys.Enter) || !wasAlt)
+                    (ks.IsKeyDown(Keys.Enter) && alt) &&
+                    (!pks.IsKeyDown(Keys.Enter) || !wasAlt)
                 ) {
                     Graphics.IsFullScreen = !Graphics.IsFullScreen;
                     Graphics.ApplyChangesAfterPresent(RenderCoordinator);
-                } else if (KeyboardState.IsKeyDown(Keys.OemPipe) && !PreviousKeyboardState.IsKeyDown(Keys.OemPipe)) {
+                } else if (ks.IsKeyDown(Keys.OemPipe) && !pks.IsKeyDown(Keys.OemPipe)) {
                     UniformBinding.ForceCompatibilityMode = !UniformBinding.ForceCompatibilityMode;
                 }
             }

@@ -40,7 +40,6 @@ namespace Squared.PRGUI {
         public IDecorator CompositionPreview { get; set; }
         public IDecorator Checkbox { get; set; }
         public IDecorator RadioButton { get; set; }
-        public IDecorator Description { get; set; }
         public IDecorator Slider { get; set; }
         public IDecorator SliderThumb { get; set; }
         public IDecorator Dropdown { get; set; }
@@ -48,6 +47,9 @@ namespace Squared.PRGUI {
         public IDecorator AcceleratorTarget { get; set; }
         public IDecorator ParameterGauge { get; set; }
         public IDecorator Gauge { get; set; }
+
+        public IMetricsProvider Description { get; set; }
+
         public IWidgetDecorator<ScrollbarState> Scrollbar { get; set; }
 
         public Vector2 SizeScaleRatio { get; set; }
@@ -243,7 +245,7 @@ namespace Squared.PRGUI {
             };
 
             Slider = new DelegateDecorator {
-                Margins = new Margins(0f),
+                Margins = new Margins(4, 0),
                 Padding = new Margins(0, 0, 0, 2.75f),
                 Below = Slider_Below,
                 GetTextSettings = GetTextSettings
@@ -323,6 +325,8 @@ namespace Squared.PRGUI {
             PressedOutlineThickness = 2f,
             InertOutlineThickness = 1f,
             EditableFocusedOutlineThickness = 1.2f;
+        public float EdgeGleamOpacity = 0.4f,
+            EdgeGleamThickness = 1.2f;
         public float ScrollbarSize = 14f, 
             ScrollbarRadius = 3f;
 
@@ -453,12 +457,12 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: InteractableCornerRadius,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
+                innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
                 fillMode: RasterFillMode.Angular,
                 fillSize: fillSize,
                 fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
                 fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
-                annularRadius: 1.1f,
+                annularRadius: EdgeGleamThickness,
                 blendState: BlendState.Additive
             );
         }
@@ -552,7 +556,7 @@ namespace Squared.PRGUI {
                 radiusCW: new Vector4(InertCornerRadius, InertCornerRadius, tip, tip),
                 outlineRadius: thickness, outlineColor: outlineColor * alpha,
                 innerColor: baseColor * ((0.85f + pulse) * alpha), outerColor: baseColor * ((0.35f + pulse) * alpha),
-                fillMode: RasterFillMode.RadialEnclosing, fillSize: 0.95f,
+                fillMode: RasterFillMode.Vertical, fillSize: 0.95f,
                 shadow: InteractableShadow
             );
         }
@@ -569,12 +573,12 @@ namespace Squared.PRGUI {
                 a, b,
                 radiusCW: new Vector4(InertCornerRadius, InertCornerRadius, tip, tip),
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
+                innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
                 fillMode: RasterFillMode.Angular,
                 fillSize: fillSize,
                 fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
                 fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
-                annularRadius: 1.1f,
+                annularRadius: EdgeGleamThickness,
                 blendState: BlendState.Additive
             );
         }
@@ -664,12 +668,12 @@ namespace Squared.PRGUI {
                 a, b,
                 radius: CheckboxSize * 0.45f,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
+                innerColor: Color.White * EdgeGleamOpacity, outerColor: Color.White * 0.0f,
                 fillMode: RasterFillMode.Angular,
                 fillSize: fillSize,
                 fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
                 fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
-                annularRadius: 1.1f,
+                annularRadius: EdgeGleamThickness,
                 blendState: BlendState.Additive
             );
         }
@@ -775,27 +779,6 @@ namespace Squared.PRGUI {
                 innerColor: Color.White, 
                 outerColor: Color.White,
                 blendState: RenderStates.DrawNone
-            );
-        }
-
-        private void EditableText_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            if (!settings.State.IsFlagged(ControlStates.Focused))
-                return;
-
-            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
-            float fillSize = Math.Max(0.05f, Math.Min(0.9f, 64f / settings.Box.Height));
-
-            renderer.RasterizeRectangle(
-                a, b,
-                radius: InertCornerRadius,
-                outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: Color.White * 0.5f, outerColor: Color.White * 0.0f,
-                fillMode: RasterFillMode.Angular,
-                fillSize: fillSize,
-                fillOffset: -Arithmetic.PulseSine(context.Now / 4f, 0f, 0.05f),
-                fillAngle: Arithmetic.PulseCyclicExp(context.Now / 2f, 3),
-                annularRadius: 1.1f,
-                blendState: BlendState.Additive
             );
         }
 

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+using Squared.PRGUI.Input;
 
 namespace Squared.PRGUI {
     public static class UIEvents {
@@ -35,14 +36,6 @@ namespace Squared.PRGUI {
             BackgroundColorTweenEnded = "BackgroundColorTweenEnded",
             TextColorTweenEnded = "TextColorTweenEnded",
             ControlFixated = "ControlFixated";
-    }
-
-    public struct KeyboardModifiers {
-        public bool Control => LeftControl || RightControl;
-        public bool Shift => LeftShift || RightShift;
-        public bool Alt => LeftAlt || RightAlt;
-
-        public bool LeftControl, RightControl, LeftShift, RightShift, LeftAlt, RightAlt;
     }
 
     public struct MouseEventArgs {

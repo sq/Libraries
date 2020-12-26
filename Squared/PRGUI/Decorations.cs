@@ -56,20 +56,20 @@ namespace Squared.PRGUI.Decorations {
         }
     }
 
-    public interface IBaseDecorator {
+    public interface IMetricsProvider {
         Margins Margins { get; }
         Margins Padding { get; }
         void GetContentAdjustment (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
         bool GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color);
     }
 
-    public interface IWidgetDecorator<TData> : IBaseDecorator {
+    public interface IWidgetDecorator<TData> : IMetricsProvider {
         Vector2 MinimumSize { get; }
         bool OnMouseEvent (DecorationSettings settings, ref TData data, string eventName, MouseEventArgs args);
         void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings, ref TData data);
     }
 
-    public interface IDecorator : IBaseDecorator {
+    public interface IDecorator : IMetricsProvider {
         void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
     }
 
@@ -96,7 +96,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator CompositionPreview { get; }
         IDecorator Checkbox { get; }
         IDecorator RadioButton { get; }
-        IDecorator Description { get; }
+        IMetricsProvider Description { get; }
         IDecorator Slider { get; }
         IDecorator SliderThumb { get; }
         IDecorator Dropdown { get; }
@@ -111,7 +111,7 @@ namespace Squared.PRGUI.Decorations {
     public delegate void DecoratorDelegate (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings);
     public delegate void ContentAdjustmentGetter (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale);
 
-    public abstract class DelegateBaseDecorator : IBaseDecorator {
+    public abstract class DelegateBaseDecorator : IMetricsProvider {
         public Margins Margins { get; set; }
         public Margins Padding { get; set; }
 
@@ -119,7 +119,7 @@ namespace Squared.PRGUI.Decorations {
         public TextSettingsGetter GetTextSettings;
         public ContentAdjustmentGetter GetContentAdjustment;
 
-        bool IBaseDecorator.GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color) {
+        bool IMetricsProvider.GetTextSettings (UIOperationContext context, ControlStates state, out Material material, out IGlyphSource font, ref Color? color) {
             if (GetTextSettings != null)
                 return GetTextSettings(context, state, out material, out font, ref color);
             else {
@@ -129,7 +129,7 @@ namespace Squared.PRGUI.Decorations {
             }
         }
 
-        void IBaseDecorator.GetContentAdjustment (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale) {
+        void IMetricsProvider.GetContentAdjustment (UIOperationContext context, ControlStates state, out Vector2 offset, out Vector2 scale) {
             if (GetContentAdjustment != null)
                 GetContentAdjustment(context, state, out offset, out scale);
             else {

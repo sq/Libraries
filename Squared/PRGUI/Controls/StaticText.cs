@@ -344,12 +344,6 @@ namespace Squared.PRGUI.Controls {
             UpdateLineBreak(context, decorations);
 
             var layout = GetCurrentLayout(false);
-            if (overrideColor.HasValue) {
-                var rawColor = overrideColor.Value.ToColor();
-                // HACK: We need to do color overrides this way to avoid constant relayouts
-                for (int i = 0; i < layout.DrawCalls.Count; i++)
-                    layout.DrawCalls.Array[layout.DrawCalls.Offset + i].MultiplyColor = rawColor;
-            }
             textScale *= ComputeScaleToFit(ref layout, ref settings.Box, ref computedPadding);
 
             var scaledSize = layout.Size * textScale;
@@ -375,7 +369,7 @@ namespace Squared.PRGUI.Controls {
             renderer.DrawMultiple(
                 layout.DrawCalls, offset: textOffset.Floor(),
                 material: material, samplerState: RenderStates.Text,
-                scale: textScale
+                scale: textScale, multiplyColor: overrideColor?.ToColor()
             );
         }
 

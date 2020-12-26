@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Squared.Game {
+namespace Squared.Game.Input {
     public abstract class KeyboardInputProvider : IDisposable {
         public struct Deactivation : IDisposable {
             public KeyboardInputProvider This;

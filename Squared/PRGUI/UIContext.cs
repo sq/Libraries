@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Decorations;
+using Squared.PRGUI.Input;
 using Squared.PRGUI.Layout;
 using Squared.Render;
 using Squared.Render.Convenience;
@@ -101,7 +102,7 @@ namespace Squared.PRGUI {
             Keys.RightWindows
         };
 
-        private static readonly HashSet<Keys> SuppressRepeatKeys = new HashSet<Keys> {
+        public static readonly HashSet<Keys> SuppressRepeatKeys = new HashSet<Keys> {
             Keys.Escape,
             Keys.CapsLock,
             Keys.Scroll,
@@ -152,10 +153,6 @@ namespace Squared.PRGUI {
         /// If the mouse is only moved this far (in pixels) it will be treated as no movement for the purposes of click detection
         /// </summary>
         public float MinimumMouseMovementDistance = 10;
-        /// <summary>
-        /// Mouse wheel movements are scaled by this amount
-        /// </summary>
-        public float MouseWheelScale = 1.0f / 2.4f;
         /// <summary>
         /// If the mouse has moved more than the minimum movement distance, do not generate a click event if a scroll occurred.
         /// Otherwise, a click event will be generated as long as the mouse is still within the target control.
@@ -237,6 +234,8 @@ namespace Squared.PRGUI {
         /// </summary>
         public ControlCollection Controls { get; private set; }
 
+        public readonly List<IInputSource> InputSources = new List<IInputSource>();
+
         private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection;
 
         private ConditionalWeakTable<Control, Control> TopLevelFocusMemory = new ConditionalWeakTable<Control, Control>();
@@ -311,7 +310,7 @@ namespace Squared.PRGUI {
         public bool IsActive {
             get =>
                 (MouseOver != null) ||
-                    (LastKeyboardState.GetPressedKeys().Length > 0) ||
+                    _LastInput.AreAnyKeysHeld ||
                     (KeyboardSelection != null) ||
                     (MouseCaptured != null) ||
                     AcceleratorOverlayVisible ||
@@ -330,13 +329,12 @@ namespace Squared.PRGUI {
         public DefaultMaterialSet Materials { get; private set; }
         private ITimeProvider TimeProvider;
 
-        private MouseButtons CurrentMouseButtons, LastMouseButtons;
-        private float LastMouseWheelValue;
-        private KeyboardModifiers CurrentModifiers;
+        private InputState _CurrentInput, _LastInput;
 
-        internal Vector2 LastMousePosition;
+        public InputState CurrentInputState => _CurrentInput;
+        public InputState LastInputState => _LastInput;
+
         private Vector2? MouseDownPosition;
-        private KeyboardState LastKeyboardState;
         private Control ReleasedCapture = null;
         private Control RetainCaptureRequested = null;
 
@@ -345,8 +343,6 @@ namespace Squared.PRGUI {
         private double LastMouseDownTime, LastClickTime;
         private int SequentialClickCount;
 
-        private Keys LastKeyEvent;
-        private double LastKeyEventFirstTime, LastKeyEventTime;
         private double? FirstTooltipHoverTime;
         private double LastTooltipHoverTime;
 
@@ -361,8 +357,7 @@ namespace Squared.PRGUI {
         private readonly static Dictionary<int, DepthStencilState> StencilWriteStates = new Dictionary<int, DepthStencilState>();
         private readonly static Dictionary<int, DepthStencilState> StencilTestStates = new Dictionary<int, DepthStencilState>();
 
-        private bool IsTextInputRegistered = false;
-        private bool IsCompositionActive = false;
+        internal bool IsCompositionActive = false;
 
         public float Now { get; private set; }
         public long NowL { get; private set; }
@@ -449,6 +444,11 @@ namespace Squared.PRGUI {
             Materials = materials;
             TTS = new Accessibility.TTS(this);
         }
+
+        private Vector2 LastMousePosition => _LastInput.CursorPosition;
+        private MouseButtons LastMouseButtons => _LastInput.Buttons;
+        private KeyboardModifiers CurrentModifiers => _CurrentInput.Modifiers;
+        private MouseButtons CurrentMouseButtons => _CurrentInput.Buttons;
 
         private void EventBus_AfterBroadcast (EventBus sender, object eventSource, string eventName, object eventArgs, bool eventWasHandled) {
             if (eventWasHandled)
@@ -739,12 +739,19 @@ namespace Squared.PRGUI {
             NotifyModalClosed(control as IModal);
         }
 
-        public void UpdateInput (
-            MouseState mouseState, KeyboardState keyboardState,
-            Vector2? mouseOffset = null
-        ) {
+        public void UpdateInput (bool processEvents = true) {
             Now = (float)TimeProvider.Seconds;
             NowL = TimeProvider.Ticks;
+
+            _LastInput = _CurrentInput;
+            _CurrentInput = new InputState();
+            foreach (var src in InputSources)
+                src.Update(this, ref _LastInput, ref _CurrentInput);
+
+            if (!processEvents)
+                return;
+
+            var mousePosition = _CurrentInput.CursorPosition;
 
             PreviousUnhandledEvents.Clear();
             PreviousUnhandledEvents.AddRange(UnhandledEvents);
@@ -765,15 +772,7 @@ namespace Squared.PRGUI {
                     Focused = null;
             }
 
-
-            CurrentMouseButtons = ((mouseState.LeftButton == ButtonState.Pressed) ? MouseButtons.Left : MouseButtons.None) |
-                ((mouseState.MiddleButton == ButtonState.Pressed) ? MouseButtons.Middle : MouseButtons.None) |
-                ((mouseState.RightButton == ButtonState.Pressed) ? MouseButtons.Right : MouseButtons.None);
-
-            var mousePosition = new Vector2(mouseState.X, mouseState.Y) + (mouseOffset ?? Vector2.Zero);
-            var mouseWheelValue = mouseState.ScrollWheelValue * MouseWheelScale;
-
-            UpdateCaptureAndHovering(mousePosition);
+            UpdateCaptureAndHovering(_CurrentInput.CursorPosition);
             var mouseEventTarget = MouseCaptured ?? Hovering;
             var topLevelTarget = (mouseEventTarget != null)
                 ? FindTopLevelAncestor(mouseEventTarget)
@@ -785,8 +784,6 @@ namespace Squared.PRGUI {
                 mouseEventTarget = null;
                 wasInputBlocked = true;
             }
-
-            ProcessKeyboardState(ref LastKeyboardState, ref keyboardState);
 
             // If the mouse moves after the keyboard selection was updated, clear it
             if (KeyboardSelection != null) {
@@ -859,7 +856,7 @@ namespace Squared.PRGUI {
                     HandleDrag(previouslyCaptured, Hovering);
             }
 
-            var mouseWheelDelta = mouseWheelValue - LastMouseWheelValue;
+            var mouseWheelDelta = _CurrentInput.WheelValue - _LastInput.WheelValue;
 
             if (mouseWheelDelta != 0)
                 HandleScroll(previouslyCaptured ?? Hovering, mouseWheelDelta);
@@ -874,11 +871,6 @@ namespace Squared.PRGUI {
 
             if (FixatedControl != previouslyFixated)
                 HandleFixationChange(previouslyFixated, FixatedControl);
-
-            LastMouseButtons = CurrentMouseButtons;
-            LastMouseWheelValue = mouseWheelValue;
-            LastKeyboardState = keyboardState;
-            LastMousePosition = mousePosition;
         }
 
         private void TickControl (Control control, Vector2 globalPosition, Vector2? mouseDownPosition) {
@@ -972,63 +964,6 @@ namespace Squared.PRGUI {
             }
 
             return false;
-        }
-
-        private void ProcessKeyboardState (ref KeyboardState previous, ref KeyboardState current) {
-            CurrentModifiers = new KeyboardModifiers {
-                LeftControl = current.IsKeyDown(Keys.LeftControl),
-                RightControl = current.IsKeyDown(Keys.RightControl),
-                LeftShift = current.IsKeyDown(Keys.LeftShift),
-                RightShift = current.IsKeyDown(Keys.RightShift),
-                LeftAlt = current.IsKeyDown(Keys.LeftAlt),
-                RightAlt = current.IsKeyDown(Keys.RightAlt),
-            };
-
-            if (IsCompositionActive)
-                return;
-
-            var now = Now;
-            for (int i = 0; i < 255; i++) {
-                var key = (Keys)i;
-
-                bool shouldFilterKeyPress = false;
-                var wasPressed = previous.IsKeyDown(key);
-                var isPressed = current.IsKeyDown(key);
-
-                if (isPressed || wasPressed) {
-                    // Clumsily filter out keys that would generate textinput events
-                    if (!CurrentModifiers.Control && !CurrentModifiers.Alt) {
-                        if ((key >= Keys.D0) && (key <= Keys.Z))
-                            shouldFilterKeyPress = true;
-                        else if ((key >= Keys.NumPad0) && (key <= Keys.Divide))
-                            shouldFilterKeyPress = true;
-                        else if ((key >= Keys.OemSemicolon) && (key <= Keys.OemBackslash))
-                            shouldFilterKeyPress = true;
-                    }
-                }
-
-                if (isPressed != wasPressed) {
-                    HandleKeyEvent(isPressed ? UIEvents.KeyDown : UIEvents.KeyUp, key, null);
-
-                    if (isPressed && !shouldFilterKeyPress) {
-                        // Modifier keys shouldn't break an active key repeat (i.e. you should be able to press/release shift)
-                        if (!current.IsKeyDown(LastKeyEvent) || !ModifierKeys.Contains(key))
-                            LastKeyEvent = key;
-
-                        LastKeyEventTime = LastKeyEventFirstTime = now;
-                        HandleKeyEvent(UIEvents.KeyPress, key, null);
-                    }
-                } else if (isPressed && (LastKeyEvent == key)) {
-                    if (
-                        !SuppressRepeatKeys.Contains(key) && 
-                        !ModifierKeys.Contains(key) &&
-                        !shouldFilterKeyPress &&
-                        UpdateRepeat(now, LastKeyEventFirstTime, ref LastKeyEventTime)
-                    ) {
-                        HandleKeyEvent(UIEvents.KeyPress, key, null);
-                    }
-                }
-            }
         }
 
         private void HideTooltipForMouseInput (bool isMouseDown) {
@@ -1188,7 +1123,7 @@ namespace Squared.PRGUI {
                 Now = Now,
                 NowL = NowL,
                 Modifiers = CurrentModifiers,
-                SpacebarHeld = LastKeyboardState.IsKeyDown(Keys.Space),
+                SpacebarHeld = _LastInput.SpacebarHeld,
                 MouseButtonHeld = (LastMouseButtons != MouseButtons.None),
                 MousePosition = LastMousePosition,
                 VisibleRegion = new RectF(-VisibilityPadding, -VisibilityPadding, CanvasSize.X + (VisibilityPadding * 2), CanvasSize.Y + (VisibilityPadding * 2))
