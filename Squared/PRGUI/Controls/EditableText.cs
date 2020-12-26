@@ -1096,7 +1096,8 @@ namespace Squared.PRGUI.Controls {
         IEnumerable<KeyValuePair<Control, string>> IAcceleratorSource.Accelerators {
             get {
                 var sb = new StringBuilder();
-                sb.AppendLine("Ctrl+A Select All");
+                if (Builder.Length > 0)
+                    sb.AppendLine("Ctrl+A Select All");
                 if ((Selection.First != Selection.Second) && AllowCopy) {
                     sb.AppendLine("Ctrl+X Cut");
                     sb.AppendLine("Ctrl+C Copy");

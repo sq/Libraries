@@ -251,15 +251,15 @@ namespace Squared.PRGUI {
                     RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, kvp.Key, kvp.Value, true);
             }
 
-            RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, tab, "Tab");
+            RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, tab, "Tab →");
             if (shiftTab != tab)
-                RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, shiftTab, "Shift+Tab");
+                RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, shiftTab, "← Shift+Tab");
 
             if ((ctrlTab != TopLevelFocused) || (ctrlShiftTab != TopLevelFocused)) {
                 if (ctrlTab != tab)
-                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlTab, "Ctrl+Tab");
+                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlTab, "Ctrl+Tab →");
                 if (ctrlTab != ctrlShiftTab)
-                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlShiftTab, "Ctrl+Shift+Tab");
+                    RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, ctrlShiftTab, "← Ctrl+Shift+Tab");
             }
 
             var focusedSource = Focused as IAcceleratorSource;

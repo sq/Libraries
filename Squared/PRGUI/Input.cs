@@ -150,9 +150,14 @@ namespace Squared.PRGUI.Input {
         /// </summary>
         public Vector2 Offset;
 
-        public MouseState CurrentState;
+        public MouseState PreviousState, CurrentState;
+
+        public MouseInputSource () {
+            PreviousState = CurrentState = Mouse.GetState();
+        }
 
         public void Update (UIContext context, ref InputState previous, ref InputState current) {
+            PreviousState = CurrentState;
             var mouseState = CurrentState = Mouse.GetState();
 
             current.Buttons = ((mouseState.LeftButton == ButtonState.Pressed) ? MouseButtons.Left : MouseButtons.None) |
