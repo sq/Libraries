@@ -201,6 +201,9 @@ namespace Squared.PRGUI.Imperative {
                 Container.Children.Add(instance);
             else {
                 var previous = Container.Children[index];
+                if (previous == instance)
+                    return;
+
                 Container.Children[index] = instance;
                 CurrentRemovedControls.Add(previous);
             }

@@ -456,7 +456,7 @@ namespace Squared.Render.RasterShape {
 
         public bool UseUbershader = false;
 
-        private readonly RasterShapeTypeSorter ShapeTypeSorter = new RasterShapeTypeSorter();
+        private static readonly RasterShapeTypeSorter ShapeTypeSorter = new RasterShapeTypeSorter();
 
         private static ListPool<SubBatch> _SubListPool = new ListPool<SubBatch>(
             256, 4, 32, 128, 512
