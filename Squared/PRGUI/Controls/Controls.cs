@@ -52,6 +52,13 @@ namespace Squared.PRGUI.Controls {
             set => base.AcceptsFocus = value;
         }
 
+        /// <summary>
+        /// If set, the button will produce additional periodic Click events while pressed
+        /// </summary>
+        public bool EnableRepeat;
+
+        private double LastRepeatTimestamp;
+
         public Button ()
             : base () {
             Content.Alignment = HorizontalAlignment.Center;
@@ -82,6 +89,18 @@ namespace Squared.PRGUI.Controls {
             }
 
             return false;
+        }
+
+        protected override void OnTick (MouseEventArgs args) {
+            base.OnTick(args);
+            if ((args.Buttons != MouseButtons.Left) || !EnableRepeat)
+                return;
+
+            if (Context.UpdateRepeat(
+                args.Now, args.MouseDownTimestamp, ref LastRepeatTimestamp,
+                speedMultiplier: 1f, accelerationMultiplier: 1f
+            ))
+                FireEvent(UIEvents.Click, args);
         }
 
         protected override IDecorator GetDefaultDecorator (IDecorationProvider provider) {

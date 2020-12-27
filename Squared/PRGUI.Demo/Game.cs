@@ -374,7 +374,8 @@ namespace PRGUI.Demo {
                 Text = "Increase Gauge Value",
                 LayoutFlags = ControlFlags.Layout_ForceBreak | ControlFlags.Layout_Fill_Row | ControlFlags.Layout_Anchor_Top,
                 Width = { Fixed = 450 },
-                AutoSizeWidth = false
+                AutoSizeWidth = false,
+                EnableRepeat = true
             };
 
             var gauge = new Gauge {
@@ -605,7 +606,7 @@ namespace PRGUI.Demo {
                 if (gauge.Value >= 1)
                     gauge.Value = 0;
                 else
-                    gauge.Value += 0.05f;
+                    gauge.Value += 0.025f;
             });
 
             Context.EventBus.Subscribe(toppleButton, UIEvents.Click, (ei) => {

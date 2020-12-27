@@ -18,10 +18,10 @@ namespace Squared.PRGUI.Controls {
             ThumbMinimumWidth = 13;
 
         private float _Value = 0.5f;
-        public float FastAnimationThreshold = 0.5f,
-            MinAnimationLength = 0.2f,
-            MaxAnimationLength = 0.5f,
-            FastAnimationLength = 0.2f;
+        public float FastAnimationThreshold = 0.33f,
+            MinAnimationLength = 0.1f,
+            MaxAnimationLength = 0.4f,
+            FastAnimationLength = 0.05f;
 
         private Tween<float> ValueTween = 0.5f;
 
