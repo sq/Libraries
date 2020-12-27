@@ -17,8 +17,17 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, IValueControl<string>, IAcceleratorSource {
+        internal struct HistoryEntry {
+            public ArraySegment<char> Text;
+            public Pair<int> Selection;
+        }
+
         internal class HistoryBuffer {
-            private Stack<ArraySegment<char>> Entries;
+            public int Capacity = 100;
+
+            private readonly List<HistoryEntry> Entries = new List<HistoryEntry>();
+
+            public int Count => Entries.Count;
 
             public void Clear () {
                 Entries.Clear();
@@ -28,15 +37,27 @@ namespace Squared.PRGUI.Controls {
                 return new ArraySegment<char>(new char[length]);
             }
 
-            public void PushFrom (StringBuilder source) {
+            public void PushFrom (StringBuilder source, Pair<int> selection) {
                 var buffer = Allocate(source.Length);
                 source.CopyTo(0, buffer.Array, buffer.Offset, source.Length);
-                Entries.Push(buffer);
+                Entries.Add(new HistoryEntry {
+                    Text = buffer,
+                    Selection = selection
+                });
+                while (Entries.Count > Capacity)
+                    Entries.RemoveAt(0);
             }
 
-            public void PopInto (StringBuilder destination) {
-                var item = Entries.Pop();
-                destination.Append(item.Array, item.Offset, item.Count);
+            public bool TryPopInto (StringBuilder destination, ref Pair<int> selection) {
+                if (Entries.Count <= 0)
+                    return false;
+
+                var item = Entries[Entries.Count - 1];
+                Entries.RemoveAt(Entries.Count - 1);
+                destination.Clear();
+                destination.Append(item.Text.Array, item.Text.Offset, item.Text.Count);
+                selection = item.Selection;
+                return true;
             }
         }
 
@@ -58,6 +79,8 @@ namespace Squared.PRGUI.Controls {
         public bool AllowCopy = true;
 
         public bool StripNewlines = true;
+
+        public const bool ClearHistoryOnFocusLoss = true;
 
         public const float SelectionHorizontalScrollPadding = 40;
         public const float MinRightScrollMargin = 16, MaxRightScrollMargin = 64;
@@ -100,6 +123,23 @@ namespace Squared.PRGUI.Controls {
         protected Vector2? ClickStartVirtualPosition = null;
         private Pair<int> _Selection;
 
+        protected Vector2 AlignmentOffset = Vector2.Zero;
+
+        protected bool ClampVirtualPositionToTextbox = true;
+
+        private bool IsChangingValue;
+
+        private HistoryBuffer UndoBuffer = new HistoryBuffer(),
+            RedoBuffer = new HistoryBuffer();
+
+        public EditableText ()
+            : base () {
+            DynamicLayout.Text = Builder;
+            AcceptsMouseInput = true;
+            AcceptsFocus = true;
+            AcceptsTextInput = true;
+        }
+
         public bool Password {
             set {
                 DynamicLayout.ReplacementCharacter = value ? '*' : (char?)null;
@@ -127,20 +167,6 @@ namespace Squared.PRGUI.Controls {
 
                 return true;
             }
-        }
-
-        protected Vector2 AlignmentOffset = Vector2.Zero;
-
-        protected bool ClampVirtualPositionToTextbox = true;
-
-        private bool IsChangingValue;
-
-        public EditableText ()
-            : base () {
-            DynamicLayout.Text = Builder;
-            AcceptsMouseInput = true;
-            AcceptsFocus = true;
-            AcceptsTextInput = true;
         }
 
         private bool _IntegerOnly, _DoubleOnly;
@@ -231,12 +257,64 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private void PushUndoEntry () {
+            RedoBuffer.Clear();
+            PushHistoryEntry(UndoBuffer);
+        }
+
+        private void PushHistoryEntry (HistoryBuffer buffer) {
+            buffer.PushFrom(Builder, _Selection);
+        }
+
+        public bool TryUndo () {
+            Context.Log("Attempt Undo");
+
+            if (UndoBuffer.Count <= 0)
+                return false;
+
+            PushHistoryEntry(RedoBuffer);
+
+            if (UndoBuffer.TryPopInto(Builder, ref _Selection)) {
+                Context.Log("Undo OK");
+                NotifyValueChanged();
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool TryRedo () {
+            Context.Log("Attempt Redo");
+
+            if (RedoBuffer.Count <= 0)
+                return false;
+
+            PushHistoryEntry(UndoBuffer);
+
+            if (RedoBuffer.TryPopInto(Builder, ref _Selection)) {
+                Context.Log("Redo OK");
+                NotifyValueChanged();
+                return true;
+            }
+
+            return false;
+        }
+
+        public void ResetHistory () {
+            UndoBuffer.Clear();
+            RedoBuffer.Clear();
+        }
+
         internal void SetText (AbstractString newValue, bool bypassFilter) {
             // FIXME: Optimize the 'value hasn't changed' case
             if (newValue.TextEquals(Builder, StringComparison.Ordinal))
                 return;
-            if (!bypassFilter)
+            if (!bypassFilter) {
                 newValue = FilterInput(newValue);
+                if (newValue.TextEquals(Builder, StringComparison.Ordinal))
+                    return;
+            }
+            ResetHistory();
             Builder.Clear();
             newValue.CopyTo(Builder);
             NextScrollInstant = true;
@@ -557,6 +635,12 @@ namespace Squared.PRGUI.Controls {
 
                 var item = menuResult.Result as StaticText;
                 switch (item?.Text.ToString()) {
+                    case "Undo":
+                        TryUndo();
+                        return;
+                    case "Redo":
+                        TryRedo();
+                        return;
                     case "Cut":
                         CutSelection();
                         return;
@@ -578,6 +662,10 @@ namespace Squared.PRGUI.Controls {
                 return OnMouseEvent(name, (MouseEventArgs)(object)args);
             else if (name == UIEvents.KeyPress)
                 return OnKeyPress((KeyEventArgs)(object)args);
+            else if (name == UIEvents.LostFocus) {
+                if (ClearHistoryOnFocusLoss)
+                    ResetHistory();
+            }
             return false;
         }
 
@@ -593,6 +681,8 @@ namespace Squared.PRGUI.Controls {
                 range.First--;
             else if (char.IsHighSurrogate(Builder[range.Second - 1]))
                 range.Second++;
+
+            PushUndoEntry();
             Builder.Remove(range.First, range.Second - range.First);
             if (fireEvent)
                 NotifyValueChanged();
@@ -603,6 +693,7 @@ namespace Squared.PRGUI.Controls {
             if (!filtered.HasValue)
                 return default(Pair<int>);
 
+            PushUndoEntry();
             Builder.Insert(offset, newText);
             NotifyValueChanged();
             return new Pair<int>(offset, offset + 1);
@@ -612,6 +703,9 @@ namespace Squared.PRGUI.Controls {
             var filtered = FilterInput(newText);
             if (filtered == null)
                 return default(Pair<int>);
+
+            if (filtered.Length > 0)
+                PushUndoEntry();
 
             Builder.Insert(offset, filtered);
             NotifyValueChanged();
@@ -672,6 +766,7 @@ namespace Squared.PRGUI.Controls {
                                 count++;
                             }
 
+                            PushUndoEntry();
                             Builder.Remove(pos, count);
                             if (evt.Key.Value == Keys.Back)
                                 MoveCaret(Selection.First - count, -1);
@@ -764,6 +859,15 @@ namespace Squared.PRGUI.Controls {
                     return true;
                 case "v":
                     Paste();
+                    return true;
+                case "y":
+                    TryRedo();
+                    return true;
+                case "z":
+                    if (evt.Modifiers.Shift)
+                        TryRedo();
+                    else
+                        TryUndo();
                     return true;
                 default:
                     Console.WriteLine($"Unhandled hotkey: {keyString}");
