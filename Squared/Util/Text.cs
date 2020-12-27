@@ -386,5 +386,25 @@ namespace Squared.Util.Text {
             else
                 throw new ArgumentNullException("this");
         }
+
+        public void CopyTo (StringBuilder output) {
+            if (String != null)
+                output.Append(String);
+            else if (StringBuilder != null)
+                StringBuilder.CopyTo(output);
+            else if (ArraySegment.Array != null)
+                output.Append(ArraySegment.Array, ArraySegment.Offset, ArraySegment.Count);
+            else
+                throw new ArgumentNullException("this");
+        }
+    }
+
+    public static class TextExtensions {
+        public static void CopyTo (this StringBuilder source, StringBuilder destination) {
+            using (var buffer = BufferPool<char>.Allocate(source.Length)) {
+                source.CopyTo(0, buffer.Data, 0, source.Length);
+                destination.Append(buffer.Data, 0, source.Length);
+            }
+        }
     }
 }

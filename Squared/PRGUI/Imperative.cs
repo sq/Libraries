@@ -537,6 +537,14 @@ namespace Squared.PRGUI.Imperative {
             }
             return this;
         }
+        public ControlBuilder<TControl> GetText (StringBuilder result) {
+            result.Clear();
+            if (Control is EditableText cast2)
+                cast2.GetText(result);
+            else if (Control is StaticTextBase cast1)
+                cast1.Text.CopyTo(result);
+            return this;
+        }
         public ControlBuilder<TControl> GetText (out AbstractString value) {
             if (Control is EditableText cast2)
                 value = cast2.Text;

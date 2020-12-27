@@ -17,6 +17,29 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
     public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, IValueControl<string>, IAcceleratorSource {
+        internal class HistoryBuffer {
+            private Stack<ArraySegment<char>> Entries;
+
+            public void Clear () {
+                Entries.Clear();
+            }
+
+            private ArraySegment<char> Allocate (int length) {
+                return new ArraySegment<char>(new char[length]);
+            }
+
+            public void PushFrom (StringBuilder source) {
+                var buffer = Allocate(source.Length);
+                source.CopyTo(0, buffer.Array, buffer.Offset, source.Length);
+                Entries.Push(buffer);
+            }
+
+            public void PopInto (StringBuilder destination) {
+                var item = Entries.Pop();
+                destination.Append(item.Array, item.Offset, item.Count);
+            }
+        }
+
         public const int ControlMinimumWidth = 300;
 
         public static readonly Menu ContextMenu = new Menu {
@@ -215,9 +238,23 @@ namespace Squared.PRGUI.Controls {
             if (!bypassFilter)
                 newValue = FilterInput(newValue);
             Builder.Clear();
-            Builder.Append(newValue.ToString());
+            newValue.CopyTo(Builder);
             NextScrollInstant = true;
             NotifyValueChanged();
+        }
+
+        public void GetText (StringBuilder output) {
+            Builder.CopyTo(output);
+        }
+
+        public ArraySegment<char> GetText (char[] output, int outputOffset = 0, int? outputLength = null) {
+            var length = outputLength ?? Builder.Length;
+            if (length > Builder.Length)
+                length = Builder.Length;
+            else if (length < 0)
+                length = 0;
+            Builder.CopyTo(0, output, outputOffset, length);
+            return new ArraySegment<char>(output, outputOffset, length);
         }
 
         public string Text {
