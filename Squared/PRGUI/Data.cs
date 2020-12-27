@@ -498,6 +498,13 @@ namespace Squared.PRGUI {
             return (br.X > tl.X) && (br.Y > tl.Y);
         }
 
+        public bool Contains (ref RectF rhs) {
+            return (rhs.Left >= Left) &&
+                (rhs.Extent.X <= (Left + Width)) &&
+                (rhs.Top >= Top) &&
+                (rhs.Extent.Y <= (Top + Height));
+        }
+
         public bool Contains (Vector2 position) {
             return (position.X >= Left) &&
                 (position.X <= (Left + Width)) &&

@@ -25,7 +25,7 @@ namespace Squared.PRGUI.Input {
         public MouseButtons Buttons;
         public KeyboardModifiers Modifiers;
         public float WheelValue;
-        public bool AreAnyKeysHeld, SpacebarHeld;
+        public bool AreAnyKeysHeld, ActivateKeyHeld;
     }
 
     public class KeyboardInputSource : IInputSource {
@@ -46,16 +46,18 @@ namespace Squared.PRGUI.Input {
             var ks = CurrentState = Keyboard.GetState();
 
             var pk = ks.GetPressedKeys();
-            current.AreAnyKeysHeld = pk.Length > 0;
-            current.SpacebarHeld = ks.IsKeyDown(Keys.Space);
-            current.Modifiers = new KeyboardModifiers {
-                LeftControl = ks.IsKeyDown(Keys.LeftControl),
-                RightControl = ks.IsKeyDown(Keys.RightControl),
-                LeftShift = ks.IsKeyDown(Keys.LeftShift),
-                RightShift = ks.IsKeyDown(Keys.RightShift),
-                LeftAlt = ks.IsKeyDown(Keys.LeftAlt),
-                RightAlt = ks.IsKeyDown(Keys.RightAlt),
-            };
+            current.AreAnyKeysHeld |= pk.Length > 0;
+            current.ActivateKeyHeld |= ks.IsKeyDown(Keys.Space);
+            bool lctrl = ks.IsKeyDown(Keys.LeftControl),
+                rctrl = ks.IsKeyDown(Keys.RightControl),
+                lalt = ks.IsKeyDown(Keys.LeftAlt),
+                ralt = ks.IsKeyDown(Keys.RightAlt);
+            current.Modifiers.LeftControl |= lctrl;
+            current.Modifiers.RightControl |= rctrl;
+            current.Modifiers.LeftShift |= ks.IsKeyDown(Keys.LeftShift);
+            current.Modifiers.RightShift |= ks.IsKeyDown(Keys.RightShift);
+            current.Modifiers.LeftAlt |= lalt;
+            current.Modifiers.RightAlt |= ralt;
 
             if (context.IsCompositionActive)
                 return;
@@ -70,7 +72,7 @@ namespace Squared.PRGUI.Input {
 
                 if (isPressed || wasPressed) {
                     // Clumsily filter out keys that would generate textinput events
-                    if (!current.Modifiers.Control && !current.Modifiers.Alt) {
+                    if (!lctrl && !rctrl && !lalt && !ralt) {
                         if ((key >= Keys.D0) && (key <= Keys.Z))
                             shouldFilterKeyPress = true;
                         else if ((key >= Keys.NumPad0) && (key <= Keys.Divide))
@@ -164,8 +166,12 @@ namespace Squared.PRGUI.Input {
                 ((mouseState.MiddleButton == ButtonState.Pressed) ? MouseButtons.Middle : MouseButtons.None) |
                 ((mouseState.RightButton == ButtonState.Pressed) ? MouseButtons.Right : MouseButtons.None);
 
+            var prevPosition = new Vector2(PreviousState.X, PreviousState.Y) + Offset;
             current.CursorPosition = new Vector2(mouseState.X, mouseState.Y) + Offset;
             current.WheelValue = mouseState.ScrollWheelValue * MouseWheelScale;
+
+            if (current.CursorPosition != prevPosition)
+                context.PriorityInputSource = this;
         }
 
         public void SetTextInputState (UIContext context, bool enabled) {

@@ -235,6 +235,10 @@ namespace Squared.PRGUI {
         public ControlCollection Controls { get; private set; }
 
         public readonly List<IInputSource> InputSources = new List<IInputSource>();
+        /// <summary>
+        /// This input source will update last so it can override the cursor position and other states
+        /// </summary>
+        public IInputSource PriorityInputSource = null;
 
         private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection;
 
@@ -745,8 +749,13 @@ namespace Squared.PRGUI {
 
             _LastInput = _CurrentInput;
             _CurrentInput = new InputState();
-            foreach (var src in InputSources)
+            foreach (var src in InputSources) {
+                if (src == PriorityInputSource)
+                    continue;
                 src.Update(this, ref _LastInput, ref _CurrentInput);
+            }
+
+            PriorityInputSource?.Update(this, ref _LastInput, ref _CurrentInput);
 
             if (!processEvents)
                 return;
@@ -1123,7 +1132,7 @@ namespace Squared.PRGUI {
                 Now = Now,
                 NowL = NowL,
                 Modifiers = CurrentModifiers,
-                SpacebarHeld = _LastInput.SpacebarHeld,
+                SpacebarHeld = _LastInput.ActivateKeyHeld,
                 MouseButtonHeld = (LastMouseButtons != MouseButtons.None),
                 MousePosition = LastMousePosition,
                 VisibleRegion = new RectF(-VisibilityPadding, -VisibilityPadding, CanvasSize.X + (VisibilityPadding * 2), CanvasSize.Y + (VisibilityPadding * 2))
@@ -1192,6 +1201,8 @@ namespace Squared.PRGUI {
                 WasBackgroundFaded = false;
             }
 
+            var topLevelHovering = FindTopLevelAncestor(Hovering);
+
             using (var outerGroup = BatchGroup.New(frame, layer))
             using (var prepassGroup = BatchGroup.New(outerGroup, 0))
             using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget)) {
@@ -1223,8 +1234,10 @@ namespace Squared.PRGUI {
                         ? (
                             (i == topLevelFocusIndex) || (i < topLevelFocusIndex)
                                 ? 1.0f
+                                // Mousing over an inactive control that's being faded will make it more opaque
+                                //  so that you can see what it is
                                 : (
-                                    (Hovering == control)
+                                    (topLevelHovering == control)
                                         ? 0.9f
                                         : 0.6f
                                 )

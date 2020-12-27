@@ -239,6 +239,8 @@ namespace Squared.PRGUI {
             var labelGroup = renderer.MakeSubgroup();
 
             RasterizedOverlayBoxes.Clear();
+            if (Focused != null)
+                RasterizedOverlayBoxes.Add(Focused.GetRect(context.Layout, contentRect: true));
 
             // FIXME: This looks confusing
             // RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, Focused, null);
@@ -271,7 +273,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        private bool IntersectsAnyPreviousBox (ref RectF box) {
+        private bool IsObstructedByAnyPreviousBox (ref RectF box) {
             const float padding = 1;
             var padded = box;
             padded.Left -= padding;
@@ -279,9 +281,14 @@ namespace Squared.PRGUI {
             padded.Width += (padding * 2);
             padded.Height += (padding * 2);
 
-            foreach (var previousRect in RasterizedOverlayBoxes)
+            foreach (var previousRect in RasterizedOverlayBoxes) {
+                // Accelerators may point at children of the focused control, in which case
+                //  we want to allow their labels to appear as normal
+                if (previousRect.Contains(ref box))
+                    continue;
                 if (previousRect.Intersects(ref padded))
                     return true;
+            }
 
             return false;
         }
@@ -320,13 +327,13 @@ namespace Squared.PRGUI {
                     labelPosition, 
                     layout.Size + decorator.Padding.Size
                 );
-                if (IntersectsAnyPreviousBox(ref labelBox))
+                if (IsObstructedByAnyPreviousBox(ref labelBox))
                     labelBox.Left = box.Extent.X - labelBox.Width;
-                if (IntersectsAnyPreviousBox(ref labelBox)) {
+                if (IsObstructedByAnyPreviousBox(ref labelBox)) {
                     labelBox.Left = labelPosition.X;
                     labelBox.Top = box.Extent.Y + 1; // FIXME: Why the +1?
                 }
-                if (IntersectsAnyPreviousBox(ref labelBox))
+                if (IsObstructedByAnyPreviousBox(ref labelBox))
                     labelBox.Left = box.Extent.X - labelBox.Width;
 
                 var labelContentBox = new RectF(
