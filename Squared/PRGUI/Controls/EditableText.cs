@@ -65,9 +65,11 @@ namespace Squared.PRGUI.Controls {
 
         public static readonly Menu ContextMenu = new Menu {
             Children = {
+                new StaticText { Text = "Undo" },
                 new StaticText { Text = "Cut" },
                 new StaticText { Text = "Copy" },
                 new StaticText { Text = "Paste" },
+                new StaticText { Text = "Delete" },
                 new StaticText { Text = "Select All" }
             }
         };
@@ -612,8 +614,12 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void ShowContextMenu (bool forMouseEvent) {
+            ContextMenu.Child<StaticText>(st => st.Text == "Undo").Enabled =
+                UndoBuffer.Count > 0;
+
             ContextMenu.Child<StaticText>(st => st.Text == "Cut").Enabled =
                 ContextMenu.Child<StaticText>(st => st.Text == "Copy").Enabled =
+                ContextMenu.Child<StaticText>(st => st.Text == "Delete").Enabled =
                     Selection.First != Selection.Second;
 
             try {
@@ -647,6 +653,9 @@ namespace Squared.PRGUI.Controls {
                     case "Copy":
                         CopySelection();
                         return;
+                    case "Delete":
+                        Erase(true);
+                        return;
                     case "Paste":
                         Paste();
                         return;
@@ -663,7 +672,7 @@ namespace Squared.PRGUI.Controls {
             else if (name == UIEvents.KeyPress)
                 return OnKeyPress((KeyEventArgs)(object)args);
             else if (name == UIEvents.LostFocus) {
-                if (ClearHistoryOnFocusLoss)
+                if (ClearHistoryOnFocusLoss && !(args is Menu))
                     ResetHistory();
             }
             return false;
@@ -722,6 +731,36 @@ namespace Squared.PRGUI.Controls {
             return Insert(range.First, newText);
         }
 
+        private void Erase (bool forward) {
+            // FIXME: Ctrl-delete and Ctrl-backspace should eat entire words
+            if (Selection.Second != Selection.First) {
+                RemoveRange(ExpandedSelection, true);
+                MoveCaret(Selection.First, 1);
+            } else {
+                int pos = Selection.First, count = 1;
+                if (!forward)
+                    pos -= 1;
+
+                if (pos < 0)
+                    return;
+                else if (pos >= Builder.Length)
+                    return;
+
+                if (char.IsLowSurrogate(Builder[pos])) {
+                    if (!forward)
+                        pos--;
+                    count++;
+                }
+
+                PushUndoEntry();
+                Builder.Remove(pos, count);
+                if (!forward)
+                    MoveCaret(Selection.First - count, -1);
+
+                NotifyValueChanged();
+            }
+        }
+
         protected virtual bool OnKeyPress (KeyEventArgs evt) {
             // Console.WriteLine("{0:X4} '{1}' {2}", (int)(evt.Char ?? '\0'), new String(evt.Char ?? '\0', 1), evt.Key);
 
@@ -746,33 +785,7 @@ namespace Squared.PRGUI.Controls {
                         return true;
                     case Keys.Delete:
                     case Keys.Back:
-                        // FIXME: Ctrl-delete and Ctrl-backspace should eat entire words
-                        if (Selection.Second != Selection.First) {
-                            RemoveRange(ExpandedSelection, true);
-                            MoveCaret(Selection.First, 1);
-                        } else {
-                            int pos = Selection.First, count = 1;
-                            if (evt.Key.Value == Keys.Back)
-                                pos -= 1;
-
-                            if (pos < 0)
-                                return true;
-                            else if (pos >= Builder.Length)
-                                return true;
-
-                            if (char.IsLowSurrogate(Builder[pos])) {
-                                if (evt.Key.Value == Keys.Back)
-                                    pos--;
-                                count++;
-                            }
-
-                            PushUndoEntry();
-                            Builder.Remove(pos, count);
-                            if (evt.Key.Value == Keys.Back)
-                                MoveCaret(Selection.First - count, -1);
-
-                            NotifyValueChanged();
-                        }
+                        Erase(evt.Key.Value == Keys.Delete);
                         return true;
 
                     case Keys.Up:
