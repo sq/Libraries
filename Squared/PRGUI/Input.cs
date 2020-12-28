@@ -28,6 +28,7 @@ namespace Squared.PRGUI.Input {
     public struct InputState {
         public List<Keys> HeldKeys;
         public Vector2 CursorPosition;
+        public Vector2 ScrollDistance;
         public MouseButtons Buttons;
         public KeyboardModifiers Modifiers;
         public float WheelValue;
@@ -235,6 +236,21 @@ namespace Squared.PRGUI.Input {
             Context = context;
         }
 
+        private void ProcessStick (Vector2 stick, out float speed, out Vector2 direction) {
+            var length = stick.Length();
+            if ((length >= Deadzone) && EnableStick) {
+                var ramp = Arithmetic.Saturate((length - FastThreshold) / FastRampSize);
+                speed = Arithmetic.Lerp(
+                    SlowPxPerSecond, FastPxPerSecond, ramp * ramp
+                );
+                direction = stick * new Vector2(1, -1);
+                direction.Normalize();
+            } else {
+                direction = Vector2.Zero;
+                speed = 0f;
+            }
+        }
+
         public void Update (ref InputState previous, ref InputState current) {
             PreviousState = CurrentState;
             var gs = CurrentState = GamePad.GetState(PlayerIndex);
@@ -245,16 +261,13 @@ namespace Squared.PRGUI.Input {
             if (current.KeyboardNavigationEnded)
                 SnapToControl = null;
 
-            var stick = PreviousState.ThumbSticks.Left;
-            var length = stick.Length();
-            if ((length >= Deadzone) && EnableStick) {
-                var ramp = Arithmetic.Saturate((length - FastThreshold) / FastRampSize);
-                var speed = Arithmetic.Lerp(
-                    SlowPxPerSecond, FastPxPerSecond, ramp * ramp
-                );
-                var elapsedD = (now - PreviousUpdateTime) / (double)Time.SecondInTicks;
-                stick.Normalize();
-                var motion = speed * stick * (float)elapsedD * new Vector2(1, -1);
+            var elapsed = (float)((now - PreviousUpdateTime) / (double)Time.SecondInTicks);
+
+            ProcessStick(PreviousState.ThumbSticks.Left, out float cursorSpeed, out Vector2 cursorDirection);
+            ProcessStick(PreviousState.ThumbSticks.Right, out float scrollSpeed, out Vector2 scrollDirection);
+
+            if (cursorSpeed > 0) {
+                var motion = cursorSpeed * cursorDirection * elapsed;
                 newPosition = new Vector2(
                     current.CursorPosition.X + motion.X,
                     current.CursorPosition.Y + motion.Y
@@ -269,6 +282,12 @@ namespace Squared.PRGUI.Input {
                     SnapToControl = Context.Focused;
                 else
                     SnapToControl = null;
+            }
+
+            if (scrollSpeed > 0) {
+                var motion = scrollSpeed * scrollDirection * elapsed;
+                current.ScrollDistance += motion;
+                SnapToControl = null;
             }
 
             if (EnableButtons) {

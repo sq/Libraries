@@ -321,7 +321,7 @@ namespace Squared.PRGUI {
         }
 
         public bool PerformAutoscroll (Control target, float? speed = null) {
-            var scrollContext = ChooseScrollContext(target, out RectF parentRect, out RectF controlRect, out RectF intersectedRect);
+            var scrollContext = ChooseAutoscrollContext(target, out RectF parentRect, out RectF controlRect, out RectF intersectedRect);
             if (scrollContext != null) {
                 // For huge controls, as long as its top-left corner and most of its body
                 //  is visible we don't need to scroll
@@ -400,11 +400,45 @@ namespace Squared.PRGUI {
         private void UpdateAutoscroll () {
             if (CurrentMouseButtons != MouseButtons.None)
                 return;
+            if (SuppressAutoscrollDueToInputScroll)
+                return;
 
             PerformAutoscroll(KeyboardSelection, null);
         }
 
-        private IScrollableControl ChooseScrollContext (Control control, out RectF parentRect, out RectF controlRect, out RectF intersectedRect) {
+        private bool AttemptTargetedScroll (Control control, Vector2 displacement) {
+            if (control == null)
+                return false;
+
+            do {
+                var context = control as IScrollableControl;
+                if (context != null) {
+                    var currentScrollOffset = context.ScrollOffset;
+                    var newScrollOffset = currentScrollOffset + CurrentInputState.ScrollDistance;
+                    if (context.MinScrollOffset.HasValue) {
+                        newScrollOffset.X = Math.Max(context.MinScrollOffset.Value.X, newScrollOffset.X);
+                        newScrollOffset.Y = Math.Max(context.MinScrollOffset.Value.Y, newScrollOffset.Y);
+                    }
+                    if (context.MaxScrollOffset.HasValue) {
+                        newScrollOffset.X = Math.Min(context.MaxScrollOffset.Value.X, newScrollOffset.X);
+                        newScrollOffset.Y = Math.Min(context.MaxScrollOffset.Value.Y, newScrollOffset.Y);
+                    }
+
+                    if (currentScrollOffset != newScrollOffset) {
+                        if (context.TrySetScrollOffset(newScrollOffset, true)) {
+                            SuppressAutoscrollDueToInputScroll = true;
+                            return true;
+                        }
+                    }
+                }
+
+                control.TryGetParent(out control);
+            } while (control != null);
+
+            return false;
+        }
+
+        private IScrollableControl ChooseAutoscrollContext (Control control, out RectF parentRect, out RectF controlRect, out RectF intersectedRect) {
             parentRect = controlRect = intersectedRect = default(RectF);
             if (control == null)
                 return null;

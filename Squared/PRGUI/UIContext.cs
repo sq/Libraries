@@ -279,10 +279,15 @@ namespace Squared.PRGUI {
         public Control KeyboardSelection {
             get => _KeyboardSelection;
             private set {
+                if (value == _KeyboardSelection)
+                    return;
+                SuppressAutoscrollDueToInputScroll = false;
                 _KeyboardSelection = value;
                 MousePositionWhenKeyboardSelectionWasLastUpdated = LastMousePosition;
             }
         }
+
+        bool SuppressAutoscrollDueToInputScroll = false;
 
         /// <summary>
         /// The control most recently interacted with by the user
@@ -651,6 +656,7 @@ namespace Squared.PRGUI {
             } finally {
                 Interlocked.CompareExchange(ref _PostLayoutListeners, pll, null);
             }
+
             UpdateAutoscroll();
         }
 
@@ -910,6 +916,9 @@ namespace Squared.PRGUI {
                 TickControl(MouseCaptured, mousePosition, mouseDownPosition);
 
             UpdateTooltip((CurrentMouseButtons != MouseButtons.None));
+
+            if (CurrentInputState.ScrollDistance.Length() >= 0.5f)
+                AttemptTargetedScroll(KeyboardSelection ?? Hovering ?? Focused, CurrentInputState.ScrollDistance);
 
             if (FixatedControl != previouslyFixated)
                 HandleFixationChange(previouslyFixated, FixatedControl);
@@ -1287,6 +1296,13 @@ namespace Squared.PRGUI {
                     prepass = passSet.Prepass;
                 }
 
+                LastPassCount = prepassGroup.Count + 1;
+
+                if (AcceleratorOverlayVisible) {
+                    renderer.Layer += 1;
+                    RasterizeAcceleratorOverlay(context, ref renderer);
+                }
+
                 {
                     var subRenderer = renderer.MakeSubgroup();
                     subRenderer.BlendState = BlendState.NonPremultiplied;
@@ -1302,13 +1318,6 @@ namespace Squared.PRGUI {
                     context.Pass = RasterizePasses.Above;
                     foreach (var isrc in InputSources)
                         isrc.Rasterize(context, ref subRenderer);
-                }
-
-                LastPassCount = prepassGroup.Count + 1;
-
-                if (AcceleratorOverlayVisible) {
-                    renderer.Layer += 1;
-                    RasterizeAcceleratorOverlay(context, ref renderer);
                 }
             }
         }
