@@ -151,7 +151,8 @@ namespace Squared.PRGUI {
 
         private void HandleHoverTransition (Control previous, Control current) {
             // If the mouse enters a new control, clear the keyboard selection
-            KeyboardSelection = null;
+            if (_CurrentInput.KeyboardNavigationEnded)
+                KeyboardSelection = null;
 
             if (previous != null)
                 FireEvent(UIEvents.MouseLeave, previous, current);

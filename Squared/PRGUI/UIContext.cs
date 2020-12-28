@@ -331,6 +331,8 @@ namespace Squared.PRGUI {
         private ITimeProvider TimeProvider;
 
         private InputState _CurrentInput, _LastInput;
+        private List<Keys> _LastHeldKeys = new List<Keys>(), 
+            _CurrentHeldKeys = new List<Keys>();
 
         public InputState CurrentInputState => _CurrentInput;
         public InputState LastInputState => _LastInput;
@@ -447,6 +449,8 @@ namespace Squared.PRGUI {
             _LastInput = _CurrentInput = new InputState {
                 CursorPosition = new Vector2(-99999)
             };
+            _LastInput.HeldKeys = _LastHeldKeys;
+            _CurrentInput.HeldKeys = _CurrentHeldKeys;
         }
 
         private Vector2 LastMousePosition => _LastInput.CursorPosition;
@@ -761,7 +765,14 @@ namespace Squared.PRGUI {
                 _CurrentInput.CursorPosition = CanvasSize / 2f;
 
             _LastInput = _CurrentInput;
+            _LastInput.HeldKeys = _LastHeldKeys;
+            _LastHeldKeys.Clear();
+            foreach (var k in _CurrentHeldKeys)
+                _LastHeldKeys.Add(k);
+
+            _CurrentHeldKeys.Clear();
             _CurrentInput = new InputState {
+                HeldKeys = _CurrentHeldKeys,
                 CursorPosition = _LastInput.CursorPosition,
                 WheelValue = _LastInput.WheelValue
             };
@@ -774,6 +785,8 @@ namespace Squared.PRGUI {
                 src.SetContext(this);
                 src.Update(ref _LastInput, ref _CurrentInput);
             }
+
+            _CurrentInput.AreAnyKeysHeld = _CurrentInput.HeldKeys.Count > 0;
 
             if (!processEvents)
                 return;
@@ -815,8 +828,10 @@ namespace Squared.PRGUI {
             // If the mouse moves after the keyboard selection was updated, clear it
             if (KeyboardSelection != null) {
                 var movedDistance = mousePosition - MousePositionWhenKeyboardSelectionWasLastUpdated;
-                if (movedDistance.Length() > MinimumMouseMovementDistance)
-                    KeyboardSelection = null;
+                if (movedDistance.Length() > MinimumMouseMovementDistance) {
+                    if (_CurrentInput.KeyboardNavigationEnded)
+                        KeyboardSelection = null;
+                }
             }
 
             if (LastMousePosition != mousePosition) {

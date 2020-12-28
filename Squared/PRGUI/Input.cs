@@ -26,11 +26,12 @@ namespace Squared.PRGUI.Input {
     }
 
     public struct InputState {
+        public List<Keys> HeldKeys;
         public Vector2 CursorPosition;
         public MouseButtons Buttons;
         public KeyboardModifiers Modifiers;
         public float WheelValue;
-        public bool AreAnyKeysHeld, ActivateKeyHeld;
+        public bool AreAnyKeysHeld, ActivateKeyHeld, KeyboardNavigationEnded;
     }
 
     public class KeyboardInputSource : IInputSource {
@@ -55,8 +56,6 @@ namespace Squared.PRGUI.Input {
             PreviousState = CurrentState;
             var ks = CurrentState = Keyboard.GetState();
 
-            var pk = ks.GetPressedKeys();
-            current.AreAnyKeysHeld |= pk.Length > 0;
             current.ActivateKeyHeld |= ks.IsKeyDown(Keys.Space);
             bool lctrl = ks.IsKeyDown(Keys.LeftControl),
                 rctrl = ks.IsKeyDown(Keys.RightControl),
@@ -79,6 +78,8 @@ namespace Squared.PRGUI.Input {
                 bool shouldFilterKeyPress = false;
                 var wasPressed = PreviousState.IsKeyDown(key);
                 var isPressed = ks.IsKeyDown(key);
+                if (isPressed)
+                    current.HeldKeys.Add(key);
 
                 if (isPressed || wasPressed) {
                     // Clumsily filter out keys that would generate textinput events
@@ -195,6 +196,7 @@ namespace Squared.PRGUI.Input {
 
             if ((CurrentState.X != PreviousState.X) || (CurrentState.Y != PreviousState.Y)) {
                 current.CursorPosition = new Vector2(mouseState.X, mouseState.Y) + Offset;
+                current.KeyboardNavigationEnded = true;
                 Context.PromoteInputSource(this);
             }
         }
@@ -206,7 +208,7 @@ namespace Squared.PRGUI.Input {
         }
     }
 
-    public class GamepadVirtualMouseSource : IInputSource {
+    public class GamepadVirtualKeyboardAndCursor : IInputSource {
         public float SlowPxPerSecond = 96f,
             FastPxPerSecond = 1024f;
         public float FastThreshold = 0.4f,
@@ -219,8 +221,10 @@ namespace Squared.PRGUI.Input {
             EnableStick = true;
         long PreviousUpdateTime;
         UIContext Context;
+        Control SnapToControl;
+        bool GenerateKeyPressForActivation = false;
 
-        public GamepadVirtualMouseSource (PlayerIndex playerIndex = PlayerIndex.One) {
+        public GamepadVirtualKeyboardAndCursor (PlayerIndex playerIndex = PlayerIndex.One) {
             PlayerIndex = playerIndex;
             PreviousState = CurrentState = GamePad.GetState(PlayerIndex);
         }
@@ -236,6 +240,11 @@ namespace Squared.PRGUI.Input {
             var gs = CurrentState = GamePad.GetState(PlayerIndex);
             var now = Context.NowL;
 
+            Vector2? newPosition = null;
+
+            if (current.KeyboardNavigationEnded)
+                SnapToControl = null;
+
             var stick = PreviousState.ThumbSticks.Left;
             var length = stick.Length();
             if ((length >= Deadzone) && EnableStick) {
@@ -246,15 +255,23 @@ namespace Squared.PRGUI.Input {
                 var elapsedD = (now - PreviousUpdateTime) / (double)Time.SecondInTicks;
                 stick.Normalize();
                 var motion = speed * stick * (float)elapsedD * new Vector2(1, -1);
-                var x = Arithmetic.Clamp(current.CursorPosition.X + motion.X, 0, Context.CanvasSize.X);
-                var y = Arithmetic.Clamp(current.CursorPosition.Y + motion.Y, 0, Context.CanvasSize.Y);
-                current.CursorPosition = new Vector2(x, y);
-                Context.PromoteInputSource(this);
+                newPosition = new Vector2(
+                    current.CursorPosition.X + motion.X,
+                    current.CursorPosition.Y + motion.Y
+                );
+                current.KeyboardNavigationEnded = true;
+                GenerateKeyPressForActivation = false;
+                SnapToControl = null;
+            }
+
+            if ((SnapToControl != null) && (Context.Focused != SnapToControl)) {
+                if (GenerateKeyPressForActivation)
+                    SnapToControl = Context.Focused;
+                else
+                    SnapToControl = null;
             }
 
             if (EnableButtons) {
-                if (gs.Buttons.A == ButtonState.Pressed)
-                    current.Buttons |= MouseButtons.Left;
                 var mods = new KeyboardModifiers {
                     LeftControl = (gs.Buttons.Back == ButtonState.Pressed)
                 };
@@ -262,23 +279,54 @@ namespace Squared.PRGUI.Input {
                     LeftControl = (gs.Buttons.Back == ButtonState.Pressed),
                     LeftShift = true
                 };
-                DispatchKeyEventsForButton(Keys.Escape, mods, PreviousState.Buttons.B, gs.Buttons.B);
-                DispatchKeyEventsForButton(Keys.Tab, shift, PreviousState.Buttons.LeftShoulder, gs.Buttons.LeftShoulder);
-                DispatchKeyEventsForButton(Keys.Tab, mods, PreviousState.Buttons.RightShoulder, gs.Buttons.RightShoulder);
+
+                if (GenerateKeyPressForActivation) {
+                    DispatchKeyEventsForButton(ref current, Keys.Space, mods, PreviousState.Buttons.A, gs.Buttons.A);
+                } else {
+                    if (gs.Buttons.A == ButtonState.Pressed)
+                        current.Buttons |= MouseButtons.Left;
+                }
+
+                DispatchKeyEventsForButton(ref current, Keys.Escape, mods, PreviousState.Buttons.B, gs.Buttons.B);
+                var wasArrowPressed = DispatchKeyEventsForButton(ref current, Keys.Up, mods, PreviousState.DPad.Up, gs.DPad.Up);
+                wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Down, mods, PreviousState.DPad.Down, gs.DPad.Down);
+                wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Left, mods, PreviousState.DPad.Left, gs.DPad.Left);
+                wasArrowPressed |= DispatchKeyEventsForButton(ref current, Keys.Right, mods, PreviousState.DPad.Right, gs.DPad.Right);
+                var focusChanged = DispatchKeyEventsForButton(ref current, Keys.Tab, shift, PreviousState.Buttons.LeftShoulder, gs.Buttons.LeftShoulder);
+                focusChanged |= DispatchKeyEventsForButton(ref current, Keys.Tab, mods, PreviousState.Buttons.RightShoulder, gs.Buttons.RightShoulder);
                 if (gs.Buttons.Y == ButtonState.Pressed)
                     current.Buttons |= MouseButtons.Right;
+
+                if (focusChanged)
+                    SnapToControl = Context.Focused;
+
+                if (focusChanged || wasArrowPressed)
+                    GenerateKeyPressForActivation = true;
+            }
+
+            if (SnapToControl != null)
+                newPosition = SnapToControl.GetRect(Context.Layout, contentRect: true).Center;
+
+            if (newPosition != null) {
+                var x = Arithmetic.Clamp(newPosition.Value.X, 0, Context.CanvasSize.X);
+                var y = Arithmetic.Clamp(newPosition.Value.Y, 0, Context.CanvasSize.Y);
+                current.CursorPosition = new Vector2(x, y);
+                Context.PromoteInputSource(this);
             }
 
             PreviousUpdateTime = now;
         }
 
-        private void DispatchKeyEventsForButton (Keys key, ButtonState previous, ButtonState current) {
-            DispatchKeyEventsForButton(key, null, previous, current);
+        private bool DispatchKeyEventsForButton (ref InputState state, Keys key, ButtonState previous, ButtonState current) {
+            return DispatchKeyEventsForButton(ref state, key, null, previous, current);
         }
 
-        private void DispatchKeyEventsForButton (Keys key, KeyboardModifiers? modifiers, ButtonState previous, ButtonState current) {
+        private bool DispatchKeyEventsForButton (ref InputState state, Keys key, KeyboardModifiers? modifiers, ButtonState previous, ButtonState current) {
+            if (current == ButtonState.Pressed)
+                state.HeldKeys.Add(key);
+
             if (previous == current)
-                return;
+                return false;
 
             var transition = (current == ButtonState.Pressed)
                 ? UIEvents.KeyDown
@@ -287,6 +335,8 @@ namespace Squared.PRGUI.Input {
             Context.HandleKeyEvent(transition, key, null, modifiers);
             if (current == ButtonState.Released)
                 Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers);
+
+            return true;
         }
 
         public void SetTextInputState (bool enabled) {
@@ -304,7 +354,8 @@ namespace Squared.PRGUI.Input {
             var total = padding + decorator.Margins;
             var settings = new DecorationSettings {
                 Box = new RectF(pos - new Vector2(total.Left, total.Top), new Vector2(total.X, total.Y)),
-                ContentBox = new RectF(pos - new Vector2(padding.Left, padding.Top), new Vector2(padding.X, padding.Y))
+                ContentBox = new RectF(pos - new Vector2(padding.Left, padding.Top), new Vector2(padding.X, padding.Y)),
+                State = GenerateKeyPressForActivation ? ControlStates.Disabled : default(ControlStates)
             };
             decorator.Rasterize(context, ref renderer, settings);
         }

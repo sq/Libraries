@@ -41,7 +41,7 @@ namespace PRGUI.Demo {
 
         public KeyboardInputSource Keyboard = new KeyboardInputSource();
         public MouseInputSource Mouse = new MouseInputSource();
-        public GamepadVirtualMouseSource GamePad = new GamepadVirtualMouseSource();
+        public GamepadVirtualKeyboardAndCursor GamePad = new GamepadVirtualKeyboardAndCursor();
 
         public Material TextMaterial { get; private set; }
 
