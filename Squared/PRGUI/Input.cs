@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+using Squared.PRGUI.Controls;
 using Squared.PRGUI.Decorations;
 using Squared.Render.Convenience;
 using Squared.Util;
@@ -215,6 +216,8 @@ namespace Squared.PRGUI.Input {
         public float FastThreshold = 0.4f,
             FastRampSize = 0.6f,
             Deadzone = 0.2f;
+        public float EdgeMagnetismDistancePx = 16f,
+            EdgeMagnetismFactor = 0.6f;
 
         public GamePadState PreviousState, CurrentState;
         public PlayerIndex PlayerIndex;
@@ -264,6 +267,29 @@ namespace Squared.PRGUI.Input {
             var elapsed = (float)((now - PreviousUpdateTime) / (double)Time.SecondInTicks);
 
             ProcessStick(PreviousState.ThumbSticks.Left, out float cursorSpeed, out Vector2 cursorDirection);
+            var hovering = Context.Hovering;
+            if (
+                AllowMagnetize(hovering) && 
+                (gs.Buttons.A == ButtonState.Released)
+            ) {
+                var box = hovering.GetRect(Context.Layout);
+                var distanceX = Math.Min(
+                    Math.Abs(box.Left - current.CursorPosition.X),
+                    Math.Abs(box.Extent.X - current.CursorPosition.X)
+                );
+                var distanceY = Math.Min(
+                    Math.Abs(box.Top - current.CursorPosition.Y),
+                    Math.Abs(box.Extent.Y - current.CursorPosition.Y)
+                );
+
+                if (
+                    ((Math.Abs(cursorDirection.X) >= 0.2f) && (distanceX <= EdgeMagnetismDistancePx)) ||
+                    ((Math.Abs(cursorDirection.Y) >= 0.2f) && (distanceY <= EdgeMagnetismDistancePx))
+                ) {
+                    cursorSpeed *= EdgeMagnetismFactor;
+                }
+            }
+
             ProcessStick(PreviousState.ThumbSticks.Right, out float scrollSpeed, out Vector2 scrollDirection);
 
             if (cursorSpeed > 0) {
@@ -334,6 +360,17 @@ namespace Squared.PRGUI.Input {
             }
 
             PreviousUpdateTime = now;
+        }
+
+        private bool AllowMagnetize (Control control) {
+            if (control?.AcceptsMouseInput != true)
+                return false;
+
+            // HACK
+            if (control is StaticText)
+                return false;
+
+            return true;
         }
 
         private bool DispatchKeyEventsForButton (ref InputState state, Keys key, ButtonState previous, ButtonState current) {
