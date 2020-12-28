@@ -234,11 +234,8 @@ namespace Squared.PRGUI {
         /// </summary>
         public ControlCollection Controls { get; private set; }
 
+        private readonly List<IInputSource> ScratchInputSources = new List<IInputSource>();
         public readonly List<IInputSource> InputSources = new List<IInputSource>();
-        /// <summary>
-        /// This input source will update last so it can override the cursor position and other states
-        /// </summary>
-        public IInputSource PriorityInputSource = null;
 
         private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection;
 
@@ -447,6 +444,9 @@ namespace Squared.PRGUI {
             TimeProvider = TimeProvider ?? new DotNetTimeProvider();
             Materials = materials;
             TTS = new Accessibility.TTS(this);
+            _LastInput = _CurrentInput = new InputState {
+                CursorPosition = new Vector2(-99999)
+            };
         }
 
         private Vector2 LastMousePosition => _LastInput.CursorPosition;
@@ -743,19 +743,37 @@ namespace Squared.PRGUI {
             NotifyModalClosed(control as IModal);
         }
 
+        public void PromoteInputSource (IInputSource source) {
+            var existingIndex = InputSources.IndexOf(source);
+            if (existingIndex == 0)
+                return;
+            else if (existingIndex > 0)
+                InputSources.RemoveAt(existingIndex);
+            InputSources.Insert(0, source);
+        }
+
         public void UpdateInput (bool processEvents = true) {
             Now = (float)TimeProvider.Seconds;
             NowL = TimeProvider.Ticks;
 
-            _LastInput = _CurrentInput;
-            _CurrentInput = new InputState();
-            foreach (var src in InputSources) {
-                if (src == PriorityInputSource)
-                    continue;
-                src.Update(this, ref _LastInput, ref _CurrentInput);
-            }
+            if ((_CurrentInput.CursorPosition.X < -999) ||
+                (_CurrentInput.CursorPosition.Y < -999))
+                _CurrentInput.CursorPosition = CanvasSize / 2f;
 
-            PriorityInputSource?.Update(this, ref _LastInput, ref _CurrentInput);
+            _LastInput = _CurrentInput;
+            _CurrentInput = new InputState {
+                CursorPosition = _LastInput.CursorPosition,
+                WheelValue = _LastInput.WheelValue
+            };
+
+            ScratchInputSources.Clear();
+            foreach (var src in InputSources)
+                ScratchInputSources.Add(src);
+
+            foreach (var src in ScratchInputSources) {
+                src.SetContext(this);
+                src.Update(ref _LastInput, ref _CurrentInput);
+            }
 
             if (!processEvents)
                 return;
@@ -1252,6 +1270,23 @@ namespace Squared.PRGUI {
                     control.Rasterize(ref context, ref passSet, opacityModifier);
                     // HACK
                     prepass = passSet.Prepass;
+                }
+
+                {
+                    var subRenderer = renderer.MakeSubgroup();
+                    subRenderer.BlendState = BlendState.NonPremultiplied;
+                    // HACK
+                    context.Pass = RasterizePasses.Below;
+                    foreach (var isrc in InputSources)
+                        isrc.Rasterize(context, ref subRenderer);
+                    subRenderer.Layer += 1;
+                    context.Pass = RasterizePasses.Content;
+                    foreach (var isrc in InputSources)
+                        isrc.Rasterize(context, ref subRenderer);
+                    subRenderer.Layer += 1;
+                    context.Pass = RasterizePasses.Above;
+                    foreach (var isrc in InputSources)
+                        isrc.Rasterize(context, ref subRenderer);
                 }
 
                 LastPassCount = prepassGroup.Count + 1;

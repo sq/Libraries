@@ -47,6 +47,7 @@ namespace Squared.PRGUI {
         public IDecorator AcceleratorTarget { get; set; }
         public IDecorator ParameterGauge { get; set; }
         public IDecorator Gauge { get; set; }
+        public IDecorator VirtualCursor { get; set; }
 
         public IMetricsProvider Description { get; set; }
 
@@ -291,6 +292,11 @@ namespace Squared.PRGUI {
                 // Top+bottom padding = height of fill/track
                 // Left+right padding = minimum width of fill
                 Padding = new Margins(4, 0, 0, 7.5f)
+            };
+
+            VirtualCursor = new DelegateDecorator {
+                Padding = new Margins(19),
+                Above = VirtualCursor_Above
             };
 
             Scrollbar = new DelegateWidgetDecorator<ScrollbarState> {
@@ -1070,6 +1076,21 @@ namespace Squared.PRGUI {
                 outlineRadius: outlineRadius, outlineColor: outlineColor,
                 innerColor: Color.White * alpha1, outerColor: Color.White * alpha2,
                 fillMode: RasterFillMode.Horizontal
+            );
+        }
+
+        private void VirtualCursor_Above (UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
+            // FIXME: Why this offset?
+            var center = settings.Box.Center + new Vector2(0.9f);
+            var radius = settings.Box.Size / 2f;
+            renderer.RasterSoftOutlines = true;
+            renderer.RasterizeEllipse(
+                center, radius,
+                innerColor: Color.Transparent, outerColor: Color.Transparent,
+                outlineRadius: 2.8f, outlineColor: Color.White
+            );
+            renderer.RasterizeEllipse(
+                center, new Vector2(1.6f), innerColor: Color.White
             );
         }
 

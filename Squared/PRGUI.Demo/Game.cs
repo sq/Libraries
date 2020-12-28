@@ -41,6 +41,7 @@ namespace PRGUI.Demo {
 
         public KeyboardInputSource Keyboard = new KeyboardInputSource();
         public MouseInputSource Mouse = new MouseInputSource();
+        public GamepadVirtualMouseSource GamePad = new GamepadVirtualMouseSource();
 
         public Material TextMaterial { get; private set; }
 
@@ -164,7 +165,7 @@ namespace PRGUI.Demo {
 
             Context = new UIContext(Materials, Decorations) {
                 InputSources = {
-                    Keyboard, Mouse
+                    Mouse, Keyboard, GamePad
                 },
                 RichTextConfiguration = {
                     Images = new Dictionary<string, RichImage> {
@@ -745,14 +746,13 @@ namespace PRGUI.Demo {
         protected override void Update (GameTime gameTime) {
             var started = Time.Ticks;
 
-            this.IsMouseVisible = true;
-
             if (IsFirstUpdate || (UpdatesToSkip <= 0)) {
                 IsFirstUpdate = false;
                 Context.Update();
             } else 
                 UpdatesToSkip--;
 
+            IsMouseVisible = !IsActive || (Context.InputSources.IndexOf(Mouse) == 0);
             Context.UpdateInput(IsActive);
 
             if (Context.IsActive)

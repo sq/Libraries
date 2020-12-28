@@ -88,10 +88,14 @@ namespace Squared.PRGUI.Controls {
         }
 
         bool IModal.OnUnhandledKeyEvent (string name, KeyEventArgs args) {
+            if (name != UIEvents.KeyUp)
+                return false;
+
             if ((args.Key == Keys.Enter) && (AcceptControl != null))
                 return Context.FireSyntheticClick(AcceptControl);
             else if ((args.Key == Keys.Escape) && (CancelControl != null))
                 return Context.FireSyntheticClick(CancelControl);
+
             return false;
         }
 

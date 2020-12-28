@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Controls;
+using Squared.PRGUI.Input;
 using Squared.Util;
 
 namespace Squared.PRGUI {
@@ -123,11 +124,11 @@ namespace Squared.PRGUI {
                 if (previous?.AcceptsTextInput ?? false) {
                 } else {
                     foreach (var src in InputSources)
-                        src.SetTextInputState(this, true);
+                        src.SetTextInputState(true);
                 }
             } else if (previous?.AcceptsTextInput ?? false) {
                 foreach (var src in InputSources)
-                    src.SetTextInputState(this, false);
+                    src.SetTextInputState(false);
                 IsCompositionActive = false;
             }
 
@@ -201,10 +202,14 @@ namespace Squared.PRGUI {
 
         private bool HasPressedKeySincePressingAlt = false;
 
-        public bool HandleKeyEvent (string name, Keys? key, char? ch) {
+        public bool HandleKeyEvent (string name, Keys? key, char? ch, KeyboardModifiers? modifiers = null) {
+            // HACK to simplify writing input sources
+            if (name == null)
+                return false;
+
             var evt = new KeyEventArgs {
                 Context = this,
-                Modifiers = CurrentModifiers,
+                Modifiers = modifiers ?? CurrentModifiers,
                 Key = key,
                 Char = ch
             };
@@ -216,7 +221,7 @@ namespace Squared.PRGUI {
                     AcceleratorOverlayVisible = false;
                 } else if (key == Keys.Tab) {
                 } else if (key.HasValue && !ModifierKeys.Contains(key.Value)) {
-                    if (CurrentModifiers.Alt)
+                    if (evt.Modifiers.Alt)
                         HasPressedKeySincePressingAlt = true;
                     AcceleratorOverlayVisible = false;
                 }
@@ -239,8 +244,8 @@ namespace Squared.PRGUI {
                         needsToClearFocus = true;
                         break;
                     case Keys.Tab:
-                        int tabDelta = CurrentModifiers.Shift ? -1 : 1;
-                        return RotateFocus(topLevel: CurrentModifiers.Control, delta: tabDelta, isUserInitiated: true);
+                        int tabDelta = evt.Modifiers.Shift ? -1 : 1;
+                        return RotateFocus(topLevel: evt.Modifiers.Control, delta: tabDelta, isUserInitiated: true);
                     case Keys.Space:
                         if (Focused?.IsValidMouseInputTarget == true)
                             return FireSyntheticClick(Focused);

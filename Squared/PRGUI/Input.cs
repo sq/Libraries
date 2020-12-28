@@ -5,11 +5,16 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+using Squared.PRGUI.Decorations;
+using Squared.Render.Convenience;
+using Squared.Util;
 
 namespace Squared.PRGUI.Input {
     public interface IInputSource {
-        void Update (UIContext context, ref InputState previous, ref InputState current);
-        void SetTextInputState (UIContext context, bool enabled);
+        void SetContext (UIContext context);
+        void Update (ref InputState previous, ref InputState current);
+        void SetTextInputState (bool enabled);
+        void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer);
     }
 
     public struct KeyboardModifiers {
@@ -40,8 +45,13 @@ namespace Squared.PRGUI.Input {
             PreviousState = CurrentState = Keyboard.GetState();
         }
 
-        public void Update (UIContext context, ref InputState previous, ref InputState current) {
+        public void SetContext (UIContext context) {
+            if ((context != Context) && (Context != null))
+                throw new InvalidOperationException("This source has already been used with another context");
             Context = context;
+        }
+
+        public void Update (ref InputState previous, ref InputState current) {
             PreviousState = CurrentState;
             var ks = CurrentState = Keyboard.GetState();
 
@@ -59,10 +69,10 @@ namespace Squared.PRGUI.Input {
             current.Modifiers.LeftAlt |= lalt;
             current.Modifiers.RightAlt |= ralt;
 
-            if (context.IsCompositionActive)
+            if (Context.IsCompositionActive)
                 return;
 
-            var now = context.Now;
+            var now = Context.Now;
             for (int i = 0; i < 255; i++) {
                 var key = (Keys)i;
 
@@ -83,7 +93,7 @@ namespace Squared.PRGUI.Input {
                 }
 
                 if (isPressed != wasPressed) {
-                    context.HandleKeyEvent(isPressed ? UIEvents.KeyDown : UIEvents.KeyUp, key, null);
+                    Context.HandleKeyEvent(isPressed ? UIEvents.KeyDown : UIEvents.KeyUp, key, null);
 
                     if (isPressed && !shouldFilterKeyPress) {
                         // Modifier keys shouldn't break an active key repeat (i.e. you should be able to press/release shift)
@@ -91,30 +101,26 @@ namespace Squared.PRGUI.Input {
                             LastKeyEvent = key;
 
                         LastKeyEventTime = LastKeyEventFirstTime = now;
-                        context.HandleKeyEvent(UIEvents.KeyPress, key, null);
+                        Context.HandleKeyEvent(UIEvents.KeyPress, key, null);
                     }
                 } else if (isPressed && (LastKeyEvent == key)) {
                     if (
                         !UIContext.SuppressRepeatKeys.Contains(key) && 
                         !UIContext.ModifierKeys.Contains(key) &&
                         !shouldFilterKeyPress &&
-                        context.UpdateRepeat(now, LastKeyEventFirstTime, ref LastKeyEventTime)
+                        Context.UpdateRepeat(now, LastKeyEventFirstTime, ref LastKeyEventTime)
                     ) {
-                        context.HandleKeyEvent(UIEvents.KeyPress, key, null);
+                        Context.HandleKeyEvent(UIEvents.KeyPress, key, null);
                     }
                 }
             }
         }
 
-        public void SetTextInputState (UIContext context, bool enabled) {
+        public void SetTextInputState (bool enabled) {
             if (!enabled) {
                 TextInputEXT.StopTextInput();
                 return;
             }
-
-            if ((context != Context) && (Context != null))
-                throw new InvalidOperationException("This source has already been used with another context");
-            Context = context;
 
             if (!IsTextInputRegistered) {
                 IsTextInputRegistered = true;
@@ -140,6 +146,9 @@ namespace Squared.PRGUI.Input {
 
             Context.UpdateComposition(text, cursorPosition, length);
         }
+
+        public void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer) {
+        }
     }
 
     public class MouseInputSource : IInputSource {
@@ -153,28 +162,151 @@ namespace Squared.PRGUI.Input {
         public Vector2 Offset;
 
         public MouseState PreviousState, CurrentState;
+        private bool HasState;
+        UIContext Context;
 
         public MouseInputSource () {
-            PreviousState = CurrentState = Mouse.GetState();
         }
 
-        public void Update (UIContext context, ref InputState previous, ref InputState current) {
+        public void SetContext (UIContext context) {
+            if ((context != Context) && (Context != null))
+                throw new InvalidOperationException("This source has already been used with another context");
+            Context = context;
+        }
+
+        public void Update (ref InputState previous, ref InputState current) {
             PreviousState = CurrentState;
             var mouseState = CurrentState = Mouse.GetState();
+            if (!HasState)
+                PreviousState = CurrentState;
 
-            current.Buttons = ((mouseState.LeftButton == ButtonState.Pressed) ? MouseButtons.Left : MouseButtons.None) |
-                ((mouseState.MiddleButton == ButtonState.Pressed) ? MouseButtons.Middle : MouseButtons.None) |
-                ((mouseState.RightButton == ButtonState.Pressed) ? MouseButtons.Right : MouseButtons.None);
+            current.Buttons |= ((mouseState.LeftButton == ButtonState.Pressed) ? MouseButtons.Left : MouseButtons.None);
+            current.Buttons |= ((mouseState.MiddleButton == ButtonState.Pressed) ? MouseButtons.Middle : MouseButtons.None);
+            current.Buttons |= ((mouseState.RightButton == ButtonState.Pressed) ? MouseButtons.Right : MouseButtons.None);
 
             var prevPosition = new Vector2(PreviousState.X, PreviousState.Y) + Offset;
-            current.CursorPosition = new Vector2(mouseState.X, mouseState.Y) + Offset;
-            current.WheelValue = mouseState.ScrollWheelValue * MouseWheelScale;
+            if (PreviousState.ScrollWheelValue != CurrentState.ScrollWheelValue)
+                current.WheelValue = mouseState.ScrollWheelValue * MouseWheelScale;
 
-            if (current.CursorPosition != prevPosition)
-                context.PriorityInputSource = this;
+            if (!HasState) {
+                HasState = true;
+                return;
+            }
+
+            if ((CurrentState.X != PreviousState.X) || (CurrentState.Y != PreviousState.Y)) {
+                current.CursorPosition = new Vector2(mouseState.X, mouseState.Y) + Offset;
+                Context.PromoteInputSource(this);
+            }
         }
 
-        public void SetTextInputState (UIContext context, bool enabled) {
+        public void SetTextInputState (bool enabled) {
+        }
+
+        public void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer) {
+        }
+    }
+
+    public class GamepadVirtualMouseSource : IInputSource {
+        public float SlowPxPerSecond = 96f,
+            FastPxPerSecond = 1024f;
+        public float FastThreshold = 0.4f,
+            FastRampSize = 0.6f,
+            Deadzone = 0.2f;
+
+        public GamePadState PreviousState, CurrentState;
+        public PlayerIndex PlayerIndex;
+        public bool EnableButtons = true,
+            EnableStick = true;
+        long PreviousUpdateTime;
+        UIContext Context;
+
+        public GamepadVirtualMouseSource (PlayerIndex playerIndex = PlayerIndex.One) {
+            PlayerIndex = playerIndex;
+            PreviousState = CurrentState = GamePad.GetState(PlayerIndex);
+        }
+
+        public void SetContext (UIContext context) {
+            if ((context != Context) && (Context != null))
+                throw new InvalidOperationException("This source has already been used with another context");
+            Context = context;
+        }
+
+        public void Update (ref InputState previous, ref InputState current) {
+            PreviousState = CurrentState;
+            var gs = CurrentState = GamePad.GetState(PlayerIndex);
+            var now = Context.NowL;
+
+            var stick = PreviousState.ThumbSticks.Left;
+            var length = stick.Length();
+            if ((length >= Deadzone) && EnableStick) {
+                var ramp = Arithmetic.Saturate((length - FastThreshold) / FastRampSize);
+                var speed = Arithmetic.Lerp(
+                    SlowPxPerSecond, FastPxPerSecond, ramp * ramp
+                );
+                var elapsedD = (now - PreviousUpdateTime) / (double)Time.SecondInTicks;
+                stick.Normalize();
+                var motion = speed * stick * (float)elapsedD * new Vector2(1, -1);
+                var x = Arithmetic.Clamp(current.CursorPosition.X + motion.X, 0, Context.CanvasSize.X);
+                var y = Arithmetic.Clamp(current.CursorPosition.Y + motion.Y, 0, Context.CanvasSize.Y);
+                current.CursorPosition = new Vector2(x, y);
+                Context.PromoteInputSource(this);
+            }
+
+            if (EnableButtons) {
+                if (gs.Buttons.A == ButtonState.Pressed)
+                    current.Buttons |= MouseButtons.Left;
+                var mods = new KeyboardModifiers {
+                    LeftControl = (gs.Buttons.Back == ButtonState.Pressed)
+                };
+                var shift = new KeyboardModifiers {
+                    LeftControl = (gs.Buttons.Back == ButtonState.Pressed),
+                    LeftShift = true
+                };
+                DispatchKeyEventsForButton(Keys.Escape, mods, PreviousState.Buttons.B, gs.Buttons.B);
+                DispatchKeyEventsForButton(Keys.Tab, shift, PreviousState.Buttons.LeftShoulder, gs.Buttons.LeftShoulder);
+                DispatchKeyEventsForButton(Keys.Tab, mods, PreviousState.Buttons.RightShoulder, gs.Buttons.RightShoulder);
+                if (gs.Buttons.Y == ButtonState.Pressed)
+                    current.Buttons |= MouseButtons.Right;
+            }
+
+            PreviousUpdateTime = now;
+        }
+
+        private void DispatchKeyEventsForButton (Keys key, ButtonState previous, ButtonState current) {
+            DispatchKeyEventsForButton(key, null, previous, current);
+        }
+
+        private void DispatchKeyEventsForButton (Keys key, KeyboardModifiers? modifiers, ButtonState previous, ButtonState current) {
+            if (previous == current)
+                return;
+
+            var transition = (current == ButtonState.Pressed)
+                ? UIEvents.KeyDown
+                : UIEvents.KeyUp;
+
+            Context.HandleKeyEvent(transition, key, null, modifiers);
+            if (current == ButtonState.Released)
+                Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers);
+        }
+
+        public void SetTextInputState (bool enabled) {
+        }
+
+        public void Rasterize (UIOperationContext context, ref ImperativeRenderer renderer) {
+            if (Context.InputSources.IndexOf(this) != 0)
+                return;
+
+            var decorator = context.DecorationProvider.VirtualCursor;
+            if (decorator == null)
+                return;
+            var pos = Context.CurrentInputState.CursorPosition;
+            var padding = decorator.Padding;
+            var total = padding + decorator.Margins;
+            var settings = new DecorationSettings {
+                Box = new RectF(pos - new Vector2(total.Left, total.Top), new Vector2(total.X, total.Y)),
+                ContentBox = new RectF(pos - new Vector2(padding.Left, padding.Top), new Vector2(padding.X, padding.Y))
+            };
+            decorator.Rasterize(context, ref renderer, settings);
         }
     }
 }

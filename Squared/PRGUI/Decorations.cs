@@ -104,6 +104,7 @@ namespace Squared.PRGUI.Decorations {
         IDecorator AcceleratorLabel { get; }
         IDecorator ParameterGauge { get; }
         IDecorator Gauge { get; }
+        IDecorator VirtualCursor { get; }
         IWidgetDecorator<ScrollbarState> Scrollbar { get; }
     }
 
