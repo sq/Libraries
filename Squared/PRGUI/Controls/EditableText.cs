@@ -104,6 +104,7 @@ namespace Squared.PRGUI.Controls {
         public Func<char, char?> CharacterFilter = null;
 
         public Vector2 ScrollOffset { get; set; }
+        protected bool ScrollOffsetSetByUser;
         protected Vector2 MinScrollOffset;
         protected Vector2? MaxScrollOffset;
 
@@ -396,6 +397,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected void SetSelection (Pair<int> value, int scrollBias) {
+            ScrollOffsetSetByUser = false;
             value.First = Arithmetic.Clamp(value.First, 0, Builder.Length);
             value.Second = Arithmetic.Clamp(value.Second, value.First, Builder.Length);
             if (_Selection == value)
@@ -1072,7 +1074,7 @@ namespace Squared.PRGUI.Controls {
             if (squashedViewportBox.Width < 0)
                 squashedViewportBox.Width = 0;
 
-            if (selectionBounds.HasValue) {
+            if (selectionBounds.HasValue && !ScrollOffsetSetByUser) {
                 var selBounds = selectionBounds.Value;
                 var overflowX = selBounds.BottomRight.X - squashedViewportBox.Extent.X;
                 var underflowX = squashedViewportBox.Left - selBounds.TopLeft.X;
@@ -1243,7 +1245,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        Vector2 IScrollableControl.ScrollOffset => throw new NotImplementedException();
+        Vector2 IScrollableControl.ScrollOffset => ScrollOffset;
         bool IScrollableControl.Scrollable {
             get => true;
             set {
@@ -1278,6 +1280,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         bool IScrollableControl.TrySetScrollOffset (Vector2 value, bool forUser) {
+            if (forUser)
+                ScrollOffsetSetByUser = true;
             ScrollOffset = value;
             return true;
         }

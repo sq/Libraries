@@ -306,8 +306,13 @@ namespace Squared.PRGUI.Input {
                 SnapToControl = null;
             }
 
+            var focusedModal = Context.Focused as IModal;
+            var effectiveSnapTarget = SnapToControl;
+
             if ((SnapToControl != null) && (Context.Focused != SnapToControl)) {
-                if (GenerateKeyPressForActivation)
+                if (focusedModal?.FocusDonor == SnapToControl)
+                    effectiveSnapTarget = Context.Focused;
+                else if (GenerateKeyPressForActivation)
                     SnapToControl = Context.Focused;
                 else
                     SnapToControl = null;
@@ -355,17 +360,17 @@ namespace Squared.PRGUI.Input {
                     GenerateKeyPressForActivation = true;
             }
 
-            if (SnapToControl != null) {
+            if (effectiveSnapTarget != null) {
                 // Controls like menus update their selected item when the cursor moves over them,
                 //  so if possible when performing a cursor snap (for pad input) we want to snap to
                 //  a point on top of the current selection to avoid changing it, instead of the center
                 //  of the new snap target
-                var sb = SnapToControl as ISelectionBearer;
+                var sb = effectiveSnapTarget as ISelectionBearer;
                 var sc = sb?.SelectionRect;
                 if (sc.HasValue)
                     newPosition = sc.Value.Center;
                 else
-                    newPosition = SnapToControl.GetRect(Context.Layout, contentRect: true).Center;
+                    newPosition = effectiveSnapTarget.GetRect(Context.Layout, contentRect: true).Center;
             }
 
             if (newPosition != null) {
