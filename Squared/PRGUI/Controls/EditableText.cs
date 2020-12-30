@@ -1230,7 +1230,8 @@ namespace Squared.PRGUI.Controls {
                 if (selBox.Width <= 0)
                     selBox.Width = 0.5f;
                 LastSelectionRect = selBox;
-            } else {
+            } else if (Selection.First == Selection.Second) {
+                // FIXME: Why do we need to do this extra check? Certain values will cause us to null out here when we shouldn't
                 LastSelectionRect = null;
             }
 

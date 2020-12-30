@@ -525,6 +525,9 @@ namespace Squared.PRGUI {
                     return false;
             }
 
+            if (!AllowNullFocus && (newFocusTarget == null))
+                return false;
+
             var previous = _Focused;
             if (previous != _Focused)
                 PreviousFocused = _Focused;
@@ -617,6 +620,19 @@ namespace Squared.PRGUI {
 
             if (current == null)
                 return FindFocusableSibling(Controls, null, delta, recursive);
+
+            // HACK: If for some reason a top-level container is set as focused, we want tab to focus one of its children
+            var isTopLevel = !current.TryGetParent(out Control _);
+            if (isTopLevel) {
+                var container = current as IControlContainer;
+                if (container != null) {
+                    var idealTarget = (delta > 0) ? container.Children.FirstOrDefault() : container.Children.LastOrDefault();
+                    if (!idealTarget.IsValidFocusTarget)
+                        return FindFocusableSibling(container.Children, container.Children.FirstOrDefault(), delta, recursive);
+                    else
+                        return idealTarget;
+                }
+            }
 
             while (current != null) {
                 if (current != null) {
