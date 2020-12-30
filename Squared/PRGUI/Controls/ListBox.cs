@@ -71,6 +71,7 @@ namespace Squared.PRGUI.Controls {
         protected int PageSize { get; private set; }
 
         bool ISelectionBearer.HasSelection => Manager.SelectedIndex >= 0;
+        // FIXME: We should expand the width here
         RectF? ISelectionBearer.SelectionRect => Manager.SelectedControl?.GetRect(Context.Layout);
         Control ISelectionBearer.SelectedControl => Manager.SelectedControl;
 

@@ -595,6 +595,7 @@ namespace Squared.PRGUI.Controls {
         bool IModal.RetainFocus => false;
 
         bool ISelectionBearer.HasSelection => _SelectedItem != null;
+        // FIXME: We should expand the width here
         RectF? ISelectionBearer.SelectionRect => SelectedItem?.GetRect(Context.Layout);
         Control ISelectionBearer.SelectedControl => SelectedItem;
 

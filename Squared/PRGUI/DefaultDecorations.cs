@@ -295,7 +295,7 @@ namespace Squared.PRGUI {
             };
 
             VirtualCursor = new DelegateDecorator {
-                Padding = new Margins(19),
+                Padding = new Margins(24),
                 Above = VirtualCursor_Above
             };
 
