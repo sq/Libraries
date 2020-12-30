@@ -228,6 +228,9 @@ namespace Squared.PRGUI.Input {
         Control SnapToControl;
         bool GenerateKeyPressForActivation = false;
 
+        Keys LastKeyEvent;
+        double LastKeyEventFirstTime, LastKeyEventTime;
+
         public GamepadVirtualKeyboardAndCursor (PlayerIndex playerIndex = PlayerIndex.One) {
             PlayerIndex = playerIndex;
             PreviousState = CurrentState = GamePad.GetState(PlayerIndex);
@@ -320,13 +323,13 @@ namespace Squared.PRGUI.Input {
             }
 
             if (EnableButtons) {
+                current.ActivateKeyHeld |= (gs.Buttons.A == ButtonState.Pressed);
+
                 var mods = new KeyboardModifiers {
                     LeftControl = (gs.Buttons.Back == ButtonState.Pressed)
                 };
-                var shift = new KeyboardModifiers {
-                    LeftControl = (gs.Buttons.Back == ButtonState.Pressed),
-                    LeftShift = true
-                };
+                var shift = mods;
+                shift.LeftShift = true;
 
                 if (GenerateKeyPressForActivation) {
                     DispatchKeyEventsForButton(ref current, Keys.Space, mods, PreviousState.Buttons.A, gs.Buttons.A);
@@ -391,21 +394,34 @@ namespace Squared.PRGUI.Input {
         }
 
         private bool DispatchKeyEventsForButton (ref InputState state, Keys key, KeyboardModifiers? modifiers, ButtonState previous, ButtonState current) {
-            if (current == ButtonState.Pressed)
+            var held = current == ButtonState.Pressed;
+            if (held)
                 state.HeldKeys.Add(key);
 
-            if (previous == current)
-                return false;
+            if (previous == current) {
+                if (
+                    held &&
+                    (LastKeyEvent == key) &&
+                    Context.UpdateRepeat(Context.Now, LastKeyEventFirstTime, ref LastKeyEventTime)
+                ) {
+                    LastKeyEventTime = Context.Now;
+                    return Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers);
+                } else
+                    return false;
+            } else if (held) {
+                LastKeyEventTime = LastKeyEventFirstTime = Context.Now;
+            }
 
             var transition = (current == ButtonState.Pressed)
                 ? UIEvents.KeyDown
                 : UIEvents.KeyUp;
 
-            Context.HandleKeyEvent(transition, key, null, modifiers);
+            LastKeyEvent = key;
+            var ok = Context.HandleKeyEvent(transition, key, null, modifiers);
             if (current == ButtonState.Released)
-                Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers);
+                ok |= Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers);
 
-            return true;
+            return ok;
         }
 
         public void SetTextInputState (bool enabled) {

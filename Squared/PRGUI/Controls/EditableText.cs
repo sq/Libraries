@@ -16,7 +16,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, IValueControl<string>, IAcceleratorSource {
+    public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, IValueControl<string>, IAcceleratorSource, ISelectionBearer {
         internal struct HistoryEntry {
             public ArraySegment<char> Text;
             public Pair<int> Selection;
@@ -124,6 +124,7 @@ namespace Squared.PRGUI.Controls {
 
         protected Vector2? ClickStartVirtualPosition = null;
         private Pair<int> _Selection;
+        private RectF? LastSelectionRect;
 
         protected Vector2 AlignmentOffset = Vector2.Zero;
 
@@ -766,6 +767,10 @@ namespace Squared.PRGUI.Controls {
 
             DisableAutoscrollUntil = 0;
 
+            // If a dpad is used to move the cursor while the activate button is held, treat that
+            //  as equivalent to a drag-select since it's sensible
+            var shiftMode = evt.Modifiers.Shift || Context.CurrentInputState.ActivateKeyHeld;
+
             if (evt.Char.HasValue) {
                 if (evt.Modifiers.Control || evt.Modifiers.Alt)
                     return HandleHotKey(evt);
@@ -791,21 +796,21 @@ namespace Squared.PRGUI.Controls {
                     case Keys.Up:
                     case Keys.Down:
                         if (evt.Modifiers.Control)
-                            AdjustSelection(evt.Key == Keys.Home ? -99999 : 99999, grow: evt.Modifiers.Shift, byWord: false);
+                            AdjustSelection(evt.Key == Keys.Home ? -99999 : 99999, grow: shiftMode, byWord: false);
                         else
                             ;// FIXME: Multiline
                         break;
 
                     case Keys.Left:
                     case Keys.Right:
-                        AdjustSelection(evt.Key == Keys.Left ? -1 : 1, grow: evt.Modifiers.Shift, byWord: evt.Modifiers.Control);
+                        AdjustSelection(evt.Key == Keys.Left ? -1 : 1, grow: shiftMode, byWord: evt.Modifiers.Control);
                         return true;
 
                     case Keys.Home:
                     case Keys.End:
                         if (evt.Modifiers.Control)
                             ; // FIXME: Multiline
-                        AdjustSelection(evt.Key == Keys.Home ? -99999 : 99999, grow: evt.Modifiers.Shift, byWord: false);
+                        AdjustSelection(evt.Key == Keys.Home ? -99999 : 99999, grow: shiftMode, byWord: false);
                         return true;
 
                     case Keys.Insert:
@@ -1207,6 +1212,7 @@ namespace Squared.PRGUI.Controls {
                 if ((Selection.First == Selection.Second) && (context.UIContext.TextInsertionMode == false))
                     selBox.Width = 4;
 
+                LastSelectionRect = selBox;
                 var selSettings = new DecorationSettings {
                     BackgroundColor = settings.BackgroundColor,
                     State = settings.State,
@@ -1216,6 +1222,8 @@ namespace Squared.PRGUI.Controls {
 
                 selectionDecorator.Rasterize(context, ref renderer, selSettings);
                 renderer.Layer += 1;
+            } else {
+                LastSelectionRect = null;
             }
 
             ColorizeSelection(layout.DrawCalls, selection, context, settings.State, selectionDecorator);
@@ -1260,6 +1268,10 @@ namespace Squared.PRGUI.Controls {
                 yield return new KeyValuePair<Control, string>(this, sb.ToString());
             }
         }
+
+        bool ISelectionBearer.HasSelection => _Selection.First < _Selection.Second;
+        RectF? ISelectionBearer.SelectionRect => LastSelectionRect;
+        Control ISelectionBearer.SelectedControl => null;
 
         void Accessibility.IReadingTarget.FormatValueInto (StringBuilder sb) {
             sb.Append(Text);

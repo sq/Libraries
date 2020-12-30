@@ -1182,7 +1182,7 @@ namespace Squared.PRGUI {
                 Now = Now,
                 NowL = NowL,
                 Modifiers = CurrentModifiers,
-                SpacebarHeld = _LastInput.ActivateKeyHeld,
+                ActivateKeyHeld = _LastInput.ActivateKeyHeld,
                 MouseButtonHeld = (LastMouseButtons != MouseButtons.None),
                 MousePosition = LastMousePosition,
                 VisibleRegion = new RectF(-VisibilityPadding, -VisibilityPadding, CanvasSize.X + (VisibilityPadding * 2), CanvasSize.Y + (VisibilityPadding * 2))
@@ -1363,7 +1363,7 @@ namespace Squared.PRGUI {
         public float Now { get; internal set; }
         public long NowL { get; internal set; }
         public KeyboardModifiers Modifiers { get; internal set; }
-        public bool SpacebarHeld { get; internal set; }
+        public bool ActivateKeyHeld { get; internal set; }
         public bool MouseButtonHeld { get; internal set; }
         public Vector2 MousePosition { get; internal set; }
         public RectF VisibleRegion { get; internal set; }
@@ -1376,7 +1376,7 @@ namespace Squared.PRGUI {
                 Now = Now,
                 NowL = NowL,
                 Modifiers = Modifiers,
-                SpacebarHeld = SpacebarHeld,
+                ActivateKeyHeld = ActivateKeyHeld,
                 MouseButtonHeld = MouseButtonHeld,
                 MousePosition = MousePosition,
                 VisibleRegion = VisibleRegion
