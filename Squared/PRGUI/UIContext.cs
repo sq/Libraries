@@ -257,7 +257,7 @@ namespace Squared.PRGUI {
                 var previous = _MouseCaptured;
                 _MouseCaptured = value;
                 if (value != null)
-                    KeyboardSelection = null;
+                    ClearKeyboardSelection();
                 if (previous != value)
                     FireEvent(UIEvents.MouseCaptureChanged, value, previous);
             }
@@ -278,13 +278,21 @@ namespace Squared.PRGUI {
 
         public Control KeyboardSelection {
             get => _KeyboardSelection;
-            private set {
-                if (value == _KeyboardSelection)
-                    return;
+        }
+
+        internal void ClearKeyboardSelection () {
+            SuppressAutoscrollDueToInputScroll = false;
+            _KeyboardSelection = null;
+            MousePositionWhenKeyboardSelectionWasLastUpdated = LastMousePosition;
+        }
+
+        internal void SetKeyboardSelection (Control control, bool forUser) {
+            if (control == _KeyboardSelection)
+                return;
+            if (forUser)
                 SuppressAutoscrollDueToInputScroll = false;
-                _KeyboardSelection = value;
-                MousePositionWhenKeyboardSelectionWasLastUpdated = LastMousePosition;
-            }
+            _KeyboardSelection = control;
+            MousePositionWhenKeyboardSelectionWasLastUpdated = LastMousePosition;
         }
 
         bool SuppressAutoscrollDueToInputScroll = false;
@@ -743,7 +751,7 @@ namespace Squared.PRGUI {
                     TrySetFocus(PreviousFocused ?? PreviousTopLevelFocused, false, false);
             }
             if (IsEqualOrAncestor(KeyboardSelection, control))
-                KeyboardSelection = null;
+                ClearKeyboardSelection();
 
             if (PreviousFocused == control)
                 PreviousFocused = null;
@@ -836,7 +844,7 @@ namespace Squared.PRGUI {
                 var movedDistance = mousePosition - MousePositionWhenKeyboardSelectionWasLastUpdated;
                 if (movedDistance.Length() > MinimumMouseMovementDistance) {
                     if (_CurrentInput.KeyboardNavigationEnded)
-                        KeyboardSelection = null;
+                        ClearKeyboardSelection();
                 }
             }
 

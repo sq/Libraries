@@ -20,7 +20,7 @@ namespace Squared.PRGUI.Controls {
         void ItemChosen (Menu menu, Control item);
     }
 
-    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IModal {
+    public class Menu : Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IModal, ISelectionBearer {
         // Yuck
         public const int PageSize = 8;
 
@@ -276,7 +276,7 @@ namespace Squared.PRGUI.Controls {
             SelectedItem = item;
             // HACK: Tell the context that the current item is the keyboard selection,
             //  so that autoscroll and tooltips will happen for it.
-            Context.OverrideKeyboardSelection(item);
+            Context.OverrideKeyboardSelection(item, true);
         }
 
         public bool AdjustSelection (int direction) {
@@ -593,6 +593,10 @@ namespace Squared.PRGUI.Controls {
         bool IModal.BlockHitTests => false;
         bool IModal.BlockInput => false;
         bool IModal.RetainFocus => false;
+
+        bool ISelectionBearer.HasSelection => _SelectedItem != null;
+        RectF? ISelectionBearer.SelectionRect => SelectedItem?.GetRect(Context.Layout);
+        Control ISelectionBearer.SelectedControl => SelectedItem;
 
         public Control this [int index] {
             get => Children[index];

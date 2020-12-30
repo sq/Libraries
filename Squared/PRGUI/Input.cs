@@ -313,6 +313,9 @@ namespace Squared.PRGUI.Input {
             if (scrollSpeed > 0) {
                 var motion = scrollSpeed * scrollDirection * elapsed;
                 current.ScrollDistance += motion;
+                // FIXME: It would be ideal if this didn't need to happen, but scrolling 
+                //  a listbox will cause very strange snap behavior as its selected item
+                //  leaves or enters the view
                 SnapToControl = null;
             }
 
@@ -349,8 +352,18 @@ namespace Squared.PRGUI.Input {
                     GenerateKeyPressForActivation = true;
             }
 
-            if (SnapToControl != null)
-                newPosition = SnapToControl.GetRect(Context.Layout, contentRect: true).Center;
+            if (SnapToControl != null) {
+                // Controls like menus update their selected item when the cursor moves over them,
+                //  so if possible when performing a cursor snap (for pad input) we want to snap to
+                //  a point on top of the current selection to avoid changing it, instead of the center
+                //  of the new snap target
+                var sb = SnapToControl as ISelectionBearer;
+                var sc = sb?.SelectionRect;
+                if (sc.HasValue)
+                    newPosition = sc.Value.Center;
+                else
+                    newPosition = SnapToControl.GetRect(Context.Layout, contentRect: true).Center;
+            }
 
             if (newPosition != null) {
                 var x = Arithmetic.Clamp(newPosition.Value.X, 0, Context.CanvasSize.X);

@@ -228,7 +228,7 @@ namespace Squared.PRGUI.Controls {
         private bool OnKeyEvent (string name, KeyEventArgs args) {
             switch (name) {
                 case UIEvents.KeyPress:
-                    Context.OverrideKeyboardSelection(this);
+                    Context.OverrideKeyboardSelection(this, true);
                     var speed = args.Modifiers.Control
                         ? Math.Max(10 * KeyboardSpeed, (NotchInterval ?? 0))
                         : KeyboardSpeed;

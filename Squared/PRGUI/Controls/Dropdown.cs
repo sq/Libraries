@@ -175,7 +175,7 @@ namespace Squared.PRGUI.Controls {
         private bool OnKeyEvent (string name, KeyEventArgs args) {
             switch (name) {
                 case UIEvents.KeyPress:
-                    Context.OverrideKeyboardSelection(this);
+                    Context.OverrideKeyboardSelection(this, true);
                     var oldSelection = SelectedItem;
                     var oldIndex = Items.IndexOf(ref oldSelection, Comparer);
                     switch (args.Key) {

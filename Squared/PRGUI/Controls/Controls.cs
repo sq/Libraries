@@ -19,6 +19,12 @@ using Squared.Util.Event;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
+    public interface ISelectionBearer {
+        bool HasSelection { get; }
+        RectF? SelectionRect { get; }
+        Control SelectedControl { get; }
+    }
+
     public interface IValueControl<T> {
         T Value { get; set; }
     }

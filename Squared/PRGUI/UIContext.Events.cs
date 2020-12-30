@@ -152,7 +152,7 @@ namespace Squared.PRGUI {
         private void HandleHoverTransition (Control previous, Control current) {
             // If the mouse enters a new control, clear the keyboard selection
             if (_CurrentInput.KeyboardNavigationEnded)
-                KeyboardSelection = null;
+                ClearKeyboardSelection();
 
             if (previous != null)
                 FireEvent(UIEvents.MouseLeave, previous, current);
@@ -306,14 +306,14 @@ namespace Squared.PRGUI {
                 if ((target != null) && (target != currentTopLevel)) {
                     Log($"Top level tab {currentTopLevel} -> {target}");
                     if (TrySetFocus(target, isUserInitiated: isUserInitiated)) {
-                        KeyboardSelection = Focused;
+                        SetKeyboardSelection(Focused, isUserInitiated);
                         return true;
                     }
                 }
             } else {
                 Log($"Tab {Focused} -> {target}");
                 if ((target != null) && TrySetFocus(target, isUserInitiated: isUserInitiated)) {
-                    KeyboardSelection = Focused;
+                    SetKeyboardSelection(Focused, isUserInitiated);
                     return true;
                 }
             }
@@ -710,7 +710,7 @@ namespace Squared.PRGUI {
             var relinquishedHandlers = new HashSet<Control>();
 
             AcceleratorOverlayVisible = false;
-            KeyboardSelection = null;
+            ClearKeyboardSelection();
             HideTooltipForMouseInput(true);
 
             // HACK: Prevent infinite repeat in corner cases
@@ -756,7 +756,7 @@ namespace Squared.PRGUI {
         }
 
         private bool HandleMouseUp (Control target, Vector2 globalPosition, Vector2? mouseDownPosition) {
-            KeyboardSelection = null;
+            ClearKeyboardSelection();
             HideTooltipForMouseInput(false);
             MouseDownPosition = null;
             // FIXME: Suppress if disabled?
@@ -859,8 +859,8 @@ namespace Squared.PRGUI {
                 return false;
         }
 
-        public void OverrideKeyboardSelection (Control target) {
-            KeyboardSelection = target;
+        public void OverrideKeyboardSelection (Control target, bool forUser) {
+            SetKeyboardSelection(target, forUser);
         }
 
         private bool TeardownDragToScroll (Control target, Vector2 globalPosition) {
@@ -871,7 +871,7 @@ namespace Squared.PRGUI {
         }
 
         private void HandleScroll (Control control, float delta) {
-            KeyboardSelection = null;
+            ClearKeyboardSelection();
 
             while (control != null) {
                 if (FireEvent(UIEvents.Scroll, control, delta))

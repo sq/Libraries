@@ -13,7 +13,7 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.PRGUI.Controls {
-    public class ListBox<T> : Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IValueControl<T> {
+    public class ListBox<T> : Container, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, IValueControl<T>, ISelectionBearer {
         public static bool SelectOnMouseDown = false;
 
         public const int ControlMinimumHeight = 75, ControlMinimumWidth = 150;
@@ -69,6 +69,10 @@ namespace Squared.PRGUI.Controls {
         private bool NeedsUpdate = true;
 
         protected int PageSize { get; private set; }
+
+        bool ISelectionBearer.HasSelection => Manager.SelectedIndex >= 0;
+        RectF? ISelectionBearer.SelectionRect => Manager.SelectedControl?.GetRect(Context.Layout);
+        Control ISelectionBearer.SelectedControl => Manager.SelectedControl;
 
         public ListBox ()
             : this (null) {
@@ -189,7 +193,7 @@ namespace Squared.PRGUI.Controls {
                 var newControl = Manager.SelectedControl;
                 OnSelectionChange(newControl, SelectedItemHasChangedSinceLastUpdate);
                 if (hadKeyboardSelection)
-                    Context.OverrideKeyboardSelection(newControl);
+                    Context.OverrideKeyboardSelection(newControl, forUser: false);
             }
 
             NeedsUpdate = false;
@@ -333,15 +337,15 @@ namespace Squared.PRGUI.Controls {
                 return base.OnEvent(name, args);
         }
 
-        private void UpdateKeyboardSelection (T item) {
+        private void UpdateKeyboardSelection (T item, bool forUser) {
             // HACK: Tell the context that the current item is the keyboard selection,
             //  so that autoscroll and tooltips will happen for it.
-            Context.OverrideKeyboardSelection(Manager.SelectedControl);
+            Context.OverrideKeyboardSelection(Manager.SelectedControl, forUser);
         }
 
         private void SelectItemViaKeyboard (T item) {
             SelectedItem = item;
-            UpdateKeyboardSelection(item);
+            UpdateKeyboardSelection(item, true);
         }
 
         public void AdjustSelection (int delta) {
