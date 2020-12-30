@@ -622,8 +622,10 @@ namespace Squared.PRGUI.Controls {
 
             ContextMenu.Child<StaticText>(st => st.Text == "Cut").Enabled =
                 ContextMenu.Child<StaticText>(st => st.Text == "Copy").Enabled =
-                ContextMenu.Child<StaticText>(st => st.Text == "Delete").Enabled =
-                    Selection.First != Selection.Second;
+                (Selection.First != Selection.Second) && AllowCopy;
+
+            ContextMenu.Child<StaticText>(st => st.Text == "Delete").Enabled =
+                Selection.First != Selection.Second;
 
             try {
                 ContextMenu.Child<StaticText>(st => st.Text == "Paste").Enabled =
@@ -1214,7 +1216,6 @@ namespace Squared.PRGUI.Controls {
                 if ((Selection.First == Selection.Second) && (context.UIContext.TextInsertionMode == false))
                     selBox.Width = 4;
 
-                LastSelectionRect = selBox;
                 var selSettings = new DecorationSettings {
                     BackgroundColor = settings.BackgroundColor,
                     State = settings.State,
@@ -1224,6 +1225,11 @@ namespace Squared.PRGUI.Controls {
 
                 selectionDecorator.Rasterize(context, ref renderer, selSettings);
                 renderer.Layer += 1;
+
+                // HACK to ensure that we don't provide a null rect for the cursor if there's no selection
+                if (selBox.Width <= 0)
+                    selBox.Width = 0.5f;
+                LastSelectionRect = selBox;
             } else {
                 LastSelectionRect = null;
             }

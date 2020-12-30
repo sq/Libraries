@@ -1083,16 +1083,23 @@ namespace Squared.PRGUI {
             // FIXME: Why this offset?
             var center = settings.Box.Center + new Vector2(0.9f);
             var radius = settings.Box.Size / 2f;
-            var alpha = settings.State.IsFlagged(ControlStates.Disabled) ? 0.5f : 1.0f;
+            var showCenter = !settings.State.IsFlagged(ControlStates.Disabled);
+            var alpha = settings.State.IsFlagged(ControlStates.Disabled) ? 0.5f : 0.9f;
+            var fillAlpha = alpha * 0.85f;
+            var outlineRadius = 1.75f;
             renderer.RasterSoftOutlines = true;
             renderer.RasterizeEllipse(
-                center, radius,
-                innerColor: Color.Transparent, outerColor: Color.Transparent,
-                outlineRadius: 2.8f, outlineColor: Color.White * alpha
+                center, radius, annularRadius: showCenter ? 1.65f : 1.2f,
+                innerColor: Color.White * fillAlpha, outerColor: Color.White * fillAlpha,
+                outlineRadius: outlineRadius, outlineColor: Color.Black * alpha
             );
-            renderer.RasterizeEllipse(
-                center, new Vector2(1.6f), innerColor: Color.White * alpha
-            );
+
+            if (showCenter)
+                renderer.RasterizeEllipse(
+                    center, new Vector2(1.7f),
+                    innerColor: Color.White * fillAlpha, outerColor: Color.White * fillAlpha,
+                    outlineRadius: outlineRadius, outlineColor: Color.Black * alpha
+                );
         }
 
         public bool GetTextSettings (

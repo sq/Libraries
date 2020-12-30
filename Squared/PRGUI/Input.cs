@@ -328,7 +328,10 @@ namespace Squared.PRGUI.Input {
             }
 
             if (EnableButtons) {
-                current.ActivateKeyHeld |= (gs.Buttons.A == ButtonState.Pressed);
+                if (Context.Focused != null) {
+                    if (Context.Focused.GetRect(Context.Layout).Contains(current.CursorPosition))
+                        current.ActivateKeyHeld |= (gs.Buttons.A == ButtonState.Pressed);
+                }
 
                 var mods = new KeyboardModifiers {
                     LeftControl = (gs.Buttons.Back == ButtonState.Pressed)
@@ -367,10 +370,11 @@ namespace Squared.PRGUI.Input {
                 //  of the new snap target
                 var sb = effectiveSnapTarget as ISelectionBearer;
                 var sc = sb?.SelectionRect;
-                if (sc.HasValue)
-                    newPosition = sc.Value.Center;
-                else
-                    newPosition = effectiveSnapTarget.GetRect(Context.Layout, contentRect: true).Center;
+                var targetRect = effectiveSnapTarget.GetRect(Context.Layout, contentRect: true);
+                if (sc.HasValue && sc.Value.Intersection(ref targetRect, out RectF union)) {
+                    newPosition = union.Center;
+                } else
+                    newPosition = targetRect.Center;
             }
 
             if (newPosition != null) {
