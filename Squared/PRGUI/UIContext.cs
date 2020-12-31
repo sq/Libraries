@@ -1230,9 +1230,12 @@ namespace Squared.PRGUI {
                 srt.Reset();
             }
 
+            var seq = Controls.InPaintOrder(FrameIndex);
+
             var activeModal = ActiveModal;
-            var needsToFadeBackground = false;
-            foreach (var modal in ModalStack) {
+            int fadeBackgroundAtIndex = -1;
+            for (int i = 0; i < ModalStack.Count; i++) {
+                var modal = ModalStack[i];
                 if (modal.FadeBackground) {
                     if (!WasBackgroundFaded) {
                         BackgroundFadeTween = Tween<float>.StartNow(
@@ -1241,12 +1244,12 @@ namespace Squared.PRGUI {
                         );
                     }
 
-                    needsToFadeBackground = true;
+                    fadeBackgroundAtIndex = seq.IndexOf((Control)modal);
                     WasBackgroundFaded = true;
                 }
             }
 
-            if (!needsToFadeBackground && WasBackgroundFaded) {
+            if (fadeBackgroundAtIndex < 0 && WasBackgroundFaded) {
                 BackgroundFadeTween = new Tween<float>(0f);
                 WasBackgroundFaded = false;
             }
@@ -1263,18 +1266,16 @@ namespace Squared.PRGUI {
                 };
                 renderer.Clear(color: Color.Transparent, stencil: 0, layer: -999);
 
-                var seq = Controls.InPaintOrder(FrameIndex);
                 var topLevelFocusIndex = seq.IndexOf(TopLevelFocused);
                 for (int i = 0; i < seq.Count; i++) {
                     var control = seq[i];
-                    if (needsToFadeBackground && (control == activeModal)) {
+                    if (i == fadeBackgroundAtIndex) {
                         var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity;
                         renderer.FillRectangle(
                             Game.Bounds.FromPositionAndSize(Vector2.One * -9999, Vector2.One * 99999), 
                             Color.White * opacity, blendState: RenderStates.SubtractiveBlend
                         );
                         renderer.Layer += 1;
-                        needsToFadeBackground = false;
                     }
 
                     // When the accelerator overlay is visible, fade out any top-level controls
