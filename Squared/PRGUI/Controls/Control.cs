@@ -583,9 +583,9 @@ namespace Squared.PRGUI {
                 contentRenderer = renderer.MakeSubgroup();
                 if (ShouldClipContent) {
                     contentRenderer.DepthStencilState = context.UIContext.GetStencilTest(nextRefStencil);
-                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, nextRefStencil, nextRefStencil + 1);
+                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, nextRefStencil, nextRefStencil + 1, passSet.OverlayQueue);
                 } else {
-                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, previousRefStencil, nextRefStencil);
+                    childrenPassSet = new RasterizePassSet(ref passSet.Prepass, ref contentRenderer, previousRefStencil, nextRefStencil, passSet.OverlayQueue);
                 }
                 renderer.Layer += 1;
             }
@@ -664,14 +664,15 @@ namespace Squared.PRGUI {
                 passSet.Content.RasterizeRectangle(box.Position, box.Extent, 0f, 1f, Color.Transparent, Color.Transparent, Color.Red);
             */
 
-            // Only visibility cull controls that have a parent.
-            if (isInvisible && TryGetParent(out Control parent))
+            // Only visibility cull controls that have a parent and aren't overlaid.
+            if (isInvisible && TryGetParent(out Control parent) && !Appearance.Overlay)
                 return false;
 
             var enableCompositor = Appearance.Compositor?.WillComposite(this, opacity) == true;
             var needsComposition = Appearance.HasTransformMatrix || 
                 (opacity < 1) || 
-                enableCompositor;
+                enableCompositor ||
+                Appearance.Overlay;
 
             if (!needsComposition) {
                 RasterizeAllPasses(ref context, ref box, ref passSet, false);
@@ -685,13 +686,13 @@ namespace Squared.PRGUI {
                 br.Y = Math.Min(br.Y, context.UIContext.CanvasSize.Y);
 
                 var compositeBox = new RectF(tl, br - tl);
-                var rt = context.UIContext.GetScratchRenderTarget(passSet.Prepass.Container.Coordinator, ref compositeBox, out bool needClear);
+                var srt = context.UIContext.GetScratchRenderTarget(ref passSet.Prepass, ref compositeBox);
                 try {
                     // passSet.Above.RasterizeRectangle(box.Position, box.Extent, 1f, Color.Red * 0.1f);
-                    RasterizeIntoPrepass(ref context, passSet, opacity, ref box, ref compositeBox, rt, needClear, enableCompositor);
+                    RasterizeIntoPrepass(ref context, passSet, opacity, ref box, ref compositeBox, srt, enableCompositor);
                     // passSet.Above.RasterizeEllipse(box.Center, Vector2.One * 3f, Color.White);
                 } finally {
-                    context.UIContext.ReleaseScratchRenderTarget(rt);
+                    context.UIContext.ReleaseScratchRenderTarget(srt.Instance);
                 }
             }
 
@@ -726,24 +727,19 @@ namespace Squared.PRGUI {
 
         private void RasterizeIntoPrepass (
             ref UIOperationContext context, RasterizePassSet passSet, float opacity, 
-            ref RectF box, ref RectF compositeBox, AutoRenderTarget rt, 
-            bool needClear, bool enableCompositor
+            ref RectF box, ref RectF compositeBox, 
+            UIContext.ScratchRenderTarget rt, bool enableCompositor
         ) {
             var compositionContext = context.Clone();
             UpdateVisibleRegion(ref compositionContext, ref box);
 
             // Create nested prepass group before the RT group so that child controls have their prepass operations run before ours
             var nestedPrepass = passSet.Prepass.MakeSubgroup();
-            var compositionRenderer = passSet.Prepass.ForRenderTarget(rt, name: $"Composite control");
-            compositionRenderer.DepthStencilState = DepthStencilState.None;
-            compositionRenderer.BlendState = BlendState.AlphaBlend;
-            if (needClear)
-                compositionRenderer.Clear(color: Color.Transparent, stencil: 0, layer: -1);
 
-            var newPassSet = new RasterizePassSet(ref nestedPrepass, ref compositionRenderer, 0, 1);
+            var newPassSet = new RasterizePassSet(ref nestedPrepass, ref rt.Renderer, 0, 1, passSet.OverlayQueue);
             // newPassSet.Above.RasterizeEllipse(box.Center, Vector2.One * 6f, Color.White * 0.7f);
             RasterizeAllPasses(ref compositionContext, ref box, ref newPassSet, true);
-            compositionRenderer.Layer += 1;
+            rt.Renderer.Layer += 1;
             var pos = Appearance.HasTransformMatrix ? Vector2.Zero : compositeBox.Position.Floor();
             // FIXME: Is this the right layer?
             var sourceRect = new Rectangle(
@@ -751,7 +747,8 @@ namespace Squared.PRGUI {
                 (int)compositeBox.Width, (int)compositeBox.Height
             );
             var dc = new BitmapDrawCall(
-                rt.Get(), pos,
+                // FIXME
+                rt.Instance.Get(), pos,
                 GameExtensionMethods.BoundsFromRectangle((int)Context.CanvasSize.X, (int)Context.CanvasSize.Y, ref sourceRect),
                 Color.White * opacity, scale: 1.0f / Context.ScratchScaleFactor
             );
@@ -769,6 +766,8 @@ namespace Squared.PRGUI {
                     Appearance.Compositor.Composite(this, ref subgroup, ref dc);
                 else
                     subgroup.Draw(ref dc, blendState: BlendState.AlphaBlend);
+            } else if (Appearance.Overlay) {
+                passSet.OverlayQueue.Add(ref dc);
             } else {
                 passSet.Above.Draw(ref dc, blendState: BlendState.AlphaBlend);
                 passSet.Above.Layer += 1;
@@ -895,6 +894,10 @@ namespace Squared.PRGUI {
         public ColorVariable BackgroundColor;
         public ColorVariable TextColor;
         public BackgroundImageSettings BackgroundImage;
+        /// <summary>
+        /// Causes the control to be rendered on top of its container without being clipped
+        /// </summary>
+        public bool Overlay;
 
         internal bool HasOpacity { get; private set; }
         internal bool HasTransformMatrix { get; private set; }
