@@ -895,7 +895,8 @@ namespace Squared.PRGUI {
         public ColorVariable TextColor;
         public BackgroundImageSettings BackgroundImage;
         /// <summary>
-        /// Causes the control to be rendered on top of its container without being clipped
+        /// Suppresses clipping of the control and causes it to be rendered above everything
+        ///  up to the next modal
         /// </summary>
         public bool Overlay;
 

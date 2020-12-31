@@ -109,7 +109,7 @@ namespace Squared.PRGUI {
             Keys.Insert
         };
 
-        public float BackgroundFadeOpacity = 0.15f;
+        public float BackgroundFadeOpacity = 0.2f;
         public float BackgroundFadeDuration = 0.2f;
 
         // Allocate scratch rendering buffers (for composited controls) at a higher or lower resolution
@@ -1222,6 +1222,15 @@ namespace Squared.PRGUI {
         private Tween<float> BackgroundFadeTween = new Tween<float>(0f);
         private UnorderedList<BitmapDrawCall> OverlayQueue = new UnorderedList<BitmapDrawCall>();
 
+        private void FlushOverlayQueue (ref ImperativeRenderer renderer) {
+            foreach (var dc in OverlayQueue) {
+                renderer.Draw(dc);
+                renderer.Layer += 1;
+            }
+
+            OverlayQueue.Clear();
+        }
+
         public void Rasterize (Frame frame, AutoRenderTarget renderTarget, int layer) {
             FrameIndex++;
 
@@ -1261,6 +1270,8 @@ namespace Squared.PRGUI {
 
             var topLevelHovering = FindTopLevelAncestor(Hovering);
 
+            OverlayQueue.Clear();
+
             using (var outerGroup = BatchGroup.New(frame, layer))
             using (var prepassGroup = BatchGroup.New(outerGroup, 0))
             using (var rtBatch = BatchGroup.ForRenderTarget(outerGroup, 1, renderTarget)) {
@@ -1283,6 +1294,10 @@ namespace Squared.PRGUI {
                         renderer.Layer += 1;
                     }
 
+                    var m = control as IModal;
+                    if ((m != null) && ModalStack.Contains(m))
+                        FlushOverlayQueue(ref renderer);
+
                     // When the accelerator overlay is visible, fade out any top-level controls
                     //  that cover the currently focused top-level control so that the user can see
                     //  any controls that might be active
@@ -1301,7 +1316,6 @@ namespace Squared.PRGUI {
                         : 1.0f;
                     // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
                     //  overlap each other, at the cost of more draw calls.
-                    OverlayQueue.Clear();
                     var passSet = new RasterizePassSet(ref prepass, ref renderer, 0, 1, OverlayQueue);
                     passSet.Below.DepthStencilState =
                         passSet.Content.DepthStencilState =
@@ -1309,11 +1323,9 @@ namespace Squared.PRGUI {
                     control.Rasterize(ref context, ref passSet, opacityModifier);
                     // HACK
                     prepass = passSet.Prepass;
-                    foreach (var dc in OverlayQueue) {
-                        renderer.Draw(dc);
-                        renderer.Layer += 1;
-                    }
                 }
+
+                FlushOverlayQueue(ref renderer);
 
                 LastPassCount = prepassGroup.Count + 1;
 

@@ -48,6 +48,8 @@ namespace PRGUI.Demo {
         public IGlyphSource Font;
         public AutoRenderTarget UIRenderTarget;
 
+        Button LoginButton;
+
         public const float DPIFactor = 0.5f;
 
         public bool IsMouseOverUI = false, TearingTest = false;
@@ -275,7 +277,7 @@ namespace PRGUI.Demo {
                 TooltipContent = "I'm a top-heavy window!"
             };
 
-            var loginButton = new Button {
+            LoginButton = new Button {
                 Text = "Login"
             };
 
@@ -314,7 +316,7 @@ namespace PRGUI.Demo {
                 volumeSlider,
                 hideButton,
                 toppleButton,
-                loginButton
+                LoginButton
             );
 
             FloatingWindow = (Window)window.Container;
@@ -426,13 +428,13 @@ namespace PRGUI.Demo {
                                         Width = { Fixed = 450 },
                                         Scrollable = true,
                                         Children = {
-                                            new StaticText { Text = "Overlaid child", Appearance = { Overlay = true }  },
+                                            new StaticText { Text = "Testing nested clips" },
                                             new StaticText {
                                                 Text = "Long multiline static text inside of clipped region that should be wrapped/clipped instead of overflowing",
                                                 Wrap = true, AutoSizeWidth = false, LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak
                                             },
                                             new Checkbox { Text = "Checkbox 1", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak },
-                                            new Checkbox { Text = "Checkbox 2", Checked = true},
+                                            new Checkbox { Text = "Checkbox 2", Checked = true },
                                             new RadioButton { Text = "Radio 1", GroupId = "radio", LayoutFlags = ControlFlags.Layout_Fill_Row | ControlFlags.Layout_ForceBreak, Checked = true },
                                             new RadioButton { Text = "Radio 2", GroupId = "radio" },
                                             new RadioButton { Text = "Radio 3", GroupId = "radio", Checked = true },
@@ -614,7 +616,7 @@ namespace PRGUI.Demo {
                 Topple = Tween<float>.StartNow(0f, 2f, 5f, now: Context.NowL, repeatCount: 1, repeatMode: TweenRepeatMode.PulseSine);
             });
 
-            Context.EventBus.Subscribe(loginButton, UIEvents.Click, (ei) => {
+            Context.EventBus.Subscribe(LoginButton, UIEvents.Click, (ei) => {
                 ShowLoginWindow();
             });
 
@@ -674,7 +676,9 @@ namespace PRGUI.Demo {
                 DynamicContents = BuildLoginWindow,
                 ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap | ControlFlags.Container_Row
             }).Show(Context);
+            LoginButton.Appearance.Overlay = true;
             fUsername.RegisterOnComplete((f) => {
+                LoginButton.Appearance.Overlay = false;
                 Console.WriteLine(
                     (f.Result != null)
                         ? "Login with username " + fUsername.Result
