@@ -331,8 +331,9 @@ namespace Squared.PRGUI {
         }
 
         public Control TopLevelFocused { get; private set; }
-        public Control TopLevelFocusDonor { get; private set; }
+        public Control TopLevelModalFocusDonor { get; private set; }
 
+        public Control ModalFocusDonor { get; private set; }
         public Control PreviousFocused { get; private set; }
         public Control PreviousTopLevelFocused { get; private set; }
 

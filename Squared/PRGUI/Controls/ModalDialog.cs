@@ -39,7 +39,7 @@ namespace Squared.PRGUI.Controls {
             this.Show(context);
         }
 
-        public Future<object> Show (UIContext context) {
+        public Future<object> Show (UIContext context, Control focusDonor = null) {
             SetContext(context);
             var now = context.NowL;
             // HACK: Prevent the layout info from computing our size from being used to render us next frame
@@ -53,7 +53,7 @@ namespace Squared.PRGUI.Controls {
             var f = NextResultFuture = new Future<object>();
             Appearance.Opacity = Tween<float>.StartNow(0f, 1f, ModalShowSpeed, now: now);
             GenerateDynamicContent(true);
-            _FocusDonor = context.TopLevelFocused;
+            _FocusDonor = focusDonor ?? context.TopLevelFocused;
             context.ShowModal(this);
             IsActive = true;
             return f;

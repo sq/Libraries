@@ -675,7 +675,7 @@ namespace PRGUI.Demo {
                 },
                 DynamicContents = BuildLoginWindow,
                 ContainerFlags = ControlFlags.Container_Align_Middle | ControlFlags.Container_Wrap | ControlFlags.Container_Row
-            }).Show(Context);
+            }).Show(Context, LoginButton);
             LoginButton.Appearance.Overlay = true;
             fUsername.RegisterOnComplete((f) => {
                 LoginButton.Appearance.Overlay = false;

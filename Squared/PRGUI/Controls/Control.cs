@@ -503,7 +503,8 @@ namespace Squared.PRGUI {
 
                 if (
                     (context.UIContext.TopLevelFocused == this) ||
-                    (context.UIContext.TopLevelFocusDonor == this)
+                    (context.UIContext.ModalFocusDonor == this) ||
+                    (context.UIContext.TopLevelModalFocusDonor == this)
                 )
                     result |= ControlStates.ContainsFocus;
             }

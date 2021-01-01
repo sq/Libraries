@@ -545,9 +545,9 @@ namespace Squared.PRGUI {
             if (TopLevelFocused != previousTopLevel)
                 PreviousTopLevelFocused = previousTopLevel;
 
-            var fm = _Focused as IModal;
-            var fd = fm?.FocusDonor;
-            TopLevelFocusDonor = FindTopLevelAncestor(fd);
+            var fm = _Focused as IModal ?? TopLevelFocused as IModal;
+            ModalFocusDonor = fm?.FocusDonor;
+            TopLevelModalFocusDonor = FindTopLevelAncestor(ModalFocusDonor);
 
             if ((previous != null) && (previous != newFocusTarget))
                 FireEvent(UIEvents.LostFocus, previous, newFocusTarget);
